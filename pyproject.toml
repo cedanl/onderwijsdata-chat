@@ -10,6 +10,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git",
     "riodata @ git+https://github.com/cedanl/rio-onderwijsdata.git",
+    "markdown>=3.10.2",
+    "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]
@@ -20,6 +22,7 @@ allow-direct-references = true
 
 [tool.uv]
 package = false
+cache-dir = ".uv_cache"
 
 [build-system]
 requires = ["hatchling"]

@@ -8,3 +8,5 @@ dist/
 chainlit.md
 .files/
 socket:*
+
+.uv_cache/

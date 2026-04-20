@@ -11,25 +11,32 @@ def _cbs() -> list:
 
 
 @cache
-def _rio() -> list:
-    return _rio_catalog()
+def _rio_duo() -> list:
+    return _rio_catalog(source="all")
 
 
 def search_catalog(query: str, source: str = "both") -> str:
-    q = query.lower()
-    results = []
+    words = query.lower().split()
+    scored = []
+
+    def score(entry: dict) -> int:
+        text = json.dumps(entry, ensure_ascii=False).lower()
+        return sum(w in text for w in words)
 
     if source in ("cbs", "both"):
         for entry in _cbs():
-            if q in json.dumps(entry, ensure_ascii=False).lower():
-                results.append({"bron": "CBS", **entry})
+            s = score(entry)
+            if s:
+                scored.append((s, {"bron": "CBS", **entry}))
 
     if source in ("rio", "both"):
-        for entry in _rio():
-            if q in json.dumps(entry, ensure_ascii=False).lower():
-                results.append({"bron": "RIO", **entry})
+        for entry in _rio_duo():
+            s = score(entry)
+            if s:
+                scored.append((s, {**entry}))
 
-    if not results:
+    if not scored:
         return f"Geen resultaten gevonden voor '{query}'."
 
-    return json.dumps(results[:10], ensure_ascii=False, separators=(",", ":"))
+    scored.sort(key=lambda x: -x[0])
+    return json.dumps([r for _, r in scored[:15]], ensure_ascii=False, separators=(",", ":"))

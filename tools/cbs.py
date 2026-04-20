@@ -1,19 +1,27 @@
 import json
+from functools import lru_cache
 
 from onderwijsdata import data, dimension
+from config import CBS_ROW_LIMIT
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
-        params["$top"] = 20
+        params["$top"] = CBS_ROW_LIMIT
     try:
         rows = data(dataset_id, **params)
-        return json.dumps(rows[:20], ensure_ascii=False, separators=(",", ":"))
     except Exception as e:
         return f"Fout bij ophalen CBS data: {e}"
+    if not rows:
+        return (
+            f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
+            "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
+        )
+    return json.dumps(rows[:CBS_ROW_LIMIT], ensure_ascii=False, separators=(",", ":"))
 
 
+@lru_cache(maxsize=256)
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     try:
         values = dimension(dataset_id, dimension_name)
