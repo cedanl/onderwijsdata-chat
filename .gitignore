@@ -10,3 +10,8 @@ chainlit.md
 socket:*
 
 .uv_cache/
+
+# Lokale data — niet in repo
+data/sessions.db
+data/sessions.db-shm
+data/sessions.db-wal
