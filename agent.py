@@ -1,49 +1,63 @@
-import anthropic
+import json
+
+import litellm
 import chainlit as cl
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
-from prompt import get_system_prompt
+from prompt import SYSTEM_PROMPT
 from tools import LABELS, SCHEMAS, dispatch
 
-
-def _build_system() -> list[dict]:
-    return [{"type": "text", "text": get_system_prompt(), "cache_control": {"type": "ephemeral"}}]
+_SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
 
 
 async def run(messages: list[dict]) -> str:
-    client = anthropic.Anthropic()
     history = list(messages)
 
     for _ in range(MAX_TOOL_ITERATIONS):
-        response = client.messages.create(
+        response = await litellm.acompletion(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=_build_system(),
+            messages=_SYSTEM + history,
             tools=SCHEMAS,
-            messages=history,
         )
 
-        tool_uses = [b for b in response.content if b.type == "tool_use"]
+        message = response.choices[0].message
+        tool_calls = message.tool_calls or []
 
-        if not tool_uses:
-            return next((b.text for b in response.content if b.type == "text"), "")
+        if not tool_calls:
+            return message.content or ""
 
-        history.append({"role": "assistant", "content": response.content})
+        history.append({
+            "role": "assistant",
+            "content": message.content,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in tool_calls
+            ],
+        })
 
-        tool_results = []
-        for block in tool_uses:
-            label = LABELS.get(block.name, block.name)
+        for tc in tool_calls:
+            args = json.loads(tc.function.arguments)
+            label = LABELS.get(tc.function.name, tc.function.name)
+
             async with cl.Step(name=label, type="tool") as step:
-                step.input = block.input
-                result = dispatch(block.name, block.input)
+                step.input = args
+                result, figure = dispatch(tc.function.name, args)
                 step.output = result
 
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result,
-            })
+            if figure is not None:
+                figures = cl.user_session.get("figures", [])
+                figures.append(figure)
+                cl.user_session.set("figures", figures)
+                await cl.Message(
+                    content="",
+                    elements=[cl.Plotly(name=label, figure=figure, display="inline")],
+                ).send()
 
-        history.append({"role": "user", "content": tool_results})
+            history.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
     return "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."

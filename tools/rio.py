@@ -9,6 +9,6 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
         params["pageSize"] = 20
     try:
         results = fetch(resource, **params)
-        return json.dumps(results[:20], ensure_ascii=False, indent=2)
+        return json.dumps(results[:20], ensure_ascii=False, separators=(",", ":"))
     except Exception as e:
         return f"Fout bij ophalen RIO data: {e}"

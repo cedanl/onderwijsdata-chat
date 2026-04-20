@@ -5,14 +5,21 @@ description = "Chat met open Nederlandse onderwijsdata (CBS + RIO)"
 requires-python = ">=3.11"
 dependencies = [
     "chainlit>=1.0",
-    "anthropic>=0.87.0",
+    "litellm>=1.40",
+    "plotly>=5.0",
     "python-dotenv>=1.0",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git",
     "riodata @ git+https://github.com/cedanl/rio-onderwijsdata.git",
 ]
 
+[dependency-groups]
+dev = ["watchfiles>=0.21"]
+
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv]
+package = false
 
 [build-system]
 requires = ["hatchling"]
