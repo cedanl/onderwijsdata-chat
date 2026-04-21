@@ -2,7 +2,7 @@ from typing import Any
 
 from .catalog import search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
-from .duo import get_duo_data
+from .duo import get_duo_data, query_duo_data
 from .plot import create_plot
 from .rio import get_rio_data
 
@@ -16,7 +16,8 @@ SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Zoekterm, bijv. 'mbo studenten prognose' of 'onderwijslocaties Amsterdam'"},
-                    "source": {"type": "string", "enum": ["cbs", "rio", "both"], "description": "Te doorzoeken bron (standaard: beide, incluisief DUO via 'rio')"},
+                    "source": {"type": "string", "enum": ["cbs", "rio", "duo", "both"], "description": "Te doorzoeken bron: 'cbs', 'rio', 'duo' (alleen DUO-datasets), of 'both' (alles)"},
+                    "top_n": {"type": "integer", "description": "Maximaal aantal resultaten (standaard: 15)"},
                 },
                 "required": ["query"],
             },
@@ -71,15 +72,31 @@ SCHEMAS = [
         "type": "function",
         "function": {
             "name": "get_duo_data",
-            "description": "Download en laad een DUO open dataset als JSON. Gebruik dit voor DUO-data zoals prognoses, diplomering, instroom, adressen. Gebruik search_catalog om de dataset_id te vinden (leverancier='DUO', veld '_ckan_id').",
+            "description": "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_duo_data om gefilterde rijen op te halen voor analyse of grafiek.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dataset_id": {"type": "string", "description": "CKAN package-naam uit de catalogus, bijv. 'studentprognoses-mbo-v1'"},
                     "resource": {"type": ["integer", "string"], "description": "Index (0, 1, ...) of naam-substring van het bestand binnen de dataset (default: 0)"},
-                    "max_rows": {"type": "integer", "description": "Maximaal aantal rijen terug te geven (default: 200)"},
                 },
                 "required": ["dataset_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_duo_data",
+            "description": "Filter en selecteer rijen uit een eerder geladen DUO dataset. Gebruik de data_key die get_duo_data retourneerde.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data_key": {"type": "string", "description": "data_key uit get_duo_data"},
+                    "filters": {"type": "object", "description": "Kolomfilters als exacte waarden, bijv. {\"Leerweg\": \"Voltijd\", \"Jaar\": \"2023\"}"},
+                    "columns": {"type": "array", "items": {"type": "string"}, "description": "Alleen deze kolommen teruggeven"},
+                    "max_rows": {"type": "integer", "description": "Maximaal aantal rijen (default: 500)"},
+                },
+                "required": ["data_key"],
             },
         },
     },
@@ -109,7 +126,8 @@ LABELS = {
     "get_cbs_data": "CBS data opgehaald",
     "get_cbs_dimension": "CBS dimensie opgehaald",
     "get_rio_data": "RIO data opgehaald",
-    "get_duo_data": "DUO data opgehaald",
+    "get_duo_data": "DUO dataset geladen",
+    "query_duo_data": "DUO data gefilterd",
     "create_plot": "Grafiek aangemaakt",
 }
 
@@ -119,6 +137,7 @@ _HANDLERS = {
     "get_cbs_dimension": get_cbs_dimension,
     "get_rio_data": get_rio_data,
     "get_duo_data": get_duo_data,
+    "query_duo_data": query_duo_data,
     "create_plot": create_plot,
 }
 

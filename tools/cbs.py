@@ -18,7 +18,10 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
             "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
         )
-    return json.dumps(rows[:CBS_ROW_LIMIT], ensure_ascii=False, separators=(",", ":"))
+    result = json.dumps(rows[:CBS_ROW_LIMIT], ensure_ascii=False, separators=(",", ":"))
+    if len(rows) >= CBS_ROW_LIMIT:
+        result += f" // Resultaat afgekapt op {CBS_ROW_LIMIT} rijen. Verfijn je $filter of $select om volledigere data te krijgen."
+    return result
 
 
 @lru_cache(maxsize=256)

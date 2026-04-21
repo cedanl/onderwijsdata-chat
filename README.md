@@ -41,6 +41,7 @@ Optionele instellingen:
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
 | `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
 | `CBS_ROW_LIMIT` | `200` | Maximum rijen uit CBS-datasets |
+| `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 
 ## Starten
 

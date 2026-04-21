@@ -42,9 +42,13 @@ def create_plot(
             elif chart_type == "scatter":
                 fig.add_trace(go.Scatter(name=name, x=vals["x"], y=vals["y"], mode="markers",
                                          marker=dict(color=color, size=7)))
+            elif chart_type == "histogram":
+                fig.add_trace(go.Histogram(name=name, x=vals["x"], marker_color=color, opacity=0.7))
 
         if chart_type == "bar":
             fig.update_layout(barmode="group")
+        elif chart_type == "histogram":
+            fig.update_layout(barmode="overlay")
 
     else:
         x_vals = [row.get(x) for row in data]

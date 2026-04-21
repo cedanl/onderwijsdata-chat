@@ -25,8 +25,8 @@ def generate_report(turns: list[dict]) -> str:
         sections_html += f"""
 <div class="turn">
   <div class="user"><strong>Vraag {i}:</strong> {question}</div>
-  {charts_html}
   <div class="assistant"><strong>Interpretatie:</strong> {answer_html}</div>
+  {charts_html}
 </div>"""
 
     return f"""<!DOCTYPE html>
