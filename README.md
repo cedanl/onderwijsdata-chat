@@ -4,11 +4,11 @@ Een Chainlit-chatapp waarmee je vragen kunt stellen over open Nederlandse onderw
 
 ## Databronnen
 
-| Bron | Inhoud |
-|------|--------|
-| **CBS** | 68 datasets met onderwijsstatistieken |
-| **RIO** | Register van onderwijsinstellingen en opleidingen (14 resources) |
-| **DUO** | 57 open datasets: prognoses, diplomering, instroom, adressen |
+| Bron | Inhoud | Catalogus |
+|------|--------|-----------|
+| **CBS** | 68 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
+| **RIO** | Register van onderwijsinstellingen en opleidingen (14 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
+| **DUO** | 57 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 
 ## Vereisten
 
