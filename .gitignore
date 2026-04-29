@@ -10,3 +10,5 @@ chainlit.md
 socket:*
 
 .uv_cache/
+data/
+tmp/

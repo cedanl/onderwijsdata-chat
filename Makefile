@@ -1,7 +1,11 @@
 HOST ?= 0.0.0.0
 PORT ?= 8000
 
-.PHONY: dev url
+.PHONY: dev stop url
+
+stop:
+	@pkill -f "chainlit run" 2>/dev/null || true
+	@sleep 1
 
 # Run the Chainlit dev server with file watching.
 #
@@ -13,8 +17,8 @@ PORT ?= 8000
 #       make url          # prints the correct URL
 #
 #     or manually: http://$(hostname -I | awk '{print $1}'):8000
-dev:
-	uv run watchfiles "uv run chainlit run app.py --host $(HOST) --port $(PORT) -h" .
+dev: stop
+	uv run chainlit run app.py --host $(HOST) --port $(PORT) -h
 
 # Print the URL to open in the host browser when running via devcontainer-cli.
 url:

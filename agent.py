@@ -4,7 +4,7 @@ import json
 import litellm
 import chainlit as cl
 
-from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
+from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
 from prompt import SYSTEM_PROMPT
 from tools import LABELS, SCHEMAS, dispatch
 
@@ -36,6 +36,17 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
+_WILLMA_KWARGS: dict = (
+    {
+        "api_base": WILLMA_BASE_URL,
+        "api_key": WILLMA_API_KEY,
+        "extra_headers": {"X-API-KEY": WILLMA_API_KEY},
+    }
+    if WILLMA_API_KEY
+    else {}
+)
+
+
 async def run(messages: list[dict]) -> str:
     history = _trim(list(messages))
     call_cache: dict[str, tuple[str, object]] = {}
@@ -47,6 +58,7 @@ async def run(messages: list[dict]) -> str:
             messages=_SYSTEM + history,
             tools=SCHEMAS,
             stream=True,
+            **_WILLMA_KWARGS,
         )
 
         msg = cl.Message(content="")

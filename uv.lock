@@ -1848,7 +1848,7 @@ wheels = [
 [[package]]
 name = "onderwijsdata"
 version = "0.1.0"
-source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#c3ff247c01f3fd67e5666988ecedb2f8ab17cb9c" }
+source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#1ddde77c838f936c25c307c29dcbdb3cf30617b7" }
 dependencies = [
     { name = "httpx" },
 ]
