@@ -9,6 +9,7 @@ load_dotenv()
 import chainlit as cl
 
 from agent import run
+from config import MODEL
 from report import generate_report
 
 WELKOM = """Welkom! Ik kan je helpen met vragen over open Nederlandse onderwijsdata.
@@ -42,8 +43,9 @@ async def on_start():
     cl.user_session.set("figures", [])
     cl.user_session.set("turns", [])
 
+    is_ollama = MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/")
     known_keys = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_API_KEY", "AZURE_AI_API_KEY", "GEMINI_API_KEY", "WILLMA_API_KEY"]
-    if not any(os.getenv(k) for k in known_keys):
+    if not is_ollama and not any(os.getenv(k) for k in known_keys):
         await cl.Message(content="⚠️ Geen API key gevonden. Stel een omgevingsvariabele in (bijv. `ANTHROPIC_API_KEY`) en herstart de app.").send()
         return
 

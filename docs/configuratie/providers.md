@@ -54,7 +54,7 @@ Het `MODEL` veld volgt altijd het formaat `provider/model-naam`.
 
 ## Lokale modellen met Ollama
 
-[Ollama](https://ollama.com) laat je open modellen lokaal draaien — geen API key nodig, geen data die de organisatie verlaat.
+[Ollama](https://ollama.com) laat je open modellen lokaal draaien — geen cloud API key nodig, geen data die de organisatie verlaat.
 
 ### Installatie
 
@@ -62,42 +62,41 @@ Installeer Ollama en pull een model:
 
 ```bash
 # Installeer Ollama (zie https://ollama.com/download)
-ollama pull llama3.2          # ~2 GB, geschikt voor eenvoudige vragen
-ollama pull qwen2.5:14b       # betere redeneervaardigheden, ~9 GB
-ollama pull mistral            # goede balans snelheid/kwaliteit
+ollama pull gpt-oss:20b        # aanbevolen, goede tool calling
+ollama pull llama3.1:8b        # alternatief
+ollama pull qwen2.5:14b        # alternatief
 ```
 
 ### Configuratie
 
 ```dotenv
-MODEL=ollama_chat/llama3.2
-# OLLAMA_API_BASE hoeft niet ingesteld te worden als Ollama op localhost:11434 draait
+MODEL=ollama_chat/gpt-oss:20b
+OPENAI_API_BASE=http://localhost:11434/v1
 ```
 
-Als Ollama op een ander adres draait (bijv. in een Docker-netwerk):
+In Docker (als Ollama op de host draait):
 
 ```dotenv
-MODEL=ollama_chat/llama3.2
-OLLAMA_API_BASE=http://host.docker.internal:11434
+MODEL=ollama_chat/gpt-oss:20b
+OPENAI_API_BASE=http://host.docker.internal:11434/v1
 ```
 
 !!! warning "Gebruik `ollama_chat/` — niet `ollama/`"
     LiteLLM heeft twee prefixen voor Ollama. Alleen `ollama_chat/` ondersteunt `tools` en `tool_choice`. De app heeft tool calling nodig om data op te halen bij CBS, RIO en DUO — met `ollama/` werken de databronnen niet.
 
+!!! note "Geen API key nodig"
+    Ollama vereist geen API key. De app toont ook geen waarschuwing over ontbrekende keys wanneer `MODEL` begint met `ollama_chat/` of `ollama/`.
+
 ### Aanbevolen modellen
 
-| Model | Grootte | Geschikt voor |
-|-------|---------|---------------|
-| `llama3.2` | 2 GB | Snelle vragen, weinig RAM |
-| `llama3.1:8b` | 5 GB | Goede balans |
+| Model | Grootte | Opmerkingen |
+|-------|---------|-------------|
+| `gpt-oss:20b` | ~12 GB | Sterk in tool calling, aanbevolen |
+| `llama3.1:8b` | 5 GB | Goede balans snelheid/kwaliteit |
 | `qwen2.5:14b` | 9 GB | Complexere analyses |
 | `mistral` | 4 GB | Meertalig, goed Nederlands |
-| `qwen2.5-coder:7b` | 4 GB | Code-heavy taken |
 
 Controleer de [Ollama library](https://ollama.com/library) op de tag **Tools** om te zien welke modellen tool calling ondersteunen.
-
-!!! note "Hoe werkt dit?"
-    LiteLLM leest `OLLAMA_API_BASE` direct uit de omgeving — er zijn geen aanpassingen in `agent.py` nodig. Zonder `OLLAMA_API_BASE` wordt `http://localhost:11434` gebruikt. Er is geen API key nodig.
 
 ---
 
@@ -118,6 +117,6 @@ LiteLLM leest omgevingsvariabelen automatisch per provider:
 | Azure OpenAI | `AZURE_API_KEY`, `AZURE_API_BASE`, `AZURE_API_VERSION` |
 | Azure AI Foundry | `AZURE_AI_API_KEY`, `AZURE_AI_API_BASE` |
 | Gemini | `GEMINI_API_KEY` |
-| Ollama | `OLLAMA_API_BASE` (optioneel, standaard `http://localhost:11434`) |
+| Ollama | `OPENAI_API_BASE` (bijv. `http://localhost:11434/v1`) |
 
 Je hoeft dus alleen de variabelen in te stellen die bij jouw gekozen provider horen — de rest kan leeg blijven. Alle providers zijn ook gedocumenteerd in [`.env.example`](https://github.com/cedanl/onderwijsdata-chat/blob/main/.env.example).
