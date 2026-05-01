@@ -1,7 +1,7 @@
 HOST ?= 0.0.0.0
 PORT ?= 8000
 
-.PHONY: dev stop url
+.PHONY: dev dev-verbose stop url
 
 stop:
 	@pkill -f "chainlit run" 2>/dev/null || true
@@ -19,6 +19,9 @@ stop:
 #     or manually: http://$(hostname -I | awk '{print $1}'):8000
 dev: stop
 	uv run chainlit run app.py --host $(HOST) --port $(PORT) -h
+
+dev-verbose: stop
+	LITELLM_LOG=DEBUG uv run chainlit run app.py --host $(HOST) --port $(PORT) -h -d
 
 # Print the URL to open in the host browser when running via devcontainer-cli.
 url:
