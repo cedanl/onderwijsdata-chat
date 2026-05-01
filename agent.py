@@ -8,6 +8,35 @@ from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLM
 from prompt import SYSTEM_PROMPT
 from tools import LABELS, SCHEMAS, dispatch
 
+# LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
+# messages but never writes them to the output Ollama message, causing orphaned
+# tool-result messages on the second LLM call. Patch it here.
+if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
+    from litellm.llms.ollama.chat.transformation import OllamaChatConfig
+
+    _orig_transform = OllamaChatConfig.transform_request
+
+    def _patched_transform(self, model, messages, optional_params, litellm_params, headers):
+        result = _orig_transform(self, model, messages, optional_params, litellm_params, headers)
+        for orig, out in zip(messages, result.get("messages", [])):
+            if not isinstance(orig, dict):
+                continue
+            raw_tools = orig.get("tool_calls")
+            if raw_tools and "tool_calls" not in out:
+                converted = []
+                for tc in raw_tools:
+                    args = tc.get("function", {}).get("arguments", "{}")
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except Exception:
+                            args = {}
+                    converted.append({"function": {"name": tc["function"]["name"], "arguments": args}})
+                out["tool_calls"] = converted
+        return result
+
+    OllamaChatConfig.transform_request = _patched_transform
+
 _SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
 _MAX_HISTORY = 40
 
@@ -104,7 +133,7 @@ async def run(messages: list[dict]) -> str:
 
         history.append({
             "role": "assistant",
-            "content": text_content or None,
+            "content": text_content or "",
             "tool_calls": [
                 {"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}}
                 for tc in tool_calls
