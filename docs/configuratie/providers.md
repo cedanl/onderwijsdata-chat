@@ -70,16 +70,19 @@ ollama pull mistral            # goede balans snelheid/kwaliteit
 ### Configuratie
 
 ```dotenv
-MODEL=ollama/llama3.2
+MODEL=ollama_chat/llama3.2
 # OLLAMA_API_BASE hoeft niet ingesteld te worden als Ollama op localhost:11434 draait
 ```
 
 Als Ollama op een ander adres draait (bijv. in een Docker-netwerk):
 
 ```dotenv
-MODEL=ollama/llama3.2
+MODEL=ollama_chat/llama3.2
 OLLAMA_API_BASE=http://host.docker.internal:11434
 ```
+
+!!! warning "Gebruik `ollama_chat/` — niet `ollama/`"
+    LiteLLM heeft twee prefixen voor Ollama. Alleen `ollama_chat/` ondersteunt `tools` en `tool_choice`. De app heeft tool calling nodig om data op te halen bij CBS, RIO en DUO — met `ollama/` werken de databronnen niet.
 
 ### Aanbevolen modellen
 
@@ -91,11 +94,10 @@ OLLAMA_API_BASE=http://host.docker.internal:11434
 | `mistral` | 4 GB | Meertalig, goed Nederlands |
 | `qwen2.5-coder:7b` | 4 GB | Code-heavy taken |
 
-!!! tip "Tool calling"
-    Niet elk Ollama-model ondersteunt tool calling (nodig voor het ophalen van CBS/RIO/DUO-data). Kies een model dat expliciet tool use ondersteunt, zoals `llama3.1`, `llama3.2`, `qwen2.5` of `mistral-nemo`. Controleer de [Ollama library](https://ollama.com/library) voor de tag `Tools`.
+Controleer de [Ollama library](https://ollama.com/library) op de tag **Tools** om te zien welke modellen tool calling ondersteunen.
 
 !!! note "Hoe werkt dit?"
-    LiteLLM herkent het prefix `ollama/` en routeert de aanroep automatisch naar de lokale Ollama-server. De `OLLAMA_API_BASE` variabele overschrijft het standaard adres (`http://localhost:11434`). Er is geen API key nodig.
+    LiteLLM leest `OLLAMA_API_BASE` direct uit de omgeving — er zijn geen aanpassingen in `agent.py` nodig. Zonder `OLLAMA_API_BASE` wordt `http://localhost:11434` gebruikt. Er is geen API key nodig.
 
 ---
 
