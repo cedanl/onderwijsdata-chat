@@ -1,0 +1,67 @@
+site_name: Onderwijsdata Chat
+site_description: Stel vragen over open Nederlandse onderwijsdata via een AI-assistent met toegang tot CBS, RIO en DUO.
+site_url: https://cedanl.github.io/onderwijsdata-chat/
+repo_url: https://github.com/cedanl/onderwijsdata-chat
+repo_name: cedanl/onderwijsdata-chat
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: nl
+  logo: assets/npuls_logo.png
+  favicon: assets/npuls_logo.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Donker thema
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Licht thema
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search:
+      lang: nl
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Aan de slag: aan-de-slag.md
+  - Configuratie:
+    - configuratie/index.md
+    - Providers & modellen: configuratie/providers.md
+  - Databronnen: databronnen.md
+  - Tools: tools.md

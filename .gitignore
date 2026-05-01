@@ -12,3 +12,4 @@ socket:*
 .uv_cache/
 data/
 tmp/
+site/
