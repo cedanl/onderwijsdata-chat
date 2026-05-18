@@ -29,6 +29,20 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
+## Chatgeschiedenis & authenticatie
+
+| Variabele | Standaard | Beschrijving |
+|-----------|-----------|--------------|
+| `CHAINLIT_AUTH_SECRET` | *(niet ingesteld)* | JWT-secret voor sessiebeheer. Genereer met `chainlit create-secret`. Zonder dit geen login en geen history. |
+| `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAINLIT_AUTH_SECRET` is ingesteld. |
+| `CHAT_HEADER_SECRET` | *(niet ingesteld)* | Header-authenticatie voor reverse proxy: stuur `X-Chat-Secret: <waarde>` mee. Optioneel ook `X-Chat-User: <identifier>`. |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./chat_history.db` | Database voor gespreksopslag. Standaard lokale SQLite. Voor productie: `postgresql+asyncpg://user:pass@host/db`. |
+
+!!! info "Authenticatie is optioneel"
+    Zonder `CHAINLIT_AUTH_SECRET` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel het secret als minimaal één authenticatiemethode.
+
+---
+
 ## SURF Willma AI-Hub
 
 Willma is de AI-Hub van SURF voor het Nederlandse onderwijs. Om via Willma te draaien:
