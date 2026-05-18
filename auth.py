@@ -3,6 +3,8 @@ from typing import Optional
 
 import chainlit as cl
 
+_AUTH_ENABLED = bool(os.getenv("CHAINLIT_AUTH_SECRET"))
+
 
 def parse_users(users_env: str) -> dict[str, str]:
     """Parse 'user:pass,user2:pass2' env var into a dict."""
@@ -23,18 +25,26 @@ def check_credentials(username: str, password: str, users: dict[str, str]) -> bo
 
 _USERS = parse_users(os.getenv("CHAT_USERS", ""))
 
+# Only register auth callbacks when CHAINLIT_AUTH_SECRET is set.
+# Without it Chainlit raises an error if any callback is registered.
+if _AUTH_ENABLED:
 
-@cl.password_auth_callback
-def auth_callback(username: str, password: str) -> Optional[cl.User]:
-    if check_credentials(username, password, _USERS):
-        return cl.User(identifier=username, metadata={"role": "user", "provider": "credentials"})
-    return None
+    @cl.password_auth_callback
+    def auth_callback(username: str, password: str) -> Optional[cl.User]:
+        if check_credentials(username, password, _USERS):
+            return cl.User(
+                identifier=username,
+                metadata={"role": "user", "provider": "credentials"},
+            )
+        return None
 
-
-@cl.header_auth_callback
-def header_auth_callback(headers: dict) -> Optional[cl.User]:
-    secret = os.getenv("CHAT_HEADER_SECRET")
-    if secret and headers.get("X-Chat-Secret") == secret:
-        identifier = headers.get("X-Chat-User", "user")
-        return cl.User(identifier=identifier, metadata={"role": "user", "provider": "header"})
-    return None
+    @cl.header_auth_callback
+    def header_auth_callback(headers: dict) -> Optional[cl.User]:
+        secret = os.getenv("CHAT_HEADER_SECRET")
+        if secret and headers.get("X-Chat-Secret") == secret:
+            identifier = headers.get("X-Chat-User", "user")
+            return cl.User(
+                identifier=identifier,
+                metadata={"role": "user", "provider": "header"},
+            )
+        return None
