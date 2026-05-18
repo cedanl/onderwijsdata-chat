@@ -8,7 +8,7 @@ from sqlalchemy import text
 DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///./chat_history.db"
 
 # Schema compatible with both SQLite and PostgreSQL.
-# Uses TEXT for all columns so the same DDL runs on both databases.
+# Covers all fields in Chainlit's StepDict (2.11.x).
 _DDL = """
 CREATE TABLE IF NOT EXISTS users (
     "id"         TEXT PRIMARY KEY,
@@ -50,7 +50,9 @@ CREATE TABLE IF NOT EXISTS steps (
     "language"      TEXT,
     "indent"        INTEGER,
     "defaultOpen"   INTEGER,
+    "autoCollapse"  INTEGER,
     "modes"         TEXT,
+    "icon"          TEXT,
     FOREIGN KEY ("threadId") REFERENCES threads("id") ON DELETE CASCADE
 );
 
@@ -82,6 +84,13 @@ CREATE TABLE IF NOT EXISTS feedbacks (
 );
 """
 
+# Columns added since the initial schema — applied as ALTER TABLE migrations
+# on existing databases so upgrades are non-destructive.
+_STEPS_MIGRATIONS: list[tuple[str, str]] = [
+    ("autoCollapse", "INTEGER"),
+    ("icon", "TEXT"),
+]
+
 
 def build_conninfo(database_url: str) -> str:
     """Add the correct async driver prefix to a database URL if missing."""
@@ -105,8 +114,19 @@ async def on_app_startup():
     layer = get_data_layer()
     if not isinstance(layer, SQLAlchemyDataLayer):
         return
+
     async with layer.engine.begin() as conn:
-        for statement in _DDL.strip().split(";"):
-            stmt = statement.strip()
+        # Create tables (idempotent)
+        for stmt in _DDL.strip().split(";"):
+            stmt = stmt.strip()
             if stmt:
                 await conn.execute(text(stmt))
+
+        # Add any columns that are missing in existing databases
+        for col, col_type in _STEPS_MIGRATIONS:
+            try:
+                await conn.execute(
+                    text(f'ALTER TABLE steps ADD COLUMN "{col}" {col_type}')
+                )
+            except Exception:
+                pass  # column already exists

@@ -54,4 +54,27 @@ async def test_create_tables_creates_all_required_tables():
         )
 
     assert set(result) == {"users", "threads", "steps", "elements", "feedbacks"}
+
+
+@pytest.mark.asyncio
+async def test_steps_table_has_autocollapse_column():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        for stmt in _DDL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                await conn.execute(text(stmt))
+
+    async with engine.connect() as conn:
+        cols = await conn.run_sync(
+            lambda sync_conn: [
+                r[1] for r in sync_conn.execute(
+                    __import__("sqlalchemy").text("PRAGMA table_info(steps)")
+                ).fetchall()
+            ]
+        )
+
+    assert "autoCollapse" in cols
+    assert "icon" in cols
+    await engine.dispose()
     await engine.dispose()
