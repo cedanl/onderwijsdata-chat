@@ -1,9 +1,86 @@
 import os
 
 import chainlit as cl
+from chainlit.data import get_data_layer
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
+from sqlalchemy import text
 
 DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///./chat_history.db"
+
+# Schema compatible with both SQLite and PostgreSQL.
+# Uses TEXT for all columns so the same DDL runs on both databases.
+_DDL = """
+CREATE TABLE IF NOT EXISTS users (
+    "id"         TEXT PRIMARY KEY,
+    "identifier" TEXT NOT NULL UNIQUE,
+    "metadata"   TEXT NOT NULL DEFAULT '{}',
+    "createdAt"  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS threads (
+    "id"             TEXT PRIMARY KEY,
+    "createdAt"      TEXT,
+    "name"           TEXT,
+    "userId"         TEXT,
+    "userIdentifier" TEXT,
+    "tags"           TEXT,
+    "metadata"       TEXT,
+    FOREIGN KEY ("userId") REFERENCES users("id") ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS steps (
+    "id"            TEXT    PRIMARY KEY,
+    "name"          TEXT    NOT NULL,
+    "type"          TEXT    NOT NULL,
+    "threadId"      TEXT    NOT NULL,
+    "parentId"      TEXT,
+    "streaming"     INTEGER NOT NULL DEFAULT 0,
+    "waitForAnswer" INTEGER,
+    "isError"       INTEGER,
+    "metadata"      TEXT,
+    "tags"          TEXT,
+    "input"         TEXT,
+    "output"        TEXT,
+    "createdAt"     TEXT,
+    "command"       TEXT,
+    "start"         TEXT,
+    "end"           TEXT,
+    "generation"    TEXT,
+    "showInput"     TEXT,
+    "language"      TEXT,
+    "indent"        INTEGER,
+    "defaultOpen"   INTEGER,
+    "modes"         TEXT,
+    FOREIGN KEY ("threadId") REFERENCES threads("id") ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS elements (
+    "id"          TEXT PRIMARY KEY,
+    "threadId"    TEXT,
+    "type"        TEXT,
+    "url"         TEXT,
+    "chainlitKey" TEXT,
+    "name"        TEXT NOT NULL,
+    "display"     TEXT,
+    "objectKey"   TEXT,
+    "size"        TEXT,
+    "page"        INTEGER,
+    "language"    TEXT,
+    "forId"       TEXT,
+    "mime"        TEXT,
+    "props"       TEXT,
+    FOREIGN KEY ("threadId") REFERENCES threads("id") ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feedbacks (
+    "id"       TEXT    PRIMARY KEY,
+    "forId"    TEXT    NOT NULL,
+    "threadId" TEXT    NOT NULL,
+    "value"    INTEGER NOT NULL,
+    "comment"  TEXT,
+    FOREIGN KEY ("threadId") REFERENCES threads("id") ON DELETE CASCADE
+);
+"""
 
 
 def build_conninfo(database_url: str) -> str:
@@ -18,6 +95,18 @@ def build_conninfo(database_url: str) -> str:
 
 
 @cl.data_layer
-def get_data_layer() -> SQLAlchemyDataLayer:
+def get_data_layer_instance() -> SQLAlchemyDataLayer:
     url = build_conninfo(os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
     return SQLAlchemyDataLayer(conninfo=url)
+
+
+@cl.on_app_startup
+async def on_app_startup():
+    layer = get_data_layer()
+    if not isinstance(layer, SQLAlchemyDataLayer):
+        return
+    async with layer.engine.begin() as conn:
+        for statement in _DDL.strip().split(";"):
+            stmt = statement.strip()
+            if stmt:
+                await conn.execute(text(stmt))

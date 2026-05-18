@@ -1,4 +1,8 @@
-from data_layer import build_conninfo
+import pytest
+from sqlalchemy import inspect, text
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from data_layer import DEFAULT_DATABASE_URL, _DDL, build_conninfo
 
 
 def test_sqlite_url_gets_aiosqlite_driver():
@@ -32,5 +36,22 @@ def test_postgresql_already_has_asyncpg_unchanged():
 
 
 def test_default_url_is_sqlite():
-    from data_layer import DEFAULT_DATABASE_URL
     assert DEFAULT_DATABASE_URL.startswith("sqlite")
+
+
+@pytest.mark.asyncio
+async def test_create_tables_creates_all_required_tables():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        for stmt in _DDL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                await conn.execute(text(stmt))
+
+    async with engine.connect() as conn:
+        result = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).get_table_names()
+        )
+
+    assert set(result) == {"users", "threads", "steps", "elements", "feedbacks"}
+    await engine.dispose()
