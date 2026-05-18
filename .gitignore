@@ -12,6 +12,7 @@ dist/
 chainlit.md
 .files/
 socket:*
+chat_history.db
 
 .uv_cache/
 data/

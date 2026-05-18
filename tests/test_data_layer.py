@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from data_layer import DEFAULT_DATABASE_URL, _DDL, build_conninfo
 
+_REQUIRED_TABLES = {"users", "threads", "steps", "elements", "feedbacks"}
+_REQUIRED_STEP_COLS = {"autoCollapse", "icon", "defaultOpen", "modes", "command"}
+
 
 def test_sqlite_url_gets_aiosqlite_driver():
     result = build_conninfo("sqlite:///./chat_history.db")
@@ -39,42 +42,37 @@ def test_default_url_is_sqlite():
     assert DEFAULT_DATABASE_URL.startswith("sqlite")
 
 
+async def _apply_ddl(engine):
+    async with engine.begin() as conn:
+        for stmt in _DDL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                await conn.execute(text(stmt))
+
+
 @pytest.mark.asyncio
 async def test_create_tables_creates_all_required_tables():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        for stmt in _DDL.strip().split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                await conn.execute(text(stmt))
+    await _apply_ddl(engine)
 
     async with engine.connect() as conn:
-        result = await conn.run_sync(
-            lambda sync_conn: inspect(sync_conn).get_table_names()
+        tables = await conn.run_sync(
+            lambda c: set(inspect(c).get_table_names())
         )
 
-    assert set(result) == {"users", "threads", "steps", "elements", "feedbacks"}
+    assert tables == _REQUIRED_TABLES
+    await engine.dispose()
 
 
 @pytest.mark.asyncio
-async def test_steps_table_has_autocollapse_column():
+async def test_steps_table_has_required_columns():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        for stmt in _DDL.strip().split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                await conn.execute(text(stmt))
+    await _apply_ddl(engine)
 
     async with engine.connect() as conn:
         cols = await conn.run_sync(
-            lambda sync_conn: [
-                r[1] for r in sync_conn.execute(
-                    __import__("sqlalchemy").text("PRAGMA table_info(steps)")
-                ).fetchall()
-            ]
+            lambda c: {col["name"] for col in inspect(c).get_columns("steps")}
         )
 
-    assert "autoCollapse" in cols
-    assert "icon" in cols
-    await engine.dispose()
+    assert _REQUIRED_STEP_COLS <= cols
     await engine.dispose()

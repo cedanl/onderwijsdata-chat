@@ -1,3 +1,4 @@
+import hmac
 import os
 from typing import Optional
 
@@ -20,14 +21,23 @@ def parse_users(users_env: str) -> dict[str, str]:
 
 
 def check_credentials(username: str, password: str, users: dict[str, str]) -> bool:
-    return username in users and users[username] == password
+    stored = users.get(username)
+    if stored is None:
+        return False
+    return hmac.compare_digest(stored, password)
 
 
 _USERS = parse_users(os.getenv("CHAT_USERS", ""))
 
-# Only register auth callbacks when CHAINLIT_AUTH_SECRET is set.
-# Without it Chainlit raises an error if any callback is registered.
-if _AUTH_ENABLED:
+
+def setup() -> None:
+    """Register Chainlit auth callbacks. Call once at app startup.
+
+    No-op when CHAINLIT_AUTH_SECRET is absent — Chainlit raises if callbacks
+    are registered without a secret.
+    """
+    if not _AUTH_ENABLED:
+        return
 
     @cl.password_auth_callback
     def auth_callback(username: str, password: str) -> Optional[cl.User]:
@@ -40,8 +50,9 @@ if _AUTH_ENABLED:
 
     @cl.header_auth_callback
     def header_auth_callback(headers: dict) -> Optional[cl.User]:
-        secret = os.getenv("CHAT_HEADER_SECRET")
-        if secret and headers.get("X-Chat-Secret") == secret:
+        expected = os.getenv("CHAT_HEADER_SECRET")
+        received = headers.get("X-Chat-Secret", "")
+        if expected and hmac.compare_digest(expected, received):
             identifier = headers.get("X-Chat-User", "user")
             return cl.User(
                 identifier=identifier,

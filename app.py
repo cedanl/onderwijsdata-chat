@@ -8,12 +8,15 @@ load_dotenv()
 
 import chainlit as cl
 
-import auth  # noqa: F401 — registers @cl.password_auth_callback and @cl.header_auth_callback
-import data_layer  # noqa: F401 — registers @cl.data_layer
+import auth
+import data_layer
 from agent import run
 from config import MODEL
 from report import generate_report
 from resume import build_messages_from_thread
+
+auth.setup()
+data_layer.setup()
 
 WELKOM = """Welkom! Ik kan je helpen met vragen over open Nederlandse onderwijsdata.
 
