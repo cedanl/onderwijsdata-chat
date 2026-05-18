@@ -4,10 +4,15 @@ __pycache__/
 .venv/
 *.egg-info/
 dist/
-.chainlit/
+.chainlit/*
+!.chainlit/translations/
+.chainlit/translations/*
+!.chainlit/translations/en-US.json
+!.chainlit/translations/nl.json
 chainlit.md
 .files/
 socket:*
+chat_history.db
 
 .uv_cache/
 data/

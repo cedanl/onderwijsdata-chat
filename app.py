@@ -8,9 +8,15 @@ load_dotenv()
 
 import chainlit as cl
 
+import auth
+import data_layer
 from agent import run
 from config import MODEL
 from report import generate_report
+from resume import build_messages_from_thread
+
+auth.setup()
+data_layer.setup()
 
 WELKOM = """Welkom! Ik kan je helpen met vragen over open Nederlandse onderwijsdata.
 
@@ -35,6 +41,14 @@ async def set_starters():
         cl.Starter(label="WO uitstroom man/vrouw", message="Wat is het verschil in uitstroom tussen mannen en vrouwen in het WO?"),
         cl.Starter(label="VMBO instroom trend", message="Toon de trend in VMBO instroom over de afgelopen 10 jaar."),
     ]
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread: dict):
+    messages = build_messages_from_thread(thread)
+    cl.user_session.set("messages", messages)
+    cl.user_session.set("figures", [])
+    cl.user_session.set("turns", [])
 
 
 @cl.on_chat_start

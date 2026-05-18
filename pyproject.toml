@@ -12,10 +12,14 @@ dependencies = [
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
+    "sqlalchemy>=2.0",
+    "aiosqlite>=0.19",
+    "asyncpg>=0.28",
+    "greenlet>=3.0",
 ]
 
 [dependency-groups]
-dev = ["watchfiles>=0.21"]
+dev = ["watchfiles>=0.21", "pytest>=8.0", "pytest-asyncio>=0.23"]
 docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
@@ -28,6 +32,10 @@ allow-direct-references = true
 [tool.uv]
 package = false
 cache-dir = ".uv_cache"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["hatchling"]
