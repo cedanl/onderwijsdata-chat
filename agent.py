@@ -4,7 +4,7 @@ import json
 import litellm
 import chainlit as cl
 
-from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
+from config import MAX_HISTORY, MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
 from prompt import SYSTEM_PROMPT
 from tools import LABELS, SCHEMAS, dispatch
 
@@ -38,7 +38,7 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
     OllamaChatConfig.transform_request = _patched_transform
 
 _SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
-_MAX_HISTORY = 40
+_MAX_HISTORY = MAX_HISTORY
 
 _RAPPORT_ACTION = cl.Action(name="download_rapport", label="📥 Download rapport", payload={"action": "download"})
 

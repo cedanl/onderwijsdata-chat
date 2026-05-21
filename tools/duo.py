@@ -1,6 +1,7 @@
 import json
 
 from riodata import duo as _duo
+from config import DUO_ROW_LIMIT
 from . import store
 
 _SAMPLE_ROWS = 3
@@ -43,7 +44,7 @@ def query_duo_data(
     data_key: str,
     filters: dict | None = None,
     columns: list[str] | None = None,
-    max_rows: int = 500,
+    max_rows: int = DUO_ROW_LIMIT,
 ) -> str:
     df = store.get(data_key)
     if df is None:
