@@ -76,6 +76,23 @@ _WILLMA_KWARGS: dict = (
 )
 
 
+async def generate_title(question: str, answer: str) -> str:
+    response = await litellm.acompletion(
+        model=MODEL,
+        max_tokens=20,
+        messages=[{
+            "role": "user",
+            "content": (
+                "Geef een titel van maximaal 6 woorden voor dit gesprek. "
+                "Alleen de titel zelf, geen uitleg of aanhalingstekens.\n\n"
+                f"Vraag: {question[:400]}\nAntwoord: {answer[:400]}"
+            ),
+        }],
+        **_WILLMA_KWARGS,
+    )
+    return response.choices[0].message.content.strip().strip('"\'')
+
+
 async def run(messages: list[dict]) -> str:
     history = _trim(list(messages))
     call_cache: dict[str, tuple[str, object]] = {}

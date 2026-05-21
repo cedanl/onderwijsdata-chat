@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 from datetime import date
@@ -10,7 +11,7 @@ import chainlit as cl
 
 import auth
 import data_layer
-from agent import run
+from agent import generate_title, run
 from config import MODEL
 from report import generate_report
 from resume import build_messages_from_thread
@@ -31,6 +32,14 @@ Stel een vraag, bijvoorbeeld:
 - *Wat is het verschil in uitstroom tussen mannen en vrouwen in het WO?*
 - *Hoe ontwikkelt het MBO-studentenaantal zich richting 2040 per leerweg?*
 """
+
+
+async def _set_thread_title(question: str, answer: str) -> None:
+    try:
+        title = await generate_title(question, answer)
+        await cl.context.emitter.init_thread(title)
+    except Exception:
+        pass
 
 
 @cl.set_starters
@@ -86,6 +95,9 @@ async def on_message(message: cl.Message):
     turns: list = cl.user_session.get("turns", [])
     turns.append({"question": message.content, "answer": response_text, "figures": turn_figures})
     cl.user_session.set("turns", turns)
+
+    if len(messages) == 2:
+        asyncio.create_task(_set_thread_title(message.content, response_text))
 
 
 @cl.action_callback("download_rapport")
