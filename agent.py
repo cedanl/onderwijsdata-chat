@@ -40,7 +40,10 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 _SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
 _MAX_HISTORY = MAX_HISTORY
 
-_RAPPORT_ACTION = cl.Action(name="download_rapport", label="📥 Download rapport", payload={"action": "download"})
+_RAPPORT_ACTIONS = [
+    cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
+    cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
+]
 
 
 def _trim(history: list[dict]) -> tuple[list[dict], bool]:
@@ -158,7 +161,7 @@ async def run(messages: list[dict], stop_event: asyncio.Event | None = None) -> 
             return text_content
 
         if not tool_calls:
-            msg.actions = [_RAPPORT_ACTION]
+            msg.actions = _RAPPORT_ACTIONS
             await msg.update()
             return text_content
 

@@ -1,9 +1,18 @@
+import io
+import re
+import tempfile
+import os
 from datetime import date
 import html as html_module
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 import markdown as md
 import plotly.graph_objects as go
 import plotly.io as pio
+from fpdf import FPDF
 
 
 def generate_report(turns: list[dict]) -> str:
@@ -50,3 +59,105 @@ def generate_report(turns: list[dict]) -> str:
 {sections_html if sections_html else "<p>Geen gesprek in dit rapport.</p>"}
 </body>
 </html>"""
+
+
+def _plotly_to_png(fig: go.Figure) -> bytes:
+    dpi = 100
+    mpl_fig, ax = plt.subplots(figsize=(7, 3.8), dpi=dpi)
+
+    for trace in fig.data:
+        t = trace.type
+        name = trace.name or ""
+        color = None
+        if hasattr(trace, "marker") and trace.marker and hasattr(trace.marker, "color"):
+            c = trace.marker.color
+            if isinstance(c, str):
+                color = c
+
+        x = list(trace.x) if getattr(trace, "x", None) is not None else []
+        y = list(trace.y) if getattr(trace, "y", None) is not None else []
+
+        if t == "bar":
+            ax.bar(x, y, label=name, color=color)
+        elif t in ("scatter", "scattergl"):
+            mode = getattr(trace, "mode", None) or "lines"
+            if "markers" in mode and "lines" in mode:
+                ax.plot(x, y, "o-", label=name, color=color, markersize=4, linewidth=1.5)
+            elif "markers" in mode:
+                ax.scatter(x, y, label=name, color=color, s=25)
+            else:
+                ax.plot(x, y, label=name, color=color, linewidth=1.5)
+        elif t == "pie":
+            vals = list(trace.values) if getattr(trace, "values", None) is not None else []
+            lbls = list(trace.labels) if getattr(trace, "labels", None) is not None else []
+            ax.pie(vals, labels=lbls, autopct="%1.0f%%")
+        elif t == "histogram":
+            src = x or y
+            ax.hist(src, label=name, color=color, alpha=0.8)
+
+    layout = fig.layout
+    if layout.title and layout.title.text:
+        ax.set_title(layout.title.text, fontsize=11)
+    if layout.xaxis and layout.xaxis.title and layout.xaxis.title.text:
+        ax.set_xlabel(layout.xaxis.title.text, fontsize=9)
+    if layout.yaxis and layout.yaxis.title and layout.yaxis.title.text:
+        ax.set_ylabel(layout.yaxis.title.text, fontsize=9)
+    if layout.barmode == "group":
+        pass  # matplotlib renders grouped bars automatically when multiple bar calls made
+
+    handles, labels = ax.get_legend_handles_labels()
+    if labels:
+        ax.legend(fontsize=8)
+
+    ax.tick_params(labelsize=8)
+    mpl_fig.tight_layout()
+
+    buf = io.BytesIO()
+    mpl_fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    plt.close(mpl_fig)
+    buf.seek(0)
+    return buf.read()
+
+
+def _strip_markdown(text: str) -> str:
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"\*(.+?)\*", r"\1", text)
+    text = re.sub(r"`(.+?)`", r"\1", text)
+    text = re.sub(r"^[-*]\s+", "- ", text, flags=re.MULTILINE)
+    return text.strip()
+
+
+def generate_pdf(turns: list[dict]) -> bytes:
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Onderwijsdata rapport", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, f"Gegenereerd op {date.today().strftime('%-d %B %Y')}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    for i, turn in enumerate(turns, 1):
+        question = turn.get("question", "")
+        answer = _strip_markdown(turn.get("answer", "") or "")
+        figures: list[go.Figure] = turn.get("figures", [])
+
+        pdf.set_fill_color(240, 244, 255)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.multi_cell(0, 7, f"Vraag {i}: {question}", fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5, answer, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        for fig in figures:
+            png = _plotly_to_png(fig)
+            pdf.image(io.BytesIO(png), w=pdf.epw)
+            pdf.ln(3)
+
+        pdf.ln(4)
+
+    return bytes(pdf.output())

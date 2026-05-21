@@ -15,7 +15,7 @@ import data_layer
 from agent import generate_title, run
 from chainlit.data import get_data_layer
 from config import MODEL
-from report import generate_report
+from report import generate_pdf, generate_report
 from resume import build_messages_from_thread, build_turns_from_thread
 
 auth.setup()
@@ -150,4 +150,19 @@ async def on_download_rapport(action: cl.Action):
     await cl.Message(
         content="Rapport klaar!",
         elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
+    ).send()
+
+
+@cl.action_callback("download_rapport_pdf")
+async def on_download_rapport_pdf(action: cl.Action):
+    turns = cl.user_session.get("turns", [])
+    pdf_bytes = await asyncio.to_thread(generate_pdf, turns)
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+        f.write(pdf_bytes)
+        path = f.name
+
+    await cl.Message(
+        content="PDF rapport klaar!",
+        elements=[cl.File(name=f"rapport-{date.today()}.pdf", path=path, mime="application/pdf")],
     ).send()
