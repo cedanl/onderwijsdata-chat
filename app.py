@@ -13,6 +13,7 @@ import chainlit as cl
 import auth
 import data_layer
 from agent import generate_title, run
+from chainlit.data import get_data_layer
 from config import MODEL
 from report import generate_report
 from resume import build_messages_from_thread, build_turns_from_thread
@@ -53,7 +54,16 @@ def _friendly_error(exc: Exception) -> str:
 async def _set_thread_title(question: str, answer: str) -> None:
     try:
         title = await generate_title(question, answer)
-        await cl.context.emitter.init_thread(title)
+        layer = get_data_layer()
+        if layer:
+            await layer.update_thread(
+                thread_id=cl.context.session.thread_id,
+                name=title,
+            )
+        await cl.context.emitter.emit(
+            "first_interaction",
+            {"interaction": title, "thread_id": cl.context.session.thread_id},
+        )
     except Exception:
         pass
 
