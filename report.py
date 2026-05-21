@@ -119,13 +119,17 @@ def _plotly_to_png(fig: go.Figure) -> bytes:
     return buf.read()
 
 
+def _to_latin1(text: str) -> str:
+    return text.encode("latin-1", errors="ignore").decode("latin-1")
+
+
 def _strip_markdown(text: str) -> str:
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
     text = re.sub(r"\*(.+?)\*", r"\1", text)
     text = re.sub(r"`(.+?)`", r"\1", text)
     text = re.sub(r"^[-*]\s+", "- ", text, flags=re.MULTILINE)
-    return text.strip()
+    return _to_latin1(text).strip()
 
 
 def generate_pdf(turns: list[dict]) -> bytes:
@@ -140,7 +144,7 @@ def generate_pdf(turns: list[dict]) -> bytes:
     pdf.ln(4)
 
     for i, turn in enumerate(turns, 1):
-        question = turn.get("question", "")
+        question = _to_latin1(turn.get("question", ""))
         answer = _strip_markdown(turn.get("answer", "") or "")
         figures: list[go.Figure] = turn.get("figures", [])
 
