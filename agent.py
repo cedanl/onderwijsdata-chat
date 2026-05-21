@@ -40,15 +40,17 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 _SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
 _MAX_HISTORY = 40
 
+_RAPPORT_ACTION = cl.Action(name="download_rapport", label="📥 Download rapport", payload={"action": "download"})
 
-def _trim(history: list[dict]) -> list[dict]:
+
+def _trim(history: list[dict]) -> tuple[list[dict], bool]:
     if len(history) <= _MAX_HISTORY:
-        return history
+        return history, False
     first_user = next((m for m in history if m["role"] == "user"), None)
     tail = history[-(_MAX_HISTORY - 1):]
     if first_user and first_user not in tail:
-        return [first_user] + tail
-    return tail
+        return [first_user] + tail, True
+    return tail, True
 
 
 async def _call_tool(tc: dict) -> tuple[str, object]:
@@ -93,11 +95,20 @@ async def generate_title(question: str, answer: str) -> str:
     return response.choices[0].message.content.strip().strip('"\'')
 
 
-async def run(messages: list[dict]) -> str:
-    history = _trim(list(messages))
+async def run(messages: list[dict], stop_event: asyncio.Event | None = None) -> str:
+    history, was_trimmed = _trim(list(messages))
+    if was_trimmed:
+        await cl.context.emitter.send_toast(
+            "Oudere berichten vallen buiten de context van het model.",
+            type="warning",
+        )
+
     call_cache: dict[str, tuple[str, object]] = {}
 
     for _ in range(MAX_TOOL_ITERATIONS):
+        if stop_event and stop_event.is_set():
+            break
+
         stream = await litellm.acompletion(
             model=MODEL,
             max_tokens=MAX_TOKENS,
@@ -114,6 +125,9 @@ async def run(messages: list[dict]) -> str:
         raw_tcs: dict[int, dict] = {}
 
         async for chunk in stream:
+            if stop_event and stop_event.is_set():
+                break
+
             delta = chunk.choices[0].delta
 
             if delta.content:
@@ -136,10 +150,15 @@ async def run(messages: list[dict]) -> str:
         text_content = "".join(text_parts)
         tool_calls = [raw_tcs[i] for i in sorted(raw_tcs)]
 
+        if stop_event and stop_event.is_set():
+            if text_content:
+                await msg.update()
+            else:
+                await msg.remove()
+            return text_content
+
         if not tool_calls:
-            figures = cl.user_session.get("figures", [])
-            if figures:
-                msg.actions = [cl.Action(name="download_rapport", label="📥 Download rapport", payload={"action": "download"})]
+            msg.actions = [_RAPPORT_ACTION]
             await msg.update()
             return text_content
 

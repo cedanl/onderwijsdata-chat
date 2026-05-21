@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import litellm
 import chainlit as cl
 
 import auth
@@ -14,7 +15,7 @@ import data_layer
 from agent import generate_title, run
 from config import MODEL
 from report import generate_report
-from resume import build_messages_from_thread
+from resume import build_messages_from_thread, build_turns_from_thread
 
 auth.setup()
 data_layer.setup()
@@ -32,6 +33,21 @@ Stel een vraag, bijvoorbeeld:
 - *Wat is het verschil in uitstroom tussen mannen en vrouwen in het WO?*
 - *Hoe ontwikkelt het MBO-studentenaantal zich richting 2040 per leerweg?*
 """
+
+_FRIENDLY_ERRORS: list[tuple[type, str]] = [
+    (litellm.AuthenticationError, "API key ontbreekt of is ongeldig. Controleer je `.env` bestand."),
+    (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),
+    (litellm.RateLimitError, "Te veel verzoeken naar de API. Wacht even en probeer opnieuw."),
+    (litellm.APIConnectionError, "Kan de API niet bereiken. Controleer je internetverbinding."),
+    (litellm.BadRequestError, "Het verzoek werd afgewezen door de API. Mogelijk een ongeldig model of parameter."),
+]
+
+
+def _friendly_error(exc: Exception) -> str:
+    for exc_type, msg in _FRIENDLY_ERRORS:
+        if isinstance(exc, exc_type):
+            return f"❌ {msg}"
+    return f"❌ Er is een fout opgetreden: {exc}"
 
 
 async def _set_thread_title(question: str, answer: str) -> None:
@@ -55,9 +71,12 @@ async def set_starters():
 @cl.on_chat_resume
 async def on_chat_resume(thread: dict):
     messages = build_messages_from_thread(thread)
+    turns = build_turns_from_thread(thread)
+    figures = [fig for turn in turns for fig in turn.get("figures", [])]
     cl.user_session.set("messages", messages)
-    cl.user_session.set("figures", [])
-    cl.user_session.set("turns", [])
+    cl.user_session.set("turns", turns)
+    cl.user_session.set("figures", figures)
+    cl.user_session.set("turn_figures", [])
 
 
 @cl.on_chat_start
@@ -75,17 +94,26 @@ async def on_start():
     await cl.Message(content=WELKOM).send()
 
 
+@cl.on_stop
+async def on_stop():
+    stop_event: asyncio.Event | None = cl.user_session.get("stop_event")
+    if stop_event:
+        stop_event.set()
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": message.content})
 
+    stop_event = asyncio.Event()
+    cl.user_session.set("stop_event", stop_event)
     cl.user_session.set("turn_figures", [])
 
     try:
-        response_text = await run(messages)
+        response_text = await run(messages, stop_event)
     except Exception as e:
-        await cl.Message(content=f"Fout: {e}").send()
+        await cl.Message(content=_friendly_error(e)).send()
         return
 
     messages.append({"role": "assistant", "content": response_text})
