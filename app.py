@@ -111,10 +111,9 @@ async def on_stop():
         stop_event.set()
 
 
-@cl.on_message
-async def on_message(message: cl.Message):
+async def _process_message(content: str) -> None:
     messages: list = cl.user_session.get("messages")
-    messages.append({"role": "user", "content": message.content})
+    messages.append({"role": "user", "content": content})
 
     stop_event = asyncio.Event()
     cl.user_session.set("stop_event", stop_event)
@@ -131,11 +130,24 @@ async def on_message(message: cl.Message):
 
     turn_figures = cl.user_session.get("turn_figures", [])
     turns: list = cl.user_session.get("turns", [])
-    turns.append({"question": message.content, "answer": response_text, "figures": turn_figures})
+    turns.append({"question": content, "answer": response_text, "figures": turn_figures})
     cl.user_session.set("turns", turns)
 
     if len(messages) == 2:
-        asyncio.create_task(_set_thread_title(message.content, response_text))
+        asyncio.create_task(_set_thread_title(content, response_text))
+
+
+@cl.on_message
+async def on_message(message: cl.Message):
+    await _process_message(message.content)
+
+
+@cl.action_callback("followup")
+async def on_followup(action: cl.Action):
+    await cl.context.emitter.send_window_message({
+        "type": "set_input",
+        "value": action.payload["question"],
+    })
 
 
 @cl.action_callback("download_rapport")

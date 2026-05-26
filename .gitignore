@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 dist/
 .chainlit/*
+!.chainlit/config.toml
 !.chainlit/translations/
 .chainlit/translations/*
 !.chainlit/translations/en-US.json
