@@ -57,6 +57,10 @@ def _trim(history: list[dict]) -> tuple[list[dict], bool]:
 
 
 async def _call_tool(tc: dict) -> tuple[str, object]:
+    if tc["name"] == "suggest_followups":
+        args = json.loads(tc["arguments"])
+        cl.user_session.set("pending_suggestions", args.get("suggestions", []))
+        return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
     async with cl.Step(name=label, type="tool") as step:
@@ -201,6 +205,21 @@ async def run(messages: list[dict], stop_event: asyncio.Event | None = None) -> 
                     elements=[cl.Plotly(name=label, figure=figure, display="inline")],
                 ).send()
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+
+        # Terminal: only suggest_followups was called — show labelled suggestion block and return
+        if all(tc["name"] == "suggest_followups" for tc in tool_calls):
+            pending = cl.user_session.get("pending_suggestions", [])
+            cl.user_session.set("pending_suggestions", [])
+            if text_content:
+                msg.actions = _RAPPORT_ACTIONS
+                await msg.update()
+            if pending:
+                followup_actions = [
+                    cl.Action(name="followup", label=s, payload={"question": s})
+                    for s in pending
+                ]
+                await cl.Message(content="**Vraag suggesties**", actions=followup_actions).send()
+            return text_content
 
     await cl.Message(content="Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag.").send()
     return "Het maximale aantal stappen is bereikt."

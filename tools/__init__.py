@@ -103,6 +103,28 @@ SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "suggest_followups",
+            "description": (
+                "Presenteer 2-3 klikbare vervolgvragen aan de gebruiker. "
+                "Roep deze tool aan samen met je definitieve tekstantwoord — schrijf de vragen NIET als tekst. "
+                "Na het aanroepen van deze tool is de analysebeurt klaar."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "suggestions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Lijst van 2-3 concrete, uitnodigende vervolgvragen",
+                    }
+                },
+                "required": ["suggestions"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "create_plot",
             "description": "Maak een interactieve grafiek van opgehaalde data.",
             "parameters": {
@@ -129,6 +151,7 @@ LABELS = {
     "get_duo_data": "DUO dataset geladen",
     "query_duo_data": "DUO data gefilterd",
     "create_plot": "Grafiek aangemaakt",
+    "suggest_followups": "Vervolgvragen voorgesteld",
 }
 
 _HANDLERS = {
