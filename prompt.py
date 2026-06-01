@@ -70,6 +70,9 @@ SYSTEM_PROMPT_SNEL = (
 
 6. **Sluit af**: roep `suggest_followups` aan met 2–3 klikbare vervolgvragen die de gebruiker kunnen helpen verdiepen.
    Schrijf de vragen **niet als tekst** in je antwoord.
+
+7. **Rapport**: als de gebruiker vraagt om een rapport, samenvatting, two-pager of exporteerbaar document van het gesprek,
+   roep dan `generate_rapport` aan. Selecteer alleen de meest relevante analyses en schrijf een heldere samenvatting en conclusie.
 """
     + _BRONNEN
 )
@@ -101,6 +104,9 @@ SYSTEM_PROMPT_VERDIEP = (
      *"het is denkbaar dat…"* — nooit stellig als de data dit niet direct bewijst
    - **Vervolgvraag**: roep aan het einde altijd `suggest_followups` aan met 2-3 klikbare
      vervolgvragen. Schrijf de vragen **niet als tekst** in je antwoord.
+
+8. **Rapport**: als de gebruiker vraagt om een rapport, samenvatting, two-pager of exporteerbaar document van het gesprek,
+   roep dan `generate_rapport` aan. Selecteer alleen de meest relevante analyses en schrijf een heldere samenvatting en conclusie.
 
    **Verboden formuleringen** (tenzij de data het letterlijk bewijst):
    - "Dit komt doordat…" → vervang door "Een mogelijke oorzaak is…"

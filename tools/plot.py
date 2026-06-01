@@ -21,6 +21,8 @@ def create_plot(
     y: str,
     title: str,
     color_by: str | None = None,
+    source: str | None = None,
+    dataset_id: str | None = None,
 ) -> tuple[str, go.Figure]:
     fig = go.Figure()
 

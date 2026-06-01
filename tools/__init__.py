@@ -136,12 +136,40 @@ SCHEMAS = [
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
+                    "source": {"type": "string", "enum": ["CBS", "DUO", "RIO"], "description": "Databron van deze grafiek — vul altijd in voor bronvermelding in rapporten"},
+                    "dataset_id": {"type": "string", "description": "Dataset-ID of resource-naam, bijv. '85423NED' of 'studentprognoses-mbo-v1'"},
                 },
                 "required": ["data", "chart_type", "x", "y", "title"],
             },
         },
     },
 ]
+
+SCHEMAS.append({
+    "type": "function",
+    "function": {
+        "name": "generate_rapport",
+        "description": (
+            "Destilleer het gesprek naar een standalone HTML rapport. "
+            "Roep aan wanneer de gebruiker vraagt om een rapport, samenvatting, two-pager of exporteerbaar document van het gesprek. "
+            "Kies alleen de meest relevante analyses — niet alles."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Rapporttitel, max 8 woorden"},
+                "samenvatting": {"type": "string", "description": "Kernbevinding in 2-3 zinnen: wat laat de data zien?"},
+                "turn_indices": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "0-gebaseerde indices van de te includeren gespreksronden. Selecteer alleen de relevante.",
+                },
+                "conclusie": {"type": "string", "description": "Duiding of implicatie in 1-2 zinnen"},
+            },
+            "required": ["title", "samenvatting", "turn_indices"],
+        },
+    },
+})
 
 LABELS = {
     "search_catalog": "Catalogus doorzocht",
@@ -152,6 +180,7 @@ LABELS = {
     "query_duo_data": "DUO data gefilterd",
     "create_plot": "Grafiek aangemaakt",
     "suggest_followups": "Vervolgvragen voorgesteld",
+    "generate_rapport": "Rapport aangemaakt",
 }
 
 _HANDLERS = {

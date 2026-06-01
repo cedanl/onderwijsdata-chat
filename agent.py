@@ -1,11 +1,14 @@
 import asyncio
 import json
+import tempfile
+from datetime import date
 
 import litellm
 import chainlit as cl
 
 from config import MAX_HISTORY, MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
 from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP
+from report import generate_rapport_html
 from tools import LABELS, SCHEMAS, dispatch
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
@@ -82,6 +85,30 @@ async def _call_tool(tc: dict) -> tuple[str, object]:
         args = json.loads(tc["arguments"])
         cl.user_session.set("pending_suggestions", args.get("suggestions", []))
         return "OK", None
+
+    if tc["name"] == "generate_rapport":
+        args = json.loads(tc["arguments"])
+        async with cl.Step(name="Rapport genereren", type="tool") as step:
+            step.input = args
+            turns = cl.user_session.get("turns", [])
+            indices = args.get("turn_indices", [])
+            selected = [turns[i] for i in indices if 0 <= i < len(turns)]
+            html = generate_rapport_html(
+                title=args["title"],
+                samenvatting=args["samenvatting"],
+                conclusie=args.get("conclusie", ""),
+                turns=selected,
+            )
+            with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
+                f.write(html)
+                path = f.name
+            await cl.Message(
+                content=f"**{args['title']}** — rapport klaar.",
+                elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
+            ).send()
+            step.output = "Rapport aangemaakt."
+        return "Rapport aangemaakt.", None
+
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
     async with cl.Step(name=label, type="tool") as step:

@@ -5,10 +5,6 @@ import os
 from datetime import date
 import html as html_module
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
 import markdown as md
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -62,61 +58,141 @@ def generate_report(turns: list[dict]) -> str:
 
 
 def _plotly_to_png(fig: go.Figure) -> bytes:
-    dpi = 100
-    mpl_fig, ax = plt.subplots(figsize=(7, 3.8), dpi=dpi)
+    return pio.to_image(fig, format="png", width=900, height=450, scale=2)
 
-    for trace in fig.data:
-        t = trace.type
-        name = trace.name or ""
-        color = None
-        if hasattr(trace, "marker") and trace.marker and hasattr(trace.marker, "color"):
-            c = trace.marker.color
-            if isinstance(c, str):
-                color = c
 
-        x = list(trace.x) if getattr(trace, "x", None) is not None else []
-        y = list(trace.y) if getattr(trace, "y", None) is not None else []
+def _extract_bronnen(turns: list[dict]) -> str:
+    seen: set[str] = set()
+    lines: list[str] = []
+    for turn in turns:
+        answer = turn.get("answer") or ""
+        in_bronnen = False
+        for line in answer.splitlines():
+            if re.match(r"\*?\*?Bronnen\*?\*?", line.strip(), re.IGNORECASE):
+                in_bronnen = True
+                continue
+            if in_bronnen:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    in_bronnen = False
+                    continue
+                if stripped not in seen:
+                    seen.add(stripped)
+                    lines.append(stripped)
+    return "\n".join(lines)
 
-        if t == "bar":
-            ax.bar(x, y, label=name, color=color)
-        elif t in ("scatter", "scattergl"):
-            mode = getattr(trace, "mode", None) or "lines"
-            if "markers" in mode and "lines" in mode:
-                ax.plot(x, y, "o-", label=name, color=color, markersize=4, linewidth=1.5)
-            elif "markers" in mode:
-                ax.scatter(x, y, label=name, color=color, s=25)
-            else:
-                ax.plot(x, y, label=name, color=color, linewidth=1.5)
-        elif t == "pie":
-            vals = list(trace.values) if getattr(trace, "values", None) is not None else []
-            lbls = list(trace.labels) if getattr(trace, "labels", None) is not None else []
-            ax.pie(vals, labels=lbls, autopct="%1.0f%%")
-        elif t == "histogram":
-            src = x or y
-            ax.hist(src, label=name, color=color, alpha=0.8)
 
-    layout = fig.layout
-    if layout.title and layout.title.text:
-        ax.set_title(layout.title.text, fontsize=11)
-    if layout.xaxis and layout.xaxis.title and layout.xaxis.title.text:
-        ax.set_xlabel(layout.xaxis.title.text, fontsize=9)
-    if layout.yaxis and layout.yaxis.title and layout.yaxis.title.text:
-        ax.set_ylabel(layout.yaxis.title.text, fontsize=9)
-    if layout.barmode == "group":
-        pass  # matplotlib renders grouped bars automatically when multiple bar calls made
+def generate_rapport_html(
+    title: str,
+    samenvatting: str,
+    conclusie: str,
+    turns: list[dict],
+) -> str:
+    bronnen_raw = _extract_bronnen(turns)
+    bronnen_html = md.markdown(bronnen_raw, extensions=["nl2br"]) if bronnen_raw else ""
 
-    handles, labels = ax.get_legend_handles_labels()
-    if labels:
-        ax.legend(fontsize=8)
+    charts_html = ""
+    first_plotly_js = True
+    for turn in turns:
+        for fig in turn.get("figures", []):
+            charts_html += pio.to_html(
+                fig,
+                include_plotlyjs="cdn" if first_plotly_js else False,
+                full_html=False,
+                config={"displayModeBar": False},
+            )
+            first_plotly_js = False
 
-    ax.tick_params(labelsize=8)
-    mpl_fig.tight_layout()
+    title_esc = html_module.escape(title)
+    samenvatting_esc = html_module.escape(samenvatting)
+    conclusie_esc = html_module.escape(conclusie) if conclusie else ""
 
-    buf = io.BytesIO()
-    mpl_fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
-    plt.close(mpl_fig)
-    buf.seek(0)
-    return buf.read()
+    return f"""<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title_esc}</title>
+<style>
+  *, *::before, *::after {{ box-sizing: border-box; }}
+  body {{
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    color: #1a1a2e;
+    background: #f8f9fc;
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+  }}
+  .page {{ max-width: 900px; margin: 0 auto; }}
+  header {{
+    border-bottom: 3px solid #2563eb;
+    padding-bottom: 1.25rem;
+    margin-bottom: 2rem;
+  }}
+  header h1 {{ font-size: 1.75rem; font-weight: 700; margin: 0 0 .3rem; }}
+  header .meta {{ font-size: .82rem; color: #6b7280; margin: 0; }}
+  .blok {{
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }}
+  .blok h2 {{
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 0 0 .5rem;
+  }}
+  .blok p {{ margin: 0; font-size: 1rem; }}
+  .samenvatting {{ background: #eff6ff; border-left: 4px solid #2563eb; }}
+  .samenvatting h2 {{ color: #2563eb; }}
+  .samenvatting p {{ color: #1e3a5f; }}
+  .conclusie {{ background: #f0fdf4; border-left: 4px solid #16a34a; }}
+  .conclusie h2 {{ color: #16a34a; }}
+  .conclusie p {{ color: #14532d; }}
+  .charts {{ margin-bottom: 2rem; }}
+  .bronnen {{
+    margin-top: 2.5rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1.25rem;
+  }}
+  .bronnen h2 {{
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #6b7280;
+    margin: 0 0 .75rem;
+  }}
+  .bronnen p, .bronnen li {{ font-size: .82rem; color: #6b7280; }}
+  .bronnen ul {{ margin: 0; padding-left: 1.25rem; }}
+  footer {{ margin-top: 2rem; text-align: center; font-size: .75rem; color: #9ca3af; }}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>{title_esc}</h1>
+  <p class="meta">Onderwijsdata rapport &middot; {date.today().strftime("%-d %B %Y")}</p>
+</header>
+
+<div class="blok samenvatting">
+  <h2>Samenvatting</h2>
+  <p>{samenvatting_esc}</p>
+</div>
+
+<div class="charts">
+{charts_html if charts_html else "<p>Geen visualisaties geselecteerd.</p>"}
+</div>
+
+{f'<div class="blok conclusie"><h2>Conclusie</h2><p>{conclusie_esc}</p></div>' if conclusie_esc else ""}
+
+{f'<div class="bronnen"><h2>Bronnen</h2>{bronnen_html}</div>' if bronnen_html else ""}
+
+<footer>Gegenereerd vanuit onderwijsdata-chat</footer>
+</div>
+</body>
+</html>"""
 
 
 def _to_latin1(text: str) -> str:
