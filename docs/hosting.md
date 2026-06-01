@@ -148,6 +148,8 @@ docker run -p 8000:8000 \
   -e CHAINLIT_AUTH_SECRET="..." \
   -e DATABASE_URL="postgresql+asyncpg://..." \
   -e AZURE_AI_API_KEY="..." \
+  -e MODEL="azure_ai/claude-sonnet-4-6" \
+  -e AVAILABLE_MODELS="azure_ai/claude-haiku-4-5,azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o" \
   onderwijsdata-chat
 ```
 
@@ -182,4 +184,5 @@ az containerapp create \
 - [ ] `CHAINLIT_URL` ingesteld op het publieke domein
 - [ ] `chat_history.db` staat in `.gitignore`
 - [ ] API keys als secrets in het hostingplatform, niet in code
+- [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
 - [ ] (Optioneel) blob-opslag gekoppeld voor grafiekpersistentie

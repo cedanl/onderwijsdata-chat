@@ -14,7 +14,7 @@ import auth
 import data_layer
 from agent import generate_title, run
 from chainlit.data import get_data_layer
-from config import MODEL
+from config import MODEL, WILLMA_API_KEY, get_available_models
 from report import generate_pdf, generate_report
 from resume import build_messages_from_thread, build_turns_from_thread
 
@@ -51,9 +51,40 @@ def _friendly_error(exc: Exception) -> str:
     return f"❌ Er is een fout opgetreden: {exc}"
 
 
-async def _set_thread_title(question: str, answer: str) -> None:
+async def _setup_modes() -> None:
+    modus_mode = cl.Mode(
+        id="modus",
+        name="Modus",
+        options=[
+            cl.ModeOption(id="snel", name="Snel", description="Precies het gevraagde, niet meer", icon="zap", default=True),
+            cl.ModeOption(id="verdiep", name="Verdiep", description="Doorvragen + volledige analyse", icon="microscope"),
+        ],
+    )
+
+    modes = [modus_mode]
+
+    available = get_available_models()
+    if available:
+        model_options = [
+            cl.ModeOption(
+                id=mid,
+                name=name,
+                description=desc,
+                icon=icon,
+                default=(mid == MODEL),
+            )
+            for mid, name, desc, icon in available
+        ]
+        if not any(o.default for o in model_options):
+            model_options[0].default = True
+        modes.insert(0, cl.Mode(id="model", name="Model", options=model_options))
+
+    await cl.context.emitter.set_modes(modes)
+
+
+async def _set_thread_title(question: str, answer: str, model: str | None = None) -> None:
     try:
-        title = await generate_title(question, answer)
+        title = await generate_title(question, answer, model=model)
         layer = get_data_layer()
         if layer:
             await layer.update_thread(
@@ -87,6 +118,7 @@ async def on_chat_resume(thread: dict):
     cl.user_session.set("turns", turns)
     cl.user_session.set("figures", figures)
     cl.user_session.set("turn_figures", [])
+    await _setup_modes()
 
 
 @cl.on_chat_start
@@ -101,6 +133,7 @@ async def on_start():
         await cl.Message(content="⚠️ Geen API key gevonden. Stel een omgevingsvariabele in (bijv. `ANTHROPIC_API_KEY`) en herstart de app.").send()
         return
 
+    await _setup_modes()
     await cl.Message(content=WELKOM).send()
 
 
@@ -111,7 +144,7 @@ async def on_stop():
         stop_event.set()
 
 
-async def _process_message(content: str) -> None:
+async def _process_message(content: str, modus: str = "snel", model: str | None = None) -> None:
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": content})
 
@@ -120,7 +153,7 @@ async def _process_message(content: str) -> None:
     cl.user_session.set("turn_figures", [])
 
     try:
-        response_text = await run(messages, stop_event)
+        response_text = await run(messages, stop_event, model=model, modus=modus)
     except Exception as e:
         await cl.Message(content=_friendly_error(e)).send()
         return
@@ -134,12 +167,14 @@ async def _process_message(content: str) -> None:
     cl.user_session.set("turns", turns)
 
     if len(messages) == 2:
-        asyncio.create_task(_set_thread_title(content, response_text))
+        asyncio.create_task(_set_thread_title(content, response_text, model=model))
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    await _process_message(message.content)
+    modus = message.modes.get("modus", "snel") if message.modes else "snel"
+    model = message.modes.get("model") if message.modes else None
+    await _process_message(message.content, modus=modus, model=model)
 
 
 @cl.action_callback("followup")

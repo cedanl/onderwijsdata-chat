@@ -22,10 +22,46 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
+| `AVAILABLE_MODELS` | *(afgeleid uit API keys)* | Kommagescheiden lijst van modellen in de model-picker — zie [Model-picker](#model-picker) |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
 | `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
 | `CBS_ROW_LIMIT` | `200` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
+
+---
+
+## Modus-picker
+
+De app biedt twee analysemodi die gebruikers bovenin de chat kunnen kiezen:
+
+| Modus | Gedrag |
+|-------|--------|
+| **Snel** *(standaard)* | Beantwoordt precies wat gevraagd is — geen automatische grafieken of uitgebreide interpretatie |
+| **Verdiep** | Vraagt eerst door naar de vraag achter de vraag, daarna een volledige analyse met grafiek en interpretatie |
+
+Geen configuratie nodig — de picker verschijnt automatisch in de UI.
+
+---
+
+## Model-picker
+
+De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld. Zonder deze instelling gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze.
+
+```dotenv
+AVAILABLE_MODELS=azure_ai/claude-sonnet-4-6,azure_ai/claude-haiku-4-5,azure_ai/gpt-4o
+MODEL=azure_ai/claude-sonnet-4-6
+```
+
+`MODEL` bepaalt welk model standaard geselecteerd is in de picker. Zet dit op één van de modellen in `AVAILABLE_MODELS`.
+
+Modellen van verschillende providers kunnen gecombineerd worden — LiteLLM leest per provider automatisch de juiste API keys:
+
+```dotenv
+AVAILABLE_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-4o,ollama_chat/llama3.1:8b,deepseek/deepseek-chat
+```
+
+!!! warning "Zet altijd alle benodigde API keys"
+    Elk model in `AVAILABLE_MODELS` moet via de bijbehorende omgevingsvariabele bereikbaar zijn. Een model in de picker zonder werkende API key geeft een foutmelding bij gebruik.
 
 ---
 

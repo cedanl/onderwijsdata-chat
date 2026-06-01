@@ -38,7 +38,7 @@ Het `MODEL` veld volgt altijd het formaat `provider/model-naam`.
 === "Azure AI Foundry"
     Claude via Foundry:
     ```dotenv
-    MODEL=azure_ai/claude-sonnet-4-5
+    MODEL=azure_ai/claude-sonnet-4-6
     AZURE_AI_API_KEY=...
     AZURE_AI_API_BASE=https://<resource>.services.ai.azure.com/anthropic
     ```
@@ -49,6 +49,17 @@ Het `MODEL` veld volgt altijd het formaat `provider/model-naam`.
     AZURE_AI_API_KEY=...
     AZURE_AI_API_BASE=https://<endpoint>.services.ai.azure.com/models
     ```
+
+    Meerdere Foundry-deployments in de model-picker:
+    ```dotenv
+    MODEL=azure_ai/claude-sonnet-4-6
+    AZURE_AI_API_KEY=...
+    AZURE_AI_API_BASE=https://<resource>.services.ai.azure.com/models
+    AVAILABLE_MODELS=azure_ai/claude-haiku-4-5,azure_ai/claude-sonnet-4-6,azure_ai/claude-opus-4-7,azure_ai/gpt-4o,azure_ai/gpt-5
+    ```
+
+    !!! tip "Eén API key, meerdere modellen"
+        Azure AI Foundry biedt meerdere model-deployments onder één endpoint. Gebruik `AVAILABLE_MODELS` om alle gewenste deployments in de picker te zetten — automatische detectie werkt hier niet omdat één API key meerdere modellen kan ontsluiten.
 
 ---
 

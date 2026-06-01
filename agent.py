@@ -5,7 +5,7 @@ import litellm
 import chainlit as cl
 
 from config import MAX_HISTORY, MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
-from prompt import SYSTEM_PROMPT
+from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP
 from tools import LABELS, SCHEMAS, dispatch
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
@@ -37,13 +37,34 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 
     OllamaChatConfig.transform_request = _patched_transform
 
-_SYSTEM = [{"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]}]
 _MAX_HISTORY = MAX_HISTORY
 
 _RAPPORT_ACTIONS = [
     cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
     cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
 ]
+
+_WILLMA_KWARGS: dict = (
+    {
+        "api_base": WILLMA_BASE_URL,
+        "api_key": WILLMA_API_KEY,
+        "extra_headers": {"X-API-KEY": WILLMA_API_KEY},
+    }
+    if WILLMA_API_KEY
+    else {}
+)
+
+
+def _build_system(modus: str) -> list[dict]:
+    text = SYSTEM_PROMPT_VERDIEP if modus == "verdiep" else SYSTEM_PROMPT_SNEL
+    return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]
+
+
+def _litellm_kwargs(model: str) -> dict:
+    """Return extra kwargs for litellm based on the chosen model."""
+    if WILLMA_API_KEY and not model.startswith("anthropic/") and not model.startswith("ollama"):
+        return _WILLMA_KWARGS
+    return {}
 
 
 def _trim(history: list[dict]) -> tuple[list[dict], bool]:
@@ -74,20 +95,10 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
-_WILLMA_KWARGS: dict = (
-    {
-        "api_base": WILLMA_BASE_URL,
-        "api_key": WILLMA_API_KEY,
-        "extra_headers": {"X-API-KEY": WILLMA_API_KEY},
-    }
-    if WILLMA_API_KEY
-    else {}
-)
-
-
-async def generate_title(question: str, answer: str) -> str:
+async def generate_title(question: str, answer: str, model: str | None = None) -> str:
+    chosen_model = model or MODEL
     response = await litellm.acompletion(
-        model=MODEL,
+        model=chosen_model,
         max_tokens=20,
         messages=[{
             "role": "user",
@@ -97,12 +108,21 @@ async def generate_title(question: str, answer: str) -> str:
                 f"Vraag: {question[:400]}\nAntwoord: {answer[:400]}"
             ),
         }],
-        **_WILLMA_KWARGS,
+        **_litellm_kwargs(chosen_model),
     )
     return response.choices[0].message.content.strip().strip('"\'')
 
 
-async def run(messages: list[dict], stop_event: asyncio.Event | None = None) -> str:
+async def run(
+    messages: list[dict],
+    stop_event: asyncio.Event | None = None,
+    model: str | None = None,
+    modus: str = "snel",
+) -> str:
+    chosen_model = model or MODEL
+    system = _build_system(modus)
+    extra_kwargs = _litellm_kwargs(chosen_model)
+
     history, was_trimmed = _trim(list(messages))
     if was_trimmed:
         await cl.context.emitter.send_toast(
@@ -117,12 +137,12 @@ async def run(messages: list[dict], stop_event: asyncio.Event | None = None) -> 
             break
 
         stream = await litellm.acompletion(
-            model=MODEL,
+            model=chosen_model,
             max_tokens=MAX_TOKENS,
-            messages=_SYSTEM + history,
+            messages=system + history,
             tools=SCHEMAS,
             stream=True,
-            **_WILLMA_KWARGS,
+            **extra_kwargs,
         )
 
         msg = cl.Message(content="")

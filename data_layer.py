@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError
 
 if TYPE_CHECKING:
     from chainlit.element import Element
+    from chainlit.types import StepDict
 
 DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///./chat_history.db"
 
@@ -103,6 +104,12 @@ _STEPS_MIGRATIONS: list[tuple[str, str]] = [
 class LocalDataLayer(SQLAlchemyDataLayer):
     """SQLAlchemy data layer that persists content-based elements (e.g. Plotly)
     as base64 data URIs when no external storage provider is configured."""
+
+    async def create_step(self, step_dict: "StepDict") -> None:
+        # Chainlit serializes `metadata` and `generation` but not `modes` — patch it.
+        if isinstance(step_dict.get("modes"), dict):
+            step_dict = {**step_dict, "modes": json.dumps(step_dict["modes"])}
+        await super().create_step(step_dict)
 
     async def create_element(self, element: "Element") -> None:
         if self.storage_provider:

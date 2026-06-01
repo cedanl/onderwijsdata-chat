@@ -42,6 +42,7 @@ Optionele instellingen:
 
 | Variabele | Standaard | Betekenis |
 |-----------|-----------|-----------|
+| `AVAILABLE_MODELS` | *(afgeleid uit API keys)* | Kommagescheiden lijst van modellen in de UI-picker, bijv. `azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o`. Gebruik dit als je meerdere modellen via één provider aanbiedt. |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
 | `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
 | `CBS_ROW_LIMIT` | `200` | Maximum rijen uit CBS-datasets |
