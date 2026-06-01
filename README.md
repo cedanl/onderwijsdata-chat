@@ -2,7 +2,7 @@
 
 Een Chainlit-chatapp waarmee je vragen kunt stellen over open Nederlandse onderwijsdata.
 
-![Demo van Onderwijsdata Chat](docs/assets/demo.gif)
+<video src="docs/assets/demo.mp4" controls width="100%"></video>
 
 De assistent heeft toegang tot CBS, RIO en DUO via tool calling en kan Plotly-grafieken genereren en een downloadbaar HTML-rapport produceren.
 
