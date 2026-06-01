@@ -2,7 +2,7 @@
 
 **Stel vragen over open Nederlandse onderwijsdata via een AI-assistent.**
 
-![Demo van Onderwijsdata Chat](assets/demo.gif)
+<video src="assets/demo.mp4" controls width="100%"></video>
 
 De assistent heeft directe toegang tot CBS, RIO en DUO en kan grafieken genereren en een downloadbaar HTML-rapport produceren — zonder dat je zelf hoeft te programmeren of data te downloaden.
 
