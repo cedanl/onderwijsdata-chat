@@ -134,7 +134,6 @@ async def on_start():
         return
 
     await _setup_modes()
-    await cl.Message(content=WELKOM).send()
 
 
 @cl.on_stop

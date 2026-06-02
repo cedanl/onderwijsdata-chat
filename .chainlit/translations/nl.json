@@ -58,7 +58,7 @@
     },
     "chat": {
         "input": {
-            "placeholder": "Typ hier je bericht...",
+            "placeholder": "Stel jouw onderwijsvraag...",
             "actions": {
                 "send": "Bericht versturen",
                 "stop": "Taak stoppen",
