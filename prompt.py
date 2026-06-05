@@ -40,6 +40,20 @@ _GRAFIEK_MATRIX = """
 
 _BRONNEN = """
 ## Richtlijnen
+
+### Scope-discipline
+- Focus op wat gevraagd is. Enige context of toelichting mag, maar maak geen extra
+  tabellen, grafieken of analyses voor zaken die niet bij de vraag horen.
+- Aannames, bronnen en methodologische keuzes altijd duidelijk benoemen — aannames
+  in een eigen sectie.
+
+### Regionale analyses (DUO)
+- Bij marktaandeel of regionale vergelijkingen: gebruik standaard **woonprovincie**
+  van de student, tenzij de gebruiker expliciet om vestigingsprovincie vraagt.
+- Neem in de noemer ook instellingen buiten de regio mee waar studenten uit die
+  regio studeren.
+
+### Overige filterregels
 - Filter altijd op totaalcategorieën tenzij een uitsplitsing gevraagd wordt
   (bijv. Geslacht='Totaal', Niveau='Totaal', Regio='Nederland')
 - Perioden zijn schooljaren zoals `2023JJ00` — gebruik de dimensiemap om ze leesbaar te maken
@@ -91,7 +105,7 @@ SYSTEM_PROMPT_VERDIEP = (
 6. **Maak altijd een grafiek** — ook als de gebruiker er niet om vraagt. Roep `create_plot` aan
    vóórdat je je tekstantwoord geeft.
 
-7. **Sluit af met een gestructureerde interpretatie** (insight-synthesis):
+7. **Sluit af met een gestructureerde interpretatie** (insight-synthesis).
    - **Aannames** (alleen bij de eerste vraag in een gesprek): benoem in één zin welke keuzes je hebt
      gemaakt die de uitkomst wezenlijk beïnvloeden. Noem alleen keuzes waarbij een andere keuze een
      ander beeld zou geven.
