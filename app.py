@@ -1,4 +1,6 @@
 import asyncio
+import csv
+import io
 import os
 import tempfile
 from datetime import date
@@ -169,11 +171,74 @@ async def _process_message(content: str, modus: str = "snel", model: str | None 
         asyncio.create_task(_set_thread_title(content, response_text, model=model))
 
 
+_MAX_UPLOAD_ROWS = 200
+
+
+async def _read_file_content(el) -> str | None:
+    path = el.path
+    if not path:
+        return None
+    name = el.name or os.path.basename(path)
+    lower = name.lower()
+
+    try:
+        if lower.endswith(".xlsx") or lower.endswith(".xls"):
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True, data_only=True)
+            parts = []
+            for ws in wb.worksheets:
+                rows = list(ws.iter_rows(values_only=True))
+                if not rows:
+                    continue
+                header = [str(c) if c is not None else "" for c in rows[0]]
+                data_rows = rows[1:_MAX_UPLOAD_ROWS + 1]
+                lines = ["|".join(header)]
+                lines.append("|".join("---" for _ in header))
+                for row in data_rows:
+                    lines.append("|".join(str(c) if c is not None else "" for c in row))
+                label = f"**Sheet: {ws.title}**\n" if len(wb.worksheets) > 1 else ""
+                truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) - 1 > _MAX_UPLOAD_ROWS else ""
+                parts.append(f"{label}{chr(10).join(lines)}{truncated}")
+            wb.close()
+            return f"\n\n📎 **{name}**\n\n" + "\n\n".join(parts) if parts else None
+
+        if lower.endswith(".csv"):
+            with open(path, newline="", encoding="utf-8-sig") as f:
+                reader = csv.reader(f)
+                rows = []
+                for i, row in enumerate(reader):
+                    if i > _MAX_UPLOAD_ROWS:
+                        break
+                    rows.append(row)
+            if not rows:
+                return None
+            header = rows[0]
+            lines = ["|".join(header)]
+            lines.append("|".join("---" for _ in header))
+            for row in rows[1:]:
+                lines.append("|".join(row))
+            truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) > _MAX_UPLOAD_ROWS else ""
+            return f"\n\n📎 **{name}**\n\n{chr(10).join(lines)}{truncated}"
+
+    except Exception:
+        return f"\n\n📎 **{name}** — kon niet worden gelezen."
+
+    return None
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
     modus = message.modes.get("modus", "snel") if message.modes else "snel"
     model = message.modes.get("model") if message.modes else None
-    await _process_message(message.content, modus=modus, model=model)
+
+    content = message.content
+    if message.elements:
+        for el in message.elements:
+            file_text = await _read_file_content(el)
+            if file_text:
+                content += file_text
+
+    await _process_message(content, modus=modus, model=model)
 
 
 @cl.action_callback("followup")
