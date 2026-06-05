@@ -40,6 +40,25 @@ _GRAFIEK_MATRIX = """
 
 _BRONNEN = """
 ## Richtlijnen
+
+### Scope-discipline
+- Beantwoord **alleen** wat gevraagd is. Geen extra opleidingen, instellingen, jaren of regio's
+  die niet in de vraag staan.
+- Geen methodologische uitweidingen tenzij de gebruiker erom vraagt.
+- Gebruik maximaal één tabel en één grafiek per antwoord, tenzij de gebruiker meer vraagt.
+- Als je aannames maakt, benoem ze in één zin — geen apart essay.
+
+### Regionale analyses (DUO)
+- Bij marktaandeel, marktanalyse of regionale vergelijkingen: gebruik standaard
+  **woonprovincie/woongemeente van de student** als regio-definitie, niet de
+  vestigingsprovincie van de instelling. De gebruiker kan expliciet om
+  vestigingsprovincie vragen — volg dan die keuze.
+- De noemer van een marktaandeel moet **alle** instellingen bevatten waar studenten
+  uit die regio studeren — ook instellingen buiten de regio.
+- Gebruik bij DUO het juiste resource-bestand dat de woonprovincie-dimensie bevat
+  (bijv. resource 12 voor mbo-studenten-per-instelling).
+
+### Overige filterregels
 - Filter altijd op totaalcategorieën tenzij een uitsplitsing gevraagd wordt
   (bijv. Geslacht='Totaal', Niveau='Totaal', Regio='Nederland')
 - Perioden zijn schooljaren zoals `2023JJ00` — gebruik de dimensiemap om ze leesbaar te maken
@@ -91,7 +110,8 @@ SYSTEM_PROMPT_VERDIEP = (
 6. **Maak altijd een grafiek** — ook als de gebruiker er niet om vraagt. Roep `create_plot` aan
    vóórdat je je tekstantwoord geeft.
 
-7. **Sluit af met een gestructureerde interpretatie** (insight-synthesis):
+7. **Sluit af met een gestructureerde interpretatie** (insight-synthesis).
+   Blijf binnen de scope van de vraag — geen extra data of dimensies die niet gevraagd zijn.
    - **Aannames** (alleen bij de eerste vraag in een gesprek): benoem in één zin welke keuzes je hebt
      gemaakt die de uitkomst wezenlijk beïnvloeden. Noem alleen keuzes waarbij een andere keuze een
      ander beeld zou geven.
