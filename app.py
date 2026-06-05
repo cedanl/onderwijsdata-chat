@@ -174,7 +174,7 @@ async def _process_message(content: str, modus: str = "snel", model: str | None 
 _MAX_UPLOAD_ROWS = 200
 
 
-async def _read_file_content(el: cl.Element) -> str | None:
+async def _read_file_content(el) -> str | None:
     path = el.path
     if not path:
         return None
