@@ -132,6 +132,7 @@ async def run(
         )
 
     call_cache: dict[str, tuple[str, object]] = {}
+    last_text_msg: cl.Message | None = None
 
     for _ in range(MAX_TOOL_ITERATIONS):
         if stop_event and stop_event.is_set():
@@ -194,6 +195,7 @@ async def run(
         if not text_content:
             await msg.remove()
         else:
+            last_text_msg = msg
             await msg.update()
 
         history.append({
@@ -232,9 +234,10 @@ async def run(
         if all(tc["name"] == "suggest_followups" for tc in tool_calls):
             pending = cl.user_session.get("pending_suggestions", [])
             cl.user_session.set("pending_suggestions", [])
-            if text_content:
-                msg.actions = _RAPPORT_ACTIONS
-                await msg.update()
+            target = msg if text_content else last_text_msg
+            if target:
+                target.actions = _RAPPORT_ACTIONS
+                await target.update()
             if pending:
                 followup_actions = [
                     cl.Action(name="followup", label=s, payload={"question": s})
