@@ -100,6 +100,7 @@ async def generate_title(question: str, answer: str, model: str | None = None) -
     response = await litellm.acompletion(
         model=chosen_model,
         max_tokens=20,
+        num_retries=3,
         messages=[{
             "role": "user",
             "content": (
@@ -139,6 +140,7 @@ async def run(
         stream = await litellm.acompletion(
             model=chosen_model,
             max_tokens=MAX_TOKENS,
+            num_retries=3,
             messages=system + history,
             tools=SCHEMAS,
             stream=True,
