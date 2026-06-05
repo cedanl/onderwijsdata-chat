@@ -39,10 +39,11 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 
 _MAX_HISTORY = MAX_HISTORY
 
-_RAPPORT_ACTIONS = [
-    cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
-    cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
-]
+def _rapport_actions() -> list[cl.Action]:
+    return [
+        cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
+        cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
+    ]
 
 _WILLMA_KWARGS: dict = (
     {
@@ -188,7 +189,7 @@ async def run(
             return text_content
 
         if not tool_calls:
-            msg.actions = _RAPPORT_ACTIONS
+            msg.actions = _rapport_actions()
             await msg.update()
             return text_content
 
@@ -236,7 +237,7 @@ async def run(
             cl.user_session.set("pending_suggestions", [])
             target = msg if text_content else last_text_msg
             if target:
-                target.actions = _RAPPORT_ACTIONS
+                target.actions = _rapport_actions()
                 await target.update()
             if pending:
                 followup_actions = [
