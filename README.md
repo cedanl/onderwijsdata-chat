@@ -4,7 +4,7 @@ Een Chainlit-chatapp waarmee je vragen kunt stellen over open Nederlandse onderw
 
 https://github.com/user-attachments/assets/539dcf13-d6c2-416d-8a12-dfb06e75ccde
 
-De assistent heeft toegang tot CBS, RIO en DUO via tool calling en kan Plotly-grafieken genereren en een downloadbaar HTML-rapport produceren.
+De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en kan Plotly-grafieken genereren en analyses exporteren als HTML-rapport, PDF of reproduceerbaar Python-pakket.
 
 ## Databronnen
 
@@ -13,6 +13,7 @@ De assistent heeft toegang tot CBS, RIO en DUO via tool calling en kan Plotly-gr
 | **CBS** | 68 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
 | **RIO** | Register van onderwijsinstellingen en opleidingen (14 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
 | **DUO** | 57 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **Eigen bestanden** | xlsx/csv-uploads — direct bevraagbaar via dezelfde interface | — |
 
 ## Vereisten
 
@@ -74,15 +75,17 @@ Open die URL in je host-browser.
 ## Projectstructuur
 
 ```
-app.py          # Chainlit entry point, chat-events en rapport-download
+app.py          # Chainlit entry point, chat-events, upload-verwerking, export-callbacks
 agent.py        # Agentic loop met streaming en tool calling via LiteLLM
 config.py       # Omgevingsvariabelen
 prompt.py       # Systeemprompt
-report.py       # HTML-rapportgeneratie
+report.py       # HTML- en PDF-rapportgeneratie
 tools/
   cbs.py        # CBS Open Data API
-  duo.py        # DUO open datasets (onderwijsdata.duo.nl)
+  duo.py        # DUO open datasets (onderwijsdata.duo.nl) + generieke query_data
   rio.py        # RIO register
   catalog.py    # Dataset-catalogus zoeken
   plot.py       # Plotly-grafieken
+  store.py      # In-memory sessiecache voor DataFrames (DUO + uploads)
+  codegen.py    # Reproduceerbare Python-pakketgeneratie (analyse.py/.ipynb/requirements)
 ```

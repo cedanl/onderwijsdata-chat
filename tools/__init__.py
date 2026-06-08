@@ -2,7 +2,7 @@ from typing import Any
 
 from .catalog import search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
-from .duo import get_duo_data, query_duo_data
+from .duo import get_duo_data, query_data
 from .plot import create_plot
 from .rio import get_rio_data
 
@@ -86,8 +86,8 @@ SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "query_duo_data",
-            "description": "Filter en selecteer rijen uit een eerder geladen DUO dataset. Gebruik de data_key die get_duo_data retourneerde.",
+            "name": "query_data",
+            "description": "Filter en selecteer rijen uit een geladen dataset. Werkt voor DUO-data (data_key van get_duo_data) én geüploade bestanden (data_key begint met 'upload:').",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -149,7 +149,7 @@ LABELS = {
     "get_cbs_dimension": "CBS dimensie opgehaald",
     "get_rio_data": "RIO data opgehaald",
     "get_duo_data": "DUO dataset geladen",
-    "query_duo_data": "DUO data gefilterd",
+    "query_data": "Data gefilterd",
     "create_plot": "Grafiek aangemaakt",
     "suggest_followups": "Vervolgvragen voorgesteld",
 }
@@ -160,7 +160,7 @@ _HANDLERS = {
     "get_cbs_dimension": get_cbs_dimension,
     "get_rio_data": get_rio_data,
     "get_duo_data": get_duo_data,
-    "query_duo_data": query_duo_data,
+    "query_data": query_data,
     "create_plot": create_plot,
 }
 

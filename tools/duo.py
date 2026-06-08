@@ -40,7 +40,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     )
 
 
-def query_duo_data(
+def query_data(
     data_key: str,
     filters: dict | None = None,
     columns: list[str] | None = None,
@@ -48,7 +48,7 @@ def query_duo_data(
 ) -> str:
     df = store.get(data_key)
     if df is None:
-        return f"Geen data gevonden voor '{data_key}'. Roep eerst get_duo_data aan."
+        return f"Geen data gevonden voor '{data_key}'. Laad eerst de data via get_duo_data (DUO) of upload een bestand."
 
     if filters:
         for col, val in filters.items():
@@ -62,10 +62,17 @@ def query_duo_data(
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
         df = df[columns]
 
+    # Cap rows adaptively: wide datasets eat context fast.
+    # Target ~6000 cells max to stay well within LLM context limits.
+    n_cols = len(df.columns)
+    adaptive_max = max(50, min(max_rows, 6000 // max(n_cols, 1)))
     total = len(df)
-    rows = df.head(max_rows).to_dict(orient="records")
+    rows = df.head(adaptive_max).to_dict(orient="records")
     result: dict = {"totaal_rijen": total, "rijen": rows}
-    if total > max_rows:
-        result["waarschuwing"] = f"Eerste {max_rows} van {total} rijen teruggegeven. Verfijn je filters."
+    if total > adaptive_max:
+        result["waarschuwing"] = (
+            f"Eerste {adaptive_max} van {total} rijen teruggegeven "
+            f"({n_cols} kolommen × {adaptive_max} rijen). Verfijn je filters of selecteer minder kolommen."
+        )
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)

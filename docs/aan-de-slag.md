@@ -103,3 +103,46 @@ Na het opstarten verschijnt het chatvenster. Probeer bijvoorbeeld:
 > *"Welke DUO-datasets zijn beschikbaar over studentprognoses?"*
 
 De assistent zoekt automatisch de juiste datasets op, haalt de data op en presenteert resultaten direct in de chat.
+
+---
+
+## Eigen bestanden uploaden
+
+Klik op de **paperclip** in het invoerveld om een **xlsx- of csv-bestand** te uploaden. Na het uploaden toont de assistent het schema en kun je direct vragen stellen:
+
+> *"Geef een samenvatting van dit bestand."*
+
+> *"Maak een grafiek van de verdeling per collegejaar."*
+
+> *"Vergelijk deze upload met de CBS-data over hetzelfde onderwerp."*
+
+Bij bestanden met meerdere sheets worden alle sheets afzonderlijk ingelezen en zijn ze elk beschikbaar als eigen databron.
+
+!!! note "Resume"
+    Uploads worden automatisch bewaard bij gesprekken met ingelogde gebruikers (zie [Chatgeschiedenis inschakelen](#chatgeschiedenis-inschakelen-optioneel)). Je hoeft het bestand niet opnieuw te uploaden als je een gesprek hervat.
+
+---
+
+## Reproduceerbare code downloaden
+
+Na elk antwoord verschijnen drie knoppen: **📥 HTML**, **📄 PDF** en **📦 Reproduceerbare code**.
+
+De zip bevat:
+
+| Bestand | Inhoud |
+|---------|--------|
+| `analyse.py` | Uitvoerbaar Python-script — één blok per vraag |
+| `analyse.ipynb` | Notebook-versie met vraag/antwoord en codecellen |
+| `requirements.txt` | Alleen gebruikte packages, versies gepind |
+| `LEESMIJ.md` | Installatie-instructies (uv en pip) |
+
+**Voor CBS/DUO/RIO analyses** roept het script de tools rechtstreeks aan — de `tools/`-map uit de repository is vereist.
+
+**Voor analyses op geüploade bestanden** bevat `analyse.py` zelfstandige `pandas`/`plotly`-code die filters en aggregaties reconstrueert. Alleen het originele bestand is nodig, niet de `tools/`-map.
+
+```bash
+# Installeren en uitvoeren (uv)
+uv venv
+uv pip install -r requirements.txt
+python analyse.py
+```

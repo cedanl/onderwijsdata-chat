@@ -2,7 +2,8 @@ _DATABRONNEN = """
 ## Databronnen
 - **CBS** (68 datasets): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
-- **DUO** (57 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl; gebruik `get_duo_data` → `query_duo_data` na `search_catalog`
+- **DUO** (57 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl; gebruik `get_duo_data` → `query_data` na `search_catalog`
+- **Geüploade bestanden** (xlsx/csv): beschikbaar als `upload:<bestandsnaam>` in de store — gebruik direct `query_data` zonder laadstap
 
 ## Werkwijze — volg dit altijd
 
@@ -10,8 +11,13 @@ _DATABRONNEN = """
 
    **DUO-werkwijze** (twee stappen):
    - `get_duo_data(dataset_id)` → laadt de volledige dataset, retourneert kolomschema + voorbeeldwaarden + `data_key`
-   - `query_duo_data(data_key, filters, columns)` → filtert server-side op de opgeslagen data; gebruik kolomnamen en voorbeeldwaarden uit stap 1
-   - De dataset blijft in de sessie staan — bij vervolgvragen kun je direct `query_duo_data` hergebruiken zonder opnieuw te laden.
+   - `query_data(data_key, filters, columns)` → filtert op de opgeslagen data; gebruik kolomnamen en voorbeeldwaarden uit stap 1
+   - De dataset blijft in de sessie staan — bij vervolgvragen kun je direct `query_data` hergebruiken zonder opnieuw te laden.
+
+   **Geüploade bestanden** — de gebruiker heeft een xlsx of csv geüpload:
+   - Je ontvangt een schema met `data_key` (begint met `upload:`), kolommen en voorbeeldwaarden
+   - Gebruik direct `query_data(data_key="upload:<naam>", filters={...})` — geen laadstap nodig
+   - Bij meerdere sheets: aparte keys per sheet: `upload:<naam>:<sheet>`
 
 2. **Begrijp de dimensies**: roep `get_cbs_dimension` aan voor élk dimensieveld dat je wilt gebruiken
    (Geslacht, Niveau, Regio, Perioden, etc.). CBS data bevat codes zoals `T001038` —
@@ -46,6 +52,7 @@ _BRONNEN = """
 - Beperk data tot relevante jaren (laatste 10 jaar tenzij anders gevraagd)
 - Bij RIO-vragen: gebruik `search_catalog` met source='rio' en daarna `get_rio_data`
 - Bij DUO-vervolgvragen: controleer eerst of de dataset al geladen is (data_key bekend) voor je opnieuw `get_duo_data` aanroept
+- Bij upload-vervolgvragen: de data_key blijft geldig zolang de sessie actief is — gebruik `query_data` direct
 - Als na 2 pogingen geen bruikbare data gevonden is, zeg dat eerlijk en leg uit wat wel beschikbaar is
 
 **Vermeld altijd je bronnen** bij elke claim met concrete data. Gebruik dit formaat:

@@ -70,7 +70,7 @@ De assistent heeft toegang tot drie open Nederlandse onderwijsdatabronnen. De ju
 | Bekostiging | Leerlinggewichten, bekostigingsgegevens |
 
 **Twee-stap patroon:**
-DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview), dan `query_duo_data` (gefilterde rijen). Dit is de enige bron met een sessiecache — eenmaal geladen data wordt hergebruikt binnen een gesprek.
+DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview), dan `query_data` (gefilterde rijen). Dit is de enige externe bron met een sessiecache — eenmaal geladen data wordt hergebruikt binnen een gesprek.
 
 **Voorbeeldvragen:**
 - *"Laad de dataset over studentprognoses MBO en maak een trendgrafiek."*
@@ -78,9 +78,33 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ---
 
+## Geüploade bestanden
+
+Naast de drie open databronnen kun je eigen **xlsx- of csv-bestanden** uploaden via de paperclip-knop in het invoerveld.
+
+| Eigenschap | Details |
+|------------|---------|
+| Formaten | `.csv` (elke separator), `.xlsx` (meerdere sheets mogelijk) |
+| Rijlimiet sessie | 10.000 rijen per bestand |
+| Sessiecache | Ja — beschikbaar voor de rest van het gesprek zonder opnieuw te uploaden |
+| Resume-ondersteuning | Ja — uploads worden bewaard bij gesprekken met ingelogde gebruikers |
+
+Na het uploaden ontvangt de assistent een compact schema (kolommen, typen, voorbeeldwaarden). Je kunt daarna direct vragen stellen:
+
+> *"Geef een samenvatting van dit bestand."*
+
+> *"Maak een grafiek van de verdeling van Herkomst per Collegejaar."*
+
+> *"Vergelijk de cijfers in dit bestand met de CBS-data over hetzelfde onderwerp."*
+
+!!! tip "Reproduceerbare code"
+    Analyses op geüploade bestanden zijn volledig reproduceerbaar via de **📦 Reproduceerbare code** knop. De gegenereerde `analyse.py` bevat echte `pandas`-code die de filters en aggregaties reconstrueert — geen black-box snapshot.
+
+---
+
 ## Catalogus doorzoeken
 
-De assistent kan de catalogus van alle drie bronnen doorzoeken met `search_catalog`. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
+De assistent kan de catalogus van CBS, RIO en DUO doorzoeken met `search_catalog`. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
 
 > *"Welke datasets zijn beschikbaar over zij-instroom?"*
 

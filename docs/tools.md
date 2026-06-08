@@ -63,20 +63,23 @@ Laadt een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en een `da
 | `resource` | integer \| string | Index of naam-substring van het bestand binnen de dataset (standaard: 0) |
 
 !!! note
-    De geladen data wordt gecached in de sessie. Roep `get_duo_data` eenmalig aan per dataset en gebruik daarna `query_duo_data` voor gefilterde analyses.
+    De geladen data wordt gecached in de sessie. Roep `get_duo_data` eenmalig aan per dataset en gebruik daarna `query_data` voor gefilterde analyses.
 
 ---
 
-## query_duo_data
+## query_data
 
-Filtert en selecteert rijen uit een eerder geladen DUO-dataset.
+Filtert en selecteert rijen uit gecachede data. Werkt voor zowel **DUO-datasets** (na `get_duo_data`) als **geüploade bestanden** (na uploaden van xlsx/csv).
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `data_key` | string | Sleutel uit `get_duo_data` |
+| `data_key` | string | Sleutel uit `get_duo_data` (bijv. `duo:123:0`) of upload (bijv. `upload:bestand.csv`) |
 | `filters` | object | Exacte kolomfilters, bijv. `{"Leerweg": "Voltijd", "Jaar": "2023"}` |
 | `columns` | array | Alleen deze kolommen teruggeven |
 | `max_rows` | integer | Maximaal aantal rijen (standaard: 500) |
+
+!!! tip "Geüploade bestanden"
+    Na het uploaden van een bestand is de `data_key` direct beschikbaar — geen laadstap nodig. De assistent ontvangt het schema automatisch en kan direct filteren.
 
 ---
 
@@ -93,10 +96,28 @@ Maakt een interactieve Plotly-grafiek van opgehaalde data.
 | `title` | string | Titel van de grafiek |
 | `color_by` | string | Veldnaam voor groepering (optioneel, bijv. `"Geslacht"`) |
 
-De grafiek wordt direct in de chat weergegeven en opgenomen in het HTML-rapport.
+De grafiek wordt direct in de chat weergegeven en opgenomen in het rapport.
 
 ---
 
-## Rapport downloaden
+## Exportopties
 
-Na een of meer grafieken verschijnt de knop **"Download rapport"** onder het laatste antwoord. Het rapport bevat alle grafieken en teksten van de sessie als zelfstandig HTML-bestand.
+Na elk antwoord verschijnen drie downloadknoppen:
+
+| Knop | Inhoud |
+|------|--------|
+| **📥 HTML** | Alle grafieken en teksten van de sessie als zelfstandig HTML-bestand |
+| **📄 PDF** | Zelfde inhoud als PDF |
+| **📦 Reproduceerbare code** | Zip-archief met `analyse.py`, `analyse.ipynb`, `requirements.txt` en `LEESMIJ.md` |
+
+### Reproduceerbare code
+
+De zip bevat een volledig uitvoerbaar Python-pakket:
+
+- **`analyse.py`** — één blok per vraag, directe tool-aanroepen voor CBS/DUO/RIO; voor geüploade bestanden wordt echte `pandas`-code gegenereerd die filters en aggregaties reconstrueert
+- **`analyse.ipynb`** — notebook-versie met markdown (vraag + antwoord) en codecellen
+- **`requirements.txt`** — alleen gebruikte packages, versies gepind
+- **`LEESMIJ.md`** — NL installatie-instructies (uv en pip)
+
+!!! note "Geüploade bestanden"
+    Voor analyses op eigen bestanden bevat `analyse.py` zelfstandige `pandas`/`plotly`-code — geen `tools/`-map nodig. Zorg dat het geüploade bestand aanwezig is in de map waar je het script uitvoert.

@@ -1,8 +1,9 @@
 import asyncio
-import csv
 import io
+import json
 import os
 import tempfile
+import zipfile
 from datetime import date
 
 from dotenv import load_dotenv
@@ -19,6 +20,9 @@ from chainlit.data import get_data_layer
 from config import MODEL, WILLMA_API_KEY, get_available_models
 from report import generate_pdf, generate_report
 from resume import build_messages_from_thread, build_turns_from_thread
+from tools import search_catalog, store
+from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
+from tools.codegen import build_package
 
 auth.setup()
 data_layer.setup()
@@ -84,9 +88,75 @@ async def _setup_modes() -> None:
     await cl.context.emitter.set_modes(modes)
 
 
+async def _setup_commands() -> None:
+    await cl.context.emitter.set_commands([
+        {
+            "id": "Catalogus",
+            "icon": "database",
+            "description": "Beschikbare datasets doorzoeken",
+            "button": True,
+        }
+    ])
+
+
+def _catalogus_overview() -> str:
+    from collections import Counter
+    cbs = _cbs_catalog()
+    rio_duo = _rio_duo_catalog()
+    duo = [e for e in rio_duo if str(e.get("leverancier", "")).upper() == "DUO"]
+    rio = [e for e in rio_duo if str(e.get("leverancier", "")).upper() == "RIO"]
+
+    def top_categories(entries: list, n: int = 5) -> str:
+        counts = Counter(e.get("categorie", "Overig") for e in entries)
+        return ", ".join(k for k, _ in counts.most_common(n))
+
+    rio_bronnen = ", ".join(e.get("bron", "") for e in rio[:6])
+    if len(rio) > 6:
+        rio_bronnen += f" en {len(rio) - 6} meer"
+
+    return (
+        f"**Catalogus** — {len(cbs) + len(duo) + len(rio)} datasets en registers beschikbaar\n\n"
+        f"**CBS** — {len(cbs)} datasets\n"
+        f"Statistieken van het Centraal Bureau voor de Statistiek\n"
+        f"Categorieën: {top_categories(cbs)}\n\n"
+        f"**DUO** — {len(duo)} datasets\n"
+        f"Open data via onderwijsdata.duo.nl\n"
+        f"Categorieën: {top_categories(duo)}\n\n"
+        f"**RIO** — {len(rio)} registers\n"
+        f"Register van onderwijsinstellingen en opleidingen (dagelijks bijgewerkt)\n"
+        f"Registers: {rio_bronnen}\n\n"
+        "Zoek specifiek: typ `/catalogus` gevolgd door een zoekterm, bijv. `/catalogus mbo instroom`."
+    )
+
+
+def _catalogus_search(query: str) -> str:
+    raw = search_catalog(query, source="both", top_n=8)
+    if not raw.startswith("["):
+        return raw
+    results = json.loads(raw)
+    lines = [f"**Catalogus** — {len(results)} resultaten voor '{query}'\n"]
+    for r in results:
+        leverancier = r.get("leverancier", "?")
+        bron = r.get("bron", "?")
+        periode = r.get("periode", "")
+        doel = r.get("doel", r.get("beschrijving", ""))
+        if len(doel) > 130:
+            doel = doel[:130] + "…"
+        ref = r.get("_cbs_id") or r.get("_ckan_id") or r.get("_rio_resource") or ""
+        ref_str = f" `{ref}`" if ref else ""
+        lines.append(f"**{leverancier} — {bron}**{ref_str}")
+        if periode:
+            lines.append(f"📅 {periode}")
+        if doel:
+            lines.append(doel)
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 async def _set_thread_title(question: str, answer: str, model: str | None = None) -> None:
     try:
         title = await generate_title(question, answer, model=model)
+        cl.user_session.set("thread_title", title)
         layer = get_data_layer()
         if layer:
             await layer.update_thread(
@@ -111,8 +181,33 @@ async def set_starters():
     ]
 
 
+_UPLOAD_ROW_CAP = 10_000
+
+
+async def _persist_uploads() -> None:
+    import pandas as pd
+    layer = get_data_layer()
+    if not layer:
+        return
+    upload_keys = [k for k in store.list_keys() if k.startswith("upload:")]
+    if not upload_keys:
+        return
+    serialized = {}
+    for key in upload_keys:
+        df = store.get(key)
+        if not isinstance(df, pd.DataFrame):
+            continue
+        serialized[key] = df.head(_UPLOAD_ROW_CAP).to_csv(index=False)
+    if serialized:
+        await layer.update_thread(
+            thread_id=cl.context.session.thread_id,
+            metadata={"_uploads": serialized},
+        )
+
+
 @cl.on_chat_resume
 async def on_chat_resume(thread: dict):
+    import pandas as pd
     messages = build_messages_from_thread(thread)
     turns = build_turns_from_thread(thread)
     figures = [fig for turn in turns for fig in turn.get("figures", [])]
@@ -120,7 +215,22 @@ async def on_chat_resume(thread: dict):
     cl.user_session.set("turns", turns)
     cl.user_session.set("figures", figures)
     cl.user_session.set("turn_figures", [])
+
+    raw_meta = thread.get("metadata") or {}
+    if isinstance(raw_meta, str):
+        try:
+            raw_meta = json.loads(raw_meta)
+        except Exception:
+            raw_meta = {}
+    for key, csv_str in (raw_meta.get("_uploads") or {}).items():
+        try:
+            df = pd.read_csv(io.StringIO(csv_str), dtype=str)
+            store.put(key, df)
+        except Exception:
+            pass
+
     await _setup_modes()
+    await _setup_commands()
 
 
 @cl.on_chat_start
@@ -136,6 +246,7 @@ async def on_start():
         return
 
     await _setup_modes()
+    await _setup_commands()
 
 
 @cl.on_stop
@@ -146,6 +257,7 @@ async def on_stop():
 
 
 async def _process_message(content: str, modus: str = "snel", model: str | None = None) -> None:
+    cl.user_session.set("current_model", model)
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": content})
 
@@ -163,15 +275,41 @@ async def _process_message(content: str, modus: str = "snel", model: str | None 
     cl.user_session.set("messages", messages)
 
     turn_figures = cl.user_session.get("turn_figures", [])
+    turn_tool_calls = cl.user_session.get("_last_turn_tool_calls", [])
+    cl.user_session.set("_last_turn_tool_calls", [])
     turns: list = cl.user_session.get("turns", [])
-    turns.append({"question": content, "answer": response_text, "figures": turn_figures})
+    turns.append({"question": content, "answer": response_text, "figures": turn_figures, "tool_calls": turn_tool_calls})
     cl.user_session.set("turns", turns)
 
     if len(messages) == 2:
         asyncio.create_task(_set_thread_title(content, response_text, model=model))
 
+    asyncio.create_task(_persist_uploads())
 
-_MAX_UPLOAD_ROWS = 200
+
+def _df_schema_json(df, data_key: str, name: str) -> str:
+    schema = [
+        {
+            "kolom": col,
+            "type": str(df[col].dtype),
+            "uniek": int(df[col].nunique()),
+            "voorbeelden": [str(v) for v in df[col].dropna().unique()[:3].tolist()],
+        }
+        for col in df.columns
+    ]
+    return json.dumps(
+        {"data_key": data_key, "bestand": name, "totaal_rijen": len(df), "kolommen": schema},
+        ensure_ascii=False, separators=(",", ":"),
+    )
+
+
+def _upload_followup_actions(name: str, columns: list[str]) -> list[cl.Action]:
+    col_sample = ", ".join(f"'{c}'" for c in columns[:3])
+    return [
+        cl.Action(name="followup", label=f"Samenvatting van {name}", payload={"question": f"Geef een statistische samenvatting van het bestand {name}."}),
+        cl.Action(name="followup", label=f"Unieke waarden per kolom", payload={"question": f"Wat zijn de unieke waarden per kolom in {name}?"}),
+        cl.Action(name="followup", label=f"Grafiek van verdeling", payload={"question": f"Maak een grafiek van de verdeling van {columns[0] if columns else 'de eerste kolom'} in {name}."}),
+    ]
 
 
 async def _read_file_content(el) -> str | None:
@@ -182,46 +320,66 @@ async def _read_file_content(el) -> str | None:
     lower = name.lower()
 
     try:
+        import pandas as pd
+
         if lower.endswith(".xlsx") or lower.endswith(".xls"):
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True, data_only=True)
-            parts = []
-            for ws in wb.worksheets:
-                rows = list(ws.iter_rows(values_only=True))
-                if not rows:
-                    continue
-                header = [str(c) if c is not None else "" for c in rows[0]]
-                data_rows = rows[1:_MAX_UPLOAD_ROWS + 1]
-                lines = ["|".join(header)]
-                lines.append("|".join("---" for _ in header))
-                for row in data_rows:
-                    lines.append("|".join(str(c) if c is not None else "" for c in row))
-                label = f"**Sheet: {ws.title}**\n" if len(wb.worksheets) > 1 else ""
-                truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) - 1 > _MAX_UPLOAD_ROWS else ""
-                parts.append(f"{label}{chr(10).join(lines)}{truncated}")
+            sheet_names = wb.sheetnames
             wb.close()
-            return f"\n\n📎 **{name}**\n\n" + "\n\n".join(parts) if parts else None
+            llm_parts = []
+            confirm_lines = [f"📎 **{name}** geladen"]
+            all_columns: list[str] = []
+            for sheet in sheet_names:
+                df = pd.read_excel(path, sheet_name=sheet, dtype=str)
+                if df.empty:
+                    continue
+                suffix = f":{sheet}" if len(sheet_names) > 1 else ""
+                key = f"upload:{name}{suffix}"
+                store.put(key, df)
+                all_columns = list(df.columns)
+                sheet_label = f" — sheet **{sheet}**" if len(sheet_names) > 1 else ""
+                confirm_lines.append(f"{sheet_label}: {len(df):,} rijen, {len(df.columns)} kolommen")
+                cols_preview = ", ".join(f"`{c}`" for c in df.columns[:8])
+                if len(df.columns) > 8:
+                    cols_preview += f" en {len(df.columns) - 8} meer"
+                confirm_lines.append(f"Kolommen: {cols_preview}")
+                llm_parts.append((f"Sheet: {sheet} — " if len(sheet_names) > 1 else "") + _df_schema_json(df, key, name))
+            if not llm_parts:
+                await cl.Message(content=f"📎 **{name}** — het bestand bevat geen data.").send()
+                return None
+            confirm_lines.append("\nJe kunt nu vragen stellen over dit bestand.")
+            await cl.Message(
+                content="\n".join(confirm_lines),
+                actions=_upload_followup_actions(name, all_columns),
+            ).send()
+            return f"\n\n📎 **{name}**\n\n" + "\n\n".join(llm_parts)
 
         if lower.endswith(".csv"):
-            with open(path, newline="", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                rows = []
-                for i, row in enumerate(reader):
-                    if i > _MAX_UPLOAD_ROWS:
-                        break
-                    rows.append(row)
-            if not rows:
+            df = pd.read_csv(path, encoding="utf-8-sig", dtype=str, sep=None, engine="python")
+            if df.empty:
+                await cl.Message(content=f"📎 **{name}** — het bestand bevat geen data.").send()
                 return None
-            header = rows[0]
-            lines = ["|".join(header)]
-            lines.append("|".join("---" for _ in header))
-            for row in rows[1:]:
-                lines.append("|".join(row))
-            truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) > _MAX_UPLOAD_ROWS else ""
-            return f"\n\n📎 **{name}**\n\n{chr(10).join(lines)}{truncated}"
+            key = f"upload:{name}"
+            store.put(key, df)
+            cols_preview = ", ".join(f"`{c}`" for c in df.columns[:8])
+            if len(df.columns) > 8:
+                cols_preview += f" en {len(df.columns) - 8} meer"
+            await cl.Message(
+                content=(
+                    f"📎 **{name}** geladen — {len(df):,} rijen, {len(df.columns)} kolommen\n"
+                    f"Kolommen: {cols_preview}\n\n"
+                    "Je kunt nu vragen stellen over dit bestand."
+                ),
+                actions=_upload_followup_actions(name, list(df.columns)),
+            ).send()
+            return f"\n\n📎 **{name}**\n\n{_df_schema_json(df, key, name)}"
 
-    except Exception:
-        return f"\n\n📎 **{name}** — kon niet worden gelezen."
+    except Exception as exc:
+        await cl.Message(
+            content=f"📎 **{name}** — kon niet worden ingelezen ({type(exc).__name__}). Controleer of het bestand niet beschadigd is en opgeslagen is als .csv of .xlsx."
+        ).send()
+        return None
 
     return None
 
@@ -230,6 +388,12 @@ async def _read_file_content(el) -> str | None:
 async def on_message(message: cl.Message):
     modus = message.modes.get("modus", "snel") if message.modes else "snel"
     model = message.modes.get("model") if message.modes else None
+
+    if message.command == "Catalogus":
+        query = message.content.strip()
+        text = _catalogus_search(query) if query else _catalogus_overview()
+        await cl.Message(content=text).send()
+        return
 
     content = message.content
     if message.elements:
@@ -253,27 +417,70 @@ async def on_followup(action: cl.Action):
 async def on_download_rapport(action: cl.Action):
     turns = cl.user_session.get("turns", [])
     html = generate_report(turns)
-
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
-        f.write(html)
-        path = f.name
-
-    await cl.Message(
-        content="Rapport klaar!",
-        elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
-    ).send()
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
+            f.write(html)
+            path = f.name
+        await cl.Message(
+            content="Rapport klaar!",
+            elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)
 
 
 @cl.action_callback("download_rapport_pdf")
 async def on_download_rapport_pdf(action: cl.Action):
     turns = cl.user_session.get("turns", [])
     pdf_bytes = await asyncio.to_thread(generate_pdf, turns)
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(pdf_bytes)
+            path = f.name
+        await cl.Message(
+            content="PDF rapport klaar!",
+            elements=[cl.File(name=f"rapport-{date.today()}.pdf", path=path, mime="application/pdf")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-        f.write(pdf_bytes)
-        path = f.name
 
-    await cl.Message(
-        content="PDF rapport klaar!",
-        elements=[cl.File(name=f"rapport-{date.today()}.pdf", path=path, mime="application/pdf")],
-    ).send()
+@cl.action_callback("download_python")
+async def on_download_python(action: cl.Action):
+    import re
+    from agent import litellm_kwargs
+    turns = cl.user_session.get("turns", [])
+    thread_id = cl.context.session.thread_id or "chat"
+    model = cl.user_session.get("current_model") or MODEL
+
+    await cl.Message(content="⏳ Reproduceerbare code wordt gegenereerd...").send()
+
+    files = await build_package(turns, thread_id, model=model, extra_litellm_kwargs=litellm_kwargs(model))
+
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for filename, content in files.items():
+            zf.writestr(filename, content)
+    zip_buf.seek(0)
+
+    thread_title = cl.user_session.get("thread_title") or ""
+    safe_title = re.sub(r"[^\w\s-]", "", thread_title).strip().replace(" ", "-")[:40]
+    title_part = f"-{safe_title}" if safe_title else ""
+    zip_name = f"analyse{title_part}-{date.today()}-{thread_id[:8]}.zip"
+
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as f:
+            f.write(zip_buf.read())
+            path = f.name
+        await cl.Message(
+            content="Reproduceerbare code klaar!",
+            elements=[cl.File(name=zip_name, path=path, mime="application/zip")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)
