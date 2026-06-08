@@ -3,10 +3,24 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
+
+import litellm
 
 # Only skip tools that produce no reproducible output
 _SKIP_TOOLS = {"search_catalog", "suggest_followups"}
+
+_CLEANUP_SYSTEM = (
+    "Je bent een code-optimizer. Gegeven een genummerde lijst API-aanroepen die een LLM heeft gedaan "
+    "om een vraag te beantwoorden, geef je ALLEEN de indices terug van aanroepen die essentieel zijn "
+    "voor het eindresultaat.\n"
+    "Verwijder: explorerende mislukkingen, get_duo_data-aanroepen waarvan de data_key nooit door "
+    "een opvolgende query_data wordt gebruikt, en dead-ends.\n"
+    "Houd: aanroepen die direct bijdragen aan het antwoord (query_data, create_plot, "
+    "get_cbs_data, get_rio_data, get_cbs_dimension, get_duo_data die wél gebruikt wordt).\n"
+    "Antwoord uitsluitend met een JSON-array van integers, bijv. [0, 2, 4]. Geen uitleg."
+)
 
 _LEESMIJ = """\
 # Onderwijsdata analyse
@@ -201,17 +215,80 @@ def build_requirements(used_tool_names: set[str]) -> str:
     return "".join(lines)
 
 
-def build_package(turns: list[dict], thread_id: str) -> dict[str, str | bytes]:
+async def _cleanup_turn_calls(
+    turn: dict,
+    model: str,
+    extra_litellm_kwargs: dict,
+) -> list[dict]:
+    """Return a filtered list of tool calls with exploratory failures removed."""
+    raw = [tc for tc in turn.get("tool_calls", []) if tc.get("name") not in _SKIP_TOOLS]
+    if len(raw) <= 1:
+        return raw
+
+    indexed = []
+    for i, tc in enumerate(raw):
+        try:
+            args = json.loads(tc.get("arguments", "{}"))
+        except Exception:
+            args = {}
+        indexed.append({"i": i, "naam": tc["name"], "args": args})
+
+    user_msg = (
+        f"Vraag: {turn.get('question', '')[:300]}\n"
+        f"Antwoord: {(turn.get('answer') or '')[:500]}\n\n"
+        f"Aanroepen:\n{json.dumps(indexed, ensure_ascii=False, indent=2)}"
+    )
+
+    try:
+        response = await litellm.acompletion(
+            model=model,
+            max_tokens=150,
+            num_retries=2,
+            messages=[
+                {"role": "system", "content": _CLEANUP_SYSTEM},
+                {"role": "user", "content": user_msg},
+            ],
+            **extra_litellm_kwargs,
+        )
+        text = response.choices[0].message.content.strip()
+        # Strip markdown code fences if present
+        if text.startswith("```"):
+            text = text.split("```")[1].lstrip("json").strip()
+        indices = json.loads(text)
+        if isinstance(indices, list) and all(isinstance(i, int) for i in indices):
+            kept = [raw[i] for i in sorted(set(indices)) if 0 <= i < len(raw)]
+            if kept:
+                return kept
+    except Exception:
+        logging.debug("codegen cleanup LLM call failed, keeping all tool calls", exc_info=True)
+
+    return raw
+
+
+async def build_package(
+    turns: list[dict],
+    thread_id: str,
+    model: str | None = None,
+    extra_litellm_kwargs: dict | None = None,
+) -> dict[str, str]:
     """Return {filename: content} dict ready to be zipped."""
+    from config import MODEL
+    chosen_model = model or MODEL
+    kwargs = extra_litellm_kwargs or {}
+
+    cleaned_turns = []
+    for turn in turns:
+        cleaned_calls = await _cleanup_turn_calls(turn, chosen_model, kwargs)
+        cleaned_turns.append({**turn, "tool_calls": cleaned_calls})
+
     used = {
         tc["name"]
-        for turn in turns
+        for turn in cleaned_turns
         for tc in turn.get("tool_calls", [])
-        if tc.get("name") not in _SKIP_TOOLS
     }
     return {
-        "analyse.py": build_py(turns),
-        "analyse.ipynb": build_ipynb(turns),
+        "analyse.py": build_py(cleaned_turns),
+        "analyse.ipynb": build_ipynb(cleaned_turns),
         "requirements.txt": build_requirements(used),
         "LEESMIJ.md": _LEESMIJ,
     }

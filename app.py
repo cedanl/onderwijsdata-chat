@@ -188,6 +188,7 @@ async def on_stop():
 
 
 async def _process_message(content: str, modus: str = "snel", model: str | None = None) -> None:
+    cl.user_session.set("current_model", model)
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": content})
 
@@ -335,10 +336,12 @@ async def on_download_rapport_pdf(action: cl.Action):
 
 @cl.action_callback("download_python")
 async def on_download_python(action: cl.Action):
+    from agent import litellm_kwargs
     turns = cl.user_session.get("turns", [])
     thread_id = cl.context.session.thread_id or "chat"
+    model = cl.user_session.get("current_model") or MODEL
 
-    files = await asyncio.to_thread(build_package, turns, thread_id)
+    files = await build_package(turns, thread_id, model=model, extra_litellm_kwargs=litellm_kwargs(model))
 
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:

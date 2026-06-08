@@ -62,7 +62,7 @@ def _build_system(modus: str) -> list[dict]:
     return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]
 
 
-def _litellm_kwargs(model: str) -> dict:
+def litellm_kwargs(model: str) -> dict:
     """Return extra kwargs for litellm based on the chosen model."""
     if WILLMA_API_KEY and not model.startswith("anthropic/") and not model.startswith("ollama"):
         return _WILLMA_KWARGS
@@ -111,7 +111,7 @@ async def generate_title(question: str, answer: str, model: str | None = None) -
                 f"Vraag: {question[:400]}\nAntwoord: {answer[:400]}"
             ),
         }],
-        **_litellm_kwargs(chosen_model),
+        **litellm_kwargs(chosen_model),
     )
     return response.choices[0].message.content.strip().strip('"\'')
 
@@ -124,7 +124,7 @@ async def run(
 ) -> str:
     chosen_model = model or MODEL
     system = _build_system(modus)
-    extra_kwargs = _litellm_kwargs(chosen_model)
+    extra_kwargs = litellm_kwargs(chosen_model)
 
     history, was_trimmed = _trim(list(messages))
     if was_trimmed:
