@@ -43,6 +43,7 @@ def _rapport_actions() -> list[cl.Action]:
     return [
         cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
         cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
+        cl.Action(name="download_python", label="📦 .zip", payload={"action": "download_python"}),
     ]
 
 _WILLMA_KWARGS: dict = (
@@ -134,6 +135,7 @@ async def run(
 
     call_cache: dict[str, tuple[str, object]] = {}
     last_text_msg: cl.Message | None = None
+    turn_tool_calls: list[dict] = []
 
     for _ in range(MAX_TOOL_ITERATIONS):
         if stop_event and stop_event.is_set():
@@ -191,6 +193,7 @@ async def run(
         if not tool_calls:
             msg.actions = _rapport_actions()
             await msg.update()
+            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
             return text_content
 
         if not text_content:
@@ -207,6 +210,8 @@ async def run(
                 for tc in tool_calls
             ],
         })
+
+        turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
 
         # Deduplicate: run only calls not seen earlier this conversation
         new_calls = [(i, tc) for i, tc in enumerate(tool_calls) if _call_key(tc) not in call_cache]
@@ -233,6 +238,7 @@ async def run(
 
         # Terminal: only suggest_followups was called — show labelled suggestion block and return
         if all(tc["name"] == "suggest_followups" for tc in tool_calls):
+            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
             pending = cl.user_session.get("pending_suggestions", [])
             cl.user_session.set("pending_suggestions", [])
             target = msg if text_content else last_text_msg

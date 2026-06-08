@@ -1,8 +1,9 @@
 import asyncio
-import csv
 import io
+import json
 import os
 import tempfile
+import zipfile
 from datetime import date
 
 from dotenv import load_dotenv
@@ -19,6 +20,8 @@ from chainlit.data import get_data_layer
 from config import MODEL, WILLMA_API_KEY, get_available_models
 from report import generate_pdf, generate_report
 from resume import build_messages_from_thread, build_turns_from_thread
+from tools import store
+from tools.codegen import build_package
 
 auth.setup()
 data_layer.setup()
@@ -111,8 +114,33 @@ async def set_starters():
     ]
 
 
+_UPLOAD_ROW_CAP = 10_000
+
+
+async def _persist_uploads() -> None:
+    import pandas as pd
+    layer = get_data_layer()
+    if not layer:
+        return
+    upload_keys = [k for k in store.list_keys() if k.startswith("upload:")]
+    if not upload_keys:
+        return
+    serialized = {}
+    for key in upload_keys:
+        df = store.get(key)
+        if not isinstance(df, pd.DataFrame):
+            continue
+        serialized[key] = df.head(_UPLOAD_ROW_CAP).to_csv(index=False)
+    if serialized:
+        await layer.update_thread(
+            thread_id=cl.context.session.thread_id,
+            metadata={"_uploads": serialized},
+        )
+
+
 @cl.on_chat_resume
 async def on_chat_resume(thread: dict):
+    import pandas as pd
     messages = build_messages_from_thread(thread)
     turns = build_turns_from_thread(thread)
     figures = [fig for turn in turns for fig in turn.get("figures", [])]
@@ -120,6 +148,20 @@ async def on_chat_resume(thread: dict):
     cl.user_session.set("turns", turns)
     cl.user_session.set("figures", figures)
     cl.user_session.set("turn_figures", [])
+
+    raw_meta = thread.get("metadata") or {}
+    if isinstance(raw_meta, str):
+        try:
+            raw_meta = json.loads(raw_meta)
+        except Exception:
+            raw_meta = {}
+    for key, csv_str in (raw_meta.get("_uploads") or {}).items():
+        try:
+            df = pd.read_csv(io.StringIO(csv_str), dtype=str)
+            store.put(key, df)
+        except Exception:
+            pass
+
     await _setup_modes()
 
 
@@ -163,15 +205,32 @@ async def _process_message(content: str, modus: str = "snel", model: str | None 
     cl.user_session.set("messages", messages)
 
     turn_figures = cl.user_session.get("turn_figures", [])
+    turn_tool_calls = cl.user_session.get("_last_turn_tool_calls", [])
+    cl.user_session.set("_last_turn_tool_calls", [])
     turns: list = cl.user_session.get("turns", [])
-    turns.append({"question": content, "answer": response_text, "figures": turn_figures})
+    turns.append({"question": content, "answer": response_text, "figures": turn_figures, "tool_calls": turn_tool_calls})
     cl.user_session.set("turns", turns)
 
     if len(messages) == 2:
         asyncio.create_task(_set_thread_title(content, response_text, model=model))
 
+    asyncio.create_task(_persist_uploads())
 
-_MAX_UPLOAD_ROWS = 200
+
+def _df_schema_json(df, data_key: str, name: str) -> str:
+    schema = [
+        {
+            "kolom": col,
+            "type": str(df[col].dtype),
+            "uniek": int(df[col].nunique()),
+            "voorbeelden": [str(v) for v in df[col].dropna().unique()[:3].tolist()],
+        }
+        for col in df.columns
+    ]
+    return json.dumps(
+        {"data_key": data_key, "bestand": name, "totaal_rijen": len(df), "kolommen": schema},
+        ensure_ascii=False, separators=(",", ":"),
+    )
 
 
 async def _read_file_content(el) -> str | None:
@@ -182,43 +241,32 @@ async def _read_file_content(el) -> str | None:
     lower = name.lower()
 
     try:
+        import pandas as pd
+
         if lower.endswith(".xlsx") or lower.endswith(".xls"):
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True, data_only=True)
-            parts = []
-            for ws in wb.worksheets:
-                rows = list(ws.iter_rows(values_only=True))
-                if not rows:
-                    continue
-                header = [str(c) if c is not None else "" for c in rows[0]]
-                data_rows = rows[1:_MAX_UPLOAD_ROWS + 1]
-                lines = ["|".join(header)]
-                lines.append("|".join("---" for _ in header))
-                for row in data_rows:
-                    lines.append("|".join(str(c) if c is not None else "" for c in row))
-                label = f"**Sheet: {ws.title}**\n" if len(wb.worksheets) > 1 else ""
-                truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) - 1 > _MAX_UPLOAD_ROWS else ""
-                parts.append(f"{label}{chr(10).join(lines)}{truncated}")
+            sheet_names = wb.sheetnames
             wb.close()
+            parts = []
+            for sheet in sheet_names:
+                df = pd.read_excel(path, sheet_name=sheet, dtype=str)
+                if df.empty:
+                    continue
+                suffix = f":{sheet}" if len(sheet_names) > 1 else ""
+                key = f"upload:{name}{suffix}"
+                store.put(key, df)
+                label = f"Sheet: {sheet} — " if len(sheet_names) > 1 else ""
+                parts.append(f"{label}{_df_schema_json(df, key, name)}")
             return f"\n\n📎 **{name}**\n\n" + "\n\n".join(parts) if parts else None
 
         if lower.endswith(".csv"):
-            with open(path, newline="", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                rows = []
-                for i, row in enumerate(reader):
-                    if i > _MAX_UPLOAD_ROWS:
-                        break
-                    rows.append(row)
-            if not rows:
+            df = pd.read_csv(path, encoding="utf-8-sig", dtype=str)
+            if df.empty:
                 return None
-            header = rows[0]
-            lines = ["|".join(header)]
-            lines.append("|".join("---" for _ in header))
-            for row in rows[1:]:
-                lines.append("|".join(row))
-            truncated = f"\n\n(... afgekapt na {_MAX_UPLOAD_ROWS} rijen)" if len(rows) > _MAX_UPLOAD_ROWS else ""
-            return f"\n\n📎 **{name}**\n\n{chr(10).join(lines)}{truncated}"
+            key = f"upload:{name}"
+            store.put(key, df)
+            return f"\n\n📎 **{name}**\n\n{_df_schema_json(df, key, name)}"
 
     except Exception:
         return f"\n\n📎 **{name}** — kon niet worden gelezen."
@@ -253,27 +301,61 @@ async def on_followup(action: cl.Action):
 async def on_download_rapport(action: cl.Action):
     turns = cl.user_session.get("turns", [])
     html = generate_report(turns)
-
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
-        f.write(html)
-        path = f.name
-
-    await cl.Message(
-        content="Rapport klaar!",
-        elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
-    ).send()
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
+            f.write(html)
+            path = f.name
+        await cl.Message(
+            content="Rapport klaar!",
+            elements=[cl.File(name=f"rapport-{date.today()}.html", path=path, mime="text/html")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)
 
 
 @cl.action_callback("download_rapport_pdf")
 async def on_download_rapport_pdf(action: cl.Action):
     turns = cl.user_session.get("turns", [])
     pdf_bytes = await asyncio.to_thread(generate_pdf, turns)
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(pdf_bytes)
+            path = f.name
+        await cl.Message(
+            content="PDF rapport klaar!",
+            elements=[cl.File(name=f"rapport-{date.today()}.pdf", path=path, mime="application/pdf")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-        f.write(pdf_bytes)
-        path = f.name
 
-    await cl.Message(
-        content="PDF rapport klaar!",
-        elements=[cl.File(name=f"rapport-{date.today()}.pdf", path=path, mime="application/pdf")],
-    ).send()
+@cl.action_callback("download_python")
+async def on_download_python(action: cl.Action):
+    turns = cl.user_session.get("turns", [])
+    thread_id = cl.context.session.thread_id or "chat"
+
+    files = await asyncio.to_thread(build_package, turns, thread_id)
+
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for filename, content in files.items():
+            zf.writestr(filename, content)
+    zip_buf.seek(0)
+
+    zip_name = f"analyse-{date.today()}-{thread_id[:8]}.zip"
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as f:
+            f.write(zip_buf.read())
+            path = f.name
+        await cl.Message(
+            content="Python pakket klaar!",
+            elements=[cl.File(name=zip_name, path=path, mime="application/zip")],
+        ).send()
+    finally:
+        if path:
+            os.unlink(path)

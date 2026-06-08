@@ -40,7 +40,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     )
 
 
-def query_duo_data(
+def query_data(
     data_key: str,
     filters: dict | None = None,
     columns: list[str] | None = None,
