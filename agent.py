@@ -43,7 +43,7 @@ def _rapport_actions() -> list[cl.Action]:
     return [
         cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
         cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
-        cl.Action(name="download_python", label="📦 .zip", payload={"action": "download_python"}),
+        cl.Action(name="download_python", label="📦 Reproduceerbare code", payload={"action": "download_python"}),
     ]
 
 _WILLMA_KWARGS: dict = (

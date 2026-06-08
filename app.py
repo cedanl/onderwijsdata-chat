@@ -90,6 +90,7 @@ async def _setup_modes() -> None:
 async def _set_thread_title(question: str, answer: str, model: str | None = None) -> None:
     try:
         title = await generate_title(question, answer, model=model)
+        cl.user_session.set("thread_title", title)
         layer = get_data_layer()
         if layer:
             await layer.update_thread(
@@ -234,6 +235,15 @@ def _df_schema_json(df, data_key: str, name: str) -> str:
     )
 
 
+def _upload_followup_actions(name: str, columns: list[str]) -> list[cl.Action]:
+    col_sample = ", ".join(f"'{c}'" for c in columns[:3])
+    return [
+        cl.Action(name="followup", label=f"Samenvatting van {name}", payload={"question": f"Geef een statistische samenvatting van het bestand {name}."}),
+        cl.Action(name="followup", label=f"Unieke waarden per kolom", payload={"question": f"Wat zijn de unieke waarden per kolom in {name}?"}),
+        cl.Action(name="followup", label=f"Grafiek van verdeling", payload={"question": f"Maak een grafiek van de verdeling van {columns[0] if columns else 'de eerste kolom'} in {name}."}),
+    ]
+
+
 async def _read_file_content(el) -> str | None:
     path = el.path
     if not path:
@@ -249,7 +259,9 @@ async def _read_file_content(el) -> str | None:
             wb = load_workbook(path, read_only=True, data_only=True)
             sheet_names = wb.sheetnames
             wb.close()
-            parts = []
+            llm_parts = []
+            confirm_lines = [f"📎 **{name}** geladen"]
+            all_columns: list[str] = []
             for sheet in sheet_names:
                 df = pd.read_excel(path, sheet_name=sheet, dtype=str)
                 if df.empty:
@@ -257,20 +269,49 @@ async def _read_file_content(el) -> str | None:
                 suffix = f":{sheet}" if len(sheet_names) > 1 else ""
                 key = f"upload:{name}{suffix}"
                 store.put(key, df)
-                label = f"Sheet: {sheet} — " if len(sheet_names) > 1 else ""
-                parts.append(f"{label}{_df_schema_json(df, key, name)}")
-            return f"\n\n📎 **{name}**\n\n" + "\n\n".join(parts) if parts else None
+                all_columns = list(df.columns)
+                sheet_label = f" — sheet **{sheet}**" if len(sheet_names) > 1 else ""
+                confirm_lines.append(f"{sheet_label}: {len(df):,} rijen, {len(df.columns)} kolommen")
+                cols_preview = ", ".join(f"`{c}`" for c in df.columns[:8])
+                if len(df.columns) > 8:
+                    cols_preview += f" en {len(df.columns) - 8} meer"
+                confirm_lines.append(f"Kolommen: {cols_preview}")
+                llm_parts.append(f"Sheet: {sheet} — " if len(sheet_names) > 1 else "" + _df_schema_json(df, key, name))
+            if not llm_parts:
+                await cl.Message(content=f"📎 **{name}** — het bestand bevat geen data.").send()
+                return None
+            confirm_lines.append("\nJe kunt nu vragen stellen over dit bestand.")
+            await cl.Message(
+                content="\n".join(confirm_lines),
+                actions=_upload_followup_actions(name, all_columns),
+            ).send()
+            return f"\n\n📎 **{name}**\n\n" + "\n\n".join(llm_parts)
 
         if lower.endswith(".csv"):
             df = pd.read_csv(path, encoding="utf-8-sig", dtype=str)
             if df.empty:
+                await cl.Message(content=f"📎 **{name}** — het bestand bevat geen data.").send()
                 return None
             key = f"upload:{name}"
             store.put(key, df)
+            cols_preview = ", ".join(f"`{c}`" for c in df.columns[:8])
+            if len(df.columns) > 8:
+                cols_preview += f" en {len(df.columns) - 8} meer"
+            await cl.Message(
+                content=(
+                    f"📎 **{name}** geladen — {len(df):,} rijen, {len(df.columns)} kolommen\n"
+                    f"Kolommen: {cols_preview}\n\n"
+                    "Je kunt nu vragen stellen over dit bestand."
+                ),
+                actions=_upload_followup_actions(name, list(df.columns)),
+            ).send()
             return f"\n\n📎 **{name}**\n\n{_df_schema_json(df, key, name)}"
 
-    except Exception:
-        return f"\n\n📎 **{name}** — kon niet worden gelezen."
+    except Exception as exc:
+        await cl.Message(
+            content=f"📎 **{name}** — kon niet worden ingelezen ({type(exc).__name__}). Controleer of het bestand niet beschadigd is en opgeslagen is als .csv of .xlsx."
+        ).send()
+        return None
 
     return None
 
@@ -336,10 +377,13 @@ async def on_download_rapport_pdf(action: cl.Action):
 
 @cl.action_callback("download_python")
 async def on_download_python(action: cl.Action):
+    import re
     from agent import litellm_kwargs
     turns = cl.user_session.get("turns", [])
     thread_id = cl.context.session.thread_id or "chat"
     model = cl.user_session.get("current_model") or MODEL
+
+    await cl.Message(content="⏳ Reproduceerbare code wordt gegenereerd...").send()
 
     files = await build_package(turns, thread_id, model=model, extra_litellm_kwargs=litellm_kwargs(model))
 
@@ -349,14 +393,18 @@ async def on_download_python(action: cl.Action):
             zf.writestr(filename, content)
     zip_buf.seek(0)
 
-    zip_name = f"analyse-{date.today()}-{thread_id[:8]}.zip"
+    thread_title = cl.user_session.get("thread_title") or ""
+    safe_title = re.sub(r"[^\w\s-]", "", thread_title).strip().replace(" ", "-")[:40]
+    title_part = f"-{safe_title}" if safe_title else ""
+    zip_name = f"analyse{title_part}-{date.today()}-{thread_id[:8]}.zip"
+
     path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as f:
             f.write(zip_buf.read())
             path = f.name
         await cl.Message(
-            content="Python pakket klaar!",
+            content="Reproduceerbare code klaar!",
             elements=[cl.File(name=zip_name, path=path, mime="application/zip")],
         ).send()
     finally:
