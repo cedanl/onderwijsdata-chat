@@ -288,7 +288,7 @@ async def _read_file_content(el) -> str | None:
             return f"\n\n📎 **{name}**\n\n" + "\n\n".join(llm_parts)
 
         if lower.endswith(".csv"):
-            df = pd.read_csv(path, encoding="utf-8-sig", dtype=str)
+            df = pd.read_csv(path, encoding="utf-8-sig", dtype=str, sep=None, engine="python")
             if df.empty:
                 await cl.Message(content=f"📎 **{name}** — het bestand bevat geen data.").send()
                 return None
