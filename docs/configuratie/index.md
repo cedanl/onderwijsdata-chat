@@ -86,7 +86,7 @@ Willma is de AI-Hub van SURF voor het Nederlandse onderwijs. Om via Willma te dr
 ```dotenv
 MODEL=openai/<model-naam>
 WILLMA_API_KEY=<jouw-willma-key>
-WILLMA_BASE_URL=<endpoint-url>
+WILLMA_BASE_URL=https://willma.surf.nl/api/v0
 ```
 
 Gebruik `willma_poc.py` om beschikbare modelnamen op te halen:

@@ -113,7 +113,15 @@ Controleer de [Ollama library](https://ollama.com/library) op de tag **Tools** o
 
 ## SURF Willma AI-Hub
 
-Willma biedt toegang tot open modellen voor het Nederlandse onderwijs via SURF. Zie [Configuratie](index.md#surf-willma-ai-hub) voor de instelling.
+Willma biedt toegang tot open modellen voor het Nederlandse onderwijs via SURF.
+
+```dotenv
+MODEL=openai/<model-naam>
+WILLMA_API_KEY=<jouw-willma-key>
+WILLMA_BASE_URL=https://willma.surf.nl/api/v0
+```
+
+Zie [Configuratie](index.md#surf-willma-ai-hub) voor meer details.
 
 ---
 
@@ -129,5 +137,6 @@ LiteLLM leest omgevingsvariabelen automatisch per provider:
 | Azure AI Foundry | `AZURE_AI_API_KEY`, `AZURE_AI_API_BASE` |
 | Gemini | `GEMINI_API_KEY` |
 | Ollama | `OPENAI_API_BASE` (bijv. `http://localhost:11434/v1`) |
+| SURF Willma | `WILLMA_API_KEY`, `WILLMA_BASE_URL` |
 
 Je hoeft dus alleen de variabelen in te stellen die bij jouw gekozen provider horen — de rest kan leeg blijven. Alle providers zijn ook gedocumenteerd in [`.env.example`](https://github.com/cedanl/onderwijsdata-chat/blob/main/.env.example).
