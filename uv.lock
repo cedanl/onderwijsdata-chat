@@ -2144,7 +2144,7 @@ wheels = [
 [[package]]
 name = "onderwijsdata"
 version = "0.1.0"
-source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#1ddde77c838f936c25c307c29dcbdb3cf30617b7" }
+source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#da5d6109e592f87aff8285e20c8f5e85a2ebd90d" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -3824,8 +3824,8 @@ wheels = [
 
 [[package]]
 name = "riodata"
-version = "0.1.0"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#0de3e8597ef0d511df46e49e501e07934610df1b" }
+version = "0.2.0"
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#45099485cd1c7e0e880f847287b80ff8565164e6" }
 dependencies = [
     { name = "httpx" },
 ]
