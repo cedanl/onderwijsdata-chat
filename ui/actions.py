@@ -14,8 +14,10 @@ async def on_followup(action: cl.Action):
 @cl.action_callback("clarification_choice")
 async def on_clarification_choice(action: cl.Action):
     choice = action.payload["choice"]
+    modus = cl.user_session.get("modus", "verdiep")
+    model = cl.user_session.get("current_model")
     await cl.Message(content=choice, author="User").send()
-    await process_message(choice, modus="verdiep")
+    await process_message(choice, modus=modus, model=model)
 
 
 @cl.action_callback("explore_question")

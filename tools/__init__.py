@@ -149,7 +149,9 @@ _CLARIFY_SCOPE_SCHEMA = {
         "name": "clarify_scope",
         "description": (
             "Stel een gestructureerde verduidelijkingsvraag voordat je data ophaalt. "
-            "Gebruik dit bij: (1) een nieuwe vraag met twee of meer open dimensies, "
+            "Gebruik dit bij: (1) elke nieuwe vraag waarbij een of meer dimensies niet expliciet zijn "
+            "(tijdsperiode, geografisch niveau, opleidingsniveau, uitsplitsing) — dit is de EERSTE actie, "
+            "vóór search_catalog of andere tools; "
             "of (2) na search_catalog als er relevante datasets uit meerdere bronnen zijn — laat de gebruiker kiezen. "
             "Na deze tool is de beurt klaar; wacht op het antwoord van de gebruiker."
         ),

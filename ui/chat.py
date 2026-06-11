@@ -38,6 +38,7 @@ async def _set_thread_title(question: str, answer: str, model: str | None = None
 
 async def process_message(content: str, modus: str = "snel", model: str | None = None) -> None:
     cl.user_session.set("current_model", model)
+    cl.user_session.set("modus", modus)
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": content})
 
