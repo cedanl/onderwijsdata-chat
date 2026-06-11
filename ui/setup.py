@@ -1,5 +1,7 @@
 import chainlit as cl
+from chainlit.data import get_data_layer
 from chainlit.input_widget import Select, Switch, TextInput
+from chainlit.user import User
 
 from config import MODEL, get_available_models
 
@@ -35,31 +37,45 @@ async def setup_modes() -> None:
     await cl.context.emitter.set_modes(modes)
 
 
+async def _load_user_settings() -> dict:
+    user = cl.context.session.user
+    if not user:
+        return {}
+    layer = get_data_layer()
+    if not layer:
+        return {}
+    persisted = await layer.get_user(user.identifier)
+    if not persisted:
+        return {}
+    return persisted.metadata.get("chat_settings", {})
+
+
 async def setup_settings() -> None:
+    saved = await _load_user_settings()
     settings = await cl.ChatSettings([
         Select(
             id="rol",
             label="Jouw rol",
             values=["Geen voorkeur", "Beleidsmedewerker", "Onderzoeker / Analist", "Schoolbestuur / Directeur", "Journalist", "Student"],
-            initial_value="Geen voorkeur",
+            initial_value=saved.get("rol", "Geen voorkeur"),
         ),
         Select(
             id="domein",
             label="Selecteer domein",
             values=["Geen voorkeur", "PO", "VO", "MBO", "HBO / WO"],
-            initial_value="Geen voorkeur",
+            initial_value=saved.get("domein", "Geen voorkeur"),
         ),
         Switch(
             id="sparren",
             label="Sparren-modus",
             description="Stel altijd een doorvraag voordat data wordt opgehaald",
-            initial=False,
+            initial=saved.get("sparren", False),
         ),
         TextInput(
             id="context",
             label="Instelling / Regio",
             placeholder="Bijv. 'ROC Midden Nederland' of 'provincie Utrecht'",
-            initial="",
+            initial=saved.get("context", ""),
         ),
     ]).send()
     cl.user_session.set("chat_settings", settings)
@@ -81,3 +97,14 @@ async def setup_commands() -> None:
 @cl.on_settings_update
 async def on_settings_update(settings: dict) -> None:
     cl.user_session.set("chat_settings", settings)
+    user = cl.context.session.user
+    if not user:
+        return
+    layer = get_data_layer()
+    if not layer:
+        return
+    persisted = await layer.get_user(user.identifier)
+    if not persisted:
+        return
+    updated_metadata = {**persisted.metadata, "chat_settings": settings}
+    await layer.create_user(User(identifier=user.identifier, metadata=updated_metadata))
