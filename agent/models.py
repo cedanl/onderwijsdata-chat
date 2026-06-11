@@ -1,5 +1,5 @@
 from config import WILLMA_API_KEY, WILLMA_BASE_URL
-from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP, _SPARREN_SNEL_ADDENDUM, build_persona_block
+from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP, build_persona_block
 
 _WILLMA_KWARGS: dict = (
     {
@@ -21,7 +21,5 @@ def litellm_kwargs(model: str) -> dict:
 def build_system(modus: str, settings: dict | None = None) -> list[dict]:
     settings = settings or {}
     text = SYSTEM_PROMPT_VERDIEP if modus == "verdiep" else SYSTEM_PROMPT_SNEL
-    if settings.get("sparren") and modus == "snel":
-        text += _SPARREN_SNEL_ADDENDUM
     text += build_persona_block(settings)
     return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]

@@ -12,25 +12,10 @@ from agent.title import generate_title
 from config import MODEL
 from resume import build_messages_from_thread, build_turns_from_thread
 from tools import store
-from ui.catalogus import catalogus_overview, catalogus_search
 from ui.errors import friendly_error
-from ui.setup import setup_commands, setup_modes, setup_settings
+from ui.setup import setup_modes, setup_settings
 from ui.starters import _TAG_STARTERS, tag_voorbeeldvragen
 from ui.uploads import persist_uploads, read_file_content
-
-WELKOM = """Welkom! Ik kan je helpen met vragen over open Nederlandse onderwijsdata.
-
-Ik heb toegang tot:
-- **CBS** — statistieken over het Nederlandse onderwijs (68 datasets)
-- **RIO** — register van onderwijsinstellingen en opleidingen (14 resources)
-- **DUO** — 57 open datasets: prognoses, diplomering, instroom, adressen (onderwijsdata.duo.nl)
-
-Stel een vraag, bijvoorbeeld:
-- *Hoeveel MBO studenten waren er in 2023?*
-- *Welke HBO-instellingen zijn er in Amsterdam?*
-- *Wat is het verschil in uitstroom tussen mannen en vrouwen in het WO?*
-- *Hoe ontwikkelt het MBO-studentenaantal zich richting 2040 per leerweg?*
-"""
 
 
 async def _set_thread_title(question: str, answer: str, model: str | None = None) -> None:
@@ -95,7 +80,6 @@ async def on_start():
         return
 
     await setup_modes()
-    await setup_commands()
     await setup_settings()
 
 
@@ -125,7 +109,6 @@ async def on_chat_resume(thread: ThreadDict):
             pass
 
     await setup_modes()
-    await setup_commands()
     await setup_settings()
 
 
@@ -140,12 +123,6 @@ async def on_stop():
 async def on_message(message: cl.Message):
     modus = message.modes.get("modus", "snel") if message.modes else "snel"
     model = message.modes.get("model") if message.modes else None
-
-    if message.command == "Catalogus":
-        query = message.content.strip()
-        text = catalogus_search(query) if query else catalogus_overview()
-        await cl.Message(content=text).send()
-        return
 
     if message.content in _TAG_STARTERS:
         tags = _TAG_STARTERS[message.content]

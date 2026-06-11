@@ -83,11 +83,10 @@ agent/
   title.py          # Gesprekstitel genereren
 ui/
   chat.py           # Chainlit lifecycle-events (on_chat_start, on_message, etc.)
-  setup.py          # Modus-, instellingen- en commandopicker
+  setup.py          # Modus- en instellingenpicker (persists per gebruiker)
   starters.py       # Starterschermen en voorbeeldvragen per thema
   uploads.py        # Bestanden inlezen en in sessie opslaan
   downloads.py      # Rapport- en code-exportknoppen
-  catalogus.py      # Catalogusoverzicht en zoeken
   actions.py        # Actieknoppen (vervolgvragen, verkennen)
   errors.py         # Gebruikersvriendelijke foutmeldingen
 tools/
@@ -97,7 +96,7 @@ tools/
   catalog.py        # Dataset-catalogus zoeken
   plot.py           # Plotly-grafieken
   store.py          # In-memory sessiecache voor DataFrames (DUO + uploads)
-  codegen.py        # Reproduceerbare Python-pakketgeneratie (analyse.py/.ipynb/requirements)
+  codegen/          # Reproduceerbare Python-pakketgeneratie (analyse.py/.ipynb/requirements)
 config.py           # Omgevingsvariabelen
 prompt.py           # Systeemprompts
 report.py           # HTML- en PDF-rapportgeneratie

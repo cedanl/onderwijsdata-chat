@@ -1,6 +1,6 @@
 import chainlit as cl
 from chainlit.data import get_data_layer
-from chainlit.input_widget import Select, Switch, TextInput
+from chainlit.input_widget import Select, TextInput
 from chainlit.user import User
 
 from config import MODEL, get_available_models
@@ -65,12 +65,6 @@ async def setup_settings() -> None:
             values=["Geen voorkeur", "PO", "VO", "MBO", "HBO / WO"],
             initial_value=saved.get("domein", "Geen voorkeur"),
         ),
-        Switch(
-            id="sparren",
-            label="Sparren-modus",
-            description="Stel altijd een doorvraag voordat data wordt opgehaald",
-            initial=saved.get("sparren", False),
-        ),
         TextInput(
             id="context",
             label="Instelling / Regio",
@@ -80,18 +74,6 @@ async def setup_settings() -> None:
     ]).send()
     cl.user_session.set("chat_settings", settings)
 
-
-async def setup_commands() -> None:
-    await cl.context.emitter.set_commands([
-        {
-            "id": "Catalogus",
-            "icon": "database",
-            "description": "Beschikbare datasets doorzoeken",
-            "button": True,
-            "persistent": None,
-            "selected": None,
-        }
-    ])
 
 
 @cl.on_settings_update

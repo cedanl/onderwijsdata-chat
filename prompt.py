@@ -117,16 +117,6 @@ SYSTEM_PROMPT_VERDIEP = (
     + _BRONNEN
 )
 
-# Legacy alias — behouden voor eventuele externe imports
-SYSTEM_PROMPT = SYSTEM_PROMPT_VERDIEP
-
-_SPARREN_SNEL_ADDENDUM = (
-    "\n\n## Sparren-modus (actief)\n"
-    "Stel EERST één gerichte doorvraag om scope te bepalen, ook in dit kortere antwoordformat.\n"
-    "Baseer de doorvraag op dimensies: tijd, regio, opleidingsniveau, instelling, vergelijking.\n"
-    "Roep pas daarna tools aan.\n"
-)
-
 
 def build_persona_block(settings: dict) -> str:
     lines = []
