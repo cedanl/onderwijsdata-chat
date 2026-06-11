@@ -5,7 +5,7 @@ import litellm
 import chainlit as cl
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
-from tools import LABELS, SCHEMAS, dispatch
+from tools import LABELS, SCHEMAS, SCHEMAS_VERDIEP, dispatch
 from .history import trim
 from .models import build_system, litellm_kwargs
 
@@ -39,6 +39,20 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
     OllamaChatConfig.transform_request = _patched_transform  # ty: ignore[invalid-assignment]
 
 
+async def _show_clarification(args: dict) -> None:
+    lines = ["**Voordat ik begin wil ik de scope scherp stellen.**\n"]
+    lines.append(f"*Interpretatie:* {args['interpretatie']}")
+    if args.get("open_dimensies"):
+        lines.append(f"*Openstaande keuzes:* {', '.join(args['open_dimensies'])}")
+    lines.append(f"\n{args['vraag']}")
+    opties = args.get("opties") or []
+    actions = [
+        cl.Action(name="clarification_choice", label=opt, payload={"choice": opt})
+        for opt in opties
+    ]
+    await cl.Message(content="\n".join(lines), actions=actions).send()
+
+
 def _rapport_actions() -> list[cl.Action]:
     return [
         cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
@@ -51,6 +65,10 @@ async def _call_tool(tc: dict) -> tuple[str, object]:
     if tc["name"] == "suggest_followups":
         args = json.loads(tc["arguments"])
         cl.user_session.set("pending_suggestions", args.get("suggestions", []))
+        return "OK", None
+    if tc["name"] == "clarify_scope":
+        args = json.loads(tc["arguments"])
+        cl.user_session.set("pending_clarification", args)
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
@@ -86,6 +104,7 @@ async def run(
     call_cache: dict[str, tuple[str, object]] = {}
     last_text_msg: cl.Message | None = None
     turn_tool_calls: list[dict] = []
+    tools_list = SCHEMAS_VERDIEP if modus == "verdiep" else SCHEMAS
 
     for _ in range(MAX_TOOL_ITERATIONS):
         if stop_event and stop_event.is_set():
@@ -96,7 +115,7 @@ async def run(
             max_tokens=MAX_TOKENS,
             num_retries=3,
             messages=system + history,
-            tools=SCHEMAS,
+            tools=tools_list,
             stream=True,
             **extra_kwargs,
         )
@@ -185,6 +204,15 @@ async def run(
                     elements=[cl.Plotly(name=label, figure=figure, display="inline")],
                 ).send()
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+
+        # Terminal: clarify_scope was called — show structured question and return
+        if any(tc["name"] == "clarify_scope" for tc in tool_calls):
+            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
+            pending = cl.user_session.get("pending_clarification")
+            cl.user_session.set("pending_clarification", None)
+            if pending:
+                await _show_clarification(pending)
+            return text_content
 
         # Terminal: only suggest_followups was called — show labelled suggestion block and return
         if all(tc["name"] == "suggest_followups" for tc in tool_calls):

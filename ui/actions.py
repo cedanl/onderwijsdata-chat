@@ -11,6 +11,13 @@ async def on_followup(action: cl.Action):
     })
 
 
+@cl.action_callback("clarification_choice")
+async def on_clarification_choice(action: cl.Action):
+    choice = action.payload["choice"]
+    await cl.Message(content=choice, author="User").send()
+    await process_message(choice, modus="verdiep")
+
+
 @cl.action_callback("explore_question")
 async def on_explore_question(action: cl.Action):
     question = action.payload["question"]

@@ -143,8 +143,48 @@ SCHEMAS = [
     },
 ]
 
+_CLARIFY_SCOPE_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "clarify_scope",
+        "description": (
+            "Stel een gestructureerde verduidelijkingsvraag voordat je data ophaalt. "
+            "Gebruik dit bij: (1) een nieuwe vraag met twee of meer open dimensies, "
+            "of (2) na search_catalog als er relevante datasets uit meerdere bronnen zijn — laat de gebruiker kiezen. "
+            "Na deze tool is de beurt klaar; wacht op het antwoord van de gebruiker."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "interpretatie": {
+                    "type": "string",
+                    "description": "Jouw huidige interpretatie van de vraag, in één zin",
+                },
+                "open_dimensies": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Dimensies die nog niet vastgelegd zijn, bijv. ['tijdsperiode', 'geografisch niveau']",
+                },
+                "vraag": {
+                    "type": "string",
+                    "description": "Één gerichte verduidelijkingsvraag die de meeste ambiguïteit wegneemt",
+                },
+                "opties": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Klikbare keuze-opties (bijv. gevonden databronnen na search_catalog)",
+                },
+            },
+            "required": ["interpretatie", "vraag"],
+        },
+    },
+}
+
+SCHEMAS_VERDIEP = SCHEMAS + [_CLARIFY_SCOPE_SCHEMA]
+
 LABELS = {
     "search_catalog": "Catalogus doorzocht",
+    "clarify_scope": "Scope vastgesteld",
     "get_cbs_data": "CBS data opgehaald",
     "get_cbs_dimension": "CBS dimensie opgehaald",
     "get_rio_data": "RIO data opgehaald",
