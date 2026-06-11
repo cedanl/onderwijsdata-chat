@@ -12,6 +12,7 @@ load_dotenv()
 
 import litellm
 import chainlit as cl
+from chainlit.input_widget import Select, Switch, TextInput
 
 import auth
 import data_layer
@@ -86,6 +87,41 @@ async def _setup_modes() -> None:
         modes.insert(0, cl.Mode(id="model", name="Model", options=model_options))
 
     await cl.context.emitter.set_modes(modes)
+
+
+async def _setup_settings() -> None:
+    settings = await cl.ChatSettings([
+        Select(
+            id="rol",
+            label="Jouw rol",
+            values=["Geen voorkeur", "Beleidsmedewerker", "Onderzoeker / Analist", "Schoolbestuur / Directeur", "Journalist", "Student"],
+            initial_value="Geen voorkeur",
+        ),
+        Select(
+            id="domein",
+            label="Selecteer domein",
+            values=["Geen voorkeur", "PO", "VO", "MBO", "HBO / WO"],
+            initial_value="Geen voorkeur",
+        ),
+        Switch(
+            id="sparren",
+            label="Sparren-modus",
+            description="Stel altijd een doorvraag voordat data wordt opgehaald",
+            initial=False,
+        ),
+        TextInput(
+            id="context",
+            label="Instelling / Regio",
+            placeholder="Bijv. 'ROC Midden Nederland' of 'provincie Utrecht'",
+            initial="",
+        ),
+    ]).send()
+    cl.user_session.set("chat_settings", settings)
+
+
+@cl.on_settings_update
+async def on_settings_update(settings: dict) -> None:
+    cl.user_session.set("chat_settings", settings)
 
 
 async def _setup_commands() -> None:
@@ -171,13 +207,53 @@ async def _set_thread_title(question: str, answer: str, model: str | None = None
         pass
 
 
+_TAG_STARTERS = {
+    "Verken Primair Onderwijs": ("po",),
+    "Verken Voortgezet Onderwijs": ("vo",),
+    "Verken MBO": ("mbo",),
+    "Verken Hoger Onderwijs": ("hbo", "wo", "ho"),
+}
+
+
+def _tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
+    seen: set[str] = set()
+    questions: list[str] = []
+    for entry in list(_cbs_catalog()) + list(_rio_duo_catalog()):
+        if any(t in entry.get("tags", []) for t in tags):
+            for q in entry.get("voorbeeldvragen", []):
+                if q not in seen:
+                    seen.add(q)
+                    questions.append(q)
+        if len(questions) >= n * 4:
+            break
+    # spread across the list: pick every k-th to get variety over just the first entries
+    step = max(1, len(questions) // n)
+    return [questions[i * step] for i in range(n) if i * step < len(questions)]
+
+
 @cl.set_starters
 async def set_starters():
     return [
-        cl.Starter(label="MBO studenten 2023", message="Hoeveel MBO studenten waren er in 2023?"),
-        cl.Starter(label="HBO-instellingen Amsterdam", message="Welke HBO-instellingen zijn er in Amsterdam?"),
-        cl.Starter(label="WO uitstroom man/vrouw", message="Wat is het verschil in uitstroom tussen mannen en vrouwen in het WO?"),
-        cl.Starter(label="VMBO instroom trend", message="Toon de trend in VMBO instroom over de afgelopen 10 jaar."),
+        cl.Starter(
+            label="Primair Onderwijs",
+            message="Verken Primair Onderwijs",
+            description="Bekijk voorbeeldvragen over PO-data",
+        ),
+        cl.Starter(
+            label="Voortgezet Onderwijs",
+            message="Verken Voortgezet Onderwijs",
+            description="Bekijk voorbeeldvragen over VO-data",
+        ),
+        cl.Starter(
+            label="MBO",
+            message="Verken MBO",
+            description="Bekijk voorbeeldvragen over MBO-data",
+        ),
+        cl.Starter(
+            label="Hoger Onderwijs",
+            message="Verken Hoger Onderwijs",
+            description="Bekijk voorbeeldvragen over HBO- en WO-data",
+        ),
     ]
 
 
@@ -231,6 +307,7 @@ async def on_chat_resume(thread: dict):
 
     await _setup_modes()
     await _setup_commands()
+    await _setup_settings()
 
 
 @cl.on_chat_start
@@ -247,6 +324,7 @@ async def on_start():
 
     await _setup_modes()
     await _setup_commands()
+    await _setup_settings()
 
 
 @cl.on_stop
@@ -393,6 +471,20 @@ async def on_message(message: cl.Message):
         query = message.content.strip()
         text = _catalogus_search(query) if query else _catalogus_overview()
         await cl.Message(content=text).send()
+        return
+
+    if message.content in _TAG_STARTERS:
+        tags = _TAG_STARTERS[message.content]
+        label = message.content.removeprefix("Verken ")
+        questions = _tag_voorbeeldvragen(tags)
+        actions = [
+            cl.Action(name="explore_question", label=q, payload={"question": q, "modus": modus, "model": model or ""})
+            for q in questions
+        ]
+        await cl.Message(
+            content=f"Hier zijn voorbeeldvragen over **{label}**:",
+            actions=actions,
+        ).send()
         return
 
     content = message.content

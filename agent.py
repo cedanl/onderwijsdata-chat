@@ -5,7 +5,7 @@ import litellm
 import chainlit as cl
 
 from config import MAX_HISTORY, MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
-from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP
+from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP, _SPARREN_SNEL_ADDENDUM, build_persona_block
 from tools import LABELS, SCHEMAS, dispatch
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
@@ -57,8 +57,12 @@ _WILLMA_KWARGS: dict = (
 )
 
 
-def _build_system(modus: str) -> list[dict]:
+def _build_system(modus: str, settings: dict | None = None) -> list[dict]:
+    settings = settings or {}
     text = SYSTEM_PROMPT_VERDIEP if modus == "verdiep" else SYSTEM_PROMPT_SNEL
+    if settings.get("sparren") and modus == "snel":
+        text += _SPARREN_SNEL_ADDENDUM
+    text += build_persona_block(settings)
     return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]
 
 
@@ -122,8 +126,9 @@ async def run(
     model: str | None = None,
     modus: str = "snel",
 ) -> str:
+    settings: dict = cl.user_session.get("chat_settings") or {}
     chosen_model = model or MODEL
-    system = _build_system(modus)
+    system = _build_system(modus, settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
     history, was_trimmed = _trim(list(messages))

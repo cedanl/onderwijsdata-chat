@@ -119,3 +119,26 @@ SYSTEM_PROMPT_VERDIEP = (
 
 # Legacy alias — behouden voor eventuele externe imports
 SYSTEM_PROMPT = SYSTEM_PROMPT_VERDIEP
+
+_SPARREN_SNEL_ADDENDUM = (
+    "\n\n## Sparren-modus (actief)\n"
+    "Stel EERST één gerichte doorvraag om scope te bepalen, ook in dit kortere antwoordformat.\n"
+    "Baseer de doorvraag op dimensies: tijd, regio, opleidingsniveau, instelling, vergelijking.\n"
+    "Roep pas daarna tools aan.\n"
+)
+
+
+def build_persona_block(settings: dict) -> str:
+    lines = []
+    rol = settings.get("rol", "Geen voorkeur")
+    if rol and rol != "Geen voorkeur":
+        lines.append(f"- Gebruikersrol: **{rol}** — stem taalgebruik en diepte van uitleg hierop af.")
+    domein = settings.get("domein", "Geen voorkeur")
+    if domein and domein != "Geen voorkeur":
+        lines.append(f"- Domein: **{domein}** — prioriteer datasets en voorbeelden uit dit domein.")
+    context = settings.get("context", "").strip()
+    if context:
+        lines.append(f"- Instelling / Regio: {context}")
+    if not lines:
+        return ""
+    return "\n\n## Gebruikersprofiel\n" + "\n".join(lines)
