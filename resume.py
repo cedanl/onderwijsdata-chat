@@ -1,11 +1,12 @@
 import base64
+from collections.abc import Mapping
 
 import plotly.io as pio
 
 _MESSAGE_TYPES = {"user_message": "user", "assistant_message": "assistant"}
 
 
-def build_messages_from_thread(thread: dict) -> list[dict]:
+def build_messages_from_thread(thread: Mapping) -> list[dict]:
     """Reconstruct the LLM message list from a persisted Chainlit thread."""
     messages = []
     for step in thread.get("steps", []):
@@ -16,7 +17,7 @@ def build_messages_from_thread(thread: dict) -> list[dict]:
     return messages
 
 
-def build_turns_from_thread(thread: dict) -> list[dict]:
+def build_turns_from_thread(thread: Mapping) -> list[dict]:
     """Reconstruct turns (question/answer/figures) from a persisted Chainlit thread."""
     steps = thread.get("steps", [])
     elements = thread.get("elements") or []

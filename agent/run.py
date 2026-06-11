@@ -4,9 +4,10 @@ import json
 import litellm
 import chainlit as cl
 
-from config import MAX_HISTORY, MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL, WILLMA_API_KEY, WILLMA_BASE_URL
-from prompt import SYSTEM_PROMPT_SNEL, SYSTEM_PROMPT_VERDIEP, _SPARREN_SNEL_ADDENDUM, build_persona_block
+from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
+from .history import trim
+from .models import build_system, litellm_kwargs
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
@@ -35,9 +36,8 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
                 out["tool_calls"] = converted
         return result
 
-    OllamaChatConfig.transform_request = _patched_transform
+    OllamaChatConfig.transform_request = _patched_transform  # ty: ignore[invalid-assignment]
 
-_MAX_HISTORY = MAX_HISTORY
 
 def _rapport_actions() -> list[cl.Action]:
     return [
@@ -45,42 +45,6 @@ def _rapport_actions() -> list[cl.Action]:
         cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
         cl.Action(name="download_python", label="📦 Reproduceerbare code", payload={"action": "download_python"}),
     ]
-
-_WILLMA_KWARGS: dict = (
-    {
-        "api_base": WILLMA_BASE_URL,
-        "api_key": WILLMA_API_KEY,
-        "extra_headers": {"X-API-KEY": WILLMA_API_KEY},
-    }
-    if WILLMA_API_KEY
-    else {}
-)
-
-
-def _build_system(modus: str, settings: dict | None = None) -> list[dict]:
-    settings = settings or {}
-    text = SYSTEM_PROMPT_VERDIEP if modus == "verdiep" else SYSTEM_PROMPT_SNEL
-    if settings.get("sparren") and modus == "snel":
-        text += _SPARREN_SNEL_ADDENDUM
-    text += build_persona_block(settings)
-    return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]
-
-
-def litellm_kwargs(model: str) -> dict:
-    """Return extra kwargs for litellm based on the chosen model."""
-    if WILLMA_API_KEY and not model.startswith("anthropic/") and not model.startswith("ollama"):
-        return _WILLMA_KWARGS
-    return {}
-
-
-def _trim(history: list[dict]) -> tuple[list[dict], bool]:
-    if len(history) <= _MAX_HISTORY:
-        return history, False
-    first_user = next((m for m in history if m["role"] == "user"), None)
-    tail = history[-(_MAX_HISTORY - 1):]
-    if first_user and first_user not in tail:
-        return [first_user] + tail, True
-    return tail, True
 
 
 async def _call_tool(tc: dict) -> tuple[str, object]:
@@ -101,25 +65,6 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
-async def generate_title(question: str, answer: str, model: str | None = None) -> str:
-    chosen_model = model or MODEL
-    response = await litellm.acompletion(
-        model=chosen_model,
-        max_tokens=20,
-        num_retries=3,
-        messages=[{
-            "role": "user",
-            "content": (
-                "Geef een titel van maximaal 6 woorden voor dit gesprek. "
-                "Alleen de titel zelf, geen uitleg of aanhalingstekens.\n\n"
-                f"Vraag: {question[:400]}\nAntwoord: {answer[:400]}"
-            ),
-        }],
-        **litellm_kwargs(chosen_model),
-    )
-    return response.choices[0].message.content.strip().strip('"\'')
-
-
 async def run(
     messages: list[dict],
     stop_event: asyncio.Event | None = None,
@@ -128,10 +73,10 @@ async def run(
 ) -> str:
     settings: dict = cl.user_session.get("chat_settings") or {}
     chosen_model = model or MODEL
-    system = _build_system(modus, settings)
+    system = build_system(modus, settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
-    history, was_trimmed = _trim(list(messages))
+    history, was_trimmed = trim(list(messages))
     if was_trimmed:
         await cl.context.emitter.send_toast(
             "Oudere berichten vallen buiten de context van het model.",

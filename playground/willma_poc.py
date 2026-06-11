@@ -2,7 +2,7 @@
 Willma AI-Hub proof-of-concept.
 
 Zet WILLMA_API_KEY en WILLMA_BASE_URL in je .env bestand en run:
-    uv run python willma_poc.py
+    uv run python playground/willma_poc.py
 """
 
 import json

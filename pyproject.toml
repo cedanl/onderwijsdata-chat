@@ -21,7 +21,13 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["watchfiles>=0.21", "pytest>=8.0", "pytest-asyncio>=0.23"]
+dev = [
+    "watchfiles>=0.21",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.15.16",
+    "ty>=0.0.48",
+]
 docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
@@ -38,6 +44,11 @@ cache-dir = ".uv_cache"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ty.rules]
+# auth.py uses sync Chainlit callbacks — wrapped at runtime (pre-existing)
+# data_layer.py serialises a TypedDict field to JSON in-place (pre-existing)
+invalid-argument-type = "warn"
 
 [build-system]
 requires = ["hatchling"]

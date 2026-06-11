@@ -89,14 +89,14 @@ WILLMA_API_KEY=<jouw-willma-key>
 WILLMA_BASE_URL=https://willma.surf.nl/api/v0
 ```
 
-Gebruik `willma_poc.py` om beschikbare modelnamen op te halen:
+Gebruik `playground/willma_poc.py` om beschikbare modelnamen op te halen:
 
 ```bash
-uv run python willma_poc.py
+uv run python playground/willma_poc.py
 ```
 
 !!! note "Hoe werkt dit in de code?"
-    Wanneer `WILLMA_API_KEY` is ingesteld, worden `api_base`, `api_key` en een `X-API-KEY` header automatisch meegegeven aan elke LiteLLM-aanroep (zie `agent.py`). Voor alle andere providers regelt LiteLLM de authenticatie op basis van standaard omgevingsvariabelen.
+    Wanneer `WILLMA_API_KEY` is ingesteld, worden `api_base`, `api_key` en een `X-API-KEY` header automatisch meegegeven aan elke LiteLLM-aanroep (zie `agent/models.py`). Voor alle andere providers regelt LiteLLM de authenticatie op basis van standaard omgevingsvariabelen.
 
 ---
 

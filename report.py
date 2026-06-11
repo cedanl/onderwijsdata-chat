@@ -1,7 +1,5 @@
 import io
 import re
-import tempfile
-import os
 from datetime import date
 import html as html_module
 
