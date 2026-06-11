@@ -119,6 +119,9 @@ confirm_new_chat = true
 # Description of the assistant. This is used for HTML tags.
 description = "Verken (open) onderwijsdata — zie waar jouw instelling staat t.o.v. regio en Nederland"
 
+# Tagline shown below the app name on the welcome screen.
+tagline = "Verken (open) onderwijsdata — zie waar jouw instelling staat t.o.v. regio en Nederland"
+
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
 cot = "full"
 

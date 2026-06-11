@@ -1,13 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 82">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 56">
   <style>
-    .title { fill: #111827; }
-    .tag   { fill: #111827; opacity: 0.6; }
-    @media (prefers-color-scheme: dark) {
-      .title { fill: #f9fafb; }
-      .tag   { fill: #f9fafb; }
-    }
+    text { fill: #111827; }
+    @media (prefers-color-scheme: dark) { text { fill: #f9fafb; } }
   </style>
-  <text class="title" x="0" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="700">Onderwijs Assistent</text>
-  <text class="tag"   x="0" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="16">Verken (open) onderwijsdata —</text>
-  <text class="tag"   x="0" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="16">zie waar jouw instelling staat t.o.v. regio en Nederland</text>
+  <text x="0" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="700">Onderwijs Assistent</text>
 </svg>
