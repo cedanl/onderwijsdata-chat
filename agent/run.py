@@ -45,11 +45,34 @@ async def _show_clarification(args: dict) -> None:
     if args.get("open_dimensies"):
         lines.append(f"*Openstaande keuzes:* {', '.join(args['open_dimensies'])}")
     lines.append(f"\n{args['vraag']}")
+
     opties = args.get("opties") or []
-    actions = [
-        cl.Action(name="clarification_choice", label=opt, payload={"choice": opt})
-        for opt in opties
-    ]
+    actions = []
+    source_opts = []
+
+    for opt in opties:
+        if isinstance(opt, dict):
+            label = opt.get("label", "")
+            beschrijving = opt.get("beschrijving", "")
+            aanbevolen = opt.get("aanbevolen", False)
+            btn_label = f"✓ {label} — {beschrijving}" if aanbevolen else f"{label} — {beschrijving}"
+            actions.append(cl.Action(
+                name="clarification_choice",
+                label=btn_label,
+                payload={"choice": label},
+            ))
+            source_opts.append(opt)
+        else:
+            actions.append(cl.Action(
+                name="clarification_choice",
+                label=str(opt),
+                payload={"choice": str(opt)},
+            ))
+
+    if source_opts:
+        lines.append("\n*De uitkomsten kunnen per bron verschillen.*")
+        cl.user_session.set("source_options", source_opts)
+
     await cl.Message(content="\n".join(lines), actions=actions).send()
 
 
@@ -69,6 +92,8 @@ async def _call_tool(tc: dict) -> tuple[str, object]:
     if tc["name"] == "clarify_scope":
         args = json.loads(tc["arguments"])
         cl.user_session.set("pending_clarification", args)
+        cl.user_session.set("source_alternatives", [])
+        cl.user_session.set("chosen_source", "")
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
@@ -229,6 +254,19 @@ async def run(
                     for s in pending
                 ]
                 await cl.Message(content="**Vraag suggesties**", actions=followup_actions).send()
+            alternatives = cl.user_session.get("source_alternatives", [])
+            if alternatives:
+                chosen = cl.user_session.get("chosen_source", "")
+                alt_actions = [
+                    cl.Action(
+                        name="alternative_source",
+                        label=f"{a['label']} — {a.get('beschrijving', '')}".rstrip(" —"),
+                        payload={"label": a["label"]},
+                    )
+                    for a in alternatives
+                ]
+                note = f"*Geanalyseerd met **{chosen}**.* " if chosen else ""
+                await cl.Message(content=f"{note}**Andere bron proberen?**", actions=alt_actions).send()
             return text_content
 
     await cl.Message(content="Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag.").send()

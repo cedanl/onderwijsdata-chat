@@ -173,8 +173,16 @@ _CLARIFY_SCOPE_SCHEMA = {
                 },
                 "opties": {
                     "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Klikbare keuze-opties (bijv. gevonden databronnen na search_catalog)",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Korte naam, bijv. 'CBS' of 'DUO'"},
+                            "beschrijving": {"type": "string", "description": "1 zin: wat maakt deze optie anders, bijv. 'officieel, peildatum 2024' of 'prognoses t/m 2040, kleinere dekking'"},
+                            "aanbevolen": {"type": "boolean", "description": "True voor de meest geschikte standaardkeuze"},
+                        },
+                        "required": ["label", "beschrijving"],
+                    },
+                    "description": "Databronnen om uit te kiezen. Max 5. Markeer de meest geschikte als aanbevolen=true.",
                 },
             },
             "required": ["interpretatie", "vraag"],
