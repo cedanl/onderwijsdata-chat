@@ -208,10 +208,10 @@ async def _set_thread_title(question: str, answer: str, model: str | None = None
 
 
 _TAG_STARTERS = {
-    "Verken Primair Onderwijs": ("po",),
-    "Verken Voortgezet Onderwijs": ("vo",),
-    "Verken MBO": ("mbo",),
-    "Verken Hoger Onderwijs": ("hbo", "wo", "ho"),
+    "Verken Arbeidsmarkt": ("arbeidsmarkt",),
+    "Verken Kansengelijkheid": ("kansengelijkheid", "herkomst", "diversiteit"),
+    "Verken Regio": ("regio", "gemeente"),
+    "Verken Voortijdig Schoolverlaten": ("vsv",),
 }
 
 
@@ -235,24 +235,24 @@ def _tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
 async def set_starters():
     return [
         cl.Starter(
-            label="Primair Onderwijs",
-            message="Verken Primair Onderwijs",
-            description="Bekijk voorbeeldvragen over PO-data",
+            label="Arbeidsmarkt",
+            message="Verken Arbeidsmarkt",
+            description="Wat doen afgestudeerden? Aansluiting onderwijs-arbeidsmarkt",
         ),
         cl.Starter(
-            label="Voortgezet Onderwijs",
-            message="Verken Voortgezet Onderwijs",
-            description="Bekijk voorbeeldvragen over VO-data",
+            label="Kansengelijkheid",
+            message="Verken Kansengelijkheid",
+            description="Herkomst, diversiteit en gelijke kansen in het onderwijs",
         ),
         cl.Starter(
-            label="MBO",
-            message="Verken MBO",
-            description="Bekijk voorbeeldvragen over MBO-data",
+            label="Regio",
+            message="Verken Regio",
+            description="Regionale verschillen in onderwijsdeelname en -resultaten",
         ),
         cl.Starter(
-            label="Hoger Onderwijs",
-            message="Verken Hoger Onderwijs",
-            description="Bekijk voorbeeldvragen over HBO- en WO-data",
+            label="Voortijdig Schoolverlaten",
+            message="Verken Voortijdig Schoolverlaten",
+            description="VSV: wie verlaat school zonder startkwalificatie?",
         ),
     ]
 
@@ -503,6 +503,15 @@ async def on_followup(action: cl.Action):
         "type": "set_input",
         "value": action.payload["question"],
     })
+
+
+@cl.action_callback("explore_question")
+async def on_explore_question(action: cl.Action):
+    question = action.payload["question"]
+    modus = action.payload.get("modus", "snel")
+    model = action.payload.get("model") or None
+    await cl.Message(content=question, author="User").send()
+    await _process_message(question, modus=modus, model=model)
 
 
 @cl.action_callback("download_rapport")
