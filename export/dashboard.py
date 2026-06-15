@@ -26,186 +26,151 @@ def _source_hint_from_turn(turn: dict) -> str:
     return ", ".join(sources)
 
 
-def _figure_to_code(fig: go.Figure, source_hint: str = "") -> str:
-    """Generate self-contained reproducible Python code from a Plotly figure."""
+def _parse_data_calls(tool_calls: list) -> list[dict]:
+    """Extract data-fetching tool calls with parsed arguments."""
+    result = []
+    for tc in (tool_calls or []):
+        if tc.get("name") in ("get_cbs_data", "get_duo_data", "query_data", "get_rio_data"):
+            try:
+                args = _json.loads(tc.get("arguments") or "{}")
+            except Exception:
+                args = {}
+            result.append({"name": tc["name"], "args": args})
+    return result
 
-    def _to_py(val):
-        if hasattr(val, "item"):
-            return val.item()
-        if hasattr(val, "tolist"):
-            return val.tolist()
-        return val
 
-    lines = ["import plotly.graph_objects as go"]
-    if source_hint:
-        lines += ["", f"# Bron: {source_hint}"]
-    lines.append("")
-
+def _figure_to_code(fig: go.Figure, source_hint: str = "", tool_calls: list | None = None) -> str:
+    """Generate reproducible Python code using the actual source API calls from the session."""
     layout = fig.layout
     title_text = getattr(getattr(layout, "title", None), "text", None)
+    meta = getattr(layout, "meta", None) or {}
+
+    data_calls = _parse_data_calls(tool_calls)
+    cbs_call = next((c for c in data_calls if c["name"] == "get_cbs_data"), None)
+    duo_call = next((c for c in data_calls if c["name"] == "get_duo_data"), None)
+    query_call = next((c for c in data_calls if c["name"] == "query_data"), None)
+
+    lines: list[str] = []
+
+    # ── Choropleth kaart ─────────────────────────────────────
+    if meta.get("type") == "choropleth":
+        geojson_url = meta.get("geojson_url", "")
+        location_col = meta.get("location_col", "RegioS")
+        value_col = meta.get("value_col", "waarde")
+
+        if cbs_call:
+            lines += ["from onderwijsdata import data as cbs_data", "import pandas as pd",
+                      "import urllib.request, json", "import plotly.express as px", ""]
+        else:
+            lines += ["import pandas as pd", "import urllib.request, json", "import plotly.express as px", ""]
+
+        if cbs_call:
+            dataset_id = cbs_call["args"].get("dataset_id", "")
+            filters = {k: v for k, v in (cbs_call["args"].get("filters") or {}).items()
+                       if not k.startswith("$top")}
+            lines.append(f"# CBS {dataset_id}")
+            if filters:
+                lines += [f"df = pd.DataFrame(cbs_data(", f"    {dataset_id!r},",
+                          f"    **{filters!r},", "))", ""]
+            else:
+                lines += [f"df = pd.DataFrame(cbs_data({dataset_id!r}))", ""]
+        else:
+            if source_hint:
+                lines += [f"# Bron: {source_hint}", ""]
+            lines += ["# Haal data op via de bron (zie sessie voor exacte parameters)", "df = ...  # vul aan", ""]
+
+        if geojson_url:
+            lines += [f'with urllib.request.urlopen("{geojson_url}") as _r:',
+                      "    geojson = json.loads(_r.read())", ""]
+
+        kw = [f"    df, geojson=geojson", f"    locations={location_col!r}",
+              f"    color={value_col!r}", "    featureidkey='properties.statcode'",
+              "    color_continuous_scale='Blues'"]
+        if title_text:
+            kw.append(f"    title={title_text!r}")
+        lines += ["fig = px.choropleth("] + [k + "," for k in kw] + [")"]
+        lines += ["fig.update_geos(visible=False, lonaxis_range=[3.2, 7.3], lataxis_range=[50.7, 53.6])",
+                  "fig.show()"]
+        return "\n".join(lines)
+
+    # ── Reguliere grafiek ────────────────────────────────────
+    x_col = meta.get("x", "x")
+    y_col = meta.get("y", "y")
+    chart_type = meta.get("chart_type", "line")
+    color_by = meta.get("color_by")
     barmode = getattr(layout, "barmode", None)
 
-    meta = getattr(layout, "meta", None)
-    if isinstance(meta, dict) and meta.get("data"):
-        # Structured path: use original data + column names stored at create_plot time
-        raw_data = meta["data"]
-        x_col = meta.get("x", "x")
-        y_col = meta.get("y", "y")
-        chart_type = meta.get("chart_type", "line")
-        color_by = meta.get("color_by")
+    px_map = {"bar": "px.bar", "line": "px.line", "scatter": "px.scatter",
+              "pie": "px.pie", "histogram": "px.histogram"}
+    px_func = px_map.get(chart_type, "px.line")
 
-        clean_data = [{k: _to_py(v) for k, v in row.items()} for row in raw_data]
+    # Imports
+    if cbs_call:
+        lines += ["from onderwijsdata import data as cbs_data", "import pandas as pd",
+                  "import plotly.express as px", ""]
+    elif duo_call:
+        lines += ["from riodata.duo import load as duo_load", "import pandas as pd",
+                  "import plotly.express as px", ""]
+    else:
+        lines += ["import pandas as pd", "import plotly.express as px", ""]
 
-        lines.append("data = [")
-        for row in clean_data:
-            lines.append(f"    {row!r},")
-        lines.append("]")
-        lines.append("")
-        lines.append(f"x_col = {x_col!r}")
-        lines.append(f"y_col = {y_col!r}")
-        if color_by:
-            lines.append(f"color_col = {color_by!r}")
-        lines.append("")
-
-        if color_by:
-            lines.append("fig = go.Figure()")
-            lines.append("for group in sorted(set(row[color_col] for row in data)):")
-            lines.append("    rows = [row for row in data if row[color_col] == group]")
-            if chart_type == "bar":
-                lines.append("    fig.add_trace(go.Bar(name=group, x=[r[x_col] for r in rows], y=[r[y_col] for r in rows]))")
-            elif chart_type == "histogram":
-                lines.append("    fig.add_trace(go.Histogram(name=group, x=[r[x_col] for r in rows]))")
-            else:
-                mode = "lines+markers" if chart_type == "line" else "markers"
-                lines.append(f"    fig.add_trace(go.Scatter(name=group, x=[r[x_col] for r in rows], y=[r[y_col] for r in rows], mode={mode!r}))")
-        elif chart_type == "pie":
-            lines += [
-                "fig = go.Figure(data=[go.Pie(",
-                "    labels=[row[x_col] for row in data],",
-                "    values=[row[y_col] for row in data],",
-                ")])",
-            ]
-        elif chart_type == "histogram":
-            lines.append("fig = go.Figure(data=[go.Histogram(x=[row[x_col] for row in data])])")
-        elif chart_type == "bar":
-            lines += [
-                "fig = go.Figure(data=[go.Bar(",
-                "    x=[row[x_col] for row in data],",
-                "    y=[row[y_col] for row in data],",
-                ")])",
-            ]
+    # Data fetch
+    if cbs_call:
+        dataset_id = cbs_call["args"].get("dataset_id", "")
+        filters = {k: v for k, v in (cbs_call["args"].get("filters") or {}).items()
+                   if not k.startswith("$top")}
+        lines.append(f"# CBS {dataset_id}")
+        if filters:
+            lines += [f"df = pd.DataFrame(cbs_data(", f"    {dataset_id!r},",
+                      f"    **{filters!r},", "))", ""]
         else:
-            mode = "lines+markers" if chart_type == "line" else "markers"
-            lines += [
-                "fig = go.Figure(data=[go.Scatter(",
-                "    x=[row[x_col] for row in data],",
-                "    y=[row[y_col] for row in data],",
-                f"    mode={mode!r},",
-                ")])",
-            ]
+            lines += [f"df = pd.DataFrame(cbs_data({dataset_id!r}))", ""]
 
-        lu: list[str] = []
-        if title_text:
-            lu.append(f"title={title_text!r}")
-        if chart_type != "pie":
-            lu.append("xaxis_title=x_col")
-            lu.append("yaxis_title=y_col")
-        if barmode and barmode not in ("", "overlay"):
-            lu.append(f"barmode={barmode!r}")
-        if lu:
-            lines.append("fig.update_layout(")
-            for item in lu:
-                lines.append(f"    {item},")
-            lines.append(")")
+    elif duo_call:
+        dataset_id = duo_call["args"].get("dataset_id", "")
+        resource = duo_call["args"].get("resource", 0)
+        lines.append(f"# DUO: {dataset_id}")
+        if resource and resource != 0:
+            lines += [f"df = duo_load({dataset_id!r}, resource={resource!r})", ""]
+        else:
+            lines += [f"df = duo_load({dataset_id!r})", ""]
+
+        if query_call:
+            filters = query_call["args"].get("filters") or {}
+            columns = query_call["args"].get("columns")
+            if filters:
+                parts = [f"(df[{col!r}].astype(str) == {str(val)!r})" for col, val in filters.items()]
+                mask = " & ".join(parts)
+                lines.append(f"df = df[{mask}]")
+            if columns:
+                lines.append(f"df = df[{columns!r}]")
+            if filters or columns:
+                lines.append("")
 
     else:
-        # Fallback: reconstruct from figure traces (choropleth or legacy figures)
-        def _arr(seq) -> list:
-            return [_to_py(v) for v in seq] if seq is not None else []
+        if source_hint:
+            lines += [f"# Bron: {source_hint}", ""]
+        lines += ["# Haal data op via de bron (zie sessie voor exacte parameters)", "df = ...  # vul aan", ""]
 
-        all_xs = [_arr(getattr(t, "x", None)) for t in fig.data if getattr(t, "x", None) is not None]
-        shared_x = all_xs[0] if all_xs and all(a == all_xs[0] for a in all_xs) else None
+    # Plot
+    if chart_type == "pie":
+        kw = [f"df", f"names={x_col!r}", f"values={y_col!r}"]
+    elif chart_type == "histogram":
+        kw = [f"df", f"x={x_col!r}"]
+    else:
+        kw = [f"df", f"x={x_col!r}", f"y={y_col!r}"]
 
-        if shared_x:
-            lines.append(f"x = {shared_x!r}")
-            lines.append("")
+    if color_by:
+        kw.append(f"color={color_by!r}")
+    if barmode == "stack":
+        kw.append('barmode="stack"')
+    if title_text:
+        kw.append(f"title={title_text!r}")
 
-        trace_strs: list[str] = []
-        for t in fig.data:
-            ttype = t.type
-            kw: list[str] = []
-
-            name = getattr(t, "name", None)
-            if name:
-                kw.append(f"name={name!r}")
-
-            if ttype == "pie":
-                vals = _arr(getattr(t, "values", None))
-                lbls = _arr(getattr(t, "labels", None))
-                if vals:
-                    kw.append(f"values={vals!r}")
-                if lbls:
-                    kw.append(f"labels={lbls!r}")
-            else:
-                if shared_x:
-                    kw.append("x=x")
-                else:
-                    xs = _arr(getattr(t, "x", None))
-                    if xs:
-                        kw.append(f"x={xs!r}")
-                ys = _arr(getattr(t, "y", None))
-                if ys:
-                    kw.append(f"y={ys!r}")
-
-            mode = getattr(t, "mode", None)
-            if mode:
-                kw.append(f"mode={mode!r}")
-
-            line_obj = getattr(t, "line", None)
-            line_color = getattr(line_obj, "color", None) if line_obj else None
-            if isinstance(line_color, str):
-                kw.append(f"line=dict(color={line_color!r})")
-
-            marker_obj = getattr(t, "marker", None)
-            marker_color = getattr(marker_obj, "color", None) if marker_obj else None
-            if isinstance(marker_color, str) and not line_color:
-                kw.append(f"marker_color={marker_color!r}")
-
-            cls = {
-                "scatter": "go.Scatter", "bar": "go.Bar", "pie": "go.Pie",
-                "histogram": "go.Histogram", "choropleth": "go.Choropleth",
-            }.get(ttype, "go.Scatter")
-
-            if len(kw) <= 3:
-                trace_strs.append(f"    {cls}({', '.join(kw)}),")
-            else:
-                pad = "        "
-                trace_strs.append(f"    {cls}(\n{pad}{(','+chr(10)+pad).join(kw)},\n    ),")
-
-        lines.append("fig = go.Figure(data=[")
-        lines.extend(trace_strs)
-        lines.append("])")
-
-        lu: list[str] = []
-        if title_text:
-            lu.append(f"title={title_text!r}")
-        xtitle = getattr(getattr(getattr(layout, "xaxis", None), "title", None), "text", None)
-        if xtitle:
-            lu.append(f"xaxis_title={xtitle!r}")
-        ytitle = getattr(getattr(getattr(layout, "yaxis", None), "title", None), "text", None)
-        if ytitle:
-            lu.append(f"yaxis_title={ytitle!r}")
-        if barmode and barmode != "overlay":
-            lu.append(f"barmode={barmode!r}")
-
-        if lu:
-            if len(lu) == 1:
-                lines.append(f"fig.update_layout({lu[0]})")
-            else:
-                lines.append("fig.update_layout(")
-                for item in lu:
-                    lines.append(f"    {item},")
-                lines.append(")")
+    if len(kw) <= 4:
+        lines.append(f"fig = {px_func}({', '.join(kw)})")
+    else:
+        lines += [f"fig = {px_func}("] + [f"    {k}," for k in kw] + [")"]
 
     lines.append("fig.show()")
     return "\n".join(lines)
@@ -241,7 +206,7 @@ def generate_dashboard(turns: list[dict], meta: dict, selected: list[int] | None
                 div_id=cid,
             )
             first_plotly_js = False
-            code = _figure_to_code(fig, source_hint)
+            code = _figure_to_code(fig, source_hint, turn.get("tool_calls") or [])
             code_block = (
                 '<details class="code-details">'
                 "<summary>Reproduceerbare code</summary>"

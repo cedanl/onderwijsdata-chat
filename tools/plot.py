@@ -1,6 +1,7 @@
 import json as _json
 import urllib.request
 
+import plotly.express as px
 import plotly.graph_objects as go
 
 # Okabe-Ito colorblind-friendly palette
@@ -146,33 +147,38 @@ def create_choropleth_map(
     except (TypeError, ValueError):
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
-    fig = go.Figure(go.Choropleth(
-        geojson=geojson,
-        locations=codes,
-        z=values,
-        locationmode="geojson-id",
-        featureidkey="properties.statcode",
-        colorscale="Blues",
-        marker_line_color="white",
-        marker_line_width=0.5,
-        colorbar=dict(title=dict(text=value_col, side="right"), thickness=12, len=0.6),
-    ))
+    import pandas as pd
+    df = pd.DataFrame(cleaned)
 
-    # Expliciete NL-bounds zijn betrouwbaarder dan fitbounds voor custom GeoJSON
+    # px.choropleth sets locationmode="geojson-id" automatically when featureidkey is given
+    fig = px.choropleth(
+        df,
+        geojson=geojson,
+        locations=location_col,
+        color=value_col,
+        featureidkey="properties.statcode",
+        color_continuous_scale="Blues",
+        title=title,
+    )
     fig.update_geos(
         visible=False,
         lonaxis_range=[3.2, 7.3],
         lataxis_range=[50.7, 53.6],
         projection_type="mercator",
     )
-
-    level_labels = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
     fig.update_layout(
-        title=dict(text=title, font=dict(size=16, color="#222")),
-        margin=dict(t=60, b=20, l=0, r=0),
-        paper_bgcolor="white",
         font=dict(family="Inter, Arial, sans-serif", size=13),
+        paper_bgcolor="white",
+        margin=dict(t=60, b=20, l=0, r=0),
         geo=dict(bgcolor="rgba(0,0,0,0)"),
+        meta={
+            "type": "choropleth",
+            "geojson_url": _GEOJSON_URLS.get(detected, ""),
+            "location_col": location_col,
+            "value_col": value_col,
+            "data": cleaned,
+        },
     )
 
+    level_labels = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
     return f"Kaart '{title}' aangemaakt ({len(cleaned)} {level_labels.get(detected, detected)}).", fig
