@@ -217,11 +217,13 @@ async def run(
                 turn_figs = cl.user_session.get("turn_figures", [])
                 turn_figs.append(figure)
                 cl.user_session.set("turn_figures", turn_figs)
-                label = LABELS.get(tc["name"], tc["name"])
-                await cl.Message(
-                    content="",
-                    elements=[cl.Plotly(name=label, figure=figure, display="inline")],
-                ).send()
+                fig_meta = getattr(getattr(figure, "layout", None), "meta", None) or {}
+                if not fig_meta.get("chat_hidden"):
+                    label = LABELS.get(tc["name"], tc["name"])
+                    await cl.Message(
+                        content="",
+                        elements=[cl.Plotly(name=label, figure=figure, display="inline")],
+                    ).send()
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
 
         # Terminal: clarify_scope was called — show structured question and return

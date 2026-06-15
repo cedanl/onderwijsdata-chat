@@ -150,29 +150,27 @@ def create_choropleth_map(
     import pandas as pd
     df = pd.DataFrame(cleaned)
 
-    # px.choropleth sets locationmode="geojson-id" automatically when featureidkey is given
-    fig = px.choropleth(
+    # Use px.choropleth_map (Plotly 6 maplibre renderer) — more reliable than geo projection
+    # featureidkey='id' matches against the top-level GeoJSON feature id (e.g. 'PV20')
+    fig = px.choropleth_map(
         df,
         geojson=geojson,
         locations=location_col,
         color=value_col,
-        featureidkey="properties.statcode",
+        featureidkey="id",
+        center={"lat": 52.3, "lon": 5.3},
+        zoom=6,
+        map_style="white-bg",
         color_continuous_scale="Blues",
         title=title,
-    )
-    fig.update_geos(
-        visible=False,
-        lonaxis_range=[3.2, 7.3],
-        lataxis_range=[50.7, 53.6],
-        projection_type="mercator",
     )
     fig.update_layout(
         font=dict(family="Inter, Arial, sans-serif", size=13),
         paper_bgcolor="white",
-        margin=dict(t=60, b=20, l=0, r=0),
-        geo=dict(bgcolor="rgba(0,0,0,0)"),
+        margin=dict(t=60, b=0, l=0, r=0),
         meta={
             "type": "choropleth",
+            "chat_hidden": True,
             "geojson_url": _GEOJSON_URLS.get(detected, ""),
             "location_col": location_col,
             "value_col": value_col,

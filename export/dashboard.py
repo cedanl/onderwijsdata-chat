@@ -84,13 +84,13 @@ def _figure_to_code(fig: go.Figure, source_hint: str = "", tool_calls: list | No
                       "    geojson = json.loads(_r.read())", ""]
 
         kw = [f"    df, geojson=geojson", f"    locations={location_col!r}",
-              f"    color={value_col!r}", "    featureidkey='properties.statcode'",
-              "    color_continuous_scale='Blues'"]
+              f"    color={value_col!r}", "    featureidkey='id'",
+              '    center={"lat": 52.3, "lon": 5.3}', "    zoom=6",
+              '    map_style="white-bg"', "    color_continuous_scale='Blues'"]
         if title_text:
             kw.append(f"    title={title_text!r}")
-        lines += ["fig = px.choropleth("] + [k + "," for k in kw] + [")"]
-        lines += ["fig.update_geos(visible=False, lonaxis_range=[3.2, 7.3], lataxis_range=[50.7, 53.6])",
-                  "fig.show()"]
+        lines += ["fig = px.choropleth_map("] + [k + "," for k in kw] + [")"]
+        lines.append("fig.show()")
         return "\n".join(lines)
 
     # ── Reguliere grafiek ────────────────────────────────────
