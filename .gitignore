@@ -10,7 +10,6 @@ dist/
 .chainlit/translations/*
 !.chainlit/translations/en-US.json
 !.chainlit/translations/nl.json
-chainlit.md
 .files/
 socket:*
 chat_history.db
