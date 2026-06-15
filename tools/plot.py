@@ -1,3 +1,6 @@
+import json as _json
+import urllib.request
+
 import plotly.graph_objects as go
 
 # Okabe-Ito colorblind-friendly palette
@@ -12,6 +15,13 @@ _LAYOUT_BASE = dict(
 )
 
 _AXIS_STYLE = dict(showgrid=True, gridcolor="#f0f0f0", linecolor="#ccc", zeroline=False)
+
+_GEOJSON_URLS = {
+    "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
+    "gemeente":  "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
+    "corop":     "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
+}
+_GEOJSON_CACHE: dict[str, dict] = {}
 
 
 def create_plot(
@@ -80,5 +90,89 @@ def create_plot(
         layout["yaxis"] = dict(title=y, tickformat=",", **_AXIS_STYLE)
 
     fig.update_layout(**layout)
+    fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by})
 
     return f"Grafiek '{title}' aangemaakt ({len(data)} datapunten).", fig
+
+
+def _load_geojson(level: str) -> dict:
+    url = _GEOJSON_URLS[level]
+    if url not in _GEOJSON_CACHE:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            _GEOJSON_CACHE[url] = _json.loads(resp.read())
+    return _GEOJSON_CACHE[url]
+
+
+def _detect_level(codes: list[str]) -> str:
+    for code in codes:
+        c = code.strip().upper()
+        if c.startswith("GM"):
+            return "gemeente"
+        if c.startswith("CR"):
+            return "corop"
+        if c.startswith("PV"):
+            return "provincie"
+    return "provincie"
+
+
+def create_choropleth_map(
+    data: list[dict],
+    location_col: str,
+    value_col: str,
+    title: str,
+    level: str = "auto",
+) -> tuple[str, go.Figure]:
+    if not data:
+        return "Geen data om op kaart te tonen.", None
+
+    cleaned = [
+        {**row, location_col: str(row.get(location_col, "")).strip()}
+        for row in data
+        if str(row.get(location_col, "")).strip() and row.get(value_col) is not None
+    ]
+    if not cleaned:
+        return f"Kolommen '{location_col}' of '{value_col}' zijn leeg of niet gevonden.", None
+
+    codes = [row[location_col] for row in cleaned]
+    detected = _detect_level(codes) if level == "auto" else level
+
+    try:
+        geojson = _load_geojson(detected)
+    except Exception as exc:
+        return f"GeoJSON laden mislukt ({detected}): {exc}", None
+
+    try:
+        values = [float(row[value_col]) for row in cleaned]
+    except (TypeError, ValueError):
+        return f"Kolom '{value_col}' bevat geen getal-waarden.", None
+
+    fig = go.Figure(go.Choropleth(
+        geojson=geojson,
+        locations=codes,
+        z=values,
+        locationmode="geojson-id",
+        featureidkey="properties.statcode",
+        colorscale="Blues",
+        marker_line_color="white",
+        marker_line_width=0.5,
+        colorbar=dict(title=dict(text=value_col, side="right"), thickness=12, len=0.6),
+    ))
+
+    # Expliciete NL-bounds zijn betrouwbaarder dan fitbounds voor custom GeoJSON
+    fig.update_geos(
+        visible=False,
+        lonaxis_range=[3.2, 7.3],
+        lataxis_range=[50.7, 53.6],
+        projection_type="mercator",
+    )
+
+    level_labels = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=16, color="#222")),
+        margin=dict(t=60, b=20, l=0, r=0),
+        paper_bgcolor="white",
+        font=dict(family="Inter, Arial, sans-serif", size=13),
+        geo=dict(bgcolor="rgba(0,0,0,0)"),
+    )
+
+    return f"Kaart '{title}' aangemaakt ({len(cleaned)} {level_labels.get(detected, detected)}).", fig

@@ -3,7 +3,7 @@ from typing import Any
 from .catalog import search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data, query_data
-from .plot import create_plot
+from .plot import create_choropleth_map, create_plot
 from .rio import get_rio_data
 
 SCHEMAS = [
@@ -125,6 +125,42 @@ SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "create_choropleth_map",
+            "description": (
+                "Maak een interactieve kaart van Nederland met kleuren per regio. "
+                "Gebruik dit voor regionale vergelijkingen: provincies, gemeenten of COROP-gebieden. "
+                "De data moet CBS-regiocodes bevatten (bijv. 'PV20', 'GM0363')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "Lijst van datarijen met regiocodes en een numerieke waarde per rij",
+                    },
+                    "location_col": {
+                        "type": "string",
+                        "description": "Kolomnaam met CBS-regiocodes, bijv. 'RegioS' (waarden als 'GM0363' of 'PV20')",
+                    },
+                    "value_col": {
+                        "type": "string",
+                        "description": "Kolomnaam met de numerieke waarden voor de kleurschaal",
+                    },
+                    "title": {"type": "string", "description": "Titel van de kaart"},
+                    "level": {
+                        "type": "string",
+                        "enum": ["auto", "provincie", "gemeente", "corop"],
+                        "description": "Geografisch niveau. 'auto' detecteert op basis van de codes (standaard).",
+                    },
+                },
+                "required": ["data", "location_col", "value_col", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "create_plot",
             "description": "Maak een interactieve grafiek van opgehaalde data.",
             "parameters": {
@@ -201,6 +237,7 @@ LABELS = {
     "get_duo_data": "DUO dataset geladen",
     "query_data": "Data gefilterd",
     "create_plot": "Grafiek aangemaakt",
+    "create_choropleth_map": "Kaart aangemaakt",
     "suggest_followups": "Vervolgvragen voorgesteld",
 }
 
@@ -212,6 +249,7 @@ _HANDLERS = {
     "get_duo_data": get_duo_data,
     "query_data": query_data,
     "create_plot": create_plot,
+    "create_choropleth_map": create_choropleth_map,
 }
 
 

@@ -1,6 +1,6 @@
 import chainlit as cl
 
-from ui.chat import process_message
+from ui.lifecycle import process_message
 
 
 @cl.action_callback("followup")

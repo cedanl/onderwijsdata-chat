@@ -6,6 +6,7 @@ import chainlit as cl
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, SCHEMAS_VERDIEP, dispatch
+from ui.buttons import rapport_actions
 from .history import trim
 from .models import build_system, litellm_kwargs
 
@@ -75,13 +76,6 @@ async def _show_clarification(args: dict) -> None:
 
     await cl.Message(content="\n".join(lines), actions=actions).send()
 
-
-def _rapport_actions() -> list[cl.Action]:
-    return [
-        cl.Action(name="download_rapport", label="📥 HTML", payload={"action": "download"}),
-        cl.Action(name="download_rapport_pdf", label="📄 PDF", payload={"action": "download_pdf"}),
-        cl.Action(name="download_python", label="📦 Reproduceerbare code", payload={"action": "download_python"}),
-    ]
 
 
 async def _call_tool(tc: dict) -> tuple[str, object]:
@@ -185,7 +179,7 @@ async def run(
             return text_content
 
         if not tool_calls:
-            msg.actions = _rapport_actions()
+            msg.actions = rapport_actions()
             await msg.update()
             cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
             return text_content
@@ -246,7 +240,7 @@ async def run(
             cl.user_session.set("pending_suggestions", [])
             target = msg if text_content else last_text_msg
             if target:
-                target.actions = _rapport_actions()
+                target.actions = rapport_actions()
                 await target.update()
             if pending:
                 followup_actions = [
