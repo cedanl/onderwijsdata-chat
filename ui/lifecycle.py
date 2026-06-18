@@ -13,7 +13,7 @@ from config import MODEL
 from resume import build_messages_from_thread, build_turns_from_thread
 from tools import store
 from ui.errors import friendly_error
-from ui.setup import setup_modes, setup_settings
+from ui.setup import setup_settings
 from ui.starters import _TAG_STARTERS, tag_voorbeeldvragen
 from ui.uploads import persist_uploads, read_file_content
 
@@ -21,7 +21,6 @@ from ui.uploads import persist_uploads, read_file_content
 async def _set_thread_title(question: str, answer: str, model: str | None = None) -> None:
     try:
         title = await generate_title(question, answer, model=model)
-        cl.user_session.set("thread_title", title)
         layer = get_data_layer()
         if layer:
             await layer.update_thread(
@@ -36,9 +35,8 @@ async def _set_thread_title(question: str, answer: str, model: str | None = None
         pass
 
 
-async def process_message(content: str, modus: str = "snel", model: str | None = None) -> None:
+async def process_message(content: str, model: str | None = None) -> None:
     cl.user_session.set("current_model", model)
-    cl.user_session.set("modus", modus)
     messages: list = cl.user_session.get("messages")
     messages.append({"role": "user", "content": content})
 
@@ -47,7 +45,7 @@ async def process_message(content: str, modus: str = "snel", model: str | None =
     cl.user_session.set("turn_figures", [])
 
     try:
-        response_text = await run(messages, stop_event, model=model, modus=modus)
+        response_text = await run(messages, stop_event, model=model)
     except Exception as e:
         await cl.Message(content=friendly_error(e)).send()
         return
@@ -80,7 +78,6 @@ async def on_start():
         await cl.Message(content="⚠️ Geen API key gevonden. Stel een omgevingsvariabele in (bijv. `ANTHROPIC_API_KEY`) en herstart de app.").send()
         return
 
-    await setup_modes()
     await setup_settings()
 
 
@@ -109,7 +106,6 @@ async def on_chat_resume(thread: ThreadDict):
         except Exception:
             pass
 
-    await setup_modes()
     await setup_settings()
 
 
@@ -122,15 +118,15 @@ async def on_stop():
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    modus = message.modes.get("modus", "snel") if message.modes else "snel"
-    model = message.modes.get("model") if message.modes else None
+    settings = cl.user_session.get("chat_settings") or {}
+    model = settings.get("model") or None
 
     if message.content in _TAG_STARTERS:
         tags = _TAG_STARTERS[message.content]
         label = message.content.removeprefix("Verken ")
         questions = tag_voorbeeldvragen(tags)
         actions = [
-            cl.Action(name="explore_question", label=q, payload={"question": q, "modus": modus, "model": model or ""})
+            cl.Action(name="explore_question", label=q, payload={"question": q})
             for q in questions
         ]
         await cl.Message(
@@ -146,4 +142,4 @@ async def on_message(message: cl.Message):
             if file_text:
                 content += file_text
 
-    await process_message(content, modus=modus, model=model)
+    await process_message(content, model=model)

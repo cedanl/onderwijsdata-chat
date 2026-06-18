@@ -6,37 +6,6 @@ from chainlit.user import User
 from config import MODEL, get_available_models
 
 
-async def setup_modes() -> None:
-    modus_mode = cl.Mode(
-        id="modus",
-        name="Modus",
-        options=[
-            cl.ModeOption(id="snel", name="Snel", description="Precies het gevraagde, niet meer", icon="zap", default=True),
-            cl.ModeOption(id="verdiep", name="Verdiep", description="Doorvragen + volledige analyse", icon="microscope"),
-        ],
-    )
-
-    modes = [modus_mode]
-
-    available = get_available_models()
-    if available:
-        model_options = [
-            cl.ModeOption(
-                id=mid,
-                name=name,
-                description=desc,
-                icon=icon,
-                default=(mid == MODEL),
-            )
-            for mid, name, desc, icon in available
-        ]
-        if not any(o.default for o in model_options):
-            model_options[0].default = True
-        modes.insert(0, cl.Mode(id="model", name="Model", options=model_options))
-
-    await cl.context.emitter.set_modes(modes)
-
-
 async def _load_user_settings() -> dict:
     user = cl.context.session.user
     if not user:
@@ -52,11 +21,12 @@ async def _load_user_settings() -> dict:
 
 async def setup_settings() -> None:
     saved = await _load_user_settings()
-    settings = await cl.ChatSettings([
+
+    widgets = [
         Select(
             id="rol",
             label="Jouw rol",
-            values=["Geen voorkeur", "Beleidsmedewerker", "Onderzoeker / Analist", "Schoolbestuur / Directeur", "Journalist", "Student"],
+            values=["Geen voorkeur", "Beleidsmedewerker", "Onderzoeker / Analist", "Schoolbestuur / Directeur", "Journalist"],
             initial_value=saved.get("rol", "Geen voorkeur"),
         ),
         Select(
@@ -71,7 +41,19 @@ async def setup_settings() -> None:
             placeholder="Bijv. 'ROC Midden Nederland' of 'provincie Utrecht'",
             initial=saved.get("context", ""),
         ),
-    ]).send()
+    ]
+
+    available = get_available_models()
+    if available:
+        model_items = {name: mid for mid, name, desc, icon in available}
+        widgets.append(Select(
+            id="model",
+            label="Model",
+            items=model_items,
+            initial_value=saved.get("model") or MODEL,
+        ))
+
+    settings = await cl.ChatSettings(widgets).send()
     cl.user_session.set("chat_settings", settings)
 
 
@@ -79,6 +61,7 @@ async def setup_settings() -> None:
 @cl.on_settings_update
 async def on_settings_update(settings: dict) -> None:
     cl.user_session.set("chat_settings", settings)
+
     user = cl.context.session.user
     if not user:
         return

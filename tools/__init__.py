@@ -103,28 +103,6 @@ SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "suggest_followups",
-            "description": (
-                "Presenteer 2-3 klikbare vervolgvragen aan de gebruiker. "
-                "Roep deze tool aan samen met je definitieve tekstantwoord — schrijf de vragen NIET als tekst. "
-                "Na het aanroepen van deze tool is de analysebeurt klaar."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "suggestions": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Lijst van 2-3 concrete, uitnodigende vervolgvragen",
-                    }
-                },
-                "required": ["suggestions"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "create_choropleth_map",
             "description": (
                 "Maak een interactieve kaart van Nederland met kleuren per regio. "
@@ -184,49 +162,44 @@ _CLARIFY_SCOPE_SCHEMA = {
     "function": {
         "name": "clarify_scope",
         "description": (
-            "Stel een gestructureerde verduidelijkingsvraag voordat je data ophaalt. "
-            "Gebruik dit bij: (1) elke nieuwe vraag waarbij een of meer dimensies niet expliciet zijn "
-            "(tijdsperiode, geografisch niveau, opleidingsniveau, uitsplitsing) — dit is de EERSTE actie, "
-            "vóór search_catalog of andere tools; "
-            "of (2) na search_catalog als er relevante datasets uit meerdere bronnen zijn — laat de gebruiker kiezen. "
-            "Na deze tool is de beurt klaar; wacht op het antwoord van de gebruiker."
+            "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "
+            "Gebruik dit als EERSTE actie bij elke nieuwe analysevraag en herhaal het per beurt "
+            "totdat alle scope-dimensies vastliggen (tijdsperiode, geografisch niveau, "
+            "opleidingsniveau, uitsplitsing, doel). "
+            "Ga NOOIT direct naar search_catalog of data-tools zonder de scope eerst scherp te stellen. "
+            "Bronkeuze via opties is ALLEEN toegestaan als ALLERLAATSTE clarify_scope-aanroep, "
+            "nadat alle andere dimensies al bepaald zijn. "
+            "Na deze tool is de beurt klaar — wacht op het antwoord van de gebruiker."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "interpretatie": {
-                    "type": "string",
-                    "description": "Jouw huidige interpretatie van de vraag, in één zin",
-                },
-                "open_dimensies": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Dimensies die nog niet vastgelegd zijn, bijv. ['tijdsperiode', 'geografisch niveau']",
-                },
                 "vraag": {
                     "type": "string",
-                    "description": "Één gerichte verduidelijkingsvraag die de meeste ambiguïteit wegneemt",
+                    "description": "Één concrete, gesloten verduidelijkingsvraag",
                 },
                 "opties": {
                     "type": "array",
+                    "minItems": 2,
+                    "maxItems": 3,
                     "items": {
                         "type": "object",
                         "properties": {
-                            "label": {"type": "string", "description": "Korte naam, bijv. 'CBS' of 'DUO'"},
-                            "beschrijving": {"type": "string", "description": "1 zin: wat maakt deze optie anders, bijv. 'officieel, peildatum 2024' of 'prognoses t/m 2040, kleinere dekking'"},
-                            "aanbevolen": {"type": "boolean", "description": "True voor de meest geschikte standaardkeuze"},
+                            "label": {"type": "string", "description": "Korte antwoordtekst, bijv. 'Laatste schooljaar'"},
+                            "beschrijving": {"type": "string", "description": "Alleen voor bronopties: één zin over het verschil"},
+                            "aanbevolen": {"type": "boolean", "description": "True voor de aanbevolen optie"},
                         },
-                        "required": ["label", "beschrijving"],
+                        "required": ["label"],
                     },
-                    "description": "Databronnen om uit te kiezen. Max 5. Markeer de meest geschikte als aanbevolen=true.",
+                    "description": "Precies 2 of 3 gesloten antwoordopties",
                 },
             },
-            "required": ["interpretatie", "vraag"],
+            "required": ["vraag", "opties"],
         },
     },
 }
 
-SCHEMAS_VERDIEP = SCHEMAS + [_CLARIFY_SCOPE_SCHEMA]
+SCHEMAS = SCHEMAS + [_CLARIFY_SCOPE_SCHEMA]
 
 LABELS = {
     "search_catalog": "Catalogus doorzocht",
@@ -238,7 +211,6 @@ LABELS = {
     "query_data": "Data gefilterd",
     "create_plot": "Grafiek aangemaakt",
     "create_choropleth_map": "Kaart aangemaakt",
-    "suggest_followups": "Vervolgvragen voorgesteld",
 }
 
 _HANDLERS = {

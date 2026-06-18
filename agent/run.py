@@ -5,7 +5,7 @@ import litellm
 import chainlit as cl
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
-from tools import LABELS, SCHEMAS, SCHEMAS_VERDIEP, dispatch
+from tools import LABELS, SCHEMAS, dispatch
 from ui.buttons import rapport_actions
 from .history import trim
 from .models import build_system, litellm_kwargs
@@ -41,12 +41,7 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 
 
 async def _show_clarification(args: dict) -> None:
-    lines = ["**Voordat ik begin wil ik de scope scherp stellen.**\n"]
-    lines.append(f"*Interpretatie:* {args['interpretatie']}")
-    if args.get("open_dimensies"):
-        lines.append(f"*Openstaande keuzes:* {', '.join(args['open_dimensies'])}")
-    lines.append(f"\n{args['vraag']}")
-
+    vraag = args.get("vraag", "")
     opties = args.get("opties") or []
     actions = []
     source_opts = []
@@ -56,13 +51,16 @@ async def _show_clarification(args: dict) -> None:
             label = opt.get("label", "")
             beschrijving = opt.get("beschrijving", "")
             aanbevolen = opt.get("aanbevolen", False)
-            btn_label = f"✓ {label} — {beschrijving}" if aanbevolen else f"{label} — {beschrijving}"
+            if beschrijving:
+                btn_label = f"✓ {label} — {beschrijving}" if aanbevolen else f"{label} — {beschrijving}"
+                source_opts.append(opt)
+            else:
+                btn_label = f"✓ {label}" if aanbevolen else label
             actions.append(cl.Action(
                 name="clarification_choice",
                 label=btn_label,
                 payload={"choice": label},
             ))
-            source_opts.append(opt)
         else:
             actions.append(cl.Action(
                 name="clarification_choice",
@@ -70,19 +68,16 @@ async def _show_clarification(args: dict) -> None:
                 payload={"choice": str(opt)},
             ))
 
+    content = vraag
     if source_opts:
-        lines.append("\n*De uitkomsten kunnen per bron verschillen.*")
+        content += "\n\n*De uitkomsten kunnen per bron verschillen.*"
         cl.user_session.set("source_options", source_opts)
 
-    await cl.Message(content="\n".join(lines), actions=actions).send()
+    await cl.Message(content=content, actions=actions).send()
 
 
 
 async def _call_tool(tc: dict) -> tuple[str, object]:
-    if tc["name"] == "suggest_followups":
-        args = json.loads(tc["arguments"])
-        cl.user_session.set("pending_suggestions", args.get("suggestions", []))
-        return "OK", None
     if tc["name"] == "clarify_scope":
         args = json.loads(tc["arguments"])
         cl.user_session.set("pending_clarification", args)
@@ -106,11 +101,10 @@ async def run(
     messages: list[dict],
     stop_event: asyncio.Event | None = None,
     model: str | None = None,
-    modus: str = "snel",
 ) -> str:
     settings: dict = cl.user_session.get("chat_settings") or {}
     chosen_model = model or MODEL
-    system = build_system(modus, settings)
+    system = build_system(settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
     history, was_trimmed = trim(list(messages))
@@ -121,9 +115,7 @@ async def run(
         )
 
     call_cache: dict[str, tuple[str, object]] = {}
-    last_text_msg: cl.Message | None = None
     turn_tool_calls: list[dict] = []
-    tools_list = SCHEMAS_VERDIEP if modus == "verdiep" else SCHEMAS
 
     for _ in range(MAX_TOOL_ITERATIONS):
         if stop_event and stop_event.is_set():
@@ -134,7 +126,7 @@ async def run(
             max_tokens=MAX_TOKENS,
             num_retries=3,
             messages=system + history,
-            tools=tools_list,
+            tools=SCHEMAS,
             stream=True,
             **extra_kwargs,
         )
@@ -182,12 +174,24 @@ async def run(
             msg.actions = rapport_actions()
             await msg.update()
             cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
+            alternatives = cl.user_session.get("source_alternatives", [])
+            if alternatives:
+                chosen = cl.user_session.get("chosen_source", "")
+                alt_actions = [
+                    cl.Action(
+                        name="alternative_source",
+                        label=f"{a['label']} — {a.get('beschrijving', '')}".rstrip(" —"),
+                        payload={"label": a["label"]},
+                    )
+                    for a in alternatives
+                ]
+                note = f"*Geanalyseerd met **{chosen}**.* " if chosen else ""
+                await cl.Message(content=f"{note}**Andere bron proberen?**", actions=alt_actions).send()
             return text_content
 
         if not text_content:
             await msg.remove()
         else:
-            last_text_msg = msg
             await msg.update()
 
         history.append({
@@ -235,35 +239,6 @@ async def run(
                 await _show_clarification(pending)
             return text_content
 
-        # Terminal: only suggest_followups was called — show labelled suggestion block and return
-        if all(tc["name"] == "suggest_followups" for tc in tool_calls):
-            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
-            pending = cl.user_session.get("pending_suggestions", [])
-            cl.user_session.set("pending_suggestions", [])
-            target = msg if text_content else last_text_msg
-            if target:
-                target.actions = rapport_actions()
-                await target.update()
-            if pending:
-                followup_actions = [
-                    cl.Action(name="followup", label=s, payload={"question": s})
-                    for s in pending
-                ]
-                await cl.Message(content="**Vraag suggesties**", actions=followup_actions).send()
-            alternatives = cl.user_session.get("source_alternatives", [])
-            if alternatives:
-                chosen = cl.user_session.get("chosen_source", "")
-                alt_actions = [
-                    cl.Action(
-                        name="alternative_source",
-                        label=f"{a['label']} — {a.get('beschrijving', '')}".rstrip(" —"),
-                        payload={"label": a["label"]},
-                    )
-                    for a in alternatives
-                ]
-                note = f"*Geanalyseerd met **{chosen}**.* " if chosen else ""
-                await cl.Message(content=f"{note}**Andere bron proberen?**", actions=alt_actions).send()
-            return text_content
 
     await cl.Message(content="Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag.").send()
     return "Het maximale aantal stappen is bereikt."
