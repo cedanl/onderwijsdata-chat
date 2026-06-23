@@ -1,13 +1,17 @@
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import os
 import re
+import time
 from datetime import date
 from pathlib import Path
 
 import litellm
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -18,9 +22,9 @@ from agent import run as agent_run
 from agent.models import litellm_kwargs as _litellm_kwargs
 from auth import AUTH_ENABLED, USERS, check_credentials
 from config import MODEL, get_available_models
+from errors import friendly_error
 from export import generate_dashboard, generate_report
 from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
-from errors import friendly_error
 
 app = FastAPI(title="Onderwijsdata Chat")
 
@@ -32,15 +36,69 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Auth ─────────────────────────────────────────────────────────────────────
+# ─── Token auth (stdlib, geen extra dep) ──────────────────────────────────────
+
+_TOKEN_SECRET = os.getenv("CHAT_SECRET", "").encode()
+_TOKEN_TTL = 24 * 3600  # 24 uur
+
+
+def _token_sign(data: str) -> str:
+    key = _TOKEN_SECRET or b"dev-only-no-secret-set"
+    return hmac.new(key, data.encode(), hashlib.sha256).hexdigest()
+
+
+def make_token(username: str) -> str:
+    exp = int(time.time()) + _TOKEN_TTL
+    payload = base64.urlsafe_b64encode(f"{username}|{exp}".encode()).decode().rstrip("=")
+    sig = _token_sign(payload)
+    return f"{payload}.{sig}"
+
+
+def verify_token(token: str) -> str | None:
+    """Returns username if token is valid and not expired, else None."""
+    try:
+        payload, sig = token.rsplit(".", 1)
+    except ValueError:
+        return None
+    if not hmac.compare_digest(_token_sign(payload), sig):
+        return None
+    try:
+        decoded = base64.urlsafe_b64decode(payload + "==").decode()
+        username, exp_str = decoded.rsplit("|", 1)
+        if int(exp_str) < time.time():
+            return None
+        return username
+    except Exception:
+        return None
+
+
+def _require_auth(token: str | None) -> str:
+    """Validates token when AUTH_ENABLED; returns username or raises 401."""
+    if not AUTH_ENABLED:
+        return "gast"
+    if not token:
+        raise HTTPException(status_code=401, detail="Niet ingelogd")
+    username = verify_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Token ongeldig of verlopen")
+    return username
+
+
+# ─── Auth endpoints ────────────────────────────────────────────────────────────
+
+@app.get("/api/auth/status")
+async def auth_status() -> dict:
+    return {"required": AUTH_ENABLED}
+
 
 @app.post("/api/auth/login")
 async def login(body: dict) -> dict:
-    username = body.get("username", "")
+    username = body.get("username", "").strip()
     password = body.get("password", "")
     if AUTH_ENABLED and not check_credentials(username, password, USERS):
         raise HTTPException(status_code=401, detail="Ongeldige inloggegevens")
-    return {"ok": True, "user": username or "gast"}
+    token = make_token(username or "gast")
+    return {"token": token, "user": username or "gast"}
 
 
 # ─── Starters ─────────────────────────────────────────────────────────────────
@@ -78,7 +136,7 @@ async def get_starters() -> list[dict]:
     ]
 
 
-# ─── Settings config ───────────────────────────────────────────────────────────
+# ─── Settings ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/settings/config")
 async def get_settings_config() -> dict:
@@ -195,7 +253,6 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     messages.append({"role": "assistant", "content": response_text})
     session["messages"] = messages
 
-    turn_figures = session.get("turn_figures", [])
     turn_tool_calls = session.get("_last_turn_tool_calls", [])
     session["_last_turn_tool_calls"] = []
     turns: list = session.get("turns", [])
@@ -208,18 +265,24 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
 
 
 @app.websocket("/api/chat")
-async def chat_websocket(ws: WebSocket) -> None:
+async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+    # Auth guard — close with 4001 before sending any data
+    if AUTH_ENABLED:
+        username = verify_token(token or "")
+        if not username:
+            await ws.close(code=4001, reason="Niet geautoriseerd")
+            return
+
     await ws.accept()
     session = _new_session()
 
-    # Send initial config
+    async def emit(event: dict) -> None:
+        await ws.send_text(json.dumps(event))
+
     known_keys = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_API_KEY", "AZURE_AI_API_KEY", "GEMINI_API_KEY", "WILLMA_API_KEY"]
     is_ollama = MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/")
     if not is_ollama and not any(os.getenv(k) for k in known_keys):
-        await ws.send_text(json.dumps({
-            "type": "system_message",
-            "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app.",
-        }))
+        await emit({"type": "system_message", "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app."})
 
     try:
         while True:
@@ -239,23 +302,14 @@ async def chat_websocket(ws: WebSocket) -> None:
                 content = msg.get("content", "").strip()
                 if not content:
                     continue
-
                 model = session["chat_settings"].get("model") or None
                 session["current_model"] = model
 
                 if content in _TAG_STARTERS:
                     tags = _TAG_STARTERS[content]
                     label = content.removeprefix("Verken ")
-                    questions = _tag_voorbeeldvragen(tags)
-                    await ws.send_text(json.dumps({
-                        "type": "starter_questions",
-                        "label": label,
-                        "questions": questions,
-                    }))
+                    await emit({"type": "starter_questions", "label": label, "questions": _tag_voorbeeldvragen(tags)})
                     continue
-
-                async def emit(event: dict) -> None:
-                    await ws.send_text(json.dumps(event))
 
                 await _process_message(content, session, emit, model)
 
@@ -266,10 +320,6 @@ async def chat_websocket(ws: WebSocket) -> None:
                 if source_options:
                     session["chosen_source"] = choice
                     session["source_alternatives"] = [o for o in source_options if o.get("label") != choice]
-
-                async def emit(event: dict) -> None:
-                    await ws.send_text(json.dumps(event))
-
                 await _process_message(choice, session, emit, model)
 
             elif action == "alternative_source":
@@ -279,12 +329,7 @@ async def chat_websocket(ws: WebSocket) -> None:
                 if source_options:
                     session["chosen_source"] = label
                     session["source_alternatives"] = [o for o in source_options if o.get("label") != label]
-                content = f"Herhaal de vorige analyse met {label} als databron."
-
-                async def emit(event: dict) -> None:
-                    await ws.send_text(json.dumps(event))
-
-                await _process_message(content, session, emit, model)
+                await _process_message(f"Herhaal de vorige analyse met {label} als databron.", session, emit, model)
 
     except WebSocketDisconnect:
         pass
@@ -298,6 +343,5 @@ if _FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="assets")
 
     @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        index = _FRONTEND_DIST / "index.html"
-        return Response(content=index.read_text(), media_type="text/html")
+    async def serve_spa(full_path: str) -> Response:
+        return Response(content=(_FRONTEND_DIST / "index.html").read_text(), media_type="text/html")

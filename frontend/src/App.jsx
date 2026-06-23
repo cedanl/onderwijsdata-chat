@@ -1,15 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
+import LoginPage from './pages/LoginPage'
+import { fetchAuthStatus, getToken, clearToken } from './auth'
 
 export default function App() {
   const [page, setPage] = useState('home')
+  const [authRequired, setAuthRequired] = useState(false)
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  useEffect(() => {
+    fetchAuthStatus().then(({ required }) => {
+      setAuthRequired(required)
+      if (!required) {
+        setUser('gast')
+      } else if (getToken()) {
+        // Token present — assume valid until WS rejects it
+        setUser('gebruiker')
+      }
+      setAuthLoading(false)
+    })
+  }, [])
+
+  if (authLoading) return null
+
+  if (authRequired && !user) {
+    return <LoginPage onLogin={(u) => setUser(u)} />
+  }
+
+  const handleLogout = () => {
+    clearToken()
+    setUser(null)
+  }
 
   return (
     <>
-      <Nav page={page} setPage={setPage} />
+      <Nav page={page} setPage={setPage} user={user} onLogout={authRequired ? handleLogout : null} />
       <div className="page-wrap">
         {page === 'home' && <HomePage setPage={setPage} />}
         {page === 'chat' && <ChatPage />}

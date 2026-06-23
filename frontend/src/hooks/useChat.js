@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getToken, clearToken } from '../auth'
 
-const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/chat`
+function buildWsUrl() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+  const token = getToken()
+  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${proto}://${location.host}/api/chat${query}`
+}
 
-export function useChat() {
+export function useChat({ onUnauthorized } = {}) {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [toasts, setToasts] = useState([])
@@ -16,8 +22,16 @@ export function useChat() {
   }, [])
 
   useEffect(() => {
-    const ws = new WebSocket(WS_URL)
+    const ws = new WebSocket(buildWsUrl())
     wsRef.current = ws
+
+    ws.onclose = (e) => {
+      setBusy(false)
+      if (e.code === 4001) {
+        clearToken()
+        onUnauthorized?.()
+      }
+    }
 
     ws.onmessage = (e) => {
       const event = JSON.parse(e.data)
@@ -26,34 +40,22 @@ export function useChat() {
         addToast(event.message, 'warning')
         return
       }
-
       if (event.type === 'toast') {
         addToast(event.message, event.level || 'info')
         return
       }
-
       if (event.type === 'message_start') {
         const msgId = Date.now()
         currentMsgRef.current = msgId
-        setMessages(prev => [...prev, {
-          id: msgId,
-          role: 'assistant',
-          content: '',
-          tools: [],
-          done: false,
-        }])
+        setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
         return
       }
-
       if (event.type === 'text_delta') {
         setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current
-            ? { ...m, content: m.content + event.content }
-            : m
+          m.id === currentMsgRef.current ? { ...m, content: m.content + event.content } : m
         ))
         return
       }
-
       if (event.type === 'tool_start') {
         setMessages(prev => prev.map(m =>
           m.id === currentMsgRef.current
@@ -62,7 +64,6 @@ export function useChat() {
         ))
         return
       }
-
       if (event.type === 'tool_end') {
         setMessages(prev => prev.map(m =>
           m.id === currentMsgRef.current
@@ -71,51 +72,34 @@ export function useChat() {
         ))
         return
       }
-
       if (event.type === 'message_end') {
         setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current
-            ? { ...m, done: true, actions: event.actions || [] }
-            : m
+          m.id === currentMsgRef.current ? { ...m, done: true, actions: event.actions || [] } : m
         ))
         currentMsgRef.current = null
         setBusy(false)
         return
       }
-
       if (event.type === 'clarification') {
-        const msgId = Date.now()
         setMessages(prev => [...prev, {
-          id: msgId,
-          role: 'assistant',
-          content: event.vraag,
-          clarification: event.opties,
-          done: true,
+          id: Date.now(), role: 'assistant',
+          content: event.vraag, clarification: event.opties, done: true,
         }])
         setBusy(false)
         return
       }
-
       if (event.type === 'starter_questions') {
-        const msgId = Date.now()
         setMessages(prev => [...prev, {
-          id: msgId,
-          role: 'assistant',
+          id: Date.now(), role: 'assistant',
           content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
-          starterQuestions: event.questions,
-          done: true,
+          starterQuestions: event.questions, done: true,
         }])
         setBusy(false)
         return
       }
-
       if (event.type === 'error') {
         setMessages(prev => [...prev, {
-          id: Date.now(),
-          role: 'assistant',
-          content: event.message,
-          done: true,
-          isError: true,
+          id: Date.now(), role: 'assistant', content: event.message, done: true, isError: true,
         }])
         currentMsgRef.current = null
         setBusy(false)
@@ -123,12 +107,8 @@ export function useChat() {
       }
     }
 
-    ws.onclose = () => {
-      setBusy(false)
-    }
-
     return () => ws.close()
-  }, [addToast])
+  }, [addToast, onUnauthorized])
 
   const send = useCallback((content) => {
     if (!wsRef.current || busy) return
@@ -145,7 +125,7 @@ export function useChat() {
   }, [busy])
 
   const stop = useCallback(() => {
-    if (wsRef.current) wsRef.current.send(JSON.stringify({ action: 'stop' }))
+    wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
 
   const clear = useCallback(() => {

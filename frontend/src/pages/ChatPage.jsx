@@ -38,7 +38,9 @@ const SUGGESTED = [
 ]
 
 export default function ChatPage() {
-  const { messages, busy, toasts, send, sendClarification, stop, clear } = useChat()
+  const { messages, busy, toasts, send, sendClarification, stop, clear } = useChat({
+    onUnauthorized: () => window.location.reload(),
+  })
   const [input, setInput] = useState('')
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
