@@ -14,8 +14,6 @@ dependencies = [
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
-    "aiosqlite>=0.19",
-    "greenlet>=3.0",
 ]
 
 [dependency-groups]
@@ -44,8 +42,6 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ty.rules]
-# auth.py uses sync Chainlit callbacks — wrapped at runtime (pre-existing)
-# data_layer.py serialises a TypedDict field to JSON in-place (pre-existing)
 invalid-argument-type = "warn"
 
 [build-system]

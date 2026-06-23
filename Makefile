@@ -1,28 +1,35 @@
-HOST ?= 0.0.0.0
-PORT ?= 8000
+HOST          ?= 0.0.0.0
+BACKEND_PORT  ?= 8000
+FRONTEND_PORT ?= 5173
 
-.PHONY: dev dev-verbose stop url
+.PHONY: dev stop backend frontend install build test url
+
+install:
+	uv sync
+	cd frontend && npm install
+
+build:
+	cd frontend && npm run build
 
 stop:
-	@pkill -f "chainlit run" 2>/dev/null || true
-	@sleep 1
+	@pkill -f "uvicorn server:app" 2>/dev/null || true
 
-# Run the Chainlit dev server with file watching.
-#
-# Accessing from the host browser:
-#   - VS Code devcontainer: ports are auto-forwarded, use http://localhost:8000
-#   - devcontainer-cli (plain Docker, no VS Code): forwardPorts is ignored,
-#     use the container's bridge IP instead:
-#
-#       make url          # prints the correct URL
-#
-#     or manually: http://$(hostname -I | awk '{print $1}'):8000
+backend:
+	uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload
+
+frontend:
+	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
+
+# Run backend + frontend concurrently.
+# VS Code devcontainer: http://localhost:$(FRONTEND_PORT)
+# devcontainer-cli (plain Docker): run `make url` for the correct address.
 dev: stop
-	uv run chainlit run app.py --host $(HOST) --port $(PORT) -h
+	@trap 'kill 0' SIGINT; \
+	uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload & \
+	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
 
-dev-verbose: stop
-	LITELLM_LOG=DEBUG uv run chainlit run app.py --host $(HOST) --port $(PORT) -h -d
-
-# Print the URL to open in the host browser when running via devcontainer-cli.
 url:
-	@echo "http://$(shell hostname -I | awk '{print $$1}'):$(PORT)"
+	@echo "http://$(shell hostname -I | awk '{print $$1}'):$(FRONTEND_PORT)"
+
+test:
+	uv run pytest tests/ -q

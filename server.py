@@ -20,7 +20,7 @@ from auth import AUTH_ENABLED, USERS, check_credentials
 from config import MODEL, get_available_models
 from export import generate_dashboard, generate_report
 from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
-from ui.errors import friendly_error
+from errors import friendly_error
 
 app = FastAPI(title="Onderwijsdata Chat")
 
