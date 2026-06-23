@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 
@@ -38,8 +38,9 @@ const SUGGESTED = [
 ]
 
 export default function ChatPage() {
+  const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
-    onUnauthorized: () => window.location.reload(),
+    onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
   const [models, setModels] = useState([])
@@ -58,9 +59,13 @@ export default function ChatPage() {
       .catch(() => {})
   }, [])
 
-  // Push model selection to backend whenever it changes
+  // Push model selection to backend — retry once WS is open
   useEffect(() => {
-    if (selectedModel) sendSettings({ model: selectedModel })
+    if (!selectedModel) return
+    const send = () => sendSettings({ model: selectedModel })
+    // Small delay so the WS handshake can complete on initial mount
+    const t = setTimeout(send, 100)
+    return () => clearTimeout(t)
   }, [selectedModel, sendSettings])
 
   useEffect(() => {
@@ -202,7 +207,6 @@ export default function ChatPage() {
 }
 
 function ModelPicker({ models, value, onChange }) {
-  const current = models.find(m => m.id === value)
   return (
     <div style={{ position: 'relative' }}>
       <select

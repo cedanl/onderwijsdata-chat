@@ -139,7 +139,9 @@ export function useChat({ onUnauthorized } = {}) {
   }, [busy])
 
   const sendSettings = useCallback((settings) => {
-    wsRef.current?.send(JSON.stringify({ action: 'settings', settings }))
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'settings', settings }))
+    }
   }, [])
 
   const stop = useCallback(() => {
