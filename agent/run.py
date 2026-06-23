@@ -1,14 +1,16 @@
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import litellm
-import chainlit as cl
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
-from ui.buttons import rapport_actions
 from .history import trim
 from .models import build_system, litellm_kwargs
+
+Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
@@ -40,56 +42,14 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
     OllamaChatConfig.transform_request = _patched_transform  # ty: ignore[invalid-assignment]
 
 
-async def _show_clarification(args: dict) -> None:
-    vraag = args.get("vraag", "")
-    opties = args.get("opties") or []
-    actions = []
-    source_opts = []
-
-    for opt in opties:
-        if isinstance(opt, dict):
-            label = opt.get("label", "")
-            beschrijving = opt.get("beschrijving", "")
-            aanbevolen = opt.get("aanbevolen", False)
-            if beschrijving:
-                btn_label = f"✓ {label} — {beschrijving}" if aanbevolen else f"{label} — {beschrijving}"
-                source_opts.append(opt)
-            else:
-                btn_label = f"✓ {label}" if aanbevolen else label
-            actions.append(cl.Action(
-                name="clarification_choice",
-                label=btn_label,
-                payload={"choice": label},
-            ))
-        else:
-            actions.append(cl.Action(
-                name="clarification_choice",
-                label=str(opt),
-                payload={"choice": str(opt)},
-            ))
-
-    content = vraag
-    if source_opts:
-        content += "\n\n*De uitkomsten kunnen per bron verschillen.*"
-        cl.user_session.set("source_options", source_opts)
-
-    await cl.Message(content=content, actions=actions).send()
-
-
-
-async def _call_tool(tc: dict) -> tuple[str, object]:
+async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:
     if tc["name"] == "clarify_scope":
-        args = json.loads(tc["arguments"])
-        cl.user_session.set("pending_clarification", args)
-        cl.user_session.set("source_alternatives", [])
-        cl.user_session.set("chosen_source", "")
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
-    async with cl.Step(name=label, type="tool") as step:
-        step.input = args
-        result, figure = await asyncio.to_thread(dispatch, tc["name"], args)
-        step.output = result
+    await emit({"type": "tool_start", "name": tc["name"], "label": label, "input": args})
+    result, figure = await asyncio.to_thread(dispatch, tc["name"], args)
+    await emit({"type": "tool_end", "name": tc["name"], "output": str(result)[:500]})
     return result, figure
 
 
@@ -99,20 +59,23 @@ def _call_key(tc: dict) -> str:
 
 async def run(
     messages: list[dict],
+    session: dict,
+    emit: Emit,
     stop_event: asyncio.Event | None = None,
     model: str | None = None,
 ) -> str:
-    settings: dict = cl.user_session.get("chat_settings") or {}
+    settings: dict = session.get("chat_settings") or {}
     chosen_model = model or MODEL
     system = build_system(settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
     history, was_trimmed = trim(list(messages))
     if was_trimmed:
-        await cl.context.emitter.send_toast(
-            "Oudere berichten vallen buiten de context van het model.",
-            type="warning",
-        )
+        await emit({
+            "type": "toast",
+            "message": "Oudere berichten vallen buiten de context van het model.",
+            "level": "warning",
+        })
 
     call_cache: dict[str, tuple[str, object]] = {}
     turn_tool_calls: list[dict] = []
@@ -131,8 +94,7 @@ async def run(
             **extra_kwargs,
         )
 
-        msg = cl.Message(content="")
-        await msg.send()
+        await emit({"type": "message_start"})
 
         text_parts: list[str] = []
         raw_tcs: dict[int, dict] = {}
@@ -145,7 +107,7 @@ async def run(
 
             if delta.content:
                 text_parts.append(delta.content)
-                await msg.stream_token(delta.content)
+                await emit({"type": "text_delta", "content": delta.content})
 
             if delta.tool_calls:
                 for tc in delta.tool_calls:
@@ -164,35 +126,25 @@ async def run(
         tool_calls = [raw_tcs[i] for i in sorted(raw_tcs)]
 
         if stop_event and stop_event.is_set():
-            if text_content:
-                await msg.update()
-            else:
-                await msg.remove()
+            await emit({"type": "message_end", "content": text_content, "aborted": True})
             return text_content
 
         if not tool_calls:
-            msg.actions = rapport_actions()
-            await msg.update()
-            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
-            alternatives = cl.user_session.get("source_alternatives", [])
+            session["_last_turn_tool_calls"] = turn_tool_calls
+            alternatives = session.get("source_alternatives", [])
             if alternatives:
-                chosen = cl.user_session.get("chosen_source", "")
-                alt_actions = [
-                    cl.Action(
-                        name="alternative_source",
-                        label=f"{a['label']} — {a.get('beschrijving', '')}".rstrip(" —"),
-                        payload={"label": a["label"]},
-                    )
-                    for a in alternatives
-                ]
-                note = f"*Geanalyseerd met **{chosen}**.* " if chosen else ""
-                await cl.Message(content=f"{note}**Andere bron proberen?**", actions=alt_actions).send()
+                chosen = session.get("chosen_source", "")
+                await emit({
+                    "type": "alt_sources",
+                    "chosen": chosen,
+                    "alternatives": alternatives,
+                })
+            await emit({
+                "type": "message_end",
+                "content": text_content,
+                "actions": ["download_rapport_samenvatting", "download_rapport"],
+            })
             return text_content
-
-        if not text_content:
-            await msg.remove()
-        else:
-            await msg.update()
 
         history.append({
             "role": "assistant",
@@ -205,9 +157,8 @@ async def run(
 
         turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
 
-        # Deduplicate: run only calls not seen earlier this conversation
         new_calls = [(i, tc) for i, tc in enumerate(tool_calls) if _call_key(tc) not in call_cache]
-        new_results = await asyncio.gather(*[_call_tool(tc) for _, tc in new_calls])
+        new_results = await asyncio.gather(*[_call_tool(tc, emit) for _, tc in new_calls])
         for (i, tc), res in zip(new_calls, new_results):
             call_cache[_call_key(tc)] = res
 
@@ -215,30 +166,42 @@ async def run(
 
         for tc, (result, figure) in zip(tool_calls, results):
             if figure is not None:
-                figures = cl.user_session.get("figures", [])
+                import plotly.io as pio
+                figures = session.get("figures", [])
                 figures.append(figure)
-                cl.user_session.set("figures", figures)
-                turn_figs = cl.user_session.get("turn_figures", [])
+                session["figures"] = figures
+                turn_figs = session.get("turn_figures", [])
                 turn_figs.append(figure)
-                cl.user_session.set("turn_figures", turn_figs)
+                session["turn_figures"] = turn_figs
                 fig_meta = getattr(getattr(figure, "layout", None), "meta", None) or {}
                 if not fig_meta.get("chat_hidden"):
                     label = LABELS.get(tc["name"], tc["name"])
-                    await cl.Message(
-                        content="",
-                        elements=[cl.Plotly(name=label, figure=figure, display="inline")],
-                    ).send()
+                    await emit({
+                        "type": "figure",
+                        "label": label,
+                        "figure_json": pio.to_json(figure),
+                    })
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
 
-        # Terminal: clarify_scope was called — show structured question and return
         if any(tc["name"] == "clarify_scope" for tc in tool_calls):
-            cl.user_session.set("_last_turn_tool_calls", turn_tool_calls)
-            pending = cl.user_session.get("pending_clarification")
-            cl.user_session.set("pending_clarification", None)
-            if pending:
-                await _show_clarification(pending)
+            session["_last_turn_tool_calls"] = turn_tool_calls
+            clarify_tc = next(tc for tc in tool_calls if tc["name"] == "clarify_scope")
+            args = json.loads(clarify_tc["arguments"])
+            session["pending_clarification"] = args
+            session["source_alternatives"] = []
+            session["chosen_source"] = ""
+
+            opties = args.get("opties") or []
+            source_opts = [o for o in opties if isinstance(o, dict) and o.get("beschrijving")]
+            if source_opts:
+                session["source_options"] = source_opts
+
+            await emit({
+                "type": "clarification",
+                "vraag": args.get("vraag", ""),
+                "opties": opties,
+            })
             return text_content
 
-
-    await cl.Message(content="Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag.").send()
+    await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
     return "Het maximale aantal stappen is bereikt."

@@ -4,7 +4,9 @@ version = "0.3.0"
 description = "Chat met open Nederlandse onderwijsdata (CBS + RIO)"
 requires-python = ">=3.11"
 dependencies = [
-    "chainlit>=1.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
     "litellm>=1.40",
     "plotly>=5.0",
     "python-dotenv>=1.0",
@@ -12,9 +14,7 @@ dependencies = [
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
-    "sqlalchemy>=2.0",
     "aiosqlite>=0.19",
-    "asyncpg>=0.28",
     "greenlet>=3.0",
 ]
 
