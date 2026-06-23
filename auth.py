@@ -1,8 +1,6 @@
 import hmac
 import os
 
-_AUTH_ENABLED = bool(os.getenv("CHAT_USERS"))
-
 
 def parse_users(users_env: str) -> dict[str, str]:
     """Parse 'user:pass,user2:pass2' env var into a dict."""

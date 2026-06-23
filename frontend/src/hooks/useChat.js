@@ -14,6 +14,7 @@ export function useChat({ onUnauthorized } = {}) {
   const [toasts, setToasts] = useState([])
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
+  const pendingSettingsRef = useRef(null)
 
   const addToast = useCallback((message, level = 'info') => {
     const id = Date.now()
@@ -31,6 +32,13 @@ export function useChat({ onUnauthorized } = {}) {
   useEffect(() => {
     const ws = new WebSocket(buildWsUrl())
     wsRef.current = ws
+
+    ws.onopen = () => {
+      if (pendingSettingsRef.current) {
+        ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
+        pendingSettingsRef.current = null
+      }
+    }
 
     ws.onclose = (e) => {
       setBusy(false)
@@ -58,7 +66,6 @@ export function useChat({ onUnauthorized } = {}) {
         return
       }
       if (event.type === 'message_cancel') {
-        // LLM opened a message but ended with a tool (e.g. clarify_scope) — remove the empty bubble
         cancelCurrentMsg()
         return
       }
@@ -86,7 +93,7 @@ export function useChat({ onUnauthorized } = {}) {
       }
       if (event.type === 'message_end') {
         setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current ? { ...m, done: true, actions: event.actions || [] } : m
+          m.id === currentMsgRef.current ? { ...m, done: true } : m
         ))
         currentMsgRef.current = null
         setBusy(false)
@@ -141,6 +148,8 @@ export function useChat({ onUnauthorized } = {}) {
   const sendSettings = useCallback((settings) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ action: 'settings', settings }))
+    } else {
+      pendingSettingsRef.current = settings
     }
   }, [])
 

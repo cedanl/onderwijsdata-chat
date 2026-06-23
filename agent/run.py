@@ -131,14 +131,6 @@ async def run(
 
         if not tool_calls:
             session["_last_turn_tool_calls"] = turn_tool_calls
-            alternatives = session.get("source_alternatives", [])
-            if alternatives:
-                chosen = session.get("chosen_source", "")
-                await emit({
-                    "type": "alt_sources",
-                    "chosen": chosen,
-                    "alternatives": alternatives,
-                })
             await emit({
                 "type": "message_end",
                 "content": text_content,
@@ -187,14 +179,7 @@ async def run(
             session["_last_turn_tool_calls"] = turn_tool_calls
             clarify_tc = next(tc for tc in tool_calls if tc["name"] == "clarify_scope")
             args = json.loads(clarify_tc["arguments"])
-            session["pending_clarification"] = args
-            session["source_alternatives"] = []
-            session["chosen_source"] = ""
-
             opties = args.get("opties") or []
-            source_opts = [o for o in opties if isinstance(o, dict) and o.get("beschrijving")]
-            if source_opts:
-                session["source_options"] = source_opts
 
             # Cancel the open message_start before sending the clarification card.
             # If the LLM produced text before the tool call, close it properly first.

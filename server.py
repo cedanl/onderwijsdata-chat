@@ -228,10 +228,6 @@ def _new_session() -> dict:
         "current_model": None,
         "stop_event": None,
         "_last_turn_tool_calls": [],
-        "source_alternatives": [],
-        "source_options": [],
-        "chosen_source": "",
-        "pending_clarification": None,
     }
 
 
@@ -260,6 +256,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         "question": content,
         "answer": response_text,
         "tool_calls": turn_tool_calls,
+        "figures": session.get("turn_figures", []),
     })
     session["turns"] = turns
 
@@ -316,20 +313,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
             elif action == "clarification_choice":
                 choice = msg.get("choice", "")
                 model = session.get("current_model")
-                source_options = session.get("source_options", [])
-                if source_options:
-                    session["chosen_source"] = choice
-                    session["source_alternatives"] = [o for o in source_options if o.get("label") != choice]
                 await _process_message(choice, session, emit, model)
-
-            elif action == "alternative_source":
-                label = msg.get("label", "")
-                model = session.get("current_model")
-                source_options = session.get("source_options", [])
-                if source_options:
-                    session["chosen_source"] = label
-                    session["source_alternatives"] = [o for o in source_options if o.get("label") != label]
-                await _process_message(f"Herhaal de vorige analyse met {label} als databron.", session, emit, model)
 
     except WebSocketDisconnect:
         pass

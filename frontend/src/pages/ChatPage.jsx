@@ -59,13 +59,8 @@ export default function ChatPage() {
       .catch(() => {})
   }, [])
 
-  // Push model selection to backend — retry once WS is open
   useEffect(() => {
-    if (!selectedModel) return
-    const send = () => sendSettings({ model: selectedModel })
-    // Small delay so the WS handshake can complete on initial mount
-    const t = setTimeout(send, 100)
-    return () => clearTimeout(t)
+    if (selectedModel) sendSettings({ model: selectedModel })
   }, [selectedModel, sendSettings])
 
   useEffect(() => {
