@@ -431,15 +431,60 @@ input, textarea { font: inherit; }
 .wb-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
 .wb-card-thumb {
-  height: 130px; display: flex; align-items: center; justify-content: center;
-  position: relative;
+  height: 155px; position: relative; overflow: hidden;
+  background: var(--gray-50); border-bottom: 1px solid var(--gray-100);
 }
-.wb-card-thumb svg { width: 48px; height: 48px; }
 .wb-builtin-badge {
-  position: absolute; top: 10px; left: 10px;
-  background: rgba(255,255,255,.25); color: #fff;
-  font-size: .68rem; font-weight: 700; padding: 3px 8px;
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  background: rgba(37,99,235,.85); color: #fff;
+  font-size: .65rem; font-weight: 700; padding: 2px 7px;
   border-radius: 999px; backdrop-filter: blur(4px);
+}
+
+/* iframe preview */
+.wb-preview-wrap { position: absolute; inset: 0; overflow: hidden; }
+.wb-preview-frame-outer { transform-origin: top left; pointer-events: none; }
+.wb-preview-shimmer {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 50%, var(--gray-100) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* builtin preview */
+.wb-builtin-preview {
+  position: absolute; inset: 0;
+  background: var(--white); padding: 10px 10px 8px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.wb-mini-kpi-row { display: flex; gap: 4px; height: 30px; }
+.wb-mini-kpi {
+  flex: 1; border-radius: 4px; border: 1px solid rgba(0,0,0,.06);
+  display: flex; align-items: center; padding: 0 6px; gap: 5px;
+}
+.wb-mini-kpi-val { width: 20px; height: 10px; border-radius: 2px; opacity: .7; }
+.wb-mini-charts { display: flex; gap: 5px; flex: 1; min-height: 0; }
+.wb-mini-chart-bar {
+  flex: 1.2; background: var(--gray-50); border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.06);
+  display: flex; align-items: flex-end; gap: 3px; padding: 5px 5px 3px;
+}
+.wb-mini-bar { flex: 1; background: #2563EB; border-radius: 2px 2px 0 0; opacity: .85; }
+.wb-mini-line {
+  flex: 1; background: var(--gray-50); border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.06); padding: 5px; overflow: hidden;
+}
+.wb-mini-line svg { width: 100%; height: 100%; display: block; }
+.wb-mini-donut-wrap {
+  width: 44px; flex-shrink: 0; background: var(--gray-50); border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.06); display: flex; align-items: center; justify-content: center;
+}
+.wb-mini-donut {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: conic-gradient(#2563EB 0% 52%, #3B82F6 52% 73%, #93C5FD 73% 84%, #DBEAFE 84% 93%, #EFF6FF 93% 100%);
+  mask: radial-gradient(circle, transparent 30%, black 31%);
+  -webkit-mask: radial-gradient(circle, transparent 30%, black 31%);
 }
 
 .wb-card-body { padding: 14px 16px 12px; }

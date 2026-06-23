@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -8,21 +8,6 @@ import {
 import { BUILTIN, getWorkbooks, deleteWorkbook } from '../workbooks'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
-
-const CARD_COLORS = [
-  'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
-  'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)',
-  'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)',
-  'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)',
-  'linear-gradient(135deg, #DC2626 0%, #EF4444 100%)',
-  'linear-gradient(135deg, #059669 0%, #10B981 100%)',
-]
-
-function cardColor(wb) {
-  if (wb.builtin) return CARD_COLORS[0]
-  const n = parseInt(wb.id.replace(/-/g, '').slice(-2), 16)
-  return CARD_COLORS[1 + (n % (CARD_COLORS.length - 1))]
-}
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -83,11 +68,8 @@ export default function DashboardPage({ setPage }) {
       <div className="wb-grid">
         {all.map(wb => (
           <div key={wb.id} className="wb-card" onClick={() => setSelected(wb)}>
-            <div className="wb-card-thumb" style={{ background: cardColor(wb) }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-              </svg>
+            <div className="wb-card-thumb">
+              <WorkbookPreview wb={wb} />
               {wb.builtin && <span className="wb-builtin-badge">Voorbeeld</span>}
             </div>
             <div className="wb-card-body">
@@ -120,6 +102,77 @@ export default function DashboardPage({ setPage }) {
             <small>Genereer vanuit een gesprek</small>
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Workbook preview thumbnails ──────────────────────────────────────────────
+
+function WorkbookPreview({ wb }) {
+  const [loaded, setLoaded] = useState(false)
+  const wrapRef = useRef(null)
+  const [scale, setScale] = useState(0.25)
+
+  // Recalculate scale when the container resizes so the iframe fills the width
+  useEffect(() => {
+    if (wb.builtin) return
+    const el = wrapRef.current
+    if (!el) return
+    const obs = new ResizeObserver(([entry]) => {
+      setScale(entry.contentRect.width / 960)
+    })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [wb.builtin])
+
+  if (wb.builtin) return <BuiltinPreview />
+
+  return (
+    <div ref={wrapRef} className="wb-preview-wrap">
+      {!loaded && <div className="wb-preview-shimmer" />}
+      <div
+        className="wb-preview-frame-outer"
+        style={{ transform: `scale(${scale})`, height: Math.ceil(155 / scale) }}
+      >
+        <iframe
+          srcDoc={wb.htmlContent}
+          sandbox="allow-scripts"
+          onLoad={() => setLoaded(true)}
+          style={{ width: 960, height: '100%', border: 'none' }}
+          title={wb.title}
+        />
+      </div>
+    </div>
+  )
+}
+
+function BuiltinPreview() {
+  const bars = [55, 70, 82, 88, 100]
+  return (
+    <div className="wb-builtin-preview">
+      <div className="wb-mini-kpi-row">
+        {['#EFF6FF', '#F0FDFA', '#F0FDF4', '#FFF7ED'].map((c, i) => (
+          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+            <div className="wb-mini-kpi-val" style={{ background: ['#2563EB','#0D9488','#22C55E','#F59E0B'][i] }} />
+          </div>
+        ))}
+      </div>
+      <div className="wb-mini-charts">
+        <div className="wb-mini-chart-bar">
+          {bars.map((h, i) => (
+            <div key={i} className="wb-mini-bar" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+        <div className="wb-mini-line">
+          <svg viewBox="0 0 60 40" preserveAspectRatio="none">
+            <polyline points="0,38 15,30 30,18 45,10 60,4" fill="rgba(37,99,235,.12)" stroke="#2563EB" strokeWidth="2" />
+            <polyline points="0,38 15,34 30,28 45,22 60,16" fill="none" stroke="#14B8A6" strokeWidth="1.5" strokeDasharray="3,2" />
+          </svg>
+        </div>
+        <div className="wb-mini-donut-wrap">
+          <div className="wb-mini-donut" />
+        </div>
       </div>
     </div>
   )
