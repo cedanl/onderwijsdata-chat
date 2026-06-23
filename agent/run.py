@@ -196,6 +196,13 @@ async def run(
             if source_opts:
                 session["source_options"] = source_opts
 
+            # Cancel the open message_start before sending the clarification card.
+            # If the LLM produced text before the tool call, close it properly first.
+            if text_content:
+                await emit({"type": "message_end", "content": text_content, "actions": []})
+            else:
+                await emit({"type": "message_cancel"})
+
             await emit({
                 "type": "clarification",
                 "vraag": args.get("vraag", ""),

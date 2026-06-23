@@ -21,6 +21,13 @@ export function useChat({ onUnauthorized } = {}) {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
   }, [])
 
+  const cancelCurrentMsg = useCallback(() => {
+    if (!currentMsgRef.current) return
+    const id = currentMsgRef.current
+    setMessages(prev => prev.filter(m => m.id !== id))
+    currentMsgRef.current = null
+  }, [])
+
   useEffect(() => {
     const ws = new WebSocket(buildWsUrl())
     wsRef.current = ws
@@ -48,6 +55,11 @@ export function useChat({ onUnauthorized } = {}) {
         const msgId = Date.now()
         currentMsgRef.current = msgId
         setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
+        return
+      }
+      if (event.type === 'message_cancel') {
+        // LLM opened a message but ended with a tool (e.g. clarify_scope) — remove the empty bubble
+        cancelCurrentMsg()
         return
       }
       if (event.type === 'text_delta') {
@@ -85,6 +97,7 @@ export function useChat({ onUnauthorized } = {}) {
           id: Date.now(), role: 'assistant',
           content: event.vraag, clarification: event.opties, done: true,
         }])
+        currentMsgRef.current = null
         setBusy(false)
         return
       }
@@ -94,21 +107,22 @@ export function useChat({ onUnauthorized } = {}) {
           content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
           starterQuestions: event.questions, done: true,
         }])
+        currentMsgRef.current = null
         setBusy(false)
         return
       }
       if (event.type === 'error') {
+        cancelCurrentMsg()
         setMessages(prev => [...prev, {
           id: Date.now(), role: 'assistant', content: event.message, done: true, isError: true,
         }])
-        currentMsgRef.current = null
         setBusy(false)
         return
       }
     }
 
     return () => ws.close()
-  }, [addToast, onUnauthorized])
+  }, [addToast, cancelCurrentMsg, onUnauthorized])
 
   const send = useCallback((content) => {
     if (!wsRef.current || busy) return
@@ -124,6 +138,10 @@ export function useChat({ onUnauthorized } = {}) {
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
   }, [busy])
 
+  const sendSettings = useCallback((settings) => {
+    wsRef.current?.send(JSON.stringify({ action: 'settings', settings }))
+  }, [])
+
   const stop = useCallback(() => {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
@@ -134,5 +152,5 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, toasts, send, sendClarification, stop, clear }
+  return { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear }
 }

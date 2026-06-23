@@ -38,12 +38,30 @@ const SUGGESTED = [
 ]
 
 export default function ChatPage() {
-  const { messages, busy, toasts, send, sendClarification, stop, clear } = useChat({
+  const { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
     onUnauthorized: () => window.location.reload(),
   })
   const [input, setInput] = useState('')
+  const [models, setModels] = useState([])
+  const [selectedModel, setSelectedModel] = useState('')
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+
+  // Load available models once
+  useEffect(() => {
+    fetch('/api/settings/config')
+      .then(r => r.json())
+      .then(cfg => {
+        setModels(cfg.models || [])
+        setSelectedModel(cfg.default_model || '')
+      })
+      .catch(() => {})
+  }, [])
+
+  // Push model selection to backend whenever it changes
+  useEffect(() => {
+    if (selectedModel) sendSettings({ model: selectedModel })
+  }, [selectedModel, sendSettings])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -70,23 +88,23 @@ export default function ChatPage() {
   }
 
   const handleExport = async (type) => {
-    const turns = messages
-      .filter(m => m.role === 'user')
-      .map((m, i) => {
-        const answer = messages.filter(x => x.role === 'assistant')[i]
-        return { question: m.content, answer: answer?.content || '' }
-      })
+    const userMsgs = messages.filter(m => m.role === 'user')
+    const assistantMsgs = messages.filter(m => m.role === 'assistant' && m.done && !m.isError)
+    const turns = userMsgs.map((m, i) => ({
+      question: m.content,
+      answer: assistantMsgs[i]?.content || '',
+    }))
     const res = await fetch(`/api/export/${type}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turns }),
     })
     const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition') || ''
+    const filename = disposition.split('filename=')[1] || `${type}.html`
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = res.headers.get('Content-Disposition')?.split('filename=')[1] || `${type}.html`
-    a.click()
+    a.href = url; a.download = filename; a.click()
     URL.revokeObjectURL(url)
   }
 
@@ -127,11 +145,14 @@ export default function ChatPage() {
               <div className="chat-topbar-title">EDUdata Assistent</div>
               <div className="chat-topbar-sub">Stel een vraag over open onderwijsdata</div>
             </div>
-            {hasMessages && (
-              <button className="export-btn" onClick={clear} style={{ marginLeft: 'auto' }}>
-                Nieuw gesprek
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {models.length > 0 && (
+                <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />
+              )}
+              {hasMessages && (
+                <button className="export-btn" onClick={clear}>Nieuw gesprek</button>
+              )}
+            </div>
           </div>
 
           <div className="chat-messages">
@@ -161,7 +182,7 @@ export default function ChatPage() {
                 disabled={busy}
               />
               {busy ? (
-                <button className="send-btn" onClick={stop} title="Stop">
+                <button className="send-btn" onClick={stop} title="Stop genereren">
                   <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
                 </button>
               ) : (
@@ -177,6 +198,33 @@ export default function ChatPage() {
         </div>
       </div>
     </>
+  )
+}
+
+function ModelPicker({ models, value, onChange }) {
+  const current = models.find(m => m.id === value)
+  return (
+    <div style={{ position: 'relative' }}>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          fontSize: '.8rem', padding: '6px 28px 6px 10px',
+          border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-sm)',
+          background: 'var(--white)', color: 'var(--gray-700)',
+          appearance: 'none', cursor: 'pointer', outline: 'none',
+          fontWeight: 500,
+        }}
+      >
+        {models.map(m => (
+          <option key={m.id} value={m.id}>{m.name}{m.description ? ` — ${m.description}` : ''}</option>
+        ))}
+      </select>
+      <svg style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 12, height: 12, color: 'var(--gray-400)', pointerEvents: 'none' }}
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
   )
 }
 
@@ -211,22 +259,19 @@ function Message({ msg, onClarification, onSend, busy }) {
           <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
         </svg>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        {/* Tool steps */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {msg.tools?.map((t, i) => (
           <div key={i} className="tool-step">
             <div className={`tool-step-dot${t.done ? ' done' : ''}`} />
             {t.label}
           </div>
         ))}
-        {/* Bubble */}
-        <div className="message-bubble">
-          {!msg.done && !msg.content ? (
+        <div className="message-bubble" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
+          {!msg.done && !msg.content && !msg.tools?.length ? (
             <div className="ai-typing"><span /><span /><span /></div>
           ) : (
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           )}
-          {/* Clarification buttons */}
           {msg.clarification && (
             <div className="clarification-btns">
               {msg.clarification.map((opt, i) => {
@@ -240,7 +285,6 @@ function Message({ msg, onClarification, onSend, busy }) {
               })}
             </div>
           )}
-          {/* Starter questions */}
           {msg.starterQuestions && (
             <div className="clarification-btns" style={{ marginTop: 8 }}>
               {msg.starterQuestions.map((q, i) => (
@@ -264,8 +308,7 @@ function SuggestedCategory({ category, questions, onSend, busy }) {
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 10px', borderRadius: 'var(--radius-sm)',
           background: 'var(--blue-50)', border: '1px solid var(--blue-100)',
-          fontSize: '.78rem', fontWeight: 700, color: 'var(--blue-700)', cursor: 'pointer',
-          marginBottom: 2,
+          fontSize: '.78rem', fontWeight: 700, color: 'var(--blue-700)', cursor: 'pointer', marginBottom: 2,
         }}
       >
         <span>{category}</span>
