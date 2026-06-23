@@ -381,6 +381,32 @@ input, textarea { font: inherit; }
 }
 .export-btn:hover { background: var(--blue-100); }
 
+.model-picker { position: relative; }
+.model-picker select {
+  font-size: .8rem; padding: 6px 28px 6px 10px;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  background: var(--white); color: var(--gray-700);
+  appearance: none; cursor: pointer; outline: none; font-weight: 500;
+}
+.model-picker-chevron {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 12px; height: 12px; color: var(--gray-400); pointer-events: none;
+}
+
+.suggested-category { margin-bottom: 4px; }
+.suggested-category-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--blue-50); border: 1px solid var(--blue-100);
+  font-size: .78rem; font-weight: 700; color: var(--blue-700);
+  cursor: pointer; margin-bottom: 2px;
+}
+.suggested-category-chevron {
+  width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0;
+}
+.suggested-category-chevron.open { transform: rotate(180deg); }
+.suggested-list { margin-top: 4px; }
+
 /* ─── DASHBOARD PAGE ──────────────────────────────────────── */
 .dashboard-layout { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
 .dashboard-topbar {

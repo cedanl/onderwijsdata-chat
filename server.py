@@ -1,11 +1,7 @@
 import asyncio
-import base64
-import hashlib
-import hmac
 import json
 import os
 import re
-import time
 from datetime import date
 from pathlib import Path
 
@@ -20,7 +16,7 @@ load_dotenv()
 
 from agent import run as agent_run
 from agent.models import litellm_kwargs as _litellm_kwargs
-from auth import AUTH_ENABLED, USERS, check_credentials
+from auth import AUTH_ENABLED, USERS, check_credentials, make_token, verify_token
 from config import MODEL, get_available_models
 from errors import friendly_error
 from export import generate_dashboard, generate_report
@@ -35,54 +31,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ─── Token auth (stdlib, geen extra dep) ──────────────────────────────────────
-
-_TOKEN_SECRET = os.getenv("CHAT_SECRET", "").encode()
-_TOKEN_TTL = 24 * 3600  # 24 uur
-
-
-def _token_sign(data: str) -> str:
-    key = _TOKEN_SECRET or b"dev-only-no-secret-set"
-    return hmac.new(key, data.encode(), hashlib.sha256).hexdigest()
-
-
-def make_token(username: str) -> str:
-    exp = int(time.time()) + _TOKEN_TTL
-    payload = base64.urlsafe_b64encode(f"{username}|{exp}".encode()).decode().rstrip("=")
-    sig = _token_sign(payload)
-    return f"{payload}.{sig}"
-
-
-def verify_token(token: str) -> str | None:
-    """Returns username if token is valid and not expired, else None."""
-    try:
-        payload, sig = token.rsplit(".", 1)
-    except ValueError:
-        return None
-    if not hmac.compare_digest(_token_sign(payload), sig):
-        return None
-    try:
-        decoded = base64.urlsafe_b64decode(payload + "==").decode()
-        username, exp_str = decoded.rsplit("|", 1)
-        if int(exp_str) < time.time():
-            return None
-        return username
-    except Exception:
-        return None
-
-
-def _require_auth(token: str | None) -> str:
-    """Validates token when AUTH_ENABLED; returns username or raises 401."""
-    if not AUTH_ENABLED:
-        return "gast"
-    if not token:
-        raise HTTPException(status_code=401, detail="Niet ingelogd")
-    username = verify_token(token)
-    if not username:
-        raise HTTPException(status_code=401, detail="Token ongeldig of verlopen")
-    return username
-
 
 # ─── Auth endpoints ────────────────────────────────────────────────────────────
 
@@ -142,8 +90,6 @@ async def get_starters() -> list[dict]:
 async def get_settings_config() -> dict:
     available = get_available_models()
     return {
-        "roles": ["Geen voorkeur", "Beleidsmedewerker", "Onderzoeker / Analist", "Schoolbestuur / Directeur", "Journalist"],
-        "domains": ["Geen voorkeur", "PO", "VO", "MBO", "HBO / WO"],
         "models": [
             {"id": mid, "name": name, "description": desc, "icon": icon}
             for mid, name, desc, icon in (available or [])
