@@ -5,10 +5,6 @@ export default function HomePage({ setPage }) {
       <section className="hero">
         <div className="container">
           <div className="hero-content">
-            <div className="hero-badge">
-              <div className="hero-badge-dot" />
-              Open onderwijsdata · AI-gedreven
-            </div>
             <h1>Van onderwijsdata naar<br /><em>inzicht in seconden</em></h1>
             <p>EDUdata koppelt aan alle open-onderwijs-databronnen. Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Antwoord in 30 seconden.</p>
             <div className="hero-actions">
