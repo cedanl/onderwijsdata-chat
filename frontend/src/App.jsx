@@ -41,8 +41,8 @@ export default function App() {
       <Nav page={page} setPage={setPage} user={user} onLogout={authRequired ? handleLogout : null} />
       <div className="page-wrap">
         {page === 'home' && <HomePage setPage={setPage} />}
-        {page === 'chat' && <ChatPage />}
-        {page === 'dashboard' && <DashboardPage />}
+        {page === 'chat' && <ChatPage setPage={setPage} />}
+        {page === 'dashboard' && <DashboardPage setPage={setPage} />}
       </div>
       <MobileTabs page={page} setPage={setPage} />
     </>
