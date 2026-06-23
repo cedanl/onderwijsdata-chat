@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDUdata — AI Instelling Assistent</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ─── Reset & tokens ──────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue-900: #0D2340;
+    --blue-800: #163558;
+    --blue-700: #1E4A7A;
+    --blue-600: #2563EB;
+    --blue-500: #3B82F6;
+    --blue-100: #DBEAFE;
+    --blue-50:  #EFF6FF;
+    --teal-600: #0D9488;
+    --teal-500: #14B8A6;
+    --teal-100: #CCFBF1;
+    --teal-50:  #F0FDFA;
+    --green-500:#22C55E;
+    --amber-500:#F59E0B;
+    --red-500:  #EF4444;
+    --gray-900: #111827;
+    --gray-700: #374151;
+    --gray-500: #6B7280;
+    --gray-300: #D1D5DB;
+    --gray-200: #E5E7EB;
+    --gray-100: #F3F4F6;
+    --gray-50:  #F9FAFB;
+    --white:    #FFFFFF;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --shadow:    0 4px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.05);
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  html { font-family: var(--font); font-size: 16px; color: var(--gray-900); background: var(--gray-50); }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; border: none; background: none; font: inherit; }
+  input, textarea { font: inherit; }
+
+  /* ─── Typography ──────────────────────────────────── */
+  .text-xs   { font-size: .75rem; line-height: 1rem; }
+  .text-sm   { font-size: .875rem; line-height: 1.25rem; }
+  .text-base { font-size: 1rem; line-height: 1.5rem; }
+  .text-lg   { font-size: 1.125rem; line-height: 1.75rem; }
+  .text-xl   { font-size: 1.25rem; line-height: 1.75rem; }
+  .text-2xl  { font-size: 1.5rem; line-height: 2rem; }
+  .text-3xl  { font-size: 1.875rem; line-height: 2.25rem; }
+  .text-4xl  { font-size: 2.25rem; line-height: 2.5rem; }
+  .text-5xl  { font-size: 3rem; line-height: 1.1; }
+  .font-medium { font-weight: 500; }
+  .font-semibold { font-weight: 600; }
+  .font-bold { font-weight: 700; }
+  .text-muted { color: var(--gray-500); }
+  .text-white { color: var(--white); }
+
+  /* ─── Layout ──────────────────────────────────────── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .items-center { align-items: center; }
+  .items-start { align-items: flex-start; }
+  .justify-between { justify-content: space-between; }
+  .justify-center { justify-content: center; }
+  .gap-1 { gap: 4px; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .gap-6 { gap: 24px; }
+  .gap-8 { gap: 32px; }
+  .gap-12 { gap: 48px; }
+  .grid { display: grid; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .w-full { width: 100%; }
+  .h-full { height: 100%; }
+  .flex-1 { flex: 1; }
+  .overflow-hidden { overflow: hidden; }
+  .overflow-auto { overflow: auto; }
+
+  /* ─── Navbar ──────────────────────────────────────── */
+  .navbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    position: sticky; top: 0; z-index: 100;
+    height: 64px;
+  }
+  .navbar .container { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { display: flex; align-items: center; gap: 10px; }
+  .navbar-logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--blue-600), var(--teal-500));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .navbar-logo svg { width: 20px; height: 20px; color: white; }
+  .navbar-name { font-size: 1.25rem; font-weight: 700; color: var(--gray-900); letter-spacing: -.02em; }
+  .navbar-name span { color: var(--blue-600); }
+  .navbar-nav { display: flex; gap: 2px; background: var(--gray-100); border-radius: var(--radius); padding: 4px; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: var(--radius-sm);
+    font-size: .875rem; font-weight: 500; color: var(--gray-600);
+    transition: all .2s; white-space: nowrap;
+  }
+  .nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .nav-btn:hover { background: var(--white); color: var(--gray-900); box-shadow: var(--shadow-sm); }
+  .nav-btn.active {
+    background: var(--white); color: var(--blue-600); font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+  .navbar-cta {
+    padding: 8px 20px; border-radius: var(--radius-sm);
+    background: var(--blue-600); color: var(--white);
+    font-size: .875rem; font-weight: 600;
+    transition: background .15s;
+  }
+  .navbar-cta:hover { background: var(--blue-700); }
+
+  /* ─── Mobile bottom tab bar ──────────────────────────── */
+  .mobile-tabs {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--white); border-top: 1px solid var(--gray-200);
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100; justify-content: space-around;
+  }
+  .mobile-tab-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 4px 20px; border-radius: var(--radius-sm);
+    font-size: .7rem; font-weight: 500; color: var(--gray-500);
+    transition: all .15s;
+  }
+  .mobile-tab-btn svg { width: 22px; height: 22px; }
+  .mobile-tab-btn.active { color: var(--blue-600); }
+  .mobile-tab-btn.active svg { stroke: var(--blue-600); }
+
+  /* ─── Pages ───────────────────────────────────────── */
+  .page { display: none; flex: 1; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* ─── HOME PAGE ───────────────────────────────────── */
+  .hero {
+    background: linear-gradient(160deg, var(--blue-900) 0%, var(--blue-700) 60%, var(--teal-600) 100%);
+    color: var(--white); padding: 96px 0 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 760px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+    padding: 6px 14px; border-radius: 999px;
+    font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    margin-bottom: 24px; backdrop-filter: blur(8px);
+  }
+  .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-500); }
+  .hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; margin-bottom: 20px; }
+  .hero h1 em { font-style: normal; color: #7DD3FC; }
+  .hero p { font-size: 1.2rem; line-height: 1.7; color: rgba(255,255,255,.8); max-width: 560px; margin-bottom: 36px; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 14px 28px; border-radius: var(--radius);
+    background: var(--white); color: var(--blue-700);
+    font-weight: 700; font-size: 1rem;
+    transition: all .15s; box-shadow: 0 4px 14px rgba(0,0,0,.15);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+  .btn-ghost {
+    padding: 14px 28px; border-radius: var(--radius);
+    border: 1.5px solid rgba(255,255,255,.35); color: var(--white);
+    font-weight: 600; font-size: 1rem;
+    transition: all .15s;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); }
+  .hero-stats { display: flex; gap: 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
+  .hero-stat-value { font-size: 2rem; font-weight: 800; color: var(--white); letter-spacing: -.03em; }
+  .hero-stat-label { font-size: .85rem; color: rgba(255,255,255,.65); margin-top: 2px; }
+
+  /* Features */
+  .section { padding: 80px 0; }
+  .section-label {
+    display: inline-block;
+    font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--blue-600); margin-bottom: 12px;
+  }
+  .section-title { font-size: 2.25rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 16px; }
+  .section-sub { font-size: 1.1rem; color: var(--gray-500); max-width: 540px; line-height: 1.7; }
+  .feature-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg); padding: 32px;
+    transition: all .2s; box-shadow: var(--shadow-sm);
+  }
+  .feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--blue-100); }
+  .feature-icon {
+    width: 48px; height: 48px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .feature-icon.blue { background: var(--blue-50); color: var(--blue-600); }
+  .feature-icon.teal { background: var(--teal-50); color: var(--teal-600); }
+  .feature-icon.purple { background: #F3E8FF; color: #7C3AED; }
+  .feature-icon svg { width: 24px; height: 24px; }
+  .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .feature-card p { font-size: .9rem; color: var(--gray-500); line-height: 1.65; }
+
+  /* Steps */
+  .steps-section { background: var(--blue-50); }
+  .step-card {
+    background: var(--white); border-radius: var(--radius-lg);
+    padding: 28px; border: 1px solid var(--blue-100);
+    position: relative; overflow: hidden;
+  }
+  .step-number {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--blue-600); color: var(--white);
+    font-size: .9rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .step-card p { font-size: .875rem; color: var(--gray-500); line-height: 1.6; }
+
+  /* Comparison */
+  .comparison-table { width: 100%; border-collapse: collapse; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+  .comparison-table th {
+    padding: 16px 24px; text-align: left; font-size: .875rem; font-weight: 700;
+  }
+  .comparison-table th:first-child { background: var(--gray-100); color: var(--gray-700); }
+  .comparison-table th:last-child { background: var(--blue-600); color: var(--white); }
+  .comparison-table td {
+    padding: 14px 24px; border-top: 1px solid var(--gray-100);
+    font-size: .9rem;
+  }
+  .comparison-table td:first-child { background: var(--white); color: var(--gray-600); }
+  .comparison-table td:last-child { background: var(--blue-50); color: var(--gray-800); font-weight: 500; }
+  .comparison-table tr:hover td { filter: brightness(.97); }
+  .check-icon { color: var(--green-500); font-size: 1rem; margin-right: 6px; }
+  .cross-icon { color: var(--red-500); font-size: 1rem; margin-right: 6px; }
+
+  /* Benefits */
+  .benefit-card {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 24px; background: var(--white);
+    border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+    transition: all .2s;
+  }
+  .benefit-card:hover { border-color: var(--teal-100); box-shadow: var(--shadow); }
+  .benefit-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    border-radius: var(--radius); display: flex; align-items: center; justify-content: center;
+    background: var(--teal-50); color: var(--teal-600);
+  }
+  .benefit-icon svg { width: 22px; height: 22px; }
+  .benefit-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .benefit-card p { font-size: .85rem; color: var(--gray-500); line-height: 1.55; }
+
+  /* CTA banner */
+  .cta-banner {
+    background: linear-gradient(135deg, var(--blue-800), var(--teal-600));
+    color: var(--white); border-radius: var(--radius-xl);
+    padding: 56px 48px; text-align: center;
+    margin: 0 0 80px;
+  }
+  .cta-banner h2 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; }
+  .cta-banner p { color: rgba(255,255,255,.75); margin-bottom: 28px; font-size: 1.05rem; }
+  .btn-cta {
+    display: inline-block; padding: 14px 32px; border-radius: var(--radius);
+    background: var(--white); color: var(--blue-700); font-weight: 700;
+    transition: all .15s;
+  }
+  .btn-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+
+  /* ─── CHAT PAGE ───────────────────────────────────── */
+  .chat-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 64px);
+    overflow: hidden;
+  }
+  .chat-sidebar {
+    background: var(--white); border-right: 1px solid var(--gray-200);
+    overflow-y: auto; padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .sidebar-section-title {
+    font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--gray-400);
+    padding: 0 8px; margin-bottom: 4px;
+  }
+  .chat-source-list { display: flex; flex-direction: column; gap: 4px; }
+  .source-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    font-size: .8rem; color: var(--gray-600);
+  }
+  .source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .source-dot.green { background: var(--green-500); }
+  .source-dot.blue  { background: var(--blue-500); }
+  .source-dot.amber { background: var(--amber-500); }
+  .source-label { flex: 1; font-weight: 500; }
+  .source-badge {
+    font-size: .65rem; padding: 2px 6px; border-radius: 999px;
+    background: var(--teal-100); color: var(--teal-600); font-weight: 700;
+  }
+  .suggested-list { display: flex; flex-direction: column; gap: 6px; }
+  .suggested-btn {
+    text-align: left; padding: 9px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-200); background: var(--gray-50);
+    font-size: .78rem; color: var(--gray-700); line-height: 1.4;
+    transition: all .15s; cursor: pointer;
+  }
+  .suggested-btn:hover { border-color: var(--blue-300); background: var(--blue-50); color: var(--blue-700); }
+
+  .suggested-category { margin-bottom: 4px; }
+  .suggested-category-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--blue-50); border: 1px solid var(--blue-100);
+    font-size: .78rem; font-weight: 700; color: var(--blue-700);
+    cursor: pointer; transition: background .15s;
+  }
+  .suggested-category-toggle:hover { background: var(--blue-100); }
+  .cat-chevron { width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0; }
+  .suggested-category-toggle.open .cat-chevron { transform: rotate(180deg); }
+  .cat-body { margin-top: 4px; display: none; }
+  .cat-body.open { display: flex; }
+
+  .chat-main { display: flex; flex-direction: column; background: var(--gray-50); min-height: 0; overflow: hidden; }
+  .chat-topbar {
+    background: var(--white); border-bottom: 1px solid var(--gray-200);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .chat-topbar-title { font-size: .95rem; font-weight: 600; }
+  .chat-topbar-sub { font-size: .8rem; color: var(--gray-500); }
+  .chat-messages { flex: 1; min-height: 0; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+  .chat-welcome {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; text-align: center; padding: 48px;
+  }
+  .chat-welcome-icon {
+    width: 64px; height: 64px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--blue-600), var(--teal-500));
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+  }
+  .chat-welcome-icon svg { width: 32px; height: 32px; color: white; }
+  .chat-welcome h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
+  .chat-welcome p { font-size: .95rem; color: var(--gray-500); max-width: 380px; line-height: 1.6; }
+
+  .message { display: flex; gap: 12px; max-width: 800px; }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; max-width: 600px; }
+  .message-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700;
+  }
+  .message.user .message-avatar { background: var(--blue-600); color: var(--white); }
+  .message.assistant .message-avatar { background: linear-gradient(135deg, var(--blue-600), var(--teal-500)); }
+  .message-avatar svg { width: 18px; height: 18px; color: white; }
+  .message-bubble {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg); padding: 16px 20px;
+    font-size: .9rem; line-height: 1.65; box-shadow: var(--shadow-sm);
+  }
+  .message.user .message-bubble { background: var(--blue-600); color: var(--white); border-color: transparent; }
+  .message-bubble p + p { margin-top: 10px; }
+  .message-bubble strong { font-weight: 600; }
+
+  /* AI response parts */
+  .ai-data-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .82rem; }
+  .ai-data-table th { background: var(--blue-50); color: var(--blue-800); padding: 8px 12px; text-align: left; font-weight: 600; }
+  .ai-data-table td { padding: 8px 12px; border-top: 1px solid var(--gray-100); }
+  .ai-data-table tr:hover td { background: var(--gray-50); }
+  .trend-up { color: var(--green-500); font-weight: 600; }
+  .trend-down { color: var(--red-500); font-weight: 600; }
+  .ai-insight {
+    background: var(--teal-50); border-left: 3px solid var(--teal-500);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 10px 14px; margin: 12px 0; font-size: .85rem; color: var(--teal-700);
+  }
+  .ai-sources {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--gray-100);
+  }
+  .ai-source-tag {
+    font-size: .72rem; padding: 3px 8px; border-radius: 999px;
+    background: var(--gray-100); color: var(--gray-600); font-weight: 500;
+  }
+  .ai-action-bar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .ai-action-btn {
+    font-size: .78rem; padding: 6px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--blue-200); color: var(--blue-600);
+    background: var(--blue-50); font-weight: 500;
+    transition: all .15s;
+  }
+  .ai-action-btn:hover { background: var(--blue-100); }
+  .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .ai-typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--gray-400);
+    animation: bounce .9s infinite;
+  }
+  .ai-typing span:nth-child(2) { animation-delay: .15s; }
+  .ai-typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+
+  .chat-input-area {
+    background: var(--white); border-top: 1px solid var(--gray-200);
+    padding: 16px 24px;
+  }
+  .chat-input-wrap {
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--gray-50); border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-lg); padding: 10px 14px;
+    transition: border-color .15s;
+  }
+  .chat-input-wrap:focus-within { border-color: var(--blue-400); background: var(--white); }
+  .chat-input {
+    flex: 1; border: none; background: transparent; resize: none;
+    font-size: .9rem; outline: none; line-height: 1.5; max-height: 120px;
+    color: var(--gray-900);
+  }
+  .chat-input::placeholder { color: var(--gray-400); }
+  .send-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    background: var(--blue-600); color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s; flex-shrink: 0;
+  }
+  .send-btn:hover { background: var(--blue-700); }
+  .send-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; }
+  .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--gray-400); margin-top: 8px; }
+
+  /* ─── DASHBOARD PAGE ──────────────────────────────── */
+  .dashboard-layout { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
+  .dashboard-topbar {
+    background: var(--white); border-bottom: 1px solid var(--gray-200);
+    padding: 16px 24px; display: flex; gap: 12px; align-items: center;
+    flex-wrap: wrap;
+  }
+  .dashboard-title { font-size: 1rem; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+  .prompt-bar {
+    flex: 1; min-width: 280px;
+    display: flex; gap: 8px; align-items: center;
+    background: var(--gray-50); border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius); padding: 8px 14px;
+    transition: border-color .15s;
+  }
+  .prompt-bar:focus-within { border-color: var(--blue-400); background: var(--white); }
+  .prompt-bar svg { width: 16px; height: 16px; color: var(--gray-400); flex-shrink: 0; }
+  .prompt-input {
+    flex: 1; border: none; background: transparent; font-size: .875rem;
+    outline: none; color: var(--gray-900);
+  }
+  .prompt-input::placeholder { color: var(--gray-400); }
+  .prompt-submit {
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    background: var(--blue-600); color: var(--white);
+    font-size: .875rem; font-weight: 600;
+    transition: background .15s;
+  }
+  .prompt-submit:hover { background: var(--blue-700); }
+  .dashboard-meta {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .dash-btn-secondary {
+    font-size:.8rem; color:var(--blue-600); padding:6px 12px;
+    border:1px solid var(--blue-200); border-radius:var(--radius-sm);
+    background:var(--blue-50); font-weight:600; transition:background .15s;
+  }
+  .dash-btn-secondary:hover { background:var(--blue-100); }
+  .dash-btn-danger {
+    display:flex; align-items:center; gap:5px;
+    font-size:.8rem; color:var(--red-500); padding:6px 12px;
+    border:1px solid #FECACA; border-radius:var(--radius-sm);
+    background:#FFF5F5; font-weight:600; transition:all .15s;
+  }
+  .dash-btn-danger:hover { background:#FEE2E2; border-color:var(--red-500); }
+  .meta-badge {
+    font-size: .72rem; padding: 4px 10px; border-radius: 999px;
+    font-weight: 600;
+  }
+  .meta-badge.live { background: #DCFCE7; color: #15803D; }
+  .meta-badge.date { background: var(--gray-100); color: var(--gray-600); }
+
+  .dashboard-content { flex: 1; overflow-y: auto; padding: 24px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg); padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .kpi-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .kpi-label { font-size: .8rem; color: var(--gray-500); font-weight: 500; }
+  .kpi-icon {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kpi-icon svg { width: 18px; height: 18px; }
+  .kpi-value { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
+  .kpi-trend { font-size: .8rem; display: flex; align-items: center; gap: 4px; }
+  .kpi-trend.up { color: var(--green-500); }
+  .kpi-trend.down { color: var(--red-500); }
+  .kpi-trend.neutral { color: var(--gray-500); }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card {
+    background: var(--white); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg); padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .chart-card.wide { grid-column: span 2; }
+  .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .chart-title { font-size: .9rem; font-weight: 700; }
+  .chart-sub { font-size: .75rem; color: var(--gray-500); margin-top: 2px; }
+  .chart-actions { display: flex; gap: 6px; }
+  .chart-action-btn {
+    font-size: .72rem; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--gray-200); color: var(--gray-600);
+    background: var(--white); transition: all .15s;
+  }
+  .chart-action-btn:hover { background: var(--gray-100); }
+  .chart-action-btn.active { background: var(--blue-50); color: var(--blue-600); border-color: var(--blue-200); }
+  .chart-canvas-wrap { position: relative; height: 200px; }
+  .chart-canvas-wrap.tall { height: 260px; }
+
+  .add-widget-card {
+    background: var(--gray-50); border: 2px dashed var(--gray-200);
+    border-radius: var(--radius-lg); padding: 32px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; cursor: pointer; transition: all .2s; min-height: 180px;
+  }
+  .add-widget-card:hover { border-color: var(--blue-300); background: var(--blue-50); }
+  .add-widget-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; }
+  .add-widget-icon svg { width: 20px; height: 20px; color: var(--gray-500); }
+  .add-widget-card:hover .add-widget-icon { background: var(--blue-100); }
+  .add-widget-card:hover .add-widget-icon svg { color: var(--blue-600); }
+  .add-widget-label { font-size: .85rem; color: var(--gray-500); font-weight: 500; }
+  .add-widget-card:hover .add-widget-label { color: var(--blue-600); }
+
+  /* Table widget */
+  .data-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .data-table th { padding: 8px 12px; background: var(--gray-50); text-align: left; font-weight: 600; color: var(--gray-600); border-bottom: 1px solid var(--gray-200); }
+  .data-table td { padding: 9px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+  .data-table tr:hover td { background: var(--gray-50); }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: .72rem; font-weight: 600;
+  }
+  .pill.green { background: #DCFCE7; color: #15803D; }
+  .pill.amber { background: #FEF9C3; color: #A16207; }
+  .pill.red   { background: #FEE2E2; color: #B91C1C; }
+  .pill.blue  { background: var(--blue-100); color: var(--blue-700); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--gray-900); color: var(--white);
+    padding: 12px 20px; border-radius: var(--radius);
+    font-size: .875rem; font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(80px); opacity: 0;
+    transition: all .3s;
+    z-index: 999;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--white); border-radius: var(--radius-xl);
+    padding: 32px; max-width: 480px; width: 90%;
+    transform: scale(.95); transition: transform .2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+  .modal p { font-size: .9rem; color: var(--gray-500); margin-bottom: 20px; line-height: 1.6; }
+  .modal-input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius); font-size: .9rem; outline: none;
+    transition: border-color .15s; margin-bottom: 16px;
+  }
+  .modal-input:focus { border-color: var(--blue-400); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel { padding: 10px 20px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); font-size: .9rem; font-weight: 500; color: var(--gray-700); transition: background .15s; }
+  .btn-cancel:hover { background: var(--gray-100); }
+  .btn-confirm { padding: 10px 20px; border-radius: var(--radius-sm); background: var(--blue-600); color: var(--white); font-size: .9rem; font-weight: 600; transition: background .15s; }
+  .btn-confirm:hover { background: var(--blue-700); }
+
+  /* ─── Responsive ──────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-card.wide { grid-column: span 1; }
+  }
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 2.2rem; }
+    .chat-layout { grid-template-columns: 1fr; }
+    .chat-sidebar { display: none; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .navbar-nav { display: none; }
+    .navbar-cta { display: none; }
+    .mobile-tabs { display: flex; }
+    .page { padding-bottom: 72px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── NAVBAR ─────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="container">
+    <div class="navbar-brand">
+      <div class="navbar-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="navbar-name">EDU<span>data</span></span>
+    </div>
+    <div class="navbar-nav">
+      <button class="nav-btn active" data-page="home" onclick="showPage('home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </button>
+      <button class="nav-btn" data-page="chat" onclick="showPage('chat')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chat
+      </button>
+      <button class="nav-btn" data-page="dashboard" onclick="showPage('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ─── MOBILE TAB BAR ────────────────────────────────── -->
+<nav class="mobile-tabs" id="mobile-tabs">
+  <button class="mobile-tab-btn active" data-page="home" onclick="showPage('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="mobile-tab-btn" data-page="chat" onclick="showPage('chat')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Chat
+  </button>
+  <button class="mobile-tab-btn" data-page="dashboard" onclick="showPage('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </button>
+</nav>
+
+<!-- ─── TOAST ──────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<!-- ─── MODAL ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Widget toevoegen</h3>
+    <p id="modal-desc">Beschrijf welke data je wilt zien en EDUdata maakt automatisch de juiste grafiek aan.</p>
+    <input class="modal-input" id="modal-input" placeholder="Bijv. Instroom per faculteit dit jaar als staafdiagram…" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuleer</button>
+      <button class="btn-confirm" id="modal-confirm-btn" onclick="addWidget()">Aanmaken</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: HOME
+═══════════════════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1>Van onderwijsdata naar<br><em>inzicht in seconden</em></h1>
+        <p>EDUdata koppelt aan alle open-onderwijs-databronnen. Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Antwoord in 30 seconden.</p>
+        <div class="hero-actions">
+          <button class="btn-primary" onclick="showPage('chat')">Probeer de chat →</button>
+          <button class="btn-ghost" onclick="showPage('dashboard')">Bekijk dashboard</button>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <div class="hero-stat-value">30s</div>
+            <div class="hero-stat-label">Gemiddelde responstijd</div>
+          </div>
+          <div>
+            <div class="hero-stat-value">40+</div>
+            <div class="hero-stat-label">Databronnen gekoppeld</div>
+          </div>
+          <div>
+            <div class="hero-stat-value">100%</div>
+            <div class="hero-stat-label">Open onderwijsdata</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section">
+    <div class="container">
+      <div style="text-align:center; margin-bottom: 48px;">
+        <div class="section-label">Functionaliteit</div>
+        <h2 class="section-title">Alles wat je nodig hebt,<br>niets wat je niet nodig hebt</h2>
+        <p class="section-sub" style="margin: 0 auto;">Eén assistent voor alle onderwijsvragen. Van instroom tot diplomering — altijd onderbouwd en uitlegbaar.</p>
+      </div>
+      <div class="grid grid-3 gap-6">
+        <div class="feature-card">
+          <div class="feature-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3>Stel vragen in gewone taal</h3>
+          <p>Geen SQL, geen BI-tool. Typ je vraag zoals je die zou stellen aan een collega. EDUdata begrijpt de context en haalt het juiste antwoord op.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon teal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <h3>Dashboards zonder BI-kennis</h3>
+          <p>Beschrijf wat je wilt zien. EDUdata bouwt automatisch de juiste grafiek of tegel en koppelt deze aan de juiste databron. Altijd up-to-date.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>Uitlegbare inzichten</h3>
+          <p>Elk antwoord toont welke bronnen zijn gebruikt en hoe de conclusie tot stand kwam. Controleerbaar, deelbaar en altijd terug te herleiden naar de data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Steps -->
+  <section class="section steps-section">
+    <div class="container">
+      <div style="margin-bottom: 40px;">
+        <div class="section-label">Zo werkt het</div>
+        <h2 class="section-title">Van vraag naar inzicht in 3 stappen</h2>
+      </div>
+      <div class="grid grid-3 gap-6">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3>Werkt met open onderwijsdata</h3>
+          <p>EDUdata verbindt met DUO, CBS, OECD, 1cijferHO en andere open bronnen. De data blijft waar die staat — EDUdata leest mee en vormt één betrouwbaar beeld.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3>Simpel vragen; EDUdata doet de analyse</h3>
+          <p>Typ of spreek je vraag in gewone taal. EDUdata zoekt in de data, legt verbanden en doet de berekeningen. Het antwoord komt als tekst, tabel of grafiek.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3>Inzicht met context en bronnen</h3>
+          <p>Je krijgt niet alleen een antwoord, maar ook de toelichting: welke databron, welk tijdvak, welke trend. Alles herleidbaar en deelbaar met je team.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section class="section">
+    <div class="container">
+      <div style="margin-bottom: 40px; text-align: center;">
+        <div class="section-label">Vergelijking</div>
+        <h2 class="section-title">Stop met werken op de logica van gisteren</h2>
+        <p class="section-sub" style="margin: 0 auto;">Met EDUdata werk je op de logica van morgen: actuele inzichten uit open onderwijsdata, direct beschikbaar voor iedereen.</p>
+      </div>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Vóór EDUdata</th>
+            <th>✦ Met EDUdata</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="cross-icon">✗</span>4 systemen, 4 logins, 4 antwoorden</td>
+            <td><span class="check-icon">✓</span>1 vraag, 1 antwoord, 1 plek</td>
+          </tr>
+          <tr>
+            <td><span class="cross-icon">✗</span>Dashboards na 3 dagen</td>
+            <td><span class="check-icon">✓</span>Antwoord in 30 seconden</td>
+          </tr>
+          <tr>
+            <td><span class="cross-icon">✗</span>Beslissen op data van 2 weken oud</td>
+            <td><span class="check-icon">✓</span>Beslissen op data van vandaag</td>
+          </tr>
+
+          <tr>
+            <td><span class="cross-icon">✗</span>Grote kans op fouten</td>
+            <td><span class="check-icon">✓</span>Betrouwbare data & controleerbare AI</td>
+          </tr>
+          <tr>
+            <td><span class="cross-icon">✗</span>Handmatig werken</td>
+            <td><span class="check-icon">✓</span>Directe AI-optimalisatie</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Benefits -->
+  <section class="section" style="background: var(--gray-50); padding-top: 64px; padding-bottom: 64px;">
+    <div class="container">
+      <div style="margin-bottom: 40px;">
+        <div class="section-label">Voordelen</div>
+        <h2 class="section-title">Waarom je van EDUdata gaat houden</h2>
+      </div>
+      <div class="grid grid-2 gap-4">
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div>
+            <h3>Minder handwerk, meer output</h3>
+            <p>EDUdata automatiseert terugkerende taken. Teams winnen tijd voor werk met impact.</p>
+          </div>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <h3>Direct inzicht voor iedereen</h3>
+            <p>Elke rol krijgt relevante antwoorden en dashboards op maat — van docent tot bestuur.</p>
+          </div>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div>
+            <h3>Altijd één waarheid</h3>
+            <p>Alle systemen gekoppeld = dezelfde cijfers voor iedereen. Geen discussie over versies of bronnen.</p>
+          </div>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <div>
+            <h3>Beslissen op feiten</h3>
+            <p>Je ziet wat er speelt en waar kansen liggen — onderbouwd met actuele open onderwijsdata.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <footer style="background: var(--white); border-top: 1px solid var(--gray-200); padding: 32px 0; margin-top: 80px;">
+    <div class="container flex justify-between items-center">
+      <div class="navbar-brand">
+        <div class="navbar-logo" style="width:28px;height:28px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="navbar-name" style="font-size:1rem;">EDU<span>data</span></span>
+      </div>
+      <span class="text-sm text-muted">© 2025 EDUdata. Gebaseerd op open onderwijsdata.</span>
+    </div>
+  </footer>
+
+</div><!-- /page-home -->
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: CHAT
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-chat">
+  <div class="chat-layout">
+
+    <!-- Sidebar -->
+    <aside class="chat-sidebar">
+      <div>
+        <div class="sidebar-section-title">Databronnen</div>
+        <div class="chat-source-list">
+          <div class="source-item">
+            <div class="source-dot green"></div>
+            <span class="source-label">DUO Open Data</span>
+            <span class="source-badge">Open</span>
+          </div>
+          <div class="source-item">
+            <div class="source-dot green"></div>
+            <span class="source-label">1cijferHO</span>
+            <span class="source-badge">Open</span>
+          </div>
+          <div class="source-item">
+            <div class="source-dot green"></div>
+            <span class="source-label">CBS StatLine</span>
+            <span class="source-badge">Open</span>
+          </div>
+          <div class="source-item">
+            <div class="source-dot green"></div>
+            <span class="source-label">UWV Arbeidsmarkt</span>
+            <span class="source-badge">Open</span>
+          </div>
+          <div class="source-item">
+            <div class="source-dot green"></div>
+            <span class="source-label">ROA / SBB</span>
+            <span class="source-badge">Open</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title" style="margin-bottom:10px;">Suggestie vragen</div>
+
+        <div class="suggested-category">
+          <button class="suggested-category-toggle" onclick="toggleCategory(this)">
+            <span>Arbeidsmarkt</span>
+            <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="suggested-list cat-body">
+            <button class="suggested-btn" onclick="sendSuggested('Welk percentage van de bevolking in mijn regio neemt deel aan LLO?')">Welk % van de bevolking in mijn regio neemt deel aan LLO?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Wat is in mijn regio het opleidingsniveau van werkzoekenden?')">Wat is in mijn regio het opleidingsniveau van werkzoekenden?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Hoeveel vacatures zijn er in mijn regio voor ons onderwijsaanbod?')">Hoeveel vacatures zijn er in mijn regio voor ons onderwijsaanbod?</button>
+          </div>
+        </div>
+
+        <div class="suggested-category">
+          <button class="suggested-category-toggle" onclick="toggleCategory(this)">
+            <span>Uitstroom</span>
+            <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="suggested-list cat-body">
+            <button class="suggested-btn" onclick="sendSuggested('Hoeveel gediplomeerden levert ons onderwijsaanbod op ten opzichte van andere instellingen in de regio?')">Hoeveel gediplomeerden levert ons aanbod op t.o.v. andere instellingen in de regio?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Wat verdienen gediplomeerden van onze instelling gemiddeld in de regio?')">Wat verdienen onze gediplomeerden gemiddeld in de regio?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Hoe groot is in mijn regio het aandeel voortijdig schoolverlaters dat werk heeft gevonden?')">Hoe groot is het aandeel VSV-ers dat werk heeft gevonden in mijn regio?</button>
+          </div>
+        </div>
+
+        <div class="suggested-category">
+          <button class="suggested-category-toggle" onclick="toggleCategory(this)">
+            <span>Instroom</span>
+            <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="suggested-list cat-body">
+            <button class="suggested-btn" onclick="sendSuggested('Waar komen mijn lerenden vandaan en met welke instellingen in de regio concurreer ik om dezelfde doelgroep?')">Waar komen mijn lerenden vandaan en met wie concurreer ik in de regio?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Hoeveel instromers komen rechtstreeks vanuit een andere opleiding uit de regio?')">Hoeveel instromers komen rechtstreeks vanuit een andere opleiding in de regio?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Hoe heeft de deelname aan voltijdonderwijs bij ons zich ontwikkeld?')">Hoe heeft deelname aan voltijdonderwijs bij ons zich ontwikkeld?</button>
+          </div>
+        </div>
+
+        <div class="suggested-category">
+          <button class="suggested-category-toggle" onclick="toggleCategory(this)">
+            <span>Gediplomeerden</span>
+            <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="suggested-list cat-body">
+            <button class="suggested-btn" onclick="sendSuggested('Welk percentage lerenden behaalt bij ons binnen 4 jaar een diploma en is dat gemiddeld in de regio?')">Welk % behaalt bij ons binnen 4 jaar een diploma, en is dat gemiddeld in de regio?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Verschilt bij ons het eerste-diploma-pad tussen mannen en vrouwen?')">Verschilt bij ons het eerste-diploma-pad tussen mannen en vrouwen?</button>
+            <button class="suggested-btn" onclick="sendSuggested('Welke regio kennen de hoogste diplomagroei?')">Welke regio's kennen de hoogste diplomagroei?</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main chat -->
+    <div class="chat-main">
+      <div class="chat-topbar">
+        <div>
+          <div class="chat-topbar-title">EDUdata Chat</div>
+          <div class="chat-topbar-sub">Verken regionale en landelijke open onderwijsdata · 5 open bronnen</div>
+        </div>
+        <button onclick="clearChat()" style="font-size:.8rem;color:var(--gray-500);padding:6px 12px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);transition:background .15s;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='transparent'">
+          Wis chat
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome" id="chat-welcome">
+          <div class="chat-welcome-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <h2>Verken betrouwbare onderwijsdata</h2>
+          <p>Stel een vraag over regionale of landelijke trends — instroom, uitstroom, arbeidsmarkt of gediplomeerden. EDUdata combineert open onderwijsbronnen en geeft je een onderbouwd inzicht om je strategische koers te versterken.</p>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="chat-input" rows="1" placeholder="Stel een vraag over regionale of landelijke onderwijsdata…" onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="chat-disclaimer">EDUdata werkt uitsluitend met open onderwijsbronnen · Geen interne of persoonsgebonden data</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-chat -->
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: DASHBOARD
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="page-dashboard">
+  <div class="dashboard-layout">
+
+    <div class="dashboard-topbar">
+      <span class="dashboard-title">Dashboard</span>
+      <div class="prompt-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="prompt-input" id="prompt-input" placeholder="Beschrijf een widget… bijv. 'Instroom trend als lijndiagram'" onkeydown="if(event.key==='Enter') createWidgetFromPrompt()" />
+        <button class="prompt-submit" onclick="createWidgetFromPrompt()">Aanmaken</button>
+      </div>
+      <div class="dashboard-meta">
+        <span class="meta-badge live">● Live</span>
+        <span class="meta-badge date">22 jun 2025</span>
+        <button onclick="showToast('Dashboard gedeeld met je team!')" class="dash-btn-secondary">Delen</button>
+        <div style="width:1px;height:20px;background:var(--gray-200);flex-shrink:0;"></div>
+        <button onclick="confirmClearDashboard()" class="dash-btn-danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Wis dashboard
+        </button>
+      </div>
+    </div>
+
+    <div class="dashboard-content" id="dashboard-content">
+      <div data-empty style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--gray-400);padding:80px 24px;text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div style="font-size:1rem;font-weight:700;color:var(--gray-700);margin-bottom:6px;">Dashboard is leeg</div>
+        <div style="font-size:.875rem;">Beschrijf een widget in de balk bovenaan om te beginnen.</div>
+      </div>
+    </div><!-- /dashboard-content -->
+  </div>
+</div><!-- /page-dashboard -->
+
+<script>
+/* ─── Page routing ──────────────────────────────────── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn, .mobile-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === id);
+  });
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+/* ─── Toast ─────────────────────────────────────────── */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ─── Widget aanmaken (directe flow, geen modal) ─────── */
+function createWidgetFromPrompt() {
+  const inp = document.getElementById('prompt-input');
+  const val = inp.value.trim();
+  if (!val) { inp.focus(); return; }
+  inp.value = '';
+  generateWidget(val);
+}
+
+function focusPrompt() {
+  document.getElementById('prompt-input').focus();
+}
+
+/* ─── Widget generator ───────────────────────────────── */
+let widgetCounter = 0;
+
+function generateWidget(prompt) {
+  const p = prompt.toLowerCase();
+  const id = 'wc-' + (++widgetCounter);
+
+  // Determine chart type from prompt
+  const isLine    = /lijn|trend|tijd|jaar|ontwikkeling|groei|verloop/.test(p);
+  const isDoughnut= /taart|donut|cirkel|verdeling|aandeel|percentage/.test(p);
+  const isTable   = /tabel|lijst|overzicht/.test(p) && !/grafiek|chart|diagram/.test(p);
+  const isHBar    = /horizontaal|vergelijk|ranking|rang/.test(p);
+
+  // Pick topic → dummy data
+  const cfg = widgetConfig(p, id, isLine, isDoughnut, isHBar, isTable);
+
+  // Build card
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'margin-bottom:16px;';
+
+  if (isTable) {
+    wrapper.innerHTML = `
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">${escHtml(prompt.length > 60 ? prompt.slice(0,57)+'…' : prompt)}</div>
+            <div class="chart-sub">Open onderwijsdata · ${new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'})}</div>
+          </div>
+          <button class="chart-action-btn" onclick="this.closest('.chart-card').remove();showToast('Widget verwijderd')">Verwijder</button>
+        </div>
+        ${cfg.tableHTML}
+      </div>`;
+  } else {
+    wrapper.innerHTML = `
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">${escHtml(prompt.length > 60 ? prompt.slice(0,57)+'…' : prompt)}</div>
+            <div class="chart-sub">Open onderwijsdata · ${new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'})}</div>
+          </div>
+          <button class="chart-action-btn" onclick="this.closest('.chart-card').remove();showToast('Widget verwijderd')">Verwijder</button>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="${id}"></canvas></div>
+      </div>`;
+  }
+
+  const content = document.getElementById('dashboard-content');
+  // Remove empty state if present
+  const emptyState = content.querySelector('[data-empty]');
+  if (emptyState) emptyState.remove();
+  // Insert before the add-widget card if present, otherwise append
+  const addCard = content.querySelector('.add-widget-card');
+  const addWrap = addCard ? addCard.closest('.charts-grid') || addCard.parentElement : null;
+  content.insertBefore(wrapper, addWrap || null);
+
+  if (!isTable) {
+    requestAnimationFrame(() => {
+      new Chart(document.getElementById(id), cfg.chartConfig);
+    });
+  }
+
+  showToast('Widget aangemaakt');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function widgetConfig(p, id, isLine, isDoughnut, isHBar, isTable) {
+  const gridColor = '#F3F4F6';
+
+  // ── Topic matching → data sets ──────────────────────
+  let labels, data, data2, label, label2, color, title;
+
+  if (/instroom|aanmelding|inschrijv/.test(p)) {
+    labels = ['2020–21','2021–22','2022–23','2023–24','2024–25'];
+    data   = [3912, 4087, 4398, 4545, 4832];
+    data2  = [3720, 3890, 4100, 4280, 4510];
+    label  = 'Uw instelling'; label2 = 'Regionaal gem.';
+    color  = '#2563EB';
+  } else if (/uitval|dropout|stop/.test(p)) {
+    labels = ['Informatica','Verpleegkunde','Bedrijfskunde','Werktuigbouw','Communicatie'];
+    data   = [14.1, 29.8, 21.3, 24.2, 17.5];
+    label  = 'Uitval % jaar 1'; color = '#EF4444';
+  } else if (/diploma|rendement|afstuder/.test(p)) {
+    labels = ['Informatica','Verpleegkunde','Bedrijfskunde','Werktuigbouw','Communicatie','Onderwijs'];
+    data   = [72.6, 74.2, 64.8, 71.4, 72.1, 78.3];
+    data2  = [71.5, 72.8, 66.1, 70.1, 69.8, 74.1];
+    label  = 'Uw instelling'; label2 = 'Regionaal gem.';
+    color  = '#0D9488';
+  } else if (/arbeidsmarkt|vacature|werk/.test(p)) {
+    labels = ['ICT & Data','Zorg & Welzijn','Techniek','Economie','Onderwijs'];
+    data   = [4812, 6341, 3204, 1987, 2156];
+    label  = 'Open vacatures regio'; color = '#F59E0B';
+  } else if (/llo|leven lang|bijschol/.test(p)) {
+    labels = ['2020','2021','2022','2023','2024'];
+    data   = [16.2, 17.4, 18.1, 18.9, 19.4];
+    data2  = [19.0, 19.8, 20.3, 20.8, 21.1];
+    label  = 'Uw regio'; label2 = 'Landelijk';
+    color  = '#7C3AED';
+  } else if (/vsv|schoolverlater/.test(p)) {
+    labels = ['Mbo niv. 1','Mbo niv. 2','Mbo niv. 3','Havo/vwo'];
+    data   = [41.2, 55.8, 67.4, 48.9];
+    label  = '% VSV met werk na 1 jaar'; color = '#22C55E';
+  } else if (/gender|man|vrouw|geslacht/.test(p)) {
+    labels = ['Instroom','Uitval jr1','Rendement 4jr','Diploma gem. tijd'];
+    data   = [48, 14.2, 74.1, 3.8];
+    data2  = [52, 22.1, 65.8, 4.2];
+    label  = 'Vrouwen'; label2 = 'Mannen';
+    color  = '#2563EB';
+  } else if (/regio/.test(p)) {
+    labels = ['Utrecht','Gr.-Amsterdam','Eindhoven','R\'dam/DH','Noord-NL','Zeeland'];
+    data   = [28412, 41830, 22104, 39217, 18643, 5821];
+    label  = "Diploma's 2024"; color = '#0D9488';
+  } else {
+    // Generic fallback
+    labels = ['Categorie A','Categorie B','Categorie C','Categorie D','Categorie E'];
+    data   = [42, 67, 53, 38, 71];
+    label  = 'Waarde'; color = '#2563EB';
+  }
+
+  // ── Table variant ────────────────────────────────────
+  if (isTable) {
+    const rows = labels.map((l,i) => `<tr><td>${l}</td><td>${data[i]?.toLocaleString('nl')}</td>${data2 ? `<td>${data2[i]?.toLocaleString('nl')}</td>` : ''}</tr>`).join('');
+    const h2 = data2 ? `<th>${label2||'Vergelijking'}</th>` : '';
+    return { tableHTML: `<table class="data-table"><thead><tr><th>Categorie</th><th>${label}</th>${h2}</tr></thead><tbody>${rows}</tbody></table>` };
+  }
+
+  // ── Doughnut ─────────────────────────────────────────
+  if (isDoughnut) {
+    return { chartConfig: {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: ['#2563EB','#14B8A6','#F59E0B','#EF4444','#7C3AED','#22C55E'], borderWidth: 0, hoverOffset: 6 }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ position:'right', labels:{ boxWidth:10, padding:12, font:{size:11} } } } }
+    }};
+  }
+
+  // ── Line ─────────────────────────────────────────────
+  if (isLine) {
+    const datasets = [{ label, data, borderColor: color, backgroundColor: color+'18', borderWidth:2.5, pointRadius:4, pointBackgroundColor: color, fill:true, tension:.35 }];
+    if (data2) datasets.push({ label:label2, data:data2, borderColor:'#94A3B8', backgroundColor:'transparent', borderWidth:2, borderDash:[4,3], pointRadius:3, pointBackgroundColor:'#94A3B8', fill:false, tension:.35 });
+    return { chartConfig: {
+      type:'line', data:{ labels, datasets },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:!!data2, position:'bottom', labels:{boxWidth:10,padding:12,font:{size:11}} } }, scales:{ x:{grid:{color:gridColor},border:{display:false}}, y:{grid:{color:gridColor},border:{display:false}} } }
+    }};
+  }
+
+  // ── Horizontal bar ───────────────────────────────────
+  if (isHBar) {
+    const datasets = [{ label, data, backgroundColor: color, borderRadius:4, barThickness:14 }];
+    if (data2) datasets.push({ label:label2, data:data2, backgroundColor:'#DBEAFE', borderRadius:4, barThickness:14 });
+    return { chartConfig: {
+      type:'bar', data:{ labels, datasets },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:!!data2, position:'bottom', labels:{boxWidth:10,padding:12,font:{size:11}} } }, scales:{ x:{grid:{color:gridColor},border:{display:false}}, y:{grid:{display:false},border:{display:false}} } }
+    }};
+  }
+
+  // ── Vertical bar (default) ───────────────────────────
+  const datasets = [{ label, data, backgroundColor: color, borderRadius:6 }];
+  if (data2) datasets.push({ label:label2, data:data2, backgroundColor:'#DBEAFE', borderRadius:6 });
+  return { chartConfig: {
+    type:'bar', data:{ labels, datasets },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:!!data2, position:'bottom', labels:{boxWidth:10,padding:12,font:{size:11}} } }, scales:{ x:{grid:{display:false},border:{display:false}}, y:{grid:{color:gridColor},border:{display:false}} } }
+  }};
+}
+
+/* ─── Wis dashboard (bevestiging via modal) ──────────── */
+function confirmClearDashboard() {
+  document.getElementById('modal-title').textContent = 'Dashboard wissen?';
+  document.getElementById('modal-desc').textContent = 'Alle widgets en grafieken worden verwijderd. Dit kan niet ongedaan worden gemaakt.';
+  document.getElementById('modal-input').style.display = 'none';
+  document.getElementById('modal-confirm-btn').textContent = 'Wis dashboard';
+  document.getElementById('modal-confirm-btn').style.cssText = 'background:var(--red-500);color:white;padding:10px 20px;border-radius:var(--radius-sm);font-size:.9rem;font-weight:600;';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function addWidget() { executeClearDashboard(); } // modal confirm-btn calls this only in clear mode
+
+function executeClearDashboard() {
+  closeModal();
+  Object.values(chartInstances).forEach(c => c.destroy());
+  Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
+  document.getElementById('dashboard-content').innerHTML = `
+    <div data-empty style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--gray-400);padding:80px 24px;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </div>
+      <div style="font-size:1rem;font-weight:700;color:var(--gray-700);margin-bottom:6px;">Dashboard is leeg</div>
+      <div style="font-size:.875rem;">Beschrijf een widget in de balk bovenaan om te beginnen.</div>
+    </div>`;
+  showToast('Dashboard gewist');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('modal-input').style.display = '';
+  document.getElementById('modal-title').textContent = 'Widget toevoegen';
+  document.getElementById('modal-desc').textContent = 'Beschrijf welke data je wilt zien.';
+  document.getElementById('modal-confirm-btn').textContent = 'Aanmaken';
+  document.getElementById('modal-confirm-btn').style.cssText = '';
+}
+
+/* ─── Chat ──────────────────────────────────────────── */
+let chatBusy = false;
+
+/* ─── Toggle suggested categories ───────────────────── */
+function toggleCategory(btn) {
+  btn.classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
+}
+
+const aiResponses = {
+  default: {
+    text: `<p>Op basis van beschikbare open onderwijsbronnen heb ik een eerste analyse gemaakt. Stel een specifiekere vraag voor een gedetailleerder regionaal beeld.</p>`,
+    table: null,
+    insight: 'Alle data is afkomstig uit publieke onderwijsregistraties (DUO, CBS, UWV, ROA/SBB, 1cijferHO). Geen interne of persoonsgebonden informatie.',
+    sources: ['DUO Open Data', 'CBS StatLine'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  llo: {
+    text: `<p>In de regio <strong>Groot-Amsterdam</strong> neemt <strong>19,4%</strong> van de bevolking (25–65 jaar) deel aan een of andere vorm van <strong>Leven Lang Ontwikkelen (LLO)</strong>. Landelijk gemiddelde: 21,1%.</p>`,
+    table: {
+      headers: ['Regio', 'LLO-deelname', 'vs. landelijk', 'Trend (3j)'],
+      rows: [
+        ['Groot-Amsterdam', '19,4%', '-1,7 pp', '↑'],
+        ['Metropool Regio R\'dam', '17,8%', '-3,3 pp', '↑'],
+        ['Regio Utrecht', '23,1%', '+2,0 pp', '↑'],
+        ['Regio Eindhoven', '22,4%', '+1,3 pp', '→'],
+        ['Landelijk gemiddelde', '21,1%', '—', '↑'],
+      ],
+      trendUp: ['↑', '+2,0 pp', '+1,3 pp'],
+      trendDown: ['-1,7 pp', '-3,3 pp']
+    },
+    insight: 'Groot-Amsterdam zit 1,7 pp onder het landelijk gemiddelde, maar toont wel een stijgende trend. Kans voor uw instelling: het LLO-aanbod beter afstemmen op de regionale vraag.',
+    sources: ['CBS StatLine', 'ROA / SBB'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  werkzoekenden: {
+    text: `<p>In de regio <strong>Groot-Amsterdam</strong> is de verdeling van <strong>opleidingsniveau onder werkzoekenden</strong> als volgt (UWV-data, peildatum jan 2025):</p>`,
+    table: {
+      headers: ['Opleidingsniveau', 'Aandeel werkzoekenden', 'Trend', 'Landelijk'],
+      rows: [
+        ['Laag (geen startkwalificatie)', '34,2%', '↓', '38,1%'],
+        ['Mbo niveau 1–2', '21,5%', '→', '22,4%'],
+        ['Mbo niveau 3–4', '28,3%', '↑', '25,6%'],
+        ['Hbo / wo', '16,0%', '↑', '13,9%'],
+      ],
+      trendUp: ['↑'],
+      trendDown: ['↓']
+    },
+    insight: 'Het aandeel mbo-geschoolde werkzoekenden (niv. 3–4) groeit regionaal — boven het landelijk gemiddelde. Dit signaleert een mismatch tussen aanbod en vraag op mbo-niveau die strategisch relevant is.',
+    sources: ['UWV Arbeidsmarkt', 'CBS StatLine'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  vacatures: {
+    text: `<p>Voor gediplomeerden van het <strong>huidige onderwijsaanbod</strong> zijn er in de regio <strong>Groot-Amsterdam</strong> de volgende vacatureaantallen (LISA/UWV, 2024):</p>`,
+    table: {
+      headers: ['Sector / opleiding', 'Open vacatures', 'Spanning', 'Trend'],
+      rows: [
+        ['ICT & Data', '4.812', 'Krap', '↑'],
+        ['Zorg & Welzijn', '6.341', 'Zeer krap', '↑'],
+        ['Techniek', '3.204', 'Krap', '→'],
+        ['Economie & Handel', '1.987', 'Ruim', '↓'],
+        ['Onderwijs', '2.156', 'Krap', '↑'],
+      ],
+      trendUp: ['↑'],
+      trendDown: ['↓']
+    },
+    insight: 'Zorg & Welzijn en ICT kennen de grootste krapte. Uw aanbod in deze richtingen sluit goed aan op de regionale vraag. Economie & Handel toont ruimte — overweeg of het aanbod moet worden bijgesteld.',
+    sources: ['UWV Arbeidsmarkt', 'CBS StatLine', 'ROA / SBB'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  gediplomeerden_uitstroom: {
+    text: `<p>Uw instelling levert jaarlijks <strong>1.847 gediplomeerden</strong>. Vergeleken met andere instellingen in de regio met hetzelfde aanbod (DUO, studiejaar 2023–24):</p>`,
+    table: {
+      headers: ['Instelling', 'Gediplomeerden', 'Marktaandeel regio', 'Trend'],
+      rows: [
+        ['Uw instelling', '1.847', '31,4%', '↑'],
+        ['Instelling B', '1.523', '25,9%', '→'],
+        ['Instelling C', '1.102', '18,7%', '↓'],
+        ['Instelling D', '874', '14,9%', '↓'],
+        ['Overig', '534', '9,1%', '→'],
+      ],
+      trendUp: ['↑'],
+      trendDown: ['↓']
+    },
+    insight: 'Uw instelling heeft het grootste regionale marktaandeel in gediplomeerden (31,4%) en groeit. Instellingen C en D verliezen terrein — kansen voor verdere profilering.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  salaris: {
+    text: `<p>Gediplomeerden van uw instelling verdienen gemiddeld <strong>€ 2.840 bruto per maand</strong> één jaar na diplomering (ROA Arbeidsmarktmonitor, cohort 2022). Regionale vergelijking:</p>`,
+    table: {
+      headers: ['Opleiding', 'Uw instelling', 'Regionaal gem.', 'Nationaal gem.'],
+      rows: [
+        ['ICT / Informatica', '€ 3.410', '€ 3.280', '€ 3.190'],
+        ['Verpleegkunde', '€ 2.620', '€ 2.590', '€ 2.610'],
+        ['Bedrijfskunde', '€ 2.740', '€ 2.810', '€ 2.750'],
+        ['Werktuigbouwkunde', '€ 3.180', '€ 3.120', '€ 3.050'],
+        ['Communicatie', '€ 2.390', '€ 2.430', '€ 2.410'],
+      ],
+      trendUp: ['€ 3.410', '€ 3.180'],
+      trendDown: ['€ 2.390']
+    },
+    insight: 'ICT-gediplomeerden van uw instelling verdienen boven zowel het regionale als nationale gemiddelde — een sterk signaal voor arbeidsmarktaansluiting. Communicatie zit iets onder het regionale gemiddelde.',
+    sources: ['ROA / SBB', 'DUO Open Data'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  vsv: {
+    text: `<p>In uw regio <strong>Groot-Amsterdam</strong> heeft <strong>58,3%</strong> van de geregistreerde voortijdig schoolverlaters (VSV) binnen 1 jaar werk gevonden (DUO/UWV koppeling, 2024):</p>`,
+    table: {
+      headers: ['Categorie VSV', 'Aandeel met werk', 'Zonder werk', 'In opleiding'],
+      rows: [
+        ['Mbo niveau 1', '41,2%', '44,1%', '14,7%'],
+        ['Mbo niveau 2', '55,8%', '31,4%', '12,8%'],
+        ['Mbo niveau 3', '67,4%', '22,1%', '10,5%'],
+        ['Havo / vwo uitval', '48,9%', '18,3%', '32,8%'],
+        ['Totaal regio', '58,3%', '28,4%', '13,3%'],
+      ],
+      trendUp: ['67,4%', '58,3%'],
+      trendDown: ['41,2%']
+    },
+    insight: 'VSV-ers van mbo niveau 3 vinden het vaakst werk (67,4%). Niveau 1 blijft kwetsbaar — 44% is na een jaar nog zonder werk. Regionale samenwerking met gemeenten en UWV biedt kansen voor begeleiding.',
+    sources: ['DUO Open Data', 'UWV Arbeidsmarkt', 'CBS StatLine'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  herkomst: {
+    text: `<p>Uw lerenden zijn grotendeels afkomstig uit de eigen regio. Hieronder de herkomstverdeling en de instellingen waarmee u concurreert om dezelfde doelgroep (DUO 2024):</p>`,
+    table: {
+      headers: ['Herkomstregio', 'Aandeel instroom', 'Voornaamste concurrent'],
+      rows: [
+        ['Groot-Amsterdam (kern)', '52,4%', 'Instelling B'],
+        ['Noord-Holland overig', '21,3%', 'Instelling C'],
+        ['Flevoland', '11,2%', 'Instelling D'],
+        ['Utrecht / overig', '8,7%', 'Instelling B, E'],
+        ['Buitenland', '6,4%', 'n.v.t.'],
+      ],
+      trendUp: [],
+      trendDown: []
+    },
+    insight: 'Meer dan de helft van de instroom komt uit de kernregio. Instelling B is uw voornaamste concurrent, zowel in de kern als in Utrecht. Flevoland biedt groeiruimte — concurrentie daar is beperkt.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  doorstroom: {
+    text: `<p><strong>Hoeveel instromers komen rechtstreeks uit een andere opleiding in de regio?</strong> Op basis van DUO-koppeldata (2024) voor uw instelling:</p>`,
+    table: {
+      headers: ['Vooropleiding', 'Aantal', 'Aandeel', 'Trend'],
+      rows: [
+        ['Mbo (regionaal)', '612', '34,1%', '↑'],
+        ['Havo / vwo (regionaal)', '489', '27,2%', '→'],
+        ['Hbo switch (regionaal)', '203', '11,3%', '↑'],
+        ['Mbo / havo buiten regio', '312', '17,4%', '→'],
+        ['Overig / onbekend', '181', '10,1%', '↓'],
+      ],
+      trendUp: ['↑'],
+      trendDown: ['↓']
+    },
+    insight: 'Doorstroom vanuit regionaal mbo groeit (+↑) — een teken van sterkere samenwerking met het mbo-veld. Hbo-switchers nemen ook toe, wat kansen biedt voor gerichte zij-instroomprogramma\'s.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  voltijd: {
+    text: `<p>De <strong>deelname aan voltijdonderwijs</strong> bij uw instelling over de afgelopen 5 jaar (DUO, peildatum 1 oktober):</p>`,
+    table: {
+      headers: ['Studiejaar', 'Voltijd', 'Deeltijd', 'Duaal', 'Totaal'],
+      rows: [
+        ['2020–21', '3.241', '487', '184', '3.912'],
+        ['2021–22', '3.389', '501', '197', '4.087'],
+        ['2022–23', '3.618', '538', '242', '4.398'],
+        ['2023–24', '3.724', '561', '260', '4.545'],
+        ['2024–25', '3.901', '612', '319', '4.832'],
+      ],
+      trendUp: ['3.901', '612', '319'],
+      trendDown: []
+    },
+    insight: 'Voltijd groeit gestaag (+20,4% over 5 jaar), maar deeltijd en duaal groeien relatief sneller (+25,7% en +73,4%). Dit weerspiegelt een bredere trend: meer volwassen lerenden en werkenden die een opleiding volgen.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  rendement_4jaar: {
+    text: `<p><strong>Diplomarendement binnen 4 jaar</strong> — uw instelling versus het regionaal gemiddelde (DUO, cohort 2020):</p>`,
+    table: {
+      headers: ['Opleiding', 'Uw instelling', 'Regionaal gem.', 'Nationaal gem.'],
+      rows: [
+        ['Informatica', '68,3%', '65,1%', '66,4%'],
+        ['Verpleegkunde', '74,2%', '71,8%', '72,9%'],
+        ['Bedrijfskunde', '64,8%', '67,3%', '66,1%'],
+        ['Werktuigbouwkunde', '71,4%', '69,2%', '70,1%'],
+        ['Communicatie', '72,1%', '70,4%', '69,8%'],
+      ],
+      trendUp: ['68,3%', '74,2%', '71,4%', '72,1%'],
+      trendDown: ['64,8%']
+    },
+    insight: 'Uw instelling scoort voor de meeste opleidingen boven het regionaal gemiddelde. Bedrijfskunde is het enige geval waarbij u onder het regionale en nationale gemiddelde zit — dit verdient nader onderzoek.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  gender_diploma: {
+    text: `<p><strong>Eerste-diploma-pad per geslacht</strong> bij uw instelling (DUO, cohorten 2018–2022):</p>`,
+    table: {
+      headers: ['Indicator', 'Vrouwen', 'Mannen', 'Verschil'],
+      rows: [
+        ['Gemiddelde studieduur (jaar)', '3,8', '4,2', '-0,4 jr'],
+        ['Rendement binnen 4 jaar', '74,1%', '65,8%', '+8,3 pp'],
+        ['Rendement binnen 6 jaar', '81,3%', '74,6%', '+6,7 pp'],
+        ['Uitval jaar 1', '14,2%', '22,1%', '-7,9 pp'],
+        ['Switch van opleiding', '11,4%', '18,7%', '-7,3 pp'],
+      ],
+      trendUp: ['+8,3 pp', '+6,7 pp'],
+      trendDown: ['-7,9 pp', '-7,3 pp']
+    },
+    insight: 'Vrouwen behalen significant vaker en sneller een diploma. Het verschil in uitval jaar 1 (7,9 pp) is opvallend groot. Dit patroon is landelijk herkenbaar, maar bovengemiddeld uitgesproken bij uw instelling.',
+    sources: ['DUO Open Data', '1cijferHO'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  },
+  diplomagroei: {
+    text: `<p><strong>Diplomagroei per regio</strong> — ontwikkeling in het aantal afgegeven diploma's (alle niveaus, DUO 2019–2024):</p>`,
+    table: {
+      headers: ["Regio", "Diploma's 2024", "Groei 5 jaar", "Trend"],
+      rows: [
+        ['Regio Utrecht', '28.412', '+18,4%', '↑'],
+        ['Groot-Amsterdam', '41.830', '+14,7%', '↑'],
+        ['Regio Eindhoven', '22.104', '+13,9%', '↑'],
+        ['Metropool R\'dam/DH', '39.217', '+9,2%', '→'],
+        ['Noord-Nederland', '18.643', '+4,1%', '→'],
+        ['Zeeland', '5.821', '-1,3%', '↓'],
+      ],
+      trendUp: ['↑', '+18,4%', '+14,7%', '+13,9%'],
+      trendDown: ['↓', '-1,3%']
+    },
+    insight: 'Regio Utrecht kent de sterkste diplomagroei (+18,4%). Groot-Amsterdam groeit solide (+14,7%). Zeeland als enige regio met krimp — demografische druk en ontgroening spelen een rol.',
+    sources: ['DUO Open Data', 'CBS StatLine'],
+    actions: ['Voeg toe aan dashboard', 'Exporteer als PDF']
+  }
+};
+
+function matchResponse(q) {
+  q = q.toLowerCase();
+  if (q.includes('llo') || q.includes('leven lang')) return aiResponses.llo;
+  if (q.includes('werkzoekend') || q.includes('opleidingsniveau')) return aiResponses.werkzoekenden;
+  if (q.includes('vacature')) return aiResponses.vacatures;
+  if (q.includes('verdien') || q.includes('salaris') || q.includes('loon')) return aiResponses.salaris;
+  if (q.includes('vsv') || q.includes('voortijdig')) return aiResponses.vsv;
+  if (q.includes('gediplomeerden levert') || q.includes('marktaandeel') || q.includes('t.o.v. andere')) return aiResponses.gediplomeerden_uitstroom;
+  if (q.includes('vandaan') || q.includes('herkomst') || q.includes('concurr')) return aiResponses.herkomst;
+  if (q.includes('doorstroom') || q.includes('andere opleiding') || q.includes('rechtstreeks')) return aiResponses.doorstroom;
+  if (q.includes('voltijd')) return aiResponses.voltijd;
+  if (q.includes('4 jaar') || q.includes('rendement') || q.includes('diploma') && q.includes('regio')) return aiResponses.rendement_4jaar;
+  if (q.includes('mannen') || q.includes('vrouwen') || q.includes('geslacht') || q.includes('gender')) return aiResponses.gender_diploma;
+  if (q.includes('diplomagroei') || q.includes('regio') && q.includes('hoogste')) return aiResponses.diplomagroei;
+  if (q.includes('instroom') || q.includes('deelname')) return aiResponses.voltijd;
+  return aiResponses.default;
+}
+
+function renderTable(table) {
+  if (!table) return '';
+  const headerCells = table.headers.map(h => `<th>${h}</th>`).join('');
+  const rows = table.rows.map(row => {
+    const cells = row.map((cell, i) => {
+      let cls = '';
+      if (table.trendUp && table.trendUp.some(u => cell.includes(u))) cls = 'trend-up';
+      if (table.trendDown && table.trendDown.some(d => cell.includes(d))) cls = 'trend-down';
+      return `<td class="${cls}">${cell}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+  return `<table class="ai-data-table"><thead><tr>${headerCells}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function buildResponseHTML(resp) {
+  const table = resp.table ? renderTable(resp.table) : '';
+  const insight = resp.insight ? `<div class="ai-insight">💡 ${resp.insight}</div>` : '';
+  const sources = `<div class="ai-sources">${resp.sources.map(s => `<span class="ai-source-tag">📂 ${s}</span>`).join('')}</div>`;
+  const actions = `<div class="ai-action-bar">${resp.actions.map(a => `<button class="ai-action-btn" onclick="showToast('${a} uitgevoerd')">${a}</button>`).join('')}</div>`;
+  return resp.text + table + insight + sources + actions;
+}
+
+function addMessage(role, html, isHTML = false) {
+  const welcome = document.getElementById('chat-welcome');
+  if (welcome) welcome.remove();
+
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar';
+  if (role === 'user') {
+    avatar.textContent = 'JB';
+  } else {
+    avatar.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  if (isHTML) bubble.innerHTML = html;
+  else bubble.textContent = html;
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = 'typing-indicator';
+  div.innerHTML = `
+    <div class="message-avatar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="message-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function sendMessage() {
+  if (chatBusy) return;
+  const input = document.getElementById('chat-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = ''; autoResize(input);
+
+  addMessage('user', q);
+  chatBusy = true;
+  document.getElementById('send-btn').disabled = true;
+
+  addTyping();
+  const delay = 900 + Math.random() * 800;
+  setTimeout(() => {
+    removeTyping();
+    const resp = matchResponse(q);
+    addMessage('assistant', buildResponseHTML(resp), true);
+    chatBusy = false;
+    document.getElementById('send-btn').disabled = false;
+  }, delay);
+}
+
+function sendSuggested(q) {
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+function clearChat() {
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = `<div class="chat-welcome" id="chat-welcome">
+    <div class="chat-welcome-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <h2>Stel je vraag aan EDUdata</h2>
+    <p>Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer data uit al je gekoppelde bronnen en geef je een onderbouwd antwoord.</p>
+  </div>`;
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+/* ─── Charts ─────────────────────────────────────────── */
+const chartInstances = {};
+
+// Set Chart.js defaults once
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.color = '#6B7280';
+</script>
+</body>
+</html>
