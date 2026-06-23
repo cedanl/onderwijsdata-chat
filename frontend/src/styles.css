@@ -407,6 +407,88 @@ input, textarea { font: inherit; }
 .suggested-category-chevron.open { transform: rotate(180deg); }
 .suggested-list { margin-top: 4px; }
 
+/* ─── WORKBOOK GALLERY ────────────────────────────────────── */
+.wb-gallery-page { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+.wb-gallery-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.wb-gallery-title { font-size: 1.25rem; font-weight: 800; color: var(--gray-900); }
+.wb-gallery-sub { font-size: .8rem; color: var(--gray-400); margin-top: 2px; }
+
+.wb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.wb-card {
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: box-shadow .15s, transform .15s;
+}
+.wb-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.wb-card-thumb {
+  height: 130px; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.wb-card-thumb svg { width: 48px; height: 48px; }
+.wb-builtin-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(255,255,255,.25); color: #fff;
+  font-size: .68rem; font-weight: 700; padding: 3px 8px;
+  border-radius: 999px; backdrop-filter: blur(4px);
+}
+
+.wb-card-body { padding: 14px 16px 12px; }
+.wb-card-title { font-size: .9rem; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+.wb-card-desc { font-size: .78rem; color: var(--gray-500); line-height: 1.4; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wb-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.wb-card-date { font-size: .72rem; color: var(--gray-400); }
+.wb-delete-btn {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-400); transition: color .15s, background .15s;
+}
+.wb-delete-btn:hover { color: #DC2626; background: #FEF2F2; }
+.wb-delete-btn svg { width: 15px; height: 15px; }
+
+.wb-new-card {
+  border: 2px dashed var(--gray-200); border-radius: var(--radius-lg);
+  height: 230px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  color: var(--gray-400); cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.wb-new-card:hover { border-color: var(--blue-400); color: var(--blue-600); }
+.wb-new-card svg { width: 28px; height: 28px; }
+.wb-new-card span { font-size: .9rem; font-weight: 600; }
+.wb-new-card small { font-size: .75rem; }
+
+/* ─── WORKBOOK VIEWER ─────────────────────────────────────── */
+.wb-viewer { display: flex; flex-direction: column; height: calc(100vh - 64px); }
+.wb-viewer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 48px; flex-shrink: 0;
+  background: var(--white); border-bottom: 1px solid var(--gray-200);
+}
+.wb-back-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .85rem; font-weight: 600; color: var(--blue-600);
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  transition: background .15s;
+}
+.wb-back-btn:hover { background: var(--blue-50); }
+.wb-back-btn svg { width: 18px; height: 18px; }
+.wb-viewer-title { font-size: .9rem; font-weight: 700; color: var(--gray-800); }
+.wb-viewer-content { flex: 1; overflow: hidden; }
+.wb-iframe { width: 100%; height: 100%; border: none; }
+
+.export-btn-save { border-color: var(--green-200,#BBF7D0); color: var(--green-700,#15803D); background: var(--green-50,#F0FDF4); }
+.export-btn-save:hover { background: var(--green-100,#DCFCE7); }
+
 /* ─── DASHBOARD PAGE ──────────────────────────────────────── */
 .dashboard-layout { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
 .dashboard-topbar {

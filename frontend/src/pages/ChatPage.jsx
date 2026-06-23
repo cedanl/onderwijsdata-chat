@@ -2,8 +2,9 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { SOURCES, SUGGESTED } from '../constants'
+import { saveWorkbook } from '../workbooks'
 
-export default function ChatPage() {
+export default function ChatPage({ setPage }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,
@@ -53,25 +54,37 @@ export default function ChatPage() {
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
-  const handleExport = async (type) => {
+  const buildTurns = () => {
     const userMsgs = messages.filter(m => m.role === 'user')
     const assistantMsgs = messages.filter(m => m.role === 'assistant' && m.done && !m.isError)
-    const turns = userMsgs.map((m, i) => ({
-      question: m.content,
-      answer: assistantMsgs[i]?.content || '',
-    }))
+    return userMsgs.map((m, i) => ({ question: m.content, answer: assistantMsgs[i]?.content || '' }))
+  }
+
+  const fetchExportHtml = async (type) => {
     const res = await fetch(`/api/export/${type}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turns }),
+      body: JSON.stringify({ turns: buildTurns() }),
     })
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition') || ''
+    return { blob: await res.blob(), disposition: res.headers.get('Content-Disposition') || '' }
+  }
+
+  const handleExport = async (type) => {
+    const { blob, disposition } = await fetchExportHtml(type)
     const filename = disposition.split('filename=')[1] || `${type}.html`
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = filename; a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleSaveAsWorkbook = async () => {
+    const { blob } = await fetchExportHtml('samenvatting')
+    const html = await blob.text()
+    const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Nieuw werkboek'
+    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+    saveWorkbook({ title, description: `Gegenereerd op ${date}`, htmlContent: html })
+    setPage?.('dashboard')
   }
 
   const hasMessages = messages.length > 0
@@ -134,6 +147,7 @@ export default function ChatPage() {
               <div className="chat-export-bar">
                 <button className="export-btn" onClick={() => handleExport('rapport')}>📥 Rapport</button>
                 <button className="export-btn" onClick={() => handleExport('samenvatting')}>🧾 Samenvatting</button>
+                <button className="export-btn export-btn-save" onClick={handleSaveAsWorkbook}>💾 Opslaan als werkboek</button>
               </div>
             )}
             <div className="chat-input-wrap">
