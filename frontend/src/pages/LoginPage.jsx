@@ -37,12 +37,12 @@ export default function LoginPage({ onLogin }) {
               <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <span className="navbar-name">EDU<span>data</span></span>
+          <span className="navbar-name">openEDU<span>data+</span></span>
         </div>
 
         <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 6 }}>Inloggen</h2>
         <p style={{ fontSize: '.9rem', color: 'var(--gray-500)', marginBottom: 28 }}>
-          Log in om verder te gaan met EDUdata.
+          Log in om verder te gaan met openEDUdata+.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

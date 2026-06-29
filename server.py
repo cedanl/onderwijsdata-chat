@@ -98,6 +98,84 @@ async def get_settings_config() -> dict:
     }
 
 
+# ─── Dashboard data endpoint ──────────────────────────────────────────────────
+
+def _load_dashboard_data(instelling: str) -> dict:
+    from riodata import duo
+    import pandas as pd
+
+    def _filter(df: pd.DataFrame) -> pd.DataFrame:
+        col = "INSTELLINGSNAAM_ACTUEEL"
+        if col not in df.columns:
+            return df.iloc[0:0]
+        return df[df[col].str.lower() == instelling.lower()]
+
+    result: dict = {"instelling": instelling, "gevonden": False}
+
+    try:
+        df_inges = duo.load("p01hoinges", 0)
+        hu = _filter(df_inges)
+        if hu.empty:
+            instellingen = sorted(df_inges["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist())
+            result["beschikbare_instellingen"] = instellingen[:20]
+            return result
+        result["gevonden"] = True
+
+        # ingeschrevenen per jaar
+        result["ingeschrevenen"] = (
+            hu.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum()
+            .sort_index().to_dict()
+        )
+
+        # geslacht laatste jaar
+        laatste_jaar = hu["STUDIEJAAR"].max()
+        geslacht = (
+            hu[hu["STUDIEJAAR"] == laatste_jaar]
+            .groupby("GESLACHT")["AANTAL_INGESCHREVENEN"].sum().to_dict()
+        )
+        result["geslacht"] = geslacht
+        result["laatste_jaar"] = int(laatste_jaar)
+
+        # sector verdeling laatste jaar
+        result["sectoren"] = (
+            hu[hu["STUDIEJAAR"] == laatste_jaar]
+            .groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
+            .sort_values(ascending=False).to_dict()
+        )
+    except Exception as e:
+        result["fout_ingeschrevenen"] = str(e)
+
+    try:
+        df_1e = duo.load("p02ho1ejrs", 0)
+        hu1 = _filter(df_1e)
+        if not hu1.empty:
+            result["eerstejaars"] = (
+                hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum()
+                .sort_index().to_dict()
+            )
+    except Exception as e:
+        result["fout_eerstejaars"] = str(e)
+
+    try:
+        df_dipl = duo.load("p04hogdipl", 0)
+        hud = _filter(df_dipl)
+        if not hud.empty:
+            result["gediplomeerden"] = (
+                hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum()
+                .sort_index().to_dict()
+            )
+    except Exception as e:
+        result["fout_gediplomeerden"] = str(e)
+
+    return result
+
+
+@app.get("/api/dashboard/instroom")
+async def dashboard_instroom(instelling: str = Query(...)) -> dict:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _load_dashboard_data, instelling)
+
+
 # ─── Export ────────────────────────────────────────────────────────────────────
 
 @app.post("/api/export/rapport")

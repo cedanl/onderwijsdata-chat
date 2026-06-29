@@ -1,14 +1,14 @@
-export default function Nav({ page, setPage, user, onLogout }) {
+export default function Nav({ page, setPage, user, onLogout, onOpenSettings, instelling }) {
   return (
     <nav className="navbar">
       <div className="container">
-        <div className="navbar-brand">
+        <div className="navbar-brand" style={{ flex: 1 }}>
           <div className="navbar-logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <span className="navbar-name">EDU<span>data</span></span>
+          <span className="navbar-name">openEDU<span>data+</span></span>
         </div>
 
         <div className="navbar-nav">
@@ -24,9 +24,27 @@ export default function Nav({ page, setPage, user, onLogout }) {
           </NavBtn>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {user && onLogout && (
-            <span style={{ fontSize: '.8rem', color: 'var(--gray-500)' }}>{user}</span>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+          {user && (
+            <button
+              onClick={onOpenSettings}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                background: 'none', border: 'none',
+                cursor: onOpenSettings ? 'pointer' : 'default', padding: '4px 6px',
+                borderRadius: 'var(--radius-sm)', transition: 'all .15s',
+              }}
+              title="Instellingen"
+            >
+              {instelling && (
+                <span style={{ fontSize: '.75rem', fontWeight: 600, color: 'var(--gray-700)', lineHeight: 1.2 }}>
+                  {instelling}
+                </span>
+              )}
+              <span style={{ fontSize: '.72rem', color: 'var(--gray-400)', lineHeight: 1.2 }}>
+                {user}
+              </span>
+            </button>
           )}
           {onLogout && (
             <button className="navbar-cta" onClick={onLogout} style={{ background: 'var(--gray-100)', color: 'var(--gray-700)' }}>

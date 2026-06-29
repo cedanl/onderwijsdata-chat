@@ -4,13 +4,32 @@ import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
+import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
+
+const SETTINGS_KEY = 'openEDUdata_settings'
+const ONBOARDED_KEY = 'openEDUdata_onboarded'
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } catch { return {} }
+}
+
+function applyMode(mode) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const isDark = mode === 'dark' || (mode === 'system' && prefersDark)
+  document.documentElement.classList.toggle('dark', isDark)
+}
 
 export default function App() {
   const [page, setPage] = useState('home')
   const [authRequired, setAuthRequired] = useState(false)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [settings, setSettings] = useState(loadSettings)
+  const [showSettings, setShowSettings] = useState(false)
+  const [isOnboarding, setIsOnboarding] = useState(false)
+
+  useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
   useEffect(() => {
     fetchAuthStatus().then(({ required }) => {
@@ -18,17 +37,36 @@ export default function App() {
       if (!required) {
         setUser('gast')
       } else if (getToken()) {
-        // Token present — assume valid until WS rejects it
         setUser('gebruiker')
       }
       setAuthLoading(false)
     })
   }, [])
 
+  const handleLogin = (u) => {
+    setUser(u)
+    if (!localStorage.getItem(ONBOARDED_KEY)) {
+      setIsOnboarding(true)
+      setShowSettings(true)
+    }
+  }
+
+  const handleSaveSettings = (newSettings) => {
+    setSettings(newSettings)
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings))
+    applyMode(newSettings.mode || 'system')
+  }
+
+  const handleCloseSettings = () => {
+    localStorage.setItem(ONBOARDED_KEY, '1')
+    setIsOnboarding(false)
+    setShowSettings(false)
+  }
+
   if (authLoading) return null
 
   if (authRequired && !user) {
-    return <LoginPage onLogin={(u) => setUser(u)} />
+    return <LoginPage onLogin={handleLogin} />
   }
 
   const handleLogout = () => {
@@ -38,13 +76,26 @@ export default function App() {
 
   return (
     <>
-      <Nav page={page} setPage={setPage} user={user} onLogout={authRequired ? handleLogout : null} />
+      <Nav
+        page={page} setPage={setPage} user={user}
+        onLogout={authRequired ? handleLogout : null}
+        onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
+        instelling={settings.instelling}
+      />
       <div className="page-wrap">
         {page === 'home' && <HomePage setPage={setPage} />}
-        {page === 'chat' && <ChatPage setPage={setPage} />}
-        {page === 'dashboard' && <DashboardPage setPage={setPage} />}
+        {page === 'chat' && <ChatPage setPage={setPage} settings={settings} />}
+        {page === 'dashboard' && <DashboardPage setPage={setPage} settings={settings} />}
       </div>
       <MobileTabs page={page} setPage={setPage} />
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          onSave={handleSaveSettings}
+          onClose={handleCloseSettings}
+          isOnboarding={isOnboarding}
+        />
+      )}
     </>
   )
 }
