@@ -1,5 +1,7 @@
-const DC_MESSAGES_KEY = 'edudata_dc_messages'
-const DC_FIGURES_KEY = 'edudata_dc_figures'
+import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from './constants'
+
+const DC_MESSAGES_KEY = STORAGE_DC_MESSAGES
+const DC_FIGURES_KEY = STORAGE_DC_FIGURES
 
 const SEED_MESSAGES = [
   {

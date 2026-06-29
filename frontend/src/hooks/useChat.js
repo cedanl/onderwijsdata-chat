@@ -15,9 +15,11 @@ export function useChat({ onUnauthorized } = {}) {
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const pendingSettingsRef = useRef(null)
+  const idRef = useRef(0)
+  const nextId = () => ++idRef.current
 
   const addToast = useCallback((message, level = 'info') => {
-    const id = Date.now()
+    const id = nextId()
     setToasts(t => [...t, { id, message, level }])
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
   }, [])
@@ -60,7 +62,7 @@ export function useChat({ onUnauthorized } = {}) {
         return
       }
       if (event.type === 'message_start') {
-        const msgId = Date.now()
+        const msgId = nextId()
         currentMsgRef.current = msgId
         setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
         return
@@ -101,7 +103,7 @@ export function useChat({ onUnauthorized } = {}) {
       }
       if (event.type === 'clarification') {
         setMessages(prev => [...prev, {
-          id: Date.now(), role: 'assistant',
+          id: nextId(), role: 'assistant',
           content: event.vraag, clarification: event.opties, done: true,
         }])
         currentMsgRef.current = null
@@ -110,7 +112,7 @@ export function useChat({ onUnauthorized } = {}) {
       }
       if (event.type === 'starter_questions') {
         setMessages(prev => [...prev, {
-          id: Date.now(), role: 'assistant',
+          id: nextId(), role: 'assistant',
           content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
           starterQuestions: event.questions, done: true,
         }])
@@ -121,7 +123,7 @@ export function useChat({ onUnauthorized } = {}) {
       if (event.type === 'error') {
         cancelCurrentMsg()
         setMessages(prev => [...prev, {
-          id: Date.now(), role: 'assistant', content: event.message, done: true, isError: true,
+          id: nextId(), role: 'assistant', content: event.message, done: true, isError: true,
         }])
         setBusy(false)
         return
@@ -134,14 +136,14 @@ export function useChat({ onUnauthorized } = {}) {
   const send = useCallback((content) => {
     if (!wsRef.current || busy) return
     setBusy(true)
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content, done: true }])
+    setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
   }, [busy])
 
   const sendClarification = useCallback((choice) => {
     if (!wsRef.current || busy) return
     setBusy(true)
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: choice, done: true }])
+    setMessages(prev => [...prev, { id: nextId(), role: 'user', content: choice, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
   }, [busy])
 

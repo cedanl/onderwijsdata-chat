@@ -70,6 +70,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }, [clear, saveCurrentConversation])
 
   const handleRestart = useCallback((conv) => {
+    if (!window.confirm('Dit gesprek opnieuw starten? Het huidige gesprek gaat verloren.')) return
     const firstUserMsg = conv.messages.find(m => m.role === 'user')?.content
     setRestoredMessages([])
     clear()
@@ -77,6 +78,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }, [clear])
 
   const handleLoad = useCallback((conv) => {
+    if (!window.confirm('Dit gesprek inladen? Het huidige gesprek gaat verloren.')) return
     clear()
     setRestoredMessages(conv.messages)
   }, [clear])
@@ -93,7 +95,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
         timestamp: Date.now(),
         messages: latestMessages,
       }
-      const updated = [conv, ...loadConversationHistory()].slice(0, 15)
+      const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
       persistConversationHistory(updated)
     }
   }, [])
@@ -332,7 +334,7 @@ function userInitials(settings) {
       : words[0].slice(0, 2).toUpperCase()
   }
   if (settings.functie) return settings.functie.slice(0, 2).toUpperCase()
-  return 'JB'
+  return '?'
 }
 
 function Message({ msg, onClarification, onSend, busy, settings = {} }) {

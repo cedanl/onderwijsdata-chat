@@ -201,8 +201,6 @@ function DashboardCreator({ onSaved, instelling }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const assistantMsgs = messages.filter(m => m.role === 'assistant')
-  const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
   // Show save when not streaming and there's any substantial assistant answer
   const hasResponse = !busy && messages.some(m => m.role === 'assistant' && !m.isError && (m.content?.length ?? 0) > MIN_RESPONSE_LENGTH)
 
@@ -407,8 +405,6 @@ function DashboardCreator({ onSaved, instelling }) {
 
 // ─── Main DashboardPage ───────────────────────────────────────────────────────
 
-const BUILTIN_INSTELLING = DEFAULT_INSTELLING
-
 export default function DashboardPage({ setPage, settings, pendingWorkbookId, clearPendingWorkbook }) {
   const [userWorkbooks, setUserWorkbooks] = useState(getWorkbooks)
   const [selected, setSelected] = useState(null)
@@ -425,7 +421,7 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
     clearPendingWorkbook?.()
   }, [pendingWorkbookId, clearPendingWorkbook])
 
-  const instelling = settings?.instelling?.trim() || BUILTIN_INSTELLING
+  const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
   const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...userWorkbooks]
 

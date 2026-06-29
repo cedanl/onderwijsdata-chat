@@ -8,6 +8,7 @@ export const clearToken = () => localStorage.removeItem(KEY)
 
 export async function fetchAuthStatus() {
   const res = await fetch("/api/auth/status")
+  if (!res.ok) throw new Error(`Auth status check failed: ${res.status}`)
   return res.json()
 }
 
