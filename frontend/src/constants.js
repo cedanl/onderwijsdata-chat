@@ -1,3 +1,22 @@
+// ─── localStorage / sessionStorage keys ─────────────────────────────────────
+export const STORAGE_WORKBOOKS = 'edudata_workbooks'
+export const STORAGE_CONVERSATIONS = 'openEDUdata_conversations'
+export const STORAGE_SETTINGS = 'openEDUdata_settings'
+export const STORAGE_ONBOARDED = 'openEDUdata_onboarded'
+export const STORAGE_TOKEN = 'edudata_token'
+export const STORAGE_DC_MESSAGES = 'edudata_dc_messages'
+export const STORAGE_DC_FIGURES = 'edudata_dc_figures'
+
+// ─── Shared color palette ────────────────────────────────────────────────────
+export const CHART_COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E']
+
+// ─── Magic numbers ───────────────────────────────────────────────────────────
+export const MAX_CONVERSATIONS = 15
+export const MIN_RESPONSE_LENGTH = 150
+export const MAX_TEXTAREA_HEIGHT = 120
+export const DEFAULT_INSTELLING = 'Hogeschool Utrecht'
+
+// ─── Data sources & suggested questions ──────────────────────────────────────
 export const SOURCES = [
   { label: 'DUO Open Data' },
   { label: '1cijferHO' },

@@ -1,3 +1,5 @@
+import { CHART_COLORS } from './constants'
+
 function parseNum(val) {
   if (!val) return null
   const s = String(val).replace(/[^\d,.\-+]/g, '').replace(',', '.')
@@ -25,7 +27,7 @@ export function parseTables(content) {
 }
 
 function buildChartSpecs(tables) {
-  const COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E']
+  const COLORS = CHART_COLORS
   const ALPHAS = ['rgba(37,99,235,.12)', 'rgba(20,184,166,.12)', 'rgba(245,158,11,.12)']
 
   return tables.map((tbl, ti) => {

@@ -1,4 +1,6 @@
-const KEY = "edudata_token"
+import { STORAGE_TOKEN } from './constants'
+
+const KEY = STORAGE_TOKEN
 
 export const getToken = () => localStorage.getItem(KEY)
 export const setToken = (t) => localStorage.setItem(KEY, t)

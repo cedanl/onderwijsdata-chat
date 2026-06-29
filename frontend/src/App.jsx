@@ -6,9 +6,10 @@ import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED } from './constants'
 
-const SETTINGS_KEY = 'openEDUdata_settings'
-const ONBOARDED_KEY = 'openEDUdata_onboarded'
+const SETTINGS_KEY = STORAGE_SETTINGS
+const ONBOARDED_KEY = STORAGE_ONBOARDED
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } catch { return {} }

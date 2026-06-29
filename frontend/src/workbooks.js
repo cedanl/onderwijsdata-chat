@@ -1,4 +1,6 @@
-const KEY = 'edudata_workbooks'
+import { STORAGE_WORKBOOKS } from './constants'
+
+const KEY = STORAGE_WORKBOOKS
 
 export const BUILTIN = {
   id: '__builtin__',
