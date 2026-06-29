@@ -22,6 +22,12 @@ function applyMode(mode) {
 
 export default function App() {
   const [page, setPage] = useState('home')
+  const [pendingWorkbookId, setPendingWorkbookId] = useState(null)
+
+  const openDashboard = (workbookId) => {
+    setPendingWorkbookId(workbookId ?? null)
+    setPage('dashboard')
+  }
   const [authRequired, setAuthRequired] = useState(false)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -84,8 +90,15 @@ export default function App() {
       />
       <div className="page-wrap">
         {page === 'home' && <HomePage setPage={setPage} />}
-        {page === 'chat' && <ChatPage setPage={setPage} settings={settings} />}
-        {page === 'dashboard' && <DashboardPage setPage={setPage} settings={settings} />}
+        {page === 'chat' && <ChatPage setPage={setPage} openDashboard={openDashboard} settings={settings} />}
+        {page === 'dashboard' && (
+          <DashboardPage
+            setPage={setPage}
+            settings={settings}
+            pendingWorkbookId={pendingWorkbookId}
+            clearPendingWorkbook={() => setPendingWorkbookId(null)}
+          />
+        )}
       </div>
       <MobileTabs page={page} setPage={setPage} />
       {showSettings && (

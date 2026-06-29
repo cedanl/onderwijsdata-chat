@@ -57,6 +57,26 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
+_RATE_LIMIT_MAX_RETRIES = 4
+_RATE_LIMIT_BASE_DELAY = 2.0
+
+
+async def _acompletion_with_backoff(emit: Emit, **kwargs):
+    for attempt in range(_RATE_LIMIT_MAX_RETRIES):
+        try:
+            return await litellm.acompletion(**kwargs)
+        except litellm.RateLimitError:
+            if attempt == _RATE_LIMIT_MAX_RETRIES - 1:
+                raise
+            delay = _RATE_LIMIT_BASE_DELAY * (2 ** attempt)
+            await emit({
+                "type": "toast",
+                "message": f"API rate limit bereikt, nieuwe poging over {delay:.0f}s…",
+                "level": "warning",
+            })
+            await asyncio.sleep(delay)
+
+
 async def run(
     messages: list[dict],
     session: dict,
@@ -84,10 +104,10 @@ async def run(
         if stop_event and stop_event.is_set():
             break
 
-        stream = await litellm.acompletion(
+        stream = await _acompletion_with_backoff(
+            emit,
             model=chosen_model,
             max_tokens=MAX_TOKENS,
-            num_retries=3,
             messages=system + history,
             tools=SCHEMAS,
             stream=True,

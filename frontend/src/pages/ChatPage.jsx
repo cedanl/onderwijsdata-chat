@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { SOURCES, SUGGESTED } from '../constants'
 import { saveWorkbook } from '../workbooks'
+import { buildDashboardHtml } from '../dashboardHtml'
 
 const HISTORY_KEY = 'openEDUdata_conversations'
 
@@ -14,7 +15,7 @@ function persistConversationHistory(list) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
 }
 
-export default function ChatPage({ setPage, settings = {} }) {
+export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,
@@ -107,46 +108,33 @@ export default function ChatPage({ setPage, settings = {} }) {
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
-  const buildTurns = () => {
-    const userMsgs = messages.filter(m => m.role === 'user')
-    const assistantMsgs = messages.filter(m => m.role === 'assistant' && m.done && !m.isError)
-    return userMsgs.map((m, i) => ({ question: m.content, answer: assistantMsgs[i]?.content || '' }))
-  }
-
-  const fetchExportHtml = async (type) => {
-    const res = await fetch(`/api/export/${type}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turns: buildTurns() }),
-    })
-    return { blob: await res.blob(), disposition: res.headers.get('Content-Disposition') || '' }
-  }
-
-  const handleExport = async (type) => {
-    const { blob, disposition } = await fetchExportHtml(type)
-    const filename = disposition.split('filename=')[1] || `${type}.html`
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleSaveAsWorkbook = async () => {
-    const { blob } = await fetchExportHtml('samenvatting')
-    const html = await blob.text()
-    const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Nieuw werkboek'
-    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-    saveWorkbook({ title, description: `Gegenereerd op ${date}`, htmlContent: html })
-    setPage?.('dashboard')
-  }
-
-  const handleSaveVisualization = (htmlContent, msgIndex) => {
+  const handleMakeDashboard = () => {
     const allMsgs = [...restoredMessages, ...messages]
-    const preceding = allMsgs.slice(0, msgIndex).reverse().find(m => m.role === 'user')
-    const title = preceding?.content?.slice(0, 60) || messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Visualisatie'
+    console.log('[ChatPage] handleMakeDashboard called', { restoredCount: restoredMessages.length, msgCount: messages.length, totalCount: allMsgs.length })
+    const assistantContent = allMsgs
+      .filter(m => m.role === 'assistant' && !m.isError && m.content)
+      .map(m => m.content)
+      .join('\n\n')
+    console.log('[ChatPage] assistantContent length:', assistantContent.length)
+    if (!assistantContent) {
+      console.warn('[ChatPage] no assistant content, aborting')
+      return
+    }
+    const title = allMsgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
+    const htmlContent = buildDashboardHtml(title, assistantContent, [], settings?.instelling)
+    console.log('[ChatPage] htmlContent length:', htmlContent.length)
     const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-    saveWorkbook({ title, description: `Gegenereerd op ${date}`, htmlContent })
-    setPage?.('dashboard')
+    const result = saveWorkbook({
+      title,
+      description: `Aangemaakt op ${date}`,
+      htmlContent,
+    })
+    console.log('[ChatPage] saveWorkbook result:', { ok: result.ok, error: result.error, id: result.workbook?.id })
+    if (result.ok) {
+      openDashboard?.(result.workbook.id)
+    } else {
+      alert(`Dashboard opslaan mislukt: ${result.error}`)
+    }
   }
 
   const displayMessages = [...restoredMessages, ...messages]
@@ -188,18 +176,26 @@ export default function ChatPage({ setPage, settings = {} }) {
                 Ingeladen gesprek — stel een nieuwe vraag om door te gaan
               </div>
             )}
-            {displayMessages.map((msg, idx) => (
+            {displayMessages.map((msg) => (
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
                 settings={settings}
-                onSaveToDashboard={(html) => handleSaveVisualization(html, idx)}
               />
             ))}
             <div ref={messagesEndRef} />
           </div>
 
           <div className="chat-input-area">
+            {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
+              <button className="make-dashboard-btn" onClick={handleMakeDashboard}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+                </svg>
+                Maak dashboard van dit gesprek
+              </button>
+            )}
             <div className="chat-input-wrap">
               <textarea
                 ref={textareaRef}
@@ -320,59 +316,7 @@ function userInitials(settings) {
   return 'JB'
 }
 
-function mdToHtml(md) {
-  let html = md
-    // headings
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // bold
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // inline code
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // bullet lists
-    .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
-    // paragraphs (blank lines)
-    .replace(/\n{2,}/g, '</p><p>')
-
-  // markdown tables → <table>
-  html = html.replace(/((?:\|.+\|\n?)+)/g, (block) => {
-    const rows = block.trim().split('\n').filter(r => !/^\s*\|[-:| ]+\|\s*$/.test(r))
-    if (rows.length < 2) return block
-    const toRow = (r, tag) =>
-      '<tr>' + r.split('|').slice(1, -1).map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>'
-    return '<table>' + toRow(rows[0], 'th') + rows.slice(1).map(r => toRow(r, 'td')).join('') + '</table>'
-  })
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:system-ui,sans-serif;font-size:14px;color:#111827;padding:32px;max-width:860px;margin:0 auto;line-height:1.6}
-    h1,h2,h3{font-weight:700;margin:1.2em 0 .4em}h1{font-size:1.4rem}h2{font-size:1.2rem}h3{font-size:1rem}
-    table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.9rem}
-    th{background:#EFF6FF;color:#1E4A7A;font-weight:700;text-align:left;padding:10px 14px;border-bottom:2px solid #DBEAFE}
-    td{padding:8px 14px;border-bottom:1px solid #F3F4F6}
-    tr:nth-child(even) td{background:#F9FAFB}
-    ul{padding-left:1.4em;margin:.5em 0}li{margin:.3em 0}
-    code{background:#F3F4F6;padding:2px 6px;border-radius:4px;font-size:.85em}
-    p{margin:.6em 0}
-    .source{font-size:.78rem;color:#6B7280;margin-top:24px;padding-top:12px;border-top:1px solid #E5E7EB}
-  </style></head><body><p>${html}</p></body></html>`
-}
-
-function extractVisualization(content) {
-  if (!content) return null
-  // HTML code block
-  const htmlMatch = content.match(/```html\n([\s\S]*?)```/)
-  if (htmlMatch) return htmlMatch[1]
-  // SVG block
-  const svgMatch = content.match(/(<svg[\s\S]*?<\/svg>)/)
-  if (svgMatch) return `<!DOCTYPE html><html><body style="margin:0;padding:16px;background:#fff">${svgMatch[1]}</body></html>`
-  // Markdown table
-  if (/\|.+\|/.test(content)) return mdToHtml(content)
-  return null
-}
-
-function Message({ msg, onClarification, onSend, busy, settings = {}, onSaveToDashboard }) {
+function Message({ msg, onClarification, onSend, busy, settings = {} }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -381,10 +325,6 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, onSaveToDa
       </div>
     )
   }
-
-  const vizHtml = msg.done && !msg.isError && msg.content?.length > 200
-    ? (extractVisualization(msg.content) ?? mdToHtml(msg.content))
-    : null
 
   return (
     <div className="message assistant">
@@ -427,15 +367,6 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, onSaveToDa
             </div>
           )}
         </div>
-        {vizHtml && (
-          <button className="viz-to-dashboard-btn" onClick={() => onSaveToDashboard?.(vizHtml)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-            </svg>
-            Toevoegen aan dashboard
-          </button>
-        )}
       </div>
     </div>
   )

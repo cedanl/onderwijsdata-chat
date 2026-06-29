@@ -375,14 +375,14 @@ input, textarea { font: inherit; }
 }
 .suggested-btn:hover { border-color: var(--blue-300); background: var(--blue-50); color: var(--blue-700); }
 
-.viz-to-dashboard-btn {
-  align-self: flex-start; display: flex; align-items: center; gap: 7px;
-  padding: 7px 14px; border-radius: var(--radius-sm);
+.make-dashboard-btn {
+  display: flex; align-items: center; gap: 7px; align-self: center;
+  padding: 8px 18px; border-radius: var(--radius-sm);
   border: 1.5px solid var(--blue-200); background: var(--blue-50);
-  color: var(--blue-700); font-size: .78rem; font-weight: 600;
-  cursor: pointer; transition: all .15s; margin-top: 4px;
+  color: var(--blue-700); font-size: .8rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; margin-bottom: 8px;
 }
-.viz-to-dashboard-btn:hover {
+.make-dashboard-btn:hover {
   background: var(--blue-100); border-color: var(--blue-400);
   transform: translateY(-1px); box-shadow: 0 2px 8px rgba(37,99,235,.15);
 }

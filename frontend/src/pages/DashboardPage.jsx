@@ -7,7 +7,9 @@ import {
   ArcElement, Tooltip, Legend, Filler,
 } from 'chart.js'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook, saveWorkbook } from '../workbooks'
+import { buildDashboardHtml } from '../dashboardHtml'
 import { getToken } from '../auth'
+import { seedDashboardChat } from '../devSeedDashboard'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
 
@@ -15,236 +17,33 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ─── Dashboard HTML builder ────────────────────────────────────────────────────
-
-function parseNum(val) {
-  if (!val) return null
-  const s = String(val).replace(/[^\d,.\-+]/g, '').replace(',', '.')
-  const n = parseFloat(s)
-  return isNaN(n) ? null : n
-}
-
-function cleanLabel(val) {
-  return String(val || '').replace(/[\u{1F300}-\u{1FFFF}]/gu, '').replace(/^\s+/, '').trim()
-}
-
-function parseTables(content) {
-  const tables = []
-  const reg = /((?:\|.+\|\n?)+)/g
-  let m
-  while ((m = reg.exec(content)) !== null) {
-    const lines = m[1].trim().split('\n').filter(r => !/^\s*\|[-:| ]+\|\s*$/.test(r))
-    if (lines.length < 2) continue
-    const split = r => r.split('|').slice(1, -1).map(c => c.trim())
-    const headers = split(lines[0])
-    const rows = lines.slice(1).map(split)
-    tables.push({ headers, rows })
-  }
-  return tables
-}
-
-function buildDashboardHtml(title, content, figures, instelling) {
-  const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-  const tables = parseTables(content)
-
-  // ── Prose: narrative text outside tables ──────────────────────────────────
-  const proseText = (content || '')
-    .replace(/((?:\|.+\|\n?)+)/g, '')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-
-  // ── Build chart specs from tables ─────────────────────────────────────────
-  const chartSpecs = tables.map((tbl, ti) => {
-    const { headers, rows } = tbl
-    const firstH = (headers[0] || '').toLowerCase()
-    const isTimeSeries = /jaar|periode|school/.test(firstH)
-
-    const labels = rows.map(r => cleanLabel(r[0]))
-    const numericCols = headers.slice(1).map((h, ci) => {
-      const vals = rows.map(r => parseNum(r[ci + 1]))
-      const allNull = vals.every(v => v === null)
-      return allNull ? null : { label: cleanLabel(h), data: vals }
-    }).filter(Boolean)
-
-    if (!numericCols.length) return null
-
-    const COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E']
-    const ALPHAS = ['rgba(37,99,235,.12)', 'rgba(20,184,166,.12)', 'rgba(245,158,11,.12)']
-
-    const datasets = numericCols.map((col, i) => ({
-      label: col.label,
-      data: col.data,
-      backgroundColor: isTimeSeries ? ALPHAS[i] || ALPHAS[0] : COLORS[i] || COLORS[0],
-      borderColor: COLORS[i] || COLORS[0],
-      borderWidth: isTimeSeries ? 2 : 0,
-      borderRadius: isTimeSeries ? 0 : 6,
-      fill: isTimeSeries,
-      tension: 0.35,
-      pointRadius: isTimeSeries ? 4 : 0,
-    }))
-
-    const chartType = isTimeSeries ? 'line' : (labels.length > 5 ? 'bar' : 'bar')
-    const horizontal = !isTimeSeries && labels.length > 4
-
-    // KPIs: max/min of first numeric col
-    const primary = numericCols[0].data.filter(v => v !== null)
-    const maxI = primary.indexOf(Math.max(...primary))
-    const minI = primary.indexOf(Math.min(...primary))
-    const kpis = [
-      { label: 'Hoogste waarde', value: `${primary[maxI]}`, sub: cleanLabel(labels[maxI]) },
-      { label: 'Laagste waarde', value: `${primary[minI]}`, sub: cleanLabel(labels[minI]) },
-      numericCols.length > 1
-        ? { label: 'Grootste verschil', value: (() => {
-              if (!numericCols[numericCols.length - 1]) return ''
-              const diff = numericCols[numericCols.length - 1].data
-              const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
-              const di = diff.indexOf(maxD)
-              return `${maxD > 0 ? '+' : ''}${maxD}`
-            })(), sub: (() => {
-              const diff = numericCols[numericCols.length - 1]?.data || []
-              const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
-              return cleanLabel(labels[diff.indexOf(maxD)])
-            })() }
-        : { label: 'Gemiddelde', value: (primary.reduce((a,b) => a+b, 0) / primary.length).toFixed(1), sub: numericCols[0].label },
-      { label: 'Aantal rijen', value: `${rows.length}`, sub: headers[0] },
-    ]
-
-    return { id: `chart${ti}`, chartType, horizontal, labels, datasets, kpis, tbl }
-  }).filter(Boolean)
-
-  // ── Table HTML renderer ────────────────────────────────────────────────────
-  const tableHtml = (tbl) => {
-    const { headers, rows } = tbl
-    const hRow = '<tr>' + headers.map(h => `<th>${cleanLabel(h)}</th>`).join('') + '</tr>'
-    const dRows = rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('')
-    return `<table><thead>${hRow}</thead><tbody>${dRows}</tbody></table>`
-  }
-
-  // ── Plotly figures ─────────────────────────────────────────────────────────
-  const plotlySection = figures.length
-    ? `<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
-       ${figures.map((fj, i) => `
-         <div class="card"><div id="pf${i}" style="height:360px"></div></div>
-         <script>(function(){var f=${fj};Plotly.newPlot('pf${i}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
-       ).join('\n')}`
-    : ''
-
-  // ── Chart.js sections ──────────────────────────────────────────────────────
-  const chartJsSection = chartSpecs.length
-    ? `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>
-       ${chartSpecs.map(spec => {
-         const kpiHtml = spec.kpis.map((k, i) =>
-           `<div class="kpi" style="border-top:3px solid ${ ['#2563EB','#14B8A6','#F59E0B','#6B7280'][i] }">
-             <div class="kpi-val">${k.value}</div>
-             <div class="kpi-label">${k.label}</div>
-             <div class="kpi-sub">${k.sub}</div>
-           </div>`
-         ).join('')
-
-         const cfg = JSON.stringify({
-           type: spec.chartType,
-           data: { labels: spec.labels, datasets: spec.datasets },
-           options: {
-             responsive: true,
-             maintainAspectRatio: false,
-             indexAxis: spec.horizontal ? 'y' : 'x',
-             plugins: {
-               legend: { display: spec.datasets.length > 1, position: 'top',
-                 labels: { font: { family: 'system-ui', size: 12 }, boxWidth: 12 } },
-             },
-             scales: {
-               x: { grid: { color: '#F3F4F6' }, ticks: { font: { family: 'system-ui', size: 11 } } },
-               y: { grid: { display: !spec.horizontal, color: '#F3F4F6' }, ticks: { font: { family: 'system-ui', size: 11 } } },
-             },
-           },
-         })
-
-         return `
-           <div class="kpi-row">${kpiHtml}</div>
-           <div class="card">
-             <div style="height:${spec.horizontal ? Math.max(240, spec.labels.length * 38) : 300}px">
-               <canvas id="${spec.id}"></canvas>
-             </div>
-           </div>
-           <div class="card">${tableHtml(spec.tbl)}</div>
-           <script>new Chart(document.getElementById('${spec.id}'), ${cfg})<\/script>`
-       }).join('\n')}`
-    : `<div class="card"><p style="color:#6B7280;font-size:.88rem">Geen tabeldata gevonden om te visualiseren.</p></div>`
-
-  const instellingBadge = instelling
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px;background:#DCFCE7;color:#15803D;font-size:.75rem;font-weight:700;padding:5px 10px;border-radius:6px;width:fit-content">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v4M12 10v4M16 10v4"/></svg>
-        ${instelling}
-      </div>`
-    : ''
-
-  return `<!DOCTYPE html><html lang="nl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#111827;background:#F3F4F6;min-height:100vh}
-  .header{background:#fff;border-bottom:1px solid #E5E7EB;padding:24px 32px}
-  .header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-  .header-label{font-size:.7rem;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
-  .header h1{font-size:1.25rem;font-weight:800;color:#111827;line-height:1.3}
-  .header .meta{font-size:.75rem;color:#9CA3AF;margin-top:6px}
-  .body{padding:28px 32px;max-width:1100px;margin:0 auto}
-  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-  .kpi{background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-top:3px solid #2563EB}
-  .kpi:nth-child(2){border-top-color:#0D9488}
-  .kpi:nth-child(3){border-top-color:#F59E0B}
-  .kpi:nth-child(4){border-top-color:#6B7280}
-  .kpi-val{font-size:1.6rem;font-weight:800;color:#111827;margin-bottom:4px}
-  .kpi-label{font-size:.72rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
-  .kpi-sub{font-size:.78rem;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .card{background:#fff;border-radius:10px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:20px}
-  .card-title{font-size:.8rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
-  table{width:100%;border-collapse:collapse;font-size:.85rem}
-  th{background:#EFF6FF;color:#1D4ED8;font-weight:700;text-align:left;padding:10px 14px;border-bottom:2px solid #DBEAFE}
-  td{padding:8px 14px;border-bottom:1px solid #F3F4F6}tr:nth-child(even) td{background:#F9FAFB}
-  .prose{line-height:1.7;color:#374151}
-  .prose h2,.prose h3{font-weight:700;margin:1em 0 .4em;color:#111827}
-  .prose li{margin:.3em 0 .3em 1.4em}
-  .prose strong{color:#111827}
-  .prose p{margin:.5em 0}
-  .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
-  @media(max-width:640px){.kpi-row{grid-template-columns:repeat(2,1fr)}.body{padding:16px}.header{padding:20px 16px}}
-</style>
-</head><body>
-<div class="header">
-  <div class="header-top">
-    <div>
-      <div class="header-label">Dashboard</div>
-      <h1>${title}</h1>
-      <div class="meta">Aangemaakt op ${date}</div>
-    </div>
-    ${instellingBadge}
-  </div>
-</div>
-<div class="body">
-  ${plotlySection}
-  ${chartJsSection}
-  ${proseText.trim() ? `<div class="card prose"><p>${proseText}</p></div>` : ''}
-</div>
-<div class="footer">Gegenereerd door openEDUdata+ · Gebaseerd op open onderwijsdata</div>
-</body></html>`
-}
-
 // ─── WebSocket hook for dashboard creator ────────────────────────────────────
 
+const DC_MESSAGES_KEY = 'edudata_dc_messages'
+const DC_FIGURES_KEY = 'edudata_dc_figures'
+
+function loadSessionMessages() {
+  try { return JSON.parse(sessionStorage.getItem(DC_MESSAGES_KEY) || '[]') } catch { return [] }
+}
+function loadSessionFigures() {
+  try { return JSON.parse(sessionStorage.getItem(DC_FIGURES_KEY) || '[]') } catch { return [] }
+}
+
 function useDashboardChat() {
-  const [messages, setMessages] = useState([])
-  const [figures, setFigures] = useState([])   // Plotly figure_json strings
+  const [messages, setMessages] = useState(loadSessionMessages)
+  const [figures, setFigures] = useState(loadSessionFigures)
   const [busy, setBusy] = useState(false)
   const wsRef = useRef(null)
   const currentIdRef = useRef(null)
   const pendingSettingsRef = useRef(null)
+
+  useEffect(() => {
+    try { sessionStorage.setItem(DC_MESSAGES_KEY, JSON.stringify(messages.filter(m => m.done))) } catch {}
+  }, [messages])
+
+  useEffect(() => {
+    try { sessionStorage.setItem(DC_FIGURES_KEY, JSON.stringify(figures)) } catch {}
+  }, [figures])
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -331,66 +130,10 @@ function useDashboardChat() {
     setMessages([])
     setFigures([])
     setBusy(false)
+    try { sessionStorage.removeItem(DC_MESSAGES_KEY); sessionStorage.removeItem(DC_FIGURES_KEY) } catch {}
   }, [])
 
   return { messages, figures, busy, send, sendClarification, sendSettings, reset }
-}
-
-// ─── Saved dashboard view ─────────────────────────────────────────────────────
-
-function buildFigureHtml(figJson) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{background:transparent;overflow:hidden}</style>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
-</head><body>
-<div id="p" style="height:100vh;width:100%"></div>
-<script>(function(){try{var f=${figJson};Plotly.newPlot('p',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'#F9FAFB',margin:{t:40,r:20,b:48,l:56},font:{family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false})}catch(e){}})()</script>
-</body></html>`
-}
-
-function SavedDashboardView({ workbook, instelling }) {
-  const eff = workbook.instelling || instelling
-  const msgs = (workbook.messages || []).filter(m => m.role === 'assistant' && !m.isError && m.content)
-  const figures = workbook.figures || []
-
-  return (
-    <div className="saved-db">
-      <div className="saved-db-header">
-        <div className="section-label">Dashboard</div>
-        <h1 className="saved-db-title">{workbook.title}</h1>
-        {eff && (
-          <span className="meta-badge instelling" style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13, flexShrink: 0 }}>
-              <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v4M12 10v4M16 10v4"/>
-            </svg>
-            {eff}
-          </span>
-        )}
-      </div>
-
-      {figures.map((fig, i) => (
-        <iframe
-          key={i}
-          className="saved-db-figure"
-          srcDoc={buildFigureHtml(fig)}
-          sandbox="allow-scripts"
-          title={`Grafiek ${i + 1}`}
-        />
-      ))}
-
-      {msgs.map((msg, i) => (
-        <div key={i} className="card saved-db-card">
-          <ReactMarkdown>{msg.content}</ReactMarkdown>
-        </div>
-      ))}
-
-      <div className="dashboard-sources" style={{ marginTop: 8 }}>
-        <span style={{ fontSize: '.72rem', color: 'var(--gray-400)' }}>
-          Gegenereerd door openEDUdata+ · Gebaseerd op open onderwijsdata · {workbook.description}
-        </span>
-      </div>
-    </div>
-  )
 }
 
 // ─── Model picker ─────────────────────────────────────────────────────────────
@@ -483,22 +226,46 @@ function DashboardCreator({ onSaved, instelling }) {
   }
 
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   const handleSave = () => {
-    const assistantMsgs = messages.filter(m => m.role === 'assistant' && !m.isError && m.content)
-    if (!assistantMsgs.length || saving) return
-    setSaving(true)
-    const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
-    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-    const wb = saveWorkbook({
-      title,
-      description: `Aangemaakt op ${date}`,
-      messages: messages.filter(m => !m.isError),
-      figures,
-      instelling,
-    })
-    reset()
-    onSaved?.(wb)
+    if (saving) return
+    try {
+      const assistantContent = messages
+        .filter(m => m.role === 'assistant' && !m.isError && m.content)
+        .map(m => m.content)
+        .join('\n\n')
+      if (!assistantContent) return
+
+      setSaving(true)
+      setSaveError(null)
+      const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
+      const htmlContent = buildDashboardHtml(title, assistantContent, figures, instelling)
+      const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+      const result = saveWorkbook({
+        title,
+        description: `Aangemaakt op ${date}`,
+        htmlContent,
+      })
+      if (!result.ok) {
+        setSaving(false)
+        setSaveError(result.error || 'Opslaan mislukt')
+        return
+      }
+      const stored = getWorkbooks()
+      const found = stored.find(w => w.id === result.workbook.id)
+      if (!found) {
+        setSaving(false)
+        setSaveError('Dashboard opgeslagen maar niet teruggevonden in opslag')
+        return
+      }
+      reset()
+      onSaved?.(result.workbook)
+    } catch (err) {
+      console.error('[DashboardCreator] handleSave crashed:', err)
+      setSaving(false)
+      setSaveError(`Fout bij opslaan: ${err.message}`)
+    }
   }
 
   const handleReset = () => { reset(); setInput(''); setFollowUp('') }
@@ -619,6 +386,7 @@ function DashboardCreator({ onSaved, instelling }) {
                   )}
                   {saving ? 'Dashboard opgeslagen' : 'Opslaan als dashboard'}
                 </button>
+                {saveError && <div style={{ color: '#DC2626', fontSize: '.8rem' }}>{saveError}</div>}
               </div>
             )}
             <div className="dc-input-wrap">
@@ -651,10 +419,22 @@ function DashboardCreator({ onSaved, instelling }) {
 
 const BUILTIN_INSTELLING = 'Hogeschool Utrecht'
 
-export default function DashboardPage({ setPage, settings }) {
+export default function DashboardPage({ setPage, settings, pendingWorkbookId, clearPendingWorkbook }) {
   const [userWorkbooks, setUserWorkbooks] = useState(getWorkbooks)
   const [selected, setSelected] = useState(null)
   const [showCreator, setShowCreator] = useState(false)
+
+  useEffect(() => {
+    if (!pendingWorkbookId) return
+    const wbs = getWorkbooks()
+    const wb = wbs.find(w => w.id === pendingWorkbookId)
+    console.log('[DashboardPage] pendingWorkbookId effect', { pendingWorkbookId, found: !!wb, totalStored: wbs.length })
+    if (wb) {
+      setUserWorkbooks(wbs)
+      setSelected(wb)
+    }
+    clearPendingWorkbook?.()
+  }, [pendingWorkbookId, clearPendingWorkbook])
 
   const instelling = settings?.instelling?.trim() || BUILTIN_INSTELLING
 
@@ -666,12 +446,14 @@ export default function DashboardPage({ setPage, settings }) {
     if (selected?.id === id) setSelected(null)
   }
 
-  const [newWbId, setNewWbId] = useState(null)
-
   const handleSaved = (newWb) => {
-    setUserWorkbooks(getWorkbooks())
+    const stored = getWorkbooks()
+    const found = stored.find(w => w.id === newWb?.id)
+    console.log('[DashboardPage] handleSaved', { id: newWb?.id, title: newWb?.title, hasHtml: !!newWb?.htmlContent, storedCount: stored.length, foundInStorage: !!found })
+    alert(`Dashboard "${newWb?.title}" opgeslagen! (${stored.length} in opslag, gevonden: ${!!found})`)
+    setUserWorkbooks(stored)
     setShowCreator(false)
-    if (newWb?.id) setNewWbId(newWb.id)
+    if (found) setSelected(found)
   }
 
   if (selected) {
@@ -692,8 +474,6 @@ export default function DashboardPage({ setPage, settings }) {
             ? <InlineDashboard instelling={instelling} />
             : selected.id === '__builtin_arbeidsmarkt__'
             ? <InlineDashboardArbeidsmarkt instelling={instelling} />
-            : selected.messages
-            ? <SavedDashboardView workbook={selected} instelling={instelling} />
             : <iframe className="wb-iframe" srcDoc={selected.htmlContent} title={selected.title} sandbox="allow-scripts" />
           }
         </div>
@@ -728,7 +508,7 @@ export default function DashboardPage({ setPage, settings }) {
 
       <div className="wb-grid">
         {all.map(wb => (
-          <div key={wb.id} className={`wb-card${wb.id === newWbId ? ' wb-card-new' : ''}`} onClick={() => { setSelected(wb); setNewWbId(null) }}>
+          <div key={wb.id} className="wb-card" onClick={() => setSelected(wb)}>
             <div className="wb-card-thumb">
               <WorkbookPreview wb={wb} />
               {wb.builtin && (
@@ -742,7 +522,6 @@ export default function DashboardPage({ setPage, settings }) {
                   </div>
                 </>
               )}
-              {wb.id === newWbId && <span className="wb-new-badge">Nieuw</span>}
             </div>
             <div className="wb-card-body">
               <div className="wb-card-title">{wb.title}</div>
@@ -771,6 +550,14 @@ export default function DashboardPage({ setPage, settings }) {
           </svg>
           <span>Nieuw dashboard</span>
           <small>Beschrijf welke data je wilt zien</small>
+        </button>
+
+        <button className="wb-new-card" onClick={() => { seedDashboardChat(); setShowCreator(true) }} style={{ borderColor: '#F59E0B', background: '#FFFBEB' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <span style={{ color: '#92400E' }}>Test dashboard</span>
+          <small style={{ color: '#B45309' }}>Opent creator met voorgeladen data</small>
         </button>
       </div>
     </div>
