@@ -63,6 +63,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }, [messages])
 
   const handleClear = useCallback(() => {
+    if (!window.confirm('Weet je zeker dat je een nieuw gesprek wilt starten?')) return
     saveCurrentConversation()
     setRestoredMessages([])
     clear()

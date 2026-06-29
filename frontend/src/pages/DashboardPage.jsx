@@ -255,7 +255,10 @@ function DashboardCreator({ onSaved, instelling }) {
     }
   }
 
-  const handleReset = () => { reset(); setInput(''); setFollowUp('') }
+  const handleReset = () => {
+    if (!window.confirm('Weet je zeker dat je dit gesprek wilt wissen?')) return
+    reset(); setInput(''); setFollowUp('')
+  }
 
   const isEmpty = messages.length === 0
 
@@ -427,6 +430,7 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...userWorkbooks]
 
   const handleDelete = (id) => {
+    if (!window.confirm('Weet je zeker dat je dit dashboard wilt verwijderen?')) return
     deleteWorkbook(id)
     setUserWorkbooks(getWorkbooks())
     if (selected?.id === id) setSelected(null)
