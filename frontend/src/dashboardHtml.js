@@ -1,5 +1,14 @@
 import { CHART_COLORS } from './constants'
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function parseNum(val) {
   if (!val) return null
   const s = String(val).replace(/[^\d,.\-+]/g, '').replace(',', '.')
@@ -26,7 +35,7 @@ export function parseTables(content) {
   return tables
 }
 
-function buildChartSpecs(tables) {
+export function buildChartSpecs(tables) {
   const COLORS = CHART_COLORS
   const ALPHAS = ['rgba(37,99,235,.12)', 'rgba(20,184,166,.12)', 'rgba(245,158,11,.12)']
 
@@ -35,10 +44,10 @@ function buildChartSpecs(tables) {
     const firstH = (headers[0] || '').toLowerCase()
     const isTimeSeries = /jaar|periode|school/.test(firstH)
 
-    const labels = rows.map(r => cleanLabel(r[0]))
+    const labels = rows.map(r => escapeHtml(cleanLabel(r[0])))
     const numericCols = headers.slice(1).map((h, ci) => {
       const vals = rows.map(r => parseNum(r[ci + 1]))
-      return vals.every(v => v === null) ? null : { label: cleanLabel(h), data: vals }
+      return vals.every(v => v === null) ? null : { label: escapeHtml(cleanLabel(h)), data: vals }
     }).filter(Boolean)
 
     if (!numericCols.length) return null
@@ -75,7 +84,7 @@ function buildChartSpecs(tables) {
               return cleanLabel(labels[diff.indexOf(maxD)])
             })() }
         : { label: 'Gemiddelde', value: (primary.reduce((a,b) => a+b, 0) / primary.length).toFixed(1), sub: numericCols[0].label },
-      { label: 'Aantal rijen', value: `${rows.length}`, sub: headers[0] },
+      { label: 'Aantal rijen', value: `${rows.length}`, sub: escapeHtml(headers[0]) },
     ]
 
     return { id: `chart${ti}`, chartType, horizontal, labels, datasets, kpis, tbl }
@@ -84,8 +93,8 @@ function buildChartSpecs(tables) {
 
 function tableHtml(tbl) {
   const { headers, rows } = tbl
-  const hRow = '<tr>' + headers.map(h => `<th>${cleanLabel(h)}</th>`).join('') + '</tr>'
-  const dRows = rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('')
+  const hRow = '<tr>' + headers.map(h => `<th>${escapeHtml(cleanLabel(h))}</th>`).join('') + '</tr>'
+  const dRows = rows.map(r => '<tr>' + r.map(c => `<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('')
   return `<table><thead>${hRow}</thead><tbody>${dRows}</tbody></table>`
 }
 
@@ -93,8 +102,10 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
   const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
   const tables = parseTables(content)
 
-  const proseText = (content || '')
-    .replace(/((?:\|.+\|\n?)+)/g, '')
+  const proseRaw = escapeHtml(
+    (content || '').replace(/((?:\|.+\|\n?)+)/g, '')
+  )
+  const proseText = proseRaw
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -118,9 +129,9 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
        ${chartSpecs.map(spec => {
          const kpiHtml = spec.kpis.map((k, i) =>
            `<div class="kpi" style="border-top:3px solid ${ ['#2563EB','#14B8A6','#F59E0B','#6B7280'][i] }">
-             <div class="kpi-val">${k.value}</div>
-             <div class="kpi-label">${k.label}</div>
-             <div class="kpi-sub">${k.sub}</div>
+             <div class="kpi-val">${escapeHtml(k.value)}</div>
+             <div class="kpi-label">${escapeHtml(k.label)}</div>
+             <div class="kpi-sub">${escapeHtml(k.sub)}</div>
            </div>`
          ).join('')
 
@@ -157,13 +168,13 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
   const instellingBadge = instelling
     ? `<div style="display:flex;align-items:center;gap:6px;margin-top:10px;background:#DCFCE7;color:#15803D;font-size:.75rem;font-weight:700;padding:5px 10px;border-radius:6px;width:fit-content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v4M12 10v4M16 10v4"/></svg>
-        ${instelling}
+        ${escapeHtml(instelling)}
       </div>`
     : ''
 
   return `<!DOCTYPE html><html lang="nl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#111827;background:#F3F4F6;min-height:100vh}
@@ -198,7 +209,7 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
   <div class="header-top">
     <div>
       <div class="header-label">Dashboard</div>
-      <h1>${title}</h1>
+      <h1>${escapeHtml(title)}</h1>
       <div class="meta">Aangemaakt op ${date}</div>
     </div>
     ${instellingBadge}
