@@ -652,7 +652,7 @@ input, textarea { font: inherit; }
 }
 .dc-clarification-btn:hover { background: var(--blue-50); border-color: var(--blue-400); }
 
-.wb-gallery-page { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+.wb-gallery-page { padding: 28px 48px; }
 .wb-gallery-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 28px;
@@ -662,7 +662,7 @@ input, textarea { font: inherit; }
 
 .wb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
 
