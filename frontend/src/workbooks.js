@@ -46,25 +46,18 @@ export function saveWorkbook({ title, description, messages, figures, instelling
     htmlContent,
     createdAt: new Date().toISOString(),
   }
-  const payload = JSON.stringify(wb)
-  console.log('[workbooks] saveWorkbook called', { title, hasHtml: !!htmlContent, htmlLen: htmlContent?.length, payloadKB: (payload.length / 1024).toFixed(1) })
   try {
     const workbooks = getWorkbooks()
     const full = JSON.stringify([...workbooks, wb])
-    console.log('[workbooks] writing to localStorage', { totalKB: (full.length / 1024).toFixed(1), existingCount: workbooks.length })
     localStorage.setItem(KEY, full)
-    console.log('[workbooks] save OK')
     return { ok: true, workbook: wb }
   } catch (e1) {
-    console.warn('[workbooks] first save failed:', e1.message)
     try {
       const wbSmall = { ...wb, figures: [], messages: undefined }
       const workbooks = getWorkbooks()
       localStorage.setItem(KEY, JSON.stringify([...workbooks, wbSmall]))
-      console.log('[workbooks] save OK (stripped)')
       return { ok: true, workbook: wbSmall }
     } catch (e2) {
-      console.error('[workbooks] save FAILED completely:', e2.message)
       return { ok: false, error: e2.message, workbook: wb }
     }
   }
