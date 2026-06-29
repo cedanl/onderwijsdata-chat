@@ -107,12 +107,12 @@ export default function HomePage({ setPage }) {
               Gebaseerd op open onderwijsdata
             </button>
           </div>
-          <p style={{ fontSize: '.75rem', color: 'var(--gray-500)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0 }}>
+          <p style={{ fontSize: '.75rem', color: 'var(--gray-400)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
             Op deze tool is de{' '}
-            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue-600)', textDecoration: 'underline' }}>
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gray-400)', textDecoration: 'underline' }}>
               Creative Commons ShareAlike Naamsvermelding 4.0-licentie
             </a>
-            {' '}van toepassing. Maak bij gebruik van dit werk vermelding van de volgende referentie:{' '}
+            {' '}van toepassing.<br />Maak bij gebruik van dit werk vermelding van de volgende referentie:{' '}
             <em>AI en data waarde(n)vol inzetten: CEDA. openEDUdata+. Utrecht: Npuls</em>
           </p>
         </div>
