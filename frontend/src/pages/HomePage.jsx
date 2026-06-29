@@ -93,18 +93,28 @@ export default function HomePage({ setPage }) {
       </section>
 
       <footer style={{ background: 'var(--white)', borderTop: '1px solid var(--gray-200)', padding: '32px 0' }}>
-        <div className="container flex justify-between items-center">
-          <div className="navbar-brand">
-            <div className="navbar-logo" style={{ width: 28, height: 28 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-              </svg>
+        <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="navbar-brand">
+              <div className="navbar-logo" style={{ width: 28, height: 28 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <span className="navbar-name" style={{ fontSize: '1rem' }}>openEDU<span>data+</span></span>
             </div>
-            <span className="navbar-name" style={{ fontSize: '1rem' }}>openEDU<span>data+</span></span>
+            <button className="sources-link" onClick={() => setShowSources(true)}>
+              Gebaseerd op open onderwijsdata
+            </button>
           </div>
-          <button className="sources-link" onClick={() => setShowSources(true)}>
-            Gebaseerd op open onderwijsdata
-          </button>
+          <p style={{ fontSize: '.75rem', color: 'var(--gray-500)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0 }}>
+            Op deze tool is de{' '}
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue-600)', textDecoration: 'underline' }}>
+              Creative Commons ShareAlike Naamsvermelding 4.0-licentie
+            </a>
+            {' '}van toepassing. Maak bij gebruik van dit werk vermelding van de volgende referentie:{' '}
+            <em>AI en data waarde(n)vol inzetten: CEDA. openEDUdata+. Utrecht: Npuls</em>
+          </p>
         </div>
       </footer>
 
