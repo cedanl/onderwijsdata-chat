@@ -231,29 +231,6 @@ input, textarea { font: inherit; }
 .feature-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
 .feature-card p { font-size: .9rem; color: var(--gray-500); line-height: 1.65; }
 
-.steps-section { background: var(--blue-50); }
-.step-card {
-  background: var(--white); border-radius: var(--radius-lg);
-  padding: 28px; border: 1px solid var(--blue-100);
-}
-.step-number {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--blue-600); color: var(--white);
-  font-size: .9rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
-}
-.step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
-.step-card p { font-size: .875rem; color: var(--gray-500); line-height: 1.6; }
-
-.comparison-table { width: 100%; border-collapse: collapse; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
-.comparison-table th { padding: 16px 24px; text-align: left; font-size: .875rem; font-weight: 700; }
-.comparison-table th:first-child { background: var(--gray-100); color: var(--gray-700); }
-.comparison-table th:last-child { background: var(--blue-600); color: var(--white); }
-.comparison-table td { padding: 14px 24px; border-top: 1px solid var(--gray-100); font-size: .9rem; }
-.comparison-table td:first-child { background: var(--white); color: var(--gray-600); }
-.comparison-table td:last-child { background: var(--blue-50); color: var(--gray-800); font-weight: 500; }
-.check-icon { color: var(--green-500); margin-right: 6px; }
-.cross-icon { color: var(--red-500); margin-right: 6px; }
 
 .benefit-card {
   display: flex; gap: 16px; align-items: flex-start;
@@ -350,21 +327,6 @@ input, textarea { font: inherit; }
   font-size: .7rem; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--gray-400);
   padding: 0 8px; margin-bottom: 4px;
-}
-.chat-source-list { display: flex; flex-direction: column; gap: 4px; }
-.source-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--radius-sm);
-  font-size: .8rem; color: var(--gray-600);
-}
-.source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.source-dot.green { background: var(--green-500); }
-.source-dot.blue  { background: var(--blue-500); }
-.source-dot.amber { background: var(--amber-500); }
-.source-label { flex: 1; font-weight: 500; }
-.source-badge {
-  font-size: .65rem; padding: 2px 6px; border-radius: 999px;
-  background: var(--teal-100); color: var(--teal-600); font-weight: 700;
 }
 .suggested-list { display: flex; flex-direction: column; gap: 6px; }
 .suggested-btn {
@@ -527,14 +489,6 @@ input, textarea { font: inherit; }
 .send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.4); }
 .send-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; box-shadow: none; transform: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--gray-400); margin-top: 8px; }
-.chat-input-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
-.chat-export-bar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 8px; }
-.export-btn {
-  font-size: .78rem; padding: 6px 12px; border-radius: var(--radius-sm);
-  border: 1px solid var(--blue-200); color: var(--blue-600);
-  background: var(--blue-50); font-weight: 500; transition: all .15s;
-}
-.export-btn:hover { background: var(--blue-100); }
 
 .model-picker { position: relative; }
 .model-picker select {
@@ -818,16 +772,8 @@ input, textarea { font: inherit; }
 .wb-viewer-content { flex: 1; overflow: hidden; }
 .wb-iframe { width: 100%; height: 100%; border: none; }
 
-.export-btn-save { border-color: var(--green-200,#BBF7D0); color: var(--green-700,#15803D); background: var(--green-50,#F0FDF4); }
-.export-btn-save:hover { background: var(--green-100,#DCFCE7); }
 
 /* ─── DASHBOARD PAGE ──────────────────────────────────────── */
-.dashboard-layout { display: flex; flex-direction: column; height: calc(100vh - 64px); overflow: hidden; }
-.dashboard-topbar {
-  background: var(--white); border-bottom: 1px solid var(--gray-200);
-  padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-}
-.dashboard-title { font-size: 1rem; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
 .meta-badge { font-size: .72rem; padding: 4px 10px; border-radius: 999px; font-weight: 600; }
 .meta-badge.live { background: #DCFCE7; color: #15803D; }
 .meta-badge.date { background: var(--gray-100); color: var(--gray-600); }
@@ -862,32 +808,6 @@ input, textarea { font: inherit; }
 @media(max-width:640px){ .db-skeleton-grid { grid-template-columns: repeat(2,1fr); } }
 
 /* Dashboard bronnen footer */
-.saved-db { padding: 32px; max-width: 1100px; margin: 0 auto; }
-.saved-db-header {
-  background: var(--white); border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg); padding: 24px 28px;
-  margin-bottom: 20px; box-shadow: var(--shadow-sm);
-}
-.saved-db-title { font-size: 1.25rem; font-weight: 800; color: var(--gray-900); margin: 4px 0 0; line-height: 1.35; }
-.saved-db-figure {
-  width: 100%; height: 360px; border: none;
-  border-radius: var(--radius-lg); margin-bottom: 20px;
-  background: var(--white); box-shadow: var(--shadow-sm);
-}
-.saved-db-card {
-  margin-bottom: 20px; line-height: 1.7; color: var(--gray-700);
-  font-size: .92rem;
-}
-.saved-db-card h1,.saved-db-card h2,.saved-db-card h3 { font-weight: 700; margin: .8em 0 .3em; color: var(--gray-900); }
-.saved-db-card p { margin: .4em 0; }
-.saved-db-card ul,.saved-db-card ol { margin: .4em 0 .4em 1.4em; }
-.saved-db-card li { margin: .2em 0; }
-.saved-db-card strong { color: var(--gray-900); font-weight: 700; }
-.saved-db-card table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: .8em 0; }
-.saved-db-card th { background: var(--blue-50); color: var(--blue-800); font-weight: 700; text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--blue-200); }
-.saved-db-card td { padding: 7px 12px; border-bottom: 1px solid var(--gray-100); }
-.saved-db-card tr:nth-child(even) td { background: var(--gray-50); }
-.saved-db-card code { background: var(--gray-100); border-radius: 4px; padding: 1px 5px; font-size: .85em; }
 
 .dashboard-sources {
   margin-top: 24px; padding: 20px 24px;
