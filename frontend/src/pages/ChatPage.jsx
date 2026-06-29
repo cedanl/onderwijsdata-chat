@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
-import { SOURCES, SUGGESTED, STORAGE_CONVERSATIONS, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
+import { SUGGESTED, STORAGE_CONVERSATIONS, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
 import { saveWorkbook } from '../workbooks'
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
@@ -27,8 +27,25 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const [showSources, setShowSources] = useState(false)
   const [restoredMessages, setRestoredMessages] = useState([])
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
+  const [saveError, setSaveError] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const messagesRef = useRef(messages)
+  const pendingRestartMsgRef = useRef(null)
+
+  // Keep messagesRef in sync with latest messages
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  // Send pending restart message once busy clears after a clear()
+  useEffect(() => {
+    if (!busy && pendingRestartMsgRef.current) {
+      const msg = pendingRestartMsgRef.current
+      pendingRestartMsgRef.current = null
+      send(msg)
+    }
+  }, [busy, send])
 
   const saveCurrentConversation = useCallback((msgs) => {
     const toSave = msgs || messages
@@ -55,17 +72,30 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
     const firstUserMsg = conv.messages.find(m => m.role === 'user')?.content
     setRestoredMessages([])
     clear()
-    if (firstUserMsg) setTimeout(() => send(firstUserMsg), 80)
-  }, [clear, send])
+    if (firstUserMsg) pendingRestartMsgRef.current = firstUserMsg
+  }, [clear])
 
   const handleLoad = useCallback((conv) => {
     clear()
     setRestoredMessages(conv.messages)
   }, [clear])
 
+  // Save conversation on unmount using ref to avoid stale closure
   useEffect(() => {
-    return () => { saveCurrentConversation() }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      const latestMessages = messagesRef.current
+      const userMsgs = latestMessages.filter(m => m.role === 'user')
+      if (!userMsgs.length) return
+      const conv = {
+        id: Date.now(),
+        title: userMsgs[0].content.slice(0, 80),
+        timestamp: Date.now(),
+        messages: latestMessages,
+      }
+      const updated = [conv, ...loadConversationHistory()].slice(0, 15)
+      persistConversationHistory(updated)
+    }
+  }, [])
 
   // Load available models once
   useEffect(() => {
@@ -110,31 +140,25 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }
 
   const handleMakeDashboard = () => {
+    setSaveError(null)
     const allMsgs = [...restoredMessages, ...messages]
-    console.log('[ChatPage] handleMakeDashboard called', { restoredCount: restoredMessages.length, msgCount: messages.length, totalCount: allMsgs.length })
     const assistantContent = allMsgs
       .filter(m => m.role === 'assistant' && !m.isError && m.content)
       .map(m => m.content)
       .join('\n\n')
-    console.log('[ChatPage] assistantContent length:', assistantContent.length)
-    if (!assistantContent) {
-      console.warn('[ChatPage] no assistant content, aborting')
-      return
-    }
+    if (!assistantContent) return
     const title = allMsgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
     const htmlContent = buildDashboardHtml(title, assistantContent, [], settings?.instelling)
-    console.log('[ChatPage] htmlContent length:', htmlContent.length)
     const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
     const result = saveWorkbook({
       title,
       description: `Aangemaakt op ${date}`,
       htmlContent,
     })
-    console.log('[ChatPage] saveWorkbook result:', { ok: result.ok, error: result.error, id: result.workbook?.id })
     if (result.ok) {
       openDashboard?.(result.workbook.id)
     } else {
-      alert(`Dashboard opslaan mislukt: ${result.error}`)
+      setSaveError(result.error)
     }
   }
 
@@ -189,13 +213,20 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
 
           <div className="chat-input-area">
             {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
-              <button className="make-dashboard-btn" onClick={handleMakeDashboard}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-                </svg>
-                Maak dashboard van dit gesprek
-              </button>
+              <div>
+                <button className="make-dashboard-btn" onClick={handleMakeDashboard}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  Maak dashboard van dit gesprek
+                </button>
+                {saveError && (
+                  <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0' }}>
+                    Dashboard opslaan mislukt: {saveError}
+                  </p>
+                )}
+              </div>
             )}
             <div className="chat-input-wrap">
               <textarea
