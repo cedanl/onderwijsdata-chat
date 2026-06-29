@@ -1,11 +1,12 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
-import { SOURCES, SUGGESTED } from '../constants'
+import { SOURCES, SUGGESTED, STORAGE_CONVERSATIONS, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
 import { saveWorkbook } from '../workbooks'
 import { buildDashboardHtml } from '../dashboardHtml'
+import ModelPicker from '../components/ModelPicker'
 
-const HISTORY_KEY = 'openEDUdata_conversations'
+const HISTORY_KEY = STORAGE_CONVERSATIONS
 
 function loadConversationHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
@@ -39,7 +40,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       timestamp: Date.now(),
       messages: toSave,
     }
-    const updated = [conv, ...loadConversationHistory()].slice(0, 15)
+    const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
     persistConversationHistory(updated)
     setConversationHistory(updated)
   }, [messages])
@@ -105,7 +106,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
 
   const autoResize = (e) => {
     e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+    e.target.style.height = Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
   }
 
   const handleMakeDashboard = () => {
@@ -270,20 +271,6 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   )
 }
 
-function ModelPicker({ models, value, onChange }) {
-  return (
-    <div className="model-picker">
-      <select value={value} onChange={e => onChange(e.target.value)}>
-        {models.map(m => (
-          <option key={m.id} value={m.id}>{m.name}{m.description ? ` — ${m.description}` : ''}</option>
-        ))}
-      </select>
-      <svg className="model-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </div>
-  )
-}
 
 function WelcomeScreen({ instelling, functie }) {
   const greeting = instelling

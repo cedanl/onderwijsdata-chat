@@ -7,9 +7,11 @@ import {
   ArcElement, Tooltip, Legend, Filler,
 } from 'chart.js'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook, saveWorkbook } from '../workbooks'
+import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES, MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT, DEFAULT_INSTELLING } from '../constants'
 import { buildDashboardHtml } from '../dashboardHtml'
 import { getToken } from '../auth'
 import { seedDashboardChat } from '../devSeedDashboard'
+import ModelPicker from '../components/ModelPicker'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
 
@@ -19,8 +21,8 @@ function formatDate(iso) {
 
 // ─── WebSocket hook for dashboard creator ────────────────────────────────────
 
-const DC_MESSAGES_KEY = 'edudata_dc_messages'
-const DC_FIGURES_KEY = 'edudata_dc_figures'
+const DC_MESSAGES_KEY = STORAGE_DC_MESSAGES
+const DC_FIGURES_KEY = STORAGE_DC_FIGURES
 
 function loadSessionMessages() {
   try { return JSON.parse(sessionStorage.getItem(DC_MESSAGES_KEY) || '[]') } catch { return [] }
@@ -36,6 +38,8 @@ function useDashboardChat() {
   const wsRef = useRef(null)
   const currentIdRef = useRef(null)
   const pendingSettingsRef = useRef(null)
+  const idRef = useRef(0)
+  const nextId = () => ++idRef.current
 
   useEffect(() => {
     try { sessionStorage.setItem(DC_MESSAGES_KEY, JSON.stringify(messages.filter(m => m.done))) } catch {}
@@ -62,7 +66,7 @@ function useDashboardChat() {
     ws.onmessage = (e) => {
       const ev = JSON.parse(e.data)
       if (ev.type === 'message_start') {
-        const id = Date.now()
+        const id = nextId()
         currentIdRef.current = id
         setMessages(prev => [...prev, { id, role: 'assistant', content: '', done: false }])
       } else if (ev.type === 'message_cancel') {
@@ -91,12 +95,12 @@ function useDashboardChat() {
         setBusy(false)
       } else if (ev.type === 'clarification') {
         setMessages(prev => [...prev, {
-          id: Date.now(), role: 'assistant',
+          id: nextId(), role: 'assistant',
           content: ev.vraag, clarification: ev.opties, done: true,
         }])
         setBusy(false)
       } else if (ev.type === 'error') {
-        setMessages(prev => [...prev, { id: Date.now(), role: 'assistant', content: ev.message, done: true, isError: true }])
+        setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true }])
         setBusy(false)
       }
     }
@@ -107,14 +111,14 @@ function useDashboardChat() {
   const send = useCallback((content) => {
     if (!wsRef.current || busy) return
     setBusy(true)
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content, done: true }])
+    setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
   }, [busy])
 
   const sendClarification = useCallback((choice) => {
     if (!wsRef.current || busy) return
     setBusy(true)
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: choice, done: true }])
+    setMessages(prev => [...prev, { id: nextId(), role: 'user', content: choice, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
   }, [busy])
 
@@ -136,22 +140,6 @@ function useDashboardChat() {
   return { messages, figures, busy, send, sendClarification, sendSettings, reset }
 }
 
-// ─── Model picker ─────────────────────────────────────────────────────────────
-
-function ModelPicker({ models, value, onChange }) {
-  return (
-    <div className="model-picker">
-      <select value={value} onChange={e => onChange(e.target.value)}>
-        {models.map(m => (
-          <option key={m.id} value={m.id}>{m.name}{m.description ? ` — ${m.description}` : ''}</option>
-        ))}
-      </select>
-      <svg className="model-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </div>
-  )
-}
 
 // ─── Dashboard creator ────────────────────────────────────────────────────────
 
@@ -216,7 +204,7 @@ function DashboardCreator({ onSaved, instelling }) {
   const assistantMsgs = messages.filter(m => m.role === 'assistant')
   const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
   // Show save when not streaming and there's any substantial assistant answer
-  const hasResponse = !busy && messages.some(m => m.role === 'assistant' && !m.isError && (m.content?.length ?? 0) > 150)
+  const hasResponse = !busy && messages.some(m => m.role === 'assistant' && !m.isError && (m.content?.length ?? 0) > MIN_RESPONSE_LENGTH)
 
   const handleSend = (text, clear = false) => {
     if (!text.trim() || busy) return
@@ -262,7 +250,6 @@ function DashboardCreator({ onSaved, instelling }) {
       reset()
       onSaved?.(result.workbook)
     } catch (err) {
-      console.error('[DashboardCreator] handleSave crashed:', err)
       setSaving(false)
       setSaveError(`Fout bij opslaan: ${err.message}`)
     }
@@ -356,7 +343,7 @@ function DashboardCreator({ onSaved, instelling }) {
               rows={1}
               placeholder="Beschrijf welke data je wilt zien..."
               value={input}
-              onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
+              onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px' }}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input, true) } }}
               disabled={busy}
             />
@@ -395,7 +382,7 @@ function DashboardCreator({ onSaved, instelling }) {
                 rows={1}
                 placeholder="Stel een vervolgvraag..."
                 value={followUp}
-                onChange={e => { setFollowUp(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px' }}
+                onChange={e => { setFollowUp(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px' }}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(followUp) } }}
                 disabled={busy}
               />
@@ -417,7 +404,7 @@ function DashboardCreator({ onSaved, instelling }) {
 
 // ─── Main DashboardPage ───────────────────────────────────────────────────────
 
-const BUILTIN_INSTELLING = 'Hogeschool Utrecht'
+const BUILTIN_INSTELLING = DEFAULT_INSTELLING
 
 export default function DashboardPage({ setPage, settings, pendingWorkbookId, clearPendingWorkbook }) {
   const [userWorkbooks, setUserWorkbooks] = useState(getWorkbooks)
@@ -428,7 +415,6 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
     if (!pendingWorkbookId) return
     const wbs = getWorkbooks()
     const wb = wbs.find(w => w.id === pendingWorkbookId)
-    console.log('[DashboardPage] pendingWorkbookId effect', { pendingWorkbookId, found: !!wb, totalStored: wbs.length })
     if (wb) {
       setUserWorkbooks(wbs)
       setSelected(wb)
@@ -449,8 +435,6 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const handleSaved = (newWb) => {
     const stored = getWorkbooks()
     const found = stored.find(w => w.id === newWb?.id)
-    console.log('[DashboardPage] handleSaved', { id: newWb?.id, title: newWb?.title, hasHtml: !!newWb?.htmlContent, storedCount: stored.length, foundInStorage: !!found })
-    alert(`Dashboard "${newWb?.title}" opgeslagen! (${stored.length} in opslag, gevonden: ${!!found})`)
     setUserWorkbooks(stored)
     setShowCreator(false)
     if (found) setSelected(found)
@@ -552,6 +536,7 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
           <small>Beschrijf welke data je wilt zien</small>
         </button>
 
+        {import.meta.env.DEV && (
         <button className="wb-new-card" onClick={() => { seedDashboardChat(); setShowCreator(true) }} style={{ borderColor: '#F59E0B', background: '#FFFBEB' }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -559,6 +544,7 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
           <span style={{ color: '#92400E' }}>Test dashboard</span>
           <small style={{ color: '#B45309' }}>Opent creator met voorgeladen data</small>
         </button>
+        )}
       </div>
     </div>
   )
