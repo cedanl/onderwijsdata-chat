@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
-import { SUGGESTED, STORAGE_CONVERSATIONS, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
+import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
 import { saveWorkbook } from '../workbooks'
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
@@ -24,7 +24,9 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [showSources, setShowSources] = useState(false)
-  const [restoredMessages, setRestoredMessages] = useState([])
+  const [restoredMessages, setRestoredMessages] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT) || '[]') } catch { return [] }
+  })
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
   const [pendingConfirm, setPendingConfirm] = useState(null)
@@ -37,6 +39,13 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  // Persist full visible chat so it survives browser refresh / tab close
+  useEffect(() => {
+    const all = [...restoredMessages, ...messages]
+    if (!all.length) return
+    try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify(all)) } catch {}
+  }, [messages, restoredMessages])
 
   // Send pending restart message once busy clears after a clear()
   useEffect(() => {
@@ -68,6 +77,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       onConfirm: () => {
         saveCurrentConversation()
         setRestoredMessages([])
+        try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
         clear()
       },
     })
@@ -90,12 +100,13 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       message: 'Dit gesprek inladen? Het huidige gesprek gaat verloren.',
       onConfirm: () => {
         clear()
+        try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
         setRestoredMessages(conv.messages)
       },
     })
   }, [clear])
 
-  // Save conversation on unmount using ref to avoid stale closure
+  // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {
     return () => {
       const latestMessages = messagesRef.current
@@ -109,6 +120,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       }
       const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
       persistConversationHistory(updated)
+      try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
     }
   }, [])
 

@@ -6,10 +6,10 @@ const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
 
 function loadSessionMessages() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_DC_MESSAGES) || '[]') } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES) || '[]') } catch { return [] }
 }
 function loadSessionFigures() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_DC_FIGURES) || '[]') } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(STORAGE_DC_FIGURES) || '[]') } catch { return [] }
 }
 
 export default function useDashboardChat() {
@@ -27,11 +27,11 @@ export default function useDashboardChat() {
   const nextId = () => ++idRef.current
 
   useEffect(() => {
-    try { sessionStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify(messages.filter(m => m.done))) } catch {}
+    try { localStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify(messages.filter(m => m.done))) } catch {}
   }, [messages])
 
   useEffect(() => {
-    try { sessionStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify(figures)) } catch {}
+    try { localStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify(figures)) } catch {}
   }, [figures])
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function useDashboardChat() {
     setMessages([])
     setFigures([])
     setBusy(false)
-    try { sessionStorage.removeItem(STORAGE_DC_MESSAGES); sessionStorage.removeItem(STORAGE_DC_FIGURES) } catch {}
+    try { localStorage.removeItem(STORAGE_DC_MESSAGES); localStorage.removeItem(STORAGE_DC_FIGURES) } catch {}
   }, [])
 
   return { messages, figures, busy, connected, send, sendClarification, sendSettings, reset }
