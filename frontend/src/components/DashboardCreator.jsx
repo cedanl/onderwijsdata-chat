@@ -83,6 +83,24 @@ export default function DashboardCreator({ onSaved, instelling }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
   const [pendingConfirm, setPendingConfirm] = useState(null)
+  const [maxStep, setMaxStep] = useState(0)
+  const prevBusyRef = useRef(false)
+
+  useEffect(() => {
+    const wasBusy = prevBusyRef.current
+    prevBusyRef.current = busy
+    if (busy && !wasBusy) setMaxStep(1)
+    else if (!busy && wasBusy && hasResponse) setMaxStep(3)
+    else if (!busy && wasBusy) setMaxStep(0)
+  }, [busy, hasResponse])
+
+  useEffect(() => {
+    if (busy && figures.length > 0) setMaxStep(s => Math.max(s, 2))
+  }, [figures.length, busy])
+
+  useEffect(() => {
+    if (messages.length === 0) setMaxStep(0)
+  }, [messages.length])
   // pendingConfirm = { message: string, onConfirm: () => void } | null
 
   const handleSave = () => {
@@ -180,6 +198,16 @@ export default function DashboardCreator({ onSaved, instelling }) {
         </div>
       ) : (
         <div className="dc-conversation">
+          {maxStep > 0 && (
+            <div className="dc-steps">
+              {[['Data ophalen', 1], ['Grafieken bouwen', 2], ['Klaar', 3]].map(([label, step]) => (
+                <div key={step} className={`dc-step${maxStep >= step ? ' done' : ''}${maxStep === step && busy ? ' active' : ''}`}>
+                  <div className="dc-step-node" />
+                  {label}
+                </div>
+              ))}
+            </div>
+          )}
           {messages.map(msg => (
             <div key={msg.id} className={`dc-msg dc-msg-${msg.role}`}>
               {msg.role === 'assistant' && (

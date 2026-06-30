@@ -209,7 +209,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
             {SUGGESTED.map(cat => (
-              <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={send} busy={busy} />
+              <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={send} busy={busy} instelling={settings.instelling} />
             ))}
           </div>
           <ConversationHistory
@@ -447,7 +447,16 @@ function ConversationHistory({ history, onRestart, onLoad }) {
   )
 }
 
-function SuggestedCategory({ category, questions, onSend, busy }) {
+function personalizeQuestion(q, instelling) {
+  if (!instelling) return q
+  return q
+    .replace('ons onderwijsaanbod', `het aanbod van ${instelling}`)
+    .replace('onze instelling', instelling)
+    .replace('mijn lerenden', `de lerenden van ${instelling}`)
+    .replace('bij ons', `bij ${instelling}`)
+}
+
+function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="suggested-category">
@@ -459,9 +468,10 @@ function SuggestedCategory({ category, questions, onSend, busy }) {
       </button>
       {open && (
         <div className="suggested-list">
-          {questions.map(q => (
-            <button key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
-          ))}
+          {questions.map(q => {
+            const label = personalizeQuestion(q, instelling)
+            return <button key={q} className="suggested-btn" onClick={() => !busy && onSend(label)}>{label}</button>
+          })}
         </div>
       )}
     </div>

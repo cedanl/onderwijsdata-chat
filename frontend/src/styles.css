@@ -599,6 +599,15 @@ input, textarea { font: inherit; }
 }
 .dc-save-btn:hover { background: var(--blue-100); border-color: var(--blue-400); }
 
+.dc-steps { display: flex; align-items: center; margin-bottom: 12px; }
+.dc-step { display: flex; align-items: center; gap: 6px; font-size: .72rem; color: var(--gray-400); white-space: nowrap; }
+.dc-step:not(:last-child) { flex: 1; }
+.dc-step:not(:last-child)::after { content: ''; display: block; flex: 1; height: 1px; background: var(--gray-200); margin: 0 8px; }
+.dc-step-node { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-300); flex-shrink: 0; transition: background .3s; }
+.dc-step.done { color: var(--gray-600); }
+.dc-step.done .dc-step-node { background: var(--blue-400); }
+.dc-step.active { color: var(--blue-600); font-weight: 500; }
+.dc-step.active .dc-step-node { background: var(--blue-400); animation: pulse 1.2s ease-in-out infinite; }
 .dc-tool-label { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--gray-500); margin-bottom: 6px; }
 .dc-tool-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue-400); animation: pulse 1.2s ease-in-out infinite; flex-shrink: 0; }
 .dc-clarification-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
