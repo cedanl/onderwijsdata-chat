@@ -6,8 +6,8 @@ name: Build and deploy Python app to Azure Web App - onderwijsdata-chat
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
