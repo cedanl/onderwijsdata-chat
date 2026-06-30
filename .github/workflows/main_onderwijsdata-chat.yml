@@ -30,11 +30,8 @@ jobs:
       - name: Export requirements.txt from uv
         run: uv export --no-dev --no-hashes -o requirements.txt
 
-      - name: Create and activate virtual environment and install dependencies
-        run: |
-          python -m venv antenv
-          source antenv/bin/activate
-          pip install -r requirements.txt
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -51,9 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            .
-            !antenv/
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
