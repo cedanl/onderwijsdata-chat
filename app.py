@@ -1,15 +1,6 @@
-from dotenv import load_dotenv
+import uvicorn
 
-load_dotenv()
+from server import app  # noqa: F401 — imported for uvicorn
 
-import auth  # noqa: E402
-import data_layer  # noqa: E402
-
-auth.setup()
-data_layer.setup()
-
-# Side-effect imports: register Chainlit callbacks via decorators
-import ui.setup      # noqa: E402, F401  — on_settings_update
-import ui.starters   # noqa: E402, F401  — set_starters
-import ui.exports    # noqa: E402, F401  — download_rapport_samenvatting, download_rapport
-import ui.actions    # noqa: E402, F401  — followup, explore_question (also imports ui.lifecycle)
+if __name__ == "__main__":
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

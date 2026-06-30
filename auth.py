@@ -1,14 +1,14 @@
+import base64
+import hashlib
 import hmac
 import os
-from typing import Optional
+import time
 
-import chainlit as cl
-
-_AUTH_ENABLED = bool(os.getenv("CHAINLIT_AUTH_SECRET"))
+_TOKEN_SECRET = os.getenv("CHAT_SECRET", "").encode()
+_TOKEN_TTL = 24 * 3600
 
 
 def parse_users(users_env: str) -> dict[str, str]:
-    """Parse 'user:pass,user2:pass2' env var into a dict."""
     if not users_env.strip():
         return {}
     result = {}
@@ -27,35 +27,33 @@ def check_credentials(username: str, password: str, users: dict[str, str]) -> bo
     return hmac.compare_digest(stored, password)
 
 
-_USERS = parse_users(os.getenv("CHAT_USERS", ""))
+def _token_sign(data: str) -> str:
+    key = _TOKEN_SECRET or b"dev-only-no-secret-set"
+    return hmac.new(key, data.encode(), hashlib.sha256).hexdigest()
 
 
-def setup() -> None:
-    """Register Chainlit auth callbacks. Call once at app startup.
+def make_token(username: str) -> str:
+    exp = int(time.time()) + _TOKEN_TTL
+    payload = base64.urlsafe_b64encode(f"{username}|{exp}".encode()).decode().rstrip("=")
+    return f"{payload}.{_token_sign(payload)}"
 
-    No-op when CHAINLIT_AUTH_SECRET is absent — Chainlit raises if callbacks
-    are registered without a secret.
-    """
-    if not _AUTH_ENABLED:
-        return
 
-    @cl.password_auth_callback
-    def auth_callback(username: str, password: str) -> Optional[cl.User]:
-        if check_credentials(username, password, _USERS):
-            return cl.User(
-                identifier=username,
-                metadata={"role": "user", "provider": "credentials"},
-            )
+def verify_token(token: str) -> str | None:
+    try:
+        payload, sig = token.rsplit(".", 1)
+    except ValueError:
+        return None
+    if not hmac.compare_digest(_token_sign(payload), sig):
+        return None
+    try:
+        decoded = base64.urlsafe_b64decode(payload + "==").decode()
+        username, exp_str = decoded.rsplit("|", 1)
+        if int(exp_str) < time.time():
+            return None
+        return username
+    except Exception:
         return None
 
-    @cl.header_auth_callback
-    def header_auth_callback(headers: dict) -> Optional[cl.User]:
-        expected = os.getenv("CHAT_HEADER_SECRET")
-        received = headers.get("X-Chat-Secret", "")
-        if expected and hmac.compare_digest(expected, received):
-            identifier = headers.get("X-Chat-User", "user")
-            return cl.User(
-                identifier=identifier,
-                metadata={"role": "user", "provider": "header"},
-            )
-        return None
+
+USERS = parse_users(os.getenv("CHAT_USERS", ""))
+AUTH_ENABLED = bool(USERS)

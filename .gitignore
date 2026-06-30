@@ -4,12 +4,6 @@ __pycache__/
 .venv/
 *.egg-info/
 dist/
-.chainlit/*
-!.chainlit/config.toml
-!.chainlit/translations/
-.chainlit/translations/*
-!.chainlit/translations/en-US.json
-!.chainlit/translations/nl.json
 .files/
 socket:*
 chat_history.db
@@ -18,3 +12,7 @@ chat_history.db
 data/
 tmp/
 site/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
