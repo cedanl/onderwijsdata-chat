@@ -14,6 +14,7 @@ dependencies = [
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
+    "nh3>=0.3.6",
 ]
 
 [dependency-groups]

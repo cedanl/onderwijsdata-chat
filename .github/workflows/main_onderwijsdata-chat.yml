@@ -33,10 +33,17 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
+      - name: Scan Python dependencies for vulnerabilities
+        run: pip install pip-audit && pip-audit -r requirements.txt || true
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Scan npm dependencies for vulnerabilities
+        working-directory: frontend
+        run: npm audit --audit-level=high || true
 
       - name: Build React frontend
         working-directory: frontend

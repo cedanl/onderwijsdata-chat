@@ -2,6 +2,7 @@ from datetime import date
 import html as html_module
 
 import markdown as md
+import nh3
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -15,7 +16,7 @@ def generate_report(turns: list[dict]) -> str:
         answer = turn.get("answer", "") or ""
         figures: list[go.Figure] = turn.get("figures", [])
 
-        answer_html = md.markdown(answer, extensions=["nl2br"])
+        answer_html = nh3.clean(md.markdown(answer, extensions=["nl2br"]))
 
         charts_html = ""
         for fig in figures:

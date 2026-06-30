@@ -4,6 +4,7 @@ from datetime import date
 import html as html_module
 
 import markdown as md
+import nh3
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -188,7 +189,7 @@ def generate_dashboard(turns: list[dict], meta: dict, selected: list[int] | None
     selected = [i for i in selected if 0 <= i < len(turns)] or list(range(len(turns)))
 
     title = html_module.escape(meta.get("title") or "Dashboard")
-    narrative_html = md.markdown(meta.get("narrative") or "", extensions=["nl2br"])
+    narrative_html = nh3.clean(md.markdown(meta.get("narrative") or "", extensions=["nl2br"]))
     findings: list[str] = meta.get("key_findings") or []
 
     charts: list[dict] = []
