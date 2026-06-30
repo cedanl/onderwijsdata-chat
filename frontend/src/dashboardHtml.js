@@ -120,15 +120,22 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
     ? `<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
        ${figures.map((fj, i) => `
          <div class="card"><div id="pf${i}" style="height:360px"></div></div>
-         <script>(function(){var f=${fj};Plotly.newPlot('pf${i}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
+         <script>(function(){var f=${fj},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('pf${i}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
        ).join('\n')}`
     : ''
 
   const chartJsSection = chartSpecs.length
     ? `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>
+       <script>
+         (function(){
+           var _d=window.matchMedia('(prefers-color-scheme:dark)').matches;
+           Chart.defaults.color=_d?'#9CA3AF':'#6B7280';
+           Chart.defaults.borderColor=_d?'rgba(255,255,255,0.06)':'#F3F4F6';
+         })();
+       <\/script>
        ${chartSpecs.map(spec => {
          const kpiHtml = spec.kpis.map((k, i) =>
-           `<div class="kpi" style="border-top:3px solid ${ ['#2563EB','#14B8A6','#F59E0B','#6B7280'][i] }">
+           `<div class="kpi" style="border-top:3px solid ${ [CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], '#6B7280'][i] }">
              <div class="kpi-val">${escapeHtml(k.value)}</div>
              <div class="kpi-label">${escapeHtml(k.label)}</div>
              <div class="kpi-sub">${escapeHtml(k.sub)}</div>
@@ -203,6 +210,23 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
   .prose p{margin:.5em 0}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
   @media(max-width:640px){.kpi-row{grid-template-columns:repeat(2,1fr)}.body{padding:16px}.header{padding:20px 16px}}
+  @media(prefers-color-scheme:dark){
+    body{color:#F9FAFB;background:#111827}
+    .header{background:#1F2937;border-bottom-color:#374151}
+    .header h1{color:#F9FAFB}
+    .header .meta{color:#6B7280}
+    .card{background:#1F2937}
+    .kpi{background:#1F2937}
+    .kpi-val{color:#F9FAFB}
+    .kpi-label{color:#9CA3AF}
+    .kpi-sub{color:#6B7280}
+    th{background:#1E3A5F;color:#93C5FD;border-bottom-color:#1D4ED8}
+    td{border-bottom-color:#374151}
+    tr:nth-child(even) td{background:#111827}
+    .prose{color:#D1D5DB}
+    .prose h2,.prose h3,.prose strong{color:#F9FAFB}
+    .footer{border-top-color:#374151}
+  }
 </style>
 </head><body>
 <div class="header">

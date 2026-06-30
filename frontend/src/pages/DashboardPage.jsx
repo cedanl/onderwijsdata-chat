@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
-import { seedDashboardChat } from '../devSeedDashboard'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { InlineDashboard, InlineDashboardArbeidsmarkt } from '../components/InlineDashboards'
@@ -14,6 +13,8 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const [userWorkbooks, setUserWorkbooks] = useState(getWorkbooks)
   const [selected, setSelected] = useState(null)
   const [showCreator, setShowCreator] = useState(false)
+  const [pendingConfirm, setPendingConfirm] = useState(null)
+  // pendingConfirm = { message: string, onConfirm: () => void } | null
 
   useEffect(() => {
     if (!pendingWorkbookId) return
@@ -31,10 +32,14 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...userWorkbooks]
 
   const handleDelete = (id) => {
-    if (!window.confirm('Weet je zeker dat je dit dashboard wilt verwijderen?')) return
-    deleteWorkbook(id)
-    setUserWorkbooks(getWorkbooks())
-    if (selected?.id === id) setSelected(null)
+    setPendingConfirm({
+      message: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
+      onConfirm: () => {
+        deleteWorkbook(id)
+        setUserWorkbooks(getWorkbooks())
+        if (selected?.id === id) setSelected(null)
+      },
+    })
   }
 
   const handleSaved = (newWb) => {
@@ -87,6 +92,18 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   }
 
   return (
+    <>
+    {pendingConfirm && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+          <p style={{ marginBottom: 20, fontSize: '.95rem' }}>{pendingConfirm.message}</p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => setPendingConfirm(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'none', cursor: 'pointer' }}>Annuleren</button>
+            <button onClick={() => { pendingConfirm.onConfirm(); setPendingConfirm(null) }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#DC2626', color: 'white', cursor: 'pointer', fontWeight: 600 }}>Verwijderen</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="wb-gallery-page">
       <div className="wb-gallery-header">
         <div>
@@ -142,7 +159,7 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
         </button>
 
         {import.meta.env.DEV && (
-        <button className="wb-new-card" onClick={() => { seedDashboardChat(); setShowCreator(true) }} style={{ borderColor: '#F59E0B', background: '#FFFBEB' }}>
+        <button className="wb-new-card" onClick={() => { import('../devSeedDashboard').then(({ seedDashboardChat }) => seedDashboardChat()); setShowCreator(true) }} style={{ borderColor: '#F59E0B', background: '#FFFBEB' }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
@@ -152,5 +169,6 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
         )}
       </div>
     </div>
+    </>
   )
 }

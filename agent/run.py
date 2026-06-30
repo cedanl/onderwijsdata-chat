@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import litellm
+import plotly.io as pio
 
 from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
@@ -178,7 +179,6 @@ async def run(
 
         for tc, (result, figure) in zip(tool_calls, results):
             if figure is not None:
-                import plotly.io as pio
                 figures = session.get("figures", [])
                 figures.append(figure)
                 session["figures"] = figures

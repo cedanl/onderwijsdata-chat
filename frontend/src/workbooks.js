@@ -1,7 +1,5 @@
 import { STORAGE_WORKBOOKS } from './constants'
 
-const KEY = STORAGE_WORKBOOKS
-
 export const BUILTIN = {
   id: '__builtin__',
   title: 'Instroom & Diplomering',
@@ -24,7 +22,7 @@ function stripMessage(m) {
 
 export function getWorkbooks() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]')
+    return JSON.parse(localStorage.getItem(STORAGE_WORKBOOKS) || '[]')
   } catch {
     return []
   }
@@ -49,13 +47,13 @@ export function saveWorkbook({ title, description, messages, figures, instelling
   try {
     const workbooks = getWorkbooks()
     const full = JSON.stringify([...workbooks, wb])
-    localStorage.setItem(KEY, full)
+    localStorage.setItem(STORAGE_WORKBOOKS, full)
     return { ok: true, workbook: wb }
   } catch (e1) {
     try {
       const wbSmall = { ...wb, figures: [], messages: undefined }
       const workbooks = getWorkbooks()
-      localStorage.setItem(KEY, JSON.stringify([...workbooks, wbSmall]))
+      localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify([...workbooks, wbSmall]))
       return { ok: true, workbook: wbSmall }
     } catch (e2) {
       return { ok: false, error: e2.message, workbook: wb }
@@ -64,5 +62,5 @@ export function saveWorkbook({ title, description, messages, figures, instelling
 }
 
 export function deleteWorkbook(id) {
-  localStorage.setItem(KEY, JSON.stringify(getWorkbooks().filter(w => w.id !== id)))
+  localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id)))
 }

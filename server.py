@@ -6,11 +6,13 @@ from datetime import date
 from pathlib import Path
 
 import litellm
+import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from riodata import duo
 
 load_dotenv()
 
@@ -24,9 +26,10 @@ from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
 
 app = FastAPI(title="Onderwijsdata Chat")
 
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -101,9 +104,6 @@ async def get_settings_config() -> dict:
 # ─── Dashboard data endpoint ──────────────────────────────────────────────────
 
 def _load_dashboard_data(instelling: str) -> dict:
-    from riodata import duo
-    import pandas as pd
-
     def _filter(df: pd.DataFrame) -> pd.DataFrame:
         col = "INSTELLINGSNAAM_ACTUEEL"
         if col not in df.columns:
@@ -172,7 +172,7 @@ def _load_dashboard_data(instelling: str) -> dict:
 
 @app.get("/api/dashboard/instroom")
 async def dashboard_instroom(instelling: str = Query(...)) -> dict:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _load_dashboard_data, instelling)
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { Component, useState, useEffect } from 'react'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
@@ -8,11 +8,8 @@ import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED } from './constants'
 
-const SETTINGS_KEY = STORAGE_SETTINGS
-const ONBOARDED_KEY = STORAGE_ONBOARDED
-
 function loadSettings() {
-  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } catch { return {} }
+  try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
 }
 
 function applyMode(mode) {
@@ -52,7 +49,7 @@ export default function App() {
 
   const handleLogin = (u) => {
     setUser(u)
-    if (!localStorage.getItem(ONBOARDED_KEY)) {
+    if (!localStorage.getItem(STORAGE_ONBOARDED)) {
       setIsOnboarding(true)
       setShowSettings(true)
     }
@@ -60,12 +57,12 @@ export default function App() {
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings)
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings))
+    localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(newSettings))
     applyMode(newSettings.mode || 'system')
   }
 
   const handleCloseSettings = () => {
-    localStorage.setItem(ONBOARDED_KEY, '1')
+    localStorage.setItem(STORAGE_ONBOARDED, '1')
     setIsOnboarding(false)
     setShowSettings(false)
   }
@@ -82,7 +79,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Nav
         page={page} setPage={setPage} user={user}
         onLogout={authRequired ? handleLogout : null}
@@ -110,7 +107,7 @@ export default function App() {
           isOnboarding={isOnboarding}
         />
       )}
-    </>
+    </ErrorBoundary>
   )
 }
 
@@ -122,6 +119,23 @@ function MobileTabs({ page, setPage }) {
       <MobileTabBtn icon="dashboard" label="Dashboard" id="dashboard" page={page} setPage={setPage} />
     </nav>
   )
+}
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() {
+    if (this.state.hasError) return (
+      <div style={{ padding: 32, textAlign: 'center' }}>
+        <p style={{ color: '#DC2626', marginBottom: 16 }}>Er is een onverwachte fout opgetreden.</p>
+        <button onClick={() => window.location.reload()}>Pagina vernieuwen</button>
+      </div>
+    )
+    return this.props.children
+  }
 }
 
 function MobileTabBtn({ icon, label, id, page, setPage }) {

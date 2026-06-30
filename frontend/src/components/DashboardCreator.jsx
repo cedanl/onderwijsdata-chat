@@ -45,7 +45,7 @@ function buildExamples(instelling) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardCreator({ onSaved, instelling }) {
-  const { messages, figures, busy, send, sendClarification, sendSettings, reset } = useDashboardChat()
+  const { messages, figures, busy, connected, send, sendClarification, sendSettings, reset } = useDashboardChat()
   const [input, setInput] = useState('')
   const [followUp, setFollowUp] = useState('')
   const [models, setModels] = useState([])
@@ -57,7 +57,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
     fetch('/api/settings/config')
       .then(r => r.json())
       .then(cfg => { setModels(cfg.models || []); setSelectedModel(cfg.default_model || '') })
-      .catch(() => {})
+      .catch(() => setModels([]))
   }, [])
 
   useEffect(() => {
@@ -82,6 +82,8 @@ export default function DashboardCreator({ onSaved, instelling }) {
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
+  const [pendingConfirm, setPendingConfirm] = useState(null)
+  // pendingConfirm = { message: string, onConfirm: () => void } | null
 
   const handleSave = () => {
     if (saving) return
@@ -123,13 +125,27 @@ export default function DashboardCreator({ onSaved, instelling }) {
   }
 
   const handleReset = () => {
-    if (!window.confirm('Weet je zeker dat je dit gesprek wilt wissen?')) return
-    reset(); setInput(''); setFollowUp('')
+    setPendingConfirm({
+      message: 'Weet je zeker dat je dit gesprek wilt wissen?',
+      onConfirm: () => { reset(); setInput(''); setFollowUp('') },
+    })
   }
 
   const isEmpty = messages.length === 0
 
   return (
+    <>
+    {pendingConfirm && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+          <p style={{ marginBottom: 20, fontSize: '.95rem' }}>{pendingConfirm.message}</p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => setPendingConfirm(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'none', cursor: 'pointer' }}>Annuleren</button>
+            <button onClick={() => { pendingConfirm.onConfirm(); setPendingConfirm(null) }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#DC2626', color: 'white', cursor: 'pointer', fontWeight: 600 }}>Wissen</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="dc-wrap">
       <div className="dc-header">
         <div>
@@ -218,8 +234,14 @@ export default function DashboardCreator({ onSaved, instelling }) {
               disabled={busy}
             />
             <div className="dc-input-footer">
+              {!connected && (
+                <span className="ws-reconnecting">
+                  <span className="ws-dot" />
+                  Verbinding herstellen...
+                </span>
+              )}
               {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
-              <button className="send-btn" onClick={() => handleSend(input, true)} disabled={!input.trim() || busy}>
+              <button className="send-btn" onClick={() => handleSend(input, true)} disabled={!input.trim() || busy || !connected}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                   <path d="M12 19V5M5 12l7-7 7 7"/>
                 </svg>
@@ -257,8 +279,14 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 disabled={busy}
               />
               <div className="dc-input-footer">
+                {!connected && (
+                  <span className="ws-reconnecting">
+                    <span className="ws-dot" />
+                    Verbinding herstellen...
+                  </span>
+                )}
                 {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
-                <button className="send-btn" onClick={() => handleSend(followUp)} disabled={!followUp.trim() || busy}>
+                <button className="send-btn" onClick={() => handleSend(followUp)} disabled={!followUp.trim() || busy || !connected}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                     <path d="M12 19V5M5 12l7-7 7 7"/>
                   </svg>
@@ -269,5 +297,6 @@ export default function DashboardCreator({ onSaved, instelling }) {
         )}
       </div>
     </div>
+    </>
   )
 }

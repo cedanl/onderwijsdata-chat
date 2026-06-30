@@ -1,3 +1,5 @@
+# Process-wide cache shared across all sessions — intentional, dataset loading is expensive
+# and datasets are read-only. Not suitable for per-user mutable state.
 _cache: dict = {}
 
 

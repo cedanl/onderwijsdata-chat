@@ -1,10 +1,8 @@
 import { STORAGE_TOKEN } from './constants'
 
-const KEY = STORAGE_TOKEN
-
-export const getToken = () => localStorage.getItem(KEY)
-export const setToken = (t) => localStorage.setItem(KEY, t)
-export const clearToken = () => localStorage.removeItem(KEY)
+export const getToken = () => localStorage.getItem(STORAGE_TOKEN)
+export const setToken = (t) => localStorage.setItem(STORAGE_TOKEN, t)
+export const clearToken = () => localStorage.removeItem(STORAGE_TOKEN)
 
 export async function fetchAuthStatus() {
   const res = await fetch("/api/auth/status")

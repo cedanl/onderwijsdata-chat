@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getToken, clearToken } from '../auth'
 
+const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
+const MAX_RETRIES = 4
+
 function buildWsUrl() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   const token = getToken()
@@ -12,10 +15,14 @@ export function useChat({ onUnauthorized } = {}) {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [toasts, setToasts] = useState([])
+  const [connected, setConnected] = useState(false)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const pendingSettingsRef = useRef(null)
   const idRef = useRef(0)
+  const manualCloseRef = useRef(false)
+  const retryCountRef = useRef(0)
+  const retryTimeoutRef = useRef(null)
   const nextId = () => ++idRef.current
 
   const addToast = useCallback((message, level = 'info') => {
@@ -32,105 +39,131 @@ export function useChat({ onUnauthorized } = {}) {
   }, [])
 
   useEffect(() => {
-    const ws = new WebSocket(buildWsUrl())
-    wsRef.current = ws
+    manualCloseRef.current = false
+    retryCountRef.current = 0
 
-    ws.onopen = () => {
-      if (pendingSettingsRef.current) {
-        ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
-        pendingSettingsRef.current = null
+    function connect() {
+      const ws = new WebSocket(buildWsUrl())
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        setConnected(true)
+        retryCountRef.current = 0
+        if (pendingSettingsRef.current) {
+          ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
+          pendingSettingsRef.current = null
+        }
+      }
+
+      ws.onclose = (e) => {
+        setConnected(false)
+        setBusy(false)
+
+        if (e.code === 4001) {
+          clearToken()
+          onUnauthorized?.()
+          return
+        }
+
+        if (manualCloseRef.current) return
+
+        if (retryCountRef.current < MAX_RETRIES) {
+          const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
+          retryCountRef.current += 1
+          retryTimeoutRef.current = setTimeout(() => {
+            if (!manualCloseRef.current) connect()
+          }, delay)
+        }
+      }
+
+      ws.onmessage = (e) => {
+        const event = JSON.parse(e.data)
+
+        if (event.type === 'system_message') {
+          addToast(event.message, 'warning')
+          return
+        }
+        if (event.type === 'toast') {
+          addToast(event.message, event.level || 'info')
+          return
+        }
+        if (event.type === 'message_start') {
+          const msgId = nextId()
+          currentMsgRef.current = msgId
+          setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
+          return
+        }
+        if (event.type === 'message_cancel') {
+          cancelCurrentMsg()
+          return
+        }
+        if (event.type === 'text_delta') {
+          setMessages(prev => prev.map(m =>
+            m.id === currentMsgRef.current ? { ...m, content: m.content + event.content } : m
+          ))
+          return
+        }
+        if (event.type === 'tool_start') {
+          setMessages(prev => prev.map(m =>
+            m.id === currentMsgRef.current
+              ? { ...m, tools: [...m.tools, { name: event.name, label: event.label, done: false }] }
+              : m
+          ))
+          return
+        }
+        if (event.type === 'tool_end') {
+          setMessages(prev => prev.map(m =>
+            m.id === currentMsgRef.current
+              ? { ...m, tools: m.tools.map(t => t.name === event.name ? { ...t, done: true } : t) }
+              : m
+          ))
+          return
+        }
+        if (event.type === 'message_end') {
+          setMessages(prev => prev.map(m =>
+            m.id === currentMsgRef.current ? { ...m, done: true } : m
+          ))
+          currentMsgRef.current = null
+          setBusy(false)
+          return
+        }
+        if (event.type === 'clarification') {
+          setMessages(prev => [...prev, {
+            id: nextId(), role: 'assistant',
+            content: event.vraag, clarification: event.opties, done: true,
+          }])
+          currentMsgRef.current = null
+          setBusy(false)
+          return
+        }
+        if (event.type === 'starter_questions') {
+          setMessages(prev => [...prev, {
+            id: nextId(), role: 'assistant',
+            content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
+            starterQuestions: event.questions, done: true,
+          }])
+          currentMsgRef.current = null
+          setBusy(false)
+          return
+        }
+        if (event.type === 'error') {
+          cancelCurrentMsg()
+          setMessages(prev => [...prev, {
+            id: nextId(), role: 'assistant', content: event.message, done: true, isError: true,
+          }])
+          setBusy(false)
+          return
+        }
       }
     }
 
-    ws.onclose = (e) => {
-      setBusy(false)
-      if (e.code === 4001) {
-        clearToken()
-        onUnauthorized?.()
-      }
+    connect()
+
+    return () => {
+      manualCloseRef.current = true
+      clearTimeout(retryTimeoutRef.current)
+      wsRef.current?.close()
     }
-
-    ws.onmessage = (e) => {
-      const event = JSON.parse(e.data)
-
-      if (event.type === 'system_message') {
-        addToast(event.message, 'warning')
-        return
-      }
-      if (event.type === 'toast') {
-        addToast(event.message, event.level || 'info')
-        return
-      }
-      if (event.type === 'message_start') {
-        const msgId = nextId()
-        currentMsgRef.current = msgId
-        setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
-        return
-      }
-      if (event.type === 'message_cancel') {
-        cancelCurrentMsg()
-        return
-      }
-      if (event.type === 'text_delta') {
-        setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current ? { ...m, content: m.content + event.content } : m
-        ))
-        return
-      }
-      if (event.type === 'tool_start') {
-        setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current
-            ? { ...m, tools: [...m.tools, { name: event.name, label: event.label, done: false }] }
-            : m
-        ))
-        return
-      }
-      if (event.type === 'tool_end') {
-        setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current
-            ? { ...m, tools: m.tools.map(t => t.name === event.name ? { ...t, done: true } : t) }
-            : m
-        ))
-        return
-      }
-      if (event.type === 'message_end') {
-        setMessages(prev => prev.map(m =>
-          m.id === currentMsgRef.current ? { ...m, done: true } : m
-        ))
-        currentMsgRef.current = null
-        setBusy(false)
-        return
-      }
-      if (event.type === 'clarification') {
-        setMessages(prev => [...prev, {
-          id: nextId(), role: 'assistant',
-          content: event.vraag, clarification: event.opties, done: true,
-        }])
-        currentMsgRef.current = null
-        setBusy(false)
-        return
-      }
-      if (event.type === 'starter_questions') {
-        setMessages(prev => [...prev, {
-          id: nextId(), role: 'assistant',
-          content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
-          starterQuestions: event.questions, done: true,
-        }])
-        currentMsgRef.current = null
-        setBusy(false)
-        return
-      }
-      if (event.type === 'error') {
-        cancelCurrentMsg()
-        setMessages(prev => [...prev, {
-          id: nextId(), role: 'assistant', content: event.message, done: true, isError: true,
-        }])
-        setBusy(false)
-        return
-      }
-    }
-
-    return () => ws.close()
   }, [addToast, cancelCurrentMsg, onUnauthorized])
 
   const send = useCallback((content) => {
@@ -165,5 +198,5 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear }
+  return { messages, busy, toasts, connected, send, sendClarification, sendSettings, stop, clear }
 }

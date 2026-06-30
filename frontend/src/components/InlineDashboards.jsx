@@ -1,5 +1,31 @@
 import { useState, useEffect } from 'react'
+import { CHART_COLORS } from '../constants'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
+
+function useDarkMode() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setDark(document.documentElement.classList.contains('dark'))
+    )
+    obs.observe(document.documentElement, { attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark
+}
+
+function chartOpts(dark) {
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: { grid: { color: grid }, ticks: { color: tick } },
+    },
+  }
+}
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -25,6 +51,8 @@ export const SECTOR_LABELS = {
   TAAL_EN_CULTUUR: 'Taal & Cultuur',
   SECTOROVERSTIJGEND: 'Sectoroverstijgend',
 }
+// Semantic: each color is fixed to a named sector (Economie→blauw, Gezondheidszorg→teal, …).
+// Not a generic sequential palette, so not replaced by CHART_COLORS.
 export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8']
 
 export function fmt(n) {
@@ -109,12 +137,14 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
 
 export function InlineDashboard({ instelling }) {
   const { data, loading, error } = useDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
 
   const ingesChartData = data?.ingeschrevenen ? (() => {
     const entries = Object.entries(data.ingeschrevenen).sort((a,b) => a[0]-b[0])
     return {
       labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Ingeschrevenen', data: entries.map(([,v]) => v), backgroundColor: '#2563EB', borderRadius: 6 }],
+      datasets: [{ label: 'Ingeschrevenen', data: entries.map(([,v]) => v), backgroundColor: CHART_COLORS[0], borderRadius: 6 }],
     }
   })() : null
 
@@ -130,7 +160,7 @@ export function InlineDashboard({ instelling }) {
     const entries = Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0])
     return {
       labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Gediplomeerden', data: entries.map(([,v]) => v), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,.08)', fill: true, tension: 0.3, pointRadius: 4 }],
+      datasets: [{ label: 'Gediplomeerden', data: entries.map(([,v]) => v), borderColor: CHART_COLORS[5], backgroundColor: 'rgba(34,197,94,.08)', fill: true, tension: 0.3, pointRadius: 4 }],
     }
   })() : null
 
@@ -221,25 +251,25 @@ export function InlineDashboard({ instelling }) {
           {ingesChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per jaar</div><div className="chart-sub">{instelling} (DUO p01hoinges)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={ingesChartData} options={CHART_OPTS} /></div>
+              <div style={{ height: 200 }}><Bar data={ingesChartData} options={opts} /></div>
             </div>
           )}
           {sectorChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Verdeling per sector {data.laatste_jaar}</div><div className="chart-sub">Ingeschrevenen naar onderdeel (DUO p01hoinges)</div></div></div>
-              <div style={{ height: 200 }}><Doughnut data={sectorChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }} /></div>
+              <div style={{ height: 200 }}><Doughnut data={sectorChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 } } } } }} /></div>
             </div>
           )}
           {eerstejaarsChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Eerstejaars instroom per jaar</div><div className="chart-sub">{instelling} (DUO p02ho1ejrs)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={eerstejaarsChartData} options={CHART_OPTS} /></div>
+              <div style={{ height: 200 }}><Bar data={eerstejaarsChartData} options={opts} /></div>
             </div>
           )}
           {gediplChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Gediplomeerden per jaar</div><div className="chart-sub">{instelling} (DUO p04hogdipl)</div></div></div>
-              <div style={{ height: 200 }}><Line data={gediplChartData} options={{ ...CHART_OPTS, plugins: { legend: { display: false } } }} /></div>
+              <div style={{ height: 200 }}><Line data={gediplChartData} options={{ ...opts, plugins: { legend: { display: false } } }} /></div>
             </div>
           )}
         </div>
@@ -260,6 +290,8 @@ export function InlineDashboard({ instelling }) {
 
 export function InlineDashboardArbeidsmarkt({ instelling }) {
   const { data, loading, error } = useDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
 
   const gediplChartData = data?.gediplomeerden ? (() => {
     const entries = Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0])
@@ -284,7 +316,8 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
 
   const sectorEntries = data?.sectoren ? Object.entries(data.sectoren).sort((a,b) => b[1]-a[1]) : []
   const kpiColors = ['#EFF6FF','#FFF7ED','#F0FDF4']
-  const kpiIconColors = ['#2563EB','#F59E0B','#22C55E']
+  // Icon stroke colors: drawn from CHART_COLORS (indices 0, 2, 5)
+  const kpiIconColors = [CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
@@ -323,13 +356,13 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
           {gediplChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Gediplomeerden per jaar</div><div className="chart-sub">{instelling} (DUO p04hogdipl)</div></div></div>
-              <div style={{ height: 200 }}><Line data={gediplChartData} options={{ ...CHART_OPTS, plugins: { legend: { display: false } } }} /></div>
+              <div style={{ height: 200 }}><Line data={gediplChartData} options={{ ...opts, plugins: { legend: { display: false } } }} /></div>
             </div>
           )}
           {sectorChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per sector {data.laatste_jaar}</div><div className="chart-sub">Verdeling naar onderdeel (DUO p01hoinges)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={sectorChartData} options={{ ...CHART_OPTS, plugins: { legend: { display: false } } }} /></div>
+              <div style={{ height: 200 }}><Bar data={sectorChartData} options={{ ...opts, plugins: { legend: { display: false } } }} /></div>
             </div>
           )}
         </div>

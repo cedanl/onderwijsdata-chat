@@ -16,15 +16,7 @@ export const MIN_RESPONSE_LENGTH = 150
 export const MAX_TEXTAREA_HEIGHT = 120
 export const DEFAULT_INSTELLING = 'Hogeschool Utrecht'
 
-// ─── Data sources & suggested questions ──────────────────────────────────────
-export const SOURCES = [
-  { label: 'DUO Open Data' },
-  { label: '1cijferHO' },
-  { label: 'CBS StatLine' },
-  { label: 'UWV Arbeidsmarkt' },
-  { label: 'ROA / SBB' },
-]
-
+// ─── Suggested questions ──────────────────────────────────────────────────────
 export const SUGGESTED = [
   {
     category: 'Arbeidsmarkt',

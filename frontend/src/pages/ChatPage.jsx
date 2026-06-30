@@ -5,20 +5,19 @@ import { SUGGESTED, STORAGE_CONVERSATIONS, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGH
 import { saveWorkbook } from '../workbooks'
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
-
-const HISTORY_KEY = STORAGE_CONVERSATIONS
+import DataSourcesModal from '../components/DataSourcesModal'
 
 function loadConversationHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
 }
 
 function persistConversationHistory(list) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
+  localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list))
 }
 
 export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
+  const { messages, busy, connected, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -28,6 +27,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const [restoredMessages, setRestoredMessages] = useState([])
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
+  const [pendingConfirm, setPendingConfirm] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const messagesRef = useRef(messages)
@@ -63,24 +63,36 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }, [messages])
 
   const handleClear = useCallback(() => {
-    if (!window.confirm('Weet je zeker dat je een nieuw gesprek wilt starten?')) return
-    saveCurrentConversation()
-    setRestoredMessages([])
-    clear()
+    setPendingConfirm({
+      message: 'Weet je zeker dat je een nieuw gesprek wilt starten?',
+      onConfirm: () => {
+        saveCurrentConversation()
+        setRestoredMessages([])
+        clear()
+      },
+    })
   }, [clear, saveCurrentConversation])
 
   const handleRestart = useCallback((conv) => {
-    if (!window.confirm('Dit gesprek opnieuw starten? Het huidige gesprek gaat verloren.')) return
-    const firstUserMsg = conv.messages.find(m => m.role === 'user')?.content
-    setRestoredMessages([])
-    clear()
-    if (firstUserMsg) pendingRestartMsgRef.current = firstUserMsg
+    setPendingConfirm({
+      message: 'Dit gesprek opnieuw starten? Het huidige gesprek gaat verloren.',
+      onConfirm: () => {
+        const firstUserMsg = conv.messages.find(m => m.role === 'user')?.content
+        setRestoredMessages([])
+        clear()
+        if (firstUserMsg) pendingRestartMsgRef.current = firstUserMsg
+      },
+    })
   }, [clear])
 
   const handleLoad = useCallback((conv) => {
-    if (!window.confirm('Dit gesprek inladen? Het huidige gesprek gaat verloren.')) return
-    clear()
-    setRestoredMessages(conv.messages)
+    setPendingConfirm({
+      message: 'Dit gesprek inladen? Het huidige gesprek gaat verloren.',
+      onConfirm: () => {
+        clear()
+        setRestoredMessages(conv.messages)
+      },
+    })
   }, [clear])
 
   // Save conversation on unmount using ref to avoid stale closure
@@ -108,7 +120,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
         setModels(cfg.models || [])
         setSelectedModel(cfg.default_model || '')
       })
-      .catch(() => {})
+      .catch(() => setModels([]))
   }, [])
 
   useEffect(() => {
@@ -243,6 +255,12 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
                 disabled={busy}
               />
               <div className="chat-input-footer">
+                {!connected && (
+                  <span className="ws-reconnecting">
+                    <span className="ws-dot" />
+                    Verbinding herstellen...
+                  </span>
+                )}
                 {models.length > 0 && (
                   <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />
                 )}
@@ -251,7 +269,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button className="send-btn" onClick={handleSend} disabled={!input.trim()}>
+                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
@@ -264,39 +282,15 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
         </div>
       </div>
 
-      {showSources && (
-        <div className="modal-overlay" onClick={() => setShowSources(false)}>
-          <button className="modal-overlay-close" onClick={() => setShowSources(false)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <div className="section-label" style={{ marginBottom: 4 }}>Transparantie</div>
-                <h2>Databronnen</h2>
-              </div>
-            </div>
-            <div className="modal-body">
-              <table className="modal-table">
-                <thead>
-                  <tr><th>Bron</th><th>Inhoud</th><th>Catalogus</th></tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['CBS', '68 datasets met onderwijsstatistieken', 'cedanl.github.io/cbs-onderwijsdata', 'https://cedanl.github.io/cbs-onderwijsdata'],
-                    ['RIO', 'Register van onderwijsinstellingen en opleidingen (14 resources)', 'cedanl.github.io/rio-onderwijsdata', 'https://cedanl.github.io/rio-onderwijsdata'],
-                    ['DUO', '57 open datasets: prognoses, diplomering, instroom, adressen', 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
-                  ].map(([bron, inhoud, catalogus, href]) => (
-                    <tr key={bron}>
-                      <td><span className="source-name">{bron}</span></td>
-                      <td><span className="source-desc">{inhoud}</span></td>
-                      <td><a href={href} target="_blank" rel="noreferrer">{catalogus}</a></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {showSources && <DataSourcesModal onClose={() => setShowSources(false)} />}
+
+      {pendingConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ marginBottom: 20, fontSize: '.95rem' }}>{pendingConfirm.message}</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPendingConfirm(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'none', cursor: 'pointer' }}>Annuleren</button>
+              <button onClick={() => { pendingConfirm.onConfirm(); setPendingConfirm(null) }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#DC2626', color: 'white', cursor: 'pointer', fontWeight: 600 }}>Wissen</button>
             </div>
           </div>
         </div>
