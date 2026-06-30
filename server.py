@@ -65,6 +65,13 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/version")
+async def version() -> dict:
+    import tomllib
+    with open(Path(__file__).parent / "pyproject.toml", "rb") as f:
+        return {"version": tomllib.load(f)["project"]["version"]}
+
+
 # ─── Auth endpoints ────────────────────────────────────────────────────────────
 
 @app.get("/api/auth/status")
