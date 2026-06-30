@@ -91,6 +91,7 @@ async def run(
     extra_kwargs = litellm_kwargs(chosen_model)
 
     history, was_trimmed = trim(list(messages))
+    initial_history_len = len(history)
     if was_trimmed:
         await emit({
             "type": "toast",
@@ -200,6 +201,12 @@ async def run(
             clarify_tc = next(tc for tc in tool_calls if tc["name"] == "clarify_scope")
             args = json.loads(clarify_tc["arguments"])
             opties = args.get("opties") or []
+
+            # Persist the clarification exchange back to messages so the next
+            # turn has the tool_calls context (prevents re-asking same question).
+            for entry in history[initial_history_len:]:
+                messages.append(entry)
+            session["_clarified"] = True
 
             # Cancel the open message_start before sending the clarification card.
             # If the LLM produced text before the tool call, close it properly first.

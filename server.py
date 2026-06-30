@@ -263,6 +263,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     session["stop_event"] = stop_event
     session["turn_figures"] = []
 
+    session["_clarified"] = False
     try:
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
@@ -270,7 +271,8 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         messages.pop()
         return
 
-    messages.append({"role": "assistant", "content": response_text})
+    if not session.pop("_clarified", False):
+        messages.append({"role": "assistant", "content": response_text})
     session["messages"] = messages
 
     turn_tool_calls = session.get("_last_turn_tool_calls", [])
