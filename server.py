@@ -271,20 +271,21 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         messages.pop()
         return
 
-    if not session.pop("_clarified", False):
+    clarified = session.pop("_clarified", False)
+    aborted = stop_event.is_set()
+    if not clarified and not aborted:
         messages.append({"role": "assistant", "content": response_text})
+        turn_tool_calls = session.get("_last_turn_tool_calls", [])
+        session["_last_turn_tool_calls"] = []
+        turns: list = session.get("turns", [])
+        turns.append({
+            "question": content,
+            "answer": response_text,
+            "tool_calls": turn_tool_calls,
+            "figures": session.get("turn_figures", []),
+        })
+        session["turns"] = turns
     session["messages"] = messages
-
-    turn_tool_calls = session.get("_last_turn_tool_calls", [])
-    session["_last_turn_tool_calls"] = []
-    turns: list = session.get("turns", [])
-    turns.append({
-        "question": content,
-        "answer": response_text,
-        "tool_calls": turn_tool_calls,
-        "figures": session.get("turn_figures", []),
-    })
-    session["turns"] = turns
 
 
 @app.websocket("/api/chat")
@@ -307,6 +308,8 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
     if not is_ollama and not any(os.getenv(k) for k in known_keys):
         await emit({"type": "system_message", "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app."})
 
+    current_task: asyncio.Task | None = None
+
     try:
         while True:
             raw = await ws.receive_text()
@@ -325,6 +328,8 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 content = msg.get("content", "").strip()
                 if not content:
                     continue
+                if current_task and not current_task.done():
+                    continue
                 model = session["chat_settings"].get("model") or None
                 session["current_model"] = model
 
@@ -334,15 +339,21 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                     await emit({"type": "starter_questions", "label": label, "questions": _tag_voorbeeldvragen(tags)})
                     continue
 
-                await _process_message(content, session, emit, model)
+                current_task = asyncio.create_task(_process_message(content, session, emit, model))
 
             elif action == "clarification_choice":
+                if current_task and not current_task.done():
+                    continue
                 choice = msg.get("choice", "")
                 model = session.get("current_model")
-                await _process_message(choice, session, emit, model)
+                current_task = asyncio.create_task(_process_message(choice, session, emit, model))
 
     except WebSocketDisconnect:
-        pass
+        if current_task and not current_task.done():
+            current_task.cancel()
+            stop_event = session.get("stop_event")
+            if stop_event:
+                stop_event.set()
 
 
 # ─── Serve React frontend ──────────────────────────────────────────────────────

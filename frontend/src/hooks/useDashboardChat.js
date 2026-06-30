@@ -103,6 +103,7 @@ export default function useDashboardChat() {
             id: nextId(), role: 'assistant',
             content: ev.vraag, clarification: ev.opties, done: true,
           }])
+          currentIdRef.current = null
           setBusy(false)
         } else if (ev.type === 'error') {
           setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true }])
