@@ -371,7 +371,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
           {!msg.done && !msg.content && !msg.tools?.length ? (
             <div className="ai-typing"><span /><span /><span /></div>
           ) : (
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
+            <ReactMarkdown>{msg.content ?? ''}</ReactMarkdown>
           )}
           {msg.clarification && (
             <div className="clarification-btns">

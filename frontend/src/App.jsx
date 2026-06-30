@@ -79,7 +79,7 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <>
       <Nav
         page={page} setPage={setPage} user={user}
         onLogout={authRequired ? handleLogout : null}
@@ -87,16 +87,18 @@ export default function App() {
         instelling={settings.instelling}
       />
       <div className="page-wrap">
-        {page === 'home' && <HomePage setPage={setPage} />}
-        {page === 'chat' && <ChatPage setPage={setPage} openDashboard={openDashboard} settings={settings} />}
-        {page === 'dashboard' && (
-          <DashboardPage
-            setPage={setPage}
-            settings={settings}
-            pendingWorkbookId={pendingWorkbookId}
-            clearPendingWorkbook={() => setPendingWorkbookId(null)}
-          />
-        )}
+        <ErrorBoundary key={page}>
+          {page === 'home' && <HomePage setPage={setPage} />}
+          {page === 'chat' && <ChatPage setPage={setPage} openDashboard={openDashboard} settings={settings} />}
+          {page === 'dashboard' && (
+            <DashboardPage
+              setPage={setPage}
+              settings={settings}
+              pendingWorkbookId={pendingWorkbookId}
+              clearPendingWorkbook={() => setPendingWorkbookId(null)}
+            />
+          )}
+        </ErrorBoundary>
       </div>
       <MobileTabs page={page} setPage={setPage} />
       {showSettings && (
@@ -107,7 +109,7 @@ export default function App() {
           isOnboarding={isOnboarding}
         />
       )}
-    </ErrorBoundary>
+    </>
   )
 }
 
@@ -127,10 +129,14 @@ class ErrorBoundary extends Component {
     this.state = { hasError: false }
   }
   static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error, info?.componentStack)
+  }
   render() {
     if (this.state.hasError) return (
       <div style={{ padding: 32, textAlign: 'center' }}>
         <p style={{ color: '#DC2626', marginBottom: 16 }}>Er is een onverwachte fout opgetreden.</p>
+        <button style={{ marginRight: 8 }} onClick={() => this.setState({ hasError: false })}>Probeer opnieuw</button>
         <button onClick={() => window.location.reload()}>Pagina vernieuwen</button>
       </div>
     )
