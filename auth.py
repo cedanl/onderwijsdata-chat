@@ -4,7 +4,7 @@ import hmac
 import os
 import time
 
-_TOKEN_SECRET = os.getenv("CHAT_SECRET", "").encode()
+_TOKEN_SECRET_RAW = os.getenv("CHAT_SECRET", "")
 _TOKEN_TTL = 24 * 3600
 
 
@@ -28,8 +28,7 @@ def check_credentials(username: str, password: str, users: dict[str, str]) -> bo
 
 
 def _token_sign(data: str) -> str:
-    key = _TOKEN_SECRET or b"dev-only-no-secret-set"
-    return hmac.new(key, data.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(_TOKEN_SECRET, data.encode(), hashlib.sha256).hexdigest()
 
 
 def make_token(username: str) -> str:
@@ -57,3 +56,11 @@ def verify_token(token: str) -> str | None:
 
 USERS = parse_users(os.getenv("CHAT_USERS", ""))
 AUTH_ENABLED = bool(USERS)
+
+if AUTH_ENABLED and not _TOKEN_SECRET_RAW:
+    raise ValueError(
+        "CHAT_SECRET moet ingesteld zijn wanneer CHAT_USERS is geconfigureerd. "
+        "Genereer een willekeurige waarde: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
+
+_TOKEN_SECRET = _TOKEN_SECRET_RAW.encode() or b"dev-only-no-secret-set"

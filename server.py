@@ -8,7 +8,7 @@ from pathlib import Path
 import litellm
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -20,11 +20,14 @@ from agent import run as agent_run
 from agent.models import litellm_kwargs as _litellm_kwargs
 from auth import AUTH_ENABLED, USERS, check_credentials, make_token, verify_token
 from config import MODEL, get_available_models
+from rate_limit import RateLimiter
 from errors import friendly_error
 from export import generate_dashboard, generate_report
 from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
 
 app = FastAPI(title="Onderwijsdata Chat")
+
+_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
 _cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 app.add_middleware(
@@ -55,6 +58,13 @@ async def security_headers(request, call_next):
     response.headers["Server"] = ""
     return response
 
+# ─── Health ────────────────────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
 # ─── Auth endpoints ────────────────────────────────────────────────────────────
 
 @app.get("/api/auth/status")
@@ -63,7 +73,15 @@ async def auth_status() -> dict:
 
 
 @app.post("/api/auth/login")
-async def login(body: dict) -> dict:
+async def login(body: dict, request: Request) -> dict:
+    client_ip = request.client.host if request.client else "unknown"
+    if not _login_limiter.is_allowed(client_ip):
+        retry = _login_limiter.retry_after(client_ip)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Te veel inlogpogingen. Probeer het over {retry} seconden opnieuw.",
+            headers={"Retry-After": str(retry)},
+        )
     username = body.get("username", "").strip()
     password = body.get("password", "")
     if AUTH_ENABLED and not check_credentials(username, password, USERS):
