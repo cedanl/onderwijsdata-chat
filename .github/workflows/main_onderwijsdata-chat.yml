@@ -72,4 +72,3 @@ jobs:
           app-name: 'onderwijsdata-chat'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_63DF31C884EF443FBED13EA7A8E366C4 }}
-          startup-command: 'uvicorn server:app --host 0.0.0.0 --port 8000'
