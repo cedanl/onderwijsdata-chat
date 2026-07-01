@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
@@ -30,12 +31,9 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   })
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
-  const [pendingConfirm, setPendingConfirm] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const messagesRef = useRef(messages)
-  const pendingRestartMsgRef = useRef(null)
-
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
     fetchConversations().then(serverConvs => {
@@ -69,15 +67,6 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
     try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify(all)) } catch {}
   }, [messages, restoredMessages])
 
-  // Send pending restart message once busy clears after a clear()
-  useEffect(() => {
-    if (!busy && pendingRestartMsgRef.current) {
-      const msg = pendingRestartMsgRef.current
-      pendingRestartMsgRef.current = null
-      send(msg)
-    }
-  }, [busy, send])
-
   const saveCurrentConversation = useCallback((msgs) => {
     const toSave = msgs || messages
     const userMsgs = toSave.filter(m => m.role === 'user')
@@ -95,39 +84,18 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   }, [messages])
 
   const handleClear = useCallback(() => {
-    setPendingConfirm({
-      message: 'Weet je zeker dat je een nieuw gesprek wilt starten?',
-      onConfirm: () => {
-        saveCurrentConversation()
-        setRestoredMessages([])
-        try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
-        clear()
-      },
-    })
+    saveCurrentConversation()
+    setRestoredMessages([])
+    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
+    clear()
   }, [clear, saveCurrentConversation])
 
-  const handleRestart = useCallback((conv) => {
-    setPendingConfirm({
-      message: 'Dit gesprek opnieuw starten? Het huidige gesprek gaat verloren.',
-      onConfirm: () => {
-        const firstUserMsg = conv.messages.find(m => m.role === 'user')?.content
-        setRestoredMessages([])
-        clear()
-        if (firstUserMsg) pendingRestartMsgRef.current = firstUserMsg
-      },
-    })
-  }, [clear])
-
   const handleLoad = useCallback((conv) => {
-    setPendingConfirm({
-      message: 'Dit gesprek inladen? Het huidige gesprek gaat verloren.',
-      onConfirm: () => {
-        clear()
-        try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
-        setRestoredMessages(conv.messages)
-      },
-    })
-  }, [clear])
+    saveCurrentConversation()
+    clear()
+    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
+    setRestoredMessages(conv.messages)
+  }, [clear, saveCurrentConversation])
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {
@@ -239,7 +207,6 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
           </div>
           <ConversationHistory
             history={conversationHistory}
-            onRestart={handleRestart}
             onLoad={handleLoad}
           />
         </aside>
@@ -321,17 +288,6 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
 
       {showSources && <DataSourcesModal onClose={() => setShowSources(false)} />}
 
-      {pendingConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, maxWidth: 360, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-            <p style={{ marginBottom: 20, fontSize: '.95rem' }}>{pendingConfirm.message}</p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setPendingConfirm(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'none', cursor: 'pointer' }}>Annuleren</button>
-              <button onClick={() => { pendingConfirm.onConfirm(); setPendingConfirm(null) }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#DC2626', color: 'white', cursor: 'pointer', fontWeight: 600 }}>Wissen</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }
@@ -393,11 +349,14 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
           </div>
         ))}
         <div className="message-bubble" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
-          {!msg.done && !msg.content && !msg.tools?.length ? (
+          {!msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length ? (
             <div className="ai-typing"><span /><span /><span /></div>
-          ) : (
-            <ReactMarkdown>{msg.content ?? ''}</ReactMarkdown>
-          )}
+          ) : msg.content ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+          ) : null}
+          {msg.figures?.map((fig, i) => (
+            <PlotlyFigure key={i} figureJson={fig.json} label={fig.label} />
+          ))}
           {msg.clarification && (
             <div className="clarification-btns">
               {msg.clarification.map((opt, i) => {
@@ -424,9 +383,34 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
   )
 }
 
-function ConversationHistory({ history, onRestart, onLoad }) {
-  const [expandedId, setExpandedId] = useState(null)
+function PlotlyFigure({ figureJson, label }) {
+  const data = typeof figureJson === 'string' ? figureJson : JSON.stringify(figureJson)
+  const dark = document.documentElement.classList.contains('dark')
+  const html = `<!DOCTYPE html><html><head>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
+    <style>body{margin:0;background:${dark ? '#1E293B' : '#fff'}}</style>
+    </head><body><div id="p"></div><script>
+    var fig=JSON.parse(${JSON.stringify(data)});
+    var layout=Object.assign({},fig.layout||{},{margin:{l:48,r:24,t:32,b:40},
+      paper_bgcolor:'${dark ? '#1E293B' : '#fff'}',plot_bgcolor:'${dark ? '#1E293B' : '#fff'}',
+      font:{color:'${dark ? '#E2E8F0' : '#374151'}'}});
+    Plotly.newPlot('p',fig.data,layout,{responsive:true,displayModeBar:false});
+    new ResizeObserver(function(){Plotly.Plots.resize('p')}).observe(document.getElementById('p'));
+    <\/script></body></html>`
+  return (
+    <div style={{ margin: '8px 0' }}>
+      {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      <iframe
+        srcDoc={html}
+        sandbox="allow-scripts"
+        style={{ width: '100%', height: 340, border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', background: 'var(--white)' }}
+        title={label || 'Grafiek'}
+      />
+    </div>
+  )
+}
 
+function ConversationHistory({ history, onLoad }) {
   if (history.length === 0) return null
 
   const relativeDate = (ts) => {
@@ -444,8 +428,8 @@ function ConversationHistory({ history, onRestart, onLoad }) {
         {history.map(conv => (
           <div key={conv.id} className="history-item">
             <button
-              className={`history-btn${expandedId === conv.id ? ' active' : ''}`}
-              onClick={() => setExpandedId(expandedId === conv.id ? null : conv.id)}
+              className="history-btn"
+              onClick={() => onLoad(conv)}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -455,16 +439,6 @@ function ConversationHistory({ history, onRestart, onLoad }) {
                 <span className="history-btn-date">{relativeDate(conv.timestamp)}</span>
               </div>
             </button>
-            {expandedId === conv.id && (
-              <div className="history-actions">
-                <button className="history-action-btn" onClick={() => { onLoad(conv); setExpandedId(null) }}>
-                  Inladen &amp; verdergaan
-                </button>
-                <button className="history-action-btn history-action-restart" onClick={() => { onRestart(conv); setExpandedId(null) }}>
-                  Opnieuw starten
-                </button>
-              </div>
-            )}
           </div>
         ))}
       </div>

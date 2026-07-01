@@ -34,7 +34,7 @@ function generateId() {
   return 'wb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
 }
 
-export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent }) {
+export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec }) {
   const wb = {
     id: generateId(),
     title,
@@ -43,6 +43,7 @@ export function saveWorkbook({ title, description, messages, figures, instelling
     figures,
     instelling,
     htmlContent,
+    dashboardSpec,
     createdAt: new Date().toISOString(),
   }
   try {
@@ -75,6 +76,7 @@ export async function loadWorkbooksFromServer() {
       messages: typeof wb.messages === 'string' ? JSON.parse(wb.messages) : wb.messages,
       figures: typeof wb.figures === 'string' ? JSON.parse(wb.figures) : wb.figures,
       htmlContent: wb.html_content ?? wb.htmlContent,
+      dashboardSpec: typeof wb.dashboard_spec === 'string' ? JSON.parse(wb.dashboard_spec) : wb.dashboard_spec ?? wb.dashboardSpec,
       createdAt: wb.created_at ?? wb.createdAt,
     }))
     localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(parsed))
@@ -84,8 +86,8 @@ export async function loadWorkbooksFromServer() {
   }
 }
 
-export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent }) {
-  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent })
+export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent, dashboardSpec }) {
+  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec })
   if (result.ok && result.workbook) {
     const wb = result.workbook
     putWorkbook(wb.id, {
@@ -95,6 +97,7 @@ export async function saveWorkbookWithSync({ title, description, messages, figur
       figures: wb.figures,
       instelling: wb.instelling,
       htmlContent: wb.htmlContent,
+      dashboardSpec: wb.dashboardSpec,
       createdAt: wb.createdAt,
     }).catch(() => {})
   }
@@ -115,6 +118,7 @@ export async function migrateLocalWorkbooks() {
         figures: wb.figures,
         instelling: wb.instelling,
         htmlContent: wb.htmlContent,
+        dashboardSpec: wb.dashboardSpec,
         createdAt: wb.createdAt,
       })
     ))

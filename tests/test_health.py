@@ -10,7 +10,7 @@ def client(monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     # Reload auth first (reads env at module level), then server (imports from auth)
-    import auth
+    import core.auth as auth
     importlib.reload(auth)
     import server
     importlib.reload(server)

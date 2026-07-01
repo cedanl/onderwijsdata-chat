@@ -131,3 +131,29 @@ def test_upsert_workbook_is_idempotent(db):
     result = db.list_workbooks("alice")
     assert len(result) == 1
     assert result[0]["title"] == "V2"
+
+
+def test_workbook_with_dashboard_spec(db):
+    spec = {
+        "title": "Test Dashboard",
+        "kpis": [{"label": "Studenten", "value": "1.000"}],
+        "figures_json": ["{}"],
+        "sources": ["DUO"],
+        "recipe": [{"name": "get_duo_data", "arguments": "{}"}],
+    }
+    db.upsert_workbook(
+        "alice", "wb-spec", "Spec Dashboard", "met spec",
+        dashboard_spec=spec,
+        created_at="2024-01-01T00:00:00Z",
+    )
+    result = db.list_workbooks("alice")
+    assert len(result) == 1
+    loaded = json.loads(result[0]["dashboard_spec"])
+    assert loaded["title"] == "Test Dashboard"
+    assert len(loaded["kpis"]) == 1
+
+
+def test_workbook_without_dashboard_spec_returns_none(db):
+    db.upsert_workbook("alice", "wb-old", "Old", "", created_at="2024-01-01T00:00:00Z")
+    result = db.list_workbooks("alice")
+    assert result[0]["dashboard_spec"] is None

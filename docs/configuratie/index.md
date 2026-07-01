@@ -69,13 +69,13 @@ AVAILABLE_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-4o,ollama_chat/llama3.1:
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `CHAINLIT_AUTH_SECRET` | *(niet ingesteld)* | JWT-secret voor sessiebeheer. Genereer met `chainlit create-secret`. Zonder dit geen login en geen history. |
-| `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAINLIT_AUTH_SECRET` is ingesteld. |
+| `CHAT_SECRET` | *(per herstart gegenereerd)* | JWT-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
+| `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
 | `CHAT_HEADER_SECRET` | *(niet ingesteld)* | Header-authenticatie voor reverse proxy: stuur `X-Chat-Secret: <waarde>` mee. Optioneel ook `X-Chat-User: <identifier>`. |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./chat_history.db` | Database voor gespreksopslag. Standaard lokale SQLite. Voor productie: `postgresql+asyncpg://user:pass@host/db`. |
 
 !!! info "Authenticatie is optioneel"
-    Zonder `CHAINLIT_AUTH_SECRET` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel het secret als minimaal één authenticatiemethode.
+    Zonder `CHAT_USERS` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel `CHAT_SECRET` als minimaal één authenticatiemethode.
 
 ---
 

@@ -1,6 +1,6 @@
 import time
 
-from rate_limit import RateLimiter
+from core.rate_limit import RateLimiter
 
 
 def test_allows_under_limit():

@@ -1,5 +1,5 @@
-from config import WILLMA_API_KEY, WILLMA_BASE_URL
-from prompt import SYSTEM_PROMPT, build_persona_block
+from core.config import WILLMA_API_KEY, WILLMA_BASE_URL
+from prompts import SYSTEM_PROMPT, build_persona_block
 
 _WILLMA_KWARGS: dict = (
     {

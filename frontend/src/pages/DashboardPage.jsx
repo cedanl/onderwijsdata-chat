@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook, loadWorkbooksFromServer, migrateLocalWorkbooks } from '../workbooks'
+import { refreshDashboard as refreshDashboardApi } from '../api'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { InlineDashboard, InlineDashboardArbeidsmarkt } from '../components/InlineDashboards'
+import GeneratedDashboard from '../components/GeneratedDashboard'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -14,7 +16,8 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const [selected, setSelected] = useState(null)
   const [showCreator, setShowCreator] = useState(false)
   const [pendingConfirm, setPendingConfirm] = useState(null)
-  // pendingConfirm = { message: string, onConfirm: () => void } | null
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState(null)
 
   useEffect(() => {
     migrateLocalWorkbooks().then(() => loadWorkbooksFromServer()).then(wbs => {
@@ -34,6 +37,25 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   }, [pendingWorkbookId, clearPendingWorkbook])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
+
+  const handleRefresh = useCallback(async () => {
+    if (!selected?.dashboardSpec?.recipe?.length || refreshing) return
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      const { spec } = await refreshDashboardApi(
+        selected.dashboardSpec.recipe,
+        { instelling },
+      )
+      const updated = { ...selected, dashboardSpec: spec }
+      setSelected(updated)
+      setUserWorkbooks(prev => prev.map(w => w.id === updated.id ? updated : w))
+    } catch (err) {
+      setRefreshError(err.message || 'Verversen mislukt')
+    } finally {
+      setRefreshing(false)
+    }
+  }, [selected, instelling, refreshing])
 
   const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...userWorkbooks]
 
@@ -74,6 +96,18 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
             ? <InlineDashboard instelling={instelling} />
             : selected.id === '__builtin_arbeidsmarkt__'
             ? <InlineDashboardArbeidsmarkt instelling={instelling} />
+            : selected.dashboardSpec
+            ? <>
+                <GeneratedDashboard
+                  spec={selected.dashboardSpec}
+                  instelling={instelling}
+                  onRefresh={selected.dashboardSpec.recipe?.length ? handleRefresh : undefined}
+                  refreshing={refreshing}
+                />
+                {refreshError && (
+                  <div style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
+                )}
+              </>
             : <iframe className="wb-iframe" srcDoc={selected.htmlContent} title={selected.title} sandbox="allow-scripts" />
           }
         </div>

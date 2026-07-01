@@ -1,4 +1,4 @@
-from config import MAX_HISTORY
+from core.config import MAX_HISTORY
 
 
 def trim(history: list[dict]) -> tuple[list[dict], bool]:

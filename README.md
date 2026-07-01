@@ -1,6 +1,6 @@
 # Onderwijsdata Chat
 
-Een Chainlit-chatapp waarmee je vragen kunt stellen over open Nederlandse onderwijsdata.
+Een chatapp (FastAPI + React) waarmee je vragen kunt stellen over open Nederlandse onderwijsdata.
 
 https://github.com/user-attachments/assets/96223914-42c5-4ce5-b468-56b0db3a2342
 
@@ -75,20 +75,23 @@ Open die URL in je host-browser.
 ## Projectstructuur
 
 ```
-app.py              # Bootstrap: laadt auth, data layer en registreert UI-callbacks
+server.py           # FastAPI-app: REST endpoints, WebSocket chat, static file serving
+app.py              # Entrypoint: start uvicorn
+auth.py             # JWT-authenticatie (optioneel, gebruikersnaam/wachtwoord)
+config.py           # Omgevingsvariabelen
+prompt.py           # Systeemprompts
+export.py           # HTML- en PDF-rapportgeneratie
 agent/
   run.py            # Agentic loop met streaming en tool calling via LiteLLM
   models.py         # LiteLLM-kwargs en systeemprompt samenstellen
   history.py        # Gespreksgeschiedenis inkorten
   title.py          # Gesprekstitel genereren
-ui/
-  chat.py           # Chainlit lifecycle-events (on_chat_start, on_message, etc.)
-  setup.py          # Modus- en instellingenpicker (persists per gebruiker)
-  starters.py       # Starterschermen en voorbeeldvragen per thema
-  uploads.py        # Bestanden inlezen en in sessie opslaan
-  downloads.py      # Rapport- en code-exportknoppen
-  actions.py        # Actieknoppen (vervolgvragen, verkennen)
-  errors.py         # Gebruikersvriendelijke foutmeldingen
+frontend/           # React + Vite frontend
+  src/
+    components/     # Chat, sidebar, modals, pickers
+    pages/          # Hoofd- en loginpagina
+persistence/
+  db.py             # SQLite gespreksopslag
 tools/
   cbs.py            # CBS Open Data API
   duo.py            # DUO open datasets (onderwijsdata.duo.nl) + generieke query_data
@@ -97,9 +100,6 @@ tools/
   plot.py           # Plotly-grafieken
   store.py          # In-memory sessiecache voor DataFrames (DUO + uploads)
   codegen/          # Reproduceerbare Python-pakketgeneratie (analyse.py/.ipynb/requirements)
-config.py           # Omgevingsvariabelen
-prompt.py           # Systeemprompts
-report.py           # HTML- en PDF-rapportgeneratie
 playground/
   willma_poc.py     # SURF Willma AI-Hub proof-of-concept
 ```

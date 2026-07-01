@@ -22,11 +22,16 @@ def test_row_limit_applied():
     with patch("tools.cbs.data", return_value=rows):
         result = get_cbs_data("85423NED")
     import json
-    assert len(json.loads(result.split(" //")[0])) == 200
+    parsed = json.loads(result)
+    assert parsed["totaal_rijen"] == 200
+    assert "data_key" in parsed
 
 
 def test_truncation_hint_appended_when_limit_reached():
     rows = [{"id": i} for i in range(200)]
     with patch("tools.cbs.data", return_value=rows):
         result = get_cbs_data("85423NED")
-    assert "afgekapt" in result
+    import json
+    parsed = json.loads(result)
+    assert "waarschuwing" in parsed
+    assert "Afgekapt" in parsed["waarschuwing"]

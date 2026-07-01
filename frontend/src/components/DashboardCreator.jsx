@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import useDashboardChat from '../hooks/useDashboardChat'
-import { buildDashboardHtml } from '../dashboardHtml'
 import { saveWorkbookWithSync, getWorkbooks } from '../workbooks'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
@@ -45,7 +45,7 @@ function buildExamples(instelling) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardCreator({ onSaved, instelling }) {
-  const { messages, figures, busy, connected, send, sendClarification, sendSettings, reset } = useDashboardChat()
+  const { messages, figures, busy, connected, send, sendClarification, sendSettings, reset, generateDashboard, generatingDashboard, dashboardSpec } = useDashboardChat()
   const [input, setInput] = useState('')
   const [followUp, setFollowUp] = useState('')
   const [models, setModels] = useState([])
@@ -103,44 +103,40 @@ export default function DashboardCreator({ onSaved, instelling }) {
   }, [messages.length])
   // pendingConfirm = { message: string, onConfirm: () => void } | null
 
-  const handleSave = async () => {
-    if (saving) return
-    try {
-      const assistantContent = messages
-        .filter(m => m.role === 'assistant' && !m.isError && m.content)
-        .map(m => m.content)
-        .join('\n\n')
-      if (!assistantContent) return
-
-      setSaving(true)
-      setSaveError(null)
-      const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
-      const htmlContent = buildDashboardHtml(title, assistantContent, figures, instelling)
-      const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-      const result = await saveWorkbookWithSync({
-        title,
-        description: `Aangemaakt op ${date}`,
-        htmlContent,
-      })
-      if (!result.ok) {
-        setSaving(false)
-        setSaveError(result.error || 'Opslaan mislukt')
-        return
-      }
-      const stored = getWorkbooks()
-      const found = stored.find(w => w.id === result.workbook.id)
-      if (!found) {
-        setSaving(false)
-        setSaveError('Dashboard opgeslagen maar niet teruggevonden in opslag')
-        return
-      }
-      reset()
-      onSaved?.(result.workbook)
-    } catch (err) {
-      setSaving(false)
-      setSaveError(`Fout bij opslaan: ${err.message}`)
-    }
+  const handleSave = () => {
+    if (saving || generatingDashboard) return
+    setSaving(true)
+    setSaveError(null)
+    generateDashboard()
   }
+
+  useEffect(() => {
+    if (!dashboardSpec) return
+    const doSave = async () => {
+      try {
+        const title = dashboardSpec.title || messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
+        const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+        const result = await saveWorkbookWithSync({
+          title,
+          description: dashboardSpec.description || `Aangemaakt op ${date}`,
+          dashboardSpec,
+          instelling,
+        })
+        if (!result.ok) {
+          setSaving(false)
+          setSaveError(result.error || 'Opslaan mislukt')
+          return
+        }
+        setSaving(false)
+        reset()
+        onSaved?.(result.workbook)
+      } catch (err) {
+        setSaving(false)
+        setSaveError(`Fout bij opslaan: ${err.message}`)
+      }
+    }
+    doSave()
+  }, [dashboardSpec])
 
   const handleReset = () => {
     setPendingConfirm({
@@ -226,7 +222,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 )}
                 {!msg.done && !msg.content && !msg.toolLabel
                   ? <div className="ai-typing"><span/><span/><span/></div>
-                  : msg.content ? <ReactMarkdown>{msg.content}</ReactMarkdown> : null
+                  : msg.content ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown> : null
                 }
                 {msg.clarification && (
                   <div className="dc-clarification-btns">
@@ -280,18 +276,16 @@ export default function DashboardCreator({ onSaved, instelling }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {hasResponse && (
               <div className="dc-actions">
-                <button className="dc-save-btn" onClick={handleSave} disabled={saving}>
-                  {saving ? (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
+                <button className="dc-save-btn" onClick={handleSave} disabled={saving || generatingDashboard}>
+                  {generatingDashboard ? (
+                    <div className="ai-typing" style={{ display: 'inline-flex', gap: 3 }}><span/><span/><span/></div>
                   ) : (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                       <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
                     </svg>
                   )}
-                  {saving ? 'Dashboard opgeslagen' : 'Opslaan als dashboard'}
+                  {generatingDashboard ? 'Dashboard genereren…' : 'Genereer dashboard'}
                 </button>
                 {saveError && <div style={{ color: '#DC2626', fontSize: '.8rem' }}>{saveError}</div>}
               </div>

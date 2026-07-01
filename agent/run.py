@@ -6,10 +6,11 @@ from typing import Any
 import litellm
 import plotly.io as pio
 
-from config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
+from core.config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
 from .history import trim
 from .models import build_system, litellm_kwargs
+from .ratelimit import acompletion_with_backoff
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -58,24 +59,6 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
-_RATE_LIMIT_MAX_RETRIES = 4
-_RATE_LIMIT_BASE_DELAY = 2.0
-
-
-async def _acompletion_with_backoff(emit: Emit, **kwargs):
-    for attempt in range(_RATE_LIMIT_MAX_RETRIES):
-        try:
-            return await litellm.acompletion(**kwargs)
-        except litellm.RateLimitError:
-            if attempt == _RATE_LIMIT_MAX_RETRIES - 1:
-                raise
-            delay = _RATE_LIMIT_BASE_DELAY * (2 ** attempt)
-            await emit({
-                "type": "toast",
-                "message": f"API rate limit bereikt, nieuwe poging over {delay:.0f}s…",
-                "level": "warning",
-            })
-            await asyncio.sleep(delay)
 
 
 async def run(
@@ -106,7 +89,7 @@ async def run(
         if stop_event and stop_event.is_set():
             break
 
-        stream = await _acompletion_with_backoff(
+        stream = await acompletion_with_backoff(
             emit,
             model=chosen_model,
             max_tokens=MAX_TOKENS,
@@ -194,6 +177,8 @@ async def run(
                         "label": label,
                         "figure_json": pio.to_json(figure),
                     })
+            if len(result) > 12000:
+                result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
 
         if any(tc["name"] == "clarify_scope" for tc in tool_calls):

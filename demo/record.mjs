@@ -353,24 +353,22 @@ async function sceneChat(page) {
   await showAnnotation(page, 'Automatisch de juiste databronnen gevonden', 'bottom-right', 2000);
   await delay(300);
 
-  // Stream the response text
-  const responseText = `## Voltijdonderwijs Hogeschool Utrecht
+  // Stream the response in blocks: prose is streamed char-by-char, tables sent as one chunk
+  // so ReactMarkdown can render them properly
+  const blocks = [
+    { type: 'stream', text: `## Voltijdonderwijs Hogeschool Utrecht\n\nDe deelname aan voltijdonderwijs bij Hogeschool Utrecht laat een **stijgende trend** zien over de afgelopen jaren:\n\n` },
+    { type: 'block', text: `| Jaar | Voltijd ingeschrevenen | Eerstejaars voltijd |\n|------|----------------------|---------------------|\n| 2019 | 28.450 | 6.820 |\n| 2020 | 29.100 | 7.015 |\n| 2021 | 29.890 | 7.234 |\n| 2022 | 30.540 | 7.567 |\n| 2023 | 31.200 | 7.891 |\n\n` },
+    { type: 'stream', text: `De totale voltijdpopulatie groeide met **9,7%** in vijf jaar. De instroom van eerstejaars steeg met **15,7%**, wat wijst op een toenemende aantrekkingskracht.\n\nDe sterkste groei is zichtbaar in de sectoren **Techniek** (+18%) en **Gezondheidszorg** (+14%).` },
+  ];
 
-De deelname aan voltijdonderwijs bij Hogeschool Utrecht laat een **stijgende trend** zien over de afgelopen jaren:
-
-| Jaar | Voltijd ingeschrevenen | Eerstejaars voltijd |
-|------|----------------------|---------------------|
-| 2019 | 28.450 | 6.820 |
-| 2020 | 29.100 | 7.015 |
-| 2021 | 29.890 | 7.234 |
-| 2022 | 30.540 | 7.567 |
-| 2023 | 31.200 | 7.891 |
-
-De totale voltijdpopulatie groeide met **9,7%** in vijf jaar. De instroom van eerstejaars steeg met **15,7%**, wat wijst op een toenemende aantrekkingskracht.
-
-De sterkste groei is zichtbaar in de sectoren **Techniek** (+18%) en **Gezondheidszorg** (+14%).`;
-
-  await streamText(page, responseText, 12, 20);
+  for (const block of blocks) {
+    if (block.type === 'block') {
+      await emitWs(page, { type: 'text_delta', content: block.text });
+      await delay(300);
+    } else {
+      await streamText(page, block.text, 12, 20);
+    }
+  }
   await delay(300);
   await emitWs(page, { type: 'message_end' });
   await delay(800);

@@ -1,7 +1,7 @@
 import json
 
 from riodata import duo as _duo
-from config import DUO_ROW_LIMIT
+from core.config import DUO_ROW_LIMIT
 from . import store
 
 _SAMPLE_ROWS = 3
@@ -48,7 +48,9 @@ def query_data(
 ) -> str:
     df = store.get(data_key)
     if df is None:
-        return f"Geen data gevonden voor '{data_key}'. Laad eerst de data via get_duo_data (DUO) of upload een bestand."
+        available = store.list_keys()
+        hint = f" Beschikbare datasets: {available}" if available else ""
+        return f"Geen data gevonden voor '{data_key}'.{hint} Laad eerst data via get_duo_data, get_cbs_data of get_rio_data."
 
     if filters:
         for col, val in filters.items():
@@ -62,10 +64,8 @@ def query_data(
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
         df = df[columns]
 
-    # Cap rows adaptively: wide datasets eat context fast.
-    # Target ~6000 cells max to stay well within LLM context limits.
     n_cols = len(df.columns)
-    adaptive_max = max(50, min(max_rows, 6000 // max(n_cols, 1)))
+    adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
     result: dict = {"totaal_rijen": total, "rijen": rows}

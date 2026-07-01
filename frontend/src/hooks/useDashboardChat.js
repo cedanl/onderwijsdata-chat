@@ -17,6 +17,8 @@ export default function useDashboardChat() {
   const [figures, setFigures] = useState(loadSessionFigures)
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [generatingDashboard, setGeneratingDashboard] = useState(false)
+  const [dashboardSpec, setDashboardSpec] = useState(null)
   const wsRef = useRef(null)
   const currentIdRef = useRef(null)
   const pendingSettingsRef = useRef(null)
@@ -105,7 +107,14 @@ export default function useDashboardChat() {
           }])
           currentIdRef.current = null
           setBusy(false)
+        } else if (ev.type === 'dashboard_generating') {
+          setGeneratingDashboard(true)
+          setDashboardSpec(null)
+        } else if (ev.type === 'dashboard_ready') {
+          setGeneratingDashboard(false)
+          setDashboardSpec(ev.spec)
         } else if (ev.type === 'error') {
+          setGeneratingDashboard(false)
           setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true }])
           setBusy(false)
         }
@@ -143,12 +152,24 @@ export default function useDashboardChat() {
     wsRef.current.send(JSON.stringify({ action: 'settings', settings }))
   }, [])
 
+  const generateDashboard = useCallback(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ action: 'generate_dashboard' }))
+  }, [])
+
+  const refreshDashboard = useCallback((recipe) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ action: 'refresh_dashboard', recipe }))
+  }, [])
+
   const reset = useCallback(() => {
     setMessages([])
     setFigures([])
     setBusy(false)
+    setGeneratingDashboard(false)
+    setDashboardSpec(null)
     try { localStorage.removeItem(STORAGE_DC_MESSAGES); localStorage.removeItem(STORAGE_DC_FIGURES) } catch {}
   }, [])
 
-  return { messages, figures, busy, connected, send, sendClarification, sendSettings, reset }
+  return { messages, figures, busy, connected, send, sendClarification, sendSettings, reset, generateDashboard, refreshDashboard, generatingDashboard, dashboardSpec }
 }

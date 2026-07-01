@@ -119,6 +119,13 @@ export function useChat({ onUnauthorized } = {}) {
           ))
           return
         }
+        if (event.type === 'figure') {
+          setMessages(prev => [...prev, {
+            id: nextId(), role: 'assistant',
+            content: '', figures: [{ label: event.label, json: event.figure_json }], done: true,
+          }])
+          return
+        }
         if (event.type === 'message_end') {
           setMessages(prev => prev.map(m =>
             m.id === currentMsgRef.current ? { ...m, done: true } : m

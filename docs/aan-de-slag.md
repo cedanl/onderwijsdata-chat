@@ -71,24 +71,19 @@ De app herstart automatisch bij bestandswijzigingen. Open vervolgens je browser 
 
 Standaard werkt de app zonder login en zonder opgeslagen gespreksgeschiedenis. Schakel het in door twee variabelen toe te voegen aan `.env`:
 
-```bash
-# 1. Genereer een secret (eenmalig)
-chainlit create-secret
-```
-
-Voeg de output toe aan `.env`:
-
 ```dotenv
-CHAINLIT_AUTH_SECRET="<gegenereerde waarde>"
 CHAT_USERS=gebruikersnaam:wachtwoord
+CHAT_SECRET=<willekeurige lange string>
 ```
+
+`CHAT_SECRET` is het JWT-secret voor sessiebeheer. Zonder dit wordt er per herstart een nieuw secret gegenereerd en verlopen bestaande tokens.
 
 Meerdere gebruikers zijn mogelijk als kommalijst: `CHAT_USERS=alice:ww1,bob:ww2`.
 
 Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen in `chat_history.db`. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk.
 
 !!! tip "Uitschakelen"
-    Commentarieer `CHAINLIT_AUTH_SECRET` uit in `.env` om terug te gaan naar de anonieme modus.
+    Verwijder `CHAT_USERS` uit `.env` om terug te gaan naar de anonieme modus.
 
 ---
 

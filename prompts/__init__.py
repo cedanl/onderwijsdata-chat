@@ -1,6 +1,6 @@
 from pathlib import Path
 
-_PROMPT_DIR = Path(__file__).parent / "prompts"
+_PROMPT_DIR = Path(__file__).parent
 
 SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text()
 

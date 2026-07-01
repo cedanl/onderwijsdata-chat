@@ -1,4 +1,4 @@
-from auth import check_credentials, parse_users
+from core.auth import check_credentials, parse_users
 
 
 def test_parse_users_empty_string():

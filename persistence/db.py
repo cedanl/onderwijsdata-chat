@@ -23,6 +23,14 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    cursor = conn.execute("PRAGMA table_info(workbooks)")
+    columns = {row[1] for row in cursor.fetchall()}
+    if "dashboard_spec" not in columns:
+        conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
+        conn.commit()
+
+
 def init_db() -> None:
     conn = _connect()
     conn.executescript("""
@@ -37,19 +45,21 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
 
         CREATE TABLE IF NOT EXISTS workbooks (
-            id           TEXT NOT NULL,
-            username     TEXT NOT NULL,
-            title        TEXT NOT NULL,
-            description  TEXT NOT NULL DEFAULT '',
-            messages     TEXT,
-            figures      TEXT,
-            instelling   TEXT,
-            html_content TEXT,
-            created_at   TEXT NOT NULL,
+            id             TEXT NOT NULL,
+            username       TEXT NOT NULL,
+            title          TEXT NOT NULL,
+            description    TEXT NOT NULL DEFAULT '',
+            messages       TEXT,
+            figures        TEXT,
+            instelling     TEXT,
+            html_content   TEXT,
+            dashboard_spec TEXT,
+            created_at     TEXT NOT NULL,
             PRIMARY KEY (id, username)
         );
         CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
     """)
+    _migrate(conn)
     conn.close()
 
 
@@ -93,7 +103,7 @@ def list_workbooks(username: str) -> list[dict]:
     conn = _connect()
     rows = conn.execute(
         "SELECT id, title, description, messages, figures, instelling, "
-        "html_content, created_at FROM workbooks "
+        "html_content, dashboard_spec, created_at FROM workbooks "
         "WHERE username = ? ORDER BY created_at DESC",
         (username,),
     ).fetchall()
@@ -110,21 +120,26 @@ def upsert_workbook(
     figures: list | None = None,
     instelling: str | None = None,
     html_content: str | None = None,
+    dashboard_spec: dict | None = None,
     created_at: str = "",
 ) -> None:
     conn = _connect()
     conn.execute(
         "INSERT INTO workbooks (id, username, title, description, messages, figures, "
-        "instelling, html_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        "instelling, html_content, dashboard_spec, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
         "ON CONFLICT (id, username) DO UPDATE SET title=excluded.title, "
         "description=excluded.description, messages=excluded.messages, "
         "figures=excluded.figures, instelling=excluded.instelling, "
-        "html_content=excluded.html_content, created_at=excluded.created_at",
+        "html_content=excluded.html_content, dashboard_spec=excluded.dashboard_spec, "
+        "created_at=excluded.created_at",
         (
             wb_id, username, title, description,
             json.dumps(messages) if messages is not None else None,
             json.dumps(figures) if figures is not None else None,
-            instelling, html_content, created_at,
+            instelling, html_content,
+            json.dumps(dashboard_spec) if dashboard_spec is not None else None,
+            created_at,
         ),
     )
     conn.commit()

@@ -5,12 +5,14 @@ _FRIENDLY_ERRORS: list[tuple[type, str]] = [
     (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),
     (litellm.RateLimitError, "Te veel verzoeken naar de API. Wacht even en probeer opnieuw."),
     (litellm.APIConnectionError, "Kan de API niet bereiken. Controleer je internetverbinding."),
-    (litellm.BadRequestError, "Het verzoek werd afgewezen door de API. Mogelijk een ongeldig model of parameter."),
+    (litellm.BadRequestError, None),
 ]
 
 
 def friendly_error(exc: Exception) -> str:
     for exc_type, msg in _FRIENDLY_ERRORS:
         if isinstance(exc, exc_type):
+            if msg is None:
+                break
             return f"❌ {msg}"
-    return f"❌ Er is een fout opgetreden: {exc}"
+    return f"❌ {exc}"

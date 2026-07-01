@@ -10,7 +10,6 @@ Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokal
 |-----------|-------------------|-----------|
 | Database | SQLite (`chat_history.db`) | PostgreSQL (beheerde cloud-service) |
 | Authenticatie | Gebruikersnaam/wachtwoord in `.env` | OAuth via Azure AD / SURFconext |
-| Bestandsopslag | Niet opgeslagen | Azure Blob Storage of AWS S3 |
 
 ---
 
@@ -52,35 +51,17 @@ Registreer een app in de [Azure Portal](https://portal.azure.com):
 2. Redirect URI: `https://jouwdomein.nl/auth/oauth/azure-ad/callback`
 3. Maak een client secret aan onder "Certificaten en geheimen"
 
-Voeg toe aan `.env` (of omgevingsvariabelen van de hostingplatform):
+Voeg toe aan `.env` (of omgevingsvariabelen van het hostingplatform):
 
 ```dotenv
-CHAINLIT_AUTH_SECRET="<chainlit create-secret>"
+CHAT_SECRET=<willekeurige lange string>
 
 OAUTH_AZURE_AD_CLIENT_ID=<application-id>
 OAUTH_AZURE_AD_CLIENT_SECRET=<client-secret>
 OAUTH_AZURE_AD_TENANT_ID=<tenant-id>
-
-# Alleen medewerkers van jouw instelling toelaten:
-OAUTH_AZURE_AD_ENABLE_SINGLE_TENANT=true
-
-# Zorg dat de callback-URL klopt:
-CHAINLIT_URL=https://jouwdomein.nl
 ```
 
-Vervang vervolgens in `auth.py` de wachtwoord-callback door een OAuth-callback:
-
-```python
-@cl.oauth_callback
-def oauth_callback(
-    provider_id: str,
-    token: str,
-    raw_user_data: dict,
-    default_user: cl.User,
-) -> cl.User | None:
-    # Sta alleen gebruikers van jouw tenant toe
-    return default_user
-```
+OAuth-integratie vereist aanpassingen in `auth.py` — de huidige implementatie ondersteunt alleen gebruikersnaam/wachtwoord-authenticatie.
 
 ### SURFconext
 
@@ -88,47 +69,7 @@ SURFconext werkt via SAML/OIDC. Raadpleeg de [SURFconext documentatie](https://w
 
 ---
 
-## 3. Bestandsopslag — grafieken
-
-Plotly-grafieken worden standaard niet opgeslagen bij herstel van een gesprek. Koppel een blob-opslag om dit op te lossen.
-
-### Azure Blob Storage
-
-```bash
-uv add azure-storage-file-datalake azure-identity aiohttp
-```
-
-In `data_layer.py`:
-
-```python
-from chainlit.data.storage_clients.azure import AzureStorageClient
-
-storage_client = AzureStorageClient(
-    account_url="https://<account>.dfs.core.windows.net",
-    container="chainlit-elements",
-)
-
-@cl.data_layer
-def get_data_layer_instance():
-    url = build_conninfo(os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
-    return SQLAlchemyDataLayer(conninfo=url, storage_provider=storage_client)
-```
-
-### AWS S3
-
-```bash
-uv add boto3
-```
-
-```python
-from chainlit.data.storage_clients.s3 import S3StorageClient
-
-storage_client = S3StorageClient(bucket="chainlit-elements")
-```
-
----
-
-## 4. Deployment
+## 3. Deployment
 
 ### Docker
 
@@ -137,15 +78,16 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY . .
 RUN pip install uv && uv sync --no-dev
+RUN cd frontend && npm ci && npm run build
 EXPOSE 8000
-CMD ["uv", "run", "chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "8000", "-h"]
+CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 Geef omgevingsvariabelen mee via Docker of je platform — nooit in de image zelf:
 
 ```bash
 docker run -p 8000:8000 \
-  -e CHAINLIT_AUTH_SECRET="..." \
+  -e CHAT_SECRET="..." \
   -e DATABASE_URL="postgresql+asyncpg://..." \
   -e AZURE_AI_API_KEY="..." \
   -e MODEL="azure_ai/claude-sonnet-4-6" \
@@ -161,7 +103,7 @@ az containerapp create \
   --resource-group mijn-rg \
   --image ghcr.io/cedanl/onderwijsdata-chat:latest \
   --env-vars \
-      CHAINLIT_AUTH_SECRET=secretref:chainlit-secret \
+      CHAT_SECRET=secretref:chat-secret \
       DATABASE_URL=secretref:db-url \
       AZURE_AI_API_KEY=secretref:api-key \
   --ingress external --target-port 8000
@@ -178,11 +120,9 @@ az containerapp create \
 
 ## Checklist productiedeployment
 
-- [ ] `CHAINLIT_AUTH_SECRET` ingesteld als omgevingsvariabele (niet in repo)
+- [ ] `CHAT_SECRET` ingesteld als omgevingsvariabele (niet in repo)
 - [ ] `DATABASE_URL` wijst naar PostgreSQL (niet SQLite)
 - [ ] OAuth geconfigureerd (Azure AD of SURFconext)
-- [ ] `CHAINLIT_URL` ingesteld op het publieke domein
 - [ ] `chat_history.db` staat in `.gitignore`
 - [ ] API keys als secrets in het hostingplatform, niet in code
 - [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
-- [ ] (Optioneel) blob-opslag gekoppeld voor grafiekpersistentie
