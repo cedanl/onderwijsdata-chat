@@ -163,6 +163,7 @@ _CLARIFY_SCOPE_SCHEMA = {
         "name": "clarify_scope",
         "description": (
             "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "
+            "Dit is de ENIGE manier om scope-vragen te stellen — schrijf ze nooit als platte tekst. "
             "Gebruik bij een nieuwe analysevraag om open scope-dimensies vast te leggen. "
             "Sla dimensies over die al uit de vraag of het gebruikersprofiel blijken. "
             "Typisch 1–3 aanroepen. Als de vraag al specifiek genoeg is (3+ dimensies "
