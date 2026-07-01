@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'

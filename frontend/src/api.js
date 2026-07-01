@@ -43,9 +43,14 @@ export async function deleteWorkbookApi(id) {
   return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' })
 }
 
-export async function refreshDashboard(recipe, settings = {}) {
+export async function refreshDashboard(spec, settings = {}) {
   return apiFetch('/api/dashboard/refresh', {
     method: 'POST',
-    body: JSON.stringify({ recipe, settings }),
+    body: JSON.stringify({
+      recipe: spec.recipe,
+      figure_recipes: spec.figure_recipes,
+      spec,
+      settings,
+    }),
   })
 }

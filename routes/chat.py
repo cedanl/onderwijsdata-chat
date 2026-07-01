@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
@@ -7,11 +8,14 @@ from fastapi.responses import JSONResponse
 
 from agent import run as agent_run
 from agent.dashboard import generate as generate_dashboard_spec
-from agent.replay import extract_data_calls, replay_data_calls
+from agent.dashboard import DashboardSpec
+from agent.replay import extract_data_calls, replay_data_calls, replay_dashboard_figures
 from core.auth import AUTH_ENABLED, verify_token
 from core.config import MODEL
 from core.errors import friendly_error
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -73,30 +77,49 @@ async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
         await emit({"type": "error", "message": friendly_error(e)})
 
 
-async def _refresh_dashboard(recipe: list[dict], session: dict, emit, model: str | None) -> None:
+class RefreshError(Exception):
+    pass
+
+
+async def _do_refresh(recipe: list[dict], figure_recipes: list[dict], current_spec: dict) -> tuple[DashboardSpec, str | None]:
+    """Shared refresh logic. Returns (updated_spec, info_message_or_None).
+
+    Raises RefreshError if refresh fails entirely.
+    """
+    if not figure_recipes and not recipe:
+        raise RefreshError("Dit dashboard kan niet ververst worden.")
+
+    spec = DashboardSpec.from_dict(current_spec)
+    info: str | None = None
+
+    if figure_recipes:
+        fresh_figures = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
+        if fresh_figures:
+            spec.figures_json = fresh_figures
+        else:
+            info = "Grafieken konden niet bijgewerkt worden, bestaande data behouden."
+    elif recipe:
+        results = await asyncio.to_thread(replay_data_calls, recipe)
+        if all(not r["success"] for r in results):
+            errors = "; ".join(r.get("error", "?") for r in results)
+            raise RefreshError(f"Geen van de datasets kon herladen worden: {errors}")
+        info = "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards."
+
+    return spec, info
+
+
+async def _refresh_dashboard(recipe: list[dict], figure_recipes: list[dict], current_spec: dict, session: dict, emit, model: str | None) -> None:
     await emit({"type": "dashboard_generating"})
     try:
-        results = await asyncio.to_thread(replay_data_calls, recipe)
-        failures = [r for r in results if not r["success"]]
-        if failures:
-            names = ", ".join(r["name"] for r in failures)
-            await emit({
-                "type": "toast",
-                "message": f"Sommige data kon niet herladen worden: {names}",
-                "level": "warning",
-            })
-        if all(not r["success"] for r in results):
-            await emit({"type": "error", "message": "Geen van de datasets kon herladen worden."})
-            return
-
-        spec = await generate_dashboard_spec(session, emit, model=model)
+        spec, info = await _do_refresh(recipe, figure_recipes, current_spec)
+        if info:
+            level = "warning" if "niet" in info else "info"
+            await emit({"type": "toast", "message": info, "level": level})
         await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
+    except RefreshError as e:
+        await emit({"type": "error", "message": str(e)})
     except Exception as e:
         await emit({"type": "error", "message": friendly_error(e)})
-
-
-async def _noop_emit(event: dict) -> None:
-    pass
 
 
 @router.post("/api/dashboard/refresh")
@@ -109,22 +132,16 @@ async def refresh_dashboard_endpoint(request: Request):
 
     body = await request.json()
     recipe = body.get("recipe") or []
-    if not recipe:
-        return JSONResponse({"error": "Geen recipe meegegeven."}, status_code=400)
+    figure_recipes = body.get("figure_recipes") or []
+    current_spec = body.get("spec") or {}
 
     try:
-        results = await asyncio.to_thread(replay_data_calls, recipe)
-        failures = [r for r in results if not r["success"]]
-        if len(failures) == len(results):
-            errors = "; ".join(r.get("error", "?") for r in failures)
-            return JSONResponse({"error": f"Geen van de datasets kon herladen worden: {errors}"}, status_code=502)
-
-        session: dict = {"turns": [], "messages": [], "chat_settings": body.get("settings", {})}
-        spec = await generate_dashboard_spec(session, _noop_emit, model=body.get("model"))
+        spec, _ = await _do_refresh(recipe, figure_recipes, current_spec)
         return {"spec": spec.to_dict()}
+    except RefreshError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
-        import traceback, logging
-        logging.getLogger(__name__).error("Dashboard refresh failed: %s", traceback.format_exc())
+        logger.error("Dashboard refresh failed", exc_info=True)
         return JSONResponse({"error": friendly_error(e)}, status_code=500)
 
 
@@ -199,9 +216,11 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 if current_task and not current_task.done():
                     continue
                 recipe = msg.get("recipe") or []
+                figure_recipes = msg.get("figure_recipes") or []
+                current_spec = msg.get("spec") or {}
                 model = session["chat_settings"].get("model") or None
                 current_task = asyncio.create_task(
-                    _refresh_dashboard(recipe, session, emit, model)
+                    _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model)
                 )
 
     except WebSocketDisconnect:

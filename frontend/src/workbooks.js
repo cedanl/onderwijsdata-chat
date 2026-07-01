@@ -63,9 +63,18 @@ export function saveWorkbook({ title, description, messages, figures, instelling
   }
 }
 
+export function updateWorkbookTitle(id, title) {
+  const wbs = getWorkbooks()
+  const wb = wbs.find(w => w.id === id)
+  if (!wb) return
+  wb.title = title
+  localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs))
+  putWorkbook(id, { ...wb, htmlContent: wb.htmlContent, dashboardSpec: wb.dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
+}
+
 export function deleteWorkbook(id) {
   localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id)))
-  deleteWorkbookApi(id).catch(() => {})
+  deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 
 export async function loadWorkbooksFromServer() {
@@ -99,7 +108,7 @@ export async function saveWorkbookWithSync({ title, description, messages, figur
       htmlContent: wb.htmlContent,
       dashboardSpec: wb.dashboardSpec,
       createdAt: wb.createdAt,
-    }).catch(() => {})
+    }).catch(e => console.warn('Workbook sync failed:', e.message))
   }
   return result
 }

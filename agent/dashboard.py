@@ -45,6 +45,7 @@ class DashboardSpec:
     figures_json: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
     recipe: list[dict] = field(default_factory=list)
+    figure_recipes: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -59,6 +60,7 @@ class DashboardSpec:
             figures_json=data.get("figures_json") or [],
             sources=data.get("sources") or [],
             recipe=data.get("recipe") or [],
+            figure_recipes=data.get("figure_recipes") or [],
         )
 
 
@@ -80,7 +82,7 @@ def _build_recipe_from_store() -> list[dict]:
     return recipe
 
 
-def _try_int(val: str):
+def _try_int(val: str) -> int | str:
     try:
         return int(val)
     except ValueError:
@@ -186,7 +188,8 @@ async def generate(
     ]
 
     figures: list[str] = []
-    all_tool_calls: list[dict] = []
+    figure_recipes: list[dict] = []
+    last_query_args: dict | None = None
 
     partial_error = None
 
@@ -249,14 +252,21 @@ async def generate(
 
                 await emit({"type": "tool_end", "name": name})
 
+                if name == "query_data":
+                    last_query_args = args
+
                 if figure is not None:
                     figures.append(pio.to_json(figure))
                     await emit({"type": "figure", "label": label, "figure_json": pio.to_json(figure)})
+                    plot_params = {k: v for k, v in args.items() if k != "data"}
+                    figure_recipes.append({
+                        "query": last_query_args,
+                        "plot": plot_params,
+                    })
 
                 if len(result) > _MAX_TOOL_RESULT_CHARS:
                     result = result[:_MAX_TOOL_RESULT_CHARS] + f"\n... (afgekapt, {len(result)} chars totaal)"
                 messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-                all_tool_calls.append({"name": name, "arguments": tc["arguments"]})
     except Exception as exc:
         if not figures:
             raise
@@ -275,7 +285,7 @@ async def generate(
             final_text = msg["content"]
             break
 
-    spec = _parse_spec_from_response(final_text, figures, context, session)
+    spec = _parse_spec_from_response(final_text, figures, figure_recipes, context, session)
     return spec
 
 
@@ -326,6 +336,7 @@ def _extract_json_object(text: str) -> dict:
 def _parse_spec_from_response(
     response: str,
     figures_json: list[str],
+    figure_recipes: list[dict],
     context: dict,
     session: dict,
 ) -> DashboardSpec:
@@ -351,6 +362,7 @@ def _parse_spec_from_response(
         figures_json=figures_json,
         sources=sources,
         recipe=recipe,
+        figure_recipes=figure_recipes,
     )
 
 

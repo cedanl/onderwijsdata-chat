@@ -857,6 +857,14 @@ input, textarea { font: inherit; }
 .toast.error { background: #991B1B; color: var(--white); }
 @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+/* ─── Confirm Modal ───────────────────────────────────────── */
+.confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.confirm-dialog { background: var(--bg); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.confirm-message { margin-bottom: 20px; font-size: .95rem; }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: none; cursor: pointer; }
+.confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
+
 /* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
