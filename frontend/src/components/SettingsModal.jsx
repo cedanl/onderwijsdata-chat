@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import InstellingPicker from './InstellingPicker'
 
 const FUNCTIES = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Anders']
 const MODES = [
@@ -54,7 +55,6 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div className="navbar-logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -74,28 +74,13 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Onderwijsinstelling */}
           <div>
             <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
-            <input
-              type="text"
-              value={instelling}
-              onChange={e => setInstelling(e.target.value)}
-              placeholder="Naam van je instelling"
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',
-                fontSize: '.9rem', outline: 'none', transition: 'border-color .15s',
-                background: 'var(--white)', color: 'var(--gray-900)',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--blue-400)'}
-              onBlur={e => e.target.style.borderColor = 'var(--gray-200)'}
-            />
+            <InstellingPicker value={instelling} onChange={setInstelling} />
           </div>
 
-          {/* Functie */}
           <div>
             <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
@@ -119,7 +104,6 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             </div>
           </div>
 
-          {/* Mode */}
           <div>
             <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
@@ -148,7 +132,6 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginTop: 32 }}>
           <button
             onClick={handleSave}
