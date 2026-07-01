@@ -1594,7 +1594,7 @@ dependencies = [
 
 [[package]]
 name = "onderwijsdata-chat"
-version = "1.0.0"
+version = "1.1.1"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
@@ -2405,8 +2405,8 @@ wheels = [
 
 [[package]]
 name = "riodata"
-version = "0.2.0"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#45099485cd1c7e0e880f847287b80ff8565164e6" }
+version = "0.3.0"
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#96541f3ce529bb8f4189e6633306dc89171eeb30" }
 dependencies = [
     { name = "httpx" },
 ]
