@@ -20,5 +20,6 @@ def litellm_kwargs(model: str) -> dict:
 
 def build_system(settings: dict | None = None) -> list[dict]:
     settings = settings or {}
-    text = SYSTEM_PROMPT + build_persona_block(settings)
+    persona = build_persona_block(settings)
+    text = persona + "\n\n" + SYSTEM_PROMPT if persona else SYSTEM_PROMPT
     return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]

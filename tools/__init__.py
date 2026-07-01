@@ -163,12 +163,10 @@ _CLARIFY_SCOPE_SCHEMA = {
         "name": "clarify_scope",
         "description": (
             "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "
-            "Gebruik dit als EERSTE actie bij elke nieuwe analysevraag en herhaal het per beurt "
-            "totdat alle scope-dimensies vastliggen (tijdsperiode, geografisch niveau, "
-            "opleidingsniveau, uitsplitsing, doel). "
-            "Ga NOOIT direct naar search_catalog of data-tools zonder de scope eerst scherp te stellen. "
-            "Bronkeuze via opties is ALLEEN toegestaan als ALLERLAATSTE clarify_scope-aanroep, "
-            "nadat alle andere dimensies al bepaald zijn. "
+            "Gebruik bij een nieuwe analysevraag om open scope-dimensies vast te leggen. "
+            "Sla dimensies over die al uit de vraag of het gebruikersprofiel blijken. "
+            "Typisch 1–3 aanroepen. Als de vraag al specifiek genoeg is (3+ dimensies "
+            "expliciet), sla deze tool over en ga direct naar search_catalog. "
             "Na deze tool is de beurt klaar — wacht op het antwoord van de gebruiker."
         ),
         "parameters": {
