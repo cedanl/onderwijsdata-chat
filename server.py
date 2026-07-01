@@ -6,26 +6,28 @@ from datetime import date
 from pathlib import Path
 
 import litellm
-import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from riodata import duo
 
 load_dotenv()
 
 from agent import run as agent_run
 from agent.models import litellm_kwargs as _litellm_kwargs
-from auth import AUTH_ENABLED, USERS, check_credentials, make_token, verify_token
+from auth import AUTH_ENABLED, USERS, check_credentials, get_current_user, make_token, verify_token
 from config import MODEL, get_available_models
+from persistence import db as persistence_db
 from rate_limit import RateLimiter
 from errors import friendly_error
 from export import generate_dashboard, generate_report
+from instellingen import get_all as get_all_instellingen, load_dashboard as load_dashboard_data
 from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
 
 app = FastAPI(title="Onderwijsdata Chat")
+
+persistence_db.init_db()
 
 _login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
@@ -97,6 +99,52 @@ async def login(body: dict, request: Request) -> dict:
     return {"token": token, "user": username or "gast"}
 
 
+# ─── Persistence ──────────────────────────────────────────────────────────────
+
+@app.get("/api/conversations")
+async def list_conversations(username: str = Depends(get_current_user)) -> list[dict]:
+    return persistence_db.list_conversations(username)
+
+
+@app.put("/api/conversations/{conv_id}")
+async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+    persistence_db.upsert_conversation(
+        username, conv_id, body["title"], body["timestamp"], body["messages"],
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/conversations/{conv_id}")
+async def delete_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
+    persistence_db.delete_conversation(username, conv_id)
+    return {"ok": True}
+
+
+@app.get("/api/workbooks")
+async def list_workbooks(username: str = Depends(get_current_user)) -> list[dict]:
+    return persistence_db.list_workbooks(username)
+
+
+@app.put("/api/workbooks/{wb_id}")
+async def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+    persistence_db.upsert_workbook(
+        username, wb_id, body.get("title", ""),
+        body.get("description", ""),
+        messages=body.get("messages"),
+        figures=body.get("figures"),
+        instelling=body.get("instelling"),
+        html_content=body.get("htmlContent"),
+        created_at=body.get("createdAt", ""),
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/workbooks/{wb_id}")
+async def delete_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
+    persistence_db.delete_workbook(username, wb_id)
+    return {"ok": True}
+
+
 # ─── Starters ─────────────────────────────────────────────────────────────────
 
 _TAG_STARTERS: dict[str, tuple[str, ...]] = {
@@ -146,79 +194,22 @@ async def get_settings_config() -> dict:
     }
 
 
-# ─── Dashboard data endpoint ──────────────────────────────────────────────────
+# ─── Instellingen & Dashboard ────────────────────────────────────────────────
 
-def _load_dashboard_data(instelling: str) -> dict:
-    def _filter(df: pd.DataFrame) -> pd.DataFrame:
-        col = "INSTELLINGSNAAM_ACTUEEL"
-        if col not in df.columns:
-            return df.iloc[0:0]
-        return df[df[col].str.lower() == instelling.lower()]
-
-    result: dict = {"instelling": instelling, "gevonden": False}
-
-    try:
-        df_inges = duo.load("p01hoinges", 0)
-        hu = _filter(df_inges)
-        if hu.empty:
-            instellingen = sorted(df_inges["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist())
-            result["beschikbare_instellingen"] = instellingen[:20]
-            return result
-        result["gevonden"] = True
-
-        # ingeschrevenen per jaar
-        result["ingeschrevenen"] = (
-            hu.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum()
-            .sort_index().to_dict()
-        )
-
-        # geslacht laatste jaar
-        laatste_jaar = hu["STUDIEJAAR"].max()
-        geslacht = (
-            hu[hu["STUDIEJAAR"] == laatste_jaar]
-            .groupby("GESLACHT")["AANTAL_INGESCHREVENEN"].sum().to_dict()
-        )
-        result["geslacht"] = geslacht
-        result["laatste_jaar"] = int(laatste_jaar)
-
-        # sector verdeling laatste jaar
-        result["sectoren"] = (
-            hu[hu["STUDIEJAAR"] == laatste_jaar]
-            .groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
-            .sort_values(ascending=False).to_dict()
-        )
-    except Exception as e:
-        result["fout_ingeschrevenen"] = str(e)
-
-    try:
-        df_1e = duo.load("p02ho1ejrs", 0)
-        hu1 = _filter(df_1e)
-        if not hu1.empty:
-            result["eerstejaars"] = (
-                hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum()
-                .sort_index().to_dict()
-            )
-    except Exception as e:
-        result["fout_eerstejaars"] = str(e)
-
-    try:
-        df_dipl = duo.load("p04hogdipl", 0)
-        hud = _filter(df_dipl)
-        if not hud.empty:
-            result["gediplomeerden"] = (
-                hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum()
-                .sort_index().to_dict()
-            )
-    except Exception as e:
-        result["fout_gediplomeerden"] = str(e)
-
-    return result
+@app.get("/api/instellingen")
+async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]:
+    loop = asyncio.get_running_loop()
+    alle = await loop.run_in_executor(None, get_all_instellingen)
+    if type:
+        types = {t.strip().lower() for t in type.split(",")}
+        return [i for i in alle if i["type"] in types]
+    return alle
 
 
 @app.get("/api/dashboard/instroom")
 async def dashboard_instroom(instelling: str = Query(...)) -> dict:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _load_dashboard_data, instelling)
+    return await loop.run_in_executor(None, load_dashboard_data, instelling)
 
 
 # ─── Export ────────────────────────────────────────────────────────────────────

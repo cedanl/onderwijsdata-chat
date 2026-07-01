@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook } from '../workbooks'
+import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook, loadWorkbooksFromServer, migrateLocalWorkbooks } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookPreview from '../components/WorkbookPreviews'
@@ -15,6 +15,12 @@ export default function DashboardPage({ setPage, settings, pendingWorkbookId, cl
   const [showCreator, setShowCreator] = useState(false)
   const [pendingConfirm, setPendingConfirm] = useState(null)
   // pendingConfirm = { message: string, onConfirm: () => void } | null
+
+  useEffect(() => {
+    migrateLocalWorkbooks().then(() => loadWorkbooksFromServer()).then(wbs => {
+      setUserWorkbooks(wbs)
+    })
+  }, [])
 
   useEffect(() => {
     if (!pendingWorkbookId) return

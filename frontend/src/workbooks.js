@@ -1,4 +1,5 @@
 import { STORAGE_WORKBOOKS } from './constants'
+import { fetchWorkbooks, putWorkbook, deleteWorkbookApi } from './api'
 
 export const BUILTIN = {
   id: '__builtin__',
@@ -63,4 +64,59 @@ export function saveWorkbook({ title, description, messages, figures, instelling
 
 export function deleteWorkbook(id) {
   localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id)))
+  deleteWorkbookApi(id).catch(() => {})
+}
+
+export async function loadWorkbooksFromServer() {
+  try {
+    const wbs = await fetchWorkbooks()
+    const parsed = wbs.map(wb => ({
+      ...wb,
+      messages: typeof wb.messages === 'string' ? JSON.parse(wb.messages) : wb.messages,
+      figures: typeof wb.figures === 'string' ? JSON.parse(wb.figures) : wb.figures,
+      htmlContent: wb.html_content ?? wb.htmlContent,
+      createdAt: wb.created_at ?? wb.createdAt,
+    }))
+    localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(parsed))
+    return parsed
+  } catch {
+    return getWorkbooks()
+  }
+}
+
+export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent }) {
+  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent })
+  if (result.ok && result.workbook) {
+    const wb = result.workbook
+    putWorkbook(wb.id, {
+      title: wb.title,
+      description: wb.description,
+      messages: wb.messages,
+      figures: wb.figures,
+      instelling: wb.instelling,
+      htmlContent: wb.htmlContent,
+      createdAt: wb.createdAt,
+    }).catch(() => {})
+  }
+  return result
+}
+
+export async function migrateLocalWorkbooks() {
+  try {
+    const serverWbs = await fetchWorkbooks()
+    if (serverWbs.length > 0) return
+    const localWbs = getWorkbooks()
+    if (localWbs.length === 0) return
+    await Promise.allSettled(localWbs.map(wb =>
+      putWorkbook(wb.id, {
+        title: wb.title,
+        description: wb.description || '',
+        messages: wb.messages,
+        figures: wb.figures,
+        instelling: wb.instelling,
+        htmlContent: wb.htmlContent,
+        createdAt: wb.createdAt,
+      })
+    ))
+  } catch {}
 }

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { buildDashboardHtml } from '../dashboardHtml'
-import { saveWorkbook, getWorkbooks } from '../workbooks'
+import { saveWorkbookWithSync, getWorkbooks } from '../workbooks'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 
@@ -103,7 +103,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
   }, [messages.length])
   // pendingConfirm = { message: string, onConfirm: () => void } | null
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saving) return
     try {
       const assistantContent = messages
@@ -117,7 +117,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
       const title = messages.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
       const htmlContent = buildDashboardHtml(title, assistantContent, figures, instelling)
       const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-      const result = saveWorkbook({
+      const result = await saveWorkbookWithSync({
         title,
         description: `Aangemaakt op ${date}`,
         htmlContent,

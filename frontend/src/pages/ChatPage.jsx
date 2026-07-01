@@ -2,7 +2,8 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
-import { saveWorkbook } from '../workbooks'
+import { saveWorkbookWithSync } from '../workbooks'
+import { fetchConversations, putConversation, deleteConversationApi } from '../api'
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
@@ -34,6 +35,27 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const textareaRef = useRef(null)
   const messagesRef = useRef(messages)
   const pendingRestartMsgRef = useRef(null)
+
+  // Load conversations from server on mount; migrate localStorage if server is empty
+  useEffect(() => {
+    fetchConversations().then(serverConvs => {
+      if (serverConvs.length > 0) {
+        const parsed = serverConvs.map(c => ({
+          ...c,
+          messages: typeof c.messages === 'string' ? JSON.parse(c.messages) : c.messages,
+        }))
+        persistConversationHistory(parsed)
+        setConversationHistory(parsed)
+      } else {
+        const local = loadConversationHistory()
+        if (local.length > 0) {
+          Promise.allSettled(local.map(c =>
+            putConversation(String(c.id), { title: c.title, timestamp: c.timestamp, messages: c.messages })
+          )).catch(() => {})
+        }
+      }
+    }).catch(() => {})
+  }, [])
 
   // Keep messagesRef in sync with latest messages
   useEffect(() => {
@@ -69,6 +91,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
     const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
     persistConversationHistory(updated)
     setConversationHistory(updated)
+    putConversation(String(conv.id), { title: conv.title, timestamp: conv.timestamp, messages: conv.messages }).catch(() => {})
   }, [messages])
 
   const handleClear = useCallback(() => {
@@ -120,6 +143,7 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       }
       const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
       persistConversationHistory(updated)
+      putConversation(String(conv.id), { title: conv.title, timestamp: conv.timestamp, messages: conv.messages }).catch(() => {})
       try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
     }
   }, [])
@@ -177,16 +201,17 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
     const title = allMsgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
     const htmlContent = buildDashboardHtml(title, assistantContent, [], settings?.instelling)
     const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-    const result = saveWorkbook({
+    saveWorkbookWithSync({
       title,
       description: `Aangemaakt op ${date}`,
       htmlContent,
+    }).then(result => {
+      if (result.ok) {
+        openDashboard?.(result.workbook.id)
+      } else {
+        setSaveError(result.error)
+      }
     })
-    if (result.ok) {
-      openDashboard?.(result.workbook.id)
-    } else {
-      setSaveError(result.error)
-    }
   }
 
   const displayMessages = [...restoredMessages, ...messages]

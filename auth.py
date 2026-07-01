@@ -3,6 +3,9 @@ import hashlib
 import hmac
 import os
 import time
+from typing import Annotated
+
+from fastapi import Header, HTTPException, Query
 
 _TOKEN_SECRET_RAW = os.getenv("CHAT_SECRET", "")
 _TOKEN_TTL = 24 * 3600
@@ -64,3 +67,24 @@ if AUTH_ENABLED and not _TOKEN_SECRET_RAW:
     )
 
 _TOKEN_SECRET = _TOKEN_SECRET_RAW.encode() or b"dev-only-no-secret-set"
+
+FALLBACK_USER = "gast"
+
+
+def get_current_user(
+    authorization: Annotated[str | None, Header()] = None,
+    token: Annotated[str | None, Query()] = None,
+) -> str:
+    """FastAPI dependency. Use with Depends(get_current_user).
+    Reads token from Authorization header or query param."""
+    if not AUTH_ENABLED:
+        return FALLBACK_USER
+    raw = None
+    if authorization and authorization.startswith("Bearer "):
+        raw = authorization[7:]
+    elif token:
+        raw = token
+    username = verify_token(raw or "")
+    if not username:
+        raise HTTPException(status_code=401, detail="Niet geautoriseerd")
+    return username
