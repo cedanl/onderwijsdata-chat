@@ -2,7 +2,7 @@
 
 Een chatapp (FastAPI + React) waarmee je vragen kunt stellen over open Nederlandse onderwijsdata.
 
-https://github.com/user-attachments/assets/96223914-42c5-4ce5-b468-56b0db3a2342
+https://github.com/user-attachments/assets/9ab68b2a-7c00-4b2b-82ea-cbba245f1edb
 
 De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en kan Plotly-grafieken genereren en analyses exporteren als HTML-rapport, PDF of reproduceerbaar Python-pakket.
 

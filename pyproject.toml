@@ -15,6 +15,8 @@ dependencies = [
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
     "nh3>=0.3.6",
+    "piper-tts>=1.4.2",
+    "imageio-ffmpeg>=0.6.0",
 ]
 
 [dependency-groups]

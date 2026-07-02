@@ -23,3 +23,9 @@ package-lock.json
 
 # SQLite
 *.db
+
+# Demo narration artefacts
+demo/voices/
+demo/narratie.wav
+demo/source_video.mp4
+demo/demo_met_narratie.mp4
