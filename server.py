@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -10,6 +11,12 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 import tomllib
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 from persistence import db as persistence_db
 from routes import (

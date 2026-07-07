@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -11,6 +12,8 @@ from tools import LABELS, SCHEMAS, dispatch
 from .history import trim
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
+
+logger = logging.getLogger(__name__)
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -49,9 +52,11 @@ async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
+    logger.debug("TOOL CALL  %-30s args=%s", tc["name"], json.dumps(args, ensure_ascii=False)[:300])
     await emit({"type": "tool_start", "name": tc["name"], "label": label, "input": args})
     result, figure = await asyncio.to_thread(dispatch, tc["name"], args)
     await emit({"type": "tool_end", "name": tc["name"], "output": str(result)[:500]})
+    logger.debug("TOOL RESULT %-29s → %s", tc["name"], str(result)[:500])
     return result, figure
 
 
@@ -73,6 +78,9 @@ async def run(
     system = build_system(settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
+    last_user_msg = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+    logger.info("RUN START  model=%s  vraag=%r", chosen_model, str(last_user_msg)[:200])
+
     history, was_trimmed = trim(list(messages))
     initial_history_len = len(history)
     if was_trimmed:
@@ -85,9 +93,11 @@ async def run(
     call_cache: dict[str, tuple[str, object]] = {}
     turn_tool_calls: list[dict] = []
 
-    for _ in range(MAX_TOOL_ITERATIONS):
+    for _iter in range(MAX_TOOL_ITERATIONS):
         if stop_event and stop_event.is_set():
             break
+
+        logger.debug("ITERATIE   %d", _iter + 1)
 
         stream = await acompletion_with_backoff(
             emit,
@@ -134,7 +144,11 @@ async def run(
             await emit({"type": "message_end", "content": text_content, "aborted": True})
             return text_content
 
+        if text_content:
+            logger.debug("LLM TEKST  iter=%d  %r", _iter + 1, text_content[:500])
+
         if not tool_calls:
+            logger.info("FINALE ANTWOORD (iter=%d)  %r", _iter + 1, text_content[:500])
             session["_last_turn_tool_calls"] = turn_tool_calls
             await emit({
                 "type": "message_end",
@@ -152,6 +166,7 @@ async def run(
             ],
         })
 
+        logger.debug("LLM KIEST  %d tool(s): %s", len(tool_calls), ", ".join(tc["name"] for tc in tool_calls))
         turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
 
         new_calls = [(i, tc) for i, tc in enumerate(tool_calls) if _call_key(tc) not in call_cache]
