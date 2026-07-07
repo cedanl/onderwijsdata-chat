@@ -7,6 +7,39 @@ from . import store
 _SAMPLE_ROWS = 3
 
 
+def _apply_filters(df, filters: dict):
+    for key, val in filters.items():
+        if "__" in key:
+            col, op = key.rsplit("__", 1)
+        else:
+            col, op = key, "eq"
+
+        if col not in df.columns:
+            return None, f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}"
+
+        series = df[col]
+
+        def _coerce(a, b):
+            try:
+                return float(a), float(b)
+            except (ValueError, TypeError):
+                return str(a).lower(), str(b).lower()
+
+        if op == "eq":
+            df = df[series.astype(str).str.lower() == str(val).lower()]
+        elif op == "gte":
+            df = df[series.apply(lambda v: _coerce(v, val)[0] >= _coerce(v, val)[1])]
+        elif op == "lte":
+            df = df[series.apply(lambda v: _coerce(v, val)[0] <= _coerce(v, val)[1])]
+        elif op == "in":
+            vals_lower = {str(v).lower() for v in val}
+            df = df[series.astype(str).str.lower().isin(vals_lower)]
+        else:
+            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
+
+    return df, None
+
+
 def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     key = f"duo:{dataset_id}:{resource}"
 
@@ -53,10 +86,9 @@ def query_data(
         return f"Geen data gevonden voor '{data_key}'.{hint} Laad eerst data via get_duo_data, get_cbs_data of get_rio_data."
 
     if filters:
-        for col, val in filters.items():
-            if col not in df.columns:
-                return f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}"
-            df = df[df[col].astype(str).str.lower() == str(val).lower()]
+        df, err = _apply_filters(df, filters)
+        if err:
+            return err
 
     if columns:
         missing = [c for c in columns if c not in df.columns]

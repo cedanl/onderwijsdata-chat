@@ -67,3 +67,60 @@ def test_max_rows_respected():
     import json
     data = json.loads(result)
     assert len(data["rijen"]) == 60
+
+
+# --- Fix #39: range-filter operators ---
+
+
+def test_filter_gte():
+    _put("test:df", [{"JAAR": "2020"}, {"JAAR": "2021"}, {"JAAR": "2022"}])
+    result = query_data("test:df", filters={"JAAR__gte": "2021"})
+    import json
+    data = json.loads(result)
+    assert data["totaal_rijen"] == 2
+    jaren = [r["JAAR"] for r in data["rijen"]]
+    assert "2021" in jaren
+    assert "2022" in jaren
+    assert "2020" not in jaren
+
+
+def test_filter_lte():
+    _put("test:df", [{"JAAR": "2020"}, {"JAAR": "2021"}, {"JAAR": "2022"}])
+    result = query_data("test:df", filters={"JAAR__lte": "2021"})
+    import json
+    data = json.loads(result)
+    assert data["totaal_rijen"] == 2
+    jaren = [r["JAAR"] for r in data["rijen"]]
+    assert "2020" in jaren
+    assert "2021" in jaren
+    assert "2022" not in jaren
+
+
+def test_filter_in():
+    _put("test:df", [{"JAAR": "2020"}, {"JAAR": "2021"}, {"JAAR": "2022"}, {"JAAR": "2023"}])
+    result = query_data("test:df", filters={"JAAR__in": ["2021", "2023"]})
+    import json
+    data = json.loads(result)
+    assert data["totaal_rijen"] == 2
+    jaren = {r["JAAR"] for r in data["rijen"]}
+    assert jaren == {"2021", "2023"}
+
+
+def test_filter_unknown_operator_returns_error():
+    _put("test:df", [{"JAAR": "2020"}])
+    result = query_data("test:df", filters={"JAAR__between": "2020"})
+    assert "between" in result.lower() or "onbekende operator" in result.lower()
+
+
+def test_filter_numeric_comparison():
+    _put("test:df", [{"WAARDE": "10"}, {"WAARDE": "20"}, {"WAARDE": "5"}])
+    result = query_data("test:df", filters={"WAARDE__gte": "10"})
+    import json
+    data = json.loads(result)
+    assert data["totaal_rijen"] == 2
+
+
+def test_filter_range_missing_column_returns_error():
+    _put("test:df", [{"A": "1"}])
+    result = query_data("test:df", filters={"BESTAAT_NIET__gte": "5"})
+    assert "bestaat niet" in result.lower() or "BESTAAT_NIET" in result
