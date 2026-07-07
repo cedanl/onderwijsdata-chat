@@ -14,10 +14,13 @@ import tomllib
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
-    format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+    format="%(asctime)s %(levelname)-8s %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     force=True,
 )
+# LiteLLM logt elke streaming chunk op DEBUG — te verbose voor onze doeleinden
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+logging.getLogger("litellm").setLevel(logging.WARNING)
 
 from persistence import db as persistence_db
 from routes import (
