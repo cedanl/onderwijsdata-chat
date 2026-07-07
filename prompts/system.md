@@ -91,7 +91,21 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - `["KW"]` → kwartaal-formaat: `2023KW01`
 - `["MM"]` → maand-formaat
 
+**Schooljaar-conventie:** CBS gebruikt het *startjaar* als code. `2022SJ00` = schooljaar 2022–2023. Als een gebruiker "schooljaar 2023" zegt, filter op `2022SJ00`. Bij DUO: `JAAR = 2022` = peildatum 1 oktober 2022 = eveneens schooljaar 2022–2023.
+
 **DUO multi-resource datasets:** als `_kolommen` een dict is, gebruik de resource-naam als `resource`-parameter bij `get_duo_data` om de juiste resource te laden.
+
+**RIO = actueel register:** RIO bevat uitsluitend de *huidige* registertoestand (peildatum: vandaag). Gebruik RIO nooit voor historische vragen ("welke scholen zijn gesloten in 2022?", "hoeveel locaties waren er in 2018?") — gebruik dan CBS of DUO. Het filter `datumGeldigOp` in RIO werkt alleen voor recente peildata, niet voor meerdere jaren terug.
+
+**Domeinrouting:**
+- VSV / voortijdig schoolverlaten → **altijd CBS** (DUO heeft geen VSV-data)
+- Prognoses instroom/diplomering → **altijd DUO** (CBS heeft geen prognosedata)
+- Actuele instellingen / locaties / opleidingen → **RIO**
+- Historische statistieken instroom, diplomering, arbeidsmarkt → **CBS of DUO**
+
+**DUO numerieke kolomcodes:** als `_kolommen` uitsluitend numerieke waarden toont (bijv. `ONDERWIJSSECTOR: ["1","2","3","4"]`), raadpleeg de `documentatie.url` uit de catalogus vóór het filteren. Filter nooit blind op een numerieke code.
+
+**DUO pivot-datasets:** sommige DUO-datasets bevatten jaar en/of geslacht als kolomnaam in plaats van als rij: `DIPMAN2023`, `DIPVROUW2023`, `JAAR_2022`, etc. Er is dan geen `JAAR`- of `GESLACHT`-kolom om op te filteren. Stel de kolomnaam samen uit de beschikbare kolomnamen: `DIP` + `MAN`/`VROUW` + jaar, of `JAAR_` + jaar.
 
 **Regionale analyses — woonregio als default:** gebruik bij regionale vragen (marktaandeel, instroom per regio, vergelijking tussen provincies of gemeenten) standaard de **woonlocatie van de student/leerling** als regiofilter. Bij CBS: kies een dataset met "Woongemeenten" of "woonregio" in de titel wanneer beschikbaar. Bij DUO: gebruik kolommen als `WOONPLAATS`, `WOONGEMEENTE` of `WOONPROVINCIE`, niet `GEMEENTENAAM` of `PROVINCIENAAM` van de instelling — tenzij de gebruiker expliciet vraagt naar de vestigingslocatie van de instelling.
 
