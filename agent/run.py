@@ -78,8 +78,12 @@ async def run(
     system = build_system(settings)
     extra_kwargs = litellm_kwargs(chosen_model)
 
-    last_user_msg = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
-    logger.info("RUN START  model=%s  vraag=%r", chosen_model, str(last_user_msg)[:200])
+    _raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+    last_user_msg = (
+        " ".join(b.get("text", "") for b in _raw if isinstance(b, dict))
+        if isinstance(_raw, list) else str(_raw)
+    )
+    logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
 
     history, was_trimmed = trim(list(messages))
     initial_history_len = len(history)
