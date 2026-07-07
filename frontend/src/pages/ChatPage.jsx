@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useChat } from '../hooks/useChat'
@@ -384,27 +385,32 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
 }
 
 function PlotlyFigure({ figureJson, label }) {
-  const data = typeof figureJson === 'string' ? figureJson : JSON.stringify(figureJson)
+  let figure
+  try {
+    figure = typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
+  } catch {
+    return null
+  }
   const dark = document.documentElement.classList.contains('dark')
-  const html = `<!DOCTYPE html><html><head>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
-    <style>body{margin:0;background:${dark ? '#1E293B' : '#fff'}}</style>
-    </head><body><div id="p"></div><script>
-    var fig=JSON.parse(${JSON.stringify(data)});
-    var layout=Object.assign({},fig.layout||{},{margin:{l:48,r:24,t:32,b:40},
-      paper_bgcolor:'${dark ? '#1E293B' : '#fff'}',plot_bgcolor:'${dark ? '#1E293B' : '#fff'}',
-      font:{color:'${dark ? '#E2E8F0' : '#374151'}'}});
-    Plotly.newPlot('p',fig.data,layout,{responsive:true,displayModeBar:false});
-    new ResizeObserver(function(){Plotly.Plots.resize('p')}).observe(document.getElementById('p'));
-    <\/script></body></html>`
+  const bg = dark ? '#1E293B' : '#fff'
+  const fontColor = dark ? '#E2E8F0' : '#374151'
+  const layout = {
+    ...figure.layout,
+    paper_bgcolor: bg,
+    plot_bgcolor: bg,
+    margin: { l: 48, r: 24, t: 32, b: 40 },
+    font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
+    autosize: true,
+  }
   return (
     <div style={{ margin: '8px 0' }}>
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
-      <iframe
-        srcDoc={html}
-        sandbox="allow-scripts"
-        style={{ width: '100%', height: 340, border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', background: 'var(--white)' }}
-        title={label || 'Grafiek'}
+      <Plot
+        data={figure.data || []}
+        layout={layout}
+        config={{ responsive: true, displayModeBar: false }}
+        useResizeHandler
+        style={{ width: '100%', height: 340 }}
       />
     </div>
   )
