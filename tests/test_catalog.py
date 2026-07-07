@@ -100,3 +100,45 @@ def test_leverancier_filter_case_insensitive():
     assert "rio-lower" in identifiers
     assert "duo-mixed" in identifiers
     assert "roa-entry" not in identifiers
+
+
+# --- geo_niveau filter ---
+
+
+def test_geo_niveau_filter_excludes_datasets_without_level():
+    cbs_entries = [
+        {"identifier": "gemeente-ds", "title": "instroom data", "_geo_niveau": ["landelijk", "provincie", "gemeente"]},
+        {"identifier": "provinciaal", "title": "instroom data", "_geo_niveau": ["landelijk", "provincie"]},
+        {"identifier": "landelijk",   "title": "instroom data", "_geo_niveau": ["landelijk"]},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    data = json.loads(result)
+    identifiers = {e.get("identifier") for e in data}
+    assert "gemeente-ds" in identifiers
+    assert "provinciaal" not in identifiers
+    assert "landelijk" not in identifiers
+
+
+def test_geo_niveau_filter_returns_error_when_no_match():
+    cbs_entries = [
+        {"identifier": "alleen-landelijk", "title": "instroom data", "_geo_niveau": ["landelijk"]},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    assert "Geen datasets gevonden" in result
+    assert "gemeente" in result
+
+
+def test_geo_niveau_filter_none_returns_all():
+    cbs_entries = [
+        {"identifier": "a", "title": "instroom data", "_geo_niveau": ["landelijk"]},
+        {"identifier": "b", "title": "instroom data", "_geo_niveau": ["provincie"]},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("instroom", source="cbs")
+    data = json.loads(result)
+    assert len(data) == 2

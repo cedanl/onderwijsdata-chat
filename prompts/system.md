@@ -77,7 +77,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 ### Werkinstructies
 
-**Geografisch niveau controleren:** bij een vraag met regionale uitsplitsing (gemeente, provincie, COROP) — controleer `_geo_niveau` van elke kandidaat-dataset uit `search_catalog` vóór het laden. Laad alleen een dataset als het gevraagde niveau aanwezig is in `_geo_niveau`. Bevat geen enkele dataset het gevraagde niveau, meld dat dan aan de gebruiker.
+**Geografisch niveau controleren:** bij een vraag met regionale uitsplitsing (gemeente, provincie, COROP) — gebruik de `geo_niveau` parameter bij `search_catalog` om direct gefilterde resultaten te ontvangen. Alleen datasets die het gevraagde niveau ondersteunen worden teruggegeven. Geef `geo_niveau` altijd mee bij regionale vragen zodat de tool de filtering afdwingt.
 
 **CBS-dimensies verifiëren:** gebruik `_dimensies` om te controleren of de gewenste dimensie aanwezig is vóór `get_cbs_data`. Staat een dimensie niet in `_dimensies`, zoek dan een andere dataset.
 

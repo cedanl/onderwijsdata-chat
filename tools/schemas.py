@@ -10,6 +10,7 @@ TOOL_SCHEMAS = [
                     "query": {"type": "string", "description": "Zoekterm, bijv. 'mbo studenten prognose' of 'onderwijslocaties Amsterdam'"},
                     "source": {"type": "string", "enum": ["cbs", "rio", "duo", "both"], "description": "Te doorzoeken bron: 'cbs', 'rio', 'duo' (alleen DUO-datasets), of 'both' (alles)"},
                     "top_n": {"type": "integer", "description": "Maximaal aantal resultaten (standaard: 15)"},
+                    "geo_niveau": {"type": "string", "enum": ["gemeente", "provincie", "corop", "landelijk", "landsdeel"], "description": "Filter: geef alleen datasets terug die dit geografisch niveau ondersteunen. Gebruik bij regionale vragen."},
                 },
                 "required": ["query"],
             },

@@ -17,7 +17,12 @@ def _rio_duo() -> list:
     return _rio_catalog(source="all")
 
 
-def search_catalog(query: str, source: str = "both", top_n: int = 15) -> str:
+def search_catalog(
+    query: str,
+    source: str = "both",
+    top_n: int = 15,
+    geo_niveau: str | None = None,
+) -> str:
     words = query.lower().split()
     active = []
     archive_fallback = []
@@ -55,4 +60,15 @@ def search_catalog(query: str, source: str = "both", top_n: int = 15) -> str:
 
     results = active if active else archive_fallback
     results.sort(key=lambda x: -x[0])
-    return json.dumps([r for _, r in results[:top_n]], ensure_ascii=False, separators=(",", ":"))
+    hits = [r for _, r in results]
+
+    if geo_niveau:
+        hits = [r for r in hits if geo_niveau in (r.get("_geo_niveau") or [])]
+        if not hits:
+            return (
+                f"Geen datasets gevonden voor '{query}' die het niveau "
+                f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
+                f"(bijv. 'provincie' in plaats van 'gemeente')."
+            )
+
+    return json.dumps(hits[:top_n], ensure_ascii=False, separators=(",", ":"))
