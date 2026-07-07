@@ -73,7 +73,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 ### DUO-velden
 - **`_geo_niveau`** — zelfde structuur als CBS
-- **`_kolommen`** — bij single-resource datasets een `list`; bij multi-resource datasets een `dict` geïndexeerd op resource-naam, bijv. `{"Functiemix besturen": ["JAAR", "BRIN_NUMMER", ...], "Functiemix instellingen": [...]}`
+- **`_kolommen`** — kolommen met voorbeeldwaarden per kolom:
+  - single-resource: `{"KOLOM": ["val1", "val2", ...], ...}`
+  - multi-resource: `{"Resource naam": {"KOLOM": ["val1", "val2", ...], ...}, ...}`
+
+  Gebruik de voorbeeldwaarden om filterwaarden te verifiëren en de juiste resource te kiezen **vóór** het laden. Voorbeeld: `{"LEERWEG": ["BBL", "BOL"], "GESLACHT": ["Man", "Vrouw", "Totaal"]}`.
 
 ### Werkinstructies
 
