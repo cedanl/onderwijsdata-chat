@@ -56,10 +56,38 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 > **Onderzoeksvraag:** [één zin met alle vastgelegde dimensies]
 
 ## Databronnen
-- **CBS** (68 datasets): statistieken over het Nederlandse onderwijs via de CBS OData API
+- **CBS** (266 datasets, waarvan ~105 actueel): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (57 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **Geüploade bestanden** (xlsx/csv): beschikbaar als `upload:<bestandsnaam>` in de store — gebruik direct `query_data` zonder laadstap
+
+## Catalogusvelden
+
+`search_catalog` retourneert per dataset extra metadata-velden. Gebruik deze velden verplicht bij het selecteren en laden van data.
+
+### CBS-velden
+- **`_dimensies`** — namen van beschikbare dimensies, bijv. `["Geslacht", "RegioS", "Niveau", "Perioden"]`
+- **`_meetwaarden`** — beschikbare meetwaarden/kolommen, bijv. `["Deelnemers"]`
+- **`_geo_niveau`** — geografisch detailniveau, bijv. `["landelijk", "provincie", "gemeente"]` of `[]`
+- **`_perioden_formaat`** — periode-codering: `["SJ"]` = schooljaar (`2023SJ00`), `["JJ"]` = kalenderjaar (`2023JJ00`), `["KW"]` = kwartaal (`2023KW01`), `["MM"]` = maand
+
+### DUO-velden
+- **`_geo_niveau`** — zelfde structuur als CBS
+- **`_kolommen`** — bij single-resource datasets een `list`; bij multi-resource datasets een `dict` geïndexeerd op resource-naam, bijv. `{"Functiemix besturen": ["JAAR", "BRIN_NUMMER", ...], "Functiemix instellingen": [...]}`
+
+### Werkinstructies
+
+**Geografisch niveau controleren:** bij een vraag met regionale uitsplitsing (gemeente, provincie, COROP) — controleer `_geo_niveau` van elke kandidaat-dataset uit `search_catalog` vóór het laden. Laad alleen een dataset als het gevraagde niveau aanwezig is in `_geo_niveau`. Bevat geen enkele dataset het gevraagde niveau, meld dat dan aan de gebruiker.
+
+**CBS-dimensies verifiëren:** gebruik `_dimensies` om te controleren of de gewenste dimensie aanwezig is vóór `get_cbs_data`. Staat een dimensie niet in `_dimensies`, zoek dan een andere dataset.
+
+**CBS Perioden-filters bouwen:** gebruik `_perioden_formaat` om de juiste periode-codering te bepalen:
+- `["SJ"]` → schooljaar-formaat: `2023SJ00`
+- `["JJ"]` → kalenderjaar-formaat: `2023JJ00`
+- `["KW"]` → kwartaal-formaat: `2023KW01`
+- `["MM"]` → maand-formaat
+
+**DUO multi-resource datasets:** als `_kolommen` een dict is, gebruik de resource-naam als `resource`-parameter bij `get_duo_data` om de juiste resource te laden.
 
 ## Werkwijze — volg dit altijd
 
