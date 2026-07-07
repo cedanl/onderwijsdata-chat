@@ -1,3 +1,4 @@
+import hashlib
 import json
 from functools import lru_cache
 
@@ -25,8 +26,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         )
 
     df = pd.DataFrame(rows[:CBS_ROW_LIMIT])
-    filter_suffix = "_".join(f"{k}={v}" for k, v in sorted((filters or {}).items()) if not k.startswith("$"))
-    key = f"cbs:{dataset_id}:{filter_suffix}" if filter_suffix else f"cbs:{dataset_id}"
+    filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
+    key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     store.put(key, df)
 
     schema = [

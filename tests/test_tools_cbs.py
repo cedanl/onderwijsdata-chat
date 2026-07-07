@@ -18,17 +18,19 @@ def test_empty_result_returns_helpful_message():
 
 
 def test_row_limit_applied():
-    rows = [{"id": i} for i in range(300)]
+    from core.config import CBS_ROW_LIMIT
+    rows = [{"id": i} for i in range(CBS_ROW_LIMIT + 100)]
     with patch("tools.cbs.data", return_value=rows):
         result = get_cbs_data("85423NED")
     import json
     parsed = json.loads(result)
-    assert parsed["totaal_rijen"] == 200
+    assert parsed["totaal_rijen"] == CBS_ROW_LIMIT
     assert "data_key" in parsed
 
 
 def test_truncation_hint_appended_when_limit_reached():
-    rows = [{"id": i} for i in range(200)]
+    from core.config import CBS_ROW_LIMIT
+    rows = [{"id": i} for i in range(CBS_ROW_LIMIT)]
     with patch("tools.cbs.data", return_value=rows):
         result = get_cbs_data("85423NED")
     import json
