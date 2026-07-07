@@ -84,7 +84,7 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "data_key": {"type": "string", "description": "data_key uit get_duo_data, get_cbs_data of get_rio_data"},
-                    "filters": {"type": "object", "description": "Kolomfilters als exacte waarden, bijv. {\"Leerweg\": \"Voltijd\", \"Jaar\": \"2023\"}"},
+                    "filters": {"type": "object", "description": "Kolomfilters: exacte waarden bijv. {\"Leerweg\": \"Voltijd\"}, of range-operatoren: {\"JAAR__gte\": \"2020\"}, {\"JAAR__lte\": \"2023\"}, {\"JAAR__in\": [\"2021\",\"2022\"]}"},
                     "columns": {"type": "array", "items": {"type": "string"}, "description": "Alleen deze kolommen teruggeven"},
                     "max_rows": {"type": "integer", "description": "Maximaal aantal rijen (default: 500)"},
                 },
