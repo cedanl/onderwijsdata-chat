@@ -426,10 +426,11 @@ input, textarea { font: inherit; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }
 
+.tool-step-wrap { margin: 2px 0; }
 .tool-step {
   display: flex; align-items: center; gap: 8px;
   font-size: .8rem; color: var(--gray-500);
-  padding: 4px 8px; margin: 4px 0;
+  padding: 4px 8px;
 }
 .tool-step-dot {
   width: 6px; height: 6px; border-radius: 50%; background: var(--teal-500); flex-shrink: 0;
@@ -437,6 +438,19 @@ input, textarea { font: inherit; }
 }
 .tool-step-dot.done { background: var(--green-500); animation: none; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+.tool-snippet-btn {
+  background: none; border: 1px solid var(--gray-200); border-radius: 4px;
+  cursor: pointer; padding: 2px 4px; margin-left: auto; color: var(--gray-400);
+  display: flex; align-items: center; transition: color .15s, border-color .15s;
+}
+.tool-snippet-btn:hover { color: var(--teal-600); border-color: var(--teal-400); }
+.tool-snippet-code {
+  margin: 4px 8px 8px 22px; padding: 10px 12px;
+  background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px;
+  font-size: .75rem; line-height: 1.5; overflow-x: auto;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--gray-700);
+}
 
 .clarification-btns { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .clarification-btn {

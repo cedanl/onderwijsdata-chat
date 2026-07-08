@@ -114,7 +114,7 @@ export function useChat({ onUnauthorized } = {}) {
         if (event.type === 'tool_end') {
           setMessages(prev => prev.map(m =>
             m.id === currentMsgRef.current
-              ? { ...m, tools: m.tools.map(t => t.name === event.name ? { ...t, done: true } : t) }
+              ? { ...m, tools: m.tools.map(t => t.name === event.name ? { ...t, done: true, snippet: event.snippet || null } : t) }
               : m
           ))
           return

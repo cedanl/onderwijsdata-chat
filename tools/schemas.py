@@ -65,7 +65,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "get_duo_data",
-            "description": "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_duo_data om gefilterde rijen op te halen voor analyse of grafiek.",
+            "description": "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen voor analyse of grafiek.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -88,6 +88,16 @@ TOOL_SCHEMAS = [
                     "filters": {"type": "object", "description": "Kolomfilters: exacte waarden bijv. {\"Leerweg\": \"Voltijd\"}, of range-operatoren: {\"JAAR__gte\": \"2020\"}, {\"JAAR__lte\": \"2023\"}, {\"JAAR__in\": [\"2021\",\"2022\"]}"},
                     "columns": {"type": "array", "items": {"type": "string"}, "description": "Alleen deze kolommen teruggeven"},
                     "max_rows": {"type": "integer", "description": "Maximaal aantal rijen (default: 500)"},
+                    "group_by": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Groepeer op deze kolommen (bijv. [\"STUDIEJAAR\"]). Vereist ook 'aggregate'.",
+                    },
+                    "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string", "enum": ["sum", "mean", "count", "min", "max"]},
+                        "description": "Aggregatiefuncties per kolom, bijv. {\"AANTAL\": \"sum\"}. Alleen samen met 'group_by'.",
+                    },
                 },
                 "required": ["data_key"],
             },
@@ -99,16 +109,20 @@ TOOL_SCHEMAS = [
             "name": "create_choropleth_map",
             "description": (
                 "Maak een interactieve kaart van Nederland met kleuren per regio. "
-                "Gebruik dit voor regionale vergelijkingen: provincies, gemeenten of COROP-gebieden. "
+                "Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen. "
                 "De data moet CBS-regiocodes bevatten (bijv. 'PV20', 'GM0363')."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key van query_data resultaat — kaart leest data rechtstreeks uit de store.",
+                    },
                     "data": {
                         "type": "array",
                         "items": {"type": "object"},
-                        "description": "Lijst van datarijen met regiocodes en een numerieke waarde per rij",
+                        "description": "Datarijen met regiocodes. Gebruik alleen als data_key niet beschikbaar is.",
                     },
                     "location_col": {
                         "type": "string",
@@ -125,7 +139,7 @@ TOOL_SCHEMAS = [
                         "description": "Geografisch niveau. 'auto' detecteert op basis van de codes (standaard).",
                     },
                 },
-                "required": ["data", "location_col", "value_col", "title"],
+                "required": ["location_col", "value_col", "title"],
             },
         },
     },
@@ -133,18 +147,49 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "create_plot",
-            "description": "Maak een interactieve grafiek van opgehaalde data.",
+            "description": "Maak een interactieve grafiek. Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen (betrouwbaarder dan handmatig data doorgeven).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "data": {"type": "array", "items": {"type": "object"}, "description": "Lijst van datarijen als objecten"},
+                    "data_key": {"type": "string", "description": "data_key van query_data resultaat — plot leest data rechtstreeks uit de store. Gebruik dit bij voorkeur boven 'data'."},
+                    "data": {"type": "array", "items": {"type": "object"}, "description": "Datarijen als objecten. Gebruik alleen als data_key niet beschikbaar is."},
                     "chart_type": {"type": "string", "enum": ["bar", "line", "scatter", "pie", "histogram"], "description": "Type grafiek"},
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
                 },
-                "required": ["data", "chart_type", "x", "y", "title"],
+                "required": ["chart_type", "x", "y", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_analysis",
+            "description": (
+                "Voer een kort pandas/numpy script uit op geladen data. "
+                "Gebruik voor berekeningen die niet met query_data group_by/aggregate kunnen "
+                "(percentuele groei, ratio's, custom transformaties). "
+                "Wijs het resultaat toe aan 'result' (dict, list of DataFrame). "
+                "Optioneel: wijs een Plotly figuur toe aan 'figure'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": (
+                            "Python code. Beschikbaar: df (het DataFrame), pd, np, math, px, go, "
+                            "store_get(key) voor extra datasets. Wijs resultaat toe aan 'result'."
+                        ),
+                    },
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key van een geladen dataset. Het DataFrame is beschikbaar als 'df'.",
+                    },
+                },
+                "required": ["code"],
             },
         },
     },

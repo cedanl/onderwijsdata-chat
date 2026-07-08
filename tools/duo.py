@@ -1,5 +1,7 @@
+import hashlib
 import json
 
+import pandas as pd
 from riodata import duo as _duo
 from core.config import DUO_ROW_LIMIT
 from . import store
@@ -73,11 +75,38 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     )
 
 
+_ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
+
+
+def _validate_aggregation(df, group_by, aggregate):
+    if bool(group_by) != bool(aggregate):
+        return "group_by en aggregate moeten samen worden meegegeven."
+    missing_gb = [c for c in group_by if c not in df.columns]
+    if missing_gb:
+        return f"group_by kolommen niet gevonden: {missing_gb}. Beschikbaar: {list(df.columns)}"
+    missing_agg = [c for c in aggregate if c not in df.columns]
+    if missing_agg:
+        return f"aggregate kolommen niet gevonden: {missing_agg}. Beschikbaar: {list(df.columns)}"
+    bad_fns = {f for f in aggregate.values() if f not in _ALLOWED_AGG}
+    if bad_fns:
+        return f"Ongeldige aggregatiefuncties: {bad_fns}. Toegestaan: {sorted(_ALLOWED_AGG)}"
+    return None
+
+
+def _apply_aggregation(df, group_by, aggregate):
+    df = df.copy()
+    for col in aggregate:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
+
+
 def query_data(
     data_key: str,
     filters: dict | None = None,
     columns: list[str] | None = None,
     max_rows: int = DUO_ROW_LIMIT,
+    group_by: list[str] | None = None,
+    aggregate: dict[str, str] | None = None,
 ) -> str:
     df = store.get(data_key)
     if df is None:
@@ -96,11 +125,26 @@ def query_data(
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
         df = df[columns]
 
+    if group_by or aggregate:
+        err = _validate_aggregation(df, group_by, aggregate)
+        if err:
+            return err
+        df = _apply_aggregation(df, group_by, aggregate)
+
+    transformed = filters or columns or group_by
+    if transformed:
+        sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
+        suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
+        result_key = f"{data_key}:{suffix}"
+        store.put(result_key, df)
+    else:
+        result_key = data_key
+
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
-    result: dict = {"totaal_rijen": total, "rijen": rows}
+    result: dict = {"data_key": result_key, "totaal_rijen": total, "rijen": rows}
     if total > adaptive_max:
         result["waarschuwing"] = (
             f"Eerste {adaptive_max} van {total} rijen teruggegeven "

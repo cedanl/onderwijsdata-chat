@@ -142,3 +142,156 @@ def test_geo_niveau_filter_none_returns_all():
         result = search_catalog("instroom", source="cbs")
     data = json.loads(result)
     assert len(data) == 2
+
+
+# --- Veldgewogen scoring ---
+
+
+def test_title_match_ranks_higher_than_column_sample_match():
+    """Een match in bron/tags moet hoger scoren dan een match in _kolommen sample values."""
+    duo_entries = [
+        {
+            "leverancier": "DUO",
+            "bron": "Eerstejaars ingeschrevenen hoger onderwijs",
+            "beschrijving": "Data over eerstejaars ho",
+            "tags": ["ingeschrevenen", "ho", "eerstejaars"],
+            "voorbeeldvragen": ["Hoeveel eerstejaars per instelling?"],
+            "_kolommen": {},
+        },
+        {
+            "leverancier": "DUO",
+            "bron": "Overzicht Erkenningen ho",
+            "beschrijving": "Erkenningen van instellingen",
+            "tags": ["erkenningen", "ho"],
+            "voorbeeldvragen": [],
+            "_kolommen": {"resource": {"NAAM": ["Vrije Universiteit Amsterdam", "bachelor"]}},
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=duo_entries):
+        result = search_catalog("eerstejaars bachelor universiteit", source="duo")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Eerstejaars ingeschrevenen hoger onderwijs"
+
+
+def test_voorbeeldvragen_boost_ranking():
+    """Een match in voorbeeldvragen moet de ranking boosten."""
+    duo_entries = [
+        {
+            "leverancier": "DUO",
+            "bron": "Dataset A",
+            "beschrijving": "ho data",
+            "tags": ["ho"],
+            "voorbeeldvragen": ["Hoeveel studenten per instelling per jaar?"],
+            "_kolommen": {},
+        },
+        {
+            "leverancier": "DUO",
+            "bron": "Dataset B",
+            "beschrijving": "ho data studenten",
+            "tags": ["ho"],
+            "voorbeeldvragen": [],
+            "_kolommen": {"r": {"COL": ["studenten"]}},
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=duo_entries):
+        result = search_catalog("studenten per instelling", source="duo")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Dataset A"
+
+
+def test_tags_match_boosts_ranking():
+    """Tags zijn specifiek gekozen keywords — een match daarin moet zwaar wegen."""
+    cbs_entries = [
+        {
+            "bron": "Dataset met tag match",
+            "tags": ["instroom", "mbo"],
+            "beschrijving": "algemene data",
+            "_kolommen": {},
+        },
+        {
+            "bron": "Dataset zonder tag match",
+            "tags": ["diplomering"],
+            "beschrijving": "instroom data mbo met uitleg",
+            "_kolommen": {},
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("instroom mbo", source="cbs")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Dataset met tag match"
+
+
+# --- Synoniemen ---
+
+
+def test_synonym_studenten_matches_ingeschrevenen():
+    duo_entries = [
+        {
+            "leverancier": "DUO",
+            "bron": "Ingeschrevenen hoger onderwijs",
+            "beschrijving": "ingeschrevenen ho",
+            "tags": ["ingeschrevenen", "ho"],
+            "voorbeeldvragen": [],
+        },
+        {
+            "leverancier": "DUO",
+            "bron": "Andere dataset",
+            "beschrijving": "iets anders",
+            "tags": [],
+            "voorbeeldvragen": [],
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=duo_entries):
+        result = search_catalog("studenten ho", source="duo")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Ingeschrevenen hoger onderwijs"
+
+
+def test_synonym_diplomering_matches_gediplomeerden():
+    duo_entries = [
+        {
+            "leverancier": "DUO",
+            "bron": "Gediplomeerde mbo-studenten",
+            "beschrijving": "gediplomeerden mbo",
+            "tags": ["mbo", "gediplomeerden"],
+            "voorbeeldvragen": [],
+        },
+        {
+            "leverancier": "DUO",
+            "bron": "MBO Opleidingsaanbod",
+            "beschrijving": "aanbod mbo",
+            "tags": ["mbo"],
+            "voorbeeldvragen": [],
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=duo_entries):
+        result = search_catalog("mbo diplomering", source="duo")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Gediplomeerde mbo-studenten"
+
+
+def test_synonym_hbo_expands_to_ho():
+    duo_entries = [
+        {
+            "leverancier": "DUO",
+            "bron": "Ingeschrevenen hoger onderwijs",
+            "tags": ["ingeschrevenen", "ho"],
+            "voorbeeldvragen": ["Hoeveel studenten per instelling?"],
+        },
+        {
+            "leverancier": "DUO",
+            "bron": "Instromende mbo-studenten",
+            "tags": ["mbo"],
+            "voorbeeldvragen": ["Hoeveel instromers?"],
+        },
+    ]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=duo_entries):
+        result = search_catalog("hbo studenten", source="duo")
+    data = json.loads(result)
+    assert data[0]["bron"] == "Ingeschrevenen hoger onderwijs"

@@ -130,7 +130,9 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 3. **Haal data op**: gebruik de codes uit stap 2 in je OData filters.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart).
 
-4. **Decodeer de data**: vervang codes door labels in de datalijst vóórdat je `create_plot` aanroept.
+3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
+
+4. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
 
 5. **Kies het juiste grafiektype** — gebruik onderstaande beslismatrix:
 
@@ -160,6 +162,17 @@ Zodra alle dimensies vastliggen, open elke analyse met:
    - "Dit komt doordat…" → "Een mogelijke oorzaak is…"
    - "De reden is…" → "Dit zou kunnen komen doordat…"
    - "Dit betekent dat…" (causaal) → "Dit gaat gepaard met…" of "Dit valt samen met…"
+
+## Rekenregel
+
+> **Voer NOOIT zelf rekenwerk uit op data.** Tel geen rijen op, bereken geen gemiddelden, maak geen totalen in je hoofd. Gebruik altijd:
+> - `query_data` met `group_by` en `aggregate` voor standaard aggregaties (som, gemiddelde, telling, min, max per groep)
+>   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`
+> - `run_analysis(data_key=..., code=...)` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen.
+>   Gebruik `df` (het DataFrame uit data_key) en `store_get(key)` voor extra datasets. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
+>   Het resultaat (list of DataFrame) wordt automatisch opgeslagen met een `data_key` die je kunt doorpassen.
+>
+> Gebruik altijd `data_key` in `create_plot` en `create_choropleth_map` om data rechtstreeks uit de store te lezen. Kopieer nooit datarijen handmatig naar een grafiek of kaart.
 
 ## Richtlijnen
 

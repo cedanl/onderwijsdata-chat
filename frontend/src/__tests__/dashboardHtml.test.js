@@ -115,4 +115,45 @@ describe('buildChartSpecs', () => {
     const specs = buildChartSpecs(tables)
     expect(specs).toEqual([])
   })
+
+  it('parses Dutch thousand-separator numbers correctly', () => {
+    const tables = [{
+      headers: ['Provincie', 'Eerstejaars'],
+      rows: [
+        ['Zuid-Holland', '12.417'],
+        ['Noord-Holland', '9.151'],
+        ['Zeeland', '115'],
+      ]
+    }]
+    const specs = buildChartSpecs(tables)
+    expect(specs).toHaveLength(1)
+    const data = specs[0].datasets[0].data
+    expect(data[0]).toBe(12417)
+    expect(data[1]).toBe(9151)
+    expect(data[2]).toBe(115)
+  })
+
+  it('parses Dutch decimal comma correctly', () => {
+    const tables = [{
+      headers: ['Regio', 'Percentage'],
+      rows: [
+        ['Noord', '54,5'],
+        ['Zuid', '1.234,56'],
+      ]
+    }]
+    const specs = buildChartSpecs(tables)
+    const data = specs[0].datasets[0].data
+    expect(data[0]).toBeCloseTo(54.5)
+    expect(data[1]).toBeCloseTo(1234.56)
+  })
+
+  it('formats KPI values in Dutch notation', () => {
+    const content = `| Provincie | Eerstejaars |
+|-----------|-------------|
+| Zuid-Holland | 12.417 |
+| Zeeland | 115 |`
+    const html = buildDashboardHtml('Test', content)
+    expect(html).toContain('12.417')
+    expect(html).not.toMatch(/kpi-val[^<]*<[^>]*>12417</)
+  })
 })

@@ -1,6 +1,8 @@
+import pandas as pd
 import pytest
 import plotly.graph_objects as go
 
+from tools import store
 from tools.plot import create_plot
 
 _ROWS = [
@@ -52,3 +54,60 @@ def test_color_by_creates_one_trace_per_group():
 def test_color_by_line_chart():
     _, fig = create_plot(_ROWS_GROUPED, "line", "jaar", "waarde", "T", color_by="groep")
     assert len(fig.data) == 2
+
+
+def test_data_key_reads_from_store():
+    df = pd.DataFrame(_ROWS)
+    store.put("test:plot:result", df)
+    msg, fig = create_plot(data_key="test:plot:result", chart_type="bar", x="jaar", y="waarde", title="Store test")
+    assert isinstance(fig, go.Figure)
+    assert "3" in msg
+
+
+def test_data_key_missing_returns_error():
+    msg, fig = create_plot(data_key="nonexistent:key", chart_type="bar", x="x", y="y", title="T")
+    assert "Geen data" in msg
+    assert fig is None
+
+
+def test_no_data_no_key_returns_error():
+    msg, fig = create_plot(chart_type="bar", x="x", y="y", title="T")
+    assert "Geen data" in msg
+    assert fig is None
+
+
+# --- create_choropleth_map ---
+
+from unittest.mock import patch
+from tools.plot import create_choropleth_map
+
+_CHOROPLETH_ROWS = [
+    {"RegioS": "PV20", "Waarde": 100},
+    {"RegioS": "PV21", "Waarde": 200},
+]
+
+_FAKE_GEOJSON = {"type": "FeatureCollection", "features": [
+    {"type": "Feature", "id": "PV20", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [[[5, 52], [6, 52], [6, 53], [5, 52]]]}},
+    {"type": "Feature", "id": "PV21", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [[[5, 51], [6, 51], [6, 52], [5, 51]]]}},
+]}
+
+
+def test_choropleth_data_key_reads_from_store():
+    df = pd.DataFrame(_CHOROPLETH_ROWS)
+    store.put("test:choro:result", df)
+    with patch("tools.plot._load_geojson", return_value=_FAKE_GEOJSON):
+        msg, fig = create_choropleth_map(data_key="test:choro:result", location_col="RegioS", value_col="Waarde", title="Kaart test")
+    assert isinstance(fig, go.Figure)
+    assert "2" in msg
+
+
+def test_choropleth_data_key_missing_returns_error():
+    msg, fig = create_choropleth_map(data_key="nonexistent:key", location_col="R", value_col="V", title="T")
+    assert "Geen data" in msg
+    assert fig is None
+
+
+def test_choropleth_no_data_no_key_returns_error():
+    msg, fig = create_choropleth_map(location_col="R", value_col="V", title="T")
+    assert "Geen data" in msg
+    assert fig is None
