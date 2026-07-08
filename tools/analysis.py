@@ -1,6 +1,7 @@
+import ctypes
 import json
 import re
-import signal
+import threading
 import traceback
 
 import math
@@ -70,19 +71,29 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
             return f"Geen data gevonden voor '{data_key}'.{hint}"
         namespace["df"] = df.copy()
 
-    def _timeout_handler(signum, frame):
-        raise TimeoutError("Script duurde langer dan 10 seconden.")
+    exc_result: list = [None]
 
-    old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-    try:
-        signal.alarm(_TIMEOUT_SECONDS)
-        exec(compile(code, "<analysis>", "exec"), namespace)
-        signal.alarm(0)
-    except Exception:
-        signal.alarm(0)
-        return f"Fout in script:\n{traceback.format_exc()}"
-    finally:
-        signal.signal(signal.SIGALRM, old_handler)
+    def _target():
+        try:
+            exec(compile(code, "<analysis>", "exec"), namespace)
+        except Exception:
+            exc_result[0] = traceback.format_exc()
+
+    worker = threading.Thread(target=_target, daemon=True)
+    worker.start()
+    worker.join(timeout=_TIMEOUT_SECONDS)
+
+    if worker.is_alive():
+        # Forceer stop via async exception — best-effort, daemon thread wordt opgeruimd bij exit
+        tid = worker.ident
+        if tid is not None:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                ctypes.c_ulong(tid), ctypes.py_object(SystemExit)
+            )
+        return f"Script duurde langer dan {_TIMEOUT_SECONDS} seconden en is afgebroken."
+
+    if exc_result[0]:
+        return f"Fout in script:\n{exc_result[0]}"
 
     result = namespace["result"]
     figure = namespace["figure"]
