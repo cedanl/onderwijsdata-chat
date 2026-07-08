@@ -190,7 +190,10 @@ export default function ChatPage({ setPage, openDashboard, settings = {} }) {
       .join('\n\n')
     if (!assistantContent) return
     const title = allMsgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Dashboard'
-    const htmlContent = buildDashboardHtml(title, assistantContent, [], settings?.instelling)
+    const figuresJson = allMsgs
+      .filter(m => m.role === 'assistant' && m.figures?.length)
+      .flatMap(m => m.figures.map(f => typeof f.json === 'string' ? f.json : JSON.stringify(f.json)))
+    const htmlContent = buildDashboardHtml(title, assistantContent, figuresJson, settings?.instelling)
     const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
     saveWorkbookWithSync({
       title,
@@ -410,6 +413,7 @@ function PlotlyFigure({ figureJson, label }) {
   } catch {
     return null
   }
+  const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
   const dark = document.documentElement.classList.contains('dark')
   const bg = dark ? '#1E293B' : '#fff'
   const fontColor = dark ? '#E2E8F0' : '#374151'
@@ -417,7 +421,7 @@ function PlotlyFigure({ figureJson, label }) {
     ...figure.layout,
     paper_bgcolor: bg,
     plot_bgcolor: bg,
-    margin: { l: 48, r: 24, t: 32, b: 40 },
+    margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: 32, b: 40 },
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     autosize: true,
   }
@@ -429,7 +433,7 @@ function PlotlyFigure({ figureJson, label }) {
         layout={layout}
         config={{ responsive: true, displayModeBar: false }}
         useResizeHandler
-        style={{ width: '100%', height: 340 }}
+        style={{ width: '100%', height: isMap ? 480 : 340 }}
       />
     </div>
   )
