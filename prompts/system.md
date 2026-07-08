@@ -132,7 +132,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
 
-4. **Decodeer de data**: vervang codes door labels in de datalijst vóórdat je `create_plot` aanroept.
+4. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
 
 5. **Kies het juiste grafiektype** — gebruik onderstaande beslismatrix:
 

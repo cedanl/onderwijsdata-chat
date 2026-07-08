@@ -73,7 +73,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     )
 
 
-_ALLOWED_AGG = {"sum", "mean", "count", "min", "max", "first", "last", "nunique"}
+_ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
 
 
 def _validate_aggregation(df, group_by, aggregate):
@@ -129,8 +129,10 @@ def query_data(
             return err
         df = _apply_aggregation(df, group_by, aggregate)
 
-    result_key = f"{data_key}:result"
-    store.put(result_key, df)
+    transformed = filters or columns or group_by
+    result_key = f"{data_key}:result" if transformed else data_key
+    if transformed:
+        store.put(result_key, df)
 
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))

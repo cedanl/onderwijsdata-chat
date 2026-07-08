@@ -82,13 +82,7 @@ def _create_plot_snippet(args: dict) -> str:
     lines = ["import pandas as pd", "import plotly.express as px", ""]
 
     if data_key:
-        parts = data_key.replace(":result", "").split(":", 2)
-        if parts[0] == "duo" and len(parts) == 3:
-            lines.append(f"# Data uit vorige query_data stap")
-            lines.append(f"# Zie het query_data snippet voor de volledige pipeline")
-            lines.append(f'df = store.get("{data_key}")')
-        else:
-            lines.append(f'df = store.get("{data_key}")')
+        lines.append(f'df = store.get("{data_key}")')
     else:
         data = args.get("data", [])
         lines.append(f"data = {json.dumps(data, ensure_ascii=False)}")

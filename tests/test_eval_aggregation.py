@@ -14,10 +14,8 @@ import json
 import os
 import re
 
-from dotenv import load_dotenv
-load_dotenv()
-
 import pytest
+from dotenv import load_dotenv
 
 from riodata import duo
 
@@ -37,6 +35,7 @@ def _ground_truth() -> dict[int, int]:
     return {int(k): int(v) for k, v in sums.items()}
 
 
+load_dotenv()
 _has_api_key = bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("WILLMA_API_KEY"))
 
 
