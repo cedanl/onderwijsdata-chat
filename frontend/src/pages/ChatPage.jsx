@@ -18,6 +18,28 @@ function persistConversationHistory(list) {
   localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list))
 }
 
+function ToolStep({ tool }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="tool-step-wrap">
+      <div className="tool-step">
+        <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
+        {tool.label}
+        {tool.snippet && (
+          <button className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {open && tool.snippet && (
+        <pre className="tool-snippet-code">{tool.snippet}</pre>
+      )}
+    </div>
+  )
+}
+
 export default function ChatPage({ setPage, openDashboard, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, connected, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
@@ -344,10 +366,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {msg.tools?.map((t, i) => (
-          <div key={i} className="tool-step">
-            <div className={`tool-step-dot${t.done ? ' done' : ''}`} />
-            {t.label}
-          </div>
+          <ToolStep key={i} tool={t} />
         ))}
         <div className="message-bubble" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
           {!msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length ? (

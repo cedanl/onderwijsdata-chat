@@ -9,6 +9,7 @@ import plotly.io as pio
 
 from core.config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
+from tools.snippet import generate as _generate_snippet
 from .history import trim
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
@@ -52,11 +53,22 @@ async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
-    logger.debug("TOOL CALL  %-30s args=%s", tc["name"], json.dumps(args, ensure_ascii=False)[:300])
+    args_json = json.dumps(args, ensure_ascii=False)
+    logger.debug("TOOL CALL  %-30s args=%s", tc["name"], args_json)
     await emit({"type": "tool_start", "name": tc["name"], "label": label, "input": args})
     result, figure = await asyncio.to_thread(dispatch, tc["name"], args)
-    await emit({"type": "tool_end", "name": tc["name"], "output": str(result)[:500]})
-    logger.debug("TOOL RESULT %-29s → %s", tc["name"], str(result)[:500])
+    result_str = str(result)
+    result_log = result_str if len(result_str) <= 2000 else result_str[:2000] + f"… ({len(result_str)} chars)"
+
+    snippet = _generate_snippet(tc["name"], args)
+    if snippet:
+        logger.info("REPRODUCEER %-28s\n%s", tc["name"], snippet)
+
+    end_event = {"type": "tool_end", "name": tc["name"], "output": result_str[:2000]}
+    if snippet:
+        end_event["snippet"] = snippet
+    await emit(end_event)
+    logger.debug("TOOL RESULT %-29s → %s", tc["name"], result_log)
     return result, figure
 
 
