@@ -200,14 +200,12 @@ async def run(
                 turn_figs = session.get("turn_figures", [])
                 turn_figs.append(figure)
                 session["turn_figures"] = turn_figs
-                fig_meta = getattr(getattr(figure, "layout", None), "meta", None) or {}
-                if not fig_meta.get("chat_hidden"):
-                    label = LABELS.get(tc["name"], tc["name"])
-                    await emit({
-                        "type": "figure",
-                        "label": label,
-                        "figure_json": pio.to_json(figure),
-                    })
+                label = LABELS.get(tc["name"], tc["name"])
+                await emit({
+                    "type": "figure",
+                    "label": label,
+                    "figure_json": pio.to_json(figure),
+                })
             if len(result) > 12000:
                 result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})

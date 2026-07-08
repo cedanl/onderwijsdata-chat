@@ -223,3 +223,26 @@ def test_groupby_invalid_agg_function_returns_error():
     _put("test:agg", [{"A": "1", "B": 2}])
     result = query_data("test:agg", group_by=["A"], aggregate={"B": "median"})
     assert "median" in result.lower()
+
+
+def test_aggregation_does_not_mutate_store():
+    _put("test:mut", [
+        {"JAAR": "2021", "AANTAL": "100"},
+        {"JAAR": "2022", "AANTAL": "200"},
+    ])
+    query_data("test:mut", group_by=["JAAR"], aggregate={"AANTAL": "sum"})
+    original = store.get("test:mut")
+    assert not pd.api.types.is_numeric_dtype(original["AANTAL"])
+
+
+def test_different_filters_produce_different_result_keys():
+    _put("test:dk", [
+        {"TYPE": "bachelor", "N": 10},
+        {"TYPE": "master", "N": 20},
+    ])
+    r1 = json.loads(query_data("test:dk", filters={"TYPE": "bachelor"}))
+    r2 = json.loads(query_data("test:dk", filters={"TYPE": "master"}))
+    assert r1["data_key"] != r2["data_key"]
+    assert r1["rijen"][0]["N"] == 10
+    df2 = store.get(r2["data_key"])
+    assert df2.iloc[0]["N"] == 20

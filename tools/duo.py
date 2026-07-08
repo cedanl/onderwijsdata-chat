@@ -1,5 +1,7 @@
+import hashlib
 import json
 
+import pandas as pd
 from riodata import duo as _duo
 from core.config import DUO_ROW_LIMIT
 from . import store
@@ -92,7 +94,7 @@ def _validate_aggregation(df, group_by, aggregate):
 
 
 def _apply_aggregation(df, group_by, aggregate):
-    import pandas as pd
+    df = df.copy()
     for col in aggregate:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
@@ -130,9 +132,13 @@ def query_data(
         df = _apply_aggregation(df, group_by, aggregate)
 
     transformed = filters or columns or group_by
-    result_key = f"{data_key}:result" if transformed else data_key
     if transformed:
+        sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
+        suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
+        result_key = f"{data_key}:{suffix}"
         store.put(result_key, df)
+    else:
+        result_key = data_key
 
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
