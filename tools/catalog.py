@@ -17,6 +17,33 @@ def _rio_duo() -> list:
     return _rio_catalog(source="all")
 
 
+_SYNONYMS: dict[str, list[str]] = {
+    "hbo": ["ho", "hoger beroepsonderwijs"],
+    "wo": ["ho", "wetenschappelijk onderwijs"],
+    "ho": ["hbo", "wo", "hoger onderwijs"],
+    "studenten": ["ingeschrevenen", "deelnemers", "leerlingen"],
+    "leerlingen": ["deelnemers", "studenten", "ingeschrevenen"],
+    "ingeschrevenen": ["studenten", "deelnemers"],
+    "instroom": ["eerstejaars", "instromende", "instromers"],
+    "eerstejaars": ["instroom", "instromende"],
+    "diplomering": ["gediplomeerden", "gediplomeerde", "diploma"],
+    "gediplomeerden": ["diplomering", "diploma"],
+    "uitval": ["vsv", "voortijdig", "schoolverlaters"],
+    "vsv": ["voortijdig", "schoolverlaters", "uitval"],
+    "schoolverlaters": ["vsv", "voortijdig", "uitval"],
+    "prognose": ["prognoses", "verwachting", "raming"],
+}
+
+
+def _expand_query(words: list[str]) -> list[str]:
+    expanded = list(words)
+    for w in words:
+        for syn in _SYNONYMS.get(w, []):
+            if syn not in expanded:
+                expanded.append(syn)
+    return expanded
+
+
 _FIELD_WEIGHTS = {
     "bron": 5,
     "tags": 4,
@@ -57,7 +84,7 @@ def search_catalog(
     top_n: int = 15,
     geo_niveau: str | None = None,
 ) -> str:
-    words = query.lower().split()
+    words = _expand_query(query.lower().split())
     active = []
     archive_fallback = []
 
