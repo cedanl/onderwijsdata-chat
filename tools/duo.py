@@ -73,11 +73,38 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     )
 
 
+_ALLOWED_AGG = {"sum", "mean", "count", "min", "max", "first", "last", "nunique"}
+
+
+def _validate_aggregation(df, group_by, aggregate):
+    if bool(group_by) != bool(aggregate):
+        return "group_by en aggregate moeten samen worden meegegeven."
+    missing_gb = [c for c in group_by if c not in df.columns]
+    if missing_gb:
+        return f"group_by kolommen niet gevonden: {missing_gb}. Beschikbaar: {list(df.columns)}"
+    missing_agg = [c for c in aggregate if c not in df.columns]
+    if missing_agg:
+        return f"aggregate kolommen niet gevonden: {missing_agg}. Beschikbaar: {list(df.columns)}"
+    bad_fns = {f for f in aggregate.values() if f not in _ALLOWED_AGG}
+    if bad_fns:
+        return f"Ongeldige aggregatiefuncties: {bad_fns}. Toegestaan: {sorted(_ALLOWED_AGG)}"
+    return None
+
+
+def _apply_aggregation(df, group_by, aggregate):
+    import pandas as pd
+    for col in aggregate:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
+
+
 def query_data(
     data_key: str,
     filters: dict | None = None,
     columns: list[str] | None = None,
     max_rows: int = DUO_ROW_LIMIT,
+    group_by: list[str] | None = None,
+    aggregate: dict[str, str] | None = None,
 ) -> str:
     df = store.get(data_key)
     if df is None:
@@ -95,6 +122,12 @@ def query_data(
         if missing:
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
         df = df[columns]
+
+    if group_by or aggregate:
+        err = _validate_aggregation(df, group_by, aggregate)
+        if err:
+            return err
+        df = _apply_aggregation(df, group_by, aggregate)
 
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))

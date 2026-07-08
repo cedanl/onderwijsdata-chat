@@ -88,6 +88,16 @@ TOOL_SCHEMAS = [
                     "filters": {"type": "object", "description": "Kolomfilters: exacte waarden bijv. {\"Leerweg\": \"Voltijd\"}, of range-operatoren: {\"JAAR__gte\": \"2020\"}, {\"JAAR__lte\": \"2023\"}, {\"JAAR__in\": [\"2021\",\"2022\"]}"},
                     "columns": {"type": "array", "items": {"type": "string"}, "description": "Alleen deze kolommen teruggeven"},
                     "max_rows": {"type": "integer", "description": "Maximaal aantal rijen (default: 500)"},
+                    "group_by": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Groepeer op deze kolommen (bijv. [\"STUDIEJAAR\"]). Vereist ook 'aggregate'.",
+                    },
+                    "aggregate": {
+                        "type": "object",
+                        "additionalProperties": {"type": "string", "enum": ["sum", "mean", "count", "min", "max"]},
+                        "description": "Aggregatiefuncties per kolom, bijv. {\"AANTAL\": \"sum\"}. Alleen samen met 'group_by'.",
+                    },
                 },
                 "required": ["data_key"],
             },
