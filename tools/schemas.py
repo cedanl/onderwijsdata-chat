@@ -161,6 +161,36 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "run_analysis",
+            "description": (
+                "Voer een kort pandas/numpy script uit op geladen data. "
+                "Gebruik voor berekeningen die niet met query_data group_by/aggregate kunnen "
+                "(percentuele groei, ratio's, custom transformaties). "
+                "Wijs het resultaat toe aan 'result' (dict, list of DataFrame). "
+                "Optioneel: wijs een Plotly figuur toe aan 'figure'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": (
+                            "Python code. Beschikbaar: df (het DataFrame), pd, np, math, px, go, "
+                            "store_get(key) voor extra datasets. Wijs resultaat toe aan 'result'."
+                        ),
+                    },
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key van een geladen dataset. Het DataFrame is beschikbaar als 'df'.",
+                    },
+                },
+                "required": ["code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "clarify_scope",
             "description": (
                 "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "

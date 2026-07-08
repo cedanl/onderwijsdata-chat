@@ -1,5 +1,6 @@
 from typing import Any
 
+from .analysis import run_analysis
 from .catalog import search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data, query_data
@@ -15,6 +16,7 @@ LABELS = {
     "get_rio_data": "RIO data opgehaald",
     "get_duo_data": "DUO dataset geladen",
     "query_data": "Data gefilterd",
+    "run_analysis": "Analyse uitgevoerd",
     "create_plot": "Grafiek aangemaakt",
     "create_choropleth_map": "Kaart aangemaakt",
 }
@@ -26,6 +28,7 @@ _HANDLERS = {
     "get_rio_data": get_rio_data,
     "get_duo_data": get_duo_data,
     "query_data": query_data,
+    "run_analysis": run_analysis,
     "create_plot": create_plot,
     "create_choropleth_map": create_choropleth_map,
 }
