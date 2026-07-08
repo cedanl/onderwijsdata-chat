@@ -168,10 +168,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 > **Voer NOOIT zelf rekenwerk uit op data.** Tel geen rijen op, bereken geen gemiddelden, maak geen totalen in je hoofd. Gebruik altijd:
 > - `query_data` met `group_by` en `aggregate` voor standaard aggregaties (som, gemiddelde, telling, min, max per groep)
 >   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`
-> - `run_analysis` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen
->   Voorbeeld: percentuele groei, ratio's, gewogen gemiddelden, pivots
+> - `run_analysis(data_key=..., code=...)` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen.
+>   Gebruik `df` (het DataFrame uit data_key) en `store_get(key)` voor extra datasets. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
+>   Het resultaat (list of DataFrame) wordt automatisch opgeslagen met een `data_key` die je kunt doorpassen.
 >
-> Gebruik altijd `data_key` in `create_plot` om data rechtstreeks uit de store te lezen. Kopieer nooit datarijen handmatig naar een grafiek — gebruik `create_plot(data_key=..., chart_type=..., x=..., y=..., title=...)`.
+> Gebruik altijd `data_key` in `create_plot` en `create_choropleth_map` om data rechtstreeks uit de store te lezen. Kopieer nooit datarijen handmatig naar een grafiek of kaart.
 
 ## Richtlijnen
 

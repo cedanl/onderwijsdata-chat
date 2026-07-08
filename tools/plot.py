@@ -187,7 +187,6 @@ def create_choropleth_map(
         margin=dict(t=60, b=0, l=0, r=0),
         meta={
             "type": "choropleth",
-            "chat_hidden": True,
             "geojson_url": _GEOJSON_URLS.get(detected, ""),
             "location_col": location_col,
             "value_col": value_col,

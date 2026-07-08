@@ -104,7 +104,16 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if isinstance(result, pd.DataFrame):
         result = result.to_dict(orient="records")
 
-    text = json.dumps(result, ensure_ascii=False, default=str) if result is not None else "{}"
+    result_key = None
+    if isinstance(result, list) and result:
+        store_df = pd.DataFrame(result)
+        result_key = f"analysis:{id(store_df)}"
+        store.put(result_key, store_df)
+
+    text_obj = result if result is not None else {}
+    if result_key:
+        text_obj = {"data_key": result_key, "rijen": result}
+    text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):
         return text, figure

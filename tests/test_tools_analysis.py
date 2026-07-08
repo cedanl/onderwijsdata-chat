@@ -30,7 +30,9 @@ def test_groupby_in_script():
         code="result = df.groupby('JAAR')['N'].sum().reset_index().to_dict(orient='records')",
         data_key="test:an",
     )
-    rows = json.loads(result)
+    parsed = json.loads(result)
+    assert "data_key" in parsed
+    rows = parsed["rijen"]
     sums = {r["JAAR"]: r["N"] for r in rows}
     assert sums[2021] == 30
     assert sums[2022] == 30
@@ -55,8 +57,8 @@ def test_dataframe_result_converted():
         data_key="test:an",
     )
     parsed = json.loads(result)
-    assert isinstance(parsed, list)
-    assert len(parsed) == 2
+    assert "data_key" in parsed
+    assert len(parsed["rijen"]) == 2
 
 
 def test_no_data_key_uses_empty_namespace():
