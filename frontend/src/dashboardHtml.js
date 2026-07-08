@@ -11,9 +11,17 @@ function escapeHtml(str) {
 
 function parseNum(val) {
   if (!val) return null
-  const s = String(val).replace(/[^\d,.\-+]/g, '').replace(',', '.')
-  const n = parseFloat(s)
+  const s = String(val).replace(/[^\d,.\-+]/g, '')
+  if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'))
+    return isNaN(n) ? null : n
+  }
+  const n = parseFloat(s.replace(',', '.'))
   return isNaN(n) ? null : n
+}
+
+function fmtNl(n) {
+  return Number(n).toLocaleString('nl-NL')
 }
 
 function cleanLabel(val) {
@@ -71,19 +79,19 @@ export function buildChartSpecs(tables) {
     const maxI = primary.indexOf(Math.max(...primary))
     const minI = primary.indexOf(Math.min(...primary))
     const kpis = [
-      { label: 'Hoogste waarde', value: `${primary[maxI]}`, sub: cleanLabel(labels[maxI]) },
-      { label: 'Laagste waarde', value: `${primary[minI]}`, sub: cleanLabel(labels[minI]) },
+      { label: 'Hoogste waarde', value: fmtNl(primary[maxI]), sub: cleanLabel(labels[maxI]) },
+      { label: 'Laagste waarde', value: fmtNl(primary[minI]), sub: cleanLabel(labels[minI]) },
       numericCols.length > 1
         ? { label: 'Grootste verschil', value: (() => {
               const diff = numericCols[numericCols.length - 1].data
               const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
-              return `${maxD > 0 ? '+' : ''}${maxD}`
+              return `${maxD > 0 ? '+' : ''}${fmtNl(maxD)}`
             })(), sub: (() => {
               const diff = numericCols[numericCols.length - 1]?.data || []
               const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
               return cleanLabel(labels[diff.indexOf(maxD)])
             })() }
-        : { label: 'Gemiddelde', value: (primary.reduce((a,b) => a+b, 0) / primary.length).toFixed(1), sub: numericCols[0].label },
+        : { label: 'Gemiddelde', value: fmtNl(+(primary.reduce((a,b) => a+b, 0) / primary.length).toFixed(1)), sub: numericCols[0].label },
       { label: 'Aantal rijen', value: `${rows.length}`, sub: escapeHtml(headers[0]) },
     ]
 
