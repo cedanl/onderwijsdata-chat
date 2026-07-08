@@ -1,6 +1,7 @@
 HOST          ?= 0.0.0.0
 BACKEND_PORT  ?= 8000
 FRONTEND_PORT ?= 5173
+LOG_LEVEL     ?= DEBUG
 
 .PHONY: dev stop backend frontend install build test url
 
@@ -15,7 +16,7 @@ stop:
 	@pkill -f "uvicorn server:app" 2>/dev/null || true
 
 backend:
-	uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload
+	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload
 
 frontend:
 	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
@@ -25,7 +26,7 @@ frontend:
 # devcontainer-cli (plain Docker): run `make url` for the correct address.
 dev: stop
 	@trap 'kill 0' SIGINT; \
-	uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload & \
+	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload & \
 	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
 
 url:
