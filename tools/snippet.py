@@ -72,16 +72,27 @@ def _get_cbs_data_snippet(args: dict) -> str:
 
 def _create_plot_snippet(args: dict) -> str:
     import json
-    data = args.get("data", [])
     chart_type = args.get("chart_type", "bar")
     x = args.get("x", "x")
     y = args.get("y", "y")
     title = args.get("title", "")
     color_by = args.get("color_by")
+    data_key = args.get("data_key")
 
-    lines = ["import plotly.express as px", ""]
-    lines.append(f"data = {json.dumps(data, ensure_ascii=False)}")
-    lines.append(f"df = pd.DataFrame(data)")
+    lines = ["import pandas as pd", "import plotly.express as px", ""]
+
+    if data_key:
+        parts = data_key.replace(":result", "").split(":", 2)
+        if parts[0] == "duo" and len(parts) == 3:
+            lines.append(f"# Data uit vorige query_data stap")
+            lines.append(f"# Zie het query_data snippet voor de volledige pipeline")
+            lines.append(f'df = store.get("{data_key}")')
+        else:
+            lines.append(f'df = store.get("{data_key}")')
+    else:
+        data = args.get("data", [])
+        lines.append(f"data = {json.dumps(data, ensure_ascii=False)}")
+        lines.append("df = pd.DataFrame(data)")
 
     px_func = {"bar": "px.bar", "line": "px.line", "scatter": "px.scatter"}.get(chart_type, "px.bar")
     color_arg = f', color="{color_by}"' if color_by else ""

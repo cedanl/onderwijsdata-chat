@@ -129,11 +129,14 @@ def query_data(
             return err
         df = _apply_aggregation(df, group_by, aggregate)
 
+    result_key = f"{data_key}:result"
+    store.put(result_key, df)
+
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
-    result: dict = {"totaal_rijen": total, "rijen": rows}
+    result: dict = {"data_key": result_key, "totaal_rijen": total, "rijen": rows}
     if total > adaptive_max:
         result["waarschuwing"] = (
             f"Eerste {adaptive_max} van {total} rijen teruggegeven "

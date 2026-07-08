@@ -4,6 +4,8 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
+from . import store
+
 # Okabe-Ito colorblind-friendly palette
 _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
 
@@ -26,13 +28,22 @@ _GEOJSON_CACHE: dict[str, dict] = {}
 
 
 def create_plot(
-    data: list[dict],
-    chart_type: str,
-    x: str,
-    y: str,
-    title: str,
+    data: list[dict] | None = None,
+    chart_type: str = "bar",
+    x: str = "",
+    y: str = "",
+    title: str = "",
     color_by: str | None = None,
+    data_key: str | None = None,
 ) -> tuple[str, go.Figure]:
+    if data_key:
+        df = store.get(data_key)
+        if df is None:
+            return f"Geen data gevonden voor '{data_key}'.", None
+        data = df.to_dict(orient="records")
+    if not data:
+        return "Geen data opgegeven. Gebruik data_key of data parameter.", None
+
     fig = go.Figure()
 
     if color_by:

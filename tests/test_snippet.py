@@ -64,23 +64,36 @@ def test_get_cbs_data_with_filters():
     assert "Perioden" in snippet
 
 
-def test_create_plot_snippet():
+def test_create_plot_with_data_key():
     snippet = generate("create_plot", {
-        "data": [{"JAAR": 2021, "AANTAL": 100}, {"JAAR": 2022, "AANTAL": 200}],
+        "data_key": "duo:p02ho1ejrs:resource:result",
         "chart_type": "line",
-        "x": "JAAR",
+        "x": "STUDIEJAAR",
         "y": "AANTAL",
         "title": "Test grafiek",
     })
     assert "px.line" in snippet
-    assert '"JAAR"' in snippet
-    assert '"AANTAL"' in snippet
-    assert "fig.show()" in snippet
+    assert "store.get" in snippet
+    assert "STUDIEJAAR" in snippet
+    # Geen gehardcode data-waarden
+    assert "[{" not in snippet
+
+
+def test_create_plot_with_inline_data_fallback():
+    snippet = generate("create_plot", {
+        "data": [{"JAAR": 2021, "AANTAL": 100}],
+        "chart_type": "bar",
+        "x": "JAAR",
+        "y": "AANTAL",
+        "title": "Test",
+    })
+    assert "px.bar" in snippet
+    assert "2021" in snippet
 
 
 def test_create_plot_with_color_by():
     snippet = generate("create_plot", {
-        "data": [{"X": 1, "Y": 2, "G": "a"}],
+        "data_key": "duo:x:y:result",
         "chart_type": "bar",
         "x": "X", "y": "Y", "title": "t",
         "color_by": "G",

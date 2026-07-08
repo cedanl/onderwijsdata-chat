@@ -1,6 +1,8 @@
+import pandas as pd
 import pytest
 import plotly.graph_objects as go
 
+from tools import store
 from tools.plot import create_plot
 
 _ROWS = [
@@ -52,3 +54,23 @@ def test_color_by_creates_one_trace_per_group():
 def test_color_by_line_chart():
     _, fig = create_plot(_ROWS_GROUPED, "line", "jaar", "waarde", "T", color_by="groep")
     assert len(fig.data) == 2
+
+
+def test_data_key_reads_from_store():
+    df = pd.DataFrame(_ROWS)
+    store.put("test:plot:result", df)
+    msg, fig = create_plot(data_key="test:plot:result", chart_type="bar", x="jaar", y="waarde", title="Store test")
+    assert isinstance(fig, go.Figure)
+    assert "3" in msg
+
+
+def test_data_key_missing_returns_error():
+    msg, fig = create_plot(data_key="nonexistent:key", chart_type="bar", x="x", y="y", title="T")
+    assert "Geen data" in msg
+    assert fig is None
+
+
+def test_no_data_no_key_returns_error():
+    msg, fig = create_plot(chart_type="bar", x="x", y="y", title="T")
+    assert "Geen data" in msg
+    assert fig is None

@@ -143,18 +143,19 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "create_plot",
-            "description": "Maak een interactieve grafiek van opgehaalde data.",
+            "description": "Maak een interactieve grafiek. Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen (betrouwbaarder dan handmatig data doorgeven).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "data": {"type": "array", "items": {"type": "object"}, "description": "Lijst van datarijen als objecten"},
+                    "data_key": {"type": "string", "description": "data_key van query_data resultaat — plot leest data rechtstreeks uit de store. Gebruik dit bij voorkeur boven 'data'."},
+                    "data": {"type": "array", "items": {"type": "object"}, "description": "Datarijen als objecten. Gebruik alleen als data_key niet beschikbaar is."},
                     "chart_type": {"type": "string", "enum": ["bar", "line", "scatter", "pie", "histogram"], "description": "Type grafiek"},
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
                 },
-                "required": ["data", "chart_type", "x", "y", "title"],
+                "required": ["chart_type", "x", "y", "title"],
             },
         },
     },

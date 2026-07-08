@@ -130,7 +130,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 3. **Haal data op**: gebruik de codes uit stap 2 in je OData filters.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart).
 
-3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Geef het resultaat direct door aan `create_plot`.
+3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
 
 4. **Decodeer de data**: vervang codes door labels in de datalijst vóórdat je `create_plot` aanroept.
 
@@ -171,7 +171,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 > - `run_analysis` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen
 >   Voorbeeld: percentuele groei, ratio's, gewogen gemiddelden, pivots
 >
-> Geef de geaggregeerde resultaten direct door aan `create_plot`. Kopieer nooit individuele rijen handmatig over naar een grafiek.
+> Gebruik altijd `data_key` in `create_plot` om data rechtstreeks uit de store te lezen. Kopieer nooit datarijen handmatig naar een grafiek — gebruik `create_plot(data_key=..., chart_type=..., x=..., y=..., title=...)`.
 
 ## Richtlijnen
 
