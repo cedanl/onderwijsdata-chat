@@ -95,12 +95,34 @@ def _create_plot_snippet(args: dict) -> str:
     return "\n".join(lines)
 
 
+def _create_choropleth_snippet(args: dict) -> str:
+    import json
+    location_col = args.get("location_col", "")
+    value_col = args.get("value_col", "")
+    title = args.get("title", "")
+    data_key = args.get("data_key")
+
+    lines = ["import pandas as pd", "import plotly.express as px", ""]
+
+    if data_key:
+        lines.append(f'df = store.get("{data_key}")')
+    else:
+        data = args.get("data", [])
+        lines.append(f"data = {json.dumps(data, ensure_ascii=False)}")
+        lines.append("df = pd.DataFrame(data)")
+
+    lines.append(f'fig = px.choropleth_map(df, locations="{location_col}", color="{value_col}", title="{title}")')
+    lines.append("fig.show()")
+    return "\n".join(lines)
+
+
 _GENERATORS = {
     "query_data": _query_data_snippet,
     "run_analysis": _run_analysis_snippet,
     "get_duo_data": _get_duo_data_snippet,
     "get_cbs_data": _get_cbs_data_snippet,
     "create_plot": _create_plot_snippet,
+    "create_choropleth_map": _create_choropleth_snippet,
 }
 
 

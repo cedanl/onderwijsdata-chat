@@ -128,12 +128,18 @@ def _detect_level(codes: list[str]) -> str:
 
 
 def create_choropleth_map(
-    data: list[dict],
-    location_col: str,
-    value_col: str,
-    title: str,
+    data: list[dict] | None = None,
+    location_col: str = "",
+    value_col: str = "",
+    title: str = "",
     level: str = "auto",
+    data_key: str | None = None,
 ) -> tuple[str, go.Figure]:
+    if data_key:
+        df = store.get(data_key)
+        if df is None:
+            return f"Geen data gevonden voor '{data_key}'.", None
+        data = df.to_dict(orient="records")
     if not data:
         return "Geen data om op kaart te tonen.", None
 

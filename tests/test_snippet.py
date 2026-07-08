@@ -101,5 +101,28 @@ def test_create_plot_with_color_by():
     assert 'color="G"' in snippet
 
 
+def test_create_choropleth_with_data_key():
+    snippet = generate("create_choropleth_map", {
+        "data_key": "cbs:83753NED:result",
+        "location_col": "RegioS",
+        "value_col": "Waarde",
+        "title": "Kaart",
+    })
+    assert "store.get" in snippet
+    assert "choropleth_map" in snippet
+    assert "RegioS" in snippet
+
+
+def test_create_choropleth_with_inline_data():
+    snippet = generate("create_choropleth_map", {
+        "data": [{"RegioS": "PV20", "Waarde": 100}],
+        "location_col": "RegioS",
+        "value_col": "Waarde",
+        "title": "Kaart",
+    })
+    assert "PV20" in snippet
+    assert "DataFrame" in snippet
+
+
 def test_unknown_tool_returns_none():
     assert generate("search_catalog", {"query": "test"}) is None

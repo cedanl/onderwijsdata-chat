@@ -109,16 +109,20 @@ TOOL_SCHEMAS = [
             "name": "create_choropleth_map",
             "description": (
                 "Maak een interactieve kaart van Nederland met kleuren per regio. "
-                "Gebruik dit voor regionale vergelijkingen: provincies, gemeenten of COROP-gebieden. "
+                "Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen. "
                 "De data moet CBS-regiocodes bevatten (bijv. 'PV20', 'GM0363')."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key van query_data resultaat — kaart leest data rechtstreeks uit de store.",
+                    },
                     "data": {
                         "type": "array",
                         "items": {"type": "object"},
-                        "description": "Lijst van datarijen met regiocodes en een numerieke waarde per rij",
+                        "description": "Datarijen met regiocodes. Gebruik alleen als data_key niet beschikbaar is.",
                     },
                     "location_col": {
                         "type": "string",
@@ -135,7 +139,7 @@ TOOL_SCHEMAS = [
                         "description": "Geografisch niveau. 'auto' detecteert op basis van de codes (standaard).",
                     },
                 },
-                "required": ["data", "location_col", "value_col", "title"],
+                "required": ["location_col", "value_col", "title"],
             },
         },
     },
