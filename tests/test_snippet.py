@@ -64,6 +64,29 @@ def test_get_cbs_data_with_filters():
     assert "Perioden" in snippet
 
 
+def test_create_plot_snippet():
+    snippet = generate("create_plot", {
+        "data": [{"JAAR": 2021, "AANTAL": 100}, {"JAAR": 2022, "AANTAL": 200}],
+        "chart_type": "line",
+        "x": "JAAR",
+        "y": "AANTAL",
+        "title": "Test grafiek",
+    })
+    assert "px.line" in snippet
+    assert '"JAAR"' in snippet
+    assert '"AANTAL"' in snippet
+    assert "fig.show()" in snippet
+
+
+def test_create_plot_with_color_by():
+    snippet = generate("create_plot", {
+        "data": [{"X": 1, "Y": 2, "G": "a"}],
+        "chart_type": "bar",
+        "x": "X", "y": "Y", "title": "t",
+        "color_by": "G",
+    })
+    assert 'color="G"' in snippet
+
+
 def test_unknown_tool_returns_none():
-    assert generate("create_plot", {"data": []}) is None
     assert generate("search_catalog", {"query": "test"}) is None

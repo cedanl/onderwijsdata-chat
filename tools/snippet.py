@@ -70,11 +70,32 @@ def _get_cbs_data_snippet(args: dict) -> str:
     return "\n".join(lines)
 
 
+def _create_plot_snippet(args: dict) -> str:
+    import json
+    data = args.get("data", [])
+    chart_type = args.get("chart_type", "bar")
+    x = args.get("x", "x")
+    y = args.get("y", "y")
+    title = args.get("title", "")
+    color_by = args.get("color_by")
+
+    lines = ["import plotly.express as px", ""]
+    lines.append(f"data = {json.dumps(data, ensure_ascii=False)}")
+    lines.append(f"df = pd.DataFrame(data)")
+
+    px_func = {"bar": "px.bar", "line": "px.line", "scatter": "px.scatter"}.get(chart_type, "px.bar")
+    color_arg = f', color="{color_by}"' if color_by else ""
+    lines.append(f'fig = {px_func}(df, x="{x}", y="{y}", title="{title}"{color_arg})')
+    lines.append("fig.show()")
+    return "\n".join(lines)
+
+
 _GENERATORS = {
     "query_data": _query_data_snippet,
     "run_analysis": _run_analysis_snippet,
     "get_duo_data": _get_duo_data_snippet,
     "get_cbs_data": _get_cbs_data_snippet,
+    "create_plot": _create_plot_snippet,
 }
 
 
