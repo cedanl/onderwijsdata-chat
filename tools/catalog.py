@@ -17,6 +17,40 @@ def _rio_duo() -> list:
     return _rio_catalog(source="all")
 
 
+_FIELD_WEIGHTS = {
+    "bron": 5,
+    "tags": 4,
+    "voorbeeldvragen": 3,
+    "beschrijving": 2,
+    "doel": 2,
+    "samenvatting": 2,
+    "categorie": 2,
+    "onderwijstype": 2,
+}
+_DEFAULT_WEIGHT = 1
+
+
+def _score(entry: dict, words: list[str]) -> int:
+    total = 0
+    scored_fields = set()
+    for field, weight in _FIELD_WEIGHTS.items():
+        val = entry.get(field)
+        if val is None:
+            continue
+        text = " ".join(val) if isinstance(val, list) else str(val)
+        text = text.lower()
+        total += sum(weight for w in words if w in text)
+        scored_fields.add(field)
+
+    for key, val in entry.items():
+        if key in scored_fields or key.startswith("_"):
+            continue
+        text = json.dumps(val, ensure_ascii=False).lower()
+        total += sum(_DEFAULT_WEIGHT for w in words if w in text)
+
+    return total
+
+
 def search_catalog(
     query: str,
     source: str = "both",
@@ -27,13 +61,9 @@ def search_catalog(
     active = []
     archive_fallback = []
 
-    def score(entry: dict) -> int:
-        text = json.dumps(entry, ensure_ascii=False).lower()
-        return sum(w in text for w in words)
-
     if source in ("cbs", "both"):
         for entry in _cbs():
-            s = score(entry)
+            s = _score(entry, words)
             if s:
                 tagged = {"bron": "CBS", **entry}
                 if entry.get("_archief"):
@@ -48,7 +78,7 @@ def search_catalog(
             is_duo = str(entry.get("leverancier", "")).upper() == "DUO"
             if source == "duo" and not is_duo:
                 continue
-            s = score(entry)
+            s = _score(entry, words)
             if s:
                 if entry.get("_archief"):
                     archive_fallback.append((s, {**entry}))
