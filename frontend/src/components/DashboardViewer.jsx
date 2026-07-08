@@ -95,7 +95,7 @@ export default function DashboardViewer({ workbook, instelling, onBack, onUpdate
                 <div style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
               )}
             </>
-          : <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts" />
+          : <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts allow-same-origin" />
         }
       </div>
     </div>
