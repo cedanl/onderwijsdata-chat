@@ -1609,7 +1609,7 @@ wheels = [
 [[package]]
 name = "onderwijsdata"
 version = "0.1.1"
-source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git?rev=feat%2Fcatalogus-metadata-fields#0b9f7d00aabe1809fe4d114f6276b6e312ebfb0e" }
+source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#518a9ea49cd2d62d8e76c8cc6ae07f243cc24907" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -1655,13 +1655,13 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.40" },
     { name = "markdown", specifier = ">=3.10.2" },
     { name = "nh3", specifier = ">=0.3.6" },
-    { name = "onderwijsdata", git = "https://github.com/cedanl/cbs-onderwijsdata.git?rev=feat%2Fcatalogus-metadata-fields" },
+    { name = "onderwijsdata", git = "https://github.com/cedanl/cbs-onderwijsdata.git" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "piper-tts", specifier = ">=1.4.2" },
     { name = "plotly", specifier = ">=5.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=fix%2Fduo-code-legenda-v2" },
+    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 
@@ -2510,7 +2510,7 @@ wheels = [
 [[package]]
 name = "riodata"
 version = "0.3.1"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=fix%2Fduo-code-legenda-v2#3f320093bb401834c81bb4ecaff1950d1e43aa77" }
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#3b3aba240f2b388391312f55f3fb8cb60ba50491" }
 dependencies = [
     { name = "httpx" },
 ]

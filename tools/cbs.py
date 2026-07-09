@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 from functools import lru_cache
 
 import pandas as pd
@@ -32,7 +33,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
 
     try:
         col_defs = definitions(dataset_id)
-    except Exception:
+    except Exception as e:
+        logging.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
         col_defs = {}
     schema = [
         {

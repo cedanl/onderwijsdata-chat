@@ -20,7 +20,7 @@ def test_empty_result_returns_helpful_message():
 def test_row_limit_applied():
     from core.config import CBS_ROW_LIMIT
     rows = [{"id": i} for i in range(CBS_ROW_LIMIT + 100)]
-    with patch("tools.cbs.data", return_value=rows):
+    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs.definitions", return_value={}):
         result = get_cbs_data("85423NED")
     import json
     parsed = json.loads(result)
@@ -31,7 +31,7 @@ def test_row_limit_applied():
 def test_truncation_hint_appended_when_limit_reached():
     from core.config import CBS_ROW_LIMIT
     rows = [{"id": i} for i in range(CBS_ROW_LIMIT)]
-    with patch("tools.cbs.data", return_value=rows):
+    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs.definitions", return_value={}):
         result = get_cbs_data("85423NED")
     import json
     parsed = json.loads(result)
