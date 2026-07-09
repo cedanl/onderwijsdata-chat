@@ -28,7 +28,11 @@ def _apply_filters(df, filters: dict):
                 return str(a).lower(), str(b).lower()
 
         if op == "eq":
-            df = df[series.astype(str).str.lower() == str(val).lower()]
+            if isinstance(val, list):
+                vals_lower = {str(v).lower() for v in val}
+                df = df[series.astype(str).str.lower().isin(vals_lower)]
+            else:
+                df = df[series.astype(str).str.lower() == str(val).lower()]
         elif op == "gte":
             df = df[series.apply(lambda v: _coerce(v, val)[0] >= _coerce(v, val)[1])]
         elif op == "lte":
@@ -59,11 +63,13 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
         store.put(key, df)
 
+    defs = _duo.column_definitions(list(df.columns))
     schema = [
         {
             "kolom": col,
             "type": str(df[col].dtype),
             "voorbeelden": df[col].dropna().unique()[:3].tolist(),
+            **({"definitie": defs[col]} if col in defs else {}),
         }
         for col in df.columns
     ]

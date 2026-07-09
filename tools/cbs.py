@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from onderwijsdata import data, dimension
+from onderwijsdata import data, dimension, definitions
 from core.config import CBS_ROW_LIMIT
 from . import store
 
@@ -30,11 +30,17 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     store.put(key, df)
 
+    try:
+        col_defs = definitions(dataset_id)
+    except Exception:
+        col_defs = {}
     schema = [
         {
             "kolom": col,
             "type": str(df[col].dtype),
             "voorbeelden": [str(v) for v in df[col].dropna().unique()[:5]],
+            **({"definitie": col_defs[col]["description"]} if col in col_defs and col_defs[col].get("description") else {}),
+            **({"eenheid": col_defs[col]["unit"]} if col in col_defs and col_defs[col].get("unit") else {}),
         }
         for col in df.columns
     ]

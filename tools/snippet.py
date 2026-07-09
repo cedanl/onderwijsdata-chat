@@ -31,6 +31,8 @@ def _query_data_snippet(args: dict) -> str:
                     lines.append(f'df = df[df["{col}"] <= {val!r}]')
                 elif op == "in":
                     lines.append(f'df = df[df["{col}"].isin({val!r})]')
+            elif isinstance(val, list):
+                lines.append(f'df = df[df["{key}"].isin({val!r})]')
             else:
                 lines.append(f'df = df[df["{key}"] == {val!r}]')
 
