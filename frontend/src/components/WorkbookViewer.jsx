@@ -1,10 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle } from '../workbooks'
+import { updateWorkbookTitle, updateWorkbookSpec } from '../workbooks'
 import { InlineDashboard, InlineDashboardArbeidsmarkt } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
-export default function DashboardViewer({ workbook, instelling, onBack, onUpdate }) {
+export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -18,6 +18,7 @@ export default function DashboardViewer({ workbook, instelling, onBack, onUpdate
     setRefreshError(null)
     try {
       const { spec: freshSpec } = await refreshDashboardApi(spec, { instelling })
+      updateWorkbookSpec(workbook.id, freshSpec)
       onUpdate({ ...workbook, dashboardSpec: freshSpec })
     } catch (err) {
       setRefreshError(err.message || 'Verversen mislukt')
@@ -54,7 +55,7 @@ export default function DashboardViewer({ workbook, instelling, onBack, onUpdate
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Dashboards
+          {backLabel}
         </button>
         {editingTitle ? (
           <input

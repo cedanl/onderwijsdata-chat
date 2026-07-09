@@ -143,6 +143,26 @@ input, textarea { font: inherit; }
 }
 .navbar-cta:hover { background: var(--blue-700); }
 
+/* ─── Mobile sidebar overlay ─────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 199;
+}
+.hamburger-btn {
+  display: none;
+  background: none; border: none; cursor: pointer; padding: 6px;
+  color: var(--gray-600); border-radius: var(--radius-sm);
+  transition: background .15s;
+}
+.hamburger-btn:hover { background: var(--gray-100); }
+.chat-mobile-topbar {
+  display: none;
+  align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+}
+.chat-mobile-topbar-title { font-size: .9rem; font-weight: 600; color: var(--gray-800); }
+
 /* ─── Mobile bottom tab bar ──────────────────────────────── */
 .mobile-tabs {
   display: none;
@@ -337,14 +357,14 @@ input, textarea { font: inherit; }
 }
 .suggested-btn:hover { border-color: var(--blue-300); background: var(--blue-50); color: var(--blue-700); }
 
-.make-dashboard-btn {
+.make-rapport-btn {
   display: flex; align-items: center; gap: 7px; align-self: center;
   padding: 8px 18px; border-radius: var(--radius-sm);
   border: 1.5px solid var(--blue-200); background: var(--blue-50);
   color: var(--blue-700); font-size: .8rem; font-weight: 600;
   cursor: pointer; transition: all .15s; margin-bottom: 8px;
 }
-.make-dashboard-btn:hover {
+.make-rapport-btn:hover {
   background: var(--blue-100); border-color: var(--blue-400);
   transform: translateY(-1px); box-shadow: 0 2px 8px rgba(37,99,235,.15);
 }
@@ -887,10 +907,47 @@ input, textarea { font: inherit; }
 @media (max-width: 768px) {
   .hero h1 { font-size: 2.2rem; }
   .chat-layout { grid-template-columns: 1fr; }
-  .chat-sidebar { display: none; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .navbar-nav { display: none; }
   .navbar-cta { display: none; }
   .mobile-tabs { display: flex; }
+
+  /* Sidebar: slide-over op mobiel */
+  .chat-sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 280px; z-index: 200;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: none;
+  }
+  .chat-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,.15);
+  }
+  .sidebar-overlay { display: block; }
+
+  /* Hamburger en mobiele topbar */
+  .hamburger-btn { display: flex; }
+  .chat-mobile-topbar { display: flex; }
+
+  /* Plotly figures: prevent horizontal overflow */
+  .js-plotly-plot, .plot-container { max-width: 100%; overflow-x: auto; }
+
+  /* Messages: full width, smaller avatar gap */
+  .chat-messages { padding: 16px 12px; }
+  .message { max-width: 100%; }
+  .message.user { max-width: 100%; }
+
+  /* Input area: tighter padding, bigger touch targets */
+  .chat-input-area { padding: 12px 12px; }
+  .chat-input { font-size: 1rem; }
+  .send-btn { width: 44px; height: 44px; }
+
+  /* Tool snippets: contain wide code */
+  .tool-snippet-code { margin-left: 8px; max-width: 100%; overflow-x: auto; white-space: pre; }
+
+  /* Clarification buttons: allow wrapping on narrow screens */
+  .clarification-btns { flex-direction: row; flex-wrap: wrap; }
+  .clarification-btn { flex: 1 1 auto; min-width: 140px; font-size: .8rem; padding: 8px 10px; }
 }

@@ -3,6 +3,7 @@ import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
+import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
@@ -21,10 +22,11 @@ function applyMode(mode) {
 export default function App() {
   const [page, setPage] = useState('home')
   const [pendingWorkbookId, setPendingWorkbookId] = useState(null)
+  const [pendingRapportId, setPendingRapportId] = useState(null)
 
-  const openDashboard = (workbookId) => {
-    setPendingWorkbookId(workbookId ?? null)
-    setPage('dashboard')
+  const openRapport = (workbookId) => {
+    setPendingRapportId(workbookId ?? null)
+    setPage('rapporten')
   }
   const [authRequired, setAuthRequired] = useState(false)
   const [user, setUser] = useState(null)
@@ -89,13 +91,21 @@ export default function App() {
       <div className="page-wrap">
         <ErrorBoundary key={page}>
           {page === 'home' && <HomePage setPage={setPage} />}
-          {page === 'chat' && <ChatPage setPage={setPage} openDashboard={openDashboard} settings={settings} />}
+          {page === 'chat' && <ChatPage setPage={setPage} openRapport={openRapport} settings={settings} />}
           {page === 'dashboard' && (
             <DashboardPage
               setPage={setPage}
               settings={settings}
               pendingWorkbookId={pendingWorkbookId}
               clearPendingWorkbook={() => setPendingWorkbookId(null)}
+            />
+          )}
+          {page === 'rapporten' && (
+            <RapportenPage
+              setPage={setPage}
+              settings={settings}
+              pendingRapportId={pendingRapportId}
+              clearPendingRapport={() => setPendingRapportId(null)}
             />
           )}
         </ErrorBoundary>
@@ -118,6 +128,7 @@ function MobileTabs({ page, setPage }) {
     <nav className="mobile-tabs">
       <MobileTabBtn icon="home" label="Home" id="home" page={page} setPage={setPage} />
       <MobileTabBtn icon="chat" label="Chat" id="chat" page={page} setPage={setPage} />
+      <MobileTabBtn icon="rapporten" label="Rapporten" id="rapporten" page={page} setPage={setPage} />
       <MobileTabBtn icon="dashboard" label="Dashboard" id="dashboard" page={page} setPage={setPage} />
     </nav>
   )
@@ -148,6 +159,7 @@ function MobileTabBtn({ icon, label, id, page, setPage }) {
   const icons = {
     home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
     chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+    rapporten: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></>,
     dashboard: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
   }
   return (

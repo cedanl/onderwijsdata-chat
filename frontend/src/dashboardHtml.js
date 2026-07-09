@@ -240,7 +240,7 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
 <div class="header">
   <div class="header-top">
     <div>
-      <div class="header-label">Dashboard</div>
+      <div class="header-label">Rapport</div>
       <h1>${escapeHtml(title)}</h1>
       <div class="meta">Aangemaakt op ${date}</div>
     </div>

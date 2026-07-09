@@ -34,7 +34,13 @@ function generateId() {
   return 'wb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
 }
 
-export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec }) {
+export function getWorkbookType(wb) {
+  if (wb.type) return wb.type
+  if (wb.htmlContent && !wb.dashboardSpec) return 'report'
+  return 'dashboard'
+}
+
+export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type }) {
   const wb = {
     id: generateId(),
     title,
@@ -44,6 +50,7 @@ export function saveWorkbook({ title, description, messages, figures, instelling
     instelling,
     htmlContent,
     dashboardSpec,
+    type: type || (dashboardSpec ? 'dashboard' : htmlContent ? 'report' : 'dashboard'),
     createdAt: new Date().toISOString(),
   }
   try {
@@ -72,6 +79,15 @@ export function updateWorkbookTitle(id, title) {
   putWorkbook(id, { ...wb, htmlContent: wb.htmlContent, dashboardSpec: wb.dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 
+export function updateWorkbookSpec(id, dashboardSpec) {
+  const wbs = getWorkbooks()
+  const wb = wbs.find(w => w.id === id)
+  if (!wb) return
+  wb.dashboardSpec = dashboardSpec
+  localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs))
+  putWorkbook(id, { ...wb, dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
+}
+
 export function deleteWorkbook(id) {
   localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id)))
   deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
@@ -95,8 +111,8 @@ export async function loadWorkbooksFromServer() {
   }
 }
 
-export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent, dashboardSpec }) {
-  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec })
+export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type }) {
+  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type })
   if (result.ok && result.workbook) {
     const wb = result.workbook
     putWorkbook(wb.id, {
@@ -107,6 +123,7 @@ export async function saveWorkbookWithSync({ title, description, messages, figur
       instelling: wb.instelling,
       htmlContent: wb.htmlContent,
       dashboardSpec: wb.dashboardSpec,
+      type: wb.type,
       createdAt: wb.createdAt,
     }).catch(e => console.warn('Workbook sync failed:', e.message))
   }
@@ -128,6 +145,7 @@ export async function migrateLocalWorkbooks() {
         instelling: wb.instelling,
         htmlContent: wb.htmlContent,
         dashboardSpec: wb.dashboardSpec,
+        type: wb.type,
         createdAt: wb.createdAt,
       })
     ))

@@ -1,69 +1,43 @@
-import { useState, useEffect, useCallback } from 'react'
-import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, deleteWorkbook, loadWorkbooksFromServer, migrateLocalWorkbooks } from '../workbooks'
+import { useState } from 'react'
+import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
-import DashboardViewer from '../components/DashboardViewer'
+import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
+import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 
 export default function DashboardPage({ setPage, settings, pendingWorkbookId, clearPendingWorkbook }) {
-  const [userWorkbooks, setUserWorkbooks] = useState(getWorkbooks)
-  const [selected, setSelected] = useState(null)
   const [showCreator, setShowCreator] = useState(false)
-  const [pendingConfirm, setPendingConfirm] = useState(null)
 
-  useEffect(() => {
-    migrateLocalWorkbooks().then(() => loadWorkbooksFromServer()).then(wbs => {
-      setUserWorkbooks(wbs)
+  const { workbooks, setWorkbooks, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+    useWorkbookGallery({
+      type: 'dashboard',
+      pendingId: pendingWorkbookId,
+      clearPending: clearPendingWorkbook,
+      deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
-  }, [])
-
-  useEffect(() => {
-    if (!pendingWorkbookId) return
-    const wbs = getWorkbooks()
-    const wb = wbs.find(w => w.id === pendingWorkbookId)
-    if (wb) {
-      setUserWorkbooks(wbs)
-      setSelected(wb)
-    }
-    clearPendingWorkbook?.()
-  }, [pendingWorkbookId, clearPendingWorkbook])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
-
-  const handleUpdate = useCallback((updated) => {
-    setSelected(updated)
-    setUserWorkbooks(prev => prev.map(w => w.id === updated.id ? updated : w))
-  }, [])
-
-  const handleDelete = (id) => {
-    setPendingConfirm({
-      message: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
-      onConfirm: () => {
-        deleteWorkbook(id)
-        setUserWorkbooks(getWorkbooks())
-        if (selected?.id === id) setSelected(null)
-      },
-    })
-  }
 
   const handleSaved = (newWb) => {
     const stored = getWorkbooks()
     const found = stored.find(w => w.id === newWb?.id)
-    setUserWorkbooks(stored)
+    setWorkbooks(stored)
     setShowCreator(false)
     if (found) setSelected(found)
   }
 
-  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...userWorkbooks]
+  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
 
   if (selected) {
     return (
-      <DashboardViewer
+      <WorkbookViewer
         workbook={selected}
         instelling={instelling}
         onBack={() => setSelected(null)}
         onUpdate={handleUpdate}
+        backLabel="Dashboards"
       />
     )
   }
