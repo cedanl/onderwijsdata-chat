@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
+import asyncio
 import tomllib
 
 logging.basicConfig(
@@ -72,10 +73,14 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+_PYPROJECT = Path(__file__).parent / "pyproject.toml"
+
 @app.get("/version")
 async def version() -> dict:
-    with open(Path(__file__).parent / "pyproject.toml", "rb") as f:
-        return {"version": tomllib.load(f)["project"]["version"]}
+    def _read() -> str:
+        with open(_PYPROJECT, "rb") as f:
+            return tomllib.load(f)["project"]["version"]
+    return {"version": await asyncio.to_thread(_read)}
 
 
 # ─── Routers ─────────────────────────────────────────────────────────────────
