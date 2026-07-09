@@ -59,6 +59,14 @@ export default function useDashboardChat() {
       ws.onclose = () => {
         setConnected(false)
         setBusy(false)
+        if (currentIdRef.current) {
+          setMessages(prev => prev.map(m =>
+            m.id === currentIdRef.current
+              ? { ...m, done: true, tools: (m.tools || []).map(t => t.done ? t : { ...t, done: true }) }
+              : m
+          ))
+          currentIdRef.current = null
+        }
 
         if (manualCloseRef.current) return
 
@@ -76,7 +84,7 @@ export default function useDashboardChat() {
         if (ev.type === 'message_start') {
           const id = nextId()
           currentIdRef.current = id
-          setMessages(prev => [...prev, { id, role: 'assistant', content: '', done: false }])
+          setMessages(prev => [...prev, { id, role: 'assistant', content: '', tools: [], done: false }])
         } else if (ev.type === 'message_cancel') {
           setMessages(prev => prev.filter(m => m.id !== currentIdRef.current))
           currentIdRef.current = null
@@ -86,17 +94,30 @@ export default function useDashboardChat() {
           ))
         } else if (ev.type === 'tool_start') {
           setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current ? { ...m, toolLabel: ev.label } : m
+            m.id === currentIdRef.current
+              ? { ...m, tools: [...(m.tools || []), { name: ev.name, label: ev.label, done: false }] }
+              : m
           ))
         } else if (ev.type === 'tool_end') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current ? { ...m, toolLabel: null } : m
-          ))
+          setMessages(prev => prev.map(m => {
+            if (m.id !== currentIdRef.current) return m
+            let matched = false
+            return {
+              ...m,
+              tools: (m.tools || []).map(t => {
+                if (!matched && t.name === ev.name && !t.done) {
+                  matched = true
+                  return { ...t, done: true, snippet: ev.snippet || null }
+                }
+                return t
+              }),
+            }
+          }))
         } else if (ev.type === 'figure') {
           setFigures(prev => [...prev, ev.figure_json])
         } else if (ev.type === 'message_end') {
           setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current ? { ...m, done: true, toolLabel: null } : m
+            m.id === currentIdRef.current ? { ...m, done: true } : m
           ))
           currentIdRef.current = null
           setBusy(false)

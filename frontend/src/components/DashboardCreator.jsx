@@ -43,6 +43,30 @@ function buildExamples(instelling) {
   ]
 }
 
+// ─── ToolStep ────────────────────────────────────────────────────────────────
+
+function ToolStep({ tool }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="tool-step-wrap">
+      <div className="tool-step">
+        <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
+        {tool.label}
+        {tool.snippet && (
+          <button className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {open && tool.snippet && (
+        <pre className="tool-snippet-code">{tool.snippet}</pre>
+      )}
+    </div>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardCreator({ onSaved, instelling }) {
@@ -122,6 +146,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
           description: dashboardSpec.description || `Aangemaakt op ${date}`,
           dashboardSpec,
           instelling,
+          type: 'dashboard',
         })
         if (!result.ok) {
           setSaving(false)
@@ -212,13 +237,8 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 </div>
               )}
               <div className={`dc-msg-bubble${msg.isError ? ' dc-msg-error' : ''}`}>
-                {msg.toolLabel && (
-                  <div className="dc-tool-label">
-                    <span className="dc-tool-dot" />
-                    {msg.toolLabel}
-                  </div>
-                )}
-                {!msg.done && !msg.content && !msg.toolLabel
+                {msg.tools?.map((t, i) => <ToolStep key={i} tool={t} />)}
+                {!msg.done && !msg.content && !msg.tools?.length
                   ? <div className="ai-typing"><span/><span/><span/></div>
                   : msg.content ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown> : null
                 }
