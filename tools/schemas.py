@@ -204,7 +204,9 @@ TOOL_SCHEMAS = [
                 "Sla dimensies over die al uit de vraag of het gebruikersprofiel blijken. "
                 "Typisch 1–3 aanroepen. Als de vraag al specifiek genoeg is (3+ dimensies "
                 "expliciet), sla deze tool over en ga direct naar search_catalog. "
-                "Na deze tool is de beurt klaar — wacht op het antwoord van de gebruiker."
+                "Na deze tool is de beurt klaar — wacht op het antwoord van de gebruiker. "
+                "Als het antwoord binnenkomt en er nog open scope-dimensies zijn, roep deze "
+                "tool opnieuw aan — NOOIT de volgende vraag als platte tekst schrijven."
             ),
             "parameters": {
                 "type": "object",
