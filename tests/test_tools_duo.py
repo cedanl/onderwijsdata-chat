@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
-from tools.duo import get_duo_data
+from tools.duo import get_duo_data, _apply_filters
 
 
 def _make_df(n: int = 5) -> pd.DataFrame:
@@ -42,6 +42,20 @@ def test_cache_hit_skips_second_load():
         get_duo_data("cached-dataset")
         get_duo_data("cached-dataset")
     assert mock_load.call_count == 1
+
+
+def test_apply_filters_eq_with_list():
+    df = pd.DataFrame({"SECTOR": ["Techniek", "Zorg", "Economie"], "AANTAL": [1, 2, 3]})
+    result, err = _apply_filters(df, {"SECTOR": ["Techniek", "Zorg"]})
+    assert err is None
+    assert list(result["SECTOR"]) == ["Techniek", "Zorg"]
+
+
+def test_apply_filters_eq_with_list_case_insensitive():
+    df = pd.DataFrame({"SECTOR": ["Techniek", "Zorg", "Economie"], "AANTAL": [1, 2, 3]})
+    result, err = _apply_filters(df, {"SECTOR": ["techniek", "ZORG"]})
+    assert err is None
+    assert len(result) == 2
 
 
 def test_schema_contains_column_names_and_examples():

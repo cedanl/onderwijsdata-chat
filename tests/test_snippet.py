@@ -43,6 +43,15 @@ def test_query_data_filter_operators():
     assert "isin" in snippet
 
 
+def test_query_data_filter_plain_key_list():
+    snippet = generate("query_data", {
+        "data_key": "duo:x:y",
+        "filters": {"SECTOR": ["Techniek", "Zorg"]},
+    })
+    assert "isin" in snippet
+    assert "SECTOR" in snippet
+
+
 def test_run_analysis_returns_code():
     code = "result = df.sum()"
     snippet = generate("run_analysis", {"code": code})
