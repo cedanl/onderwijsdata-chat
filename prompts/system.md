@@ -196,3 +196,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
   - DUO — *Studentenprognoses MBO totaalbestand 2021–2040*, tabblad Leerweg
   ```
 - Noem altijd: bron (CBS/RIO/DUO), dataset-ID of resource-naam, de periode/peiljaar van de data.
+
+**Vermeld kolomdefinities** als het schema een `definitie`-veld bevat voor kolommen die je gebruikt. Voeg na de Bronnen-sectie een **Definities**-paragraaf toe voor elke kolom met een bekende definitie die relevant is voor de interpretatie:
+```
+**Definities**
+- **Instroom**: Eerstejaars inschrijvingen: studenten die voor het eerst staan ingeschreven in een opleiding of instelling.
+- **Gediplomeerden**: Studenten die in het studiejaar een diploma of getuigschrift hebben behaald.
+```
+Vermeld alleen definities van kolommen die je daadwerkelijk gebruikt in de analyse. Sla kolommen over waarvan de naam zichzelf verklaart (bijv. GEMEENTENAAM, GESLACHT).
