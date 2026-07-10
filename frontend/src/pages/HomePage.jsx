@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 
-export default function HomePage({ setPage }) {
+export default function HomePage() {
+  const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
   return (
     <div>
@@ -12,9 +14,9 @@ export default function HomePage({ setPage }) {
             <h1>Van open onderwijsdata naar <em>inzicht in seconden</em></h1>
             <p>openEDUdata+ koppelt aan alle open-onderwijs-databronnen. Stel een vraag in gewone taal over instroom, voortgang, arbeidsmarkt of diplomering en krijg binnen 30 seconden een onderbouwd antwoord.</p>
             <div className="hero-actions">
-              <button className="btn-primary" onClick={() => setPage('chat')}>Probeer de chat →</button>
+              <button className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               <span style={{ color: 'rgba(255,255,255,.5)', fontSize: '0.9rem', alignSelf: 'center' }}>of</span>
-              <button className="btn-ghost" onClick={() => setPage('dashboard')}>Maak een dashboard</button>
+              <button className="btn-ghost" onClick={() => navigate('/dashboards')}>Maak een dashboard</button>
             </div>
             <div className="hero-stats">
               <div><div className="hero-stat-value">30s</div><div className="hero-stat-label">Gemiddelde responstijd</div></div>
@@ -89,7 +91,7 @@ export default function HomePage({ setPage }) {
         <div className="container">
           <h2>Klaar om te beginnen?</h2>
           <p>Stel je eerste vraag aan openEDUdata+ en ontdek wat open onderwijsdata voor jouw organisatie kan betekenen.</p>
-          <button className="btn-primary" onClick={() => setPage('chat')}>Start de chat →</button>
+          <button className="btn-primary" onClick={() => navigate('/chat')}>Start de chat →</button>
         </div>
       </section>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
@@ -7,14 +8,16 @@ import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 
-export default function DashboardPage({ setPage, settings, pendingWorkbookId, clearPendingWorkbook }) {
+export default function DashboardPage({ settings }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)
 
   const { workbooks, setWorkbooks, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'dashboard',
-      pendingId: pendingWorkbookId,
-      clearPending: clearPendingWorkbook,
+      pendingId,
+      clearPending: () => setSearchParams({}, { replace: true }),
       deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
 

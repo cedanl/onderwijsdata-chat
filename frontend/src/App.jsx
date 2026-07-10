@@ -1,4 +1,5 @@
 import { Component, useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
@@ -20,14 +21,17 @@ function applyMode(mode) {
 }
 
 export default function App() {
-  const [page, setPage] = useState('home')
-  const [pendingWorkbookId, setPendingWorkbookId] = useState(null)
-  const [pendingRapportId, setPendingRapportId] = useState(null)
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  )
+}
 
-  const openRapport = (workbookId) => {
-    setPendingRapportId(workbookId ?? null)
-    setPage('rapporten')
-  }
+function AppShell() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [authRequired, setAuthRequired] = useState(false)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -69,6 +73,10 @@ export default function App() {
     setShowSettings(false)
   }
 
+  const openRapport = (workbookId) => {
+    navigate(workbookId ? `/rapporten?id=${workbookId}` : '/rapporten')
+  }
+
   if (authLoading) return null
 
   if (authRequired && !user) {
@@ -83,34 +91,23 @@ export default function App() {
   return (
     <>
       <Nav
-        page={page} setPage={setPage} user={user}
+        user={user}
         onLogout={authRequired ? handleLogout : null}
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
         instelling={settings.instelling}
       />
       <div className="page-wrap">
-        <ErrorBoundary key={page}>
-          {page === 'home' && <HomePage setPage={setPage} />}
-          {page === 'chat' && <ChatPage setPage={setPage} openRapport={openRapport} settings={settings} />}
-          {page === 'dashboard' && (
-            <DashboardPage
-              setPage={setPage}
-              settings={settings}
-              pendingWorkbookId={pendingWorkbookId}
-              clearPendingWorkbook={() => setPendingWorkbookId(null)}
-            />
-          )}
-          {page === 'rapporten' && (
-            <RapportenPage
-              setPage={setPage}
-              settings={settings}
-              pendingRapportId={pendingRapportId}
-              clearPendingRapport={() => setPendingRapportId(null)}
-            />
-          )}
+        <ErrorBoundary key={location.pathname}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} />} />
+            <Route path="/dashboards" element={<DashboardPage settings={settings} />} />
+            <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </ErrorBoundary>
       </div>
-      <MobileTabs page={page} setPage={setPage} />
+      <MobileTabs />
       {showSettings && (
         <SettingsModal
           settings={settings}
@@ -123,13 +120,13 @@ export default function App() {
   )
 }
 
-function MobileTabs({ page, setPage }) {
+function MobileTabs() {
   return (
     <nav className="mobile-tabs">
-      <MobileTabBtn icon="home" label="Home" id="home" page={page} setPage={setPage} />
-      <MobileTabBtn icon="chat" label="Chat" id="chat" page={page} setPage={setPage} />
-      <MobileTabBtn icon="rapporten" label="Rapporten" id="rapporten" page={page} setPage={setPage} />
-      <MobileTabBtn icon="dashboard" label="Dashboard" id="dashboard" page={page} setPage={setPage} />
+      <MobileTabBtn icon="home" label="Home" to="/" />
+      <MobileTabBtn icon="chat" label="Chat" to="/chat" />
+      <MobileTabBtn icon="rapporten" label="Rapporten" to="/rapporten" />
+      <MobileTabBtn icon="dashboard" label="Dashboard" to="/dashboards" />
     </nav>
   )
 }
@@ -155,19 +152,27 @@ class ErrorBoundary extends Component {
   }
 }
 
-function MobileTabBtn({ icon, label, id, page, setPage }) {
-  const icons = {
-    home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
-    chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
-    rapporten: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></>,
-    dashboard: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
-  }
+const TAB_ICONS = {
+  home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+  chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+  rapporten: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></>,
+  dashboard: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
+}
+
+function MobileTabBtn({ icon, label, to }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
   return (
-    <button className={`mobile-tab-btn${page === id ? ' active' : ''}`} onClick={() => setPage(id)}>
+    <a
+      href={to}
+      className={`mobile-tab-btn${isActive ? ' active' : ''}`}
+      onClick={(e) => { e.preventDefault(); navigate(to) }}
+    >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {icons[icon]}
+        {TAB_ICONS[icon]}
       </svg>
       {label}
-    </button>
+    </a>
   )
 }

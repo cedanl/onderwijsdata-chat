@@ -82,7 +82,7 @@ function ToolStep({ tool }) {
   )
 }
 
-export default function ChatPage({ setPage, openRapport, settings = {} }) {
+export default function ChatPage({ openRapport, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, connected, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,

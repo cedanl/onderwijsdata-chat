@@ -1,3 +1,4 @@
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
@@ -8,12 +9,16 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function RapportenPage({ setPage, settings, pendingRapportId, clearPendingRapport }) {
+export default function RapportenPage({ settings }) {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pendingId = searchParams.get('id')
+
   const { workbooks: rapporten, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'report',
-      pendingId: pendingRapportId,
-      clearPending: clearPendingRapport,
+      pendingId,
+      clearPending: () => setSearchParams({}, { replace: true }),
       deleteMessage: 'Weet je zeker dat je dit rapport wilt verwijderen?',
     })
 
@@ -56,7 +61,7 @@ export default function RapportenPage({ setPage, settings, pendingRapportId, cle
               <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
             </svg>
             <p style={{ marginBottom: 16, fontSize: '.95rem' }}>Nog geen rapporten opgeslagen.</p>
-            <button className="navbar-cta" onClick={() => setPage('chat')}>
+            <button className="navbar-cta" onClick={() => navigate('/chat')}>
               Ga naar Chat
             </button>
             <p style={{ marginTop: 12, fontSize: '.82rem', color: 'var(--gray-400)' }}>
