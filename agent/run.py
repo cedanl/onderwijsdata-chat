@@ -169,7 +169,7 @@ async def run(
             await emit({
                 "type": "message_end",
                 "content": text_content,
-                "actions": ["download_rapport_samenvatting", "download_rapport"],
+                "actions": [],
             })
             return text_content
 

@@ -27,7 +27,6 @@ from persistence import db as persistence_db
 from routes import (
     auth_router,
     chat_router,
-    export_router,
     instellingen_router,
     persistence_router,
 )
@@ -88,7 +87,6 @@ async def version() -> dict:
 app.include_router(auth_router)
 app.include_router(persistence_router)
 app.include_router(instellingen_router)
-app.include_router(export_router)
 app.include_router(chat_router)
 
 # ─── Serve React frontend ───────────────────────────────────────────────────

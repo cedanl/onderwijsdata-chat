@@ -37,16 +37,6 @@ def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
     return [questions[i * step] for i in range(n) if i * step < len(questions)]
 
 
-@router.get("/api/starters")
-async def get_starters() -> list[dict]:
-    return [
-        {"label": "Arbeidsmarkt", "message": "Verken Arbeidsmarkt", "description": "Wat doen afgestudeerden? Aansluiting onderwijs-arbeidsmarkt"},
-        {"label": "Kansengelijkheid", "message": "Verken Kansengelijkheid", "description": "Herkomst, diversiteit en gelijke kansen in het onderwijs"},
-        {"label": "Regio", "message": "Verken Regio", "description": "Regionale verschillen in onderwijsdeelname en -resultaten"},
-        {"label": "Voortijdig Schoolverlaten", "message": "Verken Voortijdig Schoolverlaten", "description": "VSV: wie verlaat school zonder startkwalificatie?"},
-    ]
-
-
 # ─── Settings ────────────────────────────────────────────────────────────────
 
 @router.get("/api/settings/config")
