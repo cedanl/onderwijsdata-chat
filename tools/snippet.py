@@ -1,5 +1,14 @@
 """Genereer reproduceerbare Python-snippets uit tool calls."""
 
+from .schemas import (
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_CBS_DATA,
+    TOOL_CREATE_PLOT,
+    TOOL_CREATE_CHOROPLETH_MAP,
+)
+
 
 def _query_data_snippet(args: dict) -> str:
     data_key = args.get("data_key", "")
@@ -119,12 +128,12 @@ def _create_choropleth_snippet(args: dict) -> str:
 
 
 _GENERATORS = {
-    "query_data": _query_data_snippet,
-    "run_analysis": _run_analysis_snippet,
-    "get_duo_data": _get_duo_data_snippet,
-    "get_cbs_data": _get_cbs_data_snippet,
-    "create_plot": _create_plot_snippet,
-    "create_choropleth_map": _create_choropleth_snippet,
+    TOOL_QUERY_DATA: _query_data_snippet,
+    TOOL_RUN_ANALYSIS: _run_analysis_snippet,
+    TOOL_GET_DUO_DATA: _get_duo_data_snippet,
+    TOOL_GET_CBS_DATA: _get_cbs_data_snippet,
+    TOOL_CREATE_PLOT: _create_plot_snippet,
+    TOOL_CREATE_CHOROPLETH_MAP: _create_choropleth_snippet,
 }
 
 

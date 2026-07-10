@@ -1,8 +1,20 @@
+# ── Tool name constants ──────────────────────────────────────────────
+TOOL_SEARCH_CATALOG = "search_catalog"
+TOOL_CLARIFY_SCOPE = "clarify_scope"
+TOOL_GET_CBS_DATA = "get_cbs_data"
+TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
+TOOL_GET_RIO_DATA = "get_rio_data"
+TOOL_GET_DUO_DATA = "get_duo_data"
+TOOL_QUERY_DATA = "query_data"
+TOOL_CREATE_PLOT = "create_plot"
+TOOL_CREATE_CHOROPLETH_MAP = "create_choropleth_map"
+TOOL_RUN_ANALYSIS = "run_analysis"
+
 TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "search_catalog",
+            "name": TOOL_SEARCH_CATALOG,
             "description": "Zoek in de CBS-, RIO- en DUO-catalogus naar relevante datasets. De catalogus bevat CBS statistieken, RIO registers én DUO open data (prognoses, diplomering, instroom, etc.).",
             "parameters": {
                 "type": "object",
@@ -19,7 +31,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "get_cbs_data",
+            "name": TOOL_GET_CBS_DATA,
             "description": "Haal een CBS dataset op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen.",
             "parameters": {
                 "type": "object",
@@ -34,7 +46,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "get_cbs_dimension",
+            "name": TOOL_GET_CBS_DIMENSION,
             "description": "Haal de mogelijke waarden op van een dimensie in een CBS dataset.",
             "parameters": {
                 "type": "object",
@@ -49,7 +61,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "get_rio_data",
+            "name": TOOL_GET_RIO_DATA,
             "description": "Haal RIO data op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen.",
             "parameters": {
                 "type": "object",
@@ -64,7 +76,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "get_duo_data",
+            "name": TOOL_GET_DUO_DATA,
             "description": "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen voor analyse of grafiek.",
             "parameters": {
                 "type": "object",
@@ -79,7 +91,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "query_data",
+            "name": TOOL_QUERY_DATA,
             "description": "Filter en selecteer rijen uit een geladen dataset. Werkt voor alle databronnen: DUO (data_key van get_duo_data), CBS (data_key van get_cbs_data), RIO (data_key van get_rio_data) én geüploade bestanden (data_key begint met 'upload:').",
             "parameters": {
                 "type": "object",
@@ -106,7 +118,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "create_choropleth_map",
+            "name": TOOL_CREATE_CHOROPLETH_MAP,
             "description": (
                 "Maak een interactieve kaart van Nederland met kleuren per regio. "
                 "Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen. "
@@ -146,7 +158,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "create_plot",
+            "name": TOOL_CREATE_PLOT,
             "description": "Maak een interactieve grafiek. Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen (betrouwbaarder dan handmatig data doorgeven).",
             "parameters": {
                 "type": "object",
@@ -166,7 +178,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "run_analysis",
+            "name": TOOL_RUN_ANALYSIS,
             "description": (
                 "Voer een kort pandas/numpy script uit op geladen data. "
                 "Gebruik voor berekeningen die niet met query_data group_by/aggregate kunnen "
@@ -196,7 +208,7 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
-            "name": "clarify_scope",
+            "name": TOOL_CLARIFY_SCOPE,
             "description": (
                 "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "
                 "Dit is de ENIGE manier om scope-vragen te stellen — schrijf ze nooit als platte tekst. "

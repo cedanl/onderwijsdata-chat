@@ -21,7 +21,14 @@ from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
 from tools import dispatch, LABELS
 from tools import store
-from tools.schemas import TOOL_SCHEMAS
+from tools.schemas import (
+    TOOL_SCHEMAS,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_RIO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_CREATE_PLOT,
+)
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -29,7 +36,7 @@ _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
 _DASHBOARD_TOOLS = [
     s for s in TOOL_SCHEMAS
-    if s["function"]["name"] in ("query_data", "create_plot")
+    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)
 ]
 
 _MAX_TOOL_ITERATIONS = 15
@@ -74,11 +81,11 @@ def _build_recipe_from_store() -> list[dict]:
         seen.add(key)
         parts = key.split(":", 2)
         if parts[0] == "duo" and len(parts) >= 3:
-            recipe.append({"name": "get_duo_data", "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})})
+            recipe.append({"name": TOOL_GET_DUO_DATA, "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})})
         elif parts[0] == "cbs" and len(parts) >= 2:
-            recipe.append({"name": "get_cbs_data", "arguments": json.dumps({"dataset_id": parts[1]})})
+            recipe.append({"name": TOOL_GET_CBS_DATA, "arguments": json.dumps({"dataset_id": parts[1]})})
         elif parts[0] == "rio" and len(parts) >= 2:
-            recipe.append({"name": "get_rio_data", "arguments": json.dumps({"resource": parts[1]})})
+            recipe.append({"name": TOOL_GET_RIO_DATA, "arguments": json.dumps({"resource": parts[1]})})
     return recipe
 
 
@@ -252,7 +259,7 @@ async def generate(
 
                 await emit({"type": "tool_end", "name": name})
 
-                if name == "query_data":
+                if name == TOOL_QUERY_DATA:
                     last_query_args = args
 
                 if figure is not None:
@@ -367,9 +374,9 @@ def _parse_spec_from_response(
 
 
 _SOURCE_PREFIXES = {
-    "get_duo_data": "DUO",
-    "get_cbs_data": "CBS",
-    "get_rio_data": "RIO",
+    TOOL_GET_DUO_DATA: "DUO",
+    TOOL_GET_CBS_DATA: "CBS",
+    TOOL_GET_RIO_DATA: "RIO",
 }
 
 

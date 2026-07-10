@@ -9,6 +9,7 @@ import plotly.io as pio
 
 from core.config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
+from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.snippet import generate as _generate_snippet
 from .history import trim
 from .models import build_system, litellm_kwargs
@@ -49,7 +50,7 @@ if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
 
 
 async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:
-    if tc["name"] == "clarify_scope":
+    if tc["name"] == TOOL_CLARIFY_SCOPE:
         return "OK", None
     args = json.loads(tc["arguments"])
     label = LABELS.get(tc["name"], tc["name"])
@@ -210,9 +211,9 @@ async def run(
                 result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
 
-        if any(tc["name"] == "clarify_scope" for tc in tool_calls):
+        if any(tc["name"] == TOOL_CLARIFY_SCOPE for tc in tool_calls):
             session["_last_turn_tool_calls"] = turn_tool_calls
-            clarify_tc = next(tc for tc in tool_calls if tc["name"] == "clarify_scope")
+            clarify_tc = next(tc for tc in tool_calls if tc["name"] == TOOL_CLARIFY_SCOPE)
             args = json.loads(clarify_tc["arguments"])
             opties = args.get("opties") or []
 

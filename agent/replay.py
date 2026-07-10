@@ -5,8 +5,9 @@ import json
 import plotly.io as pio
 
 from tools import dispatch
+from tools.schemas import TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA, TOOL_QUERY_DATA, TOOL_CREATE_PLOT
 
-DATA_FETCH_TOOLS = frozenset({"get_duo_data", "get_cbs_data", "get_rio_data"})
+DATA_FETCH_TOOLS = frozenset({TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA})
 
 
 def extract_data_calls(tool_calls: list[dict] | None) -> list[dict]:
@@ -58,12 +59,12 @@ def replay_dashboard_figures(
         if not query or not query.get("data_key"):
             continue
         try:
-            result_str, _ = dispatch("query_data", query)
+            result_str, _ = dispatch(TOOL_QUERY_DATA, query)
             rows = json.loads(result_str).get("rijen", [])
             if not rows:
                 continue
             plot_args = {**plot, "data": rows}
-            _, figure = dispatch("create_plot", plot_args)
+            _, figure = dispatch(TOOL_CREATE_PLOT, plot_args)
             if figure is not None:
                 figures_json.append(pio.to_json(figure))
         except Exception:

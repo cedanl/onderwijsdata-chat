@@ -6,31 +6,43 @@ from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data, query_data
 from .plot import create_choropleth_map, create_plot
 from .rio import get_rio_data
-from .schemas import TOOL_SCHEMAS as SCHEMAS
+from .schemas import (
+    TOOL_SCHEMAS as SCHEMAS,
+    TOOL_SEARCH_CATALOG,
+    TOOL_CLARIFY_SCOPE,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_CBS_DIMENSION,
+    TOOL_GET_RIO_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+    TOOL_CREATE_PLOT,
+    TOOL_CREATE_CHOROPLETH_MAP,
+)
 
 LABELS = {
-    "search_catalog": "Catalogus doorzocht",
-    "clarify_scope": "Scope vastgesteld",
-    "get_cbs_data": "CBS data opgehaald",
-    "get_cbs_dimension": "CBS dimensie opgehaald",
-    "get_rio_data": "RIO data opgehaald",
-    "get_duo_data": "DUO dataset geladen",
-    "query_data": "Data gefilterd",
-    "run_analysis": "Analyse uitgevoerd",
-    "create_plot": "Grafiek aangemaakt",
-    "create_choropleth_map": "Kaart aangemaakt",
+    TOOL_SEARCH_CATALOG: "Catalogus doorzocht",
+    TOOL_CLARIFY_SCOPE: "Scope vastgesteld",
+    TOOL_GET_CBS_DATA: "CBS data opgehaald",
+    TOOL_GET_CBS_DIMENSION: "CBS dimensie opgehaald",
+    TOOL_GET_RIO_DATA: "RIO data opgehaald",
+    TOOL_GET_DUO_DATA: "DUO dataset geladen",
+    TOOL_QUERY_DATA: "Data gefilterd",
+    TOOL_RUN_ANALYSIS: "Analyse uitgevoerd",
+    TOOL_CREATE_PLOT: "Grafiek aangemaakt",
+    TOOL_CREATE_CHOROPLETH_MAP: "Kaart aangemaakt",
 }
 
 _HANDLERS = {
-    "search_catalog": search_catalog,
-    "get_cbs_data": get_cbs_data,
-    "get_cbs_dimension": get_cbs_dimension,
-    "get_rio_data": get_rio_data,
-    "get_duo_data": get_duo_data,
-    "query_data": query_data,
-    "run_analysis": run_analysis,
-    "create_plot": create_plot,
-    "create_choropleth_map": create_choropleth_map,
+    TOOL_SEARCH_CATALOG: search_catalog,
+    TOOL_GET_CBS_DATA: get_cbs_data,
+    TOOL_GET_CBS_DIMENSION: get_cbs_dimension,
+    TOOL_GET_RIO_DATA: get_rio_data,
+    TOOL_GET_DUO_DATA: get_duo_data,
+    TOOL_QUERY_DATA: query_data,
+    TOOL_RUN_ANALYSIS: run_analysis,
+    TOOL_CREATE_PLOT: create_plot,
+    TOOL_CREATE_CHOROPLETH_MAP: create_choropleth_map,
 }
 
 
