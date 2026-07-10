@@ -71,35 +71,3 @@ make url   # print de juiste URL, bijv. http://172.17.0.2:8000
 ```
 
 Open die URL in je host-browser.
-
-## Projectstructuur
-
-```
-server.py           # FastAPI-app: REST endpoints, WebSocket chat, static file serving
-app.py              # Entrypoint: start uvicorn
-auth.py             # JWT-authenticatie (optioneel, gebruikersnaam/wachtwoord)
-config.py           # Omgevingsvariabelen
-prompt.py           # Systeemprompts
-export.py           # HTML- en PDF-rapportgeneratie
-agent/
-  run.py            # Agentic loop met streaming en tool calling via LiteLLM
-  models.py         # LiteLLM-kwargs en systeemprompt samenstellen
-  history.py        # Gespreksgeschiedenis inkorten
-  title.py          # Gesprekstitel genereren
-frontend/           # React + Vite frontend
-  src/
-    components/     # Chat, sidebar, modals, pickers
-    pages/          # Hoofd- en loginpagina
-persistence/
-  db.py             # SQLite gespreksopslag
-tools/
-  cbs.py            # CBS Open Data API
-  duo.py            # DUO open datasets (onderwijsdata.duo.nl) + generieke query_data
-  rio.py            # RIO register
-  catalog.py        # Dataset-catalogus zoeken
-  plot.py           # Plotly-grafieken
-  store.py          # In-memory sessiecache voor DataFrames (DUO + uploads)
-  codegen/          # Reproduceerbare Python-pakketgeneratie (analyse.py/.ipynb/requirements)
-playground/
-  willma_poc.py     # SURF Willma AI-Hub proof-of-concept
-```
