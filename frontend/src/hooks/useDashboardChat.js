@@ -40,6 +40,81 @@ export default function useDashboardChat() {
     manualCloseRef.current = false
     retryCountRef.current = 0
 
+    function updateCurrentMsg(updater) {
+      setMessages(prev => prev.map(m =>
+        m.id === currentIdRef.current ? updater(m) : m
+      ))
+    }
+
+    function finishStream() {
+      currentIdRef.current = null
+      setBusy(false)
+    }
+
+    const messageHandlers = {
+      message_start() {
+        const id = nextId()
+        currentIdRef.current = id
+        setMessages(prev => [...prev, { id, role: 'assistant', content: '', tools: [], done: false }])
+      },
+      message_cancel() {
+        setMessages(prev => prev.filter(m => m.id !== currentIdRef.current))
+        currentIdRef.current = null
+      },
+      text_delta(ev) {
+        updateCurrentMsg(m => ({ ...m, content: m.content + ev.content }))
+      },
+      tool_start(ev) {
+        updateCurrentMsg(m => ({
+          ...m, tools: [...(m.tools || []), { name: ev.name, label: ev.label, done: false }],
+        }))
+      },
+      tool_end(ev) {
+        updateCurrentMsg(m => {
+          let matched = false
+          return {
+            ...m,
+            tools: (m.tools || []).map(t => {
+              if (!matched && t.name === ev.name && !t.done) {
+                matched = true
+                return { ...t, done: true, snippet: ev.snippet || null }
+              }
+              return t
+            }),
+          }
+        })
+      },
+      figure(ev) {
+        setFigures(prev => [...prev, ev.figure_json])
+      },
+      message_end() {
+        updateCurrentMsg(m => ({ ...m, done: true }))
+        finishStream()
+      },
+      clarification(ev) {
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant',
+          content: ev.vraag, clarification: ev.opties, done: true,
+        }])
+        finishStream()
+      },
+      dashboard_generating() {
+        setGeneratingDashboard(true)
+        setDashboardSpec(null)
+      },
+      dashboard_ready(ev) {
+        setGeneratingDashboard(false)
+        setDashboardSpec(ev.spec)
+      },
+      error(ev) {
+        setGeneratingDashboard(false)
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
+        }])
+        setBusy(false)
+      },
+    }
+
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws'
       const token = getToken()
@@ -81,64 +156,8 @@ export default function useDashboardChat() {
 
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data)
-        if (ev.type === 'message_start') {
-          const id = nextId()
-          currentIdRef.current = id
-          setMessages(prev => [...prev, { id, role: 'assistant', content: '', tools: [], done: false }])
-        } else if (ev.type === 'message_cancel') {
-          setMessages(prev => prev.filter(m => m.id !== currentIdRef.current))
-          currentIdRef.current = null
-        } else if (ev.type === 'text_delta') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current ? { ...m, content: m.content + ev.content } : m
-          ))
-        } else if (ev.type === 'tool_start') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current
-              ? { ...m, tools: [...(m.tools || []), { name: ev.name, label: ev.label, done: false }] }
-              : m
-          ))
-        } else if (ev.type === 'tool_end') {
-          setMessages(prev => prev.map(m => {
-            if (m.id !== currentIdRef.current) return m
-            let matched = false
-            return {
-              ...m,
-              tools: (m.tools || []).map(t => {
-                if (!matched && t.name === ev.name && !t.done) {
-                  matched = true
-                  return { ...t, done: true, snippet: ev.snippet || null }
-                }
-                return t
-              }),
-            }
-          }))
-        } else if (ev.type === 'figure') {
-          setFigures(prev => [...prev, ev.figure_json])
-        } else if (ev.type === 'message_end') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current ? { ...m, done: true } : m
-          ))
-          currentIdRef.current = null
-          setBusy(false)
-        } else if (ev.type === 'clarification') {
-          setMessages(prev => [...prev, {
-            id: nextId(), role: 'assistant',
-            content: ev.vraag, clarification: ev.opties, done: true,
-          }])
-          currentIdRef.current = null
-          setBusy(false)
-        } else if (ev.type === 'dashboard_generating') {
-          setGeneratingDashboard(true)
-          setDashboardSpec(null)
-        } else if (ev.type === 'dashboard_ready') {
-          setGeneratingDashboard(false)
-          setDashboardSpec(ev.spec)
-        } else if (ev.type === 'error') {
-          setGeneratingDashboard(false)
-          setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true }])
-          setBusy(false)
-        }
+        const handler = messageHandlers[ev.type]
+        if (handler) handler(ev)
       }
     }
 

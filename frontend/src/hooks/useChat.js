@@ -42,6 +42,82 @@ export function useChat({ onUnauthorized } = {}) {
     manualCloseRef.current = false
     retryCountRef.current = 0
 
+    function updateCurrentMsg(updater) {
+      setMessages(prev => prev.map(m =>
+        m.id === currentMsgRef.current ? updater(m) : m
+      ))
+    }
+
+    function finishStream() {
+      currentMsgRef.current = null
+      setBusy(false)
+    }
+
+    const messageHandlers = {
+      system_message(ev) {
+        addToast(ev.message, 'warning')
+      },
+      toast(ev) {
+        addToast(ev.message, ev.level || 'info')
+      },
+      message_start() {
+        const msgId = nextId()
+        currentMsgRef.current = msgId
+        setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
+      },
+      message_cancel() {
+        cancelCurrentMsg()
+      },
+      text_delta(ev) {
+        updateCurrentMsg(m => ({ ...m, content: m.content + ev.content }))
+      },
+      tool_start(ev) {
+        updateCurrentMsg(m => ({
+          ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false }],
+        }))
+      },
+      tool_end(ev) {
+        updateCurrentMsg(m => ({
+          ...m,
+          tools: m.tools.map(t =>
+            t.name === ev.name ? { ...t, done: true, snippet: ev.snippet || null } : t
+          ),
+        }))
+      },
+      figure(ev) {
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant',
+          content: '', figures: [{ label: ev.label, json: ev.figure_json }], done: true,
+        }])
+      },
+      message_end() {
+        updateCurrentMsg(m => ({ ...m, done: true }))
+        finishStream()
+      },
+      clarification(ev) {
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant',
+          content: ev.vraag, clarification: ev.opties, done: true,
+        }])
+        finishStream()
+      },
+      starter_questions(ev) {
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant',
+          content: `Hier zijn voorbeeldvragen over **${ev.label}**:`,
+          starterQuestions: ev.questions, done: true,
+        }])
+        finishStream()
+      },
+      error(ev) {
+        cancelCurrentMsg()
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
+        }])
+        setBusy(false)
+      },
+    }
+
     function connect() {
       const ws = new WebSocket(buildWsUrl())
       wsRef.current = ws
@@ -78,89 +154,8 @@ export function useChat({ onUnauthorized } = {}) {
 
       ws.onmessage = (e) => {
         const event = JSON.parse(e.data)
-
-        if (event.type === 'system_message') {
-          addToast(event.message, 'warning')
-          return
-        }
-        if (event.type === 'toast') {
-          addToast(event.message, event.level || 'info')
-          return
-        }
-        if (event.type === 'message_start') {
-          const msgId = nextId()
-          currentMsgRef.current = msgId
-          setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
-          return
-        }
-        if (event.type === 'message_cancel') {
-          cancelCurrentMsg()
-          return
-        }
-        if (event.type === 'text_delta') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentMsgRef.current ? { ...m, content: m.content + event.content } : m
-          ))
-          return
-        }
-        if (event.type === 'tool_start') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentMsgRef.current
-              ? { ...m, tools: [...m.tools, { name: event.name, label: event.label, done: false }] }
-              : m
-          ))
-          return
-        }
-        if (event.type === 'tool_end') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentMsgRef.current
-              ? { ...m, tools: m.tools.map(t => t.name === event.name ? { ...t, done: true, snippet: event.snippet || null } : t) }
-              : m
-          ))
-          return
-        }
-        if (event.type === 'figure') {
-          setMessages(prev => [...prev, {
-            id: nextId(), role: 'assistant',
-            content: '', figures: [{ label: event.label, json: event.figure_json }], done: true,
-          }])
-          return
-        }
-        if (event.type === 'message_end') {
-          setMessages(prev => prev.map(m =>
-            m.id === currentMsgRef.current ? { ...m, done: true } : m
-          ))
-          currentMsgRef.current = null
-          setBusy(false)
-          return
-        }
-        if (event.type === 'clarification') {
-          setMessages(prev => [...prev, {
-            id: nextId(), role: 'assistant',
-            content: event.vraag, clarification: event.opties, done: true,
-          }])
-          currentMsgRef.current = null
-          setBusy(false)
-          return
-        }
-        if (event.type === 'starter_questions') {
-          setMessages(prev => [...prev, {
-            id: nextId(), role: 'assistant',
-            content: `Hier zijn voorbeeldvragen over **${event.label}**:`,
-            starterQuestions: event.questions, done: true,
-          }])
-          currentMsgRef.current = null
-          setBusy(false)
-          return
-        }
-        if (event.type === 'error') {
-          cancelCurrentMsg()
-          setMessages(prev => [...prev, {
-            id: nextId(), role: 'assistant', content: event.message, done: true, isError: true,
-          }])
-          setBusy(false)
-          return
-        }
+        const handler = messageHandlers[event.type]
+        if (handler) handler(event)
       }
     }
 

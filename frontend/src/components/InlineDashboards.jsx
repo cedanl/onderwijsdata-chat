@@ -133,6 +133,51 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
   return children
 }
 
+// ─── Chart data builders ─────────────────────────────────────────────────────
+
+function buildBarChartData(dict, label, color) {
+  if (!dict) return null
+  const entries = Object.entries(dict).sort((a, b) => a[0] - b[0])
+  return {
+    labels: entries.map(([y]) => String(y)),
+    datasets: [{ label, data: entries.map(([, v]) => v), backgroundColor: color, borderRadius: 6 }],
+  }
+}
+
+function buildLineChartData(dict, label, borderColor, bgColor) {
+  if (!dict) return null
+  const entries = Object.entries(dict).sort((a, b) => a[0] - b[0])
+  return {
+    labels: entries.map(([y]) => String(y)),
+    datasets: [{ label, data: entries.map(([, v]) => v), borderColor, backgroundColor: bgColor, fill: true, tension: 0.3, pointRadius: 4 }],
+  }
+}
+
+function buildSectorChartData(sectoren, { type = 'doughnut' } = {}) {
+  if (!sectoren) return null
+  const entries = Object.entries(sectoren).sort((a, b) => b[1] - a[1]).slice(0, 7)
+  const dataset = { data: entries.map(([, v]) => v), backgroundColor: SECTOR_COLORS, borderWidth: 0 }
+  if (type === 'bar') {
+    dataset.label = 'Ingeschrevenen'
+    dataset.borderRadius = 6
+  }
+  return {
+    labels: entries.map(([k]) => SECTOR_LABELS[k] || k),
+    datasets: [dataset],
+  }
+}
+
+function sortedEntries(dict) {
+  if (!dict) return []
+  return Object.entries(dict).sort((a, b) => a[0] - b[0])
+}
+
+function yearOverYearDelta(entries) {
+  const last = entries.at(-1)
+  const prev = entries.at(-2)
+  return last && prev ? last[1] - prev[1] : null
+}
+
 // ─── InlineDashboard ─────────────────────────────────────────────────────────
 
 export function InlineDashboard({ instelling }) {
@@ -140,51 +185,20 @@ export function InlineDashboard({ instelling }) {
   const dark = useDarkMode()
   const opts = chartOpts(dark)
 
-  const ingesChartData = data?.ingeschrevenen ? (() => {
-    const entries = Object.entries(data.ingeschrevenen).sort((a,b) => a[0]-b[0])
-    return {
-      labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Ingeschrevenen', data: entries.map(([,v]) => v), backgroundColor: CHART_COLORS[0], borderRadius: 6 }],
-    }
-  })() : null
+  const ingesChartData = buildBarChartData(data?.ingeschrevenen, 'Ingeschrevenen', CHART_COLORS[0])
+  const eerstejaarsChartData = buildBarChartData(data?.eerstejaars, 'Eerstejaars', '#0D9488')
+  const gediplChartData = buildLineChartData(data?.gediplomeerden, 'Gediplomeerden', CHART_COLORS[5], 'rgba(34,197,94,.08)')
+  const sectorChartData = buildSectorChartData(data?.sectoren)
 
-  const eerstejaarsChartData = data?.eerstejaars ? (() => {
-    const entries = Object.entries(data.eerstejaars).sort((a,b) => a[0]-b[0])
-    return {
-      labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Eerstejaars', data: entries.map(([,v]) => v), backgroundColor: '#0D9488', borderRadius: 6 }],
-    }
-  })() : null
-
-  const gediplChartData = data?.gediplomeerden ? (() => {
-    const entries = Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0])
-    return {
-      labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Gediplomeerden', data: entries.map(([,v]) => v), borderColor: CHART_COLORS[5], backgroundColor: 'rgba(34,197,94,.08)', fill: true, tension: 0.3, pointRadius: 4 }],
-    }
-  })() : null
-
-  const sectorChartData = data?.sectoren ? (() => {
-    const entries = Object.entries(data.sectoren).sort((a,b) => b[1]-a[1]).slice(0, 7)
-    return {
-      labels: entries.map(([k]) => SECTOR_LABELS[k] || k),
-      datasets: [{ data: entries.map(([,v]) => v), backgroundColor: SECTOR_COLORS, borderWidth: 0 }],
-    }
-  })() : null
-
-  // KPIs
-  const ingesEntries = data?.ingeschrevenen ? Object.entries(data.ingeschrevenen).sort((a,b) => a[0]-b[0]) : []
+  const ingesEntries = sortedEntries(data?.ingeschrevenen)
   const lastInges = ingesEntries.at(-1)
-  const prevInges = ingesEntries.at(-2)
-  const ingesDelta = lastInges && prevInges ? lastInges[1] - prevInges[1] : null
+  const ingesDelta = yearOverYearDelta(ingesEntries)
 
-  const diplEntries = data?.gediplomeerden ? Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0]) : []
+  const diplEntries = sortedEntries(data?.gediplomeerden)
   const lastDipl = diplEntries.at(-1)
-  const prevDipl = diplEntries.at(-2)
-  const diplDelta = lastDipl && prevDipl ? lastDipl[1] - prevDipl[1] : null
+  const diplDelta = yearOverYearDelta(diplEntries)
 
-  const eerstejaarsEntries = data?.eerstejaars ? Object.entries(data.eerstejaars).sort((a,b) => a[0]-b[0]) : []
-  const lastEj = eerstejaarsEntries.at(-1)
+  const lastEj = sortedEntries(data?.eerstejaars).at(-1)
 
   const vrouw = data?.geslacht?.VROUW || 0
   const man = data?.geslacht?.MAN || 0
@@ -293,28 +307,14 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
   const dark = useDarkMode()
   const opts = chartOpts(dark)
 
-  const gediplChartData = data?.gediplomeerden ? (() => {
-    const entries = Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0])
-    return {
-      labels: entries.map(([y]) => String(y)),
-      datasets: [{ label: 'Gediplomeerden', data: entries.map(([,v]) => v), borderColor: '#0D9488', backgroundColor: 'rgba(13,148,136,.08)', fill: true, tension: 0.3, pointRadius: 4 }],
-    }
-  })() : null
+  const gediplChartData = buildLineChartData(data?.gediplomeerden, 'Gediplomeerden', '#0D9488', 'rgba(13,148,136,.08)')
+  const sectorChartData = buildSectorChartData(data?.sectoren, { type: 'bar' })
 
-  const sectorChartData = data?.sectoren ? (() => {
-    const entries = Object.entries(data.sectoren).sort((a,b) => b[1]-a[1]).slice(0, 7)
-    return {
-      labels: entries.map(([k]) => SECTOR_LABELS[k] || k),
-      datasets: [{ label: 'Ingeschrevenen', data: entries.map(([,v]) => v), backgroundColor: SECTOR_COLORS, borderRadius: 6 }],
-    }
-  })() : null
-
-  const diplEntries = data?.gediplomeerden ? Object.entries(data.gediplomeerden).sort((a,b) => a[0]-b[0]) : []
+  const diplEntries = sortedEntries(data?.gediplomeerden)
   const lastDipl = diplEntries.at(-1)
-  const prevDipl = diplEntries.at(-2)
-  const diplDelta = lastDipl && prevDipl ? lastDipl[1] - prevDipl[1] : null
+  const diplDelta = yearOverYearDelta(diplEntries)
 
-  const sectorEntries = data?.sectoren ? Object.entries(data.sectoren).sort((a,b) => b[1]-a[1]) : []
+  const sectorEntries = data?.sectoren ? Object.entries(data.sectoren).sort((a, b) => b[1] - a[1]) : []
   const kpiColors = ['#EFF6FF','#FFF7ED','#F0FDF4']
   // Icon stroke colors: drawn from CHART_COLORS (indices 0, 2, 5)
   const kpiIconColors = [CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]

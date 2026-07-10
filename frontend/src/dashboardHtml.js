@@ -43,6 +43,39 @@ export function parseTables(content) {
   return tables
 }
 
+function largestAbsoluteValue(values) {
+  return values.filter(v => v !== null).reduce((a, b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
+}
+
+function buildKpis(numericCols, labels, rowCount, firstHeader) {
+  const primary = numericCols[0].data.filter(v => v !== null)
+  const maxI = primary.indexOf(Math.max(...primary))
+  const minI = primary.indexOf(Math.min(...primary))
+
+  const thirdKpi = numericCols.length > 1
+    ? (() => {
+        const diffData = numericCols[numericCols.length - 1].data
+        const maxD = largestAbsoluteValue(diffData)
+        return {
+          label: 'Grootste verschil',
+          value: `${maxD > 0 ? '+' : ''}${fmtNl(maxD)}`,
+          sub: cleanLabel(labels[diffData.indexOf(maxD)]),
+        }
+      })()
+    : {
+        label: 'Gemiddelde',
+        value: fmtNl(+(primary.reduce((a, b) => a + b, 0) / primary.length).toFixed(1)),
+        sub: numericCols[0].label,
+      }
+
+  return [
+    { label: 'Hoogste waarde', value: fmtNl(primary[maxI]), sub: cleanLabel(labels[maxI]) },
+    { label: 'Laagste waarde', value: fmtNl(primary[minI]), sub: cleanLabel(labels[minI]) },
+    thirdKpi,
+    { label: 'Aantal rijen', value: `${rowCount}`, sub: escapeHtml(firstHeader) },
+  ]
+}
+
 export function buildChartSpecs(tables) {
   const COLORS = CHART_COLORS
   const ALPHAS = ['rgba(37,99,235,.12)', 'rgba(20,184,166,.12)', 'rgba(245,158,11,.12)']
@@ -75,25 +108,7 @@ export function buildChartSpecs(tables) {
     const chartType = isTimeSeries ? 'line' : 'bar'
     const horizontal = !isTimeSeries && labels.length > 4
 
-    const primary = numericCols[0].data.filter(v => v !== null)
-    const maxI = primary.indexOf(Math.max(...primary))
-    const minI = primary.indexOf(Math.min(...primary))
-    const kpis = [
-      { label: 'Hoogste waarde', value: fmtNl(primary[maxI]), sub: cleanLabel(labels[maxI]) },
-      { label: 'Laagste waarde', value: fmtNl(primary[minI]), sub: cleanLabel(labels[minI]) },
-      numericCols.length > 1
-        ? { label: 'Grootste verschil', value: (() => {
-              const diff = numericCols[numericCols.length - 1].data
-              const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
-              return `${maxD > 0 ? '+' : ''}${fmtNl(maxD)}`
-            })(), sub: (() => {
-              const diff = numericCols[numericCols.length - 1]?.data || []
-              const maxD = diff.filter(v => v !== null).reduce((a,b) => Math.abs(b) > Math.abs(a) ? b : a, 0)
-              return cleanLabel(labels[diff.indexOf(maxD)])
-            })() }
-        : { label: 'Gemiddelde', value: fmtNl(+(primary.reduce((a,b) => a+b, 0) / primary.length).toFixed(1)), sub: numericCols[0].label },
-      { label: 'Aantal rijen', value: `${rows.length}`, sub: escapeHtml(headers[0]) },
-    ]
+    const kpis = buildKpis(numericCols, labels, rows.length, headers[0])
 
     return { id: `chart${ti}`, chartType, horizontal, labels, datasets, kpis, tbl }
   }).filter(Boolean)
