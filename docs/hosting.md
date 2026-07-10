@@ -1,6 +1,6 @@
 # Professioneel hosten
 
-Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokale standaardinstelling (SQLite, wachtwoordlogin) is bedoeld voor ontwikkeling en demo's. Voor een gedeelde, institutionele omgeving zijn er drie componenten om te vervangen.
+Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokale standaardinstelling (SQLite, wachtwoordlogin) is bedoeld voor ontwikkeling en demo's.
 
 ---
 
@@ -9,7 +9,7 @@ Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokal
 | Component | Lokaal (standaard) | Productie |
 |-----------|-------------------|-----------|
 | Database | SQLite (`chat_history.db`) | PostgreSQL (beheerde cloud-service) |
-| Authenticatie | Gebruikersnaam/wachtwoord in `.env` | OAuth via Azure AD / SURFconext |
+| Authenticatie | Gebruikersnaam/wachtwoord in `.env` | Nog niet geïmplementeerd (OAuth/SURFconext gepland) |
 
 ---
 
@@ -28,6 +28,8 @@ SQLite is single-user en niet geschikt voor gelijktijdige toegang door meerdere 
 
 ### Instellen
 
+De app leest de `DATABASE_URL` omgevingsvariabele:
+
 ```dotenv
 DATABASE_URL=postgresql+asyncpg://gebruiker:wachtwoord@host:5432/onderwijschat
 ```
@@ -39,33 +41,11 @@ De app maakt de tabellen automatisch aan bij de eerste start. Geen handmatige mi
 
 ---
 
-## 2. Authenticatie — OAuth
+## 2. Authenticatie
 
-Voor institutionele omgevingen is OAuth de aangewezen methode. Gebruikers loggen in met hun bestaande account (Microsoft, SURFconext).
+De huidige implementatie ondersteunt alleen gebruikersnaam/wachtwoord-authenticatie via `CHAT_USERS` in `.env` met HMAC-tokens. Er is geen OAuth/OIDC-integratie.
 
-### Azure Active Directory
-
-Registreer een app in de [Azure Portal](https://portal.azure.com):
-
-1. **Azure Portal** → Azure Active Directory → App-registraties → Nieuwe registratie
-2. Redirect URI: `https://jouwdomein.nl/auth/oauth/azure-ad/callback`
-3. Maak een client secret aan onder "Certificaten en geheimen"
-
-Voeg toe aan `.env` (of omgevingsvariabelen van het hostingplatform):
-
-```dotenv
-CHAT_SECRET=<willekeurige lange string>
-
-OAUTH_AZURE_AD_CLIENT_ID=<application-id>
-OAUTH_AZURE_AD_CLIENT_SECRET=<client-secret>
-OAUTH_AZURE_AD_TENANT_ID=<tenant-id>
-```
-
-OAuth-integratie vereist aanpassingen in `auth.py` — de huidige implementatie ondersteunt alleen gebruikersnaam/wachtwoord-authenticatie.
-
-### SURFconext
-
-SURFconext werkt via SAML/OIDC. Raadpleeg de [SURFconext documentatie](https://www.surf.nl/surfconext) voor het aanvragen van een koppeling. In de praktijk loopt dit via het SURF-instellingsloket.
+Voor een productieomgeving met institutionele accounts (Azure AD, SURFconext) is uitbreiding van de auth-module nodig.
 
 ---
 
@@ -88,7 +68,7 @@ Geef omgevingsvariabelen mee via Docker of je platform — nooit in de image zel
 ```bash
 docker run -p 8000:8000 \
   -e CHAT_SECRET="..." \
-  -e DATABASE_URL="postgresql+asyncpg://..." \
+  -e CHAT_USERS="admin:wachtwoord" \
   -e AZURE_AI_API_KEY="..." \
   -e MODEL="azure_ai/claude-sonnet-4-6" \
   -e AVAILABLE_MODELS="azure_ai/claude-haiku-4-5,azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o" \
@@ -104,7 +84,7 @@ az containerapp create \
   --image ghcr.io/cedanl/onderwijsdata-chat:latest \
   --env-vars \
       CHAT_SECRET=secretref:chat-secret \
-      DATABASE_URL=secretref:db-url \
+      CHAT_USERS=secretref:chat-users \
       AZURE_AI_API_KEY=secretref:api-key \
   --ingress external --target-port 8000
 ```
@@ -114,15 +94,13 @@ az containerapp create \
 1. Maak een component aan met het Docker-image
 2. Koppel een managed PostgreSQL-instantie
 3. Stel omgevingsvariabelen in via de SURF-interface
-4. Gebruik SURFconext voor authenticatie (zie sectie 2)
 
 ---
 
 ## Checklist productiedeployment
 
 - [ ] `CHAT_SECRET` ingesteld als omgevingsvariabele (niet in repo)
-- [ ] `DATABASE_URL` wijst naar PostgreSQL (niet SQLite)
-- [ ] OAuth geconfigureerd (Azure AD of SURFconext)
-- [ ] `chat_history.db` staat in `.gitignore`
+- [ ] `CHAT_USERS` ingesteld met sterke wachtwoorden
 - [ ] API keys als secrets in het hostingplatform, niet in code
 - [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
+- [ ] `chat_history.db` staat in `.gitignore`

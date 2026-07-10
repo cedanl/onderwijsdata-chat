@@ -22,24 +22,13 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `AVAILABLE_MODELS` | *(afgeleid uit API keys)* | Kommagescheiden lijst van modellen in de model-picker — zie [Model-picker](#model-picker) |
+| `AVAILABLE_MODELS` | *(niet ingesteld)* | Kommagescheiden lijst van modellen in de model-picker — zie [Model-picker](#model-picker) |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
 | `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
-| `CBS_ROW_LIMIT` | `200` | Maximum rijen uit CBS-datasets |
+| `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
-
----
-
-## Modus-picker
-
-De app biedt twee analysemodi die gebruikers bovenin de chat kunnen kiezen:
-
-| Modus | Gedrag |
-|-------|--------|
-| **Snel** *(standaard)* | Beantwoordt precies wat gevraagd is — geen automatische grafieken of uitgebreide interpretatie |
-| **Verdiep** | Vraagt eerst door naar de vraag achter de vraag, daarna een volledige analyse met grafiek en interpretatie |
-
-Geen configuratie nodig — de picker verschijnt automatisch in de UI.
+| `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 
 ---
 
@@ -69,13 +58,11 @@ AVAILABLE_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-4o,ollama_chat/llama3.1:
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `CHAT_SECRET` | *(per herstart gegenereerd)* | JWT-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
+| `CHAT_SECRET` | *(per herstart gegenereerd)* | HMAC-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
 | `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
-| `CHAT_HEADER_SECRET` | *(niet ingesteld)* | Header-authenticatie voor reverse proxy: stuur `X-Chat-Secret: <waarde>` mee. Optioneel ook `X-Chat-User: <identifier>`. |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./chat_history.db` | Database voor gespreksopslag. Standaard lokale SQLite. Voor productie: `postgresql+asyncpg://user:pass@host/db`. |
 
 !!! info "Authenticatie is optioneel"
-    Zonder `CHAT_USERS` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel `CHAT_SECRET` als minimaal één authenticatiemethode.
+    Zonder `CHAT_USERS` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel `CHAT_SECRET` als `CHAT_USERS`.
 
 ---
 

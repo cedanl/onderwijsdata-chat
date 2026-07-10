@@ -2,6 +2,8 @@
 
 De assistent beschikt over de volgende tools. Ze worden automatisch ingezet op basis van je vraag — je hoeft ze niet expliciet aan te roepen.
 
+Bij elke tool-aanroep wordt een reproduceerbaar Python-snippet getoond in de chat, zodat je de analyse lokaal kunt herhalen.
+
 ---
 
 ## search_catalog
@@ -13,6 +15,7 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 | `query` | string | Zoekterm, bijv. `"mbo studenten prognose"` |
 | `source` | string | `"cbs"`, `"rio"`, `"duo"` of `"both"` (standaard: alles) |
 | `top_n` | integer | Maximaal aantal resultaten (standaard: 15) |
+| `geo_niveau` | string | Filter op geografisch niveau (optioneel) |
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
@@ -69,55 +72,72 @@ Laadt een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en een `da
 
 ## query_data
 
-Filtert en selecteert rijen uit gecachede data. Werkt voor zowel **DUO-datasets** (na `get_duo_data`) als **geüploade bestanden** (na uploaden van xlsx/csv).
+Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle databronnen na het ophalen (CBS, RIO, DUO) en voor resultaten van `run_analysis`.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `data_key` | string | Sleutel uit `get_duo_data` (bijv. `duo:123:0`) of upload (bijv. `upload:bestand.csv`) |
-| `filters` | object | Exacte kolomfilters, bijv. `{"Leerweg": "Voltijd", "Jaar": "2023"}` |
+| `data_key` | string | Sleutel uit een eerdere tool-aanroep, bijv. `duo:123:0`, `cbs:85423NED` |
+| `filters` | object | Kolomfilters met operators: `{"Jaar": {"gte": "2020"}}`, of exact: `{"Leerweg": "Voltijd"}` |
 | `columns` | array | Alleen deze kolommen teruggeven |
 | `max_rows` | integer | Maximaal aantal rijen (standaard: 500) |
+| `group_by` | array | Groeperen op deze kolommen |
+| `aggregate` | object | Aggregatiefuncties per kolom, bijv. `{"Aantal": "sum"}` |
 
-!!! tip "Geüploade bestanden"
-    Na het uploaden van een bestand is de `data_key` direct beschikbaar — geen laadstap nodig. De assistent ontvangt het schema automatisch en kan direct filteren.
+---
+
+## run_analysis
+
+Voert pandas/numpy-code uit in een beveiligde sandbox op eerder opgehaalde data.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `code` | string | Python-code (pandas, numpy, plotly express beschikbaar) |
+| `data_key` | string | Optionele data_key — het bijbehorende DataFrame is beschikbaar als `df` |
+
+De sandbox blokkeert imports, `exec`, `eval`, `os`, `sys` en andere onveilige operaties. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`.
 
 ---
 
 ## create_plot
 
-Maakt een interactieve Plotly-grafiek van opgehaalde data.
+Maakt een interactieve Plotly-grafiek.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `data` | array | Lijst van datarijen als objecten |
 | `chart_type` | string | `"bar"`, `"line"`, `"scatter"`, `"pie"` of `"histogram"` |
 | `x` | string | Veldnaam voor de x-as (of labels bij pie) |
 | `y` | string | Veldnaam voor de y-as (of waarden bij pie) |
 | `title` | string | Titel van de grafiek |
-| `color_by` | string | Veldnaam voor groepering (optioneel, bijv. `"Geslacht"`) |
+| `data_key` | string | Data_key van eerder opgehaalde data (optioneel, alternatief voor `data`) |
+| `data` | array | Lijst van datarijen als objecten (optioneel, alternatief voor `data_key`) |
+| `color_by` | string | Veldnaam voor groepering (optioneel) |
 
-De grafiek wordt direct in de chat weergegeven en opgenomen in het rapport.
+De grafiek wordt direct in de chat weergegeven.
 
 ---
 
-## Exportopties
+## create_choropleth_map
 
-Na elk antwoord verschijnen drie downloadknoppen:
+Maakt een choropleth-kaart van Nederland op provincie-, gemeente- of COROP-niveau.
 
-| Knop | Inhoud |
-|------|--------|
-| **📥 HTML** | Alle grafieken en teksten van de sessie als zelfstandig HTML-bestand |
-| **📄 PDF** | Zelfde inhoud als PDF |
-| **📦 Reproduceerbare code** | Zip-archief met `analyse.py`, `analyse.ipynb`, `requirements.txt` en `LEESMIJ.md` |
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `location_col` | string | Kolomnaam met locatienamen |
+| `value_col` | string | Kolomnaam met waarden |
+| `title` | string | Titel van de kaart |
+| `data_key` | string | Data_key van eerder opgehaalde data (optioneel) |
+| `data` | array | Lijst van datarijen als objecten (optioneel) |
+| `level` | string | `"auto"`, `"provincie"`, `"gemeente"` of `"corop"` (standaard: auto) |
 
-### Reproduceerbare code
+---
 
-De zip bevat een volledig uitvoerbaar Python-pakket:
+## clarify_scope
 
-- **`analyse.py`** — één blok per vraag, directe tool-aanroepen voor CBS/DUO/RIO; voor geüploade bestanden wordt echte `pandas`-code gegenereerd die filters en aggregaties reconstrueert
-- **`analyse.ipynb`** — notebook-versie met markdown (vraag + antwoord) en codecellen
-- **`requirements.txt`** — alleen gebruikte packages, versies gepind
-- **`LEESMIJ.md`** — NL installatie-instructies (uv en pip)
+Stelt een verduidelijkingsvraag aan de gebruiker wanneer de oorspronkelijke vraag meerdere interpretaties heeft.
 
-!!! note "Geüploade bestanden"
-    Voor analyses op eigen bestanden bevat `analyse.py` zelfstandige `pandas`/`plotly`-code — geen `tools/`-map nodig. Zorg dat het geüploade bestand aanwezig is in de map waar je het script uitvoert.
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `vraag` | string | De verduidelijkingsvraag |
+| `opties` | array | 2-3 keuzes met `label`, `beschrijving` en `aanbevolen` (boolean) |
+
+Deze tool wordt afgehandeld door de UI — de gebruiker ziet een keuzemenu en kan een optie selecteren.
