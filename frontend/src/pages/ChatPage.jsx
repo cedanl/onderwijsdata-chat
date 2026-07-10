@@ -33,17 +33,44 @@ function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
 }
 
+function CopyButton({ text, className }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+  return (
+    <button className={`copy-btn ${className || ''}`} onClick={handleCopy} title="Kopieer" aria-label="Kopieer">
+      {copied ? (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 function CodeBlock({ className, children }) {
   const language = /language-(\w+)/.exec(className || '')?.[1]
   if (!language) return <code className={className}>{children}</code>
+  const code = String(children).replace(/\n$/, '')
   return (
-    <SyntaxHighlighter
-      language={language}
-      style={codeTheme()}
-      customStyle={{ borderRadius: 6, fontSize: '0.8125rem', margin: '8px 0' }}
-    >
-      {String(children).replace(/\n$/, '')}
-    </SyntaxHighlighter>
+    <div className="code-block-wrap">
+      <CopyButton text={code} className="copy-btn-code" />
+      <SyntaxHighlighter
+        language={language}
+        style={codeTheme()}
+        customStyle={{ borderRadius: 6, fontSize: '0.8125rem', margin: '8px 0' }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
   )
 }
 
@@ -433,7 +460,8 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
         {msg.tools?.map((t, i) => (
           <ToolStep key={i} tool={t} />
         ))}
-        <div className="message-bubble" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
+        <div className="message-bubble message-bubble-assistant" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
+          {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
           {!msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length ? (
             <div className="ai-typing"><span /><span /><span /></div>
           ) : msg.content ? (
