@@ -962,19 +962,16 @@ input, textarea { font: inherit; }
 
 /* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .charts-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 768px) {
   .hero h1 { font-size: 2.2rem; }
   .chat-layout { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .navbar-nav { display: none; }
   .navbar-cta { display: none; }
   .mobile-tabs { display: flex; }
 
-  /* Sidebar: slide-over op mobiel */
+  /* Sidebar: slide-over op mobiel/tablet */
   .chat-sidebar {
     position: fixed; top: 0; left: 0; bottom: 0;
     width: 280px; z-index: 200;
