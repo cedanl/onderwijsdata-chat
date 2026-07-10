@@ -60,15 +60,6 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
           <small>Beschrijf welke data je wilt zien</small>
         </button>
 
-        {import.meta.env.DEV && (
-          <button className="wb-new-card" onClick={() => { import('../devSeedDashboard').then(({ seedDashboardChat }) => seedDashboardChat()); onNew() }} style={{ borderColor: '#F59E0B', background: '#FFFBEB' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-            <span style={{ color: '#92400E' }}>Test dashboard</span>
-            <small style={{ color: '#B45309' }}>Opent creator met voorgeladen data</small>
-          </button>
-        )}
       </div>
     </div>
   )
