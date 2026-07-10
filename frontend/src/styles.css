@@ -400,6 +400,26 @@ input, textarea { font: inherit; }
 .history-action-btn:hover { background: var(--blue-100); border-color: var(--blue-300); }
 .history-action-restart { border-color: var(--gray-200); background: var(--white); color: var(--gray-600); }
 .history-action-restart:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-700); }
+.history-item-row { display: flex; align-items: flex-start; gap: 0; position: relative; }
+.history-item-row .history-btn { flex: 1; min-width: 0; }
+.history-item-actions {
+  display: none; flex-direction: row; gap: 2px; align-items: center;
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+}
+.history-item-row:hover .history-item-actions { display: flex; }
+.history-action-icon {
+  padding: 4px; border: none; background: transparent; color: var(--gray-400);
+  cursor: pointer; border-radius: var(--radius-sm); transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.history-action-icon svg { width: 13px; height: 13px; }
+.history-action-icon:hover { color: var(--gray-700); background: var(--gray-100); }
+.history-action-icon-delete:hover { color: #DC2626; background: #FEF2F2; }
+.history-title-input {
+  width: 100%; border: none; border-bottom: 2px solid var(--primary);
+  outline: none; background: transparent; font: inherit; font-size: inherit;
+  color: inherit; padding: 0;
+}
 .restored-banner {
   text-align: center; padding: 8px 16px; margin: 0 auto 16px;
   background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: var(--radius);
@@ -547,6 +567,26 @@ input, textarea { font: inherit; }
 .ws-reconnecting { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--gray-400); }
 .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; animation: ws-pulse 1.4s ease-in-out infinite; }
 @keyframes ws-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* Scroll-to-bottom button */
+.scroll-to-bottom-btn {
+  position: sticky; bottom: 12px; align-self: flex-end;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--white); border: 1px solid var(--gray-200);
+  color: var(--gray-500); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow); z-index: 10;
+  transition: color .15s, border-color .15s, box-shadow .15s, transform .15s;
+  animation: fadeInUp .2s ease;
+}
+.scroll-to-bottom-btn:hover {
+  color: var(--blue-600); border-color: var(--blue-300);
+  box-shadow: var(--shadow-lg); transform: translateY(-1px);
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .model-picker { position: relative; }
 .model-picker select {
@@ -914,7 +954,7 @@ input, textarea { font: inherit; }
 
 /* ─── Confirm Modal ───────────────────────────────────────── */
 .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.confirm-dialog { background: var(--bg); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.confirm-dialog { background: var(--white); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
 .confirm-message { margin-bottom: 20px; font-size: .95rem; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: none; cursor: pointer; }

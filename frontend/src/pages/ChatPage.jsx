@@ -20,6 +20,8 @@ import { fetchConversations, putConversation, deleteConversationApi } from '../a
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
+import ConfirmModal from '../components/ConfirmModal'
+import ScrollToBottom from '../components/ScrollToBottom'
 
 function loadConversationHistory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
@@ -124,7 +126,9 @@ export default function ChatPage({ openRapport, settings = {} }) {
   })
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
   const messagesRef = useRef(messages)
   // Load conversations from server on mount; migrate localStorage if server is empty
@@ -191,6 +195,28 @@ export default function ChatPage({ openRapport, settings = {} }) {
     try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
     setRestoredMessages(conv.messages)
   }, [clear, saveCurrentConversation])
+
+  const handleDeleteConversation = useCallback((id) => {
+    setPendingDelete(id)
+  }, [])
+
+  const confirmDeleteConversation = useCallback(() => {
+    if (!pendingDelete) return
+    const updated = conversationHistory.filter(c => c.id !== pendingDelete)
+    persistConversationHistory(updated)
+    setConversationHistory(updated)
+    deleteConversationApi(String(pendingDelete)).catch(() => {})
+    setPendingDelete(null)
+  }, [pendingDelete, conversationHistory])
+
+  const handleRenameConversation = useCallback((id, newTitle) => {
+    const trimmed = newTitle.trim()
+    if (!trimmed) return
+    const updated = conversationHistory.map(c => c.id === id ? { ...c, title: trimmed } : c)
+    persistConversationHistory(updated)
+    setConversationHistory(updated)
+    putConversation(String(id), { title: trimmed }).catch(() => {})
+  }, [conversationHistory])
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {
@@ -312,6 +338,8 @@ export default function ChatPage({ openRapport, settings = {} }) {
           <ConversationHistory
             history={conversationHistory}
             onLoad={handleLoad}
+            onDelete={handleDeleteConversation}
+            onRename={handleRenameConversation}
           />
         </aside>
 
@@ -327,7 +355,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
             <span className="chat-mobile-topbar-title">openEDUdata+</span>
           </div>
 
-          <div className="chat-messages">
+          <div className="chat-messages" ref={messagesContainerRef}>
             {!hasMessages && <WelcomeScreen instelling={settings.instelling} functie={settings.functie} />}
             {restoredMessages.length > 0 && messages.length === 0 && (
               <div className="restored-banner">
@@ -342,6 +370,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
               />
             ))}
             <div ref={messagesEndRef} />
+            <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
 
           <div className="chat-input-area">
@@ -403,6 +432,13 @@ export default function ChatPage({ openRapport, settings = {} }) {
 
       {showSources && <DataSourcesModal onClose={() => setShowSources(false)} />}
 
+      {pendingDelete && (
+        <ConfirmModal
+          message="Weet je zeker dat je dit gesprek wilt verwijderen?"
+          onConfirm={confirmDeleteConversation}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </>
   )
 }
@@ -439,6 +475,41 @@ function userInitials(settings) {
   return '?'
 }
 
+function MessageContent({ msg }) {
+  const isStreaming = !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
+  if (isStreaming) return <div className="ai-typing"><span /><span /><span /></div>
+  if (!msg.content) return null
+  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
+}
+
+function ClarificationButtons({ options, onSelect, busy }) {
+  if (!options) return null
+  return (
+    <div className="clarification-btns">
+      {options.map((opt, i) => {
+        const label = typeof opt === 'string' ? opt : opt.label
+        const desc = typeof opt === 'object' ? opt.beschrijving : null
+        return (
+          <button key={i} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
+            {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function StarterButtons({ questions, onSend, busy }) {
+  if (!questions) return null
+  return (
+    <div className="clarification-btns" style={{ marginTop: 8 }}>
+      {questions.map((q, i) => (
+        <button key={i} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
+      ))}
+    </div>
+  )
+}
+
 function Message({ msg, onClarification, onSend, busy, settings = {} }) {
   if (msg.role === 'user') {
     return (
@@ -462,34 +533,12 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
         ))}
         <div className="message-bubble message-bubble-assistant" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
           {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
-          {!msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length ? (
-            <div className="ai-typing"><span /><span /><span /></div>
-          ) : msg.content ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
-          ) : null}
+          <MessageContent msg={msg} />
           {msg.figures?.map((fig, i) => (
             <PlotlyFigure key={i} figureJson={fig.json} label={fig.label} />
           ))}
-          {msg.clarification && (
-            <div className="clarification-btns">
-              {msg.clarification.map((opt, i) => {
-                const label = typeof opt === 'string' ? opt : opt.label
-                const desc = typeof opt === 'object' ? opt.beschrijving : null
-                return (
-                  <button key={i} className="clarification-btn" onClick={() => !busy && onClarification(label)}>
-                    {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          {msg.starterQuestions && (
-            <div className="clarification-btns" style={{ marginTop: 8 }}>
-              {msg.starterQuestions.map((q, i) => (
-                <button key={i} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
-              ))}
-            </div>
-          )}
+          <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
+          <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
         </div>
       </div>
     </div>
@@ -529,7 +578,11 @@ function PlotlyFigure({ figureJson, label }) {
   )
 }
 
-function ConversationHistory({ history, onLoad }) {
+function ConversationHistory({ history, onLoad, onDelete, onRename }) {
+  const [editingId, setEditingId] = useState(null)
+  const [editDraft, setEditDraft] = useState('')
+  const titleInputRef = useRef(null)
+
   if (history.length === 0) return null
 
   const relativeDate = (ts) => {
@@ -540,24 +593,77 @@ function ConversationHistory({ history, onLoad }) {
     return new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
   }
 
+  const startEditing = (conv, e) => {
+    e.stopPropagation()
+    setEditDraft(conv.title)
+    setEditingId(conv.id)
+    setTimeout(() => titleInputRef.current?.focus(), 0)
+  }
+
+  const saveEdit = (id) => {
+    const trimmed = editDraft.trim()
+    if (trimmed && trimmed !== history.find(c => c.id === id)?.title) {
+      onRename(id, trimmed)
+    }
+    setEditingId(null)
+  }
+
   return (
     <div style={{ marginTop: 24 }}>
       <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Gesprek geschiedenis</div>
       <div className="history-list">
         {history.map(conv => (
           <div key={conv.id} className="history-item">
-            <button
-              className="history-btn"
-              onClick={() => onLoad(conv)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <div className="history-btn-content">
-                <span className="history-btn-title">{conv.title}</span>
-                <span className="history-btn-date">{relativeDate(conv.timestamp)}</span>
+            <div className="history-item-row">
+              <button
+                className="history-btn"
+                onClick={() => onLoad(conv)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <div className="history-btn-content">
+                  {editingId === conv.id ? (
+                    <input
+                      ref={titleInputRef}
+                      className="history-title-input"
+                      value={editDraft}
+                      onChange={e => setEditDraft(e.target.value)}
+                      onBlur={() => saveEdit(conv.id)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveEdit(conv.id)
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="history-btn-title">{conv.title}</span>
+                  )}
+                  <span className="history-btn-date">{relativeDate(conv.timestamp)}</span>
+                </div>
+              </button>
+              <div className="history-item-actions">
+                <button
+                  className="history-action-icon"
+                  title="Hernoemen"
+                  onClick={e => startEditing(conv, e)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+                <button
+                  className="history-action-icon history-action-icon-delete"
+                  title="Verwijderen"
+                  onClick={e => { e.stopPropagation(); onDelete(conv.id) }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+                  </svg>
+                </button>
               </div>
-            </button>
+            </div>
           </div>
         ))}
       </div>
