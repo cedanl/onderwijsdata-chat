@@ -156,8 +156,8 @@ def test_groupby_mean():
         "test:agg", group_by=["CAT"], aggregate={"VAL": "mean"},
     ))
     rows = {r["CAT"]: r["VAL"] for r in result["rijen"]}
-    assert rows["A"] == 15.0
-    assert rows["B"] == 30.0
+    assert rows["A"] == pytest.approx(15.0)
+    assert rows["B"] == pytest.approx(30.0)
 
 
 def test_groupby_multiple_agg_functions():
