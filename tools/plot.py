@@ -27,6 +27,37 @@ _GEOJSON_URLS = {
 _GEOJSON_CACHE: dict[str, dict] = {}
 
 
+def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str, dict]:
+    """Group data rows by the *color_by* column."""
+    groups: dict[str, dict] = {}
+    for row in data:
+        key = str(row.get(color_by, "onbekend"))
+        groups.setdefault(key, {"x": [], "y": []})
+        groups[key]["x"].append(row.get(x))
+        groups[key]["y"].append(row.get(y))
+    return groups
+
+
+def _add_trace(fig: go.Figure, chart_type: str, x_vals: list, y_vals: list,
+               color: str, name: str | None = None) -> None:
+    """Add a single trace to the figure based on *chart_type*."""
+    common = {"name": name} if name else {}
+    if chart_type == "bar":
+        fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color, **common))
+    elif chart_type == "line":
+        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers",
+                                  line=dict(color=color, width=2), marker=dict(size=5), **common))
+    elif chart_type == "scatter":
+        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers",
+                                  marker=dict(color=color, size=7), **common))
+    elif chart_type == "histogram":
+        fig.add_trace(go.Histogram(x=x_vals, marker_color=color,
+                                    opacity=0.7 if name else 0.85, **common))
+    elif chart_type == "pie" and not name:
+        fig.add_trace(go.Pie(labels=x_vals, values=y_vals,
+                              marker=dict(colors=_PALETTE), hole=0.3))
+
+
 def create_plot(
     data: list[dict] | None = None,
     chart_type: str = "bar",
@@ -47,25 +78,10 @@ def create_plot(
     fig = go.Figure()
 
     if color_by:
-        groups: dict[str, dict] = {}
-        for row in data:
-            key = str(row.get(color_by, "onbekend"))
-            groups.setdefault(key, {"x": [], "y": []})
-            groups[key]["x"].append(row.get(x))
-            groups[key]["y"].append(row.get(y))
-
+        groups = _group_by_color(data, x, y, color_by)
         for i, (name, vals) in enumerate(groups.items()):
-            color = _PALETTE[i % len(_PALETTE)]
-            if chart_type == "bar":
-                fig.add_trace(go.Bar(name=name, x=vals["x"], y=vals["y"], marker_color=color))
-            elif chart_type == "line":
-                fig.add_trace(go.Scatter(name=name, x=vals["x"], y=vals["y"], mode="lines+markers",
-                                         line=dict(color=color, width=2), marker=dict(size=5)))
-            elif chart_type == "scatter":
-                fig.add_trace(go.Scatter(name=name, x=vals["x"], y=vals["y"], mode="markers",
-                                         marker=dict(color=color, size=7)))
-            elif chart_type == "histogram":
-                fig.add_trace(go.Histogram(name=name, x=vals["x"], marker_color=color, opacity=0.7))
+            _add_trace(fig, chart_type, vals["x"], vals["y"],
+                       _PALETTE[i % len(_PALETTE)], name=name)
 
         if chart_type == "bar":
             fig.update_layout(barmode="group")
@@ -75,21 +91,7 @@ def create_plot(
     else:
         x_vals = [row.get(x) for row in data]
         y_vals = [row.get(y) for row in data]
-        color = _PALETTE[0]
-
-        if chart_type == "bar":
-            fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color))
-        elif chart_type == "line":
-            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers",
-                                     line=dict(color=color, width=2), marker=dict(size=5)))
-        elif chart_type == "scatter":
-            fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers",
-                                     marker=dict(color=color, size=7)))
-        elif chart_type == "pie":
-            fig.add_trace(go.Pie(labels=x_vals, values=y_vals,
-                                 marker=dict(colors=_PALETTE), hole=0.3))
-        elif chart_type == "histogram":
-            fig.add_trace(go.Histogram(x=x_vals, marker_color=color, opacity=0.85))
+        _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0])
 
     layout = dict(
         title=dict(text=title, font=dict(size=16, color="#222")),

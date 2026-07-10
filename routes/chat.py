@@ -145,6 +145,67 @@ async def refresh_dashboard_endpoint(request: Request):
         return JSONResponse({"error": friendly_error(e)}, status_code=500)
 
 
+def _task_busy(current_task: asyncio.Task | None) -> bool:
+    return current_task is not None and not current_task.done()
+
+
+def _handle_stop(session: dict) -> None:
+    stop_event = session.get("stop_event")
+    if stop_event:
+        stop_event.set()
+
+
+async def _handle_message(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    if _task_busy(current_task):
+        return current_task
+    content = msg.get("content", "").strip()
+    if not content:
+        return current_task
+    model = session["chat_settings"].get("model") or None
+    session["current_model"] = model
+    if content in TAG_STARTERS:
+        tags = TAG_STARTERS[content]
+        label = content.removeprefix("Verken ")
+        await emit({"type": "starter_questions", "label": label, "questions": tag_voorbeeldvragen(tags)})
+        return current_task
+    return asyncio.create_task(_process_message(content, session, emit, model))
+
+
+async def _handle_clarification(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    if _task_busy(current_task):
+        return current_task
+    choice = msg.get("choice", "")
+    model = session.get("current_model")
+    return asyncio.create_task(_process_message(choice, session, emit, model))
+
+
+async def _handle_generate_dashboard(
+    session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    if _task_busy(current_task):
+        return current_task
+    model = session["chat_settings"].get("model") or None
+    return asyncio.create_task(_generate_dashboard(session, emit, model))
+
+
+async def _handle_refresh_dashboard(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    if _task_busy(current_task):
+        return current_task
+    recipe = msg.get("recipe") or []
+    figure_recipes = msg.get("figure_recipes") or []
+    current_spec = msg.get("spec") or {}
+    model = session["chat_settings"].get("model") or None
+    return asyncio.create_task(
+        _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model)
+    )
+
+
 @router.websocket("/api/chat")
 async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None)) -> None:
     if AUTH_ENABLED:
@@ -173,58 +234,20 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
             action = msg.get("action")
 
             if action == "stop":
-                stop_event = session.get("stop_event")
-                if stop_event:
-                    stop_event.set()
-
+                _handle_stop(session)
             elif action == "settings":
                 session["chat_settings"] = msg.get("settings", {})
-
             elif action == "message":
-                content = msg.get("content", "").strip()
-                if not content:
-                    continue
-                if current_task and not current_task.done():
-                    continue
-                model = session["chat_settings"].get("model") or None
-                session["current_model"] = model
-
-                if content in TAG_STARTERS:
-                    tags = TAG_STARTERS[content]
-                    label = content.removeprefix("Verken ")
-                    await emit({"type": "starter_questions", "label": label, "questions": tag_voorbeeldvragen(tags)})
-                    continue
-
-                current_task = asyncio.create_task(_process_message(content, session, emit, model))
-
+                current_task = await _handle_message(msg, session, emit, current_task)
             elif action == "clarification_choice":
-                if current_task and not current_task.done():
-                    continue
-                choice = msg.get("choice", "")
-                model = session.get("current_model")
-                current_task = asyncio.create_task(_process_message(choice, session, emit, model))
-
+                current_task = await _handle_clarification(msg, session, emit, current_task)
             elif action == "generate_dashboard":
-                if current_task and not current_task.done():
-                    continue
-                model = session["chat_settings"].get("model") or None
-                current_task = asyncio.create_task(
-                    _generate_dashboard(session, emit, model)
-                )
-
+                current_task = await _handle_generate_dashboard(session, emit, current_task)
             elif action == "refresh_dashboard":
-                if current_task and not current_task.done():
-                    continue
-                recipe = msg.get("recipe") or []
-                figure_recipes = msg.get("figure_recipes") or []
-                current_spec = msg.get("spec") or {}
-                model = session["chat_settings"].get("model") or None
-                current_task = asyncio.create_task(
-                    _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model)
-                )
+                current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
     except WebSocketDisconnect:
-        if current_task and not current_task.done():
+        if _task_busy(current_task):
             current_task.cancel()
             stop_event = session.get("stop_event")
             if stop_event:

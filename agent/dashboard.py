@@ -19,6 +19,7 @@ import plotly.io as pio
 from core.config import MAX_TOKENS, MODEL
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
+from agent.stream import accumulate_stream
 from tools import dispatch, LABELS
 from tools import store
 from tools.schemas import (
@@ -215,26 +216,9 @@ async def generate(
                 **extra_kwargs,
             )
 
-            text_parts: list[str] = []
-            raw_tcs: dict[int, dict] = {}
-
-            async for chunk in stream:
-                delta = chunk.choices[0].delta
-                if delta.content:
-                    text_parts.append(delta.content)
-                if delta.tool_calls:
-                    for tc in delta.tool_calls:
-                        idx = tc.index
-                        if idx not in raw_tcs:
-                            raw_tcs[idx] = {"id": tc.id or "", "name": "", "arguments": ""}
-                        if tc.function:
-                            if tc.function.name:
-                                raw_tcs[idx]["name"] = tc.function.name
-                            if tc.function.arguments:
-                                raw_tcs[idx]["arguments"] += tc.function.arguments
-
-            text_content = "".join(text_parts)
-            tool_calls_list = list(raw_tcs.values())
+            sr = await accumulate_stream(stream, stop_event=stop_event)
+            text_content = sr.text
+            tool_calls_list = sr.tool_calls
 
             if not tool_calls_list:
                 break

@@ -14,6 +14,7 @@ from tools.snippet import generate as _generate_snippet
 from .history import trim
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
+from .stream import accumulate_stream
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,61 @@ def _call_key(tc: dict) -> str:
     return f"{tc['name']}:{tc['arguments']}"
 
 
+async def _handle_figures(tc: dict, figure, session: dict, emit: Emit) -> None:
+    """Store *figure* in the session and emit a figure event."""
+    if figure is None:
+        return
+    for key in ("figures", "turn_figures"):
+        figs = session.get(key, [])
+        figs.append(figure)
+        session[key] = figs
+    label = LABELS.get(tc["name"], tc["name"])
+    await emit({
+        "type": "figure",
+        "label": label,
+        "figure_json": pio.to_json(figure),
+    })
+
+
+async def _handle_clarify_scope(
+    tool_calls: list[dict],
+    text_content: str,
+    history: list[dict],
+    initial_history_len: int,
+    messages: list[dict],
+    session: dict,
+    turn_tool_calls: list[dict],
+    emit: Emit,
+) -> str | None:
+    """Handle a ``clarify_scope`` tool call. Returns the text to return from
+    ``run()`` when clarification is needed, or ``None`` to continue the loop."""
+    if not any(tc["name"] == TOOL_CLARIFY_SCOPE for tc in tool_calls):
+        return None
+
+    session["_last_turn_tool_calls"] = turn_tool_calls
+    clarify_tc = next(tc for tc in tool_calls if tc["name"] == TOOL_CLARIFY_SCOPE)
+    args = json.loads(clarify_tc["arguments"])
+    opties = args.get("opties") or []
+
+    # Persist the clarification exchange back to messages so the next
+    # turn has the tool_calls context (prevents re-asking same question).
+    for entry in history[initial_history_len:]:
+        messages.append(entry)
+    session["_clarified"] = True
+
+    # Cancel the open message_start before sending the clarification card.
+    # If the LLM produced text before the tool call, close it properly first.
+    if text_content:
+        await emit({"type": "message_end", "content": text_content, "actions": []})
+    else:
+        await emit({"type": "message_cancel"})
+
+    await emit({
+        "type": "clarification",
+        "vraag": args.get("vraag", ""),
+        "opties": opties,
+    })
+    return text_content
 
 
 async def run(
@@ -128,34 +184,9 @@ async def run(
 
         await emit({"type": "message_start"})
 
-        text_parts: list[str] = []
-        raw_tcs: dict[int, dict] = {}
-
-        async for chunk in stream:
-            if stop_event and stop_event.is_set():
-                break
-
-            delta = chunk.choices[0].delta
-
-            if delta.content:
-                text_parts.append(delta.content)
-                await emit({"type": "text_delta", "content": delta.content})
-
-            if delta.tool_calls:
-                for tc in delta.tool_calls:
-                    idx = tc.index
-                    if idx not in raw_tcs:
-                        raw_tcs[idx] = {"id": "", "name": "", "arguments": ""}
-                    if tc.id:
-                        raw_tcs[idx]["id"] = tc.id
-                    if tc.function:
-                        if tc.function.name:
-                            raw_tcs[idx]["name"] = tc.function.name
-                        if tc.function.arguments:
-                            raw_tcs[idx]["arguments"] += tc.function.arguments
-
-        text_content = "".join(text_parts)
-        tool_calls = [raw_tcs[i] for i in sorted(raw_tcs)]
+        result = await accumulate_stream(stream, stop_event=stop_event, emit=emit)
+        text_content = result.text
+        tool_calls = result.tool_calls
 
         if stop_event and stop_event.is_set():
             await emit({"type": "message_end", "content": text_content, "aborted": True})
@@ -194,48 +225,17 @@ async def run(
         results = [call_cache[_call_key(tc)] for tc in tool_calls]
 
         for tc, (result, figure) in zip(tool_calls, results):
-            if figure is not None:
-                figures = session.get("figures", [])
-                figures.append(figure)
-                session["figures"] = figures
-                turn_figs = session.get("turn_figures", [])
-                turn_figs.append(figure)
-                session["turn_figures"] = turn_figs
-                label = LABELS.get(tc["name"], tc["name"])
-                await emit({
-                    "type": "figure",
-                    "label": label,
-                    "figure_json": pio.to_json(figure),
-                })
+            await _handle_figures(tc, figure, session, emit)
             if len(result) > 12000:
                 result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
             history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
 
-        if any(tc["name"] == TOOL_CLARIFY_SCOPE for tc in tool_calls):
-            session["_last_turn_tool_calls"] = turn_tool_calls
-            clarify_tc = next(tc for tc in tool_calls if tc["name"] == TOOL_CLARIFY_SCOPE)
-            args = json.loads(clarify_tc["arguments"])
-            opties = args.get("opties") or []
-
-            # Persist the clarification exchange back to messages so the next
-            # turn has the tool_calls context (prevents re-asking same question).
-            for entry in history[initial_history_len:]:
-                messages.append(entry)
-            session["_clarified"] = True
-
-            # Cancel the open message_start before sending the clarification card.
-            # If the LLM produced text before the tool call, close it properly first.
-            if text_content:
-                await emit({"type": "message_end", "content": text_content, "actions": []})
-            else:
-                await emit({"type": "message_cancel"})
-
-            await emit({
-                "type": "clarification",
-                "vraag": args.get("vraag", ""),
-                "opties": opties,
-            })
-            return text_content
+        clarify_result = await _handle_clarify_scope(
+            tool_calls, text_content, history, initial_history_len,
+            messages, session, turn_tool_calls, emit,
+        )
+        if clarify_result is not None:
+            return clarify_result
 
     await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
     return "Het maximale aantal stappen is bereikt."

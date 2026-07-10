@@ -8,40 +8,44 @@ from . import store
 
 _SAMPLE_ROWS = 3
 
+_SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
+
+
+def _coerce_pair(a, b):
+    """Coerce two values to a comparable pair (float preferred, str fallback)."""
+    try:
+        return float(a), float(b)
+    except (ValueError, TypeError):
+        return str(a).lower(), str(b).lower()
+
+
+def _parse_filter_key(key: str) -> tuple[str, str]:
+    if "__" in key:
+        col, op = key.rsplit("__", 1)
+    else:
+        col, op = key, "eq"
+    return col, op
+
 
 def _apply_filters(df, filters: dict):
     for key, val in filters.items():
-        if "__" in key:
-            col, op = key.rsplit("__", 1)
-        else:
-            col, op = key, "eq"
+        col, op = _parse_filter_key(key)
 
         if col not in df.columns:
             return None, f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}"
+        if op not in _SUPPORTED_OPS:
+            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
 
         series = df[col]
 
-        def _coerce(a, b):
-            try:
-                return float(a), float(b)
-            except (ValueError, TypeError):
-                return str(a).lower(), str(b).lower()
-
-        if op == "eq":
-            if isinstance(val, list):
-                vals_lower = {str(v).lower() for v in val}
-                df = df[series.astype(str).str.lower().isin(vals_lower)]
-            else:
-                df = df[series.astype(str).str.lower() == str(val).lower()]
-        elif op == "gte":
-            df = df[series.apply(lambda v: _coerce(v, val)[0] >= _coerce(v, val)[1])]
-        elif op == "lte":
-            df = df[series.apply(lambda v: _coerce(v, val)[0] <= _coerce(v, val)[1])]
-        elif op == "in":
-            vals_lower = {str(v).lower() for v in val}
+        if op in ("eq", "in"):
+            vals = val if isinstance(val, list) else [val]
+            vals_lower = {str(v).lower() for v in vals}
             df = df[series.astype(str).str.lower().isin(vals_lower)]
-        else:
-            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
+        elif op == "gte":
+            df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] >= _coerce_pair(v, t)[1])]
+        elif op == "lte":
+            df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] <= _coerce_pair(v, t)[1])]
 
     return df, None
 
