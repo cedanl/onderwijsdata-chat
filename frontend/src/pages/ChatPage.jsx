@@ -28,7 +28,7 @@ function loadConversationHistory() {
 }
 
 function persistConversationHistory(list) {
-  localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list))
+  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list)) } catch {}
 }
 
 function codeTheme() {
