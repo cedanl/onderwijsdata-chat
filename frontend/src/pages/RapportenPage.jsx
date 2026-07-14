@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
@@ -11,15 +11,20 @@ function formatDate(iso) {
 
 export default function RapportenPage({ settings }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const pendingId = searchParams.get('id')
+  // Workbook passed via navigation state (from chat → rapport generation); avoids
+  // setSearchParams/History API calls that can hit Firefox's rate limit.
+  const navWorkbook = location.state?.pendingWorkbook ?? null
 
   const { workbooks: rapporten, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'report',
-      pendingId,
-      clearPending: () => setSearchParams({}, { replace: true }),
+      pendingId: navWorkbook ? null : pendingId,
+      clearPending: navWorkbook ? undefined : () => setSearchParams({}, { replace: true }),
       deleteMessage: 'Weet je zeker dat je dit rapport wilt verwijderen?',
+      initialSelected: navWorkbook,
     })
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING

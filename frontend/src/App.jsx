@@ -73,8 +73,8 @@ function AppShell() {
     setShowSettings(false)
   }
 
-  const openRapport = (workbookId) => {
-    navigate(workbookId ? `/rapporten?id=${workbookId}` : '/rapporten')
+  const openRapport = (workbook) => {
+    navigate('/rapporten', workbook ? { state: { pendingWorkbook: workbook } } : undefined)
   }
 
   if (authLoading) return null

@@ -300,7 +300,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
       type: 'report',
     }).then(result => {
       if (result.ok) {
-        openRapport?.(result.workbook.id)
+        openRapport?.(result.workbook)
       } else {
         setSaveError(result.error)
       }

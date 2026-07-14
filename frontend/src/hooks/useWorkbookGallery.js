@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getWorkbooks, getWorkbookType, deleteWorkbook, loadWorkbooksFromServer, migrateLocalWorkbooks } from '../workbooks'
 
-export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessage }) {
+export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessage, initialSelected = null }) {
   const [workbooks, setWorkbooks] = useState(() => {
     const all = getWorkbooks()
     return type ? all.filter(w => getWorkbookType(w) === type) : all
   })
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState(initialSelected)
   const [pendingConfirm, setPendingConfirm] = useState(null)
 
   useEffect(() => {
