@@ -8,7 +8,7 @@ import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT } from './constants'
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
@@ -85,6 +85,8 @@ function AppShell() {
 
   const handleLogout = () => {
     clearToken()
+    localStorage.removeItem(STORAGE_CONVERSATIONS)
+    localStorage.removeItem(STORAGE_CURRENT_CHAT)
     setUser(null)
   }
 
