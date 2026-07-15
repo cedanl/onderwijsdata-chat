@@ -8,6 +8,13 @@ SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
 
+_SEARCH_KEEP_FIELDS = frozenset({
+    "_cbs_id", "_ckan_id", "_rio_resource",
+    "_dimensies", "_meetwaarden", "_geo_niveau",
+    "_perioden_formaat", "_periode_waarden",
+    "_archief", "_thema",
+})
+
 
 @cache
 def _cbs() -> list:
@@ -135,39 +142,39 @@ def search_catalog(
                 f"(bijv. 'provincie' in plaats van 'gemeente')."
             )
 
-    lean = [{k: v for k, v in h.items() if k not in _DETAIL_FIELDS} for h in hits[:top_n]]
+    lean = [
+        {k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
+        for h in hits[:top_n]
+    ]
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
+
+
+_DETAILS_EXTRA = frozenset({"_resources"})
+
+
+def _build_details(entry: dict, dataset_id: str) -> str:
+    details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v}
+    if not details:
+        return json.dumps(
+            {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar."},
+            ensure_ascii=False,
+        )
+    return json.dumps(
+        {"bron": entry.get("bron", dataset_id), **details},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
 
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
     for entry in _cbs():
         if entry.get("_cbs_id") == dataset_id:
-            details = {k: v for k, v in entry.items() if k in _DETAIL_FIELDS and v}
-            if not details:
-                return json.dumps(
-                    {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar voor deze dataset."},
-                    ensure_ascii=False,
-                )
-            return json.dumps(
-                {"bron": entry.get("bron", dataset_id), **details},
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
+            return _build_details(entry, dataset_id)
 
     for entry in _rio_duo():
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
         if eid == dataset_id:
-            details = {k: v for k, v in entry.items() if k in _DETAIL_FIELDS and v}
-            if not details:
-                return json.dumps(
-                    {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar voor deze dataset."},
-                    ensure_ascii=False,
-                )
-            return json.dumps(
-                {"bron": entry.get("bron", dataset_id), **details},
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
+            return _build_details(entry, dataset_id)
 
     return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
