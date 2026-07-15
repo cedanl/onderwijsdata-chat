@@ -70,6 +70,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **`_meetwaarden`** — beschikbare meetwaarden/kolommen, bijv. `["Deelnemers"]`
 - **`_geo_niveau`** — geografisch detailniveau, bijv. `["landelijk", "provincie", "gemeente"]` of `[]`
 - **`_perioden_formaat`** — periode-codering: `["SJ"]` = schooljaar (`2023SJ00`), `["JJ"]` = kalenderjaar (`2023JJ00`), `["KW"]` = kwartaal (`2023KW01`), `["MM"]` = maand
+- **`_kolommen`** — dimensiewaarden en meetwaarde-beschrijvingen:
+  `{"Geslacht": ["Totaal mannen en vrouwen", "Mannen", "Vrouwen"], "Perioden": ["2011/'12", ..., "2024/'25"], "Gediplomeerden": "Gediplomeerden"}`
+
+  Gebruik dit om vóór het laden te controleren welke dimensiewaarden beschikbaar zijn en of de dataset de gewenste uitsplitsing biedt.
+- **`_kolomtypes`** — type per kolom: `{"Geslacht": "dimensie", "Regiokenmerken": "geo-dimensie", "Perioden": "tijd-dimensie", "Deelnemers": "meetwaarde"}`
 
 ### DUO-velden
 - **`_geo_niveau`** — zelfde structuur als CBS
@@ -78,12 +83,10 @@ Zodra alle dimensies vastliggen, open elke analyse met:
   - multi-resource: `{"Resource naam": {"KOLOM": ["val1", "val2", ...], ...}, ...}`
 
   Gebruik de voorbeeldwaarden om filterwaarden te verifiëren en de juiste resource te kiezen **vóór** het laden. Voorbeeld: `{"LEERWEG": ["BBL", "BOL"], "GESLACHT": ["Man", "Vrouw", "Totaal"]}`.
+- **`_kolomtypes`** — type per kolom: `"numeriek"`, `"categorie (N waarden)"`. Gebruik dit om te begrijpen of een kolom filterbaar is (categorie) of een meetwaarde bevat (numeriek).
+- **`_kolomdefinities`** — kolomdefinities uit de DUO glossary, bijv. `{"BRIN_NUMMER": "Basisregistratie Instellingen-nummer: unieke code voor elke onderwijsinstelling."}`.
 
 ### Werkinstructies
-
-**`niet_geschikt_voor` controleren:** als het catalogusresultaat een `niet_geschikt_voor`-veld bevat, controleer dan of de gewenste analyse daarin genoemd wordt. Zo ja, zoek een alternatieve dataset. Vermeld het aan de gebruiker als geen enkele dataset geschikt is.
-
-**`kolomtoelichting` gebruiken:** als het catalogusresultaat een `kolomtoelichting`-veld bevat, gebruik deze toelichtingen om kolomnamen te interpreteren vóór het laden van data. Dit is vooral nuttig bij cryptische CBS-kolomnamen (bijv. `k_001`, `RegioS`).
 
 **Geografisch niveau controleren:** bij een vraag met regionale uitsplitsing (gemeente, provincie, COROP) — gebruik de `geo_niveau` parameter bij `search_catalog` om direct gefilterde resultaten te ontvangen. Alleen datasets die het gevraagde niveau ondersteunen worden teruggegeven. Geef `geo_niveau` altijd mee bij regionale vragen zodat de tool de filtering afdwingt.
 

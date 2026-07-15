@@ -48,7 +48,6 @@ _FIELD_WEIGHTS = {
     "bron": 5,
     "tags": 4,
     "voorbeeldvragen": 3,
-    "kolomtoelichting": 2,
     "beschrijving": 2,
     "doel": 2,
     "samenvatting": 2,
@@ -56,7 +55,6 @@ _FIELD_WEIGHTS = {
     "onderwijstype": 2,
 }
 _DEFAULT_WEIGHT = 1
-_EXCLUDED_FROM_SCORING = frozenset({"niet_geschikt_voor"})
 
 
 def _score(entry: dict, words: list[str]) -> int:
@@ -77,7 +75,7 @@ def _score(entry: dict, words: list[str]) -> int:
         scored_fields.add(field)
 
     for key, val in entry.items():
-        if key in scored_fields or key.startswith("_") or key in _EXCLUDED_FROM_SCORING:
+        if key in scored_fields or key.startswith("_"):
             continue
         text = json.dumps(val, ensure_ascii=False).lower()
         total += sum(_DEFAULT_WEIGHT for w in words if w in text)
