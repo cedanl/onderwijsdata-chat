@@ -170,7 +170,7 @@ def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
     for entry in _cbs():
         if entry.get("_cbs_id") == dataset_id:
-            return _build_details(entry, dataset_id)
+            return _build_details({"bron": "CBS", **entry}, dataset_id)
 
     for entry in _rio_duo():
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")

@@ -76,8 +76,9 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **`_kolommen`** — dimensiewaarden en kolomwaarden per kolom
 - **`_kolomtypes`** — type per kolom: dimensie, geo-dimensie, tijd-dimensie, meetwaarde, numeriek, categorie
 - **`_kolomdefinities`** — kolomdefinities uit de DUO glossary (indien beschikbaar)
+- **`_resources`** — downloadbare bestanden per DUO-dataset (naam, url, format). Gebruik de resource-naam als `resource`-parameter bij `get_duo_data`
 
-Gebruik `dataset_details` als je wilt controleren welke waarden een dimensie of kolom bevat vóór het laden van data.
+Gebruik `dataset_details` als je twijfelt welke dataset de juiste is, of om filterwaarden en resource-namen te verifiëren vóór het laden van data.
 
 ### Werkinstructies
 
@@ -132,11 +133,11 @@ Gebruik `dataset_details` als je wilt controleren welke waarden een dimensie of 
 4. **Haal data op**: gebruik de codes uit stap 3 in je OData filters.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart).
 
-3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
+5. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
 
-4. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
+6. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
 
-5. **Kies het juiste grafiektype** — gebruik onderstaande beslismatrix:
+7. **Kies het juiste grafiektype** — gebruik onderstaande beslismatrix:
 
    | Vraag / boodschap                          | Grafiektype        | Tips                                      |
    |--------------------------------------------|--------------------|-------------------------------------------|
