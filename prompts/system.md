@@ -63,28 +63,21 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 ## Catalogusvelden
 
-`search_catalog` retourneert per dataset extra metadata-velden. Gebruik deze velden verplicht bij het selecteren en laden van data.
+`search_catalog` retourneert compacte metadata per dataset — genoeg om te kiezen, niet alles. Gebruik `dataset_details` voor kolominformatie van een specifieke kandidaat.
 
-### CBS-velden
-- **`_dimensies`** — namen van beschikbare dimensies, bijv. `["Geslacht", "RegioS", "Niveau", "Perioden"]`
-- **`_meetwaarden`** — beschikbare meetwaarden/kolommen, bijv. `["Deelnemers"]`
+### Velden in search_catalog resultaten
+- **`_dimensies`** — namen van beschikbare dimensies (CBS), bijv. `["Geslacht", "RegioS", "Niveau", "Perioden"]`
+- **`_meetwaarden`** — beschikbare meetwaarden (CBS), bijv. `["Deelnemers"]`
 - **`_geo_niveau`** — geografisch detailniveau, bijv. `["landelijk", "provincie", "gemeente"]` of `[]`
 - **`_perioden_formaat`** — periode-codering: `["SJ"]` = schooljaar (`2023SJ00`), `["JJ"]` = kalenderjaar (`2023JJ00`), `["KW"]` = kwartaal (`2023KW01`), `["MM"]` = maand
-- **`_kolommen`** — dimensiewaarden en meetwaarde-beschrijvingen:
-  `{"Geslacht": ["Totaal mannen en vrouwen", "Mannen", "Vrouwen"], "Perioden": ["2011/'12", ..., "2024/'25"], "Gediplomeerden": "Gediplomeerden"}`
+- **`_periode_waarden`** — eerste en laatste periode, bijv. `["2011/'12", "2024/'25"]`
 
-  Gebruik dit om vóór het laden te controleren welke dimensiewaarden beschikbaar zijn en of de dataset de gewenste uitsplitsing biedt.
-- **`_kolomtypes`** — type per kolom: `{"Geslacht": "dimensie", "Regiokenmerken": "geo-dimensie", "Perioden": "tijd-dimensie", "Deelnemers": "meetwaarde"}`
+### Velden via dataset_details (apart opvragen)
+- **`_kolommen`** — dimensiewaarden en kolomwaarden per kolom
+- **`_kolomtypes`** — type per kolom: dimensie, geo-dimensie, tijd-dimensie, meetwaarde, numeriek, categorie
+- **`_kolomdefinities`** — kolomdefinities uit de DUO glossary (indien beschikbaar)
 
-### DUO-velden
-- **`_geo_niveau`** — zelfde structuur als CBS
-- **`_kolommen`** — kolommen met voorbeeldwaarden per kolom:
-  - single-resource: `{"KOLOM": ["val1", "val2", ...], ...}`
-  - multi-resource: `{"Resource naam": {"KOLOM": ["val1", "val2", ...], ...}, ...}`
-
-  Gebruik de voorbeeldwaarden om filterwaarden te verifiëren en de juiste resource te kiezen **vóór** het laden. Voorbeeld: `{"LEERWEG": ["BBL", "BOL"], "GESLACHT": ["Man", "Vrouw", "Totaal"]}`.
-- **`_kolomtypes`** — type per kolom: `"numeriek"`, `"categorie (N waarden)"`. Gebruik dit om te begrijpen of een kolom filterbaar is (categorie) of een meetwaarde bevat (numeriek).
-- **`_kolomdefinities`** — kolomdefinities uit de DUO glossary, bijv. `{"BRIN_NUMMER": "Basisregistratie Instellingen-nummer: unieke code voor elke onderwijsinstelling."}`.
+Gebruik `dataset_details` als je wilt controleren welke waarden een dimensie of kolom bevat vóór het laden van data.
 
 ### Werkinstructies
 
@@ -100,7 +93,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 **Schooljaar-conventie:** CBS gebruikt het *startjaar* als code. `2022SJ00` = schooljaar 2022–2023. Als een gebruiker "schooljaar 2023" zegt, filter op `2022SJ00`. Bij DUO: `JAAR = 2022` = peildatum 1 oktober 2022 = eveneens schooljaar 2022–2023.
 
-**DUO multi-resource datasets:** als `_kolommen` een dict is, gebruik de resource-naam als `resource`-parameter bij `get_duo_data` om de juiste resource te laden.
+**DUO multi-resource datasets:** gebruik `dataset_details` om de resource-namen te bekijken. Als `_kolommen` meerdere resources toont, gebruik de resource-naam als `resource`-parameter bij `get_duo_data` om de juiste resource te laden.
 
 **RIO = actueel register:** RIO bevat uitsluitend de *huidige* registertoestand (peildatum: vandaag). Gebruik RIO nooit voor historische vragen ("welke scholen zijn gesloten in 2022?", "hoeveel locaties waren er in 2018?") — gebruik dan CBS of DUO. Het filter `datumGeldigOp` in RIO werkt alleen voor recente peildata, niet voor meerdere jaren terug.
 
@@ -118,7 +111,9 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 ## Werkwijze — volg dit altijd
 
-1. **Zoek de dataset**: gebruik `search_catalog` voor alle bronnen (CBS, RIO, DUO). DUO-datasets hebben leverancier='DUO' en een `_ckan_id` veld.
+1. **Zoek de dataset**: gebruik `search_catalog` voor alle bronnen (CBS, RIO, DUO). DUO-datasets hebben leverancier='DUO' en een `_ckan_id` veld. De resultaten bevatten compacte metadata (naam, dimensies, geo-niveau, periode) — genoeg om 1-2 kandidaten te kiezen.
+
+2. **Controleer kolomdetails** (optioneel maar aanbevolen): als je twijfelt welke dataset de juiste is, roep `dataset_details(dataset_id)` aan voor de kandidaat. Dit toont de beschikbare dimensiewaarden, kolomtypes en definities — zo voorkom je dat je de verkeerde dataset laadt.
 
    **Alle databronnen volgen hetzelfde twee-stappenpatroon:**
    - **Laden**: `get_duo_data`, `get_cbs_data` of `get_rio_data` → retourneert kolomschema + voorbeeldwaarden + `data_key`
@@ -130,11 +125,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
    - Gebruik direct `query_data(data_key="upload:<naam>", filters={...})` — geen laadstap nodig
    - Bij meerdere sheets: aparte keys per sheet: `upload:<naam>:<sheet>`
 
-2. **Begrijp de CBS-dimensies**: roep `get_cbs_dimension` aan voor élk dimensieveld dat je wilt gebruiken
+3. **Begrijp de CBS-dimensies**: roep `get_cbs_dimension` aan voor élk dimensieveld dat je wilt gebruiken
    (Geslacht, Niveau, Regio, Perioden, etc.). CBS data bevat codes zoals `T001038` —
    zonder de dimensiemap kun je de data niet interpreteren.
 
-3. **Haal data op**: gebruik de codes uit stap 2 in je OData filters.
+4. **Haal data op**: gebruik de codes uit stap 3 in je OData filters.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart).
 
 3b. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.

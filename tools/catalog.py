@@ -6,6 +6,8 @@ from riodata import catalog as _rio_catalog
 
 SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
+_DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
+
 
 @cache
 def _cbs() -> list:
@@ -133,4 +135,39 @@ def search_catalog(
                 f"(bijv. 'provincie' in plaats van 'gemeente')."
             )
 
-    return json.dumps(hits[:top_n], ensure_ascii=False, separators=(",", ":"))
+    lean = [{k: v for k, v in h.items() if k not in _DETAIL_FIELDS} for h in hits[:top_n]]
+    return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
+
+
+def dataset_details(dataset_id: str) -> str:
+    """Geef gedetailleerde kolominformatie voor één dataset."""
+    for entry in _cbs():
+        if entry.get("_cbs_id") == dataset_id:
+            details = {k: v for k, v in entry.items() if k in _DETAIL_FIELDS and v}
+            if not details:
+                return json.dumps(
+                    {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar voor deze dataset."},
+                    ensure_ascii=False,
+                )
+            return json.dumps(
+                {"bron": entry.get("bron", dataset_id), **details},
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+
+    for entry in _rio_duo():
+        eid = entry.get("_ckan_id") or entry.get("_rio_resource")
+        if eid == dataset_id:
+            details = {k: v for k, v in entry.items() if k in _DETAIL_FIELDS and v}
+            if not details:
+                return json.dumps(
+                    {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar voor deze dataset."},
+                    ensure_ascii=False,
+                )
+            return json.dumps(
+                {"bron": entry.get("bron", dataset_id), **details},
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+
+    return f"Dataset '{dataset_id}' niet gevonden in de catalogus."

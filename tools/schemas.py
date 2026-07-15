@@ -1,5 +1,6 @@
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
+TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -25,6 +26,27 @@ TOOL_SCHEMAS = [
                     "geo_niveau": {"type": "string", "enum": ["gemeente", "provincie", "corop", "landelijk", "landsdeel"], "description": "Filter: geef alleen datasets terug die dit geografisch niveau ondersteunen. Gebruik bij regionale vragen."},
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_DATASET_DETAILS,
+            "description": (
+                "Haal gedetailleerde kolominformatie op voor één specifiek dataset uit de catalogus. "
+                "Gebruik dit nadat search_catalog kandidaten heeft opgeleverd, om te controleren "
+                "welke kolommen, dimensiewaarden en types beschikbaar zijn vóór het laden van data."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dataset_id": {
+                        "type": "string",
+                        "description": "Dataset-ID: CBS _cbs_id (bijv. '85423NED'), DUO _ckan_id (bijv. 'instromende-mbo-studenten'), of RIO _rio_resource (bijv. 'onderwijslocaties')",
+                    },
+                },
+                "required": ["dataset_id"],
             },
         },
     },
