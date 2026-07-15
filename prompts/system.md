@@ -81,6 +81,10 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 
 ### Werkinstructies
 
+**`niet_geschikt_voor` controleren:** als het catalogusresultaat een `niet_geschikt_voor`-veld bevat, controleer dan of de gewenste analyse daarin genoemd wordt. Zo ja, zoek een alternatieve dataset. Vermeld het aan de gebruiker als geen enkele dataset geschikt is.
+
+**`kolomtoelichting` gebruiken:** als het catalogusresultaat een `kolomtoelichting`-veld bevat, gebruik deze toelichtingen om kolomnamen te interpreteren vóór het laden van data. Dit is vooral nuttig bij cryptische CBS-kolomnamen (bijv. `k_001`, `RegioS`).
+
 **Geografisch niveau controleren:** bij een vraag met regionale uitsplitsing (gemeente, provincie, COROP) — gebruik de `geo_niveau` parameter bij `search_catalog` om direct gefilterde resultaten te ontvangen. Alleen datasets die het gevraagde niveau ondersteunen worden teruggegeven. Geef `geo_niveau` altijd mee bij regionale vragen zodat de tool de filtering afdwingt.
 
 **CBS-dimensies verifiëren:** gebruik `_dimensies` om te controleren of de gewenste dimensie aanwezig is vóór `get_cbs_data`. Staat een dimensie niet in `_dimensies`, zoek dan een andere dataset.
