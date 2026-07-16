@@ -2510,7 +2510,7 @@ wheels = [
 [[package]]
 name = "riodata"
 version = "0.3.1"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#3fe9c99db5ff5a6d1f7e9e4e6f972c6e398b6473" }
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#40c8aee213dee4919e43f9e125a5c1c8c74a7975" }
 dependencies = [
     { name = "httpx" },
 ]
