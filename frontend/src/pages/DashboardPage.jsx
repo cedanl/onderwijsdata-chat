@@ -17,7 +17,7 @@ export default function DashboardPage({ settings }) {
     useWorkbookGallery({
       type: 'dashboard',
       pendingId,
-      clearPending: () => setSearchParams({}, { replace: true }),
+      clearPending: undefined,
       deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
 
@@ -26,11 +26,13 @@ export default function DashboardPage({ settings }) {
   useEffect(() => {
     if (!pendingId || selected) return
     const builtin = BUILTINS.find(b => b.id === pendingId)
-    if (builtin) {
-      setSelected(builtin)
-      setSearchParams({}, { replace: true })
-    }
+    if (builtin) setSelected(builtin)
   }, [pendingId, selected])
+
+  const handleSelect = (wb) => {
+    setSelected(wb)
+    setSearchParams({ id: wb.id }, { replace: true })
+  }
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
@@ -39,7 +41,10 @@ export default function DashboardPage({ settings }) {
     const found = stored.find(w => w.id === newWb?.id)
     setWorkbooks(stored)
     setShowCreator(false)
-    if (found) setSelected(found)
+    if (found) {
+      setSelected(found)
+      setSearchParams({ id: found.id }, { replace: true })
+    }
   }
 
   const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
@@ -49,7 +54,7 @@ export default function DashboardPage({ settings }) {
       <WorkbookViewer
         workbook={selected}
         instelling={instelling}
-        onBack={() => setSelected(null)}
+        onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Dashboards"
       />
@@ -84,7 +89,7 @@ export default function DashboardPage({ settings }) {
       <DashboardGallery
         workbooks={all}
         instelling={instelling}
-        onSelect={setSelected}
+        onSelect={handleSelect}
         onDelete={handleDelete}
         onNew={() => setShowCreator(true)}
       />
