@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
+import { BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -31,7 +31,7 @@ export default function DashboardPage({ settings }) {
     if (found) setSelected(found)
   }
 
-  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
+  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
 
   if (selected) {
     return (

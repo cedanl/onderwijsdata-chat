@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
 import { updateWorkbookTitle, updateWorkbookSpec } from '../workbooks'
-import { InlineDashboard, InlineDashboardArbeidsmarkt } from './InlineDashboards'
+import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
@@ -90,6 +90,14 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           ? <InlineDashboard instelling={instelling} />
           : workbook.id === '__builtin_arbeidsmarkt__'
           ? <InlineDashboardArbeidsmarkt instelling={instelling} />
+          : workbook.id === '__builtin_regio__'
+          ? <InlineDashboardRegio instelling={instelling} />
+          : workbook.id === '__builtin_regio_instroom__'
+          ? <InlineDashboardRegioInstroom instelling={instelling} />
+          : workbook.id === '__builtin_regio_diplomering__'
+          ? <InlineDashboardRegioDiplomering instelling={instelling} />
+          : workbook.id === '__builtin_regio_arbeidsmarkt__'
+          ? <InlineDashboardRegioArbeidsmarkt instelling={instelling} />
           : spec
           ? <>
               <GeneratedDashboard
