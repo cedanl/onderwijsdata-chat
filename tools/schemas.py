@@ -233,6 +233,7 @@ TOOL_SCHEMAS = [
             "name": TOOL_CLARIFY_SCOPE,
             "description": (
                 "Stel EXACT één gesloten vraag met 2 of 3 klikbare antwoordopties. "
+                "Roep deze tool DIRECT aan — schrijf GEEN tekst vooraf, geen inleiding, geen uitleg. "
                 "Dit is de ENIGE manier om scope-vragen te stellen — schrijf ze nooit als platte tekst. "
                 "Gebruik bij een nieuwe analysevraag om open scope-dimensies vast te leggen. "
                 "Sla dimensies over die al uit de vraag of het gebruikersprofiel blijken. "

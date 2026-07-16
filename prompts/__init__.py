@@ -7,7 +7,7 @@ SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text()
 
 def build_persona_block(settings: dict) -> str:
     lines = []
-    rol = settings.get("rol", "Geen voorkeur")
+    rol = settings.get("functie") or settings.get("rol", "Geen voorkeur")
     if rol and rol != "Geen voorkeur":
         lines.append(f"- Gebruikersrol: **{rol}** — stem taalgebruik en diepte van uitleg hierop af.")
     domein = settings.get("domein", "Geen voorkeur")
