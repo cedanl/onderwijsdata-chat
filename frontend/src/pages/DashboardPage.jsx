@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
+
+const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -20,8 +22,6 @@ export default function DashboardPage({ settings }) {
       clearPending: undefined,
       deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
-
-  const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
 
   useEffect(() => {
     if (!pendingId || selected) return
@@ -47,7 +47,7 @@ export default function DashboardPage({ settings }) {
     }
   }
 
-  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
+  const all = [...BUILTINS, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
 
   if (selected) {
     return (

@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import functools
 import json
+import logging
 from pathlib import Path
 
 import pandas as pd
 from riodata import duo
 
 from .instellingen import resolve_alias
+
+_MAX_VACATURE_CLUSTERS = 8
+_MAX_SUGGESTIONS = 20
 
 
 # ─── Regiodashboard ──────────────────────────────────────────────────────────
@@ -37,6 +41,19 @@ def _mode_str(series: pd.Series) -> str | None:
     return str(vals.mode().iloc[0])
 
 
+def _filter_prov_excl(
+    df: pd.DataFrame,
+    prov_col: str,
+    provincie: str,
+    inst_col: str,
+    exclude_inst: str,
+) -> pd.DataFrame:
+    return df[
+        (df[prov_col].str.lower() == provincie.lower()) &
+        (df[inst_col].str.lower() != exclude_inst.lower())
+    ]
+
+
 def _gemiddelde_per_jaar(
     df: pd.DataFrame,
     jaar_col: str,
@@ -46,10 +63,7 @@ def _gemiddelde_per_jaar(
     inst_col: str,
     exclude_inst: str,
 ) -> dict[int, float]:
-    subset = df[
-        (df[prov_col].str.lower() == provincie.lower()) &
-        (df[inst_col].str.lower() != exclude_inst.lower())
-    ]
+    subset = _filter_prov_excl(df, prov_col, provincie, inst_col, exclude_inst)
     if subset.empty:
         return {}
     per_inst_jaar = subset.groupby([inst_col, jaar_col])[waarde_col].sum().reset_index()
@@ -66,10 +80,7 @@ def _totaal_provincie(
     inst_col: str,
     exclude_inst: str,
 ) -> dict[int, int]:
-    subset = df[
-        (df[prov_col].str.lower() == provincie.lower()) &
-        (df[inst_col].str.lower() != exclude_inst.lower())
-    ]
+    subset = _filter_prov_excl(df, prov_col, provincie, inst_col, exclude_inst)
     if subset.empty:
         return {}
     totaal = subset.groupby(jaar_col)[waarde_col].sum()
@@ -83,7 +94,9 @@ def _load_sector_cluster_map() -> dict[str, list[str]]:
         try:
             return json.loads(path.read_text())
         except Exception:
-            pass
+            logging.warning("sector_cluster_mapping.json onleesbaar — UWV-filtering op sector uitgeschakeld")
+    else:
+        logging.warning("sector_cluster_mapping.json niet gevonden — run scripts/refresh_sector_mapping.py")
     return {}
 
 
@@ -129,7 +142,7 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
                 if naam in clusters_voor_sectoren
             }
             if gefilterd:
-                top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:8])
+                top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:_MAX_VACATURE_CLUSTERS])
                 return {
                     "totaal": totaal,
                     "peildatum": peildatum,
@@ -137,7 +150,7 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
                     "gefilterd_op": sorted(sectoren),
                 }
 
-    top = dict(list(alle_clusters.items())[:8])
+    top = dict(list(alle_clusters.items())[:_MAX_VACATURE_CLUSTERS])
     return {
         "totaal": totaal,
         "peildatum": peildatum,
@@ -372,7 +385,7 @@ def load_dashboard_regio(instelling: str) -> dict:
             df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
             + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
         ))
-        result["beschikbare_instellingen"] = alle[:20]
+        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
     except Exception:
         pass
 
@@ -520,7 +533,7 @@ def load_dashboard(instelling: str) -> dict:
             df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
             + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
         ))
-        result["beschikbare_instellingen"] = alle[:20]
+        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
     except Exception:
         pass
 

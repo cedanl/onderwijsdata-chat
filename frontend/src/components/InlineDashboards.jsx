@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { CHART_COLORS } from '../constants'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
+  ArcElement, Tooltip, Legend, Filler,
+} from 'chart.js'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
 
 function useDarkMode() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
@@ -26,21 +33,40 @@ function chartOpts(dark) {
     },
   }
 }
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
-  ArcElement, Tooltip, Legend, Filler,
-} from 'chart.js'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
+function buildIndexChartOpts(dark) {
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y
+            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: {
+        grid: { color: grid },
+        ticks: { color: tick, callback: (v) => `${v}%` },
+        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
+      },
+    },
+  }
+}
 
 // ─── Chart constants ─────────────────────────────────────────────────────────
-
-export const CHART_OPTS = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: { x: { grid: { display: false } }, y: { grid: { color: '#F3F4F6' } } },
-}
 
 export const SECTOR_LABELS = {
   ECONOMIE: 'Economie',
@@ -60,9 +86,9 @@ export function fmt(n) {
   return Number(n).toLocaleString('nl-NL')
 }
 
-// ─── Data hook ───────────────────────────────────────────────────────────────
+// ─── Data hooks ──────────────────────────────────────────────────────────────
 
-export function useDashboardData(instelling) {
+function useDashboardFetch(endpoint, instelling) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -72,13 +98,17 @@ export function useDashboardData(instelling) {
     setLoading(true)
     setData(null)
     setError(null)
-    fetch(`/api/dashboard/instroom?instelling=${encodeURIComponent(instelling)}`)
+    fetch(`${endpoint}?instelling=${encodeURIComponent(instelling)}`)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
       .catch(e => { setError(e.message); setLoading(false) })
-  }, [instelling])
+  }, [endpoint, instelling])
 
   return { data, loading, error }
+}
+
+export function useDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/instroom', instelling)
 }
 
 // ─── Shell ───────────────────────────────────────────────────────────────────
@@ -301,25 +331,12 @@ export function InlineDashboard({ instelling }) {
 }
 
 // ─── InlineDashboardRegio ────────────────────────────────────────────────────
+// @deprecated Backward-compat voor gebruikers met __builtin_regio__ in localStorage.
+// Verwijder na v1.8 zodra alle clients de gesplitste dashboards zien.
 
 
 function useRegioDashboardData(instelling) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    if (!instelling) return
-    setLoading(true)
-    setData(null)
-    setError(null)
-    fetch(`/api/dashboard/regio?instelling=${encodeURIComponent(instelling)}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
-  }, [instelling])
-
-  return { data, loading, error }
+  return useDashboardFetch('/api/dashboard/regio', instelling)
 }
 
 function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownColor, benchColor) {
@@ -437,35 +454,7 @@ export function InlineDashboardRegio({ instelling }) {
   const totaalGeslacht = vrouw + man
   const pctVrouw = totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null
 
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const indexOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.parsed.y
-            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
-          },
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: {
-        grid: { color: grid },
-        ticks: { color: tick, callback: (v) => `${v}%` },
-        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
-      },
-    },
-  }
+  const indexOpts = buildIndexChartOpts(dark)
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
@@ -766,35 +755,7 @@ export function InlineDashboardRegioInstroom({ instelling }) {
   const totaalGeslacht = vrouw + man
   const pctVrouw = totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null
 
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const indexOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.parsed.y
-            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
-          },
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: {
-        grid: { color: grid },
-        ticks: { color: tick, callback: (v) => `${v}%` },
-        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
-      },
-    },
-  }
+  const indexOpts = buildIndexChartOpts(dark)
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
@@ -928,35 +889,7 @@ export function InlineDashboardRegioDiplomering({ instelling }) {
   const lastDipl = diplEntries.at(-1)
   const diplDelta = yearOverYearDelta(diplEntries)
 
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const indexOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const v = ctx.parsed.y
-            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
-          },
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: {
-        grid: { color: grid },
-        ticks: { color: tick, callback: (v) => `${v}%` },
-        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
-      },
-    },
-  }
+  const indexOpts = buildIndexChartOpts(dark)
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>

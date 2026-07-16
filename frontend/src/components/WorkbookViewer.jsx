@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle, updateWorkbookSpec } from '../workbooks'
+import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT } from '../workbooks'
 import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
@@ -86,17 +86,18 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
         <div />
       </div>
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }}>
-        {workbook.id === '__builtin__'
+        {workbook.id === BUILTIN.id
           ? <InlineDashboard instelling={instelling} />
-          : workbook.id === '__builtin_arbeidsmarkt__'
+          : workbook.id === BUILTIN_ARBEIDSMARKT.id
           ? <InlineDashboardArbeidsmarkt instelling={instelling} />
+          /* TODO: verwijder na v1.8 (backward-compat legacy id __builtin_regio__) */
           : workbook.id === '__builtin_regio__'
           ? <InlineDashboardRegio instelling={instelling} />
-          : workbook.id === '__builtin_regio_instroom__'
+          : workbook.id === BUILTIN_REGIO_INSTROOM.id
           ? <InlineDashboardRegioInstroom instelling={instelling} />
-          : workbook.id === '__builtin_regio_diplomering__'
+          : workbook.id === BUILTIN_REGIO_DIPLOMERING.id
           ? <InlineDashboardRegioDiplomering instelling={instelling} />
-          : workbook.id === '__builtin_regio_arbeidsmarkt__'
+          : workbook.id === BUILTIN_REGIO_ARBEIDSMARKT.id
           ? <InlineDashboardRegioArbeidsmarkt instelling={instelling} />
           : spec
           ? <>

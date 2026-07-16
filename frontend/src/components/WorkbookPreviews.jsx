@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT } from '../workbooks'
 
 function UserWorkbookPreview({ wb }) {
   const answer = wb.messages?.find(m => m.role === 'assistant' && m.content)?.content || ''
@@ -176,10 +177,10 @@ export default function WorkbookPreview({ wb }) {
   }, [wb.builtin])
 
   if (wb.builtin) {
-    if (wb.id === '__builtin_arbeidsmarkt__') return <ArbeidsmarktPreview />
-    if (wb.id === '__builtin_regio_instroom__') return <RegioInstroomPreview />
-    if (wb.id === '__builtin_regio_diplomering__') return <RegioDiplomeringPreview />
-    if (wb.id === '__builtin_regio_arbeidsmarkt__') return <RegioArbeidsmarktPreview />
+    if (wb.id === BUILTIN_ARBEIDSMARKT.id) return <ArbeidsmarktPreview />
+    if (wb.id === BUILTIN_REGIO_INSTROOM.id) return <RegioInstroomPreview />
+    if (wb.id === BUILTIN_REGIO_DIPLOMERING.id) return <RegioDiplomeringPreview />
+    if (wb.id === BUILTIN_REGIO_ARBEIDSMARKT.id) return <RegioArbeidsmarktPreview />
     return <BuiltinPreview />
   }
 
