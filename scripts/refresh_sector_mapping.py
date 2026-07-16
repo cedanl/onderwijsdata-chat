@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import litellm
+from core.config import MODEL
 from riodata import uwv
 
 OUTPUT = ROOT / "data" / "sector_cluster_mapping.json"
@@ -67,9 +68,9 @@ Antwoord uitsluitend met het JSON-object, geen uitleg."""
 
     print("LLM classificeert clusters...", flush=True)
     response = litellm.completion(
-        model="anthropic/claude-haiku-4-5-20251001",
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=4096,
+        max_tokens=16000,
     )
     raw = response.choices[0].message.content.strip()
 
