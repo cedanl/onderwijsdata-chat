@@ -290,9 +290,869 @@ export function InlineDashboard({ instelling }) {
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
           <ul className="dashboard-sources-list">
-            <li><a href="https://duo.nl/open_onderwijsdata/hoger-onderwijs/ingeschrevenen-wo-hbo/" target="_blank" rel="noreferrer">DUO &mdash; Ingeschrevenen HO per instelling (p01hoinges)</a></li>
-            <li><a href="https://duo.nl/open_onderwijsdata/hoger-onderwijs/eerstejaars-wo-hbo/" target="_blank" rel="noreferrer">DUO &mdash; Eerstejaars HO per instelling (p02ho1ejrs)</a></li>
-            <li><a href="https://duo.nl/open_onderwijsdata/hoger-onderwijs/gediplomeerden-wo-hbo/" target="_blank" rel="noreferrer">DUO &mdash; Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata &mdash; Ingeschrevenen HO per instelling (p01hoinges)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p02ho1ejrs" target="_blank" rel="noreferrer">DUO Open Onderwijsdata &mdash; Eerstejaars HO per instelling (p02ho1ejrs)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata &mdash; Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+          </ul>
+        </div>
+      </div>
+    </DashboardShell>
+  )
+}
+
+// ─── InlineDashboardRegio ────────────────────────────────────────────────────
+
+
+function useRegioDashboardData(instelling) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!instelling) return
+    setLoading(true)
+    setData(null)
+    setError(null)
+    fetch(`/api/dashboard/regio?instelling=${encodeURIComponent(instelling)}`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false) })
+      .catch(e => { setError(e.message); setLoading(false) })
+  }, [instelling])
+
+  return { data, loading, error }
+}
+
+function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownColor, benchColor) {
+  if (!ownDict) return null
+  const ownEntries = Object.entries(ownDict).sort((a, b) => a[0] - b[0])
+  const labels = ownEntries.map(([y]) => String(y))
+  const ownRaw = ownEntries.map(([, v]) => v)
+
+  const toIndex = (values, base) =>
+    values.map(v => v != null && base > 0 ? Math.round(((v / base) - 1) * 100) : null)
+
+  const ownBase = ownRaw[0]
+  const ownData = toIndex(ownRaw, ownBase)
+
+  const datasets = [
+    {
+      label: ownLabel,
+      data: ownData,
+      borderColor: ownColor,
+      backgroundColor: ownColor + '18',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 4,
+      borderWidth: 2,
+    },
+  ]
+  if (benchDict) {
+    const benchMap = new Map(Object.entries(benchDict).map(([k, v]) => [String(k), v]))
+    const benchRaw = labels.map(y => benchMap.get(y) ?? null)
+    const benchBase = benchRaw.find(v => v != null)
+    datasets.push({
+      label: benchLabel,
+      data: toIndex(benchRaw, benchBase),
+      borderColor: benchColor,
+      backgroundColor: 'transparent',
+      borderDash: [5, 4],
+      tension: 0.3,
+      pointRadius: 3,
+      borderWidth: 2,
+      fill: false,
+    })
+  }
+  return { labels, datasets }
+}
+
+function Sparkline({ values, color = '#2563EB', width = 80, height = 28 }) {
+  const pts = values.filter(v => v != null)
+  if (pts.length < 2) return null
+  const min = Math.min(...pts)
+  const max = Math.max(...pts)
+  const range = max - min || 1
+  const step = width / (pts.length - 1)
+  const points = pts.map((v, i) => {
+    const x = i * step
+    const y = height - ((v - min) / range) * (height - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg width={width} height={height} style={{ display: 'block', marginTop: 4 }}>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function SectionHeader({ title, subtitle }) {
+  return (
+    <div style={{ margin: '28px 0 12px', borderBottom: '1px solid var(--gray-200, #E5E7EB)', paddingBottom: 8 }}>
+      <div style={{ fontWeight: 700, fontSize: '.95rem', color: 'var(--gray-900, #111827)' }}>{title}</div>
+      {subtitle && <div style={{ fontSize: '.8rem', color: 'var(--gray-500, #6B7280)', marginTop: 2 }}>{subtitle}</div>}
+    </div>
+  )
+}
+
+export function InlineDashboardRegio({ instelling }) {
+  const { data, loading, error } = useRegioDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
+  const bmColor = dark ? '#9CA3AF' : '#94A3B8'
+
+  const bm = data?.benchmark || {}
+  const bmLabel = bm.label || 'Benchmark'
+
+  const ingesLineData = buildBenchmarkLineData(
+    data?.ingeschrevenen, bm.ingeschrevenen,
+    instelling, bmLabel, CHART_COLORS[0], bmColor
+  )
+  const ejLineData = buildBenchmarkLineData(
+    data?.eerstejaars, bm.eerstejaars,
+    instelling, bmLabel, CHART_COLORS[2], bmColor
+  )
+  const diplLineData = buildBenchmarkLineData(
+    data?.gediplomeerden, bm.gediplomeerden,
+    instelling, bmLabel, CHART_COLORS[5], bmColor
+  )
+  const sectorData = buildSectorChartData(data?.sectoren)
+
+  const ingesEntries = sortedEntries(data?.ingeschrevenen)
+  const lastInges = ingesEntries.at(-1)
+  const ingesDelta = yearOverYearDelta(ingesEntries)
+
+  const ejEntries = sortedEntries(data?.eerstejaars)
+  const lastEj = ejEntries.at(-1)
+  const ejDelta = yearOverYearDelta(ejEntries)
+
+  const diplEntries = sortedEntries(data?.gediplomeerden)
+  const lastDipl = diplEntries.at(-1)
+  const diplDelta = yearOverYearDelta(diplEntries)
+
+  const totaalProv = bm.totaal_ingeschrevenen
+    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)?.[1]
+    : null
+
+  const vrouw = data?.geslacht?.VROUW || 0
+  const man = data?.geslacht?.MAN || 0
+  const totaalGeslacht = vrouw + man
+  const pctVrouw = totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null
+
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const indexOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y
+            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: {
+        grid: { color: grid },
+        ticks: { color: tick, callback: (v) => `${v}%` },
+        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
+      },
+    },
+  }
+
+  return (
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+      <div className="dashboard-content" style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <span className="meta-badge instelling">{instelling}</span>
+          {data?.provincie && <span className="meta-badge date">Provincie {data.provincie}</span>}
+          <span className="meta-badge date">Bron: DUO Open Onderwijsdata</span>
+        </div>
+
+        {/* ── Demografie ── */}
+        <SectionHeader
+          title="Demografie"
+          subtitle="Potentiële lerenden en onderwijsprofessionals in de regio"
+        />
+        <div className="kpi-grid">
+          {lastInges && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Ingeschrevenen {lastInges[0]}–{Number(lastInges[0])+1}</span>
+                <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastInges[1])}</div>
+              {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ingesEntries.map(([,v]) => v)} color="#2563EB" />
+            </div>
+          )}
+          {totaalProv != null && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Provincie totaal {data.laatste_jaar}–{data.laatste_jaar+1}</span>
+                <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(totaalProv)}</div>
+              {bm.n_instellingen && <div className="kpi-trend">{bm.n_instellingen} instellingen in provincie</div>}
+            </div>
+          )}
+          {pctVrouw != null && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Aandeel vrouw {data.laatste_jaar}</span>
+                <div className="kpi-icon" style={{ background: '#FFF7ED' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{pctVrouw}%</div>
+              <div className="kpi-trend">van {fmt(totaalGeslacht)} ingeschrevenen</div>
+            </div>
+          )}
+        </div>
+        {ingesLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={ingesLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Instroom ── */}
+        <SectionHeader
+          title="Instroom"
+          subtitle="Eerstejaars aanmeldingen per jaar, vergeleken met de provincie"
+        />
+        <div className="kpi-grid">
+          {lastEj && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Eerstejaars {lastEj[0]}–{Number(lastEj[0])+1}</span>
+                <div className="kpi-icon" style={{ background: '#F0FDF4' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastEj[1])}</div>
+              {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ejEntries.map(([,v]) => v)} color="#22C55E" />
+            </div>
+          )}
+        </div>
+        {ejLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Eerstejaars instroom per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={ejLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Voortgang ── */}
+        <SectionHeader
+          title="Voortgang"
+          subtitle="Inschrijvingen en sectoren per onderdeel"
+        />
+        <div className="charts-grid">
+          {sectorData && (
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Verdeling per sector {data.laatste_jaar}</div><div className="chart-sub">Ingeschrevenen naar onderdeel</div></div></div>
+              <div style={{ height: 200 }}><Doughnut data={sectorData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 } } } } }} /></div>
+            </div>
+          )}
+          {ingesLineData && (
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Inschrijvingen trend</div><div className="chart-sub">{instelling} (alle jaren)</div></div></div>
+              <div style={{ height: 200 }}><Bar data={buildBarChartData(data?.ingeschrevenen, 'Ingeschrevenen', CHART_COLORS[0])} options={opts} /></div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Diplomering ── */}
+        <SectionHeader
+          title="Diplomering"
+          subtitle="Gediplomeerden per jaar, vergeleken met de provincie"
+        />
+        <div className="kpi-grid">
+          {lastDipl && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Gediplomeerden {lastDipl[0]}</span>
+                <div className="kpi-icon" style={{ background: '#F0FDFA' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastDipl[1])}</div>
+              {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={diplEntries.map(([,v]) => v)} color="#0D9488" />
+            </div>
+          )}
+        </div>
+        {diplLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Gediplomeerden per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={diplLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Arbeidsmarkt (ROA) ── */}
+        {data?.arbeidsmarkt_roa && Object.keys(data.arbeidsmarkt_roa).length > 0 && (
+          <>
+            <SectionHeader
+              title="Landelijk referentiekader (ROA)"
+              subtitle="Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA Schoolverlatersinformatie 2024)"
+            />
+            <div className="kpi-grid">
+              {Object.entries(data.arbeidsmarkt_roa).map(([niveau, metrics]) => (
+                Object.entries(metrics).map(([indicator, pct]) => {
+                  const isGood = indicator === 'vast dienstverband'
+                  const isBad = indicator === 'werkloosheid' || indicator === 'buiten de vakrichting'
+                  const iconColor = isGood ? '#0D9488' : isBad ? '#DC2626' : '#6B7280'
+                  const bgColor = isGood ? '#F0FDFA' : isBad ? '#FEF2F2' : '#F9FAFB'
+                  return (
+                    <div key={`${niveau}-${indicator}`} className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">{niveau} — {indicator}</span>
+                        <div className="kpi-icon" style={{ background: bgColor }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            {isGood
+                              ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+                              : <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>
+                            }
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="kpi-value">{pct}%</div>
+                      <div className="kpi-trend" style={{ color: '#6B7280' }}>🏷 landelijk gemiddelde, niet per instelling</div>
+                    </div>
+                  )
+                })
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── Vacatureaanbod (UWV) ── */}
+        {(() => {
+          const vac = data?.vacatureaanbod
+          if (!vac?.clusters || Object.keys(vac.clusters).length === 0) return null
+          const gefilterdOp = vac.gefilterd_op || []
+          const clusterHeight = Math.max(180, Object.keys(vac.clusters).length * 32)
+          return (
+            <>
+              <SectionHeader
+                title="Vacatureaanbod in de regio"
+                subtitle={gefilterdOp.length > 0
+                  ? `Clusters passend bij opleidingssectoren — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`
+                  : `Openstaande vacatures per beroepscluster — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`}
+              />
+              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: '.8rem', color: '#92400E', marginBottom: 12 }}>
+                ⚠ Momentopname mei 2023 — geen historische reeks beschikbaar. Gebruik als indicatie, niet als actueel cijfer.
+              </div>
+              <div className="kpi-grid" style={{ marginBottom: 12 }}>
+                <div className="kpi-card">
+                  <div className="kpi-card-header">
+                    <span className="kpi-label">Totaal vacatures provincie {data.provincie}</span>
+                    <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    </div>
+                  </div>
+                  <div className="kpi-value">{fmt(vac.totaal)}</div>
+                  <div className="kpi-trend">alle sectoren in provincie</div>
+                </div>
+              </div>
+              <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <div className="chart-card">
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">Beroepencluster{gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}</div>
+                      <div className="chart-sub">
+                        Provincie {data.provincie}{gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ height: clusterHeight }}>
+                    <Bar
+                      data={{
+                        labels: Object.keys(vac.clusters),
+                        datasets: [{
+                          label: 'Vacatures',
+                          data: Object.values(vac.clusters),
+                          backgroundColor: CHART_COLORS.slice(0, Object.keys(vac.clusters).length).map(c => c + 'CC'),
+                          borderWidth: 0,
+                          borderRadius: 4,
+                        }],
+                      }}
+                      options={{
+                        ...opts,
+                        indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          x: { grid: { color: dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }, ticks: { color: dark ? '#9CA3AF' : '#6B7280' } },
+                          y: { grid: { display: false }, ticks: { color: dark ? '#9CA3AF' : '#6B7280', font: { size: 11 } } },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
+
+        <div className="dashboard-sources">
+          <div className="dashboard-sources-title">Bronnen</div>
+          <ul className="dashboard-sources-list">
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p02ho1ejrs" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Eerstejaars HO per instelling (p02ho1ejrs)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/mbo-studenten-per-instelling" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — MBO studenten per instelling</a></li>
+            <li><a href="https://data.overheid.nl/dataset/uwv-open-match-data" target="_blank" rel="noreferrer">UWV Open Match — Vacaturedata per provincie en beroepscluster (mei 2023)</a></li>
+            <li><a href="https://doi.org/10.34894/DVQTOG" target="_blank" rel="noreferrer">ROA — Arbeidsmarktinformatiesysteem (AIS), Schoolverlatersinformatie 2024 (nationaal gemiddelde)</a></li>
+          </ul>
+        </div>
+      </div>
+    </DashboardShell>
+  )
+}
+
+// ─── InlineDashboardRegioInstroom ────────────────────────────────────────────
+
+export function InlineDashboardRegioInstroom({ instelling }) {
+  const { data, loading, error } = useRegioDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
+  const bmColor = dark ? '#9CA3AF' : '#94A3B8'
+
+  const bm = data?.benchmark || {}
+  const bmLabel = bm.label || 'Benchmark'
+
+  const ingesLineData = buildBenchmarkLineData(
+    data?.ingeschrevenen, bm.ingeschrevenen,
+    instelling, bmLabel, CHART_COLORS[0], bmColor
+  )
+  const ejLineData = buildBenchmarkLineData(
+    data?.eerstejaars, bm.eerstejaars,
+    instelling, bmLabel, CHART_COLORS[2], bmColor
+  )
+  const sectorData = buildSectorChartData(data?.sectoren)
+
+  const ingesEntries = sortedEntries(data?.ingeschrevenen)
+  const lastInges = ingesEntries.at(-1)
+  const ingesDelta = yearOverYearDelta(ingesEntries)
+
+  const ejEntries = sortedEntries(data?.eerstejaars)
+  const lastEj = ejEntries.at(-1)
+  const ejDelta = yearOverYearDelta(ejEntries)
+
+  const totaalProv = bm.totaal_ingeschrevenen
+    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)?.[1]
+    : null
+
+  const vrouw = data?.geslacht?.VROUW || 0
+  const man = data?.geslacht?.MAN || 0
+  const totaalGeslacht = vrouw + man
+  const pctVrouw = totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null
+
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const indexOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y
+            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: {
+        grid: { color: grid },
+        ticks: { color: tick, callback: (v) => `${v}%` },
+        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
+      },
+    },
+  }
+
+  return (
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+      <div className="dashboard-content" style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <span className="meta-badge instelling">{instelling}</span>
+          {data?.provincie && <span className="meta-badge date">Provincie {data.provincie}</span>}
+          <span className="meta-badge date">Bron: DUO Open Onderwijsdata</span>
+        </div>
+
+        {/* ── Demografie ── */}
+        <SectionHeader
+          title="Demografie"
+          subtitle="Potentiële lerenden en onderwijsprofessionals in de regio"
+        />
+        <div className="kpi-grid">
+          {lastInges && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Ingeschrevenen {lastInges[0]}–{Number(lastInges[0])+1}</span>
+                <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastInges[1])}</div>
+              {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ingesEntries.map(([,v]) => v)} color="#2563EB" />
+            </div>
+          )}
+          {totaalProv != null && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Provincie totaal {data.laatste_jaar}–{data.laatste_jaar+1}</span>
+                <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(totaalProv)}</div>
+              {bm.n_instellingen && <div className="kpi-trend">{bm.n_instellingen} instellingen in provincie</div>}
+            </div>
+          )}
+          {pctVrouw != null && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Aandeel vrouw {data.laatste_jaar}</span>
+                <div className="kpi-icon" style={{ background: '#FFF7ED' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{pctVrouw}%</div>
+              <div className="kpi-trend">van {fmt(totaalGeslacht)} ingeschrevenen</div>
+            </div>
+          )}
+        </div>
+        {ingesLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={ingesLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Instroom ── */}
+        <SectionHeader
+          title="Instroom"
+          subtitle="Eerstejaars aanmeldingen per jaar, vergeleken met de provincie"
+        />
+        <div className="kpi-grid">
+          {lastEj && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Eerstejaars {lastEj[0]}–{Number(lastEj[0])+1}</span>
+                <div className="kpi-icon" style={{ background: '#F0FDF4' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastEj[1])}</div>
+              {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ejEntries.map(([,v]) => v)} color="#22C55E" />
+            </div>
+          )}
+        </div>
+        {ejLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Eerstejaars instroom per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={ejLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+        {sectorData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Verdeling per sector {data.laatste_jaar}</div><div className="chart-sub">Ingeschrevenen naar onderdeel</div></div></div>
+              <div style={{ height: 200 }}><Doughnut data={sectorData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 } } } } }} /></div>
+            </div>
+          </div>
+        )}
+
+        <div className="dashboard-sources">
+          <div className="dashboard-sources-title">Bronnen</div>
+          <ul className="dashboard-sources-list">
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p02ho1ejrs" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Eerstejaars HO per instelling (p02ho1ejrs)</a></li>
+          </ul>
+        </div>
+      </div>
+    </DashboardShell>
+  )
+}
+
+// ─── InlineDashboardRegioDiplomering ─────────────────────────────────────────
+
+export function InlineDashboardRegioDiplomering({ instelling }) {
+  const { data, loading, error } = useRegioDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
+  const bmColor = dark ? '#9CA3AF' : '#94A3B8'
+
+  const bm = data?.benchmark || {}
+  const bmLabel = bm.label || 'Benchmark'
+
+  const diplLineData = buildBenchmarkLineData(
+    data?.gediplomeerden, bm.gediplomeerden,
+    instelling, bmLabel, CHART_COLORS[5], bmColor
+  )
+  const sectorData = buildSectorChartData(data?.sectoren)
+
+  const diplEntries = sortedEntries(data?.gediplomeerden)
+  const lastDipl = diplEntries.at(-1)
+  const diplDelta = yearOverYearDelta(diplEntries)
+
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const indexOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y
+            return `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v}%`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: {
+        grid: { color: grid },
+        ticks: { color: tick, callback: (v) => `${v}%` },
+        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
+      },
+    },
+  }
+
+  return (
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+      <div className="dashboard-content" style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <span className="meta-badge instelling">{instelling}</span>
+          {data?.provincie && <span className="meta-badge date">Provincie {data.provincie}</span>}
+          <span className="meta-badge date">Bron: DUO Open Onderwijsdata</span>
+        </div>
+
+        {/* ── Voortgang ── */}
+        <SectionHeader
+          title="Voortgang"
+          subtitle="Inschrijvingen en sectoren per onderdeel"
+        />
+        <div className="charts-grid">
+          {sectorData && (
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Verdeling per sector {data.laatste_jaar}</div><div className="chart-sub">Ingeschrevenen naar onderdeel</div></div></div>
+              <div style={{ height: 200 }}><Doughnut data={sectorData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 } } } } }} /></div>
+            </div>
+          )}
+          {data?.ingeschrevenen && (
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Inschrijvingen trend</div><div className="chart-sub">{instelling} (alle jaren)</div></div></div>
+              <div style={{ height: 200 }}><Bar data={buildBarChartData(data?.ingeschrevenen, 'Ingeschrevenen', CHART_COLORS[0])} options={opts} /></div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Diplomering ── */}
+        <SectionHeader
+          title="Diplomering"
+          subtitle="Gediplomeerden per jaar, vergeleken met de provincie"
+        />
+        <div className="kpi-grid">
+          {lastDipl && (
+            <div className="kpi-card">
+              <div className="kpi-card-header">
+                <span className="kpi-label">Gediplomeerden {lastDipl[0]}</span>
+                <div className="kpi-icon" style={{ background: '#F0FDFA' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                </div>
+              </div>
+              <div className="kpi-value">{fmt(lastDipl[1])}</div>
+              {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={diplEntries.map(([,v]) => v)} color="#0D9488" />
+            </div>
+          )}
+        </div>
+        {diplLineData && (
+          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="chart-card">
+              <div className="chart-header"><div><div className="chart-title">Gediplomeerden per jaar</div><div className="chart-sub">% verandering t.o.v. eerste jaar — eigen instelling vs. {bmLabel.toLowerCase()}</div></div></div>
+              <div style={{ height: 220 }}><Line data={diplLineData} options={indexOpts} /></div>
+            </div>
+          </div>
+        )}
+
+        <div className="dashboard-sources">
+          <div className="dashboard-sources-title">Bronnen</div>
+          <ul className="dashboard-sources-list">
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+          </ul>
+        </div>
+      </div>
+    </DashboardShell>
+  )
+}
+
+// ─── InlineDashboardRegioArbeidsmarkt ────────────────────────────────────────
+
+export function InlineDashboardRegioArbeidsmarkt({ instelling }) {
+  const { data, loading, error } = useRegioDashboardData(instelling)
+  const dark = useDarkMode()
+  const opts = chartOpts(dark)
+
+  return (
+    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+      <div className="dashboard-content" style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <span className="meta-badge instelling">{instelling}</span>
+          {data?.provincie && <span className="meta-badge date">Provincie {data.provincie}</span>}
+          <span className="meta-badge date">Bron: UWV &amp; ROA</span>
+        </div>
+
+        {/* ── Arbeidsmarkt (ROA) ── */}
+        {data?.arbeidsmarkt_roa && Object.keys(data.arbeidsmarkt_roa).length > 0 && (
+          <>
+            <SectionHeader
+              title="Landelijk referentiekader (ROA)"
+              subtitle="Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA Schoolverlatersinformatie 2024)"
+            />
+            <div className="kpi-grid">
+              {Object.entries(data.arbeidsmarkt_roa).map(([niveau, metrics]) => (
+                Object.entries(metrics).map(([indicator, pct]) => {
+                  const isGood = indicator === 'vast dienstverband'
+                  const isBad = indicator === 'werkloosheid' || indicator === 'buiten de vakrichting'
+                  const iconColor = isGood ? '#0D9488' : isBad ? '#DC2626' : '#6B7280'
+                  const bgColor = isGood ? '#F0FDFA' : isBad ? '#FEF2F2' : '#F9FAFB'
+                  return (
+                    <div key={`${niveau}-${indicator}`} className="kpi-card">
+                      <div className="kpi-card-header">
+                        <span className="kpi-label">{niveau} — {indicator}</span>
+                        <div className="kpi-icon" style={{ background: bgColor }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            {isGood
+                              ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+                              : <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>
+                            }
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="kpi-value">{pct}%</div>
+                      <div className="kpi-trend" style={{ color: '#6B7280' }}>🏷 landelijk gemiddelde, niet per instelling</div>
+                    </div>
+                  )
+                })
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── Vacatureaanbod (UWV) ── */}
+        {(() => {
+          const vac = data?.vacatureaanbod
+          if (!vac?.clusters || Object.keys(vac.clusters).length === 0) return null
+          const gefilterdOp = vac.gefilterd_op || []
+          const clusterHeight = Math.max(180, Object.keys(vac.clusters).length * 32)
+          return (
+            <>
+              <SectionHeader
+                title="Vacatureaanbod in de regio"
+                subtitle={gefilterdOp.length > 0
+                  ? `Clusters passend bij opleidingssectoren — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`
+                  : `Openstaande vacatures per beroepscluster — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`}
+              />
+              <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: '.8rem', color: '#92400E', marginBottom: 12 }}>
+                ⚠ Momentopname mei 2023 — geen historische reeks beschikbaar. Gebruik als indicatie, niet als actueel cijfer.
+              </div>
+              <div className="kpi-grid" style={{ marginBottom: 12 }}>
+                <div className="kpi-card">
+                  <div className="kpi-card-header">
+                    <span className="kpi-label">Totaal vacatures provincie {data.provincie}</span>
+                    <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    </div>
+                  </div>
+                  <div className="kpi-value">{fmt(vac.totaal)}</div>
+                  <div className="kpi-trend">alle sectoren in provincie</div>
+                </div>
+              </div>
+              <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <div className="chart-card">
+                  <div className="chart-header">
+                    <div>
+                      <div className="chart-title">Beroepencluster{gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}</div>
+                      <div className="chart-sub">
+                        Provincie {data.provincie}{gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ height: clusterHeight }}>
+                    <Bar
+                      data={{
+                        labels: Object.keys(vac.clusters),
+                        datasets: [{
+                          label: 'Vacatures',
+                          data: Object.values(vac.clusters),
+                          backgroundColor: CHART_COLORS.slice(0, Object.keys(vac.clusters).length).map(c => c + 'CC'),
+                          borderWidth: 0,
+                          borderRadius: 4,
+                        }],
+                      }}
+                      options={{
+                        ...opts,
+                        indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          x: { grid: { color: dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }, ticks: { color: dark ? '#9CA3AF' : '#6B7280' } },
+                          y: { grid: { display: false }, ticks: { color: dark ? '#9CA3AF' : '#6B7280', font: { size: 11 } } },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
+
+        <div className="dashboard-sources">
+          <div className="dashboard-sources-title">Bronnen</div>
+          <ul className="dashboard-sources-list">
+            <li><a href="https://data.overheid.nl/dataset/uwv-open-match-data" target="_blank" rel="noreferrer">UWV Open Match — Vacaturedata per provincie en beroepscluster (mei 2023)</a></li>
+            <li><a href="https://doi.org/10.34894/DVQTOG" target="_blank" rel="noreferrer">ROA — Arbeidsmarktinformatiesysteem (AIS), Schoolverlatersinformatie 2024 (nationaal gemiddelde)</a></li>
           </ul>
         </div>
       </div>
@@ -369,8 +1229,8 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
           <ul className="dashboard-sources-list">
-            <li><a href="https://duo.nl/open_onderwijsdata/hoger-onderwijs/ingeschrevenen-wo-hbo/" target="_blank" rel="noreferrer">DUO &mdash; Ingeschrevenen HO per instelling (p01hoinges)</a></li>
-            <li><a href="https://duo.nl/open_onderwijsdata/hoger-onderwijs/gediplomeerden-wo-hbo/" target="_blank" rel="noreferrer">DUO &mdash; Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata &mdash; Ingeschrevenen HO per instelling (p01hoinges)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata &mdash; Gediplomeerden HO per instelling (p04hogdipl)</a></li>
           </ul>
         </div>
       </div>

@@ -17,6 +17,30 @@ export const BUILTIN_ARBEIDSMARKT = {
   builtin: true,
 }
 
+export const BUILTIN_REGIO_INSTROOM = {
+  id: '__builtin_regio_instroom__',
+  title: 'Regio — Instroom & Demografie',
+  description: 'Ingeschrevenen, eerstejaars en geslachtsverdeling afgezet tegen het provinciaal gemiddelde.',
+  createdAt: '2024-10-01T00:00:00.000Z',
+  builtin: true,
+}
+
+export const BUILTIN_REGIO_DIPLOMERING = {
+  id: '__builtin_regio_diplomering__',
+  title: 'Regio — Voortgang & Diplomering',
+  description: 'Sectorverdeling, inschrijvingstrend en gediplomeerden per jaar versus de regio.',
+  createdAt: '2024-10-01T00:00:00.000Z',
+  builtin: true,
+}
+
+export const BUILTIN_REGIO_ARBEIDSMARKT = {
+  id: '__builtin_regio_arbeidsmarkt__',
+  title: 'Regio — Arbeidsmarkt',
+  description: 'Landelijke arbeidsmarktkansen (ROA) en vacatureaanbod in de provincie (UWV).',
+  createdAt: '2024-10-01T00:00:00.000Z',
+  builtin: true,
+}
+
 function stripMessage(m) {
   return { role: m.role, content: m.content }
 }

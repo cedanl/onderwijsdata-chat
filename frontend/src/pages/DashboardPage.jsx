@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BUILTIN, BUILTIN_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
+import { BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -17,9 +17,22 @@ export default function DashboardPage({ settings }) {
     useWorkbookGallery({
       type: 'dashboard',
       pendingId,
-      clearPending: () => setSearchParams({}, { replace: true }),
+      clearPending: undefined,
       deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
+
+  const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
+
+  useEffect(() => {
+    if (!pendingId || selected) return
+    const builtin = BUILTINS.find(b => b.id === pendingId)
+    if (builtin) setSelected(builtin)
+  }, [pendingId, selected])
+
+  const handleSelect = (wb) => {
+    setSelected(wb)
+    setSearchParams({ id: wb.id }, { replace: true })
+  }
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
@@ -28,17 +41,20 @@ export default function DashboardPage({ settings }) {
     const found = stored.find(w => w.id === newWb?.id)
     setWorkbooks(stored)
     setShowCreator(false)
-    if (found) setSelected(found)
+    if (found) {
+      setSelected(found)
+      setSearchParams({ id: found.id }, { replace: true })
+    }
   }
 
-  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
+  const all = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
 
   if (selected) {
     return (
       <WorkbookViewer
         workbook={selected}
         instelling={instelling}
-        onBack={() => setSelected(null)}
+        onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Dashboards"
       />
@@ -73,7 +89,7 @@ export default function DashboardPage({ settings }) {
       <DashboardGallery
         workbooks={all}
         instelling={instelling}
-        onSelect={setSelected}
+        onSelect={handleSelect}
         onDelete={handleDelete}
         onNew={() => setShowCreator(true)}
       />

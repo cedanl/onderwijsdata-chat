@@ -22,7 +22,7 @@ export default function RapportenPage({ settings }) {
     useWorkbookGallery({
       type: 'report',
       pendingId: navWorkbook ? null : pendingId,
-      clearPending: navWorkbook ? undefined : () => setSearchParams({}, { replace: true }),
+      clearPending: undefined,
       deleteMessage: 'Weet je zeker dat je dit rapport wilt verwijderen?',
       initialSelected: navWorkbook,
     })
@@ -34,7 +34,7 @@ export default function RapportenPage({ settings }) {
       <WorkbookViewer
         workbook={selected}
         instelling={instelling}
-        onBack={() => setSelected(null)}
+        onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Rapporten"
       />
@@ -76,7 +76,12 @@ export default function RapportenPage({ settings }) {
         ) : (
           <div className="wb-grid">
             {rapporten.map(wb => (
-              <div key={wb.id} className="wb-card" onClick={() => setSelected(wb)}>
+              <a
+                key={wb.id}
+                href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
+                className="wb-card"
+                onClick={e => { e.preventDefault(); setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }}
+              >
                 <div className="wb-card-thumb">
                   <WorkbookPreview wb={wb} />
                 </div>
@@ -96,7 +101,7 @@ export default function RapportenPage({ settings }) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         )}

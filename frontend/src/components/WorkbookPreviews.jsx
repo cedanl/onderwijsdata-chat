@@ -85,6 +85,80 @@ export function ArbeidsmarktPreview() {
   )
 }
 
+export function RegioInstroomPreview() {
+  return (
+    <div className="wb-builtin-preview">
+      <div className="wb-mini-kpi-row">
+        {['#EFF6FF','#F0FDF4','#FFF7ED'].map((c, i) => (
+          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+            <div className="wb-mini-kpi-val" style={{ background: ['#2563EB','#22C55E','#F59E0B'][i] }} />
+            <div style={{ height: 3, background: ['#2563EB','#22C55E','#F59E0B'][i], opacity: .25, marginTop: 4, borderRadius: 2, width: '60%' }} />
+          </div>
+        ))}
+      </div>
+      <div className="wb-mini-charts">
+        <div className="wb-mini-line" style={{ flex: 2 }}>
+          <svg viewBox="0 0 80 40" preserveAspectRatio="none">
+            <polyline points="0,36 20,28 40,20 60,14 80,10" fill="rgba(37,99,235,.1)" stroke="#2563EB" strokeWidth="2" />
+            <polyline points="0,36 20,32 40,26 60,20 80,18" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3,2" />
+          </svg>
+        </div>
+        <div className="wb-mini-donut-wrap">
+          <div className="wb-mini-donut" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function RegioDiplomeringPreview() {
+  const bars = [70, 82, 75, 90, 88]
+  return (
+    <div className="wb-builtin-preview">
+      <div className="wb-mini-kpi-row">
+        {['#F0FDFA','#EFF6FF'].map((c, i) => (
+          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+            <div className="wb-mini-kpi-val" style={{ background: ['#0D9488','#2563EB'][i] }} />
+          </div>
+        ))}
+      </div>
+      <div className="wb-mini-charts">
+        <div className="wb-mini-chart-bar">
+          {bars.map((h, i) => (
+            <div key={i} className="wb-mini-bar" style={{ height: `${h}%`, background: '#2563EB' }} />
+          ))}
+        </div>
+        <div className="wb-mini-line">
+          <svg viewBox="0 0 60 40" preserveAspectRatio="none">
+            <polyline points="0,32 15,26 30,20 45,14 60,10" fill="rgba(13,148,136,.1)" stroke="#0D9488" strokeWidth="2" />
+            <polyline points="0,32 15,30 30,26 45,22 60,20" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3,2" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function RegioArbeidsmarktPreview() {
+  const hbars = [90, 65, 55, 40, 30]
+  return (
+    <div className="wb-builtin-preview">
+      <div className="wb-mini-kpi-row">
+        {['#FEF2F2','#F0FDFA','#FEF2F2','#F0FDFA'].map((c, i) => (
+          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+            <div className="wb-mini-kpi-val" style={{ background: ['#DC2626','#0D9488','#DC2626','#0D9488'][i] }} />
+          </div>
+        ))}
+      </div>
+      <div className="wb-mini-charts" style={{ flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+        {hbars.map((w, i) => (
+          <div key={i} style={{ height: 5, borderRadius: 2, background: `rgba(37,99,235,${0.2 + i * 0.12})`, width: `${w}%` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function WorkbookPreview({ wb }) {
   const [loaded, setLoaded] = useState(false)
   const wrapRef = useRef(null)
@@ -101,7 +175,13 @@ export default function WorkbookPreview({ wb }) {
     return () => obs.disconnect()
   }, [wb.builtin])
 
-  if (wb.builtin) return wb.id === '__builtin_arbeidsmarkt__' ? <ArbeidsmarktPreview /> : <BuiltinPreview />
+  if (wb.builtin) {
+    if (wb.id === '__builtin_arbeidsmarkt__') return <ArbeidsmarktPreview />
+    if (wb.id === '__builtin_regio_instroom__') return <RegioInstroomPreview />
+    if (wb.id === '__builtin_regio_diplomering__') return <RegioDiplomeringPreview />
+    if (wb.id === '__builtin_regio_arbeidsmarkt__') return <RegioArbeidsmarktPreview />
+    return <BuiltinPreview />
+  }
 
   if (wb.messages) return <UserWorkbookPreview wb={wb} />
 

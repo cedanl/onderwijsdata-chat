@@ -4,7 +4,7 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
-SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO"})
+SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
 
 @cache
