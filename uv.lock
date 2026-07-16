@@ -1609,14 +1609,14 @@ wheels = [
 [[package]]
 name = "onderwijsdata"
 version = "0.1.1"
-source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#518a9ea49cd2d62d8e76c8cc6ae07f243cc24907" }
+source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#91b9b3ce4162921c2bc97e9340881314497163ef" }
 dependencies = [
     { name = "httpx" },
 ]
 
 [[package]]
 name = "onderwijsdata-chat"
-version = "1.5.0"
+version = "1.6.3"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
@@ -2510,7 +2510,7 @@ wheels = [
 [[package]]
 name = "riodata"
 version = "0.3.1"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#3b3aba240f2b388391312f55f3fb8cb60ba50491" }
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#3fe9c99db5ff5a6d1f7e9e4e6f972c6e398b6473" }
 dependencies = [
     { name = "httpx" },
 ]
