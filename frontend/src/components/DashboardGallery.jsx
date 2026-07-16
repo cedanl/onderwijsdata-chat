@@ -16,7 +16,12 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
 
       <div className="wb-grid">
         {workbooks.map(wb => (
-          <div key={wb.id} className="wb-card" onClick={() => onSelect(wb)}>
+          <a
+            key={wb.id}
+            href={`/dashboards?id=${encodeURIComponent(wb.id)}`}
+            className="wb-card"
+            onClick={e => { e.preventDefault(); onSelect(wb) }}
+          >
             <div className="wb-card-thumb">
               <WorkbookPreview wb={wb} />
               {wb.builtin && (
@@ -49,7 +54,7 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
                 )}
               </div>
             </div>
-          </div>
+          </a>
         ))}
 
         <button className="wb-new-card" onClick={onNew}>

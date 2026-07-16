@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
@@ -20,6 +20,17 @@ export default function DashboardPage({ settings }) {
       clearPending: () => setSearchParams({}, { replace: true }),
       deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
     })
+
+  const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
+
+  useEffect(() => {
+    if (!pendingId || selected) return
+    const builtin = BUILTINS.find(b => b.id === pendingId)
+    if (builtin) {
+      setSelected(builtin)
+      setSearchParams({}, { replace: true })
+    }
+  }, [pendingId, selected])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 

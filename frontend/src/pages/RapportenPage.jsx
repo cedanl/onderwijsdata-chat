@@ -76,7 +76,12 @@ export default function RapportenPage({ settings }) {
         ) : (
           <div className="wb-grid">
             {rapporten.map(wb => (
-              <div key={wb.id} className="wb-card" onClick={() => setSelected(wb)}>
+              <a
+                key={wb.id}
+                href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
+                className="wb-card"
+                onClick={e => { e.preventDefault(); setSelected(wb) }}
+              >
                 <div className="wb-card-thumb">
                   <WorkbookPreview wb={wb} />
                 </div>
@@ -96,7 +101,7 @@ export default function RapportenPage({ settings }) {
                     </button>
                   </div>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         )}
