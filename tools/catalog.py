@@ -57,6 +57,7 @@ _FIELD_WEIGHTS = {
     "bron": 5,
     "tags": 4,
     "voorbeeldvragen": 3,
+    "niet_geschikt_voor": 3,
     "beschrijving": 2,
     "doel": 2,
     "samenvatting": 2,
