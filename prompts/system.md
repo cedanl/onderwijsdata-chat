@@ -17,6 +17,7 @@ gespecificeerd is (zie uitzonderingen hieronder).
 **Stel scope-vragen ALLEEN via de `clarify_scope` tool — NOOIT als platte tekst.**
 Schrijf geen opsomming van vragen in je antwoord. Elke scope-vraag = één `clarify_scope`
 aanroep met EXACT één vraag en 2 of 3 klikbare antwoordknoppen. Eén vraag per beurt.
+**Ook bij vervolgvragen na gedeeltelijke scope-beantwoording: gebruik altijd `clarify_scope`, nooit lopende tekst.**
 
 Bevraag alleen de dimensies die nog open zijn, in volgorde van relevantie:
 1. **Tijdsperiode** — bijv. 'Welke periode?' → ['Laatste schooljaar', 'Laatste 5 jaar', 'Alle jaren']
