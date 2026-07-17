@@ -84,7 +84,10 @@ function chatViaWebSocket(token, message, model, timeoutMs = 120_000) {
         allEvents.push(event.type + (event.name ? `:${event.name}` : ''))
         if (event.type === 'tool_start') toolCalls.push(event.name)
         if (event.type === 'text_delta') textParts.push(event.content)
-        if (event.type === 'clarification') gotClarification = true
+        if (event.type === 'clarification') {
+          gotClarification = true
+          finish({ timeout: false, clarificationData: event })
+        }
         if (event.type === 'error') {
           console.log(`WS ERROR: ${JSON.stringify(event)}`)
           finish({ timeout: false, error: event })
@@ -122,6 +125,10 @@ test.describe('Model-vergelijking', () => {
         console.log(`EVENTS: ${result.events?.join(', ') || '(geen)'}`)
         console.log(`TOOLS: ${result.toolCalls.length ? result.toolCalls.join(' → ') : '(geen)'}`)
         console.log(`CLARIFICATION: ${result.clarification}`)
+        if (result.clarificationData) {
+          console.log(`CLARIFY VRAAG: ${result.clarificationData.vraag}`)
+          console.log(`CLARIFY OPTIES: ${JSON.stringify(result.clarificationData.opties)}`)
+        }
         console.log(`ANTWOORD (300 chars): ${result.content.slice(0, 300)}`)
         console.log(`TIMEOUT: ${result.timeout}`)
         if (result.error) console.log(`ERROR: ${JSON.stringify(result.error)}`)

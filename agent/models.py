@@ -14,7 +14,7 @@ _WILLMA_KWARGS: dict = (
 
 def litellm_kwargs(model: str) -> dict:
     if WILLMA_API_KEY and model.startswith("openai/"):
-        return _WILLMA_KWARGS
+        return {**_WILLMA_KWARGS, "extra_body": {"model": model}}
     return {}
 
 
