@@ -165,77 +165,109 @@ async def run(
 
     call_cache: dict[str, tuple[str, object]] = {}
     turn_tool_calls: list[dict] = []
+    tool_counts: dict[str, int] = {}
+    _slow_warned = False
 
-    for _iter in range(MAX_TOOL_ITERATIONS):
-        if stop_event and stop_event.is_set():
-            break
-
-        logger.debug("ITERATIE   %d", _iter + 1)
-
-        stream = await acompletion_with_backoff(
-            emit,
-            model=chosen_model,
-            max_tokens=MAX_TOKENS,
-            messages=system + history,
-            tools=SCHEMAS,
-            stream=True,
-            **extra_kwargs,
-        )
-
-        await emit({"type": "message_start"})
-
-        result = await accumulate_stream(stream, stop_event=stop_event, emit=emit)
-        text_content = result.text
-        tool_calls = result.tool_calls
-
-        if stop_event and stop_event.is_set():
-            await emit({"type": "message_end", "content": text_content, "aborted": True})
-            return text_content
-
-        if text_content:
-            logger.debug("LLM TEKST  iter=%d  %r", _iter + 1, text_content[:500])
-
-        if not tool_calls:
-            logger.info("FINALE ANTWOORD (iter=%d)  %r", _iter + 1, text_content[:500])
-            session["_last_turn_tool_calls"] = turn_tool_calls
+    async def _slow_warning():
+        nonlocal _slow_warned
+        await asyncio.sleep(45)
+        if not _slow_warned:
+            _slow_warned = True
             await emit({
-                "type": "message_end",
-                "content": text_content,
-                "actions": [],
+                "type": "toast",
+                "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
+                "level": "info",
             })
-            return text_content
 
-        history.append({
-            "role": "assistant",
-            "content": text_content or "",
-            "tool_calls": [
-                {"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}}
-                for tc in tool_calls
-            ],
-        })
+    slow_task = asyncio.create_task(_slow_warning())
 
-        logger.debug("LLM KIEST  %d tool(s): %s", len(tool_calls), ", ".join(tc["name"] for tc in tool_calls))
-        turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
+    try:
+        for _iter in range(MAX_TOOL_ITERATIONS):
+            if stop_event and stop_event.is_set():
+                break
 
-        new_calls = [(i, tc) for i, tc in enumerate(tool_calls) if _call_key(tc) not in call_cache]
-        new_results = await asyncio.gather(*[_call_tool(tc, emit) for _, tc in new_calls])
-        for (i, tc), res in zip(new_calls, new_results):
-            call_cache[_call_key(tc)] = res
+            logger.debug("ITERATIE   %d", _iter + 1)
 
-        results = [call_cache[_call_key(tc)] for tc in tool_calls]
+            stream = await acompletion_with_backoff(
+                emit,
+                model=chosen_model,
+                max_tokens=MAX_TOKENS,
+                messages=system + history,
+                tools=SCHEMAS,
+                stream=True,
+                **extra_kwargs,
+            )
 
-        for tc, (result, figure) in zip(tool_calls, results):
-            await _handle_figures(tc, figure, session, emit)
-            if len(result) > 12000:
-                result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
-            history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+            await emit({"type": "message_start"})
 
-        clarify_result = await _handle_clarify_scope(
-            tool_calls, text_content, history, initial_history_len,
-            messages, session, turn_tool_calls, emit,
-        )
-        if clarify_result is not None:
-            return clarify_result
+            result = await accumulate_stream(stream, stop_event=stop_event, emit=emit)
+            text_content = result.text
+            tool_calls = result.tool_calls
 
-    await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
+            if stop_event and stop_event.is_set():
+                await emit({"type": "message_end", "content": text_content, "aborted": True})
+                return text_content
+
+            if text_content:
+                logger.debug("LLM TEKST  iter=%d  %r", _iter + 1, text_content[:500])
+
+            if not tool_calls:
+                logger.info("FINALE ANTWOORD (iter=%d)  %r", _iter + 1, text_content[:500])
+                session["_last_turn_tool_calls"] = turn_tool_calls
+                await emit({
+                    "type": "message_end",
+                    "content": text_content,
+                    "actions": [],
+                })
+                return text_content
+
+            history.append({
+                "role": "assistant",
+                "content": text_content or "",
+                "tool_calls": [
+                    {"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}}
+                    for tc in tool_calls
+                ],
+            })
+
+            logger.debug("LLM KIEST  %d tool(s): %s", len(tool_calls), ", ".join(tc["name"] for tc in tool_calls))
+            turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
+
+            _TOOL_LIMITS = {"search_catalog": 5}
+            for tc in tool_calls:
+                tool_counts[tc["name"]] = tool_counts.get(tc["name"], 0) + 1
+
+            blocked = {}
+            for tc in tool_calls:
+                limit = _TOOL_LIMITS.get(tc["name"])
+                if limit and tool_counts[tc["name"]] > limit:
+                    blocked[tc["id"]] = f"LIMIET: {tc['name']} is al {limit}x aangeroepen. Werk met de resultaten die je hebt of geef aan dat de data niet beschikbaar is."
+                    logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", tc["name"], tool_counts[tc["name"]], limit)
+
+            runnable = [(i, tc) for i, tc in enumerate(tool_calls) if tc["id"] not in blocked and _call_key(tc) not in call_cache]
+            new_results = await asyncio.gather(*[_call_tool(tc, emit) for _, tc in runnable])
+            for (i, tc), res in zip(runnable, new_results):
+                call_cache[_call_key(tc)] = res
+
+            for tc in tool_calls:
+                if tc["id"] in blocked:
+                    result = blocked[tc["id"]]
+                    history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+                    continue
+                result, figure = call_cache[_call_key(tc)]
+                await _handle_figures(tc, figure, session, emit)
+                if len(result) > 12000:
+                    result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
+                history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
+
+            clarify_result = await _handle_clarify_scope(
+                tool_calls, text_content, history, initial_history_len,
+                messages, session, turn_tool_calls, emit,
+            )
+            if clarify_result is not None:
+                return clarify_result
+
+        await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
+    finally:
+        slow_task.cancel()
     return "Het maximale aantal stappen is bereikt."

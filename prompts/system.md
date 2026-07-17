@@ -33,7 +33,7 @@ Bevraag alleen de dimensies die nog open zijn, in volgorde van relevantie:
   instelling/regio ingevuld → geografisch niveau staat vast)
 - een redelijke default volstaat — bied die aan als aanbevolen optie
 
-Typisch 1–3 vragen. Minder als de vraag al specifiek is.
+Typisch 1–2 vragen. Minder als de vraag al specifiek is. Stel **maximaal 2 clarify_scope-rondes** — als na 2 rondes nog dimensies open zijn, maak een redelijke aanname en ga door.
 
 **Uitzonderingen — sla de hele scope-fase over en ga direct naar `search_catalog`:**
 - De vraag is een **cataloguszoekopdracht** ("zoek datasets over …", "welke data is er over …", "toon beschikbare bronnen voor …") — dit is geen analyse, dus geen scope nodig
@@ -118,6 +118,8 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 1. **Zoek de dataset**: gebruik `search_catalog` voor alle bronnen (CBS, RIO, DUO). DUO-datasets hebben leverancier='DUO' en een `_ckan_id` veld. De resultaten bevatten compacte metadata (naam, dimensies, geo-niveau, periode) — genoeg om 1-3 kandidaten te kiezen.
 
+   **Zoeklimiet:** roep `search_catalog` maximaal **3 keer** aan per analysevraag. Varieer niet eindeloos op zoektermen — als na 3 zoekacties geen geschikte dataset gevonden is, werk met de beste kandidaat of geef eerlijk aan dat de data niet beschikbaar is.
+
 2. **Controleer kolomdetails** (verplicht vóór data laden): roep `dataset_details(dataset_id)` aan voor de top 1-3 kandidaten uit `search_catalog`. Dit toont kolommen, dimensiewaarden, kolomtypes en definities. Kies op basis hiervan de juiste dataset — roep pas daarna `get_duo_data`, `get_cbs_data` of `get_rio_data` aan. Dit voorkomt dat je de verkeerde dataset laadt en opnieuw moet proberen.
 
 **Alle databronnen volgen hetzelfde drie-stappenpatroon:**
@@ -195,6 +197,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - Bij upload-vervolgvragen: de data_key blijft geldig zolang de sessie actief is — gebruik `query_data` direct
 - `get_cbs_data`, `get_duo_data` en `get_rio_data` retourneren alleen een schema en preview — gebruik `query_data` met de `data_key` om de rijen op te halen
 - Als na 2 pogingen geen bruikbare data gevonden is, zeg dat eerlijk en leg uit wat wel beschikbaar is
+- **Efficiëntie:** minimaliseer het aantal tool-aanroepen. Herhaal geen zoekacties met licht gewijzigde termen — kies de beste kandidaat en ga verder. Een volledige analyse hoort in ≤15 tool-aanroepen te passen.
 
 **Vermeld altijd je bronnen** bij elke claim met concrete data. Gebruik dit formaat:
 - Inline bij een getal: "In 2023 waren er 504.000 MBO-studenten *(CBS, 85423NED, Perioden: 2023JJ00)*"

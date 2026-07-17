@@ -29,3 +29,6 @@ demo/voices/
 demo/narratie.wav
 demo/source_video.mp4
 demo/demo_met_narratie.mp4
+
+# Testplan (lokaal, niet in repo)
+TESTPLAN.md

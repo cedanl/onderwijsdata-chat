@@ -1,0 +1,118 @@
+{
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden.",
+  "evaluations": [
+    {
+      "label": "trend-analyse",
+      "message": "Hoe heeft de deelname aan voltijdonderwijs bij Hogeschool Utrecht zich ontwikkeld de laatste 5 jaar? Geef het totaal.",
+      "description": "Trend over meerdere jaren, moet grafiek opleveren",
+      "expected": {
+        "datasets": ["duo:01.-ingeschrevenen-ho"],
+        "datasets_alt": ["cbs:71037ned"],
+        "tool_flow": ["search_catalog", "dataset_details", "get_duo_data|get_cbs_data", "query_data", "create_plot"],
+        "tool_flow_description": "Zoek → details → laad data → filter → grafiek",
+        "must_contain_tools": ["search_catalog", "create_plot"],
+        "max_search_catalog": 3,
+        "data_points": {
+          "description": "Voltijd ingeschrevenen HU, ca. 29.000-31.000 per jaar",
+          "expected_range": [25000, 35000],
+          "expected_years": ["2020", "2021", "2022", "2023", "2024"],
+          "reference_values": {
+            "2022": 30280,
+            "2023": 29941,
+            "2024": 29620
+          },
+          "tolerance_pct": 5
+        },
+        "must_have_plot": true,
+        "must_mention": ["Hogeschool Utrecht", "voltijd"]
+      }
+    },
+    {
+      "label": "marktaandeel",
+      "message": "Wat is het marktaandeel van ROC Mondriaan voor Sport en Bewegen in Zuid Holland? Geef instroom laatste schooljaar.",
+      "description": "Marktaandeel-berekening met filtering op regio + opleiding",
+      "expected": {
+        "datasets": ["duo:01.-instromers-mbo"],
+        "tool_flow": ["search_catalog", "dataset_details", "get_duo_data", "query_data", "run_analysis"],
+        "tool_flow_description": "Zoek MBO instroom → details → laad → filter ROC Mondriaan + Zuid-Holland → bereken percentage",
+        "must_contain_tools": ["search_catalog", "query_data"],
+        "max_search_catalog": 3,
+        "data_points": {
+          "description": "Marktaandeel ROC Mondriaan Sport en Bewegen in Zuid-Holland, verwacht 10-80%",
+          "expected_range": null,
+          "must_be_percentage": true
+        },
+        "must_have_plot": false,
+        "must_mention": ["ROC Mondriaan", "marktaandeel"]
+      }
+    },
+    {
+      "label": "herkomst-concurrentie",
+      "message": "Waar komen de lerenden van Hogeschool Utrecht vandaan en met welke instellingen in de regio concurreer ik? Geef per provincie.",
+      "description": "Geo-analyse met concurrentieperspectief",
+      "expected": {
+        "datasets": ["duo:01.-ingeschrevenen-ho"],
+        "datasets_alt": ["cbs:71037ned"],
+        "tool_flow": ["search_catalog", "dataset_details", "get_duo_data|get_cbs_data", "query_data", "run_analysis", "create_plot"],
+        "tool_flow_description": "Zoek HO-inschrijvingen met woonprovincie → laad → filter HU → vergelijk met andere instellingen per provincie",
+        "must_contain_tools": ["search_catalog", "query_data"],
+        "max_search_catalog": 3,
+        "data_points": {
+          "description": "Aantal studenten HU per woonprovincie, verwacht Utrecht als grootste",
+          "expected_top_province": "Utrecht",
+          "must_have_provinces": true
+        },
+        "must_have_plot": false,
+        "must_mention": ["Utrecht", "provincie"]
+      }
+    },
+    {
+      "label": "arbeidsmarkt-aansluiting",
+      "message": "Sluit het onderwijsaanbod van Hogeschool Utrecht goed aan bij de arbeidsmarkt? Analyseer arbeidsmarktpositie van afgestudeerden de laatste 5 jaar per sector.",
+      "description": "Cross-bron-analyse, arbeidsmarkt-data, sector-uitsplitsing",
+      "expected": {
+        "datasets": ["cbs:85776ned"],
+        "datasets_alt": ["cbs:86060ned", "cbs:85777ned"],
+        "tool_flow": ["search_catalog", "dataset_details", "get_cbs_data", "get_cbs_dimension", "query_data", "run_analysis", "create_plot"],
+        "tool_flow_description": "Zoek CBS arbeidsmarktpositie HO → dimensies → filter HBO → analyseer per sector",
+        "must_contain_tools": ["search_catalog", "get_cbs_data"],
+        "max_search_catalog": 3,
+        "data_points": {
+          "description": "Arbeidsmarktpositie afgestudeerden HBO - werkzaam percentage verwacht >80%",
+          "expected_range": null,
+          "note": "CBS 85776NED bevat uitstromers HO naar arbeidsmarktpositie, maar niet per instelling - het model moet dit eerlijk melden"
+        },
+        "acceptable_outcomes": [
+          "Analyse op landelijk HBO-niveau (niet per instelling beschikbaar)",
+          "Eerlijk melden dat per-instelling data niet beschikbaar is"
+        ],
+        "must_have_plot": false,
+        "must_mention": ["arbeidsmarkt", "afgestudeerden"]
+      }
+    },
+    {
+      "label": "vsv-regio",
+      "message": "Hoe groot is het aandeel voortijdig schoolverlaters dat werk heeft gevonden in de regio Utrecht? Geef het meest recente jaar.",
+      "description": "Niche-dataset (VSV), regiofilter, percentage-berekening",
+      "expected": {
+        "datasets": ["cbs:85859ned"],
+        "datasets_alt": ["cbs:84780ned", "cbs:86223ned"],
+        "tool_flow": ["search_catalog", "dataset_details", "get_cbs_data", "get_cbs_dimension", "query_data"],
+        "tool_flow_description": "Zoek VSV + arbeidsmarktpositie → details → laad CBS → dimensies → filter Utrecht + werkzaam",
+        "must_contain_tools": ["search_catalog", "get_cbs_data"],
+        "max_search_catalog": 3,
+        "data_points": {
+          "description": "Aandeel VSV met werk in Utrecht, verwacht als percentage",
+          "must_be_percentage": true,
+          "note": "CBS 85859NED bevat VSV naar arbeidsmarktpositie maar mogelijk niet per regio - eerlijk melden is ook correct"
+        },
+        "acceptable_outcomes": [
+          "Percentage VSV met werk in Utrecht berekend",
+          "Eerlijk melden dat combinatie VSV + arbeidsmarkt + regio niet in één dataset zit"
+        ],
+        "must_have_plot": false,
+        "must_mention": ["voortijdig", "schoolverlat"]
+      }
+    }
+  ]
+}

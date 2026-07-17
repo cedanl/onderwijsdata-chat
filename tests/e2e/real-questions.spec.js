@@ -1,92 +1,26 @@
 /**
- * Realistische vragen uit productie-chats.
+ * Realistische vragen uit productie-chats, gescoord tegen ground truth.
  *
- * Test diverse LLM-agent-vaardigheden:
- * - Trend-analyse (meerdere jaren, grafiek)
- * - Geo-analyse (regio, gemeente, provincie)
- * - Marktaandeel-berekening (run_analysis)
- * - Cross-bron-analyse (DUO + CBS/RIO)
- * - Concurrentie/overlap-analyse
- * - Arbeidsmarkt-koppeling (vacatures, aansluiting)
+ * Leest evaluations.json voor verwachte datasets, tool-flow en datapunten.
+ * Scoort elk model op: tool-efficiëntie, dataset-match, content-kwaliteit,
+ * hallucinatie-risico.
  *
  * Run: TEST_MODELS=azure_ai/claude-haiku-4-5,openai/gpt-oss-120b npx playwright test real-questions
  */
 import { test, expect } from 'playwright/test'
 import { WebSocket } from 'ws'
+import { readFileSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations
 
 const API = 'http://localhost:8000'
 const WS_URL = 'ws://localhost:8000/api/chat'
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
 
-const QUESTIONS = [
-  {
-    label: 'trend-analyse',
-    message: 'Hoe heeft de deelname aan voltijdonderwijs bij Hogeschool Utrecht zich ontwikkeld de laatste 5 jaar? Geef het totaal.',
-    expect_tools: ['search_catalog', 'get_duo_data'],
-    check: (r) => {
-      const hasPlot = r.toolCalls.includes('create_plot')
-      const hasData = r.toolCalls.includes('query_data') || r.toolCalls.includes('get_duo_data')
-      const hasYears = /202[0-5]/.test(r.content)
-      return { hasPlot, hasData, hasYears }
-    },
-    description: 'Trend over meerdere jaren, moet grafiek opleveren',
-  },
-  {
-    label: 'marktaandeel',
-    message: 'Wat is het marktaandeel van ROC Mondriaan voor Sport en Bewegen in Zuid Holland? Geef instroom laatste schooljaar.',
-    expect_tools: ['search_catalog'],
-    check: (r) => {
-      const hasAnalysis = r.toolCalls.includes('run_analysis') || r.toolCalls.includes('query_data')
-      const hasPercentage = /%/.test(r.content) || /marktaandeel|aandeel/i.test(r.content)
-      return { hasAnalysis, hasPercentage }
-    },
-    description: 'Marktaandeel-berekening met filtering op regio + opleiding',
-  },
-  {
-    label: 'herkomst-concurrentie',
-    message: 'Waar komen de lerenden van Hogeschool Utrecht vandaan en met welke instellingen in de regio concurreer ik? Geef per provincie.',
-    expect_tools: ['search_catalog'],
-    check: (r) => {
-      const hasGeoData = /provincie|Utrecht|Noord-Holland|Zuid-Holland|Gelderland/i.test(r.content)
-      const hasCompetitors = /hogeschool|universiteit|instelling/i.test(r.content)
-      return { hasGeoData, hasCompetitors }
-    },
-    description: 'Geo-analyse met concurrentieperspectief',
-  },
-  {
-    label: 'arbeidsmarkt-aansluiting',
-    message: 'Sluit het onderwijsaanbod van Hogeschool Utrecht goed aan bij de arbeidsmarkt? Analyseer arbeidsmarktpositie van afgestudeerden de laatste 5 jaar per sector.',
-    expect_tools: ['search_catalog'],
-    check: (r) => {
-      const hasCBS = r.toolCalls.includes('get_cbs_data') || /CBS|85776|85777/i.test(r.content)
-      const hasSectors = /techniek|zorg|economie|sector|domein/i.test(r.content)
-      return { hasCBS, hasSectors }
-    },
-    description: 'Cross-bron-analyse, arbeidsmarkt-data, sector-uitsplitsing',
-  },
-  {
-    label: 'vsv-regio',
-    message: 'Hoe groot is het aandeel voortijdig schoolverlaters dat werk heeft gevonden in de regio Utrecht? Geef het meest recente jaar.',
-    expect_tools: ['search_catalog'],
-    check: (r) => {
-      const hasVSV = /vsv|voortijdig|schoolverlat/i.test(r.content)
-      const hasPercentage = /%|aandeel|percentage/i.test(r.content)
-      return { hasVSV, hasPercentage }
-    },
-    description: 'Niche-dataset (VSV), regiofilter, percentage-berekening',
-  },
-]
-
-async function getToken() {
-  const resp = await fetch(`${API}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'admin', password: 'admin' }),
-  })
-  return (await resp.json()).token
-}
-
-function chat(token, message, model, timeoutMs = 180_000) {
+function chat(token, message, model, timeoutMs = 300_000) {
   return new Promise((resolve) => {
     const ws = new WebSocket(`${WS_URL}?token=${token}`)
     const toolCalls = []
@@ -139,69 +73,187 @@ function chat(token, message, model, timeoutMs = 180_000) {
   })
 }
 
-test.describe('Productie-vragen', () => {
+function scoreResult(r, ev) {
+  const scores = {}
+  const ex = ev.expected
+
+  // 1. Tool-efficiëntie: search_catalog binnen limiet?
+  const searchCount = r.toolCalls.filter(t => t === 'search_catalog').length
+  const maxSearch = ex.max_search_catalog || 3
+  scores.search_within_limit = searchCount <= maxSearch
+  scores.search_count = searchCount
+  scores.total_tools = r.toolCalls.length
+
+  // 2. Verplichte tools aanwezig?
+  scores.required_tools = {}
+  for (const tool of (ex.must_contain_tools || [])) {
+    scores.required_tools[tool] = r.toolCalls.includes(tool)
+  }
+  scores.has_all_required = Object.values(scores.required_tools).every(Boolean)
+
+  // 3. Dataset-match: worden verwachte datasets genoemd in antwoord of tool output?
+  const allText = r.content + ' ' + r.toolResults.map(t => t.output).join(' ')
+  const allDatasets = [...(ex.datasets || []), ...(ex.datasets_alt || [])]
+  const datasetIds = allDatasets.map(d => d.split(':')[1]).filter(Boolean)
+  scores.datasets_found = datasetIds.filter(id => {
+    const pattern = new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    return pattern.test(allText)
+  })
+  scores.dataset_match = scores.datasets_found.length > 0
+
+  // 4. Content-kwaliteit: verplichte termen aanwezig?
+  scores.mentions = {}
+  for (const term of (ex.must_mention || [])) {
+    scores.mentions[term] = new RegExp(term, 'i').test(r.content)
+  }
+  scores.has_all_mentions = Object.values(scores.mentions).every(Boolean)
+
+  // 5. Plot aanwezig als verwacht?
+  if (ex.must_have_plot) {
+    scores.has_plot = r.toolCalls.includes('create_plot')
+  }
+
+  // 6. Data-referentiewaarden controleren
+  if (ex.data_points?.reference_values) {
+    const tolerance = (ex.data_points.tolerance_pct || 10) / 100
+    scores.reference_checks = {}
+    for (const [key, expected] of Object.entries(ex.data_points.reference_values)) {
+      const numPattern = new RegExp(`${expected.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1[. ]?')}`, 'g')
+      const found = numPattern.test(r.content) || numPattern.test(allText)
+      if (!found) {
+        // probeer met tolerantie: zoek getallen in de buurt
+        const nums = (r.content.match(/[\d.]+/g) || []).map(n => parseFloat(n.replace(/\./g, '')))
+        const close = nums.some(n => Math.abs(n - expected) / expected <= tolerance)
+        scores.reference_checks[key] = close ? 'close' : 'missing'
+      } else {
+        scores.reference_checks[key] = 'exact'
+      }
+    }
+  }
+
+  // 7. Percentage aanwezig als verwacht?
+  if (ex.data_points?.must_be_percentage) {
+    scores.has_percentage = /%/.test(r.content) || /marktaandeel|aandeel|percentage/i.test(r.content)
+  }
+
+  // 8. Hallucinatie-risico
+  const dataTools = r.toolCalls.filter(t => ['get_duo_data', 'get_cbs_data', 'query_data', 'run_analysis'].includes(t))
+  const nums = [...new Set((r.content.match(/\b\d[\d.]*\b/g) || []).filter(n => parseFloat(n) > 100))]
+  scores.hallucination_risk = dataTools.length === 0 && nums.length > 2
+
+  // 9. Timeout
+  scores.timeout = !!r.timeout
+
+  // 10. Acceptable outcomes (als gedefinieerd)
+  if (ex.acceptable_outcomes) {
+    scores.acceptable_outcome = ex.acceptable_outcomes.some(outcome => {
+      const keywords = outcome.toLowerCase().split(/\s+/).filter(w => w.length > 4)
+      const matchCount = keywords.filter(k => r.content.toLowerCase().includes(k)).length
+      return matchCount >= Math.ceil(keywords.length * 0.3)
+    })
+  }
+
+  // Totaalscore (0-100)
+  let total = 0, maxPoints = 0
+
+  // Zoek-efficiëntie (20 punten)
+  maxPoints += 20
+  if (scores.search_within_limit) total += 20
+  else if (searchCount <= maxSearch + 2) total += 10
+
+  // Verplichte tools (20 punten)
+  maxPoints += 20
+  if (scores.has_all_required) total += 20
+  else {
+    const found = Object.values(scores.required_tools).filter(Boolean).length
+    const needed = Object.keys(scores.required_tools).length
+    if (needed > 0) total += Math.round(20 * found / needed)
+  }
+
+  // Dataset-match (20 punten)
+  maxPoints += 20
+  if (scores.dataset_match) total += 20
+
+  // Content-kwaliteit (20 punten)
+  maxPoints += 20
+  if (scores.has_all_mentions) total += 20
+  else {
+    const found = Object.values(scores.mentions).filter(Boolean).length
+    const needed = Object.keys(scores.mentions).length
+    if (needed > 0) total += Math.round(20 * found / needed)
+  }
+
+  // Geen hallucinatie (10 punten)
+  maxPoints += 10
+  if (!scores.hallucination_risk) total += 10
+
+  // Geen timeout (10 punten)
+  maxPoints += 10
+  if (!scores.timeout) total += 10
+
+  scores.total = total
+  scores.max = maxPoints
+
+  return scores
+}
+
+async function getToken() {
+  const resp = await fetch(`${API}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'admin', password: 'admin' }),
+  })
+  return (await resp.json()).token
+}
+
+test.describe('Productie-vragen (evaluatie)', () => {
   let token
   test.beforeAll(async () => { token = await getToken() })
 
-  for (const q of QUESTIONS) {
-    test(`${q.label}: ${q.description}`, async () => {
+  for (const ev of EVALS) {
+    test(`${ev.label}: ${ev.description}`, async () => {
       test.setTimeout(300_000)
-      const results = {}
+      const allScores = {}
 
       for (const model of MODELS) {
         const short = model.split('/').pop()
-        const r = await chat(token, q.message, model)
-        results[short] = r
-
-        const checks = q.check(r)
+        const r = await chat(token, ev.message, model)
+        const scores = scoreResult(r, ev)
+        allScores[short] = scores
 
         console.log(`\n${'─'.repeat(60)}`)
-        console.log(`[${short}] ${q.label}`)
-        console.log(`TOOLS: ${r.toolCalls.join(' → ') || '(geen)'}`)
-        console.log(`CHECKS: ${JSON.stringify(checks)}`)
-        console.log(`ANTWOORD (400 chars):\n${r.content.slice(0, 400)}`)
-        if (r.error) console.log(`ERROR: ${r.error}`)
+        console.log(`[${short}] ${ev.label}`)
+        console.log(`SCORE: ${scores.total}/${scores.max}`)
+        console.log(`TOOLS (${r.toolCalls.length}): ${r.toolCalls.join(' → ') || '(geen)'}`)
+        console.log(`search_catalog: ${scores.search_count}x (limiet: ${ev.expected.max_search_catalog || 3})`)
+        console.log(`Verplichte tools: ${JSON.stringify(scores.required_tools)}`)
+        console.log(`Dataset-match: ${scores.dataset_match} (${scores.datasets_found.join(', ') || 'geen'})`)
+        console.log(`Content-match: ${JSON.stringify(scores.mentions)}`)
+        if (scores.reference_checks) console.log(`Referentiewaarden: ${JSON.stringify(scores.reference_checks)}`)
+        if (scores.has_percentage !== undefined) console.log(`Percentage: ${scores.has_percentage}`)
+        if (scores.has_plot !== undefined) console.log(`Plot: ${scores.has_plot}`)
+        console.log(`Hallucinatie-risico: ${scores.hallucination_risk}`)
         if (r.timeout) console.log(`TIMEOUT!`)
+        console.log(`ANTWOORD (400 chars):\n${r.content.slice(0, 400)}`)
         console.log('─'.repeat(60))
       }
 
-      // Vergelijk
-      const modelNames = Object.keys(results)
-      if (modelNames.length === 2) {
-        const [a, b] = modelNames
-        const ra = results[a], rb = results[b]
-
+      // Vergelijking als er meerdere modellen zijn
+      const modelNames = Object.keys(allScores)
+      if (modelNames.length >= 2) {
         console.log(`\n${'═'.repeat(60)}`)
-        console.log(`VERGELIJKING — ${q.label}`)
-        console.log(`${a} tools (${ra.toolCalls.length}): ${ra.toolCalls.join(' → ') || '(geen)'}`)
-        console.log(`${b} tools (${rb.toolCalls.length}): ${rb.toolCalls.join(' → ') || '(geen)'}`)
-
-        // Check getallen overlap
-        const numsA = [...new Set((ra.content.match(/\b\d[\d.]*\b/g) || []).filter(n => parseFloat(n) > 100))]
-        const numsB = [...new Set((rb.content.match(/\b\d[\d.]*\b/g) || []).filter(n => parseFloat(n) > 100))]
-        const overlap = numsA.filter(n => numsB.includes(n))
-        console.log(`${a} getallen >100: ${numsA.slice(0, 8).join(', ') || '(geen)'}`)
-        console.log(`${b} getallen >100: ${numsB.slice(0, 8).join(', ') || '(geen)'}`)
-        console.log(`Overlap getallen: ${overlap.join(', ') || '(geen)'}`)
-
-        // Hallucinatie-check
-        const dataToolsA = ra.toolCalls.filter(t => ['get_duo_data','get_cbs_data','query_data','run_analysis'].includes(t))
-        const dataToolsB = rb.toolCalls.filter(t => ['get_duo_data','get_cbs_data','query_data','run_analysis'].includes(t))
-        const hallA = dataToolsA.length === 0 && numsA.length > 2
-        const hallB = dataToolsB.length === 0 && numsB.length > 2
-        console.log(`${a} hallucinatie-risico: ${hallA}`)
-        console.log(`${b} hallucinatie-risico: ${hallB}`)
+        console.log(`SCORECARD — ${ev.label}`)
+        for (const m of modelNames) {
+          const s = allScores[m]
+          console.log(`  ${m.padEnd(20)} ${s.total}/${s.max} punten`)
+        }
         console.log('═'.repeat(60))
-
-        if (!ra.error) expect(hallA, `${a} geeft data-getallen zonder bronnen`).toBe(false)
-        if (!rb.error) expect(hallB, `${b} geeft data-getallen zonder bronnen`).toBe(false)
       }
 
-      // Basis-check: minstens één model moet search_catalog hebben aangeroepen
-      const anySearched = Object.values(results).some(r => r.toolCalls.includes('search_catalog'))
-      const anyError = Object.values(results).some(r => r.error)
-      if (!anyError) {
-        expect(anySearched, 'Geen enkel model heeft search_catalog aangeroepen').toBe(true)
+      // Assertions per model
+      for (const [modelName, scores] of Object.entries(allScores)) {
+        expect(scores.hallucination_risk, `${modelName} geeft data-getallen zonder bronnen`).toBe(false)
+        expect(scores.total, `${modelName} scoort te laag (${scores.total}/${scores.max})`).toBeGreaterThanOrEqual(30)
       }
     })
   }
