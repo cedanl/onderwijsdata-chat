@@ -27,6 +27,8 @@ _KNOWN_NAMES: dict[str, tuple[str, str, str]] = {
     "openai/gpt-4o-mini":                  ("GPT-4o mini", "Snel", "zap"),
     "openai/gpt-4o":                       ("GPT-4o", "Capabel", "sparkles"),
     "openai/gpt-5":                        ("GPT-5", "Meest capabel", "brain"),
+    "openai/gpt-oss-120b":                 ("GPT-OSS 120B", "SURF Willma — open-source", "cpu"),
+    "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": ("Qwen 2.5 VL 32B", "SURF Willma — vision+taal", "cpu"),
 }
 
 

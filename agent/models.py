@@ -13,7 +13,7 @@ _WILLMA_KWARGS: dict = (
 
 
 def litellm_kwargs(model: str) -> dict:
-    if WILLMA_API_KEY and not model.startswith("anthropic/") and not model.startswith("ollama"):
+    if WILLMA_API_KEY and model.startswith("openai/"):
         return _WILLMA_KWARGS
     return {}
 
