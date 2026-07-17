@@ -36,6 +36,8 @@ Bevraag alleen de dimensies die nog open zijn, in volgorde van relevantie:
 Typisch 1–3 vragen. Minder als de vraag al specifiek is.
 
 **Uitzonderingen — sla de hele scope-fase over en ga direct naar `search_catalog`:**
+- De vraag is een **cataloguszoekopdracht** ("zoek datasets over …", "welke data is er over …", "toon beschikbare bronnen voor …") — dit is geen analyse, dus geen scope nodig
+- De vraag is een **definitievraag** ("wat is het verschil tussen …", "wat betekent …") — beantwoord direct of zoek de definitie op
 - De vraag specificeert al 3 of meer dimensies expliciet
 - De gebruiker vraagt om herhaling met andere parameters
 - De gebruiker vraagt expliciet om "gewoon te beginnen" of vergelijkbaar
