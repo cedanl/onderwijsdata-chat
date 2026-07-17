@@ -1,7 +1,8 @@
 import json
+import logging
 from unittest.mock import patch
 
-from tools.catalog import search_catalog
+from tools.catalog import search_catalog, dataset_details
 
 
 # --- Fix #37: archief-filter ---
@@ -295,3 +296,72 @@ def test_synonym_hbo_expands_to_ho():
         result = search_catalog("hbo studenten", source="duo")
     data = json.loads(result)
     assert data[0]["bron"] == "Ingeschrevenen hoger onderwijs"
+
+
+# --- Logging ---
+
+
+def test_search_catalog_logs_hit(caplog):
+    cbs_entries = [
+        {"identifier": "ds1", "_cbs_id": "12345", "title": "instroom ho"},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.INFO, logger="tools.catalog"):
+        search_catalog("instroom", source="cbs")
+    assert any("search_catalog" in r.message and "results=1" in r.message for r in caplog.records)
+    assert any("elapsed_ms=" in r.message for r in caplog.records)
+
+
+def test_search_catalog_logs_miss(caplog):
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.WARNING, logger="tools.catalog"):
+        result = search_catalog("xyznonexistent", source="cbs")
+    assert "Geen resultaten" in result
+    assert any("miss" in r.message and "search_catalog" in r.message for r in caplog.records)
+
+
+def test_search_catalog_logs_top_ids(caplog):
+    cbs_entries = [
+        {"identifier": f"ds{i}", "_cbs_id": f"id-{i}", "title": "data"} for i in range(5)
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.INFO, logger="tools.catalog"):
+        search_catalog("data", source="cbs")
+    log_msg = next(r.message for r in caplog.records if "top=" in r.message)
+    assert "id-0" in log_msg
+
+
+def test_search_catalog_logs_geo_miss(caplog):
+    cbs_entries = [
+        {"identifier": "ds1", "title": "instroom", "_geo_niveau": ["landelijk"]},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.WARNING, logger="tools.catalog"):
+        result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    assert "Geen datasets gevonden" in result
+    assert any("geo filter" in r.message for r in caplog.records)
+
+
+def test_dataset_details_logs_hit(caplog):
+    cbs_entries = [
+        {"_cbs_id": "83456NED", "bron": "Instroom ho", "_kolommen": {"COL": ["a"]}},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.INFO, logger="tools.catalog"):
+        result = dataset_details("83456NED")
+    assert "83456NED" not in result or "Instroom" in result
+    assert any("dataset_details" in r.message and "bron=CBS" in r.message for r in caplog.records)
+
+
+def test_dataset_details_logs_miss(caplog):
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]), \
+         caplog.at_level(logging.WARNING, logger="tools.catalog"):
+        result = dataset_details("nope-123")
+    assert "niet gevonden" in result
+    assert any("miss" in r.message and "dataset_details" in r.message for r in caplog.records)

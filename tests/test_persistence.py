@@ -157,3 +157,42 @@ def test_workbook_without_dashboard_spec_returns_none(db):
     db.upsert_workbook("alice", "wb-old", "Old", "", created_at="2024-01-01T00:00:00Z")
     result = db.list_workbooks("alice")
     assert result[0]["dashboard_spec"] is None
+
+
+# --- Timestamp-normalisatie ---
+
+
+def test_upsert_normalizes_millisecond_timestamp(db):
+    ms_ts = 1700000000000
+    db.upsert_conversation("alice", "c-ms", "MS test", ms_ts, [])
+    result = db.list_conversations("alice")
+    assert result[0]["timestamp"] == 1700000000
+
+
+def test_upsert_keeps_seconds_timestamp(db):
+    sec_ts = 1700000000
+    db.upsert_conversation("alice", "c-sec", "Sec test", sec_ts, [])
+    result = db.list_conversations("alice")
+    assert result[0]["timestamp"] == 1700000000
+
+
+def test_migrate_converts_existing_ms_timestamps(db):
+    import sqlite3, os
+    conn = sqlite3.connect(os.environ["DATABASE_PATH"])
+    conn.execute(
+        "INSERT INTO conversations (id, username, title, timestamp, messages) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("c-old", "alice", "Oud", 1700000000000, "[]"),
+    )
+    conn.commit()
+    conn.close()
+
+    import importlib
+    importlib.reload(db._module if hasattr(db, '_module') else __import__('persistence.db', fromlist=['db']))
+    from persistence import db as fresh_db
+    importlib.reload(fresh_db)
+    fresh_db.init_db()
+
+    result = fresh_db.list_conversations("alice")
+    old = next(r for r in result if r["id"] == "c-old")
+    assert old["timestamp"] == 1700000000
