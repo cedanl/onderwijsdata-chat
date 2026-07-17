@@ -5,7 +5,7 @@ export const BUILTIN = {
   id: '__builtin__',
   title: 'Instroom & Diplomering',
   description: 'Overzicht instroom, diplomarendement en regionale herkomst. Voorbeelddashboard met statische data.',
-  createdAt: '2024-10-01T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
@@ -13,7 +13,7 @@ export const BUILTIN_ARBEIDSMARKT = {
   id: '__builtin_arbeidsmarkt__',
   title: 'Arbeidsmarkt',
   description: 'Opleidingsniveau werkzoekenden, vacaturedruk en arbeidsmarktpositie HU-alumni in de regio Utrecht.',
-  createdAt: '2024-10-01T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
@@ -21,7 +21,7 @@ export const BUILTIN_REGIO_INSTROOM = {
   id: '__builtin_regio_instroom__',
   title: 'Regio — Instroom & Demografie',
   description: 'Ingeschrevenen, eerstejaars en geslachtsverdeling afgezet tegen het provinciaal gemiddelde.',
-  createdAt: '2024-10-01T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
@@ -29,7 +29,7 @@ export const BUILTIN_REGIO_DIPLOMERING = {
   id: '__builtin_regio_diplomering__',
   title: 'Regio — Voortgang & Diplomering',
   description: 'Sectorverdeling, inschrijvingstrend en gediplomeerden per jaar versus de regio.',
-  createdAt: '2024-10-01T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
@@ -37,7 +37,7 @@ export const BUILTIN_REGIO_ARBEIDSMARKT = {
   id: '__builtin_regio_arbeidsmarkt__',
   title: 'Regio — Arbeidsmarkt',
   description: 'Landelijke arbeidsmarktkansen (ROA) en vacatureaanbod in de provincie (UWV).',
-  createdAt: '2024-10-01T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
@@ -157,10 +157,13 @@ export async function saveWorkbookWithSync({ title, description, messages, figur
 export async function migrateLocalWorkbooks() {
   try {
     const serverWbs = await fetchWorkbooks()
-    if (serverWbs.length > 0) return
+    if (serverWbs.length > 0) {
+      localStorage.removeItem(STORAGE_WORKBOOKS)
+      return
+    }
     const localWbs = getWorkbooks()
     if (localWbs.length === 0) return
-    await Promise.allSettled(localWbs.map(wb =>
+    const results = await Promise.allSettled(localWbs.map(wb =>
       putWorkbook(wb.id, {
         title: wb.title,
         description: wb.description || '',
@@ -173,5 +176,8 @@ export async function migrateLocalWorkbooks() {
         createdAt: wb.createdAt,
       })
     ))
+    if (results.every(r => r.status === 'fulfilled')) {
+      localStorage.removeItem(STORAGE_WORKBOOKS)
+    }
   } catch {}
 }

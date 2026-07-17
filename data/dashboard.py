@@ -12,6 +12,9 @@ from .instellingen import resolve_alias
 
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 20
+_MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
+_UWV_PEILDATUM = "mei 2023 (momentopname)"
+_ROA_BRON = "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling"
 
 
 # ─── Regiodashboard ──────────────────────────────────────────────────────────
@@ -276,8 +279,8 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
             "eerstejaars": "DUO p02ho1ejrs partities 0 (HBO) en 1 (WO)",
             "gediplomeerden": "DUO p04hogdipl partities 0 (HBO) en 1 (WO)",
         },
-        "uwv_peildatum": "mei 2023 (momentopname)",
-        "roa_bron": "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling",
+        "uwv_peildatum": _UWV_PEILDATUM,
+        "roa_bron": _ROA_BRON,
     }
     return result
 
@@ -299,7 +302,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     provincie = _mode_str(rows[prov_col])
     result["provincie"] = provincie or "Onbekend"
 
-    per_jaar = rows.groupby("JAAR")[["BBL", "BOLDT", "BOLVT", "EX"]].sum()
+    per_jaar = rows.groupby("JAAR")[_MBO_LEERWEG_COLS].sum()
     totals = per_jaar.sum(axis=1).astype(int)
     result["ingeschrevenen"] = totals.sort_index().to_dict()
 
@@ -334,10 +337,10 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         ]
         n = int(overige[inst_col].nunique())
         if n > 0:
-            per_inst_jaar = overige.groupby([inst_col, "JAAR"])[["BBL", "BOLDT", "BOLVT", "EX"]].sum()
+            per_inst_jaar = overige.groupby([inst_col, "JAAR"])[_MBO_LEERWEG_COLS].sum()
             per_inst_jaar["totaal"] = per_inst_jaar.sum(axis=1)
             gem = per_inst_jaar.reset_index().groupby("JAAR")["totaal"].mean()
-            totaal_prov = overige.groupby("JAAR")[["BBL", "BOLDT", "BOLVT", "EX"]].sum().sum(axis=1)
+            totaal_prov = overige.groupby("JAAR")[_MBO_LEERWEG_COLS].sum().sum(axis=1)
             result["benchmark"] = {
                 "label": f"Provinciaal gemiddelde ({provincie}, excl. eigen instelling)",
                 "n_instellingen": n,
@@ -355,8 +358,8 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
             "ingeschrevenen": "DUO mbo-studenten-per-instelling",
             "gediplomeerden": "DUO gediplomeerde-mbo-studenten",
         },
-        "uwv_peildatum": "mei 2023 (momentopname)",
-        "roa_bron": "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling",
+        "uwv_peildatum": _UWV_PEILDATUM,
+        "roa_bron": _ROA_BRON,
     }
     return result
 
@@ -478,7 +481,7 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
 
     result: dict = {}
 
-    per_jaar = rows.groupby("JAAR")[["BBL", "BOLDT", "BOLVT", "EX"]].sum()
+    per_jaar = rows.groupby("JAAR")[_MBO_LEERWEG_COLS].sum()
     totals = per_jaar.sum(axis=1).astype(int)
     result["ingeschrevenen"] = totals.sort_index().to_dict()
 
