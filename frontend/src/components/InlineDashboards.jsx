@@ -348,7 +348,7 @@ function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownCol
   const toIndex = (values, base) =>
     values.map(v => v != null && base > 0 ? Math.round(((v / base) - 1) * 100) : null)
 
-  const ownBase = ownRaw[0]
+  const ownBase = ownRaw.find(v => v != null && v > 0) ?? ownRaw[0]
   const ownData = toIndex(ownRaw, ownBase)
 
   const datasets = [
@@ -445,9 +445,11 @@ export function InlineDashboardRegio({ instelling }) {
   const lastDipl = diplEntries.at(-1)
   const diplDelta = yearOverYearDelta(diplEntries)
 
-  const totaalProv = bm.totaal_ingeschrevenen
-    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)?.[1]
+  const totaalProvEntry = bm.totaal_ingeschrevenen
+    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)
     : null
+  const totaalProv = totaalProvEntry?.[1] ?? null
+  const totaalProvJaar = totaalProvEntry?.[0] ?? data?.laatste_jaar
 
   const vrouw = data?.geslacht?.VROUW || 0
   const man = data?.geslacht?.MAN || 0
@@ -487,7 +489,7 @@ export function InlineDashboardRegio({ instelling }) {
           {totaalProv != null && (
             <div className="kpi-card">
               <div className="kpi-card-header">
-                <span className="kpi-label">Provincie totaal {data.laatste_jaar}–{data.laatste_jaar+1}</span>
+                <span className="kpi-label">Provincie totaal {totaalProvJaar}–{Number(totaalProvJaar)+1}</span>
                 <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
@@ -746,9 +748,11 @@ export function InlineDashboardRegioInstroom({ instelling }) {
   const lastEj = ejEntries.at(-1)
   const ejDelta = yearOverYearDelta(ejEntries)
 
-  const totaalProv = bm.totaal_ingeschrevenen
-    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)?.[1]
+  const totaalProvEntry = bm.totaal_ingeschrevenen
+    ? Object.entries(bm.totaal_ingeschrevenen).sort((a, b) => a[0] - b[0]).at(-1)
     : null
+  const totaalProv = totaalProvEntry?.[1] ?? null
+  const totaalProvJaar = totaalProvEntry?.[0] ?? data?.laatste_jaar
 
   const vrouw = data?.geslacht?.VROUW || 0
   const man = data?.geslacht?.MAN || 0
@@ -788,7 +792,7 @@ export function InlineDashboardRegioInstroom({ instelling }) {
           {totaalProv != null && (
             <div className="kpi-card">
               <div className="kpi-card-header">
-                <span className="kpi-label">Provincie totaal {data.laatste_jaar}–{data.laatste_jaar+1}</span>
+                <span className="kpi-label">Provincie totaal {totaalProvJaar}–{Number(totaalProvJaar)+1}</span>
                 <div className="kpi-icon" style={{ background: '#F5F3FF' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>

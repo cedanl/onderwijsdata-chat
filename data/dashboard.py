@@ -183,7 +183,7 @@ def _roa_schoolverlaters(onderwijs_type: str) -> dict:
         for _, row in rows.iterrows():
             niveau = str(row["detailniveau"])
             indicator = str(row["onderwerp"])
-            out.setdefault(niveau, {})[indicator] = int(row["perc"])
+            out.setdefault(niveau, {})[indicator] = round(float(row["perc"]))
         return out
     except Exception:
         return {}

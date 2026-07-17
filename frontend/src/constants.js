@@ -9,7 +9,7 @@ export const STORAGE_DC_FIGURES = 'edudata_dc_figures'
 export const STORAGE_CURRENT_CHAT = 'openEDUdata_current_chat'
 
 // ─── Shared color palette ────────────────────────────────────────────────────
-export const CHART_COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E']
+export const CHART_COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E', '#EC4899', '#6366F1']
 
 // ─── Magic numbers ───────────────────────────────────────────────────────────
 export const MAX_CONVERSATIONS = 15

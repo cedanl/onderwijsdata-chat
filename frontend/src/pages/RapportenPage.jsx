@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -26,6 +27,12 @@ export default function RapportenPage({ settings }) {
       deleteMessage: 'Weet je zeker dat je dit rapport wilt verwijderen?',
       initialSelected: navWorkbook,
     })
+
+  useEffect(() => {
+    if (!selected && pendingId) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [selected, pendingId, setSearchParams])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
