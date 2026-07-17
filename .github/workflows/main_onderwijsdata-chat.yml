@@ -33,6 +33,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
+      - name: Run Python tests
+        run: |
+          PYTHONPATH=".python_packages/lib/site-packages:$PYTHONPATH" \
+          pip install pytest pytest-asyncio && \
+          python -m pytest tests/ -x -q --ignore=tests/test_eval_aggregation.py
+
       - name: Scan Python dependencies for vulnerabilities
         run: pip install pip-audit && pip-audit -r requirements.txt || true
 
@@ -45,10 +51,11 @@ jobs:
         working-directory: frontend
         run: npm audit --audit-level=high || true
 
-      - name: Build React frontend
+      - name: Build and test React frontend
         working-directory: frontend
         run: |
           npm ci
+          npm test
           npm run build
 
       - name: Upload artifact for deployment jobs

@@ -30,6 +30,16 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
         conn.commit()
 
+    has_ms = conn.execute(
+        "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
+    ).fetchone()
+    if has_ms:
+        conn.execute(
+            "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
+            "WHERE timestamp > 1000000000000"
+        )
+        conn.commit()
+
 
 def init_db() -> None:
     conn = _connect()
@@ -74,6 +84,13 @@ def list_conversations(username: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _normalize_ts(timestamp: int | float) -> int:
+    """Normalize millisecond timestamps to seconds."""
+    if timestamp > 1e12:
+        return int(timestamp) // 1000
+    return int(timestamp)
+
+
 def upsert_conversation(
     username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]
 ) -> None:
@@ -83,7 +100,7 @@ def upsert_conversation(
         "VALUES (?, ?, ?, ?, ?) "
         "ON CONFLICT (id, username) DO UPDATE SET title=excluded.title, "
         "timestamp=excluded.timestamp, messages=excluded.messages",
-        (conv_id, username, title, timestamp, json.dumps(messages)),
+        (conv_id, username, title, _normalize_ts(timestamp), json.dumps(messages)),
     )
     conn.commit()
     conn.close()
