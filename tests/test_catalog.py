@@ -64,7 +64,7 @@ def test_no_archief_field_treated_as_active():
 # --- Fix #38: leverancier-filter ---
 
 
-def test_unsupported_leveranciers_excluded():
+def test_leverancier_filter_supported_and_excluded():
     rio_entries = [
         {"identifier": "rio-entry", "title": "rio data", "leverancier": "RIO"},
         {"identifier": "duo-entry", "title": "duo data", "leverancier": "DUO"},
@@ -80,9 +80,9 @@ def test_unsupported_leveranciers_excluded():
     identifiers = {e.get("identifier") for e in data}
     assert "rio-entry" in identifiers
     assert "duo-entry" in identifiers
-    assert "roa-entry" not in identifiers
+    assert "roa-entry" in identifiers
+    assert "uwv-entry" in identifiers
     assert "sbb-entry" not in identifiers
-    assert "uwv-entry" not in identifiers
     assert "inspectie-entry" not in identifiers
 
 
@@ -99,7 +99,7 @@ def test_leverancier_filter_case_insensitive():
     identifiers = {e.get("identifier") for e in data}
     assert "rio-lower" in identifiers
     assert "duo-mixed" in identifiers
-    assert "roa-entry" not in identifiers
+    assert "roa-entry" in identifiers
 
 
 # --- geo_niveau filter ---

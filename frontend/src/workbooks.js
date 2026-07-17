@@ -179,5 +179,7 @@ export async function migrateLocalWorkbooks() {
     if (results.every(r => r.status === 'fulfilled')) {
       localStorage.removeItem(STORAGE_WORKBOOKS)
     }
-  } catch {}
+  } catch (e) {
+    console.warn('Workbook migration failed:', e.message)
+  }
 }

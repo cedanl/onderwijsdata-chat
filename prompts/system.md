@@ -80,7 +80,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **`_kolomdefinities`** — kolomdefinities uit de DUO glossary (indien beschikbaar)
 - **`_resources`** — downloadbare bestanden per DUO-dataset (naam, url, format). Gebruik de resource-naam als `resource`-parameter bij `get_duo_data`
 
-Gebruik `dataset_details` als je twijfelt welke dataset de juiste is, of om filterwaarden en resource-namen te verifiëren vóór het laden van data.
+Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kiezen vóór het laden van data. Roep het aan voor de top 1-3 kandidaten.
 
 ### Werkinstructies
 

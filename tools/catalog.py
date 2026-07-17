@@ -1,8 +1,12 @@
 import json
+import logging
+import time
 from functools import cache
 
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
@@ -99,6 +103,7 @@ def search_catalog(
     top_n: int = 15,
     geo_niveau: str | None = None,
 ) -> str:
+    t0 = time.perf_counter()
     words = _expand_query(query.lower().split())
     active = []
     archive_fallback = []
@@ -127,7 +132,10 @@ def search_catalog(
                 else:
                     active.append((s, {**entry}))
 
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+
     if not active and not archive_fallback:
+        logger.warning("search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
         return f"Geen resultaten gevonden voor '{query}'."
 
     results = active if active else archive_fallback
@@ -137,11 +145,18 @@ def search_catalog(
     if geo_niveau:
         hits = [r for r in hits if geo_niveau in (r.get("_geo_niveau") or [])]
         if not hits:
+            logger.warning("search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
             return (
                 f"Geen datasets gevonden voor '{query}' die het niveau "
                 f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
                 f"(bijv. 'provincie' in plaats van 'gemeente')."
             )
+
+    top_ids = [
+        h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") or "?"
+        for h in hits[:3]
+    ]
+    logger.info("search_catalog query=%r source=%s geo=%s results=%d top=%s elapsed_ms=%d", query, source, geo_niveau, len(hits), top_ids, elapsed_ms)
 
     lean = [
         {k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
@@ -171,11 +186,14 @@ def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
     for entry in _cbs():
         if entry.get("_cbs_id") == dataset_id:
+            logger.info("dataset_details id=%s bron=CBS", dataset_id)
             return _build_details({"bron": "CBS", **entry}, dataset_id)
 
     for entry in _rio_duo():
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
         if eid == dataset_id:
+            logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
             return _build_details(entry, dataset_id)
 
+    logger.warning("dataset_details miss id=%s", dataset_id)
     return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
