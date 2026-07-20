@@ -16,7 +16,7 @@ stop:
 	@pkill -f "uvicorn server:app" 2>/dev/null || true
 
 backend:
-	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload --reuse-port
+	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload
 
 frontend:
 	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
@@ -25,8 +25,8 @@ frontend:
 # VS Code devcontainer: http://localhost:$(FRONTEND_PORT)
 # devcontainer-cli (plain Docker): run `make url` for the correct address.
 dev: stop
-	@trap 'kill 0' SIGINT; \
-	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload --reuse-port & \
+	@trap 'kill 0' INT; \
+	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload & \
 	cd frontend && npx vite --host $(HOST) --port $(FRONTEND_PORT)
 
 url:
