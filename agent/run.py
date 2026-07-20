@@ -19,6 +19,7 @@ from .stream import accumulate_stream
 logger = logging.getLogger(__name__)
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
+_TOOL_LIMITS: dict[str, int] = {"search_catalog": 5}
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
@@ -166,18 +167,13 @@ async def run(
     call_cache: dict[str, tuple[str, object]] = {}
     turn_tool_calls: list[dict] = []
     tool_counts: dict[str, int] = {}
-    _slow_warned = False
-
     async def _slow_warning():
-        nonlocal _slow_warned
         await asyncio.sleep(45)
-        if not _slow_warned:
-            _slow_warned = True
-            await emit({
-                "type": "toast",
-                "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
-                "level": "info",
-            })
+        await emit({
+            "type": "toast",
+            "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
+            "level": "info",
+        })
 
     slow_task = asyncio.create_task(_slow_warning())
 
@@ -233,7 +229,6 @@ async def run(
             logger.debug("LLM KIEST  %d tool(s): %s", len(tool_calls), ", ".join(tc["name"] for tc in tool_calls))
             turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
 
-            _TOOL_LIMITS = {"search_catalog": 5}
             for tc in tool_calls:
                 tool_counts[tc["name"]] = tool_counts.get(tc["name"], 0) + 1
 

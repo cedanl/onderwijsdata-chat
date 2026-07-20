@@ -13,7 +13,7 @@ build:
 	cd frontend && npm run build
 
 stop:
-	@pkill -f "server:app" 2>/dev/null || true
+	@pkill -f "uvicorn server:app" 2>/dev/null || true
 
 backend:
 	LOG_LEVEL=$(LOG_LEVEL) uv run uvicorn server:app --host $(HOST) --port $(BACKEND_PORT) --reload --reuse-port

@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, getWorkbooks, getWorkbookType } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
-
-const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
 import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
+
+const BUILTINS = [BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT]
 
 export default function DashboardPage({ settings }) {
   const [searchParams, setSearchParams] = useSearchParams()
