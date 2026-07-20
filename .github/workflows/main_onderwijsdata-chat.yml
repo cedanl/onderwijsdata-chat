@@ -35,8 +35,8 @@ jobs:
 
       - name: Run Python tests
         run: |
+          pip install pytest pytest-asyncio --target=".python_packages/lib/site-packages"
           PYTHONPATH=".python_packages/lib/site-packages:$PYTHONPATH" \
-          pip install pytest pytest-asyncio && \
           python -m pytest tests/ -x -q --ignore=tests/test_eval_aggregation.py
 
       - name: Scan Python dependencies for vulnerabilities
