@@ -30,5 +30,10 @@ demo/narratie.wav
 demo/source_video.mp4
 demo/demo_met_narratie.mp4
 
-# Testplan (lokaal, niet in repo)
+# Testplan, eval en MCP server (lokaal, niet in repo)
 TESTPLAN.md
+eval.py
+eval_matrix.sh
+eval_results/
+mcp_server.py
+test-results/
