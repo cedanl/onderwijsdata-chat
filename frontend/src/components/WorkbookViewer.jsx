@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT } from '../workbooks'
-import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt } from './InlineDashboards'
+import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, BUILTIN_GENDER_DIVERSITEIT } from '../workbooks'
+import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt, InlineDashboardGenderDiversiteit } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
@@ -99,6 +99,8 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           ? <InlineDashboardRegioDiplomering instelling={instelling} />
           : workbook.id === BUILTIN_REGIO_ARBEIDSMARKT.id
           ? <InlineDashboardRegioArbeidsmarkt instelling={instelling} />
+          : workbook.id === BUILTIN_GENDER_DIVERSITEIT.id
+          ? <InlineDashboardGenderDiversiteit instelling={instelling} />
           : spec
           ? <>
               <GeneratedDashboard

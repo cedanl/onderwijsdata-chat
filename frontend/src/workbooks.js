@@ -41,6 +41,14 @@ export const BUILTIN_REGIO_ARBEIDSMARKT = {
   builtin: true,
 }
 
+export const BUILTIN_GENDER_DIVERSITEIT = {
+  id: '__builtin_gender_diversiteit__',
+  title: 'Gender & Diversiteit',
+  description: 'Aandeel vrouw versus man, meerjarige geslachtstrend en regionale benchmark per instelling.',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  builtin: true,
+}
+
 function stripMessage(m) {
   return { role: m.role, content: m.content }
 }
