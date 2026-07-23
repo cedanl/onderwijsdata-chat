@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from riodata import duo
 
+# Maps instellingscode → {provincie, arbeidsmarktregio} via DUO address data.
+# HO uses adressen_ho (instellingenho.csv); MBO uses adressen_mbo (instellingenmbo.csv).
+# RPA-GEBIED NAAM is the official UWV arbeidsmarktregio name (35 regions).
+_ADRES_CACHE: dict[str, dict] | None = None
+
 ALIASSEN: dict[str, list[str]] = {
     # WO
     "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit"],
@@ -52,29 +57,95 @@ _cache: list[dict] | None = None
 _alias_lookup: dict[str, str] | None = None
 
 
+def get_adres_lookup() -> dict[str, dict]:
+    """Return {instellingscode: {provincie, arbeidsmarktregio}} — cached."""
+    global _ADRES_CACHE
+    if _ADRES_CACHE is None:
+        _ADRES_CACHE = _build_adres_lookup()
+    return _ADRES_CACHE
+
+
+def _build_adres_lookup() -> dict[str, dict]:
+    """Return {instellingscode: {provincie, arbeidsmarktregio, plaatsnaam}} from DUO address data."""
+    lookup: dict[str, dict] = {}
+
+    try:
+        df = duo.load("adressen_ho", 1)
+        for _, row in df.iterrows():
+            code = str(row.get("INSTELLINGSCODE") or "").strip()
+            if code:
+                lookup[code] = {
+                    "provincie": str(row.get("PROVINCIE") or "").strip() or None,
+                    "arbeidsmarktregio": str(row.get("RPA-GEBIED NAAM") or "").strip() or None,
+                    "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
+                }
+    except Exception:
+        pass
+
+    try:
+        df = duo.load("adressen_mbo", 1)
+        for _, row in df.iterrows():
+            code = str(row.get("INSTELLINGSCODE") or "").strip()
+            if code and code not in lookup:
+                lookup[code] = {
+                    "provincie": str(row.get("PROVINCIE") or "").strip() or None,
+                    "arbeidsmarktregio": str(row.get("RPA-GEBIED NAAM") or "").strip() or None,
+                    "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
+                }
+    except Exception:
+        pass
+
+    return lookup
+
+
 def _build_registry() -> list[dict]:
+    adres = _build_adres_lookup()
     result: dict[str, dict] = {}
 
     try:
         df_hbo = duo.load("p01hoinges", 0)
-        for naam in df_hbo["INSTELLINGSNAAM_ACTUEEL"].dropna().unique():
-            result[naam] = {"naam": naam, "type": "hbo", "aliassen": ALIASSEN.get(naam, [])}
+        for _, grp in df_hbo.groupby("INSTELLINGSCODE_ACTUEEL"):
+            naam = grp["INSTELLINGSNAAM_ACTUEEL"].iloc[0]
+            code = str(grp["INSTELLINGSCODE_ACTUEEL"].iloc[0])
+            loc = adres.get(code, {})
+            result[naam] = {
+                "naam": naam, "type": "hbo", "aliassen": ALIASSEN.get(naam, []),
+                "instellingscode": code,
+                "provincie": loc.get("provincie"),
+                "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+            }
     except Exception:
         pass
 
     try:
         df_wo = duo.load("p01hoinges", 1)
-        for naam in df_wo["INSTELLINGSNAAM_ACTUEEL"].dropna().unique():
+        for _, grp in df_wo.groupby("INSTELLINGSCODE_ACTUEEL"):
+            naam = grp["INSTELLINGSNAAM_ACTUEEL"].iloc[0]
+            code = str(grp["INSTELLINGSCODE_ACTUEEL"].iloc[0])
             if naam not in result:
-                result[naam] = {"naam": naam, "type": "wo", "aliassen": ALIASSEN.get(naam, [])}
+                loc = adres.get(code, {})
+                result[naam] = {
+                    "naam": naam, "type": "wo", "aliassen": ALIASSEN.get(naam, []),
+                    "instellingscode": code,
+                    "provincie": loc.get("provincie"),
+                    "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+                }
     except Exception:
         pass
 
     try:
         df_mbo = duo.load("mbo-studenten-per-instelling", 0)
-        for naam in df_mbo["INSTELLINGSNAAM"].dropna().unique():
+        for _, grp in df_mbo.groupby("INSTELLINGSCODE"):
+            naam = grp["INSTELLINGSNAAM"].iloc[0]
+            code = str(grp["INSTELLINGSCODE"].iloc[0])
             if naam not in result:
-                result[naam] = {"naam": naam, "type": "mbo", "aliassen": ALIASSEN.get(naam, [])}
+                loc = adres.get(code, {})
+                result[naam] = {
+                    "naam": naam, "type": "mbo", "aliassen": ALIASSEN.get(naam, []),
+                    "instellingscode": code,
+                    "provincie": loc.get("provincie"),
+                    "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+                }
     except Exception:
         pass
 
