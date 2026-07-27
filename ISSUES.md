@@ -38,9 +38,9 @@
 | # | Titel | Status |
 |---|-------|--------|
 | ~~78~~ | Lookup regio/provincie | Gesloten |
-| 36 | Standaard regiodashboard | Deels — gender is 5e dashboard, adres-lookup klaar |
+| 36 | Standaard regiodashboard | 6 dashboards: samenvatting + instroom + diplomering + arbeidsmarkt + gender + sectorkamers |
 | 71 | Dashboard UX Arena.ai vergelijking | 9 fixes geleverd, ideeënlijst blijft open |
-| 79 | SBB Regio Atlas inspiratie | Screenshots verwerkt, inhoudelijk nog niet opgepakt |
+| 79 | SBB Regio Atlas inspiratie | Samenvatting-tile (item 1) + sectorkamers chart (MBO). Items 2-7 vereisen externe data (SBB/ROA/CBS) |
 
 ### Volgende prioriteit
 
@@ -48,7 +48,7 @@
 |---|-------|--------|
 | 81 | Doorstroom MBO na diplomering | Logisch vervolg op regio-data |
 | 80 | SBB open data integratie (stage/baankans) | Voedt regio dashboards |
-| 59 | Bericht bewerken en opnieuw sturen | Standalone UX, geen data-dependency |
+| ~~59~~ | ~~Bericht bewerken en opnieuw sturen~~ | ~~Geïmplementeerd: resend-knop op user messages~~ |
 | 32 | CSV-export querydata | Hoge gebruikerswaarde, goed afgebakend |
 | 23 | Evals: LLM rapporteert op verwachting ipv data | Kwaliteit/vertrouwen |
 
