@@ -91,7 +91,7 @@
 
 | Regel | Beschrijving | Status |
 |-------|-------------|--------|
-| S3776 | 10 functies boven cognitive complexity threshold (9 Python, 1 JS) | ✅ Top-3 gerefactord: rendement 102→0, arbeidsmarkt 31→14, rest <28 |
+| S3776 | 10 functies boven cognitive complexity threshold (9 Python, 1 JS) | ✅ Alle functies <15: rendement 102→0, nationaal 18→3, regio_mbo 24→9, rendement_mbo 20→orchestrator, arbeidsmarkt 31→14 |
 | S6479 | 5× array index als React key | ✅ Stabiele keys |
 | S3358 | 4× nested ternaries in `WorkbookViewer.jsx` | ✅ 7-level ternary → lookup map |
 | S1172 | 4× unused function parameters in Python | ✅ Underscore-prefix |
