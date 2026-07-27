@@ -1,7 +1,7 @@
 import { CHART_COLORS } from '../../../constants'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import {
-  useDarkMode, doughnutOpts,
+  doughnutOpts,
   useRegioDashboardData, DashboardShell,
   buildBarChartData,
   buildMarktaandeelData, buildGroeiRankingData,
@@ -11,7 +11,6 @@ import {
   RoaSection, UwvSection, BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart, KaartSection,
   MarktaandeelTrendChart, InstroomRatioChart,
-  PeersTable,
 } from '../shared/index'
 
 // @deprecated Backward-compat voor gebruikers met __builtin_regio__ in localStorage.
