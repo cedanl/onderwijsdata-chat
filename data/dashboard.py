@@ -626,6 +626,13 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
         laatste.groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
         .sort_values(ascending=False).apply(int).to_dict()
     )
+    geslacht_per_sector: dict[str, dict[str, int]] = {}
+    for onderdeel, grp in laatste.groupby("ONDERDEEL"):
+        geslacht_per_sector[onderdeel] = {
+            "VROUW": int(grp[grp["GESLACHT"] == "VROUW"]["AANTAL_INGESCHREVENEN"].sum()),
+            "MAN": int(grp[grp["GESLACHT"] == "MAN"]["AANTAL_INGESCHREVENEN"].sum()),
+        }
+    result["geslacht_per_sector"] = geslacht_per_sector
     # Sector trend: per onderdeel per studiejaar (stacked area frontend)
     sector_pivot = (
         hu_inges.groupby(["STUDIEJAAR", "ONDERDEEL"])["AANTAL_INGESCHREVENEN"]

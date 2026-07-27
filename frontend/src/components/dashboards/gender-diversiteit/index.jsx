@@ -190,7 +190,7 @@ function SingleYearStackedBar({ vrouw, man, lastJaar }) {
       <div className="chart-header">
         <div>
           <div className="chart-title">Geslachtsverdeling {lastJaar}</div>
-          <div className="chart-sub">Aandeel vrouw vs. man — huidig jaar (historische trend in ontwikkeling)</div>
+          <div className="chart-sub">Aandeel vrouw vs. man — huidig jaar</div>
         </div>
       </div>
       <div style={{ marginTop: 16 }}>
@@ -246,15 +246,16 @@ export function InlineDashboardGenderDiversiteit({ instelling }) {
     const peerData = buildPeerGenderData(peersGeslacht, instelling, pctVrouw, dark)
     const hasPeers = peerData != null
 
-    // Sectoren available (HO only indicator)
-    const hasSectoren = data.sectoren && Object.keys(data.sectoren).length > 0
+    // Geslacht per sector (HO only)
+    const geslachtPerSector = data.geslacht_per_sector ?? null
+    const hasSectorGeslacht = geslachtPerSector && Object.keys(geslachtPerSector).length > 0
 
-    return { vrouw, man, pctVrouw, trendLineData, fiveYearChange, peerData, hasPeers, hasSectoren }
+    return { vrouw, man, pctVrouw, trendLineData, fiveYearChange, peerData, hasPeers, hasSectorGeslacht, geslachtPerSector }
   }, [data, instelling, dark])
 
   const {
     vrouw, man, pctVrouw, trendLineData, fiveYearChange,
-    peerData, hasPeers, hasSectoren,
+    peerData, hasPeers, hasSectorGeslacht, geslachtPerSector,
   } = computed
 
   return (
@@ -331,15 +332,37 @@ export function InlineDashboardGenderDiversiteit({ instelling }) {
           </>
         )}
 
-        {hasSectoren && (
+        {hasSectorGeslacht && (
           <>
             <SectionHeader
               title="Sectorbalans"
-              subtitle="Sectorverdeling — geslachtsdata per sector in ontwikkeling"
+              subtitle={`Geslachtsverdeling per sector — ${data?.laatste_jaar}`}
             />
-            <div className="chart-card" style={{ background: 'var(--gray-50, #F9FAFB)', border: '1px dashed var(--gray-300, #D1D5DB)' }}>
-              <div style={{ fontSize: '.85rem', color: '#6B7280' }}>
-                Sector-uitgesplitste geslachtsdata is in ontwikkeling — huidige data toont alleen totaalverhouding.
+            <div className="chart-card">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(geslachtPerSector)
+                  .sort((a, b) => (b[1].VROUW + b[1].MAN) - (a[1].VROUW + a[1].MAN))
+                  .map(([sector, g]) => {
+                    const t = g.VROUW + g.MAN
+                    if (t === 0) return null
+                    const pv = Math.round((g.VROUW / t) * 1000) / 10
+                    return (
+                      <div key={sector}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', color: '#6B7280', marginBottom: 3 }}>
+                          <span>{sector}</span>
+                          <span>{pv}% vrouw — {fmt(t)} totaal</span>
+                        </div>
+                        <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 14 }}>
+                          <div style={{ width: `${pv}%`, background: '#0D9488' }} />
+                          <div style={{ width: `${100 - pv}%`, background: '#94A3B8' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '.75rem', color: '#6B7280' }}>
+                <span><span style={{ color: '#0D9488' }}>●</span> Vrouw</span>
+                <span><span style={{ color: '#94A3B8' }}>●</span> Man</span>
               </div>
             </div>
           </>
