@@ -557,6 +557,27 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
   )
 }
 
+function figureToCsv(figure) {
+  const traces = figure.data || []
+  if (traces.length === 0) return null
+  const first = traces[0]
+  const xVals = first.x || first.labels || []
+  if (xVals.length === 0) return null
+  const header = ['', ...traces.map(t => t.name || 'waarde')]
+  const rows = xVals.map((x, i) => [x, ...traces.map(t => (t.y || t.values)?.[i] ?? '')])
+  return [header, ...rows].map(r => r.join(';')).join('\n')
+}
+
+function downloadCsv(csv, filename) {
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function PlotlyFigure({ figureJson, label }) {
   let figure
   try {
@@ -576,9 +597,22 @@ function PlotlyFigure({ figureJson, label }) {
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     autosize: true,
   }
+  const csv = figureToCsv(figure)
   return (
-    <div style={{ margin: '8px 0' }}>
+    <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {csv && (
+        <button
+          className="csv-download-btn"
+          title="Download als CSV"
+          onClick={() => downloadCsv(csv, (label || 'data').replace(/[^a-zA-Z0-9]/g, '_') + '.csv')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          CSV
+        </button>
+      )}
       <Plot
         data={figure.data || []}
         layout={layout}
