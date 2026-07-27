@@ -54,6 +54,18 @@ export function useRegioDashboardData(instelling) {
   return useDashboardFetch('/api/dashboard/regio', instelling)
 }
 
+export function useNationaalDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/nationaal', instelling)
+}
+
+export function useRendementDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/rendement', instelling)
+}
+
+export function useArbeidsmarktmatchDashboardData(instelling) {
+  return useDashboardFetch('/api/dashboard/arbeidsmarktmatch', instelling)
+}
+
 export function useRegioComputed(data, instelling) {
   const dark = useDarkMode()
 

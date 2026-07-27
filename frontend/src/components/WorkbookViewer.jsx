@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_SAMENVATTING, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, BUILTIN_GENDER_DIVERSITEIT } from '../workbooks'
-import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioSamenvatting, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt, InlineDashboardGenderDiversiteit } from './InlineDashboards'
+import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_SAMENVATTING, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, BUILTIN_GENDER_DIVERSITEIT, BUILTIN_NATIONAAL, BUILTIN_RENDEMENT, BUILTIN_ARBEIDSMARKTMATCH } from '../workbooks'
+import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioSamenvatting, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt, InlineDashboardGenderDiversiteit, InlineDashboardNationaal, InlineDashboardRendement, InlineDashboardArbeidsmarktmatch } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
 const BUILTIN_COMPONENTS = {
@@ -13,6 +13,9 @@ const BUILTIN_COMPONENTS = {
   [BUILTIN_REGIO_DIPLOMERING.id]: InlineDashboardRegioDiplomering,
   [BUILTIN_REGIO_ARBEIDSMARKT.id]: InlineDashboardRegioArbeidsmarkt,
   [BUILTIN_GENDER_DIVERSITEIT.id]: InlineDashboardGenderDiversiteit,
+  [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
+  [BUILTIN_RENDEMENT.id]: InlineDashboardRendement,
+  [BUILTIN_ARBEIDSMARKTMATCH.id]: InlineDashboardArbeidsmarktmatch,
 }
 
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {

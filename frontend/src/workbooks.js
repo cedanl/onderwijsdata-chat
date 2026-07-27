@@ -49,6 +49,30 @@ export const BUILTIN_REGIO_ARBEIDSMARKT = {
   builtin: true,
 }
 
+export const BUILTIN_NATIONAAL = {
+  id: '__builtin_nationaal__',
+  title: 'Nationaal Marktaandeel',
+  description: 'Landelijke ranking, marktaandeel per sector en sectortrends voor de instelling.',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  builtin: true,
+}
+
+export const BUILTIN_RENDEMENT = {
+  id: '__builtin_rendement__',
+  title: 'Diplomarendement',
+  description: 'Diplomarendement per cohort, sectorrendement en benchmark tegen regio-peers.',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  builtin: true,
+}
+
+export const BUILTIN_ARBEIDSMARKTMATCH = {
+  id: '__builtin_arbeidsmarktmatch__',
+  title: 'Arbeidsmarkt Match',
+  description: 'Gediplomeerden vs. vacatures per sector met schaarste/overaanbod-indicatie.',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  builtin: true,
+}
+
 export const BUILTIN_GENDER_DIVERSITEIT = {
   id: '__builtin_gender_diversiteit__',
   title: 'Gender & Diversiteit',
