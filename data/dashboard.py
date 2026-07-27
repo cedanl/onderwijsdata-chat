@@ -1309,89 +1309,83 @@ def _rendement_mbo(instelling: str) -> dict | None:
 
 # ─── Arbeidsmarktmatch ────────────────────────────────────────────────────────
 
+def _arbeidsmarkt_detect_ho(instelling: str) -> dict | None:
+    try:
+        df_inges, _, df_dipl = _load_ho_full()
+    except Exception:
+        logger.warning("arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling, exc_info=True)
+        return None
+
+    inst_col = "INSTELLINGSNAAM_ACTUEEL"
+    hu = df_inges[df_inges[inst_col].str.lower() == instelling.lower()]
+    if hu.empty:
+        return None
+
+    ctx = _build_regio_context(instelling, "ho")
+    self_code = str(hu["INSTELLINGSCODE_ACTUEEL"].iloc[0])
+    provincie = ctx.provincie if ctx else _mode_str(hu["PROVINCIENAAM"])
+
+    gps: dict[str, int] = {}
+    hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
+    if not hu_dipl.empty and "ONDERDEEL" in hu_dipl.columns:
+        jaren = sorted(hu_dipl["DIPLOMAJAAR"].unique())[-3:]
+        recent = hu_dipl[hu_dipl["DIPLOMAJAAR"].isin(jaren)]
+        gem = recent.groupby(["DIPLOMAJAAR", "ONDERDEEL"])["AANTAL_GEDIPLOMEERDEN"].sum().groupby("ONDERDEEL").mean()
+        gps = {str(k): int(round(v)) for k, v in gem.items() if v > 0}
+
+    return {
+        "type": "ho", "provincie": provincie or "Onbekend",
+        "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
+        "laatste_jaar": int(hu["STUDIEJAAR"].max()),
+        "gediplomeerden_per_sector": gps,
+    }
+
+
+def _arbeidsmarkt_detect_mbo(instelling: str) -> dict | None:
+    try:
+        df_mbo = _load_mbo_studenten()
+    except Exception:
+        logger.warning("arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling, exc_info=True)
+        return None
+
+    rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
+    if rows.empty:
+        return None
+
+    ctx = _build_regio_context(instelling, "mbo")
+    self_code = str(rows["INSTELLINGSCODE"].iloc[0])
+    provincie = ctx.provincie if ctx else _mode_str(rows["PROVINCIE INSTELLING"])
+
+    gps: dict[str, int] = {}
+    try:
+        df_snapshot = _load_instromende_mbo_snapshot()
+        snap = df_snapshot[df_snapshot["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
+        if not snap.empty:
+            gps = {str(k): int(v) for k, v in snap.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().items() if v > 0}
+    except Exception:
+        logger.warning("arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar", exc_info=True)
+
+    return {
+        "type": "mbo", "provincie": provincie or "Onbekend",
+        "arbeidsmarktregio": get_adres_lookup().get(self_code, {}).get("arbeidsmarktregio"),
+        "laatste_jaar": int(rows["JAAR"].max()),
+        "gediplomeerden_per_sector": gps,
+    }
+
+
 def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
 
-    onderwijs_type: str | None = None
-    provincie: str | None = None
-    sectoren_tuple: tuple[str, ...] = ()
-
-    # Try HO
-    try:
-        df_inges_ho, _, df_dipl_ho = _load_ho_full()
-        inst_col_ho = "INSTELLINGSNAAM_ACTUEEL"
-        hu = df_inges_ho[df_inges_ho[inst_col_ho].str.lower() == instelling.lower()]
-        if not hu.empty:
-            onderwijs_type = "ho"
-            ctx = _build_regio_context(instelling, "ho")
-            provincie = ctx.provincie if ctx else _mode_str(hu["PROVINCIENAAM"])
-            self_code_ho = str(hu["INSTELLINGSCODE_ACTUEEL"].iloc[0])
-            _self_amr_ho = get_adres_lookup().get(self_code_ho, {}).get("arbeidsmarktregio")
-
-            result["gevonden"] = True
-            result["type"] = "ho"
-            result["provincie"] = provincie or "Onbekend"
-            result["arbeidsmarktregio"] = _self_amr_ho
-            laatste_jaar = int(hu["STUDIEJAAR"].max())
-            result["laatste_jaar"] = laatste_jaar
-
-            # gediplomeerden_per_sector: avg last 3 jaar by ONDERDEEL
-            hu_dipl = df_dipl_ho[df_dipl_ho[inst_col_ho].str.lower() == instelling.lower()]
-            gps: dict[str, int] = {}
-            if not hu_dipl.empty and "ONDERDEEL" in hu_dipl.columns:
-                jaren = sorted(hu_dipl["DIPLOMAJAAR"].unique())[-3:]
-                recent_dipl = hu_dipl[hu_dipl["DIPLOMAJAAR"].isin(jaren)]
-                gem_per_sector = (
-                    recent_dipl.groupby(["DIPLOMAJAAR", "ONDERDEEL"])["AANTAL_GEDIPLOMEERDEN"]
-                    .sum().groupby("ONDERDEEL").mean()
-                )
-                gps = {str(k): int(round(v)) for k, v in gem_per_sector.items() if v > 0}
-            result["gediplomeerden_per_sector"] = gps
-            sectoren_tuple = tuple(sorted(gps.keys()))
-    except Exception:
-        logger.warning("arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling, exc_info=True)
-
-    # Try MBO
-    if onderwijs_type is None:
-        try:
-            df_mbo = _load_mbo_studenten()
-            inst_col_mbo = "INSTELLINGSNAAM"
-            rows = df_mbo[df_mbo[inst_col_mbo].str.lower() == instelling.lower()]
-            if not rows.empty:
-                onderwijs_type = "mbo"
-                ctx_mbo = _build_regio_context(instelling, "mbo")
-                provincie = ctx_mbo.provincie if ctx_mbo else _mode_str(rows["PROVINCIE INSTELLING"])
-                self_code_mbo = str(rows["INSTELLINGSCODE"].iloc[0])
-                _self_amr_mbo = get_adres_lookup().get(self_code_mbo, {}).get("arbeidsmarktregio")
-
-                result["gevonden"] = True
-                result["type"] = "mbo"
-                result["provincie"] = provincie or "Onbekend"
-                result["arbeidsmarktregio"] = _self_amr_mbo
-                laatste_jaar_mbo = int(rows["JAAR"].max())
-                result["laatste_jaar"] = laatste_jaar_mbo
-
-                # gediplomeerden_per_sector from instromende snapshot by HOOFDGROEP NAAM
-                gps_mbo: dict[str, int] = {}
-                try:
-                    df_snapshot = _load_instromende_mbo_snapshot()
-                    snap_rows = df_snapshot[df_snapshot["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
-                    if not snap_rows.empty:
-                        gps_mbo = {
-                            str(k): int(v)
-                            for k, v in snap_rows.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().items()
-                            if v > 0
-                        }
-                except Exception:
-                    logger.warning("arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar", exc_info=True)
-                result["gediplomeerden_per_sector"] = gps_mbo
-                sectoren_tuple = tuple(sorted(gps_mbo.keys()))
-        except Exception:
-            logger.warning("arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling, exc_info=True)
-
-    if onderwijs_type is None:
+    detect = _arbeidsmarkt_detect_ho(instelling) or _arbeidsmarkt_detect_mbo(instelling)
+    if not detect:
         return result
+
+    result["gevonden"] = True
+    result.update(detect)
+    onderwijs_type = detect["type"]
+    provincie = detect["provincie"]
+    sectoren_tuple = tuple(sorted(detect["gediplomeerden_per_sector"].keys()))
 
     # vacatures_per_cluster
     uwv_data = _uwv_vacatures_provincie(provincie, sectoren_tuple) if provincie else {}
