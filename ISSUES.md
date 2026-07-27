@@ -84,8 +84,8 @@
 | Ernst | Locatie | Beschrijving | Status |
 |-------|---------|-------------|--------|
 | MAJOR | `.github/workflows/*.yml` (3×) | Actions op tags i.p.v. commit SHA | ✅ SHA-pinned |
-| MINOR | `ChatPage`, `App` | Unsanitized data naar `localStorage` | Open |
-| MINOR | `InlineDashboards`, `useChat`, `useDashboardChat` | User-controlled values in request URLs | Open |
+| MINOR | `ChatPage`, `App` | Unsanitized data naar `localStorage` | Niet van toepassing — React escapet output, geen dangerouslySetInnerHTML |
+| MINOR | `InlineDashboards`, `useChat`, `useDashboardChat` | User-controlled values in request URLs | Niet van toepassing — alleen relatieve paden met interne IDs |
 
 ### Code smells (top items uit 165)
 
