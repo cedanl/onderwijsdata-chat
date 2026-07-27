@@ -98,21 +98,39 @@
 
 ---
 
-## 3. Inspiratie uit Nao releases
+## 3. Inspiratie uit Nao
 
-> Bron: [Nao releases v0.2.0–v0.3.0](https://github.com/getnao/nao/releases)
+> Bron: ~280 merged PRs + 50 releases (v0.0.45–v0.3.0), gescand 2026-07-27
 
-### Direct toepasbaar
+### Geïmplementeerd
+
+| Feature | Nao PR | Status |
+|---------|--------|--------|
+| KPI variation pills (delta-indicators) | #1243 | ✅ Sparklines + delta op instroom/arbeidsmarkt |
+
+### Direct toepasbaar (volgende sprint)
 
 | Feature | Nao PR | Relevantie voor ons |
 |---------|--------|---------------------|
-| KPI variation pills (delta-indicators) | #1243 | Onze KPI tiles zijn statisch — trend-badges toevoegen |
-| Excel download per tabel | #1246 | Wij exporteren hele workbooks, niet per tabel |
-| Dual Y-axis charts | #1241 | Gender/instroom: % en absolute aantallen samen tonen |
+| Chat resend + versie-navigatie | #954 | Raakt direct issue #59 — hoge UX-waarde |
+| Excel/CSV download per tabel | #1246 | Raakt issue #32 — hoge gebruikersvraag |
+| K/M/B suffix grote getallen | #766 | Tooltips en KPIs leesbaarder |
+| Data labels toggle op charts | #1083 | Waarde direct op bars/lines |
+| Follow-up placeholder in chat input | #495 | Kleine UX-verbetering, laag effort |
+| Chat message queue (max 5) | #352 | Voorkomt wachten op antwoord |
+| Chronologisch sorteren datum x-as | #493 | Defensive check of wij dit al doen |
+
+### Relevant maar groter effort
+
+| Feature | Nao PR | Relevantie voor ons |
+|---------|--------|---------------------|
+| Point maps op OpenStreetMap | #1206 | Regio-dashboards + adres-lookup |
+| Dual Y-axis charts | #1241 | Gender/instroom: % en absolute samen |
 | 100% stacked bar/area | #1153 | Samenstellingsdata (geslacht, sectoren) |
-| Chat resend + versie-navigatie | #954 | Raakt direct issue #59 |
-| Point maps op OpenStreetMap | #1206 | Relevant voor regionale kaarten (adres-lookup) |
-| Sortable table columns | #1226 | Verifiëren of onze tabellen dit ondersteunen |
+| Export als PDF/HTML | #567 | Raakt issue #4 (Quarto export) |
+| Sortable table columns | #1226 | Tabellen interactiever |
+| Y-as bounds aanpassen aan waarden | #1091 | Betere chart leesbaarheid |
+| Paginatie in resultatentabel | #523 | Grote datasets |
 
 ### Inspiratie / later evalueren
 
@@ -125,3 +143,13 @@
 | Self-analyzing context recommendations | #885 | Systeem stelt voor welke vragen te stellen |
 | Stories met tabs | #1211 | Tabbed dashboard views |
 | Annotations per tabel | #1189 | Metadata/notities bij datasets |
+| Command palette + chat zoeken | #366 | Raakt issue #27 (doorzoekbare geschiedenis) |
+| Bulk chat deletion (soft delete) | #478 | Opschonen conversaties |
+| Agent memory voor user preferences | #313 | Personalisatie per gebruiker |
+| Selectie → vraag agent | #625 | "Leg dit uit" op geselecteerde tekst |
+| Image upload in chat | #501 | Screenshots/context meesturen |
+| Dashboard filters | #1250 | Interactieve filtering op dashboards |
+
+### Niet relevant (~200 PRs)
+
+Database connectors (Trino, ClickHouse, Redshift, Fabric, Athena, StarRocks, MySQL), enterprise auth (OIDC, Google SSO, GitLab, Azure AD), messaging (Slack/Teams/WhatsApp/Telegram bots), MCP servers, Docker/CI, admin tools, automations, white-labeling, billing, CLI tooling.
