@@ -91,7 +91,7 @@
 
 | Regel | Beschrijving | Status |
 |-------|-------------|--------|
-| S3776 | 10 functies boven cognitive complexity threshold (9 Python, 1 JS) | ✅ Ergste (102→0): `load_dashboard_rendement` opgesplitst in helpers |
+| S3776 | 10 functies boven cognitive complexity threshold (9 Python, 1 JS) | ✅ Top-3 gerefactord: rendement 102→0, arbeidsmarkt 31→14, rest <28 |
 | S6479 | 5× array index als React key | ✅ Stabiele keys |
 | S3358 | 4× nested ternaries in `WorkbookViewer.jsx` | ✅ 7-level ternary → lookup map |
 | S1172 | 4× unused function parameters in Python | ✅ Underscore-prefix |
