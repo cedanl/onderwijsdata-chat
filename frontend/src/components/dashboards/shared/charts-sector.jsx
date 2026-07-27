@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Line } from 'react-chartjs-2'
+import { Bar, Line } from 'react-chartjs-2'
 import { SECTOR_LABELS, SECTOR_COLORS } from './chart-opts'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
@@ -117,6 +117,51 @@ export function SectorTrendChart({ data, dark }) {
         </div>
         <div style={{ height: 260 }}>
           <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function SectorkamersChart({ sectorkamers, dark }) {
+  if (!sectorkamers || Object.keys(sectorkamers).length === 0) return null
+  const entries = Object.entries(sectorkamers).sort((a, b) => b[1] - a[1])
+  const colors = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const h = Math.max(160, entries.length * 36)
+  return (
+    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+      <div className="chart-card">
+        <div className="chart-header">
+          <div>
+            <div className="chart-title">Studenten per SBB-sectorkamer</div>
+            <div className="chart-sub">MBO eerstejaars per hoofdgroep (DUO instromende-mbo-studenten)</div>
+          </div>
+        </div>
+        <div style={{ height: h }}>
+          <Bar
+            data={{
+              labels: entries.map(([k]) => k),
+              datasets: [{
+                label: 'Studenten',
+                data: entries.map(([, v]) => v),
+                backgroundColor: entries.map((_, i) => colors[i % colors.length] + 'CC'),
+                borderWidth: 0,
+                borderRadius: 4,
+              }],
+            }}
+            options={{
+              indexAxis: 'y',
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { grid: { color: grid }, ticks: { color: tick } },
+                y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
+              },
+            }}
+          />
         </div>
       </div>
     </div>

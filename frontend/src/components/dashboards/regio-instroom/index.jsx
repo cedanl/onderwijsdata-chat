@@ -8,7 +8,7 @@ import {
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart, KaartSection,
   MarktaandeelTrendChart, InstroomRatioChart,
-  PeersTable, SectorTrendChart, LeerwegenChart,
+  PeersTable, SectorTrendChart, LeerwegenChart, SectorkamersChart,
 } from '../shared/index'
 
 export function InlineDashboardRegioInstroom({ instelling }) {
@@ -47,6 +47,7 @@ export function InlineDashboardRegioInstroom({ instelling }) {
         <InstroomRatioChart data={ratioData} dark={c.dark} />
         <SectorTrendChart data={sectorTrendData} dark={c.dark} />
         <LeerwegenChart data={leerwegenData} dark={c.dark} />
+        <SectorkamersChart sectorkamers={data?.sectorkamers} dark={c.dark} />
 
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>

@@ -1,6 +1,7 @@
 export * from './shared/index'
 export * from './instroom/index'
 export * from './arbeidsmarkt/index'
+export * from './regio-samenvatting/index'
 export * from './regio-instroom/index'
 export * from './regio-diplomering/index'
 export * from './regio-arbeidsmarkt/index'

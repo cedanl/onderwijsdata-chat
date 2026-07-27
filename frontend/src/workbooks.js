@@ -17,6 +17,14 @@ export const BUILTIN_ARBEIDSMARKT = {
   builtin: true,
 }
 
+export const BUILTIN_REGIO_SAMENVATTING = {
+  id: '__builtin_regio_samenvatting__',
+  title: 'Regio — Samenvatting',
+  description: 'Kerncijfers in één oogopslag: instelling vs. regio vs. landelijk gemiddelde.',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  builtin: true,
+}
+
 export const BUILTIN_REGIO_INSTROOM = {
   id: '__builtin_regio_instroom__',
   title: 'Regio — Instroom & Demografie',
