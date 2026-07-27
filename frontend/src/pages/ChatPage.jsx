@@ -127,6 +127,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
+  const queueRef = useRef([])
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
@@ -259,12 +260,23 @@ export default function ChatPage({ openRapport, settings = {} }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    if (!busy && queueRef.current.length > 0) {
+      const next = queueRef.current.shift()
+      send(next)
+    }
+  }, [busy, send])
+
   const handleSend = () => {
     const q = input.trim()
-    if (!q || busy) return
+    if (!q) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    send(q)
+    if (busy) {
+      if (queueRef.current.length < 5) queueRef.current.push(q)
+    } else {
+      send(q)
+    }
   }
 
   const handleKey = (e) => {
@@ -396,11 +408,10 @@ export default function ChatPage({ openRapport, settings = {} }) {
                 ref={textareaRef}
                 className="chat-input"
                 rows={1}
-                placeholder="Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers."
+                placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers.'}
                 value={input}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
-                disabled={busy}
               />
               <div className="chat-input-footer">
                 {!connected && (
@@ -417,7 +428,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected}>
+                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || queueRef.current.length >= 5}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
