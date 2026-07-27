@@ -4,6 +4,16 @@ import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT,
 import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt, InlineDashboardGenderDiversiteit } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
+const BUILTIN_COMPONENTS = {
+  [BUILTIN.id]: InlineDashboard,
+  [BUILTIN_ARBEIDSMARKT.id]: InlineDashboardArbeidsmarkt,
+  '__builtin_regio__': InlineDashboardRegio,
+  [BUILTIN_REGIO_INSTROOM.id]: InlineDashboardRegioInstroom,
+  [BUILTIN_REGIO_DIPLOMERING.id]: InlineDashboardRegioDiplomering,
+  [BUILTIN_REGIO_ARBEIDSMARKT.id]: InlineDashboardRegioArbeidsmarkt,
+  [BUILTIN_GENDER_DIVERSITEIT.id]: InlineDashboardGenderDiversiteit,
+}
+
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(null)
@@ -70,7 +80,10 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
         ) : (
           <span
             className="wb-viewer-title"
+            role={workbook.builtin ? undefined : "button"}
+            tabIndex={workbook.builtin ? undefined : 0}
             onClick={handleTitleEdit}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTitleEdit() } }}
             style={{ cursor: workbook.builtin ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             title={workbook.builtin ? undefined : 'Klik om titel te bewerken'}
           >
@@ -86,23 +99,11 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
         <div />
       </div>
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }}>
-        {workbook.id === BUILTIN.id
-          ? <InlineDashboard instelling={instelling} />
-          : workbook.id === BUILTIN_ARBEIDSMARKT.id
-          ? <InlineDashboardArbeidsmarkt instelling={instelling} />
-          /* TODO: verwijder na v1.8 (backward-compat legacy id __builtin_regio__) */
-          : workbook.id === '__builtin_regio__'
-          ? <InlineDashboardRegio instelling={instelling} />
-          : workbook.id === BUILTIN_REGIO_INSTROOM.id
-          ? <InlineDashboardRegioInstroom instelling={instelling} />
-          : workbook.id === BUILTIN_REGIO_DIPLOMERING.id
-          ? <InlineDashboardRegioDiplomering instelling={instelling} />
-          : workbook.id === BUILTIN_REGIO_ARBEIDSMARKT.id
-          ? <InlineDashboardRegioArbeidsmarkt instelling={instelling} />
-          : workbook.id === BUILTIN_GENDER_DIVERSITEIT.id
-          ? <InlineDashboardGenderDiversiteit instelling={instelling} />
-          : spec
-          ? <>
+        {(() => {
+          const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
+          if (BuiltinDash) return <BuiltinDash instelling={instelling} />
+          if (spec) return (
+            <>
               <GeneratedDashboard
                 spec={spec}
                 instelling={instelling}
@@ -113,8 +114,9 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
                 <div style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
               )}
             </>
-          : <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts allow-same-origin" />
-        }
+          )
+          return <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts allow-same-origin" />
+        })()}
       </div>
     </div>
   )

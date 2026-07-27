@@ -9,7 +9,7 @@ function UserWorkbookPreview({ wb }) {
     <div className="wb-user-preview">
       <div className="wb-user-preview-bars">
         {[40, 65, 55, 80, 70, 50].map((h, i) => (
-          <div key={i} className="wb-user-preview-bar" style={{ height: `${h}%`, opacity: 0.15 + i * 0.1 }} />
+          <div key={h} className="wb-user-preview-bar" style={{ height: `${h}%`, opacity: 0.15 + i * 0.1 }} />
         ))}
       </div>
       {hasFigures && (
@@ -30,7 +30,7 @@ export function BuiltinPreview() {
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
         {['#EFF6FF', '#F0FDFA', '#F0FDF4', '#FFF7ED'].map((c, i) => (
-          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+          <div key={c} className="wb-mini-kpi" style={{ background: c }}>
             <div className="wb-mini-kpi-val" style={{ background: ['#2563EB','#0D9488','#22C55E','#F59E0B'][i] }} />
           </div>
         ))}
@@ -38,7 +38,7 @@ export function BuiltinPreview() {
       <div className="wb-mini-charts">
         <div className="wb-mini-chart-bar">
           {bars.map((h, i) => (
-            <div key={i} className="wb-mini-bar" style={{ height: `${h}%` }} />
+            <div key={h} className="wb-mini-bar" style={{ height: `${h}%` }} />
           ))}
         </div>
         <div className="wb-mini-line">
@@ -61,7 +61,7 @@ export function ArbeidsmarktPreview() {
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
         {['#FFF7ED', '#F0FDFA', '#EFF6FF', '#F0FDF4'].map((c, i) => (
-          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+          <div key={c} className="wb-mini-kpi" style={{ background: c }}>
             <div className="wb-mini-kpi-val" style={{ background: ['#F59E0B','#0D9488','#2563EB','#22C55E'][i] }} />
           </div>
         ))}
@@ -69,7 +69,7 @@ export function ArbeidsmarktPreview() {
       <div className="wb-mini-charts">
         <div className="wb-mini-chart-bar">
           {bars.map((h, i) => (
-            <div key={i} className="wb-mini-bar" style={{ height: `${h}%`, background: ['#F59E0B','#0D9488','#2563EB','#22C55E','#8B5CF6'][i] }} />
+            <div key={h} className="wb-mini-bar" style={{ height: `${h}%`, background: ['#F59E0B','#0D9488','#2563EB','#22C55E','#8B5CF6'][i] }} />
           ))}
         </div>
         <div className="wb-mini-line">
@@ -91,7 +91,7 @@ export function RegioInstroomPreview() {
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
         {['#EFF6FF','#F0FDF4','#FFF7ED'].map((c, i) => (
-          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+          <div key={c} className="wb-mini-kpi" style={{ background: c }}>
             <div className="wb-mini-kpi-val" style={{ background: ['#2563EB','#22C55E','#F59E0B'][i] }} />
             <div style={{ height: 3, background: ['#2563EB','#22C55E','#F59E0B'][i], opacity: .25, marginTop: 4, borderRadius: 2, width: '60%' }} />
           </div>
@@ -118,7 +118,7 @@ export function RegioDiplomeringPreview() {
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
         {['#F0FDFA','#EFF6FF'].map((c, i) => (
-          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+          <div key={c} className="wb-mini-kpi" style={{ background: c }}>
             <div className="wb-mini-kpi-val" style={{ background: ['#0D9488','#2563EB'][i] }} />
           </div>
         ))}
@@ -126,7 +126,7 @@ export function RegioDiplomeringPreview() {
       <div className="wb-mini-charts">
         <div className="wb-mini-chart-bar">
           {bars.map((h, i) => (
-            <div key={i} className="wb-mini-bar" style={{ height: `${h}%`, background: '#2563EB' }} />
+            <div key={h} className="wb-mini-bar" style={{ height: `${h}%`, background: '#2563EB' }} />
           ))}
         </div>
         <div className="wb-mini-line">
@@ -146,14 +146,14 @@ export function RegioArbeidsmarktPreview() {
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
         {['#FEF2F2','#F0FDFA','#FEF2F2','#F0FDFA'].map((c, i) => (
-          <div key={i} className="wb-mini-kpi" style={{ background: c }}>
+          <div key={c + i} className="wb-mini-kpi" style={{ background: c }}>
             <div className="wb-mini-kpi-val" style={{ background: ['#DC2626','#0D9488','#DC2626','#0D9488'][i] }} />
           </div>
         ))}
       </div>
       <div className="wb-mini-charts" style={{ flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
         {hbars.map((w, i) => (
-          <div key={i} style={{ height: 5, borderRadius: 2, background: `rgba(37,99,235,${0.2 + i * 0.12})`, width: `${w}%` }} />
+          <div key={w} style={{ height: 5, borderRadius: 2, background: `rgba(37,99,235,${0.2 + i * 0.12})`, width: `${w}%` }} />
         ))}
       </div>
     </div>

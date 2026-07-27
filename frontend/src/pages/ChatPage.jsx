@@ -490,7 +490,7 @@ function ClarificationButtons({ options, onSelect, busy }) {
         const label = typeof opt === 'string' ? opt : opt.label
         const desc = typeof opt === 'object' ? opt.beschrijving : null
         return (
-          <button key={i} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
+          <button key={label} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
             {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
           </button>
         )
@@ -504,7 +504,7 @@ function StarterButtons({ questions, onSend, busy }) {
   return (
     <div className="clarification-btns" style={{ marginTop: 8 }}>
       {questions.map((q, i) => (
-        <button key={i} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
+        <button key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
       ))}
     </div>
   )
@@ -529,13 +529,13 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {msg.tools?.map((t, i) => (
-          <ToolStep key={i} tool={t} />
+          <ToolStep key={t.name || i} tool={t} />
         ))}
         <div className="message-bubble message-bubble-assistant" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
           {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
           <MessageContent msg={msg} />
           {msg.figures?.map((fig, i) => (
-            <PlotlyFigure key={i} figureJson={fig.json} label={fig.label} />
+            <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
           ))}
           <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
           <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />

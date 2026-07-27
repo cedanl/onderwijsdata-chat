@@ -68,8 +68,8 @@ function SourcesList({ sources }) {
     <div className="dashboard-sources">
       <div className="dashboard-sources-title">Bronnen</div>
       <ul className="dashboard-sources-list">
-        {sources.map((src, i) => (
-          <li key={i}><span style={{ fontSize: '.8rem', color: 'var(--gray-700)' }}>{src}</span></li>
+        {sources.map(src => (
+          <li key={src}><span style={{ fontSize: '.8rem', color: 'var(--gray-700)' }}>{src}</span></li>
         ))}
       </ul>
     </div>
@@ -112,13 +112,13 @@ export default function GeneratedDashboard({ spec, instelling, onRefresh, refres
 
       {kpis.length > 0 && (
         <div className="kpi-grid">
-          {kpis.map((kpi, i) => <KpiCard key={i} kpi={kpi} index={i} />)}
+          {kpis.map((kpi, i) => <KpiCard key={kpi.label || i} kpi={kpi} index={i} />)}
         </div>
       )}
 
       {figures.length > 0 && (
         <div className="charts-grid">
-          {figures.map((fig, i) => <ChartCard key={i} figureJson={fig} />)}
+          {figures.map((fig, i) => <ChartCard key={fig?.layout?.title?.text || i} figureJson={fig} />)}
         </div>
       )}
 

@@ -237,7 +237,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 </div>
               )}
               <div className={`dc-msg-bubble${msg.isError ? ' dc-msg-error' : ''}`}>
-                {msg.tools?.map((t, i) => <ToolStep key={i} tool={t} />)}
+                {msg.tools?.map((t, i) => <ToolStep key={t.name || i} tool={t} />)}
                 {!msg.done && !msg.content && !msg.tools?.length
                   ? <div className="ai-typing"><span/><span/><span/></div>
                   : msg.content ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown> : null
@@ -247,7 +247,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                     {msg.clarification.map((opt, i) => {
                       const label = typeof opt === 'string' ? opt : opt.label
                       return (
-                        <button key={i} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>
+                        <button key={label} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>
                           {opt.aanbevolen ? '✓ ' : ''}{label}
                         </button>
                       )

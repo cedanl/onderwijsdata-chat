@@ -46,6 +46,10 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
       }}
       onClick={isOnboarding ? undefined : onClose}
+      onKeyDown={e => { if (e.key === 'Escape' && !isOnboarding) onClose() }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
     >
       <div
         style={{

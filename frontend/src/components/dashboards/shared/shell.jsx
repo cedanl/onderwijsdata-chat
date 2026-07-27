@@ -9,10 +9,10 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
           <span className="meta-badge date">Data laden&hellip;</span>
         </div>
         <div className="db-skeleton-grid">
-          {[1,2,3,4].map(i => <div key={i} className="db-skeleton-kpi" />)}
+          {[1,2,3,4].map(n => <div key={n} className="db-skeleton-kpi" />)}
         </div>
         <div className="db-skeleton-grid" style={{ marginTop: 16 }}>
-          {[1,2,3,4].map(i => <div key={i} className="db-skeleton-chart" />)}
+          {[1,2,3,4].map(n => <div key={n} className="db-skeleton-chart" />)}
         </div>
       </div>
     )
