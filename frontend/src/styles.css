@@ -462,6 +462,12 @@ input, textarea { font: inherit; }
   font-size: .9rem; line-height: 1.65; box-shadow: var(--shadow-sm);
 }
 .message.user .message-bubble { background: var(--blue-600); color: var(--white); border-color: transparent; }
+.resend-btn {
+  opacity: 0; transition: opacity .15s; background: none; border: none; cursor: pointer;
+  color: var(--gray-400); padding: 4px; border-radius: 4px; align-self: center; flex-shrink: 0;
+}
+.resend-btn:hover { color: var(--blue-600); background: var(--gray-100); }
+.message.user:hover .resend-btn { opacity: 1; }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }
