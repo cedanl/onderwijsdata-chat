@@ -5,7 +5,7 @@ import {
   useDashboardData, DashboardShell, Sparkline,
   buildLineChartData, buildSectorChartData,
   sortedEntries, yearOverYearDelta,
-  fmt, SECTOR_LABELS,
+  fmt, SECTOR_LABELS, barDataLabelsPlugin,
 } from '../shared/index'
 
 export function InlineDashboardArbeidsmarkt({ instelling }) {
@@ -68,7 +68,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
           {sectorChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per sector {data.laatste_jaar}</div><div className="chart-sub">Verdeling naar onderdeel (DUO p01hoinges)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={sectorChartData} options={{ ...opts, plugins: { legend: { display: false } } }} /></div>
+              <div style={{ height: 200 }}><Bar data={sectorChartData} options={{ ...opts, plugins: { legend: { display: false } } }} plugins={[barDataLabelsPlugin]} /></div>
             </div>
           )}
         </div>

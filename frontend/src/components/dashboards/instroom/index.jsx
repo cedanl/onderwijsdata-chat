@@ -5,7 +5,7 @@ import {
   useDashboardData, DashboardShell, Sparkline,
   buildBarChartData, buildLineChartData, buildSectorChartData,
   sortedEntries, yearOverYearDelta,
-  fmt, SECTOR_LABELS, SECTOR_COLORS,
+  fmt, SECTOR_LABELS, SECTOR_COLORS, barDataLabelsPlugin,
 } from '../shared/index'
 
 export function InlineDashboard({ instelling }) {
@@ -99,7 +99,7 @@ export function InlineDashboard({ instelling }) {
           {ingesChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Ingeschrevenen per jaar</div><div className="chart-sub">{instelling} (DUO p01hoinges)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={ingesChartData} options={opts} /></div>
+              <div style={{ height: 200 }}><Bar data={ingesChartData} options={opts} plugins={[barDataLabelsPlugin]} /></div>
             </div>
           )}
           {sectorChartData && (
@@ -111,7 +111,7 @@ export function InlineDashboard({ instelling }) {
           {eerstejaarsChartData && (
             <div className="chart-card">
               <div className="chart-header"><div><div className="chart-title">Eerstejaars instroom per jaar</div><div className="chart-sub">{instelling} (DUO p02ho1ejrs)</div></div></div>
-              <div style={{ height: 200 }}><Bar data={eerstejaarsChartData} options={opts} /></div>
+              <div style={{ height: 200 }}><Bar data={eerstejaarsChartData} options={opts} plugins={[barDataLabelsPlugin]} /></div>
             </div>
           )}
           {gediplChartData && (
