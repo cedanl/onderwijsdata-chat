@@ -1,7 +1,7 @@
 import { STORAGE_TOKEN } from './constants'
 
 export const getToken = () => localStorage.getItem(STORAGE_TOKEN)
-export const setToken = (t) => localStorage.setItem(STORAGE_TOKEN, t)
+const setToken = (t) => localStorage.setItem(STORAGE_TOKEN, t)
 export const clearToken = () => localStorage.removeItem(STORAGE_TOKEN)
 
 export async function fetchAuthStatus() {

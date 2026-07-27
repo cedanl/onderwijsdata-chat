@@ -24,7 +24,7 @@ function UserWorkbookPreview({ wb }) {
   )
 }
 
-export function BuiltinPreview() {
+function BuiltinPreview() {
   const bars = [55, 70, 82, 88, 100]
   return (
     <div className="wb-builtin-preview">
@@ -55,7 +55,7 @@ export function BuiltinPreview() {
   )
 }
 
-export function ArbeidsmarktPreview() {
+function ArbeidsmarktPreview() {
   const bars = [42, 58, 72, 90, 68]
   return (
     <div className="wb-builtin-preview">
@@ -86,7 +86,7 @@ export function ArbeidsmarktPreview() {
   )
 }
 
-export function RegioInstroomPreview() {
+function RegioInstroomPreview() {
   return (
     <div className="wb-builtin-preview">
       <div className="wb-mini-kpi-row">
@@ -112,7 +112,7 @@ export function RegioInstroomPreview() {
   )
 }
 
-export function RegioDiplomeringPreview() {
+function RegioDiplomeringPreview() {
   const bars = [70, 82, 75, 90, 88]
   return (
     <div className="wb-builtin-preview">
@@ -140,7 +140,7 @@ export function RegioDiplomeringPreview() {
   )
 }
 
-export function RegioArbeidsmarktPreview() {
+function RegioArbeidsmarktPreview() {
   const hbars = [90, 65, 55, 40, 30]
   return (
     <div className="wb-builtin-preview">
