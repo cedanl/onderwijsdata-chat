@@ -1,14 +1,24 @@
 // ─── Chart options & constants ───────────────────────────────────────────────
 
+function compactNum(n) {
+  const abs = Math.abs(n)
+  if (abs >= 1_000_000) return (n / 1_000_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'M'
+  if (abs >= 10_000) return (n / 1_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'K'
+  return n.toLocaleString('nl-NL')
+}
+
 export function chartOpts(dark) {
   const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
   const tick = dark ? '#9CA3AF' : '#6B7280'
   return {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label || ''}: ${compactNum(ctx.parsed.y ?? ctx.parsed)}` } },
+    },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick } },
-      y: { grid: { color: grid }, ticks: { color: tick } },
+      y: { grid: { color: grid }, ticks: { color: tick, callback: v => compactNum(v) } },
     },
   }
 }
