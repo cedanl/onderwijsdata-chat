@@ -444,6 +444,58 @@ def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     return duo.load("instromende-mbo-studenten", 0)
 
 
+@functools.lru_cache(maxsize=1)
+def _load_cbs_doorstroom_mbo() -> pd.DataFrame:
+    """CBS 85519NED: MBO door- en uitstroom per sectorkamer en bestemming."""
+    from onderwijsdata import data as cbs_data
+    rows = cbs_data(
+        "85519NED",
+        Geslacht="T001038",
+        GeboortelandOuders="T001040",
+        Herkomstland="T001040",
+    )
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
+
+
+_DOORSTROOM_BESTEMMINGEN = {
+    "A041867": "MBO (vervolg)",
+    "A025294": "HBO",
+    "A043923": "Overig onderwijs",
+    "A041806": "Niet in onderwijs",
+    "A043838": "Onbekend",
+}
+
+
+def _mbo_doorstroom(sectorkamers_dict: dict[str, int] | None) -> dict | None:
+    """Return doorstroom-bestemming verdeling voor MBO totaal, meest recente periode."""
+    try:
+        df = _load_cbs_doorstroom_mbo()
+        if df.empty:
+            return None
+        perioden = sorted(df["Perioden"].unique())
+        laatste = perioden[-1] if perioden else None
+        if not laatste:
+            return None
+        recent = df[
+            (df["Perioden"] == laatste)
+            & (df["OnderwijspositieBasisjaar"] == "A041867")
+            & (df["Sectorkamer"] == "T001637")
+        ]
+        result: dict = {"periode": laatste}
+        bestemmingen: dict[str, int] = {}
+        for code, label in _DOORSTROOM_BESTEMMINGEN.items():
+            row = recent[recent["PositieInVolgendStudiejaar"] == code]
+            if not row.empty:
+                val = row["StudentenMbo"].iloc[0]
+                if pd.notna(val) and int(val) > 0:
+                    bestemmingen[label] = int(val)
+        result["bestemmingen"] = bestemmingen
+        return result if bestemmingen else None
+    except Exception:
+        logger.warning("cbs doorstroom mbo niet beschikbaar", exc_info=True)
+        return None
+
+
 def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
     """Return {hoofdgroep: aantal} from instromende snapshot."""
     try:
@@ -809,6 +861,9 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
+    doorstroom = _mbo_doorstroom(result.get("sectorkamers"))
+    if doorstroom:
+        result["doorstroom"] = doorstroom
     result["methodologie"] = {
         "benchmark": (
             f"Ongewogen gemiddelde per jaar over alle MBO-instellingen in dezelfde "
@@ -818,6 +873,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         "datasets": {
             "ingeschrevenen": "DUO mbo-studenten-per-instelling",
             "gediplomeerden": "DUO gediplomeerde-mbo-studenten",
+            "doorstroom": "CBS 85519NED — MBO door- en uitstroom",
         },
         "uwv_peildatum": _UWV_PEILDATUM,
         "roa_bron": _ROA_BRON,
