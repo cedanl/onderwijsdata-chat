@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 from riodata import duo
+
+logger = logging.getLogger(__name__)
 
 # Maps instellingscode → {provincie, arbeidsmarktregio} via DUO address data.
 # HO uses adressen_ho (instellingenho.csv); MBO uses adressen_mbo (instellingenmbo.csv).
@@ -80,7 +84,7 @@ def _build_adres_lookup() -> dict[str, dict]:
                     "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
                 }
     except Exception:
-        pass
+        logger.warning("adres-lookup: adressen_ho niet beschikbaar", exc_info=True)
 
     try:
         df = duo.load("adressen_mbo", 1)
@@ -93,7 +97,7 @@ def _build_adres_lookup() -> dict[str, dict]:
                     "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
                 }
     except Exception:
-        pass
+        logger.warning("adres-lookup: adressen_mbo niet beschikbaar", exc_info=True)
 
     return lookup
 
@@ -115,7 +119,7 @@ def _build_registry() -> list[dict]:
                 "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
             }
     except Exception:
-        pass
+        logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
 
     try:
         df_wo = duo.load("p01hoinges", 1)
@@ -131,7 +135,7 @@ def _build_registry() -> list[dict]:
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
                 }
     except Exception:
-        pass
+        logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
 
     try:
         df_mbo = duo.load("mbo-studenten-per-instelling", 0)
@@ -147,7 +151,7 @@ def _build_registry() -> list[dict]:
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
                 }
     except Exception:
-        pass
+        logger.warning("registry: MBO-instellingen niet beschikbaar", exc_info=True)
 
     return sorted(result.values(), key=lambda x: x["naam"].lower())
 
