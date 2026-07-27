@@ -74,6 +74,69 @@ export function RoaSection({ data }) {
   )
 }
 
+const _TYPERING_COLORS = {
+  'goed': '#059669', 'zeer goed': '#047857',
+  'redelijk': '#D97706', 'matig': '#EA580C',
+  'slecht': '#DC2626', 'zeer slecht': '#991B1B',
+  'hoog': '#059669', 'zeer hoog': '#047857', 'erg hoog': '#047857',
+  'gemiddeld': '#D97706',
+  'laag': '#EA580C', 'zeer laag': '#DC2626', 'erg laag': '#DC2626',
+  'geen': '#94A3B8',
+}
+
+const _PROGNOSE_LABELS = {
+  'ITA toekomstige arbeidsmarktsituatie in 2030': 'Arbeidsmarktperspectief 2030',
+  'verwachte baanopeningen tot 2030': 'Verwachte baanopeningen',
+  'verwachte instroom van schoolverlaters tot 2030': 'Verwachte instroom schoolverlaters',
+}
+
+export function PrognoseSection({ data }) {
+  const prognose = data?.arbeidsmarkt_prognose
+  if (!prognose || Object.keys(prognose).length === 0) return null
+  const niveaus = Object.keys(prognose)
+  return (
+    <>
+      <SectionHeader
+        title="Arbeidsmarktprognose tot 2030 (ROA)"
+        subtitle="Nationale verwachtingen per opleidingsniveau — niet specifiek voor deze instelling of regio"
+      />
+      <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+        <div className="chart-card" style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+                <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Niveau</th>
+                {Object.values(_PROGNOSE_LABELS).map(label => (
+                  <th key={label} style={{ textAlign: 'center', padding: '6px 8px', fontWeight: 600 }}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {niveaus.map(niveau => (
+                <tr key={niveau} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <td style={{ padding: '6px 8px', fontWeight: 500 }}>{niveau}</td>
+                  {Object.keys(_PROGNOSE_LABELS).map(key => {
+                    const typering = prognose[niveau]?.[key]
+                    const color = _TYPERING_COLORS[typering?.toLowerCase()] || '#6B7280'
+                    return (
+                      <td key={key} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                        {typering ? <span style={{ color, fontWeight: 600 }}>{typering}</span> : '—'}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: '.73rem', color: '#9CA3AF', marginTop: 6, fontStyle: 'italic' }}>
+            Landelijk gemiddelde — niet specifiek voor deze instelling of regio (ROA AIS2030)
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export function UwvSection({ data, provincie, dark, opts }) {
   const vac = data?.vacatureaanbod
   if (!vac?.clusters || Object.keys(vac.clusters).length === 0) return null

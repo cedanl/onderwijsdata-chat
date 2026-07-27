@@ -600,6 +600,42 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
 
 
 @functools.lru_cache(maxsize=None)
+def _roa_prognose(onderwijs_type: str) -> dict:
+    """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau."""
+    try:
+        from riodata import roa
+        df = roa.load("ais2030", "arbeidsmarkt")
+        prog = df[df["thema"].str.contains("prognose", case=False, na=False)]
+        if onderwijs_type == "ho":
+            niveaus = ["Bachelor", "Master, doctor"]
+        else:
+            niveaus = ["Mbo4", "Mbo3", "Mbo2"]
+        subset = prog[
+            (prog["aggregatieniveau"] == "opleidingsniveau (ONR2019)")
+            & (prog["detailniveau"].isin(niveaus))
+        ]
+        indicatoren = [
+            "ITA toekomstige arbeidsmarktsituatie in 2030",
+            "verwachte baanopeningen tot 2030",
+            "verwachte instroom van schoolverlaters tot 2030",
+        ]
+        rows = subset[subset["onderwerp"].isin(indicatoren)][
+            ["detailniveau", "onderwerp", "typering"]
+        ].dropna(subset=["typering"])
+        if rows.empty:
+            return {}
+        out: dict = {}
+        for _, row in rows.iterrows():
+            niveau = str(row["detailniveau"])
+            onderwerp = str(row["onderwerp"])
+            out.setdefault(niveau, {})[onderwerp] = str(row["typering"])
+        return out
+    except Exception:
+        logger.warning("roa: prognose %s niet beschikbaar", onderwijs_type, exc_info=True)
+        return {}
+
+
+@functools.lru_cache(maxsize=None)
 def _roa_schoolverlaters(onderwijs_type: str) -> dict:
     try:
         from riodata import roa
@@ -739,6 +775,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("ho")
+    result["arbeidsmarkt_prognose"] = _roa_prognose("ho")
     ho_sectoren = tuple(sorted(result.get("sectoren", {}).keys()))
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
     result["methodologie"] = {
@@ -860,6 +897,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
+    result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
     doorstroom = _mbo_doorstroom(result.get("sectorkamers"))
     if doorstroom:

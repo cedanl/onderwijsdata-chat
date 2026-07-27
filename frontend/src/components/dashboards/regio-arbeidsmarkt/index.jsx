@@ -1,7 +1,7 @@
 import {
   useRegioDashboardData, DashboardShell,
   useRegioComputed, RegioBadges,
-  RoaSection, UwvSection, KaartSection,
+  RoaSection, PrognoseSection, UwvSection, KaartSection,
 } from '../shared/index'
 
 export function InlineDashboardRegioArbeidsmarkt({ instelling }) {
@@ -16,6 +16,7 @@ export function InlineDashboardRegioArbeidsmarkt({ instelling }) {
         <KaartSection figureJson={data?.kaart_figure_json} />
 
         <RoaSection data={data} />
+        <PrognoseSection data={data} />
         <UwvSection data={data} provincie={data?.provincie} dark={c.dark} opts={c.opts} />
 
         <div className="dashboard-sources">
