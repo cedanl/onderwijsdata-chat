@@ -25,15 +25,6 @@ export function fmt(n) {
   return Number(n).toLocaleString('nl-NL')
 }
 
-export function fmtCompact(n) {
-  if (n == null) return '—'
-  const v = Number(n)
-  const abs = Math.abs(v)
-  if (abs >= 1_000_000) return (v / 1_000_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'M'
-  if (abs >= 10_000) return (v / 1_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'K'
-  return v.toLocaleString('nl-NL')
-}
-
 // ─── Data hooks ─────────────────────────────────────────────────────────────
 
 function useDashboardFetch(endpoint, instelling) {
