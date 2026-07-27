@@ -123,37 +123,6 @@ export function SectorTrendChart({ data, dark }) {
   )
 }
 
-export function DoorstroomChart({ doorstroom, dark }) {
-  if (!doorstroom?.bestemmingen || Object.keys(doorstroom.bestemmingen).length === 0) return null
-  const entries = Object.entries(doorstroom.bestemmingen).sort((a, b) => b[1] - a[1])
-  const total = entries.reduce((s, [, v]) => s + v, 0)
-  const colors = { 'MBO (vervolg)': '#2563EB', 'HBO': '#0D9488', 'Overig onderwijs': '#F59E0B', 'Niet in onderwijs': '#94A3B8', 'Onbekend': '#D1D5DB' }
-  return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Bestemming na MBO</div>
-            <div className="chart-sub">Landelijk — {doorstroom.periode} (CBS 85519NED)</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 28, marginBottom: 12 }}>
-          {entries.map(([label, count]) => (
-            <div key={label} style={{ width: `${(count / total) * 100}%`, background: colors[label] || '#94A3B8', minWidth: 2 }} title={`${label}: ${count}`} />
-          ))}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: '.8rem', color: dark ? '#D1D5DB' : '#374151' }}>
-          {entries.map(([label, count]) => (
-            <span key={label}>
-              <span style={{ color: colors[label] || '#94A3B8' }}>●</span> {label}: {((count / total) * 100).toFixed(1)}%
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function SectorkamersChart({ sectorkamers, dark }) {
   if (!sectorkamers || Object.keys(sectorkamers).length === 0) return null
   const entries = Object.entries(sectorkamers).sort((a, b) => b[1] - a[1])

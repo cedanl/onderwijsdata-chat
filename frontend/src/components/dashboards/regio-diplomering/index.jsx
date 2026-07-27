@@ -6,7 +6,7 @@ import {
   useRegioComputed, SectionHeader, RegioBadges,
   DiplomeringKpis,
   BenchmarkLineChart, KaartSection,
-  SectorTrendChart, LeerwegenChart, RendementVergelijkingChart, DoorstroomChart,
+  SectorTrendChart, LeerwegenChart, RendementVergelijkingChart,
 } from '../shared/index'
 
 export function InlineDashboardRegioDiplomering({ instelling }) {
@@ -43,13 +43,10 @@ export function InlineDashboardRegioDiplomering({ instelling }) {
         <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={`% verandering t.o.v. eerste jaar — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
-        <DoorstroomChart doorstroom={data?.doorstroom} dark={c.dark} />
-
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
           <ul className="dashboard-sources-list">
             <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
-            <li><a href="https://opendata.cbs.nl/ODataApi/OData/85519NED" target="_blank" rel="noreferrer">CBS Open Data — MBO door- en uitstroom (85519NED)</a></li>
           </ul>
         </div>
       </div>
