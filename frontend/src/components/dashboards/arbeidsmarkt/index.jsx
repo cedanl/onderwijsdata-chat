@@ -2,7 +2,7 @@ import { CHART_COLORS } from '../../../constants'
 import { Bar, Line } from 'react-chartjs-2'
 import {
   useDarkMode, chartOpts,
-  useDashboardData, DashboardShell,
+  useDashboardData, DashboardShell, Sparkline,
   buildLineChartData, buildSectorChartData,
   sortedEntries, yearOverYearDelta,
   fmt, SECTOR_LABELS,
@@ -42,6 +42,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
               </div>
               <div className="kpi-value">{fmt(lastDipl[1])}</div>
               {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={diplEntries.map(([,v]) => v)} color="#0D9488" />
             </div>
           )}
           {sectorEntries.slice(0, 3).map(([key, val], i) => (

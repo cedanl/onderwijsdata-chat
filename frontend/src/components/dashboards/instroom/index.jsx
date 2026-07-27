@@ -2,7 +2,7 @@ import { CHART_COLORS } from '../../../constants'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
 import {
   useDarkMode, chartOpts, doughnutOpts,
-  useDashboardData, DashboardShell,
+  useDashboardData, DashboardShell, Sparkline,
   buildBarChartData, buildLineChartData, buildSectorChartData,
   sortedEntries, yearOverYearDelta,
   fmt, SECTOR_LABELS, SECTOR_COLORS,
@@ -26,7 +26,9 @@ export function InlineDashboard({ instelling }) {
   const lastDipl = diplEntries.at(-1)
   const diplDelta = yearOverYearDelta(diplEntries)
 
-  const lastEj = sortedEntries(data?.eerstejaars).at(-1)
+  const ejEntries = sortedEntries(data?.eerstejaars)
+  const lastEj = ejEntries.at(-1)
+  const ejDelta = yearOverYearDelta(ejEntries)
 
   const vrouw = data?.geslacht?.VROUW || 0
   const man = data?.geslacht?.MAN || 0
@@ -51,6 +53,7 @@ export function InlineDashboard({ instelling }) {
               </div>
               <div className="kpi-value">{fmt(lastInges[1])}</div>
               {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ingesEntries.map(([,v]) => v)} color="#2563EB" />
             </div>
           )}
           {lastDipl && (
@@ -63,6 +66,7 @@ export function InlineDashboard({ instelling }) {
               </div>
               <div className="kpi-value">{fmt(lastDipl[1])}</div>
               {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={diplEntries.map(([,v]) => v)} color="#0D9488" />
             </div>
           )}
           {lastEj && (
@@ -74,6 +78,8 @@ export function InlineDashboard({ instelling }) {
                 </div>
               </div>
               <div className="kpi-value">{fmt(lastEj[1])}</div>
+              {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
+              <Sparkline values={ejEntries.map(([,v]) => v)} color="#22C55E" />
             </div>
           )}
           {pctVrouw != null && (
