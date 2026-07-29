@@ -119,7 +119,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
               )}
             </>
           )
-          return <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts allow-same-origin" />
+          return <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts" />
         })()}
       </div>
     </div>
