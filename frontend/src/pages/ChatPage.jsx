@@ -273,7 +273,11 @@ export default function ChatPage({ openRapport, settings = {} }) {
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     if (busy) {
-      if (queueRef.current.length < 5) queueRef.current.push(q)
+      if (queueRef.current.length < 5) {
+        queueRef.current.push(q)
+      } else {
+        setInput(q)
+      }
     } else {
       send(q)
     }
@@ -407,6 +411,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
               <textarea
                 ref={textareaRef}
                 className="chat-input"
+                aria-label="Chatbericht"
                 rows={1}
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers.'}
                 value={input}
@@ -586,7 +591,7 @@ function downloadCsv(csv, filename) {
   a.href = url
   a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function PlotlyFigure({ figureJson, label }) {

@@ -34,13 +34,15 @@ function useDashboardFetch(endpoint, instelling) {
 
   useEffect(() => {
     if (!instelling) return
+    const ac = new AbortController()
     setLoading(true)
     setData(null)
     setError(null)
-    fetch(`${endpoint}?instelling=${encodeURIComponent(instelling)}`)
+    fetch(`${endpoint}?instelling=${encodeURIComponent(instelling)}`, { signal: ac.signal })
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
+      .then(d => { if (!ac.signal.aborted) { setData(d); setLoading(false) } })
+      .catch(e => { if (!ac.signal.aborted) { setError(e.message); setLoading(false) } })
+    return () => ac.abort()
   }, [endpoint, instelling])
 
   return { data, loading, error }
@@ -92,10 +94,11 @@ export function useRegioComputed(data, instelling) {
       ? buildPeerLinesData(data?.ingeschrevenen, peers.ingeschrevenen, instelling, CHART_COLORS[0], bmColor)
       : buildBenchmarkLineData(data?.ingeschrevenen, bm.ingeschrevenen, instelling, bmLabel, CHART_COLORS[0], bmColor)
 
-    const lastDiplVal = diplEntries.at(-1)?.[1]
-    const lastIngesVal = ingesEntries.at(-1)?.[1]
-    const rendement = lastDiplVal && lastIngesVal
-      ? Math.round((lastDiplVal / lastIngesVal) * 100)
+    const lastDiplEntry = diplEntries.at(-1)
+    const lastIngesEntry = ingesEntries.at(-1)
+    const sameYear = lastDiplEntry && lastIngesEntry && lastDiplEntry[0] === lastIngesEntry[0]
+    const rendement = sameYear && lastIngesEntry[1]
+      ? Math.round((lastDiplEntry[1] / lastIngesEntry[1]) * 100)
       : null
 
     return {

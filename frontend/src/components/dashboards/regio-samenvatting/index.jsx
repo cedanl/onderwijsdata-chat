@@ -5,14 +5,14 @@ import {
 } from '../shared/index'
 import { Sparkline } from '../shared/shell'
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon }) {
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
         <span className="kpi-label">{label}</span>
         <div className="kpi-icon" style={{ background: `${color}18` }}>{icon}</div>
       </div>
-      <div className="kpi-value">{fmt(eigenWaarde)}</div>
+      <div className="kpi-value">{fmt(eigenWaarde)}{suffix}</div>
       {regioWaarde != null && (
         <div className="kpi-trend" style={{ color: '#6B7280' }}>
           {regioLabel}: {fmt(regioWaarde)}
@@ -93,7 +93,8 @@ export function InlineDashboardRegioSamenvatting({ instelling }) {
           {c.pctVrouw != null && (
             <SamenvattingTile
               label={`Aandeel vrouw ${data?.laatste_jaar}`}
-              eigenWaarde={`${c.pctVrouw}%`}
+              eigenWaarde={c.pctVrouw}
+              suffix="%"
               regioWaarde={null}
               regioLabel=""
               color="#F59E0B"
