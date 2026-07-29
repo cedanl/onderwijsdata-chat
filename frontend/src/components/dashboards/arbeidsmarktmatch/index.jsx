@@ -87,9 +87,9 @@ function RoaNiveauTable({ roaPerNiveau, dark }) {
           {entries.map(([niveau, vals]) => (
             <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100, #F3F4F6)' }}>
               <td style={{ padding: '5px 8px' }}>{niveau}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.werkloosheid != null ? `${(vals.werkloosheid * 100).toFixed(1)}%` : '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.vast_dienstverband != null ? `${(vals.vast_dienstverband * 100).toFixed(1)}%` : '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.buiten_vakrichting != null ? `${(vals.buiten_vakrichting * 100).toFixed(1)}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.werkloosheid != null ? `${vals.werkloosheid}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.vast_dienstverband != null ? `${vals.vast_dienstverband}%` : '—'}</td>
+              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{vals.buiten_vakrichting != null ? `${vals.buiten_vakrichting}%` : '—'}</td>
             </tr>
           ))}
         </tbody>

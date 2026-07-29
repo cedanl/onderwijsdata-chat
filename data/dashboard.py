@@ -18,6 +18,7 @@ _MAX_SUGGESTIONS = 20
 _MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
 _UWV_PEILDATUM = "mei 2023 (momentopname)"
 _ROA_BRON = "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling"
+_MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
 # Approximate coordinates for Dutch educational cities (PLAATSNAAM uppercase → lat/lon).
 _CITY_COORDS: dict[str, tuple[float, float]] = {
@@ -190,7 +191,7 @@ def _gemiddelde_per_jaar(
         return {}
     per_inst = subset.groupby([code_col, jaar_col])[waarde_col].sum().reset_index()
     gem = per_inst.groupby(jaar_col)[waarde_col].mean()
-    return {int(k): round(float(v)) for k, v in gem.items()}
+    return {int(k): round(float(v), 1) for k, v in gem.items()}
 
 
 def _per_peer(
@@ -289,7 +290,7 @@ def _mbo_peer_eerstejaars(
         .sum().reset_index()
     )
     gem_ej_per_jaar = gem_ej.groupby("JAAR")["AANTAL"].mean()
-    bm = {int(k): round(float(v)) for k, v in gem_ej_per_jaar.items()}
+    bm = {int(k): round(float(v), 1) for k, v in gem_ej_per_jaar.items()}
     code_to_naam = (
         df_mbo.drop_duplicates(code_col).set_index(code_col)[inst_col].to_dict()
     )
@@ -743,6 +744,49 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     return result
 
 
+def _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, inst_col):
+    peer_codes = ctx.peer_codes
+    peer_df = df_mbo[df_mbo[code_col].isin(peer_codes)]
+    per_inst_jaar = peer_df.groupby([code_col, "JAAR"])[_MBO_LEERWEG_COLS].sum()
+    per_inst_jaar["totaal"] = per_inst_jaar.sum(axis=1)
+    gem = per_inst_jaar.reset_index().groupby("JAAR")["totaal"].mean()
+    totaal_regio = peer_df.groupby("JAAR")[_MBO_LEERWEG_COLS].sum().sum(axis=1)
+    bm_eerstejaars, peers_eerstejaars = _mbo_peer_eerstejaars(df_instromende, df_mbo, code_col, inst_col, peer_codes)
+    peers: dict = {
+        "ingeschrevenen": _per_peer_mbo(df_mbo, code_col, inst_col, peer_codes, "JAAR", _MBO_LEERWEG_COLS),
+        "eerstejaars": peers_eerstejaars,
+    }
+    if df_dipl_mbo is not None:
+        peers["gediplomeerden"] = _per_peer_mbo_dipl(df_dipl_mbo, code_col, inst_col, peer_codes)
+    return {
+        "label": _benchmark_label(ctx),
+        "regio_type": ctx.regio_type,
+        "n_instellingen": len(peer_codes),
+        "ingeschrevenen": {int(k): round(float(v), 1) for k, v in gem.items()},
+        "totaal_ingeschrevenen": {int(k): int(v) for k, v in totaal_regio.items()},
+        "eerstejaars": bm_eerstejaars,
+        "peers": peers,
+    }
+
+
+def _mbo_load_gediplomeerden(inst_col: str, instelling: str) -> tuple[pd.DataFrame | None, dict[int, int]]:
+    try:
+        df = _load_mbo_gediplomeerden()
+        return df, _mbo_dipl_per_jaar(df, inst_col, instelling)
+    except Exception:
+        logger.warning("regio-mbo: gediplomeerden niet beschikbaar", exc_info=True)
+        return None, {}
+
+
+def _mbo_load_eerstejaars(self_code: str) -> tuple[pd.DataFrame | None, dict[int, int]]:
+    try:
+        df = _load_instromende_mbo_historisch()
+        return df, _mbo_eerstejaars_from_df(df, self_code)
+    except Exception:
+        logger.warning("regio-mbo: eerstejaars niet beschikbaar", exc_info=True)
+        return None, {}
+
+
 def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
@@ -794,64 +838,24 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     if sectorkamers:
         result["sectorkamers"] = sectorkamers
 
-    df_dipl_mbo: pd.DataFrame | None = None
-    try:
-        df_dipl_mbo = _load_mbo_gediplomeerden()
-        dipl = _mbo_dipl_per_jaar(df_dipl_mbo, inst_col, instelling)
-        if dipl:
-            result["gediplomeerden"] = dipl
-    except Exception:
-        logger.warning("regio-mbo: gediplomeerden niet beschikbaar", exc_info=True)
+    df_dipl_mbo, dipl = _mbo_load_gediplomeerden(inst_col, instelling)
+    if dipl:
+        result["gediplomeerden"] = dipl
 
-    df_instromende: pd.DataFrame | None = None
-    try:
-        df_instromende = _load_instromende_mbo_historisch()
-    except Exception:
-        logger.warning("regio-mbo: eerstejaars niet beschikbaar", exc_info=True)
-
-    eerstejaars = _mbo_eerstejaars_from_df(df_instromende, self_code)
+    df_instromende, eerstejaars = _mbo_load_eerstejaars(self_code)
     if eerstejaars:
         result["eerstejaars"] = eerstejaars
 
     if ctx:
-        n = len(ctx.peer_codes)
-        peer_df = df_mbo[df_mbo[code_col].isin(ctx.peer_codes)]
-        per_inst_jaar = peer_df.groupby([code_col, "JAAR"])[_MBO_LEERWEG_COLS].sum()
-        per_inst_jaar["totaal"] = per_inst_jaar.sum(axis=1)
-        gem = per_inst_jaar.reset_index().groupby("JAAR")["totaal"].mean()
-        totaal_regio = peer_df.groupby("JAAR")[_MBO_LEERWEG_COLS].sum().sum(axis=1)
-
-        bm_eerstejaars, peers_eerstejaars = _mbo_peer_eerstejaars(
-            df_instromende, df_mbo, code_col, inst_col, ctx.peer_codes,
-        )
-
-        result["benchmark"] = {
-            "label": _benchmark_label(ctx),
-            "regio_type": ctx.regio_type,
-            "n_instellingen": n,
-            "ingeschrevenen": {int(k): round(float(v)) for k, v in gem.items()},
-            "totaal_ingeschrevenen": {int(k): int(v) for k, v in totaal_regio.items()},
-            "eerstejaars": bm_eerstejaars,
-            "peers": {
-                "ingeschrevenen": _per_peer_mbo(
-                    df_mbo, code_col, inst_col, ctx.peer_codes, "JAAR", _MBO_LEERWEG_COLS
-                ),
-                "eerstejaars": peers_eerstejaars,
-                **({"gediplomeerden": _per_peer_mbo_dipl(
-                    df_dipl_mbo, code_col, inst_col, ctx.peer_codes
-                )} if df_dipl_mbo is not None else {}),
-            },
-        }
+        result["benchmark"] = _mbo_regio_benchmark(ctx, df_mbo, df_instromende, df_dipl_mbo, code_col, inst_col)
         result["kaart_figure_json"] = _build_kaart_figure(ctx, instelling)
 
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
+    regio_type = ctx.regio_type if ctx else "provincie"
     result["methodologie"] = {
-        "benchmark": (
-            f"Ongewogen gemiddelde per jaar over alle MBO-instellingen in dezelfde "
-            f"{ctx.regio_type if ctx else 'provincie'}, exclusief eigen instelling"
-        ),
+        "benchmark": f"Ongewogen gemiddelde per jaar over alle MBO-instellingen in dezelfde {regio_type}, exclusief eigen instelling",
         "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
         "datasets": {
             "ingeschrevenen": "DUO mbo-studenten-per-instelling",
@@ -896,10 +900,7 @@ def load_dashboard_regio(instelling: str) -> dict:
 # ─── Instroom dashboard (zonder benchmark) ───────────────────────────────────
 
 def _load_ho(_instelling: str) -> pd.DataFrame:
-    return pd.concat(
-        [duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)],
-        ignore_index=True,
-    )
+    return _load_ho_full()[0]
 
 
 def _filter_ho(df: pd.DataFrame, instelling: str) -> pd.DataFrame:
@@ -907,6 +908,30 @@ def _filter_ho(df: pd.DataFrame, instelling: str) -> pd.DataFrame:
     if col not in df.columns:
         return df.iloc[0:0]
     return df[df[col].str.lower() == instelling.lower()]
+
+
+def _ho_load_eerstejaars(instelling: str) -> dict[int, int] | None:
+    try:
+        _, df_1e, _ = _load_ho_full()
+        hu1 = _filter_ho(df_1e, instelling)
+        if hu1.empty:
+            return None
+        return hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum().sort_index().to_dict()
+    except Exception:
+        logger.warning("dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling, exc_info=True)
+        return None
+
+
+def _ho_load_gediplomeerden(instelling: str) -> dict[int, int] | None:
+    try:
+        _, _, df_dipl = _load_ho_full()
+        hud = _filter_ho(df_dipl, instelling)
+        if hud.empty:
+            return None
+        return hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum().sort_index().to_dict()
+    except Exception:
+        logger.warning("dashboard-ho: gediplomeerden niet beschikbaar voor %s", instelling, exc_info=True)
+        return None
 
 
 def load_dashboard_ho(instelling: str) -> dict | None:
@@ -920,52 +945,28 @@ def load_dashboard_ho(instelling: str) -> dict | None:
         return None
 
     result: dict = {}
-
     result["ingeschrevenen"] = (
-        hu.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum()
-        .sort_index().to_dict()
+        hu.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum().sort_index().to_dict()
     )
-
     laatste_jaar = hu["STUDIEJAAR"].max()
     result["geslacht"] = (
         hu[hu["STUDIEJAAR"] == laatste_jaar]
         .groupby("GESLACHT")["AANTAL_INGESCHREVENEN"].sum().to_dict()
     )
     result["laatste_jaar"] = int(laatste_jaar)
-
     result["sectoren"] = (
         hu[hu["STUDIEJAAR"] == laatste_jaar]
         .groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
         .sort_values(ascending=False).to_dict()
     )
 
-    try:
-        df_1e = pd.concat(
-            [duo.load("p02ho1ejrs", 0), duo.load("p02ho1ejrs", 1)],
-            ignore_index=True,
-        )
-        hu1 = _filter_ho(df_1e, instelling)
-        if not hu1.empty:
-            result["eerstejaars"] = (
-                hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum()
-                .sort_index().to_dict()
-            )
-    except Exception:
-        logger.warning("dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling, exc_info=True)
+    eerstejaars = _ho_load_eerstejaars(instelling)
+    if eerstejaars:
+        result["eerstejaars"] = eerstejaars
 
-    try:
-        df_dipl = pd.concat(
-            [duo.load("p04hogdipl", 0), duo.load("p04hogdipl", 1)],
-            ignore_index=True,
-        )
-        hud = _filter_ho(df_dipl, instelling)
-        if not hud.empty:
-            result["gediplomeerden"] = (
-                hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum()
-                .sort_index().to_dict()
-            )
-    except Exception:
-        logger.warning("dashboard-ho: gediplomeerden niet beschikbaar voor %s", instelling, exc_info=True)
+    gediplomeerden = _ho_load_gediplomeerden(instelling)
+    if gediplomeerden:
+        result["gediplomeerden"] = gediplomeerden
 
     return result
 
@@ -1197,7 +1198,7 @@ def _benchmark_from_peer_rendements(peer_lists: list[dict[int, float]]) -> dict[
 
 
 def _mbo_dipl_per_jaar(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) -> dict[int, int]:
-    rows = df_dipl[df_dipl[filter_col].str.lower() == filter_val.lower()] if filter_col else df_dipl[df_dipl["INSTELLINGSCODE"] == filter_val]
+    rows = df_dipl[df_dipl[filter_col].str.lower() == filter_val.lower()]
     if rows.empty:
         return {}
     result: dict[int, int] = {}
@@ -1206,16 +1207,6 @@ def _mbo_dipl_per_jaar(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) 
         result[jaar] = result.get(jaar, 0) + int(rows[col].sum())
     return result
 
-
-def _mbo_dipl_per_jaar_by_code(df_dipl: pd.DataFrame, code: str) -> dict[int, int]:
-    rows = df_dipl[df_dipl["INSTELLINGSCODE"] == code]
-    if rows.empty:
-        return {}
-    result: dict[int, int] = {}
-    for col in [c for c in rows.columns if c.startswith("DIP")]:
-        jaar = int(col[-4:])
-        result[jaar] = result.get(jaar, 0) + int(rows[col].sum())
-    return result
 
 
 def load_dashboard_rendement(instelling: str) -> dict:
@@ -1309,33 +1300,43 @@ def _rendement_ho(instelling: str) -> dict | None:
     return result
 
 
+def _mbo_peer_rendement_for_code(df_instromende_all, df_mbo, df_dipl_mbo, code, code_col, inst_col):
+    p_instr = df_instromende_all[
+        (df_instromende_all["INSTELLINGSCODE"] == code)
+        & (df_instromende_all["INSTROOM MBO"] == "J")
+    ]
+    p_instroom = p_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
+    p_dipl = _mbo_dipl_per_jaar(df_dipl_mbo, "INSTELLINGSCODE", code) if df_dipl_mbo is not None else {}
+    peer_rend: dict[int, float] = {}
+    for jaar in p_instroom:
+        iv = p_instroom[jaar]
+        dt3 = p_dipl.get(jaar + 3, 0)
+        if iv > 0 and dt3 > 0:
+            peer_rend[jaar] = round(dt3 / iv, 4)
+    if not peer_rend:
+        return None, None
+    p_rows = df_mbo[df_mbo[code_col] == code]
+    peer_naam = p_rows[inst_col].iloc[0] if not p_rows.empty else code
+    return peer_naam, peer_rend
+
+
 def _mbo_peers_rendement(ctx, df_mbo, df_dipl_mbo, inst_col, code_col):
-    peers_rendement: dict[str, dict[int, float]] = {}
-    peer_rend_lists: list[dict[int, float]] = []
     if not ctx:
-        return peers_rendement, peer_rend_lists
+        return {}, []
     try:
         df_instromende_all = _load_instromende_mbo_historisch()
-        for code in ctx.peer_codes:
-            p_instr = df_instromende_all[
-                (df_instromende_all["INSTELLINGSCODE"] == code)
-                & (df_instromende_all["INSTROOM MBO"] == "J")
-            ]
-            p_instroom = p_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
-            p_dipl = _mbo_dipl_per_jaar_by_code(df_dipl_mbo, code) if df_dipl_mbo is not None else {}
-            peer_rend: dict[int, float] = {}
-            for jaar in p_instroom:
-                iv = p_instroom[jaar]
-                dt3 = p_dipl.get(jaar + 3, 0)
-                if iv > 0 and dt3 > 0:
-                    peer_rend[jaar] = round(dt3 / iv, 4)
-            if peer_rend:
-                p_rows = df_mbo[df_mbo[code_col] == code]
-                peer_naam = p_rows[inst_col].iloc[0] if not p_rows.empty else code
-                peers_rendement[peer_naam] = peer_rend
-                peer_rend_lists.append(peer_rend)
     except Exception:
         logger.warning("rendement-mbo: peer rendement niet beschikbaar", exc_info=True)
+        return {}, []
+    peers_rendement: dict[str, dict[int, float]] = {}
+    peer_rend_lists: list[dict[int, float]] = []
+    for code in ctx.peer_codes:
+        peer_naam, peer_rend = _mbo_peer_rendement_for_code(
+            df_instromende_all, df_mbo, df_dipl_mbo, code, code_col, inst_col,
+        )
+        if peer_rend:
+            peers_rendement[peer_naam] = peer_rend
+            peer_rend_lists.append(peer_rend)
     return peers_rendement, peer_rend_lists
 
 
@@ -1492,8 +1493,12 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     # match_score: schaarste if vac-aandeel > dipl-aandeel * 1.2
     vpc = result["vacatures_per_cluster"]
     scm = result["sector_cluster_mapping"]
-    totaal_dipl = sum(gps_final.values()) or 1
-    totaal_vac = sum(vpc.values()) or 1
+    totaal_dipl = sum(gps_final.values())
+    totaal_vac = sum(vpc.values())
+
+    if not totaal_dipl or not totaal_vac:
+        result["match_score"] = {s: None for s in gps_final}
+        return result
 
     match_score: dict[str, str | None] = {}
     for sector, dipl_count in gps_final.items():
@@ -1502,9 +1507,9 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
         if clusters:
             vac_count = sum(vpc.get(cl, 0) for cl in clusters)
             vac_aandeel = vac_count / totaal_vac
-            if vac_aandeel > dipl_aandeel * 1.2:
+            if vac_aandeel > dipl_aandeel * _MATCH_DREMPEL:
                 match_score[sector] = "schaarste"
-            elif dipl_aandeel > vac_aandeel * 1.2:
+            elif dipl_aandeel > vac_aandeel * _MATCH_DREMPEL:
                 match_score[sector] = "overaanbod"
             else:
                 match_score[sector] = "evenwicht"

@@ -64,8 +64,9 @@ async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]
     loop = asyncio.get_running_loop()
     alle = await loop.run_in_executor(None, get_all_instellingen)
     if type:
-        types = {t.strip().lower() for t in type.split(",")}
-        return [i for i in alle if i["type"] in types]
+        types = {t.strip().lower() for t in type.split(",") if t.strip()}
+        if types:
+            return [i for i in alle if i["type"] in types]
     return alle
 
 
