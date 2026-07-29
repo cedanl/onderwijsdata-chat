@@ -1,9 +1,7 @@
 import { useMemo } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
-import {
-  useRendementDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
-} from '../shared/index'
+import { SectionHeader, fmt } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten[cohorten.length - 1]
@@ -181,45 +179,21 @@ function CohortenTable({ cohorten, dark }) {
   )
 }
 
-export function InlineDashboardRendement({ instelling }) {
-  const { data, loading, error } = useRendementDashboardData(instelling)
-  const dark = useDarkMode()
-
+export function RendementSection({ data, instelling, dark }) {
+  if (!data?.gevonden) return null
   return (
-    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
-      <div className="dashboard-content" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          <span className="meta-badge instelling">{instelling}</span>
-          <span className="meta-badge date">Diplomarendement</span>
-          <span className="meta-badge date">Bron: DUO Open Onderwijsdata</span>
-        </div>
-
-        <SectionHeader title="Kerncijfers" subtitle="Laatst beschikbare rendementspercentage" />
-        <RendementKpis data={data} />
-
-        <SectionHeader title="Rendement trend" subtitle="Verloop diplomarendement vs. benchmark regio" />
-        <RendementTrendChart
-          rendementPerJaar={data?.rendement_per_jaar}
-          benchmarkRendement={data?.benchmark_rendement}
-          peersRendement={data?.peers_rendement}
-          instelling={instelling}
-          dark={dark}
-        />
-
-        <SectionHeader title="Rendement per sector" subtitle="Cumulatief rendement per onderdeel" />
-        <SectorRendementChart sectorRendement={data?.sector_rendement} dark={dark} />
-
-        <SectionHeader title="Cohorten" subtitle="Pseudo-cohortanalyse: instroom vs. diplomering" />
-        <CohortenTable cohorten={data?.pseudo_cohorten} dark={dark} />
-
-        <div className="dashboard-sources">
-          <div className="dashboard-sources-title">Bronnen</div>
-          <ul className="dashboard-sources-list">
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p02ho1ejrs" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Eerstejaars HO per instelling</a></li>
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling</a></li>
-          </ul>
-        </div>
-      </div>
-    </DashboardShell>
+    <>
+      <SectionHeader title="Diplomarendement" subtitle="Rendement per cohort en sector, vergeleken met regio-peers" />
+      <RendementKpis data={data} />
+      <RendementTrendChart
+        rendementPerJaar={data?.rendement_per_jaar}
+        benchmarkRendement={data?.benchmark_rendement}
+        peersRendement={data?.peers_rendement}
+        instelling={instelling}
+        dark={dark}
+      />
+      <SectorRendementChart sectorRendement={data?.sector_rendement} dark={dark} />
+      <CohortenTable cohorten={data?.pseudo_cohorten} dark={dark} />
+    </>
   )
 }

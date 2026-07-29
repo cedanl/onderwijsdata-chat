@@ -1,21 +1,13 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN, BUILTIN_ARBEIDSMARKT, BUILTIN_REGIO_SAMENVATTING, BUILTIN_REGIO_INSTROOM, BUILTIN_REGIO_DIPLOMERING, BUILTIN_REGIO_ARBEIDSMARKT, BUILTIN_GENDER_DIVERSITEIT, BUILTIN_NATIONAAL, BUILTIN_RENDEMENT, BUILTIN_ARBEIDSMARKTMATCH } from '../workbooks'
-import { InlineDashboard, InlineDashboardArbeidsmarkt, InlineDashboardRegio, InlineDashboardRegioSamenvatting, InlineDashboardRegioInstroom, InlineDashboardRegioDiplomering, InlineDashboardRegioArbeidsmarkt, InlineDashboardGenderDiversiteit, InlineDashboardNationaal, InlineDashboardRendement, InlineDashboardArbeidsmarktmatch } from './InlineDashboards'
+import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
 const BUILTIN_COMPONENTS = {
-  [BUILTIN.id]: InlineDashboard,
+  [BUILTIN_MIJN_INSTELLING.id]: InlineDashboardMijnInstelling,
   [BUILTIN_ARBEIDSMARKT.id]: InlineDashboardArbeidsmarkt,
-  '__builtin_regio__': InlineDashboardRegio,
-  [BUILTIN_REGIO_SAMENVATTING.id]: InlineDashboardRegioSamenvatting,
-  [BUILTIN_REGIO_INSTROOM.id]: InlineDashboardRegioInstroom,
-  [BUILTIN_REGIO_DIPLOMERING.id]: InlineDashboardRegioDiplomering,
-  [BUILTIN_REGIO_ARBEIDSMARKT.id]: InlineDashboardRegioArbeidsmarkt,
-  [BUILTIN_GENDER_DIVERSITEIT.id]: InlineDashboardGenderDiversiteit,
   [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
-  [BUILTIN_RENDEMENT.id]: InlineDashboardRendement,
-  [BUILTIN_ARBEIDSMARKTMATCH.id]: InlineDashboardArbeidsmarktmatch,
 }
 
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {

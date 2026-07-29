@@ -1,10 +1,10 @@
 import { STORAGE_WORKBOOKS } from './constants'
 import { fetchWorkbooks, putWorkbook, deleteWorkbookApi } from './api'
 
-export const BUILTIN = {
-  id: '__builtin__',
-  title: 'Instroom & Diplomering',
-  description: 'Overzicht instroom, diplomarendement en regionale herkomst. Voorbeelddashboard met statische data.',
+export const BUILTIN_MIJN_INSTELLING = {
+  id: '__builtin_mijn_instelling__',
+  title: 'Mijn instelling',
+  description: 'Kerncijfers, instroom, diplomering, rendement, gender en regionale benchmark in één overzicht.',
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
@@ -12,71 +12,15 @@ export const BUILTIN = {
 export const BUILTIN_ARBEIDSMARKT = {
   id: '__builtin_arbeidsmarkt__',
   title: 'Arbeidsmarkt',
-  description: 'Opleidingsniveau werkzoekenden, vacaturedruk en arbeidsmarktpositie HU-alumni in de regio Utrecht.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_REGIO_SAMENVATTING = {
-  id: '__builtin_regio_samenvatting__',
-  title: 'Regio — Samenvatting',
-  description: 'Kerncijfers in één oogopslag: instelling vs. regio vs. landelijk gemiddelde.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_REGIO_INSTROOM = {
-  id: '__builtin_regio_instroom__',
-  title: 'Regio — Instroom & Demografie',
-  description: 'Ingeschrevenen, eerstejaars en geslachtsverdeling afgezet tegen het provinciaal gemiddelde.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_REGIO_DIPLOMERING = {
-  id: '__builtin_regio_diplomering__',
-  title: 'Regio — Voortgang & Diplomering',
-  description: 'Sectorverdeling, inschrijvingstrend en gediplomeerden per jaar versus de regio.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_REGIO_ARBEIDSMARKT = {
-  id: '__builtin_regio_arbeidsmarkt__',
-  title: 'Regio — Arbeidsmarkt',
-  description: 'Landelijke arbeidsmarktkansen (ROA) en vacatureaanbod in de provincie (UWV).',
+  description: 'Match-score per sector, vacatures (UWV), ROA-indicatoren en arbeidsmarktprognose.',
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }
 
 export const BUILTIN_NATIONAAL = {
   id: '__builtin_nationaal__',
-  title: 'Nationaal Marktaandeel',
+  title: 'Landelijk',
   description: 'Landelijke ranking, marktaandeel per sector en sectortrends voor de instelling.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_RENDEMENT = {
-  id: '__builtin_rendement__',
-  title: 'Diplomarendement',
-  description: 'Diplomarendement per cohort, sectorrendement en benchmark tegen regio-peers.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_ARBEIDSMARKTMATCH = {
-  id: '__builtin_arbeidsmarktmatch__',
-  title: 'Arbeidsmarkt Match',
-  description: 'Gediplomeerden vs. vacatures per sector met schaarste/overaanbod-indicatie.',
-  createdAt: '2026-07-01T00:00:00.000Z',
-  builtin: true,
-}
-
-export const BUILTIN_GENDER_DIVERSITEIT = {
-  id: '__builtin_gender_diversiteit__',
-  title: 'Gender & Diversiteit',
-  description: 'Aandeel vrouw versus man, meerjarige geslachtstrend en regionale benchmark per instelling.',
   createdAt: '2026-07-01T00:00:00.000Z',
   builtin: true,
 }

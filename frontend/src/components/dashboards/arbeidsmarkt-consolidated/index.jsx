@@ -1,7 +1,10 @@
 import { useMemo } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
-  useArbeidsmarktmatchDashboardData, useDarkMode, DashboardShell, SectionHeader, RegioBadges, fmt,
+  useArbeidsmarktmatchDashboardData, useRegioDashboardData,
+  useDarkMode, DashboardShell, SectionHeader, RegioBadges, fmt,
+  RoaSection, PrognoseSection, UwvSection,
+  useRegioComputed,
 } from '../shared/index'
 
 const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
@@ -29,13 +32,11 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
     if (!gediplomeerdenPerSector || !vacaturesPerCluster || !sectorClusterMapping) return null
     const sectors = Object.keys(gediplomeerdenPerSector)
     if (!sectors.length) return null
-
     const diplData = sectors.map(s => gediplomeerdenPerSector[s] || 0)
     const vacData = sectors.map(s => {
       const clusters = sectorClusterMapping[s] || []
       return clusters.reduce((sum, cl) => sum + (vacaturesPerCluster[cl] || 0), 0)
     })
-
     return {
       labels: sectors,
       datasets: [
@@ -137,31 +138,37 @@ function VacaturesChart({ vacaturesPerCluster, dark }) {
   )
 }
 
-export function InlineDashboardArbeidsmarktmatch({ instelling }) {
-  const { data, loading, error } = useArbeidsmarktmatchDashboardData(instelling)
+export function InlineDashboardArbeidsmarkt({ instelling }) {
+  const { data: matchData, loading, error } = useArbeidsmarktmatchDashboardData(instelling)
+  const { data: regioData } = useRegioDashboardData(instelling)
   const dark = useDarkMode()
+  const c = useRegioComputed(regioData, instelling)
 
   return (
-    <DashboardShell instelling={instelling} loading={loading} data={data} error={error}>
+    <DashboardShell instelling={instelling} loading={loading} data={matchData} error={error}>
       <div className="dashboard-content" style={{ padding: 24 }}>
-        <RegioBadges instelling={instelling} provincie={data?.provincie} arbeidsmarktregio={data?.arbeidsmarktregio} bron="DUO, UWV &amp; ROA" />
+        <RegioBadges instelling={instelling} provincie={matchData?.provincie || regioData?.provincie} arbeidsmarktregio={matchData?.arbeidsmarktregio || regioData?.arbeidsmarktregio} bron="DUO, UWV &amp; ROA" />
 
         <SectionHeader title="Match score" subtitle="Verhouding gediplomeerden vs. vacatures per sector" />
-        <MatchScoreCards matchScore={data?.match_score} />
+        <MatchScoreCards matchScore={matchData?.match_score} />
 
         <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart
-          gediplomeerdenPerSector={data?.gediplomeerden_per_sector}
-          vacaturesPerCluster={data?.vacatures_per_cluster}
-          sectorClusterMapping={data?.sector_cluster_mapping}
+          gediplomeerdenPerSector={matchData?.gediplomeerden_per_sector}
+          vacaturesPerCluster={matchData?.vacatures_per_cluster}
+          sectorClusterMapping={matchData?.sector_cluster_mapping}
           dark={dark}
         />
 
         <SectionHeader title="Vacatures" subtitle="Top beroepsclusters in de provincie" />
-        <VacaturesChart vacaturesPerCluster={data?.vacatures_per_cluster} dark={dark} />
+        <VacaturesChart vacaturesPerCluster={matchData?.vacatures_per_cluster} dark={dark} />
 
         <SectionHeader title="Arbeidsmarktpositie" subtitle="ROA-indicatoren per opleidingsniveau" />
-        <RoaNiveauTable roaPerNiveau={data?.roa_per_niveau} dark={dark} />
+        <RoaNiveauTable roaPerNiveau={matchData?.roa_per_niveau} dark={dark} />
+
+        <RoaSection data={regioData} />
+        <PrognoseSection data={regioData} />
+        <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} opts={c.opts} />
 
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
