@@ -5,6 +5,17 @@ import {
   useRendementDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
 } from '../shared/index'
 
+function LatestCohortKpi({ cohorten }) {
+  const last = cohorten[cohorten.length - 1]
+  return (
+    <div className="kpi-card">
+      <div className="kpi-label">Instroom {last.instroom_jaar}</div>
+      <div className="kpi-value">{fmt(last.instroom)}</div>
+      <div className="kpi-sub">eerstejaars in cohort</div>
+    </div>
+  )
+}
+
 function RendementKpis({ data }) {
   if (!data?.rendement_per_jaar) return null
   const entries = Object.entries(data.rendement_per_jaar).sort((a, b) => Number(b[0]) - Number(a[0]))
@@ -20,16 +31,7 @@ function RendementKpis({ data }) {
           {delta != null && <div className="kpi-sub" style={{ color: delta >= 0 ? '#16A34A' : '#DC2626' }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}pp t.o.v. {prev[0]}</div>}
         </div>
       )}
-      {data.pseudo_cohorten?.length > 0 && (() => {
-        const last = data.pseudo_cohorten[data.pseudo_cohorten.length - 1]
-        return (
-          <div className="kpi-card">
-            <div className="kpi-label">Instroom {last.instroom_jaar}</div>
-            <div className="kpi-value">{fmt(last.instroom)}</div>
-            <div className="kpi-sub">eerstejaars in cohort</div>
-          </div>
-        )
-      })()}
+      {data.pseudo_cohorten?.length > 0 && <LatestCohortKpi cohorten={data.pseudo_cohorten} />}
     </div>
   )
 }
