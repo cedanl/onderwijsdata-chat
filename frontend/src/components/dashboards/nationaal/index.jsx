@@ -187,8 +187,8 @@ export function InlineDashboardNationaal({ instelling }) {
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
           <ul className="dashboard-sources-list">
-            <li><a href="https://onderwijsdata.duo.nl/dataset/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling</a></li>
-            <li><a href="https://onderwijsdata.duo.nl/dataset/mbo-studenten-per-instelling" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — MBO studenten per instelling</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/datasets/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — MBO studenten per instelling</a></li>
           </ul>
         </div>
       </div>

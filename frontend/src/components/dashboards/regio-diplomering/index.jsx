@@ -46,7 +46,7 @@ export function InlineDashboardRegioDiplomering({ instelling }) {
         <div className="dashboard-sources">
           <div className="dashboard-sources-title">Bronnen</div>
           <ul className="dashboard-sources-list">
-            <li><a href="https://onderwijsdata.duo.nl/dataset/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
+            <li><a href="https://onderwijsdata.duo.nl/datasets/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
           </ul>
         </div>
       </div>
