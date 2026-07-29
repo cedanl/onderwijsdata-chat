@@ -4,19 +4,7 @@ import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
 } from '../shared/index'
-
-const SECTOR_LABELS = {
-  ECONOMIE: 'Economie',
-  GEZONDHEIDSZORG: 'Gezondheidszorg',
-  GEDRAG_EN_MAATSCHAPPIJ: 'Gedrag & Maatschappij',
-  ONDERWIJS: 'Onderwijs',
-  TECHNIEK: 'Techniek',
-  NATUUR: 'Natuur',
-  TAAL_EN_CULTUUR: 'Taal & Cultuur',
-  RECHT: 'Recht',
-  LANDBOUW_EN_NATUURLIJKE_OMGEVING: 'Landbouw',
-  SECTOROVERSTIJGEND: 'Sectoroverstijgend',
-}
+import { SECTOR_LABELS } from '../shared/chart-opts'
 
 function RankingTable({ alleInstellingen, instelling, dark }) {
   if (!alleInstellingen?.length) return null

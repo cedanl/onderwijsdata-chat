@@ -93,12 +93,35 @@ export function doughnutOpts(dark) {
 export const SECTOR_LABELS = {
   ECONOMIE: 'Economie',
   GEZONDHEIDSZORG: 'Gezondheidszorg',
-  TECHNIEK: 'Techniek',
+  GEDRAG_EN_MAATSCHAPPIJ: 'Gedrag & Maatschappij',
   ONDERWIJS: 'Onderwijs',
-  GEDRAG_EN_MAATSCHAPPIJ: 'Gedrag & Mij.',
+  TECHNIEK: 'Techniek',
+  NATUUR: 'Natuur',
   TAAL_EN_CULTUUR: 'Taal & Cultuur',
+  RECHT: 'Recht',
+  LANDBOUW_EN_NATUURLIJKE_OMGEVING: 'Landbouw',
   SECTOROVERSTIJGEND: 'Sectoroverstijgend',
 }
 // Semantic: each color is fixed to a named sector (Economie→blauw, Gezondheidszorg→teal, …).
 // Not a generic sequential palette, so not replaced by CHART_COLORS.
 export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8']
+
+export function horizontalBarOpts(dark, tooltipSuffix = '') {
+  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  return {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('nl-NL')}${tooltipSuffix}` },
+      },
+    },
+    scales: {
+      x: { grid: { color: grid }, ticks: { color: tick, font: { size: 11 } } },
+      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 }, padding: 4 } },
+    },
+  }
+}

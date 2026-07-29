@@ -1,4 +1,5 @@
 import { Line, Bar } from 'react-chartjs-2'
+import { horizontalBarOpts } from './chart-opts'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -183,25 +184,6 @@ export function buildGroeiRankingData(data, instelling, dark) {
   }
 }
 
-function _horizontalBarOpts(dark, tooltipSuffix = '') {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  return {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('nl-NL')}${tooltipSuffix}` },
-      },
-    },
-    scales: {
-      x: { grid: { color: grid }, ticks: { color: tick, font: { size: 11 } } },
-      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 }, padding: 4 } },
-    },
-  }
-}
 
 export function MarktaandeelChart({ data, jaar, dark }) {
   if (!data) return null
@@ -216,7 +198,7 @@ export function MarktaandeelChart({ data, jaar, dark }) {
           </div>
         </div>
         <div style={{ height: h }}>
-          <Bar data={data} options={_horizontalBarOpts(dark)} />
+          <Bar data={data} options={horizontalBarOpts(dark)} />
         </div>
       </div>
     </div>
@@ -236,7 +218,7 @@ export function GroeiRankingChart({ data, dark }) {
           </div>
         </div>
         <div style={{ height: h }}>
-          <Bar data={data} options={_horizontalBarOpts(dark, '%')} />
+          <Bar data={data} options={horizontalBarOpts(dark, '%')} />
         </div>
       </div>
     </div>

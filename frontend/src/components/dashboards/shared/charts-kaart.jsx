@@ -22,7 +22,7 @@ export function KaartSection({ figureJson }) {
         title="Locaties in de regio"
         subtitle="Geografisch overzicht van instellingen in de benchmark-regio (ster = eigen instelling)"
       />
-      <div className="chart-card" style={{ overflow: 'hidden', padding: 0, maxHeight: 240 }}>
+      <div className="chart-card" style={{ overflow: 'hidden', padding: 0, maxHeight: 340 }}>
         <Plot
           data={figure.data}
           layout={{ ...figure.layout, autosize: true }}
