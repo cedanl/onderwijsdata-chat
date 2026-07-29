@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
-import { SECTOR_LABELS, SECTOR_COLORS } from './chart-opts'
+import { SECTOR_LABELS, SECTOR_COLORS, darkColors } from './chart-opts'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
@@ -58,15 +58,14 @@ function _normalizeProportional(data) {
 }
 
 function _stackedAreaOpts(dark, proportional = false) {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid, label } = darkColors(dark)
   return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         display: true, position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 14 },
+        labels: { color: label, font: { size: 11 }, boxWidth: 14 },
       },
       tooltip: {
         mode: 'index',
@@ -127,8 +126,7 @@ export function SectorkamersChart({ sectorkamers, dark }) {
   if (!sectorkamers || Object.keys(sectorkamers).length === 0) return null
   const entries = Object.entries(sectorkamers).sort((a, b) => b[1] - a[1])
   const colors = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   const h = Math.max(160, entries.length * 36)
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>

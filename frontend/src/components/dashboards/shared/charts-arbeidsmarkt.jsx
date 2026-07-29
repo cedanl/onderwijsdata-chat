@@ -2,6 +2,7 @@ import { Bar } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
 import { useDarkMode, fmt } from './hooks'
 import { SectionHeader } from './shell'
+import { darkColors } from './chart-opts'
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
 
@@ -27,8 +28,7 @@ export function RoaSection({ data }) {
       borderRadius: 3,
     })),
   }
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   const allValues = _ROA_INDICATORS.flatMap(ind => niveaus.map(n => roa[n]?.[ind.key] ?? 0))
   const maxVal = Math.max(...allValues.filter(v => v != null && v > 0), 0)
   const suggestedMax = Math.ceil((maxVal * 1.1) / 10) * 10 || 50
@@ -192,8 +192,8 @@ export function UwvSection({ data, provincie, dark, opts }) {
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
                 scales: {
-                  x: { grid: { color: dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }, ticks: { color: dark ? '#9CA3AF' : '#6B7280' } },
-                  y: { grid: { display: false }, ticks: { color: dark ? '#9CA3AF' : '#6B7280', font: { size: 11 } } },
+                  x: { grid: { color: darkColors(dark).grid }, ticks: { color: darkColors(dark).tick } },
+                  y: { grid: { display: false }, ticks: { color: darkColors(dark).tick, font: { size: 11 } } },
                 },
               }}
             />

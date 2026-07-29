@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, fmt } from '../shared/index'
+import { darkColors, horizontalBarOpts } from '../shared/chart-opts'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten[cohorten.length - 1]
@@ -35,6 +36,7 @@ function RendementKpis({ data }) {
 }
 
 function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendement, instelling, dark }) {
+  const { tick, grid, label } = darkColors(dark)
   const chartData = useMemo(() => {
     if (!rendementPerJaar || Object.keys(rendementPerJaar).length < 2) return null
     const jaren = [...new Set([
@@ -47,21 +49,15 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
       data: jaren.map(j => rendementPerJaar[j] != null ? Math.round(rendementPerJaar[j] * 1000) / 10 : null),
       borderColor: CHART_COLORS[0],
       backgroundColor: CHART_COLORS[0] + '33',
-      borderWidth: 3,
-      tension: 0.3,
-      spanGaps: true,
+      borderWidth: 3, tension: 0.3, spanGaps: true,
     }]
 
     if (benchmarkRendement && Object.keys(benchmarkRendement).length > 0) {
       datasets.push({
         label: 'Benchmark (regio)',
         data: jaren.map(j => benchmarkRendement[j] != null ? Math.round(benchmarkRendement[j] * 1000) / 10 : null),
-        borderColor: '#9CA3AF',
-        backgroundColor: '#9CA3AF33',
-        borderWidth: 2,
-        borderDash: [6, 3],
-        tension: 0.3,
-        spanGaps: true,
+        borderColor: '#9CA3AF', backgroundColor: '#9CA3AF33',
+        borderWidth: 2, borderDash: [6, 3], tension: 0.3, spanGaps: true,
       })
     }
 
@@ -71,10 +67,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
           label: naam,
           data: jaren.map(j => rend[j] != null ? Math.round(rend[j] * 1000) / 10 : null),
           borderColor: CHART_COLORS[(i + 2) % CHART_COLORS.length],
-          borderWidth: 1,
-          tension: 0.3,
-          spanGaps: true,
-          hidden: true,
+          borderWidth: 1, tension: 0.3, spanGaps: true, hidden: true,
         })
       })
     }
@@ -83,8 +76,6 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
   }, [rendementPerJaar, benchmarkRendement, peersRendement, instelling])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">
@@ -93,7 +84,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
           <Line data={chartData} options={{
             responsive: true, maintainAspectRatio: false,
             plugins: {
-              legend: { display: true, position: 'top', labels: { color: tick, font: { size: 11 }, boxWidth: 14 } },
+              legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } },
               tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
             },
             scales: {
@@ -119,28 +110,18 @@ function SectorRendementChart({ sectorRendement, dark }) {
         label: 'Rendement %',
         data: entries.map(e => e.pct),
         backgroundColor: entries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + 'CC'),
-        borderWidth: 0,
-        borderRadius: 4,
+        borderWidth: 0, borderRadius: 4,
       }],
     }
   }, [sectorRendement])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">
         <div className="chart-header"><div><div className="chart-title">Rendement per sector</div><div className="chart-sub">Gediplomeerden / ingeschrevenen (cumulatief)</div></div></div>
         <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
-          <Bar data={chartData} options={{
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } } },
-            scales: {
-              x: { grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
-              y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
-            },
-          }} />
+          <Bar data={chartData} options={horizontalBarOpts(dark, '%')} />
         </div>
       </div>
     </div>
@@ -149,7 +130,7 @@ function SectorRendementChart({ sectorRendement, dark }) {
 
 function CohortenTable({ cohorten, dark }) {
   if (!cohorten?.length) return null
-  const tick = dark ? '#D1D5DB' : '#374151'
+  const { tick } = darkColors(dark)
   return (
     <div className="chart-card" style={{ overflowX: 'auto' }}>
       <div className="chart-header"><div><div className="chart-title">Pseudo-cohorten</div><div className="chart-sub">Instroom vs. gediplomeerden na 3, 4 en 5 jaar</div></div></div>

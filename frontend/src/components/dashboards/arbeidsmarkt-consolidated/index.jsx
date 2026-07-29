@@ -6,6 +6,7 @@ import {
   RoaSection, PrognoseSection, UwvSection,
   useRegioComputed,
 } from '../shared/index'
+import { darkColors, horizontalBarOpts } from '../shared/chart-opts'
 
 const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
 const MATCH_LABELS = { schaarste: 'Schaarste', overaanbod: 'Overaanbod', evenwicht: 'Evenwicht' }
@@ -47,8 +48,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
   }, [gediplomeerdenPerSector, vacaturesPerCluster, sectorClusterMapping])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid, label } = darkColors(dark)
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">
@@ -56,7 +56,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
         <div style={{ height: Math.max(200, chartData.labels.length * 50) }}>
           <Bar data={chartData} options={{
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: true, position: 'top', labels: { color: tick, font: { size: 11 }, boxWidth: 14 } } },
+            plugins: { legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } } },
             scales: {
               x: { grid: { color: grid }, ticks: { color: tick } },
               y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
@@ -70,7 +70,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
 
 function RoaNiveauTable({ roaPerNiveau, dark }) {
   if (!roaPerNiveau || Object.keys(roaPerNiveau).length === 0) return null
-  const tick = dark ? '#D1D5DB' : '#374151'
+  const { label: tick } = darkColors(dark)
   const entries = Object.entries(roaPerNiveau)
   return (
     <div className="chart-card" style={{ overflowX: 'auto' }}>
@@ -117,21 +117,12 @@ function VacaturesChart({ vacaturesPerCluster, dark }) {
   }, [vacaturesPerCluster])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">
         <div className="chart-header"><div><div className="chart-title">Vacatures per beroepscluster</div><div className="chart-sub">UWV — gerelateerde beroepsclusters in de provincie</div></div></div>
         <div style={{ height: Math.max(200, chartData.labels.length * 32) }}>
-          <Bar data={chartData} options={{
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { grid: { color: grid }, ticks: { color: tick } },
-              y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
-            },
-          }} />
+          <Bar data={chartData} options={horizontalBarOpts(dark)} />
         </div>
       </div>
     </div>

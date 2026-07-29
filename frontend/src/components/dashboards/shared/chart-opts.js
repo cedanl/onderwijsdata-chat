@@ -1,5 +1,13 @@
 // ─── Chart options & constants ───────────────────────────────────────────────
 
+export function darkColors(dark) {
+  return {
+    tick: dark ? '#9CA3AF' : '#6B7280',
+    grid: dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6',
+    label: dark ? '#D1D5DB' : '#374151',
+  }
+}
+
 function compactNum(n) {
   const abs = Math.abs(n)
   if (abs >= 1_000_000) return (n / 1_000_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'M'
@@ -8,8 +16,7 @@ function compactNum(n) {
 }
 
 export function chartOpts(dark) {
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  const tick = dark ? '#9CA3AF' : '#6B7280'
+  const { tick, grid } = darkColors(dark)
   return {
     responsive: true, maintainAspectRatio: false,
     plugins: {
@@ -24,8 +31,7 @@ export function chartOpts(dark) {
 }
 
 export function buildIndexChartOpts(dark) {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid, label } = darkColors(dark)
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -33,7 +39,7 @@ export function buildIndexChartOpts(dark) {
       legend: {
         display: true,
         position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 20 },
+        labels: { color: label, font: { size: 11 }, boxWidth: 20 },
       },
       tooltip: {
         callbacks: {
@@ -107,8 +113,7 @@ export const SECTOR_LABELS = {
 export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8']
 
 export function horizontalBarOpts(dark, tooltipSuffix = '') {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   return {
     indexAxis: 'y',
     responsive: true,

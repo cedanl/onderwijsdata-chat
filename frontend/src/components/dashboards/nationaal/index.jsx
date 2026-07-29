@@ -4,12 +4,12 @@ import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
 } from '../shared/index'
-import { SECTOR_LABELS } from '../shared/chart-opts'
+import { SECTOR_LABELS, darkColors, horizontalBarOpts } from '../shared/chart-opts'
 
 function RankingTable({ alleInstellingen, instelling, dark }) {
   if (!alleInstellingen?.length) return null
   const eigenIdx = alleInstellingen.findIndex(i => i.naam.toLowerCase() === instelling.toLowerCase())
-  const tick = dark ? '#D1D5DB' : '#374151'
+  const { label: tick } = darkColors(dark)
   return (
     <div className="chart-card" style={{ overflowX: 'auto' }}>
       <div className="chart-header"><div><div className="chart-title">Nationale ranking</div><div className="chart-sub">Totaal ingeschrevenen — alle instellingen</div></div></div>
@@ -89,8 +89,7 @@ function SectorTrendChart({ eigenSectoren, dark }) {
   }, [eigenSectoren])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">
@@ -138,8 +137,7 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
   }, [eigenSectoren, sectorenLandelijk])
 
   if (!chartData) return null
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   return (
     <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
       <div className="chart-card">

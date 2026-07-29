@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
 import { SectionHeader, fmt } from '../shared/index'
+import { darkColors, horizontalBarOpts } from '../shared/chart-opts'
 
 function pctVrouwFromGeslacht(g) {
   if (!g) return null
@@ -53,55 +54,12 @@ function buildPeerGenderData(peersGeslacht, ownInstelling, ownPct, dark) {
   }
 }
 
-function _trendOpts(dark) {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% vrouw` } },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: {
-        min: 0, max: 100,
-        grid: { color: grid },
-        ticks: { color: tick, callback: v => `${v}%` },
-        title: { display: true, text: '% vrouw', color: tick, font: { size: 10 } },
-      },
-    },
-  }
-}
-
-function _peerBarOpts(dark) {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
-  return {
-    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% vrouw` } },
-    },
-    scales: {
-      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, font: { size: 11 }, callback: v => `${v}%` } },
-      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 }, padding: 4 } },
-    },
-  }
-}
-
 function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
   return (
     <div className="kpi-grid">
       <div className="kpi-card">
         <div className="kpi-card-header">
           <span className="kpi-label">% vrouw {lastJaar}</span>
-          <div className="kpi-icon" style={{ background: '#F0FDFA' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
-          </div>
         </div>
         <div className="kpi-value">{pctVrouw != null ? `${pctVrouw}%` : '—'}</div>
         <div style={{ marginTop: 8 }}>
@@ -115,13 +73,6 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
         <div className="kpi-card">
           <div className="kpi-card-header">
             <span className="kpi-label">Verandering t.o.v. 5 jaar geleden</span>
-            <div className="kpi-icon" style={{ background: fiveYearChange >= 0 ? '#F0FDFA' : '#FFF1F2' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke={fiveYearChange >= 0 ? '#0D9488' : '#E11D48'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {fiveYearChange >= 0
-                  ? <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                  : <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />}
-              </svg>
-            </div>
           </div>
           <div className="kpi-value" style={{ color: fiveYearChange >= 0 ? '#0D9488' : '#E11D48' }}>
             {fiveYearChange >= 0 ? '+' : ''}{fiveYearChange} pp
@@ -131,17 +82,13 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
       )}
       {vrouw != null && (
         <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-label">Vrouw absoluut {lastJaar}</span>
-          </div>
+          <span className="kpi-label">Vrouw absoluut {lastJaar}</span>
           <div className="kpi-value">{fmt(vrouw)}</div>
         </div>
       )}
       {man != null && (
         <div className="kpi-card">
-          <div className="kpi-card-header">
-            <span className="kpi-label">Man absoluut {lastJaar}</span>
-          </div>
+          <span className="kpi-label">Man absoluut {lastJaar}</span>
           <div className="kpi-value">{fmt(man)}</div>
         </div>
       )}
@@ -150,6 +97,8 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
 }
 
 export function GenderSection({ data, instelling, dark }) {
+  const { tick, grid } = darkColors(dark)
+
   const computed = useMemo(() => {
     if (!data) return {}
     const geslacht = data.geslacht ?? {}
@@ -184,34 +133,46 @@ export function GenderSection({ data, instelling, dark }) {
 
   if (pctVrouw == null && !trendLineData) return null
 
+  const trendOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% vrouw` } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tick } },
+      y: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
+    },
+  }
+
+  const peerOpts = {
+    ...horizontalBarOpts(dark, '% vrouw'),
+    scales: {
+      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, font: { size: 11 }, callback: v => `${v}%` } },
+      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 }, padding: 4 } },
+    },
+  }
+
   return (
     <>
       <SectionHeader title="Gender & diversiteit" subtitle={`Verdeling vrouw/man — ${instelling}`} />
-
       <GeslachtKpis pctVrouw={pctVrouw} vrouw={vrouw} man={man} fiveYearChange={fiveYearChange} lastJaar={data?.laatste_jaar} />
 
       {trendLineData && (
         <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
           <div className="chart-card">
             <div className="chart-header"><div><div className="chart-title">% vrouw per jaar</div><div className="chart-sub">Aandeel vrouwelijke ingeschrevenen over tijd</div></div></div>
-            <div style={{ height: 220 }}>
-              <Line data={trendLineData} options={_trendOpts(dark)} />
-            </div>
+            <div style={{ height: 220 }}><Line data={trendLineData} options={trendOpts} /></div>
           </div>
         </div>
       )}
 
       {peerData && (
-        <>
-          <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-            <div className="chart-card">
-              <div className="chart-header"><div><div className="chart-title">% vrouw — benchmark peers</div><div className="chart-sub">Gesorteerd op aandeel vrouw (eigen instelling groen)</div></div></div>
-              <div style={{ height: Math.max(200, peerData.labels.length * 34 + 40) }}>
-                <Bar data={peerData} options={_peerBarOpts(dark)} />
-              </div>
+        <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
+          <div className="chart-card">
+            <div className="chart-header"><div><div className="chart-title">% vrouw — benchmark peers</div><div className="chart-sub">Gesorteerd op aandeel vrouw (eigen instelling groen)</div></div></div>
+            <div style={{ height: Math.max(200, peerData.labels.length * 34 + 40) }}>
+              <Bar data={peerData} options={peerOpts} />
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {hasSectorGeslacht && (

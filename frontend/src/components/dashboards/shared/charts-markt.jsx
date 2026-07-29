@@ -1,5 +1,5 @@
 import { Line, Bar } from 'react-chartjs-2'
-import { horizontalBarOpts } from './chart-opts'
+import { horizontalBarOpts, darkColors } from './chart-opts'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -58,8 +58,7 @@ export function buildInstroomRatioData(data) {
 }
 
 function _ratioLineOpts(dark, tooltipLabel) {
-  const tick = dark ? '#9CA3AF' : '#6B7280'
-  const grid = dark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  const { tick, grid } = darkColors(dark)
   return {
     responsive: true,
     maintainAspectRatio: false,
