@@ -9,24 +9,6 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 // ─── Chart data builders ────────────────────────────────────────────────────
 
-export function buildBarChartData(dict, label, color) {
-  if (!dict) return null
-  const entries = Object.entries(dict).sort((a, b) => a[0] - b[0])
-  return {
-    labels: entries.map(([y]) => String(y)),
-    datasets: [{ label, data: entries.map(([, v]) => v), backgroundColor: color, borderRadius: 6 }],
-  }
-}
-
-export function buildLineChartData(dict, label, borderColor, bgColor) {
-  if (!dict) return null
-  const entries = Object.entries(dict).sort((a, b) => a[0] - b[0])
-  return {
-    labels: entries.map(([y]) => String(y)),
-    datasets: [{ label, data: entries.map(([, v]) => v), borderColor, backgroundColor: bgColor, fill: true, tension: 0.3, pointRadius: 4 }],
-  }
-}
-
 export function buildSectorChartData(sectoren, { type = 'doughnut' } = {}) {
   if (!sectoren) return null
   const entries = Object.entries(sectoren).sort((a, b) => b[1] - a[1]).slice(0, 7)

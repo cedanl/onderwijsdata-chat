@@ -10,7 +10,7 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
         <div className="kpi-card">
           <div className="kpi-card-header">
             <span className="kpi-label">Ingeschrevenen {lastInges[0]}–{Number(lastInges[0])+1}</span>
-            <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+            <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
           </div>
@@ -42,11 +42,11 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
           <div className="kpi-value">{pctVrouw}% vrouw</div>
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
-              <div style={{ width: `${pctVrouw}%`, background: '#0D9488' }} />
+              <div style={{ width: `${pctVrouw}%`, background: 'var(--teal-600)' }} />
               <div style={{ width: `${100 - pctVrouw}%`, background: '#94A3B8' }} />
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 5, fontSize: '.72rem', color: '#6B7280' }}>
-              <span><span style={{ color: '#0D9488' }}>●</span> {fmt(vrouw)} vrouw</span>
+            <div style={{ display: 'flex', gap: 10, marginTop: 5, fontSize: '.72rem', color: 'var(--gray-500)' }}>
+              <span><span style={{ color: 'var(--teal-600)' }}>●</span> {fmt(vrouw)} vrouw</span>
               <span><span style={{ color: '#94A3B8' }}>●</span> {fmt(man)} man</span>
             </div>
           </div>
@@ -82,7 +82,7 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement })
       <div className="kpi-card">
         <div className="kpi-card-header">
           <span className="kpi-label">Gediplomeerden {lastDipl[0]}</span>
-          <div className="kpi-icon" style={{ background: '#F0FDFA' }}>
+          <div className="kpi-icon" style={{ background: 'var(--teal-50)' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
           </div>
         </div>
@@ -94,12 +94,12 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement })
         <div className="kpi-card">
           <div className="kpi-card-header">
             <span className="kpi-label">Ratio diploma/inschrijving</span>
-            <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+            <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
-          <div className="kpi-value" style={{ color: '#2563EB' }}>{rendement}%</div>
-          <div className="kpi-trend" style={{ color: '#6B7280' }}>proxy — geen cohortmeting, zie Rendementsmonitor</div>
+          <div className="kpi-value" style={{ color: 'var(--blue-600)' }}>{rendement}%</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>proxy — geen cohortmeting, zie Rendementsmonitor</div>
         </div>
       )}
     </div>

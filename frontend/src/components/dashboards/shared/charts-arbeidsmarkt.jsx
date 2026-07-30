@@ -1,8 +1,8 @@
 import { Bar } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
-import { useDarkMode, fmt } from './hooks'
-import { SectionHeader } from './shell'
-import { darkColors } from './chart-opts'
+import { fmt } from './hooks'
+import { SectionHeader, ChartCard } from './shell'
+import { darkColors, horizontalBarOpts } from './chart-opts'
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
 
@@ -12,8 +12,7 @@ const _ROA_INDICATORS = [
   { key: 'buiten de vakrichting', label: 'Buiten vakrichting', color: '#F59E0B' },
 ]
 
-export function RoaSection({ data }) {
-  const dark = useDarkMode()
+export function RoaSection({ data, dark }) {
   const roa = data?.arbeidsmarkt_roa
   if (!roa || Object.keys(roa).length === 0) return null
 
@@ -28,7 +27,7 @@ export function RoaSection({ data }) {
       borderRadius: 3,
     })),
   }
-  const { tick, grid } = darkColors(dark)
+  const { tick, grid, label } = darkColors(dark)
   const allValues = _ROA_INDICATORS.flatMap(ind => niveaus.map(n => roa[n]?.[ind.key] ?? 0))
   const maxVal = Math.max(...allValues.filter(v => v != null && v > 0), 0)
   const suggestedMax = Math.ceil((maxVal * 1.1) / 10) * 10 || 50
@@ -39,7 +38,7 @@ export function RoaSection({ data }) {
     plugins: {
       legend: {
         display: true, position: 'top',
-        labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 }, boxWidth: 14 },
+        labels: { color: label, font: { size: 11 }, boxWidth: 14 },
       },
       tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } },
     },
@@ -60,16 +59,14 @@ export function RoaSection({ data }) {
         title="Landelijk referentiekader (ROA)"
         subtitle="Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA Schoolverlatersinformatie 2024)"
       />
-      <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-        <div className="chart-card">
-          <div style={{ height: h }}>
-            <Bar data={chartData} options={opts} />
-          </div>
-          <div style={{ fontSize: '.73rem', color: '#9CA3AF', marginTop: 6, fontStyle: 'italic' }}>
-            Landelijk gemiddelde — niet specifiek voor deze instelling of regio
-          </div>
+      <ChartCard>
+        <div style={{ height: h }}>
+          <Bar data={chartData} options={opts} />
         </div>
-      </div>
+        <div style={{ fontSize: '.73rem', color: 'var(--gray-400)', marginTop: 6, fontStyle: 'italic' }}>
+          Landelijk gemiddelde — niet specifiek voor deze instelling of regio
+        </div>
+      </ChartCard>
     </>
   )
 }
@@ -100,11 +97,10 @@ export function PrognoseSection({ data }) {
         title="Arbeidsmarktprognose tot 2030 (ROA)"
         subtitle="Nationale verwachtingen per opleidingsniveau — niet specifiek voor deze instelling of regio"
       />
-      <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-        <div className="chart-card" style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem' }}>
+      <ChartCard cardStyle={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
+              <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
                 <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Niveau</th>
                 {Object.values(_PROGNOSE_LABELS).map(label => (
                   <th key={label} style={{ textAlign: 'center', padding: '6px 8px', fontWeight: 600 }}>{label}</th>
@@ -113,11 +109,11 @@ export function PrognoseSection({ data }) {
             </thead>
             <tbody>
               {niveaus.map(niveau => (
-                <tr key={niveau} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100)' }}>
                   <td style={{ padding: '6px 8px', fontWeight: 500 }}>{niveau}</td>
                   {Object.keys(_PROGNOSE_LABELS).map(key => {
                     const typering = prognose[niveau]?.[key]
-                    const color = _TYPERING_COLORS[typering?.toLowerCase()] || '#6B7280'
+                    const color = _TYPERING_COLORS[typering?.toLowerCase()] || 'var(--gray-500)'
                     return (
                       <td key={key} style={{ textAlign: 'center', padding: '6px 8px' }}>
                         {typering ? <span style={{ color, fontWeight: 600 }}>{typering}</span> : '—'}
@@ -128,16 +124,15 @@ export function PrognoseSection({ data }) {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: '.73rem', color: '#9CA3AF', marginTop: 6, fontStyle: 'italic' }}>
+          <div style={{ fontSize: '.73rem', color: 'var(--gray-400)', marginTop: 6, fontStyle: 'italic' }}>
             Landelijk gemiddelde — niet specifiek voor deze instelling of regio (ROA AIS2030)
           </div>
-        </div>
-      </div>
+        </ChartCard>
     </>
   )
 }
 
-export function UwvSection({ data, provincie, dark, opts }) {
+export function UwvSection({ data, provincie, dark }) {
   const vac = data?.vacatureaanbod
   if (!vac?.clusters || Object.keys(vac.clusters).length === 0) return null
   const gefilterdOp = vac.gefilterd_op || []
@@ -157,7 +152,7 @@ export function UwvSection({ data, provincie, dark, opts }) {
         <div className="kpi-card">
           <div className="kpi-card-header">
             <span className="kpi-label">Totaal vacatures provincie {provincie}</span>
-            <div className="kpi-icon" style={{ background: '#EFF6FF' }}>
+            <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
             </div>
           </div>
@@ -165,41 +160,26 @@ export function UwvSection({ data, provincie, dark, opts }) {
           <div className="kpi-trend">alle sectoren in provincie</div>
         </div>
       </div>
-      <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-        <div className="chart-card">
-          <div className="chart-header">
-            <div>
-              <div className="chart-title">Beroepencluster{gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}</div>
-              <div className="chart-sub">
-                Provincie {provincie}{gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}
-              </div>
-            </div>
-          </div>
-          <div style={{ height: clusterHeight }}>
-            <Bar
-              data={{
-                labels: Object.keys(vac.clusters),
-                datasets: [{
-                  label: 'Vacatures',
-                  data: Object.values(vac.clusters),
-                  backgroundColor: CHART_COLORS.slice(0, Object.keys(vac.clusters).length).map(c => c + 'CC'),
-                  borderWidth: 0,
-                  borderRadius: 4,
-                }],
-              }}
-              options={{
-                ...opts,
-                indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { grid: { color: darkColors(dark).grid }, ticks: { color: darkColors(dark).tick } },
-                  y: { grid: { display: false }, ticks: { color: darkColors(dark).tick, font: { size: 11 } } },
-                },
-              }}
-            />
-          </div>
+      <ChartCard
+        title={`Beroepencluster${gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}`}
+        subtitle={`Provincie ${provincie}${gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}`}
+      >
+        <div style={{ height: clusterHeight }}>
+          <Bar
+            data={{
+              labels: Object.keys(vac.clusters),
+              datasets: [{
+                label: 'Vacatures',
+                data: Object.values(vac.clusters),
+                backgroundColor: CHART_COLORS.slice(0, Object.keys(vac.clusters).length).map(c => c + 'CC'),
+                borderWidth: 0,
+                borderRadius: 4,
+              }],
+            }}
+            options={horizontalBarOpts(dark)}
+          />
         </div>
-      </div>
+      </ChartCard>
     </>
   )
 }

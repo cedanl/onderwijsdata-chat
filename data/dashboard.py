@@ -144,6 +144,25 @@ def _build_regio_context(instelling_naam: str, onderwijs_type: str) -> RegioCont
         if inst.get("instellingscode")
     }
 
+    # WO research universities are distributed nationally, not clustered in one
+    # arbeidsmarktregio. Use all WO institutions as peers for a meaningful benchmark.
+    if target.get("type") == "wo":
+        wo_peers = frozenset(
+            inst["instellingscode"]
+            for inst in registry
+            if inst.get("type") == "wo"
+            and inst.get("instellingscode") != self_code
+            and inst.get("instellingscode") in adres
+        )
+        if wo_peers:
+            return RegioContext(
+                regio_naam="Nationaal (WO)",
+                regio_type="nationaal",
+                provincie=provincie,
+                self_code=self_code,
+                peer_codes=wo_peers,
+            )
+
     def _peers_for_regio(regio_key: str, regio_value: str) -> frozenset:
         return frozenset(
             code for code, info in adres.items()
@@ -317,6 +336,8 @@ def _totaal_regio(
 
 
 def _benchmark_label(ctx: RegioContext) -> str:
+    if ctx.regio_type == "nationaal":
+        return "Nationaal WO gemiddelde (excl. eigen instelling)"
     type_label = "Arbeidsmarktregio" if ctx.regio_type == "arbeidsmarktregio" else "Provincie"
     return f"{type_label} gemiddelde ({ctx.regio_naam}, excl. eigen instelling)"
 
@@ -1178,10 +1199,12 @@ def _pseudo_cohorten(instroom: dict[int, int], dipl: dict[int, int]) -> list[dic
 
 
 def _rendement_per_jaar(cohorten: list[dict]) -> dict[int, float]:
+    # Ratio > 1 indicates total-diplomas-per-year vs eerstejaars mismatch (common at WO
+    # with many masters graduates); skip those cohorts as the value is not meaningful.
     return {
         c["instroom_jaar"]: round(c["gediplomeerden_t3"] / c["instroom"], 4)
         for c in cohorten
-        if c["instroom"] > 0 and c["gediplomeerden_t3"] > 0
+        if c["instroom"] > 0 and 0 < c["gediplomeerden_t3"] <= c["instroom"]
     }
 
 

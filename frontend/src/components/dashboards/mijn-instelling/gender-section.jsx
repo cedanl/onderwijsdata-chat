@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
-import { SectionHeader, fmt } from '../shared/index'
-import { darkColors, horizontalBarOpts } from '../shared/chart-opts'
+import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
 
 function pctVrouwFromGeslacht(g) {
   if (!g) return null
@@ -64,7 +63,7 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
         <div className="kpi-value">{pctVrouw != null ? `${pctVrouw}%` : '—'}</div>
         <div style={{ marginTop: 8 }}>
           <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
-            <div style={{ width: `${pctVrouw ?? 0}%`, background: '#0D9488' }} />
+            <div style={{ width: `${pctVrouw ?? 0}%`, background: 'var(--teal-600)' }} />
             <div style={{ width: `${100 - (pctVrouw ?? 0)}%`, background: '#94A3B8' }} />
           </div>
         </div>
@@ -74,10 +73,10 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
           <div className="kpi-card-header">
             <span className="kpi-label">Verandering t.o.v. 5 jaar geleden</span>
           </div>
-          <div className="kpi-value" style={{ color: fiveYearChange >= 0 ? '#0D9488' : '#E11D48' }}>
+          <div className="kpi-value" style={{ color: fiveYearChange >= 0 ? 'var(--teal-600)' : '#E11D48' }}>
             {fiveYearChange >= 0 ? '+' : ''}{fiveYearChange} pp
           </div>
-          <div className="kpi-trend" style={{ color: '#6B7280' }}>procentpunt verandering in aandeel vrouw</div>
+          <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>procentpunt verandering in aandeel vrouw</div>
         </div>
       )}
       {vrouw != null && (
@@ -156,23 +155,17 @@ export function GenderSection({ data, instelling, dark }) {
       <GeslachtKpis pctVrouw={pctVrouw} vrouw={vrouw} man={man} fiveYearChange={fiveYearChange} lastJaar={data?.laatste_jaar} />
 
       {trendLineData && (
-        <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-          <div className="chart-card">
-            <div className="chart-header"><div><div className="chart-title">% vrouw per jaar</div><div className="chart-sub">Aandeel vrouwelijke ingeschrevenen over tijd</div></div></div>
-            <div style={{ height: 220 }}><Line data={trendLineData} options={trendOpts} /></div>
-          </div>
-        </div>
+        <ChartCard title="% vrouw per jaar" subtitle="Aandeel vrouwelijke ingeschrevenen over tijd">
+          <div style={{ height: 220 }}><Line data={trendLineData} options={trendOpts} /></div>
+        </ChartCard>
       )}
 
       {peerData && (
-        <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-          <div className="chart-card">
-            <div className="chart-header"><div><div className="chart-title">% vrouw — benchmark peers</div><div className="chart-sub">Gesorteerd op aandeel vrouw (eigen instelling groen)</div></div></div>
-            <div style={{ height: Math.max(200, peerData.labels.length * 34 + 40) }}>
-              <Bar data={peerData} options={peerOpts} />
-            </div>
+        <ChartCard title="% vrouw — benchmark peers" subtitle="Gesorteerd op aandeel vrouw (eigen instelling groen)">
+          <div style={{ height: Math.max(200, peerData.labels.length * 34 + 40) }}>
+            <Bar data={peerData} options={peerOpts} />
           </div>
-        </div>
+        </ChartCard>
       )}
 
       {hasSectorGeslacht && (
@@ -182,24 +175,24 @@ export function GenderSection({ data, instelling, dark }) {
               .sort((a, b) => (b[1].VROUW + b[1].MAN) - (a[1].VROUW + a[1].MAN))
               .map(([sector, g]) => {
                 const t = g.VROUW + g.MAN
-                if (t === 0) return null
+                if (t <= 0) return null
                 const pv = Math.round((g.VROUW / t) * 1000) / 10
                 return (
                   <div key={sector}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', color: '#6B7280', marginBottom: 3 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', color: 'var(--gray-500)', marginBottom: 3 }}>
                       <span>{sector}</span>
                       <span>{pv}% vrouw — {fmt(t)} totaal</span>
                     </div>
                     <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 14 }}>
-                      <div style={{ width: `${pv}%`, background: '#0D9488' }} />
+                      <div style={{ width: `${pv}%`, background: 'var(--teal-600)' }} />
                       <div style={{ width: `${100 - pv}%`, background: '#94A3B8' }} />
                     </div>
                   </div>
                 )
               })}
           </div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '.75rem', color: '#6B7280' }}>
-            <span><span style={{ color: '#0D9488' }}>●</span> Vrouw</span>
+          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '.75rem', color: 'var(--gray-500)' }}>
+            <span><span style={{ color: 'var(--teal-600)' }}>●</span> Vrouw</span>
             <span><span style={{ color: '#94A3B8' }}>●</span> Man</span>
           </div>
         </div>

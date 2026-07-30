@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
-import { SectionHeader, fmt } from '../shared/index'
-import { darkColors, horizontalBarOpts } from '../shared/chart-opts'
+import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten[cohorten.length - 1]
@@ -25,8 +24,9 @@ function RendementKpis({ data }) {
     <div className="kpi-grid">
       {latest && (
         <div className="kpi-card">
-          <div className="kpi-label">Rendement {latest[0]}</div>
+          <div className="kpi-label">Rendement cohort {latest[0]}</div>
           <div className="kpi-value">{(latest[1] * 100).toFixed(1)}%</div>
+          <div className="kpi-sub">gediplomeerden t+3 / instroom</div>
           {delta != null && <div className="kpi-sub" style={{ color: delta >= 0 ? '#16A34A' : '#DC2626' }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}pp t.o.v. {prev[0]}</div>}
         </div>
       )}
@@ -57,7 +57,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
         label: 'Benchmark (regio)',
         data: jaren.map(j => benchmarkRendement[j] != null ? Math.round(benchmarkRendement[j] * 1000) / 10 : null),
         borderColor: '#9CA3AF', backgroundColor: '#9CA3AF33',
-        borderWidth: 2, borderDash: [6, 3], tension: 0.3, spanGaps: true,
+        borderWidth: 2, borderDash: [5, 4], tension: 0.3, spanGaps: true,
       })
     }
 
@@ -77,24 +77,21 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
 
   if (!chartData) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">Diplomarendement over tijd</div><div className="chart-sub">Gediplomeerden t+3 / instroom — eigen instelling vs. benchmark</div></div></div>
-        <div style={{ height: 280 }}>
-          <Line data={chartData} options={{
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-              legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } },
-              tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
-            },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: tick } },
-              y: { grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
-            },
-          }} />
-        </div>
+    <ChartCard title="Diplomarendement over tijd" subtitle="Gediplomeerden t+3 / instroom — eigen instelling vs. benchmark">
+      <div style={{ height: 280 }}>
+        <Line data={chartData} options={{
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tick } },
+            y: { grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
+          },
+        }} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -117,26 +114,30 @@ function SectorRendementChart({ sectorRendement, dark }) {
 
   if (!chartData) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">Rendement per sector</div><div className="chart-sub">Gediplomeerden / ingeschrevenen (cumulatief)</div></div></div>
-        <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
-          <Bar data={chartData} options={horizontalBarOpts(dark, '%')} />
-        </div>
+    <ChartCard title="Rendement per sector" subtitle="Gediplomeerden / ingeschrevenen (cumulatief)">
+      <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
+        <Bar data={chartData} options={horizontalBarOpts(dark, '%')} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
 function CohortenTable({ cohorten, dark }) {
   if (!cohorten?.length) return null
+  // Hide rows where t3 exceeds instroom (WO: total annual diplomas include BSc+MSc,
+  // which inflates the count beyond the eerstejaars cohort being tracked).
+  const rows = cohorten.filter(c =>
+    (c.gediplomeerden_t3 > 0 && c.gediplomeerden_t3 <= c.instroom) ||
+    (c.gediplomeerden_t4 > 0 && c.gediplomeerden_t4 <= c.instroom) ||
+    (c.gediplomeerden_t5 > 0 && c.gediplomeerden_t5 <= c.instroom)
+  )
+  if (!rows.length) return null
   const { tick } = darkColors(dark)
   return (
-    <div className="chart-card" style={{ overflowX: 'auto' }}>
-      <div className="chart-header"><div><div className="chart-title">Pseudo-cohorten</div><div className="chart-sub">Instroom vs. gediplomeerden na 3, 4 en 5 jaar</div></div></div>
+    <ChartCard title="Pseudo-cohorten" subtitle="Instroom vs. gediplomeerden na 3, 4 en 5 jaar" cardStyle={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', color: tick }}>
         <thead>
-          <tr style={{ borderBottom: '2px solid var(--gray-200, #E5E7EB)' }}>
+          <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th style={{ textAlign: 'left', padding: '6px 8px' }}>Instroom</th>
             <th style={{ textAlign: 'right', padding: '6px 8px' }}>Eerstejaars</th>
             <th style={{ textAlign: 'right', padding: '6px 8px' }}>Dipl. t+3</th>
@@ -145,8 +146,8 @@ function CohortenTable({ cohorten, dark }) {
           </tr>
         </thead>
         <tbody>
-          {cohorten.map(c => (
-            <tr key={c.instroom_jaar} style={{ borderBottom: '1px solid var(--gray-100, #F3F4F6)' }}>
+          {rows.map(c => (
+            <tr key={c.instroom_jaar} style={{ borderBottom: '1px solid var(--gray-100)' }}>
               <td style={{ padding: '5px 8px' }}>{c.instroom_jaar}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(c.instroom)}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{c.gediplomeerden_t3 || '—'}</td>
@@ -156,7 +157,7 @@ function CohortenTable({ cohorten, dark }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ChartCard>
   )
 }
 

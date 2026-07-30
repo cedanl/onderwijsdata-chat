@@ -1,30 +1,24 @@
 import { Line } from 'react-chartjs-2'
 import { fmt } from './hooks'
-import { SectionHeader } from './shell'
+import { SectionHeader, ChartCard } from './shell'
 
 // ─── Peer chart components ────────────────────────────────────────────────────
 
 export function BenchmarkLineChart({ title, subtitle, data, indexOpts }) {
   if (!data) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">{title}</div><div className="chart-sub">{subtitle}</div></div></div>
-        <div style={{ height: 220 }}><Line data={data} options={indexOpts} /></div>
-      </div>
-    </div>
+    <ChartCard title={title} subtitle={subtitle}>
+      <div style={{ height: 220 }}><Line data={data} options={indexOpts} /></div>
+    </ChartCard>
   )
 }
 
 export function PeerLinesChart({ title, subtitle, data, opts }) {
   if (!data) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">{title}</div><div className="chart-sub">{subtitle}</div></div></div>
-        <div style={{ height: 240 }}><Line data={data} options={opts} /></div>
-      </div>
-    </div>
+    <ChartCard title={title} subtitle={subtitle}>
+      <div style={{ height: 240 }}><Line data={data} options={opts} /></div>
+    </ChartCard>
   )
 }
 
@@ -73,20 +67,20 @@ export function PeersTable({ data, instelling }) {
       <div className="chart-card" style={{ overflow: 'auto', padding: 0 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
           <thead>
-            <tr style={{ background: 'var(--gray-50, #F9FAFB)', borderBottom: '2px solid var(--gray-200, #E5E7EB)' }}>
-              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600, #4B5563)' }}>#</th>
-              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600, #4B5563)' }}>Instelling</th>
-              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600, #4B5563)' }}>Ingeschrevenen {lastJaar}</th>
-              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600, #4B5563)' }}>{groeiHeader}</th>
+            <tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--gray-200)' }}>
+              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>#</th>
+              <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Instelling</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>Ingeschrevenen {lastJaar}</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: 'var(--gray-600)' }}>{groeiHeader}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={row.naam} style={{
-                borderBottom: '1px solid var(--gray-100, #F3F4F6)',
-                background: row.eigen ? '#EFF6FF' : 'transparent',
+                borderBottom: '1px solid var(--gray-100)',
+                background: row.eigen ? 'var(--blue-50)' : 'transparent',
               }}>
-                <td style={{ padding: '9px 16px', color: 'var(--gray-400, #9CA3AF)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
+                <td style={{ padding: '9px 16px', color: 'var(--gray-400)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
                 <td style={{ padding: '9px 16px', color: row.eigen ? '#1D4ED8' : 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
                   {row.naam}{row.eigen ? ' ★' : ''}
                 </td>

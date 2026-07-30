@@ -3,19 +3,18 @@ import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
+  SECTOR_LABELS, darkColors, horizontalBarOpts, ChartCard,
 } from '../shared/index'
-import { SECTOR_LABELS, darkColors, horizontalBarOpts } from '../shared/chart-opts'
 
 function RankingTable({ alleInstellingen, instelling, dark }) {
   if (!alleInstellingen?.length) return null
   const eigenIdx = alleInstellingen.findIndex(i => i.naam.toLowerCase() === instelling.toLowerCase())
   const { label: tick } = darkColors(dark)
   return (
-    <div className="chart-card" style={{ overflowX: 'auto' }}>
-      <div className="chart-header"><div><div className="chart-title">Nationale ranking</div><div className="chart-sub">Totaal ingeschrevenen — alle instellingen</div></div></div>
+    <ChartCard title="Nationale ranking" subtitle="Totaal ingeschrevenen — alle instellingen" cardStyle={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem', color: tick }}>
         <thead>
-          <tr style={{ borderBottom: '2px solid var(--gray-200, #E5E7EB)' }}>
+          <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
             <th style={{ textAlign: 'left', padding: '6px 8px' }}>#</th>
             <th style={{ textAlign: 'left', padding: '6px 8px' }}>Instelling</th>
             <th style={{ textAlign: 'right', padding: '6px 8px' }}>Ingeschrevenen</th>
@@ -26,8 +25,8 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
             const isOwn = inst.naam.toLowerCase() === instelling.toLowerCase()
             return (
               <tr key={inst.naam} style={{
-                borderBottom: '1px solid var(--gray-100, #F3F4F6)',
-                background: isOwn ? 'var(--primary-50, #EFF6FF)' : undefined,
+                borderBottom: '1px solid var(--gray-100)',
+                background: isOwn ? 'var(--blue-50)' : undefined,
                 fontWeight: isOwn ? 700 : 400,
               }}>
                 <td style={{ padding: '5px 8px' }}>{i + 1}</td>
@@ -39,7 +38,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
           {eigenIdx >= 20 && (
             <>
               <tr><td colSpan={3} style={{ padding: '4px 8px', color: 'var(--gray-400)' }}>…</td></tr>
-              <tr style={{ background: 'var(--primary-50, #EFF6FF)', fontWeight: 700 }}>
+              <tr style={{ background: 'var(--blue-50)', fontWeight: 700 }}>
                 <td style={{ padding: '5px 8px' }}>{eigenIdx + 1}</td>
                 <td style={{ padding: '5px 8px' }}>{alleInstellingen[eigenIdx].naam}</td>
                 <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(alleInstellingen[eigenIdx].ingeschrevenen)}</td>
@@ -48,7 +47,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
           )}
         </tbody>
       </table>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -89,23 +88,20 @@ function SectorTrendChart({ eigenSectoren, dark }) {
   }, [eigenSectoren])
 
   if (!chartData) return null
-  const { tick, grid } = darkColors(dark)
+  const { tick, grid, label } = darkColors(dark)
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">Eigen sectoren over tijd</div><div className="chart-sub">Ingeschrevenen per sector/leerweg</div></div></div>
-        <div style={{ height: 280 }}>
-          <Line data={chartData} options={{
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: true, position: 'top', labels: { color: tick, font: { size: 11 }, boxWidth: 14 } } },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: tick } },
-              y: { grid: { color: grid }, ticks: { color: tick } },
-            },
-          }} />
-        </div>
+    <ChartCard title="Eigen sectoren over tijd" subtitle="Ingeschrevenen per sector/leerweg">
+      <div style={{ height: 280 }}>
+        <Line data={chartData} options={{
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tick } },
+            y: { grid: { color: grid }, ticks: { color: tick } },
+          },
+        }} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -119,9 +115,9 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
         const eigen = eigenSectoren[s]?.[latestYear] || 0
         const landelijk = sectorenLandelijk[s]?.[latestYear] || 0
         const pct = landelijk > 0 ? Math.round((eigen / landelijk) * 1000) / 10 : 0
-        return { sector: s, pct }
+        return { sector: s, pct, eigen }
       })
-      .filter(e => e.pct > 0)
+      .filter(e => e.eigen > 0)
       .sort((a, b) => b.pct - a.pct)
     if (!entries.length) return null
     return {
@@ -137,23 +133,19 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
   }, [eigenSectoren, sectorenLandelijk])
 
   if (!chartData) return null
-  const { tick, grid } = darkColors(dark)
+  const baseOpts = horizontalBarOpts(dark, '%')
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header"><div><div className="chart-title">Marktaandeel per sector</div><div className="chart-sub">Percentage van landelijk totaal (laatste jaar)</div></div></div>
-        <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
-          <Bar data={chartData} options={{
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } } },
-            scales: {
-              x: { grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
-              y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
-            },
-          }} />
-        </div>
+    <ChartCard title="Marktaandeel per sector" subtitle="Percentage van landelijk totaal (laatste jaar)">
+      <div style={{ height: Math.max(160, chartData.labels.length * 36) }}>
+        <Bar data={chartData} options={{
+          ...baseOpts,
+          scales: {
+            ...baseOpts.scales,
+            x: { ...baseOpts.scales.x, ticks: { ...baseOpts.scales.x.ticks, callback: v => `${v}%` } },
+          },
+        }} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 

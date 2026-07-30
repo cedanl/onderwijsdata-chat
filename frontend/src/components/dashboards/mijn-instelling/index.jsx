@@ -1,23 +1,18 @@
-import { CHART_COLORS } from '../../../constants'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { useMemo } from 'react'
 import {
   useRegioDashboardData, useRendementDashboardData,
   DashboardShell, SectionHeader, RegioBadges, KaartSection,
-  useRegioComputed, useDarkMode, fmt,
-  buildBarChartData, buildSectorChartData,
+  useRegioComputed, useDarkMode, fmt, Sparkline,
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
   buildSectorTrendData, buildLeerwegenData, buildRendementVergelijkingData,
-  chartOpts, doughnutOpts,
   DemografieKpis, InstroomKpis, DiplomeringKpis,
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
   PeersTable, SectorTrendChart, LeerwegenChart, SectorkamersChart,
   RendementVergelijkingChart,
-  barDataLabelsPlugin,
 } from '../shared/index'
-import { Sparkline } from '../shared/shell'
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
 
@@ -30,7 +25,7 @@ function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkVa
       </div>
       <div className="kpi-value">{fmt(eigenWaarde)}{suffix}</div>
       {regioWaarde != null && (
-        <div className="kpi-trend" style={{ color: '#6B7280' }}>
+        <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>
           {regioLabel}: {fmt(regioWaarde)}
         </div>
       )}
@@ -58,13 +53,17 @@ export function InlineDashboardMijnInstelling({ instelling }) {
   const c = useRegioComputed(data, instelling)
   const dark = useDarkMode()
 
-  const marktData = buildMarktaandeelData(data, instelling, c.dark)
-  const marktTrendData = buildMarktaandeelTrendData(data)
-  const groeiData = buildGroeiRankingData(data, instelling, c.dark)
-  const ratioData = buildInstroomRatioData(data)
-  const sectorTrendData = buildSectorTrendData(data?.sectoren_trend)
-  const leerwegenData = buildLeerwegenData(data?.leerwegen)
-  const rendVergData = buildRendementVergelijkingData(data, instelling, c.dark)
+  const {
+    marktData, marktTrendData, groeiData, ratioData, sectorTrendData, leerwegenData, rendVergData,
+  } = useMemo(() => ({
+    marktData: buildMarktaandeelData(data, instelling, c.dark),
+    marktTrendData: buildMarktaandeelTrendData(data),
+    groeiData: buildGroeiRankingData(data, instelling, c.dark),
+    ratioData: buildInstroomRatioData(data),
+    sectorTrendData: buildSectorTrendData(data?.sectoren_trend),
+    leerwegenData: buildLeerwegenData(data?.leerwegen),
+    rendVergData: buildRendementVergelijkingData(data, instelling, c.dark),
+  }), [data, instelling, c.dark])
 
   const bmLabel = c.bmLabel || 'Regio'
   const bm = c.bm || {}

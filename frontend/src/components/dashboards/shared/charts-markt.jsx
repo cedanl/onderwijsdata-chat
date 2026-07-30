@@ -1,5 +1,6 @@
 import { Line, Bar } from 'react-chartjs-2'
 import { horizontalBarOpts, darkColors } from './chart-opts'
+import { ChartCard } from './shell'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
 
@@ -80,38 +81,28 @@ function _ratioLineOpts(dark, tooltipLabel) {
 export function MarktaandeelTrendChart({ data, dark }) {
   if (!data) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Marktaandeel over tijd</div>
-            <div className="chart-sub">% van regiototaal ingeschrevenen — verliest of wint de instelling terrein?</div>
-          </div>
-        </div>
-        <div style={{ height: 200 }}>
-          <Line data={data} options={_ratioLineOpts(dark, '')} />
-        </div>
+    <ChartCard
+      title="Marktaandeel over tijd"
+      subtitle="% van regiototaal ingeschrevenen — verliest of wint de instelling terrein?"
+    >
+      <div style={{ height: 200 }}>
+        <Line data={data} options={_ratioLineOpts(dark, '')} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
 export function InstroomRatioChart({ data, dark }) {
   if (!data) return null
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Instroom ratio</div>
-            <div className="chart-sub">Eerstejaars als % van totaal ingeschrevenen — pipeline-gezondheid (HO)</div>
-          </div>
-        </div>
-        <div style={{ height: 200 }}>
-          <Line data={data} options={_ratioLineOpts(dark, '')} />
-        </div>
+    <ChartCard
+      title="Instroom ratio"
+      subtitle="Eerstejaars als % van totaal ingeschrevenen — pipeline-gezondheid (HO)"
+    >
+      <div style={{ height: 200 }}>
+        <Line data={data} options={_ratioLineOpts(dark, '')} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -188,19 +179,14 @@ export function MarktaandeelChart({ data, jaar, dark }) {
   if (!data) return null
   const h = Math.max(200, data.labels.length * 34 + 40)
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Marktpositie {jaar}</div>
-            <div className="chart-sub">Totaal ingeschrevenen per instelling in de regio (eigen instelling blauw)</div>
-          </div>
-        </div>
-        <div style={{ height: h }}>
-          <Bar data={data} options={horizontalBarOpts(dark)} />
-        </div>
+    <ChartCard
+      title={`Marktpositie ${jaar}`}
+      subtitle="Totaal ingeschrevenen per instelling in de regio (eigen instelling blauw)"
+    >
+      <div style={{ height: h }}>
+        <Bar data={data} options={horizontalBarOpts(dark)} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -208,18 +194,13 @@ export function GroeiRankingChart({ data, dark }) {
   if (!data) return null
   const h = Math.max(200, data.labels.length * 34 + 40)
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Groei ranking (totale periode)</div>
-            <div className="chart-sub">% verandering eerste→laatste beschikbaar jaar per instelling (eigen instelling blauw)</div>
-          </div>
-        </div>
-        <div style={{ height: h }}>
-          <Bar data={data} options={horizontalBarOpts(dark, '%')} />
-        </div>
+    <ChartCard
+      title="Groei ranking (totale periode)"
+      subtitle="% verandering eerste→laatste beschikbaar jaar per instelling (eigen instelling blauw)"
+    >
+      <div style={{ height: h }}>
+        <Bar data={data} options={horizontalBarOpts(dark, '%')} />
       </div>
-    </div>
+    </ChartCard>
   )
 }

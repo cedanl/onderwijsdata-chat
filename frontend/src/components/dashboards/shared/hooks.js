@@ -48,10 +48,6 @@ function useDashboardFetch(endpoint, instelling) {
   return { data, loading, error }
 }
 
-export function useDashboardData(instelling) {
-  return useDashboardFetch('/api/dashboard/instroom', instelling)
-}
-
 export function useRegioDashboardData(instelling) {
   return useDashboardFetch('/api/dashboard/regio', instelling)
 }

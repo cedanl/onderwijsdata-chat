@@ -1,5 +1,6 @@
 import { Bar } from 'react-chartjs-2'
 import { horizontalBarOpts } from './chart-opts'
+import { ChartCard } from './shell'
 
 // ─── Rendement vergelijking ───────────────────────────────────────────────────
 
@@ -48,18 +49,13 @@ export function RendementVergelijkingChart({ data, dark }) {
   if (!data) return null
   const h = Math.max(200, data.labels.length * 34 + 40)
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Rendement vergelijking</div>
-            <div className="chart-sub">Gediplomeerden / ingeschrevenen per instelling — proxy, geen cohortanalyse</div>
-          </div>
-        </div>
-        <div style={{ height: h }}>
-          <Bar data={data} options={horizontalBarOpts(dark, '%')} />
-        </div>
+    <ChartCard
+      title="Rendement vergelijking"
+      subtitle="Gediplomeerden / ingeschrevenen per instelling — proxy, geen cohortanalyse"
+    >
+      <div style={{ height: h }}>
+        <Bar data={data} options={horizontalBarOpts(dark, '%')} />
       </div>
-    </div>
+    </ChartCard>
   )
 }

@@ -71,9 +71,28 @@ export function Sparkline({ values, color = '#2563EB', width = 80, height = 28 }
 
 export function SectionHeader({ title, subtitle }) {
   return (
-    <div style={{ margin: '28px 0 12px', borderBottom: '1px solid var(--gray-200, #E5E7EB)', paddingBottom: 8 }}>
-      <div style={{ fontWeight: 700, fontSize: '.95rem', color: 'var(--gray-900, #111827)' }}>{title}</div>
-      {subtitle && <div style={{ fontSize: '.8rem', color: 'var(--gray-500, #6B7280)', marginTop: 2 }}>{subtitle}</div>}
+    <div style={{ margin: '28px 0 12px', borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
+      <h3 style={{ fontWeight: 700, fontSize: '.95rem', color: 'var(--gray-900)', margin: 0 }}>{title}</h3>
+      {subtitle && <div style={{ fontSize: '.8rem', color: 'var(--gray-500)', marginTop: 2 }}>{subtitle}</div>}
+    </div>
+  )
+}
+
+export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
+  return (
+    <div className="charts-grid charts-grid-single">
+      <div className="chart-card" style={cardStyle} aria-label={title || undefined}>
+        {(title || subtitle || actions) && (
+          <div className="chart-header" style={actions ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
+            <div>
+              {title && <div className="chart-title">{title}</div>}
+              {subtitle && <div className="chart-sub">{subtitle}</div>}
+            </div>
+            {actions}
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   )
 }

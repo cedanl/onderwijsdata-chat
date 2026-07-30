@@ -61,40 +61,9 @@ export function buildIndexChartOpts(dark) {
   }
 }
 
-export const barDataLabelsPlugin = {
-  id: 'barDataLabels',
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart
-    chart.data.datasets.forEach((ds, di) => {
-      const meta = chart.getDatasetMeta(di)
-      if (meta.hidden || meta.type === 'line') return
-      meta.data.forEach((el, i) => {
-        const val = ds.data[i]
-        if (val == null || val === 0) return
-        const label = compactNum(val)
-        ctx.save()
-        ctx.font = '600 10px system-ui, sans-serif'
-        ctx.fillStyle = chart.options.plugins?.barDataLabels?.color || '#6B7280'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.fillText(label, el.x, el.y - 4)
-        ctx.restore()
-      })
-    })
-  },
-}
-
 const BENCHMARK_COLOR_LIGHT = '#94A3B8'
 const BENCHMARK_COLOR_DARK = '#9CA3AF'
 export function benchmarkColor(dark) { return dark ? BENCHMARK_COLOR_DARK : BENCHMARK_COLOR_LIGHT }
-
-export function doughnutOpts(dark) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { position: 'right', labels: { color: dark ? '#D1D5DB' : '#374151', font: { size: 11 } } } },
-  }
-}
 
 export const SECTOR_LABELS = {
   ECONOMIE: 'Economie',
@@ -110,7 +79,7 @@ export const SECTOR_LABELS = {
 }
 // Semantic: each color is fixed to a named sector (Economie→blauw, Gezondheidszorg→teal, …).
 // Not a generic sequential palette, so not replaced by CHART_COLORS.
-export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8']
+export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
 
 export function horizontalBarOpts(dark, tooltipSuffix = '') {
   const { tick, grid } = darkColors(dark)

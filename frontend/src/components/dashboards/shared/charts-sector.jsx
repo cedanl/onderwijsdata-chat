@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
-import { SECTOR_LABELS, SECTOR_COLORS, darkColors } from './chart-opts'
+import { SECTOR_LABELS, SECTOR_COLORS, darkColors, horizontalBarOpts } from './chart-opts'
+import { ChartCard } from './shell'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
@@ -103,66 +104,43 @@ export function SectorTrendChart({ data, dark }) {
   if (!data) return null
   const displayData = proportional ? _normalizeProportional(data) : data
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header" style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <div>
-            <div className="chart-title">Inschrijvingen per sector over tijd</div>
-            <div className="chart-sub">Stacked — welke faculteiten groeien of krimpen?</div>
-          </div>
-          <button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>
-            {proportional ? 'Abs' : '%'}
-          </button>
-        </div>
-        <div style={{ height: 260 }}>
-          <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
-        </div>
+    <ChartCard
+      title="Inschrijvingen per sector over tijd"
+      subtitle="Stacked — welke faculteiten groeien of krimpen?"
+      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+    >
+      <div style={{ height: 260 }}>
+        <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
 export function SectorkamersChart({ sectorkamers, dark }) {
   if (!sectorkamers || Object.keys(sectorkamers).length === 0) return null
   const entries = Object.entries(sectorkamers).sort((a, b) => b[1] - a[1])
-  const colors = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
-  const { tick, grid } = darkColors(dark)
   const h = Math.max(160, entries.length * 36)
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header">
-          <div>
-            <div className="chart-title">Studenten per SBB-sectorkamer</div>
-            <div className="chart-sub">MBO eerstejaars per hoofdgroep (DUO instromende-mbo-studenten)</div>
-          </div>
-        </div>
-        <div style={{ height: h }}>
-          <Bar
-            data={{
-              labels: entries.map(([k]) => k),
-              datasets: [{
-                label: 'Studenten',
-                data: entries.map(([, v]) => v),
-                backgroundColor: entries.map((_, i) => colors[i % colors.length] + 'CC'),
-                borderWidth: 0,
-                borderRadius: 4,
-              }],
-            }}
-            options={{
-              indexAxis: 'y',
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: {
-                x: { grid: { color: grid }, ticks: { color: tick } },
-                y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
-              },
-            }}
-          />
-        </div>
+    <ChartCard
+      title="Studenten per SBB-sectorkamer"
+      subtitle="MBO eerstejaars per hoofdgroep (DUO instromende-mbo-studenten)"
+    >
+      <div style={{ height: h }}>
+        <Bar
+          data={{
+            labels: entries.map(([k]) => k),
+            datasets: [{
+              label: 'Studenten',
+              data: entries.map(([, v]) => v),
+              backgroundColor: entries.map((_, i) => SECTOR_COLORS[i % SECTOR_COLORS.length] + 'CC'),
+              borderWidth: 0,
+              borderRadius: 4,
+            }],
+          }}
+          options={horizontalBarOpts(dark)}
+        />
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
@@ -171,21 +149,14 @@ export function LeerwegenChart({ data, dark }) {
   if (!data) return null
   const displayData = proportional ? _normalizeProportional(data) : data
   return (
-    <div className="charts-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="chart-card">
-        <div className="chart-header" style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <div>
-            <div className="chart-title">Leerweg-verdeling over tijd</div>
-            <div className="chart-sub">MBO leerweg-verdeling: BBL / BOL voltijd / BOL deeltijd per jaar</div>
-          </div>
-          <button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>
-            {proportional ? 'Abs' : '%'}
-          </button>
-        </div>
-        <div style={{ height: 260 }}>
-          <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
-        </div>
+    <ChartCard
+      title="Leerweg-verdeling over tijd"
+      subtitle="MBO leerweg-verdeling: BBL / BOL voltijd / BOL deeltijd per jaar"
+      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+    >
+      <div style={{ height: 260 }}>
+        <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
       </div>
-    </div>
+    </ChartCard>
   )
 }
