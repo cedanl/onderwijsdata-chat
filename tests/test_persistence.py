@@ -6,16 +6,17 @@ import pytest
 @pytest.fixture
 def db(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    from persistence import db
     import importlib
+
+    from persistence import db
     importlib.reload(db)
     db.init_db()
     return db
 
 
 def test_init_db_creates_tables(db):
-    import sqlite3
     import os
+    import sqlite3
     conn = sqlite3.connect(os.environ["DATABASE_PATH"])
     tables = [r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table'"
@@ -177,7 +178,8 @@ def test_upsert_keeps_seconds_timestamp(db):
 
 
 def test_migrate_converts_existing_ms_timestamps(db):
-    import sqlite3, os
+    import os
+    import sqlite3
     conn = sqlite3.connect(os.environ["DATABASE_PATH"])
     conn.execute(
         "INSERT INTO conversations (id, username, title, timestamp, messages) "

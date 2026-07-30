@@ -7,12 +7,13 @@ from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from agent import run as agent_run
-from agent.dashboard import generate as generate_dashboard_spec
 from agent.dashboard import DashboardSpec
-from agent.replay import replay_data_calls, replay_dashboard_figures
+from agent.dashboard import generate as generate_dashboard_spec
+from agent.replay import replay_dashboard_figures, replay_data_calls
 from core.auth import AUTH_ENABLED, verify_token
 from core.config import MODEL
 from core.errors import friendly_error
+
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
 logger = logging.getLogger(__name__)

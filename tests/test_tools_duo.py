@@ -1,9 +1,9 @@
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 
-from tools.duo import get_duo_data, _apply_filters
+from tools.duo import _apply_filters, get_duo_data
 
 
 def _make_df(n: int = 5) -> pd.DataFrame:
@@ -11,18 +11,18 @@ def _make_df(n: int = 5) -> pd.DataFrame:
 
 
 def test_load_exception_returns_error_string():
-    with patch("tools.duo._duo.load", side_effect=Exception("niet gevonden")):
-        with patch("tools.duo._duo.catalog", return_value=[]):
-            result = get_duo_data("bestaat-niet")
+    with patch("tools.duo._duo.load", side_effect=Exception("niet gevonden")), \
+         patch("tools.duo._duo.catalog", return_value=[]):
+        result = get_duo_data("bestaat-niet")
     assert "Fout" in result
     assert "bestaat-niet" in result
 
 
 def test_load_exception_includes_similar_dataset_hint():
     match = {"_ckan_id": "bestaat-niet-v2", "title": "bestaat-niet dataset"}
-    with patch("tools.duo._duo.load", side_effect=Exception("404")):
-        with patch("tools.duo._duo.catalog", return_value=[match]):
-            result = get_duo_data("bestaat-niet")
+    with patch("tools.duo._duo.load", side_effect=Exception("404")), \
+         patch("tools.duo._duo.catalog", return_value=[match]):
+        result = get_duo_data("bestaat-niet")
     assert "bestaat-niet-v2" in result
 
 

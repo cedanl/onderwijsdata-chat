@@ -1,8 +1,7 @@
 import json
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from agent.replay import extract_data_calls, replay_data_calls, replay_dashboard_figures
+from agent.replay import extract_data_calls, replay_dashboard_figures, replay_data_calls
 
 
 class TestExtractDataCalls:

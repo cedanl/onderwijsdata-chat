@@ -1,6 +1,6 @@
 import pandas as pd
-import pytest
 import plotly.graph_objects as go
+import pytest
 
 from tools import store
 from tools.plot import create_plot
@@ -79,6 +79,7 @@ def test_no_data_no_key_returns_error():
 # --- create_choropleth_map ---
 
 from unittest.mock import patch
+
 from tools.plot import create_choropleth_map
 
 _CHOROPLETH_ROWS = [

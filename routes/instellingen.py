@@ -5,13 +5,16 @@ from fastapi import APIRouter, Query
 from core.config import MODEL, get_available_models
 from data.dashboard import (
     load_dashboard as load_dashboard_data,
-    load_dashboard_regio,
-    load_dashboard_nationaal,
-    load_dashboard_rendement,
+)
+from data.dashboard import (
     load_dashboard_arbeidsmarktmatch,
+    load_dashboard_nationaal,
+    load_dashboard_regio,
+    load_dashboard_rendement,
 )
 from data.instellingen import get_all as get_all_instellingen
-from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
+from tools.catalog import _cbs as _cbs_catalog
+from tools.catalog import _rio_duo as _rio_duo_catalog
 
 router = APIRouter(tags=["instellingen"])
 

@@ -24,8 +24,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import litellm
-from core.config import MODEL
 from riodata import uwv
+
+from core.config import MODEL
 
 OUTPUT = ROOT / "data" / "sector_cluster_mapping.json"
 
@@ -77,8 +78,7 @@ Antwoord uitsluitend met het JSON-object, geen uitleg."""
     # Strip eventuele markdown code fences
     if raw.startswith("```"):
         raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+        raw = raw.removeprefix("json")
     raw = raw.strip()
 
     return json.loads(raw)

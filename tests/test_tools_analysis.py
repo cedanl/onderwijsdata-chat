@@ -1,7 +1,6 @@
 import json
 
 import pandas as pd
-import pytest
 
 from tools import store
 from tools.analysis import run_analysis

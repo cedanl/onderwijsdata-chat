@@ -1,9 +1,10 @@
 import json
 
 import pandas as pd
-
 from riodata import fetch
+
 from core.config import RIO_PAGE_SIZE
+
 from . import store
 
 _SAMPLE_ROWS = 5

@@ -3,7 +3,9 @@ import json
 
 import pandas as pd
 from riodata import duo as _duo
+
 from core.config import DUO_ROW_LIMIT
+
 from . import store
 
 _SAMPLE_ROWS = 3
