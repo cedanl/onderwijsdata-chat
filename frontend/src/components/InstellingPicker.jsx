@@ -6,7 +6,7 @@ const NIVEAUS = [
   { id: 'mbo', label: 'MBO' },
 ]
 
-export function useInstellingen() {
+function useInstellingen() {
   const [list, setList] = useState([])
   useEffect(() => {
     fetch('/api/instellingen')

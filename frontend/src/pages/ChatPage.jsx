@@ -127,6 +127,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
+  const queueRef = useRef([])
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
@@ -259,12 +260,27 @@ export default function ChatPage({ openRapport, settings = {} }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    if (!busy && queueRef.current.length > 0) {
+      const next = queueRef.current.shift()
+      send(next)
+    }
+  }, [busy, send])
+
   const handleSend = () => {
     const q = input.trim()
-    if (!q || busy) return
+    if (!q) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    send(q)
+    if (busy) {
+      if (queueRef.current.length < 5) {
+        queueRef.current.push(q)
+      } else {
+        setInput(q)
+      }
+    } else {
+      send(q)
+    }
   }
 
   const handleKey = (e) => {
@@ -395,12 +411,12 @@ export default function ChatPage({ openRapport, settings = {} }) {
               <textarea
                 ref={textareaRef}
                 className="chat-input"
+                aria-label="Chatbericht"
                 rows={1}
-                placeholder="Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers."
+                placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers.'}
                 value={input}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
-                disabled={busy}
               />
               <div className="chat-input-footer">
                 {!connected && (
@@ -417,7 +433,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected}>
+                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || queueRef.current.length >= 5}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
@@ -490,7 +506,7 @@ function ClarificationButtons({ options, onSelect, busy }) {
         const label = typeof opt === 'string' ? opt : opt.label
         const desc = typeof opt === 'object' ? opt.beschrijving : null
         return (
-          <button key={i} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
+          <button key={label} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
             {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
           </button>
         )
@@ -504,7 +520,7 @@ function StarterButtons({ questions, onSend, busy }) {
   return (
     <div className="clarification-btns" style={{ marginTop: 8 }}>
       {questions.map((q, i) => (
-        <button key={i} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
+        <button key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
       ))}
     </div>
   )
@@ -516,6 +532,18 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       <div className="message user">
         <div className="message-avatar">{userInitials(settings)}</div>
         <div className="message-bubble">{msg.content}</div>
+        {!busy && (
+          <button
+            className="resend-btn"
+            title="Opnieuw sturen"
+            onClick={() => onSend(msg.content)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+          </button>
+        )}
       </div>
     )
   }
@@ -529,13 +557,13 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {msg.tools?.map((t, i) => (
-          <ToolStep key={i} tool={t} />
+          <ToolStep key={t.name || i} tool={t} />
         ))}
         <div className="message-bubble message-bubble-assistant" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
           {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
           <MessageContent msg={msg} />
           {msg.figures?.map((fig, i) => (
-            <PlotlyFigure key={i} figureJson={fig.json} label={fig.label} />
+            <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
           ))}
           <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
           <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
@@ -543,6 +571,27 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
     </div>
   )
+}
+
+function figureToCsv(figure) {
+  const traces = figure.data || []
+  if (traces.length === 0) return null
+  const first = traces[0]
+  const xVals = first.x || first.labels || []
+  if (xVals.length === 0) return null
+  const header = ['', ...traces.map(t => t.name || 'waarde')]
+  const rows = xVals.map((x, i) => [x, ...traces.map(t => (t.y || t.values)?.[i] ?? '')])
+  return [header, ...rows].map(r => r.join(';')).join('\n')
+}
+
+function downloadCsv(csv, filename) {
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function PlotlyFigure({ figureJson, label }) {
@@ -564,9 +613,22 @@ function PlotlyFigure({ figureJson, label }) {
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     autosize: true,
   }
+  const csv = figureToCsv(figure)
   return (
-    <div style={{ margin: '8px 0' }}>
+    <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {csv && (
+        <button
+          className="csv-download-btn"
+          title="Download als CSV"
+          onClick={() => downloadCsv(csv, (label || 'data').replace(/[^a-zA-Z0-9]/g, '_') + '.csv')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          CSV
+        </button>
+      )}
       <Plot
         data={figure.data || []}
         layout={layout}

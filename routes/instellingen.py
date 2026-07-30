@@ -3,7 +3,13 @@ import asyncio
 from fastapi import APIRouter, Query
 
 from core.config import MODEL, get_available_models
-from data.dashboard import load_dashboard as load_dashboard_data, load_dashboard_regio
+from data.dashboard import (
+    load_dashboard as load_dashboard_data,
+    load_dashboard_regio,
+    load_dashboard_nationaal,
+    load_dashboard_rendement,
+    load_dashboard_arbeidsmarktmatch,
+)
 from data.instellingen import get_all as get_all_instellingen
 from tools.catalog import _cbs as _cbs_catalog, _rio_duo as _rio_duo_catalog
 
@@ -58,8 +64,9 @@ async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]
     loop = asyncio.get_running_loop()
     alle = await loop.run_in_executor(None, get_all_instellingen)
     if type:
-        types = {t.strip().lower() for t in type.split(",")}
-        return [i for i in alle if i["type"] in types]
+        types = {t.strip().lower() for t in type.split(",") if t.strip()}
+        if types:
+            return [i for i in alle if i["type"] in types]
     return alle
 
 
@@ -73,3 +80,21 @@ async def dashboard_instroom(instelling: str = Query(...)) -> dict:
 async def dashboard_regio(instelling: str = Query(...)) -> dict:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, load_dashboard_regio, instelling)
+
+
+@router.get("/api/dashboard/nationaal")
+async def dashboard_nationaal(instelling: str = Query(...)) -> dict:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, load_dashboard_nationaal, instelling)
+
+
+@router.get("/api/dashboard/rendement")
+async def dashboard_rendement(instelling: str = Query(...)) -> dict:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, load_dashboard_rendement, instelling)
+
+
+@router.get("/api/dashboard/arbeidsmarktmatch")
+async def dashboard_arbeidsmarktmatch(instelling: str = Query(...)) -> dict:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, load_dashboard_arbeidsmarktmatch, instelling)
