@@ -38,6 +38,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
   }
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
@@ -50,7 +51,9 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
       role="dialog"
       aria-modal="true"
       aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
+      tabIndex={-1}
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         style={{
           background: 'var(--white)', borderRadius: 'var(--radius-xl)',
@@ -79,16 +82,16 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
-            </label>
+            </div>
             <InstellingPicker value={instelling} onChange={setInstelling} />
           </div>
 
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
-            </label>
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {FUNCTIES.map(f => (
                 <button type="button"
@@ -109,9 +112,9 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
           </div>
 
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
-            </label>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map(m => (
                 <button type="button"

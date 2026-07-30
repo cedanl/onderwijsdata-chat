@@ -1,6 +1,7 @@
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
 export default function DataSourcesModal({ onClose }) {
   return (
-    <div className="modal-overlay" onClick={onClose} onKeyDown={e => { if (e.key === 'Escape') onClose() }} role="dialog" aria-modal="true" aria-label="Databronnen">
+    <div className="modal-overlay" onClick={onClose} onKeyDown={e => { if (e.key === 'Escape') onClose() }} role="dialog" aria-modal="true" aria-label="Databronnen" tabIndex={-1}>
       <button type="button" className="modal-overlay-close" onClick={onClose}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>

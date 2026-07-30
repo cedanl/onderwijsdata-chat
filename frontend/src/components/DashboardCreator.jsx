@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import useDashboardChat from '../hooks/useDashboardChat'
-import { saveWorkbookWithSync, getWorkbooks } from '../workbooks'
+import { saveWorkbookWithSync } from '../workbooks'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 import ConfirmModal from './ConfirmModal'
@@ -160,6 +160,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
       }
     }
     doSave()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardSpec])
 
   const handleReset = () => {
@@ -242,7 +243,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 }
                 {msg.clarification && (
                   <div className="dc-clarification-btns">
-                    {msg.clarification.map((opt, i) => {
+                    {msg.clarification.map((opt, _i) => {
                       const label = typeof opt === 'string' ? opt : opt.label
                       return (
                         <button type="button" key={label} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>

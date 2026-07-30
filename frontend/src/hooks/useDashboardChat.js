@@ -29,11 +29,11 @@ export default function useDashboardChat() {
   const nextId = () => ++idRef.current
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify(messages.filter(m => m.done))) } catch {}
+    try { localStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify(messages.filter(m => m.done))) } catch { /* noop */ }
   }, [messages])
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify(figures)) } catch {}
+    try { localStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify(figures)) } catch { /* noop */ }
   }, [figures])
 
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function useDashboardChat() {
     setBusy(false)
     setGeneratingDashboard(false)
     setDashboardSpec(null)
-    try { localStorage.removeItem(STORAGE_DC_MESSAGES); localStorage.removeItem(STORAGE_DC_FIGURES) } catch {}
+    try { localStorage.removeItem(STORAGE_DC_MESSAGES); localStorage.removeItem(STORAGE_DC_FIGURES) } catch { /* noop */ }
   }, [])
 
   return { messages, figures, busy, connected, send, sendClarification, sendSettings, reset, generateDashboard, refreshDashboard, generatingDashboard, dashboardSpec }

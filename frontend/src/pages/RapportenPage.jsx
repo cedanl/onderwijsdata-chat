@@ -77,7 +77,7 @@ export default function RapportenPage({ settings }) {
               Ga naar Chat
             </button>
             <p style={{ marginTop: 12, fontSize: '.82rem', color: 'var(--gray-400)' }}>
-              Stel een vraag en klik op "Genereer rapport" om een rapport hier op te slaan.
+              Stel een vraag en klik op &ldquo;Genereer rapport&rdquo; om een rapport hier op te slaan.
             </p>
           </div>
         ) : (

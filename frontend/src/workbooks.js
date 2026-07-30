@@ -66,7 +66,7 @@ export function saveWorkbook({ title, description, messages, figures, instelling
     const full = JSON.stringify([...workbooks, wb])
     localStorage.setItem(STORAGE_WORKBOOKS, full)
     return { ok: true, workbook: wb }
-  } catch (e1) {
+  } catch {
     try {
       const wbSmall = { ...wb, figures: [], messages: undefined }
       const workbooks = getWorkbooks()
@@ -83,7 +83,7 @@ export function updateWorkbookTitle(id, title) {
   const wb = wbs.find(w => w.id === id)
   if (!wb) return
   wb.title = title
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch {}
+  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch { /* noop */ }
   putWorkbook(id, { ...wb, htmlContent: wb.htmlContent, dashboardSpec: wb.dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 
@@ -92,12 +92,12 @@ export function updateWorkbookSpec(id, dashboardSpec) {
   const wb = wbs.find(w => w.id === id)
   if (!wb) return
   wb.dashboardSpec = dashboardSpec
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch {}
+  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch { /* noop */ }
   putWorkbook(id, { ...wb, dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 
 export function deleteWorkbook(id) {
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id))) } catch {}
+  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id))) } catch { /* noop */ }
   deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 

@@ -28,7 +28,7 @@ function loadConversationHistory() {
 }
 
 function persistConversationHistory(list) {
-  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list)) } catch {}
+  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list)) } catch { /* noop */ }
 }
 
 function codeTheme() {
@@ -162,7 +162,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
   useEffect(() => {
     const all = [...restoredMessages, ...messages]
     if (!all.length) return
-    try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify(all)) } catch {}
+    try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify(all)) } catch { /* noop */ }
   }, [messages, restoredMessages])
 
   const saveCurrentConversation = useCallback((msgs) => {
@@ -185,7 +185,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
     saveCurrentConversation()
     setRestoredMessages([])
     setSidebarOpen(false)
-    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
+    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
     clear()
   }, [clear, saveCurrentConversation])
 
@@ -193,7 +193,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
     saveCurrentConversation()
     clear()
     setSidebarOpen(false)
-    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
+    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
     setRestoredMessages(conv.messages)
   }, [clear, saveCurrentConversation])
 
@@ -234,7 +234,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
       const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
       persistConversationHistory(updated)
       putConversation(String(conv.id), { title: conv.title, timestamp: conv.timestamp, messages: conv.messages }).catch(() => {})
-      try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch {}
+      try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
     }
   }, [])
 
@@ -334,7 +334,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
       <div className="chat-layout">
         {/* Sidebar overlay (mobile) */}
         {sidebarOpen && (
-          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
         )}
 
         {/* Sidebar */}
@@ -502,7 +502,7 @@ function ClarificationButtons({ options, onSelect, busy }) {
   if (!options) return null
   return (
     <div className="clarification-btns">
-      {options.map((opt, i) => {
+      {options.map((opt, _i) => {
         const label = typeof opt === 'string' ? opt : opt.label
         const desc = typeof opt === 'object' ? opt.beschrijving : null
         return (
@@ -519,7 +519,7 @@ function StarterButtons({ questions, onSend, busy }) {
   if (!questions) return null
   return (
     <div className="clarification-btns" style={{ marginTop: 8 }}>
-      {questions.map((q, i) => (
+      {questions.map((q, _i) => (
         <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
       ))}
     </div>

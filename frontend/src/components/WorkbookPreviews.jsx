@@ -37,7 +37,7 @@ function BuiltinPreview() {
       </div>
       <div className="wb-mini-charts">
         <div className="wb-mini-chart-bar">
-          {bars.map((h, i) => (
+          {bars.map((h, _i) => (
             <div key={h} className="wb-mini-bar" style={{ height: `${h}%` }} />
           ))}
         </div>

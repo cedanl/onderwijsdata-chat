@@ -140,7 +140,7 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
   const chartSpecs = buildChartSpecs(tables)
 
   const plotlySection = figures.length
-    ? `<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
+    ? `<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
        ${figures.map((fj, i) => `
          <div class="card"><div id="pf${i}" style="height:360px"></div></div>
          <script>(function(){var f=${fj},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('pf${i}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
@@ -148,14 +148,14 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
     : ''
 
   const chartJsSection = chartSpecs.length
-    ? `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>
+    ? `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
        <script>
          (function(){
            var _d=window.matchMedia('(prefers-color-scheme:dark)').matches;
            Chart.defaults.color=_d?'#9CA3AF':'#6B7280';
            Chart.defaults.borderColor=_d?'rgba(255,255,255,0.06)':'#F3F4F6';
          })();
-       <\/script>
+       </script>
        ${chartSpecs.map(spec => {
          const kpiHtml = spec.kpis.map((k, i) =>
            `<div class="kpi" style="border-top:3px solid ${ [CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2], '#6B7280'][i] }">
@@ -191,7 +191,7 @@ export function buildDashboardHtml(title, content, figures = [], instelling = ''
              </div>
            </div>
            <div class="card">${tableHtml(spec.tbl)}</div>
-           <script>new Chart(document.getElementById('${spec.id}'), ${cfg})<\/script>`
+           <script>new Chart(document.getElementById('${spec.id}'), ${cfg})</script>`
        }).join('\n')}`
     : ''
 

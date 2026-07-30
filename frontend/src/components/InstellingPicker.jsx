@@ -149,6 +149,9 @@ export default function InstellingPicker({ value, onChange }) {
           {filtered.map((inst, i) => (
             <div
               key={inst.naam}
+              role="option"
+              aria-selected={i === highlightIdx}
+              tabIndex={-1}
               onMouseDown={() => select(inst)}
               onMouseEnter={() => setHighlightIdx(i)}
               style={{

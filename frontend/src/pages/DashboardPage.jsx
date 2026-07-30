@@ -29,6 +29,7 @@ export default function DashboardPage({ settings }) {
       if (prev?.id === pendingId) return prev
       return BUILTINS.find(b => b.id === pendingId) ?? prev
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingId])
 
   useEffect(() => {
