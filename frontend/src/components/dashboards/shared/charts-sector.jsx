@@ -107,7 +107,7 @@ export function SectorTrendChart({ data, dark }) {
     <ChartCard
       title="Inschrijvingen per sector over tijd"
       subtitle="Stacked — welke faculteiten groeien of krimpen?"
-      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
     >
       <div style={{ height: 260 }}>
         <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
@@ -152,7 +152,7 @@ export function LeerwegenChart({ data, dark }) {
     <ChartCard
       title="Leerweg-verdeling over tijd"
       subtitle="MBO leerweg-verdeling: BBL / BOL voltijd / BOL deeltijd per jaar"
-      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
     >
       <div style={{ height: 260 }}>
         <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />

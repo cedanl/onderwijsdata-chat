@@ -1,17 +1,18 @@
 from pathlib import Path
 
 _PROMPT_DIR = Path(__file__).parent
+_GEEN_VOORKEUR = "Geen voorkeur"
 
 SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text()
 
 
 def build_persona_block(settings: dict) -> str:
     lines = []
-    rol = settings.get("functie") or settings.get("rol", "Geen voorkeur")
-    if rol and rol != "Geen voorkeur":
+    rol = settings.get("functie") or settings.get("rol", _GEEN_VOORKEUR)
+    if rol and rol != _GEEN_VOORKEUR:
         lines.append(f"- Gebruikersrol: **{rol}** — stem taalgebruik en diepte van uitleg hierop af.")
-    domein = settings.get("domein", "Geen voorkeur")
-    if domein and domein != "Geen voorkeur":
+    domein = settings.get("domein", _GEEN_VOORKEUR)
+    if domein and domein != _GEEN_VOORKEUR:
         lines.append(f"- Domein: **{domein}** — prioriteer datasets en voorbeelden uit dit domein. Sla de scope-vraag naar onderwijsniveau over als {domein} dit al bepaalt.")
     instelling = (settings.get("instelling") or "").strip()
     if instelling:

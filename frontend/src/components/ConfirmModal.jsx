@@ -4,8 +4,8 @@ export default function ConfirmModal({ message, confirmLabel = 'Verwijderen', on
       <div className="confirm-dialog">
         <p className="confirm-message">{message}</p>
         <div className="confirm-actions">
-          <button className="confirm-cancel" onClick={onCancel}>Annuleren</button>
-          <button className="confirm-destructive" onClick={onConfirm}>{confirmLabel}</button>
+          <button type="button" className="confirm-cancel" onClick={onCancel}>Annuleren</button>
+          <button type="button" className="confirm-destructive" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
     </div>

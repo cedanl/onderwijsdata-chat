@@ -13,11 +13,11 @@ function parseNum(val) {
   if (!val) return null
   const s = String(val).replace(/[^\d,.\-+]/g, '')
   if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
-    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'))
-    return isNaN(n) ? null : n
+    const n = Number.parseFloat(s.replace(/\./g, '').replace(',', '.'))
+    return Number.isNaN(n) ? null : n
   }
-  const n = parseFloat(s.replace(',', '.'))
-  return isNaN(n) ? null : n
+  const n = Number.parseFloat(s.replaceAll(',', '.'))
+  return Number.isNaN(n) ? null : n
 }
 
 function fmtNl(n) {

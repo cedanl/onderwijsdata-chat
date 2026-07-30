@@ -91,7 +91,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {FUNCTIES.map(f => (
-                <button
+                <button type="button"
                   key={f}
                   onClick={() => setFunctie(functie === f ? '' : f)}
                   style={{
@@ -114,7 +114,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map(m => (
-                <button
+                <button type="button"
                   key={m.id}
                   onClick={() => setMode(m.id)}
                   style={{
@@ -137,7 +137,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 32 }}>
-          <button
+          <button type="button"
             onClick={handleSave}
             style={{
               flex: 1, padding: '12px', borderRadius: 'var(--radius)',
@@ -150,7 +150,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             Opslaan
           </button>
           {isOnboarding && (
-            <button
+            <button type="button"
               onClick={onClose}
               style={{
                 padding: '12px 18px', borderRadius: 'var(--radius)',

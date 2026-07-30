@@ -28,7 +28,7 @@ export default function ScrollToBottom({ sentinelRef, scrollContainerRef }) {
   if (!visible) return null
 
   return (
-    <button
+    <button type="button"
       className="scroll-to-bottom-btn"
       onClick={handleClick}
       aria-label="Scroll naar beneden"

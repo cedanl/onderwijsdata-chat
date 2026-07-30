@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
-import { execSync, spawn } from 'child_process';
-import { readdirSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs';
-import { join, resolve } from 'path';
+import { execSync, spawn } from 'node:child_process';
+import { readdirSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const RAW = join(import.meta.dirname, 'raw-scenes');

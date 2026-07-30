@@ -71,7 +71,7 @@ function SectorTrendChart({ eigenSectoren, dark }) {
   const chartData = useMemo(() => {
     if (!eigenSectoren || Object.keys(eigenSectoren).length === 0) return null
     const sectors = Object.keys(eigenSectoren)
-    const allJaren = [...new Set(sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(String)))].sort()
+    const allJaren = [...new Set(sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(String)))].sort((a, b) => a.localeCompare(b, 'nl'))
     if (allJaren.length < 2) return null
     return {
       labels: allJaren,

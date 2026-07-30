@@ -144,7 +144,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
     const jaren = Object.keys(dict).map(Number).sort((a, b) => a - b)
     if (jaren.length < 2) return null
     const first = dict[jaren[0]]
-    const last = dict[jaren[jaren.length - 1]]
+    const last = dict[jaren.at(-1)]
     if (!first) return null
     return Math.round((last - first) / first * 100)
   }

@@ -6,6 +6,10 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+_INSTROOM_MBO = "INSTROOM MBO"
+_BOL_VOLTIJD = "BOL voltijd"
+_BOL_DEELTIJD = "BOL deeltijd"
+
 import pandas as pd
 from riodata import duo
 
@@ -281,7 +285,7 @@ def _mbo_eerstejaars_from_df(df: pd.DataFrame | None, code: str) -> dict[int, in
         return {}
     filtered = df[
         (df["INSTELLINGSCODE"] == code)
-        & (df["INSTROOM MBO"] == "J")
+        & (df[_INSTROOM_MBO] == "J")
     ]
     if filtered.empty:
         return {}
@@ -300,7 +304,7 @@ def _mbo_peer_eerstejaars(
         return {}, {}
     peer_instromende = df_instromende[
         df_instromende["INSTELLINGSCODE"].isin(peer_codes)
-        & (df_instromende["INSTROOM MBO"] == "J")
+        & (df_instromende[_INSTROOM_MBO] == "J")
     ]
     if peer_instromende.empty:
         return {}, {}
@@ -750,7 +754,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
     result["methodologie"] = {
         "benchmark": (
-            f"Ongewogen gemiddelde per jaar over alle HO-instellingen in dezelfde "
+            "Ongewogen gemiddelde per jaar over alle HO-instellingen in dezelfde "
             f"{ctx.regio_type if ctx else 'provincie'}, exclusief eigen instelling"
         ),
         "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
@@ -841,8 +845,8 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     result["leerwegen"] = {
         int(jaar): {
             "BBL": int(row["BBL"]),
-            "BOL voltijd": int(row["BOLVT"]),
-            "BOL deeltijd": int(row["BOLDT"]),
+            _BOL_VOLTIJD: int(row["BOLVT"]),
+            _BOL_DEELTIJD: int(row["BOLDT"]),
         }
         for jaar, row in per_jaar.sort_index().iterrows()
     }
@@ -850,8 +854,8 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     laatste = rows[rows["JAAR"] == laatste_jaar]
     sectoren = {
         "BBL": int(laatste["BBL"].sum()),
-        "BOL deeltijd": int(laatste["BOLDT"].sum()),
-        "BOL voltijd": int(laatste["BOLVT"].sum()),
+        _BOL_DEELTIJD: int(laatste["BOLDT"].sum()),
+        _BOL_VOLTIJD: int(laatste["BOLVT"].sum()),
     }
     result["sectoren"] = {k: v for k, v in sorted(sectoren.items(), key=lambda x: -x[1]) if v > 0}
 
@@ -1015,8 +1019,8 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
     laatste = per_jaar.loc[laatste_jaar]
     sectoren = {
         "BBL": int(laatste["BBL"]),
-        "BOL deeltijd": int(laatste["BOLDT"]),
-        "BOL voltijd": int(laatste["BOLVT"]),
+        _BOL_DEELTIJD: int(laatste["BOLDT"]),
+        _BOL_VOLTIJD: int(laatste["BOLVT"]),
         "Extraneus": int(laatste["EX"]),
     }
     result["sectoren"] = {k: v for k, v in sorted(sectoren.items(), key=lambda x: -x[1]) if v > 0}
@@ -1326,7 +1330,7 @@ def _rendement_ho(instelling: str) -> dict | None:
 def _mbo_peer_rendement_for_code(df_instromende_all, df_mbo, df_dipl_mbo, code, code_col, inst_col):
     p_instr = df_instromende_all[
         (df_instromende_all["INSTELLINGSCODE"] == code)
-        & (df_instromende_all["INSTROOM MBO"] == "J")
+        & (df_instromende_all[_INSTROOM_MBO] == "J")
     ]
     p_instroom = p_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
     p_dipl = _mbo_dipl_per_jaar(df_dipl_mbo, "INSTELLINGSCODE", code) if df_dipl_mbo is not None else {}
@@ -1388,7 +1392,7 @@ def _rendement_mbo(instelling: str) -> dict | None:
         if not df_instromende.empty:
             self_instr = df_instromende[
                 (df_instromende["INSTELLINGSCODE"] == self_code)
-                & (df_instromende["INSTROOM MBO"] == "J")
+                & (df_instromende[_INSTROOM_MBO] == "J")
             ]
             instroom_per_jaar = self_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
     except Exception:

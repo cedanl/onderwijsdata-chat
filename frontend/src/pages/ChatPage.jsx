@@ -44,7 +44,7 @@ function CopyButton({ text, className }) {
     })
   }
   return (
-    <button className={`copy-btn ${className || ''}`} onClick={handleCopy} title="Kopieer" aria-label="Kopieer">
+    <button type="button" className={`copy-btn ${className || ''}`} onClick={handleCopy} title="Kopieer" aria-label="Kopieer">
       {copied ? (
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
@@ -89,7 +89,7 @@ function ToolStep({ tool }) {
         <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
         {tool.label}
         {tool.snippet && (
-          <button className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
+          <button type="button" className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
             </svg>
@@ -339,7 +339,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
 
         {/* Sidebar */}
         <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`}>
-          <button className="new-chat-btn" onClick={handleClear}>
+          <button type="button" className="new-chat-btn" onClick={handleClear}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -363,7 +363,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
         <div className="chat-main">
           {/* Mobile topbar with hamburger */}
           <div className="chat-mobile-topbar">
-            <button className="hamburger-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">
+            <button type="button" className="hamburger-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
               </svg>
@@ -392,7 +392,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
           <div className="chat-input-area">
             {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
               <div>
-                <button className="make-rapport-btn" onClick={handleMakeRapport}>
+                <button type="button" className="make-rapport-btn" onClick={handleMakeRapport}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
@@ -429,11 +429,11 @@ export default function ChatPage({ openRapport, settings = {} }) {
                   <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />
                 )}
                 {busy ? (
-                  <button className="send-btn" onClick={stop} title="Stop genereren">
+                  <button type="button" className="send-btn" onClick={stop} title="Stop genereren">
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || queueRef.current.length >= 5}>
+                  <button type="button" className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || queueRef.current.length >= 5}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
@@ -441,7 +441,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
                 )}
               </div>
             </div>
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button onClick={() => setShowSources(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 'inherit', color: 'var(--blue-600)', textDecoration: 'underline', cursor: 'pointer' }}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" onClick={() => setShowSources(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 'inherit', color: 'var(--blue-600)', textDecoration: 'underline', cursor: 'pointer' }}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
           </div>
         </div>
       </div>
@@ -506,7 +506,7 @@ function ClarificationButtons({ options, onSelect, busy }) {
         const label = typeof opt === 'string' ? opt : opt.label
         const desc = typeof opt === 'object' ? opt.beschrijving : null
         return (
-          <button key={label} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
+          <button type="button" key={label} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
             {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
           </button>
         )
@@ -520,7 +520,7 @@ function StarterButtons({ questions, onSend, busy }) {
   return (
     <div className="clarification-btns" style={{ marginTop: 8 }}>
       {questions.map((q, i) => (
-        <button key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
+        <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
       ))}
     </div>
   )
@@ -533,7 +533,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
         <div className="message-avatar">{userInitials(settings)}</div>
         <div className="message-bubble">{msg.content}</div>
         {!busy && (
-          <button
+          <button type="button"
             className="resend-btn"
             title="Opnieuw sturen"
             onClick={() => onSend(msg.content)}
@@ -618,7 +618,7 @@ function PlotlyFigure({ figureJson, label }) {
     <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
       {csv && (
-        <button
+        <button type="button"
           className="csv-download-btn"
           title="Download als CSV"
           onClick={() => downloadCsv(csv, (label || 'data').replace(/[^a-zA-Z0-9]/g, '_') + '.csv')}
@@ -677,7 +677,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
         {history.map(conv => (
           <div key={conv.id} className="history-item">
             <div className="history-item-row">
-              <button
+              <button type="button"
                 className="history-btn"
                 onClick={() => onLoad(conv)}
               >
@@ -705,7 +705,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
                 </div>
               </button>
               <div className="history-item-actions">
-                <button
+                <button type="button"
                   className="history-action-icon"
                   title="Hernoemen"
                   onClick={e => startEditing(conv, e)}
@@ -715,7 +715,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </button>
-                <button
+                <button type="button"
                   className="history-action-icon history-action-icon-delete"
                   title="Verwijderen"
                   onClick={e => { e.stopPropagation(); onDelete(conv.id) }}
@@ -736,17 +736,17 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
 function personalizeQuestion(q, instelling) {
   if (!instelling) return q
   return q
-    .replace('ons onderwijsaanbod', `het aanbod van ${instelling}`)
-    .replace('onze instelling', instelling)
-    .replace('mijn lerenden', `de lerenden van ${instelling}`)
-    .replace('bij ons', `bij ${instelling}`)
+    .replaceAll('ons onderwijsaanbod', `het aanbod van ${instelling}`)
+    .replaceAll('onze instelling', instelling)
+    .replaceAll('mijn lerenden', `de lerenden van ${instelling}`)
+    .replaceAll('bij ons', `bij ${instelling}`)
 }
 
 function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="suggested-category">
-      <button className="suggested-category-btn" onClick={() => setOpen(o => !o)}>
+      <button type="button" className="suggested-category-btn" onClick={() => setOpen(o => !o)}>
         <span>{category}</span>
         <svg className={`suggested-category-chevron${open ? ' open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
@@ -756,7 +756,7 @@ function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
         <div className="suggested-list">
           {questions.map(q => {
             const label = personalizeQuestion(q, instelling)
-            return <button key={q} className="suggested-btn" onClick={() => !busy && onSend(label)}>{label}</button>
+            return <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onSend(label)}>{label}</button>
           })}
         </div>
       )}

@@ -266,7 +266,7 @@ async def generate(
     if partial_error:
         await emit({
             "type": "toast",
-            "message": f"Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+            "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
             "level": "warning",
         })
 

@@ -73,7 +73,7 @@ export default function RapportenPage({ settings }) {
               <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
             </svg>
             <p style={{ marginBottom: 16, fontSize: '.95rem' }}>Nog geen rapporten opgeslagen.</p>
-            <button className="navbar-cta" onClick={() => navigate('/chat')}>
+            <button type="button" className="navbar-cta" onClick={() => navigate('/chat')}>
               Ga naar Chat
             </button>
             <p style={{ marginTop: 12, fontSize: '.82rem', color: 'var(--gray-400)' }}>
@@ -97,7 +97,7 @@ export default function RapportenPage({ settings }) {
                   <div className="wb-card-desc">{wb.description}</div>
                   <div className="wb-card-footer">
                     <span className="wb-card-date">{formatDate(wb.createdAt)}</span>
-                    <button
+                    <button type="button"
                       className="wb-delete-btn"
                       title="Verwijder"
                       onClick={e => { e.stopPropagation(); handleDelete(wb.id) }}

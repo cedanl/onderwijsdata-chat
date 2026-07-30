@@ -24,7 +24,7 @@ _TOOL_LIMITS: dict[str, int] = {"search_catalog": 5}
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
 # tool-result messages on the second LLM call. Patch it here.
-if MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/"):
+if MODEL.startswith(("ollama_chat/", "ollama/")):
     from litellm.llms.ollama.chat.transformation import OllamaChatConfig
 
     _orig_transform = OllamaChatConfig.transform_request
