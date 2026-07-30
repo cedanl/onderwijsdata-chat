@@ -9,15 +9,15 @@ from . import store
 # Okabe-Ito colorblind-friendly palette
 _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
 
-_LAYOUT_BASE = dict(
-    font=dict(family="Inter, Arial, sans-serif", size=13),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
-    margin=dict(t=60, b=50, l=70, r=20),
-    legend=dict(bgcolor="rgba(255,255,255,0.8)", bordercolor="#ddd", borderwidth=1),
-)
+_LAYOUT_BASE = {
+    "font": {"family": "Inter, Arial, sans-serif", "size": 13},
+    "plot_bgcolor": "white",
+    "paper_bgcolor": "white",
+    "margin": {"t": 60, "b": 50, "l": 70, "r": 20},
+    "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1},
+}
 
-_AXIS_STYLE = dict(showgrid=True, gridcolor="#f0f0f0", linecolor="#ccc", zeroline=False)
+_AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
 _GEOJSON_URLS = {
     "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
@@ -46,16 +46,16 @@ def _add_trace(fig: go.Figure, chart_type: str, x_vals: list, y_vals: list,
         fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color, **common))
     elif chart_type == "line":
         fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers",
-                                  line=dict(color=color, width=2), marker=dict(size=5), **common))
+                                  line={"color": color, "width": 2}, marker={"size": 5}, **common))
     elif chart_type == "scatter":
         fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers",
-                                  marker=dict(color=color, size=7), **common))
+                                  marker={"color": color, "size": 7}, **common))
     elif chart_type == "histogram":
         fig.add_trace(go.Histogram(x=x_vals, marker_color=color,
                                     opacity=0.7 if name else 0.85, **common))
     elif chart_type == "pie" and not name:
         fig.add_trace(go.Pie(labels=x_vals, values=y_vals,
-                              marker=dict(colors=_PALETTE), hole=0.3))
+                              marker={"colors": _PALETTE}, hole=0.3))
 
 
 def create_plot(
@@ -94,12 +94,12 @@ def create_plot(
         _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0])
 
     layout = dict(
-        title=dict(text=title, font=dict(size=16, color="#222")),
+        title={"text": title, "font": {"size": 16, "color": "#222"}},
         legend_title=color_by or "",
         **_LAYOUT_BASE,
     )
 
-    if chart_type not in ("pie",):
+    if chart_type != "pie":
         layout["xaxis"] = dict(title=x, **_AXIS_STYLE)
         layout["yaxis"] = dict(title=y, tickformat=",", **_AXIS_STYLE)
 
@@ -162,7 +162,7 @@ def create_choropleth_map(
         return f"GeoJSON laden mislukt ({detected}): {exc}", None
 
     try:
-        values = [float(row[value_col]) for row in cleaned]
+        [float(row[value_col]) for row in cleaned]
     except (TypeError, ValueError):
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
@@ -184,9 +184,9 @@ def create_choropleth_map(
         title=title,
     )
     fig.update_layout(
-        font=dict(family="Inter, Arial, sans-serif", size=13),
+        font={"family": "Inter, Arial, sans-serif", "size": 13},
         paper_bgcolor="white",
-        margin=dict(t=60, b=0, l=0, r=0),
+        margin={"t": 60, "b": 0, "l": 0, "r": 0},
         meta={
             "type": "choropleth",
             "geojson_url": _GEOJSON_URLS.get(detected, ""),

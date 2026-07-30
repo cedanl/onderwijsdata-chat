@@ -264,7 +264,7 @@ def test_load_dashboard_not_found_has_suggestions():
 def client(monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
-    import core.auth as auth
+    from core import auth
     importlib.reload(auth)
     import server
     importlib.reload(server)
@@ -371,7 +371,7 @@ def test_regio_ho_has_geslacht_trend():
     assert isinstance(gt, dict)
     assert len(gt) > 0
     # Each year should have VROUW and MAN
-    for jaar, val in gt.items():
+    for _jaar, val in gt.items():
         assert isinstance(val, dict)
         assert "VROUW" in val
         assert "MAN" in val
@@ -394,7 +394,7 @@ def test_dashboard_nationaal_ho():
     sl = result["sectoren_landelijk"]
     assert isinstance(sl, dict)
     assert len(sl) > 0
-    for onderdeel, trend in sl.items():
+    for _onderdeel, trend in sl.items():
         assert isinstance(trend, dict)
         assert all(isinstance(v, int) for v in trend.values())
 

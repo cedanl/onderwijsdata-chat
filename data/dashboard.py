@@ -13,7 +13,8 @@ _BOL_DEELTIJD = "BOL deeltijd"
 import pandas as pd
 from riodata import duo
 
-from .instellingen import get_adres_lookup, get_all as get_all_instellingen, resolve_alias
+from .instellingen import get_adres_lookup, resolve_alias
+from .instellingen import get_all as get_all_instellingen
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,6 @@ _CITY_COORDS: dict[str, tuple[float, float]] = {
     "SITTARD-GELEEN": (51.001, 5.870),
     "GOES": (51.505, 3.889),
     "TERNEUZEN": (51.335, 3.830),
-    "VLISSINGEN": (51.453, 3.573),
     "BERGEN OP ZOOM": (51.495, 4.287),
     "WOERDEN": (52.088, 4.887),
     "NIEUWEGEIN": (52.033, 5.083),
@@ -230,7 +230,7 @@ def _per_peer(
     if subset.empty:
         return {}
     out: dict[str, dict[int, int]] = {}
-    for code, grp in subset.groupby(code_col):
+    for _code, grp in subset.groupby(code_col):
         naam = grp[inst_col].iloc[0]
         series = grp.groupby(jaar_col)[waarde_col].sum().sort_index()
         out[naam] = {int(k): int(v) for k, v in series.items()}
@@ -249,7 +249,7 @@ def _per_peer_mbo_dipl(
         return {}
     year_cols = [c for c in df.columns if c.startswith("DIP")]
     out: dict[str, dict[int, int]] = {}
-    for code, grp in subset.groupby(code_col):
+    for _code, grp in subset.groupby(code_col):
         naam = grp[inst_col].iloc[0]
         jaardata: dict[int, int] = {}
         for col in year_cols:
@@ -272,7 +272,7 @@ def _per_peer_mbo(
     if subset.empty:
         return {}
     out: dict[str, dict[int, int]] = {}
-    for code, grp in subset.groupby(code_col):
+    for _code, grp in subset.groupby(code_col):
         naam = grp[inst_col].iloc[0]
         per_jaar = grp.groupby(jaar_col)[leerweg_cols].sum().sum(axis=1)
         out[naam] = {int(k): int(v) for k, v in per_jaar.items()}
@@ -380,7 +380,7 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
             fig.add_trace(go.Scattergeo(
                 lon=peer_lons, lat=peer_lats, text=peer_texts,
                 mode="markers",
-                marker=dict(size=10, color="#94A3B8", line=dict(width=1, color="white")),
+                marker={"size": 10, "color": "#94A3B8", "line": {"width": 1, "color": "white"}},
                 hovertemplate="%{text}<extra></extra>",
                 name="Concurrenten",
             ))
@@ -391,8 +391,8 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
                 lon=[own[1]], lat=[own[0]], text=[instelling_naam],
                 mode="markers+text",
                 textposition="top right",
-                textfont=dict(size=12, color="#1E40AF"),
-                marker=dict(size=16, color="#2563EB", symbol="star", line=dict(width=1.5, color="white")),
+                textfont={"size": 12, "color": "#1E40AF"},
+                marker={"size": 16, "color": "#2563EB", "symbol": "star", "line": {"width": 1.5, "color": "white"}},
                 hovertemplate="%{text}<extra></extra>",
                 name=instelling_naam,
             ))
@@ -413,28 +413,28 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
 
         fig.update_layout(
             showlegend=True,
-            legend=dict(
-                x=0, y=1, bgcolor="rgba(255,255,255,0.9)",
-                bordercolor="#E2E8F0", borderwidth=1, font=dict(size=11),
-            ),
-            margin=dict(t=10, b=10, l=10, r=10),
+            legend={
+                "x": 0, "y": 1, "bgcolor": "rgba(255,255,255,0.9)",
+                "bordercolor": "#E2E8F0", "borderwidth": 1, "font": {"size": 11},
+            },
+            margin={"t": 10, "b": 10, "l": 10, "r": 10},
             paper_bgcolor="rgba(0,0,0,0)",
             height=340,
-            geo=dict(
-                scope="europe",
-                resolution=50,
-                showcountries=True,
-                countrycolor="#CBD5E1",
-                showcoastlines=False,
-                showland=True,
-                landcolor="#F8FAFC",
-                showocean=True,
-                oceancolor="#EFF6FF",
-                showlakes=False,
-                lataxis=dict(range=lat_range),
-                lonaxis=dict(range=lon_range),
-                bgcolor="rgba(0,0,0,0)",
-            ),
+            geo={
+                "scope": "europe",
+                "resolution": 50,
+                "showcountries": True,
+                "countrycolor": "#CBD5E1",
+                "showcoastlines": False,
+                "showland": True,
+                "landcolor": "#F8FAFC",
+                "showocean": True,
+                "oceancolor": "#EFF6FF",
+                "showlakes": False,
+                "lataxis": {"range": lat_range},
+                "lonaxis": {"range": lon_range},
+                "bgcolor": "rgba(0,0,0,0)",
+            },
         )
         return pio.to_json(fig)
     except Exception:
@@ -517,7 +517,7 @@ def _load_sector_cluster_map() -> dict[str, list[str]]:
 _SECTOR_CLUSTER_MAP: dict[str, list[str]] = _load_sector_cluster_map()
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _uwv_raw_clusters(provincie: str) -> tuple[int, str, dict[str, int]]:
     try:
         from riodata import uwv
@@ -573,17 +573,14 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     }
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _roa_prognose(onderwijs_type: str) -> dict:
     """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau."""
     try:
         from riodata import roa
         df = roa.load("ais2030", "arbeidsmarkt")
         prog = df[df["thema"].str.contains("prognose", case=False, na=False)]
-        if onderwijs_type == "ho":
-            niveaus = ["Bachelor", "Master, doctor"]
-        else:
-            niveaus = ["Mbo4", "Mbo3", "Mbo2"]
+        niveaus = ["Bachelor", "Master, doctor"] if onderwijs_type == "ho" else ["Mbo4", "Mbo3", "Mbo2"]
         subset = prog[
             (prog["aggregatieniveau"] == "opleidingsniveau (ONR2019)")
             & (prog["detailniveau"].isin(niveaus))
@@ -609,16 +606,13 @@ def _roa_prognose(onderwijs_type: str) -> dict:
         return {}
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _roa_schoolverlaters(onderwijs_type: str) -> dict:
     try:
         from riodata import roa
         df = roa.load("ais2030", "arbeidsmarkt")
         sv = df[df["thema"] == "Schoolverlatersinformatie (SIS 2024)"]
-        if onderwijs_type == "ho":
-            niveaus = ["Bachelor", "Master, doctor"]
-        else:
-            niveaus = ["Mbo4", "Mbo3", "Mbo2"]
+        niveaus = ["Bachelor", "Master, doctor"] if onderwijs_type == "ho" else ["Mbo4", "Mbo3", "Mbo2"]
         subset = sv[
             (sv["aggregatieniveau"] == "opleidingsniveau (ONR2019)") &
             (sv["detailniveau"].isin(niveaus))
@@ -1439,7 +1433,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
         jaren = sorted(hu_dipl["DIPLOMAJAAR"].unique())[-3:]
         recent = hu_dipl[hu_dipl["DIPLOMAJAAR"].isin(jaren)]
         gem = recent.groupby(["DIPLOMAJAAR", "ONDERDEEL"])["AANTAL_GEDIPLOMEERDEN"].sum().groupby("ONDERDEEL").mean()
-        gps = {str(k): int(round(v)) for k, v in gem.items() if v > 0}
+        gps = {str(k): round(v) for k, v in gem.items() if v > 0}
 
     return {
         "type": "ho", "provincie": provincie or "Onbekend",
@@ -1524,7 +1518,7 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     totaal_vac = sum(vpc.values())
 
     if not totaal_dipl or not totaal_vac:
-        result["match_score"] = {s: None for s in gps_final}
+        result["match_score"] = dict.fromkeys(gps_final)
         return result
 
     match_score: dict[str, str | None] = {}

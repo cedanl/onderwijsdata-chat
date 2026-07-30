@@ -16,7 +16,6 @@ import re
 
 import pytest
 from dotenv import load_dotenv
-
 from riodata import duo
 
 # Ground truth: bereken de werkelijke sommen met pandas
@@ -81,7 +80,7 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
     numbers_in_answer = set(re.findall(r"\d[\d.]+", answer.replace(".", "")))
 
     matched = 0
-    for year, expected in truth.items():
+    for _year, expected in truth.items():
         if str(expected) in numbers_in_answer:
             matched += 1
 

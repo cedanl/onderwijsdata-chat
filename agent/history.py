@@ -15,5 +15,5 @@ def trim(history: list[dict]) -> tuple[list[dict], bool]:
         while tail and tail[0]["role"] == "tool":
             tail = tail[1:]
     if first_user and first_user not in tail:
-        return [first_user] + tail, True
+        return [first_user, *tail], True
     return tail, True

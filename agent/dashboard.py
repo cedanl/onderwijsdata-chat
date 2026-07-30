@@ -8,27 +8,27 @@ potential of the available data.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import plotly.io as pio
 
-from core.config import MAX_TOKENS, MODEL
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
 from agent.stream import accumulate_stream
-from tools import dispatch, LABELS
-from tools import store
+from core.config import MAX_TOKENS, MODEL
+from tools import LABELS, dispatch, store
 from tools.schemas import (
-    TOOL_SCHEMAS,
-    TOOL_GET_DUO_DATA,
+    TOOL_CREATE_PLOT,
     TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
     TOOL_QUERY_DATA,
-    TOOL_CREATE_PLOT,
+    TOOL_SCHEMAS,
 )
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
@@ -333,10 +333,8 @@ def _parse_spec_from_response(
 ) -> DashboardSpec:
     """Parse the LLM response into a DashboardSpec."""
     spec_data: dict = {}
-    try:
+    with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
-    except (json.JSONDecodeError, ValueError):
-        pass
 
     recipe = _build_recipe_from_store()
     topic = context.get("topic", "Dashboard")

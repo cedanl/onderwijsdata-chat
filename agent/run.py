@@ -4,13 +4,13 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-import litellm
 import plotly.io as pio
 
 from core.config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS, dispatch
 from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.snippet import generate as _generate_snippet
+
 from .history import trim
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
@@ -31,7 +31,7 @@ if MODEL.startswith(("ollama_chat/", "ollama/")):
 
     def _patched_transform(self, model, messages, optional_params, litellm_params, headers):
         result = _orig_transform(self, model, messages, optional_params, litellm_params, headers)
-        for orig, out in zip(messages, result.get("messages", [])):
+        for orig, out in zip(messages, result.get("messages", []), strict=False):
             if not isinstance(orig, dict):
                 continue
             raw_tools = orig.get("tool_calls")
@@ -117,8 +117,7 @@ async def _handle_clarify_scope(
 
     # Persist the clarification exchange back to messages so the next
     # turn has the tool_calls context (prevents re-asking same question).
-    for entry in history[initial_history_len:]:
-        messages.append(entry)
+    messages.extend(history[initial_history_len:])
     session["_clarified"] = True
 
     # Cancel the open message_start before sending the clarification card.
@@ -241,7 +240,7 @@ async def run(
 
             runnable = [(i, tc) for i, tc in enumerate(tool_calls) if tc["id"] not in blocked and _call_key(tc) not in call_cache]
             new_results = await asyncio.gather(*[_call_tool(tc, emit) for _, tc in runnable])
-            for (i, tc), res in zip(runnable, new_results):
+            for (_i, tc), res in zip(runnable, new_results, strict=False):
                 call_cache[_call_key(tc)] = res
 
             for tc in tool_calls:
