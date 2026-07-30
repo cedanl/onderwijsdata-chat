@@ -93,15 +93,15 @@ def create_plot(
         y_vals = [row.get(y) for row in data]
         _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0])
 
-    layout = dict(
-        title={"text": title, "font": {"size": 16, "color": "#222"}},
-        legend_title=color_by or "",
+    layout = {
+        "title": {"text": title, "font": {"size": 16, "color": "#222"}},
+        "legend_title": color_by or "",
         **_LAYOUT_BASE,
-    )
+    }
 
     if chart_type != "pie":
-        layout["xaxis"] = dict(title=x, **_AXIS_STYLE)
-        layout["yaxis"] = dict(title=y, tickformat=",", **_AXIS_STYLE)
+        layout["xaxis"] = {"title": x, **_AXIS_STYLE}
+        layout["yaxis"] = {"title": y, "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)
     fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by})
