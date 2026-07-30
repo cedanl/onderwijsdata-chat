@@ -38,21 +38,25 @@ def test_result_message_contains_datapoint_count():
 @pytest.mark.parametrize("chart_type", ["bar", "line", "scatter", "histogram"])
 def test_chart_types_produce_figure(chart_type):
     _, fig = create_plot(_ROWS, chart_type, "jaar", "waarde", "T")
+    assert fig is not None
     assert len(fig.data) > 0
 
 
 def test_pie_chart():
     _, fig = create_plot(_ROWS, "pie", "jaar", "waarde", "T")
+    assert fig is not None
     assert len(fig.data) > 0
 
 
 def test_color_by_creates_one_trace_per_group():
     _, fig = create_plot(_ROWS_GROUPED, "bar", "jaar", "waarde", "T", color_by="groep")
+    assert fig is not None
     assert len(fig.data) == 2
 
 
 def test_color_by_line_chart():
     _, fig = create_plot(_ROWS_GROUPED, "line", "jaar", "waarde", "T", color_by="groep")
+    assert fig is not None
     assert len(fig.data) == 2
 
 

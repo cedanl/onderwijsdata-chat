@@ -298,7 +298,7 @@ def _mbo_peer_eerstejaars(
     code_col: str,
     inst_col: str,
     peer_codes: frozenset,
-) -> tuple[dict[int, int], dict[str, dict[int, int]]]:
+) -> tuple[dict[int, float], dict[str, dict[int, int]]]:
     """Return (benchmark_eerstejaars, peers_eerstejaars) for MBO peers."""
     if df_instromende is None or df_instromende.empty:
         return {}, {}
@@ -1296,7 +1296,7 @@ def _rendement_ho(instelling: str) -> dict | None:
 
     hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
     dipl_series = hu_dipl.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum() if not hu_dipl.empty else pd.Series(dtype=int)
-    dipl = {int(k): int(v) for k, v in dipl_series.items()}
+    dipl = {int(k): int(v) for k, v in dipl_series.items()}  # ty: ignore[invalid-argument-type]
 
     cohorten = _pseudo_cohorten(instroom, dipl)
     result["pseudo_cohorten"] = cohorten

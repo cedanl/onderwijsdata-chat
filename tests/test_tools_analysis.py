@@ -16,6 +16,7 @@ def test_simple_sum():
         code="result = {'totaal': int(df['N'].sum())}",
         data_key="test:an",
     )
+    assert isinstance(result, str)
     assert json.loads(result)["totaal"] == 300
 
 
@@ -29,6 +30,7 @@ def test_groupby_in_script():
         code="result = df.groupby('JAAR')['N'].sum().reset_index().to_dict(orient='records')",
         data_key="test:an",
     )
+    assert isinstance(result, str)
     parsed = json.loads(result)
     assert "data_key" in parsed
     rows = parsed["rijen"]
@@ -55,6 +57,7 @@ def test_dataframe_result_converted():
         code="result = df[['A']]",
         data_key="test:an",
     )
+    assert isinstance(result, str)
     parsed = json.loads(result)
     assert "data_key" in parsed
     assert len(parsed["rijen"]) == 2
@@ -62,47 +65,56 @@ def test_dataframe_result_converted():
 
 def test_no_data_key_uses_empty_namespace():
     result = run_analysis(code="result = {'sum': 1 + 2}")
+    assert isinstance(result, str)
     assert json.loads(result)["sum"] == 3
 
 
 def test_missing_data_key_returns_error():
     result = run_analysis(code="result = 1", data_key="bestaat:niet")
+    assert isinstance(result, str)
     assert "niet gevonden" in result.lower() or "bestaat:niet" in result
 
 
 def test_no_result_set_returns_error():
     _put("test:an", [{"A": 1}])
     result = run_analysis(code="x = df['A'].sum()", data_key="test:an")
+    assert isinstance(result, str)
     assert "result" in result.lower()
 
 
 def test_syntax_error_returns_traceback():
     result = run_analysis(code="result = !!!")
+    assert isinstance(result, str)
     assert "SyntaxError" in result or "syntax" in result.lower()
 
 
 def test_runtime_error_returns_traceback():
     result = run_analysis(code="result = 1 / 0")
+    assert isinstance(result, str)
     assert "ZeroDivisionError" in result or "division" in result.lower()
 
 
 def test_blocked_import():
     result = run_analysis(code="import os\nresult = 1")
+    assert isinstance(result, str)
     assert "import" in result.lower() or "niet toegestaan" in result.lower()
 
 
 def test_blocked_open():
     result = run_analysis(code="result = open('/etc/passwd').read()")
+    assert isinstance(result, str)
     assert "open" in result.lower() or "niet toegestaan" in result.lower()
 
 
 def test_blocked_exec():
     result = run_analysis(code="exec('x=1')\nresult = 1")
+    assert isinstance(result, str)
     assert "exec" in result.lower() or "niet toegestaan" in result.lower()
 
 
 def test_blocked_dunder_builtins():
     result = run_analysis(code="result = __builtins__")
+    assert isinstance(result, str)
     assert "niet toegestaan" in result.lower() or "__builtins__" in result
 
 
@@ -112,4 +124,5 @@ def test_store_get_available():
     result = run_analysis(
         code="other = store_get('test:b')\nresult = {'v': int(other['V'].iloc[0])}",
     )
+    assert isinstance(result, str)
     assert json.loads(result)["v"] == 2

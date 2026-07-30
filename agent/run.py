@@ -48,7 +48,7 @@ if MODEL.startswith(("ollama_chat/", "ollama/")):
                 out["tool_calls"] = converted
         return result
 
-    OllamaChatConfig.transform_request = _patched_transform  # ty: ignore[invalid-assignment]
+    OllamaChatConfig.transform_request = _patched_transform
 
 
 async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:

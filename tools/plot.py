@@ -66,7 +66,7 @@ def create_plot(
     title: str = "",
     color_by: str | None = None,
     data_key: str | None = None,
-) -> tuple[str, go.Figure]:
+) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
         if df is None:
@@ -136,7 +136,7 @@ def create_choropleth_map(
     title: str = "",
     level: str = "auto",
     data_key: str | None = None,
-) -> tuple[str, go.Figure]:
+) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
         if df is None:

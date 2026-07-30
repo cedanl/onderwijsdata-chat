@@ -249,6 +249,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
 
     except WebSocketDisconnect:
         if _task_busy(current_task):
+            assert current_task is not None
             current_task.cancel()
             stop_event = session.get("stop_event")
             if stop_event:

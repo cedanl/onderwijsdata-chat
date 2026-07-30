@@ -153,6 +153,7 @@ def test_dashboard_ho_not_found():
 def test_dashboard_ho_has_geslacht():
     from data.dashboard import load_dashboard_ho
     result = load_dashboard_ho("Hogeschool Utrecht")
+    assert result is not None
     assert "geslacht" in result
 
 
@@ -170,6 +171,7 @@ def test_dashboard_mbo_found():
 def test_dashboard_mbo_has_leerwegen():
     from data.dashboard import load_dashboard_mbo
     result = load_dashboard_mbo("ROC Mondriaan")
+    assert result is not None
     assert any(k in result["sectoren"] for k in ("BBL", "BOL voltijd", "BOL deeltijd"))
 
 
@@ -182,6 +184,7 @@ def test_dashboard_mbo_not_found():
 def test_dashboard_mbo_has_gediplomeerden():
     from data.dashboard import load_dashboard_mbo
     result = load_dashboard_mbo("ROC Mondriaan")
+    assert result is not None
     assert "gediplomeerden" in result
 
 
