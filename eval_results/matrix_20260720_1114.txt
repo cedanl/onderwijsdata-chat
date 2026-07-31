@@ -1,0 +1,136 @@
+╔══════════════════════════════════════════════════════════╗
+║  EVAL MATRIX — 20260720_1114                              ║
+╚══════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VRAAG [q1] (1-simpel): Zoek datasets over voortijdig schoolverlaters
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▶ [opencode/deepseek-v4-flash-free] q1
+  Opgeslagen: eval_results/20260720_1114_opencode_deepseek-v4-flash-free_q1.txt
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"voortijdig schoolverlaters"}
+Hier zijn de gevonden datasets over **voortijdig schoolverlaters (VSV)** — allemaal via CBS Open Data:
+
+**Kern VSV-datasets:**
+
+| # | Dataset | CBS-ID | Periode | Geo-niveau |
+|---|---------|--------|---------|------------|
+| 1 | VSV naar geslacht, onderwijssoort en herkomst | **85368NED** | 2012/'13–2023/'24 | landelijk |
+| 2 | VSV naar geslacht en woonregio | **84780NED** | 2012/'13–2023/'24 | landelijk, provincie, gemeente, landsdeel |
+| 3 | Jongeren (18-25) VSV naar geslacht en herkomst | **85298NED** | 2003–2025 | landelijk |
+| 4 | VSV terugkeer in onderwijs | **85948NED** | 2007/'08–2021/'22 | landelijk |
+| 5 | VSV arbeidsmarktpositie | **85859NED** | 2007/'08–2022/'23 | landelijk |
+| 6 | VSV arbeidskenmerken | **85860NED** | 2007/'08–2022/'23 | landelijk |
+| 7 | VSV uitkeringen | **85861NED** | 2007/'08–2022/'23 | landelijk |
+| 8 | VSV bedrijfstak | **85862NED** | 2007/'08–2022/'23 | landelijk |
+| 9 | VSV uurloon | **84534NED** | 2007/'08–2022/'23 | landelijk |
+
+**Ook relevant:**
+- VO doorstroom/uitstroom (**85566NED**) — gemeenteniveau
+- MBO door- en uitstroom (**85519NED**)
+- MBO-uitstromers arbeidskenmerken (**85698NED**) en uitkeringen (**85700NED**)
+- ROA AIS 2030: arbeidsmarktprognoses schoolverlaters (landelijk)
+
+**Dataset met regionale data:** **84780NED** (VSV naar woonregio) — ondersteunt provincie, gemeente en landsdeel.
+
+Wil ik een van deze datasets openen voor details? **84780NED** (regionaal) of **85368NED** (onderwijssoort) zijn goede startpunten.
+
+▶ [azure_ai/claude-haiku-4-5] q1
+  Opgeslagen: eval_results/20260720_1114_azure_ai_claude-haiku-4-5_q1.txt
+
+▶ azure_ai/claude-haiku-4-5
+  [1] 🔧 search_catalog({"query": "voortijdig schoolverlaters", "source": "both", "top_n": 15})
+  [2] tekst: **Gevonden datasets over voortijdig schoolverlaters (VSV):**
+
+Er zijn 10 CBS-datasets beschikbaar:
+
+| Dataset | ID | Per…
+
+════════════════════════════════════════════════════════════
+MODEL: azure_ai/claude-haiku-4-5
+VRAAG: Zoek datasets over voortijdig schoolverlaters
+TOOLS (1): search_catalog
+ITERATIES: 2  TIJD: 12.5s
+ANTWOORD (1810 chars):
+**Gevonden datasets over voortijdig schoolverlaters (VSV):**
+
+Er zijn 10 CBS-datasets beschikbaar:
+
+| Dataset | ID | Periode | Onderwerpen | Niveaus |
+|---------|--|----|---|---|
+| **VSV; geslacht, onderwijssoort en herkomst** | 85368NED | 2012/'13–2023/'24 | Aantallen VSV naar geslacht, onderwijssoort (VO/MBO), herkomstland | Landelijk |
+| **Jongeren; VSV, geslacht, herkomst** | 85298NED | 2013–2025 | Jongeren 18–25 jaar met VSV naar geslacht, herkomst, geboorteland ouders | Landelijk |
+| **VSV
+════════════════════════════════════════════════════════════
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VRAAG [q2] (2-medium): Hoeveel eerstejaars studenten had Hogeschool Utrecht in het laatste schooljaar? Geef het totaal.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▶ [opencode/deepseek-v4-flash-free] q2
+  Opgeslagen: eval_results/20260720_1114_opencode_deepseek-v4-flash-free_q2.txt
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"eerstejaars studenten hogeschool","source":"both"}
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"p02ho1ejrs"}
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p02ho1ejrs","resource":0}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","columns":["STUDIEJAAR","INSTELLINGSNAAM_ACTUEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"max_rows":500}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL__in":["Hogeschool Utrecht"]},"max_rows":500}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0","code":"result = df['INSTELLINGSNAAM_ACTUEEL'].unique().tolist()"}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0","code":"result = sorted(df['STUDIEJAAR'].unique().tolist())"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"columns":["INSTELLINGSNAAM_ACTUEEL","GESLACHT","ONDERDEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"max_rows":500}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","columns":["STUDIEJAAR","INSTELLINGSNAAM_ACTUEEL","TYPE_HOGER_ONDERWIJS","GESLACHT","ONDERDEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"max_rows":500}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0:80c2608e","code":"result = {\n    \"totaal_excl_suppressed\": int(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] >= 0]['AANTAL_EERSTEJAARS_INGESCHREVENEN'].sum()),\n    \"totaal_incl_suppressed\": int(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] >= 0]['AANTAL_EERSTEJAARS_INGESCHREVENEN'].sum()) + 2,  # -1 appears 2x, suppressie voor kleine aantallen\n    \"rijen_met_suppressed\": len(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] == -1])\n}"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"group_by":["INSTELLINGSNAAM_ACTUEEL"],"aggregate":{"AANTAL_EERSTEJAARS_INGESCHREVENEN":"sum"}}
+Hogeschool Utrecht had **6.386 eerstejaars** in studiejaar **2025/2026** (exclusief 2 kleine aantallen die om privacyredenen zijn onderdrukt).
+
+▶ [azure_ai/claude-haiku-4-5] q2
+  Opgeslagen: eval_results/20260720_1114_azure_ai_claude-haiku-4-5_q2.txt
+
+▶ azure_ai/claude-haiku-4-5
+  [1] tekst: Ik heb nog wat duidelijkheid nodig.
+  [1] 🔧 clarify_scope({"vraag": "Welk onderwijsniveau bedoel je?", "opties": [{"label": "HBO (hoger beroepsonderwijs)", "a)
+  [1] → auto-clarify: "Welk onderwijsniveau bedoel je?" → "HBO (hoger beroepsonderwijs)"
+  [2] 🔧 search_catalog({"query": "Hogeschool Utrecht HBO eerstejaars instroom", "source": "duo", "top_n": 10})
+  [2] 🔧 search_catalog({"query": "HBO instroom eerstejaars inschrijvingen", "source": "duo", "top_n": 10})
+  [3] tekst: Perfect — de dataset "Eerstejaars ingeschrevenen hoger onderwijs" (`p02ho1ejrs`) is geschikt. Ik controleer eerst de kol…
+  [3] 🔧 dataset_details({"dataset_id": "p02ho1ejrs"})
+  [4] tekst: Nu laad ik de HBO-data met geslacht (meest gedetailleerd) en filter op Hogeschool Utrecht en het meest recente schooljaa…
+  [4] 🔧 get_duo_data({"dataset_id": "p02ho1ejrs", "resource": 0})
+  [5] tekst: Ik zie dat de data tot 2023 gaat. Controleer ik eerst welke jaren beschikbaar zijn en of Hogeschool Utrecht in deze data…
+  [5] 🔧 query_data({"data_key": "duo:p02ho1ejrs:0", "columns": ["STUDIEJAAR", "INSTELLINGSNAAM_ACTUEEL"], "max_rows": 5)
+  [6] tekst: Hogeschool Utrecht staat niet in deze dataset. Dit is de HBO-gegevens van de noordelijke en oostelijke hogescholen. Laat…
+  [6] 🔧 get_duo_data({"dataset_id": "p02ho1ejrs", "resource": 3})
+  [7] tekst: Dezelfde instellingen. Dit bestand bevat echter geen Hogeschool Utrecht. Dit suggereert dat Hogeschool Utrecht in een an…
+  [7] 🔧 search_catalog({"query": "Ingeschrevenen hoger onderwijs Hogeschool Utrecht HBO eerstejaars", "source": "duo", "top)
+  [8] tekst: Laat mij proberen via RIO naar Hogeschool Utrecht te zoeken om de BRIN-code te vinden, en dan die in de data te gebruike…
+  [8] 🔧 get_rio_data({"resource": "onderwijslocaties", "filters": {"naamOrganisatorischeEenheid": "Hogeschool Utrecht"}})
+  [9] tekst: Laat mij een andere resource proberen — organisatorische-eenheden.
+  [9] 🔧 get_rio_data({"resource": "organisatorische-eenheden", "filters": {"naam": "Hogeschool Utrecht"}})
+  [10] tekst: Laat mij zoeken in CBS naar HBO-ingeschrevenen met instelling.
+  [10] 🔧 search_catalog({"query": "CBS HBO ingeschrevenen instellingen", "source": "cbs", "top_n": 5})
+  [11] tekst: Deze CBS-datasets hebben geen instelling als dimensie. Dit vermoeden dat de DUO-data die ik eerder vond slechts een subs…
+
+════════════════════════════════════════════════════════════
+MODEL: azure_ai/claude-haiku-4-5
+VRAAG: Hoeveel eerstejaars studenten had Hogeschool Utrecht in het laatste schooljaar? Geef het totaal.
+TOOLS (11): clarify_scope → search_catalog → search_catalog → dataset_details → get_duo_data → query_data → get_duo_data → search_catalog → get_rio_data → get_rio_data → search_catalog
+ITERATIES: 11  TIJD: 33.3s
+CLARIFY: "Welk onderwijsniveau bedoel je?" → "HBO (hoger beroepsonderwijs)"
+ANTWOORD (1265 chars):
+Deze CBS-datasets hebben geen instelling als dimensie. Dit vermoeden dat de DUO-data die ik eerder vond slechts een subset bevat (noordelijke/oostelijke instellingen).
+
+**Bevinding:** Hogeschool Utrecht staat niet in de DUO-dataset "Eerstejaars ingeschrevenen hoger onderwijs" (`p02ho1ejrs`). Deze dataset bevat slechts eerstejaars data van 14 HBO-instellingen (vooral in het noorden en oosten van Nederland), niet alle HBO-instellingen in Nederland.
+
+Gezien de beperkingen van de beschikbare open da
+════════════════════════════════════════════════════════════
+
+
+╔══════════════════════════════════════════════════════════╗
+║  RESULTATEN: eval_results/matrix_20260720_1114.txt
+║  Individueel: eval_results/20260720_1114_*.txt
+╚══════════════════════════════════════════════════════════╝

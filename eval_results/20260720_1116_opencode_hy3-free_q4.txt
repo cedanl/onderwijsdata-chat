@@ -1,0 +1,44 @@
+[0m
+> build · hy3-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"hbo ingeschreven studenten woonprovincie herkomst","source":"duo"}
+Ik ga zoeken naar data over herkomst van HBO-studenten per woonregio.
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"p01hoinges"}
+De dataset `p01hoinges` (Ingeschrevenen hoger onderwijs) bevat woonprovincie. Ik bekijk de details.
+[0m⚙ [0monderwijsdata_search_catalog {"query":"hbo ingeschrevenen woongemeente woonprovincie student naar herkomst instelling","source":"duo"}
+Belangrijk: de `PROVINCIENAAM`/`GEMEENTENAAM` in deze dataset is de locatie van de **instelling**, niet de woonprovincie van de student. Hogeschool Utrecht zit in Utrecht. Deze dataset toont dus niet waar studenten wonen. Ik zoek naar data met woongemeente/woonprovincie van de student.
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"p03hoinschr"}
+De relevante dataset is `p03hoinschr` (Inschrijvingen hoger onderwijs) — die bevat inschrijvingen naar woongemeente/woonprovincie. Ik controleer welke resource woonprovincie bevat.
+[0m⚙ [0monderwijsdata_search_catalog {"query":"hoger onderwijs ingeschrevenen naar postcode woonplaats vooropleiding","source":"both","top_n":10}
+In deze DUO-datasets is de provincie/gemeente de **vestigingsplaats van de instelling**, niet de woonplaats van de student. Er is geen woongemeente-kolom. 
+
+DUO publiceert echter wel "ho-inschrijvingen naar postcode/woongemeente" apart. Ik zoek daar gericht naar.
+Belangrijk punt: de DUO open-data HO-datasets bevatten géén woonprovincie van de student — de provincie/gemeente daarin is de vestigingsplaats van de instelling. Er is geen open dataset die per instelling de woonprovincie van individuele studenten uitsplitst.
+
+Ik verifieer dit door de HBO-inschrijvingen te laden en te checken of "Hogeschool Utrecht" er überhaupt in voorkomt (Utrecht ontbrak in de voorbeeldwaarden).
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p03hoinschr","resource":"inschrijvingengeslhbo"}
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p03hoinschr","resource":"0"}
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p03hoinschr","resource":"Inschrijvingen hoger beroepsonderwijs inclusief geslacht"}
+[0m⚙ [0monderwijsdata_search_catalog {"query":"ho ingeschrevenen naar herkomst woonregio provincie van herkomst instelling relatie","source":"duo","top_n":20}
+Deze dataset gaat over vestigingsgemeente/provincie van de instelling, niet woonprovincie van de student. Dit is niet wat je vraagt. Er is één DUO-dataset die wel de **woonregio** koppelt aan de instelling. Ik zoek daar gericht op.
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"85701NED"}
+Er is geen DUO open-data of RIO dataset die studenten per instelling naar woonprovincie uitsplitst. Wel is er de CBS-dataset **85701NED** "Leerlingen en studenten; onderwijssoort, woonregio" die deelname per woonregio geeft — maar die splitst niet naar instelling.
+
+Kortom: er bestaat in deze catalogus geen open bron die "lerenden van Hogeschool Utrecht per woonprovincie" direct geeft. Ik controleer de CBS-dataset 85701NED om zeker te zijn dat er geen instellingsdimensie is.
+Bevestigd: 85701NED heeft geen instellingsdimensie — alleen onderwijssoort (bijv. hbo) per woonregio, niet per specifieke hogeschool.
+
+## Conclusie
+
+In de beschikbare open databronnen (DUO, CBS, RIO) bestaat **geen dataset die studenten van een specifieke instelling (Hogeschool Utrecht) uitsplitst naar hun woonprovincie**:
+
+- **DUO HO-datasets** (`p01hoinges`, `p03hoinschr`, etc.) bevatten wel instelling + aantallen, maar de provincie/gemeente daarin is de **vestigingsplaats van de instelling**, niet de woonplaats van de student. Er is geen woonregio-kolom.
+- **CBS 85701NED** heeft wel woonregio + onderwijssoort (hbo/wo), maar **geen instellingsdimensie** — je kunt er niet op Hogeschool Utrecht filteren.
+- **RIO** bevat alleen instellings-, locatie- en opleidingsregisters, geen studentaantallen.
+
+De koppeling "welke instelling ↔ waar woont de student" wordt door DUO/CBS niet als open microdata gepubliceerd (privacy).
+
+**Alternatieven die ik wél kan leveren:**
+1. HBO-deelname (alle instellingen samen) per woonprovincie, laatste schooljaar — via CBS 85701NED.
+2. Aantal ingeschrevenen bij Hogeschool Utrecht per opleiding/richting (zonder woonregio) — via DUO.
+
+Welke wil je?

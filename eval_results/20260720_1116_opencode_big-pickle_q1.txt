@@ -1,0 +1,42 @@
+[0m
+> build · big-pickle
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"voortijdig schoolverlaters","top_n":15}
+Hier zijn **15 datasets** gevonden over voortijdig schoolverlaters (VSV):
+
+### Kern-datasets (VSV cijfers)
+
+| # | Dataset | Bron | CBS ID | periode | Dimensies |
+|---|---------|------|--------|---------|-----------|
+| 1 | **Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst** | CBS | `85368NED` | 2012/'13–2023/'24 | Geslacht, Onderwijssoort, Herkomstland |
+| 2 | **Jongeren 18-25; VSV, geslacht, herkomst** | CBS | `85298NED` | 2003–2025 | Geslacht, Geboorteland (ouders), Herkomstland |
+| 3 | **Voortijdig schoolverlaters; geslacht, woonregio** | CBS | `84780NED` | 2012/'13–2023/'24 | Geslacht, Regio (provincie/gemeente) |
+
+### Achtergrond & opvolging
+
+| # | Dataset | CBS ID | periode | Focus |
+|---|---------|--------|---------|-------|
+| 4 | **Terugkeer in onderwijs na schoolverlaten** | `85948NED` | 2007/'08–2021/'22 | Terugkeer, startkwalificatie |
+| 5 | **Arbeidsmarktpositie na verlaten onderwijs** | `85859NED` | 2007/'08–2022/'23 | Arbeidsmarktpositie VSV-ers |
+| 6 | **Arbeidskenmerken na verlaten onderwijs** | `85860NED` | 2007/'08–2022/'23 | Werkuren, arbeidskenmerken |
+| 7 | **Uitkeringen na verlaten onderwijs** | `85861NED` | 2007/'08–2022/'23 | Uitkeringsafhankelijkheid |
+| 8 | **Bedrijfstak na verlaten onderwijs** | `85862NED` | 2007/'08–2022/'23 | Sector waar VSV-ers werken |
+| 9 | **Uurloon na verlaten onderwijs** | `84534NED` | 2007/'08–2022/'23 | Inkomensverschillen |
+
+### MBO specifiek
+
+| # | Dataset | CBS ID | Focus |
+|---|---------|--------|-------|
+| 10 | **MBO door- en uitstroom** | `85519NED` | Door-/uitstroom MBO |
+| 11 | **Uitstromers mbo; arbeidskenmerken** | `85698NED` | Arbeidsmarkt MBO-uitstromers |
+| 12 | **Uitstromers mbo; uitkering** | `85700NED` | Uitkeringen MBO-uitstromers |
+
+### VO & overig
+
+| # | Dataset | Bron | Focus |
+|---|---------|------|-------|
+| 13 | **VO en VSO; doorstroom en uitstroom** | CBS | Doorstroom VO-leerlingen |
+| 14 | **AIS tot 2030** | ROA | Arbeidsmarktprognoses t/m 2030 |
+| 15 | **AIS tot 2028** | ROA | Arbeidsmarktprognoses (oudere editie) |
+
+Wil je meer details over een specifieke dataset? Dan kan ik `dataset_details` aanroepen om kolommen en dimensiewaarden op te halen.

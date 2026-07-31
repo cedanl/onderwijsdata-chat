@@ -1,0 +1,27 @@
+[0m
+> build · hy3-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"voortijdig schoolverlaters","source":"both"}
+Gevonden. De belangrijkste datasets over voortijdig schoolverlaters (VSV):
+
+**Kern-VSV datasets (CBS):**
+- **85368NED** — VSV naar geslacht, onderwijssoort en herkomst (2012/'13–2023/'24, VO/MBO)
+- **84780NED** — VSV naar geslacht en woonregio (2012/'13–2023/'24, provincie/gemeente/landsdeel)
+- **85298NED** — Jongeren 18–25 jaar VSV naar geslacht, herkomst (2003–2025)
+
+**Aansluitend / vervolg (CBS):**
+- **85948NED** — Terugkeer in onderwijs na schoolverlaten (2007/'08–2021/'22)
+- **85859NED** — Arbeidsmarktpositie na verlaten onderwijs
+- **85860NED** — Arbeidskenmerken na verlaten onderwijs
+- **85861NED** — Uitkeringen na verlaten onderwijs
+- **85862NED** — Bedrijfstak bij VSV met werk
+- **84534NED** — Uurloon van VSV-ers als werknemer
+
+**Doorstroom/uitstroom (VSV-gerelateerd):**
+- **85566NED** — VO/VSO doorstroom en uitstroom
+- **85519NED** — MBO door- en uitstroom
+
+**Arbeidsmarktprognoses (ROA):**
+- **AIS tot 2030** — schoolverlatersstatistieken per opleidingsniveau (landelijke gemiddelden)
+
+Wil je een specifieke dataset laden of analyseren (bijv. VSV-trend per onderwijssoort of VSV per regio)?

@@ -1,0 +1,44 @@
+[0m
+> build · nemotron-3-ultra-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"top_n":15,"source":"both","query":"voortijdig schoolverlaters"}
+Hier zijn de belangrijkste datasets over voortijdig schoolverlaters (VSV):
+
+## CBS Datasets (CBS Open Data)
+
+| Dataset | CBS ID | Periode | Dimensies | Meetwaarden |
+|---------|--------|---------|-----------|-------------|
+| **Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst** | 85368NED | 2012/'13 - 2024/'25 | Geslacht, Onderwijssoort, Herkomstland | Aantal VSV, percentage VSV, Leerlingen |
+| **Jongeren; voortijdig schoolverlaters, geslacht, herkomst** | 85298NED | 2003 - 2025 | Geslacht, Herkomstland, Geboorteland ouders | Jongeren 18-25 jaar |
+| **Voortijdig schoolverlaters; geslacht, woonregio** | 84780NED | 2012/'13 - 2024/'25 | Geslacht, Regio (gemeente/provincie) | Aantal VSV, percentage VSV |
+
+### Thema-specifieke datasets:
+- **Terugkeer in onderwijs na schoolverlaten** (85948NED) – terugkeer VSV-ers, startkwalificatie
+- **Arbeidsmarktpositie na verlaten onderwijs** (85859NED) – arbeidsmarktpositie VSV-ers
+- **Arbeidskenmerken na verlaten onderwijs** (85860NED) – werkuren, arbeidskenmerken
+- **Uitkeringen na verlaten onderwijs** (85861NED) – bijstand, WW
+- **Bedrijfstak na verlaten onderwijs** (85862NED) – sectoren waar VSV-ers werken
+- **Uurloon VSV-ers** (84534NED) – uurloon vs gediplomeerden
+
+## MBO-specifiek
+- **MBO door- en uitstroom** (85519NED) – uitstroom zonder diploma, herkomst
+- **MBO-uitstromers arbeidsmarkt** (85698NED) – met/zonder diploma
+- **MBO-uitstromers uitkeringen** (85700NED)
+
+## VO-doorstroom (VO/VSO)
+- **VO en VSO doorstroom en uitstroom** (85566NED) – uitstroom per herkomst/geslacht
+
+## ROA Arbeidsmarktinformatiesysteem
+- **AIS tot 2030** (ROA/DataverseNL) – arbeidsmarktprognoses per opleiding/beroep, schoolverlatersonderzoeken
+
+---
+
+**Welke dataset past bij je vraag?**
+- **Aantallen VSV per regio/herkomst/geslacht** → 84780NED (regionaal) of 85368NED (onderwijssoort/herkomst)
+- **Arbeidsmarktaansluiting VSV-ers** → 85859NED, 85860NED, 85862NED
+- **Terugkeer in onderwijs/startkwalificatie** → 85948NED
+- **MBO-uitstroom zonder diploma** → 85519NED, 85698NED
+- **Trends 2003-2025 (jongeren 18-25)** → 85298NED
+- **Arbeidsmarktprognoses voor schoolverlaters** → ROA AIS
+
+Welke dataset(s) wil je bekijken of downloaden? Ik kan de data via OData ophalen.

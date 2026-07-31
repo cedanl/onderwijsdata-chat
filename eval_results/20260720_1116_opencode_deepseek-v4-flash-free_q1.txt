@@ -1,0 +1,21 @@
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"voortijdig schoolverlaters","source":"both"}
+Ik vond **9 CBS-datasets** over voortijdig schoolverlaters (VSV):
+
+| Dataset | CBS ID | Beschrijving |
+|---|---|---|
+| **VSV naar geslacht, onderwijssoort en herkomst** | `85368NED` | Aantal VSV'ers in VO/MBO, landelijk |
+| **Jongeren; VSV naar geslacht en herkomst** | `85298NED` | VSV'ers 18-25 jaar, landelijk |
+| **VSV naar geslacht en woonregio** | `84780NED` | VSV'ers per regio/gemeente/provincie |
+| **VSV terugkeer in onderwijs** | `85948NED` | Herinstroom na schoolverlaten |
+| **VSV arbeidsmarktpositie** | `85859NED` | Werkstatus na verlaten onderwijs |
+| **VSV arbeidskenmerken** | `85860NED` | Werkuren e.d. na verlaten onderwijs |
+| **VSV uitkeringen** | `85861NED` | Uitkeringsafhankelijkheid |
+| **VSV bedrijfstak** | `85862NED` | In welke sectoren werken VSV'ers |
+| **VSV uurloon** | `84534NED` | Loon van werkende VSV'ers |
+
+Daarnaast zijn er indirect relevante sets zoals **MBO door-/uitstroom** (`85519NED`) en **VO door-/uitstroom** (`85566NED`).
+
+Wil je details van een specifieke dataset inzien of data laden?

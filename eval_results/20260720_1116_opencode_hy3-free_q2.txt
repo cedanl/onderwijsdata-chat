@@ -1,0 +1,14 @@
+[0m
+> build · hy3-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"eerstejaars studenten Hogeschool Utrecht instroom","source":"duo"}
+De juiste dataset is "Eerstejaars ingeschrevenen hoger onderwijs" (`p02ho1ejrs`). Laad die data.
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p02ho1ejrs"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"aggregate":{"AANTAL_EERSTEJAARS_INGESCHREVENEN":"sum"}}
+Nu filter ik op Hogeschool Utrecht in het laatste studiejaar en tel het aantal eerstejaars.
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR__in":[2024,2025]},"group_by":["STUDIEJAAR"],"aggregate":{"AANTAL_EERSTEJAARS_INGESCHREVENEN":"sum"}}
+Het laatste beschikbare studiejaar is **2025/'26**.
+
+**Hogeschool Utrecht had in studiejaar 2025/'26 in totaal 6.384 eerstejaars ingeschrevenen.**
+
+(Ter vergelijking: in 2024/'25 waren dat 6.546.)

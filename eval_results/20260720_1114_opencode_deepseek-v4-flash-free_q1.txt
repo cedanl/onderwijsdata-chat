@@ -1,0 +1,29 @@
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"voortijdig schoolverlaters"}
+Hier zijn de gevonden datasets over **voortijdig schoolverlaters (VSV)** — allemaal via CBS Open Data:
+
+**Kern VSV-datasets:**
+
+| # | Dataset | CBS-ID | Periode | Geo-niveau |
+|---|---------|--------|---------|------------|
+| 1 | VSV naar geslacht, onderwijssoort en herkomst | **85368NED** | 2012/'13–2023/'24 | landelijk |
+| 2 | VSV naar geslacht en woonregio | **84780NED** | 2012/'13–2023/'24 | landelijk, provincie, gemeente, landsdeel |
+| 3 | Jongeren (18-25) VSV naar geslacht en herkomst | **85298NED** | 2003–2025 | landelijk |
+| 4 | VSV terugkeer in onderwijs | **85948NED** | 2007/'08–2021/'22 | landelijk |
+| 5 | VSV arbeidsmarktpositie | **85859NED** | 2007/'08–2022/'23 | landelijk |
+| 6 | VSV arbeidskenmerken | **85860NED** | 2007/'08–2022/'23 | landelijk |
+| 7 | VSV uitkeringen | **85861NED** | 2007/'08–2022/'23 | landelijk |
+| 8 | VSV bedrijfstak | **85862NED** | 2007/'08–2022/'23 | landelijk |
+| 9 | VSV uurloon | **84534NED** | 2007/'08–2022/'23 | landelijk |
+
+**Ook relevant:**
+- VO doorstroom/uitstroom (**85566NED**) — gemeenteniveau
+- MBO door- en uitstroom (**85519NED**)
+- MBO-uitstromers arbeidskenmerken (**85698NED**) en uitkeringen (**85700NED**)
+- ROA AIS 2030: arbeidsmarktprognoses schoolverlaters (landelijk)
+
+**Dataset met regionale data:** **84780NED** (VSV naar woonregio) — ondersteunt provincie, gemeente en landsdeel.
+
+Wil ik een van deze datasets openen voor details? **84780NED** (regionaal) of **85368NED** (onderwijssoort) zijn goede startpunten.

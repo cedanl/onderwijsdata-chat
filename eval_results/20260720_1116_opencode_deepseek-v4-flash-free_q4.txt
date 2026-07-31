@@ -1,0 +1,23 @@
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"hbo studenten provincie hogeschool utrecht"}
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p01hoinges"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSNAAM_ACTUEEL__in":["Hogeschool Utrecht"]},"max_rows":10}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0:58cf3818","columns":["STUDIEJAAR"],"max_rows":10}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSCODE_ACTUEEL":"25DW"},"group_by":["STUDIEJAAR"],"aggregate":{"AANTAL_INGESCHREVENEN":"sum"},"max_rows":10}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSCODE_ACTUEEL":"25DW","STUDIEJAAR":2025},"group_by":["PROVINCIENAAM"],"aggregate":{"AANTAL_INGESCHREVENEN":"sum"},"max_rows":20}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSCODE_ACTUEEL":"25DW","STUDIEJAAR":2021},"group_by":["PROVINCIENAAM"],"aggregate":{"AANTAL_INGESCHREVENEN":"sum"},"max_rows":20}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSCODE_ACTUEEL":"25DW","STUDIEJAAR":2025},"max_rows":100,"columns":["PROVINCIENAAM","GEMEENTENAAM","AANTAL_INGESCHREVENEN"]}
+De ingeschrevenen van **Hogeschool Utrecht** (BRIN-code 25DW) in het laatste schooljaar **2025/'26** komen uit:
+
+| Woonprovincie | Totaal ingeschrevenen |
+|---|---|
+| Utrecht | 34.939 |
+| Zuid-Holland | 68 |
+| Noord-Holland | 47 |
+| **Totaal** | **35.054** |
+
+Het overgrote deel (~99,7%) woont in de provincie Utrecht zelf. De aantallen voor Noord- en Zuid-Holland zijn klein; voor andere provincies zijn de aantallen vanwege privacy (geheimhouding) niet apart gepubliceerd (of nul).
+
+Wil je hier een grafiek of kaart van laten maken?

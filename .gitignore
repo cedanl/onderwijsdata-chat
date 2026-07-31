@@ -34,6 +34,5 @@ demo/demo_met_narratie.mp4
 TESTPLAN.md
 eval.py
 eval_matrix.sh
-eval_results/
 mcp_server.py
 test-results/

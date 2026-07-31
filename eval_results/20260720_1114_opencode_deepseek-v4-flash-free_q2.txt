@@ -1,0 +1,15 @@
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"eerstejaars studenten hogeschool","source":"both"}
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"p02ho1ejrs"}
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p02ho1ejrs","resource":0}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","columns":["STUDIEJAAR","INSTELLINGSNAAM_ACTUEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"max_rows":500}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL__in":["Hogeschool Utrecht"]},"max_rows":500}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0","code":"result = df['INSTELLINGSNAAM_ACTUEEL'].unique().tolist()"}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0","code":"result = sorted(df['STUDIEJAAR'].unique().tolist())"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"columns":["INSTELLINGSNAAM_ACTUEEL","GESLACHT","ONDERDEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"max_rows":500}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","columns":["STUDIEJAAR","INSTELLINGSNAAM_ACTUEEL","TYPE_HOGER_ONDERWIJS","GESLACHT","ONDERDEEL","AANTAL_EERSTEJAARS_INGESCHREVENEN"],"filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"max_rows":500}
+[0m⚙ [0monderwijsdata_run_analysis {"data_key":"duo:p02ho1ejrs:0:80c2608e","code":"result = {\n    \"totaal_excl_suppressed\": int(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] >= 0]['AANTAL_EERSTEJAARS_INGESCHREVENEN'].sum()),\n    \"totaal_incl_suppressed\": int(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] >= 0]['AANTAL_EERSTEJAARS_INGESCHREVENEN'].sum()) + 2,  # -1 appears 2x, suppressie voor kleine aantallen\n    \"rijen_met_suppressed\": len(df[df['AANTAL_EERSTEJAARS_INGESCHREVENEN'] == -1])\n}"}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p02ho1ejrs:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","STUDIEJAAR":2025},"group_by":["INSTELLINGSNAAM_ACTUEEL"],"aggregate":{"AANTAL_EERSTEJAARS_INGESCHREVENEN":"sum"}}
+Hogeschool Utrecht had **6.386 eerstejaars** in studiejaar **2025/2026** (exclusief 2 kleine aantallen die om privacyredenen zijn onderdrukt).

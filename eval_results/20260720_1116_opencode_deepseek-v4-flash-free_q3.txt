@@ -1,0 +1,28 @@
+[0m
+> build · deepseek-v4-flash-free
+[0m
+[0m⚙ [0monderwijsdata_clarify_scope {"vraag":"Welke vorm van deelname bedoelt u?","opties":[{"label":"Ingeschreven studenten","beschrijving":"Totaal aantal ingeschreven studenten per jaar (deelnemers)","aanbevolen":true},{"label":"Nieuwe instroom","beschrijving":"Aantal nieuwe studenten dat instroomt per jaar"}]}
+[0m⚙ [0monderwijsdata_clarify_scope {"vraag":"Welke vorm van deelname bedoelt u?","opties":[{"label":"Ingeschreven studenten","beschrijving":"Totaal aantal ingeschreven studenten per jaar","aanbevolen":true},{"label":"Nieuwe instroom","beschrijving":"Aantal nieuwe studenten dat instroomt per jaar"}]}
+[0m⚙ [0monderwijsdata_search_catalog {"query":"hogescholen voltijd studenten instroom","source":"duo"}
+[0m⚙ [0monderwijsdata_search_catalog {"query":"Hogeschool Utrecht studenten ingeschreven","source":"duo"}
+Ik zoek direct naar relevante datasets in de catalogus.
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"p01hoinges"}
+De dataset "Ingeschrevenen hoger onderwijs" (DUO) is relevant. Ik bekijk de kolommen.
+Ik zie dat er een resource is met opleidingsvorm (voltijd/deeltijd/duaal). Ik laad die.
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p01hoinges","resource":3}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:3","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht","OPLEIDINGSVORM":"VT"},"columns":["STUDIEJAAR","OPLEIDINGSVORM","TYPE_HOGER_ONDERWIJS","ONDERDEEL","AANTAL_INGESCHREVENEN"],"max_rows":500}
+Ik zie OPLEIDINGSVORM met "VT" (voltijd). Ik query de data voor Hogeschool Utrecht, voltijd, per jaar.
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:3:420a84ec","group_by":["STUDIEJAAR"],"aggregate":{"AANTAL_INGESCHREVENEN":"sum"}}
+Ik heb data voor 2021-2025. Nu aggregeer ik per jaar voor de grafiek.
+[0m⚙ [0monderwijsdata_create_plot {"data_key":"duo:p01hoinges:3:420a84ec:4e4a67e6","chart_type":"line","x":"STUDIEJAAR","y":"AANTAL_INGESCHREVENEN","title":"Voltijdstudenten Hogeschool Utrecht (2021-2025)"}
+De grafiek is gemaakt. Hier zijn de cijfers:
+
+| Studiejaar | Voltijdstudenten HU |
+|---|---|
+| 2021/2022 | 28.355 |
+| 2022/2023 | 27.904 |
+| 2023/2024 | 27.441 |
+| 2024/2025 | 27.135 |
+| 2025/2026 | 26.370 |
+
+Het aantal voltijdstudenten aan Hogeschool Utrecht is de afgelopen 5 jaar **gedaald van ~28.400 naar ~26.400** — een daling van ongeveer **7%**.

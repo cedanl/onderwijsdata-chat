@@ -1,0 +1,35 @@
+[0m
+> build · hy3-free
+[0m
+[0m⚙ [0monderwijsdata_search_catalog {"query":"Hogeschool Utrecht voltijdonderwijs deelname instroom","source":"both"}
+Voor deelname aan voltijdonderwijs bij een specifieke instelling (Hogeschool Utrecht) is de DUO-dataset het meest geschikt, omdat die per instelling uitsplitst. Ik kijk naar de DUO ingeschrevenen-ho dataset.
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p02ho1ejrs"}
+[0m⚙ [0monderwijsdata_search_catalog {"query":"ingeschrevenen hoger onderwijs voltijd deeltijd leerweg instelling","source":"duo"}
+Deze DUO-dataset bevat eerstejaars per instelling, maar heeft geen "leerweg/voltijd" kolom. Voor voltijds vs deeltijd moet ik kijken naar een dataset met die dimensie. Laat me de andere DUO HO datasets en de CBS HO-ingeschrevenen bekijken.
+De "Ingeschrevenen hoger onderwijs" (p01hoinges) dataset bevat waarschijnlijk de leerweg (voltijd/deeltijd). Laat me die laden.
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p01hoinges"}
+Ook deze DUO-dataset heeft geen leerweg (voltijd/deeltijd) kolom. De CBS HO-ingeschrevenen dataset (85421NED) had ook geen leerweg. De "Inschrijvingen in het hoger onderwijs" (p03hoinschr) kan een leerweg-kolom hebben. Laat me die controleren.
+[0m⚙ [0monderwijsdata_get_duo_data {"dataset_id":"p03hoinschr"}
+[0m⚙ [0monderwijsdata_dataset_details {"dataset_id":"85421NED"}
+Geen van de DUO HO-datasets bevat een leerweg (voltijd/deeltijd) kolom. De CBS "Hoger onderwijs; eerste- en ouderejaarsstudenten" (85421NED) had ook geen leerweg-dimensie. Laat me de dataset-details van de CBS HO-ingeschrevenen checken om zeker te weten of er een leerweg-dimensie bestaat.
+[0m⚙ [0monderwijsdata_clarify_scope {"vraag":"Geen enkele HO-dataset (DUO/CBS) onderscheidt leerweg (voltijd/deeltijd) per instelling. Hoe wil je verder?","opties":[{"label":"Totale deelname HU (laatste 5 jaar)","beschrijving":"Grafiek van totaal ingeschrevenen (of eerstejaars) bij Hogeschool Utrecht over studiejaar 2021/22 t/m 2025/26.","aanbevolen":true},{"label":"Voltijd bij HO landelijk","beschrijving":"CBS-data met leerweg bestaat wél voor MBO; voor HO niet. Wel voltijd-deelname tonen op landelijk niveau indien gewenst."}]}
+De CBS HO-dataset heeft ook geen leerweg-dimensie. Geen van de beschikbare HO-datasets onderscheidt voltijd/deeltijd. 
+
+Ik moet dit aan de gebruiker verduidelijken met een scope-vraag: wil je de totale deelname (ingeschrevenen/instroom) bij Hogeschool Utrecht, of specifiek voltijd? Aangezien "voltijd" niet als dimensie beschikbaar is in de HO-data, stel ik de vraag.
+[0m⚙ [0monderwijsdata_clarify_scope {"vraag":"Geen enkele HO-dataset (DUO/CBS) onderscheidt leerweg (voltijd/deeltijd) per instelling. Hoe wil je verder?","opties":[{"label":"Totale deelname HU (laatste 5 jaar)","beschrijving":"Grafiek van totaal ingeschrevenen bij Hogeschool Utrecht over studiejaar 2021/22 t/m 2025/26.","aanbevolen":true},{"label":"Voltijd HO landelijk","beschrijving":"Toon voltijd-deelname op landelijk HO-niveau (CBS heeft leerweg alleen voor MBO, niet HO)."}]}
+De clarify-scope tool is niet beschikbaar. Ik ga ervan uit dat je de **totale deelname bij Hogeschool Utrecht** bedoelt (voltijd is in HO-data niet als dimensie beschikbaar). Ik haal de HU-ingeschrevenen op via de ingeschrevenen-dataset.
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0","filters":{"INSTELLINGSNAAM_ACTUEEL":"Hogeschool Utrecht"},"columns":["STUDIEJAAR","TYPE_HOGER_ONDERWIJS","AANTAL_INGESCHREVENEN"],"max_rows":500}
+[0m⚙ [0monderwijsdata_query_data {"data_key":"duo:p01hoinges:0:aefeb152","aggregate":{"AANTAL_INGESCHREVENEN":"sum"},"filters":{"AANTAL_INGESCHREVENEN__gte":"0"},"group_by":["STUDIEJAAR","TYPE_HOGER_ONDERWIJS"],"max_rows":500}
+Ik aggregeer per studiejaar (en type) en negeer -1 (geheim/absent). Dan maak ik de grafiek.
+Nu de grafiek: totaal én per type, over studiejaar 2021/22 t/m 2025/26.
+[0m⚙ [0monderwijsdata_create_plot {"chart_type":"line","data_key":"duo:p01hoinges:0:aefeb152:f6ea8f93","x":"STUDIEJAAR","y":"AANTAL_INGESCHREVENEN","title":"Deelname Hogeschool Utrecht (ingeschrevenen per studiejaar, laatste 5 jaar)","color_by":"TYPE_HOGER_ONDERWIJS"}
+Grafiek is aangemaakt. Korte samenvatting van de ontwikkeling bij **Hogeschool Utrecht** (ingeschrevenen per 1 oktober, studiejaar 2021/22 t/m 2025/26):
+
+- **Totaal**: 2021/22 ≈ 36.842 → 2025/26 ≈ 35.058 (lichte daling van ~5%).
+- **Bachelor**: 33.442 → 29.892 (daling, het grootste deel van de krimp).
+- **Master**: 2.488 → 2.840 (stijging ~14%).
+- **Associate degree**: 912 → 2.326 (forse stijging ~2,5×).
+
+**Belangrijke kanttekening**: Geen enkele HO-dataset (DUO noch CBS) onderscheidt *leerweg* (voltijd/deeltijd) per instelling — die dimensie bestaat alleen voor MBO. De grafiek toont daarom de **totale deelname** per opleidingstype. Bij Hogeschool Utrecht (een hbo-instelling) is het overgrote deel van de bachelor/deeltijd echter feitelijk voltijds; deeltijd-masters zijn beperkt.
+
+Wil je in plaats daarvan de **eerstejaars-instroom** (p02ho1ejrs) of een **landelijke voltijd-vergelijking op MBO-niveau**?

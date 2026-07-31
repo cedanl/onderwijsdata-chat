@@ -1,0 +1,25 @@
+
+▶ azure_ai/claude-haiku-4-5
+  [1] 🔧 search_catalog({"query": "voortijdig schoolverlaters", "source": "both", "top_n": 15})
+  [2] tekst: **Gevonden datasets over voortijdig schoolverlaters (VSV):**
+
+Er zijn 10 CBS-datasets beschikbaar:
+
+| Dataset | ID | Per…
+
+════════════════════════════════════════════════════════════
+MODEL: azure_ai/claude-haiku-4-5
+VRAAG: Zoek datasets over voortijdig schoolverlaters
+TOOLS (1): search_catalog
+ITERATIES: 2  TIJD: 12.5s
+ANTWOORD (1810 chars):
+**Gevonden datasets over voortijdig schoolverlaters (VSV):**
+
+Er zijn 10 CBS-datasets beschikbaar:
+
+| Dataset | ID | Periode | Onderwerpen | Niveaus |
+|---------|--|----|---|---|
+| **VSV; geslacht, onderwijssoort en herkomst** | 85368NED | 2012/'13–2023/'24 | Aantallen VSV naar geslacht, onderwijssoort (VO/MBO), herkomstland | Landelijk |
+| **Jongeren; VSV, geslacht, herkomst** | 85298NED | 2013–2025 | Jongeren 18–25 jaar met VSV naar geslacht, herkomst, geboorteland ouders | Landelijk |
+| **VSV
+════════════════════════════════════════════════════════════
