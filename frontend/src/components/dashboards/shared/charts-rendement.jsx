@@ -1,5 +1,6 @@
 import { Bar } from 'react-chartjs-2'
 import { horizontalBarOpts } from './chart-opts'
+import { COLOR_EIGEN } from '../../../constants'
 import { ChartCard } from './shell'
 
 // ─── Rendement vergelijking ───────────────────────────────────────────────────
@@ -38,7 +39,7 @@ export function buildRendementVergelijkingData(data, instelling, dark) {
       label: 'Rendement %',
       data: entries.map(e => e.rendement),
       backgroundColor: entries.map(e =>
-        e.eigen ? '#2563EB' : e.rendement >= 70 ? (dark ? '#064E3B' : '#D1FAE5') : (dark ? '#475569' : '#E2E8F0')
+        e.eigen ? COLOR_EIGEN : e.rendement >= 70 ? (dark ? '#064E3B' : '#D1FAE5') : (dark ? '#475569' : '#E2E8F0')
       ),
       borderRadius: 4,
     }],

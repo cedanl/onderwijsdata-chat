@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import {
   useRegioDashboardData, useRendementDashboardData,
   DashboardShell, SectionHeader, RegioBadges, KaartSection,
@@ -88,8 +89,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               regioWaarde={bmInges ? Math.round(bmInges) : null}
               regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
               sparkValues={c.ingesEntries.map(([, v]) => v)}
-              color="#2563EB"
-              icon={iconPersons('#2563EB')}
+              color={COLOR_EIGEN}
+              icon={iconPersons(COLOR_EIGEN)}
             />
           )}
           {c.lastEj && (
@@ -99,8 +100,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               regioWaarde={bmEj ? Math.round(bmEj) : null}
               regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
               sparkValues={c.ejEntries.map(([, v]) => v)}
-              color="#22C55E"
-              icon={iconChart('#22C55E')}
+              color={COLOR_EERSTEJAARS}
+              icon={iconChart(COLOR_EERSTEJAARS)}
             />
           )}
           {c.lastDipl && (
@@ -110,8 +111,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               regioWaarde={bmDipl ? Math.round(bmDipl) : null}
               regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
               sparkValues={c.diplEntries.map(([, v]) => v)}
-              color="#0D9488"
-              icon={iconDiploma('#0D9488')}
+              color={COLOR_DIPLOM}
+              icon={iconDiploma(COLOR_DIPLOM)}
             />
           )}
           {c.pctVrouw != null && (

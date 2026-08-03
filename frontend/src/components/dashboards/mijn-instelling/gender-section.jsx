@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
+import { COLOR_DIPLOM } from '../../../constants'
 import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
 
 function pctVrouwFromGeslacht(g) {
@@ -22,8 +23,8 @@ function buildTrendLineData(geslachtTrend) {
     datasets: [{
       label: '% vrouw',
       data: entries.map(([, v]) => v),
-      borderColor: '#0D9488',
-      backgroundColor: '#0D948818',
+      borderColor: COLOR_DIPLOM,
+      backgroundColor: COLOR_DIPLOM + '18',
       fill: true,
       tension: 0.3,
       pointRadius: 4,
@@ -47,7 +48,7 @@ function buildPeerGenderData(peersGeslacht, ownInstelling, ownPct, dark) {
     datasets: [{
       label: '% vrouw',
       data: rows.map(r => r.pct),
-      backgroundColor: rows.map(r => r.eigen ? '#0D9488' : (dark ? '#475569' : '#CBD5E1')),
+      backgroundColor: rows.map(r => r.eigen ? COLOR_DIPLOM : (dark ? '#475569' : '#CBD5E1')),
       borderRadius: 4,
     }],
   }

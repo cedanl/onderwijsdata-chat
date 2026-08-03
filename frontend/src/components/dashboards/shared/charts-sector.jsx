@@ -28,7 +28,7 @@ export function buildLeerwegenData(leerwegen) {
   if (!leerwegen || Object.keys(leerwegen).length < 2) return null
   const jaren = Object.keys(leerwegen).sort((a, b) => a - b)
   const tracks = ['BBL', 'BOL voltijd', 'BOL deeltijd']
-  const colors = ['#2563EB', '#0D9488', '#F59E0B']
+  const colors = SECTOR_COLORS.slice(0, 3)
   // Guard: require at least one year with BBL/BOL data
   const hasBblBol = jaren.some(j => tracks.some(t => (leerwegen[j]?.[t] ?? 0) > 0))
   if (!hasBblBol) return null
