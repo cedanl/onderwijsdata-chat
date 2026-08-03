@@ -4,7 +4,7 @@ import { Sparkline } from './shell'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
 
-export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, pctVrouw, _totaalGeslacht, vrouw, man, laatsteJaar }) {
+export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, pctVrouw, vrouw, man, laatsteJaar }) {
   return (
     <div className="kpi-grid">
       {lastInges && (

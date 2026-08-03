@@ -162,7 +162,8 @@ def create_choropleth_map(
         return f"GeoJSON laden mislukt ({detected}): {exc}", None
 
     try:
-        [float(row[value_col]) for row in cleaned]
+        for row in cleaned:
+            float(row[value_col])
     except (TypeError, ValueError):
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
