@@ -248,8 +248,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
     except WebSocketDisconnect:
-        if _task_busy(current_task):
-            assert current_task is not None
+        if current_task is not None and _task_busy(current_task):
             current_task.cancel()
             stop_event = session.get("stop_event")
             if stop_event:

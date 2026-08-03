@@ -1433,7 +1433,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
         jaren = sorted(hu_dipl["DIPLOMAJAAR"].unique())[-3:]
         recent = hu_dipl[hu_dipl["DIPLOMAJAAR"].isin(jaren)]
         gem = recent.groupby(["DIPLOMAJAAR", "ONDERDEEL"])["AANTAL_GEDIPLOMEERDEN"].sum().groupby("ONDERDEEL").mean()
-        gps = {str(k): round(v) for k, v in gem.items() if v > 0}
+        gps = {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64) returns numpy scalar, not Python int
 
     return {
         "type": "ho", "provincie": provincie or "Onbekend",
