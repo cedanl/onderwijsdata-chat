@@ -29,6 +29,7 @@ export default function DashboardPage({ settings }) {
       if (prev?.id === pendingId) return prev
       return BUILTINS.find(b => b.id === pendingId) ?? prev
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingId])
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function DashboardPage({ settings }) {
     return (
       <div className="wb-gallery-page">
         <div className="wb-gallery-header">
-          <button className="wb-back-btn" onClick={() => setShowCreator(false)} style={{ border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--gray-600)', fontWeight: 600, fontSize: '.88rem', cursor: 'pointer' }}>
+          <button type="button" className="wb-back-btn" onClick={() => setShowCreator(false)} style={{ border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--gray-600)', fontWeight: 600, fontSize: '.88rem', cursor: 'pointer' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
               <polyline points="15 18 9 12 15 6" />
             </svg>

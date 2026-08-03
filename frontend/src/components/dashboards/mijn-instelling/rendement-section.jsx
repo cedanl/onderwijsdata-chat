@@ -4,7 +4,7 @@ import { CHART_COLORS } from '../../../constants'
 import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
-  const last = cohorten[cohorten.length - 1]
+  const last = cohorten.at(-1)
   return (
     <div className="kpi-card">
       <div className="kpi-label">Instroom {last.instroom_jaar}</div>
@@ -42,7 +42,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
     const jaren = [...new Set([
       ...Object.keys(rendementPerJaar),
       ...Object.keys(benchmarkRendement || {}),
-    ])].sort()
+    ])].sort((a, b) => a.localeCompare(b, 'nl'))
 
     const datasets = [{
       label: instelling,

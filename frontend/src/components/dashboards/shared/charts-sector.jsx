@@ -28,7 +28,7 @@ export function buildLeerwegenData(leerwegen) {
   if (!leerwegen || Object.keys(leerwegen).length < 2) return null
   const jaren = Object.keys(leerwegen).sort((a, b) => a - b)
   const tracks = ['BBL', 'BOL voltijd', 'BOL deeltijd']
-  const colors = ['#2563EB', '#0D9488', '#F59E0B']
+  const colors = SECTOR_COLORS.slice(0, 3)
   // Guard: require at least one year with BBL/BOL data
   const hasBblBol = jaren.some(j => tracks.some(t => (leerwegen[j]?.[t] ?? 0) > 0))
   if (!hasBblBol) return null
@@ -107,7 +107,7 @@ export function SectorTrendChart({ data, dark }) {
     <ChartCard
       title="Inschrijvingen per sector over tijd"
       subtitle="Stacked — welke faculteiten groeien of krimpen?"
-      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
     >
       <div style={{ height: 260 }}>
         <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
@@ -152,7 +152,7 @@ export function LeerwegenChart({ data, dark }) {
     <ChartCard
       title="Leerweg-verdeling over tijd"
       subtitle="MBO leerweg-verdeling: BBL / BOL voltijd / BOL deeltijd per jaar"
-      actions={<button style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
     >
       <div style={{ height: 260 }}>
         <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />

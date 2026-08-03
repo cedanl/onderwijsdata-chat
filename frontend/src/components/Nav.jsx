@@ -33,7 +33,7 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling }) {
 
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
           {user && (
-            <button
+            <button type="button"
               onClick={onOpenSettings}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
@@ -54,7 +54,7 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling }) {
             </button>
           )}
           {onLogout && (
-            <button className="navbar-cta" onClick={onLogout} style={{ background: 'var(--gray-100)', color: 'var(--gray-700)' }}>
+            <button type="button" className="navbar-cta" onClick={onLogout} style={{ background: 'var(--gray-100)', color: 'var(--gray-700)' }}>
               Uitloggen
             </button>
           )}

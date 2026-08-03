@@ -2,8 +2,7 @@ import json
 import logging
 from unittest.mock import patch
 
-from tools.catalog import search_catalog, dataset_details
-
+from tools.catalog import dataset_details, search_catalog
 
 # --- Fix #37: archief-filter ---
 

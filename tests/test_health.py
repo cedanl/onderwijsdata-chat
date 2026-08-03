@@ -1,5 +1,4 @@
 import importlib
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +9,7 @@ def client(monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     # Reload auth first (reads env at module level), then server (imports from auth)
-    import core.auth as auth
+    from core import auth
     importlib.reload(auth)
     import server
     importlib.reload(server)

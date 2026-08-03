@@ -1,8 +1,8 @@
 import json
 from unittest.mock import patch
 
-from tools.cbs import get_cbs_data
 from tools import store
+from tools.cbs import get_cbs_data
 
 
 def _mock_data(dataset_id, **params):

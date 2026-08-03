@@ -13,7 +13,7 @@ async function apiFetch(path, options = {}) {
   if (res.status === 401) throw Object.assign(new Error('Unauthorized'), { status: 401 })
   if (!res.ok) {
     let detail = `API ${res.status}`
-    try { const body = await res.json(); if (body.error) detail = body.error } catch {}
+    try { const body = await res.json(); if (body.error) detail = body.error } catch { /* noop */ }
     throw new Error(detail)
   }
   return res.json()

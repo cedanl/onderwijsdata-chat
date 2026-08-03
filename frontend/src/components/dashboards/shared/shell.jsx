@@ -1,3 +1,5 @@
+import { COLOR_EIGEN } from '../../../constants'
+
 // ─── Shell ──────────────────────────────────────────────────────────────────
 
 export function DashboardShell({ instelling, children, loading, data, error }) {
@@ -50,7 +52,7 @@ export function DashboardShell({ instelling, children, loading, data, error }) {
   return children
 }
 
-export function Sparkline({ values, color = '#2563EB', width = 80, height = 28 }) {
+export function Sparkline({ values, color = COLOR_EIGEN, width = 80, height = 28 }) {
   const pts = values.filter(v => v != null)
   if (pts.length < 2) return null
   const min = Math.min(...pts)

@@ -114,7 +114,6 @@ export function useRegioComputed(data, instelling) {
       totaalRegio: totaalRegioEntry?.[1] ?? null,
       totaalRegioJaar: totaalRegioEntry?.[0] ?? data?.laatste_jaar,
       pctVrouw: totaalGeslacht > 0 ? ((vrouw / totaalGeslacht) * 100).toFixed(1) : null,
-      totaalGeslacht,
       vrouw, man,
       rendement,
       ingesLineData,

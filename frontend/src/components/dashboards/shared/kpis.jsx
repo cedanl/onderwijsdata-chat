@@ -1,9 +1,10 @@
 import { fmt } from './hooks'
+import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import { Sparkline } from './shell'
 
 // ─── KPI components ─────────────────────────────────────────────────────────
 
-export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, pctVrouw, totaalGeslacht, vrouw, man, laatsteJaar }) {
+export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegio, totaalRegioJaar, nInstellingen, pctVrouw, vrouw, man, laatsteJaar }) {
   return (
     <div className="kpi-grid">
       {lastInges && (
@@ -11,12 +12,12 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
           <div className="kpi-card-header">
             <span className="kpi-label">Ingeschrevenen {lastInges[0]}–{Number(lastInges[0])+1}</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             </div>
           </div>
           <div className="kpi-value">{fmt(lastInges[1])}</div>
           {ingesDelta != null && <div className={`kpi-trend ${ingesDelta >= 0 ? 'up' : 'down'}`}>{ingesDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ingesDelta))} t.o.v. vorig jaar</div>}
-          <Sparkline values={ingesEntries.map(([,v]) => v)} color="#2563EB" />
+          <Sparkline values={ingesEntries.map(([,v]) => v)} color={COLOR_EIGEN} />
         </div>
       )}
       {totaalRegio != null && (
@@ -64,12 +65,12 @@ export function InstroomKpis({ lastEj, ejDelta, ejEntries }) {
         <div className="kpi-card-header">
           <span className="kpi-label">Eerstejaars {lastEj[0]}–{Number(lastEj[0])+1}</span>
           <div className="kpi-icon" style={{ background: '#F0FDF4' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EERSTEJAARS} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
         </div>
         <div className="kpi-value">{fmt(lastEj[1])}</div>
         {ejDelta != null && <div className={`kpi-trend ${ejDelta >= 0 ? 'up' : 'down'}`}>{ejDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(ejDelta))} t.o.v. vorig jaar</div>}
-        <Sparkline values={ejEntries.map(([,v]) => v)} color="#22C55E" />
+        <Sparkline values={ejEntries.map(([,v]) => v)} color={COLOR_EERSTEJAARS} />
       </div>
     </div>
   )
@@ -83,19 +84,19 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement })
         <div className="kpi-card-header">
           <span className="kpi-label">Gediplomeerden {lastDipl[0]}</span>
           <div className="kpi-icon" style={{ background: 'var(--teal-50)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_DIPLOM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
           </div>
         </div>
         <div className="kpi-value">{fmt(lastDipl[1])}</div>
         {diplDelta != null && <div className={`kpi-trend ${diplDelta >= 0 ? 'up' : 'down'}`}>{diplDelta >= 0 ? '↑' : '↓'} {fmt(Math.abs(diplDelta))} t.o.v. vorig jaar</div>}
-        <Sparkline values={diplEntries.map(([,v]) => v)} color="#0D9488" />
+        <Sparkline values={diplEntries.map(([,v]) => v)} color={COLOR_DIPLOM} />
       </div>
       {rendement != null && (
         <div className="kpi-card">
           <div className="kpi-card-header">
             <span className="kpi-label">Ratio diploma/inschrijving</span>
             <div className="kpi-icon" style={{ background: 'var(--blue-50)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
           <div className="kpi-value" style={{ color: 'var(--blue-600)' }}>{rendement}%</div>

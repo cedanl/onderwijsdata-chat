@@ -138,7 +138,7 @@ def search_catalog(
         logger.warning("search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
         return f"Geen resultaten gevonden voor '{query}'."
 
-    results = active if active else archive_fallback
+    results = active or archive_fallback
     results.sort(key=lambda x: -x[0])
     hits = [r for _, r in results]
 

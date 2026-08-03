@@ -1,5 +1,6 @@
 import { Line, Bar } from 'react-chartjs-2'
 import { horizontalBarOpts, darkColors } from './chart-opts'
+import { COLOR_EIGEN, COLOR_DIPLOM } from '../../../constants'
 import { ChartCard } from './shell'
 
 // ─── Marktaandeel trend & Instroom ratio ─────────────────────────────────────
@@ -22,8 +23,8 @@ export function buildMarktaandeelTrendData(data) {
     datasets: [{
       label: 'Marktaandeel %',
       data: values,
-      borderColor: '#2563EB',
-      backgroundColor: '#2563EB18',
+      borderColor: COLOR_EIGEN,
+      backgroundColor: COLOR_EIGEN + '18',
       fill: true,
       tension: 0.3,
       pointRadius: 4,
@@ -48,8 +49,8 @@ export function buildInstroomRatioData(data) {
     datasets: [{
       label: 'Eerstejaars %',
       data: values,
-      borderColor: '#0D9488',
-      backgroundColor: '#0D948818',
+      borderColor: COLOR_DIPLOM,
+      backgroundColor: COLOR_DIPLOM + '18',
       fill: true,
       tension: 0.3,
       pointRadius: 4,
@@ -131,7 +132,7 @@ export function buildMarktaandeelData(data, instelling, dark) {
     datasets: [{
       label: 'Ingeschrevenen',
       data: entries.map(e => e.waarde),
-      backgroundColor: entries.map(e => e.eigen ? '#2563EB' : (dark ? '#475569' : '#CBD5E1')),
+      backgroundColor: entries.map(e => e.eigen ? COLOR_EIGEN : (dark ? '#475569' : '#CBD5E1')),
       borderRadius: 4,
     }],
   }
@@ -144,7 +145,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
     const jaren = Object.keys(dict).map(Number).sort((a, b) => a - b)
     if (jaren.length < 2) return null
     const first = dict[jaren[0]]
-    const last = dict[jaren[jaren.length - 1]]
+    const last = dict[jaren.at(-1)]
     if (!first) return null
     return Math.round((last - first) / first * 100)
   }
@@ -167,7 +168,7 @@ export function buildGroeiRankingData(data, instelling, dark) {
       label: 'Groei (%)',
       data: entries.map(e => e.groei),
       backgroundColor: entries.map(e =>
-        e.eigen ? '#2563EB' : e.groei >= 0 ? (dark ? '#475569' : '#CBD5E1') : (dark ? '#7F1D1D' : '#FEE2E2')
+        e.eigen ? COLOR_EIGEN : e.groei >= 0 ? (dark ? '#475569' : '#CBD5E1') : (dark ? '#7F1D1D' : '#FEE2E2')
       ),
       borderRadius: 4,
     }],

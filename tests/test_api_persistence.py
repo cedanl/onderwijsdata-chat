@@ -1,5 +1,4 @@
 import importlib
-import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +9,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
-    import core.auth as auth
+    from core import auth
     importlib.reload(auth)
     from persistence import db
     importlib.reload(db)
@@ -25,7 +24,7 @@ def authed_client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("CHAT_USERS", "testuser:testpass")
     monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    import core.auth as auth
+    from core import auth
     importlib.reload(auth)
     from persistence import db
     importlib.reload(db)

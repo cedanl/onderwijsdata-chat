@@ -1,11 +1,18 @@
 """Replay data-fetching tool calls to refresh datasets in the store."""
 
 import json
+import logging
 
 import plotly.io as pio
 
 from tools import dispatch
-from tools.schemas import TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA, TOOL_QUERY_DATA, TOOL_CREATE_PLOT
+from tools.schemas import (
+    TOOL_CREATE_PLOT,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_RIO_DATA,
+    TOOL_QUERY_DATA,
+)
 
 DATA_FETCH_TOOLS = frozenset({TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA})
 
@@ -68,6 +75,7 @@ def replay_dashboard_figures(
             if figure is not None:
                 figures_json.append(pio.to_json(figure))
         except Exception:
+            logging.getLogger(__name__).debug("Figure replay mislukt, overgeslagen", exc_info=True)
             continue
 
     return figures_json

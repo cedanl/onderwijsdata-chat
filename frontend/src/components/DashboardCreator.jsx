@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import useDashboardChat from '../hooks/useDashboardChat'
-import { saveWorkbookWithSync, getWorkbooks } from '../workbooks'
+import { saveWorkbookWithSync } from '../workbooks'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 import ConfirmModal from './ConfirmModal'
@@ -53,7 +53,7 @@ function ToolStep({ tool }) {
         <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
         {tool.label}
         {tool.snippet && (
-          <button className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
+          <button type="button" className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
             </svg>
@@ -93,8 +93,6 @@ export default function DashboardCreator({ onSaved, instelling }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const assistantMsgs = messages.filter(m => m.role === 'assistant')
-  const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
   // Show save when not streaming and there's any substantial assistant answer
   const hasResponse = !busy && messages.some(m => m.role === 'assistant' && !m.isError && (m.content?.length ?? 0) > MIN_RESPONSE_LENGTH)
 
@@ -162,6 +160,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
       }
     }
     doSave()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardSpec])
 
   const handleReset = () => {
@@ -190,7 +189,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
           <h2 className="section-title" style={{ fontSize: '1.3rem', margin: 0 }}>Cre&euml;er je eigen dashboard</h2>
         </div>
         {!isEmpty && (
-          <button className="dc-reset-btn" onClick={handleReset}>
+          <button type="button" className="dc-reset-btn" onClick={handleReset}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/>
             </svg>
@@ -209,7 +208,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
           <p>Beschrijf welke onderwijsdata je wilt zien. Kies zelf het onderwerp, de regio of de periode.</p>
           <div className="dc-examples">
             {buildExamples(instelling).map(ex => (
-              <button key={ex} className="dc-example-btn" onClick={() => { setInput(ex); inputRef.current?.focus() }}>
+              <button type="button" key={ex} className="dc-example-btn" onClick={() => { setInput(ex); inputRef.current?.focus() }}>
                 {ex}
               </button>
             ))}
@@ -244,10 +243,10 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 }
                 {msg.clarification && (
                   <div className="dc-clarification-btns">
-                    {msg.clarification.map((opt, i) => {
+                    {msg.clarification.map((opt, _i) => {
                       const label = typeof opt === 'string' ? opt : opt.label
                       return (
-                        <button key={label} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>
+                        <button type="button" key={label} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>
                           {opt.aanbevolen ? '✓ ' : ''}{label}
                         </button>
                       )
@@ -283,7 +282,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 </span>
               )}
               {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
-              <button className="send-btn" onClick={() => handleSend(input, true)} disabled={!input.trim() || busy || !connected}>
+              <button type="button" className="send-btn" onClick={() => handleSend(input, true)} disabled={!input.trim() || busy || !connected}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                   <path d="M12 19V5M5 12l7-7 7 7"/>
                 </svg>
@@ -294,7 +293,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {hasResponse && (
               <div className="dc-actions">
-                <button className="dc-save-btn" onClick={handleSave} disabled={saving || generatingDashboard}>
+                <button type="button" className="dc-save-btn" onClick={handleSave} disabled={saving || generatingDashboard}>
                   {generatingDashboard ? (
                     <div className="ai-typing" style={{ display: 'inline-flex', gap: 3 }}><span/><span/><span/></div>
                   ) : (
@@ -326,7 +325,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                   </span>
                 )}
                 {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
-                <button className="send-btn" onClick={() => handleSend(followUp)} disabled={!followUp.trim() || busy || !connected}>
+                <button type="button" className="send-btn" onClick={() => handleSend(followUp)} disabled={!followUp.trim() || busy || !connected}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                     <path d="M12 19V5M5 12l7-7 7 7"/>
                   </svg>

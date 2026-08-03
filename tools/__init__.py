@@ -1,25 +1,25 @@
 from typing import Any
 
 from .analysis import run_analysis
-from .catalog import search_catalog, dataset_details
+from .catalog import dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data, query_data
 from .plot import create_choropleth_map, create_plot
 from .rio import get_rio_data
 from .schemas import (
-    TOOL_SCHEMAS as SCHEMAS,
-    TOOL_SEARCH_CATALOG,
-    TOOL_DATASET_DETAILS,
     TOOL_CLARIFY_SCOPE,
+    TOOL_CREATE_CHOROPLETH_MAP,
+    TOOL_CREATE_PLOT,
+    TOOL_DATASET_DETAILS,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
-    TOOL_GET_RIO_DATA,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_RIO_DATA,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
-    TOOL_CREATE_PLOT,
-    TOOL_CREATE_CHOROPLETH_MAP,
+    TOOL_SEARCH_CATALOG,
 )
+from .schemas import TOOL_SCHEMAS as SCHEMAS  # noqa: F401
 
 LABELS = {
     TOOL_SEARCH_CATALOG: "Catalogus doorzocht",

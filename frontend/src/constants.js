@@ -11,6 +11,10 @@ export const STORAGE_CURRENT_CHAT = 'openEDUdata_current_chat'
 // ─── Shared color palette ────────────────────────────────────────────────────
 export const CHART_COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E', '#EC4899', '#6366F1']
 
+export const COLOR_EIGEN = CHART_COLORS[0]
+export const COLOR_DIPLOM = '#0D9488'
+export const COLOR_EERSTEJAARS = '#22C55E'
+
 // ─── Magic numbers ───────────────────────────────────────────────────────────
 export const MAX_CONVERSATIONS = 15
 export const MIN_RESPONSE_LENGTH = 150

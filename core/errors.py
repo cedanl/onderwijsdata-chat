@@ -1,6 +1,6 @@
 import litellm
 
-_FRIENDLY_ERRORS: list[tuple[type, str]] = [
+_FRIENDLY_ERRORS: list[tuple[type, str | None]] = [
     (litellm.AuthenticationError, "API key ontbreekt of is ongeldig. Controleer je `.env` bestand."),
     (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),
     (litellm.RateLimitError, "Te veel verzoeken naar de API. Wacht even en probeer opnieuw."),

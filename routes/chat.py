@@ -7,12 +7,13 @@ from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from agent import run as agent_run
-from agent.dashboard import generate as generate_dashboard_spec
 from agent.dashboard import DashboardSpec
-from agent.replay import replay_data_calls, replay_dashboard_figures
+from agent.dashboard import generate as generate_dashboard_spec
+from agent.replay import replay_dashboard_figures, replay_data_calls
 from core.auth import AUTH_ENABLED, verify_token
 from core.config import MODEL
 from core.errors import friendly_error
+
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ async def refresh_dashboard_endpoint(request: Request):
     except RefreshError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
-        logger.error("Dashboard refresh failed", exc_info=True)
+        logger.exception("Dashboard refresh failed")
         return JSONResponse({"error": friendly_error(e)}, status_code=500)
 
 
@@ -221,7 +222,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
         await ws.send_text(json.dumps(event))
 
     known_keys = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_API_KEY", "AZURE_AI_API_KEY", "GEMINI_API_KEY", "WILLMA_API_KEY"]
-    is_ollama = MODEL.startswith("ollama_chat/") or MODEL.startswith("ollama/")
+    is_ollama = MODEL.startswith(("ollama_chat/", "ollama/"))
     if not is_ollama and not any(os.getenv(k) for k in known_keys):
         await emit({"type": "system_message", "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app."})
 
@@ -247,7 +248,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
     except WebSocketDisconnect:
-        if _task_busy(current_task):
+        if current_task is not None and _task_busy(current_task):
             current_task.cancel()
             stop_event = session.get("stop_event")
             if stop_event:

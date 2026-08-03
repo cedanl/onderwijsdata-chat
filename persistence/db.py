@@ -84,7 +84,7 @@ def list_conversations(username: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _normalize_ts(timestamp: int | float) -> int:
+def _normalize_ts(timestamp: float) -> int:
     """Normalize millisecond timestamps to seconds."""
     if timestamp > 1e12:
         return int(timestamp) // 1000

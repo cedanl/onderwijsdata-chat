@@ -57,8 +57,7 @@ def chat(model: str, messages: list[dict], stream: bool = False) -> str:
         if not line:
             continue
         raw = line.decode() if isinstance(line, bytes) else line
-        if raw.startswith("data: "):
-            raw = raw[6:]
+        raw = raw.removeprefix("data: ")
         if raw.strip() == "[DONE]":
             break
         try:

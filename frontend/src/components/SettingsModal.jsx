@@ -38,6 +38,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
   }
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
@@ -50,7 +51,9 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
       role="dialog"
       aria-modal="true"
       aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
+      tabIndex={-1}
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         style={{
           background: 'var(--white)', borderRadius: 'var(--radius-xl)',
@@ -79,19 +82,19 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-instelling-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
             <InstellingPicker value={instelling} onChange={setInstelling} />
           </div>
 
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-functie-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {FUNCTIES.map(f => (
-                <button
+                <button type="button"
                   key={f}
                   onClick={() => setFunctie(functie === f ? '' : f)}
                   style={{
@@ -109,12 +112,12 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
           </div>
 
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-weergave-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map(m => (
-                <button
+                <button type="button"
                   key={m.id}
                   onClick={() => setMode(m.id)}
                   style={{
@@ -137,7 +140,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 32 }}>
-          <button
+          <button type="button"
             onClick={handleSave}
             style={{
               flex: 1, padding: '12px', borderRadius: 'var(--radius)',
@@ -150,7 +153,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             Opslaan
           </button>
           {isOnboarding && (
-            <button
+            <button type="button"
               onClick={onClose}
               style={{
                 padding: '12px 18px', borderRadius: 'var(--radius)',

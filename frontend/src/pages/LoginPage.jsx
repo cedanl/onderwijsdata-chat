@@ -47,15 +47,16 @@ export default function LoginPage({ onLogin }) {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 6 }}>
+            <label htmlFor="login-username" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 6 }}>
               Gebruikersnaam
             </label>
             <input
+              id="login-username"
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
-              autoFocus
+              autoFocus // eslint-disable-line jsx-a11y/no-autofocus -- login page, single input
               style={{
                 width: '100%', padding: '10px 14px',
                 border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',
@@ -66,10 +67,11 @@ export default function LoginPage({ onLogin }) {
             />
           </div>
           <div>
-            <label style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 6 }}>
+            <label htmlFor="login-password" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 6 }}>
               Wachtwoord
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}

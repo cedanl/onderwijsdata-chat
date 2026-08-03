@@ -44,6 +44,21 @@ cache-dir = ".uv_cache"
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "PERF", "LOG", "RUF", "C4", "FURB"]
+ignore = [
+    "E402",     # module import not at top — conditional imports (e.g. ollama patch) are intentional
+    "RUF001",   # ambiguous unicode — Dutch text uses curly quotes and special chars intentionally
+    "RUF003",   # ambiguous unicode in comments — same reason
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PERF102"]
+"playground/**" = ["ALL"]
+
 [tool.ty.rules]
 invalid-argument-type = "warn"
 

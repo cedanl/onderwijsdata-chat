@@ -3,10 +3,13 @@ import json
 import logging
 from functools import lru_cache
 
-import pandas as pd
+logger = logging.getLogger(__name__)
 
-from onderwijsdata import data, dimension, definitions
+import pandas as pd
+from onderwijsdata import data, definitions, dimension
+
 from core.config import CBS_ROW_LIMIT
+
 from . import store
 
 _SAMPLE_ROWS = 5
@@ -34,7 +37,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     try:
         col_defs = definitions(dataset_id)
     except Exception as e:
-        logging.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
+        logger.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
         col_defs = {}
     schema = [
         {

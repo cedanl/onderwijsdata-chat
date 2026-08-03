@@ -88,7 +88,7 @@ export default function GeneratedDashboard({ spec, instelling, onRefresh, refres
         {instelling && <span className="meta-badge instelling">{instelling}</span>}
         <span className="meta-badge date">Gegenereerd dashboard</span>
         {onRefresh && (
-          <button
+          <button type="button"
             className="meta-badge"
             onClick={onRefresh}
             disabled={refreshing}

@@ -1,5 +1,5 @@
 import { Component, useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
@@ -146,8 +146,8 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) return (
       <div style={{ padding: 32, textAlign: 'center' }}>
         <p style={{ color: '#DC2626', marginBottom: 16 }}>Er is een onverwachte fout opgetreden.</p>
-        <button style={{ marginRight: 8 }} onClick={() => this.setState({ hasError: false })}>Probeer opnieuw</button>
-        <button onClick={() => window.location.reload()}>Pagina vernieuwen</button>
+        <button type="button" style={{ marginRight: 8 }} onClick={() => this.setState({ hasError: false })}>Probeer opnieuw</button>
+        <button type="button" onClick={() => window.location.reload()}>Pagina vernieuwen</button>
       </div>
     )
     return this.props.children
