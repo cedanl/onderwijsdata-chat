@@ -56,6 +56,7 @@ export default function LoginPage({ onLogin }) {
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
+              autoFocus // eslint-disable-line jsx-a11y/no-autofocus -- login page, single input
               style={{
                 width: '100%', padding: '10px 14px',
                 border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',

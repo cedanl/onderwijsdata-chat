@@ -82,16 +82,16 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-instelling-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
-            </div>
+            </label>
             <InstellingPicker value={instelling} onChange={setInstelling} />
           </div>
 
           <div>
-            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-functie-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
-            </div>
+            </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {FUNCTIES.map(f => (
                 <button type="button"
@@ -112,9 +112,9 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
           </div>
 
           <div>
-            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label id="settings-weergave-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
-            </div>
+            </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map(m => (
                 <button type="button"
