@@ -29,7 +29,9 @@ jobs:
         run: uv run pytest tests/ -x -q --ignore=tests/test_eval_aggregation.py
 
       - name: Install production dependencies
-        run: uv sync --no-dev
+        run: |
+          uv export --no-dev --no-hashes -o requirements.txt
+          uv pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
       - name: Scan Python dependencies for vulnerabilities
         run: uv run pip-audit || true
