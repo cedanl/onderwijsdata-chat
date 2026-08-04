@@ -16,7 +16,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
-import { fetchConversations, putConversation, deleteConversationApi } from '../api'
+import { fetchConversations, putConversation, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildDashboardHtml } from '../dashboardHtml'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
@@ -240,8 +240,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
 
   // Load available models once
   useEffect(() => {
-    fetch('/api/settings/config')
-      .then(r => r.json())
+    fetchSettingsConfig()
       .then(cfg => {
         setModels(cfg.models || [])
         setSelectedModel(cfg.default_model || '')

@@ -1,8 +1,9 @@
 import asyncio
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from core.config import MODEL, get_available_models
+from core.auth import get_optional_user
+from core.config import MODEL, get_available_models_for_user
 from data.dashboard import (
     load_dashboard as load_dashboard_data,
 )
@@ -49,8 +50,8 @@ def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
 # ─── Settings ────────────────────────────────────────────────────────────────
 
 @router.get("/api/settings/config")
-async def get_settings_config() -> dict:
-    available = get_available_models()
+async def get_settings_config(username: str | None = Depends(get_optional_user)) -> dict:
+    available = get_available_models_for_user(username)
     return {
         "models": [
             {"id": mid, "name": name, "description": desc, "icon": icon}

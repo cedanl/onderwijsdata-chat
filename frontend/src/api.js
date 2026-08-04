@@ -43,6 +43,10 @@ export async function deleteWorkbookApi(id) {
   return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' })
 }
 
+export async function fetchSettingsConfig() {
+  return apiFetch('/api/settings/config')
+}
+
 export async function refreshDashboard(spec, settings = {}) {
   return apiFetch('/api/dashboard/refresh', {
     method: 'POST',

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { saveWorkbookWithSync } from '../workbooks'
+import { fetchSettingsConfig } from '../api'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 import ConfirmModal from './ConfirmModal'
@@ -79,8 +80,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    fetch('/api/settings/config')
-      .then(r => r.json())
+    fetchSettingsConfig()
       .then(cfg => { setModels(cfg.models || []); setSelectedModel(cfg.default_model || '') })
       .catch(() => setModels([]))
   }, [])

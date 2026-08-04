@@ -71,12 +71,7 @@ _TOKEN_SECRET = _TOKEN_SECRET_RAW.encode() or b"dev-only-no-secret-set"
 FALLBACK_USER = "gast"
 
 
-def get_current_user(
-    authorization: Annotated[str | None, Header()] = None,
-    token: Annotated[str | None, Query()] = None,
-) -> str:
-    """FastAPI dependency. Use with Depends(get_current_user).
-    Reads token from Authorization header or query param."""
+def _resolve_user(authorization: str | None, token: str | None) -> str | None:
     if not AUTH_ENABLED:
         return FALLBACK_USER
     raw = None
@@ -84,7 +79,23 @@ def get_current_user(
         raw = authorization[7:]
     elif token:
         raw = token
-    username = verify_token(raw or "")
+    return verify_token(raw or "")
+
+
+def get_current_user(
+    authorization: Annotated[str | None, Header()] = None,
+    token: Annotated[str | None, Query()] = None,
+) -> str:
+    """FastAPI dependency. Raises 401 when token ontbreekt of ongeldig is."""
+    username = _resolve_user(authorization, token)
     if not username:
         raise HTTPException(status_code=401, detail="Niet geautoriseerd")
     return username
+
+
+def get_optional_user(
+    authorization: Annotated[str | None, Header()] = None,
+    token: Annotated[str | None, Query()] = None,
+) -> str | None:
+    """FastAPI dependency — retourneert gebruikersnaam of None (geen 401)."""
+    return _resolve_user(authorization, token)
