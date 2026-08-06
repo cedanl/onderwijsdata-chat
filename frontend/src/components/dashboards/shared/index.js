@@ -5,7 +5,7 @@
 export { darkColors, chartOpts, buildIndexChartOpts, benchmarkColor, SECTOR_LABELS, SECTOR_COLORS, horizontalBarOpts } from './chart-opts'
 export { buildSectorChartData, sortedEntries, yearOverYearDelta, buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData } from './chart-builders'
 export { useDarkMode, fmt, useRegioDashboardData, useNationaalDashboardData, useRendementDashboardData, useArbeidsmarktmatchDashboardData, useRegioComputed } from './hooks'
-export { DashboardShell, Sparkline, SectionHeader, ChartCard, RegioBadges } from './shell'
+export { DashboardShell, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, BRONNEN_HO, BRONNEN_MBO, BRONNEN_NATIONAAL, BRONNEN_ARBEIDSMARKT } from './shell'
 export { DemografieKpis, InstroomKpis, DiplomeringKpis } from './kpis'
 export { BenchmarkLineChart, PeerLinesChart, PeersTable } from './charts-peers'
 export { buildMarktaandeelTrendData, buildInstroomRatioData, MarktaandeelTrendChart, InstroomRatioChart, buildMarktaandeelData, buildGroeiRankingData, MarktaandeelChart, GroeiRankingChart } from './charts-markt'

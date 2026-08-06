@@ -5,6 +5,7 @@ import {
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard,
+  DashboardSources, BRONNEN_ARBEIDSMARKT,
 } from '../shared/index'
 
 const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
@@ -128,13 +129,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <PrognoseSection data={regioData} />
         <UwvSection data={regioData} provincie={regioData?.provincie} dark={dark} />
 
-        <div className="dashboard-sources">
-          <div className="dashboard-sources-title">Bronnen</div>
-          <ul className="dashboard-sources-list">
-            <li><a href="https://data.overheid.nl/dataset/uwv-open-match-data" target="_blank" rel="noreferrer">UWV Open Match — Vacaturedata per provincie en beroepscluster</a></li>
-            <li><a href="https://doi.org/10.34894/DVQTOG" target="_blank" rel="noreferrer">ROA — Arbeidsmarktinformatiesysteem (AIS) 2024</a></li>
-          </ul>
-        </div>
+        <DashboardSources sources={BRONNEN_ARBEIDSMARKT} />
       </div>
     </DashboardShell>
   )

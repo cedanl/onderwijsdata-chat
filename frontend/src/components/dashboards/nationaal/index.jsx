@@ -4,6 +4,7 @@ import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
   SECTOR_LABELS, darkColors, horizontalBarOpts, ChartCard,
+  DashboardSources, BRONNEN_NATIONAAL,
 } from '../shared/index'
 
 function RankingTable({ alleInstellingen, instelling, dark }) {
@@ -174,13 +175,7 @@ export function InlineDashboardNationaal({ instelling }) {
         <SectionHeader title="Ranking" subtitle="Top instellingen naar totaal ingeschrevenen" />
         <RankingTable alleInstellingen={data?.alle_instellingen} instelling={instelling} dark={dark} />
 
-        <div className="dashboard-sources">
-          <div className="dashboard-sources-title">Bronnen</div>
-          <ul className="dashboard-sources-list">
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling</a></li>
-            <li><a href="https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — MBO studenten per instelling</a></li>
-          </ul>
-        </div>
+        <DashboardSources sources={BRONNEN_NATIONAAL} />
       </div>
     </DashboardShell>
   )

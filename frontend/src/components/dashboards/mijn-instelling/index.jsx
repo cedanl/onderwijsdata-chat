@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { COLOR_EIGEN, COLOR_DIPLOM, COLOR_EERSTEJAARS } from '../../../constants'
 import {
   useRegioDashboardData, useRendementDashboardData,
-  DashboardShell, SectionHeader, RegioBadges, KaartSection,
+  DashboardShell, SectionHeader, RegioBadges, DashboardSources, KaartSection,
+  BRONNEN_HO, BRONNEN_MBO,
   useRegioComputed, useDarkMode, fmt, Sparkline,
   buildMarktaandeelData, buildGroeiRankingData,
   buildMarktaandeelTrendData, buildInstroomRatioData,
@@ -162,14 +163,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         {/* ── Gender & diversiteit ── */}
         <GenderSection data={data} instelling={instelling} dark={dark} />
 
-        <div className="dashboard-sources">
-          <div className="dashboard-sources-title">Bronnen</div>
-          <ul className="dashboard-sources-list">
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p01hoinges" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)</a></li>
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p02ho1ejrs" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Eerstejaars HO per instelling (p02ho1ejrs)</a></li>
-            <li><a href="https://onderwijsdata.duo.nl/datasets/p04hogdipl" target="_blank" rel="noreferrer">DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)</a></li>
-          </ul>
-        </div>
+        <DashboardSources sources={data?.type === 'mbo' ? BRONNEN_MBO : BRONNEN_HO} />
       </div>
     </DashboardShell>
   )

@@ -99,6 +99,44 @@ export function ChartCard({ title, subtitle, children, cardStyle, actions }) {
   )
 }
 
+// ─── Bronvermeldingen ────────────────────────────────────────────────────────
+
+export const BRONNEN_HO = [
+  { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling (p01hoinges)', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
+  { label: 'DUO Open Onderwijsdata — Eerstejaars HO per instelling (p02ho1ejrs)', url: 'https://onderwijsdata.duo.nl/datasets/p02ho1ejrs' },
+  { label: 'DUO Open Onderwijsdata — Gediplomeerden HO per instelling (p04hogdipl)', url: 'https://onderwijsdata.duo.nl/datasets/p04hogdipl' },
+]
+
+export const BRONNEN_MBO = [
+  { label: 'DUO Open Onderwijsdata — Ingeschrevenen MBO per instelling', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
+  { label: 'DUO Open Onderwijsdata — Instromende MBO-studenten', url: 'https://onderwijsdata.duo.nl/datasets/instromende-mbo-studenten' },
+  { label: 'DUO Open Onderwijsdata — Gediplomeerde MBO-studenten', url: 'https://onderwijsdata.duo.nl/datasets/gediplomeerde-mbo-studenten' },
+]
+
+export const BRONNEN_NATIONAAL = [
+  { label: 'DUO Open Onderwijsdata — Ingeschrevenen HO per instelling', url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' },
+  { label: 'DUO Open Onderwijsdata — MBO studenten per instelling', url: 'https://onderwijsdata.duo.nl/datasets/mbo-studenten-per-instelling' },
+]
+
+export const BRONNEN_ARBEIDSMARKT = [
+  { label: 'UWV Open Match — Vacaturedata per provincie en beroepscluster', url: 'https://data.overheid.nl/dataset/uwv-open-match-data' },
+  { label: 'ROA — Arbeidsmarktinformatiesysteem (AIS) 2024', url: 'https://doi.org/10.34894/DVQTOG' },
+]
+
+export function DashboardSources({ sources }) {
+  if (!sources?.length) return null
+  return (
+    <div className="dashboard-sources">
+      <div className="dashboard-sources-title">Bronnen</div>
+      <ul className="dashboard-sources-list">
+        {sources.map(({ label, url }) => (
+          <li key={url}><a href={url} target="_blank" rel="noreferrer">{label}</a></li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function RegioBadges({ instelling, provincie, arbeidsmarktregio, bron }) {
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
