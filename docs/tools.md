@@ -51,6 +51,207 @@ flowchart TD
 
 ---
 
+## Tool Calling Patterns
+
+Aanbevolen tool-sequenties (chains) voor verschillende soorten vragen. Het LLM kiest idealiter deze volgorde:
+
+### Pattern 1: Data Verkenning (Discovery)
+
+**Gebruik:** Onbekende vraag, weten niet welke data beschikbaar is.
+
+**Ideale volgorde:**
+1. `search_catalog` — Zoek relevante datasets
+2. `dataset_details` — Inspecteer beschikbare kolommen en filters
+3. `get_*_data` — Haal de geselecteerde data op
+
+**Voorbeeld:** "Hoeveel MBO-instellingen zijn er in Utrecht?"
+- search_catalog → "MBO instellingen" → RIO-dataset gevonden
+- dataset_details → RIO-dataset → organisatorischeEenheidcode, plaats, etc.
+- get_rio_data → Filter op plaats='Utrecht' en soort=MBO
+
+#### Flowchart
+
+```mermaid
+flowchart LR
+    Q["❓ Onduidelijke vraag"] --> SC["🔍 search_catalog"]
+    SC --> DD["📋 dataset_details"]
+    DD --> GET["📥 get_*_data<br/>CBS/RIO/DUO"]
+    GET --> ANSWER["✓ Antwoord"]
+    
+    style SC fill:#e3f2fd
+    style DD fill:#bbdefb
+    style GET fill:#90caf9
+    style ANSWER fill:#81c784
+```
+
+---
+
+### Pattern 2: Analyse met Visualisatie
+
+**Gebruik:** Data beschikbaar, nu analyseren en visualiseren.
+
+**Ideale volgorde:**
+1. `get_*_data` — Laad volledige dataset
+2. `query_data` — Filter, groepeer, aggregeer indien nodig
+3. `run_analysis` — Voer berekeningen, transformaties uit (pandas/numpy)
+4. `create_plot` — Maak interactieve grafiek
+
+**Voorbeeld:** "Toon MBO-inschrijvingen per jaar als line chart"
+- get_duo_data → studentprognoses-mbo
+- query_data → Group by Jaar, sum Aantal
+- run_analysis → (optioneel: extra berekeningen)
+- create_plot → line chart
+
+#### Flowchart
+
+```mermaid
+flowchart LR
+    DATA["📥 get_*_data"] --> FILTER["🔎 query_data<br/>Filter/Group/Agg"]
+    FILTER --> ANALYSIS["⚙️ run_analysis<br/>pandas/numpy"]
+    ANALYSIS --> PLOT["📊 create_plot<br/>bar/line/scatter"]
+    PLOT --> ANSWER["✓ Grafiek + antwoord"]
+    
+    style DATA fill:#bbdefb
+    style FILTER fill:#90caf9
+    style ANALYSIS fill:#64b5f6
+    style PLOT fill:#42a5f5
+    style ANSWER fill:#81c784
+```
+
+---
+
+### Pattern 3: Geografische Analyse
+
+**Gebruik:** Geografische vraag, visualiseer op kaart van Nederland.
+
+**Ideale volgorde:**
+1. `get_*_data` — Laad data met locatie-kolom
+2. `query_data` — (Optioneel) filter indien nodig
+3. `create_choropleth_map` — Maak provincie/gemeente/COROP kaart
+
+**Voorbeeld:** "MBO-inschrijvingen per provincie als kaart"
+- get_rio_data → MBO-instellingen per provincie
+- create_choropleth_map → niveau="provincie"
+
+#### Flowchart
+
+```mermaid
+flowchart LR
+    DATA["📥 get_*_data<br/>met locatie-kolom"] --> FILTER["🔎 query_data<br/>(optioneel)"]
+    FILTER --> MAP["🗺️ create_choropleth_map<br/>auto/prov/gem/corop"]
+    MAP --> ANSWER["✓ Kaart + antwoord"]
+    
+    style DATA fill:#bbdefb
+    style FILTER fill:#90caf9,stroke:#999,stroke-dasharray: 5 5
+    style MAP fill:#ff9800
+    style ANSWER fill:#81c784
+```
+
+---
+
+### Pattern 4: Scopeverduidelijking + Analyse
+
+**Gebruik:** Vraag is ambigue, eerst verduidelijken dan analyseren.
+
+**Ideale volgorde:**
+1. `clarify_scope` — Toon keuzes aan gebruiker
+2. (Wacht op keuze) — Gebruiker selecteert optie
+3. (LLM formuleert nieuwe vraag met context)
+4. `get_*_data` → `query_data` → `create_plot` — Analyseer met gekozen scope
+
+**Voorbeeld:** "Hoeveel studenten in MBO?"
+- clarify_scope → "Bedoel je ingeschrevenen, afgestudeerden, of dropout?"
+- Gebruiker kiest "ingeschrevenen"
+- get_duo_data → query_data → create_plot
+
+#### Flowchart
+
+```mermaid
+flowchart LR
+    Q["❓ Ambigue vraag"] --> CLARIFY["❔ clarify_scope"]
+    CLARIFY --> CHOOSE["👤 Gebruiker kiest"]
+    CHOOSE --> REFORMULATE["🤖 LLM formuleert<br/>nieuwe vraag"]
+    REFORMULATE --> GET["📥 get_*_data"]
+    GET --> QUERY["🔎 query_data"]
+    QUERY --> VIZ["📊 create_plot"]
+    VIZ --> ANSWER["✓ Antwoord"]
+    
+    style CLARIFY fill:#fff9c4
+    style CHOOSE fill:#ffeb3b
+    style REFORMULATE fill:#fdd835
+    style GET fill:#bbdefb
+    style QUERY fill:#90caf9
+    style VIZ fill:#42a5f5
+    style ANSWER fill:#81c784
+```
+
+---
+
+### Pattern 5: Complexe Analyse (Multi-Source)
+
+**Gebruik:** Combineer data uit meerdere bronnen, voer geavanceerde analyses uit.
+
+**Ideale volgorde:**
+1. `search_catalog` — Vind relevante datasets
+2. `get_cbs_data` + `get_duo_data` + `get_rio_data` — Laad meerdere datasets (parallel)
+3. `query_data` — Filter en selecteer kolommen per dataset
+4. `run_analysis` — Voer pandas join/merge uit op meerdere datasets
+5. `create_plot` — Visualiseer gekombineerde analyse
+
+**Voorbeeld:** "Vergelijk MBO-inschrijvingen (DUO) met bevolking (CBS) per regio"
+- search_catalog → Vind beide datasets
+- get_duo_data + get_cbs_data (parallel)
+- run_analysis → Merge op regio
+- create_plot → Duo-axis chart
+
+#### Flowchart
+
+```mermaid
+flowchart LR
+    SEARCH["🔍 search_catalog"] --> GET1["📥 get_duo_data"]
+    SEARCH --> GET2["📥 get_cbs_data"]
+    SEARCH --> GET3["📥 get_rio_data (optioneel)"]
+    
+    GET1 --> Q1["🔎 query_data"]
+    GET2 --> Q2["🔎 query_data"]
+    GET3 --> Q3["🔎 query_data"]
+    
+    Q1 --> MERGE["⚙️ run_analysis<br/>merge/join"]
+    Q2 --> MERGE
+    Q3 --> MERGE
+    
+    MERGE --> PLOT["📊 create_plot"]
+    PLOT --> ANSWER["✓ Multi-source antwoord"]
+    
+    style SEARCH fill:#e3f2fd
+    style GET1 fill:#90caf9
+    style GET2 fill:#90caf9
+    style GET3 fill:#90caf9
+    style Q1 fill:#64b5f6
+    style Q2 fill:#64b5f6
+    style Q3 fill:#64b5f6
+    style MERGE fill:#42a5f5
+    style PLOT fill:#2196f3
+    style ANSWER fill:#81c784
+```
+
+---
+
+## Keuzes die het LLM maakt
+
+Bij elke vraag bepaalt het LLM automatisch:
+
+| Beslissing | Criterium |
+|-----------|-----------|
+| **search_catalog nodig?** | Vraag noemt geen specifieke dataset |
+| **dataset_details nodig?** | Onzeker over beschikbare filters/dimensies |
+| **query_data nodig?** | Data moet gefilterd, gegroepeerd of geclusterd |
+| **run_analysis nodig?** | Complexe berekeningen, transformaties, joins |
+| **Visualisatie nodig?** | Vraag vraagt om grafiek/kaart, OF data is complex |
+| **clarify_scope nodig?** | Vraag heeft meerdere geldige interpretaties |
+
+Het LLM springt stappen over als ze niet nodig zijn. Dit heet **"lazy evaluation"** — efficiënter en sneller.
+
 ## search_catalog
 
 Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
