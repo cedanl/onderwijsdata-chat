@@ -4,6 +4,23 @@ De assistent beschikt over de volgende tools. Ze worden automatisch ingezet op b
 
 Bij elke tool-aanroep wordt een reproduceerbaar Python-snippet getoond in de chat, zodat je de analyse lokaal kunt herhalen.
 
+## Hoe tool calling werkt
+
+De assistent volgt een **agentic loop**:
+
+1. **Je stelt een vraag** → Vraag wordt naar het LLM gestuurd met beschikbare tool-schema's
+2. **LLM beslist** → Kiest welke tools nodig zijn met parameters
+3. **Tools worden uitgevoerd** → Synchroon, in parallel wanneer mogelijk
+4. **Resultaten teruggevoerd** → LLM ziet output en beslist of meer tools nodig zijn
+5. **Loop** → Stappen 2-4 herhalen totdat LLM alleen tekst antwoordt (geen tool calls meer)
+
+**Beperkingen per turn:**
+- Maximaal 10 iteraties (stap 2-4)
+- `search_catalog` max 5x per vraag
+- Tool-resultaten begrensd op 12.000 karakters
+
+**Caching:** Als dezelfde tool met identieke parameters tweemaal wordt aangeroepen, geeft het systeem het eerder gecachde resultaat terug (geen dubbele query).
+
 ---
 
 ## search_catalog
@@ -18,6 +35,20 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 | `geo_niveau` | string | Filter op geografisch niveau (optioneel) |
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
+
+**Let op:** Deze tool is beperkt tot **5 aanroepen per vraag** om oneindige zoeklussen te voorkomen.
+
+---
+
+## dataset_details
+
+Haalt metagegevens van een specifieke dataset op (kolommen, dimensies, beschrijving).
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `dataset_id` | string | Dataset-ID, bijv. `"85423NED"` (CBS) of `"studentprognoses-mbo-v1"` (DUO) |
+
+**Gebruik:** Verken beschikbare dimensies/filters voordat je data ophaalt.
 
 ---
 
@@ -139,5 +170,7 @@ Stelt een verduidelijkingsvraag aan de gebruiker wanneer de oorspronkelijke vraa
 |-----------|------|-------------|
 | `vraag` | string | De verduidelijkingsvraag |
 | `opties` | array | 2-3 keuzes met `label`, `beschrijving` en `aanbevolen` (boolean) |
+
+**Gebruik:** Wanneer ambiguïteit voorkomen kan worden. Onderbreekt de normal flow: je selecteert een optie, dan gaat het LLM een nieuwe vraag formuleren met jouw keuze.
 
 Deze tool wordt afgehandeld door de UI — de gebruiker ziet een keuzemenu en kan een optie selecteren.
