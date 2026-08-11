@@ -21,6 +21,34 @@ De assistent volgt een **agentic loop**:
 
 **Caching:** Als dezelfde tool met identieke parameters tweemaal wordt aangeroepen, geeft het systeem het eerder gecachde resultaat terug (geen dubbele query).
 
+### Flowchart
+
+```mermaid
+flowchart TD
+    Start["👤 Jij: Stel een vraag"] --> LLM["🤖 LLM: Analyseer vraag<br/>+ beschikbare tools"]
+    LLM --> Decision1{Tool calls<br/>nodig?}
+    
+    Decision1 -->|Nee| FinalAnswer["✓ Geef textantwoord"]
+    FinalAnswer --> End["😊 Jij krijgt antwoord + snippet"]
+    
+    Decision1 -->|Ja| Iterate["Iteratie 1-10"]
+    Iterate --> CheckLimit["⚙️ Check tool limits<br/>search_catalog ≤5x"]
+    CheckLimit --> CheckCache["💾 Cache check:<br/>Call al uit voerd?"]
+    
+    CheckCache -->|Cache hit| ReturnCached["📦 Gebruik cached result"]
+    CheckCache -->|Cache miss| Execute["▶️ Voer tool uit"]
+    
+    ReturnCached --> AddToHistory["📝 Voeg result toe aan history"]
+    Execute --> GenerateSnippet["📄 Genereer Python snippet"]
+    GenerateSnippet --> AddToHistory
+    
+    AddToHistory --> NextIter{Meer tools<br/>nodig?}
+    NextIter -->|Ja + iteraties < 10| LLM
+    NextIter -->|Ja + iteraties ≥ 10| ErrorMax["❌ Max stappen bereikt"]
+    ErrorMax --> End
+    NextIter -->|Nee| FinalAnswer
+```
+
 ---
 
 ## search_catalog
