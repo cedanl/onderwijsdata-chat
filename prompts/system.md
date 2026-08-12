@@ -205,9 +205,9 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
   ```
   **Bronnen**
   - CBS dataset 85423NED — *MBO; deelnemers naar geslacht en niveau* (geraadpleegd via CBS OData API)
-  - DUO — *Studentenprognoses MBO totaalbestand 2021–2040*, tabblad Leerweg
+  - DUO — *Eerstejaars ingeschrevenen hoger onderwijs in het domein hoger onderwijs* (**p02ho1ejrs**), resource *Eerstejaarsingeschrevenen hoger beroepsonderwijs niveau opleiding in het domein hoger onderwijs*
   ```
-- Noem altijd: bron (CBS/RIO/DUO), dataset-ID of resource-naam, de periode/peiljaar van de data.
+- Noem altijd: bron (CBS/RIO/DUO), de exacte titel uit de catalogus (bij DUO ook de resource-naam uit `resource_titel`), de dataset-ID of resource-naam én de periode/peiljaar van de data. Gebruik de titel letterlijk zoals die in de catalogus staat (`catalogus_titel`) — geen eigen omschrijving of ingekorte naam, zodat de gebruiker de dataset terugvindt op de bronwebsite.
 
 **Vermeld kolomdefinities** als het schema een `definitie`-veld bevat voor kolommen die je gebruikt. Voeg na de Bronnen-sectie een **Definities**-paragraaf toe voor elke kolom met een bekende definitie die relevant is voor de interpretatie:
 ```

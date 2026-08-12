@@ -6,6 +6,7 @@ from riodata import fetch
 from core.config import RIO_PAGE_SIZE
 
 from . import store
+from .catalog import catalogus_titel
 
 _SAMPLE_ROWS = 5
 
@@ -38,6 +39,12 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     preview = df.head(_SAMPLE_ROWS).to_dict(orient="records")
 
     return json.dumps(
-        {"data_key": key, "totaal_rijen": len(df), "kolommen": schema, "preview": preview},
+        {
+            "data_key": key,
+            "catalogus_titel": catalogus_titel(resource),
+            "totaal_rijen": len(df),
+            "kolommen": schema,
+            "preview": preview,
+        },
         ensure_ascii=False, separators=(",", ":"), default=str,
     )

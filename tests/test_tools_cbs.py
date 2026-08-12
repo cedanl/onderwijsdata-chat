@@ -20,20 +20,52 @@ def test_empty_result_returns_helpful_message():
 def test_row_limit_applied():
     from core.config import CBS_ROW_LIMIT
     rows = [{"id": i} for i in range(CBS_ROW_LIMIT + 100)]
-    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs.definitions", return_value={}):
+    with patch("tools.cbs.data", return_value=rows), \
+         patch("tools.cbs.definitions", return_value={}), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
         result = get_cbs_data("85423NED")
     import json
     parsed = json.loads(result)
     assert parsed["totaal_rijen"] == CBS_ROW_LIMIT
     assert "data_key" in parsed
+    assert parsed["catalogus_titel"] == "85423NED"
 
 
 def test_truncation_hint_appended_when_limit_reached():
     from core.config import CBS_ROW_LIMIT
     rows = [{"id": i} for i in range(CBS_ROW_LIMIT)]
-    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs.definitions", return_value={}):
+    with patch("tools.cbs.data", return_value=rows), \
+         patch("tools.cbs.definitions", return_value={}), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
         result = get_cbs_data("85423NED")
     import json
     parsed = json.loads(result)
     assert "waarschuwing" in parsed
     assert "Afgekapt" in parsed["waarschuwing"]
+
+
+def test_catalogus_titel_included_from_catalog():
+    rows = [{"id": 1}]
+    cbs_entries = [{"_cbs_id": "85423NED", "bron": "MBO; deelnemers naar geslacht en niveau"}]
+    with patch("tools.cbs.data", return_value=rows), \
+         patch("tools.cbs.definitions", return_value={}), \
+         patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = get_cbs_data("85423NED")
+    import json
+    parsed = json.loads(result)
+    assert parsed["catalogus_titel"] == "MBO; deelnemers naar geslacht en niveau"
+
+
+def test_catalogus_titel_falls_back_to_dataset_id():
+    rows = [{"id": 1}]
+    with patch("tools.cbs.data", return_value=rows), \
+         patch("tools.cbs.definitions", return_value={}), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = get_cbs_data("onbekend-id")
+    import json
+    parsed = json.loads(result)
+    assert parsed["catalogus_titel"] == "onbekend-id"

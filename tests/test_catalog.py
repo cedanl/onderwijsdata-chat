@@ -2,7 +2,7 @@ import json
 import logging
 from unittest.mock import patch
 
-from tools.catalog import dataset_details, search_catalog
+from tools.catalog import catalogus_titel, dataset_details, resource_titel, search_catalog
 
 # --- Fix #37: archief-filter ---
 
@@ -364,3 +364,67 @@ def test_dataset_details_logs_miss(caplog):
         result = dataset_details("nope-123")
     assert "niet gevonden" in result
     assert any("miss" in r.message and "dataset_details" in r.message for r in caplog.records)
+
+
+# --- Issue #87: catalogustitels voor bronvermelding ---
+
+
+def test_catalogus_titel_vindt_cbs_bron():
+    cbs_entries = [{"_cbs_id": "85423NED", "bron": "MBO; deelnemers naar geslacht en niveau"}]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        assert catalogus_titel("85423NED") == "MBO; deelnemers naar geslacht en niveau"
+
+
+def test_catalogus_titel_vindt_rio_duo_bron():
+    rio_entries = [{"_ckan_id": "p02ho1ejrs", "bron": "Eerstejaars ingeschrevenen hoger onderwijs"}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert catalogus_titel("p02ho1ejrs") == "Eerstejaars ingeschrevenen hoger onderwijs"
+
+
+def test_catalogus_titel_vindt_rio_resource_bron():
+    rio_entries = [{"_rio_resource": "organisatorische-eenheden", "bron": "Organisatorische eenheden"}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert catalogus_titel("organisatorische-eenheden") == "Organisatorische eenheden"
+
+
+def test_catalogus_titel_valt_terug_op_dataset_id():
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        assert catalogus_titel("onbekend-id") == "onbekend-id"
+
+
+def test_resource_titel_bij_index():
+    rio_entries = [{"_ckan_id": "p02ho1ejrs", "_resources": [{"naam": "A"}, {"naam": "B"}]}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert resource_titel("p02ho1ejrs", 1) == "B"
+
+
+def test_resource_titel_bij_naam_substring():
+    rio_entries = [{"_ckan_id": "p02ho1ejrs", "_resources": [{"naam": "Niveau opleiding"}, {"naam": "Geslacht"}]}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert resource_titel("p02ho1ejrs", "niveau") == "Niveau opleiding"
+
+
+def test_resource_titel_geeft_none_bij_onbekende_index():
+    rio_entries = [{"_ckan_id": "p02ho1ejrs", "_resources": [{"naam": "A"}]}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert resource_titel("p02ho1ejrs", 5) is None
+
+
+def test_resource_titel_geeft_none_bij_onbekende_substring():
+    rio_entries = [{"_ckan_id": "p02ho1ejrs", "_resources": [{"naam": "A"}]}]
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=rio_entries):
+        assert resource_titel("p02ho1ejrs", "bestaat-niet") is None
+
+
+def test_resource_titel_geeft_none_voor_onbekende_dataset():
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        assert resource_titel("onbekend-id") is None

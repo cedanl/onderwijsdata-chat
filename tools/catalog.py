@@ -182,6 +182,44 @@ def _build_details(entry: dict, dataset_id: str) -> str:
     )
 
 
+def catalogus_titel(dataset_id: str) -> str:
+    """Menselijke titel (bron-veld) uit de catalogus voor een dataset-ID.
+
+    Zoekt in de CBS- én de RIO/DUO-catalogus. Valt terug op de dataset-ID zelf
+    als de dataset niet (meer) in de catalogus staat.
+    """
+    for entry in _cbs():
+        if entry.get("_cbs_id") == dataset_id:
+            return entry.get("bron") or dataset_id
+    for entry in _rio_duo():
+        if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
+            return entry.get("bron") or dataset_id
+    return dataset_id
+
+
+def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
+    """Resourcenaam uit de catalogus voor een DUO/RIO dataset.
+
+    Volgt dezelfde selectielogica als het laden zelf: index (int) of
+    naam-substring (str). Geeft None als er geen resources zijn of niet gevonden.
+    """
+    for entry in _rio_duo():
+        if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
+            resources = entry.get("_resources") or []
+            if not resources:
+                return None
+            try:
+                if isinstance(resource, int):
+                    if resource >= len(resources):
+                        return None
+                    return resources[resource].get("naam")
+                matches = [r for r in resources if resource.lower() in (r.get("naam") or "").lower()]
+                return matches[0].get("naam") if matches else None
+            except Exception:
+                return None
+    return None
+
+
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
     for entry in _cbs():

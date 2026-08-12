@@ -7,6 +7,7 @@ from riodata import duo as _duo
 from core.config import DUO_ROW_LIMIT
 
 from . import store
+from .catalog import catalogus_titel, resource_titel
 
 _SAMPLE_ROWS = 3
 
@@ -82,7 +83,14 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     preview = df.head(_SAMPLE_ROWS).to_dict(orient="records")
 
     return json.dumps(
-        {"data_key": key, "totaal_rijen": len(df), "kolommen": schema, "preview": preview},
+        {
+            "data_key": key,
+            "catalogus_titel": catalogus_titel(dataset_id),
+            "resource_titel": resource_titel(dataset_id, resource),
+            "totaal_rijen": len(df),
+            "kolommen": schema,
+            "preview": preview,
+        },
         ensure_ascii=False, separators=(",", ":"), default=str,
     )
 
