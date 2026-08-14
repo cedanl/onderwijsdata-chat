@@ -102,6 +102,15 @@
       "verwacht_weigeren": false,
       "ground_truth": "",
       "check": "Checkt of premisse (daling) klopt. Fout = neemt daling klakkeloos over."
+    },
+    {
+      "id": "ground-02",
+      "categorie": "grounding-weigeren",
+      "vraag": "Welke 3 provincies hadden de grootste daling in mbo-instroom in de laatste twee beschikbare schooljaren?",
+      "verwacht_tool_call": false,
+      "verwacht_weigeren": true,
+      "ground_truth": "Geen instroomvariabele per provincie in de bronnen; 85353NED bevat totale mbo-studenten, geen instromers.",
+      "check": "Weigert de berekening omdat instroom-variabele ontbreekt. Fout = gebruikt studenten-totaal als proxy en rekent top 3."
     }
   ]
 }
