@@ -538,31 +538,47 @@ def _uwv_raw_clusters(provincie: str) -> tuple[int, str, dict[str, int]]:
         return 0, "onbekend", {}
 
 
+def _relevante_clusters(alle_clusters: dict[str, int], sectoren: tuple[str, ...]) -> dict[str, int]:
+    """Filter clusters op sectoren via de mapping. Geeft lege dict als geen match."""
+    if not sectoren or not _SECTOR_CLUSTER_MAP:
+        return {}
+    relevant = {c for s in sectoren for c in _SECTOR_CLUSTER_MAP.get(s, [])}
+    return {naam: n for naam, n in alle_clusters.items() if naam in relevant}
+
+
+def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
+    """Alle vacatureclusters voor de gegeven sectoren, zonder top-N cap.
+
+    Gebruik dit voor berekeningen (supply-demand, match score).
+    Gebruik _uwv_vacatures_provincie voor weergave-overzichten (top-N).
+    """
+    _, _, alle = _uwv_raw_clusters(provincie)
+    if not alle:
+        return {}
+    gefilterd = _relevante_clusters(alle, sectoren)
+    return gefilterd if gefilterd else alle
+
+
 def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:
-    """Top-8 vacatures per provincie, optioneel gefilterd op instellingssectoren."""
+    """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
+
+    Bedoeld voor weergave-overzichten (UwvSection). Gebruik
+    _uwv_clusters_voor_sectoren voor supply-demand berekeningen.
+    """
     totaal, peildatum, alle_clusters = _uwv_raw_clusters(provincie)
     if not alle_clusters:
         return {}
 
-    if sectoren and _SECTOR_CLUSTER_MAP:
-        clusters_voor_sectoren = {
-            cluster
-            for s in sectoren
-            for cluster in _SECTOR_CLUSTER_MAP.get(s, [])
-        }
-        if clusters_voor_sectoren:
-            gefilterd = {
-                naam: aantal for naam, aantal in alle_clusters.items()
-                if naam in clusters_voor_sectoren
+    if sectoren:
+        gefilterd = _relevante_clusters(alle_clusters, sectoren)
+        if gefilterd:
+            top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:_MAX_VACATURE_CLUSTERS])
+            return {
+                "totaal": totaal,
+                "peildatum": peildatum,
+                "clusters": top,
+                "gefilterd_op": sorted(sectoren),
             }
-            if gefilterd:
-                top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:_MAX_VACATURE_CLUSTERS])
-                return {
-                    "totaal": totaal,
-                    "peildatum": peildatum,
-                    "clusters": top,
-                    "gefilterd_op": sorted(sectoren),
-                }
 
     top = dict(list(alle_clusters.items())[:_MAX_VACATURE_CLUSTERS])
     return {
@@ -1489,9 +1505,10 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     provincie = detect["provincie"]
     sectoren_tuple = tuple(sorted(detect["gediplomeerden_per_sector"].keys()))
 
-    # vacatures_per_cluster
-    uwv_data = _uwv_vacatures_provincie(provincie, sectoren_tuple) if provincie else {}
-    result["vacatures_per_cluster"] = uwv_data.get("clusters", {})
+    # vacatures_per_cluster: alle matching clusters zonder cap (nodig voor per-sector berekening)
+    result["vacatures_per_cluster"] = (
+        _uwv_clusters_voor_sectoren(provincie, sectoren_tuple) if provincie else {}
+    )
 
     # roa_per_niveau
     roa_raw = _roa_schoolverlaters(onderwijs_type)

@@ -134,7 +134,16 @@ export function PrognoseSection({ data }) {
 
 export function UwvSection({ data, provincie, dark }) {
   const vac = data?.vacatureaanbod
-  if (!vac?.clusters || Object.keys(vac.clusters).length === 0) return null
+  if (!vac?.clusters || Object.keys(vac.clusters).length === 0) {
+    return (
+      <ChartCard title="Vacatureaanbod in de regio">
+        <p style={{ color: 'var(--gray-500)', fontSize: '.85rem', padding: '8px 0' }}>
+          Geen vacaturegegevens beschikbaar{provincie ? ` voor ${provincie}` : ''}.
+          UWV Open Match data is beschikbaar t/m mei 2023.
+        </p>
+      </ChartCard>
+    )
+  }
   const gefilterdOp = vac.gefilterd_op || []
   const clusterHeight = Math.max(180, Object.keys(vac.clusters).length * 32)
   return (
