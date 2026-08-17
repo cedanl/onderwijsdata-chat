@@ -11,7 +11,7 @@ from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.replay import replay_dashboard_figures, replay_data_calls
 from core.auth import AUTH_ENABLED, verify_token
-from core.config import MODEL
+from core.config import MODEL, MAX_HISTORY
 from core.errors import friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
@@ -47,7 +47,10 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
         await emit({"type": "error", "message": friendly_error(e)})
-        messages.pop()
+        # Keep the user message and add a placeholder so the conversation stays
+        # in alternating user/assistant order. This lets the user retry without
+        # the agent losing context of what was asked.
+        messages.append({"role": "assistant", "content": "[fout opgetreden]"})
         return
 
     clarified = session.pop("_clarified", False)
@@ -146,6 +149,20 @@ async def refresh_dashboard_endpoint(request: Request):
         return JSONResponse({"error": friendly_error(e)}, status_code=500)
 
 
+def _parse_history(raw: list) -> list[dict]:
+    """Convert frontend message objects to bare {role, content} dicts, capped at MAX_HISTORY."""
+    valid_roles = {"user", "assistant"}
+    result = [
+        {"role": m["role"], "content": m["content"]}
+        for m in raw
+        if isinstance(m, dict)
+        and m.get("role") in valid_roles
+        and isinstance(m.get("content"), str)
+        and m["content"].strip()
+    ]
+    return result[-MAX_HISTORY:]
+
+
 def _task_busy(current_task: asyncio.Task | None) -> bool:
     return current_task is not None and not current_task.done()
 
@@ -238,6 +255,8 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 _handle_stop(session)
             elif action == "settings":
                 session["chat_settings"] = msg.get("settings", {})
+            elif action == "history":
+                session["messages"] = _parse_history(msg.get("messages") or [])
             elif action == "message":
                 current_task = await _handle_message(msg, session, emit, current_task)
             elif action == "clarification_choice":

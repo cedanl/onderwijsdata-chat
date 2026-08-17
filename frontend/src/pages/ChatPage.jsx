@@ -14,7 +14,7 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
-import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT } from '../constants'
+import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { fetchConversations, putConversation, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildDashboardHtml } from '../dashboardHtml'
@@ -113,7 +113,7 @@ function ToolStep({ tool }) {
 
 export default function ChatPage({ openRapport, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, connected, toasts, send, sendClarification, sendSettings, stop, clear } = useChat({
+  const { messages, busy, connected, toasts, send, sendClarification, sendSettings, sendHistory, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -132,6 +132,15 @@ export default function ChatPage({ openRapport, settings = {} }) {
   const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
   const messagesRef = useRef(messages)
+  const initialHistorySentRef = useRef(false)
+
+  // Seed backend with restored history on first connection
+  useEffect(() => {
+    if (!connected || initialHistorySentRef.current || !restoredMessages.length) return
+    initialHistorySentRef.current = true
+    sendHistory(restoredMessages)
+  }, [connected, restoredMessages, sendHistory])
+
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
     fetchConversations().then(serverConvs => {
@@ -195,7 +204,8 @@ export default function ChatPage({ openRapport, settings = {} }) {
     setSidebarOpen(false)
     try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
     setRestoredMessages(conv.messages)
-  }, [clear, saveCurrentConversation])
+    sendHistory(conv.messages)
+  }, [clear, saveCurrentConversation, sendHistory])
 
   const handleDeleteConversation = useCallback((id) => {
     setPendingDelete(id)
@@ -324,6 +334,9 @@ export default function ChatPage({ openRapport, settings = {} }) {
 
   const displayMessages = [...restoredMessages, ...messages]
   const hasMessages = displayMessages.length > 0
+  const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
+  const atContextLimit = userTurnCount >= MAX_CHAT_TURNS
+  const nearContextLimit = userTurnCount >= WARN_CHAT_TURNS
 
   return (
     <>
@@ -389,6 +402,16 @@ export default function ChatPage({ openRapport, settings = {} }) {
           </div>
 
           <div className="chat-input-area">
+            {atContextLimit && (
+              <div className="context-limit-banner context-limit-banner--full">
+                Chat is vol ({MAX_CHAT_TURNS} berichten). Begin een nieuw gesprek om door te gaan.
+              </div>
+            )}
+            {!atContextLimit && nearContextLimit && (
+              <div className="context-limit-banner context-limit-banner--warn">
+                Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
+              </div>
+            )}
             {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport}>
@@ -432,7 +455,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button type="button" className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || queueRef.current.length >= 5}>
+                  <button type="button" className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || atContextLimit || queueRef.current.length >= 5}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>

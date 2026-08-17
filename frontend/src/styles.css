@@ -580,6 +580,33 @@ input, textarea { font: inherit; }
 .send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.4); }
 .send-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; box-shadow: none; transform: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--gray-400); margin-top: 8px; }
+
+/* ─── Context limit banners ──────────────────────────────── */
+.context-limit-banner {
+  font-size: .78rem; font-weight: 500; padding: 8px 14px;
+  border-radius: var(--radius-sm); margin-bottom: 10px;
+  border: 1px solid;
+}
+.context-limit-banner--warn {
+  background: #FFFBEB; border-color: #FDE68A; color: #92400E;
+}
+.context-limit-banner--full {
+  background: #FEF2F2; border-color: #FECACA; color: #991B1B;
+}
+html.dark .context-limit-banner--warn {
+  background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
+}
+html.dark .context-limit-banner--full {
+  background: rgba(153, 27, 27, 0.15); border-color: rgba(254, 202, 202, 0.3); color: #FCA5A5;
+}
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not([class]) .context-limit-banner--warn {
+    background: rgba(146, 64, 14, 0.15); border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
+  }
+  html:not(.dark):not([class]) .context-limit-banner--full {
+    background: rgba(153, 27, 27, 0.15); border-color: rgba(254, 202, 202, 0.3); color: #FCA5A5;
+  }
+}
 .ws-reconnecting { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--gray-400); }
 .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; animation: ws-pulse 1.4s ease-in-out infinite; }
 @keyframes ws-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }

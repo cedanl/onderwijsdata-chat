@@ -21,6 +21,12 @@ export const MIN_RESPONSE_LENGTH = 150
 export const MAX_TEXTAREA_HEIGHT = 120
 export const DEFAULT_INSTELLING = 'Hogeschool Utrecht'
 
+// ─── Chat context limits ──────────────────────────────────────────────────────
+// MAX_HISTORY must match backend core/config.py MAX_HISTORY (default 40 = 20 turns)
+export const MAX_HISTORY = 40
+export const MAX_CHAT_TURNS = 20
+export const WARN_CHAT_TURNS = 16
+
 // ─── Suggested questions ──────────────────────────────────────────────────────
 export const SUGGESTED = [
   {

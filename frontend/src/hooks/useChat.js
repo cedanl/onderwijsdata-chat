@@ -1,8 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getToken, clearToken } from '../auth'
+import { MAX_HISTORY } from '../constants'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
+
+function buildHistory(messages) {
+  return messages
+    .filter(m =>
+      (m.role === 'user' || m.role === 'assistant') &&
+      m.content &&
+      !m.isError &&
+      !m.figures &&
+      !m.clarification &&
+      !m.starterQuestions
+    )
+    .map(({ role, content }) => ({ role, content }))
+    .slice(-MAX_HISTORY)
+}
 
 function buildWsUrl() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -23,6 +38,7 @@ export function useChat({ onUnauthorized } = {}) {
   const manualCloseRef = useRef(false)
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef(null)
+  const pendingHistoryRef = useRef(null)
   const nextId = () => ++idRef.current
 
   const addToast = useCallback((message, level = 'info') => {
@@ -125,6 +141,10 @@ export function useChat({ onUnauthorized } = {}) {
       ws.onopen = () => {
         setConnected(true)
         retryCountRef.current = 0
+        if (pendingHistoryRef.current?.length > 0) {
+          ws.send(JSON.stringify({ action: 'history', messages: pendingHistoryRef.current }))
+          pendingHistoryRef.current = null
+        }
         if (pendingSettingsRef.current) {
           ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
           pendingSettingsRef.current = null
@@ -190,6 +210,16 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [])
 
+  const sendHistory = useCallback((msgs) => {
+    const history = buildHistory(msgs)
+    if (!history.length) return
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'history', messages: history }))
+    } else {
+      pendingHistoryRef.current = history
+    }
+  }, [])
+
   const stop = useCallback(() => {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
@@ -200,5 +230,5 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, toasts, connected, send, sendClarification, sendSettings, stop, clear }
+  return { messages, busy, toasts, connected, send, sendClarification, sendSettings, sendHistory, stop, clear }
 }
