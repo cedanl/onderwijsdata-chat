@@ -39,6 +39,7 @@ export function useChat({ onUnauthorized } = {}) {
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef(null)
   const pendingHistoryRef = useRef(null)
+  const busyRef = useRef(false)
   const nextId = () => ++idRef.current
 
   const addToast = useCallback((message, level = 'info') => {
@@ -66,6 +67,7 @@ export function useChat({ onUnauthorized } = {}) {
 
     function finishStream() {
       currentMsgRef.current = null
+      busyRef.current = false
       setBusy(false)
     }
 
@@ -130,6 +132,7 @@ export function useChat({ onUnauthorized } = {}) {
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
         }])
+        busyRef.current = false
         setBusy(false)
       },
     }
@@ -189,11 +192,12 @@ export function useChat({ onUnauthorized } = {}) {
   }, [addToast, cancelCurrentMsg, onUnauthorized])
 
   const send = useCallback((content) => {
-    if (!wsRef.current || busy) return
+    if (!wsRef.current || busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
-  }, [busy])
+  }, [])
 
   const sendClarification = useCallback((choice) => {
     if (!wsRef.current || busy) return
