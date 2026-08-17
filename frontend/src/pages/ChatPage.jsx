@@ -127,7 +127,6 @@ export default function ChatPage({ openRapport, settings = {} }) {
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
-  const queueRef = useRef([])
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
@@ -269,27 +268,12 @@ export default function ChatPage({ openRapport, settings = {} }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    if (!busy && queueRef.current.length > 0) {
-      const next = queueRef.current.shift()
-      send(next)
-    }
-  }, [busy, send])
-
   const handleSend = () => {
     const q = input.trim()
-    if (!q) return
+    if (!q || busy) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    if (busy) {
-      if (queueRef.current.length < 5) {
-        queueRef.current.push(q)
-      } else {
-        setInput(q)
-      }
-    } else {
-      send(q)
-    }
+    send(q)
   }
 
   const handleKey = (e) => {
@@ -455,7 +439,7 @@ export default function ChatPage({ openRapport, settings = {} }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button type="button" className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || atContextLimit || queueRef.current.length >= 5}>
+                  <button type="button" className="send-btn" onClick={handleSend} disabled={!input.trim() || !connected || busy || atContextLimit}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
