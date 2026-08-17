@@ -973,6 +973,125 @@ input, textarea { font: inherit; }
 .confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: none; cursor: pointer; }
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
 
+/* ─── Dark mode component fixes ──────────────────────────── */
+/* blue-50/blue-100 become dark navy in dark mode, but blue-700 stays dark →
+   blue text on dark-blue bg is unreadable. Use blue-300 as text + subtle bg. */
+html.dark .new-chat-btn,
+html.dark .make-rapport-btn,
+html.dark .clarification-btn,
+html.dark .clarification-btn:hover,
+html.dark .history-action-btn,
+html.dark .dc-save-btn,
+html.dark .dc-clarification-btn,
+html.dark .suggested-category-btn {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--blue-300);
+}
+html.dark .new-chat-btn:hover,
+html.dark .make-rapport-btn:hover,
+html.dark .clarification-btn:hover,
+html.dark .history-action-btn:hover,
+html.dark .dc-save-btn:hover,
+html.dark .dc-clarification-btn:hover,
+html.dark .suggested-category-btn:hover {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+html.dark .restored-banner {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: var(--blue-300);
+}
+/* hardcoded green badges → needs dark-mode contrast adjustment */
+html.dark .meta-badge.live,
+html.dark .meta-badge.instelling {
+  background: rgba(22, 163, 74, 0.2);
+  color: #4ade80;
+}
+/* error message bubble in dashboard creator */
+html.dark .dc-msg-error {
+  border-color: #7f1d1d;
+  background: rgba(127, 29, 29, 0.25);
+  color: #fca5a5;
+}
+/* chat page error bubble */
+.message-bubble-error {
+  border-color: #FECACA !important;
+  background: #FFF5F5 !important;
+}
+html.dark .message-bubble-error {
+  border-color: #7f1d1d !important;
+  background: rgba(127, 29, 29, 0.25) !important;
+  color: #fca5a5 !important;
+}
+/* suggested-btn: gray-50 bg + gray-700 text → both dark in dark mode */
+html.dark .suggested-btn {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+  color: var(--gray-700);
+}
+html.dark .suggested-btn:hover {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--blue-300);
+}
+
+/* apply same fixes when dark mode comes from prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not([class]) .new-chat-btn,
+  html:not(.dark):not([class]) .make-rapport-btn,
+  html:not(.dark):not([class]) .clarification-btn,
+  html:not(.dark):not([class]) .history-action-btn,
+  html:not(.dark):not([class]) .dc-save-btn,
+  html:not(.dark):not([class]) .dc-clarification-btn,
+  html:not(.dark):not([class]) .suggested-category-btn {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #93C5FD;
+  }
+  html:not(.dark):not([class]) .new-chat-btn:hover,
+  html:not(.dark):not([class]) .make-rapport-btn:hover,
+  html:not(.dark):not([class]) .clarification-btn:hover,
+  html:not(.dark):not([class]) .history-action-btn:hover,
+  html:not(.dark):not([class]) .dc-save-btn:hover,
+  html:not(.dark):not([class]) .dc-clarification-btn:hover,
+  html:not(.dark):not([class]) .suggested-category-btn:hover {
+    background: rgba(37, 99, 235, 0.25);
+    border-color: rgba(59, 130, 246, 0.6);
+  }
+  html:not(.dark):not([class]) .restored-banner {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #93C5FD;
+  }
+  html:not(.dark):not([class]) .meta-badge.live,
+  html:not(.dark):not([class]) .meta-badge.instelling {
+    background: rgba(22, 163, 74, 0.2);
+    color: #4ade80;
+  }
+  html:not(.dark):not([class]) .dc-msg-error {
+    border-color: #7f1d1d;
+    background: rgba(127, 29, 29, 0.25);
+    color: #fca5a5;
+  }
+  html:not(.dark):not([class]) .message-bubble-error {
+    border-color: #7f1d1d !important;
+    background: rgba(127, 29, 29, 0.25) !important;
+    color: #fca5a5 !important;
+  }
+  html:not(.dark):not([class]) .suggested-btn {
+    background: #2D3748;
+    border-color: #3D4A5C;
+    color: #E5E7EB;
+  }
+  html:not(.dark):not([class]) .suggested-btn:hover {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #93C5FD;
+  }
+}
+
 /* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .hero h1 { font-size: 2.2rem; }

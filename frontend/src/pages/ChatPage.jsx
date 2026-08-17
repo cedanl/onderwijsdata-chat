@@ -558,7 +558,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
         {msg.tools?.map((t, i) => (
           <ToolStep key={t.name || i} tool={t} />
         ))}
-        <div className="message-bubble message-bubble-assistant" style={msg.isError ? { borderColor: '#FECACA', background: '#FFF5F5' } : {}}>
+        <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
           {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
           <MessageContent msg={msg} />
           {msg.figures?.map((fig, i) => (
