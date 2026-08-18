@@ -8,7 +8,7 @@ Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokal
 
 | Component | Lokaal (standaard) | Productie |
 |-----------|-------------------|-----------|
-| Database | SQLite (`chat_history.db`) | PostgreSQL (beheerde cloud-service) |
+| Database | SQLite (`app.db`) | PostgreSQL (beheerde cloud-service) |
 | Authenticatie | Gebruikersnaam/wachtwoord in `.env` | Nog niet geïmplementeerd (OAuth/SURFconext gepland) |
 
 ---
@@ -36,7 +36,7 @@ DATABASE_URL=postgresql+asyncpg://gebruiker:wachtwoord@host:5432/onderwijschat
 
 De app maakt de tabellen automatisch aan bij de eerste start. Geen handmatige migratie nodig.
 
-!!! warning "Nooit `chat_history.db` committen"
+!!! warning "Nooit `app.db` committen"
     Het SQLite-bestand staat in `.gitignore`. Houd dat zo — databasebestanden horen niet in de repo.
 
 ---
@@ -103,4 +103,4 @@ az containerapp create \
 - [ ] `CHAT_USERS` ingesteld met sterke wachtwoorden
 - [ ] API keys als secrets in het hostingplatform, niet in code
 - [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
-- [ ] `chat_history.db` staat in `.gitignore`
+- [ ] `app.db` staat in `.gitignore`

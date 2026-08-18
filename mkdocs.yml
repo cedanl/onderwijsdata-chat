@@ -11,8 +11,7 @@ site_dir: site
 theme:
   name: material
   language: nl
-  logo: assets/npuls_logo.png
-  favicon: assets/npuls_logo.png
+
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -72,5 +71,7 @@ nav:
     - Providers & modellen: configuratie/providers.md
   - Databronnen: databronnen.md
   - Tools: tools.md
+  - Dashboards: dashboards.md
+  - API: api.md
   - Voorbeelden: voorbeelden/index.md
   - Hosting: hosting.md

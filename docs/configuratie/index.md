@@ -23,12 +23,14 @@ ANTHROPIC_API_KEY=sk-ant-...
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
 | `AVAILABLE_MODELS` | *(niet ingesteld)* | Kommagescheiden lijst van modellen in de model-picker — zie [Model-picker](#model-picker) |
+| `USER_MODELS` | *(niet ingesteld)* | Per-gebruiker model-picker — zie [Per-gebruiker model-picker](#per-gebruiker-model-picker) |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
-| `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
+| `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
+| `CORS_ORIGINS` | `*` | Komma-gescheiden lijst van toegestane origins voor CORS |
 
 ---
 
@@ -51,6 +53,18 @@ AVAILABLE_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-4o,ollama_chat/llama3.1:
 
 !!! warning "Zet altijd alle benodigde API keys"
     Elk model in `AVAILABLE_MODELS` moet via de bijbehorende omgevingsvariabele bereikbaar zijn. Een model in de picker zonder werkende API key geeft een foutmelding bij gebruik.
+
+---
+
+## Per-gebruiker model-picker
+
+Met `USER_MODELS` kun je per gebruiker een apart modelaanbod configureren. Gebruikers die niet in de lijst staan, krijgen de globale `AVAILABLE_MODELS`.
+
+```dotenv
+USER_MODELS=alice:anthropic/claude-sonnet-4-6,anthropic/claude-haiku-4-5;bob:openai/gpt-4o
+```
+
+Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` is ingesteld voor authenticatie.
 
 ---
 

@@ -15,7 +15,7 @@ De assistent volgt een **agentic loop**:
 5. **Loop** → Stappen 2-4 herhalen totdat LLM alleen tekst antwoordt (geen tool calls meer)
 
 **Beperkingen per turn:**
-- Maximaal 10 iteraties (stap 2-4)
+- Maximaal 25 iteraties (stap 2-4, configureerbaar via `MAX_TOOL_ITERATIONS`)
 - `search_catalog` max 5x per vraag
 - Tool-resultaten begrensd op 12.000 karakters
 
@@ -31,7 +31,7 @@ flowchart TD
     Decision1 -->|Nee| FinalAnswer["✓ Geef textantwoord"]
     FinalAnswer --> End["😊 Jij krijgt antwoord + snippet"]
     
-    Decision1 -->|Ja| Iterate["Iteratie 1-10"]
+    Decision1 -->|Ja| Iterate["Iteratie 1-25"]
     Iterate --> CheckLimit["⚙️ Check tool limits<br/>search_catalog ≤5x"]
     CheckLimit --> CheckCache["💾 Cache check:<br/>Call al uit voerd?"]
     
@@ -43,8 +43,8 @@ flowchart TD
     GenerateSnippet --> AddToHistory
     
     AddToHistory --> NextIter{Meer tools<br/>nodig?}
-    NextIter -->|Ja + iteraties < 10| LLM
-    NextIter -->|Ja + iteraties ≥ 10| ErrorMax["❌ Max stappen bereikt"]
+    NextIter -->|Ja + iteraties < 25| LLM
+    NextIter -->|Ja + iteraties ≥ 25| ErrorMax["❌ Max stappen bereikt"]
     ErrorMax --> End
     NextIter -->|Nee| FinalAnswer
 ```
