@@ -80,7 +80,7 @@ CHAT_SECRET=<willekeurige lange string>
 
 Meerdere gebruikers zijn mogelijk als kommalijst: `CHAT_USERS=alice:ww1,bob:ww2`.
 
-Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen in `chat_history.db`. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk.
+Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen in `app.db`. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk.
 
 !!! tip "Uitschakelen"
     Verwijder `CHAT_USERS` uit `.env` om terug te gaan naar de anonieme modus.
