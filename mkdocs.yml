@@ -1,5 +1,5 @@
 site_name: Onderwijsdata Chat
-site_description: Stel vragen over open Nederlandse onderwijsdata via een AI-assistent met toegang tot CBS, RIO en DUO.
+site_description: Stel vragen over open Nederlandse onderwijsdata via een AI-assistent met toegang tot CBS, RIO, DUO, ROA en UWV.
 site_url: https://cedanl.github.io/onderwijsdata-chat/
 repo_url: https://github.com/cedanl/onderwijsdata-chat
 repo_name: cedanl/onderwijsdata-chat
@@ -73,5 +73,6 @@ nav:
   - Tools: tools.md
   - Dashboards: dashboards.md
   - API: api.md
+  - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
   - Voorbeelden: voorbeelden/index.md
   - Hosting: hosting.md

@@ -31,6 +31,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `CORS_ORIGINS` | `*` | Komma-gescheiden lijst van toegestane origins voor CORS |
+| `DATABASE_PATH` | `app.db` | Aangepad voor het SQLite-databasebestand |
+| `LOG_LEVEL` | `INFO` | Loggingniveau: `DEBUG`, `INFO`, `WARNING` of `ERROR` |
 
 ---
 
