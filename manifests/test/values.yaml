@@ -1,5 +1,6 @@
 ingress:
   web:
+    className: "traefik-internal"
     hosts:
       - host: onderwijsdata-chat.test.sdp.surf.nl
         paths:

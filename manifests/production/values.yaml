@@ -1,15 +1,32 @@
+replicaCount: 3
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
 ingress:
   web:
-    className: "traefik-internal"
+    className: "traefik-external"
     hosts:
-      - host: onderwijsdata-chat.dev.sdp.surf.nl
+      - host: onderwijsdata-chat.sdp.surf.nl
         paths:
           - path: /
             pathType: Prefix
     tls:
       - secretName: "onderwijsdata-chat-tls"
         hosts:
-          - onderwijsdata-chat.dev.sdp.surf.nl
+          - onderwijsdata-chat.sdp.surf.nl
 
 env:
   - name: POSTGRES_URI

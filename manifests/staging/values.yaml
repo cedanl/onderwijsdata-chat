@@ -1,15 +1,25 @@
+replicaCount: 2
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
 ingress:
   web:
-    className: "traefik-internal"
+    className: "traefik-external"
     hosts:
-      - host: onderwijsdata-chat.dev.sdp.surf.nl
+      - host: onderwijsdata-chat.staging.sdp.surf.nl
         paths:
           - path: /
             pathType: Prefix
     tls:
       - secretName: "onderwijsdata-chat-tls"
         hosts:
-          - onderwijsdata-chat.dev.sdp.surf.nl
+          - onderwijsdata-chat.staging.sdp.surf.nl
 
 env:
   - name: POSTGRES_URI
