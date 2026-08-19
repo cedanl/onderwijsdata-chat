@@ -1,0 +1,70 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      variables:
+        ENVIRONMENT_CLUSTER: "development"
+    - if: $CI_MERGE_REQUEST_IID
+      variables:
+        ENVIRONMENT_CLUSTER: "development"
+    - if: $CI_COMMIT_TAG
+      variables:
+        ENVIRONMENT_CLUSTER: "staging"
+
+include:
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/base@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@0
+    inputs:
+      name: docker:docker-lint
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@0
+    inputs:
+      name: docker:docker-build
+      image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@0
+    inputs:
+      name: docker:docker-promote
+      image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-lint@0
+    inputs:
+      dir: $CHART_PATH
+  - local: .gitlab/helm-package.yaml
+    inputs:
+      dir: $CHART_PATH
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0
+    inputs:
+      chart: oci://$HARBOR_HOST/$HARBOR_PROJECT/onderwijsdata-chat
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0
+    inputs:
+      name: helm:publish-promoted
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@0
+    inputs:
+      cluster: ${ENVIRONMENT_CLUSTER}
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/dry-run@0
+    inputs:
+      cluster: ${ENVIRONMENT_CLUSTER}
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@0
+    inputs:
+      cluster: ${ENVIRONMENT_CLUSTER}
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@0
+    inputs:
+      name: kubernetes:verify-up:tag
+      chart_version: $CI_COMMIT_TAG
+      cluster: ${ENVIRONMENT_CLUSTER}
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/failure@0
+    inputs:
+      cluster: ${ENVIRONMENT_CLUSTER}
+
+variables:
+  CHART_PATH: $CI_PROJECT_DIR/charts/onderwijsdata-chat
+  CI_PROJECT_NAME: onderwijsdata-chat
+
+stages:
+  - build
+  - test
+  - package
+  - pre-deploy
+  - release
+  - post-deploy
