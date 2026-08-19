@@ -1,0 +1,8 @@
+apiVersion: v2
+name: onderwijsdata-chat
+description: Chat met open Nederlandse onderwijsdata
+maintainers:
+  - name: "@surf-internal/ceda-team"
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

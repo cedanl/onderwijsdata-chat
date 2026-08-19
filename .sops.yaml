@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: manifests/.*/secret.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: REPLACE_WITH_TENANT_AGE_PUBLIC_KEY
