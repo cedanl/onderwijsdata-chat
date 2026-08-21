@@ -23,6 +23,7 @@ COPY persistence/ ./persistence/
 COPY data/ ./data/
 COPY tools/ ./tools/
 COPY agent/ ./agent/
+COPY auth/ ./auth/
 COPY prompts/ ./prompts/
 COPY public/ ./public/
 COPY core/ ./core/
