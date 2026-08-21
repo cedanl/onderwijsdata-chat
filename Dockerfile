@@ -1,3 +1,19 @@
+# Stage 1: Build React Frontend
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/src ./src
+COPY frontend/index.html ./
+COPY frontend/vite.config.js ./
+COPY frontend/eslint.config.js ./
+
+RUN npm run build
+
+# Stage 2: Python Backend with Frontend
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -27,6 +43,9 @@ COPY auth/ ./auth/
 COPY prompts/ ./prompts/
 COPY public/ ./public/
 COPY core/ ./core/
+
+# Copy built frontend from Stage 1
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
 RUN useradd --create-home --uid 1000 appuser && \
     chown -R appuser:appuser /app
