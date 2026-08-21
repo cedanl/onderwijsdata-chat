@@ -8,7 +8,7 @@ spec:
   type: {{ .Values.service.web.type }}
   ports:
     - port: {{ .Values.service.web.port }}
-      targetPort: http
+      targetPort: {{ .Values.service.web.targetPort }}
       protocol: TCP
       name: http
   selector:
