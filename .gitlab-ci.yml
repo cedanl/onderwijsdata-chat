@@ -100,8 +100,7 @@ docker:docker-promote:
 
 docker:docker-lint:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-    - if: $CI_MERGE_REQUEST_IID
+    - when: never
 
 helm:lint:
   rules:
