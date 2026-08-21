@@ -36,3 +36,7 @@ eval.py
 eval_matrix.sh
 mcp_server.py
 test-results/
+
+# SOPS secrets (plaintext templates, encrypted files)
+*secret_orig.yaml
+*secret.yaml

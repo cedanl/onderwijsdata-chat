@@ -1,0 +1,24 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: onderwijsdata-chat
+spec:
+  chart:
+    spec:
+      chart: onderwijsdata-chat
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: onderwijsdata-chat-repo
+      version: ">=0.0.1-0.0"
+  driftDetection:
+    mode: enabled
+  install:
+    remediation:
+      retries: -1
+  interval: 1m
+  releaseName: onderwijsdata-chat
+  serviceAccountName: tenant-admin
+  valuesFrom:
+    - kind: ConfigMap
+      name: base-config

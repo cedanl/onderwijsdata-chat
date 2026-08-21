@@ -1,0 +1,84 @@
+replicaCount: 1
+
+image:
+  repository: cr.surf.nl/ceda-onderwijsdata-chat/onderwijsdata-chat
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets:
+  - name: sdp-harbor-credentials
+
+nameOverride: ""
+fullnameOverride: "fn-onderwijsdata-chat"
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsGroup: 1000
+  runAsUser: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsGroup: 1000
+  runAsUser: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+service:
+  web:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+
+ingress:
+  web:
+    enabled: true
+    className: "traefik-external"
+    annotations:
+      cert-manager.io/cluster-issuer: "harica-eab"
+    hosts:
+      - host: onderwijsdata-chat.test.sdp.surf.nl
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "onderwijsdata-chat-tls"
+        hosts:
+          - onderwijsdata-chat.test.sdp.surf.nl
+
+autoscaling:
+  enabled: false
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+env: []
