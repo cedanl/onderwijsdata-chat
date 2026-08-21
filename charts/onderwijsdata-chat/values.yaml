@@ -81,4 +81,14 @@ serviceAccount:
   annotations: {}
   name: ""
 
-env: []
+env:
+  - name: MODEL
+    value: "willma/default"
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: CORS_ORIGINS
+    value: "*"
+  - name: ANTHROPIC_API_KEY
+    value: "placeholder-key-for-testing"
+  - name: OPENAI_API_KEY
+    value: "placeholder-key-for-testing"
