@@ -83,10 +83,7 @@ version:promote:
 
 docker:docker-build:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-    - if: $CI_MERGE_REQUEST_IID
-  needs:
-    - version:generate
+    - when: never
 
 docker:docker-build:container_scanning:
   rules:
@@ -94,9 +91,7 @@ docker:docker-build:container_scanning:
 
 docker:docker-promote:
   rules:
-    - if: $CI_COMMIT_TAG
-  needs:
-    - version:promote
+    - when: never
 
 docker:docker-lint:
   rules:
