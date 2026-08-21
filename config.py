@@ -19,7 +19,7 @@ class Config:
     """Application configuration from environment variables."""
 
     # Required settings
-    MODEL: str = os.getenv("MODEL", "anthropic/claude-sonnet-4-6")
+    MODEL: str = os.getenv("MODEL", "willma/default")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
@@ -48,15 +48,8 @@ class Config:
         """Validate required configuration at startup."""
         errors = []
 
-        # Check LLM API key is configured
-        if not any([cls.ANTHROPIC_API_KEY, cls.AZURE_AI_API_KEY, cls.OPENAI_API_KEY, cls.GOOGLE_API_KEY]):
-            errors.append(
-                "No LLM API key configured. Set one of: "
-                "ANTHROPIC_API_KEY, AZURE_AI_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY"
-            )
-
-        # Check model is valid format
-        if not cls.MODEL or ":" not in cls.MODEL:
+        # Check model is valid format (provider/model-name)
+        if not cls.MODEL or "/" not in cls.MODEL:
             errors.append(f"MODEL must be in format 'provider/model-name', got: {cls.MODEL}")
 
         if errors:
