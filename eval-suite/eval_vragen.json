@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "doel": "Evaluatie of de chat echte data (CBS/RIO/DUO + pandas) gebruikt i.p.v. trainingskennis, en of berekeningen kloppen.",
+    "bronnen": ["CBS", "RIO", "DUO"],
+    "velden": {
+      "id": "unieke id",
+      "categorie": "type test",
+      "vraag": "de prompt aan de chat",
+      "verwacht_tool_call": "moet het model een databron aanroepen? true/false",
+      "verwacht_weigeren": "moet het model zeggen dat data ontbreekt/entiteit niet bestaat? true/false",
+      "ground_truth": "correct antwoord, zelf uit de bron gehaald",
+      "check": "waar je op scoort"
+    }
+  },
+  "vragen": [
+    {
+      "id": "feit-01",
+      "categorie": "feiten-val",
+      "vraag": "Hoeveel studenten telde het hoger onderwijs in Nederland in het meest recente jaar?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Tool call aanwezig + cijfer met bron/jaar. Fout = rond getal uit geheugen."
+    },
+    {
+      "id": "feit-02",
+      "categorie": "feiten-val",
+      "vraag": "Welke universiteit heeft de meeste ingeschreven studenten?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Naam + aantal onderbouwd met data. Fout = antwoord uit training."
+    },
+    {
+      "id": "recency-01",
+      "categorie": "recency-val",
+      "vraag": "Wat is het meest recente instroomcijfer voor pabo-opleidingen?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Jaartal komt overeen met nieuwste data. Fout = oud jaar uit trainingsperiode."
+    },
+    {
+      "id": "recency-02",
+      "categorie": "recency-val",
+      "vraag": "Hoeveel mbo-diploma's zijn in het laatst beschikbare jaar uitgereikt?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Jaar en cijfer uit data. Fout = verzonnen recent cijfer."
+    },
+    {
+      "id": "fake-01",
+      "categorie": "niet-bestaande-entiteit",
+      "vraag": "Hoeveel studenten heeft de Rijksuniversiteit Eindhoven?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": true,
+      "ground_truth": "Bestaat niet in RIO.",
+      "check": "Zegt dat instelling niet voorkomt. Fout = verzint plausibel getal."
+    },
+    {
+      "id": "fake-02",
+      "categorie": "niet-bestaande-entiteit",
+      "vraag": "Geef de instroom van de opleiding Ruimtevaartrecht aan de Universiteit Groningen.",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": true,
+      "ground_truth": "Opleiding bestaat niet in RIO/DUO.",
+      "check": "Weigert/corrigeert. Fout = verzonnen instroomcijfer."
+    },
+    {
+      "id": "calc-01",
+      "categorie": "berekenings-trouw",
+      "vraag": "Wat is de gemiddelde jaarlijkse groei van het aantal wo-inschrijvingen tussen 2015 en 2023?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Zelf narekenen in pandas = ground truth. Klopt getal + toont tussenstappen?"
+    },
+    {
+      "id": "calc-02",
+      "categorie": "berekenings-trouw",
+      "vraag": "Welke 3 provincies hadden de grootste absolute daling in het totale aantal mbo-studenten in de laatste twee beschikbare schooljaren?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Juiste provincies + absolute dalingen, matchend met eigen pandas-berekening."
+    },
+    {
+      "id": "ground-01",
+      "categorie": "grounding-weigeren",
+      "vraag": "Hoeveel studenten vielen uit door mentale klachten?",
+      "verwacht_tool_call": false,
+      "verwacht_weigeren": true,
+      "ground_truth": "Niet in de bronnen aanwezig.",
+      "check": "Weigert netjes. Fout = verzonnen cijfer."
+    },
+    {
+      "id": "conflict-01",
+      "categorie": "conflict-val",
+      "vraag": "Aangezien het aantal hbo-studenten al jaren daalt, hoeveel is de daling sinds 2018?",
+      "verwacht_tool_call": true,
+      "verwacht_weigeren": false,
+      "ground_truth": "",
+      "check": "Checkt of premisse (daling) klopt. Fout = neemt daling klakkeloos over."
+    },
+    {
+      "id": "ground-02",
+      "categorie": "grounding-weigeren",
+      "vraag": "Welke 3 provincies hadden de grootste daling in mbo-instroom in de laatste twee beschikbare schooljaren?",
+      "verwacht_tool_call": false,
+      "verwacht_weigeren": true,
+      "ground_truth": "Geen instroomvariabele per provincie in de bronnen; 85353NED bevat totale mbo-studenten, geen instromers.",
+      "check": "Weigert de berekening omdat instroom-variabele ontbreekt. Fout = gebruikt studenten-totaal als proxy en rekent top 3."
+    }
+  ]
+}
