@@ -2,8 +2,10 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 _MAX_CONVERSATIONS = 15
+_USE_POSTGRES = bool(os.getenv("POSTGRES_URI"))
 
 
 def _db_path() -> Path:
@@ -16,59 +18,129 @@ def _db_path() -> Path:
     return Path(__file__).parent.parent / "onderwijsdata.db"
 
 
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
+def _connect() -> Any:
+    if _USE_POSTGRES:
+        try:
+            import psycopg2
+            import psycopg2.extras
+            conn = psycopg2.connect(os.getenv("POSTGRES_URI"))
+            conn.autocommit = False
+            return conn
+        except ImportError:
+            raise RuntimeError("psycopg2 required for PostgreSQL but not installed")
+    else:
+        conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
 
 
-def _migrate(conn: sqlite3.Connection) -> None:
-    cursor = conn.execute("PRAGMA table_info(workbooks)")
-    columns = {row[1] for row in cursor.fetchall()}
-    if "dashboard_spec" not in columns:
-        conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
-        conn.commit()
+def _migrate(conn: Any) -> None:
+    if _USE_POSTGRES:
+        import psycopg2
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='workbooks' AND column_name='dashboard_spec'
+        """)
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
+            conn.commit()
 
-    has_ms = conn.execute(
-        "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
-    ).fetchone()
-    if has_ms:
-        conn.execute(
-            "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
-            "WHERE timestamp > 1000000000000"
+        cursor.execute(
+            "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
         )
-        conn.commit()
+        if cursor.fetchone():
+            cursor.execute(
+                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
+                "WHERE timestamp > 1000000000000"
+            )
+            conn.commit()
+        cursor.close()
+    else:
+        cursor = conn.execute("PRAGMA table_info(workbooks)")
+        columns = {row[1] for row in cursor.fetchall()}
+        if "dashboard_spec" not in columns:
+            conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
+            conn.commit()
+
+        has_ms = conn.execute(
+            "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
+        ).fetchone()
+        if has_ms:
+            conn.execute(
+                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
+                "WHERE timestamp > 1000000000000"
+            )
+            conn.commit()
 
 
 def init_db() -> None:
     conn = _connect()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS conversations (
-            id        TEXT    NOT NULL,
-            username  TEXT    NOT NULL,
-            title     TEXT    NOT NULL,
-            timestamp INTEGER NOT NULL,
-            messages  TEXT    NOT NULL,
-            PRIMARY KEY (id, username)
-        );
-        CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
+    cursor = conn.cursor()
 
-        CREATE TABLE IF NOT EXISTS workbooks (
-            id             TEXT NOT NULL,
-            username       TEXT NOT NULL,
-            title          TEXT NOT NULL,
-            description    TEXT NOT NULL DEFAULT '',
-            messages       TEXT,
-            figures        TEXT,
-            instelling     TEXT,
-            html_content   TEXT,
-            dashboard_spec TEXT,
-            created_at     TEXT NOT NULL,
-            PRIMARY KEY (id, username)
-        );
-        CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
-    """)
+    if _USE_POSTGRES:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id        TEXT    NOT NULL,
+                username  TEXT    NOT NULL,
+                title     TEXT    NOT NULL,
+                timestamp INTEGER NOT NULL,
+                messages  TEXT    NOT NULL,
+                PRIMARY KEY (id, username)
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)"
+        )
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS workbooks (
+                id             TEXT NOT NULL,
+                username       TEXT NOT NULL,
+                title          TEXT NOT NULL,
+                description    TEXT NOT NULL DEFAULT '',
+                messages       TEXT,
+                figures        TEXT,
+                instelling     TEXT,
+                html_content   TEXT,
+                dashboard_spec TEXT,
+                created_at     TEXT NOT NULL,
+                PRIMARY KEY (id, username)
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
+        )
+        conn.commit()
+        cursor.close()
+    else:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id        TEXT    NOT NULL,
+                username  TEXT    NOT NULL,
+                title     TEXT    NOT NULL,
+                timestamp INTEGER NOT NULL,
+                messages  TEXT    NOT NULL,
+                PRIMARY KEY (id, username)
+            );
+            CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
+
+            CREATE TABLE IF NOT EXISTS workbooks (
+                id             TEXT NOT NULL,
+                username       TEXT NOT NULL,
+                title          TEXT NOT NULL,
+                description    TEXT NOT NULL DEFAULT '',
+                messages       TEXT,
+                figures        TEXT,
+                instelling     TEXT,
+                html_content   TEXT,
+                dashboard_spec TEXT,
+                created_at     TEXT NOT NULL,
+                PRIMARY KEY (id, username)
+            );
+            CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
+        """)
+
     _migrate(conn)
     conn.close()
 

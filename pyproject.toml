@@ -10,6 +10,7 @@ dependencies = [
     "litellm>=1.40",
     "plotly>=5.0",
     "python-dotenv>=1.0",
+    "psycopg2-binary>=2.9",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git",
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",

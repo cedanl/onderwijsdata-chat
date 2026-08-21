@@ -1,0 +1,48 @@
+replicaCount: 3
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+ingress:
+  web:
+    className: "traefik-external"
+    hosts:
+      - host: onderwijsdata-chat.sdp.surf.nl
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "onderwijsdata-chat-tls"
+        hosts:
+          - onderwijsdata-chat.sdp.surf.nl
+
+env:
+  - name: POSTGRES_URI
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: POSTGRES_URI
+  - name: ANTHROPIC_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: ANTHROPIC_API_KEY
+  - name: SESSION_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: SESSION_SECRET
+  - name: MODEL
+    value: "anthropic/claude-sonnet-4-6"

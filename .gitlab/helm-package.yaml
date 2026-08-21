@@ -1,0 +1,41 @@
+spec:
+  inputs:
+    name:
+      default: helm:package
+    stage:
+      default: package
+    dir:
+      default: ""
+    chart_tar_output_path:
+      default: "$CI_PROJECT_DIR/chart.tgz"
+    version:
+      default: "$CHART_VERSION"
+    patch_docker_image:
+      default: true
+      type: boolean
+    chart_testing_version:
+      default: "v3.11.0"
+    args:
+      default: ""
+---
+$[[ inputs.name ]]:
+  stage: $[[ inputs.stage ]]
+  image:
+    name: quay.io/helmpack/chart-testing:$[[ inputs.chart_testing_version ]]
+  script:
+    - apk add --no-cache yq
+    - cd $[[ inputs.dir ]]
+    - |
+      if [[ "$[[ inputs.patch_docker_image ]]" == "true" ]]; then
+        export IMAGE_REPO="$HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME";
+        yq eval -i '.image.repository = strenv(IMAGE_REPO)' values.yaml;
+        yq eval -i '.image.tag = strenv(CI_COMMIT_SHORT_SHA)' values.yaml;
+      fi
+    - export TARGET_VERSION="$[[ inputs.version ]]" && yq eval -i '.version = strenv(TARGET_VERSION)' Chart.yaml
+    - |
+        CHART_OUTPUT_PATH=$(helm package --dependency-update . $[[ inputs.args ]] | grep -o 'Successfully packaged chart and saved it to: .*' | sed 's/Successfully packaged chart and saved it to: //')
+    - mv $CHART_OUTPUT_PATH $[[ inputs.chart_tar_output_path ]]
+  artifacts:
+    paths:
+      - $[[ inputs.chart_tar_output_path ]]
+  interruptible: true

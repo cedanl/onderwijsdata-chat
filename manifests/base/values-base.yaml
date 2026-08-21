@@ -1,0 +1,12 @@
+ingress:
+  web:
+    className: "traefik-external"
+    hosts:
+      - host: onderwijsdata-chat.test.sdp.surf.nl
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "onderwijsdata-chat-tls"
+        hosts:
+          - onderwijsdata-chat.test.sdp.surf.nl
