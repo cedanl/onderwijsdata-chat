@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir uv && \
     uv sync --frozen --no-dev --no-install-project
 
 COPY server.py ./
+COPY logging_config.py ./
 COPY routes/ ./routes/
 COPY persistence/ ./persistence/
 COPY data/ ./data/
