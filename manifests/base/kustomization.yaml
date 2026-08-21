@@ -4,7 +4,6 @@ resources:
   - helmrelease.yaml
   - helmrepo.yaml
   - network-policy.yaml
-  - middleware.yaml
 configMapGenerator:
   - name: base-config
     files:

@@ -62,7 +62,7 @@ ingress:
     className: "traefik-external"
     annotations:
       cert-manager.io/cluster-issuer: "harica-eab"
-      traefik.ingress.kubernetes.io/router.middlewares: "onderwijsdata-chat-public-allowlist@services-onderwijsdata-chat"
+      traefik.ingress.kubernetes.io/router.middlewares: "onderwijsdata-chat-public-allowlist@kubernetescrd"
     hosts:
       - host: onderwijsdata-chat.test.sdp.surf.nl
         paths:
