@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../base
+  - middleware.yaml
 
 configMapGenerator:
   - name: production-config

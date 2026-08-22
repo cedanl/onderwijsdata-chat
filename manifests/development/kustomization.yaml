@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ../base
   - secret.yaml
+  - middleware.yaml
 
 configMapGenerator:
   - name: development-config
