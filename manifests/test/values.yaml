@@ -24,6 +24,14 @@ env:
     value: "https://proxy.sram.surf.nl/.well-known/openid-configuration"
   - name: SERVER_URL
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
+  # Required now that AUTH_ENABLED is true (core/auth.py hard-fails at
+  # startup otherwise) — signs auth tokens, unrelated to the SRAM client
+  # credentials themselves.
+  - name: CHAT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: CHAT_SECRET
   # Platform-provisioned Postgres for this tenant (services-onderwijsdata-chat-pgdb) —
   # secret already existed, just never wired up. Without this the app silently
   # falls back to SQLite on the pod's own ephemeral filesystem (no PVC in this
