@@ -42,6 +42,13 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
         key: CHAT_SECRET
+  # Password login, coexists with SRAM permanently (not a placeholder to
+  # remove later) — see LoginPage.jsx, both options render together.
+  - name: CHAT_USERS
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: CHAT_USERS
   # Platform-provisioned Postgres for this tenant (services-onderwijsdata-chat-pgdb) —
   # secret already existed, just never wired up. Without this the app silently
   # falls back to SQLite on the pod's own ephemeral filesystem (no PVC in this
