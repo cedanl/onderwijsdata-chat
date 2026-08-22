@@ -10,3 +10,24 @@ ingress:
       - secretName: "onderwijsdata-chat-tls"
         hosts:
           - onderwijsdata-chat.test.sdp.surf.nl
+
+env:
+  # openai/gpt-oss-120b: strongest model that's "Always" hosted (no cold-start
+  # latency) on Willma right now — 120B, and already tagged "sterk in tool
+  # calling" in the model picker, which matters given how tool-call-heavy this
+  # app is (CBS/RIO/DUO tools). Sehyo/Qwen3.5-122B-A10B-NVFP4 is nominally
+  # larger but On-demand (cold start) and an unofficial finetune — not worth
+  # the reliability tradeoff for the default model.
+  - name: MODEL
+    value: "openai/gpt-oss-120b"
+  - name: WILLMA_BASE_URL
+    value: "https://willma.surf.nl/api/v0"
+  - name: WILLMA_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: WILLMA_API_KEY
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: CORS_ORIGINS
+    value: "*"
