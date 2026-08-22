@@ -12,6 +12,15 @@ ingress:
           - onderwijsdata-chat.test.sdp.surf.nl
 
 env:
+  # Platform-provisioned Postgres for this tenant (services-onderwijsdata-chat-pgdb) —
+  # secret already existed, just never wired up. Without this the app silently
+  # falls back to SQLite on the pod's own ephemeral filesystem (no PVC in this
+  # chart), so chat history is lost on every restart.
+  - name: POSTGRES_URI
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-app
+        key: uri
   # openai/gpt-oss-120b: strongest model that's "Always" hosted (no cold-start
   # latency) on Willma right now — 120B, and already tagged "sterk in tool
   # calling" in the model picker, which matters given how tool-call-heavy this
