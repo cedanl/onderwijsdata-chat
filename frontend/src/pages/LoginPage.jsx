@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { login } from '../auth'
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, oidcEnabled }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() =>
+    new URLSearchParams(window.location.search).get('oidc_error')
+      ? 'Inloggen met SRAM is mislukt. Probeer het opnieuw.'
+      : ''
+  )
   const [busy, setBusy] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -44,6 +48,30 @@ export default function LoginPage({ onLogin }) {
         <p style={{ fontSize: '.9rem', color: 'var(--gray-500)', marginBottom: 28 }}>
           Log in om verder te gaan met openEDUdata+.
         </p>
+
+        {oidcEnabled && (
+          <>
+            <a
+              href="/api/auth/oidc/login"
+              style={{
+                display: 'block', textAlign: 'center', padding: '12px',
+                borderRadius: 'var(--radius)', background: 'var(--blue-600)',
+                color: 'var(--white)', fontWeight: 700, fontSize: '.95rem',
+                textDecoration: 'none', marginBottom: 20,
+              }}
+            >
+              Inloggen met SURF SRAM
+            </a>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              color: 'var(--gray-500)', fontSize: '.8rem', marginBottom: 20,
+            }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--gray-200)' }} />
+              of
+              <div style={{ flex: 1, height: 1, background: 'var(--gray-200)' }} />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>

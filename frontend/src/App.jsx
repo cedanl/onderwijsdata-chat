@@ -7,7 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
-import { fetchAuthStatus, getToken, clearToken } from './auth'
+import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl } from './auth'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT } from './constants'
 
 function loadSettings() {
@@ -33,6 +33,7 @@ function AppShell() {
   const location = useLocation()
 
   const [authRequired, setAuthRequired] = useState(false)
+  const [oidcEnabled, setOidcEnabled] = useState(false)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [settings, setSettings] = useState(loadSettings)
@@ -42,8 +43,10 @@ function AppShell() {
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
   useEffect(() => {
-    fetchAuthStatus().then(({ required }) => {
+    consumeTokenFromUrl()
+    fetchAuthStatus().then(({ required, oidc_enabled }) => {
       setAuthRequired(required)
+      setOidcEnabled(!!oidc_enabled)
       if (!required) {
         setUser('gast')
       } else if (getToken()) {
@@ -80,7 +83,7 @@ function AppShell() {
   if (authLoading) return null
 
   if (authRequired && !user) {
-    return <LoginPage onLogin={handleLogin} />
+    return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} />
   }
 
   const handleLogout = () => {

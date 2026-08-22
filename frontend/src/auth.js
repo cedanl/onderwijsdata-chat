@@ -24,3 +24,17 @@ export async function login(username, password) {
   setToken(data.token)
   return data
 }
+
+// After a redirect back from /api/auth/oidc/callback, the token arrives as
+// ?token=... on the URL. Pick it up, persist it, and strip it from the URL
+// (it shouldn't linger in browser history).
+export function consumeTokenFromUrl() {
+  const params = new URLSearchParams(window.location.search)
+  const token = params.get('token')
+  if (!token) return null
+  setToken(token)
+  params.delete('token')
+  const query = params.toString()
+  window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''))
+  return token
+}

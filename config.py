@@ -37,10 +37,13 @@ class Config:
     CHAT_USERS: Optional[str] = os.getenv("CHAT_USERS")  # username:password format
     CHAT_SECRET: Optional[str] = os.getenv("CHAT_SECRET")
 
-    # Optional OIDC/SURFconext
+    # Optional OIDC/SRAM (see skill sram-oidc for the CEDA convention)
+    OIDC_PROVIDER: str | None = os.getenv("OIDC_PROVIDER")
+    OIDC_DISCOVERY_URL: str | None = os.getenv("OIDC_DISCOVERY_URL")
     OIDC_CLIENT_ID: Optional[str] = os.getenv("OIDC_CLIENT_ID")
     OIDC_CLIENT_SECRET: Optional[str] = os.getenv("OIDC_CLIENT_SECRET")
-    OIDC_ISSUER_URL: Optional[str] = os.getenv("OIDC_ISSUER_URL")
+    SERVER_URL: str | None = os.getenv("SERVER_URL")
+    SERVER_REDIRECT: str = os.getenv("SERVER_REDIRECT", "/api/auth/oidc/callback")
     SESSION_SECRET: Optional[str] = os.getenv("SESSION_SECRET")
 
     @classmethod

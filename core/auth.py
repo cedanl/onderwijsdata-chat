@@ -58,11 +58,12 @@ def verify_token(token: str) -> str | None:
 
 
 USERS = parse_users(os.getenv("CHAT_USERS", ""))
-AUTH_ENABLED = bool(USERS)
+OIDC_ENABLED = bool(os.getenv("OIDC_PROVIDER"))
+AUTH_ENABLED = bool(USERS) or OIDC_ENABLED
 
 if AUTH_ENABLED and not _TOKEN_SECRET_RAW:
     raise ValueError(
-        "CHAT_SECRET moet ingesteld zijn wanneer CHAT_USERS is geconfigureerd. "
+        "CHAT_SECRET moet ingesteld zijn wanneer CHAT_USERS of OIDC_PROVIDER is geconfigureerd. "
         "Genereer een willekeurige waarde: python -c \"import secrets; print(secrets.token_hex(32))\""
     )
 
