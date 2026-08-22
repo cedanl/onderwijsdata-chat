@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - helmrelease.yaml
   - helmrepo.yaml
+  - network-policy.yaml
 configMapGenerator:
   - name: base-config
     files:
