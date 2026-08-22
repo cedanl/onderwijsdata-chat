@@ -12,6 +12,18 @@ ingress:
           - onderwijsdata-chat.test.sdp.surf.nl
 
 env:
+  # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to
+  # set now; OIDC_CLIENT_ID/OIDC_CLIENT_SECRET (in secret_orig.yaml) are still
+  # placeholders pending a real SRAM application registration. This means the
+  # "Inloggen met SURF SRAM" login button will appear but fail on click until
+  # real credentials are swapped in — accepted tradeoff so activation is a
+  # single secret update once SURF responds, not a values.yaml change too.
+  - name: OIDC_PROVIDER
+    value: "SRAM"
+  - name: OIDC_DISCOVERY_URL
+    value: "https://proxy.sram.surf.nl/.well-known/openid-configuration"
+  - name: SERVER_URL
+    value: "https://onderwijsdata-chat.test.sdp.surf.nl"
   # Platform-provisioned Postgres for this tenant (services-onderwijsdata-chat-pgdb) —
   # secret already existed, just never wired up. Without this the app silently
   # falls back to SQLite on the pod's own ephemeral filesystem (no PVC in this
