@@ -24,6 +24,16 @@ env:
     value: "https://proxy.sram.surf.nl/.well-known/openid-configuration"
   - name: SERVER_URL
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
+  - name: OIDC_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: OIDC_CLIENT_ID
+  - name: OIDC_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: OIDC_CLIENT_SECRET
   # Required now that AUTH_ENABLED is true (core/auth.py hard-fails at
   # startup otherwise) — signs auth tokens, unrelated to the SRAM client
   # credentials themselves.
