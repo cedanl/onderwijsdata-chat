@@ -8,7 +8,7 @@ import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken } from './auth'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
@@ -54,6 +54,14 @@ function AppShell() {
   }, [])
 
   const handleLogin = (u) => {
+    // Clear any anonymous-session cache from this browser before the
+    // conversations/workbooks pages mount and sync with the server — their
+    // migrate-local-to-server logic otherwise can't tell "genuinely unsynced
+    // local data" apart from "leftover data from whoever used this browser
+    // before login", and would attribute it to the newly logged-in user.
+    localStorage.removeItem(STORAGE_CONVERSATIONS)
+    localStorage.removeItem(STORAGE_CURRENT_CHAT)
+    localStorage.removeItem(STORAGE_WORKBOOKS)
     setUser(u)
     if (!localStorage.getItem(STORAGE_ONBOARDED)) {
       setIsOnboarding(true)
@@ -87,6 +95,7 @@ function AppShell() {
     clearToken()
     localStorage.removeItem(STORAGE_CONVERSATIONS)
     localStorage.removeItem(STORAGE_CURRENT_CHAT)
+    localStorage.removeItem(STORAGE_WORKBOOKS)
     setUser(null)
   }
 
