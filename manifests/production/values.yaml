@@ -29,20 +29,36 @@ ingress:
           - onderwijsdata-chat.sdp.surf.nl
 
 env:
+  # Platform-provisioned Postgres for this tenant, same pattern as test/development
+  # (manifests/test/values.yaml) — the previous POSTGRES_URI/onderwijsdata-chat-secrets
+  # reference here was stale and never matched an actual secret key.
   - name: POSTGRES_URI
     valueFrom:
       secretKeyRef:
-        name: onderwijsdata-chat-secrets
-        key: POSTGRES_URI
-  - name: ANTHROPIC_API_KEY
+        name: onderwijsdata-chat-app
+        key: uri
+  # CHAT_SECRET is required once AUTH_ENABLED is true (core/auth.py hard-fails at
+  # startup otherwise) — signs auth tokens.
+  - name: CHAT_SECRET
     valueFrom:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
-        key: ANTHROPIC_API_KEY
-  - name: SESSION_SECRET
+        key: CHAT_SECRET
+  - name: CHAT_USERS
     valueFrom:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
-        key: SESSION_SECRET
+        key: CHAT_USERS
   - name: MODEL
-    value: "anthropic/claude-sonnet-4-6"
+    value: "openai/gpt-oss-120b"
+  - name: WILLMA_BASE_URL
+    value: "https://willma.surf.nl/api/v0"
+  - name: WILLMA_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: WILLMA_API_KEY
+  - name: LOG_LEVEL
+    value: "INFO"
+  - name: CORS_ORIGINS
+    value: "*"
