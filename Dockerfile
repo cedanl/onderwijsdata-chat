@@ -18,6 +18,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -26,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
+# hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv && \
     uv sync --frozen --no-dev --no-install-project
 

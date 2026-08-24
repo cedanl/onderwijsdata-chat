@@ -14,49 +14,49 @@ workflow:
         ENVIRONMENT_NAME: "odw-chat-staging"
 
 include:
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/base@0
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@0
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@0
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/base@0.10.8
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0.10.8
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.11
     inputs:
       name: docker:docker-lint
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.11
     inputs:
       name: docker:docker-build
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.11
     inputs:
       name: docker:docker-promote
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-lint@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-lint@0.9.13
     inputs:
       dir: $CHART_PATH
   - local: .gitlab/helm-package.yaml
     inputs:
       dir: $CHART_PATH
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0.9.13
     inputs:
       chart: oci://$HARBOR_HOST/$HARBOR_PROJECT/onderwijsdata-chat
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.13
     inputs:
       name: helm:publish-promoted
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@1.0.2
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/dry-run@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/dry-run@1.0.2
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.2
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.2
     inputs:
       name: kubernetes:verify-up:tag
       chart_version: $CI_COMMIT_TAG
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/failure@0
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/failure@1.0.2
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
 
@@ -88,19 +88,11 @@ docker:docker-build:
   needs:
     - version:generate
 
-docker:docker-build:container_scanning:
-  rules:
-    - when: never
-
 docker:docker-promote:
   rules:
     - if: $CI_COMMIT_TAG
   needs:
     - version:promote
-
-docker:docker-lint:
-  rules:
-    - when: never
 
 helm:lint:
   rules:
@@ -160,10 +152,10 @@ kubernetes:patch-ingress-api:
 kubernetes:verify-up:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-    - if: $CI_MERGE_REQUEST_IID
   needs:
     - job: kubernetes:patch-ingress-api
       optional: true
+    - job: kubernetes:diff
 
 kubernetes:verify-up:tag:
   rules:
