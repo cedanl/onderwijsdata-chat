@@ -18,16 +18,31 @@ def ground_truth_feit_01(
         errors="raise",
     )
 
-    hoger_onderwijs_totaal = "A028566"
+    # Expliciet de totaal-codes per dimensie, anders selecteert de query 36 rijen
+    # (alle combinaties van geslacht/opleidingsfase/-vorm) en pakt .iloc[0] er
+    # willekeurig een uit.
+    hoger_onderwijs_totaal = "A028566"  # Onderwijssoort: hbo + wo
+    geslacht_totaal = "T001038"
+    opleidingsfase_totaal = "A045745"  # bachelor + master samen
+    opleidingsvorm_totaal = "T001228"  # voltijd + deeltijd + duaal samen
     meest_recent = df["Perioden"].dropna().sort_values().iloc[-1]
 
-    return int(
-        df.loc[
-            (df["Perioden"] == meest_recent)
-            & (df["Onderwijssoort"] == hoger_onderwijs_totaal),
-            "TotaalIngeschrevenen_1",
-        ].iloc[0]
-    )
+    resultaat = df.loc[
+        (df["Perioden"] == meest_recent)
+        & (df["Onderwijssoort"] == hoger_onderwijs_totaal)
+        & (df["Geslacht"] == geslacht_totaal)
+        & (df["Opleidingsfase"] == opleidingsfase_totaal)
+        & (df["Opleidingsvorm"] == opleidingsvorm_totaal),
+        "TotaalIngeschrevenen_1",
+    ]
+
+    if len(resultaat) != 1:
+        raise ValueError(
+            f"Verwacht precies 1 totaal-rij, kreeg er {len(resultaat)}. "
+            "Controleer of de dimensiecodes nog kloppen in deze CBS-download."
+        )
+
+    return int(resultaat.iloc[0])
 
 
 if __name__ == "__main__":

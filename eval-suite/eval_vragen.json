@@ -19,7 +19,7 @@
       "vraag": "Hoeveel studenten telde het hoger onderwijs in Nederland in het meest recente jaar?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "773.270 ingeschrevenen in het hoger onderwijs (hbo + wo), schooljaar 2025/'26. Bron: CBS 85423NED, dimensies geslacht/opleidingsfase/-vorm = totaal.",
       "check": "Tool call aanwezig + cijfer met bron/jaar. Fout = rond getal uit geheugen."
     },
     {
@@ -28,7 +28,7 @@
       "vraag": "Welke universiteit heeft de meeste ingeschreven studenten?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "Universiteit van Amsterdam, 43.236 wo-ingeschrevenen, studiejaar 2025. Bron: DUO p01hoinges.",
       "check": "Naam + aantal onderbouwd met data. Fout = antwoord uit training."
     },
     {
@@ -37,7 +37,7 @@
       "vraag": "Wat is het meest recente instroomcijfer voor pabo-opleidingen?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "5.797 eerstejaars pabo (hbo, opleiding leraar basisonderwijs), studiejaar 2025. Bron: DUO p02ho1ejrs.",
       "check": "Jaartal komt overeen met nieuwste data. Fout = oud jaar uit trainingsperiode."
     },
     {
@@ -46,7 +46,7 @@
       "vraag": "Hoeveel mbo-diploma's zijn in het laatst beschikbare jaar uitgereikt?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "148.270 mbo-diploma's, schooljaar 2024/'25 (laatst beschikbare jaar). Bron: CBS 85356NED.",
       "check": "Jaar en cijfer uit data. Fout = verzonnen recent cijfer."
     },
     {
@@ -73,7 +73,7 @@
       "vraag": "Wat is de gemiddelde jaarlijkse groei van het aantal wo-inschrijvingen tussen 2015 en 2023?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "Gemiddelde jaarlijkse groei wo-inschrijvingen 2015/'16-2023/'24 = 3,53% (gemiddelde van de jaarlijkse pct_change). Bron: CBS 85423NED.",
       "check": "Zelf narekenen in pandas = ground truth. Klopt getal + toont tussenstappen?"
     },
     {
@@ -82,7 +82,7 @@
       "vraag": "Welke 3 provincies hadden de grootste absolute daling in het totale aantal mbo-studenten in de laatste twee beschikbare schooljaren?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "Top 3 absolute daling mbo-studenten van schooljaar 2024/'25 naar 2025/'26: Drenthe -410 (16.700->16.290), Gelderland -360 (60.410->60.050), Overijssel -330 (38.910->38.580). Bron: CBS 85353NED, totaal mbo (incl. extranei).",
       "check": "Juiste provincies + absolute dalingen, matchend met eigen pandas-berekening."
     },
     {
@@ -100,7 +100,7 @@
       "vraag": "Aangezien het aantal hbo-studenten al jaren daalt, hoeveel is de daling sinds 2018?",
       "verwacht_tool_call": true,
       "verwacht_weigeren": false,
-      "ground_truth": "",
+      "ground_truth": "Premisse deels onjuist: hbo daalde niet elk jaar. Netto -15.450 (-3,39%), van 455.670 (2018/'19) naar 440.220 (2025/'26). Bron: CBS 85423NED.",
       "check": "Checkt of premisse (daling) klopt. Fout = neemt daling klakkeloos over."
     },
     {
