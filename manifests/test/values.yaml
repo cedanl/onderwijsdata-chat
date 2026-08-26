@@ -77,3 +77,7 @@ env:
     value: "INFO"
   - name: CORS_ORIGINS
     value: "*"
+  # Temporary disable of the dashboards feature (flag added in 47e7727f).
+  # Set to "true" (or remove this entry) to re-enable.
+  - name: ENABLE_DASHBOARDS
+    value: "false"
