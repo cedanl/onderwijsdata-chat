@@ -39,6 +39,7 @@ function AppShell() {
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
   const [isOnboarding, setIsOnboarding] = useState(false)
+  const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -52,14 +53,23 @@ function AppShell() {
       localStorage.removeItem(STORAGE_CURRENT_CHAT)
       localStorage.removeItem(STORAGE_WORKBOOKS)
     }
-    fetchAuthStatus().then(({ required, oidc_enabled }) => {
-      setAuthRequired(required)
-      setOidcEnabled(!!oidc_enabled)
-      if (!required) {
-        setUser('gast')
-      } else if (getToken()) {
-        setUser('gebruiker')
-      }
+    Promise.all([
+      fetchAuthStatus().then(({ required, oidc_enabled }) => {
+        setAuthRequired(required)
+        setOidcEnabled(!!oidc_enabled)
+        if (!required) {
+          setUser('gast')
+        } else if (getToken()) {
+          setUser('gebruiker')
+        }
+      }),
+      fetch('/api/config').then(r => r.json()).then(config => {
+        setDashboardsEnabled(config.dashboards_enabled !== false)
+      }).catch(() => {
+        // If config endpoint fails, dashboards enabled by default
+        setDashboardsEnabled(true)
+      })
+    ]).then(() => {
       setAuthLoading(false)
     })
   }, [])
@@ -117,19 +127,20 @@ function AppShell() {
         onLogout={authRequired ? handleLogout : null}
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
         instelling={settings.instelling}
+        dashboardsEnabled={dashboardsEnabled}
       />
       <div className="page-wrap">
         <ErrorBoundary key={location.pathname}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} />} />
-            <Route path="/dashboards" element={<DashboardPage settings={settings} />} />
+            {dashboardsEnabled && <Route path="/dashboards" element={<DashboardPage settings={settings} />} />}
             <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
       </div>
-      <MobileTabs />
+      <MobileTabs dashboardsEnabled={dashboardsEnabled} />
       {showSettings && (
         <SettingsModal
           settings={settings}
@@ -142,13 +153,13 @@ function AppShell() {
   )
 }
 
-function MobileTabs() {
+function MobileTabs({ dashboardsEnabled }) {
   return (
     <nav className="mobile-tabs">
       <MobileTabBtn icon="home" label="Home" to="/" />
       <MobileTabBtn icon="chat" label="Chat" to="/chat" />
       <MobileTabBtn icon="rapporten" label="Rapporten" to="/rapporten" />
-      <MobileTabBtn icon="dashboard" label="Dashboard" to="/dashboards" />
+      {dashboardsEnabled && <MobileTabBtn icon="dashboard" label="Dashboard" to="/dashboards" />}
     </nav>
   )
 }

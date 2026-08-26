@@ -33,6 +33,7 @@ from persistence import db as persistence_db
 from routes import (
     auth_router,
     chat_router,
+    config_router,
     instellingen_router,
     persistence_router,
 )
@@ -163,6 +164,7 @@ signal.signal(signal.SIGTERM, _handle_sigterm)
 
 # ─── Routers ─────────────────────────────────────────────────────────────────
 
+app.include_router(config_router)
 app.include_router(auth_router)
 app.include_router(persistence_router)
 app.include_router(instellingen_router)

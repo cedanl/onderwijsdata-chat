@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 
-export default function Nav({ user, onLogout, onOpenSettings, instelling }) {
+export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = true }) {
   return (
     <nav className="navbar">
       <div className="container">
@@ -25,10 +25,12 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling }) {
             <polyline points="14 2 14 8 20 8" />
             <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
           </NavBtn>
-          <NavBtn to="/dashboards" label="Dashboard">
-            <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-          </NavBtn>
+          {dashboardsEnabled && (
+            <NavBtn to="/dashboards" label="Dashboard">
+              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+            </NavBtn>
+          )}
         </div>
 
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>

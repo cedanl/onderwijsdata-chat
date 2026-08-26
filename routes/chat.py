@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
+# Feature flag for dashboards
+DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
+
 
 def _new_session() -> dict:
     return {
@@ -128,6 +131,9 @@ async def _refresh_dashboard(recipe: list[dict], figure_recipes: list[dict], cur
 
 @router.post("/api/dashboard/refresh")
 async def refresh_dashboard_endpoint(request: Request):
+    if not DASHBOARDS_ENABLED:
+        return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
+
     if AUTH_ENABLED:
         auth = request.headers.get("authorization", "")
         token = auth.removeprefix("Bearer ").strip()
@@ -204,6 +210,9 @@ async def _handle_clarification(
 async def _handle_generate_dashboard(
     session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
+    if not DASHBOARDS_ENABLED:
+        await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
+        return current_task
     if _task_busy(current_task):
         return current_task
     model = session["chat_settings"].get("model") or None
@@ -213,6 +222,9 @@ async def _handle_generate_dashboard(
 async def _handle_refresh_dashboard(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
+    if not DASHBOARDS_ENABLED:
+        await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
+        return current_task
     if _task_busy(current_task):
         return current_task
     recipe = msg.get("recipe") or []
