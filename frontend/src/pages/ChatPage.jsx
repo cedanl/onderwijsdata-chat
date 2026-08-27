@@ -81,39 +81,71 @@ const MARKDOWN_COMPONENTS = {
   code: CodeBlock,
 }
 
-function ToolStep({ tool }) {
-  const [open, setOpen] = useState(false)
+function ReasoningPanel({ tools, isDone }) {
+  const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
+  if (!tools?.length) return null
+  const hasSnippets = tools.some(t => t.snippet)
+  
   return (
-    <div className="tool-step-wrap">
-      <div className="tool-step">
-        <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
-        {tool.label}
-        {tool.snippet && (
-          <button type="button" className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {open && tool.snippet && (
-        <div className="tool-snippet-code">
-          <SyntaxHighlighter
-            language="python"
-            style={codeTheme()}
-            customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: '0.75rem' }}
-          >
-            {tool.snippet}
-          </SyntaxHighlighter>
+    <div className="reasoning-panel">
+      <button type="button" className="reasoning-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span>Redenering ({tools.length} stappen)</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', transform: open ? 'rotate(180deg)' : '' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="reasoning-content">
+          {tools.map((t, i) => (
+            <div key={t.name || i} className="reasoning-step">
+              <div className={`reasoning-step-dot${t.done ? ' done' : ''}`} />
+              <span>{t.label}</span>
+              {t.snippet && (
+                <button type="button" className="reasoning-snippet-btn" title="Toon reproduceerbare code">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+          {hasSnippets && (
+            <div className="reasoning-snippets">
+              {tools.map((t, i) => (
+                t.snippet && (
+                  <div key={t.name || i} className="reasoning-snippet-block">
+                    <div className="reasoning-snippet-label">{t.label}</div>
+                    <SyntaxHighlighter
+                      language="python"
+                      style={codeTheme()}
+                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: '0.7rem' }}
+                    >
+                      {t.snippet}
+                    </SyntaxHighlighter>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
+function MessageContent({ msg }) {
+  const isStreaming = !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
+  if (isStreaming) return <div className="ai-typing"><span /><span /><span /></div>
+  if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
+  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
+}
+
 export default function ChatPage({ openRapport, settings = {} }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, connected, toasts, send, sendClarification, sendSettings, sendHistory, stop, clear } = useChat({
+  const { messages, busy, thinking, connected, toasts, send, sendClarification, sendSettings, sendHistory, stop, clear } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -381,6 +413,19 @@ export default function ChatPage({ openRapport, settings = {} }) {
                 settings={settings}
               />
             ))}
+            {thinking && (
+              <div className="message assistant">
+                <div className="message-avatar">AI</div>
+                <div className="message-body">
+                  <div className="message-bubble" style={{ background: 'transparent', boxShadow: 'none' }}>
+                    <div className="ai-thinking">
+                      <div className="ai-thinking-dots"><span /><span /><span /></div>
+                      <span className="ai-thinking-label">AI denkt na...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
@@ -497,13 +542,6 @@ function userInitials(settings) {
   return '?'
 }
 
-function MessageContent({ msg }) {
-  const isStreaming = !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
-  if (isStreaming) return <div className="ai-typing"><span /><span /><span /></div>
-  if (!msg.content) return null
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
-}
-
 function ClarificationButtons({ options, onSelect, busy }) {
   if (!options) return null
   return (
@@ -532,12 +570,24 @@ function StarterButtons({ questions, onSend, busy }) {
   )
 }
 
+function hasAssistantContent(msg) {
+  return !!(
+    msg.content ||
+    msg.figures?.length ||
+    msg.clarification ||
+    msg.starterQuestions
+  )
+}
+
 function Message({ msg, onClarification, onSend, busy, settings = {} }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
         <div className="message-avatar">{userInitials(settings)}</div>
-        <div className="message-bubble">{msg.content}</div>
+        <div className="message-bubble">
+          {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
+          {msg.content}
+        </div>
         {!busy && (
           <button type="button"
             className="resend-btn"
@@ -562,18 +612,18 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        {msg.tools?.map((t, i) => (
-          <ToolStep key={t.name || i} tool={t} />
-        ))}
-        <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
-          {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
-          <MessageContent msg={msg} />
-          {msg.figures?.map((fig, i) => (
-            <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
-          ))}
-          <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
-          <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
-        </div>
+        <ReasoningPanel tools={msg.tools} isDone={msg.done} />
+        {hasAssistantContent(msg) && (
+          <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
+            {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
+            <MessageContent msg={msg} />
+            {msg.figures?.map((fig, i) => (
+              <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
+            ))}
+            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
+            <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
+          </div>
+        )}
       </div>
     </div>
   )
