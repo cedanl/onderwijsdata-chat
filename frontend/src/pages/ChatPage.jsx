@@ -584,8 +584,10 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
     return (
       <div className="message user">
         <div className="message-avatar">{userInitials(settings)}</div>
-        <div className="message-bubble">{msg.content}</div>
-        {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
+        <div className="message-bubble">
+          {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
+          {msg.content}
+        </div>
         {!busy && (
           <button type="button"
             className="resend-btn"
