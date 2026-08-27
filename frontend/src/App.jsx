@@ -136,7 +136,7 @@ function AppShell() {
   // Only use the SRAM identity as instelling when it matches a known
   // instelling in the list we provide; otherwise ignore it so the user
   // picks (or keeps) their own value.
-  const sramInstelling = userInfo ? matchKnownInstelling([userInfo.org, userInfo.institution], instellingen) : null
+  const sramInstelling = userInfo ? matchKnownInstelling([userInfo.org, userInfo.institution, userInfo.email_domein, userInfo.email], instellingen) : null
 
   return (
     <>
@@ -167,7 +167,7 @@ function AppShell() {
           isOnboarding={isOnboarding}
           sramName={userInfo?.name || null}
           sramInstelling={sramInstelling || null}
-          sramIdentity={userInfo ? [userInfo.org, userInfo.institution].filter(Boolean) : []}
+          sramIdentity={userInfo ? [userInfo.org, userInfo.institution, userInfo.email_domein].filter(Boolean) : []}
         />
       )}
     </>

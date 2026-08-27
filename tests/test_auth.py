@@ -1,5 +1,20 @@
 from core.auth import check_credentials, parse_users
-from routes.auth import _extract_institution_from_affiliation, _extract_org_from_entitlement
+from routes.auth import (
+    _extract_domain_from_email,
+    _extract_institution_from_affiliation,
+    _extract_org_from_entitlement,
+)
+
+
+def test_extract_domain_from_email():
+    assert _extract_domain_from_email("j.vermeer@hu.nl") == "hu.nl"
+    assert _extract_domain_from_email("i.am@HVA.NL") == "hva.nl"
+
+
+def test_extract_domain_from_email_invalid():
+    assert _extract_domain_from_email(None) is None
+    assert _extract_domain_from_email("geen-email") is None
+    assert _extract_domain_from_email("") is None
 
 
 def test_extract_org_from_entitlement():
