@@ -654,11 +654,15 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
   if (history.length === 0) return null
 
   const relativeDate = (ts) => {
-    const diff = Date.now() - ts
+    // Locally-created timestamps are ms (Date.now()); the backend normalizes
+    // and returns them in seconds (persistence/db.py's _normalize_ts). Same
+    // > 1e12 heuristic as the backend uses, so either source renders correctly.
+    const tsMs = ts > 1e12 ? ts : ts * 1000
+    const diff = Date.now() - tsMs
     const days = Math.floor(diff / 86400000)
     if (days === 0) return 'Vandaag'
     if (days === 1) return 'Gisteren'
-    return new Date(ts).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+    return new Date(tsMs).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
   }
 
   const startEditing = (conv, e) => {

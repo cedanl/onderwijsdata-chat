@@ -27,7 +27,7 @@ def _connect() -> Any:
             conn.autocommit = False
             return conn
         except ImportError:
-            raise RuntimeError("psycopg2 required for PostgreSQL but not installed")
+            raise RuntimeError("psycopg2 required for PostgreSQL but not installed") from None
     else:
         conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -35,9 +35,24 @@ def _connect() -> Any:
         return conn
 
 
+def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
+    """Run a query with SQLite '?' placeholders, on either driver.
+
+    sqlite3.Connection has a convenience .execute(); psycopg2 connections
+    don't — they need an explicit cursor, and Postgres uses '%s' placeholders
+    instead of '?'. RealDictCursor keeps rows dict-convertible like
+    sqlite3.Row, so callers can use dict(row) either way.
+    """
+    if _USE_POSTGRES:
+        import psycopg2.extras
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(sql.replace("?", "%s"), params)
+        return cursor
+    return conn.execute(sql, params)
+
+
 def _migrate(conn: Any) -> None:
     if _USE_POSTGRES:
-        import psycopg2
         cursor = conn.cursor()
         cursor.execute("""
             SELECT column_name FROM information_schema.columns
@@ -147,7 +162,8 @@ def init_db() -> None:
 
 def list_conversations(username: str) -> list[dict]:
     conn = _connect()
-    rows = conn.execute(
+    rows = _execute(
+        conn,
         "SELECT id, title, timestamp, messages FROM conversations "
         "WHERE username = ? ORDER BY timestamp DESC LIMIT ?",
         (username, _MAX_CONVERSATIONS),
@@ -167,7 +183,8 @@ def upsert_conversation(
     username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]
 ) -> None:
     conn = _connect()
-    conn.execute(
+    _execute(
+        conn,
         "INSERT INTO conversations (id, username, title, timestamp, messages) "
         "VALUES (?, ?, ?, ?, ?) "
         "ON CONFLICT (id, username) DO UPDATE SET title=excluded.title, "
@@ -180,7 +197,8 @@ def upsert_conversation(
 
 def delete_conversation(username: str, conv_id: str) -> None:
     conn = _connect()
-    conn.execute(
+    _execute(
+        conn,
         "DELETE FROM conversations WHERE id = ? AND username = ?",
         (conv_id, username),
     )
@@ -190,7 +208,8 @@ def delete_conversation(username: str, conv_id: str) -> None:
 
 def list_workbooks(username: str) -> list[dict]:
     conn = _connect()
-    rows = conn.execute(
+    rows = _execute(
+        conn,
         "SELECT id, title, description, messages, figures, instelling, "
         "html_content, dashboard_spec, created_at FROM workbooks "
         "WHERE username = ? ORDER BY created_at DESC",
@@ -213,7 +232,8 @@ def upsert_workbook(
     created_at: str = "",
 ) -> None:
     conn = _connect()
-    conn.execute(
+    _execute(
+        conn,
         "INSERT INTO workbooks (id, username, title, description, messages, figures, "
         "instelling, html_content, dashboard_spec, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
@@ -237,7 +257,8 @@ def upsert_workbook(
 
 def delete_workbook(username: str, wb_id: str) -> None:
     conn = _connect()
-    conn.execute(
+    _execute(
+        conn,
         "DELETE FROM workbooks WHERE id = ? AND username = ?",
         (wb_id, username),
     )
