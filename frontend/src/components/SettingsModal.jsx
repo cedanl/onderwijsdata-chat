@@ -27,13 +27,17 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, isOnboarding, sramName, sramInstitution }) {
-  const [instelling, setInstelling] = useState(settings.instelling || sramInstitution || '')
+export default function SettingsModal({ settings, onSave, onClose, isOnboarding, sramName, sramInstelling, sramIdentity }) {
+  // A saved instelling that is exactly the raw SRAM org/institution string is
+  // leftover pollution from an earlier build that forced SRAM values into the
+  // profile — reset it so the picker starts clean and the user can choose.
+  const pollutedSaved = (sramIdentity || []).includes(settings.instelling)
+  const [instelling, setInstelling] = useState(pollutedSaved ? '' : (settings.instelling || sramInstelling || ''))
   const [functie, setFunctie] = useState(settings.functie || '')
   const [mode, setMode] = useState(settings.mode || 'system')
 
   const handleSave = () => {
-    onSave({ instelling: sramInstitution || instelling, functie, mode })
+    onSave({ instelling, functie, mode })
     onClose()
   }
 
@@ -85,19 +89,11 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
             <label id="settings-instelling-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
-            {sramInstitution ? (
-              <div style={{
-                padding: '11px 14px', borderRadius: 'var(--radius)', background: 'var(--gray-100)',
-                border: '1.5px solid var(--gray-200)', color: 'var(--gray-700)',
-                fontSize: '.9rem', fontWeight: 600,
-              }}>
-                {sramInstitution}
-                <div style={{ fontSize: '.72rem', fontWeight: 400, color: 'var(--gray-500)', marginTop: 2 }}>
-                  {sramName ? `Afkomstig van je SRAM-account (${sramName})` : 'Afkomstig van je SRAM-account'}
-                </div>
+            <InstellingPicker value={instelling} onChange={setInstelling} />
+            {sramInstelling && (
+              <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginTop: 6 }}>
+                {sramInstelling} gevonden via je SRAM-account{sramName ? ` (${sramName})` : ''} — je kunt dit hieronder aanpassen.
               </div>
-            ) : (
-              <InstellingPicker value={instelling} onChange={setInstelling} />
             )}
           </div>
 
