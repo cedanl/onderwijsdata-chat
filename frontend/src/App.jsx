@@ -8,6 +8,7 @@ import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl } from './auth'
+import { matchKnownInstelling } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 
 function loadSettings() {
@@ -36,6 +37,7 @@ function AppShell() {
   const [oidcEnabled, setOidcEnabled] = useState(false)
   const [user, setUser] = useState(null)
   const [userInfo, setUserInfo] = useState(null)
+  const [instellingen, setInstellingen] = useState([])
   const [authLoading, setAuthLoading] = useState(true)
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
@@ -77,7 +79,8 @@ function AppShell() {
       }).catch(() => {
         // If config endpoint fails, dashboards enabled by default
         setDashboardsEnabled(true)
-      })
+      }),
+      fetch('/api/instellingen').then(r => r.json()).then(setInstellingen).catch(() => {})
     ]).then(() => {
       setAuthLoading(false)
     })
@@ -130,14 +133,18 @@ function AppShell() {
     setUserInfo(null)
   }
 
+  // Only use the SRAM identity as instelling when it matches a known
+  // instelling in the list we provide; otherwise ignore it so the user
+  // picks (or keeps) their own value.
+  const sramInstelling = userInfo ? matchKnownInstelling([userInfo.org, userInfo.institution], instellingen) : null
+
   return (
     <>
       <Nav
         user={user}
-        userInfo={userInfo}
         onLogout={authRequired ? handleLogout : null}
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
-        instelling={settings.instelling}
+        instelling={sramInstelling || settings.instelling}
         dashboardsEnabled={dashboardsEnabled}
       />
       <div className="page-wrap">
@@ -159,7 +166,8 @@ function AppShell() {
           onClose={handleCloseSettings}
           isOnboarding={isOnboarding}
           sramName={userInfo?.name || null}
-          sramInstitution={userInfo?.org || userInfo?.institution || null}
+          sramInstelling={sramInstelling || null}
+          sramIdentity={userInfo ? [userInfo.org, userInfo.institution].filter(Boolean) : []}
         />
       )}
     </>
