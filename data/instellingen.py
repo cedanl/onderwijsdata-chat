@@ -57,6 +57,100 @@ ALIASSEN: dict[str, list[str]] = {
 }
 
 
+# SRAM short-name → canonical instelling name, from SURF's "Institutions
+# using SRAM" (https://servicedesk.surf.nl/wiki/spaces/IAM/pages/74226143).
+# These appear in the SRAM OIDC `eduperson_entitlement` (urn:mace:surf.nl:sram:group:<orgname>:...).
+# Only include instellingen that exist in the DUO registry (mapped by name/alias).
+SRAM_ORGS: dict[str, str] = {
+    "ahk": "Amsterdam University of the Arts",
+    "avans": "Avans Hogeschool",
+    "han": "Hogeschool van Arnhem en Nijmegen",
+    "hanze": "Hanzehogeschool Groningen",
+    "hhs": "De Haagse Hogeschool",
+    "hro": "Hogeschool Rotterdam",
+    "hszuyd": "Zuyd Hogeschool",
+    "hu": "Hogeschool Utrecht",
+    "hva": "Hogeschool van Amsterdam",
+    "inholland": "Hogeschool Inholland",
+    "leidenuniv": "Universiteit Leiden",
+    "nhlstenden": "NHL Stenden Hogeschool",
+    "ou": "Open Universiteit Nederland",
+    "ru": "Radboud Universiteit Nijmegen",
+    "rug": "Rijksuniversiteit Groningen",
+    "saxion": "Saxion Hogeschool",
+    "tudelft": "Technische Universiteit Delft",
+    "tue": "Technische Universiteit Eindhoven",
+    "uu": "Universiteit Utrecht",
+    "uva": "Universiteit van Amsterdam",
+    "utwente": "Universiteit Twente",
+    "uvt": "Tilburg University",
+    "vu": "Vrije Universiteit Amsterdam",
+    "windesheim": "Christelijke Hogeschool Windesheim",
+    "wur": "Wageningen University",
+}
+
+
+# Email domain → canonical instelling name. Curated starter map; extend/verify
+# as needed. Domains are matched exactly (case-insensitive) on the part after
+# the "@" of the user's SRAM email / voperson_external_affiliation / email.
+DOMEINEN: dict[str, list[str]] = {
+    "Vrije Universiteit Amsterdam": ["vu.nl"],
+    "Universiteit van Amsterdam": ["uva.nl"],
+    "Erasmus Universiteit Rotterdam": ["eur.nl"],
+    "Rijksuniversiteit Groningen": ["rug.nl"],
+    "Universiteit Twente": ["utwente.nl"],
+    "Universiteit Utrecht": ["uu.nl"],
+    "Universiteit Leiden": ["leidenuniv.nl"],
+    "Universiteit Maastricht": ["maastrichtuniversity.nl", "unimaas.nl"],
+    "Technische Universiteit Delft": ["tudelft.nl"],
+    "Technische Universiteit Eindhoven": ["tue.nl"],
+    "Wageningen University": ["wur.nl"],
+    "Radboud Universiteit Nijmegen": ["ru.nl"],
+    "Tilburg University": ["tilburguniversity.edu", "uvt.nl"],
+    "Open Universiteit Nederland": ["ou.nl"],
+    "Hogeschool van Amsterdam": ["hva.nl"],
+    "Hogeschool Utrecht": ["hu.nl"],
+    "Hogeschool Rotterdam": ["hogeschoolrotterdam.nl", "hro.nl"],
+    "De Haagse Hogeschool": ["hhs.nl"],
+    "Hogeschool Inholland": ["inholland.nl"],
+    "Hanzehogeschool Groningen": ["hanze.nl"],
+    "Fontys Hogeschool": ["fontys.nl"],
+    "Saxion Hogeschool": ["saxion.nl"],
+    "Hogeschool van Arnhem en Nijmegen": ["han.nl"],
+    "Christelijke Hogeschool Windesheim": ["windesheim.nl"],
+    "NHL Stenden Hogeschool": ["nhlstenden.nl"],
+    "Zuyd Hogeschool": ["zuyd.nl"],
+    "Hogeschool Leiden": ["hsleiden.nl"],
+    "Breda University of Applied Sciences": ["buas.nl"],
+    "HZ University of Applied Sciences": ["hz.nl"],
+}
+
+
+def _extract_domain(email: str | None) -> str | None:
+    """Return the lowercase domain part of an email address, else None."""
+    if not email or "@" not in email:
+        return None
+    return email.rsplit("@", 1)[1].strip().lower() or None
+
+
+def sram_org_to_instelling(short: str | None) -> str | None:
+    """Map an SRAM short name (from entitlement) to a canonical instelling name."""
+    if not short:
+        return None
+    return SRAM_ORGS.get(short.strip().lower())
+
+
+def instelling_for_email(email_or_domein: str | None) -> str | None:
+    """Map an email address or domain to a canonical instelling name."""
+    domein = _extract_domain(email_or_domein) or (email_or_domein and email_or_domein.strip().lower())
+    if not domein:
+        return None
+    for naam, doms in DOMEINEN.items():
+        if domein in doms:
+            return naam
+    return None
+
+
 _cache: list[dict] | None = None
 _alias_lookup: dict[str, str] | None = None
 
@@ -102,6 +196,31 @@ def _build_adres_lookup() -> dict[str, dict]:
     return lookup
 
 
+def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:
+    """Merge SRAM short names into aliassen and email domains into domeinen.
+
+    Matches SRAM_ORGS/DOMEINEN targets against registry names and existing
+    aliases by exact (case-insensitive) lookup, so a mismatch never produces a
+    bogus prefilled instelling — it simply stays unmapped.
+    """
+    lookup: dict[str, dict] = {}
+    for naam, inst in result.items():
+        lookup.setdefault(naam.lower(), inst)
+        for alias in inst.get("aliassen", []):
+            lookup.setdefault(alias.lower(), inst)
+
+    for short, target in SRAM_ORGS.items():
+        inst = lookup.get(target.lower())
+        if inst and short not in inst["aliassen"]:
+            inst["aliassen"].append(short)
+
+    for target, doms in DOMEINEN.items():
+        inst = lookup.get(target.lower())
+        if inst:
+            inst["domeinen"] = sorted(set(inst.get("domeinen", []) + (doms or [])))
+    return result
+
+
 def _build_registry() -> list[dict]:
     adres = _build_adres_lookup()
     result: dict[str, dict] = {}
@@ -117,6 +236,7 @@ def _build_registry() -> list[dict]:
                 "instellingscode": code,
                 "provincie": loc.get("provincie"),
                 "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+                "domeinen": [],
             }
     except Exception:
         logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
@@ -133,6 +253,7 @@ def _build_registry() -> list[dict]:
                     "instellingscode": code,
                     "provincie": loc.get("provincie"),
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+                    "domeinen": [],
                 }
     except Exception:
         logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
@@ -149,10 +270,12 @@ def _build_registry() -> list[dict]:
                     "instellingscode": code,
                     "provincie": loc.get("provincie"),
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
+                    "domeinen": [],
                 }
     except Exception:
         logger.warning("registry: MBO-instellingen niet beschikbaar", exc_info=True)
 
+    _apply_sram_mappings(result)
     return sorted(result.values(), key=lambda x: x["naam"].lower())
 
 

@@ -532,3 +532,35 @@ def test_dashboard_arbeidsmarktmatch_endpoint(client):
     data = resp.json()
     assert data["gevonden"] is True
     assert "gediplomeerden_per_sector" in data
+
+
+# ─── SRAM / email mapping (pure, no DUO data) ────────────────────────────────
+
+def test_sram_org_to_instelling():
+    from data.instellingen import sram_org_to_instelling
+    assert sram_org_to_instelling("hu") == "Hogeschool Utrecht"
+    assert sram_org_to_instelling("UVA") == "Universiteit van Amsterdam"
+    assert sram_org_to_instelling("rug") == "Rijksuniversiteit Groningen"
+
+
+def test_sram_org_to_instelling_unknown():
+    from data.instellingen import sram_org_to_instelling
+    assert sram_org_to_instelling("surf-ram") is None
+    assert sram_org_to_instelling("sram.surf.nl") is None
+    assert sram_org_to_instelling(None) is None
+    assert sram_org_to_instelling("") is None
+
+
+def test_instelling_for_email_domain():
+    from data.instellingen import instelling_for_email
+    assert instelling_for_email("j.vermeer@hu.nl") == "Hogeschool Utrecht"
+    assert instelling_for_email("i.am@uva.nl") == "Universiteit van Amsterdam"
+    assert instelling_for_email("tudelft.nl") == "Technische Universiteit Delft"
+    assert instelling_for_email("J.VERMEER@WUR.NL") == "Wageningen University"
+
+
+def test_instelling_for_email_unknown():
+    from data.instellingen import instelling_for_email
+    assert instelling_for_email("tomer@surf-ram#sram.surf.nl") is None
+    assert instelling_for_email("sram.surf.nl") is None
+    assert instelling_for_email(None) is None

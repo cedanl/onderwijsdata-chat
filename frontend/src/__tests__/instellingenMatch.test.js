@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { buildInstellingenLookup, matchKnownInstelling } from '../instellingenMatch'
 
 const INSTELLINGEN = [
-  { naam: 'Hogeschool Utrecht', aliassen: ['HU'] },
-  { naam: 'Vrije Universiteit Amsterdam', aliassen: ['VU', 'Vrije Universiteit'] },
-  { naam: 'ROC Midden Nederland', aliassen: ['ROC MN'] },
+  { naam: 'Hogeschool Utrecht', aliassen: ['HU'], domeinen: ['hu.nl'] },
+  { naam: 'Vrije Universiteit Amsterdam', aliassen: ['VU', 'Vrije Universiteit'], domeinen: ['vu.nl'] },
+  { naam: 'ROC Midden Nederland', aliassen: ['ROC MN'], domeinen: [] },
 ]
 
 describe('matchKnownInstelling', () => {
@@ -17,6 +17,16 @@ describe('matchKnownInstelling', () => {
     expect(matchKnownInstelling(['vu'], INSTELLINGEN)).toBe('Vrije Universiteit Amsterdam')
   })
 
+  it('matches via an email domain', () => {
+    expect(matchKnownInstelling(['j.vermeer@hu.nl'], INSTELLINGEN)).toBe('Hogeschool Utrecht')
+    expect(matchKnownInstelling(['hu.nl'], INSTELLINGEN)).toBe('Hogeschool Utrecht')
+    expect(matchKnownInstelling(['bar@vu.nl'], INSTELLINGEN)).toBe('Vrije Universiteit Amsterdam')
+  })
+
+  it('matches via a SRAM short name', () => {
+    expect(matchKnownInstelling(['hu'], INSTELLINGEN)).toBe('Hogeschool Utrecht')
+  })
+
   it('matches when only one candidate matches', () => {
     expect(matchKnownInstelling(['not-an-instelling', 'ROC MN'], INSTELLINGEN)).toBe('ROC Midden Nederland')
   })
@@ -24,6 +34,7 @@ describe('matchKnownInstelling', () => {
   it('returns null when nothing matches', () => {
     expect(matchKnownInstelling(['surf-ram'], INSTELLINGEN)).toBeNull()
     expect(matchKnownInstelling(['sram.surf.nl'], INSTELLINGEN)).toBeNull()
+    expect(matchKnownInstelling(['someone@sram.surf.nl'], INSTELLINGEN)).toBeNull()
     expect(matchKnownInstelling([], INSTELLINGEN)).toBeNull()
     expect(matchKnownInstelling(null, INSTELLINGEN)).toBeNull()
     expect(matchKnownInstelling(['HU'], [])).toBeNull()

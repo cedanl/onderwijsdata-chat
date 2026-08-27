@@ -46,6 +46,13 @@ def _extract_institution_from_affiliation(affiliations):
     return None
 
 
+def _extract_domain_from_email(email):
+    """Extract the domain from an email address: j.vermeer@hu.nl -> hu.nl."""
+    if not email or "@" not in email:
+        return None
+    return email.rsplit("@", 1)[1].strip().lower() or None
+
+
 @router.get("/status")
 async def auth_status() -> dict:
     return {"required": AUTH_ENABLED, "oidc_enabled": is_oidc_configured()}
@@ -117,11 +124,13 @@ async def oidc_callback(request: Request) -> RedirectResponse:
     name = userinfo.get("name")
     given_name = userinfo.get("given_name")
     family_name = userinfo.get("family_name")
+    email = userinfo.get("email")
     entitlements = userinfo.get("eduperson_entitlement")
     external_affiliation = userinfo.get("voperson_external_affiliation")
 
     org = _extract_org_from_entitlement(entitlements)
     institution = _extract_institution_from_affiliation(external_affiliation)
+    email_domein = _extract_domain_from_email(email)
 
     token = make_token(username)
     user_data = {
@@ -129,8 +138,10 @@ async def oidc_callback(request: Request) -> RedirectResponse:
         "name": name,
         "given_name": given_name,
         "family_name": family_name,
+        "email": email,
         "org": org,
         "institution": institution,
+        "email_domein": email_domein,
     }
     # Encode user data in URL for frontend to pick up
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))
