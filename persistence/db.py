@@ -27,7 +27,7 @@ def _connect() -> Any:
             conn.autocommit = False
             return conn
         except ImportError:
-            raise RuntimeError("psycopg2 required for PostgreSQL but not installed")
+            raise RuntimeError("psycopg2 required for PostgreSQL but not installed") from None
     else:
         conn = sqlite3.connect(str(_db_path()), check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -53,7 +53,6 @@ def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
 
 def _migrate(conn: Any) -> None:
     if _USE_POSTGRES:
-        import psycopg2
         cursor = conn.cursor()
         cursor.execute("""
             SELECT column_name FROM information_schema.columns
