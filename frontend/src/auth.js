@@ -33,8 +33,22 @@ export function consumeTokenFromUrl() {
   const token = params.get('token')
   if (!token) return null
   setToken(token)
+  
+  // Also extract user_data if present (from SRAM OIDC callback)
+  const userDataParam = params.get('user_data')
+  let userData = null
+  if (userDataParam) {
+    try {
+      userData = JSON.parse(decodeURIComponent(userDataParam))
+    } catch {
+      // Ignore parse errors
+    }
+  }
+  
   params.delete('token')
+  params.delete('user_data')
   const query = params.toString()
   window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''))
-  return token
+  
+  return { token, userData }
 }

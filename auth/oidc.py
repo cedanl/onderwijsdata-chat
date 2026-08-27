@@ -23,7 +23,7 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-OAUTH_SCOPES = "openid email profile"
+OAUTH_SCOPES = "openid email profile eduperson_entitlement voperson_external_affiliation"
 _DISCOVERY_CACHE_TTL = 3600  # discovery documents don't change; cache for an hour
 
 _discovery_cache: Optional[dict] = None

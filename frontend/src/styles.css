@@ -508,6 +508,64 @@ input, textarea { font: inherit; }
   color: var(--gray-700);
 }
 
+.reasoning-panel {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--gray-50);
+  margin-bottom: 8px;
+}
+
+.reasoning-toggle {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 12px;
+  background: none; border: none; border-radius: var(--radius);
+  cursor: pointer; font-size: .8rem; color: var(--gray-600);
+  font-weight: 600; text-align: left;
+  transition: background .15s, color .15s;
+}
+.reasoning-toggle:hover { background: var(--gray-100); color: var(--gray-800); }
+
+.reasoning-content {
+  border-top: 1px solid var(--gray-200);
+  padding: 8px 12px;
+  animation: slideDown .15s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reasoning-step {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .8rem; color: var(--gray-500);
+  padding: 4px 0;
+}
+.reasoning-step-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--teal-500); flex-shrink: 0;
+  animation: pulse 1.2s infinite;
+}
+.reasoning-step-dot.done { background: var(--green-500); animation: none; }
+
+.reasoning-snippet-btn {
+  background: none; border: 1px solid var(--gray-200); border-radius: 4px;
+  cursor: pointer; padding: 2px 4px; margin-left: auto; color: var(--gray-400);
+  display: flex; align-items: center; transition: color .15s, border-color .15s;
+}
+.reasoning-snippet-btn:hover { color: var(--teal-600); border-color: var(--teal-400); }
+
+.reasoning-snippets { margin-top: 8px; }
+.reasoning-snippet-block { margin-bottom: 8px; }
+.reasoning-snippet-label {
+  font-size: .7rem; font-weight: 600; color: var(--gray-500);
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;
+}
+.reasoning-snippet-block .syntaxhighlighter {
+  background: var(--white) !important;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+}
+
 /* ─── Copy buttons ───────────────────────────────────────── */
 .copy-btn {
   display: flex; align-items: center; justify-content: center;
@@ -523,6 +581,10 @@ input, textarea { font: inherit; }
 .message-bubble-assistant { position: relative; }
 .copy-btn-message { top: 8px; right: 8px; }
 .message-bubble-assistant:hover .copy-btn-message { opacity: 1; }
+
+/* User message copy button */
+.message.user .message-bubble { position: relative; }
+.message.user .message-bubble:hover .copy-btn-message { opacity: 1; }
 
 /* Code block copy button */
 .code-block-wrap { position: relative; }
@@ -547,6 +609,16 @@ input, textarea { font: inherit; }
 .ai-typing span:nth-child(2) { animation-delay: .15s; }
 .ai-typing span:nth-child(3) { animation-delay: .3s; }
 @keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+
+.ai-thinking { display: flex; align-items: center; gap: 10px; padding: 4px 0; color: var(--gray-500); font-size: .82rem; }
+.ai-thinking-dots { display: flex; gap: 4px; align-items: center; }
+.ai-thinking-dots span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--blue-400);
+  animation: bounce .9s infinite; display: inline-block;
+}
+.ai-thinking-dots span:nth-child(2) { animation-delay: .15s; }
+.ai-thinking-dots span:nth-child(3) { animation-delay: .3s; }
+.ai-thinking-label { font-style: italic; }
 
 .chat-input-area {
   background: var(--white); border-top: 1px solid var(--gray-200);

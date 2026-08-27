@@ -35,6 +35,7 @@ function AppShell() {
   const [authRequired, setAuthRequired] = useState(false)
   const [oidcEnabled, setOidcEnabled] = useState(false)
   const [user, setUser] = useState(null)
+  const [userInfo, setUserInfo] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
@@ -47,11 +48,18 @@ function AppShell() {
     // A token in the URL means we just landed here via the SRAM callback
     // redirect — a fresh login, same as the password form's handleLogin, so
     // it needs the same anonymous-session cache clear (see handleLogin).
-    const freshOidcLogin = consumeTokenFromUrl()
+    const result = consumeTokenFromUrl()
+    const freshOidcLogin = result?.token
+    let userSetViaOidc = false
     if (freshOidcLogin) {
       localStorage.removeItem(STORAGE_CONVERSATIONS)
       localStorage.removeItem(STORAGE_CURRENT_CHAT)
       localStorage.removeItem(STORAGE_WORKBOOKS)
+      if (result.userData) {
+        setUserInfo(result.userData)
+        setUser(result.userData.name || result.userData.username)
+        userSetViaOidc = true
+      }
     }
     Promise.all([
       fetchAuthStatus().then(({ required, oidc_enabled }) => {
@@ -59,7 +67,8 @@ function AppShell() {
         setOidcEnabled(!!oidc_enabled)
         if (!required) {
           setUser('gast')
-        } else if (getToken()) {
+        } else if (getToken() && !userSetViaOidc) {
+          // If we have a token but no user info yet from OIDC, use fallback
           setUser('gebruiker')
         }
       }),
@@ -118,12 +127,14 @@ function AppShell() {
     localStorage.removeItem(STORAGE_CURRENT_CHAT)
     localStorage.removeItem(STORAGE_WORKBOOKS)
     setUser(null)
+    setUserInfo(null)
   }
 
   return (
     <>
       <Nav
         user={user}
+        userInfo={userInfo}
         onLogout={authRequired ? handleLogout : null}
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
         instelling={settings.instelling}
@@ -132,7 +143,7 @@ function AppShell() {
       <div className="page-wrap">
         <ErrorBoundary key={location.pathname}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
             <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} />} />
             {dashboardsEnabled && <Route path="/dashboards" element={<DashboardPage settings={settings} />} />}
             <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
@@ -147,6 +158,8 @@ function AppShell() {
           onSave={handleSaveSettings}
           onClose={handleCloseSettings}
           isOnboarding={isOnboarding}
+          sramName={userInfo?.name || null}
+          sramInstitution={userInfo?.org || userInfo?.institution || null}
         />
       )}
     </>

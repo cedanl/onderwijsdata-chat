@@ -1,4 +1,33 @@
 from core.auth import check_credentials, parse_users
+from routes.auth import _extract_institution_from_affiliation, _extract_org_from_entitlement
+
+
+def test_extract_org_from_entitlement():
+    eduperson = "urn:mace:surf.nl:sram:group:example_org:delftlandscapes:admins"
+    assert _extract_org_from_entitlement(eduperson) == "example_org"
+
+
+def test_extract_org_from_entitlement_list():
+    eduperson = ["urn:mace:surf.nl:sram:label:example_org:x:l", "urn:mace:surf.nl:sram:group:other_org:co:g"]
+    assert _extract_org_from_entitlement(eduperson) == "other_org"
+
+
+def test_extract_org_from_entitlement_none():
+    assert _extract_org_from_entitlement(None) is None
+    assert _extract_org_from_entitlement([]) is None
+
+
+def test_extract_institution_from_affiliation():
+    assert _extract_institution_from_affiliation("employee@surf.nl") == "surf.nl"
+
+
+def test_extract_institution_from_affiliation_list():
+    assert _extract_institution_from_affiliation(["member@example.org", "employee@surf.nl"]) == "example.org"
+
+
+def test_extract_institution_from_affiliation_none():
+    assert _extract_institution_from_affiliation(None) is None
+    assert _extract_institution_from_affiliation("geen-domein") is None
 
 
 def test_parse_users_empty_string():

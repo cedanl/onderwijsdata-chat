@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 
-export default function HomePage() {
+export default function HomePage({ dashboardsEnabled = true }) {
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
   return (
@@ -15,8 +15,12 @@ export default function HomePage() {
             <p>openEDUdata+ koppelt aan alle open-onderwijs-databronnen. Stel een vraag in gewone taal over instroom, voortgang, arbeidsmarkt of diplomering en krijg binnen 30 seconden een onderbouwd antwoord.</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
-              <span style={{ color: 'rgba(255,255,255,.5)', fontSize: '0.9rem', alignSelf: 'center' }}>of</span>
-              <button type="button" className="btn-ghost" onClick={() => navigate('/dashboards')}>Maak een dashboard</button>
+              {dashboardsEnabled && (
+                <>
+                  <span style={{ color: 'rgba(255,255,255,.5)', fontSize: '0.9rem', alignSelf: 'center' }}>of</span>
+                  <button type="button" className="btn-ghost" onClick={() => navigate('/dashboards')}>Maak een dashboard</button>
+                </>
+              )}
             </div>
             <div className="hero-stats">
               <div><div className="hero-stat-value">30s</div><div className="hero-stat-label">Gemiddelde responstijd</div></div>
@@ -43,6 +47,7 @@ export default function HomePage() {
               <h3>Stel vragen in gewone taal</h3>
               <p>Typ je vraag zoals je die zou stellen aan een collega. openEDUdata+ begrijpt de context en haalt het juiste antwoord op.</p>
             </div>
+            {dashboardsEnabled && (
             <div className="feature-card">
               <div className="feature-icon teal">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -50,6 +55,7 @@ export default function HomePage() {
               <h3>Dashboards zonder BI-kennis</h3>
               <p>Beschrijf wat je wilt zien. openEDUdata+ bouwt automatisch de juiste grafiek en koppelt deze aan de juiste databron.</p>
             </div>
+          )}
             <div className="feature-card">
               <div className="feature-icon purple">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -71,7 +77,7 @@ export default function HomePage() {
           <div className="grid grid-2 gap-4">
             {[
               { icon: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />, title: 'Direct inzichten', desc: 'Je AI-assistent beantwoordt al je onderwijsvragen in een handomdraai. Zo win je kostbare tijd.' },
-              { icon: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>, title: 'Dashboards op maat', desc: 'Direct een helder dashboard laat genereren: van management tot bestuur krijgt direct visueel inzicht op maat.' },
+              ...(dashboardsEnabled ? [{ icon: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>, title: 'Dashboards op maat', desc: 'Direct een helder dashboard laat genereren: van management tot bestuur krijgt direct visueel inzicht op maat.' }] : []),
               { icon: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>, title: 'Beslissen op feiten', desc: 'De assistent laat je in één oogopslag zien wat er speelt, waar kansen liggen en wat de beste volgende stap is.' },
               { icon: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />, title: 'Altijd één waarheid', desc: 'Iedereen werkt altijd met exact dezelfde cijfers. Geen misverstanden of discussies over verschillende versies.' },
             ].map(({ icon, title, desc }) => (

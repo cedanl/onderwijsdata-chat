@@ -27,13 +27,13 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, isOnboarding }) {
-  const [instelling, setInstelling] = useState(settings.instelling || '')
+export default function SettingsModal({ settings, onSave, onClose, isOnboarding, sramName, sramInstitution }) {
+  const [instelling, setInstelling] = useState(settings.instelling || sramInstitution || '')
   const [functie, setFunctie] = useState(settings.functie || '')
   const [mode, setMode] = useState(settings.mode || 'system')
 
   const handleSave = () => {
-    onSave({ instelling, functie, mode })
+    onSave({ instelling: sramInstitution || instelling, functie, mode })
     onClose()
   }
 
@@ -85,7 +85,20 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding 
             <label id="settings-instelling-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
-            <InstellingPicker value={instelling} onChange={setInstelling} />
+            {sramInstitution ? (
+              <div style={{
+                padding: '11px 14px', borderRadius: 'var(--radius)', background: 'var(--gray-100)',
+                border: '1.5px solid var(--gray-200)', color: 'var(--gray-700)',
+                fontSize: '.9rem', fontWeight: 600,
+              }}>
+                {sramInstitution}
+                <div style={{ fontSize: '.72rem', fontWeight: 400, color: 'var(--gray-500)', marginTop: 2 }}>
+                  {sramName ? `Afkomstig van je SRAM-account (${sramName})` : 'Afkomstig van je SRAM-account'}
+                </div>
+              </div>
+            ) : (
+              <InstellingPicker value={instelling} onChange={setInstelling} />
+            )}
           </div>
 
           <div>

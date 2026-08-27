@@ -1,5 +1,7 @@
+import json
 import logging
 import secrets
+import urllib.parse
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -14,6 +16,34 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 _login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 _OIDC_STATE_COOKIE = "oidc_state"
+
+
+def _extract_org_from_entitlement(entitlements):
+    """Extract organization name from eduperson_entitlement values.
+    Format: urn:mace:surf.nl:sram:group:<orgname>:<coname>:<groupname>"""
+    if not entitlements:
+        return None
+    if isinstance(entitlements, str):
+        entitlements = [entitlements]
+    for ent in entitlements:
+        if "sram:group:" in ent:
+            parts = ent.split(":")
+            if len(parts) >= 6:
+                return parts[5]  # orgname
+    return None
+
+
+def _extract_institution_from_affiliation(affiliations):
+    """Extract institution from voperson_external_affiliation.
+    Format: employee@surf.nl -> surf.nl"""
+    if not affiliations:
+        return None
+    if isinstance(affiliations, str):
+        affiliations = [affiliations]
+    for aff in affiliations:
+        if "@" in aff:
+            return aff.split("@")[1]
+    return None
 
 
 @router.get("/status")
@@ -83,7 +113,27 @@ async def oidc_callback(request: Request) -> RedirectResponse:
     if not username:
         return RedirectResponse("/?oidc_error=1", status_code=302)
 
+    # Extract additional user info from SRAM OIDC
+    name = userinfo.get("name")
+    given_name = userinfo.get("given_name")
+    family_name = userinfo.get("family_name")
+    entitlements = userinfo.get("eduperson_entitlement")
+    external_affiliation = userinfo.get("voperson_external_affiliation")
+
+    org = _extract_org_from_entitlement(entitlements)
+    institution = _extract_institution_from_affiliation(external_affiliation)
+
     token = make_token(username)
-    response = RedirectResponse(f"/?token={token}", status_code=302)
+    user_data = {
+        "username": username,
+        "name": name,
+        "given_name": given_name,
+        "family_name": family_name,
+        "org": org,
+        "institution": institution,
+    }
+    # Encode user data in URL for frontend to pick up
+    user_data_encoded = urllib.parse.quote(json.dumps(user_data))
+    response = RedirectResponse(f"/?token={token}&user_data={user_data_encoded}", status_code=302)
     response.delete_cookie(_OIDC_STATE_COOKIE)
     return response

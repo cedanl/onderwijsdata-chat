@@ -1,6 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 
-export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = true }) {
+export default function Nav({ user, userInfo, onLogout, onOpenSettings, instelling, dashboardsEnabled = true }) {
+  // Use SRAM user info if available, otherwise fall back to settings.instelling
+  const displayName = userInfo?.name || user
+  const displayInstitution = userInfo?.org || userInfo?.institution || instelling
   return (
     <nav className="navbar">
       <div className="container">
@@ -45,13 +48,13 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
               }}
               title="Instellingen"
             >
-              {instelling && (
+              {displayInstitution && (
                 <span style={{ fontSize: '.75rem', fontWeight: 600, color: 'var(--gray-700)', lineHeight: 1.2 }}>
-                  {instelling}
+                  {displayInstitution}
                 </span>
               )}
               <span style={{ fontSize: '.72rem', color: 'var(--gray-400)', lineHeight: 1.2 }}>
-                {user}
+                {displayName}
               </span>
             </button>
           )}
