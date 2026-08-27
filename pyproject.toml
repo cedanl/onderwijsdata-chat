@@ -1,6 +1,6 @@
 [project]
 name = "onderwijsdata-chat"
-version = "1.8.4"
+version = "1.8.5"
 description = "Chat met open Nederlandse onderwijsdata (CBS, RIO en DUO)"
 requires-python = ">=3.11"
 dependencies = [
