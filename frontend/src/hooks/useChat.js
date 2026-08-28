@@ -29,6 +29,7 @@ function buildWsUrl() {
 export function useChat({ onUnauthorized } = {}) {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
+  const [thinking, setThinking] = useState(false)
   const [toasts, setToasts] = useState([])
   const [connected, setConnected] = useState(false)
   const wsRef = useRef(null)
@@ -79,6 +80,7 @@ export function useChat({ onUnauthorized } = {}) {
         addToast(ev.message, ev.level || 'info')
       },
       message_start() {
+        setThinking(false)
         const msgId = nextId()
         currentMsgRef.current = msgId
         setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
@@ -87,9 +89,11 @@ export function useChat({ onUnauthorized } = {}) {
         cancelCurrentMsg()
       },
       text_delta(ev) {
+        setThinking(false)
         updateCurrentMsg(m => ({ ...m, content: m.content + ev.content }))
       },
       tool_start(ev) {
+        setThinking(false)
         updateCurrentMsg(m => ({
           ...m, tools: [...m.tools, { name: ev.name, label: ev.label, done: false }],
         }))
@@ -113,6 +117,7 @@ export function useChat({ onUnauthorized } = {}) {
         finishStream()
       },
       clarification(ev) {
+        setThinking(false)
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant',
           content: ev.vraag, clarification: ev.opties, done: true,
@@ -120,6 +125,7 @@ export function useChat({ onUnauthorized } = {}) {
         finishStream()
       },
       starter_questions(ev) {
+        setThinking(false)
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant',
           content: `Hier zijn voorbeeldvragen over **${ev.label}**:`,
@@ -128,6 +134,7 @@ export function useChat({ onUnauthorized } = {}) {
         finishStream()
       },
       error(ev) {
+        setThinking(false)
         cancelCurrentMsg()
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
@@ -195,6 +202,7 @@ export function useChat({ onUnauthorized } = {}) {
     if (!wsRef.current || busyRef.current) return
     busyRef.current = true
     setBusy(true)
+    setThinking(true)
     setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
   }, [])
@@ -234,5 +242,5 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, toasts, connected, send, sendClarification, sendSettings, sendHistory, stop, clear }
+  return { messages, busy, thinking, toasts, connected, send, sendClarification, sendSettings, sendHistory, stop, clear }
 }
