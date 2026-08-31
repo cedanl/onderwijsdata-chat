@@ -39,6 +39,13 @@ export function RoaSection({ data, dark }) {
       legend: {
         display: true, position: 'top',
         labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+        onClick: (e, legendItem, legend) => {
+          const index = legendItem.datasetIndex
+          const chart = legend.chart
+          const meta = chart.getDatasetMeta(index)
+          meta.hidden = !meta.hidden
+          chart.update()
+        },
       },
       tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } },
     },

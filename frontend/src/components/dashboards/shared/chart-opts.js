@@ -40,6 +40,13 @@ export function buildIndexChartOpts(dark) {
         display: true,
         position: 'top',
         labels: { color: label, font: { size: 11 }, boxWidth: 20 },
+        onClick: (e, legendItem, legend) => {
+          const index = legendItem.datasetIndex
+          const chart = legend.chart
+          const meta = chart.getDatasetMeta(index)
+          meta.hidden = !meta.hidden
+          chart.update()
+        },
       },
       tooltip: {
         callbacks: {
@@ -88,7 +95,16 @@ export function horizontalBarOpts(dark, tooltipSuffix = '') {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: false,
+        onClick: (e, legendItem, legend) => {
+          const index = legendItem.datasetIndex
+          const chart = legend.chart
+          const meta = chart.getDatasetMeta(index)
+          meta.hidden = !meta.hidden
+          chart.update()
+        },
+      },
       tooltip: {
         callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('nl-NL')}${tooltipSuffix}` },
       },
