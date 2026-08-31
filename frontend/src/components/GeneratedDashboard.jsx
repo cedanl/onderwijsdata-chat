@@ -40,12 +40,22 @@ function ChartCard({ figureJson }) {
     return null
   }
 
+  const dark = document.documentElement.classList.contains('dark')
+  const fontColor = dark ? '#E2E8F0' : '#374151'
+  const legendBg = dark ? 'rgba(30,41,59,0.9)' : 'rgba(255,255,255,0.8)'
+  const legendBorder = dark ? '#475569' : '#ddd'
   const layout = {
     ...figure.layout,
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
     margin: { t: 48, r: 24, b: 48, l: 60 },
-    font: { family: 'system-ui, sans-serif', size: 12 },
+    font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
+    legend: {
+      ...figure.layout?.legend,
+      bgcolor: legendBg,
+      bordercolor: legendBorder,
+      font: { color: fontColor },
+    },
     autosize: true,
   }
 

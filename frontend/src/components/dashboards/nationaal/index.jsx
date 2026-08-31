@@ -95,7 +95,18 @@ function SectorTrendChart({ eigenSectoren, dark }) {
       <div style={{ height: 280 }}>
         <Line data={chartData} options={{
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } } },
+          plugins: {
+            legend: {
+              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              onClick: (e, legendItem, legend) => {
+                const index = legendItem.datasetIndex
+                const chart = legend.chart
+                const meta = chart.getDatasetMeta(index)
+                meta.hidden = !meta.hidden
+                chart.update()
+              },
+            },
+          },
           scales: {
             x: { grid: { display: false }, ticks: { color: tick } },
             y: { grid: { color: grid }, ticks: { color: tick } },

@@ -64,7 +64,16 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
-            legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } },
+            legend: {
+              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              onClick: (e, legendItem, legend) => {
+                const index = legendItem.datasetIndex
+                const chart = legend.chart
+                const meta = chart.getDatasetMeta(index)
+                meta.hidden = !meta.hidden
+                chart.update()
+              },
+            },
           },
         }} />
       </div>
