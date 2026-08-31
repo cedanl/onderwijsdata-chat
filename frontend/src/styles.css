@@ -596,9 +596,11 @@ input, textarea { font: inherit; }
   text-align: left; padding: 10px 14px; border-radius: var(--radius);
   border: 1.5px solid var(--blue-200); background: var(--blue-50);
   font-size: .875rem; color: var(--blue-700); font-weight: 500;
-  transition: all .15s;
+  transition: all .15s; cursor: pointer;
 }
-.clarification-btn:hover { background: var(--blue-100); border-color: var(--blue-400); }
+.clarification-btn:hover:not(:disabled) { background: var(--blue-100); border-color: var(--blue-400); }
+.clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.clarification-btn.selected { background: var(--blue-600); color: var(--white); border-color: var(--blue-700); font-weight: 600; }
 
 .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
 .ai-typing span {
@@ -826,7 +828,9 @@ html.dark .context-limit-banner--full {
   border: 1.5px solid var(--blue-200); background: var(--white); color: var(--blue-700);
   cursor: pointer; transition: all .15s;
 }
-.dc-clarification-btn:hover { background: var(--blue-50); border-color: var(--blue-400); }
+.dc-clarification-btn:hover:not(:disabled) { background: var(--blue-50); border-color: var(--blue-400); }
+.dc-clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.dc-clarification-btn.selected { background: var(--blue-600); color: var(--white); border-color: var(--blue-700); }
 
 .wb-gallery-page { padding: 28px 48px; }
 .wb-gallery-header {
@@ -1096,6 +1100,12 @@ html.dark .dc-clarification-btn:hover,
 html.dark .suggested-category-btn:hover {
   background: rgba(37, 99, 235, 0.25);
   border-color: rgba(59, 130, 246, 0.6);
+}
+html.dark .clarification-btn.selected,
+html.dark .dc-clarification-btn.selected {
+  background: rgba(59, 130, 246, 0.8);
+  border-color: var(--blue-400);
+  color: var(--white);
 }
 html.dark .restored-banner {
   background: rgba(37, 99, 235, 0.15);
