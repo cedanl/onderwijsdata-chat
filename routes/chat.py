@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import os
+import time
+import uuid
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -15,6 +17,7 @@ from core.config import MODEL, MAX_HISTORY
 from core.errors import friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
+from persistence import db as persistence_db
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,7 @@ router = APIRouter(tags=["chat"])
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
 
 
-def _new_session() -> dict:
+def _new_session(username: str | None = None) -> dict:
     return {
         "messages": [],
         "figures": [],
@@ -34,7 +37,37 @@ def _new_session() -> dict:
         "current_model": None,
         "stop_event": None,
         "_last_turn_tool_calls": [],
+        "conv_id": str(uuid.uuid4()),
+        "username": username or "anonymous",
     }
+
+
+def _persist_conversation(session: dict) -> bool:
+    """Save the conversation to the database. Returns True if successful."""
+    if not session.get("messages"):
+        return True  # Nothing to save
+    try:
+        title = ""
+        for msg in session.get("messages", []):
+            if msg.get("role") == "user":
+                title = msg.get("content", "").strip()[:100]
+                if title:
+                    break
+        title = title or "Untitled"
+        persistence_db.upsert_conversation(
+            username=session.get("username", "anonymous"),
+            conv_id=session.get("conv_id"),
+            title=title,
+            timestamp=int(time.time() * 1000),
+            messages=session.get("messages", []),
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            f"Failed to persist conversation {session.get('conv_id')}: {e}",
+            exc_info=True
+        )
+        return False
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -71,6 +104,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         })
         session["turns"] = turns
     session["messages"] = messages
+    _persist_conversation(session)
 
 
 async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
@@ -238,6 +272,7 @@ async def _handle_refresh_dashboard(
 
 @router.websocket("/api/chat")
 async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+    username = None
     if AUTH_ENABLED:
         username = verify_token(token or "")
         if not username:
@@ -245,7 +280,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
             return
 
     await ws.accept()
-    session = _new_session()
+    session = _new_session(username=username)
 
     async def emit(event: dict) -> None:
         await ws.send_text(json.dumps(event))
@@ -269,6 +304,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 session["chat_settings"] = msg.get("settings", {})
             elif action == "history":
                 session["messages"] = _parse_history(msg.get("messages") or [])
+                _persist_conversation(session)
             elif action == "message":
                 current_task = await _handle_message(msg, session, emit, current_task)
             elif action == "clarification_choice":
@@ -279,6 +315,7 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
     except WebSocketDisconnect:
+        _persist_conversation(session)
         if current_task is not None and _task_busy(current_task):
             current_task.cancel()
             stop_event = session.get("stop_event")

@@ -7,7 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
-import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl } from './auth'
+import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken } from './auth'
 import { matchKnownInstelling } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 
@@ -27,6 +27,39 @@ export default function App() {
       <AppShell />
     </BrowserRouter>
   )
+}
+
+let _tokenRefreshTimer = null
+
+function startTokenRefreshTimer(token) {
+  // Decode token to get expiration time (format: payload.signature)
+  try {
+    const [payload] = token.split('.')
+    const decoded = JSON.parse(atob(payload + '=='))  // Add padding for base64
+    const [, expStr] = decoded.split('|')
+    const expTime = parseInt(expStr) * 1000  // Convert to ms
+    const now = Date.now()
+    const timeUntilExp = expTime - now
+
+    if (timeUntilExp > 0) {
+      // Refresh 5 minutes before expiration
+      const refreshTime = Math.max(60000, timeUntilExp - 5 * 60 * 1000)
+
+      if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
+      _tokenRefreshTimer = setTimeout(async () => {
+        try {
+          const result = await refreshAuthToken(token)
+          if (result) {
+            startTokenRefreshTimer(result.newToken)
+          }
+        } catch (err) {
+          console.warn('Token refresh failed:', err)
+        }
+      }, refreshTime)
+    }
+  } catch (err) {
+    console.warn('Failed to decode token for refresh timer:', err)
+  }
 }
 
 function AppShell() {
@@ -52,32 +85,58 @@ function AppShell() {
     // it needs the same anonymous-session cache clear (see handleLogin).
     const result = consumeTokenFromUrl()
     const freshOidcLogin = result?.token
-    let userSetViaOidc = false
-    if (freshOidcLogin) {
-      localStorage.removeItem(STORAGE_CONVERSATIONS)
-      localStorage.removeItem(STORAGE_CURRENT_CHAT)
-      localStorage.removeItem(STORAGE_WORKBOOKS)
-      if (result.userData) {
-        setUserInfo(result.userData)
-        setUser(result.userData.name || result.userData.username)
-        userSetViaOidc = true
-      }
-    }
+
     Promise.all([
-      fetchAuthStatus().then(({ required, oidc_enabled }) => {
+      fetchAuthStatus().then(async ({ required, oidc_enabled }) => {
         setAuthRequired(required)
         setOidcEnabled(!!oidc_enabled)
+
         if (!required) {
           setUser('gast')
-        } else if (getToken() && !userSetViaOidc) {
-          // If we have a token but no user info yet from OIDC, use fallback
-          setUser('gebruiker')
+          return
+        }
+
+        const token = getToken()
+        if (!token) {
+          return  // Not authenticated
+        }
+
+        // Fetch user info from server (SDP/OIDC only)
+        // GitHub version (basic auth) will skip this and use localStorage
+        try {
+          const userInfo = await fetchUserInfo(token)
+          if (userInfo) {
+            setUserInfo(userInfo)
+            setUser(userInfo.name || userInfo.username)
+            // Start token refresh timer (refresh 5 min before expiration)
+            startTokenRefreshTimer(token)
+          } else {
+            // Endpoint doesn't exist (GitHub version) or token is invalid
+            // Fallback to localStorage if available
+            const stored = getStoredUserInfo()
+            if (stored) {
+              setUserInfo(stored)
+              setUser(stored.name || stored.username)
+            } else {
+              // GitHub version: just use token as username
+              setUser(token ? 'user' : null)
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch user info (expected on GitHub version):', err)
+          // Fallback: try localStorage (GitHub version path)
+          const stored = getStoredUserInfo()
+          if (stored) {
+            setUserInfo(stored)
+            setUser(stored.name || stored.username)
+          } else {
+            setUser(null)
+          }
         }
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled !== false)
       }).catch(() => {
-        // If config endpoint fails, dashboards enabled by default
         setDashboardsEnabled(true)
       }),
       fetch('/api/instellingen').then(r => r.json()).then(setInstellingen).catch(() => {})
@@ -126,6 +185,7 @@ function AppShell() {
 
   const handleLogout = () => {
     clearToken()
+    if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
     localStorage.removeItem(STORAGE_CONVERSATIONS)
     localStorage.removeItem(STORAGE_CURRENT_CHAT)
     localStorage.removeItem(STORAGE_WORKBOOKS)

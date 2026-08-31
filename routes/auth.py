@@ -58,6 +58,74 @@ async def auth_status() -> dict:
     return {"required": AUTH_ENABLED, "oidc_enabled": is_oidc_configured()}
 
 
+_oidc_user_cache = {}  # username -> user_info (cached from OIDC)
+
+
+def _store_oidc_user(username: str, user_data: dict) -> None:
+    """Store SRAM user info server-side so it survives page reloads."""
+    _oidc_user_cache[username] = user_data
+
+
+def _get_oidc_user(username: str) -> dict | None:
+    """Retrieve cached SRAM user info."""
+    return _oidc_user_cache.get(username)
+
+
+# Only add user info + refresh endpoints if OIDC is configured
+# GitHub version (basic auth) doesn't need these
+if is_oidc_configured():
+
+    @router.get("/user")
+    async def get_current_user_info(token: str | None = None) -> dict:
+        """
+        Get current user's info. Server-side source of truth.
+        Only available with OIDC. GitHub version uses localStorage.
+        """
+        if not token:
+            raise HTTPException(status_code=401, detail="Token erforderlich")
+
+        from core.auth import verify_token
+
+        username = verify_token(token)
+        if not username:
+            raise HTTPException(status_code=401, detail="Ungültiger oder abgelaufener Token")
+
+        # For basic auth users, minimal info
+        user_info = {"username": username, "name": username}
+
+        # For SRAM users, add rich data if available
+        if oidc_data := _get_oidc_user(username):
+            user_info.update(oidc_data)
+
+        return user_info
+
+    @router.post("/refresh")
+    async def refresh_token(body: dict) -> dict:
+        """
+        Refresh auth token before expiration.
+        Only available with OIDC.
+        Prevents "logged out" surprise after 24h inactivity.
+        """
+        old_token = body.get("token", "").strip()
+        if not old_token:
+            raise HTTPException(status_code=400, detail="Token erforderlich")
+
+        from core.auth import verify_token
+
+        username = verify_token(old_token)
+        if not username:
+            raise HTTPException(status_code=401, detail="Ungültiger oder abgelaufener Token")
+
+        from core.auth import make_token
+
+        new_token = make_token(username)
+        user_info = {"username": username, "name": username}
+        if oidc_data := _get_oidc_user(username):
+            user_info.update(oidc_data)
+
+        return {"token": new_token, "user": user_info}
+
+
 @router.post("/login")
 async def login(body: dict, request: Request) -> dict:
     client_ip = request.client.host if request.client else "unknown"
@@ -143,7 +211,10 @@ async def oidc_callback(request: Request) -> RedirectResponse:
         "institution": institution,
         "email_domein": email_domein,
     }
-    # Encode user data in URL for frontend to pick up
+    # Store user data server-side for /api/user endpoint (survives page reloads)
+    _store_oidc_user(username, user_data)
+
+    # Also send in URL for frontend initialization (temporary, deprecated in favor of /api/user)
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))
     response = RedirectResponse(f"/?token={token}&user_data={user_data_encoded}", status_code=302)
     response.delete_cookie(_OIDC_STATE_COOKIE)
