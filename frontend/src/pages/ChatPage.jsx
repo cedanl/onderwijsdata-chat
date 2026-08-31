@@ -661,12 +661,20 @@ function PlotlyFigure({ figureJson, label }) {
   const dark = document.documentElement.classList.contains('dark')
   const bg = dark ? '#1E293B' : '#fff'
   const fontColor = dark ? '#E2E8F0' : '#374151'
+  const legendBg = dark ? 'rgba(30,41,59,0.9)' : 'rgba(255,255,255,0.8)'
+  const legendBorder = dark ? '#475569' : '#ddd'
   const layout = {
     ...figure.layout,
     paper_bgcolor: bg,
     plot_bgcolor: bg,
     margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: 32, b: 40 },
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
+    legend: {
+      ...figure.layout?.legend,
+      bgcolor: legendBg,
+      bordercolor: legendBorder,
+      font: { color: fontColor },
+    },
     autosize: true,
   }
   const csv = figureToCsv(figure)

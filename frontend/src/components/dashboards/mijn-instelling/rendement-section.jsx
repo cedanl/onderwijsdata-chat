@@ -82,7 +82,16 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
         <Line data={chartData} options={{
           responsive: true, maintainAspectRatio: false,
           plugins: {
-            legend: { display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 } },
+            legend: {
+              display: true, position: 'top', labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+              onClick: (e, legendItem, legend) => {
+                const index = legendItem.datasetIndex
+                const chart = legend.chart
+                const meta = chart.getDatasetMeta(index)
+                meta.hidden = !meta.hidden
+                chart.update()
+              },
+            },
             tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` } },
           },
           scales: {
