@@ -107,6 +107,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
   const [saveError, setSaveError] = useState(null)
   const [pendingConfirm, setPendingConfirm] = useState(null)
   const [maxStep, setMaxStep] = useState(0)
+  const [selectedClarifications, setSelectedClarifications] = useState({})
   const prevBusyRef = useRef(false)
 
   useEffect(() => {
@@ -245,9 +246,14 @@ export default function DashboardCreator({ onSaved, instelling }) {
                   <div className="dc-clarification-btns">
                     {msg.clarification.map((opt, _i) => {
                       const label = typeof opt === 'string' ? opt : opt.label
+                      const isSelected = selectedClarifications[msg.id] === label
                       return (
-                        <button type="button" key={label} className="dc-clarification-btn" onClick={() => !busy && sendClarification(label)}>
-                          {opt.aanbevolen ? '✓ ' : ''}{label}
+                        <button type="button" key={label} className={`dc-clarification-btn${isSelected ? ' selected' : ''}`} onClick={() => {
+                          if (busy || selectedClarifications[msg.id]) return
+                          setSelectedClarifications(prev => ({ ...prev, [msg.id]: label }))
+                          sendClarification(label)
+                        }} disabled={busy || selectedClarifications[msg.id]}>
+                          {isSelected ? '✓ ' : ''}{label}
                         </button>
                       )
                     })}
