@@ -544,14 +544,23 @@ function userInitials(settings) {
 
 function ClarificationButtons({ options, onSelect, busy }) {
   if (!options) return null
+  const [selected, setSelected] = useState(null)
+
+  const handleSelect = (label) => {
+    if (busy || selected) return
+    setSelected(label)
+    onSelect(label)
+  }
+
   return (
     <div className="clarification-btns">
       {options.map((opt, _i) => {
         const label = typeof opt === 'string' ? opt : opt.label
         const desc = typeof opt === 'object' ? opt.beschrijving : null
+        const isSelected = selected === label
         return (
-          <button type="button" key={label} className="clarification-btn" onClick={() => !busy && onSelect(label)}>
-            {opt.aanbevolen ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
+          <button type="button" key={label} className={`clarification-btn${isSelected ? ' selected' : ''}`} onClick={() => handleSelect(label)} disabled={busy || selected}>
+            {isSelected ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
           </button>
         )
       })}
