@@ -32,8 +32,11 @@ export function useChat({ onUnauthorized } = {}) {
   const [thinking, setThinking] = useState(false)
   const [toasts, setToasts] = useState([])
   const [connected, setConnected] = useState(false)
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportSpec, setReportSpec] = useState(null)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
+  const reportingRef = useRef(false)
   const pendingSettingsRef = useRef(null)
   const idRef = useRef(0)
   const manualCloseRef = useRef(false)
@@ -133,6 +136,22 @@ export function useChat({ onUnauthorized } = {}) {
         }])
         finishStream()
       },
+      report_generating() {
+        reportingRef.current = true
+        setReportBusy(true)
+        setReportSpec(null)
+      },
+      report_ready(ev) {
+        reportingRef.current = false
+        setReportBusy(false)
+        setReportSpec(ev.spec)
+      },
+      report_error(ev) {
+        reportingRef.current = false
+        setReportBusy(false)
+        setReportSpec(null)
+        addToast(ev.message, 'error')
+      },
       error(ev) {
         setThinking(false)
         cancelCurrentMsg()
@@ -144,6 +163,11 @@ export function useChat({ onUnauthorized } = {}) {
       },
     }
 
+    const chatStreamEvents = new Set([
+      'message_start', 'message_cancel', 'text_delta', 'tool_start',
+      'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error',
+    ])
+
     function connect() {
       const ws = new WebSocket(buildWsUrl())
       wsRef.current = ws
@@ -151,6 +175,9 @@ export function useChat({ onUnauthorized } = {}) {
       ws.onopen = () => {
         setConnected(true)
         retryCountRef.current = 0
+        reportingRef.current = false
+        setReportBusy(false)
+        setReportSpec(null)
         if (pendingHistoryRef.current?.length > 0) {
           ws.send(JSON.stringify({ action: 'history', messages: pendingHistoryRef.current }))
           pendingHistoryRef.current = null
@@ -184,6 +211,7 @@ export function useChat({ onUnauthorized } = {}) {
 
       ws.onmessage = (e) => {
         const event = JSON.parse(e.data)
+        if (reportingRef.current && chatStreamEvents.has(event.type)) return
         const handler = messageHandlers[event.type]
         if (handler) handler(event)
       }
@@ -236,11 +264,25 @@ export function useChat({ onUnauthorized } = {}) {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
 
+  const generateReport = useCallback((author) => {
+    if (!wsRef.current || currentMsgRef.current) return
+    reportingRef.current = true
+    setReportBusy(true)
+    setReportSpec(null)
+    wsRef.current.send(JSON.stringify({ action: 'generate_report', author }))
+  }, [])
+
+  const clearReport = useCallback(() => {
+    reportingRef.current = false
+    setReportBusy(false)
+    setReportSpec(null)
+  }, [])
+
   const clear = useCallback(() => {
     setMessages([])
     setBusy(false)
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, thinking, toasts, connected, send, sendClarification, sendSettings, sendHistory, stop, clear }
+  return { messages, busy, thinking, toasts, connected, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear }
 }

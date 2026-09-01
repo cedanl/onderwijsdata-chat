@@ -12,6 +12,7 @@ from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.replay import replay_dashboard_figures, replay_data_calls
+from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, verify_token
 from core.config import MODEL, MAX_HISTORY
 from core.errors import friendly_error
@@ -116,6 +117,25 @@ async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
         await emit({"type": "error", "message": str(e)})
     except Exception as e:
         await emit({"type": "error", "message": friendly_error(e)})
+
+
+async def _generate_report(session: dict, emit, model: str | None, author: str | None = None) -> None:
+    await emit({"type": "report_generating"})
+    stop_event = asyncio.Event()
+    session["stop_event"] = stop_event
+    try:
+        spec = await generate_report_spec(
+            session,
+            emit,
+            model=model,
+            stop_event=stop_event,
+            author=author or session.get("username"),
+        )
+        await emit({"type": "report_ready", "spec": spec.to_dict()})
+    except ValueError as e:
+        await emit({"type": "report_error", "message": str(e)})
+    except Exception as e:
+        await emit({"type": "report_error", "message": friendly_error(e)})
 
 
 class RefreshError(Exception):
@@ -253,6 +273,16 @@ async def _handle_generate_dashboard(
     return asyncio.create_task(_generate_dashboard(session, emit, model))
 
 
+async def _handle_generate_report(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    if _task_busy(current_task):
+        return current_task
+    model = session["chat_settings"].get("model") or None
+    author = msg.get("author")
+    return asyncio.create_task(_generate_report(session, emit, model, author=author))
+
+
 async def _handle_refresh_dashboard(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
@@ -311,6 +341,8 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 current_task = await _handle_clarification(msg, session, emit, current_task)
             elif action == "generate_dashboard":
                 current_task = await _handle_generate_dashboard(session, emit, current_task)
+            elif action == "generate_report":
+                current_task = await _handle_generate_report(msg, session, emit, current_task)
             elif action == "refresh_dashboard":
                 current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
