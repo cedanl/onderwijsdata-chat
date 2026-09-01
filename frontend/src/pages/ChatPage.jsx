@@ -17,7 +17,7 @@ import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { fetchConversations, putConversation, deleteConversationApi, fetchSettingsConfig } from '../api'
-import { buildDashboardHtml } from '../dashboardHtml'
+import { buildReportHtml } from '../reportHtml'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
@@ -143,9 +143,9 @@ function MessageContent({ msg }) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
 }
 
-export default function ChatPage({ openRapport, settings = {} }) {
+export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, thinking, connected, toasts, send, sendClarification, sendSettings, sendHistory, stop, clear } = useChat({
+  const { messages, busy, thinking, connected, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -320,23 +320,19 @@ export default function ChatPage({ openRapport, settings = {} }) {
     e.target.style.height = Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
   }
 
-  const handleMakeRapport = () => {
+  const handleMakeRapport = useCallback(() => {
     setSaveError(null)
-    const allMsgs = [...restoredMessages, ...messages]
-    const assistantContent = allMsgs
-      .filter(m => m.role === 'assistant' && !m.isError && m.content)
-      .map(m => m.content)
-      .join('\n\n')
-    if (!assistantContent) return
-    const title = allMsgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'Rapport'
-    const figuresJson = allMsgs
-      .filter(m => m.role === 'assistant' && m.figures?.length)
-      .flatMap(m => m.figures.map(f => typeof f.json === 'string' ? f.json : JSON.stringify(f.json)))
-    const htmlContent = buildDashboardHtml(title, assistantContent, figuresJson, settings?.instelling)
-    const date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+    generateReport(user)
+  }, [generateReport, user])
+
+  // Save the generated report as a workbook when the spec arrives
+  useEffect(() => {
+    if (!reportSpec) return
+    const htmlContent = buildReportHtml(reportSpec, { instelling: settings?.instelling })
+    const description = `Rapport door ${reportSpec.auteur || 'onbekend'} · gegenereerd op ${reportSpec.datum || ''}`
     saveWorkbookWithSync({
-      title,
-      description: `Aangemaakt op ${date}`,
+      title: reportSpec.title || 'Rapport',
+      description,
       htmlContent,
       type: 'report',
     }).then(result => {
@@ -345,8 +341,9 @@ export default function ChatPage({ openRapport, settings = {} }) {
       } else {
         setSaveError(result.error)
       }
+      clearReport()
     })
-  }
+  }, [reportSpec, settings?.instelling, openRapport, clearReport])
 
   const displayMessages = [...restoredMessages, ...messages]
   const hasMessages = displayMessages.length > 0
@@ -443,13 +440,13 @@ export default function ChatPage({ openRapport, settings = {} }) {
             )}
             {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
               <div>
-                <button type="button" className="make-rapport-btn" onClick={handleMakeRapport}>
+                <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                     <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
                   </svg>
-                  Genereer rapport
+                  {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
                 </button>
                 {saveError && (
                   <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0' }}>
