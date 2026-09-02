@@ -8,8 +8,12 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 |----------|---------------|----------|-----------|-----|
 | **development** | traefik-internal | 1 | 200m CPU / 256Mi RAM | `dev.sdp.surf.nl` |
 | **test** | traefik-internal | 1 | 200m CPU / 256Mi RAM | `test.sdp.surf.nl` |
-| **staging** | traefik-external | 2 | 500m CPU / 512Mi RAM | `staging.sdp.surf.nl` |
+| **playground** | traefik-external | 2 | 500m CPU / 512Mi RAM | `playground.sdp.surf.nl` |
 | **production** | traefik-external | 3–10 (HPA) | 1000m CPU / 1Gi RAM | `sdp.surf.nl` |
+
+`playground` is the officially designated way of serving the app to end users
+(tag-triggered, public) — not `test`, which stays internal-only for CI
+verification on every `main` push.
 
 ## Directorystructuur
 
@@ -28,9 +32,9 @@ manifests/
 ├── test/
 │   ├── kustomization.yaml        # Test patches
 │   └── values.yaml               # Test ingress (traefik-internal)
-├── staging/
-│   ├── kustomization.yaml        # Staging patches
-│   └── values.yaml               # Staging ingress (traefik-external)
+├── playground/
+│   ├── kustomization.yaml        # Playground patches
+│   └── values.yaml               # Playground ingress (traefik-external)
 └── production/
     ├── kustomization.yaml        # Production patches
     └── values.yaml               # Production ingress + HPA (traefik-external)
@@ -39,7 +43,7 @@ manifests/
 ## Ingress tiers
 
 - **traefik-internal**: SURF-interne access (dev/test)
-- **traefik-external**: Public internet access (staging/production)
+- **traefik-external**: Public internet access (playground/production)
 
 ## Flux deployment
 
@@ -65,7 +69,8 @@ sops -d manifests/development/secret.yaml | kubectl apply -f -
 
 ## Rollout strategie
 
-1. **development** → test → staging → production
-2. Flux HelmRelease monitoert image tags
-3. Bij tag release op GitHub → GitHub Actions pusht naar GitLab → GitLab CI bouwt image
-4. Flux detecteert nieuwe image tag → rekonciliatie in alle environments
+1. **development/test** volgen elke push naar `main` op GitLab (canonical remote)
+2. **playground/production** volgen alleen major-version tags (`vX.0.0`)
+3. GitLab CI bouwt en publiceert het image/chart, en synct `main` (incl. major
+   tags) door naar GitHub als publieke spiegel
+4. Flux detecteert nieuwe image tag → reconciliatie in de betreffende environment

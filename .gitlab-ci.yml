@@ -10,8 +10,8 @@ workflow:
         ENVIRONMENT_NAME: "odw-chat-testing"
     - if: $CI_COMMIT_TAG
       variables:
-        ENVIRONMENT_CLUSTER: "staging"
-        ENVIRONMENT_NAME: "odw-chat-staging"
+        ENVIRONMENT_CLUSTER: "playground"
+        ENVIRONMENT_NAME: "odw-chat-playground"
 
 include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/base@0.10.8

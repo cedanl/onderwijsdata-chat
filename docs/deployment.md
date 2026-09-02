@@ -74,13 +74,9 @@ Set in GitLab project settings:
 Release workflow:
 
 ```bash
-# On GitHub
-git tag v0.1.0
-git push origin v0.1.0
-
-# GitHub Actions:
-# 1. Pushes code + tag to GitLab
-# 2. Triggers GitLab CI pipeline
+# GitLab is canonical — develop and tag there.
+git tag v2.0.0
+git push gitlab v2.0.0
 
 # On GitLab:
 # 1. Builds Docker image
@@ -88,12 +84,18 @@ git push origin v0.1.0
 # 3. Packages Helm chart
 # 4. Publishes to Harbor Helm repo
 # 5. Flux reconciles new image tag
+# 6. sync:github mirrors main + this tag (major-version tags only) to GitHub,
+#    which triggers the Azure deploy workflow there
 
 # Flux reconciliation (per environment):
-# - development: always syncs latest main
-# - test: syncs tag
-# - staging: syncs tag (traefik-external)
-# - production: syncs tag (traefik-external + HPA)
+# - development/test: always sync latest main (push-triggered)
+# - playground: syncs major-version tags only (traefik-external, public) —
+#   the officially designated way of serving the app to users
+#
+# NOTE: this pipeline (.gitlab-ci.yml) has no rule that sets
+# ENVIRONMENT_CLUSTER=production — production exists as a manifests/
+# directory but isn't currently wired to any CI trigger here. Pre-existing
+# gap, not addressed by the playground rollout.
 ```
 
 ## Verification
@@ -169,10 +171,10 @@ kubectl get networkpolicy -n services-onderwijsdata-chat
 - 1 replica, minimal resources
 - Good for testing and development
 
-### Staging
+### Playground
 - `traefik-external` ingress (public internet)
 - 2 replicas, moderate resources
-- Pre-production testing
+- Officially designated environment for serving the app to end users
 
 ### Production
 - `traefik-external` ingress (public internet)

@@ -6,7 +6,7 @@ resources:
   - middleware.yaml
 
 configMapGenerator:
-  - name: staging-config
+  - name: playground-config
     files:
       - values.yaml=values.yaml
 
@@ -22,4 +22,4 @@ patches:
         path: /spec/valuesFrom/-
         value:
           kind: ConfigMap
-          name: staging-config
+          name: playground-config
