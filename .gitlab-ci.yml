@@ -192,5 +192,5 @@ sync:github:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
   script:
-    - git push "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
-    - git push "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" --tags
+    - git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
+    - git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" --tags
