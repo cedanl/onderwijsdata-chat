@@ -54,7 +54,7 @@ async def health_check() -> dict:
     Returns 200 if application is running.
     """
     return {
-        "status": "alive",
+        "status": "ok",
         "timestamp": time.time(),
     }
 

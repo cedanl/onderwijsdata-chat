@@ -1,6 +1,6 @@
 [project]
 name = "onderwijsdata-chat"
-version = "1.8.4"
+version = "1.8.5"
 description = "Chat met open Nederlandse onderwijsdata (CBS, RIO en DUO)"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,7 +10,6 @@ dependencies = [
     "litellm>=1.40",
     "plotly>=5.0",
     "python-dotenv>=1.0",
-    "psycopg2-binary>=2.9",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git",
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git",
     "markdown>=3.10.2",
@@ -21,6 +20,11 @@ dependencies = [
     "authlib>=1.3",
     "httpx>=0.27",
 ]
+
+[project.optional-dependencies]
+# PostgreSQL is only used by the GitLab SDP deployment. Local and Azure run on
+# SQLite, so psycopg2 stays opt-in — install with `uv sync --extra postgres`.
+postgres = ["psycopg2-binary>=2.9"]
 
 [dependency-groups]
 dev = [

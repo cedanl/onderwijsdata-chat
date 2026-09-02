@@ -1795,7 +1795,7 @@ dependencies = [
 
 [[package]]
 name = "onderwijsdata-chat"
-version = "1.8.4"
+version = "1.8.5"
 source = { virtual = "." }
 dependencies = [
     { name = "authlib" },
@@ -1809,11 +1809,15 @@ dependencies = [
     { name = "openpyxl" },
     { name = "piper-tts" },
     { name = "plotly" },
-    { name = "psycopg2-binary" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "riodata", extra = ["analyse"] },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+postgres = [
+    { name = "psycopg2-binary" },
 ]
 
 [package.dev-dependencies]
@@ -1843,12 +1847,13 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "piper-tts", specifier = ">=1.4.2" },
     { name = "plotly", specifier = ">=5.0" },
-    { name = "psycopg2-binary", specifier = ">=2.9" },
+    { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
+provides-extras = ["postgres"]
 
 [package.metadata.requires-dev]
 dev = [
