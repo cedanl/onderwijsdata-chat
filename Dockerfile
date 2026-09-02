@@ -26,10 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
-# hadolint ignore=DL3013
 # --extra postgres: every SDP deployment target (test/playground/production)
 # configures a real POSTGRES_URI; psycopg2-binary needs to be present in the
 # image even though it's an optional extra (kept lean for local/Azure SQLite use).
+# hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv && \
     uv sync --frozen --no-dev --no-install-project --extra postgres
 
