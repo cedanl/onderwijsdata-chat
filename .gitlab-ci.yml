@@ -185,7 +185,9 @@ sync:github:
       when: always
     - if: $CI_COMMIT_TAG
       when: always
-  image: alpine/git:2.45.2
+  image:
+    name: alpine/git:2.45.2
+    entrypoint: [""]
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
