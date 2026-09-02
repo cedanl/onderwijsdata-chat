@@ -1,5 +1,11 @@
 replicaCount: 1
 
+# Deployment rollout strategy. Empty = Kubernetes default (RollingUpdate,
+# 25% surge) -- fine for environments with headroom in their ResourceQuota.
+# Set to {type: Recreate} per-environment when a quota can't afford the
+# transient extra pod a rolling update briefly creates.
+strategy: {}
+
 image:
   repository: cr.surf.nl/ceda-onderwijsdata-chat/onderwijsdata-chat
   pullPolicy: Always
