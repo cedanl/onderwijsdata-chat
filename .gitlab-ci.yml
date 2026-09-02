@@ -177,3 +177,16 @@ debug:logs:
   script:
     - kubectl config use-context surf-internal/sdp/infrastructure/kubernetes-clusters:${CLUSTER}
     - kubectl get pods -n ${KUBERNETES_NAMESPACE}
+
+sync:github:
+  stage: .post
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+  image: alpine/git:2.45.2
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0
+  script:
+    - git push "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
+    - git push "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" --tags
