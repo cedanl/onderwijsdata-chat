@@ -7,7 +7,9 @@ name: Build and deploy Python app to Azure Web App - onderwijsdata-chat
 on:
   push:
     tags:
-      - 'v*'
+      # Major releases only (vX.0.0) — GitLab's SDP pipeline auto-tags every
+      # patch/minor bump on main and only mirrors major tags to GitHub.
+      - 'v[0-9]*.0.0'
   workflow_dispatch:
 
 jobs:
