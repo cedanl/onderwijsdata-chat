@@ -211,7 +211,7 @@ function AppShell() {
         <ErrorBoundary key={location.pathname}>
           <Routes>
             <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-            <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} />} />
+            <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
             {dashboardsEnabled && <Route path="/dashboards" element={<DashboardPage settings={settings} />} />}
             <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
