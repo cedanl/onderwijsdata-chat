@@ -26,9 +26,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
+# --extra postgres: every SDP deployment target (test/playground/production)
+# configures a real POSTGRES_URI; psycopg2-binary needs to be present in the
+# image even though it's an optional extra (kept lean for local/Azure SQLite use).
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir uv && \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --extra postgres
 
 COPY server.py ./
 COPY app.py ./
@@ -55,4 +58,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD [".venv/bin/uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
