@@ -200,6 +200,7 @@ async def generate(
     last_query_args: dict | None = None
 
     partial_error = None
+    final_text = ""
 
     try:
         for _ in range(_MAX_TOOL_ITERATIONS):
@@ -219,6 +220,7 @@ async def generate(
             sr = await accumulate_stream(stream, stop_event=stop_event)
             text_content = sr.text
             tool_calls_list = sr.tool_calls
+            final_text = text_content
 
             if not tool_calls_list:
                 break
@@ -269,12 +271,6 @@ async def generate(
             "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
             "level": "warning",
         })
-
-    final_text = ""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant" and msg.get("content"):
-            final_text = msg["content"]
-            break
 
     spec = _parse_spec_from_response(final_text, figures, figure_recipes, context, session)
     return spec

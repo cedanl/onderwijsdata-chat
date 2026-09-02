@@ -136,6 +136,7 @@ async def generate(
 
     figures: list[str] = []
     partial_error: str | None = None
+    final_text = ""
 
     try:
         for _ in range(_MAX_TOOL_ITERATIONS):
@@ -155,6 +156,7 @@ async def generate(
             sr = await accumulate_stream(stream, stop_event=stop_event)
             text_content = sr.text
             tool_calls_list = sr.tool_calls
+            final_text = text_content
 
             if not tool_calls_list:
                 break
@@ -204,12 +206,6 @@ async def generate(
                 "level": "warning",
             }
         )
-
-    final_text = ""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant" and msg.get("content"):
-            final_text = msg["content"]
-            break
 
     return _parse_spec_from_response(final_text, figures, context, author)
 
