@@ -20,6 +20,8 @@ resources:
 ingress:
   web:
     className: "traefik-external"
+    annotations:
+      cert-manager.io/cluster-issuer: "harica-eab"
     hosts:
       - host: onderwijsdata-chat.playground.sdp.surf.nl
         paths:
