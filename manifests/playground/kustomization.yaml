@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - ../base
-  - middleware.yaml
   - secret.yaml
 
 configMapGenerator:
@@ -24,3 +23,11 @@ patches:
         value:
           kind: ConfigMap
           name: playground-config
+  # Strip Traefik middleware annotation (cross-namespace ref breaks in playground Traefik)
+  # See: https://github.com/Tomeriko96/glab-surf/issues/59
+  - target:
+      kind: Ingress
+      name: fn-onderwijsdata-chat
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares
