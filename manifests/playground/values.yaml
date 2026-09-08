@@ -34,6 +34,43 @@ ingress:
           - onderwijsdata-chat.playground.sdp.surf.nl
 
 env:
+  # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to
+  # set now; OIDC_CLIENT_ID/OIDC_CLIENT_SECRET (in secret_orig.yaml) are still
+  # placeholders pending a real SRAM application registration. This means the
+  # "Inloggen met SURF SRAM" login button will appear but fail on click until
+  # real credentials are swapped in — accepted tradeoff so activation is a
+  # single secret update once SURF responds, not a values.yaml change too.
+  - name: OIDC_PROVIDER
+    value: "SRAM"
+  - name: OIDC_DISCOVERY_URL
+    value: "https://proxy.sram.surf.nl/.well-known/openid-configuration"
+  - name: SERVER_URL
+    value: "https://onderwijsdata-chat.playground.sdp.surf.nl"
+  - name: OIDC_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: OIDC_CLIENT_ID
+  - name: OIDC_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: OIDC_CLIENT_SECRET
+  # Required now that AUTH_ENABLED is true (core/auth.py hard-fails at
+  # startup otherwise) — signs auth tokens, unrelated to the SRAM client
+  # credentials themselves.
+  - name: CHAT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: CHAT_SECRET
+  # Password login, coexists with SRAM permanently (not a placeholder to
+  # remove later) — see LoginPage.jsx, both options render together.
+  - name: CHAT_USERS
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: CHAT_USERS
   # Platform-provisioned Postgres for this tenant, same pattern as test
   # (manifests/test/values.yaml) — the previous POSTGRES_URI/onderwijsdata-chat-secrets
   # reference here was stale and never matched an actual secret key.
@@ -42,18 +79,6 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-app
         key: uri
-  # CHAT_SECRET is required once AUTH_ENABLED is true (core/auth.py hard-fails at
-  # startup otherwise) — signs auth tokens.
-  - name: CHAT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: onderwijsdata-chat-secrets
-        key: CHAT_SECRET
-  - name: CHAT_USERS
-    valueFrom:
-      secretKeyRef:
-        name: onderwijsdata-chat-secrets
-        key: CHAT_USERS
   - name: MODEL
     value: "openai/gpt-oss-120b"
   - name: WILLMA_BASE_URL
