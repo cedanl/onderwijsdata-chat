@@ -26,6 +26,7 @@ EDUdata is een AI-assistent voor open onderwijsdata. Gebruikers stellen vragen o
 - Lees nooit env var values — controleer alleen existence
 - Raak `frontend/package.json` versienummer niet aan; `pyproject.toml` is de enige versiebron
 - Geen force push naar `main`
+- Zie `Agents.md` voor secrets-beleid en security richtlijnen
 
 ## Deploy & verificatie
 

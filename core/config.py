@@ -29,6 +29,7 @@ _KNOWN_NAMES: dict[str, tuple[str, str, str]] = {
     "anthropic/claude-opus-4-7":           ("Opus 4.7", "Hoog kwaliteit", "brain"),
     "anthropic/claude-opus-4-8":           ("Opus 4.8", "Meest capabel", "brain"),
     "azure_ai/claude-sonnet-4-6":         ("Sonnet (Foundry)", "Azure AI Foundry", "sparkles"),
+    "azure_ai/claude-opus-4-6":           ("Opus 4.6 (Foundry)", "Azure AI Foundry — hoog kwaliteit", "brain"),
     "azure_ai/claude-haiku-4-5":          ("Haiku (Foundry)", "Azure AI Foundry — snel", "zap"),
     "openai/gpt-4o-mini":                  ("GPT-4o mini", "Snel", "zap"),
     "openai/gpt-4o":                       ("GPT-4o", "Capabel", "sparkles"),

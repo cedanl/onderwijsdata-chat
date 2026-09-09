@@ -42,6 +42,37 @@ git push github main
 # (do this on GitHub side to avoid conflicts)
 ```
 
+## Secrets & Security
+
+### Core principle: nooit secrets via LLM
+
+Secrets mogen NOOIT door een LLM-sessie gaan. Niet als input, niet als output,
+niet als variabele, niet in commando's. Zodra een secret in een LLM-context
+verschijnt, is het gecompromitteerd.
+
+### Rollen
+
+| Rol | Doet WEL | Doet NIET |
+|-----|----------|-----------|
+| **LLM** | Infrastructuur code: values.yaml, config.py, Helm templates, app code | Secrets aanraken, kubectl met secrets, SOPS encryptie |
+| **Developer** | secret_orig.yaml invullen, SOPS encryptie, kubectl apply, git commit | — |
+
+### Workflow
+
+1. LLM maakt infrastructuur-wijzigingen (values.yaml secretKeyRef, config.py, etc.)
+2. Developer vult `secret_orig.yaml` lokaal in (buiten sessie)
+3. Developer draait `sops encrypt --in-place secret.yaml` (buiten sessie)
+4. Developer commit + push (buiten sessie)
+5. Flux reconciled automatisch
+
+### Bestanden
+
+| Bestand | Inhoud | In git? |
+|---------|--------|---------|
+| `secret_orig.yaml` | Plaintext secrets (bron) | Nee (.gitignore) |
+| `secret.yaml` | SOPS-versleuteld | Ja |
+| `.sops.yaml` | SOPS creation rules + publieke key | Ja |
+
 ## Questions?
 
 - **"Does this feature go to GitHub?"** → Check `CLAUDE.md` "Што naar welke repo?" section
