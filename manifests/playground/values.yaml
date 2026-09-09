@@ -96,3 +96,18 @@ env:
   # Set to "true" (or remove this entry) to re-enable.
   - name: ENABLE_DASHBOARDS
     value: "false"
+  # Azure AI Foundry — optioneel naast Willma.
+  # AZURE_AI_API_KEY + AZURE_AI_API_BASE moeten in onderwijsdata-chat-secrets staan.
+  - name: AZURE_AI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: AZURE_AI_API_KEY
+  - name: AZURE_AI_API_BASE
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: AZURE_AI_API_BASE
+  # Model-picker toont zowel Willma als Azure AI Foundry modellen.
+  - name: AVAILABLE_MODELS
+    value: "openai/gpt-oss-120b,azure_ai/claude-sonnet-4-6"
