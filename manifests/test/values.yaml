@@ -95,4 +95,4 @@ env:
         key: AZURE_AI_API_BASE
   # Model-picker toont zowel Willma als Azure AI Foundry modellen.
   - name: AVAILABLE_MODELS
-    value: "openai/gpt-oss-120b,azure_ai/claude-sonnet-4-6"
+    value: "openai/gpt-oss-120b,azure_ai/claude-sonnet-4-6,azure_ai/claude-opus-4-6"
