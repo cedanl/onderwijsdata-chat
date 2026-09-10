@@ -1,0 +1,35 @@
+name: Eval snapshot capture
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  capture-ground-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas
+
+      - name: Download raw data (if available)
+        run: |
+          mkdir -p eval-suite/data/raw
+          echo "Note: Raw data should be in eval-suite/data/raw/ for snapshot generation"
+
+      - name: Build ground-truth snapshot
+        run: python eval-suite/build_snapshot.py
+
+      - name: Upload snapshot to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.ref_name }} eval-suite/ground_truth_snapshot.json
