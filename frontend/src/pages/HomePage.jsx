@@ -11,8 +11,8 @@ export default function HomePage({ dashboardsEnabled = true }) {
       <section className="hero">
         <div className="container">
           <div className="hero-content">
-            <h1>Van open onderwijsdata naar <em>inzicht in seconden</em></h1>
-            <p>openEDUdata+ koppelt aan alle open-onderwijs-databronnen. Stel een vraag in gewone taal over instroom, voortgang, arbeidsmarkt of diplomering en krijg binnen 30 seconden een onderbouwd antwoord.</p>
+            <h1>Van open onderwijsdata naar <em>reproduceerbare inzichten in seconden</em></h1>
+            <p>openEDUdata+ koppelt en harmoniseert alle open-onderwijs-databronnen alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg binnen 30 seconden een onderbouwd, herleidbaar antwoord.</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               {dashboardsEnabled && (
@@ -36,32 +36,37 @@ export default function HomePage({ dashboardsEnabled = true }) {
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div className="section-label">Functionaliteit</div>
-            <h2 className="section-title">Van vraag naar inzicht</h2>
-            <p className="section-sub" style={{ margin: '0 auto' }}>Eén assistent voor alle onderwijsvragen. Van instroom tot diplomering, altijd onderbouwd en uitlegbaar.</p>
+            <h2 className="section-title">Geen databewerking, wel controle</h2>
+            <p className="section-sub" style={{ margin: '0 auto' }}>Eén bron voor alle onderwijsvragen. Al gekoppeld, al geharmoniseerd, altijd herleidbaar naar de brondata.</p>
           </div>
-          <div className="grid grid-3 gap-6">
+          <div className="grid grid-2 gap-6">
             <div className="feature-card">
               <div className="feature-icon blue">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
               </div>
-              <h3>Stel vragen in gewone taal</h3>
-              <p>Typ je vraag zoals je die zou stellen aan een collega. openEDUdata+ begrijpt de context en haalt het juiste antwoord op.</p>
+              <h3>Al gekoppeld en geharmoniseerd</h3>
+              <p>Geen ETL, geen matching-werk, geen definitieverschillen tussen bronnen. De datasets zijn samengevoegd en klaar voor analyse.</p>
             </div>
-            {dashboardsEnabled && (
             <div className="feature-card">
               <div className="feature-icon teal">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               </div>
-              <h3>Dashboards zonder BI-kennis</h3>
-              <p>Beschrijf wat je wilt zien. openEDUdata+ bouwt automatisch de juiste grafiek en koppelt deze aan de juiste databron.</p>
+              <h3>Ad-hoc vragen in seconden</h3>
+              <p>Stel je vraag in gewone taal, krijg direct antwoord. Geen wachtrij voor een dashboard dat eerst gebouwd moet worden.</p>
             </div>
-          )}
             <div className="feature-card">
               <div className="feature-icon purple">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               </div>
-              <h3>Uitlegbare inzichten</h3>
-              <p>Elk antwoord toont welke bronnen zijn gebruikt en hoe de conclusie tot stand kwam. Controleerbaar, en altijd terug te herleiden naar de data.</p>
+              <h3>Reproduceerbare, uitlegbare methodiek</h3>
+              <p>Elk antwoord toont welke bronnen zijn gebruikt en hoe de berekening tot stand kwam. Verdedigbaar tegenover auditors en bestuur, en zelf te reproduceren.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <h3>Ruwe data, jouw analyse</h3>
+              <p>Volledige controle over de onderliggende data. Exporteer wat je nodig hebt en stel je eigen analyse samen, geen black box.</p>
             </div>
           </div>
         </div>
@@ -72,14 +77,14 @@ export default function HomePage({ dashboardsEnabled = true }) {
         <div className="container">
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div className="section-label">Voordelen</div>
-            <h2 className="section-title">Waarom je van openEDUdata+ gaat houden</h2>
+            <h2 className="section-title">Waarom IR-dataprofessionals openEDUdata+ gebruiken</h2>
           </div>
           <div className="grid grid-2 gap-4">
             {[
-              { icon: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />, title: 'Direct inzichten', desc: 'Je AI-assistent beantwoordt al je onderwijsvragen in een handomdraai. Zo win je kostbare tijd.' },
-              ...(dashboardsEnabled ? [{ icon: <><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></>, title: 'Dashboards op maat', desc: 'Direct een helder dashboard laat genereren: van management tot bestuur krijgt direct visueel inzicht op maat.' }] : []),
-              { icon: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>, title: 'Beslissen op feiten', desc: 'De assistent laat je in één oogopslag zien wat er speelt, waar kansen liggen en wat de beste volgende stap is.' },
-              { icon: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />, title: 'Altijd één waarheid', desc: 'Iedereen werkt altijd met exact dezelfde cijfers. Geen misverstanden of discussies over verschillende versies.' },
+              { icon: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>, title: 'Tijd terug', desc: 'Geen weken kwijt aan koppelen en opschonen. De cijfers staan klaar, direct inzetbaar voor jouw analyse.' },
+              { icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />, title: 'Verdedigbare cijfers', desc: 'Reproduceerbare methodiek met volledige bronvermelding. Bestand tegen vragen van auditors, accountants en bestuur.' },
+              { icon: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>, title: 'Eén brontabel voor iedereen', desc: "Instelling, management en collega-IR'ers werken met exact dezelfde geharmoniseerde cijfers. Geen discussie over wiens versie klopt." },
+              { icon: <><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></>, title: 'Zelf aan het stuur', desc: 'Ruwe, gekoppelde data beschikbaar voor eigen modellen en analyses. Geen afhankelijkheid van een vaste rapportagevorm.' },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="benefit-card">
                 <div className="benefit-icon">
@@ -96,7 +101,7 @@ export default function HomePage({ dashboardsEnabled = true }) {
       <section className="cta-section">
         <div className="container">
           <h2>Klaar om te beginnen?</h2>
-          <p>Stel je eerste vraag aan openEDUdata+ en ontdek wat open onderwijsdata voor jouw organisatie kan betekenen.</p>
+          <p>Stel je eerste vraag aan openEDUdata+ en ontdek wat gekoppelde open onderwijsdata voor jouw analyses betekent.</p>
           <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Start de chat →</button>
         </div>
       </section>
