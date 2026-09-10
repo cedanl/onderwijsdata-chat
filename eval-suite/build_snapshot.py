@@ -30,7 +30,7 @@ def run_ground_truth_script(script_path: Path) -> str:
     """Run a ground-truth script and return its output."""
     try:
         result = subprocess.run(
-            ["python", str(script_path)],
+            [sys.executable, str(script_path)],
             capture_output=True,
             text=True,
             timeout=30,

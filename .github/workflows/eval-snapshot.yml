@@ -19,8 +19,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pandas
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pandas
 
       - name: Download raw data (if available)
         run: |
@@ -39,5 +39,5 @@ jobs:
 
       - name: Snapshot generated
         run: |
-          echo "Snapshot ready at eval-suite/ground_truth_snapshot.json"
-          cat eval-suite/ground_truth_snapshot.json | head -10
+          ANSWER_COUNT=$(python3 -c "import json; print(len(json.load(open('eval-suite/ground_truth_snapshot.json'))['answers']))")
+          echo "✅ Snapshot generated: $ANSWER_COUNT answers captured"
