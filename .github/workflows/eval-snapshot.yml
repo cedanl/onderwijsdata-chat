@@ -3,6 +3,8 @@ name: Eval snapshot capture
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    description: "Manually trigger snapshot capture (for testing)"
 
 jobs:
   capture-ground-truth:
@@ -29,7 +31,13 @@ jobs:
         run: python eval-suite/build_snapshot.py
 
       - name: Upload snapshot to release
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload ${{ github.ref_name }} eval-suite/ground_truth_snapshot.json
+
+      - name: Snapshot generated
+        run: |
+          echo "Snapshot ready at eval-suite/ground_truth_snapshot.json"
+          cat eval-suite/ground_truth_snapshot.json | head -10
