@@ -42,21 +42,21 @@ include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.13
     inputs:
       name: helm:publish-promoted
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@1.0.3
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/dry-run@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/dry-run@1.0.3
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.3
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/verify-up@1.0.3
     inputs:
       name: kubernetes:verify-up:tag
       chart_version: $CI_COMMIT_TAG
       cluster: ${ENVIRONMENT_CLUSTER}
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/failure@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/failure@1.0.3
     inputs:
       cluster: ${ENVIRONMENT_CLUSTER}
 
