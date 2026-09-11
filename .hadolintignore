@@ -1,0 +1,5 @@
+# Multi-stage builds may need different base image patterns
+DL3006
+
+# Unsafe chown in non-root context
+DL4000
