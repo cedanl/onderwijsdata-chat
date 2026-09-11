@@ -151,7 +151,7 @@ debug:logs:
   variables:
     KUBERNETES_NAMESPACE: services-onderwijsdata-chat
     CLUSTER: $ENVIRONMENT_CLUSTER
-  image: cr.surf.nl/proxy-quay/helmpack/chart-testing:v3.14.0
+  image: cr.surf.nl/proxy-quay/helmpack/chart-testing:v3.14.0@sha256:425ff3058dfc192fffb94e471e732b9bc995c375df963eba417ff01aea594e83
   script:
     - kubectl config use-context surf-internal/sdp/infrastructure/kubernetes-clusters:${CLUSTER}
     - kubectl get pods -n ${KUBERNETES_NAMESPACE}
@@ -164,7 +164,7 @@ sync:github:
     - if: $CI_COMMIT_TAG
       when: always
   image:
-    name: alpine/git:2.45.2
+    name: alpine/git:2.45.2@sha256:16ad8e788e1d3b0c30f18da8dde5c0ace3b187445a62d8af893b003ca1e70592
     entrypoint: [""]
   variables:
     GIT_STRATEGY: clone
