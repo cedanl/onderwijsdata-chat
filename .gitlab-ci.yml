@@ -18,14 +18,14 @@ include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0.10.9
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.2
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.2
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.11
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.12
     inputs:
       name: docker:docker-lint
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.11
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.12
     inputs:
       name: docker:docker-build
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.11
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.12
     inputs:
       name: docker:docker-promote
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
