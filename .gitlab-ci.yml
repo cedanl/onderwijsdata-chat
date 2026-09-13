@@ -16,8 +16,8 @@ workflow:
 include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/base@0.10.9
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0.10.9
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.2
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.2
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.3
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.3
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.12
     inputs:
       name: docker:docker-lint
