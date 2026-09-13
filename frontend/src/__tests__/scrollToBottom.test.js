@@ -13,7 +13,9 @@ beforeEach(() => {
   mockObserve = vi.fn()
   mockDisconnect = vi.fn()
 
-  globalThis.IntersectionObserver = vi.fn((callback) => {
+  // Reguliere function, geen arrow: vitest 5 roept de implementatie met `new`
+  // aan en een arrow function is niet construeerbaar.
+  globalThis.IntersectionObserver = vi.fn(function (callback) {
     observeCallback = callback
     return { observe: mockObserve, disconnect: mockDisconnect }
   })
