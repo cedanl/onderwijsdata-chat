@@ -29,17 +29,17 @@ include:
     inputs:
       name: docker:docker-promote
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-lint@0.9.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-lint@0.9.14
     inputs:
       dir: $CHART_PATH
   - local: .gitlab/helm-package.yaml
     inputs:
       dir: $CHART_PATH
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.13
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0.9.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.14
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0.9.14
     inputs:
       chart: oci://$HARBOR_HOST/$HARBOR_PROJECT/onderwijsdata-chat
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.13
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.14
     inputs:
       name: helm:publish-promoted
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/kubernetes/diff@1.0.2
