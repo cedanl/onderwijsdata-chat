@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import re
 import time
 from functools import cache
 
@@ -21,6 +22,10 @@ _STOPWOORDEN = frozenset({
     "kan", "mag", "moet", "wil", "zal", "zou", "kan", "krijgt", "krijgen",
     "heeft", "hebben", "dar", "door", "tot", "over", "om", "zonder",
 })
+
+# F3: Log-damping coefficient — scales penalty for oversized entries
+# Balances large-dataset bias without over-penalizing; see _length_damping_factor
+_DAMPING_SCALE = 0.2
 
 _SEARCH_KEEP_FIELDS = frozenset({
     "_cbs_id", "_ckan_id", "_rio_resource",
@@ -96,7 +101,6 @@ def _word_match(word: str, text: str) -> bool:
     Short terms (≤3 chars) need word boundaries to avoid noise (vo, po, ho, etc).
     Longer terms use prefix matching (query="instel", match="instelling").
     """
-    import re
     if len(word) <= 3:
         # Word boundary required for short terms
         return bool(re.search(rf"\b{re.escape(word)}\b", text))
@@ -132,7 +136,7 @@ def _length_damping_factor(entry: dict, reference_size: int = 5000) -> float:
         return 1.0
     # Gentle log damping: avoid over-penalizing large datasets
     # Example: 47x larger → log(47) ≈ 3.85 → divide by ~1.77 → 56% penalty
-    return 1.0 / (1.0 + math.log(size / reference_size) * 0.2)
+    return 1.0 / (1.0 + math.log(size / reference_size) * _DAMPING_SCALE)
 
 
 _FIELD_WEIGHTS = {
@@ -151,11 +155,14 @@ _DEFAULT_WEIGHT = 1
 
 def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     total = 0
-    scored_fields = set()
-    for field, field_weight in _FIELD_WEIGHTS.items():
-        val = entry.get(field)
-        if val is None:
+    for key, val in entry.items():
+        if key.startswith("_"):
             continue
+
+        # Determine field weight: explicit weight or default
+        field_weight = _FIELD_WEIGHTS.get(key, _DEFAULT_WEIGHT)
+
+        # Convert to text
         if isinstance(val, list):
             text = " ".join(val)
         elif isinstance(val, dict):
@@ -163,16 +170,9 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
         else:
             text = str(val)
         text = text.lower()
-        # F5: Weight word by its user/synonym weight
-        total += sum(field_weight * word_weight for w, word_weight in weighted_words if _word_match(w, text))
-        scored_fields.add(field)
 
-    for key, val in entry.items():
-        if key in scored_fields or key.startswith("_"):
-            continue
-        text = json.dumps(val, ensure_ascii=False).lower()
-        # F5: Weight word by its user/synonym weight
-        total += sum(_DEFAULT_WEIGHT * word_weight for w, word_weight in weighted_words if _word_match(w, text))
+        # F5: Weight word by its user/synonym weight, multiplied by field weight
+        total += sum(field_weight * word_weight for w, word_weight in weighted_words if _word_match(w, text))
 
     # F3: Apply length damping factor
     damping = _length_damping_factor(entry)
