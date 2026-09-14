@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import time
 from functools import cache
 
@@ -87,6 +88,36 @@ def _word_match(word: str, text: str) -> bool:
         return word in text
 
 
+def _entry_size(entry: dict) -> int:
+    """F3: Calculate total text length of an entry for length normalization."""
+    size = 0
+    for key, val in entry.items():
+        if key.startswith("_"):
+            continue
+        if isinstance(val, list):
+            size += len(" ".join(str(v) for v in val))
+        elif isinstance(val, dict):
+            size += len(json.dumps(val, ensure_ascii=False))
+        else:
+            size += len(str(val))
+    return size
+
+
+def _length_damping_factor(entry: dict, reference_size: int = 5000) -> float:
+    """F3: Log-damping for large entries.
+
+    Large entries (RIO registers) have more text, thus more random matches.
+    Apply logarithmic dampening: log(size/ref) to penalize oversized entries.
+    Reference size ~5000 chars (typical stat dataset).
+    """
+    size = _entry_size(entry)
+    if size <= reference_size:
+        return 1.0
+    # Log damping: log(size/ref) is additive in multiplication
+    # Example: 47x larger → log(47) ≈ 3.85 → divide score by ~1.5
+    return 1.0 / (1.0 + math.log(size / reference_size) * 0.5)
+
+
 _FIELD_WEIGHTS = {
     "bron": 5,
     "tags": 4,
@@ -101,7 +132,7 @@ _FIELD_WEIGHTS = {
 _DEFAULT_WEIGHT = 1
 
 
-def _score(entry: dict, words: list[str]) -> int:
+def _score(entry: dict, words: list[str]) -> float:
     total = 0
     scored_fields = set()
     for field, weight in _FIELD_WEIGHTS.items():
@@ -124,7 +155,9 @@ def _score(entry: dict, words: list[str]) -> int:
         text = json.dumps(val, ensure_ascii=False).lower()
         total += sum(_DEFAULT_WEIGHT for w in words if _word_match(w, text))
 
-    return total
+    # F3: Apply length damping factor
+    damping = _length_damping_factor(entry)
+    return total * damping
 
 
 def search_catalog(
