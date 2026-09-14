@@ -130,9 +130,9 @@ def _length_damping_factor(entry: dict, reference_size: int = 5000) -> float:
     size = _entry_size(entry)
     if size <= reference_size:
         return 1.0
-    # Log damping: log(size/ref) is additive in multiplication
-    # Example: 47x larger → log(47) ≈ 3.85 → divide score by ~1.5
-    return 1.0 / (1.0 + math.log(size / reference_size) * 0.5)
+    # Gentle log damping: avoid over-penalizing large datasets
+    # Example: 47x larger → log(47) ≈ 3.85 → divide by ~1.77 → 56% penalty
+    return 1.0 / (1.0 + math.log(size / reference_size) * 0.2)
 
 
 _FIELD_WEIGHTS = {
