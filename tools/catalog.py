@@ -55,6 +55,15 @@ _SYNONYMS: dict[str, list[str]] = {
     "vsv": ["voortijdig", "schoolverlaters", "uitval"],
     "schoolverlaters": ["vsv", "voortijdig", "uitval"],
     "prognose": ["prognoses", "verwachting", "raming"],
+    # F4: Aangevuld — deze woorden staan niet in metadata maar worden veel gezocht
+    "voltijd": ["vt", "volledig", "fulltijd", "opleidingsvorm"],
+    "deeltijd": ["dt", "part-time", "parttijd", "opleidingsvorm"],
+    "duaal": ["du", "duale", "leerlingplek", "opleidingsvorm"],
+    "opleidingsvorm": ["voltijd", "deeltijd", "duaal", "vt", "dt", "du"],
+    "deelname": ["ingeschrevenen", "instroom", "deelnemers"],
+    "voortgezet": ["vo", "vso", "leerlingen"],
+    "basisonderwijs": ["primair", "po", "leerlingen"],
+    "mbo": ["middelbaar", "beroepsonderwijs"],
 }
 
 
