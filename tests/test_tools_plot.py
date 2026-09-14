@@ -116,3 +116,14 @@ def test_choropleth_no_data_no_key_returns_error():
     msg, fig = create_choropleth_map(location_col="R", value_col="V", title="T")
     assert "Geen data" in msg
     assert fig is None
+
+
+def test_create_plot_schema_biedt_geen_losse_datarijen_aan():
+    """Het model mag alleen een data_key opgeven; datarijen typen is geen optie."""
+    from tools.schemas import TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP, TOOL_SCHEMAS
+
+    for naam in (TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP):
+        schema = next(s for s in TOOL_SCHEMAS if s["function"]["name"] == naam)
+        params = schema["function"]["parameters"]
+        assert "data" not in params["properties"], f"{naam} biedt nog een data-parameter aan"
+        assert "data_key" in params["required"], f"{naam} vereist geen data_key"

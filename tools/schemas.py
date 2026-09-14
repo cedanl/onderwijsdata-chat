@@ -10,6 +10,7 @@ TOOL_QUERY_DATA = "query_data"
 TOOL_CREATE_PLOT = "create_plot"
 TOOL_CREATE_CHOROPLETH_MAP = "create_choropleth_map"
 TOOL_RUN_ANALYSIS = "run_analysis"
+TOOL_COMPUTE_KPI = "compute_kpi"
 
 TOOL_SCHEMAS = [
     {
@@ -151,12 +152,7 @@ TOOL_SCHEMAS = [
                 "properties": {
                     "data_key": {
                         "type": "string",
-                        "description": "data_key van query_data resultaat — kaart leest data rechtstreeks uit de store.",
-                    },
-                    "data": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                        "description": "Datarijen met regiocodes. Gebruik alleen als data_key niet beschikbaar is.",
+                        "description": "data_key van een query_data-resultaat. De kaart leest de data zelf uit de store; datarijen kunnen niet rechtstreeks worden meegegeven.",
                     },
                     "location_col": {
                         "type": "string",
@@ -173,7 +169,40 @@ TOOL_SCHEMAS = [
                         "description": "Geografisch niveau. 'auto' detecteert op basis van de codes (standaard).",
                     },
                 },
-                "required": ["location_col", "value_col", "title"],
+                "required": ["data_key", "location_col", "value_col", "title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_COMPUTE_KPI,
+            "description": (
+                "Bereken één KPI-waarde over data die al in de store staat. Gebruik dit voor ELK getal dat als KPI "
+                "in een dashboard komt, inclusief verschillen en percentages. Reken zelf nooit een trend uit: geef "
+                "de data_key en de maat op en neem de teruggegeven `value` en `trend` letterlijk over."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data_key": {"type": "string", "description": "data_key van een query_data-resultaat"},
+                    "value_column": {"type": "string", "description": "Kolom met de numerieke waarden"},
+                    "metric": {
+                        "type": "string",
+                        "enum": ["last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index"],
+                        "description": (
+                            "last/first = laatste of eerste waarde, sum/mean/min/max = aggregaat over alle rijen, "
+                            "delta = laatste min eerste, pct_change = procentuele verandering van eerste naar laatste, "
+                            "index = laatste als index met de eerste waarde op 100"
+                        ),
+                    },
+                    "sort_column": {
+                        "type": "string",
+                        "description": "Kolom om op te sorteren voor last/first/delta/pct_change/index, bijv. STUDIEJAAR. Zonder deze kolom telt de rijvolgorde.",
+                    },
+                    "label": {"type": "string", "description": "Label van de KPI, bijv. 'Voltijd 2025/26'"},
+                },
+                "required": ["data_key", "value_column", "metric", "label"],
             },
         },
     },
@@ -181,19 +210,18 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_CREATE_PLOT,
-            "description": "Maak een interactieve grafiek. Gebruik bij voorkeur data_key om data rechtstreeks uit de store te lezen (betrouwbaarder dan handmatig data doorgeven).",
+            "description": "Maak een interactieve grafiek van data die al in de store staat. Geef altijd de data_key van een query_data-resultaat; datarijen kunnen niet rechtstreeks worden meegegeven.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "data_key": {"type": "string", "description": "data_key van query_data resultaat — plot leest data rechtstreeks uit de store. Gebruik dit bij voorkeur boven 'data'."},
-                    "data": {"type": "array", "items": {"type": "object"}, "description": "Datarijen als objecten. Gebruik alleen als data_key niet beschikbaar is."},
+                    "data_key": {"type": "string", "description": "data_key van een query_data-resultaat. De grafiek leest de data zelf uit de store, zodat de getallen gelijk zijn aan wat de tool heeft berekend."},
                     "chart_type": {"type": "string", "enum": ["bar", "line", "scatter", "pie", "histogram"], "description": "Type grafiek"},
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
                 },
-                "required": ["chart_type", "x", "y", "title"],
+                "required": ["data_key", "chart_type", "x", "y", "title"],
             },
         },
     },

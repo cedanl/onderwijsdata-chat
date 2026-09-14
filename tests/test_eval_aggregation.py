@@ -18,6 +18,8 @@ import pytest
 from dotenv import load_dotenv
 from riodata import duo
 
+from agent.dashboard import _EVAL_PATTERN_LOOKAHEAD
+
 # Ground truth: bereken de werkelijke sommen met pandas
 _DATASET_ID = "p02ho1ejrs"
 _RESOURCE = "Eerstejaarsingeschrevenen wetenschappelijk onderwijs niveau opleiding in het domein hoger onderwijs"
@@ -77,14 +79,21 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
 
     # 2. Check: gerapporteerde getallen moeten matchen met ground truth
     truth = _ground_truth()
-    numbers_in_answer = set(re.findall(r"\d[\d.]+", answer.replace(".", "")))
 
-    matched = 0
-    for _year, expected in truth.items():
-        if str(expected) in numbers_in_answer:
-            matched += 1
+    # 2a. Paarsgewijs: jaar én waarde moeten samen voorkomen
+    for year, expected in truth.items():
+        pattern = rf"{year}[^\d]{{0,{_EVAL_PATTERN_LOOKAHEAD}}}{expected:,}".replace(",", r"[.\s]?")
+        assert re.search(pattern, answer), \
+            f"Jaar {year} niet gekoppeld aan {expected:,} in antwoord"
 
-    assert matched >= len(truth) - 1, (
-        f"Slechts {matched}/{len(truth)} jaren matchen met ground truth. "
-        f"Verwacht: {truth}. Antwoord bevat getallen: {numbers_in_answer}"
-    )
+    # 2b. Geen ongedekte getallen: elk getal >999 moet uit tool-output komen
+    tool_results = [
+        tc.get("output") or tc.get("input", {})
+        for tc in events if tc.get("type") in ("tool_end", "tool_start")
+    ]
+    tool_numbers = set()
+    for tc in tool_results:
+        tool_numbers |= set(re.findall(r"\d{4,}", json.dumps(tc)))
+    answer_numbers = set(re.findall(r"\d{4,}", answer.replace(".", "")))
+    ongedekt = answer_numbers - tool_numbers - {str(y) for y in range(1990, 2040)}
+    assert not ongedekt, f"Getallen zonder tool-herkomst: {ongedekt}"

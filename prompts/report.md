@@ -65,4 +65,4 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 - Zakelijk en bondig
 - Geen conversatietekst ("Excellente!", "Ik ga nu...", "Laten we kijken...")
 - Geen aankondigingen van wat je gaat doen — doe het gewoon
-- De conclusie is analytisch, met concrete getallen en perioden
+- De conclusie is analytisch, met concrete getallen en perioden — elk getal komt letterlijk uit tool-output, nooit uit eigen rekenwerk

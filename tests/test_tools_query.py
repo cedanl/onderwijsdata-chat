@@ -246,3 +246,65 @@ def test_different_filters_produce_different_result_keys():
     assert r1["rijen"][0]["N"] == 10
     df2 = store.get(r2["data_key"])
     assert df2.iloc[0]["N"] == 20
+
+
+def test_leeg_filterresultaat_geeft_melding_en_suggesties():
+    """Een filter zonder treffers moet het model op weg helpen, niet zwijgen."""
+    df = pd.DataFrame(
+        {
+            "INSTELLINGSNAAM_ACTUEEL": ["Vrije Universiteit Amsterdam", "Universiteit Utrecht"],
+            "STUDIEJAAR": [2023, 2024],
+            "AANTAL": [10, 20],
+        }
+    )
+    store.put("duo:test:leeg", df)
+
+    result = json.loads(query_data("duo:test:leeg", filters={"INSTELLINGSNAAM_ACTUEEL": "Vrije Universitiet Amsterdam"}))
+
+    assert result["totaal_rijen"] == 0
+    assert "melding" in result
+    assert "Vrije Universiteit Amsterdam" in result["suggesties"]["INSTELLINGSNAAM_ACTUEEL"]
+
+
+def test_leeg_filterresultaat_geeft_bereik_bij_numeriek_filter():
+    df = pd.DataFrame({"STUDIEJAAR": [2021, 2022], "AANTAL": [1, 2]})
+    store.put("duo:test:leeg-numeriek", df)
+
+    result = json.loads(query_data("duo:test:leeg-numeriek", filters={"STUDIEJAAR__gte": 2030}))
+
+    assert result["totaal_rijen"] == 0
+    assert "2021" in result["suggesties"]["STUDIEJAAR"]
+
+
+def test_gevuld_filterresultaat_heeft_geen_suggesties():
+    df = pd.DataFrame({"NAAM": ["a", "b"], "AANTAL": [1, 2]})
+    store.put("duo:test:gevuld", df)
+
+    result = json.loads(query_data("duo:test:gevuld", filters={"NAAM": "a"}))
+
+    assert result["totaal_rijen"] == 1
+    assert "suggesties" not in result
+
+
+def test_aggregation_filters_duo_sentinel_minus_one():
+    """DUO sentinel -1 (empty/n.a.) should not count toward sums."""
+    df = pd.DataFrame({
+        "groep": ["A", "A", "B", "B", "B"],
+        "aantal": [100, -1, 50, 60, -1]  # -1 is privacy/empty sentinel in DUO
+    })
+    store.put("duo:test:sentinels", df)
+
+    result = json.loads(query_data(
+        "duo:test:sentinels",
+        group_by=["groep"],
+        aggregate={"aantal": "sum"}
+    ))
+
+    # Verify sentinels were filtered: A→100 (not 99), B→110 (not 109)
+    rows = {row["groep"]: row["aantal"] for row in result["rijen"]}
+    assert rows["A"] == 100, "DUO sentinel -1 should not be counted"
+    assert rows["B"] == 110, "DUO sentinel -1 should not be counted"
+
+    # Verify databewerking notes were generated
+    assert "databewerking" in result
+    assert any("sentinel" in note.lower() for note in result["databewerking"])

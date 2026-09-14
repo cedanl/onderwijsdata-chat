@@ -1,9 +1,12 @@
+import json
 from unittest.mock import patch
 
 import pandas as pd
 
 from agent.dashboard import (
     DashboardSpec,
+    _collect_kpi,
+    _validate_kpis,
     _build_recipe_from_store,
     _extract_json_object,
     build_dataset_context,
@@ -152,3 +155,54 @@ class TestDashboardSpec:
         assert spec.title == "Minimal"
         assert spec.kpis == []
         assert spec.figures_json == []
+
+
+# --- KPI-validatie: geen getal in een dashboard dat niet uit compute_kpi komt ---
+
+_COMPUTED = json.dumps({
+    "label": "Voltijd 2025/26",
+    "value": "30.083",
+    "raw": 30083.0,
+    "trend": None,
+    "trendDirection": None,
+    "bron": {"data_key": "duo:t", "kolom": "AANTAL", "metric": "last"},
+})
+
+
+def _computed_dict():
+    computed: dict = {}
+    _collect_kpi(computed, _COMPUTED)
+    return computed
+
+
+def test_kpi_uit_compute_kpi_wordt_doorgelaten():
+    kpis = _validate_kpis([{"label": "Voltijd 2025/26", "value": "30.083"}], _computed_dict())
+    assert len(kpis) == 1
+    assert kpis[0]["value"] == "30.083"
+    assert kpis[0]["bron"]["metric"] == "last"
+
+
+def test_verzonnen_kpi_wordt_geweigerd():
+    kpis = _validate_kpis([{"label": "Instroom", "value": "4.084", "trend": "+5%"}], _computed_dict())
+    assert kpis == []
+
+
+def test_trend_van_het_model_wordt_overschreven_door_de_tool():
+    """Het model mag het label bepalen, de tool bepaalt het getal en de trend."""
+    kpis = _validate_kpis(
+        [{"label": "Eigen label", "value": "30.083", "trend": "+12%", "trendDirection": "up"}],
+        _computed_dict(),
+    )
+    assert kpis[0]["label"] == "Eigen label"
+    assert kpis[0]["trend"] is None
+    assert kpis[0]["trendDirection"] is None
+
+
+def test_notatieverschil_blokkeert_een_terechte_kpi_niet():
+    kpis = _validate_kpis([{"label": "L", "value": "30083"}], _computed_dict())
+    assert len(kpis) == 1
+
+
+def test_zonder_compute_kpi_blijven_er_geen_kpis_over():
+    kpis = _validate_kpis([{"label": "L", "value": "30.083"}], {})
+    assert kpis == []
