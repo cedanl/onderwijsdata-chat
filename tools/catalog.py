@@ -73,13 +73,21 @@ def _filter_stopwoorden(words: list[str]) -> list[str]:
     return filtered if filtered else words
 
 
-def _expand_query(words: list[str]) -> list[str]:
-    expanded = list(words)
+def _expand_query(words: list[str]) -> list[tuple[str, float]]:
+    """Expand query with synonyms, weighted differently.
+
+    F5: User words get full weight (1.0), synonyms get lower weight (0.35).
+    This prevents synonyms from overfitting results.
+    Example: "ingeschrevenen wo" shouldn't match "Ho-cohorten" equally well.
+    """
+    weighted = [(w, 1.0) for w in words]
+    seen = set(words)
     for w in words:
         for syn in _SYNONYMS.get(w, []):
-            if syn not in expanded:
-                expanded.append(syn)
-    return expanded
+            if syn not in seen:
+                weighted.append((syn, 0.35))
+                seen.add(syn)
+    return weighted
 
 
 def _word_match(word: str, text: str) -> bool:
@@ -141,10 +149,10 @@ _FIELD_WEIGHTS = {
 _DEFAULT_WEIGHT = 1
 
 
-def _score(entry: dict, words: list[str]) -> float:
+def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     total = 0
     scored_fields = set()
-    for field, weight in _FIELD_WEIGHTS.items():
+    for field, field_weight in _FIELD_WEIGHTS.items():
         val = entry.get(field)
         if val is None:
             continue
@@ -155,14 +163,16 @@ def _score(entry: dict, words: list[str]) -> float:
         else:
             text = str(val)
         text = text.lower()
-        total += sum(weight for w in words if _word_match(w, text))
+        # F5: Weight word by its user/synonym weight
+        total += sum(field_weight * word_weight for w, word_weight in weighted_words if _word_match(w, text))
         scored_fields.add(field)
 
     for key, val in entry.items():
         if key in scored_fields or key.startswith("_"):
             continue
         text = json.dumps(val, ensure_ascii=False).lower()
-        total += sum(_DEFAULT_WEIGHT for w in words if _word_match(w, text))
+        # F5: Weight word by its user/synonym weight
+        total += sum(_DEFAULT_WEIGHT * word_weight for w, word_weight in weighted_words if _word_match(w, text))
 
     # F3: Apply length damping factor
     damping = _length_damping_factor(entry)
