@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -23,6 +25,7 @@ from agent.stream import accumulate_stream
 from core.config import MAX_TOKENS, MODEL
 from tools import LABELS, dispatch, store
 from tools.schemas import (
+    TOOL_COMPUTE_KPI,
     TOOL_CREATE_PLOT,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
@@ -37,11 +40,14 @@ _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
 _DASHBOARD_TOOLS = [
     s for s in TOOL_SCHEMAS
-    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)  # ty: ignore[invalid-argument-type]
+    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_COMPUTE_KPI)  # ty: ignore[invalid-argument-type]
 ]
+
+logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 15
 _MAX_TOOL_RESULT_CHARS = 8000
+_EVAL_PATTERN_LOOKAHEAD = 40  # regex lookahead for year-value proximity check
 
 
 @dataclass
@@ -198,6 +204,8 @@ async def generate(
     figures: list[str] = []
     figure_recipes: list[dict] = []
     last_query_args: dict | None = None
+    computed_kpis: dict[str, dict] = {}
+    tool_results: list[str] = []
 
     partial_error = None
     final_text = ""
@@ -242,11 +250,15 @@ async def generate(
                 await emit({"type": "tool_start", "name": name, "label": label})
 
                 result, figure = await asyncio.to_thread(dispatch, name, args)
+                tool_results.append(result)
 
                 await emit({"type": "tool_end", "name": name})
 
                 if name == TOOL_QUERY_DATA:
                     last_query_args = args
+
+                if name == TOOL_COMPUTE_KPI:
+                    _collect_kpi(computed_kpis, result)
 
                 if figure is not None:
                     figures.append(pio.to_json(figure))
@@ -272,7 +284,14 @@ async def generate(
             "level": "warning",
         })
 
-    spec = _parse_spec_from_response(final_text, figures, figure_recipes, context, session)
+    spec = _parse_spec_from_response(final_text, figures, figure_recipes, context, session, computed_kpis)
+
+    sourcing_error = _check_number_sourcing(final_text, tool_results)
+    if sourcing_error:
+        logger.error("Number sourcing guard rejected response: %s", sourcing_error)
+        spec.narrative = f"**Fout in dashboard:** {sourcing_error}"
+        spec.kpis = []
+
     return spec
 
 
@@ -320,12 +339,80 @@ def _extract_json_object(text: str) -> dict:
     return {}
 
 
+def _normaliseer_waarde(value: object) -> str:
+    """Vergelijkbare vorm van een getal: '30.083' en '30083' zijn hetzelfde getal."""
+    return str(value).replace(".", "").replace(" ", "").replace("\u00a0", "").strip().lower()
+
+
+def _collect_kpi(computed: dict[str, dict], result: str) -> None:
+    """Bewaar een compute_kpi-uitkomst, geïndexeerd op de genormaliseerde waarde."""
+    try:
+        payload = json.loads(result)
+        if isinstance(payload, dict):
+            if "fout" in payload:
+                logger.warning("compute_kpi error: %s", payload["fout"])
+            elif "value" in payload:
+                computed[_normaliseer_waarde(payload["value"])] = payload
+    except json.JSONDecodeError:
+        logger.warning("compute_kpi returned invalid JSON: %r", result[:100])
+
+
+def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None:
+    """Runtime guard: verify all large numbers in response come from tool output.
+
+    Prevents LLM from inventing or hallucinating large numbers. Numbers >999
+    must exist in tool_results (query responses, compute_kpi outputs, etc.).
+    Returns error message if unverified numbers found; None if all checks pass.
+    """
+    answer_numbers = set(re.findall(r"\d{4,}", response.replace(".", "")))
+
+    tool_numbers = set()
+    for result in tool_results:
+        tool_numbers |= set(re.findall(r"\d{4,}", str(result)))
+
+    # Years are always valid (1900-2100)
+    valid_years = {str(y) for y in range(1900, 2101)}
+
+    unverified = answer_numbers - tool_numbers - valid_years
+    if unverified:
+        return (
+            f"Dashboard bevat getallen die niet uit tools komen: {unverified}. "
+            "Alle getallen > 999 moeten uit query_data, compute_kpi, of andere tools komen."
+        )
+    return None
+
+
+def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
+    """Laat alleen KPI's door waarvan de waarde uit compute_kpi komt.
+
+    Het label blijft van het model — dat is tekst. De waarde, de trend en de
+    richting komen uit de tool, zodat een getal in een dashboard nooit door het
+    model zelf berekend kan zijn. Liever twee gevalideerde KPI's dan vier
+    waarvan er één verzonnen is.
+    """
+    gevalideerd: list[dict] = []
+    for kpi in kpis:
+        bron = computed.get(_normaliseer_waarde(kpi.get("value", "")))
+        if bron is None:
+            logger.warning("KPI geweigerd, waarde komt niet uit compute_kpi: %r", kpi)
+            continue
+        gevalideerd.append({
+            **kpi,
+            "value": bron["value"],
+            "trend": bron.get("trend"),
+            "trendDirection": bron.get("trendDirection"),
+            "bron": bron.get("bron"),
+        })
+    return gevalideerd
+
+
 def _parse_spec_from_response(
     response: str,
     figures_json: list[str],
     figure_recipes: list[dict],
     context: dict,
     session: dict,
+    computed_kpis: dict[str, dict] | None = None,
 ) -> DashboardSpec:
     """Parse the LLM response into a DashboardSpec."""
     spec_data: dict = {}
@@ -343,7 +430,7 @@ def _parse_spec_from_response(
         title=spec_data.get("title") or topic[:60] or "Dashboard",
         description=spec_data.get("description", ""),
         narrative=spec_data.get("narrative", ""),
-        kpis=spec_data.get("kpis") or [],
+        kpis=_validate_kpis(spec_data.get("kpis") or [], computed_kpis or {}),
         figures_json=figures_json,
         sources=sources,
         recipe=recipe,

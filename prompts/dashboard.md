@@ -44,9 +44,11 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 ## KPI-regels
 
 - 3–4 KPIs die de belangrijkste cijfers samenvatten
-- Bereken trends waar mogelijk (verschil met vorig jaar/periode)
-- `trendDirection`: "up" of "down"
-- Gebruik Nederlandse getalnotatie (punt als duizendtalsscheidingsteken)
+- Roep voor ELKE KPI `compute_kpi` aan en neem `value` en `trend` LETTERLIJK over uit de tool-output
+- Bereken NOOIT zelf een verschil, percentage of trend — ook niet "even snel". Gebruik `metric: "delta"` voor een verschil, `"pct_change"` voor een percentage en `"index"` voor een indexcijfer
+- Geef bij `last`, `first`, `delta`, `pct_change` en `index` een `sort_column` mee (bijv. STUDIEJAAR), anders bepaalt de rijvolgorde wat "laatste" is
+- `trendDirection` komt uit de tool; die hoef je zelf niet te bepalen
+- Staat een getal niet in tool-output? Dan hoort het niet in het dashboard. KPI's met een waarde die niet uit `compute_kpi` komt, worden geweigerd en verschijnen niet
 
 ## Bronvermeldingen (sources)
 

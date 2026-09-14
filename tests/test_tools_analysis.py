@@ -126,3 +126,13 @@ def test_store_get_available():
     )
     assert isinstance(result, str)
     assert json.loads(result)["v"] == 2
+
+
+def test_blocked_hardcoded_data():
+    """Reject scripts that contain ≥6 numeric literals (likely copy-pasted data)."""
+    hardcoded = """result = [
+        {'jaar': 2021, 'aantal': 30730, 'mannen': 15000, 'vrouwen': 15730},
+        {'jaar': 2022, 'aantal': 31198, 'mannen': 15200, 'vrouwen': 15998},
+    ]"""
+    result = run_analysis(code=hardcoded)
+    assert "hardcoded" in result.lower() or "overgetypte" in result.lower()

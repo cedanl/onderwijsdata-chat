@@ -1,6 +1,7 @@
 """Genereer reproduceerbare Python-snippets uit tool calls."""
 
 from .schemas import (
+    TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
     TOOL_CREATE_PLOT,
     TOOL_GET_CBS_DATA,
@@ -55,6 +56,38 @@ def _query_data_snippet(args: dict) -> str:
         lines.append(f"df = df.groupby({group_by!r}).agg({aggregate!r}).reset_index()")
 
     lines.append("print(df)")
+    return "\n".join(lines)
+
+
+_KPI_EXPRESSIES = {
+    "last": "s.iloc[-1]",
+    "first": "s.iloc[0]",
+    "sum": "s.sum()",
+    "mean": "s.mean()",
+    "min": "s.min()",
+    "max": "s.max()",
+    "delta": "s.iloc[-1] - s.iloc[0]",
+    "pct_change": "(s.iloc[-1] / s.iloc[0] - 1) * 100",
+    "index": "s.iloc[-1] / s.iloc[0] * 100",
+}
+
+
+def _compute_kpi_snippet(args: dict) -> str:
+    """Maak de KPI-berekening reproduceerbaar, zodat de gebruiker het getal kan narekenen."""
+    metric = args.get("metric", "")
+    expressie = _KPI_EXPRESSIES.get(metric)
+    if expressie is None:
+        return ""
+    value_column = args.get("value_column", "")
+    sort_column = args.get("sort_column")
+    label = args.get("label", "")
+
+    lines = [f'# KPI: {label} ({metric})']
+    if sort_column:
+        lines.append(f"df = df.sort_values({sort_column!r})")
+    lines.append(f's = pd.to_numeric(df[{value_column!r}], errors="coerce").dropna()')
+    lines.append(f"kpi = {expressie}")
+    lines.append("print(kpi)")
     return "\n".join(lines)
 
 
@@ -130,6 +163,7 @@ def _create_choropleth_snippet(args: dict) -> str:
 _GENERATORS = {
     TOOL_QUERY_DATA: _query_data_snippet,
     TOOL_RUN_ANALYSIS: _run_analysis_snippet,
+    TOOL_COMPUTE_KPI: _compute_kpi_snippet,
     TOOL_GET_DUO_DATA: _get_duo_data_snippet,
     TOOL_GET_CBS_DATA: _get_cbs_data_snippet,
     TOOL_CREATE_PLOT: _create_plot_snippet,

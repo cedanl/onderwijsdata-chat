@@ -1,3 +1,4 @@
+import difflib
 import hashlib
 import json
 
@@ -12,6 +13,14 @@ from .catalog import catalogus_titel, resource_titel
 _SAMPLE_ROWS = 3
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
+
+# Grenzen voor de suggesties bij een leeg filterresultaat. Het scannen van
+# unieke waarden is lineair in de kolomlengte, vandaar een bovengrens.
+_SUGGESTIE_MAX_UNIEK = 500
+_SUGGESTIE_AANTAL = 3
+_SUGGESTIE_DREMPEL = 0.6
+
+_DUO_SENTINELS = (-1,)
 
 
 def _coerce_pair(a, b):
@@ -113,11 +122,48 @@ def _validate_aggregation(df, group_by, aggregate):
     return None
 
 
-def _apply_aggregation(df, group_by, aggregate):
+def _apply_aggregation(df, group_by, aggregate, source: str = ""):
     df = df.copy()
+    notes = []
     for col in aggregate:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
+        if source == "duo":
+            mask = df[col].isin(_DUO_SENTINELS)
+            n = int(mask.sum())
+            if n:
+                df.loc[mask, col] = pd.NA
+                notes.append(
+                    f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten "
+                    f"(betekent leeg/n.v.t., geen telwaarde)"
+                )
+    out = df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
+    return out, notes
+
+
+def _filter_suggesties(origineel, filters: dict) -> dict:
+    """Dichtstbijzijnde bestaande waarden per filterkolom, voor een leeg resultaat.
+
+    Zonder deze hint krijgt het model alleen `0 rijen` terug en moet het zelf
+    raden of de spelling, de kolom of de waarde zelf het probleem is.
+    """
+    hints: dict = {}
+    for key, val in filters.items():
+        col, op = _parse_filter_key(key)
+        if col not in origineel.columns:
+            continue
+        kolom = origineel[col]
+        if op in ("eq", "in"):
+            aanwezig = [str(v) for v in kolom.dropna().unique()[:_SUGGESTIE_MAX_UNIEK]]
+            gezocht = str(val[0] if isinstance(val, list) and val else val)
+            dichtbij = difflib.get_close_matches(
+                gezocht, aanwezig, n=_SUGGESTIE_AANTAL, cutoff=_SUGGESTIE_DREMPEL
+            )
+            hints[col] = dichtbij or aanwezig[:_SUGGESTIE_AANTAL]
+        elif op in ("gte", "lte"):
+            numeriek = pd.to_numeric(kolom, errors="coerce").dropna()
+            if not numeriek.empty:
+                hints[col] = f"bereik in de data: {numeriek.min()} t/m {numeriek.max()}"
+    return hints
 
 
 def query_data(
@@ -135,9 +181,23 @@ def query_data(
         return f"Geen data gevonden voor '{data_key}'.{hint} Laad eerst data via get_duo_data, get_cbs_data of get_rio_data."
 
     if filters:
+        origineel = df
         df, err = _apply_filters(df, filters)
         if err:
             return err
+        if len(df) == 0:
+            return json.dumps(
+                {
+                    "data_key": data_key,
+                    "totaal_rijen": 0,
+                    "rijen": [],
+                    "melding": "Het filter leverde 0 rijen op. Controleer de waarden hieronder voor je concludeert dat de data ontbreekt.",
+                    "suggesties": _filter_suggesties(origineel, filters),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+                default=str,
+            )
 
     if columns:
         missing = [c for c in columns if c not in df.columns]
@@ -145,11 +205,12 @@ def query_data(
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
         df = df[columns]
 
+    notes = []
     if group_by or aggregate:
         err = _validate_aggregation(df, group_by, aggregate)
         if err:
             return err
-        df = _apply_aggregation(df, group_by, aggregate)
+        df, notes = _apply_aggregation(df, group_by, aggregate, source="duo")
 
     transformed = filters or columns or group_by
     if transformed:
@@ -165,6 +226,8 @@ def query_data(
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
     result: dict = {"data_key": result_key, "totaal_rijen": total, "rijen": rows}
+    if notes:
+        result["databewerking"] = notes
     if total > adaptive_max:
         result["waarschuwing"] = (
             f"Eerste {adaptive_max} van {total} rijen teruggegeven "

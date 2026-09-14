@@ -1,5 +1,7 @@
+import ast
 import ctypes
 import json
+import logging
 import math
 import re
 import threading
@@ -11,6 +13,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from . import store
+
+logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 10
 
@@ -39,10 +43,38 @@ _SAFE_BUILTINS = {
 }
 
 
+def _check_no_hardcoded_data(code: str) -> str | None:
+    """Detect hardcoded data structures (likely copy-pasted rows)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None  # Syntaxfout wordt later gerapporteerd
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.List, ast.Dict, ast.Tuple)):
+            # Count numeric constants in this structure
+            nums = [
+                n for n in ast.walk(node)
+                if isinstance(n, ast.Constant) and isinstance(n.value, (int, float))
+            ]
+            if len(nums) >= 6:
+                return (
+                    "Script bevat een literal datastructuur met ≥6 getallen. "
+                    "Dit ziet eruit als overgetypte data. Lees data via df of store_get(key)."
+                )
+    return None
+
+
 def _check_code(code: str) -> str | None:
+    # Check regex blocklist (security)
     match = _BLOCKED_PATTERNS.search(code)
     if match:
         return f"Niet toegestaan in analyse-scripts: '{match.group()}'. Gebruik de beschikbare libraries (pd, np, px, go)."
+
+    # Check data sourcing (data integrity): reject hardcoded data
+    if err := _check_no_hardcoded_data(code):
+        return err
+
     return None
 
 

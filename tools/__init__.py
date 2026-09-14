@@ -4,10 +4,12 @@ from .analysis import run_analysis
 from .catalog import dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data, query_data
+from .kpi import compute_kpi
 from .plot import create_choropleth_map, create_plot
 from .rio import get_rio_data
 from .schemas import (
     TOOL_CLARIFY_SCOPE,
+    TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
     TOOL_CREATE_PLOT,
     TOOL_DATASET_DETAILS,
@@ -31,6 +33,7 @@ LABELS = {
     TOOL_GET_DUO_DATA: "DUO dataset geladen",
     TOOL_QUERY_DATA: "Data gefilterd",
     TOOL_RUN_ANALYSIS: "Analyse uitgevoerd",
+    TOOL_COMPUTE_KPI: "KPI berekend",
     TOOL_CREATE_PLOT: "Grafiek aangemaakt",
     TOOL_CREATE_CHOROPLETH_MAP: "Kaart aangemaakt",
 }
@@ -44,6 +47,7 @@ _HANDLERS = {
     TOOL_GET_DUO_DATA: get_duo_data,
     TOOL_QUERY_DATA: query_data,
     TOOL_RUN_ANALYSIS: run_analysis,
+    TOOL_COMPUTE_KPI: compute_kpi,
     TOOL_CREATE_PLOT: create_plot,
     TOOL_CREATE_CHOROPLETH_MAP: create_choropleth_map,
 }

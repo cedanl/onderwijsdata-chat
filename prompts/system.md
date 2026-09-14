@@ -182,7 +182,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 >   Gebruik `df` (het DataFrame uit data_key) en `store_get(key)` voor extra datasets. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
 >   Het resultaat (list of DataFrame) wordt automatisch opgeslagen met een `data_key` die je kunt doorpassen.
 >
-> Gebruik altijd `data_key` in `create_plot` en `create_choropleth_map` om data rechtstreeks uit de store te lezen. Kopieer nooit datarijen handmatig naar een grafiek of kaart.
+> `create_plot` en `create_choropleth_map` nemen alleen een `data_key` aan en lezen de data zelf uit de store. Datarijen handmatig meegeven kan niet; de getallen in een grafiek zijn daarmee altijd dezelfde als die de tool heeft berekend.
 
 ## Richtlijnen
 

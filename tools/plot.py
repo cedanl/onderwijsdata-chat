@@ -1,10 +1,13 @@
 import json as _json
+import logging
 import urllib.request
 
 import plotly.express as px
 import plotly.graph_objects as go
 
 from . import store
+
+logger = logging.getLogger(__name__)
 
 # Okabe-Ito colorblind-friendly palette
 _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
@@ -72,8 +75,12 @@ def create_plot(
         if df is None:
             return f"Geen data gevonden voor '{data_key}'.", None
         data = df.to_dict(orient="records")
+    elif data:
+        # data staat niet meer in het tool-schema: alleen interne aanroepen
+        # (zoals de replay in agent/replay.py) komen hier nog langs.
+        logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
-        return "Geen data opgegeven. Gebruik data_key of data parameter.", None
+        return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
 
     fig = go.Figure()
 
@@ -142,8 +149,10 @@ def create_choropleth_map(
         if df is None:
             return f"Geen data gevonden voor '{data_key}'.", None
         data = df.to_dict(orient="records")
+    elif data:
+        logger.info("create_choropleth_map zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
-        return "Geen data om op kaart te tonen.", None
+        return "Geen data om op kaart te tonen. Geef de data_key van een query_data-resultaat mee.", None
 
     cleaned = [
         {**row, location_col: str(row.get(location_col, "")).strip()}
