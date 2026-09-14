@@ -12,6 +12,15 @@ SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
 
+# F1: Nederlandse stopwoorden + vraagwoorden die ruis veroorzaken
+_STOPWOORDEN = frozenset({
+    "de", "het", "een", "en", "of", "aan", "bij", "voor", "in", "op", "uit", "met", "van", "naar",
+    "is", "zijn", "ben", "was", "waren", "het", "dit", "dat", "deze", "die",
+    "hoe", "wat", "waar", "wanneer", "wie", "welke", "waarom",
+    "kan", "mag", "moet", "wil", "zal", "zou", "kan", "krijgt", "krijgen",
+    "heeft", "hebben", "dar", "door", "tot", "over", "om", "zonder",
+})
+
 _SEARCH_KEEP_FIELDS = frozenset({
     "_cbs_id", "_ckan_id", "_rio_resource",
     "_dimensies", "_meetwaarden", "_geo_niveau",
@@ -48,6 +57,12 @@ _SYNONYMS: dict[str, list[str]] = {
 }
 
 
+def _filter_stopwoorden(words: list[str]) -> list[str]:
+    """Remove stopwoorden; fallback to all words if nothing remains."""
+    filtered = [w for w in words if w not in _STOPWOORDEN]
+    return filtered if filtered else words
+
+
 def _expand_query(words: list[str]) -> list[str]:
     expanded = list(words)
     for w in words:
@@ -55,6 +70,21 @@ def _expand_query(words: list[str]) -> list[str]:
             if syn not in expanded:
                 expanded.append(syn)
     return expanded
+
+
+def _word_match(word: str, text: str) -> bool:
+    """F2: Word boundary matching.
+
+    Short terms (≤3 chars) need word boundaries to avoid noise (vo, po, ho, etc).
+    Longer terms use prefix matching (query="instel", match="instelling").
+    """
+    import re
+    if len(word) <= 3:
+        # Word boundary required for short terms
+        return bool(re.search(rf"\b{re.escape(word)}\b", text))
+    else:
+        # Prefix matching for longer terms
+        return word in text
 
 
 _FIELD_WEIGHTS = {
@@ -85,14 +115,14 @@ def _score(entry: dict, words: list[str]) -> int:
         else:
             text = str(val)
         text = text.lower()
-        total += sum(weight for w in words if w in text)
+        total += sum(weight for w in words if _word_match(w, text))
         scored_fields.add(field)
 
     for key, val in entry.items():
         if key in scored_fields or key.startswith("_"):
             continue
         text = json.dumps(val, ensure_ascii=False).lower()
-        total += sum(_DEFAULT_WEIGHT for w in words if w in text)
+        total += sum(_DEFAULT_WEIGHT for w in words if _word_match(w, text))
 
     return total
 
@@ -104,7 +134,10 @@ def search_catalog(
     geo_niveau: str | None = None,
 ) -> str:
     t0 = time.perf_counter()
-    words = _expand_query(query.lower().split())
+    query_words = query.lower().split()
+    # F1: Filter stopwoorden
+    filtered_words = _filter_stopwoorden(query_words)
+    words = _expand_query(filtered_words)
     active = []
     archive_fallback = []
 
