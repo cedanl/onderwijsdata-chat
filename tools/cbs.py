@@ -11,7 +11,7 @@ from onderwijsdata import data, definitions, dimension
 from core.config import CBS_ROW_LIMIT
 
 from . import store
-from .catalog import catalogus_titel
+from .catalog import catalogus_titel, catalogus_laatste_update
 
 _SAMPLE_ROWS = 5
 
@@ -60,6 +60,12 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         "kolommen": schema,
         "preview": preview,
     }
+
+    # Include data actuality timestamp
+    laatste_update = catalogus_laatste_update(dataset_id)
+    if laatste_update:
+        result["laatste_update"] = laatste_update
+
     if truncated:
         result["waarschuwing"] = f"Afgekapt op {CBS_ROW_LIMIT} rijen. Verfijn $filter of $select voor volledigere data."
 

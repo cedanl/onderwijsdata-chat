@@ -18,6 +18,40 @@ Read `CLAUDE.md` first for full project context. This file focuses on repository
 | Kubernetes, SOPS, Docker infra | GitLab `main` | (stays private) | GitLab only |
 | Public docs, tests | GitLab `main` | Cherry-pick | both repos |
 
+## Feature Development Workflow
+
+Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update):
+
+1. **Test first**: Write failing test for the behavior you want
+   ```python
+   # tests/test_feature.py
+   def test_feature_does_what_users_need():
+       result = function_call()
+       assert result has_expected_field
+   ```
+
+2. **Implement modularly**: Small, single-responsibility functions
+   ```python
+   # tools/catalog.py — extract helper
+   def get_metadata_field(dataset_id: str) -> str | None:
+       ...  # Clean, testable, reusable
+   
+   # tools/main.py — import & integrate
+   from .catalog import get_metadata_field
+   result["field"] = get_metadata_field(dataset_id)
+   ```
+
+3. **Verify tests pass**: `uv run pytest tests/test_feature.py -v`
+
+4. **Commit once, with narrative**: Explain what & why
+   ```
+   feat(module): what changed and why it matters
+   
+   - Implementation detail
+   - Why it's the right approach
+   - References to design decisions (Arena AI review, etc)
+   ```
+
 ## Before you commit
 
 - **For public features**: keep app code separate from ops changes in different commits
@@ -26,12 +60,32 @@ Read `CLAUDE.md` first for full project context. This file focuses on repository
 
 Clean commits mean cherry-picking to GitHub is trivial.
 
+## Deployment & versioning
+
+**The app promotes through environments based on tags:**
+
+| Trigger | Where | Who pushes |
+|---------|-------|-----------|
+| `git push origin main` | development, test | CI (automatic) |
+| `git tag vX.0.0` (major) | playground, production | Developer (manual) |
+| `git push origin main` | GitHub (public mirror) | CI (automatic) |
+
+See `manifests/README.md` for details.
+
+**When you're done:**
+- For bugfixes/features: Push to `main`, CI handles dev/test
+- For release: Tag with `vX.0.0` when ready, CI handles playground/production
+
 ## Git commands
 
 ```bash
 # See what's on each remote
 git log origin/main          # GitLab
 git log github/main          # GitHub (if synced)
+
+# Tag for playground/production promotion
+git tag v1.4.0
+git push origin v1.4.0       # Triggers playground/prod deploy
 
 # Cherry-pick a commit to GitHub
 git checkout github/main

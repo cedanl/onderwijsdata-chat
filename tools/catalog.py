@@ -282,6 +282,17 @@ def catalogus_titel(dataset_id: str) -> str:
     return dataset_id
 
 
+def catalogus_laatste_update(dataset_id: str) -> str | None:
+    """Laatste update datum uit de catalogus voor een CBS dataset-ID.
+
+    Geeft ISO-datestring (bv '2026-04-14') of None als dataset niet gevonden.
+    """
+    for entry in _cbs():
+        if entry.get("_cbs_id") == dataset_id:
+            return entry.get("_laatste_update")
+    return None
+
+
 def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
     """Resourcenaam uit de catalogus voor een DUO/RIO dataset.
 
