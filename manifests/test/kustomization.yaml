@@ -2,7 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../base
+  - helmrelease.yaml
+  - helmrepo.yaml
   - middleware.yaml
   - secret.yaml
 
@@ -13,14 +14,3 @@ configMapGenerator:
 
 configurations:
   - ../base/kustomizeconfig.yaml
-
-patches:
-  - target:
-      kind: HelmRelease
-      name: onderwijsdata-chat
-    patch: |-
-      - op: add
-        path: /spec/valuesFrom/-
-        value:
-          kind: ConfigMap
-          name: env-config

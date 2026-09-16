@@ -1,0 +1,14 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: onderwijsdata-chat-repo
+  labels:
+    app.kubernetes.io/name: onderwijsdata-chat
+spec:
+  interval: 1m
+  provider: generic
+  secretRef:
+    name: sdp-harbor-credentials
+    namespace: infra-secret-reflector
+  type: oci
+  url: oci://cr.surf.nl/ceda-onderwijsdata-chat/onderwijsdata-chat
