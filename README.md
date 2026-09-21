@@ -10,9 +10,11 @@ De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt upl
 
 | Bron | Inhoud | Catalogus |
 |------|--------|-----------|
-| **CBS** | 68 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
+| **CBS** | 266 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
 | **RIO** | Register van onderwijsinstellingen en opleidingen (14 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
-| **DUO** | 57 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **DUO** | 56 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **ROA** | Arbeidsmarkt-analysen per opleidingsniveau (AIS2030) | — |
+| **UWV** | Open match vacatures & arbeidsmarktgegevens | — |
 | **Eigen bestanden** | xlsx/csv-uploads — direct bevraagbaar via dezelfde interface | — |
 
 ## Vereisten
@@ -45,9 +47,11 @@ Optionele instellingen:
 |-----------|-----------|-----------|
 | `AVAILABLE_MODELS` | *(afgeleid uit API keys)* | Kommagescheiden lijst van modellen in de UI-picker, bijv. `azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o`. Gebruik dit als je meerdere modellen via één provider aanbiedt. |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
-| `MAX_TOOL_ITERATIONS` | `100` | Maximum tool-aanroepen per vraag |
-| `CBS_ROW_LIMIT` | `200` | Maximum rijen uit CBS-datasets |
+| `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
+| `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
+| `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
+| `MAX_HISTORY` | `40` | Maximum berichten in chat-geschiedenis |
 
 ## Starten
 

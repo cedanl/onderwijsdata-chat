@@ -59,9 +59,7 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
         )},
     ]
 
-    answer = asyncio.get_event_loop().run_until_complete(
-        run(messages, session={}, emit=emit)
-    )
+    answer = asyncio.run(run(messages, session={}, emit=emit))
 
     # 1. Check: LLM moet group_by/aggregate of run_analysis gebruiken
     used_aggregation = any(
