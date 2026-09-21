@@ -22,6 +22,16 @@ _SUGGESTIE_DREMPEL = 0.6
 
 _DUO_SENTINELS = (-1,)
 
+# Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel.
+# Niet beperken tot AANTAL*-kolommen: DUO kent pivot-datasets waarin de telling in de
+# kolomnaam zit (DIPMAN2023, JAAR_2022 — zie prompts/system.md), en die zouden dan
+# ongemaskeerd blijven.
+_SIGNED_HINTS = ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")
+
+# Telling per store-key, zodat get_duo_data de melding ook bij een cache-hit kan tonen.
+# Na maskering is het aantal niet meer uit de data af te leiden: de -1'en zijn dan weg.
+_sentinel_counts: dict[str, dict[str, int]] = {}
+
 
 def _coerce_pair(a, b):
     """Coerce two values to a comparable pair (float preferred, str fallback)."""
@@ -39,19 +49,61 @@ def _parse_filter_key(key: str) -> tuple[str, str]:
     return col, op
 
 
-def _mask_sentinels(df):
-    """Replace DUO sentinels (-1) with pd.NA in numeric columns.
+def _is_maskable(df, col) -> bool:
+    if not pd.api.types.is_numeric_dtype(df[col]):
+        return False
+    return not any(hint in str(col).upper() for hint in _SIGNED_HINTS)
 
-    DUO uses -1 to mark suppressed values (small counts). Replace with pd.NA
-    so they're excluded from aggregations regardless of code path.
+
+def mask_sentinels(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Vervang DUO-sentinels (-1) door pd.NA en tel hoeveel cellen dat waren.
+
+    DUO markeert onderdrukte waarden (kleine aantallen) met -1. Die mogen nooit als
+    telwaarde meedoen. Het aantal wordt teruggegeven omdat een onderdrukte cel betekent
+    dat een totaal een ondergrens is: bij 2 onderdrukte cellen kan 300 in werkelijkheid
+    hoger liggen, en dat moet de gebruiker kunnen zien.
+
+    Wordt aangeroepen vanuit store.put() voor elke `duo:`-key, dus ook voor data die
+    niet via get_duo_data binnenkomt. Idempotent: al gemaskeerde data levert 0 op.
     """
-    df = df.copy()
+    counts: dict[str, int] = {}
+    out = df
     for col in df.columns:
-        if pd.api.types.is_numeric_dtype(df[col]):
-            mask = df[col].isin(_DUO_SENTINELS)
-            if mask.any():
-                df.loc[mask, col] = pd.NA
-    return df
+        if not _is_maskable(df, col):
+            continue
+        mask = out[col].isin(_DUO_SENTINELS)
+        n = int(mask.sum())
+        if n:
+            # Pas kopiëren als er echt iets te maskeren valt: put() draait dit op elke
+            # DataFrame die de store in gaat, ook de al gemaskeerde.
+            if out is df:
+                out = df.copy()
+            out.loc[mask, col] = pd.NA
+            counts[col] = n
+    return out, counts
+
+
+def record_sentinel_counts(key: str, counts: dict[str, int]) -> None:
+    """Leg vast hoeveel cellen er voor deze key gemaskeerd zijn.
+
+    Wordt door store.put() aangeroepen, zodat de telling er is ongeacht via welke route
+    de data binnenkwam — niet alleen bij get_duo_data.
+    """
+    _sentinel_counts[key] = counts
+
+
+def clear_sentinel_counts() -> None:
+    """Hoort bij store.clear(): zonder dit blijven tellingen achter voor keys die weg zijn."""
+    _sentinel_counts.clear()
+
+
+def sentinel_notes(counts: dict[str, int]) -> list[str]:
+    """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
+    return [
+        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten "
+        f"(betekent leeg/n.v.t., geen telwaarde) — totalen zijn hierdoor een ondergrens"
+        for col, n in counts.items()
+    ]
 
 
 def _apply_filters(df, filters: dict):
@@ -92,8 +144,10 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             except Exception:
                 hint = ""
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
-        df = _mask_sentinels(df)
         store.put(key, df)
+        # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en
+        # preview moeten van de versie komen die daadwerkelijk is opgeslagen.
+        df = store.get(key)
 
     defs = _duo.column_definitions(list(df.columns))
     schema = [
@@ -107,17 +161,19 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     ]
     preview = df.head(_SAMPLE_ROWS).to_dict(orient="records")
 
-    return json.dumps(
-        {
-            "data_key": key,
-            "catalogus_titel": catalogus_titel(dataset_id),
-            "resource_titel": resource_titel(dataset_id, resource),
-            "totaal_rijen": len(df),
-            "kolommen": schema,
-            "preview": preview,
-        },
-        ensure_ascii=False, separators=(",", ":"), default=str,
-    )
+    result = {
+        "data_key": key,
+        "catalogus_titel": catalogus_titel(dataset_id),
+        "resource_titel": resource_titel(dataset_id, resource),
+        "totaal_rijen": len(df),
+        "kolommen": schema,
+        "preview": preview,
+    }
+    notes = sentinel_notes(_sentinel_counts.get(key, {}))
+    if notes:
+        result["databewerking"] = notes
+
+    return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
 _ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
@@ -138,12 +194,11 @@ def _validate_aggregation(df, group_by, aggregate):
     return None
 
 
-def _apply_aggregation(df, group_by, aggregate, source: str = ""):
+def _apply_aggregation(df, group_by, aggregate):
     df = df.copy()
     for col in aggregate:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    out = df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
-    return out, []
+    return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
 
 
 def _filter_suggesties(origineel, filters: dict) -> dict:
@@ -216,7 +271,10 @@ def query_data(
         err = _validate_aggregation(df, group_by, aggregate)
         if err:
             return err
-        df, notes = _apply_aggregation(df, group_by, aggregate, source="duo")
+        df = _apply_aggregation(df, group_by, aggregate)
+        # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
+        # leest, en onderdrukte cellen maken dat totaal een ondergrens.
+        notes = sentinel_notes(_sentinel_counts.get(data_key, {}))
 
     transformed = filters or columns or group_by
     if transformed:
@@ -224,6 +282,9 @@ def query_data(
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
         store.put(result_key, df)
+        # De afgeleide data is al gemaskeerd, dus put() telt hier 0. De waarschuwing
+        # hoort wel mee te reizen: het totaal blijft een ondergrens.
+        _sentinel_counts[result_key] = _sentinel_counts.get(data_key, {})
     else:
         result_key = data_key
 
