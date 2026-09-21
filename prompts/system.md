@@ -158,7 +158,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
    - `color_by`: wanneer je meerdere groepen wilt vergelijken (model kiest automatisch line voor tijd, bar voor categorie)
    - Let op: x-as met tijd (JAAR, PERIODE) triggert automatisch `line`, dus zet niet manual `chart_type="bar"`
 
-   **Fallback:** Als je precies weet wat je wilt, kun je nog steeds `chart_type="line"` / `"bar"` / etc. expliciet zetten — auto-detection overschrijft dat niet.
+   **Fallback:** Als je precies weet wat je wilt, kun je `chart_type` expliciet zetten — auto-detection overschrijft dat niet. Let op: `chart_type="histogram"` en `chart_type="scatter"` volgen nooit uit `auto`, die moet je zelf kiezen.
 
 8. **Maak altijd een grafiek** — ook als de gebruiker er niet om vraagt. Roep `create_plot` aan
    vóórdat je je tekstantwoord geeft.
