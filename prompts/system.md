@@ -145,18 +145,20 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 6. **Decodeer de data**: vervang codes door labels in de data vóórdat je visualiseert (via `query_data` met filters of `run_analysis`).
 
-7. **Kies het juiste grafiektype** — gebruik onderstaande beslismatrix:
+7. **Kies het juiste grafiektype** — gebruik `chart_type="auto"` en laat de code het bepalen:
 
-   | Vraag / boodschap                          | Grafiektype        | Tips                                      |
-   |--------------------------------------------|--------------------|-------------------------------------------|
-   | Trend of ontwikkeling over tijd            | `line`             | Gebruik `color_by` voor meerdere groepen  |
-   | Vergelijking tussen categorieën            | `bar`              | Sorteer op waarde; horizontaal bij >5 labels |
-   | Aandelen / verhoudingen                    | `pie`              | Max 5 segmenten; anders `bar`             |
-   | Spreiding / verdeling van een variabele    | `histogram`        | Bijv. verdeling schoolgroottes            |
-   | Verband tussen twee variabelen             | `scatter`          | Gebruik `color_by` voor een derde dimensie |
-   | Meerdere groepen over tijd                 | `line` + `color_by`| Beperk tot ≤8 groepen                     |
+   De code kiest automatisch op basis van de data-structuur:
+   - **Tijd-as** (JAAR, PERIODE, etc.) → `line` (trend)
+   - **Aandeel/verhouding** (zet `is_share=true`) → `pie` (≤5 groepen) of `bar` (>5)
+   - **Categoriale vergelijking** → `bar`
+   - **Standaard** → `bar`
 
-   **Nooit** default kiezen voor `line` als de vraag eigenlijk om vergelijking of verdeling vraagt.
+   **Model-hints voor auto-detection:**
+   - `is_share=true`: wanneer de analyse om verhoudingen/aandelen gaat (bijv. "wat is het percentage")
+   - `color_by`: wanneer je meerdere groepen wilt vergelijken (model kiest automatisch line voor tijd, bar voor categorie)
+   - Let op: x-as met tijd (JAAR, PERIODE) triggert automatisch `line`, dus zet niet manual `chart_type="bar"`
+
+   **Fallback:** Als je precies weet wat je wilt, kun je nog steeds `chart_type="line"` / `"bar"` / etc. expliciet zetten — auto-detection overschrijft dat niet.
 
 8. **Maak altijd een grafiek** — ook als de gebruiker er niet om vraagt. Roep `create_plot` aan
    vóórdat je je tekstantwoord geeft.
