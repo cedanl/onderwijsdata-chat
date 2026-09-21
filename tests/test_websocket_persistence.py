@@ -1,6 +1,8 @@
 """Test that WebSocket chat sessions persist conversations to the database."""
-import json
+import contextlib
 import importlib
+import json
+
 import pytest
 
 
@@ -28,12 +30,10 @@ def test_websocket_persists_conversation(client):
             "content": "What is 2+2?"
         }))
 
-        # Receive response (might not get full response in test, but session saves on disconnect)
-        try:
-            response = websocket.receive_text(timeout=2)
-            print(f"Received: {response}")
-        except:
-            pass
+        # Het antwoord zelf is hier niet interessant: de sessie wordt pas bij
+        # disconnect weggeschreven.
+        with contextlib.suppress(Exception):
+            websocket.receive_text(timeout=2)
 
     # After WebSocket disconnect, check if conversation was persisted
     resp = client.get("/api/conversations")
@@ -60,10 +60,8 @@ def test_websocket_persists_with_history_action(client):
             "action": "history",
             "messages": messages
         }))
-        try:
+        with contextlib.suppress(Exception):
             websocket.receive_text(timeout=1)
-        except:
-            pass
 
     # Check that history was persisted
     resp = client.get("/api/conversations")

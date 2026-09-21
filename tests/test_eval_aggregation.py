@@ -11,14 +11,15 @@ Draai met: uv run pytest tests/test_eval_aggregation.py -v -s
 
 import asyncio
 import json
-import os
 import re
 
 import pytest
 from dotenv import load_dotenv
+from litellm.utils import validate_environment
 from riodata import duo
 
 from agent.dashboard import _EVAL_PATTERN_LOOKAHEAD
+from core.config import MODEL
 
 # Ground truth: bereken de werkelijke sommen met pandas
 _DATASET_ID = "p02ho1ejrs"
@@ -37,10 +38,17 @@ def _ground_truth() -> dict[int, int]:
 
 
 load_dotenv()
-_has_api_key = bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("WILLMA_API_KEY"))
+
+# Laat litellm zelf bepalen welke key dit MODEL nodig heeft; een eigen provider→key-map
+# zou gaan driften. Zonder deze check draaide de test met enkel een WILLMA_API_KEY in
+# .env terwijl MODEL=anthropic/..., en viel hij om op een AuthenticationError.
+_env = validate_environment(MODEL)
 
 
-@pytest.mark.skipif(not _has_api_key, reason="Geen API key beschikbaar")
+@pytest.mark.skipif(
+    not _env["keys_in_environment"],
+    reason=f"Ontbrekende API key(s) voor {MODEL}: {_env['missing_keys']}",
+)
 def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
     from agent.run import run
 

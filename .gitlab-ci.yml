@@ -81,6 +81,34 @@ version:promote:
   rules:
     - if: $CI_COMMIT_TAG
 
+# De test-stage bestond wel maar had geen enkele job: pipelines konden groen zijn
+# terwijl de suite rood stond. Draait ook op tags, zodat een release niet te
+# taggen is met falende tests.
+pytest:
+  stage: test
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+  needs: []
+  image:
+    name: python:3.14-slim@sha256:caaf356f40667c496d405780745b9ac25771c189a51dfcc42430d531ea09f8a2
+  variables:
+    UV_CACHE_DIR: .uv-cache
+  cache:
+    key:
+      files:
+        - uv.lock
+    paths:
+      - .uv-cache
+  before_script:
+    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock
+    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    - pip install --no-cache-dir uv
+  script:
+    - uv sync --frozen --extra postgres
+    - uv run pytest tests/ -q
+
 docker:docker-build:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

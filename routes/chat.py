@@ -13,12 +13,12 @@ from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.replay import replay_dashboard_figures, replay_data_calls
 from agent.report import generate as generate_report_spec
-from core.auth import AUTH_ENABLED, verify_token
-from core.config import MODEL, MAX_HISTORY
+from core.auth import AUTH_ENABLED, FALLBACK_USER, verify_token
+from core.config import MAX_HISTORY, MODEL
 from core.errors import friendly_error
+from persistence import db as persistence_db
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
-from persistence import db as persistence_db
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,9 @@ def _new_session(username: str | None = None) -> dict:
         "stop_event": None,
         "_last_turn_tool_calls": [],
         "conv_id": str(uuid.uuid4()),
-        "username": username or "anonymous",
+        # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
+        # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.
+        "username": username or FALLBACK_USER,
     }
 
 
@@ -56,7 +58,7 @@ def _persist_conversation(session: dict) -> bool:
                     break
         title = title or "Untitled"
         persistence_db.upsert_conversation(
-            username=session.get("username", "anonymous"),
+            username=session.get("username", FALLBACK_USER),
             conv_id=session.get("conv_id"),
             title=title,
             timestamp=int(time.time() * 1000),
