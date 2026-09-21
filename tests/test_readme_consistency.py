@@ -1,12 +1,14 @@
 """Validate README claims against actual code configuration."""
 
 import re
+from functools import cache
 from pathlib import Path
 
 import pytest
+from onderwijsdata import catalog as cbs_catalog
+from riodata import catalog as rio_catalog
 
 from core import config
-
 
 README_PATH = Path(__file__).parent.parent / "README.md"
 
@@ -14,6 +16,17 @@ README_PATH = Path(__file__).parent.parent / "README.md"
 def read_readme() -> str:
     """Read README content."""
     return README_PATH.read_text(encoding="utf-8")
+
+
+@cache
+def catalogus_aantal(leverancier: str) -> int:
+    """Aantal datasets per leverancier, uit dezelfde bron als search_catalog leest."""
+    if leverancier == "CBS":
+        return len(cbs_catalog())
+    return sum(
+        1 for entry in rio_catalog(source="all")
+        if str(entry.get("leverancier", "")).upper() == leverancier
+    )
 
 
 class TestReadmeConsistency:
@@ -87,14 +100,38 @@ class TestReadmeConsistency:
         for source in sources:
             assert source in readme, f"Source '{source}' not mentioned in README databronnen section"
 
-    def test_no_hardcoded_dataset_counts(self):
-        """README should not have outdated hardcoded dataset counts.
+    @pytest.mark.parametrize(
+        ("leverancier", "patroon"),
+        [
+            ("CBS", r"\*\*CBS\*\*\s*\|\s*(\d+) datasets"),
+            ("DUO", r"\*\*DUO\*\*\s*\|\s*(\d+) open datasets"),
+            ("RIO", r"\*\*RIO\*\*\s*\|.*?\((\d+) resources\)"),
+        ],
+    )
+    def test_dataset_aantallen_komen_overeen_met_de_catalogus(self, leverancier, patroon):
+        """Vergelijk met de catalogus zelf, niet met historische getallen.
 
-        This test documents that dataset counts (266 CBS, 56 DUO) are now in README
-        but should ideally come from dynamic catalog queries in the future.
+        De vorige opzet controleerde of de strings "68 datasets" en "57 open datasets"
+        nog in de README stonden. Groeit CBS naar 270, dan blijft de README 266 zeggen
+        en slaagde die test gewoon — precies de drift die #35 moest repareren.
+        """
+        match = re.search(patroon, read_readme())
+        assert match, f"geen aantal voor {leverancier} gevonden in de bronnentabel"
+
+        assert int(match.group(1)) == catalogus_aantal(leverancier), (
+            f"README zegt {match.group(1)} voor {leverancier}, "
+            f"catalogus heeft er {catalogus_aantal(leverancier)}"
+        )
+
+    def test_readme_noemt_geen_bron_die_de_catalogus_wegfiltert(self):
+        """Zie #55: Inspectie en SBB zitten in de ruwe catalogus maar worden gefilterd.
+
+        Ze noemen zou een belofte zijn die de app niet waarmaakt — de gebruiker kan die
+        datasets niet vinden via search_catalog.
         """
         readme = read_readme()
-        # These specific numbers appear in the README now (after the fix)
-        # This test ensures they stay current or get replaced with dynamic queries
-        if "68 datasets" in readme or "57 open datasets" in readme:
-            pytest.fail("Found old dataset counts in README — should be 266 CBS, 56 DUO")
+        for verborgen in ("Inspectie van het Onderwijs", "SBB"):
+            assert verborgen not in readme, (
+                f"'{verborgen}' staat in de README maar wordt door "
+                f"SUPPORTED_LEVERANCIERS uit de zoekresultaten gefilterd"
+            )
