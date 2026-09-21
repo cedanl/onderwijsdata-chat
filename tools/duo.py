@@ -39,6 +39,21 @@ def _parse_filter_key(key: str) -> tuple[str, str]:
     return col, op
 
 
+def _mask_sentinels(df):
+    """Replace DUO sentinels (-1) with pd.NA in numeric columns.
+
+    DUO uses -1 to mark suppressed values (small counts). Replace with pd.NA
+    so they're excluded from aggregations regardless of code path.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            mask = df[col].isin(_DUO_SENTINELS)
+            if mask.any():
+                df.loc[mask, col] = pd.NA
+    return df
+
+
 def _apply_filters(df, filters: dict):
     for key, val in filters.items():
         col, op = _parse_filter_key(key)
@@ -77,6 +92,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             except Exception:
                 hint = ""
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
+        df = _mask_sentinels(df)
         store.put(key, df)
 
     defs = _duo.column_definitions(list(df.columns))
@@ -124,20 +140,10 @@ def _validate_aggregation(df, group_by, aggregate):
 
 def _apply_aggregation(df, group_by, aggregate, source: str = ""):
     df = df.copy()
-    notes = []
     for col in aggregate:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-        if source == "duo":
-            mask = df[col].isin(_DUO_SENTINELS)
-            n = int(mask.sum())
-            if n:
-                df.loc[mask, col] = pd.NA
-                notes.append(
-                    f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten "
-                    f"(betekent leeg/n.v.t., geen telwaarde)"
-                )
     out = df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
-    return out, notes
+    return out, []
 
 
 def _filter_suggesties(origineel, filters: dict) -> dict:
