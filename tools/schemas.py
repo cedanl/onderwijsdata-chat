@@ -215,11 +215,12 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "data_key": {"type": "string", "description": "data_key van een query_data-resultaat. De grafiek leest de data zelf uit de store, zodat de getallen gelijk zijn aan wat de tool heeft berekend."},
-                    "chart_type": {"type": "string", "enum": ["bar", "line", "scatter", "pie", "histogram"], "description": "Type grafiek"},
+                    "chart_type": {"type": "string", "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"], "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen."},
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
+                    "is_share": {"type": "boolean", "description": "Zet op true als de grafiek een aandeel of verhouding van een geheel toont (bijv. 'welk percentage van de studenten...'). Werkt alleen bij chart_type='auto' en stuurt de keuze richting pie of bar."},
                 },
                 "required": ["data_key", "chart_type", "x", "y", "title"],
             },
