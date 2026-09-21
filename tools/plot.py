@@ -22,6 +22,48 @@ _LAYOUT_BASE = {
 
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
+_TIME_KEYWORDS = {"JAAR", "PERIODE", "MAAND", "KWARTAAL", "DATUM", "DATE", "YEAR", "MONTH"}
+
+
+def _is_time_axis(col_name: str) -> bool:
+    """Detect if column represents time."""
+    return col_name.upper() in _TIME_KEYWORDS
+
+
+def _infer_chart_type(
+    x: str,
+    y: str,
+    color_by: str | None,
+    num_groups: int = 1,
+    is_share: bool = False,
+) -> str:
+    """Infer chart type from data structure and intent.
+
+    Decision tree:
+    - Multiple groups + time axis → line (trend comparison)
+    - Time axis only → line (trend)
+    - Shares/proportions → pie (if ≤5 groups) else bar
+    - Many groups → bar (comparison)
+    - Default → bar
+    """
+    has_color = color_by is not None
+    is_time = _is_time_axis(x)
+
+    # Trend: time axis with or without groups
+    if is_time:
+        return "line"
+
+    # Shares: proportions should be pie (if small) or bar (if many)
+    if is_share:
+        return "pie" if num_groups <= 5 else "bar"
+
+    # Multiple groups → bar (categorical comparison)
+    if has_color and num_groups > 1:
+        return "bar"
+
+    # Default for single series
+    return "bar"
+
 _GEOJSON_URLS = {
     "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
     "gemeente":  "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
@@ -63,12 +105,13 @@ def _add_trace(fig: go.Figure, chart_type: str, x_vals: list, y_vals: list,
 
 def create_plot(
     data: list[dict] | None = None,
-    chart_type: str = "bar",
+    chart_type: str = "auto",
     x: str = "",
     y: str = "",
     title: str = "",
     color_by: str | None = None,
     data_key: str | None = None,
+    is_share: bool = False,
 ) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
@@ -81,6 +124,11 @@ def create_plot(
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
+
+    # Infer chart type if not explicitly specified
+    if chart_type == "auto":
+        num_groups = len(set(row.get(color_by) for row in data)) if color_by else 1
+        chart_type = _infer_chart_type(x, y, color_by, num_groups, is_share)
 
     fig = go.Figure()
 
