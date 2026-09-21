@@ -540,8 +540,9 @@ function userInitials(settings) {
 }
 
 function ClarificationButtons({ options, onSelect, busy }) {
-  if (!options) return null
   const [selected, setSelected] = useState(null)
+
+  if (!options) return null
 
   const handleSelect = (label) => {
     if (busy || selected) return
