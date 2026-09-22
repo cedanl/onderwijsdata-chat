@@ -135,3 +135,24 @@ class TestReadmeConsistency:
                 f"'{verborgen}' staat in de README maar wordt door "
                 f"SUPPORTED_LEVERANCIERS uit de zoekresultaten gefilterd"
             )
+
+    def test_env_example_includes_all_config_vars(self):
+        """Alle configuratievariabelen uit config.py moeten in .env.example staan.
+
+        Voorkomt dat .env.example en config.py uit de pas lopen.
+        Vergelijk met test_readme_consistency tests voor README.
+        """
+        env_path = Path(__file__).parent.parent / ".env.example"
+        env_content = env_path.read_text(encoding="utf-8")
+
+        # Public config variables (getenv calls in config.py)
+        required_vars = [
+            "MODEL", "MAX_TOKENS", "MAX_TOOL_ITERATIONS",
+            "CBS_ROW_LIMIT", "RIO_PAGE_SIZE", "DUO_ROW_LIMIT", "MAX_HISTORY",
+            "WILLMA_API_KEY", "WILLMA_BASE_URL", "AVAILABLE_MODELS", "USER_MODELS"
+        ]
+
+        for var in required_vars:
+            assert var in env_content, (
+                f"'{var}' ontbreekt in .env.example maar staat in config.py"
+            )

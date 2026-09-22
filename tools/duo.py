@@ -14,6 +14,23 @@ _SAMPLE_ROWS = 3
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
 
+# Lokale glossary-correcties voor upstream fouten in riodata (zie #31, #23)
+# Deze patches worden toegepast op column_definitions() om tot de upstream fix.
+_GLOSSARY_PATCHES = {
+    "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
+    "LEERWEG": "Mbo-leerweg: BOL (beroepsopleidende leerweg) of BBL (beroepsbegeleidende leerweg).",
+}
+
+
+def _apply_glossary_patches(defs: dict[str, str]) -> dict[str, str]:
+    """Pas lokale correcties toe op riodata glossary-definities.
+
+    Zie #31, #23: upstream bugs in STUDIEJAAR en LEERWEG definities in riodata.
+    Deze patches zorgen dat het schema correcte definities bevat totdat upstream dit
+    adressen. Idempotent: kan veilig op al gepatched dicts worden toegepast.
+    """
+    return {**defs, **_GLOSSARY_PATCHES}
+
 # Grenzen voor de suggesties bij een leeg filterresultaat. Het scannen van
 # unieke waarden is lineair in de kolomlengte, vandaar een bovengrens.
 _SUGGESTIE_MAX_UNIEK = 500
@@ -149,7 +166,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         # preview moeten van de versie komen die daadwerkelijk is opgeslagen.
         df = store.get(key)
 
-    defs = _duo.column_definitions(list(df.columns))
+    defs = _apply_glossary_patches(_duo.column_definitions(list(df.columns)))
     schema = [
         {
             "kolom": col,
