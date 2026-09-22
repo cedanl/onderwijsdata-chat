@@ -2,5 +2,41 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>surf-internal/renovate-config"
-  ]
+  ],
+  "packageRules": [
+    {
+      "description": "Frontend build stack (vite, vitest, @vitejs/plugin-react): must upgrade together due to interdependencies. See #28.",
+      "groupName": "frontend-buildstack",
+      "matchPackagePatterns": [
+        "^vite$",
+        "^vitest$",
+        "^@vitejs/.*",
+        "^jsdom$"
+      ]
+    },
+    {
+      "description": "GitHub Actions: generally safe and frequent; group to reduce noise. See #28.",
+      "groupName": "github-actions",
+      "matchPackagePatterns": [
+        "^actions/.*"
+      ]
+    },
+    {
+      "description": "ESLint major versions blocked: v10 incompatible with eslint-plugin-jsx-a11y@6 (waits for v7). See 9bf3db6 + #28.",
+      "enabled": false,
+      "matchPackagePatterns": [
+        "^eslint$",
+        "^@eslint/js$"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ]
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 2am on Monday"
+    ]
+  }
 }
