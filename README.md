@@ -1,10 +1,14 @@
 # Onderwijsdata Chat
 
-Een chatapp (FastAPI + React) waarmee je vragen kunt stellen over open Nederlandse onderwijsdata.
+**Een controleerbare chatbot voor onderwijsonderzoek.**
+
+Stel vragen over CBS, RIO en DUO onderwijsdata. De app genereert antwoorden met volledig traceerbare bronnen — elke analyse exporteert automatisch als Python-code die je kunt auditen en reproduceren.
+
+**Voor onderzoeksinstellingen:** Geen hallucinatie, geen gissingen. Alle getallen komen uit data.
 
 https://github.com/user-attachments/assets/9ab68b2a-7c00-4b2b-82ea-cbba245f1edb
 
-De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en kan Plotly-grafieken genereren en analyses exporteren als HTML-rapport, PDF of reproduceerbaar Python-pakket.
+De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en genereert antwoorden met volledige herkomstketen — elke analyse exporteert als reproduceerbare Python-code.
 
 ## Reproduceerbare analyses
 
