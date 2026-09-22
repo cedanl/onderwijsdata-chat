@@ -12,7 +12,7 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 | **production** | traefik-external | 3–10 (HPA) | 1000m CPU / 1Gi RAM | `sdp.surf.nl` |
 
 `playground` is the officially designated way of serving the app to end users
-(tag-triggered, public) — not `test`, which stays internal-only for CI
+(tag-triggered via major version tags `X.0.0`, public) — not `test`, which stays internal-only for CI
 verification on every `main` push.
 
 ## Directorystructuur
@@ -70,7 +70,7 @@ sops -d manifests/development/secret.yaml | kubectl apply -f -
 ## Rollout strategie
 
 1. **development/test** volgen elke push naar `main` op GitLab (canonical remote)
-2. **playground/production** volgen alleen major-version tags (`vX.0.0`)
+2. **playground/production** volgen alleen major-version tags (`X.0.0`)
 3. GitLab CI bouwt en publiceert het image/chart, en synct `main` (incl. major
    tags) door naar GitHub als publieke spiegel
 4. Flux detecteert nieuwe image tag → reconciliatie in de betreffende environment
