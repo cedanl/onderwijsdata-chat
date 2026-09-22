@@ -6,6 +6,29 @@ https://github.com/user-attachments/assets/9ab68b2a-7c00-4b2b-82ea-cbba245f1edb
 
 De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en kan Plotly-grafieken genereren en analyses exporteren als HTML-rapport, PDF of reproduceerbaar Python-pakket.
 
+## Reproduceerbare analyses
+
+**Elke analyse exporteert zichzelf als draaibare Python-code.** Dit is cruciaal voor onderzoeksinstellingen:
+
+1. **Stel een vraag**: "Hoeveel HBO-studenten volgen Informatica?"
+2. **De app genereert**: Charts, KPI's, aggregaties
+3. **Exporteer als Python**: De app genereert het exacte script dat je gebruikte — tool-aanroepen, filters, aggregaties — zodat je het resultaat kunt nazien en aanpassen
+4. **Reproducibiliteit**: Perfect voor rapport, archief, of audit — iedereen kan je analyse opnieuw runnen
+
+Voorbeeld:
+```python
+from riodata import duo
+import pandas as pd
+
+df = duo.load("p02ho1ejrs", "...")
+df = df[df["ONDERDEEL"] == "Informatica"]
+df = df[df["OPLEIDINGSVORM"] == "VT"]
+hbo = df.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum()
+print(hbo)
+```
+
+Zie [reproducibility.md](docs/reproducibility.md) voor details.
+
 ## Databronnen
 
 | Bron | Inhoud | Catalogus |
