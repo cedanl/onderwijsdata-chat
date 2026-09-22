@@ -17,9 +17,14 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 **→ Zie `Agents.md`** voor:
 - Feature development (TDD, modularity, narrative commits)
 - Git workflow (cherry-pick to GitHub, remote management)
-- Deployment & versioning (tag promotion: vX.0.0 → playground/prod)
+- **Tag promotion ladder:** `git tag X.0.0` → Flux auto-reconciles all environments in ~5 min
 - Secrets management (SOPS encryption, LLM boundaries)
 - CI/CD pipeline (stages, environments)
+
+**Ladder promotion (Flux-based):**
+- Main push → dev/test auto-deploy via CI
+- Tag push (X.0.0) → playground/production auto-deploy via Flux HelmRelease reconciliation
+- All environments watch chart version `>=0.0.1-0.0`, auto-pick new versions
 
 ## Deploy & Verificatie
 
