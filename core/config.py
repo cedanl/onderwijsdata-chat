@@ -21,6 +21,48 @@ _AVAILABLE_MODELS_RAW = os.getenv("AVAILABLE_MODELS")
 # Gebruikers niet in deze lijst krijgen de globale AVAILABLE_MODELS.
 _USER_MODELS_RAW = os.getenv("USER_MODELS", "")
 
+# Provider prefix → API key environment variable mapping. Centraal punt voor drift-preventie.
+# Zie #53: één plek waar alle provider→key mappings staan.
+_PROVIDER_API_KEYS: dict[str, str] = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "azure_ai": "AZURE_AI_API_KEY",
+    "azure": "AZURE_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "willma": "WILLMA_API_KEY",
+    "ollama": None,  # Ollama doesn't require API key
+    "ollama_chat": None,
+}
+
+
+def get_required_api_key_env_var(model_id: str) -> str | None:
+    """Get the environment variable name for a model's required API key.
+
+    Extracts the provider prefix (part before first '/') and looks up the
+    corresponding environment variable. Returns None if provider is unknown
+    or doesn't require a key (ollama).
+
+    Examples:
+        'anthropic/claude-opus' → 'ANTHROPIC_API_KEY'
+        'openai/gpt-4o' → 'OPENAI_API_KEY'
+        'ollama/mistral' → None
+        'unknown-provider/model' → None (unknown provider handled gracefully)
+    """
+    if not model_id:
+        return None
+    provider = model_id.split("/")[0].lower()
+    return _PROVIDER_API_KEYS.get(provider)
+
+
+def get_all_api_key_env_vars() -> list[str]:
+    """Get all environment variable names that might contain API keys.
+
+    Used to check if ANY API key is configured (for startup checks).
+    Filters out None values (providers that don't need keys).
+    """
+    return [k for k in _PROVIDER_API_KEYS.values() if k is not None]
+
+
 # Display names voor bekende modellen — voor onbekende modellen wordt het deel na '/' gebruikt.
 _KNOWN_NAMES: dict[str, tuple[str, str, str]] = {
     "anthropic/claude-haiku-4-5-20251001": ("Haiku", "Snel en goedkoop", "zap"),

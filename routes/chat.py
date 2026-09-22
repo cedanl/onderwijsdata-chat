@@ -317,9 +317,9 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
     async def emit(event: dict) -> None:
         await ws.send_text(json.dumps(event))
 
-    known_keys = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_API_KEY", "AZURE_AI_API_KEY", "GEMINI_API_KEY", "WILLMA_API_KEY"]
+    from core.config import get_all_api_key_env_vars
     is_ollama = MODEL.startswith(("ollama_chat/", "ollama/"))
-    if not is_ollama and not any(os.getenv(k) for k in known_keys):
+    if not is_ollama and not any(os.getenv(k) for k in get_all_api_key_env_vars()):
         await emit({"type": "system_message", "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app."})
 
     current_task: asyncio.Task | None = None
