@@ -100,4 +100,4 @@ Omdat snippets altijd data-tools gebruiken, kan het model nooit een getal verzin
     compute_kpi(metric="sum", ...)        ← Uit tool
 ```
 
-Zie [architectuur-keuzes.md](architectuur-keuzes.md) voor details.
+Zie [architecture-decisions.md](architecture-decisions.md) voor details.

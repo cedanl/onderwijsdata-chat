@@ -74,5 +74,11 @@ nav:
   - Dashboards: dashboards.md
   - API: api.md
   - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
+  - Architectuur & ontwerp:
+    - Anti-hallucinatie: anti-hallucination-architecture.md
+    - Architecture Decisions: architecture-decisions.md
+    - Reproduceerbare analyses: reproducibility.md
+  - Operatie:
+    - Deployment: deployment.md
   - Voorbeelden: voorbeelden/index.md
   - Hosting: hosting.md
