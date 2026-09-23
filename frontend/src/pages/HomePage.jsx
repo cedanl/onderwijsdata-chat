@@ -11,8 +11,8 @@ export default function HomePage({ dashboardsEnabled = true }) {
       <section className="hero">
         <div className="container">
           <div className="hero-content">
-            <h1>Van open onderwijsdata naar <em>reproduceerbare inzichten in seconden</em></h1>
-            <p>openEDUdata+ koppelt en harmoniseert alle open-onderwijs-databronnen alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg binnen 30 seconden een onderbouwd, herleidbaar antwoord.</p>
+            <h1>Van open onderwijsdata naar <em>reproduceerbare inzichten</em></h1>
+            <p>openEDUdata+ koppelt en harmoniseert alle open-onderwijs-databronnen alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg een onderbouwd, herleidbaar antwoord.</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               {dashboardsEnabled && (
@@ -23,8 +23,8 @@ export default function HomePage({ dashboardsEnabled = true }) {
               )}
             </div>
             <div className="hero-stats">
-              <div><div className="hero-stat-value">30s</div><div className="hero-stat-label">Gemiddelde responstijd</div></div>
-              <div><div className="hero-stat-value">120+</div><div className="hero-stat-label">Datasets gekoppeld</div></div>
+              <div><div className="hero-stat-value">5</div><div className="hero-stat-label">Open bronnen gekoppeld</div></div>
+              <div><div className="hero-stat-value">300+</div><div className="hero-stat-label">Datasets doorzoekbaar</div></div>
               <div><div className="hero-stat-value">100%</div><div className="hero-stat-label">Open onderwijsdata</div></div>
             </div>
           </div>
@@ -51,8 +51,8 @@ export default function HomePage({ dashboardsEnabled = true }) {
               <div className="feature-icon teal">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               </div>
-              <h3>Ad-hoc vragen in seconden</h3>
-              <p>Stel je vraag in gewone taal, krijg direct antwoord. Geen wachtrij voor een dashboard dat eerst gebouwd moet worden.</p>
+              <h3>Ad-hoc vragen, zonder wachtrij</h3>
+              <p>Stel je vraag in gewone taal en krijg een onderbouwd antwoord. Geen wachtrij voor een dashboard dat eerst gebouwd moet worden.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon purple">
