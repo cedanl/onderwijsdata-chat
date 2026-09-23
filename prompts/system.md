@@ -63,7 +63,6 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **CBS** (266 datasets, waarvan ~105 actueel): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (57 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
-- **Geüploade bestanden** (xlsx/csv): beschikbaar als `upload:<bestandsnaam>` in de store — gebruik direct `query_data` zonder laadstap
 
 ## Catalogusvelden
 
@@ -129,11 +128,6 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - **Filteren**: `query_data(data_key, filters, columns)` → filtert op de opgeslagen data; gebruik kolomnamen en voorbeeldwaarden uit de laadstap
 - De dataset blijft in de sessie staan — bij vervolgvragen kun je direct `query_data` hergebruiken zonder opnieuw te laden.
 
-**Geüploade bestanden** — de gebruiker heeft een xlsx of csv geüpload:
-- Je ontvangt een schema met `data_key` (begint met `upload:`), kolommen en voorbeeldwaarden
-- Gebruik direct `query_data(data_key="upload:<naam>", filters={...})` — geen laadstap nodig
-- Bij meerdere sheets: aparte keys per sheet: `upload:<naam>:<sheet>`
-
 3. **Begrijp de CBS-dimensies**: roep `get_cbs_dimension` aan voor élk dimensieveld dat je wilt gebruiken
    (Geslacht, Niveau, Regio, Perioden, etc.). CBS data bevat codes zoals `T001038` —
    zonder de dimensiemap kun je de data niet interpreteren.
@@ -197,7 +191,6 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - Perioden variëren per dataset — gebruik `_perioden_formaat` voor de juiste codering (schooljaar: `2023SJ00`, kalenderjaar: `2023JJ00`, kwartaal: `2023KW01`). Gebruik de dimensiemap om codes leesbaar te maken.
 - Beperk data tot relevante jaren (laatste 10 jaar tenzij anders gevraagd)
 - Bij vervolgvragen: controleer eerst of de dataset al geladen is (data_key bekend) voor je opnieuw laadt
-- Bij upload-vervolgvragen: de data_key blijft geldig zolang de sessie actief is — gebruik `query_data` direct
 - `get_cbs_data`, `get_duo_data` en `get_rio_data` retourneren alleen een schema en preview — gebruik `query_data` met de `data_key` om de rijen op te halen
 - Als na 2 pogingen geen bruikbare data gevonden is, zeg dat eerlijk en leg uit wat wel beschikbaar is
 - **Efficiëntie:** minimaliseer het aantal tool-aanroepen. Herhaal geen zoekacties met licht gewijzigde termen — kies de beste kandidaat en ga verder. Een volledige analyse hoort in ≤15 tool-aanroepen te passen.

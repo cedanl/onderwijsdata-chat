@@ -8,7 +8,7 @@ Stel vragen over CBS, RIO en DUO onderwijsdata. De app genereert antwoorden met 
 
 https://github.com/user-attachments/assets/9ab68b2a-7c00-4b2b-82ea-cbba245f1edb
 
-De assistent heeft toegang tot CBS, RIO en DUO via tool calling, ondersteunt uploads van eigen xlsx/csv-bestanden, en genereert antwoorden met volledige herkomstketen — elke analyse exporteert als reproduceerbare Python-code.
+De assistent heeft toegang tot CBS, RIO en DUO via tool calling en genereert antwoorden met volledige herkomstketen — per analysestap toont de app de Python-code die is uitgevoerd.
 
 ## Reproduceerbare analyses
 
@@ -42,7 +42,6 @@ Zie [reproducibility.md](docs/reproducibility.md) voor details.
 | **DUO** | 56 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | **ROA** | Arbeidsmarkt-analysen per opleidingsniveau (AIS2030) | — |
 | **UWV** | Open match vacatures & arbeidsmarktgegevens | — |
-| **Eigen bestanden** | xlsx/csv-uploads — direct bevraagbaar via dezelfde interface | — |
 
 ## Vereisten
 
