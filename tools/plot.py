@@ -124,6 +124,13 @@ def create_plot(
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
+    if len(data) == 1:
+        # One bar or slice shows nothing a sentence cannot; let the answer state the value.
+        value = data[0].get(y, "")
+        return (
+            f"Geen grafiek gemaakt: de data bevat één datapunt ({x}={data[0].get(x, '')}, {y}={value}). "
+            "Noem de waarde in je antwoord."
+        ), None
 
     # Infer chart type if not explicitly specified
     if chart_type == "auto":
