@@ -177,7 +177,7 @@ function AppShell() {
     navigate('/rapporten', workbook ? { state: { pendingWorkbook: workbook } } : undefined)
   }
 
-  if (authLoading) return null
+  if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 
   if (authRequired && !user) {
     return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} />

@@ -4,9 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>openEDUdata+</title>
+    <!-- Inline so the loading state paints before the JS bundle arrives -->
+    <style>
+      .app-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 10px;
+        font: 600 1rem system-ui, sans-serif; color: #1E4A7A; background: #fff; }
+      .app-loading::before { content: ""; width: 18px; height: 18px; border-radius: 50%;
+        border: 2px solid #BFDBFE; border-top-color: #2563EB; animation: app-spin .8s linear infinite; }
+      @keyframes app-spin { to { transform: rotate(360deg); } }
+      @media (prefers-color-scheme: dark) { .app-loading { background: #111827; color: #E5E7EB; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="app-loading" role="status">openEDUdata+ wordt geladen…</div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
