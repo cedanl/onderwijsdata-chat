@@ -19,6 +19,7 @@ import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
 import { conversationTitle } from '../conversationTitle'
+import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv } from '../figureCsv'
@@ -269,7 +270,11 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {
+    const tokenAtMount = getToken()
     return () => {
+      // Logging out unmounts this page after App cleared the stored history;
+      // saving here would write the conversation straight back.
+      if (sessionEndedSince(tokenAtMount)) return
       const latestMessages = messagesRef.current
       const userMsgs = latestMessages.filter(m => m.role === 'user')
       if (!userMsgs.length) return

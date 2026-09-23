@@ -9,6 +9,10 @@ export const clearToken = () => {
   localStorage.removeItem(STORAGE_USERINFO)
 }
 
+// True when there was a session at some earlier point and it has since been
+// cleared (logout or expiry). With auth off there is never a token: false.
+export const sessionEndedSince = (tokenThen) => tokenThen !== null && getToken() === null
+
 export const getUserInfo = () => {
   const item = localStorage.getItem(STORAGE_USERINFO)
   if (!item) return null
