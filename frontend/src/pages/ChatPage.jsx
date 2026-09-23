@@ -18,6 +18,7 @@ import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIO
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
+import { conversationTitle } from '../conversationTitle'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv } from '../figureCsv'
@@ -213,7 +214,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     if (!userMsgs.length) return
     const conv = {
       id: Date.now(),
-      title: userMsgs[0].content.slice(0, 80),
+      title: conversationTitle(userMsgs[0].content),
       timestamp: Date.now(),
       messages: toSave,
     }
@@ -275,7 +276,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
       if (!userMsgs.length) return
       const conv = {
         id: Date.now(),
-        title: userMsgs[0].content.slice(0, 80),
+        title: conversationTitle(userMsgs[0].content),
         timestamp: Date.now(),
         messages: latestMessages,
       }

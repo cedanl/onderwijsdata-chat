@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import uuid
 
@@ -45,22 +46,25 @@ def _new_session(username: str | None = None) -> dict:
     }
 
 
+def _conversation_title(messages: list[dict]) -> str:
+    """First readable user text, without markup, as the conversation title."""
+    for msg in messages:
+        if msg.get("role") == "user":
+            plain = " ".join(re.sub(r"<[^>]*>", " ", msg.get("content") or "").split())
+            if plain:
+                return plain[:100]
+    return "Untitled"
+
+
 def _persist_conversation(session: dict) -> bool:
     """Save the conversation to the database. Returns True if successful."""
     if not session.get("messages"):
         return True  # Nothing to save
     try:
-        title = ""
-        for msg in session.get("messages", []):
-            if msg.get("role") == "user":
-                title = msg.get("content", "").strip()[:100]
-                if title:
-                    break
-        title = title or "Untitled"
         persistence_db.upsert_conversation(
             username=session.get("username", FALLBACK_USER),
             conv_id=session.get("conv_id"),
-            title=title,
+            title=_conversation_title(session.get("messages", [])),
             timestamp=int(time.time() * 1000),
             messages=session.get("messages", []),
         )
