@@ -19,6 +19,7 @@ import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
+import { figureToCsv } from '../figureCsv'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
@@ -639,17 +640,6 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
     </div>
   )
-}
-
-function figureToCsv(figure) {
-  const traces = figure.data || []
-  if (traces.length === 0) return null
-  const first = traces[0]
-  const xVals = first.x || first.labels || []
-  if (xVals.length === 0) return null
-  const header = ['', ...traces.map(t => t.name || 'waarde')]
-  const rows = xVals.map((x, i) => [x, ...traces.map(t => (t.y || t.values)?.[i] ?? '')])
-  return [header, ...rows].map(r => r.join(';')).join('\n')
 }
 
 function downloadCsv(csv, filename) {
