@@ -195,6 +195,19 @@ def upsert_conversation(
     conn.close()
 
 
+def rename_conversation(username: str, conv_id: str, title: str) -> bool:
+    """Update only the title. Returns False when the user has no such conversation."""
+    conn = _connect()
+    cursor = _execute(
+        conn,
+        "UPDATE conversations SET title = ? WHERE id = ? AND username = ?",
+        (title, conv_id, username),
+    )
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
+
+
 def delete_conversation(username: str, conv_id: str) -> None:
     conn = _connect()
     _execute(

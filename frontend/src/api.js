@@ -27,6 +27,10 @@ export async function putConversation(id, data) {
   return apiFetch(`/api/conversations/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
+export async function renameConversationApi(id, title) {
+  return apiFetch(`/api/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) })
+}
+
 export async function deleteConversationApi(id) {
   return apiFetch(`/api/conversations/${id}`, { method: 'DELETE' })
 }

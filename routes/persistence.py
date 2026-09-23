@@ -1,9 +1,16 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, StringConstraints
 
 from core.auth import get_current_user
 from persistence import db as persistence_db
 
 router = APIRouter(tags=["persistence"])
+
+
+class ConversationTitle(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 @router.get("/api/conversations")
@@ -16,6 +23,15 @@ async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(
     persistence_db.upsert_conversation(
         username, conv_id, body["title"], body["timestamp"], body["messages"],
     )
+    return {"ok": True}
+
+
+@router.patch("/api/conversations/{conv_id}")
+async def rename_conversation(
+    conv_id: str, body: ConversationTitle, username: str = Depends(get_current_user),
+) -> dict:
+    if not persistence_db.rename_conversation(username, conv_id, body.title):
+        raise HTTPException(status_code=404, detail="Conversation not found")
     return {"ok": True}
 
 
