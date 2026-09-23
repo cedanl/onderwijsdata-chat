@@ -198,3 +198,11 @@ def test_migrate_converts_existing_ms_timestamps(db):
     result = fresh_db.list_conversations("alice")
     old = next(r for r in result if r["id"] == "c-old")
     assert old["timestamp"] == 1700000000
+
+
+def test_rename_conversation_scoped_to_user(db):
+    db.upsert_conversation("alice", "c1", "Van Alice", 1, [])
+    assert db.rename_conversation("bob", "c1", "Gekaapt") is False
+    assert db.list_conversations("alice")[0]["title"] == "Van Alice"
+    assert db.rename_conversation("alice", "c1", "Nieuw") is True
+    assert db.list_conversations("alice")[0]["title"] == "Nieuw"

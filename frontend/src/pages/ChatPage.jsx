@@ -16,7 +16,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
-import { fetchConversations, putConversation, deleteConversationApi, fetchSettingsConfig } from '../api'
+import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
@@ -145,7 +145,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, thinking, connected, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear } = useChat({
+  const { messages, busy, thinking, connected, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -254,11 +254,16 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleRenameConversation = useCallback((id, newTitle) => {
     const trimmed = newTitle.trim()
     if (!trimmed) return
-    const updated = conversationHistory.map(c => c.id === id ? { ...c, title: trimmed } : c)
+    const previous = conversationHistory
+    const updated = previous.map(c => c.id === id ? { ...c, title: trimmed } : c)
     persistConversationHistory(updated)
     setConversationHistory(updated)
-    putConversation(String(id), { title: trimmed }).catch(() => {})
-  }, [conversationHistory])
+    renameConversationApi(String(id), trimmed).catch(() => {
+      persistConversationHistory(previous)
+      setConversationHistory(previous)
+      addToast('Hernoemen is mislukt. Probeer het opnieuw.', 'error')
+    })
+  }, [conversationHistory, addToast])
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {

@@ -65,6 +65,38 @@ def test_delete_conversation(client):
     assert client.get("/api/conversations").json() == []
 
 
+def test_patch_conversation_title_only(client):
+    body = {"title": "Oud", "timestamp": 1000, "messages": [{"role": "user", "content": "hi"}]}
+    client.put("/api/conversations/c1", json=body)
+
+    resp = client.patch("/api/conversations/c1", json={"title": "Nieuw"})
+    assert resp.status_code == 200
+
+    [conv] = client.get("/api/conversations").json()
+    assert conv["title"] == "Nieuw"
+    assert conv["timestamp"] == 1000
+    assert "hi" in conv["messages"]
+
+
+def test_patch_conversation_strips_title(client):
+    client.put("/api/conversations/c1", json={"title": "Oud", "timestamp": 1, "messages": []})
+    client.patch("/api/conversations/c1", json={"title": "  Nieuw  "})
+    assert client.get("/api/conversations").json()[0]["title"] == "Nieuw"
+
+
+@pytest.mark.parametrize("body", [{}, {"title": ""}, {"title": "   "}])
+def test_patch_conversation_rejects_empty_title(client, body):
+    client.put("/api/conversations/c1", json={"title": "Oud", "timestamp": 1, "messages": []})
+    resp = client.patch("/api/conversations/c1", json=body)
+    assert resp.status_code == 422
+    assert client.get("/api/conversations").json()[0]["title"] == "Oud"
+
+
+def test_patch_unknown_conversation_returns_404(client):
+    resp = client.patch("/api/conversations/bestaat-niet", json={"title": "X"})
+    assert resp.status_code == 404
+
+
 # ── Workbooks (no auth) ──────────────────────────────────────────────────────
 
 def test_get_workbooks_empty(client):

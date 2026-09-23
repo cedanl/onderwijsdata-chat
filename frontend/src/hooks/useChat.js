@@ -284,5 +284,5 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, thinking, toasts, connected, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear }
+  return { messages, busy, thinking, toasts, connected, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, addToast }
 }
