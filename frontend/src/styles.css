@@ -547,12 +547,6 @@ input, textarea { font: inherit; }
 }
 .reasoning-step-dot.done { background: var(--green-500); animation: none; }
 
-.reasoning-snippet-btn {
-  background: none; border: 1px solid var(--gray-200); border-radius: 4px;
-  cursor: pointer; padding: 2px 4px; margin-left: auto; color: var(--gray-400);
-  display: flex; align-items: center; transition: color .15s, border-color .15s;
-}
-.reasoning-snippet-btn:hover { color: var(--teal-600); border-color: var(--teal-400); }
 
 .reasoning-snippets { margin-top: 8px; }
 .reasoning-snippet-block { margin-bottom: 8px; }
@@ -1209,7 +1203,7 @@ html.dark .suggested-btn:hover {
   .charts-grid { grid-template-columns: 1fr; }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .navbar-nav { display: none; }
-  .navbar-cta { display: none; }
+  .navbar .navbar-cta { display: none; }
   .mobile-tabs { display: flex; }
 
   /* Sidebar: slide-over op mobiel/tablet */

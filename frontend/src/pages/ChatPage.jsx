@@ -92,7 +92,7 @@ function ReasoningPanel({ tools, isDone }) {
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
-        <span>Redenering ({tools.length} stappen)</span>
+        <span>Redenering ({tools.length} {tools.length === 1 ? 'stap' : 'stappen'})</span>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', transform: open ? 'rotate(180deg)' : '' }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -103,13 +103,6 @@ function ReasoningPanel({ tools, isDone }) {
             <div key={t.name || i} className="reasoning-step">
               <div className={`reasoning-step-dot${t.done ? ' done' : ''}`} />
               <span>{t.label}</span>
-              {t.snippet && (
-                <button type="button" className="reasoning-snippet-btn" title="Toon reproduceerbare code">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-                  </svg>
-                </button>
-              )}
             </div>
           ))}
           {hasSnippets && (
@@ -461,7 +454,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 className="chat-input"
                 aria-label="Chatbericht"
                 rows={1}
-                placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Verken betrouwbare regionale en landelijke (open) onderwijsdata en versterk je strategische koers.'}
+                placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
