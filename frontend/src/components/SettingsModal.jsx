@@ -51,7 +51,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
       }}
       onClick={isOnboarding ? undefined : onClose}
-      onKeyDown={e => { if (e.key === 'Escape' && !isOnboarding) onClose() }}
+      onKeyDown={e => { if (e.key === 'Escape') onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
@@ -62,10 +62,16 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
         style={{
           background: 'var(--white)', borderRadius: 'var(--radius-xl)',
           padding: '44px 40px', width: '100%', maxWidth: 440,
-          boxShadow: 'var(--shadow-lg)',
+          boxShadow: 'var(--shadow-lg)', position: 'relative',
         }}
         onClick={e => e.stopPropagation()}
       >
+        <button type="button" className="modal-close" onClick={onClose} aria-label={isOnboarding ? 'Overslaan' : 'Sluiten'}
+          style={{ position: 'absolute', top: 16, right: 16 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div className="navbar-logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -80,7 +86,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
         </h2>
         <p style={{ fontSize: '.88rem', color: 'var(--gray-500)', marginBottom: 32 }}>
           {isOnboarding
-            ? 'Stel je profiel in. Je kunt dit altijd later wijzigen via je gebruikersnaam.'
+            ? 'Met je instelling en functie stemmen we de voorbeeldvragen op je af. Je kunt dit altijd later wijzigen via je gebruikersnaam.'
             : 'Pas je profiel en weergave aan.'}
         </p>
 
