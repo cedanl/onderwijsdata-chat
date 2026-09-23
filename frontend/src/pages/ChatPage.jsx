@@ -148,7 +148,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, thinking, connected, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, addToast } = useChat({
+  const { messages, busy, thinking, connected, resetting, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -229,8 +229,8 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     setRestoredMessages([])
     setSidebarOpen(false)
     try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
-    clear()
-  }, [clear, saveCurrentConversation])
+    startNewConversation()
+  }, [startNewConversation, saveCurrentConversation])
 
   const handleLoad = useCallback((conv) => {
     saveCurrentConversation()
@@ -320,7 +320,8 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
   const handleSend = () => {
     const q = input.trim()
-    if (!q || busy) return
+    // Keep the typed question while "Nieuw gesprek" waits for the server.
+    if (!q || busy || resetting) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     send(q)
@@ -501,7 +502,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button type="button" className="send-btn" onClick={handleSend} aria-label="Verstuur bericht" disabled={!input.trim() || !connected || busy || atContextLimit}>
+                  <button type="button" className="send-btn" onClick={handleSend} aria-label="Verstuur bericht" disabled={!input.trim() || !connected || busy || resetting || atContextLimit}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>

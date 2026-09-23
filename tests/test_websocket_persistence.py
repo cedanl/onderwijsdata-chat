@@ -80,3 +80,52 @@ def test_conversation_title_strips_markup_and_whitespace():
 def test_conversation_title_falls_back_without_user_text():
     from routes.chat import _conversation_title
     assert _conversation_title([{"role": "user", "content": "<img src=x>"}]) == "Untitled"
+
+
+def _receive_until(websocket, event_type, limit=10):
+    for _ in range(limit):
+        event = json.loads(websocket.receive_text())
+        if event["type"] == event_type:
+            return event
+    raise AssertionError(f"geen {event_type} ontvangen")
+
+
+def test_reset_starts_a_fresh_conversation(client):
+    """'Nieuw gesprek' must not carry the previous conversation into the next one (#70)."""
+    old = [
+        {"role": "user", "content": "Hoeveel studenten heeft de RUG?"},
+        {"role": "assistant", "content": "Ongeveer 34.000."},
+    ]
+    new = [{"role": "user", "content": "Welke afkorting noemde ik eerder?"}]
+
+    with client.websocket_connect("/api/chat") as websocket:
+        websocket.send_text(json.dumps({"action": "history", "messages": old}))
+        websocket.send_text(json.dumps({"action": "reset"}))
+        done = _receive_until(websocket, "reset_done")
+        assert done["conv_id"]
+        # Anything said after the reset lands in a new record, not in the old one.
+        websocket.send_text(json.dumps({"action": "history", "messages": new}))
+        with contextlib.suppress(Exception):
+            websocket.receive_text(timeout=1)
+
+    conversations = {c["title"]: c for c in client.get("/api/conversations").json()}
+    assert set(conversations) == {"Hoeveel studenten heeft de RUG?", "Welke afkorting noemde ik eerder?"}
+    assert "RUG" not in conversations["Welke afkorting noemde ik eerder?"]["messages"]
+
+
+def test_reset_session_clears_turns_but_keeps_settings():
+    from routes.chat import _new_session, _reset_session
+    session = _new_session(username="alice")
+    old_id = session["conv_id"]
+    session["messages"] = [{"role": "user", "content": "oud"}]
+    session["turns"] = [{"question": "oud"}]
+    session["_clarified"] = True
+    session["chat_settings"] = {"model": "anthropic/claude-opus", "instelling": "RUG"}
+
+    _reset_session(session)
+
+    assert session["messages"] == [] and session["turns"] == []
+    assert "_clarified" not in session
+    assert session["conv_id"] != old_id
+    assert session["username"] == "alice"
+    assert session["chat_settings"] == {"model": "anthropic/claude-opus", "instelling": "RUG"}

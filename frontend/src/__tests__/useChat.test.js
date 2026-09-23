@@ -119,3 +119,30 @@ describe('useChat stop', () => {
     expect(assistantMessages()[0].stopped).toBeFalsy()
   })
 })
+
+describe('useChat new conversation', () => {
+  it('asks the server for a fresh session and holds messages until it confirms', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.startNewConversation() })
+    expect(ws.sent).toContainEqual({ action: 'reset' })
+    expect(chat.resetting).toBe(true)
+
+    await act(async () => { chat.send('Welke afkorting noemde ik eerder?') })
+    expect(ws.sent.filter(m => m.action === 'message')).toEqual([])
+
+    await act(async () => { ws.emit({ type: 'reset_done', conv_id: 'nieuw' }) })
+    expect(chat.resetting).toBe(false)
+    await act(async () => { chat.send('Welke afkorting noemde ik eerder?') })
+    expect(ws.sent.filter(m => m.action === 'message')).toHaveLength(1)
+  })
+
+  it('clears the visible messages', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'oud antwoord' })
+    })
+    await act(async () => { chat.startNewConversation() })
+    expect(chat.messages).toEqual([])
+  })
+})
