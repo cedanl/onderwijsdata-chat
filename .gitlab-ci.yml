@@ -112,7 +112,7 @@ pytest:
     - uv run pytest tests/ -q
 
 docker:docker-build:
-  stage: package
+  stage: build
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
     - if: $CI_MERGE_REQUEST_IID
