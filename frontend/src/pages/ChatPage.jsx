@@ -17,6 +17,7 @@ import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
+import { hasReportableAnswer } from '../reportEligibility'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import ModelPicker from '../components/ModelPicker'
@@ -443,7 +444,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
               </div>
             )}
-            {hasMessages && !busy && displayMessages.some(m => m.role === 'assistant' && !m.isError && m.content) && (
+            {hasMessages && !busy && hasReportableAnswer(displayMessages) && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>

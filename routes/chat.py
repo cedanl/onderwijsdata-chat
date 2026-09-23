@@ -135,9 +135,14 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
     except ValueError as e:
+        # Raised on purpose with guidance for the user (e.g. no datasets loaded).
         await emit({"type": "report_error", "message": str(e)})
-    except Exception as e:
-        await emit({"type": "report_error", "message": friendly_error(e)})
+    except Exception:
+        logger.exception("Report generation failed")
+        await emit({
+            "type": "report_error",
+            "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
+        })
 
 
 class RefreshError(Exception):

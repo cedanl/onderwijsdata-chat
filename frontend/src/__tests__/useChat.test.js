@@ -80,3 +80,18 @@ describe('useChat streaming', () => {
     expect(assistantMessages().every(m => m.done)).toBe(true)
   })
 })
+
+describe('useChat report errors', () => {
+  it('shows a report error as a lasting chat message, not a toast', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'report_generating' })
+      ws.emit({ type: 'report_error', message: 'Rapport kon niet worden gemaakt. Probeer het opnieuw.' })
+    })
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('Rapport kon niet worden gemaakt. Probeer het opnieuw.')
+    expect(msg.isError).toBe(true)
+    expect(chat.toasts).toEqual([])
+    expect(chat.reportBusy).toBe(false)
+  })
+})
