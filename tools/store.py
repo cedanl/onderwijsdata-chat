@@ -7,7 +7,7 @@ _DUO_PREFIX = "duo:"
 
 def put(key: str, value) -> None:
     # Sentinels hier maskeren en niet bij het laden: DUO-data komt ook binnen via
-    # uploads, replay, tests en de afgeleide keys van query_data. Alleen op deze plek
+    # replay, tests en de afgeleide keys van query_data. Alleen op deze plek
     # is er geen route eromheen. Idempotent, dus al gemaskeerde data kost niets.
     if key.startswith(_DUO_PREFIX):
         from . import duo  # lazy: duo importeert store, dus niet bovenaan

@@ -115,7 +115,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_QUERY_DATA,
-            "description": "Filter en selecteer rijen uit een geladen dataset. Werkt voor alle databronnen: DUO (data_key van get_duo_data), CBS (data_key van get_cbs_data), RIO (data_key van get_rio_data) én geüploade bestanden (data_key begint met 'upload:').",
+            "description": "Filter en selecteer rijen uit een geladen dataset. Werkt voor alle databronnen: DUO (data_key van get_duo_data), CBS (data_key van get_cbs_data), RIO (data_key van get_rio_data).",
             "parameters": {
                 "type": "object",
                 "properties": {
