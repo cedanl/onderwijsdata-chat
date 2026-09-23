@@ -95,3 +95,27 @@ describe('useChat report errors', () => {
     expect(chat.reportBusy).toBe(false)
   })
 })
+
+describe('useChat stop', () => {
+  it('marks an aborted answer as stopped and keeps its partial text', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Half antwoord' })
+      ws.emit({ type: 'message_end', aborted: true })
+    })
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('Half antwoord')
+    expect(msg.stopped).toBe(true)
+    expect(msg.done).toBe(true)
+  })
+
+  it('does not mark a normal answer as stopped', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Klaar' })
+    })
+    expect(assistantMessages()[0].stopped).toBeFalsy()
+  })
+})
