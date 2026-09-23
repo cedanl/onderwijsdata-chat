@@ -117,7 +117,6 @@ docker:docker-build:
     - if: $CI_MERGE_REQUEST_IID
   needs:
     - version:generate
-    - pytest
 
 docker:docker-promote:
   rules:
