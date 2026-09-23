@@ -82,6 +82,12 @@ const MARKDOWN_COMPONENTS = {
   code: CodeBlock,
 }
 
+// Announced once an answer is complete; streaming deltas would flood a screen reader.
+function lastAnswerText(messages) {
+  const last = messages.findLast(m => m.role !== 'assistant' || m.content)
+  return last?.role === 'assistant' && last.done ? last.content : ''
+}
+
 function ReasoningPanel({ tools, isDone }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   if (!tools?.length) return null
@@ -391,6 +397,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
         {/* Main */}
         <div className="chat-main">
+          <h1 className="sr-only">Chat</h1>
           {/* Mobile topbar with hamburger */}
           <div className="chat-mobile-topbar">
             <button type="button" className="hamburger-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">
@@ -401,6 +408,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
             <span className="chat-mobile-topbar-title">openEDUdata+</span>
           </div>
 
+          <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
           <div className="chat-messages" ref={messagesContainerRef}>
             {!hasMessages && <WelcomeScreen instelling={settings.instelling} functie={settings.functie} />}
             {restoredMessages.length > 0 && messages.length === 0 && (

@@ -207,7 +207,7 @@ function AppShell() {
         instelling={sramInstelling || settings.instelling}
         dashboardsEnabled={dashboardsEnabled}
       />
-      <div className="page-wrap">
+      <main className="page-wrap">
         <ErrorBoundary key={location.pathname}>
           <Routes>
             <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
@@ -217,7 +217,7 @@ function AppShell() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
-      </div>
+      </main>
       <MobileTabs dashboardsEnabled={dashboardsEnabled} />
       {showSettings && (
         <SettingsModal

@@ -60,7 +60,7 @@ export default function RapportenPage({ settings }) {
       <div className="wb-gallery-page">
         <div className="wb-gallery-header">
           <div>
-            <div className="wb-gallery-title">Rapporten</div>
+            <h1 className="wb-gallery-title">Rapporten</h1>
             <div className="wb-gallery-sub">{rapporten.length} rapport{rapporten.length !== 1 ? 'en' : ''}</div>
           </div>
         </div>

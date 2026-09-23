@@ -26,7 +26,7 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
   }
 
   return (
-    <div style={{
+    <main style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(160deg, var(--blue-900) 0%, var(--blue-700) 60%, var(--teal-600) 100%)',
     }}>
@@ -44,7 +44,7 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
           <span className="navbar-name">openEDU<span>data+</span></span>
         </div>
 
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 6 }}>Inloggen</h2>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 6 }}>Inloggen</h1>
         <p style={{ fontSize: '.9rem', color: 'var(--gray-500)', marginBottom: 28 }}>
           Log in om verder te gaan met openEDUdata+.
         </p>
@@ -129,6 +129,6 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
           </button>
         </form>
       </div>
-    </div>
+    </main>
   )
 }
