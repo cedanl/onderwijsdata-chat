@@ -69,3 +69,14 @@ def test_websocket_persists_with_history_action(client):
     conversations = resp.json()
     assert len(conversations) > 0, "History should be persisted when loading"
     assert conversations[0]["title"] == "Hallo"
+
+
+def test_conversation_title_strips_markup_and_whitespace():
+    from routes.chat import _conversation_title
+    messages = [{"role": "user", "content": "<b>Hoeveel</b>\n  studenten?"}]
+    assert _conversation_title(messages) == "Hoeveel studenten?"
+
+
+def test_conversation_title_falls_back_without_user_text():
+    from routes.chat import _conversation_title
+    assert _conversation_title([{"role": "user", "content": "<img src=x>"}]) == "Untitled"
