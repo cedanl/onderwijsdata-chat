@@ -127,3 +127,20 @@ def test_create_plot_schema_biedt_geen_losse_datarijen_aan():
         params = schema["function"]["parameters"]
         assert "data" not in params["properties"], f"{naam} biedt nog een data-parameter aan"
         assert "data_key" in params["required"], f"{naam} vereist geen data_key"
+
+
+def test_single_datapoint_gives_no_figure():
+    msg, fig = create_plot([{"instelling": "HU", "aantal": 27441}], "bar", "instelling", "aantal", "Studenten")
+    assert fig is None
+    assert "27441" in msg
+
+
+def test_single_datapoint_via_data_key_gives_no_figure():
+    store.put("test:een", pd.DataFrame([{"jaar": "2023", "waarde": 5}]))
+    msg, fig = create_plot(data_key="test:een", x="jaar", y="waarde", title="T")
+    assert fig is None
+
+
+def test_two_datapoints_still_plot():
+    _, fig = create_plot(_ROWS[:2], "bar", "jaar", "waarde", "T")
+    assert isinstance(fig, go.Figure)
