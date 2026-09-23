@@ -180,7 +180,10 @@ async def run(
     try:
         for _iter in range(MAX_TOOL_ITERATIONS):
             if stop_event and stop_event.is_set():
-                break
+                # Stopped while tools ran: close the open message as aborted. No
+                # content key, so the client keeps the text it already has.
+                await emit({"type": "message_end", "aborted": True})
+                return ""
 
             logger.debug("ITERATIE   %d", _iter + 1)
 

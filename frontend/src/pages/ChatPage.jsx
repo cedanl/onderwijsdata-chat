@@ -19,6 +19,7 @@ import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
 import { conversationTitle } from '../conversationTitle'
+import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv } from '../figureCsv'
@@ -140,8 +141,7 @@ function ReasoningPanel({ tools, isDone }) {
 }
 
 function MessageContent({ msg }) {
-  const isStreaming = !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
-  if (isStreaming) return <div className="ai-typing"><span /><span /><span /></div>
+  if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
   if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
   return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
 }
@@ -270,7 +270,11 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => {
+    const tokenAtMount = getToken()
     return () => {
+      // Logging out unmounts this page after App cleared the stored history;
+      // saving here would write the conversation straight back.
+      if (sessionEndedSince(tokenAtMount)) return
       const latestMessages = messagesRef.current
       const userMsgs = latestMessages.filter(m => m.role === 'user')
       if (!userMsgs.length) return
@@ -598,8 +602,14 @@ function hasAssistantContent(msg) {
     msg.content ||
     msg.figures?.length ||
     msg.clarification ||
-    msg.starterQuestions
+    msg.starterQuestions ||
+    msg.stopped
   )
+}
+
+// Started but nothing to show yet: render the typing dots instead of a bare avatar.
+function isAwaitingFirstToken(msg) {
+  return !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
 }
 
 function Message({ msg, onClarification, onSend, busy, settings = {} }) {
@@ -627,6 +637,9 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
     )
   }
 
+  const awaiting = isAwaitingFirstToken(msg)
+  if (!awaiting && !msg.tools?.length && !hasAssistantContent(msg)) return null
+
   return (
     <div className="message assistant">
       <div className="message-avatar">
@@ -636,7 +649,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} isDone={msg.done} />
-        {hasAssistantContent(msg) && (
+        {(awaiting || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
             <MessageContent msg={msg} />
@@ -645,6 +658,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
             ))}
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
+            {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
           </div>
         )}
       </div>
