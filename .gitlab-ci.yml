@@ -1,4 +1,8 @@
 workflow:
+  # A newer commit on the same ref cancels jobs marked interruptible in older
+  # pipelines, so superseded deploys do not fail verify-up (see #132).
+  auto_cancel:
+    on_new_commit: interruptible
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       variables:
@@ -162,6 +166,8 @@ kubernetes:dry-run:
     - if: $CI_MERGE_REQUEST_IID
 
 kubernetes:verify-up:
+  # Checks that *this* commit is deployed; pointless once a newer one lands.
+  interruptible: true
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 

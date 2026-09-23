@@ -13,6 +13,10 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!username.trim() || !password) {
+      setError('Vul je gebruikersnaam en wachtwoord in.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -73,7 +77,8 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
           </>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* noValidate: show our own message in the page instead of a browser bubble */}
+        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label htmlFor="login-username" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 6 }}>
               Gebruikersnaam
@@ -109,7 +114,7 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
           </div>
 
           {error && (
-            <div style={{
+            <div role="alert" style={{
               background: '#FEE2E2', color: '#991B1B', borderRadius: 'var(--radius-sm)',
               padding: '10px 14px', fontSize: '.85rem', fontWeight: 500,
             }}>

@@ -10,15 +10,10 @@ import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken } from './auth'
 import { matchKnownInstelling } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
+import { applyMode } from './theme'
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
-}
-
-function applyMode(mode) {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const isDark = mode === 'dark' || (mode === 'system' && prefersDark)
-  document.documentElement.classList.toggle('dark', isDark)
 }
 
 export default function App() {
@@ -177,7 +172,7 @@ function AppShell() {
     navigate('/rapporten', workbook ? { state: { pendingWorkbook: workbook } } : undefined)
   }
 
-  if (authLoading) return null
+  if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 
   if (authRequired && !user) {
     return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} />
