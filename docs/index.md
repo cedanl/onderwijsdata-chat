@@ -21,9 +21,11 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 
 | Bron | Inhoud | Catalogus |
 |------|--------|-----------|
-| **CBS** | 68 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
+| **CBS** | 266 datasets met onderwijsstatistieken | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
 | **RIO** | Register van onderwijsinstellingen en opleidingen (14 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
-| **DUO** | 57 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **DUO** | 56 open datasets: prognoses, diplomering, instroom, adressen | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **ROA** | Arbeidsmarkt-analyses per opleidingsniveau (AIS2030) | — |
+| **UWV** | Open match vacatures (momentopname mei 2023) | — |
 
 ## Snel aan de slag
 

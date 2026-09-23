@@ -24,17 +24,13 @@ Tenant moet aangevraagd worden via Backstage:
 
 Output: Flux config in `kubernetes-clusters` repository
 
-### 2. Database Initialization
+### 2. Database
 
-Na tenant aanmaak, CloudNativePG cluster is ready:
+Het platform levert per tenant een PostgreSQL-database; de verbindings-URI staat in de secret `onderwijsdata-chat-app` (key `uri`) en wordt als `POSTGRES_URI` aan de app doorgegeven (zie `manifests/<omgeving>/values.yaml`).
 
-```bash
-# Connect to PostgreSQL pod in tenant namespace
-kubectl exec -it onderwijsdata-chat-rw-0 -n services-onderwijsdata-chat -- psql
+De app maakt de tabellen zelf aan bij de start (`persistence/db.py`, `CREATE TABLE IF NOT EXISTS`). Er is geen handmatige stap nodig.
 
-# Run init script
-psql -U postgres -d onderwijsdata_chat < scripts/db-init.sql
-```
+`scripts/db-init.sql` is alleen bedoeld voor een zelf beheerde PostgreSQL-server waar de database en de applicatiegebruiker nog niet bestaan.
 
 ### 3. Secrets Configuration
 

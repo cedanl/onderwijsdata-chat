@@ -9,7 +9,12 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
 | `GET` | `/health` | Gezondheidscontrole — retourneert `{"status": "ok"}` |
+| `GET` | `/ready` | Readiness-check (o.a. database); gebruikt door Kubernetes |
+| `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
 | `GET` | `/version` | Versienummer uit `pyproject.toml` |
+| `GET` | `/info` | Naam, of OIDC aan staat, databasetype (PostgreSQL/SQLite) en omgeving |
+| `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` |
+| `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
 
 ---
 
@@ -17,8 +22,14 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `GET` | `/api/auth/status` | Geeft aan of authenticatie vereist is (`{"required": true/false}`) |
-| `POST` | `/api/auth/login` | Inloggen met gebruikersnaam/wachtwoord. Retourneert JWT-token. Rate-limited: 5 pogingen/minuut. |
+| `GET` | `/api/auth/status` | Of authenticatie vereist is en of SRAM-login beschikbaar is (`{"required": …, "oidc_enabled": …}`) |
+| `POST` | `/api/auth/login` | Inloggen met gebruikersnaam/wachtwoord. Retourneert een HMAC-ondertekend token. Rate-limited: 5 pogingen per minuut per IP. |
+| `GET` | `/api/auth/oidc/login` | Start SRAM-login: redirect naar de OIDC-provider |
+| `GET` | `/api/auth/oidc/callback` | Callback van de provider; zet het token en stuurt terug naar de app |
+| `GET` | `/api/auth/user` | Gebruikersinfo (naam, instelling) bij een token — alleen als OIDC is ingesteld |
+| `POST` | `/api/auth/refresh` | Vernieuwt een token vóór het verloopt — alleen als OIDC is ingesteld |
+
+Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oidc) voor de benodigde variabelen.
 
 ---
 
@@ -26,7 +37,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `WebSocket` | `/api/chat?token=<jwt>` | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `settings`, `history`, `clarification_choice`, `generate_dashboard`, `refresh_dashboard` |
+| `WebSocket` | `/api/chat?token=<token>` | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard` |
 | `POST` | `/api/dashboard/refresh` | Ververs een bestaand dashboard via recipe/figure_recipes |
 
 ---
@@ -47,12 +58,13 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 
 ## Persistentie
 
-Vereist authenticatie (`CHAT_USERS` + `CHAT_SECRET`).
+Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Zonder authenticatie horen alle gesprekken bij één gedeelde gebruiker (`gast`).
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
 | `GET` | `/api/conversations` | Lijst van alle conversaties van de ingelogde gebruiker |
-| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie |
+| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`) |
+| `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`); 404 bij onbekend ID, 422 bij lege titel |
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |
 | `GET` | `/api/workbooks` | Lijst van alle workbooks van de ingelogde gebruiker |
 | `PUT` | `/api/workbooks/{id}` | Maak of update een workbook |

@@ -31,7 +31,9 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `CORS_ORIGINS` | `*` | Komma-gescheiden lijst van toegestane origins voor CORS |
-| `DATABASE_PATH` | `app.db` | Aangepad voor het SQLite-databasebestand |
+| `DATABASE_PATH` | `app.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
+| `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
+| `ENABLE_DASHBOARDS` | `true` | Zet op `false` om de dashboardfunctie (pagina en `/api/dashboard/*`) uit te schakelen |
 | `LOG_LEVEL` | `INFO` | Loggingniveau: `DEBUG`, `INFO`, `WARNING` of `ERROR` |
 
 ---
@@ -77,8 +79,23 @@ Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` i
 | `CHAT_SECRET` | *(per herstart gegenereerd)* | HMAC-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
 | `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
 
+### SURF SRAM-login (OIDC)
+
+SRAM-login is actief als `OIDC_PROVIDER` is ingesteld én de discovery-URL, client-gegevens en `SERVER_URL` aanwezig zijn (`auth/oidc.py`). Ook hiervoor moet `CHAT_SECRET` ingesteld zijn.
+
+| Variabele | Standaard | Beschrijving |
+|-----------|-----------|--------------|
+| `OIDC_PROVIDER` | *(niet ingesteld)* | Naam van de provider (bijv. `sram`); zet OIDC-login aan |
+| `OIDC_DISCOVERY_URL` | *(niet ingesteld)* | OpenID-discovery-URL van de provider (`…/.well-known/openid-configuration`) |
+| `OIDC_CLIENT_ID` | *(niet ingesteld)* | Client-ID van de geregistreerde applicatie |
+| `OIDC_CLIENT_SECRET` | *(niet ingesteld)* | Client-secret; hoort in een (SOPS-versleutelde) secret, nooit in de repo |
+| `SERVER_URL` | *(niet ingesteld)* | Publieke basis-URL van de app, bijv. `https://onderwijsdata-chat.test.sdp.surf.nl` |
+| `SERVER_REDIRECT` | `/api/auth/oidc/callback` | Callback-pad dat bij de provider als redirect-URI is geregistreerd |
+
+Endpoints: zie [API Referentie → Authenticatie](../api.md).
+
 !!! info "Authenticatie is optioneel"
-    Zonder `CHAT_USERS` werkt de app volledig zonder login. Chatgeschiedenis vereist zowel `CHAT_SECRET` als `CHAT_USERS`.
+    Zonder `CHAT_USERS` en zonder OIDC werkt de app zonder login. Gesprekken worden dan wel bewaard, maar allemaal onder één gedeelde gebruiker (`gast`).
 
 ---
 

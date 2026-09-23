@@ -345,6 +345,20 @@ Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle datab
 
 ---
 
+## compute_kpi
+
+Berekent één KPI-waarde deterministisch in code over data die al in de store staat, zodat het model zelf geen verschillen of percentages hoeft uit te rekenen. Het model neemt de teruggegeven `value` en `trend` letterlijk over.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | Sleutel van een `query_data`-resultaat |
+| `value_column` | string | Kolom met de numerieke waarden |
+| `metric` | string | `last`, `first`, `sum`, `mean`, `min`, `max`, `delta` (laatste − eerste), `pct_change` (procentuele verandering eerste → laatste) of `index` (laatste waarde met eerste = 100) |
+| `sort_column` | string | Optioneel: kolom om op te sorteren voor `last`/`first`/`delta`/`pct_change`/`index`, bijv. `STUDIEJAAR`. Zonder deze kolom telt de rijvolgorde. |
+| `label` | string | Label van de KPI, bijv. "Voltijd 2025/26" |
+
+---
+
 ## run_analysis
 
 Voert pandas/numpy-code uit in een beveiligde sandbox op eerder opgehaalde data.
