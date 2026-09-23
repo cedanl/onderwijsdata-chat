@@ -157,7 +157,9 @@ export function useChat({ onUnauthorized } = {}) {
         reportingRef.current = false
         setReportBusy(false)
         setReportSpec(null)
-        addToast(ev.message, 'error')
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
+        }])
       },
       error(ev) {
         setThinking(false)
