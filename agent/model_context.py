@@ -14,17 +14,25 @@ logger = logging.getLogger(__name__)
 
 # Models not in LiteLLM's mapping — add context window manually.
 # Format: "provider/model-name" → max_tokens for that model.
-# Sources:
-#   - gpt-oss-120b: https://huggingface.co/OpenGPT-X/gpt-oss-120b-instruct-v1.0
-#     (SURF Willma deployment; standard 4k context)
-#   - Qwen 2.5 variants: https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
-#     (32B and 72B variants; 32k context per model card)
+# Sources & native context lengths:
+#   - gpt-oss-120b: https://huggingface.co/openai/gpt-oss-120b
+#     (OpenAI OSS 120B; model card doesn't specify context, using conservative 4k default)
+#   - Qwen2.5-VL-32B: https://huggingface.co/Qwen/Qwen2.5-VL-32B-Instruct-AWQ
+#     (Vision-language model; 32k native context)
+#   - Qwen2.5-Coder-32B: https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
+#     (Code specialist; 128k with YaRN, using full capacity)
+#   - Qwen3.6-27B: https://huggingface.co/Qwen/Qwen3.6-27B-FP8
+#     (262k native, extensible to 1M; using native default)
+#   - Devstral-Small-2-24B: https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512
+#     (Development model; 256k context window)
 _MODEL_CONTEXT_OVERRIDES: dict[str, int] = {
     "openai/gpt-oss-120b": 4096,
     "openai/gpt-oss-120b-instruct": 4096,
     "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": 32768,
-    "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": 32768,
+    "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": 131072,  # 128k full capacity via YaRN
     "openai/Qwen/Qwen2.5-Coder-7B-Instruct": 32768,
+    "openai/Qwen/Qwen3.6-27B-FP8": 262144,  # 262k native
+    "openai/mistralai/Devstral-Small-2-24B-Instruct-2512": 256000,
     "ollama/mistral": 32768,
 }
 
