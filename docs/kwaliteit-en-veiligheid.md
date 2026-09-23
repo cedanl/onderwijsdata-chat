@@ -1,6 +1,6 @@
 # Kwaliteit & veiligheid
 
-De app meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare antwoorden te garanderen.
+De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare antwoorden te garanderen.
 
 ---
 

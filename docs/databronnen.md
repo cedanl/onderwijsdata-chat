@@ -6,7 +6,7 @@ De assistent heeft toegang tot vijf open Nederlandse onderwijs- en arbeidsmarktd
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**68 datasets** met statistische onderwijsdata: aantallen leerlingen, studenten, diploma's, personeel en meer, uitgesplitst naar diverse dimensies.
+**266 datasets** met statistische onderwijsdata: aantallen leerlingen, studenten, diploma's, personeel en meer, uitgesplitst naar diverse dimensies.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -50,7 +50,7 @@ De assistent heeft toegang tot vijf open Nederlandse onderwijs- en arbeidsmarktd
 
 ## DUO — Dienst Uitvoering Onderwijs
 
-**57 open datasets** gepubliceerd door DUO, inclusief prognoses, diplomering, instroom, adressen en meer.
+**56 open datasets** gepubliceerd door DUO, inclusief prognoses, diplomering, instroom, adressen en meer.
 
 | Eigenschap | Details |
 |------------|---------|
