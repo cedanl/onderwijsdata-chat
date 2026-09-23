@@ -47,6 +47,10 @@ export async function deleteWorkbookApi(id) {
   return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' })
 }
 
+export async function fetchCatalogCounts() {
+  return apiFetch('/api/catalog/counts')
+}
+
 export async function fetchSettingsConfig() {
   return apiFetch('/api/settings/config')
 }

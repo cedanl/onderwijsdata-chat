@@ -1,5 +1,16 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
+import { useEffect, useState } from 'react'
+import { fetchCatalogCounts } from '../api'
+
+// Counts come from the catalog the app searches, so they cannot drift from it.
+const withCount = (n, text) => (n ? `${n} ${text}` : text)
+
 export default function DataSourcesModal({ onClose }) {
+  const [counts, setCounts] = useState({})
+  useEffect(() => {
+    fetchCatalogCounts().then(setCounts).catch(() => {})
+  }, [])
+
   return (
     <div className="modal-overlay" onClick={onClose} onKeyDown={e => { if (e.key === 'Escape') onClose() }} role="dialog" aria-modal="true" aria-label="Databronnen" tabIndex={-1}>
       <button type="button" className="modal-overlay-close" onClick={onClose} aria-label="Sluiten">
@@ -21,9 +32,9 @@ export default function DataSourcesModal({ onClose }) {
             </thead>
             <tbody>
               {[
-                ['CBS', '68 datasets met onderwijsstatistieken', 'cedanl.github.io/cbs-onderwijsdata', 'https://cedanl.github.io/cbs-onderwijsdata'],
-                ['RIO', 'Register van onderwijsinstellingen en opleidingen (14 resources)', 'cedanl.github.io/rio-onderwijsdata', 'https://cedanl.github.io/rio-onderwijsdata'],
-                ['DUO', '57 open datasets: prognoses, diplomering, instroom, adressen', 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
+                ['CBS', withCount(counts.CBS, 'datasets met onderwijsstatistieken'), 'cedanl.github.io/cbs-onderwijsdata', 'https://cedanl.github.io/cbs-onderwijsdata'],
+                ['RIO', `Register van onderwijsinstellingen en opleidingen${counts.RIO ? ` (${counts.RIO} resources)` : ''}`, 'cedanl.github.io/rio-onderwijsdata', 'https://cedanl.github.io/rio-onderwijsdata'],
+                ['DUO', withCount(counts.DUO, 'open datasets: prognoses, diplomering, instroom, adressen'), 'onderwijsdata.duo.nl', 'https://onderwijsdata.duo.nl'],
               ].map(([bron, inhoud, catalogus, href]) => (
                 <tr key={bron}>
                   <td><span className="source-name">{bron}</span></td>

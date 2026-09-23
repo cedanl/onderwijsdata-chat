@@ -50,6 +50,19 @@ def _rio_duo() -> list:
     return _rio_catalog(source="all")
 
 
+def dataset_counts() -> dict[str, int]:
+    """Datasets per bron zoals de app ze doorzoekt; bron voor databronnenvenster en README.
+
+    CBS telt ook gearchiveerde tabellen mee: search_catalog valt daarop terug.
+    """
+    rio_duo = _rio_duo()
+    return {
+        "CBS": len(_cbs()),
+        "DUO": sum(1 for e in rio_duo if e.get("leverancier") == "DUO"),
+        "RIO": sum(1 for e in rio_duo if e.get("leverancier") == "RIO"),
+    }
+
+
 _SYNONYMS: dict[str, list[str]] = {
     "hbo": ["ho", "hoger beroepsonderwijs"],
     "wo": ["ho", "wetenschappelijk onderwijs"],

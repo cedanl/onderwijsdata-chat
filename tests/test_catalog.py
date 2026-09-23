@@ -428,3 +428,15 @@ def test_resource_titel_geeft_none_voor_onbekende_dataset():
     with patch("tools.catalog._cbs", return_value=[]), \
          patch("tools.catalog._rio_duo", return_value=[]):
         assert resource_titel("onbekend-id") is None
+
+
+def test_dataset_counts_per_source():
+    from tools.catalog import dataset_counts
+    cbs = [{"identifier": "a"}, {"identifier": "b", "_archief": True}]
+    rio_duo = [
+        {"leverancier": "DUO"}, {"leverancier": "DUO"}, {"leverancier": "RIO"},
+        {"leverancier": "SBB"},  # niet ondersteund, telt niet mee
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs), \
+         patch("tools.catalog._rio_duo", return_value=rio_duo):
+        assert dataset_counts() == {"CBS": 2, "DUO": 2, "RIO": 1}
