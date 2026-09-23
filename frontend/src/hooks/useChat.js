@@ -63,10 +63,12 @@ export function useChat({ onUnauthorized } = {}) {
     manualCloseRef.current = false
     retryCountRef.current = 0
 
+    // Resolve the target id now: React runs the state updater later, by which
+    // time message_end may already have cleared currentMsgRef.
     function updateCurrentMsg(updater) {
-      setMessages(prev => prev.map(m =>
-        m.id === currentMsgRef.current ? updater(m) : m
-      ))
+      const id = currentMsgRef.current
+      if (id === null) return
+      setMessages(prev => prev.map(m => m.id === id ? updater(m) : m))
     }
 
     function finishStream() {
@@ -115,8 +117,13 @@ export function useChat({ onUnauthorized } = {}) {
           content: '', figures: [{ label: ev.label, json: ev.figure_json }], done: true,
         }])
       },
-      message_end() {
-        updateCurrentMsg(m => ({ ...m, done: true }))
+      message_end(ev) {
+        // The server sends the full text; it wins over the accumulated deltas.
+        updateCurrentMsg(m => ({
+          ...m,
+          content: typeof ev.content === 'string' ? ev.content : m.content,
+          done: true,
+        }))
         finishStream()
       },
       clarification(ev) {
