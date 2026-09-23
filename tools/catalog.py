@@ -10,6 +10,11 @@ from riodata import catalog as _rio_catalog
 
 logger = logging.getLogger(__name__)
 
+# Leveranciers waarvoor we search_catalog actief steunen.
+# "Inspectie van het Onderwijs" (2 datasets) en "SBB" (2 datasets) staan wel in de ruwe
+# catalogus maar hebben geen bruikbare machineleesbare resources — hun structuur is niet
+# geschikt voor de query-interfaces (search_catalog, get_*_data). Deze filtered-out state
+# is intentioneel: README mag ze niet noemen, want zij zijn niet bereikbaar voor gebruikers.
 SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
