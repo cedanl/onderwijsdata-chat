@@ -19,6 +19,7 @@ from typing import Any
 
 import plotly.io as pio
 
+from agent.model_context import clamp_max_tokens
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
 from agent.stream import accumulate_stream
@@ -215,10 +216,11 @@ async def generate(
             if stop_event and stop_event.is_set():
                 break
 
+            clamped_tokens = clamp_max_tokens(chosen_model, MAX_TOKENS)
             stream = await acompletion_with_backoff(
                 emit,
                 model=chosen_model,
-                max_tokens=MAX_TOKENS,
+                max_tokens=clamped_tokens,
                 messages=messages,
                 tools=_DASHBOARD_TOOLS,
                 stream=True,

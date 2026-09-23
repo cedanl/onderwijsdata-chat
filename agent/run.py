@@ -12,6 +12,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 from tools.snippet import generate as _generate_snippet
 
 from .history import trim
+from .model_context import clamp_max_tokens
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
 from .stream import accumulate_stream
@@ -183,10 +184,11 @@ async def run(
 
             logger.debug("ITERATIE   %d", _iter + 1)
 
+            clamped_tokens = clamp_max_tokens(chosen_model, MAX_TOKENS)
             stream = await acompletion_with_backoff(
                 emit,
                 model=chosen_model,
-                max_tokens=MAX_TOKENS,
+                max_tokens=clamped_tokens,
                 messages=system + history,
                 tools=SCHEMAS,
                 stream=True,
