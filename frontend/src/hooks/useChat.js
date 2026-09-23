@@ -34,6 +34,7 @@ export function useChat({ onUnauthorized } = {}) {
   const [connected, setConnected] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
+  const [resetting, setResetting] = useState(false)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
@@ -44,6 +45,7 @@ export function useChat({ onUnauthorized } = {}) {
   const retryTimeoutRef = useRef(null)
   const pendingHistoryRef = useRef(null)
   const busyRef = useRef(false)
+  const resettingRef = useRef(false)
   const nextId = () => ++idRef.current
 
   const addToast = useCallback((message, level = 'info') => {
@@ -144,6 +146,10 @@ export function useChat({ onUnauthorized } = {}) {
         }])
         finishStream()
       },
+      reset_done() {
+        resettingRef.current = false
+        setResetting(false)
+      },
       report_generating() {
         reportingRef.current = true
         setReportBusy(true)
@@ -184,6 +190,9 @@ export function useChat({ onUnauthorized } = {}) {
 
       ws.onopen = () => {
         setConnected(true)
+        // A new connection is a new server session, so a pending reset is moot.
+        resettingRef.current = false
+        setResetting(false)
         retryCountRef.current = 0
         reportingRef.current = false
         setReportBusy(false)
@@ -237,7 +246,7 @@ export function useChat({ onUnauthorized } = {}) {
   }, [addToast, cancelCurrentMsg, onUnauthorized])
 
   const send = useCallback((content) => {
-    if (!wsRef.current || busyRef.current) return
+    if (!wsRef.current || busyRef.current || resettingRef.current) return
     busyRef.current = true
     setBusy(true)
     setThinking(true)
@@ -294,5 +303,17 @@ export function useChat({ onUnauthorized } = {}) {
     currentMsgRef.current = null
   }, [])
 
-  return { messages, busy, thinking, toasts, connected, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, addToast }
+  // "Nieuw gesprek": the server must forget the previous conversation too,
+  // otherwise the next question is answered with its context (#70).
+  const startNewConversation = useCallback(() => {
+    clear()
+    pendingHistoryRef.current = null
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      resettingRef.current = true
+      setResetting(true)
+      wsRef.current.send(JSON.stringify({ action: 'reset' }))
+    }
+  }, [clear])
+
+  return { messages, busy, thinking, toasts, connected, resetting, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast }
 }

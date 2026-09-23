@@ -46,6 +46,19 @@ def _new_session(username: str | None = None) -> dict:
     }
 
 
+def _reset_session(session: dict) -> None:
+    """Start a new conversation on this connection (#70).
+
+    Everything the agent could remember goes — messages, turns, figures, clarify
+    and tool state — and the conversation gets a new id. Only who is chatting and
+    their settings carry over.
+    """
+    fresh = _new_session(username=session["username"])
+    fresh["chat_settings"] = session.get("chat_settings") or {}
+    session.clear()
+    session.update(fresh)
+
+
 def _conversation_title(messages: list[dict]) -> str:
     """First readable user text, without markup, as the conversation title."""
     for msg in messages:
@@ -341,6 +354,14 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
 
             if action == "stop":
                 _handle_stop(session)
+            elif action == "reset":
+                if _task_busy(current_task):
+                    _handle_stop(session)
+                    current_task.cancel()
+                _persist_conversation(session)
+                _reset_session(session)
+                current_task = None
+                await emit({"type": "reset_done", "conv_id": session["conv_id"]})
             elif action == "settings":
                 session["chat_settings"] = msg.get("settings", {})
             elif action == "history":
