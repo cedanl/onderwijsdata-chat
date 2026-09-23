@@ -9,7 +9,7 @@ Deze pagina beschrijft hoe je `onderwijsdata-chat` productierijp maakt. De lokal
 | Component | Lokaal (standaard) | Productie |
 |-----------|-------------------|-----------|
 | Database | SQLite (`app.db`) | PostgreSQL (beheerde cloud-service) |
-| Authenticatie | Gebruikersnaam/wachtwoord in `.env` | Nog niet geïmplementeerd (OAuth/SURFconext gepland) |
+| Authenticatie | Gebruikersnaam/wachtwoord in `.env` | SURF SRAM-login via OIDC (wachtwoordlogin blijft mogelijk als fallback) |
 
 ---
 
@@ -28,13 +28,15 @@ SQLite is single-user en niet geschikt voor gelijktijdige toegang door meerdere 
 
 ### Instellen
 
-De app leest de `DATABASE_URL` omgevingsvariabele:
+De app leest de `POSTGRES_URI` omgevingsvariabele (een gewone libpq-URI; de app gebruikt `psycopg2`):
 
 ```dotenv
-DATABASE_URL=postgresql+asyncpg://gebruiker:wachtwoord@host:5432/onderwijschat
+POSTGRES_URI=postgresql://gebruiker:wachtwoord@host:5432/onderwijsdata_chat
 ```
 
-De app maakt de tabellen automatisch aan bij de eerste start. Geen handmatige migratie nodig.
+Zonder `POSTGRES_URI` valt de app terug op SQLite (`DATABASE_PATH`, standaard `app.db`).
+
+De app maakt de tabellen automatisch aan bij de start (`CREATE TABLE IF NOT EXISTS` in `persistence/db.py`). Alleen de database en de databasegebruiker moeten al bestaan; op een eigen Postgres-server kun je die aanmaken met `scripts/db-init.sql`. Op SURF SDP levert het platform de database en de URI al — zie [Deployment](deployment.md).
 
 !!! warning "Nooit `app.db` committen"
     Het SQLite-bestand staat in `.gitignore`. Houd dat zo — databasebestanden horen niet in de repo.
@@ -43,9 +45,12 @@ De app maakt de tabellen automatisch aan bij de eerste start. Geen handmatige mi
 
 ## 2. Authenticatie
 
-De huidige implementatie ondersteunt alleen gebruikersnaam/wachtwoord-authenticatie via `CHAT_USERS` in `.env` met HMAC-tokens. Er is geen OAuth/OIDC-integratie.
+Er zijn twee manieren van inloggen, die naast elkaar kunnen bestaan:
 
-Voor een productieomgeving met institutionele accounts (Azure AD, SURFconext) is uitbreiding van de auth-module nodig.
+- **SURF SRAM via OIDC** — institutionele accounts. Actief zodra `OIDC_PROVIDER` en de overige OIDC-variabelen zijn ingesteld (zie [Configuratie → Authenticatie](configuratie/index.md#chatgeschiedenis-authenticatie)). De implementatie staat in `auth/oidc.py` en `routes/auth.py`; de testomgeving draait hiermee.
+- **Gebruikersnaam/wachtwoord** via `CHAT_USERS`, met HMAC-tokens. Handig lokaal, voor demo-accounts en als fallback.
+
+Beide vereisen `CHAT_SECRET` voor het ondertekenen van tokens.
 
 ---
 
