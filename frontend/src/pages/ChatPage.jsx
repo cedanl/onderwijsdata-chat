@@ -16,6 +16,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
+import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import ModelPicker from '../components/ModelPicker'
@@ -277,12 +278,18 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     }
   }, [])
 
+  const handleModelChange = useCallback((id) => {
+    setSelectedModel(id)
+    saveModelChoice(id)
+  }, [])
+
   // Load available models once
   useEffect(() => {
     fetchSettingsConfig()
       .then(cfg => {
-        setModels(cfg.models || [])
-        setSelectedModel(cfg.default_model || '')
+        const offered = cfg.models || []
+        setModels(offered)
+        setSelectedModel(pickModel(offered, loadModelChoice(), cfg.default_model || ''))
       })
       .catch(() => setModels([]))
   }, [])
@@ -472,7 +479,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                   </span>
                 )}
                 {models.length > 0 && (
-                  <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />
+                  <ModelPicker models={models} value={selectedModel} onChange={handleModelChange} />
                 )}
                 {busy ? (
                   <button type="button" className="send-btn" onClick={stop} title="Stop genereren">
