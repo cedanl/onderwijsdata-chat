@@ -143,6 +143,13 @@ input, textarea { font: inherit; }
 }
 .navbar-cta:hover { background: var(--blue-700); }
 
+.login-input {
+  width: 100%; padding: 10px 14px;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+  font-size: .9rem; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.login-input:focus { border-color: var(--blue-400); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+
 /* ─── Mobile sidebar overlay ─────────────────────────────── */
 .sidebar-overlay {
   display: none;
@@ -406,7 +413,12 @@ input, textarea { font: inherit; }
   display: none; flex-direction: row; gap: 2px; align-items: center;
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
 }
-.history-item-row:hover .history-item-actions { display: flex; }
+.history-item-row:hover .history-item-actions,
+.history-item-row:focus-within .history-item-actions { display: flex; }
+@media (hover: none) {
+  .history-item-actions { display: flex; }
+  .history-item-row .history-btn { padding-right: 56px; }
+}
 .history-action-icon {
   padding: 4px; border: none; background: transparent; color: var(--gray-400);
   cursor: pointer; border-radius: var(--radius-sm); transition: all .15s;
@@ -710,8 +722,9 @@ html.dark .context-limit-banner--full {
   font-size: .8rem; padding: 6px 28px 6px 10px;
   border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
   background: var(--white); color: var(--gray-700);
-  appearance: none; cursor: pointer; outline: none; font-weight: 500;
+  appearance: none; cursor: pointer; font-weight: 500;
 }
+.model-picker select:focus-visible { outline: 2px solid var(--blue-400); outline-offset: 1px; }
 .model-picker-chevron {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   width: 12px; height: 12px; color: var(--gray-400); pointer-events: none;

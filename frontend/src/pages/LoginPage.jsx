@@ -80,18 +80,14 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
             </label>
             <input
               id="login-username"
+              name="username"
               type="text"
+              autoComplete="username"
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
               autoFocus // eslint-disable-line jsx-a11y/no-autofocus -- login page, single input
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',
-                fontSize: '.9rem', outline: 'none', transition: 'border-color .15s',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--blue-400)'}
-              onBlur={e => e.target.style.borderColor = 'var(--gray-200)'}
+              className="login-input"
             />
           </div>
           <div>
@@ -100,17 +96,13 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
             </label>
             <input
               id="login-password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',
-                fontSize: '.9rem', outline: 'none', transition: 'border-color .15s',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--blue-400)'}
-              onBlur={e => e.target.style.borderColor = 'var(--gray-200)'}
+              className="login-input"
             />
           </div>
 

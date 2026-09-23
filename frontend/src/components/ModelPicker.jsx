@@ -1,7 +1,7 @@
 export default function ModelPicker({ models, value, onChange }) {
   return (
     <div className="model-picker">
-      <select value={value} onChange={e => onChange(e.target.value)}>
+      <select aria-label="Model" value={value} onChange={e => onChange(e.target.value)}>
         {models.map(m => (
           <option key={m.id} value={m.id}>{m.name}{m.description ? ` — ${m.description}` : ''}</option>
         ))}
