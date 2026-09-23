@@ -86,7 +86,9 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
               value={username}
               onChange={e => setUsername(e.target.value)}
               required
-              autoFocus // eslint-disable-line jsx-a11y/no-autofocus -- login page, single input
+              // Only jump into the form when it is the sole way in; otherwise focus
+              // would skip the SRAM button above it in the tab order.
+              autoFocus={!oidcEnabled} // eslint-disable-line jsx-a11y/no-autofocus -- login page
               className="login-input"
             />
           </div>
