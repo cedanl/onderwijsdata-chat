@@ -9,6 +9,7 @@ from core.config import DUO_ROW_LIMIT
 
 from . import store
 from .catalog import catalogus_titel, resource_titel
+from .cbs import check_dimensions_pinned
 
 _SAMPLE_ROWS = 3
 
@@ -281,6 +282,14 @@ def query_data(
         missing = [c for c in columns if c not in df.columns]
         if missing:
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
+
+    # Vóór de kolomselectie: daarna zijn weggeselecteerde dimensies onzichtbaar.
+    if aggregate or columns:
+        err = check_dimensions_pinned(data_key, df, keep=(group_by or []) if aggregate else columns)
+        if err:
+            return err
+
+    if columns:
         df = df[columns]
 
     notes = []
