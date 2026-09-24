@@ -8,6 +8,8 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
+from .duo_meta import teldefinitie
+
 logger = logging.getLogger(__name__)
 
 # Leveranciers waarvoor we search_catalog actief steunen.
@@ -268,7 +270,7 @@ def search_catalog(
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
 
 
-_DETAILS_EXTRA = frozenset({"_resources"})
+_DETAILS_EXTRA = frozenset({"_resources", "teldefinitie"})
 
 
 def _build_details(entry: dict, dataset_id: str) -> str:
@@ -345,6 +347,9 @@ def dataset_details(dataset_id: str) -> str:
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
         if eid == dataset_id:
             logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
+            if entry.get("leverancier") == "DUO":
+                # Het moment waarop het model tussen bijv. p01 en p03 kiest (#172).
+                entry = {**entry, "teldefinitie": teldefinitie(dataset_id)}
             return _build_details(entry, dataset_id)
 
     logger.warning("dataset_details miss id=%s", dataset_id)
