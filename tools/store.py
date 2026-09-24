@@ -11,8 +11,8 @@ def put(key: str, value) -> None:
     # is er geen route eromheen. Idempotent, dus al gemaskeerde data kost niets.
     if key.startswith(_DUO_PREFIX):
         from . import duo  # lazy: duo importeert store, dus niet bovenaan
-        value, counts = duo.mask_sentinels(value)
-        duo.record_sentinel_counts(key, counts)
+        value, cells = duo.mask_sentinels(value)
+        duo.record_sentinel_cells(key, cells)
     _cache[key] = value
 
 
@@ -27,5 +27,5 @@ def list_keys() -> list[str]:
 def clear() -> None:
     _cache.clear()
     from . import cbs, duo  # lazy: zie put()
-    duo.clear_sentinel_counts()
+    duo.clear_sentinel_cells()
     cbs.clear_dimensions()

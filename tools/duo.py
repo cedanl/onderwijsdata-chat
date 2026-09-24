@@ -46,9 +46,13 @@ _DUO_SENTINELS = (-1,)
 # ongemaskeerd blijven.
 _SIGNED_HINTS = ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")
 
-# Telling per store-key, zodat get_duo_data de melding ook bij een cache-hit kan tonen.
-# Na maskering is het aantal niet meer uit de data af te leiden: de -1'en zijn dan weg.
-_sentinel_counts: dict[str, dict[str, int]] = {}
+# Per store-key: aantal gemaskeerde cellen per rij en kolom, alleen voor rijen met
+# minstens één (sparse). Per rij en niet per key, zodat query_data de telling met
+# dezelfde filter/selectie/groupby als de data kan meenemen: de melding hoort bij de
+# geselecteerde rijen, niet bij de hele dataset (#171). Na maskering is het aantal
+# niet meer uit de data af te leiden: de -1'en zijn dan weg.
+_sentinel_cells: dict[str, pd.DataFrame] = {}
+_EMPTY_CELLS = pd.DataFrame()
 
 
 def _coerce_pair(a, b):
@@ -73,46 +77,75 @@ def _is_maskable(df, col) -> bool:
     return not any(hint in str(col).upper() for hint in _SIGNED_HINTS)
 
 
-def mask_sentinels(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
-    """Vervang DUO-sentinels (-1) door pd.NA en tel hoeveel cellen dat waren.
+def mask_sentinels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Vervang DUO-sentinels (-1) door pd.NA en geef per rij aan welke cellen dat waren.
 
     DUO markeert onderdrukte waarden (kleine aantallen) met -1. Die mogen nooit als
-    telwaarde meedoen. Het aantal wordt teruggegeven omdat een onderdrukte cel betekent
+    telwaarde meedoen. De cellen worden bijgehouden omdat een onderdrukte cel betekent
     dat een totaal een ondergrens is: bij 2 onderdrukte cellen kan 300 in werkelijkheid
     hoger liggen, en dat moet de gebruiker kunnen zien.
 
+    Geeft (gemaskeerde df, cellen) terug; `cellen` heeft de index van df, alleen rijen
+    met minstens één sentinel, en per maskeerbare kolom het aantal (0/1).
+
     Wordt aangeroepen vanuit store.put() voor elke `duo:`-key, dus ook voor data die
-    niet via get_duo_data binnenkomt. Idempotent: al gemaskeerde data levert 0 op.
+    niet via get_duo_data binnenkomt. Idempotent: al gemaskeerde data levert niets op.
     """
-    counts: dict[str, int] = {}
-    out = df
+    masks = {}
     for col in df.columns:
-        if not _is_maskable(df, col):
-            continue
-        mask = out[col].isin(_DUO_SENTINELS)
-        n = int(mask.sum())
-        if n:
-            # Pas kopiëren als er echt iets te maskeren valt: put() draait dit op elke
-            # DataFrame die de store in gaat, ook de al gemaskeerde.
-            if out is df:
-                out = df.copy()
-            out.loc[mask, col] = pd.NA
-            counts[col] = n
-    return out, counts
+        if _is_maskable(df, col):
+            mask = df[col].isin(_DUO_SENTINELS)
+            if mask.any():
+                masks[col] = mask
+    if not masks:
+        return df, _EMPTY_CELLS
+    # Pas kopiëren als er echt iets te maskeren valt: put() draait dit op elke
+    # DataFrame die de store in gaat, ook de al gemaskeerde.
+    out = df.copy()
+    for col, mask in masks.items():
+        out.loc[mask, col] = pd.NA
+    cells = pd.DataFrame(masks).astype(int)
+    return out, cells[cells.any(axis=1)]
 
 
-def record_sentinel_counts(key: str, counts: dict[str, int]) -> None:
-    """Leg vast hoeveel cellen er voor deze key gemaskeerd zijn.
+def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
+    """Aantal gemaskeerde cellen per kolom; kolommen zonder cellen vallen weg."""
+    if cells is None or cells.empty:
+        return {}
+    return {col: int(n) for col, n in cells.sum().items() if n}
+
+
+def record_sentinel_cells(key: str, cells: pd.DataFrame) -> None:
+    """Leg vast welke cellen er voor deze key gemaskeerd zijn.
 
     Wordt door store.put() aangeroepen, zodat de telling er is ongeacht via welke route
     de data binnenkwam — niet alleen bij get_duo_data.
     """
-    _sentinel_counts[key] = counts
+    _sentinel_cells[key] = cells
 
 
-def clear_sentinel_counts() -> None:
+def clear_sentinel_cells() -> None:
     """Hoort bij store.clear(): zonder dit blijven tellingen achter voor keys die weg zijn."""
-    _sentinel_counts.clear()
+    _sentinel_cells.clear()
+
+
+def _select_cells(cells: pd.DataFrame | None, df: pd.DataFrame) -> pd.DataFrame:
+    """Beperk de cellen tot de rijen en kolommen die in de selectie `df` zitten."""
+    if cells is None or cells.empty:
+        return _EMPTY_CELLS
+    return cells.loc[cells.index.intersection(df.index), [c for c in cells.columns if c in df.columns]]
+
+
+def _aggregate_cells(cells: pd.DataFrame, df: pd.DataFrame, group_by: list[str], agg: pd.DataFrame) -> pd.DataFrame:
+    """Tel de cellen per groep op, uitgelijnd op de rijen van het aggregaat `agg`."""
+    # Alleen geaggregeerde waardekolommen; een groepeerkolom zit al in df[group_by].
+    cells = cells[[c for c in cells.columns if c in agg.columns and c not in group_by]]
+    if cells.empty:
+        return _EMPTY_CELLS
+    per_group = cells.join(df[group_by]).groupby(group_by, dropna=False).sum().reset_index()
+    rows = agg[group_by].reset_index().merge(per_group, on=group_by).set_index("index")
+    rows.index.name = None
+    return rows[list(cells.columns)]
 
 
 def sentinel_notes(counts: dict[str, int]) -> list[str]:
@@ -187,7 +220,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         "kolommen": schema,
         "preview": preview,
     }
-    notes = sentinel_notes(_sentinel_counts.get(key, {}))
+    notes = sentinel_notes(count_cells(_sentinel_cells.get(key)))
     if notes:
         result["databewerking"] = notes
 
@@ -292,15 +325,18 @@ def query_data(
     if columns:
         df = df[columns]
 
+    cells = _select_cells(_sentinel_cells.get(data_key), df)
     notes = []
     if group_by or aggregate:
         err = _validate_aggregation(df, group_by, aggregate)
         if err:
             return err
-        df = _apply_aggregation(df, group_by, aggregate)
+        agg = _apply_aggregation(df, group_by, aggregate)
         # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
-        # leest, en onderdrukte cellen maken dat totaal een ondergrens.
-        notes = sentinel_notes(_sentinel_counts.get(data_key, {}))
+        # leest, en onderdrukte cellen in de selectie maken dat totaal een ondergrens.
+        notes = sentinel_notes(count_cells(cells))
+        cells = _aggregate_cells(cells, df, group_by, agg)
+        df = agg
 
     transformed = filters or columns or group_by
     if transformed:
@@ -308,9 +344,9 @@ def query_data(
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
         store.put(result_key, df)
-        # De afgeleide data is al gemaskeerd, dus put() telt hier 0. De waarschuwing
-        # hoort wel mee te reizen: het totaal blijft een ondergrens.
-        _sentinel_counts[result_key] = _sentinel_counts.get(data_key, {})
+        # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
+        # van de selectie reizen wel mee: het totaal blijft een ondergrens.
+        _sentinel_cells[result_key] = cells
     else:
         result_key = data_key
 
