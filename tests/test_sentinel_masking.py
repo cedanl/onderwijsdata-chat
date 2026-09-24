@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from tools import store
-from tools.duo import _apply_aggregation, mask_sentinels, query_data, sentinel_notes
+from tools.duo import _apply_aggregation, count_cells, mask_sentinels, query_data, sentinel_notes
 
 
 @pytest.fixture(autouse=True)
@@ -25,11 +25,12 @@ def _schone_store():
 class TestMaskSentinels:
     def test_vervangt_minus_een_door_na(self):
         df = pd.DataFrame({"AANTAL": [100, 200, -1, 300], "NAAM": ["A", "B", "C", "D"]})
-        masked, counts = mask_sentinels(df)
+        masked, cells = mask_sentinels(df)
 
         assert pd.isna(masked.loc[2, "AANTAL"])
         assert [masked.loc[i, "AANTAL"] for i in (0, 1, 3)] == [100, 200, 300]
-        assert counts == {"AANTAL": 1}
+        assert count_cells(cells) == {"AANTAL": 1}
+        assert list(cells.index) == [2]
 
     def test_laat_niet_numerieke_kolommen_ongemoeid(self):
         df = pd.DataFrame({
@@ -51,10 +52,10 @@ class TestMaskSentinels:
 
     def test_telt_meerdere_sentinels_per_kolom(self):
         df = pd.DataFrame({"AANTAL": [-1, 100, -1, 200, -1]})
-        masked, counts = mask_sentinels(df)
+        masked, cells = mask_sentinels(df)
 
         assert [pd.isna(masked.loc[i, "AANTAL"]) for i in (0, 2, 4)] == [True] * 3
-        assert counts == {"AANTAL": 3}
+        assert count_cells(cells) == {"AANTAL": 3}
 
     def test_laat_de_bron_dataframe_ongewijzigd(self):
         df = pd.DataFrame({"AANTAL": [100, -1]})
@@ -63,29 +64,29 @@ class TestMaskSentinels:
         assert df.loc[1, "AANTAL"] == -1
 
     def test_is_idempotent(self):
-        eerste, counts_1 = mask_sentinels(pd.DataFrame({"AANTAL": [100, -1]}))
-        _, counts_2 = mask_sentinels(eerste)
+        eerste, cells_1 = mask_sentinels(pd.DataFrame({"AANTAL": [100, -1]}))
+        _, cells_2 = mask_sentinels(eerste)
 
-        assert counts_1 == {"AANTAL": 1}
-        assert counts_2 == {}
+        assert count_cells(cells_1) == {"AANTAL": 1}
+        assert count_cells(cells_2) == {}
 
     def test_maskeert_geen_kolom_waarin_min_een_een_meetwaarde_is(self):
         """-1 in een mutatie/saldo-kolom is een echte waarde, geen onderdrukte cel."""
         df = pd.DataFrame({"SALDO_MUTATIE": [50, -1, 30], "AANTAL": [10, -1, 20]})
-        masked, counts = mask_sentinels(df)
+        masked, cells = mask_sentinels(df)
 
         assert masked.loc[1, "SALDO_MUTATIE"] == -1
         assert pd.isna(masked.loc[1, "AANTAL"])
-        assert counts == {"AANTAL": 1}
+        assert count_cells(cells) == {"AANTAL": 1}
 
     def test_maskeert_pivot_telkolommen_zonder_aantal_prefix(self):
         """DUO kent pivot-datasets waarin de telling in de kolomnaam zit."""
         df = pd.DataFrame({"DIPMAN2023": [40, -1], "JAAR_2022": [15, -1]})
-        masked, counts = mask_sentinels(df)
+        masked, cells = mask_sentinels(df)
 
         assert pd.isna(masked.loc[1, "DIPMAN2023"])
         assert pd.isna(masked.loc[1, "JAAR_2022"])
-        assert counts == {"DIPMAN2023": 1, "JAAR_2022": 1}
+        assert count_cells(cells) == {"DIPMAN2023": 1, "JAAR_2022": 1}
 
 
 class TestStoreRoutes:
@@ -191,3 +192,77 @@ class TestAggregatie:
 
         assert waarde[("X", "1")] == 300.0
         assert waarde[("Y", "2")] == 150.0
+
+
+class TestMeldingPerSelectie:
+    """De melding hoort bij de geselecteerde rijen, niet bij de hele dataset (#171).
+
+    Live-audit 5: de HU-voltijdreeks (0 onderdrukte cellen) werd 'een ondergrens'
+    genoemd omdat p01hoinges als geheel 101 cellen met -1 heeft.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _bron(self):
+        store.put("duo:p01:3", pd.DataFrame({
+            "INSTELLING": ["HU", "HU", "X", "X", "X"],
+            "JAAR": [2024, 2025, 2024, 2025, 2025],
+            "AANTAL": [27135, 26370, -1, 40, -1],
+        }))
+
+    def _som(self, key, **kwargs):
+        return json.loads(query_data(key, group_by=["JAAR"], aggregate={"AANTAL": "sum"}, **kwargs))
+
+    def test_schone_selectie_krijgt_geen_melding(self):
+        result = self._som("duo:p01:3", filters={"INSTELLING": "HU"})
+
+        assert "databewerking" not in result
+
+    def test_melding_telt_alleen_de_selectie(self):
+        store.put("duo:groot", pd.DataFrame({
+            "INSTELLING": ["X", "X", "Y"], "JAAR": [2025, 2025, 2025], "AANTAL": [-1, -1, -1],
+        }))
+
+        result = self._som("duo:groot", filters={"INSTELLING": "X"})
+
+        assert result["databewerking"][0].startswith("2 cellen")
+
+    def test_zonder_filter_telt_de_hele_dataset(self):
+        result = self._som("duo:p01:3")
+
+        assert result["databewerking"][0].startswith("2 cellen")
+
+    def test_afgeleide_schone_selectie_blijft_schoon(self):
+        tussenstap = json.loads(query_data("duo:p01:3", filters={"INSTELLING": "HU"}))
+
+        result = self._som(tussenstap["data_key"])
+
+        assert "databewerking" not in result
+
+    def test_geaggregeerde_key_houdt_telling_per_groep(self):
+        # Na aggregeren zijn de NA's weg; de telling moet per groep meereizen.
+        store.put("duo:jaren", pd.DataFrame({
+            "JAAR": [2024, 2024, 2025, 2025], "AANTAL": [10, 20, -1, 5],
+        }))
+        per_jaar = self._som("duo:jaren")
+
+        schoon = self._som(per_jaar["data_key"], filters={"JAAR": 2024})
+        vuil = self._som(per_jaar["data_key"], filters={"JAAR": 2025})
+
+        assert "databewerking" not in schoon
+        assert vuil["databewerking"][0].startswith("1 cellen")
+
+    def test_weggeselecteerde_kolom_neemt_geen_melding_mee(self):
+        tussenstap = json.loads(query_data("duo:p01:3", columns=["INSTELLING", "JAAR"]))
+
+        result = json.loads(query_data(
+            tussenstap["data_key"], group_by=["INSTELLING"], aggregate={"JAAR": "count"},
+        ))
+
+        assert "databewerking" not in result
+
+    def test_groeperen_op_kolom_met_sentinels_crasht_niet(self):
+        store.put("duo:codes", pd.DataFrame({"CODE": [1, -1, 1], "AANTAL": [5, 6, -1]}))
+
+        result = json.loads(query_data("duo:codes", group_by=["CODE"], aggregate={"AANTAL": "sum"}))
+
+        assert sorted(result["databewerking"]) == sentinel_notes({"AANTAL": 1, "CODE": 1})
