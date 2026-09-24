@@ -692,7 +692,8 @@ input, textarea { font: inherit; }
   transition: all .15s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,.3);
 }
 .send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.4); }
-.send-btn:disabled { background: var(--gray-200); color: var(--muted-text); cursor: not-allowed; box-shadow: none; transform: none; }
+/* aria-disabled keeps the send button in the Tab order, so screen reader users can find it. */
+.send-btn:disabled, .send-btn[aria-disabled="true"] { background: var(--gray-200); color: var(--muted-text); cursor: not-allowed; box-shadow: none; transform: none; }
 .message-stopped { font-size: .78rem; color: var(--gray-500); font-style: italic; margin-top: 4px; }
 .message-continue {
   font: inherit; font-style: normal; font-weight: 600; color: var(--accent-text);
