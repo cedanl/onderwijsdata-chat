@@ -39,6 +39,7 @@ def _new_session(username: str | None = None) -> dict:
         "current_model": None,
         "stop_event": None,
         "_last_turn_tool_calls": [],
+        "data_keys": [],
         "conv_id": str(uuid.uuid4()),
         # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
         # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.

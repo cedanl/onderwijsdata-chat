@@ -1,123 +1,75 @@
 import json
-from unittest.mock import patch
 
 import pandas as pd
 
 from agent.dashboard import (
     DashboardSpec,
+    _build_recipe,
     _collect_kpi,
-    _validate_kpis,
-    _build_recipe_from_store,
     _extract_json_object,
+    _validate_kpis,
     build_dataset_context,
 )
+from tools import store
 
 
 class TestBuildDatasetContext:
-    def test_builds_context_from_session_turns(self):
-        with patch("agent.dashboard.store") as mock_store:
-            df = pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [100, 200], "NAAM": ["A", "B"]})
-            mock_store.get.return_value = df
-            mock_store.list_keys.return_value = ["duo:p01hoinges:0"]
+    def test_describes_the_datasets_of_this_conversation(self):
+        store.put("cbs:85423NED", pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [100, 200], "NAAM": ["A", "B"]}))
+        session = {"data_keys": ["cbs:85423NED"], "chat_settings": {"instelling": "Hogeschool Utrecht"}}
 
-            session = {
-                "turns": [
-                    {
-                        "tool_calls": [
-                            {"name": "get_duo_data", "arguments": '{"dataset_id": "p01hoinges", "resource": 0}'},
-                        ],
-                    }
-                ],
-                "chat_settings": {"instelling": "Hogeschool Utrecht"},
-            }
-
-            context = build_dataset_context(session)
+        context = build_dataset_context(session)
 
         assert len(context["datasets"]) == 1
         ds = context["datasets"][0]
-        assert ds["data_key"] == "duo:p01hoinges:0"
+        assert ds["data_key"] == "cbs:85423NED"
         assert ds["row_count"] == 2
         assert len(ds["columns"]) == 3
 
-    def test_unhashable_cells_do_not_break_context(self):
-        with patch("agent.dashboard.store") as mock_store:
-            df = pd.DataFrame({
-                "code": ["30TX", "25DW"],
-                "_links": [{"self": {"href": "a"}}, {"self": {"href": "b"}}],
-                "tags": [["x"], ["y"]],
-            })
-            mock_store.get.return_value = df
-            mock_store.list_keys.return_value = ["rio:erkenningen"]
+    def test_excludes_data_loaded_by_other_conversations(self):
+        store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
+        store.put("rio:erkenningen", pd.DataFrame({"b": [2]}))
 
-            context = build_dataset_context({"turns": [], "chat_settings": {}})
+        context = build_dataset_context({"data_keys": ["cbs:85423NED"], "chat_settings": {}})
+
+        assert [d["data_key"] for d in context["datasets"]] == ["cbs:85423NED"]
+
+    def test_unhashable_cells_do_not_break_context(self):
+        store.put("rio:erkenningen", pd.DataFrame({
+            "code": ["30TX", "25DW"],
+            "_links": [{"self": {"href": "a"}}, {"self": {"href": "b"}}],
+            "tags": [["x"], ["y"]],
+        }))
+
+        context = build_dataset_context({"data_keys": ["rio:erkenningen"], "chat_settings": {}})
 
         columns = {c["naam"]: c for c in context["datasets"][0]["columns"]}
         assert columns["_links"]["voorbeelden"] == ["{'self': {'href': 'a'}}", "{'self': {'href': 'b'}}"]
         assert columns["tags"]["voorbeelden"] == ["['x']", "['y']"]
 
-    def test_empty_session_returns_empty(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.list_keys.return_value = []
-
-            session = {"turns": [], "chat_settings": {}}
-            context = build_dataset_context(session)
-
-        assert context["datasets"] == []
-
-    def test_skips_missing_store_keys(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.get.return_value = None
-            mock_store.list_keys.return_value = ["duo:p01hoinges:0"]
-
-            session = {
-                "turns": [
-                    {"tool_calls": [{"name": "get_duo_data", "arguments": '{"dataset_id": "p01hoinges"}'}]},
-                ],
-                "chat_settings": {},
-            }
-            context = build_dataset_context(session)
-
-        assert context["datasets"] == []
+    def test_new_conversation_has_no_datasets(self):
+        store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
+        assert build_dataset_context({"chat_settings": {}})["datasets"] == []
 
     def test_includes_instelling(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.list_keys.return_value = []
-
-            session = {
-                "turns": [],
-                "chat_settings": {"instelling": "Hogeschool Utrecht"},
-            }
-            context = build_dataset_context(session)
-
+        context = build_dataset_context({"chat_settings": {"instelling": "Hogeschool Utrecht"}})
         assert context["instelling"] == "Hogeschool Utrecht"
 
     def test_includes_conversation_topic(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.list_keys.return_value = []
-
-            session = {
-                "turns": [{"question": "Hoeveel studenten heeft de HU?", "tool_calls": []}],
-                "chat_settings": {},
-                "messages": [{"role": "user", "content": "Hoeveel studenten heeft de HU?"}],
-            }
-            context = build_dataset_context(session)
-
-        assert "HU" in context["topic"]
+        session = {
+            "turns": [{"question": "Hoeveel studenten heeft de HU?", "tool_calls": []}],
+            "chat_settings": {},
+        }
+        assert "HU" in build_dataset_context(session)["topic"]
 
 
-class TestBuildRecipeFromStore:
-    def test_builds_recipe_from_store_keys(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.list_keys.return_value = ["duo:p01hoinges:0", "cbs:85421NED"]
-            recipe = _build_recipe_from_store()
-        assert len(recipe) == 2
-        assert recipe[0]["name"] == "get_duo_data"
-        assert recipe[1]["name"] == "get_cbs_data"
+class TestBuildRecipe:
+    def test_builds_reload_calls_from_data_keys(self):
+        recipe = _build_recipe(["duo:p01hoinges:0", "cbs:85421NED", "query:abc"])
+        assert [r["name"] for r in recipe] == ["get_duo_data", "get_cbs_data"]
 
-    def test_empty_store(self):
-        with patch("agent.dashboard.store") as mock_store:
-            mock_store.list_keys.return_value = []
-            assert _build_recipe_from_store() == []
+    def test_no_keys(self):
+        assert _build_recipe([]) == []
 
 
 class TestExtractJsonObject:

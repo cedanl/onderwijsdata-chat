@@ -15,6 +15,7 @@ from .history import trim
 from .model_context import clamp_max_tokens
 from .models import build_system, litellm_kwargs
 from .ratelimit import acompletion_with_backoff
+from .session_data import record_data_key
 from .stream import accumulate_stream
 
 logger = logging.getLogger(__name__)
@@ -254,6 +255,7 @@ async def run(
                     history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
                     continue
                 result, figure = call_cache[_call_key(tc)]
+                record_data_key(session, result)
                 await _handle_figures(tc, figure, session, emit)
                 if len(result) > 12000:
                     result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"

@@ -22,6 +22,7 @@ import plotly.io as pio
 from agent.model_context import clamp_max_tokens
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
+from agent.session_data import session_data_keys
 from agent.stream import accumulate_stream
 from core.config import MAX_TOKENS, MODEL
 from tools import LABELS, dispatch, store
@@ -80,14 +81,10 @@ class DashboardSpec:
         )
 
 
-def _build_recipe_from_store() -> list[dict]:
-    """Build recipe from current store keys — each key encodes how to reload."""
+def _build_recipe(data_keys: list[str]) -> list[dict]:
+    """Reload calls for the given data keys — each key encodes how to reload."""
     recipe: list[dict] = []
-    seen: set[str] = set()
-    for key in store.list_keys():
-        if key in seen:
-            continue
-        seen.add(key)
+    for key in data_keys:
         parts = key.split(":", 2)
         if parts[0] == "duo" and len(parts) >= 3:
             recipe.append({"name": TOOL_GET_DUO_DATA, "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})})
@@ -116,15 +113,8 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
 def build_dataset_context(session: dict) -> dict:
     """Build a context dict describing the available datasets for the LLM."""
     datasets: list[dict] = []
-    seen_keys: set[str] = set()
-
-    for key in store.list_keys():
+    for key in session_data_keys(session):
         df = store.get(key)
-        if df is None:
-            continue
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
         datasets.append({
             "data_key": key,
             "row_count": len(df),
@@ -422,7 +412,7 @@ def _parse_spec_from_response(
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
 
-    recipe = _build_recipe_from_store()
+    recipe = _build_recipe([ds["data_key"] for ds in context.get("datasets", [])])
     topic = context.get("topic", "Dashboard")
 
     sources = spec_data.get("sources") or []
