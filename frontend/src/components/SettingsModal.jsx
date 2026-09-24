@@ -162,7 +162,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
             onClick={handleSave}
             style={{
               flex: 1, padding: '12px', borderRadius: 'var(--radius)',
-              background: 'var(--blue-600)', color: 'var(--white)',
+              background: 'var(--blue-600)', color: 'var(--on-color)',
               fontWeight: 700, fontSize: '.95rem', transition: 'background .15s',
             }}
             onMouseEnter={e => e.target.style.background = 'var(--blue-700)'}
