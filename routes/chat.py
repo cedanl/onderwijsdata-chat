@@ -2,9 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import re
-import time
-import uuid
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -17,7 +14,6 @@ from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, verify_token
 from core.config import MAX_HISTORY, MODEL
 from core.errors import friendly_error
-from persistence import db as persistence_db
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -40,7 +36,6 @@ def _new_session(username: str | None = None) -> dict:
         "stop_event": None,
         "_last_turn_tool_calls": [],
         "data_keys": [],
-        "conv_id": str(uuid.uuid4()),
         # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
         # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.
         "username": username or FALLBACK_USER,
@@ -50,9 +45,8 @@ def _new_session(username: str | None = None) -> dict:
 def _reset_session(session: dict) -> None:
     """Start a new conversation on this connection (#70).
 
-    Everything the agent could remember goes — messages, turns, figures, clarify
-    and tool state — and the conversation gets a new id. Only who is chatting and
-    their settings carry over.
+    Everything the agent could remember goes — messages, turns, figures, clarify,
+    tool state and loaded data. Only who is chatting and their settings carry over.
     """
     fresh = _new_session(username=session["username"])
     fresh["chat_settings"] = session.get("chat_settings") or {}
@@ -60,35 +54,14 @@ def _reset_session(session: dict) -> None:
     session.update(fresh)
 
 
-def _conversation_title(messages: list[dict]) -> str:
-    """First readable user text, without markup, as the conversation title."""
-    for msg in messages:
-        if msg.get("role") == "user":
-            plain = " ".join(re.sub(r"<[^>]*>", " ", msg.get("content") or "").split())
-            if plain:
-                return plain[:100]
-    return "Untitled"
+def _open_conversation(session: dict, messages: list) -> None:
+    """Continue a stored conversation: a fresh session that knows only its text.
 
-
-def _persist_conversation(session: dict) -> bool:
-    """Save the conversation to the database. Returns True if successful."""
-    if not session.get("messages"):
-        return True  # Nothing to save
-    try:
-        persistence_db.upsert_conversation(
-            username=session.get("username", FALLBACK_USER),
-            conv_id=session.get("conv_id"),
-            title=_conversation_title(session.get("messages", [])),
-            timestamp=int(time.time() * 1000),
-            messages=session.get("messages", []),
-        )
-        return True
-    except Exception as e:
-        logger.error(
-            f"Failed to persist conversation {session.get('conv_id')}: {e}",
-            exc_info=True
-        )
-        return False
+    Nothing of the previously open conversation may leak into it — not its turns,
+    and not its loaded data, which a report would otherwise pick up.
+    """
+    _reset_session(session)
+    session["messages"] = _parse_history(messages)
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -125,7 +98,6 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         })
         session["turns"] = turns
     session["messages"] = messages
-    _persist_conversation(session)
 
 
 async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
@@ -258,6 +230,12 @@ def _handle_stop(session: dict) -> None:
         stop_event.set()
 
 
+def _stop_task(session: dict, task: asyncio.Task | None) -> None:
+    if _task_busy(task):
+        _handle_stop(session)
+        task.cancel()
+
+
 async def _handle_message(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
@@ -356,18 +334,16 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
             if action == "stop":
                 _handle_stop(session)
             elif action == "reset":
-                if _task_busy(current_task):
-                    _handle_stop(session)
-                    current_task.cancel()
-                _persist_conversation(session)
+                _stop_task(session, current_task)
                 _reset_session(session)
                 current_task = None
-                await emit({"type": "reset_done", "conv_id": session["conv_id"]})
+                await emit({"type": "reset_done"})
             elif action == "settings":
                 session["chat_settings"] = msg.get("settings", {})
             elif action == "history":
-                session["messages"] = _parse_history(msg.get("messages") or [])
-                _persist_conversation(session)
+                _stop_task(session, current_task)
+                _open_conversation(session, msg.get("messages") or [])
+                current_task = None
             elif action == "message":
                 current_task = await _handle_message(msg, session, emit, current_task)
             elif action == "clarification_choice":
@@ -380,7 +356,6 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
                 current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
 
     except WebSocketDisconnect:
-        _persist_conversation(session)
         if current_task is not None and _task_busy(current_task):
             current_task.cancel()
             stop_event = session.get("stop_event")

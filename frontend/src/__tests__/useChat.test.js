@@ -130,7 +130,7 @@ describe('useChat new conversation', () => {
     await act(async () => { chat.send('Welke afkorting noemde ik eerder?') })
     expect(ws.sent.filter(m => m.action === 'message')).toEqual([])
 
-    await act(async () => { ws.emit({ type: 'reset_done', conv_id: 'nieuw' }) })
+    await act(async () => { ws.emit({ type: 'reset_done' }) })
     expect(chat.resetting).toBe(false)
     await act(async () => { chat.send('Welke afkorting noemde ik eerder?') })
     expect(ws.sent.filter(m => m.action === 'message')).toHaveLength(1)
