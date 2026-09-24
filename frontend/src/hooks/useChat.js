@@ -79,6 +79,21 @@ export function useChat({ onUnauthorized } = {}) {
       setBusy(false)
     }
 
+    // The server session is gone with its socket, and so is the answer it was writing.
+    function endInterruptedTurn() {
+      if (!busyRef.current) return
+      if (currentMsgRef.current) {
+        updateCurrentMsg(m => ({ ...m, done: true, interrupted: true }))
+      } else {
+        setMessages(prev => [...prev, {
+          id: nextId(), role: 'assistant', done: true, isError: true,
+          content: 'De verbinding viel weg voordat er een antwoord kwam. Stel je vraag opnieuw.',
+        }])
+      }
+      setThinking(false)
+      finishStream()
+    }
+
     const messageHandlers = {
       system_message(ev) {
         addToast(ev.message, 'warning')
@@ -209,7 +224,7 @@ export function useChat({ onUnauthorized } = {}) {
 
       ws.onclose = (e) => {
         setConnected(false)
-        setBusy(false)
+        endInterruptedTurn()
 
         if (e.code === 4001) {
           clearToken()
@@ -245,21 +260,24 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [addToast, cancelCurrentMsg, onUnauthorized])
 
+  // Returns whether the question went out, so the caller only clears what was typed when it did.
   const send = useCallback((content) => {
-    if (!wsRef.current || busyRef.current || resettingRef.current) return
+    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return false
     busyRef.current = true
     setBusy(true)
     setThinking(true)
     setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
+    return true
   }, [])
 
   const sendClarification = useCallback((choice) => {
-    if (!wsRef.current || busy) return
+    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return
+    busyRef.current = true
     setBusy(true)
     setMessages(prev => [...prev, { id: nextId(), role: 'user', content: choice, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
-  }, [busy])
+  }, [])
 
   const sendSettings = useCallback((settings) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

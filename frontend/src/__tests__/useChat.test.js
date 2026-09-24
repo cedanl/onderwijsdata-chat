@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat } from '../hooks/useChat'
@@ -143,6 +143,71 @@ describe('useChat new conversation', () => {
       ws.emit({ type: 'message_end', content: 'oud antwoord' })
     })
     await act(async () => { chat.startNewConversation() })
+    expect(chat.messages).toEqual([])
+  })
+})
+
+describe('useChat connection loss', () => {
+  const drop = async (ws) => {
+    await act(async () => {
+      ws.readyState = 3
+      ws.onclose({ code: 1006 })
+    })
+  }
+
+  afterEach(() => vi.useRealTimers())
+
+  it('ends a half-streamed answer visibly and accepts the next question after reconnecting', async () => {
+    vi.useFakeTimers()
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      chat.send('Eerste vraag')
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Half' })
+    })
+    await drop(ws)
+
+    const [msg] = assistantMessages()
+    expect(msg).toMatchObject({ content: 'Half', done: true, interrupted: true })
+    expect(chat.busy).toBe(false)
+    expect(chat.thinking).toBe(false)
+
+    await act(async () => { vi.advanceTimersByTime(1000) })
+    const reconnected = FakeWebSocket.last
+    expect(reconnected).not.toBe(ws)
+    await act(async () => { reconnected.onopen() })
+    let accepted
+    await act(async () => { accepted = chat.send('Tweede vraag') })
+    expect(accepted).toBe(true)
+    expect(reconnected.sent).toContainEqual({ action: 'message', content: 'Tweede vraag' })
+  })
+
+  it('tells the user when a question got no answer before the connection dropped', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Vraag') })
+    await drop(ws)
+    const [msg] = assistantMessages()
+    expect(msg.isError).toBe(true)
+    expect(chat.busy).toBe(false)
+  })
+
+  it('also recovers when the answer to a clarification choice is cut off', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      chat.sendClarification('HBO')
+      ws.emit({ type: 'message_start' })
+    })
+    await drop(ws)
+    expect(chat.busy).toBe(false)
+    expect(assistantMessages()[0].interrupted).toBe(true)
+  })
+
+  it('refuses to send while the connection is down', async () => {
+    const ws = FakeWebSocket.last
+    await drop(ws)
+    let accepted
+    await act(async () => { accepted = chat.send('Vraag') })
+    expect(accepted).toBe(false)
     expect(chat.messages).toEqual([])
   })
 })
