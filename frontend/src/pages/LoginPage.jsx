@@ -60,7 +60,7 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
               style={{
                 display: 'block', textAlign: 'center', padding: '12px',
                 borderRadius: 'var(--radius)', background: 'var(--blue-600)',
-                color: 'var(--white)', fontWeight: 700, fontSize: '.95rem',
+                color: 'var(--on-color)', fontWeight: 700, fontSize: '.95rem',
                 textDecoration: 'none', marginBottom: 20,
               }}
             >
@@ -128,7 +128,7 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
             style={{
               padding: '12px', borderRadius: 'var(--radius)',
               background: busy ? 'var(--gray-300)' : 'var(--blue-600)',
-              color: 'var(--white)', fontWeight: 700, fontSize: '.95rem',
+              color: 'var(--on-color)', fontWeight: 700, fontSize: '.95rem',
               transition: 'background .15s', marginTop: 4,
             }}
           >

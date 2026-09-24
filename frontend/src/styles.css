@@ -32,6 +32,9 @@
   --gray-100: #F3F4F6;
   --gray-50:  #F9FAFB;
   --white:    #FFFFFF;
+  /* Always white: text and light buttons on coloured or dark surfaces. The dark theme
+     flips --white to a dark surface colour, so it cannot be used for that. */
+  --on-color: #FFFFFF;
   --radius-sm: 6px;
   --radius:    10px;
   --radius-lg: 16px;
@@ -89,7 +92,6 @@ input, textarea { font: inherit; }
 .text-xs   { font-size: .75rem; line-height: 1rem; }
 .text-sm   { font-size: .875rem; line-height: 1.25rem; }
 .text-muted { color: var(--gray-500); }
-.text-white { color: var(--white); }
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
 
@@ -141,7 +143,7 @@ input, textarea { font: inherit; }
 }
 .navbar-cta {
   padding: 8px 20px; border-radius: var(--radius-sm);
-  background: var(--blue-600); color: var(--white);
+  background: var(--blue-600); color: var(--on-color);
   font-size: .875rem; font-weight: 600;
   transition: background .15s;
 }
@@ -198,7 +200,7 @@ input, textarea { font: inherit; }
 /* ─── HOME PAGE ───────────────────────────────────────────── */
 .hero {
   background: linear-gradient(160deg, var(--blue-900) 0%, var(--blue-700) 60%, var(--teal-600) 100%);
-  color: var(--white); padding: 96px 0 80px;
+  color: var(--on-color); padding: 96px 0 80px;
   position: relative; overflow: hidden;
 }
 .hero::before {
@@ -221,20 +223,20 @@ input, textarea { font: inherit; }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .btn-primary {
   padding: 14px 28px; border-radius: var(--radius);
-  background: var(--white); color: var(--blue-700);
+  background: var(--on-color); color: var(--blue-700);
   font-weight: 700; font-size: 1rem;
   transition: all .15s; box-shadow: 0 4px 14px rgba(0,0,0,.15);
 }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
 .btn-ghost {
   padding: 14px 28px; border-radius: var(--radius);
-  border: 1.5px solid rgba(255,255,255,.35); color: var(--white);
+  border: 1.5px solid rgba(255,255,255,.35); color: var(--on-color);
   font-weight: 600; font-size: 1rem;
   transition: all .15s;
 }
 .btn-ghost:hover { background: rgba(255,255,255,.1); }
 .hero-stats { display: flex; gap: 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
-.hero-stat-value { font-size: 2rem; font-weight: 800; color: var(--white); letter-spacing: -.03em; }
+.hero-stat-value { font-size: 2rem; font-weight: 800; color: var(--on-color); letter-spacing: -.03em; }
 .hero-stat-label { font-size: .85rem; color: rgba(255,255,255,.65); margin-top: 2px; }
 
 .section { padding: 80px 0; }
@@ -282,7 +284,7 @@ input, textarea { font: inherit; }
 /* ─── CTA section ────────────────────────────────────────── */
 .cta-section {
   background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-700) 100%);
-  padding: 72px 0; text-align: center; color: var(--white);
+  padding: 72px 0; text-align: center; color: var(--on-color);
 }
 .cta-section h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 12px; }
 .cta-section p { font-size: 1rem; color: rgba(255,255,255,.72); margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto; }
@@ -322,7 +324,7 @@ input, textarea { font: inherit; }
   display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,.8); transition: all .15s;
 }
-.modal-overlay-close:hover { background: rgba(255,255,255,.15); color: var(--white); }
+.modal-overlay-close:hover { background: rgba(255,255,255,.15); color: var(--on-color); }
 .modal-close {
   width: 32px; height: 32px; border-radius: var(--radius-sm); margin-top: 2px;
   display: flex; align-items: center; justify-content: center;
@@ -475,7 +477,7 @@ input, textarea { font: inherit; }
   width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700;
 }
-.message.user .message-avatar { background: var(--blue-600); color: var(--white); }
+.message.user .message-avatar { background: var(--blue-600); color: var(--on-color); }
 .message.assistant .message-avatar { background: linear-gradient(135deg, var(--blue-600), var(--teal-500)); }
 .message-avatar svg { width: 18px; height: 18px; color: white; }
 .message-bubble {
@@ -483,7 +485,7 @@ input, textarea { font: inherit; }
   border-radius: var(--radius-lg); padding: 16px 20px;
   font-size: .9rem; line-height: 1.65; box-shadow: var(--shadow-sm);
 }
-.message.user .message-bubble { background: var(--blue-600); color: var(--white); border-color: transparent; }
+.message.user .message-bubble { background: var(--blue-600); color: var(--on-color); border-color: transparent; }
 .resend-btn {
   opacity: 0; transition: opacity .15s; background: none; border: none; cursor: pointer;
   color: var(--gray-400); padding: 4px; border-radius: 4px; align-self: center; flex-shrink: 0;
@@ -616,7 +618,7 @@ input, textarea { font: inherit; }
 }
 .clarification-btn:hover:not(:disabled) { background: var(--blue-100); border-color: var(--blue-400); }
 .clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.clarification-btn.selected { background: var(--blue-600); color: var(--white); border-color: var(--blue-700); font-weight: 600; }
+.clarification-btn.selected { background: var(--blue-600); color: var(--on-color); border-color: var(--blue-700); font-weight: 600; }
 
 .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
 .ai-typing span {
@@ -663,7 +665,7 @@ input, textarea { font: inherit; }
 .send-btn {
   width: 38px; height: 38px; border-radius: var(--radius);
   background: linear-gradient(135deg, var(--blue-600), var(--teal-500));
-  color: var(--white);
+  color: var(--on-color);
   display: flex; align-items: center; justify-content: center;
   transition: all .15s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,.3);
 }
@@ -785,14 +787,14 @@ html.dark .context-limit-banner--full {
 .dc-msg-user { flex-direction: row-reverse; }
 .dc-msg-avatar {
   width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--blue-600), var(--teal-500));
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--white);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--on-color);
 }
 .dc-msg-avatar svg { width: 14px; height: 14px; }
 .dc-msg-bubble {
   background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius);
   padding: 12px 16px; font-size: .88rem; line-height: 1.6; max-width: 90%;
 }
-.dc-msg-user .dc-msg-bubble { background: var(--blue-600); color: var(--white); border-color: var(--blue-600); }
+.dc-msg-user .dc-msg-bubble { background: var(--blue-600); color: var(--on-color); border-color: var(--blue-600); }
 .dc-msg-error { border-color: #FECACA; background: #FFF5F5; }
 .dc-msg-bubble table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .dc-msg-bubble th { background: var(--blue-50); color: var(--blue-700); font-weight: 700; padding: 6px 10px; text-align: left; font-size: .82rem; }
@@ -848,7 +850,7 @@ html.dark .context-limit-banner--full {
 }
 .dc-clarification-btn:hover:not(:disabled) { background: var(--blue-50); border-color: var(--blue-400); }
 .dc-clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.dc-clarification-btn.selected { background: var(--blue-600); color: var(--white); border-color: var(--blue-700); }
+.dc-clarification-btn.selected { background: var(--blue-600); color: var(--on-color); border-color: var(--blue-700); }
 
 .wb-gallery-page { padding: 28px 48px; }
 .wb-gallery-header {
@@ -1082,8 +1084,8 @@ html.dark .context-limit-banner--full {
   animation: slideUp .3s ease;
 }
 .toast.info { background: var(--gray-900); color: var(--white); }
-.toast.warning { background: #92400E; color: var(--white); }
-.toast.error { background: #991B1B; color: var(--white); }
+.toast.warning { background: #92400E; color: var(--on-color); }
+.toast.error { background: #991B1B; color: var(--on-color); }
 @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* ─── Confirm Modal ───────────────────────────────────────── */
@@ -1123,7 +1125,7 @@ html.dark .clarification-btn.selected,
 html.dark .dc-clarification-btn.selected {
   background: rgba(59, 130, 246, 0.8);
   border-color: var(--blue-400);
-  color: var(--white);
+  color: var(--on-color);
 }
 html.dark .restored-banner {
   background: rgba(37, 99, 235, 0.15);
