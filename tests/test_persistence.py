@@ -200,6 +200,96 @@ def test_migrate_converts_existing_ms_timestamps(db):
     assert old["timestamp"] == 1700000000
 
 
+def _reload_and_init(tmp_path, monkeypatch):
+    """Reload the db module with a fresh DATABASE_PATH and run init_db()."""
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    import importlib
+
+    from persistence import db as fresh
+    importlib.reload(fresh)
+    fresh.init_db()
+    return fresh
+
+
+def _raw_insert(conn, conv_id, username, title, timestamp, messages):
+    conn.execute(
+        "INSERT INTO conversations (id, username, title, timestamp, messages) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (conv_id, username, title, timestamp, json.dumps(messages)),
+    )
+
+
+def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatch):
+    conn = db._connect()
+    msgs_short = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "Kort."}]
+    msgs_full = [
+        {"role": "user", "content": "Hoeveel studenten?"},
+        {"role": "assistant", "content": "Volledig antwoord."},
+        {"role": "user", "content": "En in deeltijd?"},
+        {"role": "assistant", "content": "Nog vollediger."},
+    ]
+    _raw_insert(conn, "dup-1", "alice", "Mijn vraag", 1700000000, msgs_full)
+    _raw_insert(conn, "dup-2", "alice", "Mijn vraag", 1690000000, msgs_short)
+    _raw_insert(conn, "dup-3", "alice", "mijn vraag", 1680000000, msgs_full)
+    _raw_insert(conn, "unique", "bob", "Mijn vraag", 1700000001, msgs_full)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    alice = fresh.list_conversations("alice")
+    assert [r["id"] for r in alice] == ["dup-1"], alice
+    bob = fresh.list_conversations("bob")
+    assert [r["id"] for r in bob] == ["unique"]
+
+
+def test_migrate_keeps_richest_row_on_tiebreaker(db, tmp_path, monkeypatch):
+    conn = db._connect()
+    msgs = [
+        {"role": "user", "content": "Wie doet mbo?"},
+        {"role": "assistant", "content": "Antwoord."},
+    ]
+    _raw_insert(conn, "a-1", "alice", "MBO", 1700000000, msgs)
+    _raw_insert(conn, "a-2", "alice", "MBO", 1690000000, msgs)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    alice = fresh.list_conversations("alice")
+    assert [r["id"] for r in alice] == ["a-1"]
+
+
+def test_migrate_dedupe_is_idempotent(db, tmp_path, monkeypatch):
+    conn = db._connect()
+    msgs = [{"role": "user", "content": "Hoeveel huur?"}, {"role": "assistant", "content": "Antwoord."}]
+    _raw_insert(conn, "b-1", "alice", "Huur", 1700000000, msgs)
+    _raw_insert(conn, "b-2", "alice", "Huur", 1690000000, msgs)
+    conn.commit()
+    conn.close()
+
+    _reload_and_init(tmp_path, monkeypatch)
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    alice = fresh.list_conversations("alice")
+    assert [r["id"] for r in alice] == ["b-1"]
+
+
+def test_migrate_dedupe_ignores_different_first_questions(db, tmp_path, monkeypatch):
+    conn = db._connect()
+    msgs_a = [{"role": "user", "content": "Vraag A"}, {"role": "assistant", "content": "A"}]
+    msgs_b = [{"role": "user", "content": "Vraag B"}, {"role": "assistant", "content": "B"}]
+    _raw_insert(conn, "d-1", "alice", "Zelfde titel", 1700000000, msgs_a)
+    _raw_insert(conn, "d-2", "alice", "Zelfde titel", 1690000000, msgs_b)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    alice = fresh.list_conversations("alice")
+    assert sorted(r["id"] for r in alice) == ["d-1", "d-2"]
+
+
 def test_rename_conversation_scoped_to_user(db):
     db.upsert_conversation("alice", "c1", "Van Alice", 1, [])
     assert db.rename_conversation("bob", "c1", "Gekaapt") is False

@@ -51,6 +51,59 @@ def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
     return conn.execute(sql, params)
 
 
+def _first_user_question(messages_json: str) -> str:
+    """First user message text, used to separate lookalike conversations."""
+    try:
+        messages = json.loads(messages_json)
+        for m in messages if isinstance(messages, list) else []:
+            if isinstance(m, dict) and m.get("role") == "user":
+                text = m.get("content") or ""
+                if isinstance(text, str) and text.strip():
+                    return text.strip().lower()
+    except (TypeError, ValueError):
+        pass
+    return ""
+
+
+def _dedupe_conversations(conn: Any) -> None:
+    """Remove pre-#69 duplicate conversations, one row per conversation thread.
+
+    Dedupe key: (username, title, first user question), case-insensitive.
+    Within a group keep the richest row (most messages — it holds the whole
+    thread), tie-break on the newest timestamp. Groups of one are untouched,
+    as are post-#69 conversations (they only ever have a single row).
+    """
+    rows = _execute(
+        conn,
+        "SELECT id, username, title, timestamp, messages FROM conversations",
+    ).fetchall()
+    groups: dict = {}
+    for row in rows:
+        r = dict(row)
+        key = (r["username"].lower(), r["title"].lower(), _first_user_question(r["messages"]))
+        groups.setdefault(key, []).append(r)
+
+    doomed: list[str] = []
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda r: (len(_messages_list(r["messages"])), r["timestamp"]))
+        doomed.extend(r["id"] for r in group[:-1])
+
+    if doomed:
+        for conv_id in doomed:
+            _execute(conn, "DELETE FROM conversations WHERE id = ?", (conv_id,))
+        conn.commit()
+
+
+def _messages_list(messages_json: str) -> list:
+    try:
+        parsed = json.loads(messages_json)
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
 def _migrate(conn: Any) -> None:
     if _USE_POSTGRES:
         cursor = conn.cursor()
@@ -88,6 +141,8 @@ def _migrate(conn: Any) -> None:
                 "WHERE timestamp > 1000000000000"
             )
             conn.commit()
+
+    _dedupe_conversations(conn)
 
 
 def init_db() -> None:
