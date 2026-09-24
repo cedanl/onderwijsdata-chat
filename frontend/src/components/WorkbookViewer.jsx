@@ -66,12 +66,11 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
         {editingTitle ? (
           <input
             ref={titleInputRef}
-            className="wb-viewer-title"
+            className="wb-viewer-title title-edit-input"
             value={titleDraft}
             onChange={e => setTitleDraft(e.target.value)}
             onBlur={handleTitleSave}
             onKeyDown={e => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false) }}
-            style={{ border: 'none', borderBottom: '2px solid var(--primary)', outline: 'none', background: 'transparent', font: 'inherit', padding: 0, width: '100%' }}
           />
         ) : (
           <span

@@ -128,14 +128,7 @@ export default function InstellingPicker({ inputId, value, onChange }) {
         onKeyDown={handleKeyDown}
         placeholder="Zoek op naam of afkorting..."
         autoComplete="off"
-        style={{
-          width: '100%', padding: '10px 14px',
-          border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)',
-          fontSize: '.9rem', outline: 'none', transition: 'border-color .15s',
-          background: 'var(--white)', color: 'var(--gray-900)',
-        }}
-        onFocusCapture={e => e.target.style.borderColor = 'var(--blue-400)'}
-        onBlurCapture={e => e.target.style.borderColor = 'var(--gray-200)'}
+        className="instelling-search"
       />
       {open && filtered.length > 0 && (
         <div

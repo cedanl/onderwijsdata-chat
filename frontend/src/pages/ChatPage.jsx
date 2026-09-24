@@ -775,7 +775,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
                   {editingId === conv.id ? (
                     <input
                       ref={titleInputRef}
-                      className="history-title-input"
+                      className="title-edit-input"
                       value={editDraft}
                       onChange={e => setEditDraft(e.target.value)}
                       onBlur={() => saveEdit(conv.id)}
