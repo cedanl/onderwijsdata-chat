@@ -27,7 +27,7 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, isOnboarding, sramName, sramInstelling, sramIdentity }) {
+export default function SettingsModal({ settings, onSave, onClose, onLogout, isOnboarding, sramName, sramInstelling, sramIdentity }) {
   // A saved instelling that is exactly the raw SRAM org/institution string is
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
@@ -180,6 +180,18 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
             </button>
           )}
         </div>
+        {/* The navbar hides its logout button up to 1024px; this dialog opens from the name in the header. */}
+        {onLogout && !isOnboarding && (
+          <button type="button"
+            onClick={onLogout}
+            style={{
+              width: '100%', marginTop: 12, padding: '10px', borderRadius: 'var(--radius)',
+              background: 'none', color: 'var(--gray-600)', fontWeight: 600, fontSize: '.9rem',
+            }}
+          >
+            Uitloggen
+          </button>
+        )}
       </div>
     </div>
   )

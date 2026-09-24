@@ -186,6 +186,7 @@ function AppShell() {
     localStorage.removeItem(STORAGE_WORKBOOKS)
     setUser(null)
     setUserInfo(null)
+    setShowSettings(false)
   }
 
   // Only use the SRAM identity as instelling when it matches a known
@@ -219,6 +220,7 @@ function AppShell() {
           settings={settings}
           onSave={handleSaveSettings}
           onClose={handleCloseSettings}
+          onLogout={authRequired ? handleLogout : null}
           isOnboarding={isOnboarding}
           sramName={userInfo?.name || null}
           sramInstelling={sramInstelling || null}
