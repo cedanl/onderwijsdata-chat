@@ -320,11 +320,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
   const handleSend = () => {
     const q = input.trim()
-    // Keep the typed question while "Nieuw gesprek" waits for the server.
-    if (!q || busy || resetting) return
+    // send() refuses while busy, resetting or reconnecting; the typed question then stays.
+    if (!q || !send(q)) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    send(q)
   }
 
   const handleKey = (e) => {
@@ -604,7 +603,8 @@ function hasAssistantContent(msg) {
     msg.figures?.length ||
     msg.clarification ||
     msg.starterQuestions ||
-    msg.stopped
+    msg.stopped ||
+    msg.interrupted
   )
 }
 
@@ -660,6 +660,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
+            {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
           </div>
         )}
       </div>
