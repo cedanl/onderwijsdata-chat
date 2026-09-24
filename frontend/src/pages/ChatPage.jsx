@@ -18,6 +18,7 @@ import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from 
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
+import { personalizeQuestion } from '../suggestions'
 import {
   clearCurrentChat, conversationRecord, loadConversationHistory, loadCurrentChat, newConversationId,
   persistConversationHistory, persistCurrentChat, upsertConversation,
@@ -826,15 +827,6 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
       </div>
     </div>
   )
-}
-
-function personalizeQuestion(q, instelling) {
-  if (!instelling) return q
-  return q
-    .replaceAll('ons onderwijsaanbod', `het aanbod van ${instelling}`)
-    .replaceAll('onze instelling', instelling)
-    .replaceAll('mijn lerenden', `de lerenden van ${instelling}`)
-    .replaceAll('bij ons', `bij ${instelling}`)
 }
 
 function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
