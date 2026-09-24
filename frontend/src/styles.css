@@ -1278,6 +1278,7 @@ html.dark .suggested-btn:hover {
   }
   .sidebar-overlay { display: block; }
   .chat-welcome-suggestions { display: block; }
+  .chat-welcome { padding: 24px 16px; }
 
   /* Hamburger en mobiele topbar */
   .hamburger-btn { display: flex; }
