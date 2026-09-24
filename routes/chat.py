@@ -124,6 +124,15 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
             author=author or session.get("username"),
         )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
+    except json.JSONDecodeError as e:
+        # LLM produced invalid structured output; the raw parser error is not
+        # actionable for the user, so fall back to the generic guidance.
+        # JSONDecodeError is a ValueError subclass, so this must precede it.
+        logger.warning("Report parser error (raw message kept out of UI): %s", e)
+        await emit({
+            "type": "report_error",
+            "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
+        })
     except ValueError as e:
         # Raised on purpose with guidance for the user (e.g. no datasets loaded).
         await emit({"type": "report_error", "message": str(e)})
