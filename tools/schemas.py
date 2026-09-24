@@ -1,3 +1,5 @@
+from core.config import RIO_PAGE_SIZE
+
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_DATASET_DETAILS = "dataset_details"
@@ -85,7 +87,12 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_GET_RIO_DATA,
-            "description": "Haal RIO data op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen.",
+            "description": (
+                "Haal RIO data op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna "
+                f"query_data om gefilterde rijen op te halen. Levert maximaal {RIO_PAGE_SIZE} rijen "
+                "(één pagina) en géén totalen: gebruik RIO niet voor aantallen over het hele register "
+                "('hoeveel opleidingen staan er in RIO?'), maar DUO of CBS."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {

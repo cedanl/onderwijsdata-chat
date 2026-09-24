@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import httpx
 
+from core.config import RIO_PAGE_SIZE
 from tools.rio import get_rio_data
 
 
@@ -74,7 +75,42 @@ def test_fetch_uses_single_page():
     assert captured["params"]["page"] == 0
     parsed = json.loads(result)
     # Maximaal RIO_PAGE_SIZE rijen in het dataset-antwoord.
-    assert parsed["totaal_rijen"] <= 50
+    assert parsed["totaal_rijen"] == RIO_PAGE_SIZE
+
+
+def test_page_size_from_filters_is_ignored():
+    # Een grotere pageSize zou toch op RIO_PAGE_SIZE afgekapt worden (#170).
+    captured = {}
+
+    def fake_fetch(resource, **params):
+        captured["params"] = params
+        return [{"code": "1"}]
+
+    with patch("tools.rio.fetch", side_effect=fake_fetch), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        get_rio_data("erkenningen", {"pageSize": 1000})
+
+    assert captured["params"]["pageSize"] == RIO_PAGE_SIZE
+
+
+def _load(rows):
+    with patch("tools.rio.fetch", return_value=rows), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        return json.loads(get_rio_data("aangeboden-opleidingen"))
+
+
+def test_full_page_warns_that_result_is_not_a_count():
+    # RIO levert geen totaal; een volle pagina is een steekproef, geen telling (#170).
+    parsed = _load([{"code": str(i)} for i in range(RIO_PAGE_SIZE)])
+    assert "waarschuwing" in parsed
+    assert "telling" in parsed["waarschuwing"]
+
+
+def test_partial_page_has_no_warning():
+    parsed = _load([{"code": "1"}, {"code": "2"}])
+    assert "waarschuwing" not in parsed
 
 
 def test_http_status_error_returns_explicit_fallback():
@@ -88,3 +124,11 @@ def test_http_status_error_returns_explicit_fallback():
     assert "HTTP 400" in result
     assert "x" in result
     assert "Fout bij ophalen" in result
+
+def test_tool_description_sets_expectation_for_counts():
+    # Het model moet vóóraf weten dat RIO geen totalen kan leveren (#170).
+    from tools.schemas import TOOL_GET_RIO_DATA, TOOL_SCHEMAS
+
+    tool = next(t["function"] for t in TOOL_SCHEMAS if t["function"]["name"] == TOOL_GET_RIO_DATA)
+    assert str(RIO_PAGE_SIZE) in tool["description"]
+    assert "totalen" in tool["description"]
