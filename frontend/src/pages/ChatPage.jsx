@@ -14,11 +14,14 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
-import { SUGGESTED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
+import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
-import { conversationTitle } from '../conversationTitle'
+import {
+  clearCurrentChat, conversationRecord, loadConversationHistory, loadCurrentChat, newConversationId,
+  persistConversationHistory, persistCurrentChat, upsertConversation,
+} from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
@@ -27,14 +30,6 @@ import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
-
-function loadConversationHistory() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
-}
-
-function persistConversationHistory(list) {
-  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list)) } catch { /* noop */ }
-}
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -156,16 +151,17 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const [selectedModel, setSelectedModel] = useState('')
   const [showSources, setShowSources] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [restoredMessages, setRestoredMessages] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT) || '[]') } catch { return [] }
-  })
+  const [initialChat] = useState(loadCurrentChat)
+  const [conversationId, setConversationId] = useState(initialChat.id)
+  const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const textareaRef = useRef(null)
-  const messagesRef = useRef(messages)
+  const openChatRef = useRef(initialChat)
+  const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
   const initialHistorySentRef = useRef(false)
 
   // Seed backend with restored history on first connection
@@ -196,50 +192,54 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     }).catch(() => {})
   }, [])
 
-  // Keep messagesRef in sync with latest messages
+  // The unmount save runs after the last render, so it reads the open conversation from a ref.
   useEffect(() => {
-    messagesRef.current = messages
-  }, [messages])
+    openChatRef.current = { id: conversationId, messages: [...restoredMessages, ...messages] }
+  }, [conversationId, restoredMessages, messages])
 
   // Persist full visible chat so it survives browser refresh / tab close
   useEffect(() => {
     const all = [...restoredMessages, ...messages]
-    if (!all.length) return
-    try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify(all)) } catch { /* noop */ }
-  }, [messages, restoredMessages])
+    if (all.length) persistCurrentChat(conversationId, all)
+  }, [conversationId, messages, restoredMessages])
 
-  const saveCurrentConversation = useCallback((msgs) => {
-    const toSave = msgs || messages
-    const userMsgs = toSave.filter(m => m.role === 'user')
-    if (!userMsgs.length) return
-    const conv = {
-      id: Date.now(),
-      title: conversationTitle(userMsgs[0].content),
-      timestamp: Date.now(),
-      messages: toSave,
-    }
-    const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
+  // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
+  const saveConversation = useCallback(() => {
+    const { id, messages: all } = openChatRef.current
+    const record = conversationRecord(id, all)
+    const json = JSON.stringify(all)
+    if (!record || json === savedJsonRef.current) return
+    savedJsonRef.current = json
+    const updated = upsertConversation(loadConversationHistory(), record)
     persistConversationHistory(updated)
     setConversationHistory(updated)
-    putConversation(String(conv.id), { title: conv.title, timestamp: conv.timestamp, messages: conv.messages }).catch(() => {})
-  }, [messages])
+    putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
+  }, [])
+
+  // Save every finished answer, so closing the tab loses nothing.
+  useEffect(() => {
+    if (!busy) saveConversation()
+  }, [busy, saveConversation])
 
   const handleClear = useCallback(() => {
-    saveCurrentConversation()
+    saveConversation()
     setRestoredMessages([])
     setSidebarOpen(false)
-    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
+    clearCurrentChat()
+    setConversationId(newConversationId())
+    savedJsonRef.current = '[]'
     startNewConversation()
-  }, [startNewConversation, saveCurrentConversation])
+  }, [startNewConversation, saveConversation])
 
   const handleLoad = useCallback((conv) => {
-    saveCurrentConversation()
+    saveConversation()
     clear()
     setSidebarOpen(false)
-    try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
+    setConversationId(String(conv.id))
+    savedJsonRef.current = JSON.stringify(conv.messages)
     setRestoredMessages(conv.messages)
     sendHistory(conv.messages)
-  }, [clear, saveCurrentConversation, sendHistory])
+  }, [clear, saveConversation, sendHistory])
 
   const handleDeleteConversation = useCallback((id) => {
     setPendingDelete(id)
@@ -251,8 +251,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     persistConversationHistory(updated)
     setConversationHistory(updated)
     deleteConversationApi(String(pendingDelete)).catch(() => {})
+    // Deleting the open conversation must not bring it back on the next save; only a new question does.
+    if (String(pendingDelete) === conversationId) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
     setPendingDelete(null)
-  }, [pendingDelete, conversationHistory])
+  }, [pendingDelete, conversationHistory, conversationId])
 
   const handleRenameConversation = useCallback((id, newTitle) => {
     const trimmed = newTitle.trim()
@@ -275,21 +277,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
       // Logging out unmounts this page after App cleared the stored history;
       // saving here would write the conversation straight back.
       if (sessionEndedSince(tokenAtMount)) return
-      const latestMessages = messagesRef.current
-      const userMsgs = latestMessages.filter(m => m.role === 'user')
-      if (!userMsgs.length) return
-      const conv = {
-        id: Date.now(),
-        title: conversationTitle(userMsgs[0].content),
-        timestamp: Date.now(),
-        messages: latestMessages,
-      }
-      const updated = [conv, ...loadConversationHistory()].slice(0, MAX_CONVERSATIONS)
-      persistConversationHistory(updated)
-      putConversation(String(conv.id), { title: conv.title, timestamp: conv.timestamp, messages: conv.messages }).catch(() => {})
-      try { localStorage.removeItem(STORAGE_CURRENT_CHAT) } catch { /* noop */ }
+      saveConversation()
+      clearCurrentChat()
     }
-  }, [])
+  }, [saveConversation])
 
   const handleModelChange = useCallback((id) => {
     setSelectedModel(id)
