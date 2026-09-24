@@ -645,7 +645,7 @@ input, textarea { font: inherit; }
 }
 .chat-input-wrap:focus-within { border-color: var(--blue-400); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
 .chat-input {
-  flex: 1; border: none; background: transparent; resize: none;
+  border: none; background: transparent; resize: none;
   font-size: .95rem; outline: none; line-height: 1.6;
   max-height: 160px; min-height: 0;
   color: var(--gray-900); text-align: left;
