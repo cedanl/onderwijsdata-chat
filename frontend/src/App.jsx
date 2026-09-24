@@ -26,6 +26,15 @@ export default function App() {
 
 let _tokenRefreshTimer = null
 
+// Conversations and workbooks cached by whoever used this browser before. The pages that
+// sync them to the server cannot tell leftovers from unsynced data, and would attribute
+// them to the account that logs in next.
+function clearLocalSessionData() {
+  localStorage.removeItem(STORAGE_CONVERSATIONS)
+  localStorage.removeItem(STORAGE_CURRENT_CHAT)
+  localStorage.removeItem(STORAGE_WORKBOOKS)
+}
+
 function startTokenRefreshTimer(token) {
   // Decode token to get expiration time (format: payload.signature)
   try {
@@ -76,10 +85,8 @@ function AppShell() {
 
   useEffect(() => {
     // A token in the URL means we just landed here via the SRAM callback
-    // redirect — a fresh login, same as the password form's handleLogin, so
-    // it needs the same anonymous-session cache clear (see handleLogin).
-    const result = consumeTokenFromUrl()
-    const freshOidcLogin = result?.token
+    // redirect — a fresh login, same as the password form's handleLogin.
+    if (consumeTokenFromUrl()) clearLocalSessionData()
 
     Promise.all([
       fetchAuthStatus().then(async ({ required, oidc_enabled }) => {
@@ -141,14 +148,7 @@ function AppShell() {
   }, [])
 
   const handleLogin = (u) => {
-    // Clear any anonymous-session cache from this browser before the
-    // conversations/workbooks pages mount and sync with the server — their
-    // migrate-local-to-server logic otherwise can't tell "genuinely unsynced
-    // local data" apart from "leftover data from whoever used this browser
-    // before login", and would attribute it to the newly logged-in user.
-    localStorage.removeItem(STORAGE_CONVERSATIONS)
-    localStorage.removeItem(STORAGE_CURRENT_CHAT)
-    localStorage.removeItem(STORAGE_WORKBOOKS)
+    clearLocalSessionData()
     setUser(u)
     if (!localStorage.getItem(STORAGE_ONBOARDED)) {
       setIsOnboarding(true)
@@ -181,9 +181,7 @@ function AppShell() {
   const handleLogout = () => {
     clearToken()
     if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
-    localStorage.removeItem(STORAGE_CONVERSATIONS)
-    localStorage.removeItem(STORAGE_CURRENT_CHAT)
-    localStorage.removeItem(STORAGE_WORKBOOKS)
+    clearLocalSessionData()
     setUser(null)
     setUserInfo(null)
     setShowSettings(false)
