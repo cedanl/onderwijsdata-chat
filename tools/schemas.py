@@ -107,7 +107,12 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_GET_DUO_DATA,
-            "description": "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen voor analyse of grafiek.",
+            "description": (
+                "Laad een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna "
+                "query_data om gefilterde rijen op te halen voor analyse of grafiek. `teldefinitie` zegt wat DUO "
+                "telt (bijv. personen of inschrijvingen): label aantallen daarmee, vergelijk geen datasets met een "
+                "andere teldefinitie alsof ze gelijk zijn, en verklaar een verschil niet verder dan die definities."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {

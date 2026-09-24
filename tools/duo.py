@@ -10,23 +10,27 @@ from core.config import DUO_ROW_LIMIT
 from . import store
 from .catalog import catalogus_titel, resource_titel
 from .cbs import check_dimensions_pinned
+from .duo_meta import teldefinitie
 
 _SAMPLE_ROWS = 3
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
 
-# Lokale glossary-correcties voor upstream fouten in riodata (zie #31, #23)
-# Deze patches worden toegepast op column_definitions() om tot de upstream fix.
+# Lokale glossary-correcties en -aanvullingen op riodata (zie #31, #23, #172).
+# Deze patches worden toegepast op column_definitions() tot de upstream fix.
 _GLOSSARY_PATCHES = {
     "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
     "LEERWEG": "Mbo-leerweg: BOL (beroepsopleidende leerweg) of BBL (beroepsbegeleidende leerweg).",
+    # Ontbreekt upstream; zonder definitie raadde een model 'DT = duaal-tijd' (#172).
+    "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving).",
 }
 
 
 def _apply_glossary_patches(defs: dict[str, str]) -> dict[str, str]:
     """Pas lokale correcties toe op riodata glossary-definities.
 
-    Zie #31, #23: upstream bugs in STUDIEJAAR en LEERWEG definities in riodata.
+    Zie #31, #23: upstream bugs in STUDIEJAAR en LEERWEG definities in riodata;
+    #172: OPLEIDINGSVORM ontbreekt upstream.
     Deze patches zorgen dat het schema correcte definities bevat totdat upstream dit
     adressen. Idempotent: kan veilig op al gepatched dicts worden toegepast.
     """
@@ -220,6 +224,9 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         "kolommen": schema,
         "preview": preview,
     }
+    definitie = teldefinitie(dataset_id)
+    if definitie:
+        result["teldefinitie"] = definitie
     notes = sentinel_notes(count_cells(_sentinel_cells.get(key)))
     if notes:
         result["databewerking"] = notes
