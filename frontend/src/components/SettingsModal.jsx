@@ -92,10 +92,10 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <label id="settings-instelling-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label htmlFor="settings-instelling" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
-            <InstellingPicker value={instelling} onChange={setInstelling} />
+            <InstellingPicker inputId="settings-instelling" value={instelling} onChange={setInstelling} />
             {sramInstelling && (
               <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginTop: 6 }}>
                 {sramInstelling} gevonden via je SRAM-account{sramName ? ` (${sramName})` : ''} — je kunt dit hieronder aanpassen.
@@ -104,10 +104,10 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
           </div>
 
           <div>
-            <label id="settings-functie-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div id="settings-functie-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            </div>
+            <div role="group" aria-labelledby="settings-functie-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {FUNCTIES.map(f => (
                 <button type="button"
                   key={f}
@@ -127,10 +127,10 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
           </div>
 
           <div>
-            <label id="settings-weergave-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div id="settings-weergave-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            </div>
+            <div role="group" aria-labelledby="settings-weergave-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {MODES.map(m => (
                 <button type="button"
                   key={m.id}

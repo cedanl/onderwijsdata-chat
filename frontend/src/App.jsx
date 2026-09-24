@@ -7,7 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import RapportenPage from './pages/RapportenPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
-import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken } from './auth'
+import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
 import { matchKnownInstelling } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 import { applyMode } from './theme'
@@ -36,34 +36,15 @@ function clearLocalSessionData() {
 }
 
 function startTokenRefreshTimer(token) {
-  // Decode token to get expiration time (format: payload.signature)
-  try {
-    const [payload] = token.split('.')
-    const decoded = JSON.parse(atob(payload + '=='))  // Add padding for base64
-    const [, expStr] = decoded.split('|')
-    const expTime = parseInt(expStr) * 1000  // Convert to ms
-    const now = Date.now()
-    const timeUntilExp = expTime - now
-
-    if (timeUntilExp > 0) {
-      // Refresh 5 minutes before expiration
-      const refreshTime = Math.max(60000, timeUntilExp - 5 * 60 * 1000)
-
-      if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
-      _tokenRefreshTimer = setTimeout(async () => {
-        try {
-          const result = await refreshAuthToken(token)
-          if (result) {
-            startTokenRefreshTimer(result.newToken)
-          }
-        } catch (err) {
-          console.warn('Token refresh failed:', err)
-        }
-      }, refreshTime)
-    }
-  } catch (err) {
-    console.warn('Failed to decode token for refresh timer:', err)
-  }
+  const expiresAt = tokenExpiresAt(token)
+  if (!expiresAt || expiresAt <= Date.now()) return
+  // Refresh 5 minutes before expiration
+  const refreshIn = Math.max(60000, expiresAt - Date.now() - 5 * 60 * 1000)
+  if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
+  _tokenRefreshTimer = setTimeout(async () => {
+    const result = await refreshAuthToken(token)
+    if (result) startTokenRefreshTimer(result.newToken)
+  }, refreshIn)
 }
 
 function AppShell() {

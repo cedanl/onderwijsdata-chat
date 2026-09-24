@@ -42,6 +42,7 @@ export default [
         cancelAnimationFrame: "readonly",
         performance: "readonly",
         crypto: "readonly",
+        atob: "readonly",
         AbortController: "readonly",
         localStorage: "readonly",
         sessionStorage: "readonly",

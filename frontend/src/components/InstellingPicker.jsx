@@ -17,7 +17,7 @@ function useInstellingen() {
   return list
 }
 
-export default function InstellingPicker({ value, onChange }) {
+export default function InstellingPicker({ inputId, value, onChange }) {
   const allInstellingen = useInstellingen()
   const [query, setQuery] = useState(value || '')
   const [niveauFilter, setNiveauFilter] = useState(new Set())
@@ -115,6 +115,7 @@ export default function InstellingPicker({ value, onChange }) {
         ))}
       </div>
       <input
+        id={inputId}
         type="text"
         value={query}
         onChange={e => {
