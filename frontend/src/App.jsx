@@ -163,6 +163,10 @@ function AppShell() {
     clearToken()
     if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
     clearLocalSessionData()
+    // The profile belongs to whoever logged out; on a shared device the next person starts fresh.
+    localStorage.removeItem(STORAGE_SETTINGS)
+    localStorage.removeItem(STORAGE_ONBOARDED)
+    setSettings({})
     setUser(null)
     setUserInfo(null)
     setShowSettings(false)

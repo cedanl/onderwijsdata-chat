@@ -50,7 +50,7 @@ export const SUGGESTED = [
     category: 'Instroom',
     questions: [
       'Waar komen mijn lerenden vandaan en met welke instellingen in de regio concurreer ik om dezelfde doelgroep?',
-      'Hoeveel instromers komen rechtstreeks vanuit een andere opleiding uit de regio?',
+      'Hoeveel instromers bij ons komen rechtstreeks vanuit een andere opleiding in de regio?',
       'Hoe heeft de deelname aan voltijdonderwijs bij ons zich ontwikkeld?',
     ],
   },

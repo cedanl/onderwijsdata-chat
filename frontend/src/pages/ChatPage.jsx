@@ -18,6 +18,7 @@ import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from 
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { hasReportableAnswer } from '../reportEligibility'
+import { personalizeQuestion } from '../suggestions'
 import {
   clearCurrentChat, conversationRecord, loadConversationHistory, loadCurrentChat, newConversationId,
   persistConversationHistory, persistCurrentChat, upsertConversation,
@@ -312,7 +313,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleSend = () => {
     const q = input.trim()
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
-    if (!q || !send(q)) return
+    if (!q || atContextLimit || !send(q)) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
@@ -381,9 +382,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
           </button>
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
-            {SUGGESTED.map(cat => (
-              <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={send} busy={busy} instelling={settings.instelling} />
-            ))}
+            <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
           </div>
           <ConversationHistory
             history={conversationHistory}
@@ -408,7 +407,14 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
           <div className="chat-messages" ref={messagesContainerRef}>
-            {!hasMessages && <WelcomeScreen instelling={settings.instelling} functie={settings.functie} />}
+            {!hasMessages && (
+              <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
+                {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
+                <div className="chat-welcome-suggestions">
+                  <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
+                </div>
+              </WelcomeScreen>
+            )}
             {restoredMessages.length > 0 && messages.length === 0 && (
               <div className="restored-banner">
                 Ingeladen gesprek — stel een nieuwe vraag om door te gaan
@@ -492,7 +498,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
                   </button>
                 ) : (
-                  <button type="button" className="send-btn" onClick={handleSend} aria-label="Verstuur bericht" disabled={!input.trim() || !connected || busy || resetting || atContextLimit}>
+                  <button type="button" className="send-btn" onClick={handleSend} aria-label="Verstuur bericht" aria-disabled={!input.trim() || !connected || busy || resetting || atContextLimit}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                       <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
@@ -519,7 +525,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 }
 
 
-function WelcomeScreen({ instelling, functie }) {
+function WelcomeScreen({ instelling, functie, children }) {
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
     : 'Stel je vraag aan openEDUdata+'
@@ -535,6 +541,7 @@ function WelcomeScreen({ instelling, functie }) {
       </div>
       <h2>{greeting}</h2>
       <p>{sub}</p>
+      {children}
     </div>
   )
 }
@@ -828,13 +835,10 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
   )
 }
 
-function personalizeQuestion(q, instelling) {
-  if (!instelling) return q
-  return q
-    .replaceAll('ons onderwijsaanbod', `het aanbod van ${instelling}`)
-    .replaceAll('onze instelling', instelling)
-    .replaceAll('mijn lerenden', `de lerenden van ${instelling}`)
-    .replaceAll('bij ons', `bij ${instelling}`)
+function SuggestedQuestions({ onSend, busy, instelling }) {
+  return SUGGESTED.map(cat => (
+    <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={onSend} busy={busy} instelling={instelling} />
+  ))
 }
 
 function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
