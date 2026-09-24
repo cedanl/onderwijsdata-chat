@@ -92,6 +92,17 @@ export async function login(username, password) {
   return data
 }
 
+// Tokens are `base64url("<username>|<expiry seconds>").<signature>`; returns the expiry in ms.
+export function tokenExpiresAt(token) {
+  try {
+    const decoded = atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))
+    const seconds = Number(decoded.slice(decoded.lastIndexOf('|') + 1))
+    return seconds > 0 ? seconds * 1000 : null
+  } catch {
+    return null
+  }
+}
+
 // After a redirect back from /api/auth/oidc/callback, the token arrives as
 // ?token=... on the URL. Pick it up, persist it, and strip it from the URL
 // (it shouldn't linger in browser history).
