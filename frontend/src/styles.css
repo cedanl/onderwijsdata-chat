@@ -686,6 +686,11 @@ input, textarea { font: inherit; }
 .send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.4); }
 .send-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; box-shadow: none; transform: none; }
 .message-stopped { font-size: .78rem; color: var(--gray-500); font-style: italic; margin-top: 4px; }
+.message-continue {
+  font: inherit; font-style: normal; font-weight: 600; color: var(--accent-text, var(--blue-600));
+  background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer;
+}
+.message-continue:disabled { color: var(--gray-500); cursor: default; text-decoration: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--gray-400); margin-top: 8px; }
 
 /* ─── Context limit banners ──────────────────────────────── */

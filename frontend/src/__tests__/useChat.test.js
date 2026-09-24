@@ -110,6 +110,15 @@ describe('useChat stop', () => {
     expect(msg.done).toBe(true)
   })
 
+  it('marks an answer that hit the output limit as truncated', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Conclusie – niet beschikbaar in de', truncated: true })
+    })
+    expect(assistantMessages()[0].truncated).toBe(true)
+  })
+
   it('does not mark a normal answer as stopped', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {
