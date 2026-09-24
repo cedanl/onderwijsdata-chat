@@ -64,7 +64,7 @@ De `run_analysis`-tool voert arbitrary Python uit in een beveiligde omgeving:
 ### Authenticatie
 
 - Optionele wachtwoordauthenticatie via `CHAT_USERS`
-- HMAC-gehandtekende JWT tokens met 24-uur TTL
+- HMAC-ondertekende tokens (gebruikersnaam en vervaltijd, ondertekend met `CHAT_SECRET`) met 24-uur TTL
 - Timing-safe wachtwoordvergelijking (`hmac.compare_digest`)
 
 ---
