@@ -66,10 +66,32 @@ def check_dimensions_pinned(data_key: str, df: pd.DataFrame, keep: list[str]) ->
     )
 
 
+def _load_definitions(dataset_id: str) -> dict:
+    try:
+        return definitions(dataset_id)
+    except Exception as e:
+        logger.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
+        return {}
+
+
+def _dimension_names(col_defs: dict) -> list[str]:
+    return [col for col, d in col_defs.items() if d.get("type", "").endswith("Dimension")]
+
+
+def _select_with_dimensions(select: str, dims: list[str]) -> str:
+    """Een $select zonder dimensies levert ononderscheidbare rijen op (#162)."""
+    cols = [c.strip() for c in select.split(",") if c.strip()]
+    return ",".join(cols + [d for d in dims if d not in cols])
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
+    if "$select" in params:
+        params["$select"] = _select_with_dimensions(
+            params["$select"], _dimension_names(_load_definitions(dataset_id))
+        )
     try:
         rows = data(dataset_id, **params)
     except Exception as e:
@@ -85,12 +107,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     store.put(key, df)
 
-    try:
-        col_defs = definitions(dataset_id)
-    except Exception as e:
-        logger.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
-        col_defs = {}
-    dims = [col for col, d in col_defs.items() if d.get("type", "").endswith("Dimension")]
+    col_defs = _load_definitions(dataset_id)
+    dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
         register_dimensions(dataset_id, dims)
     schema = [

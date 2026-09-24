@@ -149,3 +149,25 @@ def test_aggregate_without_group_by_does_not_crash(hbo_voltijd):
     result = query_data(_KEY, aggregate={"TotaalIngeschrevenen_1": "sum"})
     assert isinstance(result, str)
     assert not result.startswith("{")
+
+
+def test_select_cannot_drop_dimension_columns():
+    # Anders levert $select ononderscheidbare rijen op die de guard niet ziet.
+    defs = {
+        "Geslacht": {"type": "Dimension"},
+        "Perioden": {"type": "TimeDimension"},
+        "Totaal_1": {"type": "Topic"},
+    }
+    captured = {}
+
+    def fake_data(dataset_id, **params):
+        captured.update(params)
+        return [{"Geslacht": "T001038", "Perioden": "2024SJ00", "Totaal_1": 5}]
+
+    with patch("tools.cbs.data", side_effect=fake_data), \
+         patch("tools.cbs.definitions", return_value=defs), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        get_cbs_data("99999NED", {"$select": "Perioden, Totaal_1"})
+
+    assert captured["$select"].split(",") == ["Perioden", "Totaal_1", "Geslacht"]
