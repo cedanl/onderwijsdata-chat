@@ -27,10 +27,10 @@ import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv } from '../figureCsv'
-import ModelPicker from '../components/ModelPicker'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
+import ChatInputFooter from '../components/ChatInputFooter'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -483,28 +483,16 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
               />
-              <div className="chat-input-footer">
-                {!connected && (
-                  <span className="ws-reconnecting">
-                    <span className="ws-dot" />
-                    Verbinding herstellen...
-                  </span>
-                )}
-                {models.length > 0 && (
-                  <ModelPicker models={models} value={selectedModel} onChange={handleModelChange} />
-                )}
-                {busy ? (
-                  <button type="button" className="send-btn" onClick={stop} title="Stop genereren">
-                    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
-                  </button>
-                ) : (
-                  <button type="button" className="send-btn" onClick={handleSend} aria-label="Verstuur bericht" aria-disabled={!input.trim() || !connected || busy || resetting || atContextLimit}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-                      <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
-                  </button>
-                )}
-              </div>
+              <ChatInputFooter
+                connected={connected}
+                busy={busy}
+                models={models}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                onStop={stop}
+                onSend={handleSend}
+                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit}
+              />
             </div>
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" onClick={() => setShowSources(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 'inherit', color: 'var(--accent-text)', textDecoration: 'underline', cursor: 'pointer' }}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
           </div>
