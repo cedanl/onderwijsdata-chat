@@ -37,8 +37,12 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `WebSocket` | `/api/chat?token=<token>` | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard` |
+| `WebSocket` | `/api/chat?token=<token>` | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard` |
 | `POST` | `/api/dashboard/refresh` | Ververs een bestaand dashboard via recipe/figure_recipes |
+
+- `reset` ("Nieuw gesprek") laat de server het lopende gesprek vergeten, inclusief geladen data; de server bevestigt met `reset_done`.
+- `history` opent een opgeslagen gesprek: ook dat start een schone sessie, die alleen de tekst van dat gesprek kent.
+- De WebSocket slaat zelf niets op. De frontend bewaart elk gesprek onder één ID via `PUT /api/conversations/{id}` (zie Persistentie).
 
 ---
 
