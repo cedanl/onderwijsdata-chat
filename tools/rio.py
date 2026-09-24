@@ -1,5 +1,6 @@
 import json
 
+import httpx
 import pandas as pd
 from riodata import fetch
 
@@ -16,8 +17,17 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "pageSize" not in params:
         params["pageSize"] = RIO_PAGE_SIZE
+    # Eén pagina volstaat: onderstaande preview gebruikt hooguit de eerste
+    # RIO_PAGE_SIZE-rijen. Volledige paginatie levert alleen weggegooid werk
+    # (en blokkeert bij upstream 4xx op een late pagina, zie #159).
+    params["page"] = 0
     try:
         results = fetch(resource, **params)
+    except httpx.HTTPStatusError as e:
+        return (
+            f"Fout bij ophalen RIO data: HTTP {e.response.status_code} voor "
+            f"resource '{resource}' met filters {filters or {}}."
+        )
     except Exception as e:
         return f"Fout bij ophalen RIO data: {e}"
 
@@ -25,7 +35,7 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
         return f"Geen resultaten voor RIO resource '{resource}' met filters {filters or {}}."
 
     df = pd.DataFrame(results[:RIO_PAGE_SIZE])
-    filter_suffix = "_".join(f"{k}={v}" for k, v in sorted((filters or {}).items()) if k != "pageSize")
+    filter_suffix = "_".join(f"{k}={v}" for k, v in sorted((filters or {}).items()) if k not in ("page", "pageSize"))
     key = f"rio:{resource}:{filter_suffix}" if filter_suffix else f"rio:{resource}"
 
     schema = [
