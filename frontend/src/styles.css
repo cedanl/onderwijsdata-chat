@@ -299,12 +299,14 @@ input, textarea { font: inherit; }
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: linear-gradient(160deg, rgba(13,35,64,.82) 0%, rgba(30,74,122,.78) 60%, rgba(13,148,136,.72) 100%); backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
+  /* margin:auto op .modal centreert zolang het past; is het venster hoger dan het scherm,
+     dan begint het bovenaan en scrolt de overlay, i.p.v. aan beide kanten weg te vallen. */
+  display: flex; overflow-y: auto;
   padding: 24px;
 }
 .modal {
   background: var(--white); border-radius: var(--radius-xl);
-  width: 100%; max-width: 560px;
+  width: 100%; max-width: 560px; margin: auto;
   padding: 48px 40px;
   box-shadow: var(--shadow-lg);
 }

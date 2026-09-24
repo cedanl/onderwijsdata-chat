@@ -48,7 +48,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
         position: 'fixed', inset: 0, zIndex: 2000,
         background: 'linear-gradient(160deg, rgba(13,35,64,.92) 0%, rgba(30,74,122,.88) 60%, rgba(13,148,136,.82) 100%)',
         backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        display: 'flex', overflowY: 'auto', padding: 24,
       }}
       onClick={isOnboarding ? undefined : onClose}
       onKeyDown={e => { if (e.key === 'Escape') onClose() }}
@@ -61,7 +61,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
       <div
         style={{
           background: 'var(--white)', borderRadius: 'var(--radius-xl)',
-          padding: '44px 40px', width: '100%', maxWidth: 440,
+          padding: '44px 40px', width: '100%', maxWidth: 440, margin: 'auto',
           boxShadow: 'var(--shadow-lg)', position: 'relative',
         }}
         onClick={e => e.stopPropagation()}
