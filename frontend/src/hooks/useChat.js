@@ -141,6 +141,7 @@ export function useChat({ onUnauthorized } = {}) {
           content: typeof ev.content === 'string' ? ev.content : m.content,
           done: true,
           ...(ev.aborted && { stopped: true }),
+          ...(ev.truncated && { truncated: true }),
         }))
         finishStream()
       },

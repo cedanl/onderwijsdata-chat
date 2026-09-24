@@ -651,6 +651,14 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
+            {msg.truncated && (
+              <div className="message-stopped">
+                Antwoord afgebroken: de maximale lengte is bereikt.{' '}
+                <button type="button" className="message-continue" onClick={() => onSend('Ga verder waar je gebleven was.')} disabled={busy}>
+                  Ga verder
+                </button>
+              </div>
+            )}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
           </div>
         )}
