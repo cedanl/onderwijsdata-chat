@@ -416,14 +416,17 @@ input, textarea { font: inherit; }
 .history-action-restart:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-700); }
 .history-item-row { display: flex; align-items: flex-start; gap: 0; position: relative; }
 .history-item-row .history-btn { flex: 1; min-width: 0; }
+/* Hidden with opacity, not display: the buttons stay focusable, so keyboard users can reach
+   them and a dialog opened from one can hand focus back when it closes. */
 .history-item-actions {
-  display: none; flex-direction: row; gap: 2px; align-items: center;
+  display: flex; flex-direction: row; gap: 2px; align-items: center;
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  opacity: 0; pointer-events: none;
 }
 .history-item-row:hover .history-item-actions,
-.history-item-row:focus-within .history-item-actions { display: flex; }
+.history-item-row:focus-within .history-item-actions { opacity: 1; pointer-events: auto; }
 @media (hover: none) {
-  .history-item-actions { display: flex; }
+  .history-item-actions { opacity: 1; pointer-events: auto; }
   .history-item-row .history-btn { padding-right: 56px; }
 }
 .history-action-icon {

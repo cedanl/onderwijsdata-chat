@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
+import { useDialog } from '../hooks/useDialog'
 
 const FUNCTIES = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Anders']
 const MODES = [
@@ -35,6 +36,7 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
   const [instelling, setInstelling] = useState(pollutedSaved ? '' : (settings.instelling || sramInstelling || ''))
   const [functie, setFunctie] = useState(settings.functie || '')
   const [mode, setMode] = useState(settings.mode || 'system')
+  const dialogRef = useDialog(onClose)
 
   const handleSave = () => {
     onSave({ instelling, functie, mode })
@@ -42,8 +44,10 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
   }
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+    // Backdrop click; the keyboard equivalent is Escape, handled by useDialog.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
+      ref={dialogRef}
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
         background: 'linear-gradient(160deg, rgba(13,35,64,.92) 0%, rgba(30,74,122,.88) 60%, rgba(13,148,136,.82) 100%)',
@@ -51,7 +55,6 @@ export default function SettingsModal({ settings, onSave, onClose, isOnboarding,
         display: 'flex', overflowY: 'auto', padding: 24,
       }}
       onClick={isOnboarding ? undefined : onClose}
-      onKeyDown={e => { if (e.key === 'Escape') onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label={isOnboarding ? 'Welkom' : 'Instellingen'}
