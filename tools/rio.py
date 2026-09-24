@@ -14,13 +14,10 @@ _SAMPLE_ROWS = 5
 
 
 def get_rio_data(resource: str, filters: dict | None = None) -> str:
-    params = dict(filters or {})
-    if "pageSize" not in params:
-        params["pageSize"] = RIO_PAGE_SIZE
-    # Eén pagina volstaat: onderstaande preview gebruikt hooguit de eerste
-    # RIO_PAGE_SIZE-rijen. Volledige paginatie levert alleen weggegooid werk
-    # (en blokkeert bij upstream 4xx op een late pagina, zie #159).
-    params["page"] = 0
+    # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
+    # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
+    # zou onderstaande slice toch weer afkappen.
+    params = {**(filters or {}), "page": 0, "pageSize": RIO_PAGE_SIZE}
     try:
         results = fetch(resource, **params)
     except httpx.HTTPStatusError as e:
@@ -50,13 +47,20 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     # Pas cachen als de beschrijving gelukt is: een mislukte tool mag geen data achterlaten.
     store.put(key, df)
 
-    return json.dumps(
-        {
-            "data_key": key,
-            "catalogus_titel": catalogus_titel(resource),
-            "totaal_rijen": len(df),
-            "kolommen": schema,
-            "preview": preview,
-        },
-        ensure_ascii=False, separators=(",", ":"), default=str,
-    )
+    result = {
+        "data_key": key,
+        "catalogus_titel": catalogus_titel(resource),
+        "totaal_rijen": len(df),
+        "kolommen": schema,
+        "preview": preview,
+    }
+    # RIO levert geen totaal-aantal (#170): een volle pagina betekent dat er
+    # waarschijnlijk meer rijen zijn, dus dit is een steekproef.
+    if len(results) >= RIO_PAGE_SIZE:
+        result["waarschuwing"] = (
+            f"Afgekapt op {RIO_PAGE_SIZE} rijen (één pagina); dit is geen telling. "
+            "RIO levert geen totaal-aantal: beantwoord 'hoeveel'-vragen over het "
+            "register niet met deze data. Verfijn met filters of gebruik DUO/CBS voor aantallen."
+        )
+
+    return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
