@@ -405,6 +405,13 @@ input, textarea { font: inherit; }
   transform: translateY(-1px); box-shadow: 0 2px 8px rgba(37,99,235,.15);
 }
 
+.report-reload-hint {
+  align-self: center; margin-bottom: 8px;
+  font-size: .78rem; color: var(--muted-text);
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm); padding: 6px 12px;
+}
+
 .new-chat-btn {
   display: flex; align-items: center; gap: 8px; width: 100%;
   padding: 9px 12px; border-radius: var(--radius-sm);

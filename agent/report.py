@@ -113,6 +113,21 @@ def _build_system_prompt(context: dict) -> str:
     return base + injected
 
 
+def _safe_parse_tool_arguments(arguments: str) -> dict | None:
+    """Parse tool-call JSON arguments; ``None`` when malformed or not an object.
+
+    The LLM sometimes emits control characters or trailing garbage that make
+    ``json.loads`` raise. Callers give this feedback to the model so a later,
+    well-formed step can still succeed, instead of surfacing a raw parser
+    error (which is a ValueError subclass and would bypass generic handling).
+    """
+    try:
+        parsed = json.loads(arguments)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
 async def generate(
     session: dict,
     emit: Emit,
@@ -180,10 +195,18 @@ async def generate(
 
             for tc in tool_calls_list:
                 name = tc["name"]
-                args = json.loads(tc["arguments"])
-
                 label = LABELS.get(name, name)
                 await emit({"type": "tool_start", "name": name, "label": label})
+
+                args = _safe_parse_tool_arguments(tc["arguments"])
+                if args is None:
+                    message = (
+                        f"Fout: de argumenten voor `{name}` waren geen geldige JSON."
+                        " Lever opnieuw aan met geldige JSON-argumenten."
+                    )
+                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": message})
+                    await emit({"type": "tool_end", "name": name})
+                    continue
 
                 result, figure = await asyncio.to_thread(dispatch, name, args)
 

@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from routes import chat
 
@@ -29,3 +30,14 @@ def test_expected_report_error_keeps_its_guidance(monkeypatch):
     events = _run_report(monkeypatch, ValueError(msg))
     [error] = [e for e in events if e["type"] == "report_error"]
     assert error["message"] == msg
+
+
+def test_json_decode_error_hides_parser_error(monkeypatch):
+    # A JSONDecodeError (LLM produced invalid structured output, e.g. a raw
+    # control character) is a ValueError subclass but must NOT surface its
+    # raw text — the user gets the generic guidance instead.
+    exc = json.JSONDecodeError("Invalid control character at: line 4 column 33 (char 179)", "x", 179)
+    events = _run_report(monkeypatch, exc)
+    [error] = [e for e in events if e["type"] == "report_error"]
+    assert "Invalid control character" not in error["message"]
+    assert "Rapport kon niet worden gemaakt" in error["message"]
