@@ -1,18 +1,20 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
 import { useEffect, useState } from 'react'
 import { fetchCatalogCounts } from '../api'
+import { useDialog } from '../hooks/useDialog'
 
 // Counts come from the catalog the app searches, so they cannot drift from it.
 const withCount = (n, text) => (n ? `${n} ${text}` : text)
 
 export default function DataSourcesModal({ onClose }) {
   const [counts, setCounts] = useState({})
+  const dialogRef = useDialog(onClose)
   useEffect(() => {
     fetchCatalogCounts().then(setCounts).catch(() => {})
   }, [])
 
   return (
-    <div className="modal-overlay" onClick={onClose} onKeyDown={e => { if (e.key === 'Escape') onClose() }} role="dialog" aria-modal="true" aria-label="Databronnen" tabIndex={-1}>
+    <div className="modal-overlay" ref={dialogRef} onClick={onClose} role="dialog" aria-modal="true" aria-label="Databronnen" tabIndex={-1}>
       <button type="button" className="modal-overlay-close" onClick={onClose} aria-label="Sluiten">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
