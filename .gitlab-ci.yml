@@ -91,7 +91,10 @@ version:promote:
 # terwijl de suite rood stond. Draait ook op tags, zodat een release niet te
 # taggen is met falende tests.
 pytest:
-  stage: test
+  # .pre so docker:docker-build (stage build, fixed by the SDP component) may wait for it:
+  # needs cannot point at a later stage, and moving the build job breaks the component's
+  # generate-sbom job (see 3d989ee).
+  stage: .pre
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
     - if: $CI_MERGE_REQUEST_IID
@@ -117,7 +120,7 @@ pytest:
 
 # Zelfde image als de frontend-stap in de Dockerfile, zodat Renovate ze samen bijwerkt.
 frontend:
-  stage: test
+  stage: .pre
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
     - if: $CI_MERGE_REQUEST_IID
@@ -143,6 +146,8 @@ docker:docker-build:
     - if: $CI_MERGE_REQUEST_IID
   needs:
     - version:generate
+    - pytest
+    - frontend
 
 docker:docker-promote:
   rules:
