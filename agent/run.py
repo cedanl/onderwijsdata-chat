@@ -215,10 +215,14 @@ async def run(
             if not tool_calls:
                 logger.info("FINALE ANTWOORD (iter=%d)  %r", _iter + 1, text_content[:500])
                 session["_last_turn_tool_calls"] = turn_tool_calls
+                truncated = result.finish_reason == "length"
+                if truncated:
+                    logger.warning("ANTWOORD AFGEKAPT op outputlimiet (max_tokens=%d)", clamped_tokens)
                 await emit({
                     "type": "message_end",
                     "content": text_content,
                     "actions": [],
+                    **({"truncated": True} if truncated else {}),
                 })
                 return text_content
 
