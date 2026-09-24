@@ -382,9 +382,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
           </button>
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
-            {SUGGESTED.map(cat => (
-              <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={send} busy={busy} instelling={settings.instelling} />
-            ))}
+            <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
           </div>
           <ConversationHistory
             history={conversationHistory}
@@ -409,7 +407,14 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
           <div className="chat-messages" ref={messagesContainerRef}>
-            {!hasMessages && <WelcomeScreen instelling={settings.instelling} functie={settings.functie} />}
+            {!hasMessages && (
+              <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
+                {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
+                <div className="chat-welcome-suggestions">
+                  <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
+                </div>
+              </WelcomeScreen>
+            )}
             {restoredMessages.length > 0 && messages.length === 0 && (
               <div className="restored-banner">
                 Ingeladen gesprek — stel een nieuwe vraag om door te gaan
@@ -520,7 +525,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 }
 
 
-function WelcomeScreen({ instelling, functie }) {
+function WelcomeScreen({ instelling, functie, children }) {
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
     : 'Stel je vraag aan openEDUdata+'
@@ -536,6 +541,7 @@ function WelcomeScreen({ instelling, functie }) {
       </div>
       <h2>{greeting}</h2>
       <p>{sub}</p>
+      {children}
     </div>
   )
 }
@@ -827,6 +833,12 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
       </div>
     </div>
   )
+}
+
+function SuggestedQuestions({ onSend, busy, instelling }) {
+  return SUGGESTED.map(cat => (
+    <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={onSend} busy={busy} instelling={instelling} />
+  ))
 }
 
 function SuggestedCategory({ category, questions, onSend, busy, instelling }) {
