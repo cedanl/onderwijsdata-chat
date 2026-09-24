@@ -39,6 +39,22 @@ class TestBuildDatasetContext:
         assert ds["row_count"] == 2
         assert len(ds["columns"]) == 3
 
+    def test_unhashable_cells_do_not_break_context(self):
+        with patch("agent.dashboard.store") as mock_store:
+            df = pd.DataFrame({
+                "code": ["30TX", "25DW"],
+                "_links": [{"self": {"href": "a"}}, {"self": {"href": "b"}}],
+                "tags": [["x"], ["y"]],
+            })
+            mock_store.get.return_value = df
+            mock_store.list_keys.return_value = ["rio:erkenningen"]
+
+            context = build_dataset_context({"turns": [], "chat_settings": {}})
+
+        columns = {c["naam"]: c for c in context["datasets"][0]["columns"]}
+        assert columns["_links"]["voorbeelden"] == ["{'self': {'href': 'a'}}", "{'self': {'href': 'b'}}"]
+        assert columns["tags"]["voorbeelden"] == ["['x']", "['y']"]
+
     def test_empty_session_returns_empty(self):
         with patch("agent.dashboard.store") as mock_store:
             mock_store.list_keys.return_value = []

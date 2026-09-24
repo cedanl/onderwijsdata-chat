@@ -25,6 +25,7 @@ from agent.ratelimit import acompletion_with_backoff
 from agent.stream import accumulate_stream
 from core.config import MAX_TOKENS, MODEL
 from tools import LABELS, dispatch, store
+from tools.columns import sample_values
 from tools.schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_PLOT,
@@ -108,7 +109,7 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
     return {
         "naam": col,
         "type": str(df[col].dtype),
-        "voorbeelden": [str(v) for v in df[col].dropna().unique()[:max_examples]],
+        "voorbeelden": sample_values(df[col], max_examples),
     }
 
 

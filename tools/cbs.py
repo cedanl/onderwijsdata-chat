@@ -12,6 +12,7 @@ from core.config import CBS_ROW_LIMIT
 
 from . import store
 from .catalog import catalogus_titel, catalogus_laatste_update
+from .columns import sample_values
 
 _SAMPLE_ROWS = 5
 
@@ -44,7 +45,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         {
             "kolom": col,
             "type": str(df[col].dtype),
-            "voorbeelden": [str(v) for v in df[col].dropna().unique()[:5]],
+            "voorbeelden": sample_values(df[col], 5),
             **({"definitie": col_defs[col]["description"]} if col in col_defs and col_defs[col].get("description") else {}),
             **({"eenheid": col_defs[col]["unit"]} if col in col_defs and col_defs[col].get("unit") else {}),
         }

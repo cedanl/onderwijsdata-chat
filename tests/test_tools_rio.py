@@ -27,6 +27,21 @@ def test_catalogus_titel_falls_back_for_resource_without_entry():
     assert parsed["catalogus_titel"] == "opleiding"
 
 
+def test_nested_links_do_not_break_schema():
+    # Echte RIO-responses bevatten een geneste HAL-dict per rij.
+    rows = [
+        {"code": "30TX", "_links": {"self": {"href": "https://rio/30TX"}}},
+        {"code": "25DW", "_links": {"self": {"href": "https://rio/25DW"}}},
+    ]
+    with patch("tools.rio.fetch", return_value=rows), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = get_rio_data("erkenningen", {"volledigeNaam": "Aeres Hogeschool"})
+    parsed = json.loads(result)
+    links = next(k for k in parsed["kolommen"] if k["kolom"] == "_links")
+    assert links["voorbeelden"][0].startswith("{'self'")
+
+
 def test_empty_result_returns_message():
     with patch("tools.rio.fetch", return_value=[]):
         result = get_rio_data("organisatorische-eenheden")
