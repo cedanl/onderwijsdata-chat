@@ -272,11 +272,12 @@ export function useChat({ onUnauthorized } = {}) {
   }, [])
 
   const sendClarification = useCallback((choice) => {
-    if (!wsRef.current || busy) return
+    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return
+    busyRef.current = true
     setBusy(true)
     setMessages(prev => [...prev, { id: nextId(), role: 'user', content: choice, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
-  }, [busy])
+  }, [])
 
   const sendSettings = useCallback((settings) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

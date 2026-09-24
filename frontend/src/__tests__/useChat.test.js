@@ -191,6 +191,17 @@ describe('useChat connection loss', () => {
     expect(chat.busy).toBe(false)
   })
 
+  it('also recovers when the answer to a clarification choice is cut off', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      chat.sendClarification('HBO')
+      ws.emit({ type: 'message_start' })
+    })
+    await drop(ws)
+    expect(chat.busy).toBe(false)
+    expect(assistantMessages()[0].interrupted).toBe(true)
+  })
+
   it('refuses to send while the connection is down', async () => {
     const ws = FakeWebSocket.last
     await drop(ws)
