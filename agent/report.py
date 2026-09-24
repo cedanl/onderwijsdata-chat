@@ -21,7 +21,7 @@ from typing import Any
 import plotly.io as pio
 
 from agent.dashboard import (
-    _build_recipe_from_store,
+    _build_recipe,
     _extract_json_object,
     _sources_from_recipe,
     build_dataset_context,
@@ -223,7 +223,7 @@ def _parse_spec_from_response(
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
 
-    recipe = _build_recipe_from_store()
+    recipe = _build_recipe([ds["data_key"] for ds in context.get("datasets", [])])
     topic = context.get("topic", "Rapport")
 
     bronnen = spec_data.get("bronnen") or []
