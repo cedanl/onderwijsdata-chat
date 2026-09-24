@@ -80,7 +80,7 @@ export function PeersTable({ data, instelling }) {
                 borderBottom: '1px solid var(--gray-100)',
                 background: row.eigen ? 'var(--blue-50)' : 'transparent',
               }}>
-                <td style={{ padding: '9px 16px', color: 'var(--gray-400)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
+                <td style={{ padding: '9px 16px', color: 'var(--muted-text)', fontWeight: row.eigen ? 700 : 400 }}>{i + 1}</td>
                 <td style={{ padding: '9px 16px', color: row.eigen ? '#1D4ED8' : 'var(--gray-800, #1F2937)', fontWeight: row.eigen ? 700 : 400 }}>
                   {row.naam}{row.eigen ? ' ★' : ''}
                 </td>

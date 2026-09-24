@@ -38,7 +38,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
           })}
           {eigenIdx >= 20 && (
             <>
-              <tr><td colSpan={3} style={{ padding: '4px 8px', color: 'var(--gray-400)' }}>…</td></tr>
+              <tr><td colSpan={3} style={{ padding: '4px 8px', color: 'var(--muted-text)' }}>…</td></tr>
               <tr style={{ background: 'var(--blue-50)', fontWeight: 700 }}>
                 <td style={{ padding: '5px 8px' }}>{eigenIdx + 1}</td>
                 <td style={{ padding: '5px 8px' }}>{alleInstellingen[eigenIdx].naam}</td>
