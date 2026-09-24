@@ -70,7 +70,7 @@ export function RoaSection({ data, dark }) {
         <div style={{ height: h }}>
           <Bar data={chartData} options={opts} />
         </div>
-        <div style={{ fontSize: '.73rem', color: 'var(--gray-400)', marginTop: 6, fontStyle: 'italic' }}>
+        <div style={{ fontSize: '.73rem', color: 'var(--muted-text)', marginTop: 6, fontStyle: 'italic' }}>
           Landelijk gemiddelde — niet specifiek voor deze instelling of regio
         </div>
       </ChartCard>
@@ -131,7 +131,7 @@ export function PrognoseSection({ data }) {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: '.73rem', color: 'var(--gray-400)', marginTop: 6, fontStyle: 'italic' }}>
+          <div style={{ fontSize: '.73rem', color: 'var(--muted-text)', marginTop: 6, fontStyle: 'italic' }}>
             Landelijk gemiddelde — niet specifiek voor deze instelling of regio (ROA AIS2030)
           </div>
         </ChartCard>

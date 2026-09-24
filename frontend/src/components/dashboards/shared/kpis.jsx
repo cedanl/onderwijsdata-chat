@@ -99,7 +99,7 @@ export function DiplomeringKpis({ lastDipl, diplDelta, diplEntries, rendement })
               <svg viewBox="0 0 24 24" fill="none" stroke={COLOR_EIGEN} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             </div>
           </div>
-          <div className="kpi-value" style={{ color: 'var(--blue-600)' }}>{rendement}%</div>
+          <div className="kpi-value" style={{ color: 'var(--accent-text)' }}>{rendement}%</div>
           <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>proxy — geen cohortmeting, zie Rendementsmonitor</div>
         </div>
       )}

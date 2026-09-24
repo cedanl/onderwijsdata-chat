@@ -50,7 +50,7 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
                   {instelling}
                 </span>
               )}
-              <span style={{ fontSize: '.72rem', color: 'var(--gray-400)', lineHeight: 1.2 }}>
+              <span style={{ fontSize: '.72rem', color: 'var(--muted-text)', lineHeight: 1.2 }}>
                 {user}
               </span>
             </button>

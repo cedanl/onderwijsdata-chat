@@ -121,9 +121,9 @@ export default function HomePage({ dashboardsEnabled = true }) {
               Gebaseerd op open onderwijsdata
             </button>
           </div>
-          <p style={{ fontSize: '.75rem', color: 'var(--gray-400)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
+          <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
             Op deze tool is de{' '}
-            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gray-400)', textDecoration: 'underline' }}>
+            <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--muted-text)', textDecoration: 'underline' }}>
               Creative Commons ShareAlike Naamsvermelding 4.0-licentie
             </a>
             {' '}van toepassing.<br />Maak bij gebruik van dit werk vermelding van de volgende referentie:{' '}
