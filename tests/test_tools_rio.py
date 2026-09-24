@@ -1,6 +1,8 @@
 import json
 from unittest.mock import patch
 
+import httpx
+
 from tools.rio import get_rio_data
 
 
@@ -53,3 +55,36 @@ def test_fetch_exception_returns_error_string():
         result = get_rio_data("x")
     assert "Fout" in result
     assert "timeout" in result
+
+
+def test_fetch_uses_single_page():
+    # Volledige paginatie is zinloos werk: get_rio_data houdt alleen de eerste
+    # RIO_PAGE_SIZE-rijen (zie #159; RIO-API gaf 400 op pagina 356).
+    captured = {}
+
+    def fake_fetch(resource, **params):
+        captured["params"] = params
+        return [{"code": str(i)} for i in range(120)]
+
+    with patch("tools.rio.fetch", side_effect=fake_fetch), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        result = get_rio_data("erkenningen", {"volledigeNaam": "Aeres Hogeschool"})
+
+    assert captured["params"]["page"] == 0
+    parsed = json.loads(result)
+    # Maximaal RIO_PAGE_SIZE rijen in het dataset-antwoord.
+    assert parsed["totaal_rijen"] <= 50
+
+
+def test_http_status_error_returns_explicit_fallback():
+    request = httpx.Request("GET", "https://lod.onderwijsregistratie.nl/api/rio/v2/x")
+    response = httpx.Response(400, request=request)
+    error = httpx.HTTPStatusError("Client error", request=request, response=response)
+
+    with patch("tools.rio.fetch", side_effect=error):
+        result = get_rio_data("x", {"volledigeNaam": "Foo"})
+
+    assert "HTTP 400" in result
+    assert "x" in result
+    assert "Fout bij ophalen" in result
