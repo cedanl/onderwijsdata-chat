@@ -26,5 +26,6 @@ def list_keys() -> list[str]:
 
 def clear() -> None:
     _cache.clear()
-    from . import duo  # lazy: zie put()
+    from . import cbs, duo  # lazy: zie put()
     duo.clear_sentinel_counts()
+    cbs.clear_dimensions()
