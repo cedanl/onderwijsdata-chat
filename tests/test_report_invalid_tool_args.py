@@ -130,3 +130,32 @@ def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplo
     assert "query_data" in record.message
     assert '"JAAR": 2021' in record.message
     assert "totaal_rijen=1" in record.message
+
+
+def _final(conclusie: str) -> StreamResult:
+    return StreamResult(text=json.dumps({"title": "T", "conclusie": conclusie}), tool_calls=[])
+
+
+def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its_data(monkeypatch):
+    # #175: een getal dat niet in de data staat krijgt één herkansing met een concrete correctie.
+    seen: list[list[dict]] = []
+
+    async def fake_completion(*args, **kwargs):
+        seen.append(list(kwargs["messages"]))
+        return object()
+
+    _make_generate(monkeypatch, [_final("In 2021 waren het er 12.345."), _final("In 2021 waren het er 10.")])
+    monkeypatch.setattr(report_module, "acompletion_with_backoff", fake_completion)
+
+    spec, _ = _run_generate()
+
+    assert spec.conclusie == "In 2021 waren het er 10."
+    correctie = seen[-1][-1]
+    assert correctie["role"] == "user" and "12.345" in correctie["content"]
+
+
+def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
+    _make_generate(monkeypatch, [_final("Het waren er 12.345."), _final("Het waren er 54.321.")])
+
+    with pytest.raises(ValueError, match="niet consistent"):
+        _run_generate()

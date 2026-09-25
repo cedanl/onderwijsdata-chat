@@ -19,6 +19,7 @@ from typing import Any
 
 import plotly.io as pio
 
+from agent.grounding import unsourced_numbers
 from agent.model_context import clamp_max_tokens
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
@@ -50,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 15
 _MAX_TOOL_RESULT_CHARS = 8000
-_EVAL_PATTERN_LOOKAHEAD = 40  # regex lookahead for year-value proximity check
 
 
 @dataclass
@@ -312,7 +312,6 @@ async def generate(
 
 def _extract_json_object(text: str) -> dict:
     """Extract the last top-level JSON object from text, handling nested braces."""
-    import re
     # Try fenced code block first (greedy — captures the whole JSON)
     fence_match = re.search(r"```(?:json)?\s*(\{.+\})\s*```", text, re.DOTALL)
     if fence_match:
@@ -371,25 +370,11 @@ def _collect_kpi(computed: dict[str, dict], result: str) -> None:
 
 
 def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None:
-    """Runtime guard: verify all large numbers in response come from tool output.
-
-    Prevents LLM from inventing or hallucinating large numbers. Numbers >999
-    must exist in tool_results (query responses, compute_kpi outputs, etc.).
-    Returns error message if unverified numbers found; None if all checks pass.
-    """
-    answer_numbers = set(re.findall(r"\d{4,}", response.replace(".", "")))
-
-    tool_numbers = set()
-    for result in tool_results:
-        tool_numbers |= set(re.findall(r"\d{4,}", str(result)))
-
-    # Years are always valid (1900-2100)
-    valid_years = {str(y) for y in range(1900, 2101)}
-
-    unverified = answer_numbers - tool_numbers - valid_years
+    """Foutmelding als het dashboard getallen noemt die niet uit de tools komen."""
+    unverified = unsourced_numbers(response, tool_results)
     if unverified:
         return (
-            f"Dashboard bevat getallen die niet uit tools komen: {unverified}. "
+            f"Dashboard bevat getallen die niet uit tools komen: {sorted(unverified)}. "
             "Alle getallen > 999 moeten uit query_data, compute_kpi, of andere tools komen."
         )
     return None
