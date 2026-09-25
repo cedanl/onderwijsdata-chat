@@ -6,6 +6,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+# The callback every agent loop uses to send events to the client.
+Emit = Callable[[dict[str, Any]], Awaitable[None]]
+
 
 @dataclass
 class StreamResult:
@@ -18,7 +21,7 @@ class StreamResult:
 async def accumulate_stream(
     stream,
     stop_event=None,
-    emit: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    emit: Emit | None = None,
 ) -> StreamResult:
     """Collect text and tool-call deltas from a LiteLLM stream.
 

@@ -13,11 +13,9 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 import plotly.io as pio
 
@@ -27,16 +25,11 @@ from agent.dashboard import (
     _sources_from_recipe,
     build_dataset_context,
 )
-from agent.model_context import clamp_max_tokens
-from agent.models import litellm_kwargs
-from agent.ratelimit import acompletion_with_backoff
+from agent.loop import ToolCall, tool_loop
 from agent.report_checks import report_problems
-from agent.stream import accumulate_stream
-from core.config import MAX_TOKENS, MODEL
-from tools import LABELS, dispatch
+from agent.stream import Emit
+from core.config import MODEL
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
-
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
@@ -131,29 +124,6 @@ def _build_system_prompt(context: dict) -> str:
     return base + injected
 
 
-def _safe_parse_tool_arguments(arguments: str) -> dict | None:
-    """Parse tool-call JSON arguments; ``None`` when malformed or not an object.
-
-    The LLM sometimes emits control characters or trailing garbage that make
-    ``json.loads`` raise. Callers give this feedback to the model so a later,
-    well-formed step can still succeed, instead of surfacing a raw parser
-    error (which is a ValueError subclass and would bypass generic handling).
-    """
-    try:
-        parsed = json.loads(arguments)
-    except (json.JSONDecodeError, TypeError):
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-@dataclass
-class _ReportRun:
-    """What one report run collected: its figures and every full tool result."""
-
-    figures: list[str] = field(default_factory=list)
-    tool_results: list[str] = field(default_factory=list)
-
-
 async def generate(
     session: dict,
     emit: Emit,
@@ -171,31 +141,45 @@ async def generate(
     if not context["datasets"]:
         raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
-    chosen_model = model or MODEL
     messages: list[dict] = [
         {"role": "system", "content": _build_system_prompt(context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
-    run = _ReportRun()
+    figures: list[str] = []
+    dataset_context = json.dumps(context, default=str)
 
-    final_text = await _tool_loop(messages, run, chosen_model, emit, stop_event)
-    spec = _parse_spec_from_response(final_text, run.figures, context, author)
-    problems = report_problems(spec, run.figures, [*run.tool_results, json.dumps(context, default=str)])
-    if not problems or (stop_event and stop_event.is_set()):
-        return spec
+    async def keep_figure(call: ToolCall, result: str, figure) -> None:
+        _log_tool_call(call.name, call.args, result)
+        if figure is not None and len(figures) < _MAX_VISUALISATIES:
+            figures.append(pio.to_json(figure))
 
-    logger.warning("RAPPORT INCONSISTENT, herkansing: %s", problems)
-    messages += [
-        {"role": "assistant", "content": final_text},
-        {"role": "user", "content": _correction(problems)},
-    ]
-    final_text = await _tool_loop(messages, run, chosen_model, emit, stop_event)
-    spec = _parse_spec_from_response(final_text, run.figures, context, author)
-    problems = report_problems(spec, run.figures, [*run.tool_results, json.dumps(context, default=str)])
-    if problems:
-        logger.error("RAPPORT GEWEIGERD: %s", problems)
-        raise ValueError(f"Rapport niet consistent met de data: {problems[0]} Probeer het opnieuw.")
-    return spec
+    def check(text: str, tool_results: list[str]) -> list[str]:
+        spec = _parse_spec_from_response(text, figures, context, author)
+        return report_problems(spec, figures, [*tool_results, dataset_context])
+
+    result = await tool_loop(
+        messages,
+        model=model or MODEL,
+        tools=_REPORT_TOOLS,
+        emit=emit,
+        stop_event=stop_event,
+        max_iterations=_MAX_TOOL_ITERATIONS,
+        max_result_chars=_MAX_TOOL_RESULT_CHARS,
+        on_tool_result=keep_figure,
+        check=check,
+        correction=_correction,
+        keep_partial=lambda: bool(figures),
+    )
+    if result.partial_error:
+        await emit({
+            "type": "toast",
+            "message": "Rapport deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+            "level": "warning",
+        })
+    if result.problems:
+        logger.error("RAPPORT GEWEIGERD: %s", result.problems)
+        raise ValueError(f"Rapport niet consistent met de data: {result.problems[0]} Probeer het opnieuw.")
+    return _parse_spec_from_response(result.text, figures, context, author)
 
 
 def _correction(problems: list[str]) -> str:
@@ -205,97 +189,6 @@ def _correction(problems: list[str]) -> str:
         + "\nHerstel dit: gebruik alleen getallen uit de toolresultaten en beschrijf wat de "
         "grafieken tonen. Geef daarna opnieuw het volledige JSON-blok."
     )
-
-
-async def _tool_loop(
-    messages: list[dict],
-    run: _ReportRun,
-    model: str,
-    emit: Emit,
-    stop_event: asyncio.Event | None,
-) -> str:
-    """Let the model call tools until it answers; returns its final text."""
-    extra_kwargs = litellm_kwargs(model)
-    final_text = ""
-    partial_error: str | None = None
-
-    try:
-        for _ in range(_MAX_TOOL_ITERATIONS):
-            if stop_event and stop_event.is_set():
-                break
-
-            stream = await acompletion_with_backoff(
-                emit,
-                model=model,
-                max_tokens=clamp_max_tokens(model, MAX_TOKENS),
-                messages=messages,
-                tools=_REPORT_TOOLS,
-                stream=True,
-                **extra_kwargs,
-            )
-
-            sr = await accumulate_stream(stream, stop_event=stop_event)
-            final_text = sr.text
-
-            if not sr.tool_calls:
-                break
-
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": sr.text,
-                    "tool_calls": [
-                        {
-                            "id": tc["id"],
-                            "type": "function",
-                            "function": {"name": tc["name"], "arguments": tc["arguments"]},
-                        }
-                        for tc in sr.tool_calls
-                    ],
-                }
-            )
-
-            for tc in sr.tool_calls:
-                name = tc["name"]
-                label = LABELS.get(name, name)
-                await emit({"type": "tool_start", "name": name, "label": label})
-
-                args = _safe_parse_tool_arguments(tc["arguments"])
-                if args is None:
-                    message = (
-                        f"Fout: de argumenten voor `{name}` waren geen geldige JSON."
-                        " Lever opnieuw aan met geldige JSON-argumenten."
-                    )
-                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": message})
-                    await emit({"type": "tool_end", "name": name})
-                    continue
-
-                result, figure = await asyncio.to_thread(dispatch, name, args)
-                _log_tool_call(name, args, result)
-                run.tool_results.append(result)
-
-                await emit({"type": "tool_end", "name": name})
-
-                if figure is not None and len(run.figures) < _MAX_VISUALISATIES:
-                    run.figures.append(pio.to_json(figure))
-
-                if len(result) > _MAX_TOOL_RESULT_CHARS:
-                    result = result[:_MAX_TOOL_RESULT_CHARS] + f"\n... (afgekapt, {len(result)} chars totaal)"
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-    except Exception as exc:
-        if not run.figures:
-            raise
-        partial_error = str(exc)
-
-    if partial_error:
-        await emit(
-            {
-                "type": "toast",
-                "message": "Rapport deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
-                "level": "warning",
-            }
-        )
-    return final_text
 
 
 def _log_tool_call(name: str, args: dict, result: str) -> None:

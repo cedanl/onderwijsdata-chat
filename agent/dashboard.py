@@ -12,21 +12,17 @@ import contextlib
 import json
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
 
 import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
-from agent.model_context import clamp_max_tokens
-from agent.models import litellm_kwargs
-from agent.ratelimit import acompletion_with_backoff
+from agent.loop import ToolCall, tool_loop
 from agent.session_data import data_lineage, session_data_keys
-from agent.stream import accumulate_stream
-from core.config import MAX_TOKENS, MODEL
-from tools import LABELS, dispatch, store
+from agent.stream import Emit
+from core.config import MODEL
+from tools import LABELS, store
 from tools.columns import sample_values
 from tools.schemas import (
     TOOL_COMPUTE_KPI,
@@ -37,8 +33,6 @@ from tools.schemas import (
     TOOL_QUERY_DATA,
     TOOL_SCHEMAS,
 )
-
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
@@ -204,102 +198,51 @@ async def generate(
     if not context["datasets"]:
         raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
-    chosen_model = model or MODEL
-    system_prompt = _build_system_prompt(context)
-    extra_kwargs = litellm_kwargs(chosen_model)
-
     messages: list[dict] = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": _build_system_prompt(context)},
         {"role": "user", "content": "Genereer een dashboard op basis van de beschikbare datasets."},
     ]
-
     figures: list[str] = []
     figure_recipes: list[dict] = []
-    last_query_args: dict | None = None
     computed_kpis: dict[str, dict] = {}
-    tool_results: list[str] = []
+    last_query_args: dict | None = None
 
-    partial_error = None
-    final_text = ""
-
-    try:
-        for _ in range(_MAX_TOOL_ITERATIONS):
-            if stop_event and stop_event.is_set():
-                break
-
-            clamped_tokens = clamp_max_tokens(chosen_model, MAX_TOKENS)
-            stream = await acompletion_with_backoff(
-                emit,
-                model=chosen_model,
-                max_tokens=clamped_tokens,
-                messages=messages,
-                tools=_DASHBOARD_TOOLS,
-                stream=True,
-                **extra_kwargs,
-            )
-
-            sr = await accumulate_stream(stream, stop_event=stop_event)
-            text_content = sr.text
-            tool_calls_list = sr.tool_calls
-            final_text = text_content
-
-            if not tool_calls_list:
-                break
-
-            messages.append({
-                "role": "assistant",
-                "content": text_content,
-                "tool_calls": [
-                    {"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}}
-                    for tc in tool_calls_list
-                ],
+    async def collect(call: ToolCall, result: str, figure) -> None:
+        nonlocal last_query_args
+        if call.name == TOOL_QUERY_DATA:
+            last_query_args = call.args
+        if call.name == TOOL_COMPUTE_KPI:
+            _collect_kpi(computed_kpis, result)
+        if figure is not None:
+            figure_json = pio.to_json(figure)
+            figures.append(figure_json)
+            await emit({"type": "figure", "label": LABELS.get(call.name, call.name), "figure_json": figure_json})
+            figure_recipes.append({
+                "query": last_query_args,
+                "plot": {k: v for k, v in call.args.items() if k != "data"},
             })
 
-            for tc in tool_calls_list:
-                name = tc["name"]
-                args = json.loads(tc["arguments"])
-
-                label = LABELS.get(name, name)
-                await emit({"type": "tool_start", "name": name, "label": label})
-
-                result, figure = await asyncio.to_thread(dispatch, name, args)
-                tool_results.append(result)
-
-                await emit({"type": "tool_end", "name": name})
-
-                if name == TOOL_QUERY_DATA:
-                    last_query_args = args
-
-                if name == TOOL_COMPUTE_KPI:
-                    _collect_kpi(computed_kpis, result)
-
-                if figure is not None:
-                    figures.append(pio.to_json(figure))
-                    await emit({"type": "figure", "label": label, "figure_json": pio.to_json(figure)})
-                    plot_params = {k: v for k, v in args.items() if k != "data"}
-                    figure_recipes.append({
-                        "query": last_query_args,
-                        "plot": plot_params,
-                    })
-
-                if len(result) > _MAX_TOOL_RESULT_CHARS:
-                    result = result[:_MAX_TOOL_RESULT_CHARS] + f"\n... (afgekapt, {len(result)} chars totaal)"
-                messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-    except Exception as exc:
-        if not figures:
-            raise
-        partial_error = str(exc)
-
-    if partial_error:
+    result = await tool_loop(
+        messages,
+        model=model or MODEL,
+        tools=_DASHBOARD_TOOLS,
+        emit=emit,
+        stop_event=stop_event,
+        max_iterations=_MAX_TOOL_ITERATIONS,
+        max_result_chars=_MAX_TOOL_RESULT_CHARS,
+        on_tool_result=collect,
+        keep_partial=lambda: bool(figures),
+    )
+    if result.partial_error:
         await emit({
             "type": "toast",
             "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
             "level": "warning",
         })
 
-    spec = _parse_spec_from_response(final_text, figures, figure_recipes, context, session, computed_kpis)
+    spec = _parse_spec_from_response(result.text, figures, figure_recipes, context, session, computed_kpis)
 
-    sourcing_error = _check_number_sourcing(final_text, tool_results)
+    sourcing_error = _check_number_sourcing(result.text, result.tool_results)
     if sourcing_error:
         logger.error("Number sourcing guard rejected response: %s", sourcing_error)
         spec.narrative = f"**Fout in dashboard:** {sourcing_error}"
