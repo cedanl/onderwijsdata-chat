@@ -12,7 +12,7 @@ from .grounding import unverified
 from .history import trim
 from .loop import ToolCall, tool_loop
 from .models import build_system
-from .selectie import ontbrekende_schooljaren
+from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren
 from .session_data import record_data_key
 from .stream import Emit
 
@@ -102,7 +102,7 @@ def _correction(problems: list[str]) -> str:
         "Controle van je antwoord tegen de data van dit gesprek:\n"
         + "\n".join(f"- {p}" for p in problems)
         + "\nReken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
-        "of compute_kpi, selecteer het gevraagde schooljaar, of laat het weg. Geef daarna je volledige antwoord opnieuw."
+        "of compute_kpi, selecteer het gevraagde schooljaar en de gevraagde instelling, of laat het weg. Geef daarna je volledige antwoord opnieuw."
     )
 
 
@@ -141,6 +141,7 @@ async def run(
         return [
             *(f"{n} staat niet in de opgehaalde data." for n in unverified(text, tool_results, earlier)),
             *ontbrekende_schooljaren(last_user_msg, tool_results),
+            *ontbrekende_instellingen(last_user_msg, tool_results),
         ]
 
     async def withdraw(problems: list[str]) -> None:

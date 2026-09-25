@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from riodata import duo as _duo
 
-from . import periode, store
+from . import instelling, periode, store
 from .catalog import catalogus_titel, resource_titel
 from .duo_meta import teldefinitie
 
@@ -169,9 +169,11 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
                 hint = ""
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
         kolom = periode.duo_periodekolom(df.columns)
+        codekolom = instelling.codekolom(df.columns)
         meta = store.KeyMeta(
             bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id),
             periodekolom=kolom, schooljaren=periode.dekking(df, "duo", kolom),
+            instellingskolom=codekolom, instellingen=instelling.dekking(df, codekolom),
         )
         store.put(key, df, meta)
         # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en

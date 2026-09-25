@@ -27,6 +27,8 @@ class KeyMeta:
     teldefinitie: str | None = None      # what DUO counts: persons or enrolments (#172)
     periodekolom: str | None = None      # STUDIEJAAR, JAAR or the CBS time dimension (#187)
     schooljaren: tuple[int, ...] | None = None  # start years in this data; None = unknown (#187)
+    instellingskolom: str | None = None  # DUO institution code column (#143)
+    instellingen: tuple[str, ...] | None = None  # institution codes in this data; None = unknown (#143)
     afgeleid_van: str | None = None      # the key this one was derived from
 
 

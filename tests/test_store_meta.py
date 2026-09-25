@@ -141,3 +141,30 @@ def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
 
     assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
     assert store.meta(result["data_key"]).periodekolom == "Perioden"
+
+
+# ── Instellingen per key (#143) ──
+
+def _duo_instellingen() -> str:
+    df = pd.DataFrame({"INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"],
+                       "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
+                       "STUDIEJAAR": [2025, 2025], "AANTAL": [26370, 2880]})
+    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
+        return get_duo_data("p01hoinges", 3)
+
+
+def test_get_duo_data_records_the_institutions():
+    known = store.meta(json.loads(_duo_instellingen())["data_key"])
+    assert known.instellingskolom == "INSTELLINGSCODE_ACTUEEL"
+    assert known.instellingen == ("25DW", "30TX")
+
+
+def test_query_data_names_the_institution_next_to_its_code():
+    # Live-audit 2: "Instellingscode HU: 30TX". Met de naam ernaast valt dat op.
+    key = json.loads(_duo_instellingen())["data_key"]
+
+    parsed = json.loads(query_data(key, filters={"INSTELLINGSCODE_ACTUEEL": "30TX"},
+                                   group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"}))
+
+    assert parsed["instellingen"] == {"30TX": "Aeres Hogeschool"}
+    assert store.meta(parsed["data_key"]).instellingen == ("30TX",)

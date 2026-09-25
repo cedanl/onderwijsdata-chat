@@ -125,3 +125,53 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     correctie = seen[2][-1]["content"]
     assert "2025/26" in correctie and "STUDIEJAAR=2025" in correctie
     assert "controle" not in events[-1]
+
+
+def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
+    """Live-audit 2: gevraagd de HU, gefilterd op 30TX (Aeres), reeks van Aeres getoond (#143)."""
+    import pandas as pd
+
+    from tools import store
+    from tools.store import KeyMeta
+
+    store.clear()
+    store.put("duo:p01hoinges:3", pd.DataFrame({
+        "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"], "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
+        "AANTAL": [26370, 2880],
+    }), KeyMeta(bron="duo", dataset="p01hoinges", resource=3,
+                instellingskolom="INSTELLINGSCODE_ACTUEEL", instellingen=("25DW", "30TX")))
+    query = lambda code, cid: {"id": cid, "name": "query_data",  # noqa: E731
+                               "arguments": json.dumps({"data_key": "duo:p01hoinges:3",
+                                                        "filters": {"INSTELLINGSCODE_ACTUEEL": code}})}
+    steps = [
+        StreamResult(text="", tool_calls=[query("30TX", "a")]),
+        StreamResult(text="De HU had 2.880 voltijdstudenten.", tool_calls=[]),
+        StreamResult(text="", tool_calls=[query("25DW", "b")]),
+        StreamResult(text="De HU had 26.370 voltijdstudenten.", tool_calls=[]),
+    ]
+    seen: list = []
+
+    async def fake_completion(*args, **kwargs):
+        seen.append(list(kwargs["messages"]))
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return steps.pop(0)
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    text = asyncio.run(run_module.run(
+        [{"role": "user", "content": "Hoeveel voltijdstudenten had de HU?"}], {}, emit, asyncio.Event(),
+        model="openai/gpt-4o",
+    ))
+    store.clear()
+
+    assert text == "De HU had 26.370 voltijdstudenten."
+    correctie = seen[2][-1]["content"]
+    assert "Hogeschool Utrecht (25DW)" in correctie and "INSTELLINGSCODE_ACTUEEL=25DW" in correctie
+    assert "controle" not in events[-1]
