@@ -227,6 +227,7 @@ async def tool_loop(
     halt_on: frozenset[str] = frozenset(),
     check: Check | None = None,
     correction: Callable[[list[str]], str] | None = None,
+    on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
     keep_partial: Callable[[], bool] | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
@@ -234,7 +235,8 @@ async def tool_loop(
     ``messages`` is extended in place with the assistant turns and tool results;
     ``system`` is sent with every call but not stored. ``check(text, tool_results)``
     returns problems with a finished answer: the model then gets one correction
-    round with ``correction(problems)``; problems left after that are returned in
+    round with ``correction(problems)``, announced to the caller through
+    ``on_correction(problems)`` before it runs; problems left after that are returned in
     ``LoopResult.problems`` for the caller to act on. When the model call fails
     and ``keep_partial()`` says what was collected is usable, the error is
     returned in ``partial_error`` instead of raised.
@@ -252,6 +254,8 @@ async def tool_loop(
             problems = check(result.text, result.tool_results)
             if problems:
                 logger.warning("CONTROLE MISLUKT, herkansing: %s", problems)
+                if on_correction:
+                    await on_correction(problems)
                 messages += [
                     {"role": "assistant", "content": result.text},
                     {"role": "user", "content": correction(problems) if correction else "\n".join(problems)},

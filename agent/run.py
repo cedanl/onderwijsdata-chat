@@ -8,6 +8,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
+from .grounding import unverified
 from .history import trim
 from .loop import ToolCall, tool_loop
 from .models import build_system
@@ -95,6 +96,15 @@ async def _handle_clarify_scope(
     return text_content
 
 
+def _correction(numbers: list[str]) -> str:
+    return (
+        "Controle: deze getallen in je antwoord staan niet in de toolresultaten van dit gesprek: "
+        + ", ".join(numbers)
+        + ". Reken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
+        "of compute_kpi, of laat het weg. Geef daarna je volledige antwoord opnieuw."
+    )
+
+
 async def run(
     messages: list[dict],
     session: dict,
@@ -119,6 +129,22 @@ async def run(
             "type": "toast",
             "message": "Oudere berichten vallen buiten de context van het model.",
             "level": "warning",
+        })
+
+    # What the conversation already said counts as sourced: a follow-up may repeat
+    # a number from an earlier turn, or one the user gave. Taken before the loop,
+    # so the correction message with the suspect numbers does not source them.
+    earlier = [str(m.get("content") or "") for m in history if m.get("role") in ("user", "assistant")]
+
+    def check(text: str, tool_results: list[str]) -> list[str]:
+        return unverified(text, tool_results, earlier)
+
+    async def withdraw(problems: list[str]) -> None:
+        await emit({"type": "message_cancel"})
+        await emit({
+            "type": "toast",
+            "message": "Een getal in het antwoord kwam niet uit de opgehaalde data; het antwoord wordt herschreven.",
+            "level": "info",
         })
 
     async def keep(call: ToolCall, result: str, figure) -> None:
@@ -149,6 +175,9 @@ async def run(
             halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
             max_iterations=MAX_TOOL_ITERATIONS,
             max_result_chars=_MAX_TOOL_RESULT_CHARS,
+            check=check,
+            correction=_correction,
+            on_correction=withdraw,
         )
     finally:
         slow_task.cancel()
@@ -178,10 +207,13 @@ async def run(
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     if not text_content.strip():
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
+    if result.problems:
+        logger.warning("ONGEDEKTE GETALLEN na herkansing  model=%s  %s", chosen_model, result.problems)
     await emit({
         "type": "message_end",
         "content": text_content,
         "actions": [],
         **({"truncated": True} if truncated else {}),
+        **({"unverified": result.problems} if result.problems else {}),
     })
     return text_content

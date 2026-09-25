@@ -245,3 +245,16 @@ def test_model_error_keeps_the_partial_result_when_the_caller_can_use_it(monkeyp
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", failing_second_call)
     with pytest.raises(RuntimeError):
         _run(keep_partial=lambda: False)
+
+
+def test_caller_hears_about_the_correction_before_it_runs(monkeypatch):
+    _steps(monkeypatch, [StreamResult(text="Fout 12.345", tool_calls=[]), StreamResult(text="Goed", tool_calls=[])])
+    heard: list = []
+
+    async def on_correction(problems):
+        heard.append(problems)
+
+    _run(check=lambda text, tool_results: ["12.345"] if "12.345" in text else [],
+         correction=lambda problems: "Herstel", on_correction=on_correction)
+
+    assert heard == [["12.345"]]
