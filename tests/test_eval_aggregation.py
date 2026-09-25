@@ -18,8 +18,9 @@ import pytest
 from dotenv import load_dotenv
 from riodata import duo
 
-from agent.dashboard import _EVAL_PATTERN_LOOKAHEAD
 from core.config import MODEL, get_required_api_key_env_var
+
+_EVAL_PATTERN_LOOKAHEAD = 40  # max. tekens tussen jaartal en waarde in het antwoord
 
 # Ground truth: bereken de werkelijke sommen met pandas
 _DATASET_ID = "p02ho1ejrs"

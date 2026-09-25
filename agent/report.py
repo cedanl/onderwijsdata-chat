@@ -30,6 +30,7 @@ from agent.dashboard import (
 from agent.model_context import clamp_max_tokens
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
+from agent.report_checks import report_problems
 from agent.stream import accumulate_stream
 from core.config import MAX_TOKENS, MODEL
 from tools import LABELS, dispatch
@@ -145,6 +146,14 @@ def _safe_parse_tool_arguments(arguments: str) -> dict | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+@dataclass
+class _ReportRun:
+    """What one report run collected: its figures and every full tool result."""
+
+    figures: list[str] = field(default_factory=list)
+    tool_results: list[str] = field(default_factory=list)
+
+
 async def generate(
     session: dict,
     emit: Emit,
@@ -152,35 +161,73 @@ async def generate(
     stop_event: asyncio.Event | None = None,
     author: str | None = None,
 ) -> ReportSpec:
-    """Generate a report from the loaded session data."""
+    """Generate a report from the loaded session data.
+
+    The report must agree with its own data (#175). If it does not, the model
+    gets one correction; a report that still contradicts its data is refused.
+    """
     context = build_dataset_context(session)
 
     if not context["datasets"]:
         raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
     chosen_model = model or MODEL
-    system_prompt = _build_system_prompt(context)
-    extra_kwargs = litellm_kwargs(chosen_model)
-
     messages: list[dict] = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": _build_system_prompt(context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
+    run = _ReportRun()
 
-    figures: list[str] = []
-    partial_error: str | None = None
+    final_text = await _tool_loop(messages, run, chosen_model, emit, stop_event)
+    spec = _parse_spec_from_response(final_text, run.figures, context, author)
+    problems = report_problems(spec, run.figures, [*run.tool_results, json.dumps(context, default=str)])
+    if not problems or (stop_event and stop_event.is_set()):
+        return spec
+
+    logger.warning("RAPPORT INCONSISTENT, herkansing: %s", problems)
+    messages += [
+        {"role": "assistant", "content": final_text},
+        {"role": "user", "content": _correction(problems)},
+    ]
+    final_text = await _tool_loop(messages, run, chosen_model, emit, stop_event)
+    spec = _parse_spec_from_response(final_text, run.figures, context, author)
+    problems = report_problems(spec, run.figures, [*run.tool_results, json.dumps(context, default=str)])
+    if problems:
+        logger.error("RAPPORT GEWEIGERD: %s", problems)
+        raise ValueError(f"Rapport niet consistent met de data: {problems[0]} Probeer het opnieuw.")
+    return spec
+
+
+def _correction(problems: list[str]) -> str:
+    return (
+        "Je rapport klopt niet met de data die je hebt opgehaald:\n"
+        + "\n".join(f"- {p}" for p in problems)
+        + "\nHerstel dit: gebruik alleen getallen uit de toolresultaten en beschrijf wat de "
+        "grafieken tonen. Geef daarna opnieuw het volledige JSON-blok."
+    )
+
+
+async def _tool_loop(
+    messages: list[dict],
+    run: _ReportRun,
+    model: str,
+    emit: Emit,
+    stop_event: asyncio.Event | None,
+) -> str:
+    """Let the model call tools until it answers; returns its final text."""
+    extra_kwargs = litellm_kwargs(model)
     final_text = ""
+    partial_error: str | None = None
 
     try:
         for _ in range(_MAX_TOOL_ITERATIONS):
             if stop_event and stop_event.is_set():
                 break
 
-            clamped_tokens = clamp_max_tokens(chosen_model, MAX_TOKENS)
             stream = await acompletion_with_backoff(
                 emit,
-                model=chosen_model,
-                max_tokens=clamped_tokens,
+                model=model,
+                max_tokens=clamp_max_tokens(model, MAX_TOKENS),
                 messages=messages,
                 tools=_REPORT_TOOLS,
                 stream=True,
@@ -188,29 +235,27 @@ async def generate(
             )
 
             sr = await accumulate_stream(stream, stop_event=stop_event)
-            text_content = sr.text
-            tool_calls_list = sr.tool_calls
-            final_text = text_content
+            final_text = sr.text
 
-            if not tool_calls_list:
+            if not sr.tool_calls:
                 break
 
             messages.append(
                 {
                     "role": "assistant",
-                    "content": text_content,
+                    "content": sr.text,
                     "tool_calls": [
                         {
                             "id": tc["id"],
                             "type": "function",
                             "function": {"name": tc["name"], "arguments": tc["arguments"]},
                         }
-                        for tc in tool_calls_list
+                        for tc in sr.tool_calls
                     ],
                 }
             )
 
-            for tc in tool_calls_list:
+            for tc in sr.tool_calls:
                 name = tc["name"]
                 label = LABELS.get(name, name)
                 await emit({"type": "tool_start", "name": name, "label": label})
@@ -227,17 +272,18 @@ async def generate(
 
                 result, figure = await asyncio.to_thread(dispatch, name, args)
                 _log_tool_call(name, args, result)
+                run.tool_results.append(result)
 
                 await emit({"type": "tool_end", "name": name})
 
-                if figure is not None and len(figures) < _MAX_VISUALISATIES:
-                    figures.append(pio.to_json(figure))
+                if figure is not None and len(run.figures) < _MAX_VISUALISATIES:
+                    run.figures.append(pio.to_json(figure))
 
                 if len(result) > _MAX_TOOL_RESULT_CHARS:
                     result = result[:_MAX_TOOL_RESULT_CHARS] + f"\n... (afgekapt, {len(result)} chars totaal)"
                 messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
     except Exception as exc:
-        if not figures:
+        if not run.figures:
             raise
         partial_error = str(exc)
 
@@ -249,8 +295,7 @@ async def generate(
                 "level": "warning",
             }
         )
-
-    return _parse_spec_from_response(final_text, figures, context, author)
+    return final_text
 
 
 def _log_tool_call(name: str, args: dict, result: str) -> None:
