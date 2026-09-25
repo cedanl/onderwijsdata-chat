@@ -219,8 +219,15 @@ def _raw_insert(conn, conv_id, username, title, timestamp, messages):
     )
 
 
-def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatch):
+def _legacy_conn(db):
+    """Connection to a database from before the dedupe migration ran."""
     conn = db._connect()
+    conn.execute("DELETE FROM schema_migrations")
+    return conn
+
+
+def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatch):
+    conn = _legacy_conn(db)
     msgs_short = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "Kort."}]
     msgs_full = [
         {"role": "user", "content": "Hoeveel studenten?"},
@@ -244,7 +251,7 @@ def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatc
 
 
 def test_migrate_keeps_richest_row_on_tiebreaker(db, tmp_path, monkeypatch):
-    conn = db._connect()
+    conn = _legacy_conn(db)
     msgs = [
         {"role": "user", "content": "Wie doet mbo?"},
         {"role": "assistant", "content": "Antwoord."},
@@ -261,7 +268,7 @@ def test_migrate_keeps_richest_row_on_tiebreaker(db, tmp_path, monkeypatch):
 
 
 def test_migrate_dedupe_is_idempotent(db, tmp_path, monkeypatch):
-    conn = db._connect()
+    conn = _legacy_conn(db)
     msgs = [{"role": "user", "content": "Hoeveel huur?"}, {"role": "assistant", "content": "Antwoord."}]
     _raw_insert(conn, "b-1", "alice", "Huur", 1700000000, msgs)
     _raw_insert(conn, "b-2", "alice", "Huur", 1690000000, msgs)
@@ -276,7 +283,7 @@ def test_migrate_dedupe_is_idempotent(db, tmp_path, monkeypatch):
 
 
 def test_migrate_dedupe_ignores_different_first_questions(db, tmp_path, monkeypatch):
-    conn = db._connect()
+    conn = _legacy_conn(db)
     msgs_a = [{"role": "user", "content": "Vraag A"}, {"role": "assistant", "content": "A"}]
     msgs_b = [{"role": "user", "content": "Vraag B"}, {"role": "assistant", "content": "B"}]
     _raw_insert(conn, "d-1", "alice", "Zelfde titel", 1700000000, msgs_a)
@@ -296,3 +303,53 @@ def test_rename_conversation_scoped_to_user(db):
     assert db.list_conversations("alice")[0]["title"] == "Van Alice"
     assert db.rename_conversation("alice", "c1", "Nieuw") is True
     assert db.list_conversations("alice")[0]["title"] == "Nieuw"
+
+
+def test_migrate_dedupe_keeps_threads_with_different_follow_up(db, tmp_path, monkeypatch):
+    # Zelfde titel en eerste vraag (bijv. twee keer dezelfde suggestiechip),
+    # maar een andere vervolgvraag: twee gesprekken, geen duplicaat (#178).
+    conn = _legacy_conn(db)
+    first = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "A"}]
+    _raw_insert(conn, "e-1", "alice", "Studenten", 1700000000,
+                [*first, {"role": "user", "content": "En in deeltijd?"}])
+    _raw_insert(conn, "e-2", "alice", "Studenten", 1690000000,
+                [*first, {"role": "user", "content": "En bij HU?"}])
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["e-1", "e-2"]
+
+
+def test_migrate_dedupe_runs_once(db, tmp_path, monkeypatch):
+    # Na de eenmalige opschoning raakt een herstart nieuwe gesprekken niet meer,
+    # ook niet als ze op een legacy-duplicaat lijken (#178).
+    _reload_and_init(tmp_path, monkeypatch)
+    conn = db._connect()
+    msgs = [{"role": "user", "content": "Hoeveel huur?"}, {"role": "assistant", "content": "Antwoord."}]
+    _raw_insert(conn, "f-1", "alice", "Huur", 1700000000, msgs)
+    _raw_insert(conn, "f-2", "alice", "Huur", 1690000000, msgs)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["f-1", "f-2"]
+
+
+def test_migrate_dedupe_deletes_only_the_duplicate_owners_row(db, tmp_path, monkeypatch):
+    # De primaire sleutel is (id, username): een ander account met hetzelfde id
+    # mag niet mee verdwijnen (#178).
+    conn = _legacy_conn(db)
+    msgs = [{"role": "user", "content": "Wie doet mbo?"}, {"role": "assistant", "content": "A"}]
+    _raw_insert(conn, "g-1", "alice", "MBO", 1700000000, msgs)
+    _raw_insert(conn, "g-2", "alice", "MBO", 1690000000, msgs)
+    _raw_insert(conn, "g-2", "bob", "Iets anders", 1690000000, msgs)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert [r["id"] for r in fresh.list_conversations("alice")] == ["g-1"]
+    assert [r["id"] for r in fresh.list_conversations("bob")] == ["g-2"]
