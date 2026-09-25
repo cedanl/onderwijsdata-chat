@@ -12,6 +12,7 @@ import json
 import pandas as pd
 import pytest
 
+from agent import loop as loop_module
 from agent import report as report_module
 from agent.report import ReportSpec
 from agent.stream import StreamResult
@@ -38,8 +39,8 @@ def _make_generate(monkeypatch, steps: list[StreamResult]):
         step = steps.pop(0)
         return step
 
-    monkeypatch.setattr(report_module, "acompletion_with_backoff", fake_completion)
-    monkeypatch.setattr(report_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
 
 
 def _run_generate():
@@ -145,7 +146,7 @@ def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its
         return object()
 
     _make_generate(monkeypatch, [_final("In 2021 waren het er 12.345."), _final("In 2021 waren het er 10.")])
-    monkeypatch.setattr(report_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
 
     spec, _ = _run_generate()
 
