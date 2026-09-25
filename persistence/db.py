@@ -55,28 +55,30 @@ def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
     return conn.execute(sql, params)
 
 
-def _user_questions(messages_json: str) -> list[str]:
-    """The user's questions in a stored thread, normalised for comparison."""
+def _thread(messages_json: str) -> list[tuple] | None:
+    """A stored thread as comparable (role, content) pairs; None when unreadable."""
     try:
         messages = json.loads(messages_json)
     except (TypeError, ValueError):
-        return []
-    return [
-        m["content"].strip().lower()
-        for m in (messages if isinstance(messages, list) else [])
-        if isinstance(m, dict) and m.get("role") == "user"
-        and isinstance(m.get("content"), str) and m["content"].strip()
-    ]
+        return None
+    if not isinstance(messages, list) or not all(isinstance(m, dict) for m in messages):
+        return None
+    return [(m.get("role"), json.dumps(m.get("content"), sort_keys=True)) for m in messages]
 
 
 def _dedupe_conversations(conn: Any) -> None:
     """Remove pre-#69 duplicate conversations: snapshots of one growing thread.
 
-    A row is a legacy duplicate when another row of the same user and title
-    (case-insensitive) holds the same thread further along: its user questions
-    are a prefix of the other row's. Two threads that share their opening
-    question but diverge later are separate conversations and both stay (#178).
-    Within a group the richest row wins, tie-break on the newest timestamp.
+    Before #69 every save got a new id (#151), so one conversation was stored
+    once per save. A row is such a snapshot only when its messages, role and
+    content, are the start of another row of the same user and title
+    (case-insensitive). Anything less is no proof: two conversations that open
+    with the same question but got another answer both stay (#178, #184), and
+    so does a row whose messages cannot be read. The richest row wins, tie-break
+    on the newest timestamp.
+
+    Databases that ran this migration before #184 used a looser rule (same user
+    questions only); the schema_migrations marker keeps it from running again.
     """
     rows = [
         dict(r) for r in _execute(
@@ -85,19 +87,20 @@ def _dedupe_conversations(conn: Any) -> None:
     ]
     groups: dict = {}
     for r in rows:
-        r["questions"] = _user_questions(r["messages"])
-        groups.setdefault((r["username"].lower(), r["title"].lower()), []).append(r)
+        r["thread"] = _thread(r["messages"])
+        if r["thread"] is not None:
+            groups.setdefault((r["username"].lower(), r["title"].lower()), []).append(r)
 
     doomed: list[tuple[str, str]] = []
     for group in groups.values():
-        group.sort(key=lambda r: (len(r["questions"]), r["timestamp"]), reverse=True)
-        kept: list[list[str]] = []
+        group.sort(key=lambda r: (len(r["thread"]), r["timestamp"]), reverse=True)
+        kept: list[list[tuple]] = []
         for r in group:
-            qs = r["questions"]
-            if any(k[: len(qs)] == qs for k in kept):
+            thread = r["thread"]
+            if any(k[: len(thread)] == thread for k in kept):
                 doomed.append((r["id"], r["username"]))
             else:
-                kept.append(qs)
+                kept.append(thread)
 
     for conv_id, username in doomed:
         _execute(conn, "DELETE FROM conversations WHERE id = ? AND username = ?", (conv_id, username))

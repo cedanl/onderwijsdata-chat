@@ -228,13 +228,15 @@ def _legacy_conn(db):
 
 def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatch):
     conn = _legacy_conn(db)
-    msgs_short = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "Kort."}]
+    # Een legacy-duplicaat is een eerdere opslag van hetzelfde gesprek: zijn
+    # berichten zijn het begin van de rijkere rij (#151, #184).
     msgs_full = [
         {"role": "user", "content": "Hoeveel studenten?"},
         {"role": "assistant", "content": "Volledig antwoord."},
         {"role": "user", "content": "En in deeltijd?"},
         {"role": "assistant", "content": "Nog vollediger."},
     ]
+    msgs_short = msgs_full[:2]
     _raw_insert(conn, "dup-1", "alice", "Mijn vraag", 1700000000, msgs_full)
     _raw_insert(conn, "dup-2", "alice", "Mijn vraag", 1690000000, msgs_short)
     _raw_insert(conn, "dup-3", "alice", "mijn vraag", 1680000000, msgs_full)
@@ -353,3 +355,35 @@ def test_migrate_dedupe_deletes_only_the_duplicate_owners_row(db, tmp_path, monk
 
     assert [r["id"] for r in fresh.list_conversations("alice")] == ["g-1"]
     assert [r["id"] for r in fresh.list_conversations("bob")] == ["g-2"]
+
+
+def test_migrate_dedupe_keeps_threads_with_a_different_answer(db, tmp_path, monkeypatch):
+    # Zelfde titel en eerste vraag, nog geen vervolgvraag, maar een ander
+    # antwoord: twee losse gesprekken, geen snapshot van één (#184).
+    conn = _legacy_conn(db)
+    _raw_insert(conn, "h-1", "alice", "Studenten", 1700000000,
+                [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "28.355"}])
+    _raw_insert(conn, "h-2", "alice", "Studenten", 1690000000,
+                [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "30.284"}])
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["h-1", "h-2"]
+
+
+def test_migrate_dedupe_keeps_rows_it_cannot_read(db, tmp_path, monkeypatch):
+    # Geen bewijs dat het een duplicaat is, dus bewaren.
+    conn = _legacy_conn(db)
+    _raw_insert(conn, "i-1", "alice", "Kapot", 1700000000, [{"role": "user", "content": "Vraag"}])
+    conn.execute(
+        "INSERT INTO conversations (id, username, title, timestamp, messages) VALUES (?, ?, ?, ?, ?)",
+        ("i-2", "alice", "Kapot", 1690000000, "{geen json"),
+    )
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["i-1", "i-2"]
