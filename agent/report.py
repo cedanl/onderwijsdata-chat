@@ -13,11 +13,9 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 import plotly.io as pio
 
@@ -29,10 +27,9 @@ from agent.dashboard import (
 )
 from agent.loop import ToolCall, tool_loop
 from agent.report_checks import report_problems
+from agent.stream import Emit
 from core.config import MODEL
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
-
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 

@@ -1,10 +1,8 @@
 import asyncio
-from collections.abc import Awaitable, Callable
-from typing import Any
 
 import litellm
 
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
+from .stream import Emit
 
 _MAX_RETRIES = 4
 _BASE_DELAY = 2.0

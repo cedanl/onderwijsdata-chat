@@ -23,11 +23,10 @@ from tools.snippet import generate as _generate_snippet
 from .model_context import clamp_max_tokens
 from .models import litellm_kwargs
 from .ratelimit import acompletion_with_backoff
-from .stream import accumulate_stream
+from .stream import Emit, accumulate_stream
 
 logger = logging.getLogger(__name__)
 
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 # What a tool_end event carries of the output; the full result stays in the loop.
 _EVENT_OUTPUT_CHARS = 2000

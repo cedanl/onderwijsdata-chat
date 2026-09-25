@@ -1,8 +1,6 @@
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable, Callable
-from typing import Any
 
 import plotly.io as pio
 
@@ -14,10 +12,10 @@ from .history import trim
 from .loop import ToolCall, tool_loop
 from .models import build_system
 from .session_data import record_data_key
+from .stream import Emit
 
 logger = logging.getLogger(__name__)
 
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": 5}
 _MAX_TOOL_RESULT_CHARS = 12000
 

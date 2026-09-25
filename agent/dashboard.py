@@ -12,16 +12,15 @@ import contextlib
 import json
 import logging
 import re
-from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
 
 import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
 from agent.session_data import data_lineage, session_data_keys
+from agent.stream import Emit
 from core.config import MODEL
 from tools import LABELS, store
 from tools.columns import sample_values
@@ -34,8 +33,6 @@ from tools.schemas import (
     TOOL_QUERY_DATA,
     TOOL_SCHEMAS,
 )
-
-Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
