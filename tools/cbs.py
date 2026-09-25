@@ -5,6 +5,7 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
+import httpx
 import pandas as pd
 from onderwijsdata import data, definitions
 from onderwijsdata.client import get
@@ -86,6 +87,7 @@ def _select_with_dimensions(select: str, dims: list[str]) -> str:
 
 
 _PERIODESTATUS = "Periodestatus"
+_LABEL_SUFFIX = "_label"
 _PERIODESTATUS_DEFINITIE = (
     "CBS-status van de periode uit Perioden.Status (bijv. Definitief, Voorlopig, "
     "Nader voorlopig). Gebruik deze kolom; leid de status niet af uit de periodecode. "
@@ -93,30 +95,54 @@ _PERIODESTATUS_DEFINITIE = (
 )
 
 
-def _time_dimension(col_defs: dict) -> str | None:
-    return next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
+@lru_cache(maxsize=256)
+def _dimension_rows(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
+    """Ruwe CBS-dimensierijen (Key, Title en waar de bron hem heeft Status).
+
+    Eén bron voor labels, periodestatus en get_cbs_dimension. Een mislukte call
+    wordt niet gecachet: lru_cache bewaart geen exceptions.
+    """
+    return tuple(
+        {k: v.strip() if isinstance(v, str) else v for k, v in row.items()}
+        for row in get(dataset_id, dimension_name)
+    )
 
 
-def _period_statuses(dataset_id: str, time_dim: str) -> dict[str, str]:
-    """Code → Status van de tijddimensie; leeg als CBS die niet levert (#180)."""
-    try:
-        rows = get(dataset_id, time_dim)
-    except Exception as e:
-        logger.warning("CBS %s ophalen mislukt voor %s: %s", time_dim, dataset_id, e)
-        return {}
-    return {r["Key"].strip(): r["Status"].strip() for r in rows if r.get("Status")}
+def _add_dimension_context(df: pd.DataFrame, dataset_id: str, col_defs: dict) -> pd.DataFrame:
+    """Zet naast elke dimensiecode het officiële label en de periodestatus.
+
+    Het label ("Voltijd" naast A028666) voorkomt dat een model een code zelf
+    vertaalt (#163); de status reist met de rij mee naar query_data, grafiek en
+    rapport (#180). Levert CBS een dimensie niet, dan geen kolom: niets raden.
+    """
+    extra: dict[str, pd.Series] = {}
+    for dim in _dimension_names(col_defs):
+        if dim not in df.columns:
+            continue
+        try:
+            rows = _dimension_rows(dataset_id, dim)
+        except Exception as e:
+            logger.warning("CBS-dimensie %s ophalen mislukt voor %s: %s", dim, dataset_id, e)
+            continue
+        titles = {r["Key"]: r["Title"] for r in rows if r.get("Title")}
+        if titles:
+            extra[dim + _LABEL_SUFFIX] = df[dim].map(titles)
+        statuses = {r["Key"]: r["Status"] for r in rows if r.get("Status")}
+        if statuses:
+            extra[_PERIODESTATUS] = df[dim].map(statuses)
+    return df.assign(**extra)
 
 
-def _add_period_status(df: pd.DataFrame, dataset_id: str, col_defs: dict) -> pd.DataFrame:
-    """Koppel de officiële periodestatus aan elke rij, zodat hij meereist naar
-    query_data, grafiek en rapport en nergens geraden hoeft te worden."""
-    time_dim = _time_dimension(col_defs)
-    if time_dim not in df.columns:
-        return df
-    statuses = _period_statuses(dataset_id, time_dim)
-    if not statuses:
-        return df
-    return df.assign(**{_PERIODESTATUS: df[time_dim].map(statuses)})
+def _column_definition(col: str, col_defs: dict) -> str | None:
+    if col == _PERIODESTATUS:
+        return _PERIODESTATUS_DEFINITIE
+    if col.endswith(_LABEL_SUFFIX) and col.removesuffix(_LABEL_SUFFIX) in col_defs:
+        return (
+            f"Officiële CBS-titel van de code in {col.removesuffix(_LABEL_SUFFIX)}. "
+            "Gebruik dit label in tekst en grafieken; vertaal codes niet zelf. "
+            "Groepeer je op de code, neem het label dan mee in group_by."
+        )
+    return col_defs.get(col, {}).get("description") or None
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
@@ -138,7 +164,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         )
 
     col_defs = _load_definitions(dataset_id)
-    df = _add_period_status(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
+    df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     store.put(key, df)
@@ -151,8 +177,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "kolom": col,
             "type": str(df[col].dtype),
             "voorbeelden": sample_values(df[col], 5),
-            **({"definitie": col_defs[col]["description"]} if col in col_defs and col_defs[col].get("description") else {}),
-            **({"definitie": _PERIODESTATUS_DEFINITIE} if col == _PERIODESTATUS else {}),
+            **({"definitie": d} if (d := _column_definition(col, col_defs)) else {}),
             **({"eenheid": col_defs[col]["unit"]} if col in col_defs and col_defs[col].get("unit") else {}),
         }
         for col in df.columns
@@ -179,18 +204,20 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
-@lru_cache(maxsize=256)
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
     try:
-        rows = get(dataset_id, dimension_name)
+        rows = _dimension_rows(dataset_id, dimension_name)
     except Exception as e:
-        return f"Fout bij ophalen dimensie: {e}"
-    values = {
-        r["Key"].strip(): (
-            {"titel": r["Title"].strip(), "status": r["Status"].strip()} if r.get("Status")
-            else r["Title"].strip()
+        reason = f"HTTP {e.response.status_code}" if isinstance(e, httpx.HTTPStatusError) else str(e)
+        return (
+            f"Dimensie '{dimension_name}' niet gevonden in {dataset_id} ({reason}). "
+            f"Beschikbare dimensies: {_dimension_names(_load_definitions(dataset_id))}. "
+            "De status van een periode is geen dimensie: die staat bij Perioden en als "
+            f"kolom {_PERIODESTATUS} in get_cbs_data."
         )
+    values = {
+        r["Key"]: {"titel": r["Title"], "status": r["Status"]} if r.get("Status") else r["Title"]
         for r in rows
     }
     return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
