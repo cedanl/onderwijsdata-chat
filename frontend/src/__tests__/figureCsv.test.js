@@ -30,6 +30,20 @@ describe('figureToCsv', () => {
     expect(lines(figureToCsv(figure))).toEqual(['STUDIEJAAR;VT;DT', '2021;10;3'])
   })
 
+  it('puts each value on the row of its own x when series have different x values', () => {
+    // Live-audit 6: two traces, one per year, came out as one row "2024/'25;378490;367960".
+    const figure = {
+      data: [
+        { name: '2024/25', x: ["2024/'25"], y: [378490] },
+        { name: '2025/26', x: ["2025/'26"], y: [367960] },
+      ],
+      layout: { meta: { x: 'Perioden', y: 'Ingeschrevenen' } },
+    }
+    expect(lines(figureToCsv(figure))).toEqual([
+      'Perioden;2024/25;2025/26', "2024/'25;378490;", "2025/'26;;367960",
+    ])
+  })
+
   it('quotes values that contain the separator or quotes', () => {
     const figure = {
       data: [{ x: ['Hogeschool; Utrecht', 'De "Haagse"'], y: [1, 2] }],
