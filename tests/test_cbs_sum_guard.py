@@ -9,7 +9,7 @@ import pytest
 
 from tools import cbs, store
 from tools.cbs import get_cbs_data
-from tools.duo import query_data
+from tools.query import query_data
 
 _DS = "85423NED"
 _KEY = f"cbs:{_DS}:abc12345"

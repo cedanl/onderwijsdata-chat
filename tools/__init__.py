@@ -3,9 +3,10 @@ from typing import Any
 from .analysis import run_analysis
 from .catalog import dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
-from .duo import get_duo_data, query_data
+from .duo import get_duo_data
 from .kpi import compute_kpi
 from .plot import create_choropleth_map, create_plot
+from .query import query_data
 from .rio import get_rio_data
 from .schemas import (
     TOOL_CLARIFY_SCOPE,

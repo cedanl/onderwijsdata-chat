@@ -12,14 +12,8 @@ import pandas as pd
 import pytest
 
 from tools import store
-from tools.duo import (
-    _apply_aggregation,
-    count_cells,
-    get_duo_data,
-    mask_sentinels,
-    query_data,
-    sentinel_notes,
-)
+from tools.duo import count_cells, get_duo_data, mask_sentinels, sentinel_notes
+from tools.query import _apply_aggregation, query_data
 
 
 @pytest.fixture(autouse=True)

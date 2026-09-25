@@ -11,7 +11,7 @@ from unittest.mock import patch
 import httpx
 
 from tools.cbs import get_cbs_data, get_cbs_dimension
-from tools.duo import query_data
+from tools.query import query_data
 
 _DEFS = {
     "Onderwijssoort": {"type": "Dimension"},

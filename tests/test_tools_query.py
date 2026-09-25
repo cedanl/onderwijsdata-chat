@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from tools import store
-from tools.duo import query_data
+from tools.query import query_data
 
 
 def _put(key: str, data: list[dict]) -> None:
