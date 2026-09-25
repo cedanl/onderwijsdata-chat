@@ -57,7 +57,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_GET_CBS_DATA,
-            "description": "Haal een CBS dataset op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen.",
+            "description": "Haal een CBS dataset op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen. De kolom Periodestatus geeft per rij de officiële CBS-status (Definitief/Voorlopig/...); noem de status alleen op basis daarvan.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -72,7 +72,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": TOOL_GET_CBS_DIMENSION,
-            "description": "Haal de mogelijke waarden op van een dimensie in een CBS dataset.",
+            "description": "Haal de mogelijke waarden op van een dimensie in een CBS dataset: code → titel. Voor de tijddimensie (Perioden) code → {titel, status} met de officiële CBS-status; er is geen aparte dimensie 'Status'.",
             "parameters": {
                 "type": "object",
                 "properties": {
