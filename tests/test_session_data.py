@@ -9,6 +9,7 @@ from agent.stream import StreamResult
 from tools import store
 
 run_module = importlib.import_module("agent.run")
+loop_module = importlib.import_module("agent.loop")
 
 
 def test_records_data_key_from_tool_result():
@@ -44,15 +45,15 @@ def test_agent_run_records_keys_of_its_tool_calls(monkeypatch):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return next(steps)
 
-    async def fake_call_tool(tc, emit):
+    async def fake_execute_tool(call, emit):
         return json.dumps({"data_key": "cbs:85423NED"}), None
 
     async def emit(event: dict) -> None:
         pass
 
-    monkeypatch.setattr(run_module, "acompletion_with_backoff", fake_completion)
-    monkeypatch.setattr(run_module, "accumulate_stream", fake_accumulate)
-    monkeypatch.setattr(run_module, "_call_tool", fake_call_tool)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute_tool)
 
     session: dict = {}
     asyncio.run(run_module.run(

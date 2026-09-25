@@ -6,6 +6,7 @@ from agent.stream import StreamResult
 
 # agent/__init__ re-exports run(), which shadows the module attribute
 run_module = importlib.import_module("agent.run")
+loop_module = importlib.import_module("agent.loop")
 
 
 def test_stop_during_tool_step_ends_message_as_aborted(monkeypatch):
@@ -17,13 +18,13 @@ def test_stop_during_tool_step_ends_message_as_aborted(monkeypatch):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return StreamResult(text="", tool_calls=[{"id": "t1", "name": "search_catalog", "arguments": "{}"}])
 
-    async def fake_call_tool(tc, emit):
+    async def fake_execute_tool(call, emit):
         stop_event.set()  # user presses Stop while the tool runs
         return "resultaat", None
 
-    monkeypatch.setattr(run_module, "acompletion_with_backoff", fake_completion)
-    monkeypatch.setattr(run_module, "accumulate_stream", fake_accumulate)
-    monkeypatch.setattr(run_module, "_call_tool", fake_call_tool)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute_tool)
 
     events: list[dict] = []
 

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from agent.stream import StreamResult, accumulate_stream
 
 run_module = importlib.import_module("agent.run")
+loop_module = importlib.import_module("agent.loop")
 
 
 def _chunk(content=None, finish_reason=None):
@@ -31,8 +32,8 @@ def _final_message_end(monkeypatch, finish_reason):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return StreamResult(text="Conclusie – De gevraagde indicator is niet beschikbaar in de", tool_calls=[], finish_reason=finish_reason)
 
-    monkeypatch.setattr(run_module, "acompletion_with_backoff", fake_completion)
-    monkeypatch.setattr(run_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
     events: list[dict] = []
 
     async def emit(event):

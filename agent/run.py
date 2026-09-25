@@ -6,22 +6,20 @@ from typing import Any
 
 import plotly.io as pio
 
-from core.config import MAX_TOKENS, MAX_TOOL_ITERATIONS, MODEL
-from tools import LABELS, SCHEMAS, dispatch
+from core.config import MAX_TOOL_ITERATIONS, MODEL
+from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
-from tools.snippet import generate as _generate_snippet
 
 from .history import trim
-from .model_context import clamp_max_tokens
-from .models import build_system, litellm_kwargs
-from .ratelimit import acompletion_with_backoff
+from .loop import ToolCall, tool_loop
+from .models import build_system
 from .session_data import record_data_key
-from .stream import accumulate_stream
 
 logger = logging.getLogger(__name__)
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": 5}
+_MAX_TOOL_RESULT_CHARS = 12000
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
@@ -53,35 +51,7 @@ if MODEL.startswith(("ollama_chat/", "ollama/")):
     OllamaChatConfig.transform_request = _patched_transform
 
 
-async def _call_tool(tc: dict, emit: Emit) -> tuple[str, object]:
-    if tc["name"] == TOOL_CLARIFY_SCOPE:
-        return "OK", None
-    args = json.loads(tc["arguments"])
-    label = LABELS.get(tc["name"], tc["name"])
-    args_json = json.dumps(args, ensure_ascii=False)
-    logger.debug("TOOL CALL  %-30s args=%s", tc["name"], args_json)
-    await emit({"type": "tool_start", "name": tc["name"], "label": label, "input": args})
-    result, figure = await asyncio.to_thread(dispatch, tc["name"], args)
-    result_str = str(result)
-    result_log = result_str if len(result_str) <= 2000 else result_str[:2000] + f"… ({len(result_str)} chars)"
-
-    snippet = _generate_snippet(tc["name"], args)
-    if snippet:
-        logger.info("REPRODUCEER %-28s\n%s", tc["name"], snippet)
-
-    end_event = {"type": "tool_end", "name": tc["name"], "output": result_str[:2000]}
-    if snippet:
-        end_event["snippet"] = snippet
-    await emit(end_event)
-    logger.debug("TOOL RESULT %-29s → %s", tc["name"], result_log)
-    return result, figure
-
-
-def _call_key(tc: dict) -> str:
-    return f"{tc['name']}:{tc['arguments']}"
-
-
-async def _handle_figures(tc: dict, figure, session: dict, emit: Emit) -> None:
+async def _handle_figure(name: str, figure, session: dict, emit: Emit) -> None:
     """Store *figure* in the session and emit a figure event."""
     if figure is None:
         return
@@ -89,37 +59,27 @@ async def _handle_figures(tc: dict, figure, session: dict, emit: Emit) -> None:
         figs = session.get(key, [])
         figs.append(figure)
         session[key] = figs
-    label = LABELS.get(tc["name"], tc["name"])
     await emit({
         "type": "figure",
-        "label": label,
+        "label": LABELS.get(name, name),
         "figure_json": pio.to_json(figure),
     })
 
 
 async def _handle_clarify_scope(
-    tool_calls: list[dict],
+    call: ToolCall,
     text_content: str,
-    history: list[dict],
-    initial_history_len: int,
+    turn_history: list[dict],
     messages: list[dict],
     session: dict,
-    turn_tool_calls: list[dict],
     emit: Emit,
-) -> str | None:
-    """Handle a ``clarify_scope`` tool call. Returns the text to return from
-    ``run()`` when clarification is needed, or ``None`` to continue the loop."""
-    if not any(tc["name"] == TOOL_CLARIFY_SCOPE for tc in tool_calls):
-        return None
-
-    session["_last_turn_tool_calls"] = turn_tool_calls
-    clarify_tc = next(tc for tc in tool_calls if tc["name"] == TOOL_CLARIFY_SCOPE)
-    args = json.loads(clarify_tc["arguments"])
-    opties = args.get("opties") or []
+) -> str:
+    """End the turn with a clarification card; returns the text for ``run()``."""
+    args = call.args or {}
 
     # Persist the clarification exchange back to messages so the next
     # turn has the tool_calls context (prevents re-asking same question).
-    messages.extend(history[initial_history_len:])
+    messages.extend(turn_history)
     session["_clarified"] = True
 
     # Cancel the open message_start before sending the clarification card.
@@ -132,7 +92,7 @@ async def _handle_clarify_scope(
     await emit({
         "type": "clarification",
         "vraag": args.get("vraag", ""),
-        "opties": opties,
+        "opties": args.get("opties") or [],
     })
     return text_content
 
@@ -146,8 +106,6 @@ async def run(
 ) -> str:
     settings: dict = session.get("chat_settings") or {}
     chosen_model = model or MODEL
-    system = build_system(settings)
-    extra_kwargs = litellm_kwargs(chosen_model)
 
     _raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
     last_user_msg = (
@@ -165,9 +123,10 @@ async def run(
             "level": "warning",
         })
 
-    call_cache: dict[str, tuple[str, object]] = {}
-    turn_tool_calls: list[dict] = []
-    tool_counts: dict[str, int] = {}
+    async def keep(call: ToolCall, result: str, figure) -> None:
+        record_data_key(session, result, {"name": call.name, "arguments": call.args})
+        await _handle_figure(call.name, figure, session, emit)
+
     async def _slow_warning():
         await asyncio.sleep(45)
         await emit({
@@ -177,104 +136,54 @@ async def run(
         })
 
     slow_task = asyncio.create_task(_slow_warning())
-
     try:
-        for _iter in range(MAX_TOOL_ITERATIONS):
-            if stop_event and stop_event.is_set():
-                # Stopped while tools ran: close the open message as aborted. No
-                # content key, so the client keeps the text it already has.
-                await emit({"type": "message_end", "aborted": True})
-                return ""
-
-            logger.debug("ITERATIE   %d", _iter + 1)
-
-            clamped_tokens = clamp_max_tokens(chosen_model, MAX_TOKENS)
-            stream = await acompletion_with_backoff(
-                emit,
-                model=chosen_model,
-                max_tokens=clamped_tokens,
-                messages=system + history,
-                tools=SCHEMAS,
-                stream=True,
-                **extra_kwargs,
-            )
-
-            await emit({"type": "message_start"})
-
-            result = await accumulate_stream(stream, stop_event=stop_event, emit=emit)
-            text_content = result.text
-            tool_calls = result.tool_calls
-
-            if stop_event and stop_event.is_set():
-                await emit({"type": "message_end", "content": text_content, "aborted": True})
-                return text_content
-
-            if text_content:
-                logger.debug("LLM TEKST  iter=%d  %r", _iter + 1, text_content[:500])
-
-            if not tool_calls:
-                logger.info("FINALE ANTWOORD (iter=%d)  %r", _iter + 1, text_content[:500])
-                session["_last_turn_tool_calls"] = turn_tool_calls
-                truncated = result.finish_reason == "length"
-                if truncated:
-                    logger.warning("ANTWOORD AFGEKAPT op outputlimiet (max_tokens=%d)", clamped_tokens)
-                if not text_content.strip():
-                    logger.warning("LEEG ANTWOORD  model=%s iter=%d", chosen_model, _iter + 1)
-                await emit({
-                    "type": "message_end",
-                    "content": text_content,
-                    "actions": [],
-                    **({"truncated": True} if truncated else {}),
-                })
-                return text_content
-
-            history.append({
-                "role": "assistant",
-                "content": text_content or "",
-                "tool_calls": [
-                    {"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}}
-                    for tc in tool_calls
-                ],
-            })
-
-            logger.debug("LLM KIEST  %d tool(s): %s", len(tool_calls), ", ".join(tc["name"] for tc in tool_calls))
-            turn_tool_calls.extend({"name": tc["name"], "arguments": tc["arguments"]} for tc in tool_calls)
-
-            for tc in tool_calls:
-                tool_counts[tc["name"]] = tool_counts.get(tc["name"], 0) + 1
-
-            blocked = {}
-            for tc in tool_calls:
-                limit = _TOOL_LIMITS.get(tc["name"])
-                if limit and tool_counts[tc["name"]] > limit:
-                    blocked[tc["id"]] = f"LIMIET: {tc['name']} is al {limit}x aangeroepen. Werk met de resultaten die je hebt of geef aan dat de data niet beschikbaar is."
-                    logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", tc["name"], tool_counts[tc["name"]], limit)
-
-            runnable = [(i, tc) for i, tc in enumerate(tool_calls) if tc["id"] not in blocked and _call_key(tc) not in call_cache]
-            new_results = await asyncio.gather(*[_call_tool(tc, emit) for _, tc in runnable])
-            for (_i, tc), res in zip(runnable, new_results, strict=False):
-                call_cache[_call_key(tc)] = res
-
-            for tc in tool_calls:
-                if tc["id"] in blocked:
-                    result = blocked[tc["id"]]
-                    history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-                    continue
-                result, figure = call_cache[_call_key(tc)]
-                record_data_key(session, result, {"name": tc["name"], "arguments": json.loads(tc["arguments"])})
-                await _handle_figures(tc, figure, session, emit)
-                if len(result) > 12000:
-                    result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
-                history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-
-            clarify_result = await _handle_clarify_scope(
-                tool_calls, text_content, history, initial_history_len,
-                messages, session, turn_tool_calls, emit,
-            )
-            if clarify_result is not None:
-                return clarify_result
-
-        await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
+        result = await tool_loop(
+            history,
+            model=chosen_model,
+            tools=SCHEMAS,
+            emit=emit,
+            stop_event=stop_event,
+            system=build_system(settings),
+            stream_text=True,
+            on_llm_start=lambda: emit({"type": "message_start"}),
+            on_tool_result=keep,
+            tool_limits=_TOOL_LIMITS,
+            halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+            max_iterations=MAX_TOOL_ITERATIONS,
+            max_result_chars=_MAX_TOOL_RESULT_CHARS,
+        )
     finally:
         slow_task.cancel()
-    return "Het maximale aantal stappen is bereikt."
+
+    if result.aborted == "tools":
+        # Stopped while tools ran: close the open message as aborted. No
+        # content key, so the client keeps the text it already has.
+        await emit({"type": "message_end", "aborted": True})
+        return ""
+    if result.aborted == "stream":
+        await emit({"type": "message_end", "content": result.text, "aborted": True})
+        return result.text
+    if result.halted_on:
+        session["_last_turn_tool_calls"] = result.tool_calls
+        return await _handle_clarify_scope(
+            result.halted_on, result.text, history[initial_history_len:], messages, session, emit,
+        )
+    if result.exhausted:
+        await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
+        return "Het maximale aantal stappen is bereikt."
+
+    text_content = result.text
+    logger.info("FINALE ANTWOORD  %r", text_content[:500])
+    session["_last_turn_tool_calls"] = result.tool_calls
+    truncated = result.finish_reason == "length"
+    if truncated:
+        logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
+    if not text_content.strip():
+        logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
+    await emit({
+        "type": "message_end",
+        "content": text_content,
+        "actions": [],
+        **({"truncated": True} if truncated else {}),
+    })
+    return text_content
