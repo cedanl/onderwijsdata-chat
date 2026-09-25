@@ -36,6 +36,7 @@ def _new_session(username: str | None = None) -> dict:
         "stop_event": None,
         "_last_turn_tool_calls": [],
         "data_keys": [],
+        "data_provenance": {},
         # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
         # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.
         "username": username or FALLBACK_USER,
