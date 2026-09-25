@@ -6,7 +6,8 @@ from functools import lru_cache
 logger = logging.getLogger(__name__)
 
 import pandas as pd
-from onderwijsdata import data, definitions, dimension
+from onderwijsdata import data, definitions
+from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
@@ -84,6 +85,40 @@ def _select_with_dimensions(select: str, dims: list[str]) -> str:
     return ",".join(cols + [d for d in dims if d not in cols])
 
 
+_PERIODESTATUS = "Periodestatus"
+_PERIODESTATUS_DEFINITIE = (
+    "CBS-status van de periode uit Perioden.Status (bijv. Definitief, Voorlopig, "
+    "Nader voorlopig). Gebruik deze kolom; leid de status niet af uit de periodecode. "
+    "Groepeer je op de tijddimensie, neem Periodestatus dan mee in group_by."
+)
+
+
+def _time_dimension(col_defs: dict) -> str | None:
+    return next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
+
+
+def _period_statuses(dataset_id: str, time_dim: str) -> dict[str, str]:
+    """Code → Status van de tijddimensie; leeg als CBS die niet levert (#180)."""
+    try:
+        rows = get(dataset_id, time_dim)
+    except Exception as e:
+        logger.warning("CBS %s ophalen mislukt voor %s: %s", time_dim, dataset_id, e)
+        return {}
+    return {r["Key"].strip(): r["Status"].strip() for r in rows if r.get("Status")}
+
+
+def _add_period_status(df: pd.DataFrame, dataset_id: str, col_defs: dict) -> pd.DataFrame:
+    """Koppel de officiële periodestatus aan elke rij, zodat hij meereist naar
+    query_data, grafiek en rapport en nergens geraden hoeft te worden."""
+    time_dim = _time_dimension(col_defs)
+    if time_dim not in df.columns:
+        return df
+    statuses = _period_statuses(dataset_id, time_dim)
+    if not statuses:
+        return df
+    return df.assign(**{_PERIODESTATUS: df[time_dim].map(statuses)})
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
@@ -102,12 +137,12 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
         )
 
-    df = pd.DataFrame(rows[:CBS_ROW_LIMIT])
+    col_defs = _load_definitions(dataset_id)
+    df = _add_period_status(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     store.put(key, df)
 
-    col_defs = _load_definitions(dataset_id)
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
         register_dimensions(dataset_id, dims)
@@ -117,6 +152,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "type": str(df[col].dtype),
             "voorbeelden": sample_values(df[col], 5),
             **({"definitie": col_defs[col]["description"]} if col in col_defs and col_defs[col].get("description") else {}),
+            **({"definitie": _PERIODESTATUS_DEFINITIE} if col == _PERIODESTATUS else {}),
             **({"eenheid": col_defs[col]["unit"]} if col in col_defs and col_defs[col].get("unit") else {}),
         }
         for col in df.columns
@@ -145,8 +181,16 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
 
 @lru_cache(maxsize=256)
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
+    """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
     try:
-        values = dimension(dataset_id, dimension_name)
-        return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+        rows = get(dataset_id, dimension_name)
     except Exception as e:
         return f"Fout bij ophalen dimensie: {e}"
+    values = {
+        r["Key"].strip(): (
+            {"titel": r["Title"].strip(), "status": r["Status"].strip()} if r.get("Status")
+            else r["Title"].strip()
+        )
+        for r in rows
+    }
+    return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
