@@ -161,6 +161,20 @@ def sentinel_notes(counts: dict[str, int]) -> list[str]:
     ]
 
 
+def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
+    """Melding voor get_duo_data: telling over de hele resource, niet over een selectie.
+
+    Geen "ondergrens" hier: of een getal dat wordt, hangt af van de rijen die het
+    model straks selecteert, en dat meldt query_data per selectie (#179).
+    """
+    return [
+        f"{n} cellen met DUO-sentinel -1 in '{col}' in de hele resource (betekent "
+        f"leeg/n.v.t., geen telwaarde; worden als leeg behandeld, rijen blijven staan). "
+        f"Zegt niets over een gefilterd totaal: query_data meldt per selectie welke -1-cellen erin vallen"
+        for col, n in counts.items()
+    ]
+
+
 def _apply_filters(df, filters: dict):
     for key, val in filters.items():
         col, op = _parse_filter_key(key)
@@ -227,7 +241,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     definitie = teldefinitie(dataset_id)
     if definitie:
         result["teldefinitie"] = definitie
-    notes = sentinel_notes(count_cells(_sentinel_cells.get(key)))
+    notes = resource_sentinel_notes(count_cells(_sentinel_cells.get(key)))
     if notes:
         result["databewerking"] = notes
 
