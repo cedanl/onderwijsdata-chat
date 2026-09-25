@@ -140,7 +140,10 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if isinstance(result, list) and result:
         store_df = pd.DataFrame(result)
         result_key = f"analysis:{id(store_df)}"
-        store.put(result_key, store_df)
+        if data_key is not None:
+            store.derive(data_key, result_key, store_df)
+        else:
+            store.put(result_key, store_df)
 
     text_obj = result if result is not None else {}
     if result_key:

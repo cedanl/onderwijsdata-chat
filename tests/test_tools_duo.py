@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from tools.duo import _apply_filters, get_duo_data
+from tools.duo import get_duo_data
+from tools.query import _apply_filters
 
 
 def _make_df(n: int = 5) -> pd.DataFrame:
