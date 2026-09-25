@@ -179,7 +179,7 @@ def query_data(
         sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
-        store.put(result_key, df)
+        store.derive(data_key, result_key, df)
         # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
         # van de selectie reizen wel mee: het totaal blijft een ondergrens.
         duo.record_sentinel_cells(result_key, cells)

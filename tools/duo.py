@@ -168,7 +168,8 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             except Exception:
                 hint = ""
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
-        store.put(key, df)
+        meta = store.KeyMeta(bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id))
+        store.put(key, df, meta)
         # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en
         # preview moeten van de versie komen die daadwerkelijk is opgeslagen.
         df = store.get(key)

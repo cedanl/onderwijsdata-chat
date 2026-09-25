@@ -167,7 +167,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
-    store.put(key, df)
+    store.put(key, df, store.KeyMeta(bron="cbs", dataset=dataset_id))
 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
