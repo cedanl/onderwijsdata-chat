@@ -119,14 +119,14 @@ describe('useChat stop', () => {
     expect(assistantMessages()[0].truncated).toBe(true)
   })
 
-  it('keeps the numbers the server could not trace to the data on the answer', async () => {
-    // #185: an unsourced number that survived the correction round stays visible as such.
+  it('keeps what the server check still found wrong on the answer', async () => {
+    // #185, #187: a problem that survived the correction round stays visible.
     const ws = FakeWebSocket.last
     await act(async () => {
       ws.emit({ type: 'message_start' })
-      ws.emit({ type: 'message_end', content: 'Toch 6.340.', unverified: ['6.340'] })
+      ws.emit({ type: 'message_end', content: 'Toch 6.340.', controle: ['6.340 staat niet in de opgehaalde data.'] })
     })
-    expect(assistantMessages()[0].unverified).toEqual(['6.340'])
+    expect(assistantMessages()[0].controle).toEqual(['6.340 staat niet in de opgehaalde data.'])
   })
 
   it('drops the unchecked answer when the server withdraws it for a correction', async () => {

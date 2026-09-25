@@ -660,11 +660,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
                 </button>
               </div>
             )}
-            {msg.unverified?.length > 0 && (
-              <div className="message-stopped">
-                Let op: niet terug te vinden in de opgehaalde data: {msg.unverified.join(', ')}
-              </div>
-            )}
+            {msg.controle?.map(zin => <div key={zin} className="message-stopped">Let op: {zin}</div>)}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
           </div>

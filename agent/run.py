@@ -12,6 +12,7 @@ from .grounding import unverified
 from .history import trim
 from .loop import ToolCall, tool_loop
 from .models import build_system
+from .selectie import ontbrekende_schooljaren
 from .session_data import record_data_key
 from .stream import Emit
 
@@ -96,12 +97,12 @@ async def _handle_clarify_scope(
     return text_content
 
 
-def _correction(numbers: list[str]) -> str:
+def _correction(problems: list[str]) -> str:
     return (
-        "Controle: deze getallen in je antwoord staan niet in de toolresultaten van dit gesprek: "
-        + ", ".join(numbers)
-        + ". Reken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
-        "of compute_kpi, of laat het weg. Geef daarna je volledige antwoord opnieuw."
+        "Controle van je antwoord tegen de data van dit gesprek:\n"
+        + "\n".join(f"- {p}" for p in problems)
+        + "\nReken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
+        "of compute_kpi, selecteer het gevraagde schooljaar, of laat het weg. Geef daarna je volledige antwoord opnieuw."
     )
 
 
@@ -137,13 +138,16 @@ async def run(
     earlier = [str(m.get("content") or "") for m in history if m.get("role") in ("user", "assistant")]
 
     def check(text: str, tool_results: list[str]) -> list[str]:
-        return unverified(text, tool_results, earlier)
+        return [
+            *(f"{n} staat niet in de opgehaalde data." for n in unverified(text, tool_results, earlier)),
+            *ontbrekende_schooljaren(last_user_msg, tool_results),
+        ]
 
     async def withdraw(problems: list[str]) -> None:
         await emit({"type": "message_cancel"})
         await emit({
             "type": "toast",
-            "message": "Een getal in het antwoord kwam niet uit de opgehaalde data; het antwoord wordt herschreven.",
+            "message": "Het antwoord klopte niet met de opgehaalde data; het wordt herschreven.",
             "level": "info",
         })
 
@@ -208,12 +212,12 @@ async def run(
     if not text_content.strip():
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
     if result.problems:
-        logger.warning("ONGEDEKTE GETALLEN na herkansing  model=%s  %s", chosen_model, result.problems)
+        logger.warning("CONTROLE na herkansing nog niet in orde  model=%s  %s", chosen_model, result.problems)
     await emit({
         "type": "message_end",
         "content": text_content,
         "actions": [],
         **({"truncated": True} if truncated else {}),
-        **({"unverified": result.problems} if result.problems else {}),
+        **({"controle": result.problems} if result.problems else {}),
     })
     return text_content
