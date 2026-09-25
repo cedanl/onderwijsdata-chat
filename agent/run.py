@@ -218,6 +218,8 @@ async def run(
                 truncated = result.finish_reason == "length"
                 if truncated:
                     logger.warning("ANTWOORD AFGEKAPT op outputlimiet (max_tokens=%d)", clamped_tokens)
+                if not text_content.strip():
+                    logger.warning("LEEG ANTWOORD  model=%s iter=%d", chosen_model, _iter + 1)
                 await emit({
                     "type": "message_end",
                     "content": text_content,

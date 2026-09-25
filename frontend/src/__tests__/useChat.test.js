@@ -119,6 +119,27 @@ describe('useChat stop', () => {
     expect(assistantMessages()[0].truncated).toBe(true)
   })
 
+  it('marks a final answer without any text as empty', async () => {
+    // Live-audit 6: message_end without text left a silent, invisible turn.
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: '' })
+    })
+    expect(assistantMessages()[0]).toMatchObject({ empty: true, done: true })
+  })
+
+  it('does not mark a stopped answer without text as empty', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', aborted: true })
+    })
+    const [msg] = assistantMessages()
+    expect(msg.stopped).toBe(true)
+    expect(msg.empty).toBeUndefined()
+  })
+
   it('does not mark a normal answer as stopped', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {

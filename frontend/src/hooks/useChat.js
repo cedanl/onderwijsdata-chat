@@ -136,13 +136,18 @@ export function useChat({ onUnauthorized } = {}) {
       },
       message_end(ev) {
         // The server sends the full text; it wins over the accumulated deltas.
-        updateCurrentMsg(m => ({
-          ...m,
-          content: typeof ev.content === 'string' ? ev.content : m.content,
-          done: true,
-          ...(ev.aborted && { stopped: true }),
-          ...(ev.truncated && { truncated: true }),
-        }))
+        updateCurrentMsg(m => {
+          const content = typeof ev.content === 'string' ? ev.content : m.content
+          return {
+            ...m,
+            content,
+            done: true,
+            ...(ev.aborted && { stopped: true }),
+            ...(ev.truncated && { truncated: true }),
+            // A finished turn without text would otherwise render nothing at all.
+            ...(!content.trim() && !ev.aborted && { empty: true }),
+          }
+        })
         finishStream()
       },
       clarification(ev) {
