@@ -6,12 +6,20 @@ telde de -1 gewoon mee. Die routes staan hieronder expliciet in de tests.
 """
 
 import json
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from tools import store
-from tools.duo import _apply_aggregation, count_cells, mask_sentinels, query_data, sentinel_notes
+from tools.duo import (
+    _apply_aggregation,
+    count_cells,
+    get_duo_data,
+    mask_sentinels,
+    query_data,
+    sentinel_notes,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -165,6 +173,17 @@ class TestMelding:
         ))
 
         assert "databewerking" in result
+
+    def test_get_duo_data_meldt_telling_als_resourcebreed(self):
+        # Live-audit 6: de resourcebrede telling (101 in p01hoinges) werd aan gefilterde
+        # totalen zonder -1 geplakt als "ondergrens". Die kwalificatie hoort bij query_data (#179).
+        df = pd.DataFrame({"INSTELLING": ["HU", "X"], "AANTAL": [100, -1]})
+        with patch("tools.duo._duo.load", return_value=df):
+            result = json.loads(get_duo_data("resourcebreed", 0))
+
+        [melding] = result["databewerking"]
+        assert "hele resource" in melding
+        assert "ondergrens" not in melding
 
     def test_sentinel_notes_is_leeg_zonder_tellingen(self):
         assert sentinel_notes({}) == []
