@@ -1,5 +1,8 @@
+import json
+
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import pytest
 
 from tools import store
@@ -144,3 +147,22 @@ def test_single_datapoint_via_data_key_gives_no_figure():
 def test_two_datapoints_still_plot():
     _, fig = create_plot(_ROWS[:2], "bar", "jaar", "waarde", "T")
     assert isinstance(fig, go.Figure)
+
+
+def test_figure_carries_the_store_rows_for_the_csv_export():
+    """De grafiek-CSV exporteert layout.meta.data (#183): elke rij uit de store,
+    ook bij een herhaald x-label, met een ontbrekende waarde als null."""
+    df = pd.DataFrame({
+        "SUBONDERDEEL": ["economie", "economie", "recht"],
+        "AANTAL": [137.0, 2351.0, float("nan")],
+    })
+    store.put("test:csv-export", df)
+
+    _, fig = create_plot(data_key="test:csv-export", chart_type="bar", x="SUBONDERDEEL", y="AANTAL", title="t")
+
+    meta = json.loads(pio.to_json(fig))["layout"]["meta"]
+    assert meta["data"] == [
+        {"SUBONDERDEEL": "economie", "AANTAL": 137.0},
+        {"SUBONDERDEEL": "economie", "AANTAL": 2351.0},
+        {"SUBONDERDEEL": "recht", "AANTAL": None},
+    ]

@@ -52,6 +52,55 @@ describe('figureToCsv', () => {
     expect(lines(figureToCsv(figure)).slice(1)).toEqual(['"Hogeschool; Utrecht";1', '"De ""Haagse""";2'])
   })
 
+  it('exports the tool rows from the figure metadata, all columns and every row', () => {
+    // #183: a bar chart with a repeated x label. The rows behind the chart are
+    // the export; nothing is reconstructed from the drawn traces.
+    const figure = {
+      data: [{ x: ['economie', 'economie', 'recht'], y: [137, 2351, null] }],
+      layout: {
+        meta: {
+          x: 'SUBONDERDEEL', y: 'AANTAL',
+          data: [
+            { SUBONDERDEEL: 'economie', AANTAL: 137, STUDIEJAAR: 2021 },
+            { SUBONDERDEEL: 'economie', AANTAL: 2351, STUDIEJAAR: 2021 },
+            { SUBONDERDEEL: 'recht', AANTAL: null, STUDIEJAAR: 2021 },
+          ],
+        },
+      },
+    }
+    expect(lines(figureToCsv(figure))).toEqual([
+      'SUBONDERDEEL;AANTAL;STUDIEJAAR', 'economie;137;2021', 'economie;2351;2021', 'recht;;2021',
+    ])
+  })
+
+  it('keeps every point of a trace whose x labels repeat (live-audit 7a: 14 points, sum 5.943)', () => {
+    const xs = ['n.v.t. (economie)', 'n.v.t. (economie)', 'n.v.t. (economie)', 'gedrag', 'gedrag',
+      'techniek', 'techniek', 'techniek', 'zorg', 'zorg', 'onderwijs', 'onderwijs', 'taal', 'taal']
+    const ys = [137, 66, 2351, 400, 300, 500, 250, 150, 700, 400, 300, 200, 189, null]
+    const figure = { data: [{ x: xs, y: ys }], layout: { meta: { x: 'SUBONDERDEEL', y: 'AANTAL' } } }
+
+    const rows = lines(figureToCsv(figure)).slice(1).map(r => r.split(';'))
+    expect(rows).toHaveLength(14)
+    expect(rows.reduce((sum, r) => sum + Number(r[1]), 0)).toBe(5943)
+    expect(rows[13]).toEqual(['taal', ''])
+  })
+
+  it('writes one row per point, with the series, when repeated x labels meet several series', () => {
+    const figure = {
+      data: [{ name: 'VT', x: ['a', 'a'], y: [1, 2] }, { name: 'DT', x: ['a'], y: [3] }],
+      layout: { meta: { x: 'SUB', y: 'AANTAL' } },
+    }
+    expect(lines(figureToCsv(figure))).toEqual(['reeks;SUB;AANTAL', 'VT;a;1', 'VT;a;2', 'DT;a;3'])
+  })
+
+  it('exports a map from its rows, although its traces have no x values', () => {
+    const figure = {
+      data: [{ type: 'choroplethmap', locations: ['PV20'], z: [12] }],
+      layout: { meta: { type: 'choropleth', data: [{ RegioS: 'PV20', AANTAL: 12 }] } },
+    }
+    expect(lines(figureToCsv(figure))).toEqual(['RegioS;AANTAL', 'PV20;12'])
+  })
+
   it('returns null for a figure without data', () => {
     expect(figureToCsv({ data: [] })).toBeNull()
     expect(figureToCsv({ data: [{ x: [] }] })).toBeNull()
