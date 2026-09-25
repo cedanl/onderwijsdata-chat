@@ -114,3 +114,19 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
 
     assert isinstance(spec, ReportSpec)
     assert spec.title == "Testrapport"
+
+def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplog):
+    # #174: de audit kon een misfilter in het rapport niet aanwijzen; de WS-frames tonen alleen toolnamen.
+    query = {"data_key": _DATASET, "filters": {"JAAR": 2021}}
+    _make_generate(monkeypatch, [
+        StreamResult(text="", tool_calls=[{"id": "t1", "name": "query_data", "arguments": json.dumps(query)}]),
+        StreamResult(text='{"title": "T"}', tool_calls=[]),
+    ])
+
+    with caplog.at_level("INFO", logger="agent.report"):
+        _run_generate()
+
+    [record] = [r for r in caplog.records if "RAPPORT TOOL" in r.message]
+    assert "query_data" in record.message
+    assert '"JAAR": 2021' in record.message
+    assert "totaal_rijen=1" in record.message

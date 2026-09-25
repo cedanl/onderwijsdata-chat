@@ -22,7 +22,7 @@ import plotly.io as pio
 from agent.model_context import clamp_max_tokens
 from agent.models import litellm_kwargs
 from agent.ratelimit import acompletion_with_backoff
-from agent.session_data import session_data_keys
+from agent.session_data import data_lineage, session_data_keys
 from agent.stream import accumulate_stream
 from core.config import MAX_TOKENS, MODEL
 from tools import LABELS, dispatch, store
@@ -81,18 +81,37 @@ class DashboardSpec:
         )
 
 
-def _build_recipe(data_keys: list[str]) -> list[dict]:
-    """Reload calls for the given data keys — each key encodes how to reload."""
+_LOAD_TOOLS = (TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA)
+
+
+def _build_recipe(datasets: list[dict]) -> list[dict]:
+    """Reload calls for the given datasets, one per load call.
+
+    The recorded load call (its herkomst) is used as is, so CBS filters survive
+    a reload (#174). Without herkomst the key itself says how to reload.
+    """
     recipe: list[dict] = []
-    for key in data_keys:
-        parts = key.split(":", 2)
-        if parts[0] == "duo" and len(parts) >= 3:
-            recipe.append({"name": TOOL_GET_DUO_DATA, "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})})
-        elif parts[0] == "cbs" and len(parts) >= 2:
-            recipe.append({"name": TOOL_GET_CBS_DATA, "arguments": json.dumps({"dataset_id": parts[1]})})
-        elif parts[0] == "rio" and len(parts) >= 2:
-            recipe.append({"name": TOOL_GET_RIO_DATA, "arguments": json.dumps({"resource": parts[1]})})
+    for ds in datasets:
+        herkomst = ds.get("herkomst") or []
+        if herkomst and herkomst[0]["name"] in _LOAD_TOOLS:
+            call = {"name": herkomst[0]["name"], "arguments": json.dumps(herkomst[0]["arguments"])}
+        else:
+            call = _reload_call_from_key(ds["data_key"])
+        if call and call not in recipe:
+            recipe.append(call)
     return recipe
+
+
+def _reload_call_from_key(key: str) -> dict | None:
+    # Derived keys append a selection hash (duo:p01hoinges:3:74a5c5e2); reload the source.
+    parts = key.split(":")
+    if parts[0] == "duo" and len(parts) >= 3:
+        return {"name": TOOL_GET_DUO_DATA, "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})}
+    if parts[0] == "cbs" and len(parts) >= 2:
+        return {"name": TOOL_GET_CBS_DATA, "arguments": json.dumps({"dataset_id": parts[1]})}
+    if parts[0] == "rio" and len(parts) >= 2:
+        return {"name": TOOL_GET_RIO_DATA, "arguments": json.dumps({"resource": parts[1]})}
+    return None
 
 
 def _try_int(val: str) -> int | str:
@@ -119,6 +138,7 @@ def build_dataset_context(session: dict) -> dict:
             "data_key": key,
             "row_count": len(df),
             "columns": [_column_summary(df, col) for col in df.columns],
+            "herkomst": data_lineage(session, key),
         })
 
     settings = session.get("chat_settings") or {}
@@ -412,7 +432,7 @@ def _parse_spec_from_response(
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
 
-    recipe = _build_recipe([ds["data_key"] for ds in context.get("datasets", [])])
+    recipe = _build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Dashboard")
 
     sources = spec_data.get("sources") or []
