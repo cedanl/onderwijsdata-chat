@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import store
+from . import periode, store
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +147,9 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         store_df = pd.DataFrame(result)
         result_key = f"analysis:{id(store_df)}"
         if data_key is not None:
-            store.derive(data_key, result_key, store_df)
+            known = store.meta(data_key)
+            schooljaren = periode.dekking(store_df, known.bron, known.periodekolom) if known else None
+            store.derive(data_key, result_key, store_df, schooljaren=schooljaren)
         else:
             store.put(result_key, store_df)
 

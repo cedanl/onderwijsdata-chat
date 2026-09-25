@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from riodata import duo as _duo
 
-from . import store
+from . import periode, store
 from .catalog import catalogus_titel, resource_titel
 from .duo_meta import teldefinitie
 
@@ -168,7 +168,11 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             except Exception:
                 hint = ""
             return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
-        meta = store.KeyMeta(bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id))
+        kolom = periode.duo_periodekolom(df.columns)
+        meta = store.KeyMeta(
+            bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id),
+            periodekolom=kolom, schooljaren=periode.dekking(df, "duo", kolom),
+        )
         store.put(key, df, meta)
         # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en
         # preview moeten van de versie komen die daadwerkelijk is opgeslagen.
@@ -197,6 +201,9 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     definitie = teldefinitie(dataset_id)
     if definitie:
         result["teldefinitie"] = definitie
+    known = store.meta(key)
+    if known and known.schooljaren:
+        result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)
     notes = resource_sentinel_notes(count_cells(_sentinel_cells.get(key)))
     if notes:
         result["databewerking"] = notes

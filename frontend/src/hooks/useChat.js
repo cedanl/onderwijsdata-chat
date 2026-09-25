@@ -144,8 +144,8 @@ export function useChat({ onUnauthorized } = {}) {
             done: true,
             ...(ev.aborted && { stopped: true }),
             ...(ev.truncated && { truncated: true }),
-            // Numbers the server could not trace to this conversation's data (#185).
-            ...(ev.unverified?.length && { unverified: ev.unverified }),
+            // What the server's check on this answer still found wrong (#185, #187).
+            ...(ev.controle?.length && { controle: ev.controle }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }

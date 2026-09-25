@@ -57,7 +57,8 @@ def test_clear_wipes_the_meta():
 
 
 def test_get_cbs_data_records_its_source():
-    with patch("tools.cbs.data", return_value=[{"Geslacht": "T001038", "Waarde": "1"}]):
+    with patch("tools.cbs.data", return_value=[{"Geslacht": "T001038", "Waarde": "1"}]), \
+         patch("tools.cbs._load_definitions", return_value={}):
         key = json.loads(get_cbs_data("85423NED"))["data_key"]
 
     assert store.meta(key) == KeyMeta(bron="cbs", dataset="85423NED")
@@ -102,3 +103,41 @@ def test_run_analysis_on_an_incomplete_key_stays_incomplete():
 
     assert store.meta(derived).volledig is False
     assert store.meta(derived).afgeleid_van == key
+
+
+# ── Schooljaren per key (#187) ──
+
+def _duo_reeks() -> str:
+    df = pd.DataFrame({"STUDIEJAAR": [2024, 2024, 2025, 2025], "OPLEIDINGSVORM": ["DT", "VT"] * 2,
+                       "AANTAL": [7418, 27135, 7408, 26370]})
+    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
+        return get_duo_data("p01hoinges", 3)
+
+
+def test_get_duo_data_records_and_reports_the_available_schooljaren():
+    result = json.loads(_duo_reeks())
+
+    assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
+    known = store.meta(result["data_key"])
+    assert known.periodekolom == "STUDIEJAAR" and known.schooljaren == (2024, 2025)
+
+
+def test_query_data_records_the_schooljaren_of_its_selection_even_after_aggregation():
+    key = json.loads(_duo_reeks())["data_key"]
+
+    derived = json.loads(query_data(key, filters={"STUDIEJAAR": 2024, "OPLEIDINGSVORM": "DT"},
+                                    group_by=["OPLEIDINGSVORM"], aggregate={"AANTAL": "sum"}))["data_key"]
+
+    assert store.meta(derived).schooljaren == (2024,)
+
+
+def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
+    defs = {"Perioden": {"type": "TimeDimension"}, "Geslacht": {"type": "Dimension"}}
+    rows = [{"Perioden": "2024SJ00", "Geslacht": "T001038", "Waarde": 1},
+            {"Perioden": "2025SJ00", "Geslacht": "T001038", "Waarde": 2}]
+    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs._load_definitions", return_value=defs), \
+         patch("tools.cbs._dimension_rows", return_value=()):
+        result = json.loads(get_cbs_data("85423NED"))
+
+    assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
+    assert store.meta(result["data_key"]).periodekolom == "Perioden"

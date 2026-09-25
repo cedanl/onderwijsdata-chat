@@ -12,7 +12,7 @@ from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import store
+from . import periode, store
 from .catalog import catalogus_laatste_update, catalogus_titel
 from .columns import sample_values
 
@@ -167,7 +167,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
-    store.put(key, df, store.KeyMeta(bron="cbs", dataset=dataset_id))
+    kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
+    schooljaren = periode.dekking(df, "cbs", kolom)
+    store.put(key, df, store.KeyMeta(bron="cbs", dataset=dataset_id, periodekolom=kolom, schooljaren=schooljaren))
 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
@@ -192,6 +194,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         "kolommen": schema,
         "preview": preview,
     }
+
+    if schooljaren:
+        result["beschikbare_schooljaren"] = periode.labels(schooljaren)
 
     # Include data actuality timestamp
     laatste_update = catalogus_laatste_update(dataset_id)
