@@ -75,7 +75,7 @@ def test_fetch_uses_single_page():
     assert captured["params"]["page"] == 0
     parsed = json.loads(result)
     # Maximaal RIO_PAGE_SIZE rijen in het dataset-antwoord.
-    assert parsed["totaal_rijen"] == RIO_PAGE_SIZE
+    assert parsed["opgehaalde_rijen"] == RIO_PAGE_SIZE
 
 
 def test_page_size_from_filters_is_ignored():
@@ -111,6 +111,20 @@ def test_full_page_warns_that_result_is_not_a_count():
 def test_partial_page_has_no_warning():
     parsed = _load([{"code": "1"}, {"code": "2"}])
     assert "waarschuwing" not in parsed
+
+
+def test_full_page_flags_more_rows_available():
+    # Live-audit 6: GPT las "totaal_rijen: 50" als registertotaal, ondanks de
+    # waarschuwing. Een boolean en een eerlijke veldnaam laten geen totaal zien (#177).
+    parsed = _load([{"code": str(i)} for i in range(RIO_PAGE_SIZE)])
+    assert parsed["meer_beschikbaar"] is True
+    assert "totaal_rijen" not in parsed
+
+
+def test_partial_page_has_nothing_more():
+    parsed = _load([{"code": "1"}, {"code": "2"}])
+    assert parsed["meer_beschikbaar"] is False
+    assert parsed["opgehaalde_rijen"] == 2
 
 
 def test_http_status_error_returns_explicit_fallback():

@@ -47,16 +47,19 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     # Pas cachen als de beschrijving gelukt is: een mislukte tool mag geen data achterlaten.
     store.put(key, df)
 
+    # RIO levert geen totaal-aantal (#170): een volle pagina betekent dat er
+    # waarschijnlijk meer rijen zijn. Geen "totaal_rijen" zoals bij CBS/DUO: die
+    # naam las het model als registertotaal (#177).
+    meer_beschikbaar = len(results) >= RIO_PAGE_SIZE
     result = {
         "data_key": key,
         "catalogus_titel": catalogus_titel(resource),
-        "totaal_rijen": len(df),
+        "opgehaalde_rijen": len(df),
+        "meer_beschikbaar": meer_beschikbaar,
         "kolommen": schema,
         "preview": preview,
     }
-    # RIO levert geen totaal-aantal (#170): een volle pagina betekent dat er
-    # waarschijnlijk meer rijen zijn, dus dit is een steekproef.
-    if len(results) >= RIO_PAGE_SIZE:
+    if meer_beschikbaar:
         result["waarschuwing"] = (
             f"Afgekapt op {RIO_PAGE_SIZE} rijen (één pagina); dit is geen telling. "
             "RIO levert geen totaal-aantal: beantwoord 'hoeveel'-vragen over het "
