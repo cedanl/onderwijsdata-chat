@@ -30,6 +30,10 @@ def label(startjaar: int) -> str:
     return f"{startjaar}/{(startjaar + 1) % 100:02d}"
 
 
+def labels(startjaren) -> list[str]:
+    return [label(j) for j in startjaren or ()]
+
+
 def broncode(bron: str, startjaar: int) -> str:
     """Hoe de bron dit schooljaar noemt, voor in een foutmelding aan het model."""
     return f"{startjaar}SJ00" if bron == "cbs" else f"STUDIEJAAR={startjaar}"

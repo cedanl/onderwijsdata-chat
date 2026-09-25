@@ -25,6 +25,8 @@ class KeyMeta:
     resource: str | int | None = None
     volledig: bool = True                # False: a truncated page, not the whole source (#186)
     teldefinitie: str | None = None      # what DUO counts: persons or enrolments (#172)
+    periodekolom: str | None = None      # STUDIEJAAR, JAAR or the CBS time dimension (#187)
+    schooljaren: tuple[int, ...] | None = None  # start years in this data; None = unknown (#187)
     afgeleid_van: str | None = None      # the key this one was derived from
 
 
@@ -43,10 +45,13 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
         _meta[key] = meta
 
 
-def derive(parent: str, key: str, value) -> None:
-    """Store data derived from `parent`; it inherits what is known about the parent."""
+def derive(parent: str, key: str, value, **changes) -> None:
+    """Store data derived from `parent`; it inherits what is known about the parent.
+
+    `changes` overrides what the derivation changed, such as the schooljaren of a selection.
+    """
     parent_meta = _meta.get(parent)
-    put(key, value, replace(parent_meta, afgeleid_van=parent) if parent_meta else None)
+    put(key, value, replace(parent_meta, afgeleid_van=parent, **changes) if parent_meta else None)
 
 
 def get(key: str):
