@@ -302,6 +302,14 @@ def catalogus_titel(dataset_id: str) -> str:
     return dataset_id
 
 
+def rio_filters(resource: str) -> list[str]:
+    """De serverfilters die een RIO-resource accepteert, uit de catalogus; leeg als onbekend."""
+    for entry in _rio_duo():
+        if entry.get("_rio_resource") == resource:
+            return list(entry.get("filters") or [])
+    return []
+
+
 def catalogus_laatste_update(dataset_id: str) -> str | None:
     """Laatste update datum uit de catalogus voor een CBS dataset-ID.
 

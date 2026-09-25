@@ -136,6 +136,12 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if isinstance(result, pd.DataFrame):
         result = result.to_dict(orient="records")
 
+    # Op afgekapte data is een los getal of een samenvatting (len(df) = 50) een
+    # telling van de pagina, niet van de bron (#186). Rijen mogen, met melding.
+    complete = data_key is None or store.volledig(data_key)
+    if not complete and result is not None and not isinstance(result, list):
+        return store.ONVOLLEDIG
+
     result_key = None
     if isinstance(result, list) and result:
         store_df = pd.DataFrame(result)
@@ -148,6 +154,8 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     text_obj = result if result is not None else {}
     if result_key:
         text_obj = {"data_key": result_key, "rijen": result}
+        if not complete:
+            text_obj["waarschuwing"] = store.ONVOLLEDIG
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):

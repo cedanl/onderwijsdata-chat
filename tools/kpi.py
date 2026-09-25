@@ -59,6 +59,9 @@ def compute_kpi(
         hint = f" Beschikbare datasets: {beschikbaar}." if beschikbaar else ""
         return _error(f"Geen data gevonden voor '{data_key}'.{hint}")
 
+    if not store.volledig(data_key):
+        return _error(store.ONVOLLEDIG)
+
     if value_column not in df.columns:
         return _error(f"Kolom '{value_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
     if sort_column and sort_column not in df.columns:
