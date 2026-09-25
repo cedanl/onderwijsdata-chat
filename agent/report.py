@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from datetime import date
@@ -43,6 +44,8 @@ _REPORT_TOOLS = [
     for s in TOOL_SCHEMAS
     if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)  # ty: ignore[invalid-argument-type]
 ]
+
+logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 15
 _MAX_TOOL_RESULT_CHARS = 8000
@@ -86,6 +89,17 @@ class ReportSpec:
         return asdict(self)
 
 
+def _describe_call(call: dict) -> str:
+    return f"{call['name']} {json.dumps(call['arguments'], ensure_ascii=False)}"
+
+
+def _describe_herkomst(herkomst: list[dict]) -> str:
+    """The tool calls that produced a dataset, so the report reuses that selection (#174)."""
+    if not herkomst:
+        return "onbekend (niet vastgelegd in dit gesprek)"
+    return " → ".join(_describe_call(call) for call in herkomst)
+
+
 def _build_system_prompt(context: dict) -> str:
     """Build the system prompt with injected dataset context."""
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
@@ -93,7 +107,10 @@ def _build_system_prompt(context: dict) -> str:
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
-        dataset_blocks.append(f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n- Kolommen:\n{cols}")
+        dataset_blocks.append(
+            f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n"
+            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}\n- Kolommen:\n{cols}"
+        )
 
     datasets_section = "\n\n".join(dataset_blocks) if dataset_blocks else "Geen datasets geladen."
 
@@ -209,6 +226,7 @@ async def generate(
                     continue
 
                 result, figure = await asyncio.to_thread(dispatch, name, args)
+                _log_tool_call(name, args, result)
 
                 await emit({"type": "tool_end", "name": name})
 
@@ -235,6 +253,16 @@ async def generate(
     return _parse_spec_from_response(final_text, figures, context, author)
 
 
+def _log_tool_call(name: str, args: dict, result: str) -> None:
+    """Log what the report fetched: a misfilter must be traceable afterwards (#174)."""
+    try:
+        parsed = json.loads(result)
+        outcome = f"totaal_rijen={parsed.get('totaal_rijen')}" if isinstance(parsed, dict) else "ok"
+    except (TypeError, ValueError):
+        outcome = f"melding={result[:200]!r}"
+    logger.info("RAPPORT TOOL %s args=%s %s", name, json.dumps(args, ensure_ascii=False), outcome)
+
+
 def _parse_spec_from_response(
     response: str,
     figures_json: list[str],
@@ -246,7 +274,7 @@ def _parse_spec_from_response(
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
 
-    recipe = _build_recipe([ds["data_key"] for ds in context.get("datasets", [])])
+    recipe = _build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Rapport")
 
     bronnen = spec_data.get("bronnen") or []

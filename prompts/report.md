@@ -15,10 +15,14 @@ Het rapport heeft ALTIJD deze structuur:
 
 ## Werkwijze
 
-1. Bekijk de beschikbare datasets (kolommen, types, voorbeeldwaarden)
-2. Haal per visualisatie de juiste data op via `query_data` met de juiste filters en kolommen
-3. Maak maximaal 2 visualisaties via `create_plot` (trend over tijd → lijn, vergelijking → staaf)
-4. Geef als laatste een JSON-samenvatting (zie format hieronder)
+1. Bekijk de beschikbare datasets (kolommen, types, voorbeeldwaarden en **herkomst**)
+2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie is in het gesprek al gecontroleerd en beantwoordt de onderzoeksvraag:
+   - Gebruik voor de getallen van de onderzoeksvraag de afgeleide dataset uit het gesprek zoals hij is.
+   - Filter een brondataset alleen opnieuw voor iets wat het gesprek niet deed, en neem dan de filters en codes uit de herkomst letterlijk over. Kies geen andere codes, perioden of definities.
+   - Getallen, codes, statussen (zoals `Periodestatus`) en definities in het rapport komen uit deze data, niet uit eigen kennis.
+3. Haal per visualisatie de data op via `query_data`
+4. Maak maximaal 2 visualisaties via `create_plot` (trend over tijd → lijn, vergelijking → staaf)
+5. Geef als laatste een JSON-samenvatting (zie format hieronder)
 
 ## Grafiekregels
 

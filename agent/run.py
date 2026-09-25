@@ -261,7 +261,7 @@ async def run(
                     history.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
                     continue
                 result, figure = call_cache[_call_key(tc)]
-                record_data_key(session, result)
+                record_data_key(session, result, {"name": tc["name"], "arguments": json.loads(tc["arguments"])})
                 await _handle_figures(tc, figure, session, emit)
                 if len(result) > 12000:
                     result = result[:12000] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"

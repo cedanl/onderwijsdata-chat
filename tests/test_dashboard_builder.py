@@ -51,6 +51,15 @@ class TestBuildDatasetContext:
         store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
         assert build_dataset_context({"chat_settings": {}})["datasets"] == []
 
+    def test_includes_the_lineage_of_each_dataset(self):
+        store.put("cbs:85423NED:aa", pd.DataFrame({"a": [1]}))
+        call = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "x"}}}
+        session = {"data_keys": ["cbs:85423NED:aa"], "data_provenance": {"cbs:85423NED:aa": call}}
+
+        [ds] = build_dataset_context(session)["datasets"]
+
+        assert ds["herkomst"] == [call]
+
     def test_includes_instelling(self):
         context = build_dataset_context({"chat_settings": {"instelling": "Hogeschool Utrecht"}})
         assert context["instelling"] == "Hogeschool Utrecht"
@@ -63,13 +72,34 @@ class TestBuildDatasetContext:
         assert "HU" in build_dataset_context(session)["topic"]
 
 
+def _datasets(*keys, herkomst=None):
+    return [{"data_key": k, **({"herkomst": herkomst[k]} if herkomst and k in herkomst else {})} for k in keys]
+
+
 class TestBuildRecipe:
     def test_builds_reload_calls_from_data_keys(self):
-        recipe = _build_recipe(["duo:p01hoinges:0", "cbs:85421NED", "query:abc"])
+        recipe = _build_recipe(_datasets("duo:p01hoinges:0", "cbs:85421NED", "query:abc"))
         assert [r["name"] for r in recipe] == ["get_duo_data", "get_cbs_data"]
 
     def test_no_keys(self):
         assert _build_recipe([]) == []
+
+    def test_derived_duo_key_reloads_its_source_resource(self):
+        [call] = _build_recipe(_datasets("duo:p01hoinges:3:74a5c5e2"))
+        assert json.loads(call["arguments"]) == {"dataset_id": "p01hoinges", "resource": 3}
+
+    def test_reload_call_keeps_the_recorded_cbs_filters(self):
+        # #174: zonder de filters herlaadt het recept een andere selectie dan de chat gebruikte.
+        load = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "Perioden eq '2024SJ00'"}}}
+        query = {"name": "query_data", "arguments": {"data_key": "cbs:85423NED:aa", "columns": ["Perioden"]}}
+        datasets = _datasets(
+            "cbs:85423NED:aa", "cbs:85423NED:aa:bb",
+            herkomst={"cbs:85423NED:aa": [load], "cbs:85423NED:aa:bb": [load, query]},
+        )
+
+        recipe = _build_recipe(datasets)
+
+        assert recipe == [{"name": "get_cbs_data", "arguments": json.dumps(load["arguments"])}]
 
 
 class TestExtractJsonObject:

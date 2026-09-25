@@ -1,6 +1,6 @@
 from datetime import date
 
-from agent.report import ReportSpec, _nl_datum, _parse_spec_from_response
+from agent.report import ReportSpec, _build_system_prompt, _nl_datum, _parse_spec_from_response
 
 
 class TestNlDatum:
@@ -105,3 +105,30 @@ class TestReportSpec:
         assert len(data["visualisaties"]) == 1
         assert data["auteur"] == "jan"
         assert data["datum"] == "1 september 2026"
+
+
+class TestSystemPromptHerkomst:
+    def test_names_the_selection_the_conversation_made(self):
+        # #174 regressie: GPT vond in de chat de HU/VT-reeks, het rapport meldde daarna
+        # "geen rijen voor 25DW" omdat het de selectie opnieuw moest raden.
+        load = {"name": "get_duo_data", "arguments": {"dataset_id": "p01hoinges", "resource": 3}}
+        query = {"name": "query_data", "arguments": {
+            "data_key": "duo:p01hoinges:3",
+            "filters": {"INSTELLINGSCODE_ACTUEEL": "25DW", "OPLEIDINGSVORM": "VT"},
+            "group_by": ["STUDIEJAAR"], "aggregate": {"AANTAL": "sum"},
+        }}
+        context = {"datasets": [{
+            "data_key": "duo:p01hoinges:3:74a5c5e2", "row_count": 5,
+            "columns": [{"naam": "STUDIEJAAR", "type": "int64", "voorbeelden": ["2021"]}],
+            "herkomst": [load, query],
+        }]}
+
+        prompt = _build_system_prompt(context)
+
+        assert '"INSTELLINGSCODE_ACTUEEL": "25DW"' in prompt
+        assert '"OPLEIDINGSVORM": "VT"' in prompt
+        assert "get_duo_data" in prompt
+
+    def test_dataset_without_herkomst_is_marked_as_such(self):
+        context = {"datasets": [{"data_key": "cbs:85423NED", "row_count": 1, "columns": [], "herkomst": []}]}
+        assert "Herkomst: onbekend" in _build_system_prompt(context)
