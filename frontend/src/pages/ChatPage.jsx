@@ -595,7 +595,8 @@ function hasAssistantContent(msg) {
     msg.clarification ||
     msg.starterQuestions ||
     msg.stopped ||
-    msg.interrupted
+    msg.interrupted ||
+    msg.empty
   )
 }
 
@@ -660,6 +661,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
               </div>
             )}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
+            {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
           </div>
         )}
       </div>
