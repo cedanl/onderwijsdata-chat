@@ -119,6 +119,28 @@ describe('useChat stop', () => {
     expect(assistantMessages()[0].truncated).toBe(true)
   })
 
+  it('keeps the numbers the server could not trace to the data on the answer', async () => {
+    // #185: an unsourced number that survived the correction round stays visible as such.
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Toch 6.340.', unverified: ['6.340'] })
+    })
+    expect(assistantMessages()[0].unverified).toEqual(['6.340'])
+  })
+
+  it('drops the unchecked answer when the server withdraws it for a correction', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'In totaal 6.340.' })
+      ws.emit({ type: 'message_cancel' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'In totaal 5.943.' })
+    })
+    expect(assistantMessages().map(m => m.content)).toEqual(['In totaal 5.943.'])
+  })
+
   it('marks a final answer without any text as empty', async () => {
     // Live-audit 6: message_end without text left a silent, invisible turn.
     const ws = FakeWebSocket.last
