@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import duo, periode, store
+from . import dekking, duo, instelling, store
 from .catalog import rio_filters
 from .cbs import check_dimensions_pinned
 
@@ -26,6 +26,7 @@ _ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
 _SUGGESTIE_MAX_UNIEK = 500
 _SUGGESTIE_AANTAL = 3
 _SUGGESTIE_DREMPEL = 0.6
+_MAX_INSTELLINGSLABELS = 5
 
 
 def _coerce_pair(a, b):
@@ -170,10 +171,14 @@ def query_data(
                 default=str,
             )
 
-    # De schooljaren van de selectie, vóór kolomkeuze en aggregatie: daarna kan de
-    # periodekolom weg zijn terwijl de selectie wel op één jaar staat (#187).
+    # Wat de selectie bevat, vóór kolomkeuze en aggregatie (#187, #143). Bij een
+    # paar instellingen de naam naast de code: 30TX is Aeres, niet de HU.
     known = store.meta(data_key)
-    schooljaren = periode.dekking(df, known.bron, known.periodekolom) if known else None
+    gedekt = dekking.van(df, known)
+    labels = (
+        instelling.namen(df, known.instellingskolom)
+        if known and 0 < len(gedekt.get("instellingen") or ()) <= _MAX_INSTELLINGSLABELS else None
+    )
 
     if columns:
         missing = [c for c in columns if c not in df.columns]
@@ -207,7 +212,7 @@ def query_data(
         sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
-        store.derive(data_key, result_key, df, schooljaren=schooljaren)
+        store.derive(data_key, result_key, df, **gedekt)
         # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
         # van de selectie reizen wel mee: het totaal blijft een ondergrens.
         duo.record_sentinel_cells(result_key, cells)
@@ -219,6 +224,8 @@ def query_data(
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
     result: dict = {"data_key": result_key, **_row_count(total, complete), "rijen": rows}
+    if labels:
+        result["instellingen"] = labels
     if notes:
         result["databewerking"] = notes
     warnings = [] if complete else [store.ONVOLLEDIG]
