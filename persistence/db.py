@@ -1,8 +1,12 @@
 import json
+import logging
 import os
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _MAX_CONVERSATIONS = 15
 _USE_POSTGRES = bool(os.getenv("POSTGRES_URI"))
@@ -51,57 +55,68 @@ def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
     return conn.execute(sql, params)
 
 
-def _first_user_question(messages_json: str) -> str:
-    """First user message text, used to separate lookalike conversations."""
+def _user_questions(messages_json: str) -> list[str]:
+    """The user's questions in a stored thread, normalised for comparison."""
     try:
         messages = json.loads(messages_json)
-        for m in messages if isinstance(messages, list) else []:
-            if isinstance(m, dict) and m.get("role") == "user":
-                text = m.get("content") or ""
-                if isinstance(text, str) and text.strip():
-                    return text.strip().lower()
     except (TypeError, ValueError):
-        pass
-    return ""
+        return []
+    return [
+        m["content"].strip().lower()
+        for m in (messages if isinstance(messages, list) else [])
+        if isinstance(m, dict) and m.get("role") == "user"
+        and isinstance(m.get("content"), str) and m["content"].strip()
+    ]
 
 
 def _dedupe_conversations(conn: Any) -> None:
-    """Remove pre-#69 duplicate conversations, one row per conversation thread.
+    """Remove pre-#69 duplicate conversations: snapshots of one growing thread.
 
-    Dedupe key: (username, title, first user question), case-insensitive.
-    Within a group keep the richest row (most messages — it holds the whole
-    thread), tie-break on the newest timestamp. Groups of one are untouched,
-    as are post-#69 conversations (they only ever have a single row).
+    A row is a legacy duplicate when another row of the same user and title
+    (case-insensitive) holds the same thread further along: its user questions
+    are a prefix of the other row's. Two threads that share their opening
+    question but diverge later are separate conversations and both stay (#178).
+    Within a group the richest row wins, tie-break on the newest timestamp.
     """
-    rows = _execute(
-        conn,
-        "SELECT id, username, title, timestamp, messages FROM conversations",
-    ).fetchall()
+    rows = [
+        dict(r) for r in _execute(
+            conn, "SELECT id, username, title, timestamp, messages FROM conversations",
+        ).fetchall()
+    ]
     groups: dict = {}
-    for row in rows:
-        r = dict(row)
-        key = (r["username"].lower(), r["title"].lower(), _first_user_question(r["messages"]))
-        groups.setdefault(key, []).append(r)
+    for r in rows:
+        r["questions"] = _user_questions(r["messages"])
+        groups.setdefault((r["username"].lower(), r["title"].lower()), []).append(r)
 
-    doomed: list[str] = []
+    doomed: list[tuple[str, str]] = []
     for group in groups.values():
-        if len(group) < 2:
-            continue
-        group.sort(key=lambda r: (len(_messages_list(r["messages"])), r["timestamp"]))
-        doomed.extend(r["id"] for r in group[:-1])
+        group.sort(key=lambda r: (len(r["questions"]), r["timestamp"]), reverse=True)
+        kept: list[list[str]] = []
+        for r in group:
+            qs = r["questions"]
+            if any(k[: len(qs)] == qs for k in kept):
+                doomed.append((r["id"], r["username"]))
+            else:
+                kept.append(qs)
 
-    if doomed:
-        for conv_id in doomed:
-            _execute(conn, "DELETE FROM conversations WHERE id = ?", (conv_id,))
-        conn.commit()
+    for conv_id, username in doomed:
+        _execute(conn, "DELETE FROM conversations WHERE id = ? AND username = ?", (conv_id, username))
+    logger.info("dedupe: %d legacy duplicate conversations removed", len(doomed))
 
 
-def _messages_list(messages_json: str) -> list:
-    try:
-        parsed = json.loads(messages_json)
-        return parsed if isinstance(parsed, list) else []
-    except (TypeError, ValueError):
-        return []
+def _run_once(conn: Any, name: str, migration: Callable[[Any], None]) -> None:
+    """Run a data migration exactly once per database, recorded in schema_migrations.
+
+    Data migrations may delete rows, so unlike the idempotent schema checks in
+    _migrate they must not re-run on every start-up against newer data (#178).
+    Replicas starting together may both run it; the migration must therefore be
+    idempotent, and the second marker insert is a no-op.
+    """
+    if _execute(conn, "SELECT 1 FROM schema_migrations WHERE name = ?", (name,)).fetchone():
+        return
+    migration(conn)
+    _execute(conn, "INSERT INTO schema_migrations (name) VALUES (?) ON CONFLICT (name) DO NOTHING", (name,))
+    conn.commit()
 
 
 def _migrate(conn: Any) -> None:
@@ -142,7 +157,7 @@ def _migrate(conn: Any) -> None:
             )
             conn.commit()
 
-    _dedupe_conversations(conn)
+    _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
 
 
 def init_db() -> None:
@@ -181,6 +196,7 @@ def init_db() -> None:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
         )
+        cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
         cursor.close()
     else:
@@ -209,6 +225,8 @@ def init_db() -> None:
                 PRIMARY KEY (id, username)
             );
             CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
         """)
 
     _migrate(conn)
