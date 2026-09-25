@@ -7,13 +7,25 @@ from riodata import fetch
 from core.config import RIO_PAGE_SIZE
 
 from . import store
-from .catalog import catalogus_titel
+from .catalog import catalogus_titel, rio_filters
 from .columns import sample_values
 
 _SAMPLE_ROWS = 5
+_PAGING = frozenset({"page", "pageSize"})
+
+
+def _filter_hint(allowed: list[str]) -> str:
+    return f" Toegestane filters: {allowed} (exacte waarden, geen operatoren als __contains)." if allowed else ""
 
 
 def get_rio_data(resource: str, filters: dict | None = None) -> str:
+    # Een onbekend filter kost anders een HTTP 400, waarna het model in een
+    # ongefilterde eerste pagina gaat zoeken (#186). De catalogus weet welke kan.
+    allowed = rio_filters(resource)
+    unknown = [k for k in (filters or {}) if allowed and k not in allowed and k not in _PAGING]
+    if unknown:
+        return f"RIO-resource '{resource}' kent de filters {unknown} niet.{_filter_hint(allowed)}"
+
     # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
     # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
     # zou onderstaande slice toch weer afkappen.
@@ -23,7 +35,7 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     except httpx.HTTPStatusError as e:
         return (
             f"Fout bij ophalen RIO data: HTTP {e.response.status_code} voor "
-            f"resource '{resource}' met filters {filters or {}}."
+            f"resource '{resource}' met filters {filters or {}}.{_filter_hint(allowed)}"
         )
     except Exception as e:
         return f"Fout bij ophalen RIO data: {e}"

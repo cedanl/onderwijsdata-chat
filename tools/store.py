@@ -9,6 +9,12 @@ _meta: dict = {}
 
 _DUO_PREFIX = "duo:"
 
+# What a tool answers when a count, sum or total would rest on truncated data (#186).
+ONVOLLEDIG = (
+    "De data is afgekapt: één pagina van de bron, niet de hele bron. Daarop geen telling, "
+    "som of ander totaal. Verfijn met een serverfilter bij het laden, of gebruik DUO of CBS voor aantallen."
+)
+
 
 @dataclass(frozen=True)
 class KeyMeta:
@@ -49,6 +55,12 @@ def get(key: str):
 
 def meta(key: str) -> KeyMeta | None:
     return _meta.get(key)
+
+
+def volledig(key: str) -> bool:
+    """False only when the key is known to rest on truncated data; unknown counts as complete."""
+    known = _meta.get(key)
+    return known is None or known.volledig
 
 
 def list_keys() -> list[str]:

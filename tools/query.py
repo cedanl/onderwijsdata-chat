@@ -15,6 +15,7 @@ import pandas as pd
 from core.config import DUO_ROW_LIMIT
 
 from . import duo, store
+from .catalog import rio_filters
 from .cbs import check_dimensions_pinned
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
@@ -114,6 +115,24 @@ def _filter_suggesties(origineel, filters: dict) -> dict:
     return hints
 
 
+def _row_count(n: int, complete: bool) -> dict:
+    """Rijtelling onder een naam die past: een afgekapte pagina heeft geen totaal (#177, #186)."""
+    return {"totaal_rijen": n} if complete else {"opgehaalde_rijen": n, "volledig": False}
+
+
+def _empty_melding(data_key: str, complete: bool) -> str:
+    if complete:
+        return "Het filter leverde 0 rijen op. Controleer de waarden hieronder voor je concludeert dat de data ontbreekt."
+    melding = (
+        "Het filter leverde 0 rijen op in deze pagina. Niet in deze pagina is niet hetzelfde als niet in de "
+        "bron: de data is één afgekapte pagina."
+    )
+    known = store.meta(data_key)
+    if known and known.bron == "rio" and (allowed := rio_filters(known.dataset)):
+        melding += f" Filter op de server: get_rio_data('{known.dataset}', filters={{...}}) met een van {allowed}."
+    return melding
+
+
 def query_data(
     data_key: str,
     filters: dict | None = None,
@@ -128,6 +147,10 @@ def query_data(
         hint = f" Beschikbare datasets: {available}" if available else ""
         return f"Geen data gevonden voor '{data_key}'.{hint} Laad eerst data via get_duo_data, get_cbs_data of get_rio_data."
 
+    complete = store.volledig(data_key)
+    if not complete and (group_by or aggregate):
+        return store.ONVOLLEDIG
+
     if filters:
         origineel = df
         df, err = _apply_filters(df, filters)
@@ -137,9 +160,9 @@ def query_data(
             return json.dumps(
                 {
                     "data_key": data_key,
-                    "totaal_rijen": 0,
+                    **_row_count(0, complete),
                     "rijen": [],
-                    "melding": "Het filter leverde 0 rijen op. Controleer de waarden hieronder voor je concludeert dat de data ontbreekt.",
+                    "melding": _empty_melding(data_key, complete),
                     "suggesties": _filter_suggesties(origineel, filters),
                 },
                 ensure_ascii=False,
@@ -190,13 +213,16 @@ def query_data(
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(df)
     rows = df.head(adaptive_max).to_dict(orient="records")
-    result: dict = {"data_key": result_key, "totaal_rijen": total, "rijen": rows}
+    result: dict = {"data_key": result_key, **_row_count(total, complete), "rijen": rows}
     if notes:
         result["databewerking"] = notes
+    warnings = [] if complete else [store.ONVOLLEDIG]
     if total > adaptive_max:
-        result["waarschuwing"] = (
+        warnings.append(
             f"Eerste {adaptive_max} van {total} rijen teruggegeven "
             f"({n_cols} kolommen × {adaptive_max} rijen). Verfijn je filters of selecteer minder kolommen."
         )
+    if warnings:
+        result["waarschuwing"] = " ".join(warnings)
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
