@@ -21,4 +21,4 @@ def no_ckan_metadata(monkeypatch):
 def no_cbs_dimension_call(monkeypatch):
     """Unittests doen geen live CBS-dimensiecall (Perioden.Status); tests die hem nodig hebben patchen zelf."""
     monkeypatch.setattr(cbs, "get", lambda dataset_id, endpoint, **params: [])
-    cbs.get_cbs_dimension.cache_clear()
+    cbs._dimension_rows.cache_clear()
