@@ -204,3 +204,43 @@ def test_notatieverschil_blokkeert_een_terechte_kpi_niet():
 def test_zonder_compute_kpi_blijven_er_geen_kpis_over():
     kpis = _validate_kpis([{"label": "L", "value": "30.083"}], {})
     assert kpis == []
+
+
+def test_generate_links_each_figure_to_the_query_before_it(monkeypatch):
+    """Een dashboardgrafiek bewaart de query waarop hij rust, voor de replay (#192)."""
+    import asyncio
+
+    from agent import loop as loop_module
+    from agent.dashboard import generate
+    from agent.stream import StreamResult
+
+    store.clear()
+    store.put("cbs:85423NED", pd.DataFrame({"JAAR": ["2021", "2022"], "AANTAL": [10, 20]}))
+    query = {"data_key": "cbs:85423NED", "columns": ["JAAR", "AANTAL"]}
+    steps = [
+        StreamResult(text="", tool_calls=[{"id": "q", "name": "query_data", "arguments": json.dumps(query)}]),
+        StreamResult(text="", tool_calls=[{"id": "p", "name": "create_plot", "arguments": json.dumps(
+            {"data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"})}]),
+        StreamResult(text='{"title": "Dashboard", "narrative": "Twee jaren."}', tool_calls=[]),
+    ]
+
+    async def fake_completion(*args, **kwargs):
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return steps.pop(0)
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    spec = asyncio.run(generate({"data_keys": ["cbs:85423NED"]}, emit, model="openai/gpt-4o"))
+    store.clear()
+
+    assert len(spec.figures_json) == 1
+    assert spec.figure_recipes == [{"query": query, "plot": {
+        "data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"}}]
+    assert [e["type"] for e in events].count("figure") == 1
