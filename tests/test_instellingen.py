@@ -559,6 +559,13 @@ def test_instelling_for_email_domain():
     assert instelling_for_email("J.VERMEER@WUR.NL") == "Wageningen University"
 
 
+def test_instelling_for_email_nhl_stenden_all_domains():
+    # De tweede DOMEINEN-entry overschreef de eerste: nhlstenden.nl gaf None (#202).
+    from data.instellingen import instelling_for_email
+    for domein in ("nhlstenden.nl", "nhl.nl", "stenden.com"):
+        assert instelling_for_email(f"x@{domein}") == "NHL Stenden Hogeschool", domein
+
+
 def test_instelling_for_email_unknown():
     from data.instellingen import instelling_for_email
     assert instelling_for_email("tomer@surf-ram#sram.surf.nl") is None
