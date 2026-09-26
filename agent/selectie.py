@@ -15,7 +15,7 @@ from tools import instelling, periode, store
 from tools.store import KeyMeta
 
 
-def _data_keys(tool_results: list[str]) -> list[str]:
+def data_keys(tool_results: list[str]) -> list[str]:
     keys = []
     for result in tool_results:
         try:
@@ -39,7 +39,7 @@ def _root(key: str) -> str:
 def _selecties(tool_results: list[str], veld: str) -> dict[str, set]:
     """Per laadkey: de waarden van `veld` over alle selecties van de beurt die het weten."""
     gekozen: dict[str, set] = {}
-    for key in _data_keys(tool_results):
+    for key in data_keys(tool_results):
         known = store.meta(key)
         if known and known.afgeleid_van and getattr(known, veld) is not None:
             gekozen.setdefault(_root(key), set()).update(getattr(known, veld))
@@ -99,7 +99,7 @@ _ZIN = re.compile(r"[^.!?\n]+")
 def onvolledige_selecties(tekst: str, tool_results: list[str]) -> list[str]:
     """Tellingen en afwezigheidsclaims in `tekst` die rusten op een afgekapte selectie."""
     onvolledig = {
-        key: known for key in _data_keys(tool_results)
+        key: known for key in data_keys(tool_results)
         if (known := store.meta(key)) and not known.volledig
     }
     if not onvolledig:

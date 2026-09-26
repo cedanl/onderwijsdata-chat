@@ -196,3 +196,15 @@ def test_count_on_a_truncated_rio_page_gets_a_correction(monkeypatch):
 
     assert text == "Het landelijke totaal is met deze data niet vast te stellen."
     assert "message_cancel" in [e["type"] for e in events]
+
+
+def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
+    # Live-audit 8 (#196): het getal klopte, de opleidingsvorm erbij niet.
+    text, events = _chat(monkeypatch, [
+        StreamResult(text="", tool_calls=[_QUERY]),
+        StreamResult(text="Deeltijd (DU): 5.943 eerstejaars.", tool_calls=[]),
+        StreamResult(text="Deeltijd (DT): 5.943 eerstejaars.", tool_calls=[]),
+    ])
+
+    assert text == "Deeltijd (DT): 5.943 eerstejaars."
+    assert "message_cancel" in [e["type"] for e in events]

@@ -10,6 +10,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from .grounding import unverified
 from .history import trim
+from .labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
 from .loop import ToolCall, tool_loop
 from .models import build_system
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
@@ -143,6 +144,9 @@ async def run(
             *ontbrekende_schooljaren(last_user_msg, tool_results),
             *ontbrekende_instellingen(last_user_msg, tool_results),
             *onvolledige_selecties(text, tool_results),
+            *verkeerde_opleidingsvormen(text),
+            *onbekende_datasets(text),
+            *verkeerde_teleenheid(text, tool_results),
         ]
 
     async def withdraw(problems: list[str]) -> None:
