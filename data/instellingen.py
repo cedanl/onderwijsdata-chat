@@ -14,12 +14,6 @@ _ADRES_CACHE: dict[str, dict] | None = None
 ALIASSEN: dict[str, list[str]] = {
     # WO
     "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit"],
-    # MBO/ROC
-    "ROC van Amsterdam": ["ROCvA"],
-    "ROC Midden Nederland": ["ROC MN"],
-    "ROC van Twente": ["RvT"],
-    "ROC van Flevoland": ["ROC Flevoland"],
-    "ROC Mondriaan": ["Mondriaan"],
     "Universiteit van Amsterdam": ["UvA"],
     "Erasmus Universiteit Rotterdam": ["EUR", "Erasmus"],
     "Rijksuniversiteit Groningen": ["RUG"],
@@ -55,6 +49,7 @@ ALIASSEN: dict[str, list[str]] = {
     "ROC Midden Nederland": ["ROC MN"],
     "ROC Mondriaan": ["Mondriaan"],
     "ROC van Twente": ["RvT"],
+    "ROC van Flevoland": ["ROC Flevoland"],
     "Alfa-college": ["Alfa"],
     "Deltion College": ["Deltion"],
     "Summa College": ["Summa"],
@@ -138,7 +133,7 @@ DOMEINEN: dict[str, list[str]] = {
     "Saxion Hogeschool": ["saxion.nl"],
     "Hogeschool van Arnhem en Nijmegen": ["han.nl"],
     "Christelijke Hogeschool Windesheim": ["windesheim.nl"],
-    "NHL Stenden Hogeschool": ["nhlstenden.nl"],
+    "NHL Stenden Hogeschool": ["nhlstenden.nl", "nhl.nl", "stenden.com"],
     "Zuyd Hogeschool": ["zuyd.nl"],
     "Hogeschool Leiden": ["hsleiden.nl"],
     "Breda University of Applied Sciences": ["buas.nl"],
@@ -149,7 +144,6 @@ DOMEINEN: dict[str, list[str]] = {
     "ROC van Twente": ["rocvantwente.nl"],
     "ROC van Flevoland": ["rocvanflevoland.nl"],
     "ROC Mondriaan": ["rocmondriaan.nl"],
-    "NHL Stenden Hogeschool": ["nhl.nl", "stenden.com"],
 }
 
 
