@@ -3,11 +3,14 @@ en is geen lege schil (#189)."""
 
 import json
 
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
+from tools import store
+from tools.store import KeyMeta
 
 _HU_RESULT = json.dumps({"rijen": [
     {"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904, 27441, 27135, 26370])
@@ -16,15 +19,15 @@ _HU_FIGURE = pio.to_json(go.Figure(go.Scatter(x=[2021, 2022, 2023, 2024, 2025], 
 
 
 _VOLLEDIG = {
+    "title": "Instroom HU",
+    "onderzoeksvraag": "Hoeveel voltijdstudenten heeft de HU?",
     "beantwoordt": ["Voltijdstudenten HU per studiejaar"],
     "conclusie": "Het aantal daalde van 28.355 in 2021 naar 26.370 in 2025.",
 }
 
 
 def _spec(**velden) -> ReportSpec:
-    return ReportSpec(
-        title="Instroom HU", onderzoeksvraag="Hoeveel voltijdstudenten heeft de HU?", **{**_VOLLEDIG, **velden}
-    )
+    return ReportSpec(**{**_VOLLEDIG, **velden})
 
 
 def test_audit_tegenvoorbeeld_geen_rijen_naast_gevulde_grafiek():
@@ -88,3 +91,23 @@ def test_grafiek_zonder_getal_in_de_tekst_is_volledig():
 def test_conclusie_zonder_getal_en_zonder_grafiek_is_onvolledig():
     spec = _spec(conclusie="Het aantal voltijdstudenten daalde elk jaar.")
     assert any("getal of grafiek" in p for p in report_problems(spec, [], [_HU_RESULT]))
+
+
+def test_verkeerde_opleidingsvorm_in_de_reikwijdte():
+    # Live-audit 8 (#196): juiste p01-waarden, maar "Deeltijd (DU)" in de reikwijdte.
+    spec = _spec(beantwoordt=["Deeltijd (DU) bij de HU, 2021–2025"])
+    [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+    assert "duaal" in probleem
+
+
+def test_inschrijvingen_als_titel_boven_personen():
+    store.clear()
+    store.put("duo:p01hoinges:3:a", pd.DataFrame({"AANTAL": [26370]}),
+              KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie="Ingeschrevenen: hoofdinschrijvingen als personen."))
+    resultaat = json.dumps({"data_key": "duo:p01hoinges:3:a", "rijen": [{"AANTAL": 26370}]})
+    spec = _spec(title="Voltijds inschrijvingen HU", conclusie="In 2025 waren het 26.370.")
+
+    problemen = report_problems(spec, [_HU_FIGURE], [resultaat])
+    store.clear()
+
+    assert any("personen" in p for p in problemen)
