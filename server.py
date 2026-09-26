@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import signal
 import sys
 import tomllib
@@ -9,14 +8,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
-from logging_config import setup_logging
 from config import Config, ConfigError
+from logging_config import setup_logging
 
 json_format = Config.is_production()
 setup_logging(level=Config.LOG_LEVEL, json_format=json_format)
@@ -29,6 +27,8 @@ except ConfigError as e:
     logger.error(f"Configuration validation failed: {e}")
     sys.exit(1)
 
+import health
+from auth.oidc import is_oidc_configured
 from persistence import db as persistence_db
 from routes import (
     auth_router,
@@ -37,8 +37,6 @@ from routes import (
     instellingen_router,
     persistence_router,
 )
-from auth.oidc import is_oidc_configured
-import health
 
 app = FastAPI(
     title="Onderwijsdata Chat",

@@ -556,7 +556,7 @@ def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> di
     if not alle:
         return {}
     gefilterd = _relevante_clusters(alle, sectoren)
-    return gefilterd if gefilterd else alle
+    return gefilterd or alle
 
 
 def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:

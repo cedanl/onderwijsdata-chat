@@ -14,7 +14,6 @@ completely unaware whether a token came from a password login or SRAM.
 
 import logging
 import time
-from typing import Optional
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 OAUTH_SCOPES = "openid email profile eduperson_entitlement voperson_external_affiliation"
 _DISCOVERY_CACHE_TTL = 3600  # discovery documents don't change; cache for an hour
 
-_discovery_cache: Optional[dict] = None
+_discovery_cache: dict | None = None
 _discovery_cache_at: float = 0.0
 
 
