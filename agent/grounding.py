@@ -32,6 +32,15 @@ def _tool_integers(tool_results: list[str]) -> set[str]:
     return {n for result in tool_results for n in _TOOL_NUMBER.findall(str(result))}
 
 
+def checked_numbers(text: str) -> list[tuple[str, str]]:
+    """Gehele getallen die de controle meeneemt: (zoals geschreven, cijfers)."""
+    return [
+        (m.group(0), digits)
+        for m in _TEXT_NUMBER.finditer(text)
+        if "," not in m.group(0) and _checked(digits := m.group(1).replace(".", ""))
+    ]
+
+
 def unsourced_numbers(text: str, tool_results: list[str]) -> set[str]:
     """Getallen (≥ 4 cijfers, geen jaartal) uit `text` die in geen enkel toolresultaat staan."""
     in_text = {m.group(1).replace(".", "") for m in _TEXT_NUMBER.finditer(text)}

@@ -8,6 +8,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
+from .binding import verkeerd_gebonden
 from .grounding import unverified
 from .history import trim
 from .labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
@@ -147,6 +148,7 @@ async def run(
             *verkeerde_opleidingsvormen(text),
             *onbekende_datasets(text),
             *verkeerde_teleenheid(text, tool_results),
+            *verkeerd_gebonden(text, tool_results),
         ]
 
     async def withdraw(problems: list[str]) -> None:

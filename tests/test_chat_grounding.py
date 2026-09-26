@@ -208,3 +208,23 @@ def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
 
     assert text == "Deeltijd (DT): 5.943 eerstejaars."
     assert "message_cancel" in [e["type"] for e in events]
+
+
+def test_number_from_another_selected_year_gets_a_correction(monkeypatch):
+    # Live-audit 8 (#197): beide jaren en beide getallen in de selectie, maar verwisseld.
+    store.clear()
+    store.put("duo:p01hoinges:3:s", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [27135, 26370]}),
+              KeyMeta(bron="duo", dataset="p01hoinges", periodekolom="STUDIEJAAR", afgeleid_van="duo:p01hoinges:3"))
+    rows = json.dumps({"data_key": "duo:p01hoinges:3:s", "rijen": [
+        {"STUDIEJAAR": 2024, "AANTAL": 27135}, {"STUDIEJAAR": 2025, "AANTAL": 26370},
+    ]})
+    text, events = _chat(monkeypatch, [
+        StreamResult(text="", tool_calls=[_QUERY]),
+        StreamResult(text="In 2025/26 waren het 27.135 studenten.", tool_calls=[]),
+        StreamResult(text="In 2025/26 waren het 26.370 studenten.", tool_calls=[]),
+    ], tool_result=rows)
+    store.clear()
+
+    assert text == "In 2025/26 waren het 26.370 studenten."
+    assert "message_cancel" in [e["type"] for e in events]
+    assert "controle" not in events[-1]
