@@ -78,24 +78,6 @@ export function saveWorkbook({ title, description, messages, figures, instelling
   }
 }
 
-export function updateWorkbookTitle(id, title) {
-  const wbs = getWorkbooks()
-  const wb = wbs.find(w => w.id === id)
-  if (!wb) return
-  wb.title = title
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch { /* noop */ }
-  putWorkbook(id, { ...wb, htmlContent: wb.htmlContent, dashboardSpec: wb.dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
-}
-
-export function updateWorkbookSpec(id, dashboardSpec) {
-  const wbs = getWorkbooks()
-  const wb = wbs.find(w => w.id === id)
-  if (!wb) return
-  wb.dashboardSpec = dashboardSpec
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(wbs)) } catch { /* noop */ }
-  putWorkbook(id, { ...wb, dashboardSpec, createdAt: wb.createdAt }).catch(e => console.warn('Workbook sync failed:', e.message))
-}
-
 export function deleteWorkbook(id) {
   try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id))) } catch { /* noop */ }
   deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
@@ -144,6 +126,19 @@ export async function saveWorkbookWithSync(fields) {
     return { ok: false, error: `Opslaan op de server mislukt: ${e.message}`, workbook }
   }
   return { ok: true, workbook }
+}
+
+// The viewer holds the workbook and the server stores it; the local list is only a
+// cache. A workbook missing from that cache is still saved (#176).
+export async function updateWorkbook(workbook, changes) {
+  const updated = { ...workbook, ...changes }
+  const cached = getWorkbooks()
+  if (cached.some(w => w.id === updated.id)) {
+    const next = cached.map(w => (w.id === updated.id ? updated : w))
+    try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(next)) } catch { /* noop */ }
+  }
+  await putWorkbook(updated.id, serverFields(updated))
+  return updated
 }
 
 export async function migrateLocalWorkbooks() {

@@ -18,11 +18,13 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('../api', () => api)
 
-const { saveWorkbook, saveWorkbookWithSync, getWorkbooks, deleteWorkbook } = await import('../workbooks.js')
+const { saveWorkbook, saveWorkbookWithSync, updateWorkbook, getWorkbooks, deleteWorkbook } = await import('../workbooks.js')
 
 beforeEach(() => {
   localStorageMock.clear()
   vi.clearAllMocks()
+  // clearAllMocks keeps implementations: a test that makes setItem throw would leak.
+  localStorageMock.setItem.mockImplementation((key, val) => { storage[key] = val })
 })
 
 describe('saveWorkbook', () => {
@@ -132,5 +134,30 @@ describe('saveWorkbookWithSync', () => {
     localStorageMock.setItem.mockImplementation(() => { throw new DOMException('quota') })
     const result = await saveWorkbookWithSync({ title: 'Groot', htmlContent: '<p>x</p>', type: 'report' })
     expect(result.ok).toBe(true)
+  })
+})
+
+describe('updateWorkbook', () => {
+  const rapport = { id: 'r1', title: 'Oud', htmlContent: '<p>x</p>', type: 'report', createdAt: '2026-09-26T10:00:00Z' }
+
+  // #176: direct na het genereren stond het rapport niet in localStorage; de titel
+  // leek opgeslagen, maar er ging geen PUT naar de server.
+  it('saves to the server even when the workbook is not in the local cache', async () => {
+    api.putWorkbook.mockImplementation(() => Promise.resolve({}))
+    const updated = await updateWorkbook(rapport, { title: 'Nieuw' })
+    expect(updated.title).toBe('Nieuw')
+    expect(api.putWorkbook).toHaveBeenCalledWith('r1', expect.objectContaining({ title: 'Nieuw', htmlContent: '<p>x</p>' }))
+  })
+
+  it('updates the local cache when the workbook is in it', async () => {
+    api.putWorkbook.mockImplementation(() => Promise.resolve({}))
+    storage.edudata_workbooks = JSON.stringify([rapport])
+    await updateWorkbook(rapport, { title: 'Nieuw' })
+    expect(JSON.parse(storage.edudata_workbooks)[0].title).toBe('Nieuw')
+  })
+
+  it('rejects when the server does not save it', async () => {
+    api.putWorkbook.mockImplementation(() => Promise.reject(new Error('HTTP 500')))
+    await expect(updateWorkbook(rapport, { title: 'Nieuw' })).rejects.toThrow('HTTP 500')
   })
 })

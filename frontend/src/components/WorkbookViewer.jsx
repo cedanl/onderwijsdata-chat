@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
-import { updateWorkbookTitle, updateWorkbookSpec, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 
@@ -13,6 +13,7 @@ const BUILTIN_COMPONENTS = {
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(null)
+  const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const titleInputRef = useRef(null)
@@ -24,8 +25,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
     setRefreshError(null)
     try {
       const { spec: freshSpec } = await refreshDashboardApi(spec, { instelling })
-      updateWorkbookSpec(workbook.id, freshSpec)
-      onUpdate({ ...workbook, dashboardSpec: freshSpec })
+      onUpdate(await updateWorkbook(workbook, { dashboardSpec: freshSpec }))
     } catch (err) {
       setRefreshError(err.message || 'Verversen mislukt')
     } finally {
@@ -46,9 +46,13 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
       setEditingTitle(false)
       return
     }
-    updateWorkbookTitle(workbook.id, trimmed)
-    onUpdate({ ...workbook, title: trimmed })
     setEditingTitle(false)
+    setSaveError(null)
+    onUpdate({ ...workbook, title: trimmed })
+    updateWorkbook(workbook, { title: trimmed }).catch(err => {
+      onUpdate(workbook)
+      setSaveError(`Titel niet opgeslagen: ${err.message}`)
+    })
   }, [workbook, titleDraft, onUpdate])
 
   const spec = workbook.dashboardSpec
@@ -93,6 +97,9 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
         )}
         <div />
       </div>
+      {saveError && (
+        <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{saveError}</div>
+      )}
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }}>
         {(() => {
           const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
