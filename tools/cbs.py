@@ -19,6 +19,12 @@ from .columns import sample_values
 _SAMPLE_ROWS = 5
 _MAX_GENOEMDE_WAARDEN = 5
 
+# Naast elke dimensiecode zet get_cbs_data haar label, en naast de periode haar
+# status (#163, #180). Beide volgen uit de code en tellen voor de guard als die
+# dimensie in een andere notatie.
+_PERIODESTATUS = "Periodestatus"
+_LABEL_SUFFIX = "_label"
+
 # Dimensiekolommen per CBS-dataset-ID, vastgelegd bij get_cbs_data. Per dataset en
 # niet per key, zodat afgeleide keys (cbs:<id>:<hash>) ze zonder netwerk vinden.
 _dimensies: dict[str, list[str]] = {}
@@ -40,18 +46,37 @@ def dimension_columns(data_key: str) -> list[str]:
     return _dimensies.get(parts[1], [])
 
 
+def _guarded_columns(data_key: str) -> list[str]:
+    """De dimensies met hun labels en de periodestatus: wat rijen onderscheidt."""
+    dims = dimension_columns(data_key)
+    if not dims:
+        return []
+    return [*dims, *(d + _LABEL_SUFFIX for d in dims), _PERIODESTATUS]
+
+
+def _determined(df: pd.DataFrame, col: str, by: list[str]) -> bool:
+    """Heeft `col` binnen elke combinatie van `by` hooguit één waarde?"""
+    if not by:
+        return df[col].nunique() <= 1
+    return bool((df.groupby(by, dropna=False)[col].nunique() <= 1).all())
+
+
 def check_dimensions_pinned(data_key: str, df: pd.DataFrame, keep: list[str]) -> str | None:
     """Weiger een CBS-selectie die een dimensie met meerdere waarden laat wegvallen.
 
     CBS-tabellen bevatten totaalrijen naast hun onderdelen ("Opleidingsfase totaal"
     naast bachelor en master), en die zijn niet aan hun code te herkennen. Een
-    dimensie die niet in `keep` staat, moet daarom op één waarde vastliggen; anders
-    telt een som dubbel (#162) of worden rijen ononderscheidbaar.
+    dimensie die niet in `keep` staat, moet daarom vastliggen: op één waarde, of
+    eenduidig bepaald door wat wel behouden blijft (het label "2024/'25" houdt de
+    jaren net zo goed uit elkaar als de code 2024SJ00, #194). Anders telt een som
+    dubbel (#162) of worden rijen ononderscheidbaar.
     """
+    guarded = [c for c in _guarded_columns(data_key) if c in df.columns]
+    kept = [c for c in guarded if c in keep]
     open_dims = {
         col: sorted(df[col].dropna().astype(str).unique())
-        for col in dimension_columns(data_key)
-        if col in df.columns and col not in keep and df[col].nunique() > 1
+        for col in guarded
+        if col not in kept and not _determined(df, col, kept)
     }
     if not open_dims:
         return None
@@ -64,7 +89,7 @@ def check_dimensions_pinned(data_key: str, df: pd.DataFrame, keep: list[str]) ->
         f"Deze selectie telt meerdere categorieën van dezelfde dimensie samen: {details}. "
         "CBS-tabellen bevatten totaalrijen naast hun onderdelen, dus dat telt dubbel. "
         "Filter elke dimensie op één waarde (meestal de totaalcode, zie get_cbs_dimension) "
-        "of neem hem op in group_by/columns."
+        "of neem hem (of zijn _label-kolom) op in group_by/columns."
     )
 
 
@@ -86,8 +111,6 @@ def _select_with_dimensions(select: str, dims: list[str]) -> str:
     return ",".join(cols + [d for d in dims if d not in cols])
 
 
-_PERIODESTATUS = "Periodestatus"
-_LABEL_SUFFIX = "_label"
 _PERIODESTATUS_DEFINITIE = (
     "CBS-status van de periode uit Perioden.Status (bijv. Definitief, Voorlopig, "
     "Nader voorlopig). Gebruik deze kolom; leid de status niet af uit de periodecode. "
