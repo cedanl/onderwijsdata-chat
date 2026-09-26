@@ -440,3 +440,28 @@ def test_dataset_counts_per_source():
     with patch("tools.catalog._cbs", return_value=cbs), \
          patch("tools.catalog._rio_duo", return_value=rio_duo):
         assert dataset_counts() == {"CBS": 2, "DUO": 2, "RIO": 1}
+    from tools.catalog import CHAT_BRONNEN
+    assert set(CHAT_BRONNEN) == {"CBS", "DUO", "RIO"}
+
+
+# Live-audit 8 (#200): ROA en UWV staan in de catalogus, maar de chat heeft er geen
+# datatool voor. Sonnet schreef daarop "een UWV-koppeling bestaat niet".
+_UWV = {"leverancier": "UWV", "_ckan_id": "uwv-open-match-data", "bron": "UWV Open Match Data", "title": "vacatures uwv"}
+_DUO = {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen hbo", "title": "vacatures duo"}
+
+
+def test_catalogusbron_zonder_datatool_is_gemarkeerd_in_zoekresultaat():
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[_UWV, _DUO]):
+        hits = {h["bron"]: h for h in json.loads(search_catalog("vacatures", source="rio"))}
+    assert hits["UWV Open Match Data"]["opvraagbaar"] is False
+    assert "niet op te vragen" in hits["UWV Open Match Data"]["melding"]
+    assert "opvraagbaar" not in hits["Ingeschrevenen hbo"]
+
+
+def test_dataset_details_van_catalogusbron_zonder_datatool_meldt_dat():
+    with patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[_UWV]):
+        details = json.loads(dataset_details("uwv-open-match-data"))
+    assert details["opvraagbaar"] is False
+    assert "niet bestaat" in details["melding"]
