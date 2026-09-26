@@ -48,16 +48,13 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
   "visualisaties": [
     {"titel": "Korte Nederlandse grafiektitel", "toelichting": "2-3 zinnen die de grafiek duiden en verbinden met de onderzoeksvraag"}
   ],
-  "conclusie": "2-3 zinnen met de kernbevindingen en het antwoord op de onderzoeksvraag.",
-  "bronnen": ["DUO — exacte catalogustitel (dataset-ID)", "CBS — exacte catalogustitel (dataset-ID)"]
+  "conclusie": "2-3 zinnen met de kernbevindingen en het antwoord op de onderzoeksvraag."
 }
 ```
 
 ## Bronvermeldingen
 
-- Vermeld ALTIJD de bronnen die je hebt gebruikt
-- Format: "Bron — exacte catalogustitel (dataset-ID)"
-- Gebruik de titel letterlijk uit `catalogus_titel` (en bij DUO ook `resource_titel`) die de tools teruggeven — geen ingekorte of eigen omschrijving
+De bronnen (catalogustitel en dataset-ID van elke gebruikte dataset) voegt de code toe. Schrijf ze niet zelf.
 
 ## Title-regels
 
