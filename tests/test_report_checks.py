@@ -1,4 +1,5 @@
-"""Een rapport mag niet iets anders beweren dan zijn eigen data en grafieken (#175)."""
+"""Een rapport mag niet iets anders beweren dan zijn eigen data en grafieken (#175),
+en is geen lege schil (#189)."""
 
 import json
 
@@ -14,8 +15,16 @@ _HU_RESULT = json.dumps({"rijen": [
 _HU_FIGURE = pio.to_json(go.Figure(go.Scatter(x=[2021, 2022, 2023, 2024, 2025], y=[28355, 27904, 27441, 27135, 26370])))
 
 
+_VOLLEDIG = {
+    "beantwoordt": ["Voltijdstudenten HU per studiejaar"],
+    "conclusie": "Het aantal daalde van 28.355 in 2021 naar 26.370 in 2025.",
+}
+
+
 def _spec(**velden) -> ReportSpec:
-    return ReportSpec(title="Instroom HU", onderzoeksvraag="Hoeveel voltijdstudenten heeft de HU?", **velden)
+    return ReportSpec(
+        title="Instroom HU", onderzoeksvraag="Hoeveel voltijdstudenten heeft de HU?", **{**_VOLLEDIG, **velden}
+    )
 
 
 def test_audit_tegenvoorbeeld_geen_rijen_naast_gevulde_grafiek():
@@ -49,4 +58,33 @@ def test_afwezigheid_in_beantwoordt_niet_is_toegestaan():
 
 def test_afwezigheid_zonder_gevulde_grafiek_is_geen_tegenspraak():
     spec = _spec(conclusie="Er zijn geen data voor deze instelling.")
-    assert report_problems(spec, [], [_HU_RESULT]) == []
+    assert not any("wel waarden" in p for p in report_problems(spec, [], [_HU_RESULT]))
+
+
+def test_lege_schil_is_onvolledig():
+    # Live-audit 7b en 8: alleen onderzoeksvraag en bron, report_ready werd toch verstuurd.
+    spec = _spec(beantwoordt=[], conclusie="")
+
+    problemen = report_problems(spec, [], [_HU_RESULT])
+
+    assert any("conclusie" in p for p in problemen)
+    assert any("reikwijdte" in p for p in problemen)
+    assert any("getal of grafiek" in p for p in problemen)
+
+
+def test_reikwijdte_mag_ook_alleen_zeggen_wat_niet_beantwoord_wordt():
+    spec = _spec(beantwoordt=[], beantwoordt_niet=["Uitval valt buiten dit rapport."])
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []
+
+
+def test_grafiek_zonder_getal_in_de_tekst_is_volledig():
+    spec = _spec(
+        conclusie="Het aantal voltijdstudenten daalde elk jaar.",
+        visualisaties=[{"titel": "Trend", "toelichting": "", "figure_json": _HU_FIGURE}],
+    )
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []
+
+
+def test_conclusie_zonder_getal_en_zonder_grafiek_is_onvolledig():
+    spec = _spec(conclusie="Het aantal voltijdstudenten daalde elk jaar.")
+    assert any("getal of grafiek" in p for p in report_problems(spec, [], [_HU_RESULT]))

@@ -70,17 +70,19 @@ def _run_generate_async():
     ), events
 
 
+def _final(conclusie: str, title: str = "T") -> StreamResult:
+    """Een volledig rapport (#189): reikwijdte, conclusie en een getal."""
+    report = {"title": title, "onderzoeksvraag": "Instroom", "beantwoordt": ["Instroom per jaar"], "conclusie": conclusie}
+    return StreamResult(text=json.dumps(report), tool_calls=[])
+
+
 def test_generate_recovers_from_invalid_tool_call_arguments(monkeypatch):
     bad_args = '{"JAAR": [2021, 2022], "AANTAL": [10, 20]}\x0a{"niet": "goed"}'
     steps = [
         StreamResult(text="", tool_calls=[
             {"id": "t1", "name": "query_data", "arguments": bad_args},
         ]),
-        StreamResult(text=json.dumps({
-            "title": "Testrapport",
-            "onderzoeksvraag": "Instroom",
-            "conclusie": "Conclusie",
-        }), tool_calls=[]),
+        _final("In 2021 waren het er 10.", title="Testrapport"),
     ]
     _make_generate(monkeypatch, steps)
 
@@ -102,11 +104,7 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
         StreamResult(text="", tool_calls=[
             {"id": "t1", "name": "query_data", "arguments": bad_args},
         ]),
-        StreamResult(text=json.dumps({
-            "title": "Testrapport",
-            "onderzoeksvraag": "Instroom",
-            "conclusie": "Conclusie",
-        }), tool_calls=[]),
+        _final("In 2021 waren het er 10.", title="Testrapport"),
     ]
     _make_generate(monkeypatch, steps)
 
@@ -121,7 +119,7 @@ def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplo
     query = {"data_key": _DATASET, "filters": {"JAAR": 2021}}
     _make_generate(monkeypatch, [
         StreamResult(text="", tool_calls=[{"id": "t1", "name": "query_data", "arguments": json.dumps(query)}]),
-        StreamResult(text='{"title": "T"}', tool_calls=[]),
+        _final("In 2021 waren het er 10."),
     ])
 
     with caplog.at_level("INFO", logger="agent.report"):
@@ -133,8 +131,6 @@ def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplo
     assert "totaal_rijen=1" in record.message
 
 
-def _final(conclusie: str) -> StreamResult:
-    return StreamResult(text=json.dumps({"title": "T", "conclusie": conclusie}), tool_calls=[])
 
 
 def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its_data(monkeypatch):
@@ -159,4 +155,13 @@ def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
     _make_generate(monkeypatch, [_final("Het waren er 12.345."), _final("Het waren er 54.321.")])
 
     with pytest.raises(ValueError, match="niet consistent"):
+        _run_generate()
+
+
+def test_generate_refuses_an_empty_shell(monkeypatch):
+    # #189: ongeldige of lege modeluitvoer gaf een rapport met alleen vraag en bron.
+    shell = StreamResult(text="Hier is het rapport.", tool_calls=[])
+    _make_generate(monkeypatch, [shell, StreamResult(text='{"title": "T"}', tool_calls=[])])
+
+    with pytest.raises(ValueError, match="conclusie"):
         _run_generate()
