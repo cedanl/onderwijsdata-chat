@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
+import { fetchCatalogCounts } from '../api'
+import { heroStats } from '../catalogStats'
 
 export default function HomePage({ dashboardsEnabled = true }) {
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
+  const [counts, setCounts] = useState({})
+  useEffect(() => {
+    fetchCatalogCounts().then(setCounts).catch(() => {})
+  }, [])
+  const { bronnen, datasets } = heroStats(counts)
   return (
     <div>
       {/* Hero */}
@@ -23,8 +30,8 @@ export default function HomePage({ dashboardsEnabled = true }) {
               )}
             </div>
             <div className="hero-stats">
-              <div><div className="hero-stat-value">5</div><div className="hero-stat-label">Open bronnen gekoppeld</div></div>
-              <div><div className="hero-stat-value">300+</div><div className="hero-stat-label">Datasets doorzoekbaar</div></div>
+              <div><div className="hero-stat-value">{bronnen}</div><div className="hero-stat-label">Open bronnen gekoppeld</div></div>
+              <div><div className="hero-stat-value">{datasets}</div><div className="hero-stat-label">Datasets doorzoekbaar</div></div>
               <div><div className="hero-stat-value">100%</div><div className="hero-stat-label">Open onderwijsdata</div></div>
             </div>
           </div>

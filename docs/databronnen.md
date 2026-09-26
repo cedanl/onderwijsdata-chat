@@ -1,6 +1,8 @@
 # Databronnen
 
-De assistent heeft toegang tot vijf open Nederlandse onderwijs- en arbeidsmarktdatabronnen. De juiste bron wordt automatisch gekozen op basis van je vraag.
+De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste bron wordt automatisch gekozen op basis van je vraag.
+
+**ROA** en **UWV** staan in de catalogus en voeden de [dashboards](dashboards.md), maar de chat kan hun data niet ophalen. Vraag je ernaar, dan noemt de assistent de dataset zonder cijfers te geven.
 
 ---
 
@@ -80,7 +82,7 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## ROA — Landelijk referentiekader arbeidsmarkt
 
-**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. Gebruikt in het regiodashboard als benchmark.
+**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. Gebruikt in het regiodashboard als benchmark; niet via de chat op te vragen.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -88,14 +90,11 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 | Inhoud | Doorstroompercentages, match scores per opleidingssector |
 | Formaat | Landelijke referentiewaarden (geen regionale uitsplitsing) |
 
-**Voorbeeldvragen:**
-- *"Hoe vergelijkt de arbeidsmarktmatch van MBO-opleidingen met het landelijk gemiddelde?"*
-
 ---
 
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. Ingezet in het arbeidsmarktdashboard.
+**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. Ingezet in het arbeidsmarktdashboard; niet via de chat op te vragen.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -106,14 +105,11 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 !!! warning "Bevroren data"
     De UWV-vacaturedata is een bevroren momentopname uit mei 2023. Actuele vacaturedata is niet beschikbaar via deze bron.
 
-**Voorbeeldvragen:**
-- *"Hoeveel vacatures waren er in de sector techniek?"*
-
 ---
 
 ## Catalogus doorzoeken
 
-De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
+De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`; ROA- en UWV-treffers zijn gemarkeerd als niet via de chat op te vragen. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
 
 > *"Welke datasets zijn beschikbaar over zij-instroom?"*
 

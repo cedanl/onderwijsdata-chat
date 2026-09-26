@@ -19,14 +19,31 @@ logger = logging.getLogger(__name__)
 # is intentioneel: README mag ze niet noemen, want zij zijn niet bereikbaar voor gebruikers.
 SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
+# Bronnen waarvan de chat data kan ophalen (get_cbs_data, get_duo_data, get_rio_data).
+# ROA en UWV staan wel in de catalogus en voeden de dashboards, maar zonder datatool
+# mag het model er geen cijfers voor geven, en ook niet concluderen dat ze niet
+# bestaan (#200).
+CHAT_BRONNEN = ("CBS", "DUO", "RIO")
+_NIET_OPVRAAGBAAR = {
+    "opvraagbaar": False,
+    "melding": (
+        "Deze bron staat in de catalogus, maar is in de chat niet op te vragen: er is geen "
+        "datatool voor. Noem de dataset, geef er geen cijfers voor, en zeg niet dat de bron niet bestaat."
+    ),
+}
+
+
+def _via_chat(entry: dict) -> bool:
+    return str(entry.get("leverancier", "")).upper() in CHAT_BRONNEN
+
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
 
 # F1: Nederlandse stopwoorden + vraagwoorden die ruis veroorzaken
 _STOPWOORDEN = frozenset({
     "de", "het", "een", "en", "of", "aan", "bij", "voor", "in", "op", "uit", "met", "van", "naar",
-    "is", "zijn", "ben", "was", "waren", "het", "dit", "dat", "deze", "die",
+    "is", "zijn", "ben", "was", "waren", "dit", "dat", "deze", "die",
     "hoe", "wat", "waar", "wanneer", "wie", "welke", "waarom",
-    "kan", "mag", "moet", "wil", "zal", "zou", "kan", "krijgt", "krijgen",
+    "kan", "mag", "moet", "wil", "zal", "zou", "krijgt", "krijgen",
     "heeft", "hebben", "dar", "door", "tot", "over", "om", "zonder",
 })
 
@@ -53,7 +70,7 @@ def _rio_duo() -> list:
 
 
 def dataset_counts() -> dict[str, int]:
-    """Datasets per bron zoals de app ze doorzoekt; bron voor databronnenvenster en README.
+    """Datasets per bron die de chat kan opvragen; bron voor startpagina, databronnenvenster en README.
 
     CBS telt ook gearchiveerde tabellen mee: search_catalog valt daarop terug.
     """
@@ -95,7 +112,7 @@ _SYNONYMS: dict[str, list[str]] = {
 def _filter_stopwoorden(words: list[str]) -> list[str]:
     """Remove stopwoorden; fallback to all words if nothing remains."""
     filtered = [w for w in words if w not in _STOPWOORDEN]
-    return filtered if filtered else words
+    return filtered or words
 
 
 def _expand_query(words: list[str]) -> list[tuple[str, float]]:
@@ -232,10 +249,8 @@ def search_catalog(
                 continue
             s = _score(entry, words)
             if s:
-                if entry.get("_archief"):
-                    archive_fallback.append((s, {**entry}))
-                else:
-                    active.append((s, {**entry}))
+                hit = {**entry} if _via_chat(entry) else {**entry, **_NIET_OPVRAAGBAAR}
+                (archive_fallback if entry.get("_archief") else active).append((s, hit))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
@@ -355,6 +370,8 @@ def dataset_details(dataset_id: str) -> str:
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
         if eid == dataset_id:
             logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
+            if not _via_chat(entry):
+                return json.dumps({"bron": entry.get("bron", dataset_id), **_NIET_OPVRAAGBAAR}, ensure_ascii=False)
             if entry.get("leverancier") == "DUO":
                 # Het moment waarop het model tussen bijv. p01 en p03 kiest (#172).
                 entry = {**entry, "teldefinitie": teldefinitie(dataset_id)}
