@@ -1,8 +1,7 @@
 """Test chart type auto-detection logic."""
 
-import pytest
 
-from tools.plot import _is_time_axis, _infer_chart_type
+from tools.plot import _infer_chart_type, _is_time_axis
 
 
 class TestTimeAxisDetection:

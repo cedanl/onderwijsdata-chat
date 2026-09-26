@@ -1,7 +1,6 @@
 """Test provider→API-key mapping for drift prevention (#53)."""
 
-import pytest
-from core.config import get_required_api_key_env_var, get_all_api_key_env_vars
+from core.config import get_all_api_key_env_vars, get_required_api_key_env_var
 
 
 class TestProviderApiKeyMapping:

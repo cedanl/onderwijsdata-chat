@@ -5,7 +5,9 @@ Requirement: Each CBS data response should indicate when the source data was las
 so users know the currency/reliability of numbers.
 """
 import json
+
 import pytest
+
 from tools.cbs import get_cbs_data
 
 
