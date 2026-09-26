@@ -1,6 +1,5 @@
 """Tests for dynamic model context window resolution."""
 
-import pytest
 
 from agent.model_context import clamp_max_tokens, get_max_context
 
@@ -92,11 +91,7 @@ class TestAcceptanceCriteria:
 
     def test_max_history_safe_for_all_models(self):
         """MAX_HISTORY messages shouldn't exceed any model's context."""
-        from core.config import MAX_HISTORY, MAX_TOKENS
-
-        # Rough heuristic: assume ~1500 tokens per message on average
-        # (varies by model, but a safe upper bound for chat history)
-        tokens_per_message = 1500
+        from core.config import MAX_TOKENS
 
         willma_models = [
             "openai/gpt-oss-120b",
@@ -106,9 +101,5 @@ class TestAcceptanceCriteria:
 
         for model in willma_models:
             context = get_max_context(model)
-            estimated_history_tokens = MAX_HISTORY * tokens_per_message
-            # The clamped max_tokens should be safe for the model
             clamped = clamp_max_tokens(model, MAX_TOKENS)
-            # Rough check: clamped tokens + estimated history should fit
-            # (not a hard guarantee, but a sanity check)
             assert clamped <= context, f"{model} clamping failed: {clamped} > {context}"

@@ -171,3 +171,69 @@ def test_select_cannot_drop_dimension_columns():
         get_cbs_data("99999NED", {"$select": "Perioden, Totaal_1"})
 
     assert captured["$select"].split(",") == ["Perioden", "Totaal_1", "Geslacht"]
+
+
+# Sinds #163/#180 staan naast de periodecode haar label en status. Een model dat
+# die leesbare kolommen kiest, houdt de jaren net zo goed uit elkaar (#194).
+_LABELS = {"2024SJ00": "2024/'25", "2025SJ00": "2025/'26*"}
+_STATUS = {"2024SJ00": "Definitief", "2025SJ00": "Voorlopig"}
+
+
+@pytest.fixture
+def twee_jaren():
+    rows = [
+        {
+            "Geslacht": "T001038",
+            "Onderwijssoort": "A025294",
+            "Opleidingsfase": "A045745",
+            "Opleidingsvorm": "A028666",
+            "Perioden": periode,
+            "Perioden_label": _LABELS[periode],
+            "Periodestatus": _STATUS[periode],
+            "TotaalIngeschrevenen_1": fasen["A045745"],
+        }
+        for periode, fasen in _FASEN.items()
+    ]
+    store.put(_KEY, pd.DataFrame(rows))
+    cbs.register_dimensions(_DS, _DIMS)
+
+
+def test_columns_with_period_label_instead_of_code_are_allowed(twee_jaren):
+    result = json.loads(
+        query_data(_KEY, columns=["Perioden_label", "Periodestatus", "TotaalIngeschrevenen_1"])
+    )
+    assert [r["TotaalIngeschrevenen_1"] for r in result["rijen"]] == [378490, 367960]
+
+
+def test_group_by_period_label_and_status_is_allowed(twee_jaren):
+    result = json.loads(
+        query_data(
+            _KEY,
+            group_by=["Perioden_label", "Periodestatus"],
+            aggregate={"TotaalIngeschrevenen_1": "sum"},
+        )
+    )
+    totals = {r["Perioden_label"]: r["TotaalIngeschrevenen_1"] for r in result["rijen"]}
+    assert totals == {"2024/'25": 378490, "2025/'26*": 367960}
+
+
+def test_status_alone_does_not_keep_years_with_the_same_status_apart(twee_jaren):
+    # Twee definitieve jaren hebben dezelfde status: groeperen op status telt ze op.
+    store.put(_KEY, store.get(_KEY).assign(Periodestatus="Definitief"))
+    result = query_data(
+        _KEY, group_by=["Periodestatus"], aggregate={"TotaalIngeschrevenen_1": "sum"}
+    )
+    assert "746450" not in result
+    assert "Perioden" in result
+    assert not result.startswith("{")
+
+
+def test_label_column_is_guarded_on_a_derived_key(twee_jaren):
+    # Na een selectie zonder de code blijft het label de dimensie: een som over
+    # de jaren op de afgeleide key wordt nog steeds geweigerd.
+    derived = json.loads(
+        query_data(_KEY, columns=["Perioden_label", "TotaalIngeschrevenen_1"])
+    )["data_key"]
+    result = query_data(derived, aggregate={"TotaalIngeschrevenen_1": "sum"})
+    assert "746450" not in result
+    assert "Perioden_label" in result

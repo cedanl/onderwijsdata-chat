@@ -123,7 +123,7 @@ def test_choropleth_no_data_no_key_returns_error():
 
 def test_create_plot_schema_biedt_geen_losse_datarijen_aan():
     """Het model mag alleen een data_key opgeven; datarijen typen is geen optie."""
-    from tools.schemas import TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP, TOOL_SCHEMAS
+    from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP, TOOL_CREATE_PLOT, TOOL_SCHEMAS
 
     for naam in (TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP):
         schema = next(s for s in TOOL_SCHEMAS if s["function"]["name"] == naam)
@@ -140,7 +140,7 @@ def test_single_datapoint_gives_no_figure():
 
 def test_single_datapoint_via_data_key_gives_no_figure():
     store.put("test:een", pd.DataFrame([{"jaar": "2023", "waarde": 5}]))
-    msg, fig = create_plot(data_key="test:een", x="jaar", y="waarde", title="T")
+    _, fig = create_plot(data_key="test:een", x="jaar", y="waarde", title="T")
     assert fig is None
 
 
