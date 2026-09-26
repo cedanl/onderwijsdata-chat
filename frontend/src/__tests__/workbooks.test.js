@@ -11,7 +11,14 @@ const localStorageMock = {
 vi.stubGlobal('localStorage', localStorageMock)
 vi.stubGlobal('crypto', { randomUUID: () => 'test-uuid-1234' })
 
-const { saveWorkbook, getWorkbooks, deleteWorkbook } = await import('../workbooks.js')
+const api = vi.hoisted(() => ({
+  putWorkbook: vi.fn(() => Promise.resolve({})),
+  deleteWorkbookApi: vi.fn(() => Promise.resolve({})),
+  fetchWorkbooks: vi.fn(() => Promise.resolve([])),
+}))
+vi.mock('../api', () => api)
+
+const { saveWorkbook, saveWorkbookWithSync, getWorkbooks, deleteWorkbook } = await import('../workbooks.js')
 
 beforeEach(() => {
   localStorageMock.clear()
@@ -98,5 +105,32 @@ describe('deleteWorkbook', () => {
     const remaining = JSON.parse(storage.edudata_workbooks)
     expect(remaining).toHaveLength(1)
     expect(remaining[0].id).toBe('b')
+  })
+})
+
+describe('saveWorkbookWithSync', () => {
+  // #189: the report opened before its PUT landed; the gallery, which reads the
+  // server list, then showed it missing or empty.
+  it('resolves only after the server has the workbook', async () => {
+    let landed = false
+    api.putWorkbook.mockImplementation(() => new Promise(resolve => setTimeout(() => { landed = true; resolve({}) }, 0)))
+    const result = await saveWorkbookWithSync({ title: 'Rapport', htmlContent: '<p>x</p>', type: 'report' })
+    expect(landed).toBe(true)
+    expect(result.ok).toBe(true)
+    expect(api.putWorkbook).toHaveBeenCalledWith('test-uuid-1234', expect.objectContaining({ htmlContent: '<p>x</p>' }))
+  })
+
+  it('is not ok when the server rejects the workbook', async () => {
+    api.putWorkbook.mockImplementation(() => Promise.reject(new Error('HTTP 500')))
+    const result = await saveWorkbookWithSync({ title: 'Rapport', htmlContent: '<p>x</p>', type: 'report' })
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('HTTP 500')
+  })
+
+  it('is ok when the server has it, even if the local copy did not fit', async () => {
+    api.putWorkbook.mockImplementation(() => Promise.resolve({}))
+    localStorageMock.setItem.mockImplementation(() => { throw new DOMException('quota') })
+    const result = await saveWorkbookWithSync({ title: 'Groot', htmlContent: '<p>x</p>', type: 'report' })
+    expect(result.ok).toBe(true)
   })
 })

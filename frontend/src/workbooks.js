@@ -119,23 +119,31 @@ export async function loadWorkbooksFromServer() {
   }
 }
 
-export async function saveWorkbookWithSync({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type }) {
-  const result = saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type })
-  if (result.ok && result.workbook) {
-    const wb = result.workbook
-    putWorkbook(wb.id, {
-      title: wb.title,
-      description: wb.description,
-      messages: wb.messages,
-      figures: wb.figures,
-      instelling: wb.instelling,
-      htmlContent: wb.htmlContent,
-      dashboardSpec: wb.dashboardSpec,
-      type: wb.type,
-      createdAt: wb.createdAt,
-    }).catch(e => console.warn('Workbook sync failed:', e.message))
+// What the server stores of a workbook; the id travels in the URL.
+function serverFields(wb) {
+  return {
+    title: wb.title,
+    description: wb.description || '',
+    messages: wb.messages,
+    figures: wb.figures,
+    instelling: wb.instelling,
+    htmlContent: wb.htmlContent,
+    dashboardSpec: wb.dashboardSpec,
+    type: wb.type,
+    createdAt: wb.createdAt,
   }
-  return result
+}
+
+// Saved means saved on the server: the gallery reads the server list, so a
+// workbook opened before its PUT lands shows up missing or empty (#189).
+export async function saveWorkbookWithSync(fields) {
+  const { workbook } = saveWorkbook(fields)
+  try {
+    await putWorkbook(workbook.id, serverFields(workbook))
+  } catch (e) {
+    return { ok: false, error: `Opslaan op de server mislukt: ${e.message}`, workbook }
+  }
+  return { ok: true, workbook }
 }
 
 export async function migrateLocalWorkbooks() {
@@ -147,19 +155,7 @@ export async function migrateLocalWorkbooks() {
     }
     const localWbs = getWorkbooks()
     if (localWbs.length === 0) return
-    const results = await Promise.allSettled(localWbs.map(wb =>
-      putWorkbook(wb.id, {
-        title: wb.title,
-        description: wb.description || '',
-        messages: wb.messages,
-        figures: wb.figures,
-        instelling: wb.instelling,
-        htmlContent: wb.htmlContent,
-        dashboardSpec: wb.dashboardSpec,
-        type: wb.type,
-        createdAt: wb.createdAt,
-      })
-    ))
+    const results = await Promise.allSettled(localWbs.map(wb => putWorkbook(wb.id, serverFields(wb))))
     if (results.every(r => r.status === 'fulfilled')) {
       localStorage.removeItem(STORAGE_WORKBOOKS)
     }
