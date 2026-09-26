@@ -227,7 +227,7 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "data_key": {"type": "string", "description": "data_key van een query_data-resultaat. De grafiek leest de data zelf uit de store, zodat de getallen gelijk zijn aan wat de tool heeft berekend."},
-                    "chart_type": {"type": "string", "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"], "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen."},
+                    "chart_type": {"type": "string", "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"], "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen. Eén datapunt wordt alleen getekend met 'bar', en dat kies je alleen als de gebruiker om een grafiek vraagt."},
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},

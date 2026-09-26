@@ -124,8 +124,9 @@ def create_plot(
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
-    if len(data) == 1:
-        # One bar or slice shows nothing a sentence cannot; let the answer state the value.
+    if len(data) == 1 and chart_type != "bar":
+        # One point shows nothing a sentence cannot; let the answer state the value.
+        # An explicit bar is what the user asked for, so it is drawn (#199).
         value = data[0].get(y, "")
         return (
             f"Geen grafiek gemaakt: de data bevat één datapunt ({x}={data[0].get(x, '')}, {y}={value}). "
@@ -134,7 +135,7 @@ def create_plot(
 
     # Infer chart type if not explicitly specified
     if chart_type == "auto":
-        num_groups = len(set(row.get(color_by) for row in data)) if color_by else 1
+        num_groups = len({row.get(color_by) for row in data}) if color_by else 1
         chart_type = _infer_chart_type(x, y, color_by, num_groups, is_share)
 
     fig = go.Figure()

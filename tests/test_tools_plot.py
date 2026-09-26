@@ -132,10 +132,23 @@ def test_create_plot_schema_biedt_geen_losse_datarijen_aan():
         assert "data_key" in params["required"], f"{naam} vereist geen data_key"
 
 
-def test_single_datapoint_gives_no_figure():
-    msg, fig = create_plot([{"instelling": "HU", "aantal": 27441}], "bar", "instelling", "aantal", "Studenten")
+def test_single_datapoint_gives_no_figure_when_the_type_is_left_to_auto():
+    msg, fig = create_plot([{"instelling": "HU", "aantal": 27441}], "auto", "instelling", "aantal", "Studenten")
     assert fig is None
     assert "27441" in msg
+
+
+def test_explicit_bar_of_one_datapoint_is_plotted():
+    # Live-audit 8 (#199): de gebruiker vroeg om een staafgrafiek van één jaar en kreeg niets.
+    _, fig = create_plot([{"jaar": "2024/25", "aantal": 378490}], "bar", "jaar", "aantal", "Ingeschrevenen hbo")
+    assert isinstance(fig, go.Figure)
+    assert list(fig.data[0].y) == [378490]
+
+
+def test_explicit_pie_of_one_datapoint_is_still_refused():
+    # Eén taartpunt is altijd 100%: dat zegt niets.
+    _, fig = create_plot([{"soort": "hbo", "aantal": 378490}], "pie", "soort", "aantal", "T")
+    assert fig is None
 
 
 def test_single_datapoint_via_data_key_gives_no_figure():
