@@ -23,6 +23,7 @@ from agent.session_data import data_lineage, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
 from tools import LABELS, store
+from tools.catalog import catalogus_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
     TOOL_COMPUTE_KPI,
@@ -363,9 +364,7 @@ def _parse_spec_from_response(
     recipe = _build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Dashboard")
 
-    sources = spec_data.get("sources") or []
-    if not sources:
-        sources = _sources_from_recipe(recipe)
+    sources = _sources_from_recipe(recipe)
 
     return DashboardSpec(
         title=spec_data.get("title") or topic[:60] or "Dashboard",
@@ -386,8 +385,22 @@ _SOURCE_PREFIXES = {
 }
 
 
+def _source_label(prefix: str, dataset: str, resource) -> str:
+    """ "CBS — Hoger onderwijs; ingeschrevenen, … (85423NED)": titel uit de catalogus, niet van het model."""
+    if not dataset:
+        return prefix
+    titel = catalogus_titel(dataset)
+    label = f"{prefix} — {titel} ({dataset})" if titel != dataset else f"{prefix} — {dataset}"
+    if prefix == "DUO" and resource is not None and (naam := resource_titel(dataset, resource)):
+        label += f", {naam}"
+    return label
+
+
 def _sources_from_recipe(recipe: list[dict]) -> list[str]:
-    """Derive source labels from recipe tool calls as fallback."""
+    """Bronvermelding voor elke dataset in het recept.
+
+    Altijd uit code: een model schreef bij een juist dataset-ID een verzonnen titel (#196).
+    """
     sources: list[str] = []
     for call in recipe:
         prefix = _SOURCE_PREFIXES.get(call.get("name", ""))
@@ -398,7 +411,8 @@ def _sources_from_recipe(recipe: list[dict]) -> list[str]:
         except (json.JSONDecodeError, TypeError):
             args = {}
         dataset = args.get("dataset_id") or args.get("resource") or ""
-        label = f"{prefix} — {dataset}" if dataset else prefix
+        resource = args.get("resource") if args.get("dataset_id") else None
+        label = _source_label(prefix, dataset, resource)
         if label not in sources:
             sources.append(label)
     return sources

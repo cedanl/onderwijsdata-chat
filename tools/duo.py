@@ -10,13 +10,19 @@ from .duo_meta import teldefinitie
 _SAMPLE_ROWS = 3
 
 
+# OPLEIDINGSVORM-codes, letterlijk uit de DUO-datasetbeschrijving: "VT voltijd onderwijs,
+# DT deeltijd onderwijs en DU duaal onderwijs". Ook de antwoordcontrole leest ze (#196).
+OPLEIDINGSVORMEN = {"VT": "voltijd", "DT": "deeltijd", "DU": "duaal"}
+
 # Lokale glossary-correcties en -aanvullingen op riodata (zie #31, #23, #172).
 # Deze patches worden toegepast op column_definitions() tot de upstream fix.
 _GLOSSARY_PATCHES = {
     "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
     "LEERWEG": "Mbo-leerweg: BOL (beroepsopleidende leerweg) of BBL (beroepsbegeleidende leerweg).",
     # Ontbreekt upstream; zonder definitie raadde een model 'DT = duaal-tijd' (#172).
-    "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: VT = voltijd, DT = deeltijd, DU = duaal (bron: DUO-datasetbeschrijving).",
+    "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: "
+    + ", ".join(f"{code} = {vorm}" for code, vorm in OPLEIDINGSVORMEN.items())
+    + " (bron: DUO-datasetbeschrijving).",
 }
 
 

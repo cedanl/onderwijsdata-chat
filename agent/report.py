@@ -215,9 +215,7 @@ def _parse_spec_from_response(
     recipe = _build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Rapport")
 
-    bronnen = spec_data.get("bronnen") or []
-    if not bronnen:
-        bronnen = _sources_from_recipe(recipe)
+    bronnen = _sources_from_recipe(recipe)
 
     vis_meta = spec_data.get("visualisaties") or []
     visualisaties: list[dict] = []

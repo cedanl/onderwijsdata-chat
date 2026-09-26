@@ -36,8 +36,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
   "kpis": [
     {"label": "KPI naam", "value": "1.234", "trend": "+5%", "trendDirection": "up", "sub": "t.o.v. vorig jaar"},
     {"label": "KPI naam", "value": "890", "sub": "toelichting"}
-  ],
-  "sources": ["DUO — Eerstejaars ingeschrevenen hoger onderwijs (p02ho1ejrs)", "CBS — MBO; deelnemers naar geslacht en niveau (85423NED)"]
+  ]
 }
 ```
 
@@ -52,9 +51,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 ## Bronvermeldingen (sources)
 
-- Vermeld ALTIJD de bronnen: elke dataset die je hebt gebruikt
-- Format: "Bron — exacte catalogustitel (dataset-ID)" (bijv. "DUO — Eerstejaars ingeschrevenen hoger onderwijs in het domein hoger onderwijs (p02ho1ejrs)", "CBS — MBO; deelnemers naar geslacht en niveau (85423NED)")
-- Gebruik de titel letterlijk uit `catalogus_titel` (en bij DUO ook `resource_titel`) die de tools teruggeven bij het laden van de data — geen ingekorte of eigen omschrijving
+De bronnen (catalogustitel en dataset-ID van elke gebruikte dataset) voegt de code toe. Schrijf ze niet zelf.
 
 ## Title-regels
 

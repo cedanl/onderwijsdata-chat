@@ -4,7 +4,8 @@ Het rapport is door een model geschreven. Of dat klopt met zijn eigen data en
 grafieken, is met code te controleren, voor elk model gelijk:
 - het rapport heeft inhoud: reikwijdte, conclusie en een getal of grafiek (#189);
 - elk groot getal in de tekst komt uit de data van het rapport;
-- de tekst claimt geen afwezigheid van data naast een gevulde grafiek.
+- de tekst claimt geen afwezigheid van data naast een gevulde grafiek;
+- opleidingsvorm, dataset-ID en teleenheid in de tekst kloppen met de bron (#196).
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import re
 from typing import TYPE_CHECKING
 
 from agent.grounding import unsourced_numbers
+from agent.labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -79,8 +81,9 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     `sources` zijn de toolresultaten en de datasetcontext van deze rapportrun.
     """
     problems = _missing(spec)
+    text = _all_text(spec)
 
-    unsourced = unsourced_numbers(_all_text(spec), sources)
+    unsourced = unsourced_numbers(text, sources)
     if unsourced:
         problems.append(
             "Deze getallen staan niet in de opgehaalde data: "
@@ -95,4 +98,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
                 )
                 break
 
+    problems += verkeerde_opleidingsvormen(text)
+    problems += onbekende_datasets(text)
+    problems += verkeerde_teleenheid(text, sources)
     return problems

@@ -1,4 +1,5 @@
 from datetime import date
+from unittest.mock import patch
 
 from agent.report import ReportSpec, _build_system_prompt, _nl_datum, _parse_spec_from_response
 
@@ -48,7 +49,8 @@ class TestParseSpecFromResponse:
         assert spec.beantwoordt_niet == ["Arbeidsmarktuitstroom van gediplomeerden"]
         assert spec.conclusie == "De instroom is met 18% gestegen."
         assert "18%" in spec.conclusie
-        assert spec.bronnen == ["DUO — Instroom in het mbo"]
+        # Bronnen komen uit het recept, niet uit het model (#196); hier geen datasets.
+        assert spec.bronnen == []
 
         assert len(spec.visualisaties) == 1
         vis = spec.visualisaties[0]
@@ -81,14 +83,31 @@ class TestParseSpecFromResponse:
         assert spec.visualisaties == []
         assert spec.bronnen == []
 
-    def test_sources_fall_back_to_recipe(self):
-        spec = _parse_spec_from_response(
-            '{"title": "T", "onderzoeksvraag": "V"}',
-            figures_json=[],
-            context={"topic": "V", "datasets": [{"data_key": "duo:p01hoinges:0"}, {"data_key": "cbs:85421NED"}]},
-        )
+    def test_sources_come_from_the_recipe_with_the_catalog_title(self):
+        # Live-audit 8: het model schreef "Inschrijvingen in het hoger onderwijs; instellingen,
+        # opleidingen (85423NED)". Het ID klopte, de titel was verzonnen (#196).
+        titels = {"p01hoinges": "Ingeschrevenen hoger onderwijs", "85423NED": "Hoger onderwijs; ingeschrevenen"}
+        with patch("agent.dashboard.catalogus_titel", side_effect=lambda d: titels.get(d, d)), \
+             patch("agent.dashboard.resource_titel", return_value="Ingeschrevenen hbo"):
+            spec = _parse_spec_from_response(
+                '{"title": "T", "onderzoeksvraag": "V", "bronnen": ["CBS — Inschrijvingen; instellingen (85423NED)"]}',
+                figures_json=[],
+                context={"topic": "V", "datasets": [{"data_key": "duo:p01hoinges:0"}, {"data_key": "cbs:85423NED"}]},
+            )
 
-        assert spec.bronnen == ["DUO — p01hoinges", "CBS — 85421NED"]
+        assert spec.bronnen == [
+            "DUO — Ingeschrevenen hoger onderwijs (p01hoinges), Ingeschrevenen hbo",
+            "CBS — Hoger onderwijs; ingeschrevenen (85423NED)",
+        ]
+
+    def test_source_without_catalog_title_keeps_its_id(self):
+        with patch("agent.dashboard.catalogus_titel", side_effect=lambda d: d), \
+             patch("agent.dashboard.resource_titel", return_value=None):
+            spec = _parse_spec_from_response(
+                '{"title": "T"}', figures_json=[], context={"topic": "V", "datasets": [{"data_key": "cbs:99999NED"}]},
+            )
+
+        assert spec.bronnen == ["CBS — 99999NED"]
 
 
 class TestReportSpec:
