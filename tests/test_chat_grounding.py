@@ -7,7 +7,11 @@ import asyncio
 import importlib
 import json
 
+import pandas as pd
+
 from agent.stream import StreamResult
+from tools import store
+from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -16,7 +20,7 @@ _QUERY = {"id": "q", "name": "query_data", "arguments": '{"data_key": "duo:p02"}
 _ROWS = json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 5943}]})
 
 
-def _chat(monkeypatch, steps: list[StreamResult], messages=None):
+def _chat(monkeypatch, steps: list[StreamResult], messages=None, tool_result: str = _ROWS):
     async def fake_completion(*args, **kwargs):
         return object()
 
@@ -24,7 +28,7 @@ def _chat(monkeypatch, steps: list[StreamResult], messages=None):
         return steps.pop(0)
 
     async def fake_execute_tool(call, emit):
-        return _ROWS, None
+        return tool_result, None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
@@ -175,3 +179,20 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
     correctie = seen[2][-1]["content"]
     assert "Hogeschool Utrecht (25DW)" in correctie and "INSTELLINGSCODE_ACTUEEL=25DW" in correctie
     assert "controle" not in events[-1]
+
+
+def test_count_on_a_truncated_rio_page_gets_a_correction(monkeypatch):
+    # Live-audit 8 (#195): de tool meldde meer_beschikbaar, het antwoord zei toch "landelijk 50".
+    store.clear()
+    store.put("rio:erkenningen", pd.DataFrame({"code": range(50)}),
+              KeyMeta(bron="rio", dataset="erkenningen", volledig=False))
+    page = json.dumps({"data_key": "rio:erkenningen", "opgehaalde_rijen": 50, "meer_beschikbaar": True})
+    text, events = _chat(monkeypatch, [
+        StreamResult(text="", tool_calls=[{"id": "r", "name": "get_rio_data", "arguments": "{}"}]),
+        StreamResult(text="Er zijn landelijk 50 erkenningen.", tool_calls=[]),
+        StreamResult(text="Het landelijke totaal is met deze data niet vast te stellen.", tool_calls=[]),
+    ], tool_result=page)
+    store.clear()
+
+    assert text == "Het landelijke totaal is met deze data niet vast te stellen."
+    assert "message_cancel" in [e["type"] for e in events]

@@ -12,7 +12,7 @@ from .grounding import unverified
 from .history import trim
 from .loop import ToolCall, tool_loop
 from .models import build_system
-from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren
+from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key
 from .stream import Emit
 
@@ -142,6 +142,7 @@ async def run(
             *(f"{n} staat niet in de opgehaalde data." for n in unverified(text, tool_results, earlier)),
             *ontbrekende_schooljaren(last_user_msg, tool_results),
             *ontbrekende_instellingen(last_user_msg, tool_results),
+            *onvolledige_selecties(text, tool_results),
         ]
 
     async def withdraw(problems: list[str]) -> None:

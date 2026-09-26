@@ -11,6 +11,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
+from agent.selectie import onvolledige_selecties
 from core.config import RIO_PAGE_SIZE
 from tools import store
 from tools.analysis import run_analysis
@@ -106,3 +107,43 @@ def test_http_400_names_the_allowed_filters():
 
     assert "HTTP 400" in result
     assert "volledigeNaam" in result and "plaatsnaam" in result
+
+
+# Live-audit 8: de tooluitvoer hierboven werkte, en toch schreef GPT-OSS "landelijk
+# 50 erkenningen". Het eindantwoord zelf wordt daarom ook getoetst (#195).
+
+def _beurt() -> list[str]:
+    return [_get(RIO_PAGE_SIZE)]
+
+
+def test_rijen_van_een_afgekapte_pagina_als_telling_is_een_probleem():
+    problemen = onvolledige_selecties("Er zijn landelijk 50 erkenningen geregistreerd.", _beurt())
+    assert len(problemen) == 1
+    assert "50" in problemen[0] and "erkenningen" in problemen[0]
+
+
+def test_afwezigheid_op_een_afgekapte_pagina_is_een_probleem():
+    problemen = onvolledige_selecties("Aeres Hogeschool komt niet voor in RIO.", _beurt())
+    assert len(problemen) == 1
+    assert "niet vast te stellen" in problemen[0]
+
+
+def test_rijen_benoemd_als_opgehaalde_pagina_zijn_goed():
+    tekst = "Dit zijn de eerste 50 opgehaalde records; het totaal is niet vastgesteld."
+    assert onvolledige_selecties(tekst, _beurt()) == []
+
+
+def test_een_volledige_selectie_mag_tellen_en_ontbreken():
+    beurt = [_get(3)]
+    tekst = "Er zijn 3 erkenningen. Aeres Hogeschool komt niet voor."
+    assert onvolledige_selecties(tekst, beurt) == []
+
+
+def test_een_afgeleide_selectie_van_een_afgekapte_pagina_blijft_onvolledig():
+    afgeleid = query_data(_page(), filters={"volledigeNaam": "Instelling 7"})
+    problemen = onvolledige_selecties("Instelling 8 bestaat niet in het register.", [afgeleid])
+    assert len(problemen) == 1
+
+
+def test_andere_getallen_zijn_geen_telling_van_de_pagina():
+    assert onvolledige_selecties("De erkenning dateert van 2019 en heeft 12 vestigingen.", _beurt()) == []
