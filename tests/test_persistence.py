@@ -219,6 +219,10 @@ def _raw_insert(conn, conv_id, username, title, timestamp, messages):
     )
 
 
+# Vóór #69 kreeg elke opslag id = Date.now() (milliseconden); sindsdien een UUID.
+# Alleen rijen met zo'n legacy-id kunnen een snapshot zijn (#198).
+
+
 def _legacy_conn(db):
     """Connection to a database from before the dedupe migration ran."""
     conn = db._connect()
@@ -237,19 +241,19 @@ def test_migrate_dedupes_legacy_conversation_duplicates(db, tmp_path, monkeypatc
         {"role": "assistant", "content": "Nog vollediger."},
     ]
     msgs_short = msgs_full[:2]
-    _raw_insert(conn, "dup-1", "alice", "Mijn vraag", 1700000000, msgs_full)
-    _raw_insert(conn, "dup-2", "alice", "Mijn vraag", 1690000000, msgs_short)
-    _raw_insert(conn, "dup-3", "alice", "mijn vraag", 1680000000, msgs_full)
-    _raw_insert(conn, "unique", "bob", "Mijn vraag", 1700000001, msgs_full)
+    _raw_insert(conn, "1727160000007", "alice", "Mijn vraag", 1700000000, msgs_full)
+    _raw_insert(conn, "1727160000008", "alice", "Mijn vraag", 1690000000, msgs_short)
+    _raw_insert(conn, "1727160000009", "alice", "mijn vraag", 1680000000, msgs_full)
+    _raw_insert(conn, "1727160000020", "bob", "Mijn vraag", 1700000001, msgs_full)
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
     alice = fresh.list_conversations("alice")
-    assert [r["id"] for r in alice] == ["dup-1"], alice
+    assert [r["id"] for r in alice] == ["1727160000007"], alice
     bob = fresh.list_conversations("bob")
-    assert [r["id"] for r in bob] == ["unique"]
+    assert [r["id"] for r in bob] == ["1727160000020"]
 
 
 def test_migrate_keeps_richest_row_on_tiebreaker(db, tmp_path, monkeypatch):
@@ -258,22 +262,22 @@ def test_migrate_keeps_richest_row_on_tiebreaker(db, tmp_path, monkeypatch):
         {"role": "user", "content": "Wie doet mbo?"},
         {"role": "assistant", "content": "Antwoord."},
     ]
-    _raw_insert(conn, "a-1", "alice", "MBO", 1700000000, msgs)
-    _raw_insert(conn, "a-2", "alice", "MBO", 1690000000, msgs)
+    _raw_insert(conn, "1727160000001", "alice", "MBO", 1700000000, msgs)
+    _raw_insert(conn, "1727160000002", "alice", "MBO", 1690000000, msgs)
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
     alice = fresh.list_conversations("alice")
-    assert [r["id"] for r in alice] == ["a-1"]
+    assert [r["id"] for r in alice] == ["1727160000001"]
 
 
 def test_migrate_dedupe_is_idempotent(db, tmp_path, monkeypatch):
     conn = _legacy_conn(db)
     msgs = [{"role": "user", "content": "Hoeveel huur?"}, {"role": "assistant", "content": "Antwoord."}]
-    _raw_insert(conn, "b-1", "alice", "Huur", 1700000000, msgs)
-    _raw_insert(conn, "b-2", "alice", "Huur", 1690000000, msgs)
+    _raw_insert(conn, "1727160000003", "alice", "Huur", 1700000000, msgs)
+    _raw_insert(conn, "1727160000004", "alice", "Huur", 1690000000, msgs)
     conn.commit()
     conn.close()
 
@@ -281,22 +285,22 @@ def test_migrate_dedupe_is_idempotent(db, tmp_path, monkeypatch):
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
     alice = fresh.list_conversations("alice")
-    assert [r["id"] for r in alice] == ["b-1"]
+    assert [r["id"] for r in alice] == ["1727160000003"]
 
 
 def test_migrate_dedupe_ignores_different_first_questions(db, tmp_path, monkeypatch):
     conn = _legacy_conn(db)
     msgs_a = [{"role": "user", "content": "Vraag A"}, {"role": "assistant", "content": "A"}]
     msgs_b = [{"role": "user", "content": "Vraag B"}, {"role": "assistant", "content": "B"}]
-    _raw_insert(conn, "d-1", "alice", "Zelfde titel", 1700000000, msgs_a)
-    _raw_insert(conn, "d-2", "alice", "Zelfde titel", 1690000000, msgs_b)
+    _raw_insert(conn, "1727160000005", "alice", "Zelfde titel", 1700000000, msgs_a)
+    _raw_insert(conn, "1727160000006", "alice", "Zelfde titel", 1690000000, msgs_b)
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
     alice = fresh.list_conversations("alice")
-    assert sorted(r["id"] for r in alice) == ["d-1", "d-2"]
+    assert sorted(r["id"] for r in alice) == ["1727160000005", "1727160000006"]
 
 
 def test_rename_conversation_scoped_to_user(db):
@@ -312,16 +316,16 @@ def test_migrate_dedupe_keeps_threads_with_different_follow_up(db, tmp_path, mon
     # maar een andere vervolgvraag: twee gesprekken, geen duplicaat (#178).
     conn = _legacy_conn(db)
     first = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "A"}]
-    _raw_insert(conn, "e-1", "alice", "Studenten", 1700000000,
+    _raw_insert(conn, "1727160000010", "alice", "Studenten", 1700000000,
                 [*first, {"role": "user", "content": "En in deeltijd?"}])
-    _raw_insert(conn, "e-2", "alice", "Studenten", 1690000000,
+    _raw_insert(conn, "1727160000011", "alice", "Studenten", 1690000000,
                 [*first, {"role": "user", "content": "En bij HU?"}])
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
-    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["e-1", "e-2"]
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["1727160000010", "1727160000011"]
 
 
 def test_migrate_dedupe_runs_once(db, tmp_path, monkeypatch):
@@ -330,14 +334,14 @@ def test_migrate_dedupe_runs_once(db, tmp_path, monkeypatch):
     _reload_and_init(tmp_path, monkeypatch)
     conn = db._connect()
     msgs = [{"role": "user", "content": "Hoeveel huur?"}, {"role": "assistant", "content": "Antwoord."}]
-    _raw_insert(conn, "f-1", "alice", "Huur", 1700000000, msgs)
-    _raw_insert(conn, "f-2", "alice", "Huur", 1690000000, msgs)
+    _raw_insert(conn, "1727160000012", "alice", "Huur", 1700000000, msgs)
+    _raw_insert(conn, "1727160000013", "alice", "Huur", 1690000000, msgs)
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
-    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["f-1", "f-2"]
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["1727160000012", "1727160000013"]
 
 
 def test_migrate_dedupe_deletes_only_the_duplicate_owners_row(db, tmp_path, monkeypatch):
@@ -345,45 +349,77 @@ def test_migrate_dedupe_deletes_only_the_duplicate_owners_row(db, tmp_path, monk
     # mag niet mee verdwijnen (#178).
     conn = _legacy_conn(db)
     msgs = [{"role": "user", "content": "Wie doet mbo?"}, {"role": "assistant", "content": "A"}]
-    _raw_insert(conn, "g-1", "alice", "MBO", 1700000000, msgs)
-    _raw_insert(conn, "g-2", "alice", "MBO", 1690000000, msgs)
-    _raw_insert(conn, "g-2", "bob", "Iets anders", 1690000000, msgs)
+    _raw_insert(conn, "1727160000014", "alice", "MBO", 1700000000, msgs)
+    _raw_insert(conn, "1727160000015", "alice", "MBO", 1690000000, msgs)
+    _raw_insert(conn, "1727160000015", "bob", "Iets anders", 1690000000, msgs)
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
-    assert [r["id"] for r in fresh.list_conversations("alice")] == ["g-1"]
-    assert [r["id"] for r in fresh.list_conversations("bob")] == ["g-2"]
+    assert [r["id"] for r in fresh.list_conversations("alice")] == ["1727160000014"]
+    assert [r["id"] for r in fresh.list_conversations("bob")] == ["1727160000015"]
 
 
 def test_migrate_dedupe_keeps_threads_with_a_different_answer(db, tmp_path, monkeypatch):
     # Zelfde titel en eerste vraag, nog geen vervolgvraag, maar een ander
     # antwoord: twee losse gesprekken, geen snapshot van één (#184).
     conn = _legacy_conn(db)
-    _raw_insert(conn, "h-1", "alice", "Studenten", 1700000000,
+    _raw_insert(conn, "1727160000016", "alice", "Studenten", 1700000000,
                 [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "28.355"}])
-    _raw_insert(conn, "h-2", "alice", "Studenten", 1690000000,
+    _raw_insert(conn, "1727160000017", "alice", "Studenten", 1690000000,
                 [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "30.284"}])
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
-    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["h-1", "h-2"]
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["1727160000016", "1727160000017"]
 
 
 def test_migrate_dedupe_keeps_rows_it_cannot_read(db, tmp_path, monkeypatch):
     # Geen bewijs dat het een duplicaat is, dus bewaren.
     conn = _legacy_conn(db)
-    _raw_insert(conn, "i-1", "alice", "Kapot", 1700000000, [{"role": "user", "content": "Vraag"}])
+    _raw_insert(conn, "1727160000018", "alice", "Kapot", 1700000000, [{"role": "user", "content": "Vraag"}])
     conn.execute(
         "INSERT INTO conversations (id, username, title, timestamp, messages) VALUES (?, ?, ?, ?, ?)",
-        ("i-2", "alice", "Kapot", 1690000000, "{geen json"),
+        ("1727160000019", "alice", "Kapot", 1690000000, "{geen json"),
     )
     conn.commit()
     conn.close()
 
     fresh = _reload_and_init(tmp_path, monkeypatch)
 
-    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["i-1", "i-2"]
+    assert sorted(r["id"] for r in fresh.list_conversations("alice")) == ["1727160000018", "1727160000019"]
+
+
+def test_migrate_dedupe_keeps_identical_conversations_with_uuid_ids(db, tmp_path, monkeypatch):
+    # Live-audit 8 (#198): twee losse gesprekken met precies dezelfde inhoud, zoals een
+    # canary of een herhaalde demovraag. Gelijke inhoud is geen bewijs van identiteit;
+    # een UUID-gesprek komt van na #69 en is nooit een legacy-snapshot.
+    conn = _legacy_conn(db)
+    msgs = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "26.370"}]
+    _raw_insert(conn, "5b0e1f2a-0000-4000-8000-000000000001", "alice", "Studenten", 1700000000, msgs)
+    _raw_insert(conn, "5b0e1f2a-0000-4000-8000-000000000002", "alice", "Studenten", 1690000000, msgs)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert len(fresh.list_conversations("alice")) == 2
+
+
+def test_migrate_dedupe_removes_a_legacy_snapshot_of_a_uuid_conversation(db, tmp_path, monkeypatch):
+    # Een legacy-gesprek dat na #69 is heropend en verder is gegaan, staat onder een
+    # nieuw id; zijn oude snapshot mag weg.
+    conn = _legacy_conn(db)
+    first = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "26.370"}]
+    _raw_insert(conn, "5b0e1f2a-0000-4000-8000-000000000003", "alice", "Studenten", 1700000000,
+                [*first, {"role": "user", "content": "En in deeltijd?"}])
+    _raw_insert(conn, "1727160000099", "alice", "Studenten", 1690000000, first)
+    conn.commit()
+    conn.close()
+
+    fresh = _reload_and_init(tmp_path, monkeypatch)
+
+    assert [r["id"] for r in fresh.list_conversations("alice")] == ["5b0e1f2a-0000-4000-8000-000000000003"]

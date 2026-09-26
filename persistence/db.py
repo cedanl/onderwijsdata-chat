@@ -66,16 +66,23 @@ def _thread(messages_json: str) -> list[tuple] | None:
     return [(m.get("role"), json.dumps(m.get("content"), sort_keys=True)) for m in messages]
 
 
+def _is_legacy_id(conv_id: str) -> bool:
+    """Pre-#69 ids were Date.now(): 13 digits. Since then a conversation gets a UUID."""
+    return len(conv_id) == 13 and conv_id.isdigit()
+
+
 def _dedupe_conversations(conn: Any) -> None:
     """Remove pre-#69 duplicate conversations: snapshots of one growing thread.
 
     Before #69 every save got a new id (#151), so one conversation was stored
-    once per save. A row is such a snapshot only when its messages, role and
-    content, are the start of another row of the same user and title
-    (case-insensitive). Anything less is no proof: two conversations that open
-    with the same question but got another answer both stay (#178, #184), and
-    so does a row whose messages cannot be read. The richest row wins, tie-break
-    on the newest timestamp.
+    once per save, also when nothing had changed. A row is such a snapshot only
+    when it has a legacy id and its messages, role and content, are the start of
+    (or equal to) another row of the same user and title (case-insensitive).
+    Anything less is no proof: a UUID row is never a snapshot, so two separate
+    conversations with the same content both stay (#198); neither do two that
+    open with the same question but got another answer (#178, #184), nor a row
+    whose messages cannot be read. The richest row wins, tie-break on the newest
+    timestamp.
 
     Databases that ran this migration before #184 used a looser rule (same user
     questions only); the schema_migrations marker keeps it from running again.
@@ -97,7 +104,7 @@ def _dedupe_conversations(conn: Any) -> None:
         kept: list[list[tuple]] = []
         for r in group:
             thread = r["thread"]
-            if any(k[: len(thread)] == thread for k in kept):
+            if _is_legacy_id(str(r["id"])) and any(k[: len(thread)] == thread for k in kept):
                 doomed.append((r["id"], r["username"]))
             else:
                 kept.append(thread)
