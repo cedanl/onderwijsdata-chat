@@ -36,7 +36,7 @@ def hbo_voltijd():
         for periode, fasen in _FASEN.items()
         for fase, waarde in fasen.items()
     ]
-    store.put(_KEY, pd.DataFrame(rows))
+    store.put(_KEY, pd.DataFrame(rows), store.KeyMeta(bron="cbs", dataset=_DS))
     cbs.register_dimensions(_DS, _DIMS)
 
 
@@ -109,7 +109,8 @@ def test_columns_keeping_distinguishing_dimensions_is_allowed(hbo_voltijd):
 def test_unknown_dataset_is_not_guarded():
     # Zonder geregistreerde dimensies (bijv. data van vóór een herstart) geen
     # valse weigering: de guard weet dan niet welke kolommen dimensies zijn.
-    store.put("cbs:00000NED:x", pd.DataFrame({"Regio": ["A", "B"], "Aantal": [1, 2]}))
+    store.put("cbs:00000NED:x", pd.DataFrame({"Regio": ["A", "B"], "Aantal": [1, 2]}),
+              store.KeyMeta(bron="cbs", dataset="00000NED"))
     result = json.loads(
         query_data("cbs:00000NED:x", columns=["Aantal"])
     )
@@ -117,7 +118,8 @@ def test_unknown_dataset_is_not_guarded():
 
 
 def test_non_cbs_keys_are_not_guarded():
-    store.put("duo:x:0", pd.DataFrame({"GROEP": ["A", "B"], "AANTAL": [1, 2]}))
+    store.put("duo:x:0", pd.DataFrame({"GROEP": ["A", "B"], "AANTAL": [1, 2]}),
+              store.KeyMeta(bron="duo", dataset="x"))
     cbs.register_dimensions("x", ["GROEP"])
     result = json.loads(query_data("duo:x:0", columns=["AANTAL"]))
     assert result["totaal_rijen"] == 2
@@ -194,7 +196,7 @@ def twee_jaren():
         }
         for periode, fasen in _FASEN.items()
     ]
-    store.put(_KEY, pd.DataFrame(rows))
+    store.put(_KEY, pd.DataFrame(rows), store.KeyMeta(bron="cbs", dataset=_DS))
     cbs.register_dimensions(_DS, _DIMS)
 
 
@@ -219,7 +221,7 @@ def test_group_by_period_label_and_status_is_allowed(twee_jaren):
 
 def test_status_alone_does_not_keep_years_with_the_same_status_apart(twee_jaren):
     # Twee definitieve jaren hebben dezelfde status: groeperen op status telt ze op.
-    store.put(_KEY, store.get(_KEY).assign(Periodestatus="Definitief"))
+    store.put(_KEY, store.get(_KEY).assign(Periodestatus="Definitief"), store.meta(_KEY))
     result = query_data(
         _KEY, group_by=["Periodestatus"], aggregate={"TotaalIngeschrevenen_1": "sum"}
     )

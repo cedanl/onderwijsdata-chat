@@ -90,7 +90,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         "math": math,
         "px": px,
         "go": go,
-        "store_get": lambda key: store.get(key),
+        "store_get": lambda key: store.readonly(key),
         "result": None,
         "figure": None,
     }

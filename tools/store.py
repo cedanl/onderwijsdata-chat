@@ -60,14 +60,29 @@ def get(key: str):
     return _cache.get(key)
 
 
+def readonly(key: str):
+    """The model-boundary accessor: never returns the shared cached object itself.
+
+    `run_analysis` executes model-written Python that may mutate whatever it reads. `get()`
+    stays the fast internal route for our own, read-only code (#209).
+    """
+    value = _cache.get(key)
+    return value.copy() if hasattr(value, "copy") else value
+
+
 def meta(key: str) -> KeyMeta | None:
     return _meta.get(key)
 
 
 def volledig(key: str) -> bool:
-    """False only when the key is known to rest on truncated data; unknown counts as complete."""
+    """True only when the key is known, on record, to rest on complete data (#210).
+
+    Fail-closed: a key without KeyMeta is unknown, not complete. A source that is
+    provably complete (e.g. a full CBS table) records that explicitly via KeyMeta
+    instead of relying on the absence of metadata.
+    """
     known = _meta.get(key)
-    return known is None or known.volledig
+    return known is not None and known.volledig
 
 
 def list_keys() -> list[str]:
