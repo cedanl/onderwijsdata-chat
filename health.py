@@ -2,15 +2,13 @@
 Health check endpoints for Kubernetes liveness and readiness probes.
 """
 
-import json
 import logging
 import time
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 # Track app startup time for liveness probe
-_startup_time: Optional[float] = None
+_startup_time: float | None = None
 
 
 def record_startup() -> None:

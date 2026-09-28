@@ -102,7 +102,7 @@ _USER_MODELS: dict[str, list[str]] = _parse_user_models()
 
 def _models_from_ids(model_ids: list[str]) -> list[tuple[str, str, str, str]]:
     return [
-        (mid,) + _KNOWN_NAMES.get(mid, (mid.split("/")[-1], "", "cpu"))
+        (mid, *_KNOWN_NAMES.get(mid, (mid.split("/")[-1], "", "cpu")))
         for mid in model_ids
     ]
 

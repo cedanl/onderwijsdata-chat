@@ -116,6 +116,8 @@ pytest:
     - pip install --no-cache-dir uv
   script:
     - uv sync --frozen --extra postgres
+    # Lint vóór de tests: een dubbele dict-key verborg de NHL Stenden-bug (#202, #203).
+    - uv run ruff check .
     - uv run pytest tests/ -q
 
 # Zelfde image als de frontend-stap in de Dockerfile, zodat Renovate ze samen bijwerkt.

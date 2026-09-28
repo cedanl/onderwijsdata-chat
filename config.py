@@ -5,7 +5,6 @@ Ensures all required settings are available at startup.
 
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,27 +23,27 @@ class Config:
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
     # Optional database settings
-    POSTGRES_URI: Optional[str] = os.getenv("POSTGRES_URI")
-    DATABASE_PATH: Optional[str] = os.getenv("DATABASE_PATH")
+    POSTGRES_URI: str | None = os.getenv("POSTGRES_URI")
+    DATABASE_PATH: str | None = os.getenv("DATABASE_PATH")
 
     # Optional API keys (at least one must be set for LLM functionality)
-    ANTHROPIC_API_KEY: Optional[str] = os.getenv("ANTHROPIC_API_KEY")
-    AZURE_AI_API_KEY: Optional[str] = os.getenv("AZURE_AI_API_KEY")
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
-    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
+    ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
+    AZURE_AI_API_KEY: str | None = os.getenv("AZURE_AI_API_KEY")
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+    GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
 
     # Optional authentication
-    CHAT_USERS: Optional[str] = os.getenv("CHAT_USERS")  # username:password format
-    CHAT_SECRET: Optional[str] = os.getenv("CHAT_SECRET")
+    CHAT_USERS: str | None = os.getenv("CHAT_USERS")  # username:password format
+    CHAT_SECRET: str | None = os.getenv("CHAT_SECRET")
 
     # Optional OIDC/SRAM (see skill sram-oidc for the CEDA convention)
     OIDC_PROVIDER: str | None = os.getenv("OIDC_PROVIDER")
     OIDC_DISCOVERY_URL: str | None = os.getenv("OIDC_DISCOVERY_URL")
-    OIDC_CLIENT_ID: Optional[str] = os.getenv("OIDC_CLIENT_ID")
-    OIDC_CLIENT_SECRET: Optional[str] = os.getenv("OIDC_CLIENT_SECRET")
+    OIDC_CLIENT_ID: str | None = os.getenv("OIDC_CLIENT_ID")
+    OIDC_CLIENT_SECRET: str | None = os.getenv("OIDC_CLIENT_SECRET")
     SERVER_URL: str | None = os.getenv("SERVER_URL")
     SERVER_REDIRECT: str = os.getenv("SERVER_REDIRECT", "/api/auth/oidc/callback")
-    SESSION_SECRET: Optional[str] = os.getenv("SESSION_SECRET")
+    SESSION_SECRET: str | None = os.getenv("SESSION_SECRET")
 
     @classmethod
     def validate(cls) -> None:
