@@ -232,6 +232,7 @@ TOOL_SCHEMAS = [
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
                     "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
+                    "highlight": {"type": "string", "description": "Werkt alleen samen met color_by: de groep met deze waarde krijgt de accentkleur, de rest wordt grijs. Gebruik dit als één categorie (bijv. één instelling in een benchmark) de aandacht moet krijgen."},
                     "is_share": {"type": "boolean", "description": "Zet op true als de grafiek een aandeel of verhouding van een geheel toont (bijv. 'welk percentage van de studenten...'). Werkt alleen bij chart_type='auto' en stuurt de keuze richting pie of bar."},
                 },
                 "required": ["data_key", "chart_type", "x", "y", "title"],

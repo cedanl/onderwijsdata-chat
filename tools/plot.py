@@ -1,5 +1,6 @@
 import json as _json
 import logging
+import math
 import urllib.request
 
 import plotly.express as px
@@ -11,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 # Okabe-Ito colorblind-friendly palette
 _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442", "#000000"]
+_HIGHLIGHT_GREY = "#B0B0B0"
+
+# Boven dit aantal punten overlappen waardelabels elkaar (#22).
+_MAX_LABELED_POINTS = 20
+
+_CHART_TYPE_LABELS = {
+    "bar": "Staafgrafiek", "line": "Lijngrafiek", "scatter": "Spreidingsdiagram",
+    "pie": "Taartdiagram", "histogram": "Histogram",
+}
 
 _LAYOUT_BASE = {
     "font": {"family": "Inter, Arial, sans-serif", "size": 13},
@@ -72,6 +82,38 @@ _GEOJSON_URLS = {
 _GEOJSON_CACHE: dict[str, dict] = {}
 
 
+def _is_missing(value) -> bool:
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+
+def _validate_axes(data: list[dict], x: str, y: str) -> str | None:
+    """None als x/y bruikbaar zijn; anders een toolmelding in plaats van een lege figuur (#216)."""
+    available = {k for row in data for k in row}
+    missing = [col for col in (x, y) if col not in available]
+    if missing:
+        return f"Kolom(men) {missing} niet gevonden. Beschikbaar: {sorted(available)}."
+
+    y_vals = [row.get(y) for row in data]
+    aanwezig = [v for v in y_vals if not _is_missing(v)]
+    if not aanwezig:
+        return f"Kolom '{y}' bevat geen waarden om te tekenen (alleen ontbrekende cellen, mogelijk een DUO-sentinel)."
+    if any(isinstance(v, str) for v in aanwezig):
+        return f"Kolom '{y}' bevat tekst, geen getallen: gebruik een numerieke kolom voor de y-as."
+    return None
+
+
+def _dutch_number(v: float) -> str:
+    """30083 -> '30.083', 2.1 -> '2,1' — punt voor duizendtallen, komma voor decimalen."""
+    text = f"{v:,.0f}" if float(v).is_integer() else f"{v:,.1f}"
+    return text.translate(str.maketrans({",": "\u0000", ".": ",", "\u0000": "."}))
+
+
+def _value_labels(y_vals: list, enabled: bool) -> list[str] | None:
+    if not enabled or len(y_vals) > _MAX_LABELED_POINTS:
+        return None
+    return ["" if _is_missing(v) else _dutch_number(v) for v in y_vals]
+
+
 def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str, dict]:
     """Group data rows by the *color_by* column."""
     groups: dict[str, dict] = {}
@@ -84,13 +126,15 @@ def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str
 
 
 def _add_trace(fig: go.Figure, chart_type: str, x_vals: list, y_vals: list,
-               color: str, name: str | None = None) -> None:
+               color: str, name: str | None = None, text: list[str] | None = None) -> None:
     """Add a single trace to the figure based on *chart_type*."""
     common = {"name": name} if name else {}
     if chart_type == "bar":
-        fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color, **common))
+        fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color, text=text,
+                              textposition="outside" if text else None, **common))
     elif chart_type == "line":
-        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers",
+        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers" + ("+text" if text else ""),
+                                  text=text, textposition="top center",
                                   line={"color": color, "width": 2}, marker={"size": 5}, **common))
     elif chart_type == "scatter":
         fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers",
@@ -110,6 +154,7 @@ def create_plot(
     y: str = "",
     title: str = "",
     color_by: str | None = None,
+    highlight: str | None = None,
     data_key: str | None = None,
     is_share: bool = False,
 ) -> tuple[str, go.Figure | None]:
@@ -124,6 +169,8 @@ def create_plot(
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
+    if err := _validate_axes(data, x, y):
+        return err, None
     if len(data) == 1 and chart_type != "bar":
         # One point shows nothing a sentence cannot; let the answer state the value.
         # An explicit bar is what the user asked for, so it is drawn (#199).
@@ -139,12 +186,17 @@ def create_plot(
         chart_type = _infer_chart_type(x, y, color_by, num_groups, is_share)
 
     fig = go.Figure()
+    show_labels = chart_type in ("bar", "line") and len(data) <= _MAX_LABELED_POINTS
 
     if color_by:
         groups = _group_by_color(data, x, y, color_by)
         for i, (name, vals) in enumerate(groups.items()):
-            _add_trace(fig, chart_type, vals["x"], vals["y"],
-                       _PALETTE[i % len(_PALETTE)], name=name)
+            if highlight:
+                color = _PALETTE[0] if name == highlight else _HIGHLIGHT_GREY
+            else:
+                color = _PALETTE[i % len(_PALETTE)]
+            _add_trace(fig, chart_type, vals["x"], vals["y"], color, name=name,
+                       text=_value_labels(vals["y"], show_labels))
 
         if chart_type == "bar":
             fig.update_layout(barmode="group")
@@ -154,11 +206,12 @@ def create_plot(
     else:
         x_vals = [row.get(x) for row in data]
         y_vals = [row.get(y) for row in data]
-        _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0])
+        _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0], text=_value_labels(y_vals, show_labels))
 
     layout = {
         "title": {"text": title, "font": {"size": 16, "color": "#222"}},
         "legend_title": color_by or "",
+        "separators": ",.",  # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22)
         **_LAYOUT_BASE,
     }
 
@@ -169,7 +222,8 @@ def create_plot(
     fig.update_layout(**layout)
     fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by})
 
-    return f"Grafiek '{title}' aangemaakt ({len(data)} datapunten).", fig
+    chart_label = _CHART_TYPE_LABELS.get(chart_type, "Grafiek")
+    return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig
 
 
 def _load_geojson(level: str) -> dict:

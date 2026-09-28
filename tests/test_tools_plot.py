@@ -63,6 +63,70 @@ def test_color_by_line_chart():
     assert len(fig.data) == 2
 
 
+def test_missing_y_column_gives_explanatory_message_not_empty_figure():
+    # Live-audit 9: een verkeerd gespelde meetkolom gaf y=[None, None] en "2 datapunten
+    # aangemaakt" i.p.v. een melding (#216).
+    msg, fig = create_plot(_ROWS, "bar", "jaar", "niet_bestaand", "T")
+    assert fig is None
+    assert "niet_bestaand" in msg
+    assert "waarde" in msg  # noemt de wel-bestaande kolommen
+
+
+def test_missing_x_column_gives_explanatory_message():
+    msg, fig = create_plot(_ROWS, "bar", "niet_bestaand", "waarde", "T")
+    assert fig is None
+    assert "niet_bestaand" in msg
+
+
+def test_text_column_as_y_is_refused():
+    rows = [{"jaar": "2020", "waarde": "veel"}, {"jaar": "2021", "waarde": "meer"}]
+    msg, fig = create_plot(rows, "bar", "jaar", "waarde", "T")
+    assert fig is None
+    assert "tekst" in msg.lower()
+
+
+def test_all_missing_y_values_gives_explanation_not_null_points():
+    # DUO-sentinelmaskering levert pd.NA/None op; dat is geen lege grafiek waard,
+    # maar een uitleg (#216).
+    rows = [{"jaar": "2020", "waarde": None}, {"jaar": "2021", "waarde": None}]
+    msg, fig = create_plot(rows, "bar", "jaar", "waarde", "T")
+    assert fig is None
+    assert "waarde" in msg
+
+
+def test_result_message_names_the_actual_chart_type():
+    # #117: de tekst moet kloppen met wat de figuur werkelijk is.
+    line_msg, _ = create_plot(_ROWS, "line", "jaar", "waarde", "T")
+    bar_msg, _ = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert "lijngrafiek" in line_msg.lower()
+    assert "staafgrafiek" in bar_msg.lower()
+
+
+def test_dutch_number_separators_on_the_layout():
+    # #22: Nederlandse getalnotatie (30.083 i.p.v. 30,083) in labels en assen.
+    _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert fig.layout.separators == ",."
+
+
+def test_highlight_gives_one_group_the_accent_color_and_the_rest_grey():
+    _, fig = create_plot(_ROWS_GROUPED, "bar", "jaar", "waarde", "T", color_by="groep", highlight="A")
+    colors = {trace.name: trace.marker.color for trace in fig.data}
+    assert colors["A"] != colors["B"]
+    assert colors["B"] == "#B0B0B0"
+
+
+def test_value_labels_shown_for_a_small_number_of_points():
+    _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert fig.data[0].text is not None
+    assert list(fig.data[0].text) == ["100", "120", "110"]
+
+
+def test_value_labels_omitted_for_many_points_to_avoid_overlap():
+    rows = [{"jaar": str(2000 + i), "waarde": i} for i in range(30)]
+    _, fig = create_plot(rows, "bar", "jaar", "waarde", "T")
+    assert fig.data[0].text is None
+
+
 def test_data_key_reads_from_store():
     df = pd.DataFrame(_ROWS)
     store.put("test:plot:result", df)
