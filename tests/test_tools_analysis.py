@@ -7,7 +7,7 @@ from tools.analysis import run_analysis
 
 
 def _put(key: str, data: list[dict]) -> None:
-    store.put(key, pd.DataFrame(data))
+    store.put(key, pd.DataFrame(data), store.KeyMeta(bron="test", dataset=key, volledig=True))
 
 
 def test_simple_sum():
@@ -126,6 +126,17 @@ def test_store_get_available():
     )
     assert isinstance(result, str)
     assert json.loads(result)["v"] == 2
+
+
+def test_store_get_returns_a_copy_not_the_shared_object():
+    # store_get staat in de namespace van modelgeschreven Python; een mutatie
+    # daarop mag de gedeelde procesbrede cache niet raken (#209).
+    _put("shared:key", [{"v": 42}])
+
+    code = "df2 = store_get('shared:key')\ndf2.loc[0, 'v'] = 999999\nresult = {'ok': True}"
+    run_analysis(code=code)
+
+    assert store.get("shared:key")["v"].iloc[0] == 42
 
 
 def test_blocked_hardcoded_data():

@@ -8,7 +8,7 @@ from tools.query import query_data
 
 
 def _put(key: str, data: list[dict]) -> None:
-    store.put(key, pd.DataFrame(data))
+    store.put(key, pd.DataFrame(data), store.KeyMeta(bron="test", dataset=key))
 
 
 def test_no_filters_returns_all_rows():
@@ -257,7 +257,7 @@ def test_leeg_filterresultaat_geeft_melding_en_suggesties():
             "AANTAL": [10, 20],
         }
     )
-    store.put("duo:test:leeg", df)
+    store.put("duo:test:leeg", df, store.KeyMeta(bron="duo", dataset="test:leeg"))
 
     result = json.loads(query_data("duo:test:leeg", filters={"INSTELLINGSNAAM_ACTUEEL": "Vrije Universitiet Amsterdam"}))
 
@@ -268,7 +268,7 @@ def test_leeg_filterresultaat_geeft_melding_en_suggesties():
 
 def test_leeg_filterresultaat_geeft_bereik_bij_numeriek_filter():
     df = pd.DataFrame({"STUDIEJAAR": [2021, 2022], "AANTAL": [1, 2]})
-    store.put("duo:test:leeg-numeriek", df)
+    store.put("duo:test:leeg-numeriek", df, store.KeyMeta(bron="duo", dataset="test:leeg-numeriek"))
 
     result = json.loads(query_data("duo:test:leeg-numeriek", filters={"STUDIEJAAR__gte": 2030}))
 
@@ -278,7 +278,7 @@ def test_leeg_filterresultaat_geeft_bereik_bij_numeriek_filter():
 
 def test_gevuld_filterresultaat_heeft_geen_suggesties():
     df = pd.DataFrame({"NAAM": ["a", "b"], "AANTAL": [1, 2]})
-    store.put("duo:test:gevuld", df)
+    store.put("duo:test:gevuld", df, store.KeyMeta(bron="duo", dataset="test:gevuld"))
 
     result = json.loads(query_data("duo:test:gevuld", filters={"NAAM": "a"}))
 
@@ -292,7 +292,7 @@ def test_aggregation_filters_duo_sentinel_minus_one():
         "groep": ["A", "A", "B", "B", "B"],
         "aantal": [100, -1, 50, 60, -1]  # -1 is privacy/empty sentinel in DUO
     })
-    store.put("duo:test:sentinels", df)
+    store.put("duo:test:sentinels", df, store.KeyMeta(bron="duo", dataset="test:sentinels"))
 
     result = json.loads(query_data(
         "duo:test:sentinels",

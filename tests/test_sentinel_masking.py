@@ -95,7 +95,8 @@ class TestStoreRoutes:
     """Elke route die een `duo:`-key in de store zet, moet gemaskeerde data opleveren."""
 
     def test_directe_store_put_wordt_gemaskeerd(self):
-        store.put("duo:direct", pd.DataFrame({"GROEP": ["A", "A"], "AANTAL": [100, -1]}))
+        store.put("duo:direct", pd.DataFrame({"GROEP": ["A", "A"], "AANTAL": [100, -1]}),
+                  store.KeyMeta(bron="duo", dataset="direct"))
 
         opgeslagen = store.get("duo:direct")
         assert pd.isna(opgeslagen.loc[1, "AANTAL"])
@@ -109,7 +110,7 @@ class TestStoreRoutes:
         store.put("duo:direct", pd.DataFrame({
             "GROEP": ["A", "A", "B", "B"],
             "AANTAL": [100, -1, 50, 60],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="direct"))
 
         result = json.loads(query_data(
             "duo:direct", group_by=["GROEP"], aggregate={"AANTAL": "sum"},
@@ -122,7 +123,7 @@ class TestStoreRoutes:
     def test_afgeleide_key_erft_gemaskeerde_data(self):
         store.put("duo:bron", pd.DataFrame({
             "GROEP": ["A", "A"], "AANTAL": [100, -1],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="bron"))
 
         tussenstap = json.loads(query_data("duo:bron", columns=["GROEP", "AANTAL"]))
         result = json.loads(query_data(
@@ -138,7 +139,7 @@ class TestMelding:
     def test_query_data_meldt_uitgesloten_cellen(self):
         store.put("duo:melding", pd.DataFrame({
             "GROEP": ["A", "A"], "AANTAL": [100, -1],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="melding"))
 
         result = json.loads(query_data(
             "duo:melding", group_by=["GROEP"], aggregate={"AANTAL": "sum"},
@@ -148,7 +149,8 @@ class TestMelding:
         assert "ondergrens" in result["databewerking"][0]
 
     def test_geen_melding_zonder_onderdrukte_cellen(self):
-        store.put("duo:schoon", pd.DataFrame({"GROEP": ["A"], "AANTAL": [100]}))
+        store.put("duo:schoon", pd.DataFrame({"GROEP": ["A"], "AANTAL": [100]}),
+                  store.KeyMeta(bron="duo", dataset="schoon"))
 
         result = json.loads(query_data(
             "duo:schoon", group_by=["GROEP"], aggregate={"AANTAL": "sum"},
@@ -159,7 +161,7 @@ class TestMelding:
     def test_melding_reist_mee_naar_afgeleide_key(self):
         store.put("duo:bron", pd.DataFrame({
             "GROEP": ["A", "A"], "AANTAL": [100, -1],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="bron"))
 
         tussenstap = json.loads(query_data("duo:bron", columns=["GROEP", "AANTAL"]))
         result = json.loads(query_data(
@@ -220,7 +222,7 @@ class TestMeldingPerSelectie:
             "INSTELLING": ["HU", "HU", "X", "X", "X"],
             "JAAR": [2024, 2025, 2024, 2025, 2025],
             "AANTAL": [27135, 26370, -1, 40, -1],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="p01hoinges", resource=3))
 
     def _som(self, key, **kwargs):
         return json.loads(query_data(key, group_by=["JAAR"], aggregate={"AANTAL": "sum"}, **kwargs))
@@ -233,7 +235,7 @@ class TestMeldingPerSelectie:
     def test_melding_telt_alleen_de_selectie(self):
         store.put("duo:groot", pd.DataFrame({
             "INSTELLING": ["X", "X", "Y"], "JAAR": [2025, 2025, 2025], "AANTAL": [-1, -1, -1],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="groot"))
 
         result = self._som("duo:groot", filters={"INSTELLING": "X"})
 
@@ -255,7 +257,7 @@ class TestMeldingPerSelectie:
         # Na aggregeren zijn de NA's weg; de telling moet per groep meereizen.
         store.put("duo:jaren", pd.DataFrame({
             "JAAR": [2024, 2024, 2025, 2025], "AANTAL": [10, 20, -1, 5],
-        }))
+        }), store.KeyMeta(bron="duo", dataset="jaren"))
         per_jaar = self._som("duo:jaren")
 
         schoon = self._som(per_jaar["data_key"], filters={"JAAR": 2024})
@@ -274,7 +276,8 @@ class TestMeldingPerSelectie:
         assert "databewerking" not in result
 
     def test_groeperen_op_kolom_met_sentinels_crasht_niet(self):
-        store.put("duo:codes", pd.DataFrame({"CODE": [1, -1, 1], "AANTAL": [5, 6, -1]}))
+        store.put("duo:codes", pd.DataFrame({"CODE": [1, -1, 1], "AANTAL": [5, 6, -1]}),
+                  store.KeyMeta(bron="duo", dataset="codes"))
 
         result = json.loads(query_data("duo:codes", group_by=["CODE"], aggregate={"AANTAL": "sum"}))
 

@@ -24,7 +24,8 @@ _DATASET = "cbs:85423NED"
 @pytest.fixture(autouse=True)
 def _dataset_in_store():
     store.clear()
-    store.put(_DATASET, pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [10, 20]}))
+    store.put(_DATASET, pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [10, 20]}),
+              store.KeyMeta(bron="cbs", dataset="85423NED"))
     yield
     store.clear()
 

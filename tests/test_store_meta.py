@@ -50,6 +50,20 @@ def test_derive_from_a_key_without_meta_gives_no_meta():
     assert store.meta("los:q") is None
 
 
+def test_volledig_is_false_for_a_key_without_meta():
+    # Onbekend mag niet op dezelfde plek staan als een bevestigd complete bron (#210).
+    store.put("los", pd.DataFrame({"a": [1]}))
+    assert store.volledig("los") is False
+
+
+def test_run_analysis_refuses_a_result_on_a_key_without_meta():
+    store.put("zonder:meta", pd.DataFrame({"a": [1, 2, 3]}))
+
+    result = run_analysis("result = {'n': len(df)}", data_key="zonder:meta")
+
+    assert result == store.ONVOLLEDIG
+
+
 def test_clear_wipes_the_meta():
     store.put("cbs:x", pd.DataFrame({"a": [1]}), KeyMeta(bron="cbs", dataset="x"))
     store.clear()
