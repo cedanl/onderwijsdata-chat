@@ -45,6 +45,7 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
                   <button type="button"
                     className="wb-delete-btn"
                     title="Verwijder"
+                    aria-label={`Verwijder rapport ${wb.title}`}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete(wb.id) }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
