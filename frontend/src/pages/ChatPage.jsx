@@ -747,7 +747,7 @@ function PlotlyFigure({ figureJson, label }) {
   )
 }
 
-function ConversationHistory({ history, onLoad, onDelete, onRename }) {
+export function ConversationHistory({ history, onLoad, onDelete, onRename }) {
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState('')
   const titleInputRef = useRef(null)
@@ -819,6 +819,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
                 <button type="button"
                   className="history-action-icon"
                   title="Hernoemen"
+                  aria-label={`Hernoem gesprek ${conv.title}`}
                   onClick={e => startEditing(conv, e)}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -829,6 +830,7 @@ function ConversationHistory({ history, onLoad, onDelete, onRename }) {
                 <button type="button"
                   className="history-action-icon history-action-icon-delete"
                   title="Verwijderen"
+                  aria-label={`Verwijder gesprek ${conv.title}`}
                   onClick={e => { e.stopPropagation(); onDelete(conv.id) }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

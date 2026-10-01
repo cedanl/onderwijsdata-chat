@@ -100,6 +100,7 @@ export default function RapportenPage({ settings }) {
                     <button type="button"
                       className="wb-delete-btn"
                       title="Verwijder"
+                      aria-label={`Verwijder rapport ${wb.title}`}
                       onClick={e => { e.preventDefault(); e.stopPropagation(); handleDelete(wb.id) }}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
