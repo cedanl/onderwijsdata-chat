@@ -109,6 +109,26 @@ _SYNONYMS: dict[str, list[str]] = {
 }
 
 
+_SPLITSTEKENS = ".,;:!?()\"'"
+_VOLZIN_MIN_WOORDEN = 6
+
+
+def _woorden(query: str) -> list[str]:
+    """Kleine letters, zonder leestekens ("VU?" zoekt als "vu")."""
+    return [w for w in (w.strip(_SPLITSTEKENS) for w in query.lower().split()) if w]
+
+
+def _volzin_hint(query: str, woorden: list[str], trefwoorden: list[str]) -> str | None:
+    """Een volzin of vraag wordt als trefwoorden gezocht; zeg dat, zodat het model het afleert (#17)."""
+    is_volzin = len(woorden) >= _VOLZIN_MIN_WOORDEN or query.rstrip().endswith("?")
+    if not is_volzin or trefwoorden == woorden:
+        return None
+    return (
+        f"Query genormaliseerd naar trefwoorden: '{' '.join(trefwoorden)}'. "
+        "Gebruik voortaan 2 tot 4 losse trefwoorden, geen volzin of vraag."
+    )
+
+
 def _filter_stopwoorden(words: list[str]) -> list[str]:
     """Remove stopwoorden; fallback to all words if nothing remains."""
     filtered = [w for w in words if w not in _STOPWOORDEN]
@@ -223,9 +243,10 @@ def search_catalog(
     geo_niveau: str | None = None,
 ) -> str:
     t0 = time.perf_counter()
-    query_words = query.lower().split()
+    query_words = _woorden(query)
     # F1: Filter stopwoorden
     filtered_words = _filter_stopwoorden(query_words)
+    hint = _volzin_hint(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
     active = []
     archive_fallback = []
@@ -282,6 +303,8 @@ def search_catalog(
         {k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
         for h in hits[:top_n]
     ]
+    if hint:
+        lean.append({"melding": hint})
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
 
 

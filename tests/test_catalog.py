@@ -465,3 +465,40 @@ def test_dataset_details_van_catalogusbron_zonder_datatool_meldt_dat():
         details = json.loads(dataset_details("uwv-open-match-data"))
     assert details["opvraagbaar"] is False
     assert "niet bestaat" in details["melding"]
+
+
+# --- #17: een volzin wordt als trefwoorden gezocht, met een hint ---
+
+_HINT_ENTRIES = [{"identifier": "ds1", "_cbs_id": "12345", "title": "voltijd ingeschrevenen hoger onderwijs"}]
+
+
+def _zoek(query):
+    with patch("tools.catalog._cbs", return_value=_HINT_ENTRIES), patch("tools.catalog._rio_duo", return_value=[]):
+        return json.loads(search_catalog(query, source="cbs"))
+
+
+def test_volzin_query_is_normalised_and_the_hint_is_in_the_response():
+    hits = _zoek("Hoeveel voltijd ingeschrevenen heeft de universiteit eigenlijk in het hoger onderwijs?")
+
+    assert hits[0]["_cbs_id"] == "12345"
+    assert "melding" in hits[-1]
+    assert "Query genormaliseerd naar trefwoorden" in hits[-1]["melding"]
+    assert "?" not in hits[-1]["melding"].split("'")[1]
+
+
+def test_short_keyword_query_is_left_alone():
+    hits = _zoek("voltijd ingeschrevenen")
+
+    assert len(hits) == 1 and "melding" not in hits[0]
+
+
+def test_trailing_punctuation_does_not_break_the_match():
+    assert _zoek("ingeschrevenen?")[0]["_cbs_id"] == "12345"
+
+
+def test_tool_description_shows_a_good_and_a_bad_query():
+    from tools.schemas import TOOL_SCHEMAS
+
+    schema = next(t for t in TOOL_SCHEMAS if t["function"]["name"] == "search_catalog")
+    beschrijving = schema["function"]["parameters"]["properties"]["query"]["description"]
+    assert "Goed:" in beschrijving and "Fout:" in beschrijving
