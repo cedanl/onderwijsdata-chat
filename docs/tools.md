@@ -353,8 +353,8 @@ Berekent één KPI-waarde deterministisch in code over data die al in de store s
 |-----------|------|-------------|
 | `data_key` | string | Sleutel van een `query_data`-resultaat |
 | `value_column` | string | Kolom met de numerieke waarden |
-| `metric` | string | `last`, `first`, `sum`, `mean`, `min`, `max`, `delta` (laatste − eerste), `pct_change` (procentuele verandering eerste → laatste) of `index` (laatste waarde met eerste = 100) |
-| `sort_column` | string | Optioneel: kolom om op te sorteren voor `last`/`first`/`delta`/`pct_change`/`index`, bijv. `STUDIEJAAR`. Zonder deze kolom telt de rijvolgorde. |
+| `metric` | string | `last`, `first`, `sum`, `mean`, `min`, `max`, `delta` (laatste − eerste), `pct_change` (procentuele verandering eerste → laatste) of `index` (laatste waarde met eerste = 100), `max_drop` of `max_rise` (grootste daling of stijging tussen twee opeenvolgende rijen; het antwoord noemt in `tussen` welke twee) |
+| `sort_column` | string | Optioneel: kolom om op te sorteren voor `last`/`first`/`delta`/`pct_change`/`index`/`max_drop`/`max_rise`, bijv. `STUDIEJAAR`. Zonder deze kolom telt de rijvolgorde. |
 | `label` | string | Label van de KPI, bijv. "Voltijd 2025/26" |
 
 ---

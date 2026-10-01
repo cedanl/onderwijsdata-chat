@@ -105,3 +105,36 @@ def test_kolom_zonder_numerieke_waarden():
               store.KeyMeta(bron="duo", dataset="kpi:tekst"))
     result = json.loads(compute_kpi("duo:kpi:tekst", "NAAM", "sum", label="L"))
     assert "geen numerieke waarden" in result["fout"]
+
+
+def test_grootste_daling_is_de_grootste_stap_niet_de_eerste_die_opvalt():
+    # #116: 28.355 → 27.904 → 27.441 → 27.135 → 26.370. Het antwoord noemde -463; de grootste is -765.
+    store.put("duo:kpi:hu", pd.DataFrame({"STUDIEJAAR": [2021, 2022, 2023, 2024, 2025],
+                                          "AANTAL": [28355, 27904, 27441, 27135, 26370]}),
+              store.KeyMeta(bron="duo", dataset="kpi:hu"))
+
+    result = json.loads(compute_kpi("duo:kpi:hu", "AANTAL", "max_drop", sort_column="STUDIEJAAR", label="Grootste daling"))
+
+    assert result["value"] == "-765"
+    assert result["raw"] == -765
+    assert result["tussen"] == ["2024", "2025"]
+    assert result["trendDirection"] == "down"
+
+
+def test_grootste_stijging_en_sortering_op_kolom():
+    store.put("duo:kpi:shuffled", pd.DataFrame({"JAAR": [2023, 2021, 2022], "N": [150, 100, 110]}),
+              store.KeyMeta(bron="duo", dataset="kpi:shuffled"))
+
+    result = json.loads(compute_kpi("duo:kpi:shuffled", "N", "max_rise", sort_column="JAAR", label="x"))
+
+    assert result["value"] == "+40"
+    assert result["tussen"] == ["2022", "2023"]
+
+
+def test_zonder_daling_is_het_een_fout_geen_nul():
+    result = json.loads(compute_kpi("duo:kpi:test", "AANTAL", "max_drop", sort_column="STUDIEJAAR", label="x"))
+    assert result["tussen"] == ["2024", "2025"]  # 31.198 → 30.815 → 30.083: wel een daling
+
+    store.put("duo:kpi:up", pd.DataFrame({"J": [1, 2], "N": [1, 2]}), store.KeyMeta(bron="duo", dataset="kpi:up"))
+    assert "Geen daling" in json.loads(compute_kpi("duo:kpi:up", "N", "max_drop", sort_column="J", label="x"))["fout"]
+

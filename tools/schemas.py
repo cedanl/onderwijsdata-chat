@@ -201,16 +201,18 @@ TOOL_SCHEMAS = [
                     "value_column": {"type": "string", "description": "Kolom met de numerieke waarden"},
                     "metric": {
                         "type": "string",
-                        "enum": ["last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index"],
+                        "enum": ["last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index", "max_drop", "max_rise"],
                         "description": (
                             "last/first = laatste of eerste waarde, sum/mean/min/max = aggregaat over alle rijen, "
                             "delta = laatste min eerste, pct_change = procentuele verandering van eerste naar laatste, "
-                            "index = laatste als index met de eerste waarde op 100"
+                            "index = laatste als index met de eerste waarde op 100, "
+                            "max_drop/max_rise = grootste daling of stijging tussen twee opeenvolgende rijen, met in `tussen` "
+                            "welke twee (gebruik dit voor 'grootste daling/stijging', zoek die niet zelf in de tabel)"
                         ),
                     },
                     "sort_column": {
                         "type": "string",
-                        "description": "Kolom om op te sorteren voor last/first/delta/pct_change/index, bijv. STUDIEJAAR. Zonder deze kolom telt de rijvolgorde.",
+                        "description": "Kolom om op te sorteren voor last/first/delta/pct_change/index/max_drop/max_rise, bijv. STUDIEJAAR. Zonder deze kolom telt de rijvolgorde.",
                     },
                     "label": {"type": "string", "description": "Label van de KPI, bijv. 'Voltijd 2025/26'"},
                 },
