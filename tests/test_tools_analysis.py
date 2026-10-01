@@ -136,3 +136,32 @@ def test_blocked_hardcoded_data():
     ]"""
     result = run_analysis(code=hardcoded)
     assert "hardcoded" in result.lower() or "overgetypte" in result.lower()
+
+
+def test_figure_carries_the_plotted_rows_for_export():
+    # #217: de CSV-export leest layout.meta.data; een run_analysis-figuur droeg die niet
+    # en viel terug op de getekende traces (met binaire arrays als lege cellen).
+    _put("test:an", [{"K": "Avans", "N": 24169}, {"K": "Fontys", "N": 24740}])
+    _, fig = run_analysis(
+        code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}",
+        data_key="test:an",
+    )
+    assert fig.layout.meta["data"] == [{"K": "Avans", "N": 24169}, {"K": "Fontys", "N": 24740}]
+
+
+def test_figure_rows_split_grouped_traces_by_series():
+    _put("test:an", [{"K": "a", "G": "VT", "N": 1}, {"K": "a", "G": "DT", "N": 2}])
+    _, fig = run_analysis(
+        code="figure = px.bar(df, x='K', y='N', color='G')\nresult = {'ok': True}",
+        data_key="test:an",
+    )
+    assert fig.layout.meta["data"] == [{"reeks": "VT", "K": "a", "N": 1}, {"reeks": "DT", "K": "a", "N": 2}]
+
+
+def test_broken_figure_gets_no_rows_so_the_export_refuses_it():
+    _put("test:an", [{"K": "a", "N": 1}])
+    _, fig = run_analysis(
+        code="figure = go.Figure(go.Bar(x=['a', 'b'], y=[1]))\nresult = {'ok': True}",
+        data_key="test:an",
+    )
+    assert not (fig.layout.meta or {}).get("data")

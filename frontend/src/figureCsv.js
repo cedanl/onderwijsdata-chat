@@ -5,6 +5,8 @@
 // without them (run_analysis figures, older conversations) fall back to the
 // drawn traces, without ever dropping a point (#183).
 
+import { plotlyArray } from './plotlyArrays'
+
 function axisTitle(axis) {
   const title = axis?.title
   return typeof title === 'string' ? title : title?.text
@@ -17,8 +19,8 @@ function cell(value) {
 
 const toCsv = rows => rows.map(r => r.map(cell).join(';')).join('\n')
 
-const xsOf = trace => trace.x || trace.labels || []
-const ysOf = trace => trace.y || trace.values || []
+const xsOf = trace => plotlyArray(trace.x ?? trace.labels) ?? []
+const ysOf = trace => plotlyArray(trace.y ?? trace.values) ?? []
 const hasRepeatedX = trace => new Set(xsOf(trace)).size < xsOf(trace).length
 
 function rowsToCsv(rows) {
@@ -47,9 +49,40 @@ function longCsv(traces, xName, yName) {
   return toCsv([header, ...rows])
 }
 
+// Why a drawn trace cannot be exported faithfully, or null when it can. A
+// figure that does not add up must not yield a CSV that looks fine next to a
+// broken chart (#217).
+const DISTRIBUTION_TYPES = new Set(['histogram', 'box', 'violin'])
+
+function traceProblem(trace) {
+  if (DISTRIBUTION_TYPES.has(trace.type)) return null
+  const xs = xsOf(trace)
+  const ys = ysOf(trace)
+  if (!ys.length) return 'y-waarden ontbreken'
+  if (xs.length !== ys.length) return `x (${xs.length}) en y (${ys.length}) zijn niet even lang`
+  if (ys.every(y => y == null)) return 'alle y-waarden zijn leeg'
+  if (ys.some(y => y != null && typeof y !== 'number')) return 'y-waarden zijn niet numeriek'
+  return null
+}
+
+function tracesProblem(figure) {
+  const traces = (figure.data || []).filter(t => xsOf(t).length || ysOf(t).length)
+  for (const trace of traces) {
+    const problem = traceProblem(trace)
+    if (problem) return problem
+  }
+  return null
+}
+
+// A reason to show instead of a download button, or null when exportable.
+// Figures with tool rows in layout.meta.data export those, not the traces.
+export function figureCsvProblem(figure) {
+  return hasToolRows(figure) ? null : tracesProblem(figure)
+}
+
 function tracesToCsv(figure) {
   const traces = figure.data || []
-  if (!traces.some(t => xsOf(t).length)) return null
+  if (!traces.some(t => xsOf(t).length) || tracesProblem(figure)) return null
 
   const layout = figure.layout || {}
   const xName = layout.meta?.x || axisTitle(layout.xaxis) || 'categorie'
@@ -57,7 +90,9 @@ function tracesToCsv(figure) {
   return traces.some(hasRepeatedX) ? longCsv(traces, xName, yName) : wideCsv(traces, xName, yName)
 }
 
+const toolRows = figure => figure.layout?.meta?.data
+const hasToolRows = figure => Array.isArray(toolRows(figure)) && toolRows(figure).length > 0
+
 export function figureToCsv(figure) {
-  const rows = figure.layout?.meta?.data
-  return Array.isArray(rows) && rows.length ? rowsToCsv(rows) : tracesToCsv(figure)
+  return hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure)
 }
