@@ -30,6 +30,11 @@ _DATASET_ID = re.compile(r"\b(p\d{2}[a-z0-9]{3,}|\d{5}(?:NED|ENG))\b")
 _TEKST_INSCHRIJVINGEN = re.compile(r"(?<!hoofd)inschrijving", re.IGNORECASE)
 _TEKST_PERSONEN = re.compile(r"\bpersonen\b", re.IGNORECASE)
 
+# Een ontkenning vlak vóór het woord ("geen inschrijvingen maar personen", "gaat om
+# personen, niet om inschrijvingen") is toelichting, geen toeschrijving (#214).
+_ZIN_EINDE = re.compile(r"[!?;\n]|\.(?!\d)")
+_ONTKENNING = re.compile(r"\b(?:geen|niet|nooit)\b(?:\W+\w+){0,3}?\W*$", re.IGNORECASE)
+
 
 def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
     """Een opleidingsvormcode naast het woord van een andere vorm."""
@@ -54,6 +59,16 @@ def onbekende_datasets(tekst: str) -> list[str]:
         for dataset_id in sorted(set(_DATASET_ID.findall(tekst)))
         if catalogus_titel(dataset_id) == dataset_id
     ]
+
+
+def _toegeschreven(verkeerd: re.Pattern, tekst: str) -> bool:
+    """Staat het woord ergens als bewering in de tekst, dus niet in een ontkenning?"""
+    for zin in _ZIN_EINDE.split(tekst):
+        for treffer in verkeerd.finditer(zin):
+            voor = zin[: treffer.start()].rsplit(" maar ", 1)[-1]
+            if not _ONTKENNING.search(voor):
+                return True
+    return False
 
 
 def _teleenheid(teldefinitie: str | None) -> str | None:
@@ -82,7 +97,7 @@ def verkeerde_teleenheid(tekst: str, tool_results: list[str]) -> list[str]:
     verkeerd, woord = (
         (_TEKST_INSCHRIJVINGEN, "inschrijvingen") if eenheid == "personen" else (_TEKST_PERSONEN, "personen")
     )
-    if not verkeerd.search(tekst):
+    if not _toegeschreven(verkeerd, tekst):
         return []
     return [
         f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}. "

@@ -77,6 +77,25 @@ def test_hoofdinschrijvingen_bij_personen_is_goed():
     assert verkeerde_teleenheid("Geteld als hoofdinschrijvingen.", _beurt("duo:p01hoinges:3")) == []
 
 
+@pytest.mark.parametrize("tekst", [
+    "Het zijn geen inschrijvingen maar personen.",
+    "Het gaat hier niet om inschrijvingen maar om personen.",
+    "p01 telt personen, niet inschrijvingen. In 2025 waren het 24.169 personen.",
+])
+def test_ontkenning_van_het_verkeerde_woord_is_toelichting(tekst):
+    # #214: een correcte weerlegging kreeg de waarschuwing toch.
+    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
+
+
+@pytest.mark.parametrize("tekst", [
+    "p01 telt hier 24.169 inschrijvingen.",
+    "Dat zijn geen cijfers van vorig jaar. p01 telt hier 24.169 inschrijvingen.",
+    "Het zijn niet personen maar inschrijvingen.",
+])
+def test_toeschrijving_van_het_verkeerde_woord_blijft_een_probleem(tekst):
+    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3"))
+
+
 def test_vergelijking_van_beide_teleenheden_is_goed():
     tekst = "26.370 personen tegenover 28.889 inschrijvingen."
     assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3", "duo:p03hoinschr:3")) == []
