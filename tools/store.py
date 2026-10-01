@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
 # and datasets are read-only. Not suitable for per-user mutable state.
@@ -30,6 +30,8 @@ class KeyMeta:
     instellingskolom: str | None = None  # DUO institution code column (#143)
     instellingen: tuple[str, ...] | None = None  # institution codes in this data; None = unknown (#143)
     afgeleid_van: str | None = None      # the key this one was derived from
+    # The load call (tool, arguments): what a snippet needs to reproduce the data (#131). Provenance, not identity.
+    laad: tuple[str, dict] | None = field(default=None, compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:
@@ -53,7 +55,7 @@ def derive(parent: str, key: str, value, **changes) -> None:
     `changes` overrides what the derivation changed, such as the schooljaren of a selection.
     """
     parent_meta = _meta.get(parent)
-    put(key, value, replace(parent_meta, afgeleid_van=parent, **changes) if parent_meta else None)
+    put(key, value, replace(parent_meta, afgeleid_van=parent, laad=None, **changes) if parent_meta else None)
 
 
 def get(key: str):

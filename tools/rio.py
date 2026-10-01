@@ -61,7 +61,10 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     # naam las het model als registertotaal (#177).
     meer_beschikbaar = len(results) >= RIO_PAGE_SIZE
     # Pas cachen als de beschrijving gelukt is: een mislukte tool mag geen data achterlaten.
-    store.put(key, df, store.KeyMeta(bron="rio", dataset=resource, volledig=not meer_beschikbaar))
+    store.put(key, df, store.KeyMeta(
+        bron="rio", dataset=resource, volledig=not meer_beschikbaar,
+        laad=("get_rio_data", {"resource": resource, "filters": filters}),
+    ))
     result = {
         "data_key": key,
         "catalogus_titel": catalogus_titel(resource),

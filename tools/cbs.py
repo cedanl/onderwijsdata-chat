@@ -192,7 +192,10 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
-    store.put(key, df, store.KeyMeta(bron="cbs", dataset=dataset_id, periodekolom=kolom, schooljaren=schooljaren))
+    store.put(key, df, store.KeyMeta(
+        bron="cbs", dataset=dataset_id, periodekolom=kolom, schooljaren=schooljaren,
+        laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
+    ))
 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
