@@ -263,3 +263,31 @@ describe('useChat connection loss', () => {
     expect(chat.messages).toEqual([])
   })
 })
+
+describe('useChat busy refusal (#145)', () => {
+  it('shows the notice, removes the refused question and hands it back as a draft', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { chat.send('Tweede vraag') })
+    expect(chat.messages.some(m => m.role === 'user' && m.content === 'Tweede vraag')).toBe(true)
+
+    await act(async () => {
+      ws.emit({ type: 'busy', message: 'Er loopt nog een antwoord. Stop dat eerst of wacht even.' })
+    })
+
+    expect(chat.messages.some(m => m.role === 'user')).toBe(false)
+    expect(chat.rejectedDraft).toBe('Tweede vraag')
+    expect(chat.toasts.map(t => t.message)).toContain('Er loopt nog een antwoord. Stop dat eerst of wacht even.')
+    expect(chat.thinking).toBe(false)
+  })
+
+  it('does not hand back a question the server accepted', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Eerste vraag') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { ws.emit({ type: 'busy', message: 'x' }) })
+
+    expect(chat.rejectedDraft).toBeNull()
+    expect(chat.messages.some(m => m.role === 'user' && m.content === 'Eerste vraag')).toBe(true)
+  })
+})
