@@ -31,6 +31,7 @@ import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import ChatInputFooter from '../components/ChatInputFooter'
+import RunProgress, { countRunSteps } from '../components/RunProgress'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -447,6 +448,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 </div>
               </div>
             )}
+            <RunProgress busy={busy} steps={countRunSteps(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>

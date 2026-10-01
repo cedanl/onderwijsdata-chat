@@ -1333,3 +1333,13 @@ html.dark .suggested-btn:hover {
 .notfound h1 { font-size: 1.75rem; margin-bottom: 12px; }
 .notfound p { color: var(--muted-text); margin-bottom: 24px; }
 .notfound-link { color: var(--accent-text); font-weight: 600; text-decoration: underline; }
+
+/* Elapsed time and steps while a run is going (#91). Tokens flip with the theme; wraps on narrow screens. */
+.run-progress {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 4px 0 8px 44px; padding: 3px 10px; width: fit-content; max-width: 100%;
+  border: 1px solid var(--gray-200); border-radius: 999px;
+  color: var(--muted-text); font-size: .78rem;
+}
+.run-progress-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (max-width: 768px) { .run-progress { margin-left: 8px; } }
