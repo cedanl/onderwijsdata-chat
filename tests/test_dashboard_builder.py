@@ -116,6 +116,13 @@ class TestExtractJsonObject:
     def test_no_json(self):
         assert _extract_json_object("geen json") == {}
 
+    def test_raw_newline_in_a_string_value_is_read(self):
+        # #166: "Invalid control character" — the content is intact, only the escape is missing.
+        result = _extract_json_object('{"title": "T", "conclusie": "regel een\nregel twee"}')
+        assert result["conclusie"] == "regel een\nregel twee"
+        fenced = _extract_json_object('```json\n{"title": "T", "conclusie": "a\tb"}\n```')
+        assert fenced["conclusie"] == "a\tb"
+
 
 class TestDashboardSpec:
     def test_serialization(self):

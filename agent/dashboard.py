@@ -255,11 +255,15 @@ async def generate(
 
 
 def _extract_json_object(text: str) -> dict:
-    """Extract the last top-level JSON object from text, handling nested braces."""
+    """Extract the last top-level JSON object from text, handling nested braces.
+
+    strict=False: models put a raw newline or tab inside a string value ("Invalid control
+    character", #166); the content is intact, so it is read instead of refused.
+    """
     # Try fenced code block first (greedy — captures the whole JSON)
     fence_match = re.search(r"```(?:json)?\s*(\{.+\})\s*```", text, re.DOTALL)
     if fence_match:
-        return json.loads(fence_match.group(1))
+        return json.loads(fence_match.group(1), strict=False)
 
     # Find the last { and scan for its matching }
     candidates: list[str] = []
@@ -279,7 +283,7 @@ def _extract_json_object(text: str) -> dict:
     # Return the largest candidate that parses as JSON with a "title" key
     for candidate in reversed(candidates):
         try:
-            obj = json.loads(candidate)
+            obj = json.loads(candidate, strict=False)
             if isinstance(obj, dict) and "title" in obj:
                 return obj
         except json.JSONDecodeError:
@@ -288,7 +292,7 @@ def _extract_json_object(text: str) -> dict:
     # Fallback: try the largest candidate
     for candidate in sorted(candidates, key=len, reverse=True):
         try:
-            return json.loads(candidate)
+            return json.loads(candidate, strict=False)
         except json.JSONDecodeError:
             continue
 
