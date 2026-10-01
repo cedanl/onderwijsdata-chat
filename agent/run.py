@@ -108,6 +108,17 @@ def _correction(problems: list[str]) -> str:
     )
 
 
+_MAX_CLARIFY_RONDES = 1
+
+
+def tools_for(session: dict) -> list[dict]:
+    """De toolset van deze beurt. Na een beantwoorde scopevraag is clarify_scope er niet meer:
+    nooit twee clarifies achter elkaar voor dezelfde vraag (#75), in code en niet alleen in de prompt."""
+    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
+        return SCHEMAS
+    return [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
+
+
 async def run(
     messages: list[dict],
     session: dict,
@@ -176,7 +187,7 @@ async def run(
         result = await tool_loop(
             history,
             model=chosen_model,
-            tools=SCHEMAS,
+            tools=tools_for(session),
             emit=emit,
             stop_event=stop_event,
             system=build_system(settings),

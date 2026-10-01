@@ -256,6 +256,7 @@ async def _handle_message(
         return current_task
     model = session["chat_settings"].get("model") or None
     session["current_model"] = model
+    session["clarify_rondes"] = 0
     if content in TAG_STARTERS:
         tags = TAG_STARTERS[content]
         label = content.removeprefix("Verken ")
@@ -271,6 +272,7 @@ async def _handle_clarification(
         return current_task
     choice = msg.get("choice", "")
     model = session.get("current_model")
+    session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
     return asyncio.create_task(_process_message(choice, session, emit, model))
 
 
