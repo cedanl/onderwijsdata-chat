@@ -47,6 +47,7 @@ export function useChat({ onUnauthorized } = {}) {
   const pendingHistoryRef = useRef(null)
   const busyRef = useRef(false)
   const lastSentRef = useRef(null)
+  const currentHasTextRef = useRef(false)
   const resettingRef = useRef(false)
   const nextId = () => ++idRef.current
 
@@ -117,6 +118,10 @@ export function useChat({ onUnauthorized } = {}) {
       message_start() {
         lastSentRef.current = null
         setThinking(false)
+        // Every model round announces itself, but a round that only called tools wrote no
+        // text: its steps belong in the same reasoning card as the next round's (#76).
+        if (currentMsgRef.current !== null && !currentHasTextRef.current) return
+        currentHasTextRef.current = false
         const msgId = nextId()
         currentMsgRef.current = msgId
         setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
@@ -125,6 +130,7 @@ export function useChat({ onUnauthorized } = {}) {
         cancelCurrentMsg()
       },
       text_delta(ev) {
+        currentHasTextRef.current = true
         setThinking(false)
         updateCurrentMsg(m => ({ ...m, content: m.content + ev.content }))
       },
@@ -137,8 +143,11 @@ export function useChat({ onUnauthorized } = {}) {
       tool_end(ev) {
         updateCurrentMsg(m => ({
           ...m,
-          tools: m.tools.map(t =>
-            t.name === ev.name ? { ...t, done: true, snippet: ev.snippet || null } : t
+          // The first step of this name still running: the same tool can run twice in one card.
+          tools: m.tools.map((t, i, all) =>
+            t.name === ev.name && !t.done && all.findIndex(x => x.name === ev.name && !x.done) === i
+              ? { ...t, done: true, snippet: ev.snippet || null }
+              : t
           ),
         }))
       },
