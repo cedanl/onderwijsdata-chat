@@ -118,6 +118,7 @@ class _Loop:
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
+    figure_shown: set[str] = field(default_factory=set)
 
     def _stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
@@ -203,6 +204,12 @@ class _Loop:
                            " Lever opnieuw aan met geldige JSON-argumenten.")
             else:
                 content, figure = self.cache[c.key]
+                # A cache hit is not a second chart: the figure is shown once per key (#218).
+                # The text still goes back to the model, and cache hits don't count toward tool limits.
+                if c.key in self.figure_shown:
+                    figure = None
+                elif figure is not None:
+                    self.figure_shown.add(c.key)
                 self.result.tool_results.append(content)
                 if self.on_tool_result:
                     await self.on_tool_result(c, content, figure)
