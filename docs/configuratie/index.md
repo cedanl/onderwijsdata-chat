@@ -25,6 +25,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `AVAILABLE_MODELS` | *(niet ingesteld)* | Kommagescheiden lijst van modellen in de model-picker — zie [Model-picker](#model-picker) |
 | `USER_MODELS` | *(niet ingesteld)* | Per-gebruiker model-picker — zie [Per-gebruiker model-picker](#per-gebruiker-model-picker) |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
+| `TEMPERATURE` | `0` | Sampling-temperatuur van het model; 0 voor herhaalbare analyses |
+| `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |

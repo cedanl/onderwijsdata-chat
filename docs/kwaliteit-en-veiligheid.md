@@ -125,4 +125,4 @@ Transparantie over wat nog niet getest is:
 - **Health check:** `GET /health` retourneert `{"status":"ok"}`
 - **Logging:** gestructureerde logging op INFO-niveau, tool-calls gelogd met argumenten en executietijden
 - **Reproduceerbaarheid:** bij elke tool-aanroep wordt een Python-snippet gelogd voor debugging
-- **Eval resultaten:** tijdstempel-opslag in `eval_results/` voor langdurige kwaliteitsbewaking
+- **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); bewaar langdurige resultaten als CI-artifact

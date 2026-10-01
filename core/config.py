@@ -2,6 +2,10 @@ import os
 
 MODEL = os.getenv("MODEL", "anthropic/claude-sonnet-4-6")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "40960"))
+# Analyses horen herhaalbaar te zijn: temperature 0 en een vaste seed (#46). Providers die een
+# van beide niet kennen, laten hem vallen (drop_params in agent/models.py).
+TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
+SEED = int(os.getenv("SEED", "42"))
 MAX_TOOL_ITERATIONS = int(os.getenv("MAX_TOOL_ITERATIONS", "25"))
 CBS_ROW_LIMIT = int(os.getenv("CBS_ROW_LIMIT", "5000"))
 RIO_PAGE_SIZE = int(os.getenv("RIO_PAGE_SIZE", "50"))

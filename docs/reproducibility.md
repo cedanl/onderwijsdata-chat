@@ -64,13 +64,20 @@ Dit getal matcht precies wat de app rapporteerde. Geen gissing, geen "zwarte doo
 
 | Tool | Wat het genereert |
 |------|------------------|
-| `query_data` | DataFrame-laad + filters + aggregatie |
+| `query_data` | Laadstap van de bron + filters + aggregatie |
 | `get_duo_data` | `duo.load()` call + resource |
 | `get_cbs_data` | `onderwijsdata.data()` call + filters |
+| `get_rio_data` | `riodata.fetch()` call + filters |
 | `compute_kpi` | KPI-formule (sum, mean, delta, %) |
 | `run_analysis` | Gebruiker's eigen Python-code |
 | `create_plot` | Plotly visualisatie |
 | `create_choropleth_map` | Geografische kaart |
+
+## Zelfstandig draaien
+
+Een snippet begint altijd met de echte laadstap van zijn bron (bron-ID, resource en filters) via de publieke pakketten `onderwijsdata` en `riodata`. Het gebruikt dus nooit iets dat alleen in de app bestaat. Voor DUO-data met een `STUDIEJAAR` voegt de snippet ook `STUDIEJAAR_LABEL` toe (2021 → 2021/2022), zoals de app dat doet.
+
+Is de data het resultaat van een eerdere stap (een analyse of een selectie), dan staat die als rijen in de snippet, tot 200 rijen. Bij meer rijen laadt de snippet de bron en staat er een `# NB:` dat het om een selectie van die data gaat. Is voor een key geen laadstap bekend, bijvoorbeeld na een herstart, dan zegt de snippet dat in een opmerking.
 
 ## Voor onderzoekers
 

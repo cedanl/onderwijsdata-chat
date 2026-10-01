@@ -69,31 +69,3 @@ def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
     logging.getLogger("litellm").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-
-
-class StructuredLogger:
-    """Helper for adding structured fields to log records."""
-
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
-
-    def info(self, message: str, **extra_fields) -> None:
-        record = logging.LogRecord(
-            self.logger.name, logging.INFO, "", 0, message, (), None
-        )
-        record.extra_fields = extra_fields
-        self.logger.handle(record)
-
-    def warning(self, message: str, **extra_fields) -> None:
-        record = logging.LogRecord(
-            self.logger.name, logging.WARNING, "", 0, message, (), None
-        )
-        record.extra_fields = extra_fields
-        self.logger.handle(record)
-
-    def error(self, message: str, **extra_fields) -> None:
-        record = logging.LogRecord(
-            self.logger.name, logging.ERROR, "", 0, message, (), None
-        )
-        record.extra_fields = extra_fields
-        self.logger.handle(record)

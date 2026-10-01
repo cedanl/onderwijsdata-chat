@@ -73,6 +73,8 @@ Optionele instellingen:
 |-----------|-----------|-----------|
 | `AVAILABLE_MODELS` | *(afgeleid uit API keys)* | Kommagescheiden lijst van modellen in de UI-picker, bijv. `azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o`. Gebruik dit als je meerdere modellen via één provider aanbiedt. |
 | `MAX_TOKENS` | `40960` | Maximum tokens per LLM-aanroep |
+| `TEMPERATURE` | `0` | Sampling-temperatuur van het model; 0 voor herhaalbare analyses |
+| `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
