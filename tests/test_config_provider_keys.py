@@ -73,3 +73,13 @@ class TestProviderApiKeyMapping:
         # The function lowercases the provider prefix before lookup
         assert get_required_api_key_env_var("ANTHROPIC/model") == "ANTHROPIC_API_KEY"
         assert get_required_api_key_env_var("OpenAI/model") == "OPENAI_API_KEY"
+
+
+def test_llm_calls_are_deterministic_by_default():
+    # #46: temperature stond op de provider-default 1.0, de grootste bron van runvariatie.
+    from agent.models import litellm_kwargs
+
+    kwargs = litellm_kwargs("anthropic/claude-sonnet-4-6")
+    assert kwargs["temperature"] == 0
+    assert kwargs["seed"] == 42
+    assert kwargs["drop_params"] is True  # a provider without seed support must not fail the call
