@@ -30,6 +30,30 @@ def label(startjaar: int) -> str:
     return f"{startjaar}/{(startjaar + 1) % 100:02d}"
 
 
+STUDIEJAAR_LABEL = "STUDIEJAAR_LABEL"
+
+
+def studiejaar_label(startjaar: int) -> str:
+    """Het volledige label van een DUO-studiejaar: 2021 is 2021/2022 (#115)."""
+    return f"{startjaar}/{startjaar + 1}"
+
+
+def met_studiejaarlabel(df: pd.DataFrame) -> pd.DataFrame:
+    """Zet naast een DUO-STUDIEJAAR het label, zodat het model de jaren niet zelf omrekent."""
+    if "STUDIEJAAR" not in df.columns or STUDIEJAAR_LABEL in df.columns:
+        return df
+    jaren = pd.to_numeric(df["STUDIEJAAR"], errors="coerce")
+    labels = jaren.map(lambda j: studiejaar_label(int(j)) if pd.notna(j) else None)
+    return df.assign(**{STUDIEJAAR_LABEL: labels})
+
+
+def met_labelkolom_in_groep(df: pd.DataFrame, group_by: list[str] | None) -> list[str] | None:
+    """Groepeer je op STUDIEJAAR, dan reist het label mee: het hangt er één-op-één aan."""
+    if group_by and "STUDIEJAAR" in group_by and STUDIEJAAR_LABEL in df.columns and STUDIEJAAR_LABEL not in group_by:
+        return [*group_by, STUDIEJAAR_LABEL]
+    return group_by
+
+
 def labels(startjaren) -> list[str]:
     return [label(j) for j in startjaren or ()]
 

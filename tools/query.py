@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import dekking, duo, instelling, store
+from . import dekking, duo, instelling, periode, store
 from .catalog import resources_met_kolom, rio_filters
 from .cbs import check_dimensions_pinned
 
@@ -210,6 +210,7 @@ def query_data(
     cells = duo.select_cells(duo.sentinel_cells(data_key), df)
     notes = []
     if group_by or aggregate:
+        group_by = periode.met_labelkolom_in_groep(df, group_by)
         err = _validate_aggregation(df, group_by, aggregate)
         if err:
             return err

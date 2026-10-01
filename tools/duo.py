@@ -18,6 +18,10 @@ OPLEIDINGSVORMEN = {"VT": "voltijd", "DT": "deeltijd", "DU": "duaal"}
 # Deze patches worden toegepast op column_definitions() tot de upstream fix.
 _GLOSSARY_PATCHES = {
     "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
+    periode.STUDIEJAAR_LABEL: (
+        "Volledig label van het studiejaar (2023 -> 2023/2024), afgeleid van STUDIEJAAR. "
+        "Gebruik dit label in tekst, tabellen en grafieken; reken jaren niet zelf om."
+    ),
     "LEERWEG": "Mbo-leerweg: BOL (beroepsopleidende leerweg) of BBL (beroepsbegeleidende leerweg).",
     # Ontbreekt upstream; zonder definitie raadde een model 'DT = duaal-tijd' (#172).
     "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: "
@@ -165,7 +169,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     df = store.get(key)
     if df is None:
         try:
-            df = _duo.load(dataset_id, resource)
+            df = periode.met_studiejaarlabel(_duo.load(dataset_id, resource))
         except Exception as e:
             try:
                 cats = _duo.catalog()

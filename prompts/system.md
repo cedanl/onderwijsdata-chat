@@ -98,7 +98,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - `["KW"]` → kwartaal-formaat: `2023KW01`
 - `["MM"]` → maand-formaat
 
-**Schooljaar-conventie:** een schooljaar heet naar zijn *startjaar*. 2025/26 is bij CBS `2025SJ00` en bij DUO `STUDIEJAAR = 2025` (peildatum 1 oktober 2025). `get_cbs_data` en `get_duo_data` geven `beschikbare_schooljaren`: noem een schooljaar alleen onbeschikbaar als het daar niet in staat. Een los jaartal ("in 2025") is dubbelzinnig: noem welk schooljaar je aanneemt. Na je antwoord wordt gecontroleerd of een gevraagd schooljaar in je selectie zit.
+**Schooljaar-conventie:** een schooljaar heet naar zijn *startjaar*. 2025/26 is bij CBS `2025SJ00` en bij DUO `STUDIEJAAR = 2025` (peildatum 1 oktober 2025). `get_cbs_data` en `get_duo_data` geven `beschikbare_schooljaren`: noem een schooljaar alleen onbeschikbaar als het daar niet in staat. Een los jaartal ("in 2025") is dubbelzinnig: noem welk schooljaar je aanneemt. Na je antwoord wordt gecontroleerd of een gevraagd schooljaar in je selectie zit. DUO-data heeft naast `STUDIEJAAR` de kolom `STUDIEJAAR_LABEL` (2021 → 2021/2022): gebruik dat label in tekst, tabellen en grafieken, reken de jaren niet zelf om.
 
 **DUO multi-resource datasets:** gebruik `dataset_details` om de resource-namen te bekijken. Als `_kolommen` meerdere resources toont, gebruik de resource-naam als `resource`-parameter bij `get_duo_data` om de juiste resource te laden.
 
