@@ -176,7 +176,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 > **Voer NOOIT zelf rekenwerk uit op data.** Tel geen rijen op, bereken geen gemiddelden, maak geen totalen in je hoofd. Gebruik altijd:
 > - `query_data` met `group_by` en `aggregate` voor standaard aggregaties (som, gemiddelde, telling, min, max per groep)
 >   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`
-> - `compute_kpi` voor een verschil of percentage over een reeks (`delta`, `pct_change`, `index`); neem de teruggegeven `value` letterlijk over.
+> - `compute_kpi` voor een verschil of percentage over een reeks (`delta`, `pct_change`, `index`) en voor de grootste daling of stijging tussen twee opeenvolgende jaren (`max_drop`, `max_rise`, met `tussen` voor de twee jaren); neem de teruggegeven `value` letterlijk over.
 > - `run_analysis(data_key=..., code=...)` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen.
 >   Gebruik `df` (het DataFrame uit data_key) en `store_get(key)` voor extra datasets. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
 >   Het resultaat (list of DataFrame) wordt automatisch opgeslagen met een `data_key` die je kunt doorpassen.

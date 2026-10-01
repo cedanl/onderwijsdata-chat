@@ -17,10 +17,15 @@ from . import store
 # aanleiding om iets anders te proberen.
 _ALLOWED_METRICS = frozenset({
     "last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index",
+    "max_drop", "max_rise",
 })
 
+# Grootste stap tussen twee opeenvolgende waarden: de uitkomst is een verschil, met de twee
+# rijen waartussen het zit (#116). Het model zoekt dat niet zelf in een tabel.
+_STEP_METRICS = {"max_drop": "daling", "max_rise": "stijging"}
+
 # Maten waarvan de uitkomst een verandering is; die krijgen een trendlabel.
-_TREND_METRICS = frozenset({"delta", "pct_change"})
+_TREND_METRICS = frozenset({"delta", "pct_change", "max_drop", "max_rise"})
 
 # Maten met een relatieve uitkomst worden op één decimaal getoond.
 _DECIMAL_METRICS = frozenset({"pct_change", "index", "mean"})
@@ -36,6 +41,20 @@ def _nl_format(value: float, decimals: int = 0) -> str:
 
 def _error(message: str) -> str:
     return json.dumps({"fout": message}, ensure_ascii=False)
+
+
+def _largest_step(df: pd.DataFrame, value_column: str, sort_column: str | None, metric: str):
+    """(verschil, van, naar) van de grootste daling of stijging tussen opeenvolgende rijen, of None."""
+    numeric = pd.to_numeric(df[value_column], errors="coerce")
+    rows = df.assign(_waarde=numeric).dropna(subset=["_waarde"])
+    steps = rows["_waarde"].diff().iloc[1:]
+    steps = steps[steps < 0] if metric == "max_drop" else steps[steps > 0]
+    if steps.empty:
+        return None
+    at = steps.idxmin() if metric == "max_drop" else steps.idxmax()
+    position = rows.index.get_loc(at)
+    label = (lambda i: rows.iloc[i][sort_column]) if sort_column else (lambda i: i + 1)
+    return float(steps.loc[at]), label(position - 1), label(position)
 
 
 def compute_kpi(
@@ -76,6 +95,12 @@ def compute_kpi(
 
     first, last = float(series.iloc[0]), float(series.iloc[-1])
 
+    step = None
+    if metric in _STEP_METRICS:
+        step = _largest_step(df, value_column, sort_column, metric)
+        if step is None:
+            return _error(f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op.")
+
     if metric in ("pct_change", "index") and first == 0:
         return _error(
             f"Kan '{metric}' niet berekenen: de eerste waarde in '{value_column}' is 0. "
@@ -92,6 +117,8 @@ def compute_kpi(
         "delta": last - first,
         "pct_change": (last / first - 1) * 100 if first else 0.0,
         "index": last / first * 100 if first else 0.0,
+        "max_drop": step[0] if step else 0.0,
+        "max_rise": step[0] if step else 0.0,
     }
     value = waarden[metric]
 
@@ -106,6 +133,7 @@ def compute_kpi(
         trend = f"{formatted}%" if metric == "pct_change" else formatted
         trend_direction = "up" if value > 0 else "down" if value < 0 else None
 
+    tussen = {"tussen": [str(step[1]), str(step[2])]} if step else {}
     return json.dumps(
         {
             "label": label,
@@ -113,6 +141,7 @@ def compute_kpi(
             "raw": value,
             "trend": trend,
             "trendDirection": trend_direction,
+            **tussen,
             "bron": {
                 "data_key": data_key,
                 "kolom": value_column,
