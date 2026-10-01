@@ -1327,3 +1327,9 @@ html.dark .suggested-btn:hover {
   .modal-table td { display: block; padding: 2px 0; border-bottom: none; }
   .modal-table a { overflow-wrap: anywhere; }
 }
+
+/* Unknown path / switched-off page (#223) */
+.notfound { max-width: 560px; margin: 0 auto; padding: 96px 24px; text-align: center; }
+.notfound h1 { font-size: 1.75rem; margin-bottom: 12px; }
+.notfound p { color: var(--muted-text); margin-bottom: 24px; }
+.notfound-link { color: var(--accent-text); font-weight: 600; text-decoration: underline; }

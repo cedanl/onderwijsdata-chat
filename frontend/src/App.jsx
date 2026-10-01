@@ -1,10 +1,11 @@
 import { Component, useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
 import RapportenPage from './pages/RapportenPage'
+import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
@@ -191,9 +192,9 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
             <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
-            {dashboardsEnabled && <Route path="/dashboards" element={<DashboardPage settings={settings} />} />}
+            <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} /> : <NotFoundPage unavailable />} />
             <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ErrorBoundary>
       </main>
