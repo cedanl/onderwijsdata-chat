@@ -290,6 +290,9 @@ _DETAILS_EXTRA = frozenset({"_resources", "teldefinitie"})
 
 def _build_details(entry: dict, dataset_id: str) -> str:
     details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v}
+    if details.get("_resources"):
+        # De index is wat get_duo_data(dataset, resource) verwacht (#173).
+        details["_resources"] = [{"index": i, **r} for i, r in enumerate(details["_resources"])]
     if not details:
         return json.dumps(
             {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar."},
@@ -357,6 +360,20 @@ def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
             except Exception:
                 return None
     return None
+
+
+def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
+    """(index, naam) van de resources van een DUO-dataset waarvan de naam de kolom noemt (#173).
+
+    Alleen namen, geen downloads: "OPLEIDINGSVORM" vindt "…inclusief opleidingsvorm…".
+    """
+    for entry in _rio_duo():
+        if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
+            return [
+                (i, r["naam"]) for i, r in enumerate(entry.get("_resources") or [])
+                if r.get("naam") and kolom.lower() in r["naam"].lower()
+            ]
+    return []
 
 
 def dataset_details(dataset_id: str) -> str:

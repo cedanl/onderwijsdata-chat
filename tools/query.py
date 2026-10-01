@@ -15,7 +15,7 @@ import pandas as pd
 from core.config import DUO_ROW_LIMIT
 
 from . import dekking, duo, instelling, store
-from .catalog import rio_filters
+from .catalog import resources_met_kolom, rio_filters
 from .cbs import check_dimensions_pinned
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
@@ -45,12 +45,25 @@ def _parse_filter_key(key: str) -> tuple[str, str]:
     return col, op
 
 
-def _apply_filters(df, filters: dict):
+def _resource_hint(known, col: str) -> str:
+    """Wijs bij een kolom die in deze DUO-resource ontbreekt naar de resource die hem wel noemt (#173)."""
+    if not known or known.bron != "duo":
+        return ""
+    andere = [(i, naam) for i, naam in resources_met_kolom(known.dataset, col) if i != known.resource]
+    if not andere:
+        return ""
+    voorstellen = "; ".join(
+        f"resource {i} ('{naam}'): get_duo_data('{known.dataset}', {i})" for i, naam in andere[:_SUGGESTIE_AANTAL]
+    )
+    return f". Een andere resource van deze dataset noemt '{col.lower()}' in de naam en bevat de kolom waarschijnlijk: {voorstellen}."
+
+
+def _apply_filters(df, filters: dict, known=None):
     for key, val in filters.items():
         col, op = _parse_filter_key(key)
 
         if col not in df.columns:
-            return None, f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}"
+            return None, f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}{_resource_hint(known, col)}"
         if op not in _SUPPORTED_OPS:
             return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
 
@@ -154,7 +167,7 @@ def query_data(
 
     if filters:
         origineel = df
-        df, err = _apply_filters(df, filters)
+        df, err = _apply_filters(df, filters, store.meta(data_key))
         if err:
             return err
         if len(df) == 0:
