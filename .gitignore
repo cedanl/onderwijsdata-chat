@@ -40,3 +40,6 @@ test-results/
 # SOPS secrets (plaintext templates, encrypted files)
 *secret_orig.yaml
 *secret.yaml
+
+# Eval-uitvoer hoort in CI-artifacts, niet in git (#208)
+eval_results/
