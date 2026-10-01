@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "Als u deze software gebruikt in onderzoek, citeer haar dan zo."
+title: onderwijsdata-chat
+type: software
+authors:
+  - family-names: CEDANL
+    given-names: Team
+version: 1.8.6
+date-released: 2026-09-22
+license: EUPL-1.2
+repository-code: https://github.com/cedanl/onderwijsdata-chat
