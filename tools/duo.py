@@ -180,6 +180,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id),
             periodekolom=kolom, schooljaren=periode.dekking(df, "duo", kolom),
             instellingskolom=codekolom, instellingen=instelling.dekking(df, codekolom),
+            laad=("get_duo_data", {"dataset_id": dataset_id, "resource": resource}),
         )
         store.put(key, df, meta)
         # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en
