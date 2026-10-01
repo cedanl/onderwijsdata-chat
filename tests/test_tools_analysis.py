@@ -165,3 +165,12 @@ def test_broken_figure_gets_no_rows_so_the_export_refuses_it():
         data_key="test:an",
     )
     assert not (fig.layout.meta or {}).get("data")
+
+
+def test_figure_rows_turn_nan_into_an_empty_value():
+    _put("test:an", [{"K": "a", "N": 1.0}, {"K": "b", "N": float("nan")}])
+    _, fig = run_analysis(
+        code="figure = px.bar(df, x='K', y='N')\nresult = {'ok': True}",
+        data_key="test:an",
+    )
+    assert fig.layout.meta["data"] == [{"K": "a", "N": 1.0}, {"K": "b", "N": None}]

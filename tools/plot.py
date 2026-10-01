@@ -1,5 +1,6 @@
 import json as _json
 import logging
+import math
 import urllib.request
 
 import plotly.express as px
@@ -196,7 +197,7 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
     grouped = len(traces) > 1
     rows = []
     for trace in traces:
-        for x_val, y_val in zip(trace.x, trace.y):
+        for x_val, y_val in zip(trace.x, trace.y, strict=True):
             row = {"reeks": trace.name or ""} if grouped else {}
             rows.append({**row, x_name: _plain(x_val), y_name: _plain(y_val)})
     fig.update_layout(meta={"data": rows, "x": x_name, "y": y_name})
