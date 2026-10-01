@@ -282,3 +282,18 @@ def test_loaders_record_the_call_that_a_snippet_needs():
     assert store.meta("rio:erkenningen:status=actief").laad == (
         "get_rio_data", {"resource": "erkenningen", "filters": {"status": "actief"}})
     store.clear()
+
+
+def test_duo_snippet_adds_the_studiejaar_label_the_app_adds(clean_packages):
+    snippet = generate("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+    namespace: dict = {}
+    # De dubbelganger levert JAAR/AANTAL; zonder STUDIEJAAR blijft het label achterwege.
+    exec(snippet, namespace)
+    assert "STUDIEJAAR_LABEL" not in namespace["df"].columns
+
+    import riodata.duo
+    riodata.duo.load = lambda *a, **k: pd.DataFrame({"STUDIEJAAR": [2021, 2025]})
+    namespace = {}
+    exec(snippet, namespace)
+    assert namespace["df"]["STUDIEJAAR_LABEL"].tolist() == ["2021/2022", "2025/2026"]
+

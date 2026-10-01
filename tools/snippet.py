@@ -33,7 +33,10 @@ def _lit(value) -> str:
 
 def _duo_laadregels(args: dict) -> list[str]:
     return ["from riodata import duo", "",
-            f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})"]
+            f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})",
+            # De app voegt dit label toe (#115); analysecode mag het gebruiken.
+            'if "STUDIEJAAR" in df.columns:',
+            '    df["STUDIEJAAR_LABEL"] = df["STUDIEJAAR"].map(lambda j: f"{j}/{j + 1}")']
 
 
 def _cbs_laadregels(args: dict) -> list[str]:
