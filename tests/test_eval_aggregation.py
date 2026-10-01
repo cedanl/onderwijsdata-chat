@@ -12,7 +12,6 @@ Draai met: uv run pytest tests/test_eval_aggregation.py -v -s
 import asyncio
 import json
 import os
-import re
 
 import pytest
 from dotenv import load_dotenv
@@ -20,7 +19,7 @@ from riodata import duo
 
 from core.config import MODEL, get_required_api_key_env_var
 
-_EVAL_PATTERN_LOOKAHEAD = 40  # max. tekens tussen jaartal en waarde in het antwoord
+from .eval_assertions import ungrounded_numbers, unpaired_years
 
 # Ground truth: bereken de werkelijke sommen met pandas
 _DATASET_ID = "p02ho1ejrs"
@@ -88,19 +87,12 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
     truth = _ground_truth()
 
     # 2a. Paarsgewijs: jaar én waarde moeten samen voorkomen
-    for year, expected in truth.items():
-        pattern = rf"{year}[^\d]{{0,{_EVAL_PATTERN_LOOKAHEAD}}}{expected:,}".replace(",", r"[.\s]?")
-        assert re.search(pattern, answer), \
-            f"Jaar {year} niet gekoppeld aan {expected:,} in antwoord"
+    assert not (problems := unpaired_years(answer, truth)), problems
 
     # 2b. Geen ongedekte getallen: elk getal >999 moet uit tool-output komen
-    tool_results = [
+    tool_payloads = [
         tc.get("output") or tc.get("input", {})
         for tc in events if tc.get("type") in ("tool_end", "tool_start")
     ]
-    tool_numbers = set()
-    for tc in tool_results:
-        tool_numbers |= set(re.findall(r"\d{4,}", json.dumps(tc)))
-    answer_numbers = set(re.findall(r"\d{4,}", answer.replace(".", "")))
-    ongedekt = answer_numbers - tool_numbers - {str(y) for y in range(1990, 2040)}
+    ongedekt = ungrounded_numbers(answer, tool_payloads)
     assert not ongedekt, f"Getallen zonder tool-herkomst: {ongedekt}"
