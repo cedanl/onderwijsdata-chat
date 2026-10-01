@@ -107,7 +107,7 @@ function ReasoningPanel({ tools, isDone }) {
       {open && (
         <div className="reasoning-content">
           {tools.map((t, i) => (
-            <div key={t.name || i} className="reasoning-step">
+            <div key={`${t.name}-${i}`} className="reasoning-step">
               <div className={`reasoning-step-dot${t.done ? ' done' : ''}`} />
               <span>{t.label}</span>
             </div>
@@ -116,7 +116,7 @@ function ReasoningPanel({ tools, isDone }) {
             <div className="reasoning-snippets">
               {tools.map((t, i) => (
                 t.snippet && (
-                  <div key={t.name || i} className="reasoning-snippet-block">
+                  <div key={`${t.name}-${i}`} className="reasoning-snippet-block">
                     <div className="reasoning-snippet-label">{t.label}</div>
                     <SyntaxHighlighter
                       language="python"

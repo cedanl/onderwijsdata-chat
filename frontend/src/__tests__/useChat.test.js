@@ -291,3 +291,49 @@ describe('useChat busy refusal (#145)', () => {
     expect(chat.messages.some(m => m.role === 'user' && m.content === 'Eerste vraag')).toBe(true)
   })
 })
+
+describe('useChat reasoning steps (#76)', () => {
+  it('keeps the tool steps of consecutive model rounds in one message', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'search_catalog', label: 'Catalogus' })
+      ws.emit({ type: 'tool_end', name: 'search_catalog' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'get_duo_data', label: 'DUO' })
+      ws.emit({ type: 'tool_end', name: 'get_duo_data', snippet: 'df = 1' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Antwoord.' })
+      ws.emit({ type: 'message_end', content: 'Antwoord.' })
+    })
+    const [msg, ...rest] = assistantMessages()
+    expect(rest).toHaveLength(0)
+    expect(msg.tools.map(t => t.name)).toEqual(['search_catalog', 'get_duo_data'])
+    expect(msg.tools.every(t => t.done)).toBe(true)
+    expect(msg.tools[1].snippet).toBe('df = 1')
+    expect(msg.content).toBe('Antwoord.')
+  })
+
+  it('starts a new message after a round that wrote text', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Even kijken.' })
+      ws.emit({ type: 'tool_start', name: 'search_catalog', label: 'Catalogus' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Klaar.' })
+    })
+    expect(assistantMessages()).toHaveLength(2)
+  })
+
+  it('finishes the right step when the same tool runs twice', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Query' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Query' })
+      ws.emit({ type: 'tool_end', name: 'query_data', snippet: 'eerste' })
+    })
+    expect(assistantMessages()[0].tools.map(t => [t.done, t.snippet ?? null])).toEqual([[true, 'eerste'], [false, null]])
+  })
+})
