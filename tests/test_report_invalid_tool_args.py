@@ -159,6 +159,17 @@ def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
         _run_generate()
 
 
+def test_generate_reads_a_report_with_a_raw_newline_in_a_string(monkeypatch):
+    # #166: een ruwe regeleinde in de conclusie gaf "Invalid control character"; de inhoud is gaaf.
+    raw = ('{"title": "T", "onderzoeksvraag": "Instroom", "beantwoordt": ["Instroom per jaar"], '
+           '"conclusie": "Het waren er 20.\nTweede regel."}')
+    _make_generate(monkeypatch, [StreamResult(text=raw, tool_calls=[])])
+
+    spec, _ = _run_generate()
+
+    assert spec.conclusie == "Het waren er 20.\nTweede regel."
+
+
 def test_generate_refuses_an_empty_shell(monkeypatch):
     # #189: ongeldige of lege modeluitvoer gaf een rapport met alleen vraag en bron.
     shell = StreamResult(text="Hier is het rapport.", tool_calls=[])
