@@ -226,6 +226,44 @@ def create_plot(
     return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig
 
 
+def _axis_name(fig: go.Figure, axis: str, default: str) -> str:
+    title = fig.layout[axis].title.text
+    return title or default
+
+
+def with_export_rows(fig: go.Figure) -> go.Figure:
+    """Zet de getekende punten als rijen in layout.meta.data (#217).
+
+    De CSV-export leest die rijen als de stabiele route; zonder vallen figuren uit
+    run_analysis terug op de traces, waar Plotly arrays binair serialiseert.
+    Een figuur waarvan x en y niet gelijk zijn, krijgt geen rijen: de export weigert
+    hem dan met een reden in plaats van een CSV naast een kapotte grafiek.
+    """
+    if fig.layout.meta and fig.layout.meta.get("data"):
+        return fig
+    traces = [t for t in fig.data if getattr(t, "x", None) is not None and getattr(t, "y", None) is not None]
+    if not traces or any(len(t.x) != len(t.y) or len(t.y) == 0 for t in traces):
+        return fig
+
+    x_name = _axis_name(fig, "xaxis", "categorie")
+    y_name = _axis_name(fig, "yaxis", "waarde")
+    grouped = len(traces) > 1
+    rows = []
+    for trace in traces:
+        for x_val, y_val in zip(trace.x, trace.y, strict=True):
+            row = {"reeks": trace.name or ""} if grouped else {}
+            rows.append({**row, x_name: _plain(x_val), y_name: _plain(y_val)})
+    fig.update_layout(meta={"data": rows, "x": x_name, "y": y_name})
+    return fig
+
+
+def _plain(value):
+    """numpy-scalar naar gewone Python-waarde, NaN naar None."""
+    if hasattr(value, "item"):
+        value = value.item()
+    return None if isinstance(value, float) and math.isnan(value) else value
+
+
 def _load_geojson(level: str) -> dict:
     url = _GEOJSON_URLS[level]
     if url not in _GEOJSON_CACHE:

@@ -26,7 +26,7 @@ import {
 import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
-import { figureToCsv } from '../figureCsv'
+import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
@@ -708,9 +708,15 @@ function PlotlyFigure({ figureJson, label }) {
     autosize: true,
   }
   const csv = figureToCsv(figure)
+  const csvProblem = figureCsvProblem(figure)
   return (
     <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {csvProblem && (
+        <div role="alert" style={{ fontSize: '.75rem', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
+          Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
+        </div>
+      )}
       {csv && (
         <button type="button"
           className="csv-download-btn"

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { figureToCsv } from '../figureCsv'
+import { figureToCsv, figureCsvProblem } from '../figureCsv'
 
 const lines = csv => csv.split('\n')
 
@@ -104,5 +104,60 @@ describe('figureToCsv', () => {
   it('returns null for a figure without data', () => {
     expect(figureToCsv({ data: [] })).toBeNull()
     expect(figureToCsv({ data: [{ x: [] }] })).toBeNull()
+  })
+
+  describe('binary Plotly arrays (#217)', () => {
+    // numpy int16 [24169, 24740] / int16 [1, -2, 300] as plotly.py serialises them
+    const i2 = (...n) => ({ dtype: 'i2', bdata: btoa(String.fromCharCode(...new Uint8Array(new Int16Array(n).buffer))) })
+    const f8 = (...n) => ({ dtype: 'f8', bdata: btoa(String.fromCharCode(...new Uint8Array(new Float64Array(n).buffer))) })
+
+    it('decodes a typed y array instead of exporting empty cells', () => {
+      const figure = { data: [{ type: 'bar', x: ['Avans', 'Fontys'], y: i2(24169, 24740) }], layout: { meta: { x: 'categorie', y: 'Aantal' } } }
+      expect(lines(figureToCsv({ ...figure, layout: {} }))).toEqual(['categorie;waarde', 'Avans;24169', 'Fontys;24740'])
+    })
+
+    it('decodes typed x and floats, and keeps null gaps', () => {
+      const figure = { data: [{ x: i2(2021, 2022, 2023), y: [1.5, null, 3] }] }
+      expect(lines(figureToCsv(figure))).toEqual(['categorie;waarde', '2021;1.5', '2022;', '2023;3'])
+      expect(lines(figureToCsv({ data: [{ x: ['a'], y: f8(0.25) }] }))).toEqual(['categorie;waarde', 'a;0.25'])
+    })
+
+    it('decodes grouped traces', () => {
+      const figure = { data: [{ name: 'VT', x: ['a', 'b'], y: i2(1, 2) }, { name: 'DT', x: ['a', 'b'], y: i2(3, 4) }], layout: { meta: { x: 'SUB', y: 'AANTAL' } } }
+      expect(lines(figureToCsv(figure))).toEqual(['SUB;VT;DT', 'a;1;3', 'b;2;4'])
+    })
+
+    it('treats undecodable binary as a problem, not as an empty export', () => {
+      const figure = { data: [{ x: ['a'], y: { dtype: 'zz', bdata: 'AA==' } }] }
+      expect(figureToCsv(figure)).toBeNull()
+      expect(figureCsvProblem(figure)).toMatch(/ontbreken/)
+    })
+  })
+
+  describe('validation (#217)', () => {
+    const problem = trace => figureCsvProblem({ data: [trace] })
+
+    it('refuses x and y of different length', () => {
+      const figure = { data: [{ x: ['a', 'b'], y: [1] }] }
+      expect(figureToCsv(figure)).toBeNull()
+      expect(problem(figure.data[0])).toMatch(/niet even lang/)
+    })
+
+    it('refuses an empty or all-null y', () => {
+      expect(problem({ x: ['a'], y: [] })).toMatch(/ontbreken/)
+      expect(problem({ x: ['a', 'b'], y: [null, null] })).toMatch(/leeg/)
+    })
+
+    it('refuses a non-numeric y', () => {
+      expect(problem({ x: ['a'], y: ['veel'] })).toMatch(/numeriek/)
+    })
+
+    it('accepts a valid figure, a pie, a map and a figure with tool rows', () => {
+      expect(problem({ x: ['a'], y: [1] })).toBeNull()
+      expect(problem({ type: 'pie', labels: ['a'], values: [1] })).toBeNull()
+      expect(problem({ type: 'choroplethmap', locations: ['PV20'], z: [12] })).toBeNull()
+      const withRows = { data: [{ x: ['a', 'b'], y: [1] }], layout: { meta: { data: [{ a: 1 }] } } }
+      expect(figureCsvProblem(withRows)).toBeNull()
+    })
   })
 })

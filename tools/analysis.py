@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import dekking, store
+from . import dekking, plot, store
 
 logger = logging.getLogger(__name__)
 
@@ -159,5 +159,5 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):
-        return text, figure
+        return text, plot.with_export_rows(figure)
     return text
