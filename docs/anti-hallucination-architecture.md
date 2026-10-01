@@ -2,154 +2,63 @@
 
 ## Het probleem
 
-Statistiekbureaus (ONS, Statistics Canada) hebben hun RAG-chatbots stilgezet omdat ze oncontroleerbare getallen genereerden. Dit gebeurt omdat LLMs getallen kunnen "verzinnen" wanneer ze niet opgelet worden.
+Statistiekbureaus (ONS, Statistics Canada) hebben hun RAG-chatbots stilgezet omdat die getallen gaven die niet te controleren waren. Een taalmodel kan een getal verzinnen, afronden, uit een andere selectie halen of bij het verkeerde jaar zetten. Voor instellingen die op cijfers worden afgerekend is dat niet acceptabel.
 
-**Voorbeeldhallucinatie:**
-```
-Q: "Hoeveel HBO-studenten volgen Informatica?"
-A: "Ongeveer 15.000 HBO-studenten volgen Informatica in Nederland."
-     ^^^^^^^^^^
-     Verzonnengetal — niet uit data
-```
+Dit systeem **kan niet uitsluiten** dat een model zoiets probeert. Het zorgt ervoor dat de berekening in code gebeurt en dat een antwoord dat niet bij de data past wordt gevangen, in plaats van dat het de gebruiker bereikt. Op deze pagina staat welke lagen dat doen, en wat ze **niet** dekken.
 
-Dit risico is onacceptabel voor instellingen die op cijfers worden afgerekend.
+## Drie lagen
 
-## Onze aanpak: 4-laag verdediging
+### 1. Data blijft in code
 
-Dit systeem maakt het onmogelijk voor de LLM om getallen te verzinnen. Elke laag blokkeert een ander aanvalspad.
+De data staat in een store (`tools/store.py`). Het model krijgt na het laden een `data_key`, het schema en een korte preview (`get_cbs_data`, `get_duo_data`, `get_rio_data`). De rijen die het model daarna ziet, vraagt het zelf op met `query_data`; de selectie en de aggregatie gebeuren in code (`tools/query.py`).
 
-### Laag 1: data_key — geen datarijen in context
+Per key bewaart de store ook wat er over de data bekend is (`KeyMeta`): bron, dataset, welke schooljaren en instellingen erin zitten, of de selectie volledig is, en welke laadaanroep hem maakte. De controles in laag 3 gebruiken dat.
 
-**Wat:** De LLM krijgt nooit daadwerkelijke datawaarden te zien. In plaats daarvan krijgt het alleen een referentie (`data_key`).
+### 2. Rekenen gebeurt in code
 
-**Hoe:**
-```python
-# LLM sees this:
-"Please analyze the data in data_key='duo:p02ho1ejrs:resource_0'"
+- `query_data` met `group_by` en `aggregate` voor sommen, gemiddelden, tellingen, minima en maxima.
+- `compute_kpi` (`tools/kpi.py`) voor een verschil, percentage, index of de grootste daling of stijging. Het model neemt de teruggegeven waarde over; het rekent niet zelf.
+- `run_analysis` (`tools/analysis.py`) voor wat daar niet mee kan, in een afgeschermde sandbox. Een AST-controle weigert een script met een literal datastructuur van zes of meer getallen (overgetypte data) en een script dat geen data leest (`df` of `store_get`).
 
-# LLM does NOT see:
-# AANTAL_INGESCHREVENEN  STUDIEJAAR  ONDERDEEL
-# 2500                   2023        HBO
-# 3100                   2024        HBO
-# ...
-```
+### 3. Het antwoord wordt gecontroleerd tegen de data
 
-**Effect:** Geen getallen om op te pikken of te "veranderen".
+Na elk chatantwoord draaien deze controles (samengevoegd in `check` in `agent/run.py`). Vinden ze iets, dan trekt de app het antwoord in en krijgt het model **één** correctieronde met wat er niet klopte. Klopt het daarna nog niet, dan blijft het probleem zichtbaar bij het antwoord.
 
----
+| Controle | Module | Wat het toetst |
+|---|---|---|
+| Getallen | `agent/grounding.py` | Elk getal van vier of meer cijfers, en elk percentage, staat in de toolresultaten of in eerdere berichten van het gesprek. |
+| Selectie | `agent/selectie.py` | Een gevraagd schooljaar of een genoemde instelling zit in de selectie waarop het antwoord rust; een telling of "niet gevonden" rust niet op een afgekapte selectie. |
+| Labels | `agent/labels.py` | Opleidingsvorm (VT, DT, DU), dataset-ID en teleenheid (personen of inschrijvingen) kloppen met de bron. |
+| Binding | `agent/binding.py` | Een getal staat bij het jaar en de instelling van zijn eigen rij, niet bij een ander jaar uit dezelfde selectie. |
 
-### Laag 2: compute_kpi — server berekent, model refereert
+Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonder conclusie, reikwijdte of bevinding wordt niet getoond, en tekst die afwezigheid van data claimt naast een gevulde grafiek wordt geweigerd. Voor een dashboard komen KPI-waarden alleen door als ze uit `compute_kpi` komen, en de tekst gaat door dezelfde getalcontrole (`_check_number_sourcing` in `agent/dashboard.py`).
 
-**Wat:** De LLM roept een tool aan, maar krijgt niet de ruwe data terug — alleen het antwoord.
+## Wat dit niet dekt
 
-**Hoe:**
-```python
-# LLM calls:
-compute_kpi(
-    data_key="duo:p02ho1ejrs:resource_0",
-    metric="sum",
-    value_column="AANTAL_INGESCHREVENEN",
-    group_by="ONDERDEEL"
-)
+De controles zijn code, geen begrip. Ze vangen een bepaalde klasse fouten en laten andere door:
 
-# Server returns:
-{
-    "HBO": 5600,
-    "WO": 8900
-}
+- **Kleine getallen en jaartallen.** Alleen getallen van vier of meer cijfers, en percentages, worden getoetst.
+- **Een getal dat ergens anders in de data staat.** Staat 27.135 in de data, dan is het getal gedekt, ook als het model het bij de verkeerde groep noemt. De bindingscontrole vangt dat alleen als de zin of tabelrij precies één jaar of instelling noemt.
+- **Interpretatie.** Een conclusie die niet volgt uit de cijfers, of een causaal verband dat de data niet draagt, is geen getal en wordt niet gecontroleerd.
+- **Meerdere teldefinities.** Mengt een beurt personen en inschrijvingen (bijvoorbeeld p01 en p03), dan slaat de teleenheidcontrole bewust over.
+- **De bron zelf.** CBS-cijfers kunnen voorlopig zijn en later worden herzien; DUO-cijfers kennen onderdrukte cellen. De app meldt dat, maar controleert niet of de bron klopt.
 
-# LLM then outputs:
-"The total is 5600 HBO students."
-#               ^^^^
-#               Dit getal is uit de tool, niet verzonnengetal
-```
+Een controle die iets mist is dus mogelijk. Daarom is elk antwoord herleidbaar: de redeneerkaart toont per stap de tool en de code, en elke analyse is als Python-snippet te exporteren (zie [Reproduceerbare analyses](reproducibility.md)).
 
-**Effect:** Getallen komen altijd uit gestructureerde tool-respons, nooit uit context of hint.
+## Tests
 
----
-
-### Laag 3: AST-check — 6+ cijfers in output geweigerd
-
-**Wat:** Model-output wordt geparst. Alle literal getallen ≥6 cijfers worden geweigerd.
-
-**Hoe:**
-```python
-# Model tries to output:
-"The country's total revenue is 3,500,000 euros."
-
-# AST-parser sees: 3500000 (7 digits)
-# Rejected: "Getallen ≥6 cijfers alleen via tools toestaan"
-
-# Allowed:
-"The country has 5600 HBO students."
-                ^^^^
-                4 digits, OK — sowieso onwaarschijnlijk verzonnengetal
-```
-
-**Effect:** Model kan niet casually grote getallen noemen.
-
----
-
-### Laag 4: _check_number_sourcing — elk getal traceerbaar
-
-**Wat:** Elk getal in de uiteindelijke response wordt geverifieerd: Het MOET afkomstig zijn van een tool-aanroep.
-
-**Hoe:**
-```
-Response: "HBO had 5600 students in 2023, WO had 8900."
-Numbers:  5600, 8900
-
-Trace:
-- 5600 → Found in compute_kpi output ✓
-- 8900 → Found in compute_kpi output ✓
-
-All numbers sourced. ✓
-```
-
-Zou dit mislukken:
-```
-Response: "HBO had 5600 students, but I estimate WO could reach 9500 by 2025."
-Numbers:  5600, 9500
-
-Trace:
-- 5600 → Found in compute_kpi output ✓
-- 9500 → NOT in any tool output ✗
-
-Rejected: "9500 is not sourced from a tool call"
-```
-
-**Effect:** Geen speculatie, geen voorzeggen, geen gissingen — alleen data.
-
----
-
-## Resultaat: onbreekbare contracten
-
-| Scenario | Laag 1 | Laag 2 | Laag 3 | Laag 4 | Uitkomst |
-|----------|--------|---------|---------|---------|----------|
-| Model verzint "10000" | ✓ Ziet het getal niet | — | ✗ 5 digits OK | — | **Geweigerd door laag 3** |
-| Model verzint "1000000" | ✓ Ziet het getal niet | — | — | ✗ Niet getraced | **Geweigerd door laag 4** |
-| Model refereert aan tool output | ✓ Ziet key | ✓ Krijgt output | ✓ OK | ✓ Getraced | **Aanvaard** |
-
-## Implementatie
-
-**Files:**
-- `tools/cbs.py`, `tools/duo.py` — Laag 1: data_key loading
-- `tools/dashboard.py` — Laag 2: compute_kpi tool
-- `agent/run.py` — Laag 3: AST-check op output
-- `tools/cbs.py` — Laag 4: _check_number_sourcing validation
-
-**Tests:**
-- `tests/test_eval_*.py` — Eval-suite verifieert dat uitvoer alleen getallen uit tools bevat
+- `tests/test_grounding.py`, `tests/test_selectie.py`, `tests/test_labels.py`, `tests/test_binding.py`: de controles per module.
+- `tests/test_report_checks.py`: de rapportcontroles.
+- `tests/test_tools_kpi.py`, `tests/test_tools_analysis.py`: de rekentools en de sandbox.
+- `tests/test_eval_*.py`: evaluaties met een echt model tegen een ground truth; die draaien niet in CI (ze hebben een API-key nodig).
 
 ## Voor auditors
 
-U kunt dit zelf verifiëren:
+U kunt dit zelf nagaan:
 
-1. **Vraag de Python-snippet:** Elke analyse exporteert als `.py` bestand
-2. **Voer het uit:** `python analyse.py`
-3. **Vergelijk getallen:** Uw output matcht precies wat de app rapporteerde
-
-Geen "zwarte doos", geen speculatie. Alleen data.
+1. **Vraag de Python-snippet** bij een analyse; de redeneerkaart toont hem.
+2. **Voer hem uit.** Hij begint met het laden van de bron, met bron-ID en filters.
+3. **Vergelijk de getallen** met wat de app rapporteerde.
 
 ---
 
