@@ -234,6 +234,14 @@ def _task_busy(current_task: asyncio.Task | None) -> bool:
     return current_task is not None and not current_task.done()
 
 
+BUSY_MESSAGE = "Er loopt nog een antwoord. Stop dat eerst of wacht even."
+
+
+async def _reject_busy(emit) -> None:
+    """A request that arrives during a run is refused out loud, never dropped (#145)."""
+    await emit({"type": "busy", "message": BUSY_MESSAGE})
+
+
 def _handle_stop(session: dict) -> None:
     stop_event = session.get("stop_event")
     if stop_event:
@@ -250,6 +258,7 @@ async def _handle_message(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
     if _task_busy(current_task):
+        await _reject_busy(emit)
         return current_task
     content = msg.get("content", "").strip()
     if not content:
@@ -269,6 +278,7 @@ async def _handle_clarification(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
     if _task_busy(current_task):
+        await _reject_busy(emit)
         return current_task
     choice = msg.get("choice", "")
     model = session.get("current_model")
@@ -283,6 +293,7 @@ async def _handle_generate_dashboard(
         await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
         return current_task
     if _task_busy(current_task):
+        await _reject_busy(emit)
         return current_task
     model = session["chat_settings"].get("model") or None
     return asyncio.create_task(_generate_dashboard(session, emit, model))
@@ -292,6 +303,7 @@ async def _handle_generate_report(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
     if _task_busy(current_task):
+        await _reject_busy(emit)
         return current_task
     model = session["chat_settings"].get("model") or None
     author = msg.get("author")
@@ -305,6 +317,7 @@ async def _handle_refresh_dashboard(
         await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
         return current_task
     if _task_busy(current_task):
+        await _reject_busy(emit)
         return current_task
     recipe = msg.get("recipe") or []
     figure_recipes = msg.get("figure_recipes") or []

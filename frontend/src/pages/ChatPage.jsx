@@ -144,10 +144,17 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, thinking, connected, resetting, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast } = useChat({
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
+
+  // The server refused the question because a run was going: the typed text comes back (#145).
+  useEffect(() => {
+    if (rejectedDraft === null) return
+    setInput(current => current || rejectedDraft)
+    clearRejectedDraft()
+  }, [rejectedDraft, clearRejectedDraft])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [showSources, setShowSources] = useState(false)

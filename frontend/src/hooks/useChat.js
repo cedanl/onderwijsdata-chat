@@ -35,6 +35,7 @@ export function useChat({ onUnauthorized } = {}) {
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
   const [resetting, setResetting] = useState(false)
+  const [rejectedDraft, setRejectedDraft] = useState(null)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
@@ -45,6 +46,7 @@ export function useChat({ onUnauthorized } = {}) {
   const retryTimeoutRef = useRef(null)
   const pendingHistoryRef = useRef(null)
   const busyRef = useRef(false)
+  const lastSentRef = useRef(null)
   const resettingRef = useRef(false)
   const nextId = () => ++idRef.current
 
@@ -101,7 +103,19 @@ export function useChat({ onUnauthorized } = {}) {
       toast(ev) {
         addToast(ev.message, ev.level || 'info')
       },
+      // The server refused a question because a run is still going (#145): say so,
+      // take the question back out of the transcript and give it back to the input.
+      busy(ev) {
+        addToast(ev.message, 'warning')
+        const sent = lastSentRef.current
+        lastSentRef.current = null
+        setThinking(false)
+        if (!sent) return
+        setMessages(prev => prev.filter(m => m.id !== sent.id))
+        if (sent.draft) setRejectedDraft(sent.content)
+      },
       message_start() {
+        lastSentRef.current = null
         setThinking(false)
         const msgId = nextId()
         currentMsgRef.current = msgId
@@ -274,7 +288,9 @@ export function useChat({ onUnauthorized } = {}) {
     busyRef.current = true
     setBusy(true)
     setThinking(true)
-    setMessages(prev => [...prev, { id: nextId(), role: 'user', content, done: true }])
+    const id = nextId()
+    lastSentRef.current = { id, content, draft: true }
+    setMessages(prev => [...prev, { id, role: 'user', content, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
     return true
   }, [])
@@ -283,7 +299,9 @@ export function useChat({ onUnauthorized } = {}) {
     if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return
     busyRef.current = true
     setBusy(true)
-    setMessages(prev => [...prev, { id: nextId(), role: 'user', content: choice, done: true }])
+    const id = nextId()
+    lastSentRef.current = { id, content: choice, draft: false }
+    setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
   }, [])
 
@@ -317,6 +335,8 @@ export function useChat({ onUnauthorized } = {}) {
     wsRef.current.send(JSON.stringify({ action: 'generate_report', author }))
   }, [])
 
+  const clearRejectedDraft = useCallback(() => setRejectedDraft(null), [])
+
   const clearReport = useCallback(() => {
     reportingRef.current = false
     setReportBusy(false)
@@ -341,5 +361,5 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [clear])
 
-  return { messages, busy, thinking, toasts, connected, resetting, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast }
 }

@@ -75,3 +75,36 @@ def test_reset_session_clears_turns_but_keeps_settings():
     assert "_clarified" not in session
     assert session["username"] == "alice"
     assert session["chat_settings"] == {"model": "anthropic/claude-opus", "instelling": "RUG"}
+
+
+@pytest.mark.parametrize("action,handler,args", [
+    ("message", "_handle_message", ({"content": "Tweede vraag"},)),
+    ("clarification_choice", "_handle_clarification", ({"choice": "2024"},)),
+    ("generate_report", "_handle_generate_report", ({},)),
+    ("generate_dashboard", "_handle_generate_dashboard", ()),
+    ("refresh_dashboard", "_handle_refresh_dashboard", ({},)),
+])
+def test_a_request_during_a_run_is_answered_with_busy(action, handler, args):
+    """#145: the server dropped it without a word, so the chat looked hung."""
+    import asyncio
+
+    from routes import chat
+
+    async def scenario():
+        running = asyncio.create_task(asyncio.sleep(10))
+        events: list[dict] = []
+
+        async def emit(event):
+            events.append(event)
+
+        try:
+            session = chat._new_session()
+            returned = await getattr(chat, handler)(*args, session, emit, running)
+        finally:
+            running.cancel()
+        return returned, running, events
+
+    returned, running, events = asyncio.run(scenario())
+
+    assert returned is running
+    assert events == [{"type": "busy", "message": chat.BUSY_MESSAGE}]
