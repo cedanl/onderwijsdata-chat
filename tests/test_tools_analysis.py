@@ -63,14 +63,21 @@ def test_dataframe_result_converted():
     assert len(parsed["rijen"]) == 2
 
 
-def test_no_data_key_uses_empty_namespace():
-    result = run_analysis(code="result = {'sum': 1 + 2}")
-    assert isinstance(result, str)
+def test_no_data_key_leaves_df_undefined_but_store_get_works():
+    _put("test:an", [{"N": 1}, {"N": 2}])
+    result = run_analysis(code="result = {'sum': int(store_get('test:an')['N'].sum())}")
     assert json.loads(result)["sum"] == 3
 
 
+def test_script_without_a_data_source_is_refused():
+    # #11: a script that neither reads df nor store_get does not compute on data.
+    result = run_analysis(code="result = {'sum': 1 + 2}")
+    assert "leest geen data" in result
+    assert "df" in result and "store_get" in result
+
+
 def test_missing_data_key_returns_error():
-    result = run_analysis(code="result = 1", data_key="bestaat:niet")
+    result = run_analysis(code="result = len(df)", data_key="bestaat:niet")
     assert isinstance(result, str)
     assert "niet gevonden" in result.lower() or "bestaat:niet" in result
 
@@ -89,7 +96,7 @@ def test_syntax_error_returns_traceback():
 
 
 def test_runtime_error_returns_traceback():
-    result = run_analysis(code="result = 1 / 0")
+    result = run_analysis(code="result = 1 / 0 + len(df)")
     assert isinstance(result, str)
     assert "ZeroDivisionError" in result or "division" in result.lower()
 
@@ -172,7 +179,7 @@ def test_figure_rows_split_grouped_traces_by_series():
 def test_broken_figure_gets_no_rows_so_the_export_refuses_it():
     _put("test:an", [{"K": "a", "N": 1}])
     _, fig = run_analysis(
-        code="figure = go.Figure(go.Bar(x=['a', 'b'], y=[1]))\nresult = {'ok': True}",
+        code="figure = go.Figure(go.Bar(x=['a', 'b'], y=[1]))\nresult = {'ok': len(df)}",
         data_key="test:an",
     )
     assert not (fig.layout.meta or {}).get("data")
