@@ -142,6 +142,54 @@ def test_on_tool_result_sees_every_call_with_its_parsed_arguments(monkeypatch):
     assert seen == [("query_data", {"data_key": "k"}, "rijen", None)]
 
 
+def test_identical_tool_call_shows_its_figure_once_but_answers_every_call(monkeypatch):
+    # #218: a cache hit re-emitted the figure, so the user saw the same chart twice.
+    _steps(monkeypatch, [
+        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "a"}', "t2")]),
+        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t3")]),
+        StreamResult(text="Klaar.", tool_calls=[]),
+    ])
+    executed: list[str] = []
+
+    async def fake_execute(call, emit):
+        executed.append(call.name)
+        return "grafiek gemaakt", "FIG"
+
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
+    seen: list = []
+
+    async def on_tool_result(call, result, figure):
+        seen.append((call.id, result, figure))
+
+    messages = [{"role": "user", "content": "vraag"}]
+    _run(messages, on_tool_result=on_tool_result)
+
+    assert executed == ["create_plot"]
+    assert [figure for _, _, figure in seen] == ["FIG", None, None]
+    assert all(result == "grafiek gemaakt" for _, result, _ in seen)
+    assert [m["content"] for m in messages if m["role"] == "tool"] == ["grafiek gemaakt"] * 3
+
+
+def test_same_tool_with_other_arguments_shows_another_figure(monkeypatch):
+    _steps(monkeypatch, [
+        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "b"}', "t2")]),
+        StreamResult(text="Klaar.", tool_calls=[]),
+    ])
+
+    async def fake_execute(call, emit):
+        return "ok", f"FIG-{call.args['x']}"
+
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
+    seen: list = []
+
+    async def on_tool_result(call, result, figure):
+        seen.append(figure)
+
+    _run(on_tool_result=on_tool_result)
+
+    assert seen == ["FIG-a", "FIG-b"]
+
+
 def test_halt_tool_ends_the_turn_without_running(monkeypatch):
     _steps(monkeypatch, [StreamResult(text="", tool_calls=[_call("clarify_scope", '{"vraag": "Welk jaar?"}')])])
     executed: list[str] = []
