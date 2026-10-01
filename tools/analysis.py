@@ -65,6 +65,17 @@ def _check_no_hardcoded_data(code: str) -> str | None:
     return None
 
 
+def _check_reads_data(code: str) -> str | None:
+    """Een script dat geen data leest, rekent niet op data (#11)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+    if not any(isinstance(n, ast.Name) and n.id in ("df", "store_get") for n in ast.walk(tree)):
+        return "Script leest geen data. Lees data via `df` of `store_get(key)`; typ nooit data over."
+    return None
+
+
 def _check_code(code: str) -> str | None:
     # Check regex blocklist (security)
     match = _BLOCKED_PATTERNS.search(code)
@@ -74,8 +85,7 @@ def _check_code(code: str) -> str | None:
     # Check data sourcing (data integrity): reject hardcoded data
     if err := _check_no_hardcoded_data(code):
         return err
-
-    return None
+    return _check_reads_data(code)
 
 
 def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.Figure]:
