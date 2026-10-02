@@ -138,3 +138,43 @@ def test_zonder_daling_is_het_een_fout_geen_nul():
     store.put("duo:kpi:up", pd.DataFrame({"J": [1, 2], "N": [1, 2]}), store.KeyMeta(bron="duo", dataset="kpi:up"))
     assert "Geen daling" in json.loads(compute_kpi("duo:kpi:up", "N", "max_drop", sort_column="J", label="x"))["fout"]
 
+
+
+# --- #235: de periode hoort bij het resultaat, zodat het antwoord haar niet zelf hoeft te benoemen ---
+
+@pytest.mark.parametrize("metric", ["first", "last", "sum", "mean", "delta", "pct_change", "index"])
+def test_kpi_noemt_de_periode_waarover_hij_rekent(metric):
+    result = json.loads(compute_kpi("duo:kpi:test", "AANTAL", metric, sort_column="STUDIEJAAR"))
+    assert result["periode"] == {"van": "2021/22", "tot": "2025/26"}
+
+
+def test_cbs_schooljaren_krijgen_hun_label():
+    # Audit 10: +29.040 was 2019/20 → 2025/26, het antwoord schreef 2024/25.
+    store.put("cbs:wo:test", pd.DataFrame({"Perioden": [f"{j}SJ00" for j in range(2019, 2026)],
+                                           "N": [305000, 310000, 315000, 320000, 325000, 330000, 334040]}),
+              store.KeyMeta(bron="cbs", dataset="wo:test"))
+    result = json.loads(compute_kpi("cbs:wo:test", "N", "delta", sort_column="Perioden"))
+    assert result["periode"] == {"van": "2019/20", "tot": "2025/26"}
+
+
+def test_rijen_zonder_waarde_tellen_niet_mee_in_de_periode():
+    store.put("duo:kpi:gat", pd.DataFrame({"STUDIEJAAR": [2020, 2021, 2022], "AANTAL": [None, 10, 12]}),
+              store.KeyMeta(bron="duo", dataset="kpi:gat"))
+    result = json.loads(compute_kpi("duo:kpi:gat", "AANTAL", "delta", sort_column="STUDIEJAAR"))
+    assert result["periode"] == {"van": "2021/22", "tot": "2022/23"}
+
+
+def test_grootste_daling_noemt_de_periode_van_de_stap():
+    result = json.loads(compute_kpi("duo:kpi:test", "AANTAL", "max_drop", sort_column="STUDIEJAAR"))
+    assert result["periode"] == {"van": "2024/25", "tot": "2025/26"}
+
+
+def test_kalenderjaren_blijven_zoals_de_bron_ze_noemt():
+    store.put("cbs:kj:test", pd.DataFrame({"Perioden": ["2023JJ00", "2024JJ00"], "N": [1, 2]}),
+              store.KeyMeta(bron="cbs", dataset="kj:test"))
+    result = json.loads(compute_kpi("cbs:kj:test", "N", "delta", sort_column="Perioden"))
+    assert result["periode"] == {"van": "2023JJ00", "tot": "2024JJ00"}
+
+
+def test_zonder_sorteerkolom_geen_periode():
+    assert "periode" not in json.loads(compute_kpi("duo:kpi:test", "AANTAL", "delta"))

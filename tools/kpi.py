@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from . import store
+from . import periode, store
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
 # aanleiding om iets anders te proberen.
@@ -55,6 +55,24 @@ def _largest_step(df: pd.DataFrame, value_column: str, sort_column: str | None, 
     position = rows.index.get_loc(at)
     label = (lambda i: rows.iloc[i][sort_column]) if sort_column else (lambda i: i + 1)
     return float(steps.loc[at]), label(position - 1), label(position)
+
+
+def _periodelabel(bron: str, waarde) -> str:
+    """2021 → 2021/22, 2019SJ00 → 2019/20; wat geen schooljaar is blijft zoals de bron het noemt."""
+    startjaar = periode.startjaar(bron, waarde)
+    return periode.label(startjaar) if startjaar is not None else str(waarde)
+
+
+def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step, bron: str) -> dict:
+    """Over welke periode de KPI gaat (#235): de eerste en laatste meegetelde rij, of de stap."""
+    if not sort_column:
+        return {}
+    if step:
+        van, tot = step[1], step[2]
+    else:
+        meegeteld = df.loc[pd.to_numeric(df[value_column], errors="coerce").notna(), sort_column]
+        van, tot = meegeteld.iloc[0], meegeteld.iloc[-1]
+    return {"periode": {"van": _periodelabel(bron, van), "tot": _periodelabel(bron, tot)}}
 
 
 def compute_kpi(
@@ -134,6 +152,8 @@ def compute_kpi(
         trend_direction = "up" if value > 0 else "down" if value < 0 else None
 
     tussen = {"tussen": [str(step[1]), str(step[2])]} if step else {}
+    known = store.meta(data_key)
+    periode_van_kpi = _periode(df, value_column, sort_column, step, known.bron if known else "")
     return json.dumps(
         {
             "label": label,
@@ -142,6 +162,7 @@ def compute_kpi(
             "trend": trend,
             "trendDirection": trend_direction,
             **tussen,
+            **periode_van_kpi,
             "bron": {
                 "data_key": data_key,
                 "kolom": value_column,

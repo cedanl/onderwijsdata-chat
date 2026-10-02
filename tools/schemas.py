@@ -211,7 +211,8 @@ TOOL_SCHEMAS = [
                             "delta = laatste min eerste, pct_change = procentuele verandering van eerste naar laatste, "
                             "index = laatste als index met de eerste waarde op 100, "
                             "max_drop/max_rise = grootste daling of stijging tussen twee opeenvolgende rijen, met in `tussen` "
-                            "welke twee (gebruik dit voor 'grootste daling/stijging', zoek die niet zelf in de tabel)"
+                            "welke twee (gebruik dit voor 'grootste daling/stijging', zoek die niet zelf in de tabel). "
+                            "Met sort_column staat in `periode` over welke schooljaren de uitkomst gaat: noem precies die."
                         ),
                     },
                     "sort_column": {

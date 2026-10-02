@@ -27,6 +27,12 @@ from .selectie import data_keys
 # Een zin of een tabelrij. Een punt in een getal (27.135) wordt niet gevolgd door witruimte.
 _SEGMENT = re.compile(r"\n|(?<=[.!?;])\s+")
 
+
+def segmenten(tekst: str) -> list[str]:
+    """De zinnen en tabelrijen van een tekst, zonder lege."""
+    return [s for s in (s.strip() for s in _SEGMENT.split(tekst)) if s]
+
+
 _Index = dict[str, set]  # getal (cijfers) → de jaren of instellingen van de rijen waarin het staat
 
 
@@ -53,7 +59,7 @@ def _index(df: pd.DataFrame, per_rij: pd.Series, index: _Index) -> None:
 def _verkeerd(tekst: str, index: _Index, genoemd: Callable[[str], set], naam: Callable[[set], str]) -> list[str]:
     bekend = set().union(*index.values()) if index else set()
     problemen = []
-    for segment in filter(None, (s.strip() for s in _SEGMENT.split(tekst))):
+    for segment in segmenten(tekst):
         noemt = genoemd(segment)
         if len(noemt) != 1 or not noemt <= bekend:
             continue
