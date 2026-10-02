@@ -4,7 +4,7 @@
 
 Stel vragen over CBS, RIO en DUO onderwijsdata. De app genereert antwoorden met volledig traceerbare bronnen — elke analyse exporteert automatisch als Python-code die je kunt auditen en reproduceren.
 
-**Voor onderzoeksinstellingen:** Geen hallucinatie, geen gissingen. Alle getallen komen uit data.
+**Voor onderzoeksinstellingen:** de AI rekent nooit zelf. Elk getal komt uit een tool die op officiële CBS-, DUO- en RIO-data rekent en is herleidbaar tot de brontabel. Noemt het model toch een getal dat niet in de data staat, dan trekt een controle in code het antwoord in voordat het de gebruiker bereikt. Wat die controles wel en niet dekken staat in [Anti-hallucinatie architectuur](docs/anti-hallucination-architecture.md).
 
 https://github.com/user-attachments/assets/9ab68b2a-7c00-4b2b-82ea-cbba245f1edb
 
