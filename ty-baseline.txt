@@ -1,0 +1,131 @@
+agent/dashboard.py: error[unresolved-attribute] Attribute `items` is not defined on `None` in union `dict[Unknown, Unknown] | None`
+agent/grounding.py: error[invalid-parameter-default] Default value of type `tuple[()]` is not assignable to annotated parameter type `list[str]`
+agent/grounding.py: warning[invalid-argument-type] Argument to bound method `Decimal.scaleb` is incorrect: Expected `Decimal | int`, found `int | Literal["n", "N", "F"]`
+agent/labels.py: warning[invalid-argument-type] Argument to function `_toegeschreven` is incorrect: Expected `list[str]`, found `list[str | None]`
+agent/loop.py: warning[invalid-argument-type] Argument to function `generate` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
+agent/loop.py: warning[invalid-argument-type] Argument to function `to_thread` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
+agent/metatekst.py: warning[invalid-argument-type] Argument to function `sorted` is incorrect: Argument type `Unknown | str | dict[str, str | dict[str, dict[str, str] | dict[str, str | list[str]]] | list[str]] | ... omitted 3 union elements` does not satisfy upper bound `SupportsDunderLT[Any] | SupportsDunderGT[Any]` of type variable `SupportsRichComparisonT`
+agent/metatekst.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+agent/report.py: warning[invalid-argument-type] Argument to function `_log_tool_call` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
+agent/run.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+agent/selectie.py: warning[invalid-argument-type] Argument to `set.__init__` is incorrect: Expected `Iterable[int]`, found `tuple[int, ...] | None`
+agent/selectie.py: warning[invalid-argument-type] Argument to function `namen` is incorrect: Expected `str`, found `str | None`
+auth/oidc.py: error[unresolved-attribute] Attribute `rstrip` is not defined on `None` in union `str | None`
+auth/oidc.py: warning[invalid-argument-type] Argument to bound method `AsyncClient.get` is incorrect: Expected `URL | str`, found `str | None`
+core/config.py: error[invalid-assignment] Object of type `dict[str, str | None]` is not assignable to `dict[str, str]`
+health.py: error[invalid-return-type] Return type does not match returned value: expected `dict[Unknown, Unknown]`, found `tuple[dict[str, str | dict[str, bool] | float], Literal[200, 503]]`
+logging_config.py: error[no-matching-overload] No overload of bound method `MutableMapping.update` matches arguments
+logging_config.py: warning[deprecated] The function `utcnow` is deprecated: Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)
+routes/chat.py: error[unresolved-attribute] Attribute `cancel` is not defined on `None` in union `Task[Unknown] | None`
+scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `choices` is not defined on `CustomStreamWrapper`, `Coroutine[object, object, ModelResponse | CustomStreamWrapper]` in union `ModelResponse | CustomStreamWrapper | Coroutine[object, object, ModelResponse | CustomStreamWrapper]`
+scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `strip` is not defined on `None` in union `str | None`
+server.py: warning[deprecated] The function `on_event` is deprecated: 
+server.py: warning[deprecated] The function `on_event` is deprecated: 
+tests/test_catalog.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["Fout:"]` and `Unknown | str | list[str] | ... omitted 4 union elements`
+tests/test_catalog.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["Goed:"]` and `Unknown | str | list[str] | ... omitted 4 union elements`
+tests/test_catalog.py: warning[invalid-argument-type] Method `__getitem__` of type `Overload[(i: SupportsIndex, /) -> str, (s: slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> list[str]]` cannot be called with key of type `Literal["query"]` on object of type `list[str]`
+tests/test_catalog.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tests/test_catalog.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["parameters"]` on object of type `str`
+tests/test_catalog.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["properties"]` on object of type `str`
+tests/test_catalog.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["query"]` on object of type `str`
+tests/test_cbs_periodestatus.py: error[unresolved-attribute] Attribute `lower` is not defined on `dict[str, str | dict[str, dict[str, str] | dict[str, str | list[str]]] | list[str]]`, `dict[str, str | dict[str, dict[str, str]] | list[str]]`, `dict[str, str | dict[str, dict[str, str] | dict[str, str | dict[str, str]] | dict[str, str | dict[str, str | list[str]]]] | list[str]]`, `dict[str, str | dict[str, dict[str, str] | dict[str, str | int | dict[str, str | dict[str, dict[str, str]] | list[str]]]] | list[str]]` in union `Unknown | str | dict[str, str | dict[str, dict[str, str] | dict[str, str | list[str]]] | list[str]] | ... omitted 3 union elements`
+tests/test_cbs_periodestatus.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["description"]` on object of type `str`
+tests/test_cbs_periodestatus.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None) -> CoroutineType[Any, Any, None]`
+tests/test_config_provider_keys.py: warning[invalid-argument-type] Argument to function `get_required_api_key_env_var` is incorrect: Expected `str`, found `None`
+tests/test_controle_melding.py: error[unresolved-attribute] Object of type `str` has no attribute `melding`
+tests/test_controle_melding.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Unknown | str | dict[str, str | dict[str, dict[str, str] | dict[str, str | list[str]]] | list[str]] | ... omitted 3 union elements` and `str`
+tests/test_controle_melding.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tests/test_dashboard_uwv.py: error[not-subscriptable] Cannot subscript object of type `None` with no `__getitem__` method
+tests/test_duo_teldefinitie.py: error[unresolved-attribute] Attribute `endswith` is not defined on `None` in union `str | None`
+tests/test_duo_teldefinitie.py: error[unresolved-attribute] Attribute `startswith` is not defined on `None` in union `str | None`
+tests/test_duo_teldefinitie.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["natuurlijke personen"]` and `str | None`
+tests/test_duo_teldefinitie.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["natuurlijke personen"]` and `str | None`
+tests/test_duo_teldefinitie.py: error[unsupported-operator] Operator `not in` is not supported between objects of type `Literal["één keer per jaar"]` and `str | None`
+tests/test_duo_teldefinitie.py: warning[invalid-argument-type] Argument to function `len` is incorrect: Expected `Sized`, found `str | None`
+tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `RealDictCursor` on type `ModuleType`
+tests/test_persistence_postgres.py: error[unresolved-attribute] Unresolved attribute `extras` on type `ModuleType`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[dict[Unknown, Unknown]]`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[dict[Unknown, Unknown]]`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `list[str]`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
+tests/test_report_checks.py: warning[invalid-argument-type] Argument is incorrect: Expected `str`, found `str | list[str] | Unknown`
+tests/test_rio_onvolledig.py: warning[invalid-argument-type] Argument to function `loads` is incorrect: Expected `str | bytes | bytearray`, found `str | tuple[str, Figure]`
+tests/test_snippet.py: error[invalid-assignment] Object of type `(...) -> DataFrame` is not assignable to attribute `load` of type `def load(dataset_id: str, resource: int | str = 0, skiprows: int | None = None, **kwargs) -> Unknown`
+tests/test_snippet.py: error[invalid-assignment] Object of type `(...) -> DataFrame` is not assignable to attribute `load` of type `def load(dataset_id: str, resource: int | str = 0, skiprows: int | None = None, **kwargs) -> Unknown`
+tests/test_snippet.py: error[unresolved-attribute] Attribute `laad` is not defined on `None` in union `KeyMeta | None`
+tests/test_snippet.py: error[unresolved-attribute] Attribute `laad` is not defined on `None` in union `KeyMeta | None`
+tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `data` on type `ModuleType`
+tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `duo` on type `ModuleType`
+tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `fetch` on type `ModuleType`
+tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `load` on type `ModuleType`
+tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["NB:"]` and `str | None`
+tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["duo.load(\"p01hoinges\", 3)"]` and `str | None`
+tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["print(df.round())"]` and `str | None`
+tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
+tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
+tests/test_snippet.py: error[unsupported-operator] Operator `not in` is not supported between objects of type `Literal["store"]` and `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `exec` is incorrect: Expected `str | Buffer | CodeType`, found `str | None`
+tests/test_snippet.py: warning[invalid-argument-type] Argument to function `exec` is incorrect: Expected `str | Buffer | CodeType`, found `str | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `afgeleid_van` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `afgeleid_van` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `afgeleid_van` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `bron` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `instellingen` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `instellingen` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `instellingskolom` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `periodekolom` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `periodekolom` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `schooljaren` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `schooljaren` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `volledig` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `volledig` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `volledig` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `volledig` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: error[unresolved-attribute] Attribute `volledig` is not defined on `None` in union `KeyMeta | None`
+tests/test_store_meta.py: warning[invalid-argument-type] Argument to function `loads` is incorrect: Expected `str | bytes | bytearray`, found `str | tuple[str, Figure]`
+tests/test_tool_loop.py: error[unresolved-attribute] Attribute `set` is not defined on `None` in union `Unknown | None`
+tests/test_tool_schema_contract.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `layout` is not defined on `str` in union `str | Figure`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `lower` is not defined on `tuple[str, Figure]` in union `str | tuple[str, Figure]`
+tests/test_tools_analysis.py: error[unresolved-attribute] Attribute `lower` is not defined on `tuple[str, Figure]` in union `str | tuple[str, Figure]`
+tests/test_tools_analysis.py: warning[invalid-argument-type] Argument to function `loads` is incorrect: Expected `str | bytes | bytearray`, found `str | tuple[str, Figure]`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `data` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not defined on `None` in union `Figure | None`
+tests/test_tools_plot.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tests/test_tools_plot.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["parameters"]` on object of type `str`
+tests/test_tools_plot.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["properties"]` on object of type `str`
+tests/test_tools_plot.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["required"]` on object of type `str`
+tests/test_tools_rio.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["description"]` on object of type `str`
+tests/test_tools_rio.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["description"]` on object of type `str`
+tests/test_tools_rio.py: warning[invalid-argument-type] Method `__getitem__` of type `bound method str.__getitem__(key: SupportsIndex | slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None], /) -> str` cannot be called with key of type `Literal["name"]` on object of type `str`
+tools/duo.py: error[invalid-return-type] Return type does not match returned value: expected `dict[str, int]`, found `dict[str | Hashable, int]`
+tools/periode.py: warning[invalid-argument-type] Argument to function `sorted` is incorrect: Argument type `int | None` does not satisfy upper bound `SupportsDunderLT[Any] | SupportsDunderGT[Any]` of type variable `SupportsRichComparisonT`
+tools/query.py: warning[invalid-argument-type] Argument to function `aggregate_cells` is incorrect: Expected `list[str]`, found `list[str] | None`
+tools/query.py: warning[invalid-argument-type] Argument to function `check_dimensions_pinned` is incorrect: Expected `list[str]`, found `list[str] | None`
+tools/query.py: warning[invalid-argument-type] Argument to function `namen` is incorrect: Expected `str`, found `str | None`
