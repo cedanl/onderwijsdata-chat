@@ -1,3 +1,12 @@
+"""Runtime-instellingen voor agent, tools en routes: model, limieten, feature-vlaggen.
+
+Elke env-variabele wordt hier één keer gelezen; wie hem nodig heeft importeert
+de constante. De root-config.py (klasse Config) gaat over het opstarten van de
+server: logging, CORS, OIDC en de validatie daarvan, en leest het model hiervandaan.
+Uitzondering: core/auth.py en persistence/db.py lezen hun eigen variabelen bij
+import, omdat tests die modules met een andere omgeving herladen.
+"""
+
 import os
 
 MODEL = os.getenv("MODEL", "anthropic/claude-sonnet-4-6")
@@ -11,6 +20,8 @@ CBS_ROW_LIMIT = int(os.getenv("CBS_ROW_LIMIT", "5000"))
 RIO_PAGE_SIZE = int(os.getenv("RIO_PAGE_SIZE", "50"))
 DUO_ROW_LIMIT = int(os.getenv("DUO_ROW_LIMIT", "500"))
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
+# Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234).
+DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
 
 # Willma AI-Hub (SURF) — optioneel. Zet WILLMA_API_KEY om via Willma te draaien.
 # Zet MODEL naar bijv. "openai/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
