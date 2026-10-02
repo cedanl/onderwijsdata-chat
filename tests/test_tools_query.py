@@ -308,3 +308,13 @@ def test_aggregation_filters_duo_sentinel_minus_one():
     # Verify databewerking notes were generated
     assert "databewerking" in result
     assert any("sentinel" in note.lower() for note in result["databewerking"])
+
+
+def test_gehele_aantallen_komen_als_gehele_getallen_terug():
+    """Door de -1-maskering wordt een telkolom float: 4147.0 belandde zo in het antwoord (#222)."""
+    rijen = [{"JAAR": 2024, "AANTAL": 4147}, {"JAAR": 2025, "AANTAL": -1}, {"JAAR": 2025, "PCT": 9.55}]
+    store.put("duo:x:0", pd.DataFrame(rijen), store.KeyMeta(bron="duo", dataset="x"))
+    rijen = json.loads(query_data("duo:x:0", columns=["JAAR", "AANTAL", "PCT"]))["rijen"]
+    assert rijen[0]["AANTAL"] == 4147 and isinstance(rijen[0]["AANTAL"], int)
+    assert rijen[1]["AANTAL"] is None  # onderdrukte cel: null, geen NaN (ongeldige JSON)
+    assert rijen[2]["PCT"] == 9.55

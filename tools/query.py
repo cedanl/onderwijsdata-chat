@@ -9,6 +9,7 @@ sentinelcellen die met de selectie meereizen (#171).
 import difflib
 import hashlib
 import json
+import math
 
 import pandas as pd
 
@@ -147,6 +148,16 @@ def _empty_melding(data_key: str, complete: bool) -> str:
     return melding
 
 
+def _json_waarde(v):
+    """Een telling als telling: de -1-maskering maakt kolommen float, en 4147.0 belandde in antwoorden (#222)."""
+    if isinstance(v, float):
+        if math.isnan(v):
+            return None
+        if v.is_integer():
+            return int(v)
+    return v
+
+
 def query_data(
     data_key: str,
     filters: dict | None = None,
@@ -236,7 +247,7 @@ def query_data(
     n_cols = len(df.columns)
     adaptive_max = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(df)
-    rows = df.head(adaptive_max).to_dict(orient="records")
+    rows = [{k: _json_waarde(v) for k, v in row.items()} for row in df.head(adaptive_max).to_dict(orient="records")]
     result: dict = {"data_key": result_key, **_row_count(total, complete), "rijen": rows}
     if labels:
         result["instellingen"] = labels
