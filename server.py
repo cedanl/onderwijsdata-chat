@@ -107,11 +107,11 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
 @app.get("/version", tags=["info"])
 async def version() -> dict:
-    """Get application version."""
+    """Versie uit pyproject.toml en de commit waaruit het image is gebouwd (#231)."""
     def _read() -> str:
         with open(_PYPROJECT, "rb") as f:
             return tomllib.load(f)["project"]["version"]
-    return {"version": await asyncio.to_thread(_read)}
+    return {"version": await asyncio.to_thread(_read), "commit": Config.GIT_COMMIT or "onbekend"}
 
 
 @app.get("/info", tags=["info"])

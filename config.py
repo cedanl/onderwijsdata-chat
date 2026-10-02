@@ -22,6 +22,9 @@ class Config:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
+    # Commit van het image, meegegeven als build-arg in CI (#231)
+    GIT_COMMIT: str | None = os.getenv("GIT_COMMIT")
+
     # Optional database settings
     POSTGRES_URI: str | None = os.getenv("POSTGRES_URI")
     DATABASE_PATH: str | None = os.getenv("DATABASE_PATH")

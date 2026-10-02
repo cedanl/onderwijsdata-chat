@@ -38,3 +38,16 @@ def test_version_returns_version_string(client):
     assert "version" in data
     assert isinstance(data["version"], str)
     assert len(data["version"].split(".")) >= 2
+
+
+def test_version_noemt_de_commit_uit_het_image(client, monkeypatch):
+    # #231: zonder commit was niet vast te stellen welke code een omgeving draait.
+    from config import Config
+    monkeypatch.setattr(Config, "GIT_COMMIT", "021632f")
+    assert client.get("/version").json()["commit"] == "021632f"
+
+
+def test_version_zonder_build_arg_zegt_onbekend(client, monkeypatch):
+    from config import Config
+    monkeypatch.setattr(Config, "GIT_COMMIT", None)
+    assert client.get("/version").json()["commit"] == "onbekend"
