@@ -23,6 +23,7 @@ from tools.snippet import generate as _generate_snippet
 from .model_context import clamp_max_tokens
 from .models import litellm_kwargs
 from .ratelimit import acompletion_with_backoff
+from .search_trace import SearchTrace
 from .stream import Emit, accumulate_stream
 
 logger = logging.getLogger(__name__)
@@ -119,6 +120,7 @@ class _Loop:
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
     figure_shown: set[str] = field(default_factory=set)
+    trace: SearchTrace = field(default_factory=SearchTrace)
 
     def _stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
@@ -211,6 +213,7 @@ class _Loop:
                 elif figure is not None:
                     self.figure_shown.add(c.key)
                 self.result.tool_results.append(content)
+                self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:
                     await self.on_tool_result(c, content, figure)
             self.messages.append({"role": "tool", "tool_call_id": c.id,

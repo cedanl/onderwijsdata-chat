@@ -306,3 +306,48 @@ def test_caller_hears_about_the_correction_before_it_runs(monkeypatch):
          correction=lambda problems: "Herstel", on_correction=on_correction)
 
     assert heard == [["12.345"]]
+
+
+# --- #18: geladen dataset gekoppeld aan de zoekactie ervoor ---
+
+_TREFFERS = '[{"_cbs_id": "85423NED"}, {"_ckan_id": "p01hoinges"}, {"_ckan_id": "p02ho1ejrs"}, {"_ckan_id": "ver-weg"}]'
+
+
+def _search_then_load(monkeypatch, laad_tool, laad_args):
+    _steps(monkeypatch, [
+        StreamResult(text="", tool_calls=[_call("search_catalog", '{"query": "ingeschrevenen"}', "t1")]),
+        StreamResult(text="", tool_calls=[_call(laad_tool, laad_args, "t2")]),
+        StreamResult(text="Klaar.", tool_calls=[]),
+    ])
+    _fake_tools(monkeypatch, {"search_catalog": _TREFFERS, laad_tool: '{"data_key": "k"}'})
+
+
+def test_load_inside_the_top_three_is_logged_without_deviation(monkeypatch, caplog):
+    _search_then_load(monkeypatch, "get_duo_data", '{"dataset_id": "p01hoinges"}')
+
+    with caplog.at_level("INFO", logger="agent.search_trace"):
+        _run()
+
+    assert any("CATALOGUS_GELADEN" in r.message and "afwijking=nee" in r.message for r in caplog.records)
+    assert not any("CATALOGUS_AFWIJKING" in r.message for r in caplog.records)
+
+
+def test_load_outside_the_top_three_is_a_separate_metric(monkeypatch, caplog):
+    # "ver-weg" is hit four: the model had to correct the ranking.
+    _search_then_load(monkeypatch, "get_duo_data", '{"dataset_id": "ver-weg"}')
+
+    with caplog.at_level("INFO", logger="agent.search_trace"):
+        _run()
+
+    [record] = [r for r in caplog.records if "CATALOGUS_AFWIJKING" in r.message]
+    assert "ver-weg" in record.message and "ingeschrevenen" in record.message
+    assert "85423NED" in record.message  # the top three it was measured against
+
+
+def test_rio_load_is_matched_on_its_resource_argument(monkeypatch, caplog):
+    _search_then_load(monkeypatch, "get_rio_data", '{"resource": "p02ho1ejrs"}')
+
+    with caplog.at_level("INFO", logger="agent.search_trace"):
+        _run()
+
+    assert any("afwijking=nee" in r.message for r in caplog.records)
