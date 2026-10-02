@@ -192,3 +192,23 @@ def test_figure_rows_turn_nan_into_an_empty_value():
         data_key="test:an",
     )
     assert fig.layout.meta["data"] == [{"K": "a", "N": 1.0}, {"K": "b", "N": None}]
+
+
+def test_heatmap_rows_carry_the_values_from_z_not_the_labels():
+    # Een correlatiematrix heeft even lange x en y; die als punten lezen gaf rijen als ('a', 'a').
+    _put("test:an", [{"A": 1, "B": 3}, {"A": 2, "B": 1}, {"A": 3, "B": 2}])
+    _, fig = run_analysis(code="figure = px.imshow(df.corr())\nresult = {'ok': True}", data_key="test:an")
+    assert fig.layout.meta["data"] == [
+        {"rij": "A", "kolom": "A", "waarde": 1.0}, {"rij": "A", "kolom": "B", "waarde": -0.5},
+        {"rij": "B", "kolom": "A", "waarde": -0.5}, {"rij": "B", "kolom": "B", "waarde": 1.0},
+    ]
+
+
+def test_non_square_heatmap_gets_a_row_per_cell():
+    _put("test:an", [{"A": 1}])
+    _, fig = run_analysis(
+        code="figure = go.Figure(go.Heatmap(z=[[1, 2, 3]], x=['p', 'q', 'r'], y=['s']))\nresult = {'ok': len(df)}",
+        data_key="test:an",
+    )
+    assert [r["waarde"] for r in fig.layout.meta["data"]] == [1, 2, 3]
+    assert fig.layout.meta["data"][2] == {"rij": "s", "kolom": "r", "waarde": 3}

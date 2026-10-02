@@ -19,8 +19,13 @@ function cell(value) {
 
 const toCsv = rows => rows.map(r => r.map(cell).join(';')).join('\n')
 
-const xsOf = trace => plotlyArray(trace.x ?? trace.labels) ?? []
-const ysOf = trace => plotlyArray(trace.y ?? trace.values) ?? []
+// A horizontal bar draws its categories on y and its values on x.
+const isHorizontal = trace => trace.orientation === 'h'
+const xsOf = trace => plotlyArray(isHorizontal(trace) ? trace.y : (trace.x ?? trace.labels)) ?? []
+const ysOf = trace => plotlyArray(isHorizontal(trace) ? trace.x : (trace.y ?? trace.values)) ?? []
+// Heatmaps and maps keep their values in z: x and y are only labels, so the
+// traces cannot be read as points. Without tool rows they get no CSV (#217).
+const hasZ = trace => trace.z != null
 const hasRepeatedX = trace => new Set(xsOf(trace)).size < xsOf(trace).length
 
 function rowsToCsv(rows) {
@@ -66,7 +71,7 @@ function traceProblem(trace) {
 }
 
 function tracesProblem(figure) {
-  const traces = (figure.data || []).filter(t => xsOf(t).length || ysOf(t).length)
+  const traces = (figure.data || []).filter(t => !hasZ(t) && (xsOf(t).length || ysOf(t).length))
   for (const trace of traces) {
     const problem = traceProblem(trace)
     if (problem) return problem
@@ -82,11 +87,12 @@ export function figureCsvProblem(figure) {
 
 function tracesToCsv(figure) {
   const traces = figure.data || []
-  if (!traces.some(t => xsOf(t).length) || tracesProblem(figure)) return null
+  if (traces.some(hasZ) || !traces.some(t => xsOf(t).length) || tracesProblem(figure)) return null
 
   const layout = figure.layout || {}
-  const xName = layout.meta?.x || axisTitle(layout.xaxis) || 'categorie'
-  const yName = layout.meta?.y || axisTitle(layout.yaxis) || 'waarde'
+  const [catAxis, valAxis] = traces.every(isHorizontal) ? [layout.yaxis, layout.xaxis] : [layout.xaxis, layout.yaxis]
+  const xName = layout.meta?.x || axisTitle(catAxis) || 'categorie'
+  const yName = layout.meta?.y || axisTitle(valAxis) || 'waarde'
   return traces.some(hasRepeatedX) ? longCsv(traces, xName, yName) : wideCsv(traces, xName, yName)
 }
 

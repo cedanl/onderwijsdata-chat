@@ -178,3 +178,14 @@ def test_kalenderjaren_blijven_zoals_de_bron_ze_noemt():
 
 def test_zonder_sorteerkolom_geen_periode():
     assert "periode" not in json.loads(compute_kpi("duo:kpi:test", "AANTAL", "delta"))
+
+
+def test_grootste_daling_bij_herhaalde_indexlabels():
+    # Een samengevoegd frame (concat) heeft index 0, 1, 0, 1; een labelopzoeking gaf een Series.
+    df = pd.concat([pd.DataFrame({"J": [2020, 2021], "N": [10, 5]}), pd.DataFrame({"J": [2022, 2023], "N": [8, 1]})])
+    store.put("duo:kpi:concat", df, store.KeyMeta(bron="duo", dataset="kpi:concat"))
+
+    result = json.loads(compute_kpi("duo:kpi:concat", "N", "max_drop", sort_column="J", label="x"))
+
+    assert result["raw"] == -7
+    assert result["tussen"] == ["2022", "2023"]

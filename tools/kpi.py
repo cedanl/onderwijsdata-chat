@@ -46,15 +46,16 @@ def _error(message: str) -> str:
 def _largest_step(df: pd.DataFrame, value_column: str, sort_column: str | None, metric: str):
     """(verschil, van, naar) van de grootste daling of stijging tussen opeenvolgende rijen, of None."""
     numeric = pd.to_numeric(df[value_column], errors="coerce")
-    rows = df.assign(_waarde=numeric).dropna(subset=["_waarde"])
+    # Positional index: a stored frame may repeat index labels (a concat), and a label lookup
+    # then returns several rows instead of one step.
+    rows = df.assign(_waarde=numeric).dropna(subset=["_waarde"]).reset_index(drop=True)
     steps = rows["_waarde"].diff().iloc[1:]
     steps = steps[steps < 0] if metric == "max_drop" else steps[steps > 0]
     if steps.empty:
         return None
-    at = steps.idxmin() if metric == "max_drop" else steps.idxmax()
-    position = rows.index.get_loc(at)
-    label = (lambda i: rows.iloc[i][sort_column]) if sort_column else (lambda i: i + 1)
-    return float(steps.loc[at]), label(position - 1), label(position)
+    at = int(steps.idxmin() if metric == "max_drop" else steps.idxmax())
+    label = (lambda i: rows.at[i, sort_column]) if sort_column else (lambda i: i + 1)
+    return float(steps[at]), label(at - 1), label(at)
 
 
 def _periodelabel(bron: str, waarde) -> str:
