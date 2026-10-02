@@ -1,6 +1,10 @@
-"""Vacatureclusters voor de arbeidsmarktmatch: geen stille terugval op alle clusters (#229)."""
+"""Dashboardlaag: geen stille terugval op alle clusters (#229), geen DUO -1 als getal (#228)."""
 
+import inspect
 from unittest.mock import patch
+
+import pandas as pd
+import pytest
 
 import data.dashboard as dashboard
 
@@ -20,3 +24,36 @@ def test_sector_met_clustermatch_geeft_alleen_die_clusters():
 def test_sector_zonder_clustermatch_geeft_geen_clusters():
     # Met alle clusters als terugval kreeg elke sector vacature-aandeel 0: "overaanbod".
     assert _met_clusters(("ONBEKEND",)) == {}
+
+
+# --- #228: het dashboard telt DUO -1 niet als getal mee, net als de chat ---
+
+@pytest.fixture
+def mbo_met_sentinels():
+    ruw = pd.DataFrame([
+        {"JAAR": 2024, "INSTELLINGSNAAM": "Grafisch Lyceum", "INSTELLINGSCODE": "1", "BBL": 300, "BOLDT": -1, "BOLVT": 2079, "EX": -1},
+        {"JAAR": 2025, "INSTELLINGSNAAM": "Grafisch Lyceum", "INSTELLINGSCODE": "1", "BBL": 310, "BOLDT": 0, "BOLVT": 2100, "EX": 0},
+    ])
+    _leeg_laadcaches()
+    with patch.object(dashboard.duo, "load", return_value=ruw):
+        yield
+    # Anders houdt een gecachte loader de nepdata vast voor de tests die echte data laden.
+    _leeg_laadcaches()
+
+
+def _leeg_laadcaches():
+    for functie in vars(dashboard).values():
+        if hasattr(functie, "cache_clear"):
+            functie.cache_clear()
+
+
+def test_mbo_dashboard_sluit_minus_een_uit(mbo_met_sentinels):
+    # Audit ronde 2, D1: Grafisch Lyceum Utrecht 2024 toonde 2377 (= 2379 − 2).
+    result = dashboard.load_dashboard_mbo("Grafisch Lyceum")
+    assert result["ingeschrevenen"] == {2024: 2379, 2025: 2410}
+
+
+def test_dashboard_laadt_duo_alleen_via_de_maskerende_helper():
+    # Elke nieuwe duo.load in het dashboard zou het -1-gat opnieuw openen.
+    bron = inspect.getsource(dashboard)
+    assert bron.count("duo.load(") == 1, "laad DUO-data in data/dashboard.py via _duo_load"

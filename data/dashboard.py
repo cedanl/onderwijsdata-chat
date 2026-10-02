@@ -13,6 +13,8 @@ _BOL_DEELTIJD = "BOL deeltijd"
 import pandas as pd
 from riodata import duo
 
+from core.sentinels import mask_sentinels
+
 from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
@@ -442,14 +444,23 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
         return None
 
 
+def _duo_load(dataset_id: str, resource: int) -> pd.DataFrame:
+    """DUO-data met -1 gemaskeerd, zoals de chat-tools hem zien (#228).
+
+    Elke DUO-lading van de dashboards loopt hierlangs: anders tellen onderdrukte
+    cellen als -1 mee (BBO de Schalm: -1 studenten; Grafisch Lyceum 2377 i.p.v. 2379).
+    """
+    return mask_sentinels(duo.load(dataset_id, resource))[0]
+
+
 @functools.lru_cache(maxsize=1)
 def _load_mbo_studenten() -> pd.DataFrame:
-    return duo.load("mbo-studenten-per-instelling", 0)
+    return _duo_load("mbo-studenten-per-instelling", 0)
 
 
 @functools.lru_cache(maxsize=1)
 def _load_mbo_gediplomeerden() -> pd.DataFrame:
-    return duo.load("gediplomeerde-mbo-studenten", 0)
+    return _duo_load("gediplomeerde-mbo-studenten", 0)
 
 
 @functools.lru_cache(maxsize=1)
@@ -458,7 +469,7 @@ def _load_instromende_mbo_historisch() -> pd.DataFrame:
     dfs = []
     for i in [1, 3, 5, 7]:
         try:
-            dfs.append(duo.load("instromende-mbo-studenten", i))
+            dfs.append(_duo_load("instromende-mbo-studenten", i))
         except Exception:
             logger.warning("instromende-mbo: partitie %d niet beschikbaar", i, exc_info=True)
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
@@ -467,7 +478,7 @@ def _load_instromende_mbo_historisch() -> pd.DataFrame:
 @functools.lru_cache(maxsize=1)
 def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     """Partition 0: INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO (latest year snapshot)."""
-    return duo.load("instromende-mbo-studenten", 0)
+    return _duo_load("instromende-mbo-studenten", 0)
 
 
 def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
@@ -489,9 +500,9 @@ def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
 
 @functools.lru_cache(maxsize=1)
 def _load_ho_full() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    inges = pd.concat([duo.load("p01hoinges", 0), duo.load("p01hoinges", 1)], ignore_index=True)
-    eerstejaars = pd.concat([duo.load("p02ho1ejrs", 0), duo.load("p02ho1ejrs", 1)], ignore_index=True)
-    dipl = pd.concat([duo.load("p04hogdipl", 0), duo.load("p04hogdipl", 1)], ignore_index=True)
+    inges = pd.concat([_duo_load("p01hoinges", 0), _duo_load("p01hoinges", 1)], ignore_index=True)
+    eerstejaars = pd.concat([_duo_load("p02ho1ejrs", 0), _duo_load("p02ho1ejrs", 1)], ignore_index=True)
+    dipl = pd.concat([_duo_load("p04hogdipl", 0), _duo_load("p04hogdipl", 1)], ignore_index=True)
     return inges, eerstejaars, dipl
 
 
