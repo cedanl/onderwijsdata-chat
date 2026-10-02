@@ -101,6 +101,24 @@ describe('figureToCsv', () => {
     expect(lines(figureToCsv(figure))).toEqual(['RegioS;AANTAL', 'PV20;12'])
   })
 
+  it('opens with the provenance as comment lines, so the export names its source (#118)', () => {
+    const figure = {
+      data: [{ x: [2023], y: [12] }],
+      layout: {
+        meta: {
+          x: 'STUDIEJAAR', y: 'AANTAL',
+          data: [{ STUDIEJAAR: 2023, AANTAL: 12 }],
+          herkomst: ['bron: DUO, dataset p01hoinges, resource 0', 'selectie: filters {"INSTELLINGSNAAM": "HU"}'],
+        },
+      },
+    }
+    expect(lines(figureToCsv(figure))).toEqual([
+      '# bron: DUO, dataset p01hoinges, resource 0',
+      '# selectie: filters {"INSTELLINGSNAAM": "HU"}',
+      'STUDIEJAAR;AANTAL', '2023;12',
+    ])
+  })
+
   it('returns null for a figure without data', () => {
     expect(figureToCsv({ data: [] })).toBeNull()
     expect(figureToCsv({ data: [{ x: [] }] })).toBeNull()

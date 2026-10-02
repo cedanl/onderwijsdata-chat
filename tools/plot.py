@@ -232,7 +232,8 @@ def create_plot(
         layout["yaxis"] = {"title": y, "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)
-    fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by})
+    fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by,
+                            "herkomst": store.herkomst(data_key) if data_key else []})
 
     chart_label = _CHART_TYPE_LABELS.get(chart_type, "Grafiek")
     return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig

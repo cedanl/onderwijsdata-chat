@@ -157,7 +157,8 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         store_df = pd.DataFrame(result)
         result_key = f"analysis:{id(store_df)}"
         if data_key is not None:
-            store.derive(data_key, result_key, store_df, **dekking.van(store_df, store.meta(data_key)))
+            store.derive(data_key, result_key, store_df, stap="eigen berekening (run_analysis)",
+                         **dekking.van(store_df, store.meta(data_key)))
         else:
             store.put(result_key, store_df)
 

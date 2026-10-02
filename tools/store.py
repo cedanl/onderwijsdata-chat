@@ -34,6 +34,8 @@ class KeyMeta:
     afgeleid_van: str | None = None      # the key this one was derived from
     # The load call (tool, arguments): what a snippet needs to reproduce the data (#131). Provenance, not identity.
     laad: tuple[str, dict] | None = field(default=None, compare=False)
+    # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
+    stap: str | None = field(default=None, compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:
@@ -57,7 +59,7 @@ def derive(parent: str, key: str, value, **changes) -> None:
     `changes` overrides what the derivation changed, such as the schooljaren of a selection.
     """
     parent_meta = _meta.get(parent)
-    put(key, value, replace(parent_meta, afgeleid_van=parent, laad=None, **changes) if parent_meta else None)
+    put(key, value, replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, **changes}) if parent_meta else None)
 
 
 def get(key: str):
@@ -76,6 +78,21 @@ def readonly(key: str):
 
 def meta(key: str) -> KeyMeta | None:
     return _meta.get(key)
+
+
+def herkomst(key: str) -> list[str]:
+    """De bron van een key en de stappen ertussen, oudste eerst: wat een export over zichzelf zegt (#118)."""
+    stappen = []
+    known = _meta.get(key)
+    while known and known.afgeleid_van:
+        stappen.append(f"selectie: {known.stap}" if known.stap else "selectie: eerdere stap")
+        known = _meta.get(known.afgeleid_van)
+    if known is None:
+        return []
+    bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
+    if known.resource is not None:
+        bron += f", resource {known.resource}"
+    return [bron, *reversed(stappen)]
 
 
 def volledig(key: str) -> bool:
