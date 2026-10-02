@@ -18,9 +18,18 @@ Draai dit vóór je een merge request opent; de pipeline doet hetzelfde en blokk
 
 ```bash
 uv run ruff check .                          # lint (backend)
+uv run ruff format --check .                 # opmaak; `uv run ruff format .` herstelt het
+uv run python scripts/ty_baseline.py         # typecheck: faalt alleen op nieuwe ty-diagnostics
 uv run pytest tests/ -q                      # backend; test_instellingen.py laadt live DUO-data en is traag
 cd frontend && npm run lint && npm test      # lint en tests (frontend)
 ```
+
+`ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
+`uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
+baseline niet bij om een nieuwe diagnostic weg te krijgen; los die op.
+
+De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en
+draait de workflow alleen bij een major-tag (deploy naar Azure).
 
 Werk test-first: schrijf de test die het gedrag vastlegt, laat hem falen, en maak hem dan groen.
 Houd functies klein en met één verantwoordelijkheid, en ruim dode code op die je tegenkomt.
