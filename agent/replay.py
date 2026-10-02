@@ -8,30 +8,8 @@ import plotly.io as pio
 from tools import dispatch
 from tools.schemas import (
     TOOL_CREATE_PLOT,
-    TOOL_GET_CBS_DATA,
-    TOOL_GET_DUO_DATA,
-    TOOL_GET_RIO_DATA,
     TOOL_QUERY_DATA,
 )
-
-DATA_FETCH_TOOLS = frozenset({TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA})
-
-
-def extract_data_calls(tool_calls: list[dict] | None) -> list[dict]:
-    """Extract unique data-fetching tool calls, preserving order."""
-    if not tool_calls:
-        return []
-    seen: set[str] = set()
-    result: list[dict] = []
-    for tc in tool_calls:
-        if tc.get("name") not in DATA_FETCH_TOOLS:
-            continue
-        key = f"{tc['name']}:{tc['arguments']}"
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(tc)
-    return result
 
 
 def replay_data_calls(calls: list[dict]) -> list[dict]:

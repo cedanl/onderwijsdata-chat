@@ -34,3 +34,10 @@ def test_a_missing_year_is_refused_and_one_error_is_not_tolerated():
 
 def test_years_in_the_answer_are_not_numbers_without_a_source():
     assert ungrounded_numbers("Sinds 2019 is dat 5.000 in 2021.", TOOL) == set()
+
+
+def test_an_invented_number_with_a_space_separator_is_refused():
+    """gpt-oss schrijft 91 500 met (smalle) spatie; de eval zag dat niet als getal (audit 11)."""
+    for scheiding in (" ", " ", " "):
+        answer = f"In 2021 waren het 5{scheiding}000; landelijk 91{scheiding}500."
+        assert ungrounded_numbers(answer, TOOL) == {"91500"}

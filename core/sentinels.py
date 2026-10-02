@@ -10,6 +10,9 @@ import pandas as pd
 
 SENTINELS = (-1,)
 
+# Wat -1 betekent, in de woorden die tool-output en snippets delen (#244).
+BETEKENIS = "onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde"
+
 # Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel.
 # Niet beperken tot AANTAL*-kolommen: DUO kent pivot-datasets waarin de telling in de
 # kolomnaam zit (DIPMAN2023, JAAR_2022 — zie prompts/system.md), en die zouden dan

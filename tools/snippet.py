@@ -9,10 +9,11 @@ store bij de key bewaart.
 import json
 
 from core.config import RIO_PAGE_SIZE
-from core.sentinels import SENTINELS, SIGNED_HINTS
+from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
 from . import store
 from .periode import STUDIEJAAR_LABEL
+from .plot import resolve_chart_type
 from .query import _parse_filter_key
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -46,7 +47,7 @@ def _duo_laadregels(args: dict) -> list[str]:
 def _duo_sentinelregels() -> list[str]:
     """Dezelfde maskering als core.sentinels.mask_sentinels in de app, met dezelfde constanten (#227)."""
     return [
-        "# DUO markeert onderdrukte cellen (kleine aantallen) met -1: geen telwaarde, de app sluit ze uit.",
+        f"# DUO-sentinel -1 = {BETEKENIS}. De app sluit ze uit.",
         "# Totalen over een selectie met zulke cellen zijn een ondergrens.",
         "for kolom in df.select_dtypes('number').columns:",
         f"    if not any(h in str(kolom).upper() for h in {SIGNED_HINTS!r}):",
@@ -226,7 +227,6 @@ def _frame_regels(args: dict, data_key: str | None) -> list[str]:
 
 
 def _create_plot_snippet(args: dict) -> str:
-    chart_type = args.get("chart_type", "bar")
     x = args.get("x", "x")
     y = args.get("y", "y")
     title = args.get("title", "")
@@ -235,9 +235,16 @@ def _create_plot_snippet(args: dict) -> str:
 
     lines = _frame_regels(args, data_key)
 
-    px_func = {"bar": "px.bar", "line": "px.line", "scatter": "px.scatter"}.get(chart_type, "px.bar")
+    df = store.get(data_key) if data_key else None
+    rows = df.to_dict(orient="records") if df is not None else args.get("data") or []
+    chart_type = resolve_chart_type(
+        rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
     color_arg = f', color="{color_by}"' if color_by else ""
-    lines.append(f'fig = {px_func}(df, x="{x}", y="{y}", title="{title}"{color_arg})')
+    if chart_type == "pie":
+        lines.append(f'fig = px.pie(df, names="{x}", values="{y}", title="{title}")')
+    else:
+        px_func = {"line": "px.line", "scatter": "px.scatter", "histogram": "px.histogram"}.get(chart_type, "px.bar")
+        lines.append(f'fig = {px_func}(df, x="{x}", y="{y}", title="{title}"{color_arg})')
     lines.append("fig.show()")
     return "\n".join(lines)
 

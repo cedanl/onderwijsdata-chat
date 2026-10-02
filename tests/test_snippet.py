@@ -111,6 +111,17 @@ def test_create_plot_with_data_key():
     assert "[{" not in snippet
 
 
+@pytest.mark.parametrize("args, functie", [
+    ({"x": "STUDIEJAAR"}, "px.line"),  # auto op een tijdas: create_plot tekent een lijn (#240)
+    ({"x": "STUDIEJAAR", "chart_type": "bar"}, "px.bar"),
+    ({"x": "SECTOR", "is_share": True}, "px.pie"),
+])
+def test_create_plot_snippet_volgt_het_grafiektype_van_de_app(args, functie):
+    """Audit 11: de tool meldde een lijngrafiek, de snippet gaf px.bar (#245)."""
+    snippet = generate("create_plot", {"data_key": "duo:x:y:result", "y": "AANTAL", "title": "t", **args})
+    assert f"fig = {functie}(" in snippet
+
+
 def test_create_plot_with_inline_data_fallback():
     snippet = generate("create_plot", {
         "data": [{"JAAR": 2021, "AANTAL": 100}],

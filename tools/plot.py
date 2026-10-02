@@ -76,6 +76,16 @@ def _infer_chart_type(
     # Default for single series
     return "bar"
 
+
+def resolve_chart_type(
+    data: list[dict], chart_type: str, x: str, y: str, color_by: str | None = None, is_share: bool = False,
+) -> str:
+    """Het type dat create_plot tekent; de snippet leest het hier ook, zodat ze niet uiteenlopen (#245)."""
+    if chart_type != "auto":
+        return chart_type
+    num_groups = len({row.get(color_by) for row in data}) if color_by else 1
+    return _infer_chart_type(x, y, color_by, num_groups, is_share)
+
 _GEOJSON_URLS = {
     "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
     "gemeente":  "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
@@ -182,10 +192,7 @@ def create_plot(
             "Noem de waarde in je antwoord."
         ), None
 
-    # Infer chart type if not explicitly specified
-    if chart_type == "auto":
-        num_groups = len({row.get(color_by) for row in data}) if color_by else 1
-        chart_type = _infer_chart_type(x, y, color_by, num_groups, is_share)
+    chart_type = resolve_chart_type(data, chart_type, x, y, color_by, is_share)
 
     fig = go.Figure()
     show_labels = chart_type in ("bar", "line") and len(data) <= _MAX_LABELED_POINTS
