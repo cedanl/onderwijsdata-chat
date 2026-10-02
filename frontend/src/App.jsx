@@ -62,6 +62,7 @@ function AppShell() {
   const [showSettings, setShowSettings] = useState(false)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
+  const [feedbackEnabled, setFeedbackEnabled] = useState(false)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -120,6 +121,7 @@ function AppShell() {
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled !== false)
+        setFeedbackEnabled(config.feedback_enabled === true)
       }).catch(() => {
         setDashboardsEnabled(true)
       }),
@@ -192,8 +194,8 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
             <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
-            <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} /> : <NotFoundPage unavailable />} />
-            <Route path="/rapporten" element={<RapportenPage settings={settings} />} />
+            <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
+            <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ErrorBoundary>

@@ -10,7 +10,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export default function RapportenPage({ settings }) {
+export default function RapportenPage({ settings, feedbackEnabled = false }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -44,6 +44,7 @@ export default function RapportenPage({ settings }) {
         onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Rapporten"
+        feedbackEnabled={feedbackEnabled}
       />
     )
   }

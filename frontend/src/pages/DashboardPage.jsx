@@ -10,7 +10,7 @@ import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 
 const BUILTINS = [BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL]
 
-export default function DashboardPage({ settings }) {
+export default function DashboardPage({ settings, feedbackEnabled = false }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)
@@ -66,6 +66,7 @@ export default function DashboardPage({ settings }) {
         onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Dashboards"
+        feedbackEnabled={feedbackEnabled}
       />
     )
   }
