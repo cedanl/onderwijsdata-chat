@@ -4,7 +4,7 @@ This document captures major architectural decisions and their rationale. Each d
 
 ## ADR-001: Anti-hallucinatie via server-side compute
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22 (revised 2026-10-02: limits stated)  
 **Status:** Decided  
 **Issue:** #39, #8
 
@@ -12,20 +12,26 @@ This document captures major architectural decisions and their rationale. Each d
 Language models hallucinate numbers when unsupervised. Other statistical agencies (ONS, Statistics Canada) have stopped deploying RAG chatbots due to this risk.
 
 ### Decision
-Implement a 4-layer defense where the server computes all numbers and the model only references them:
+The server loads and computes; the model selects and phrases. Four layers:
 
-1. **data_key** — No data rows in context; only a key (e.g., `duo:p02ho1ejrs:resource_0`)
-2. **compute_kpi** — Server calculates metrics; model just outputs the variable name
-3. **AST-check** — Reject literals ≥6 digits in model output (prevents "making up" numbers)
-4. **_check_number_sourcing** — Every number in the response must originate from a tool call
+1. **data_key** — No data rows in context; the model gets a key, the schema and a short preview.
+2. **Compute in code** — `query_data` (aggregation) and `compute_kpi` (difference, percentage, index, largest drop/rise) return the numbers; the model copies them.
+3. **run_analysis guard** — An AST check rejects a script with a literal data structure of six or more numbers (retyped data) or one that reads no data.
+4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Dashboards use `_check_number_sourcing` in `agent/dashboard.py`, reports `agent/report_checks.py`.
 
 ### Rationale
-- **Deterministic:** Server controls all numbers; model cannot invent them
-- **Auditable:** Each number traced to its source tool call
-- **Reproducible:** Users can re-run the Python snippet and verify
+- **Auditable:** each number can be traced to the tool call that produced it.
+- **Reproducible:** every analysis exports as a Python snippet that can be rerun.
+- **Detectable:** a number that is not in the data is caught by code, not left to the prompt.
 
-### Trade-off
-Slightly more complex orchestration, but eliminates hallucination risk entirely.
+### Trade-off and limits
+More orchestration, and the checks reduce the risk; they do not eliminate it. Known gaps, described in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md#wat-dit-niet-dekt):
+
+- Numbers under four digits and years are not checked; percentages are matched as value or fraction.
+- Binding only works when a sentence names exactly one year and one institution.
+- Numbers from earlier messages in the conversation count as sourced, including numbers the user gave.
+- `run_analysis` executes model-written Python; a sandbox with file I/O blocked is still open work.
+- Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision.
 
 ---
 
