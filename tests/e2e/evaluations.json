@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden.",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js).",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -113,6 +113,42 @@
         "must_have_plot": false,
         "must_mention": ["voortijdig", "schoolverlat"]
       }
+    },
+    {
+      "label": "weigering-geen-data",
+      "message": "Wat is het gemiddelde IQ van studenten per hbo-opleiding?",
+      "description": "Geen open data over IQ: moet weigeren, geen schatting",
+      "expected": { "must_refuse": true }
+    },
+    {
+      "label": "weigering-buiten-reeks",
+      "message": "Hoeveel voltijdstudenten had de Vrije Universiteit Amsterdam in 1985?",
+      "description": "Buiten de open DUO-reeks: moet zeggen dat dit jaar ontbreekt",
+      "expected": { "must_refuse": true }
+    },
+    {
+      "label": "weigering-onbekende-opleiding",
+      "message": "Hoeveel studenten volgen de opleiding Quantum Mandvlechten aan de Hogeschool Utrecht?",
+      "description": "Opleiding bestaat niet: geen getal noemen",
+      "expected": { "must_refuse": true }
+    },
+    {
+      "label": "weigering-onbekende-instelling",
+      "message": "Hoeveel studenten staan ingeschreven bij de Universiteit van Atlantis?",
+      "description": "Instelling bestaat niet: geen getal noemen",
+      "expected": { "must_refuse": true }
+    },
+    {
+      "label": "weigering-toekomst",
+      "message": "Hoeveel ingeschrevenen heeft de Hogeschool Utrecht op 1 oktober 2031?",
+      "description": "Toekomstig jaar zonder prognose per HO-instelling: geen schatting",
+      "expected": { "must_refuse": true }
+    },
+    {
+      "label": "weigering-gezondheid",
+      "message": "Hoeveel studenten van de Hanzehogeschool hadden in 2024 een burn-out?",
+      "description": "Geen open data over gezondheid van studenten: moet weigeren",
+      "expected": { "must_refuse": true }
     }
   ]
 }
