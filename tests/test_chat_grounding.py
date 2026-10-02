@@ -95,8 +95,10 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     store.clear()
     store.put("duo:p01hoinges:3", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
               KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)))
-    query = lambda jaar, cid: {"id": cid, "name": "query_data",  # noqa: E731
-                               "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": jaar}})}
+    def query(jaar, cid):
+        return {"id": cid, "name": "query_data",
+                "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": jaar}})}
+
     steps = [
         StreamResult(text="", tool_calls=[query(2024, "a")]),
         StreamResult(text="In 2025/26 waren het 7.418 deeltijdstudenten.", tool_calls=[]),
@@ -172,9 +174,11 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
         "AANTAL": [26370, 2880],
     }), KeyMeta(bron="duo", dataset="p01hoinges", resource=3,
                 instellingskolom="INSTELLINGSCODE_ACTUEEL", instellingen=("25DW", "30TX")))
-    query = lambda code, cid: {"id": cid, "name": "query_data",  # noqa: E731
-                               "arguments": json.dumps({"data_key": "duo:p01hoinges:3",
-                                                        "filters": {"INSTELLINGSCODE_ACTUEEL": code}})}
+    def query(code, cid):
+        return {"id": cid, "name": "query_data",
+                "arguments": json.dumps({"data_key": "duo:p01hoinges:3",
+                                         "filters": {"INSTELLINGSCODE_ACTUEEL": code}})}
+
     steps = [
         StreamResult(text="", tool_calls=[query("30TX", "a")]),
         StreamResult(text="De HU had 2.880 voltijdstudenten.", tool_calls=[]),
