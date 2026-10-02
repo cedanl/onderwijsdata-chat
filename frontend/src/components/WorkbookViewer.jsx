@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { refreshDashboard as refreshDashboardApi } from '../api'
+import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../api'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
@@ -20,6 +20,17 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const titleInputRef = useRef(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackThanks, setFeedbackThanks] = useState(false)
+  const [feedbackGiven, setFeedbackGiven] = useState(false)
+
+  useEffect(() => {
+    setFeedbackGiven(false)
+    if (!feedbackEnabled) return
+    let cancelled = false
+    fetchFeedbackGiven()
+      .then(ids => { if (!cancelled) setFeedbackGiven(ids.includes(workbook.id)) })
+      .catch(() => { /* status is cosmetic; the button still works */ })
+    return () => { cancelled = true }
+  }, [feedbackEnabled, workbook.id])
 
   useEffect(() => {
     if (!feedbackThanks) return
@@ -105,16 +116,28 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           </span>
         )}
         {feedbackEnabled ? (
-          <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
-            Feedback geven
-          </button>
+          feedbackGiven ? (
+            <span className="wb-feedback-given" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Feedback gegeven
+            </span>
+          ) : (
+            <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Geef feedback op dit rapport
+            </button>
+          )
         ) : <div />}
       </div>
       {showFeedback && (
         <FeedbackModal
           workbook={workbook}
           onClose={() => setShowFeedback(false)}
-          onSubmitted={() => { setShowFeedback(false); setFeedbackThanks(true) }}
+          onSubmitted={() => { setShowFeedback(false); setFeedbackGiven(true); setFeedbackThanks(true) }}
         />
       )}
       {feedbackThanks && <div className="toast info" role="status">Bedankt voor je feedback!</div>}

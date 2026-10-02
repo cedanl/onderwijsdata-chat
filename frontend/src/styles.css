@@ -1138,11 +1138,18 @@ html.dark .context-limit-banner--full {
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
 
 /* ─── Feedback Modal ──────────────────────────────────────── */
-.wb-feedback-btn {
-  font-size: .85rem; font-weight: 600; color: var(--accent-text);
-  padding: 6px 10px; border-radius: var(--radius-sm); transition: background .15s;
+.wb-feedback-btn, .wb-feedback-given {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);
 }
-.wb-feedback-btn:hover { background: var(--blue-50); }
+.wb-feedback-btn svg, .wb-feedback-given svg { width: 15px; height: 15px; flex-shrink: 0; }
+.wb-feedback-btn {
+  background: var(--blue-600); color: var(--on-color);
+  box-shadow: var(--shadow-sm); transition: background .15s;
+}
+.wb-feedback-btn:hover { background: var(--blue-700); }
+.wb-feedback-given { color: var(--muted-text); }
+.wb-feedback-given svg { color: var(--green-500); }
 .feedback-dialog { max-width: 520px; max-height: 90vh; overflow-y: auto; }
 .feedback-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
 .feedback-intro { font-size: .85rem; color: var(--muted-text); margin-bottom: 16px; }

@@ -395,3 +395,12 @@ def add_feedback(
     )
     conn.commit()
     conn.close()
+
+
+def list_feedback_workbooks(username: str) -> list[str]:
+    conn = _connect()
+    rows = _execute(
+        conn, "SELECT DISTINCT workbook_id FROM feedback WHERE username = ? ORDER BY workbook_id", (username,),
+    ).fetchall()
+    conn.close()
+    return [r["workbook_id"] for r in rows]
