@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, StringConstraints
 
 from core.auth import get_current_user
@@ -14,8 +14,15 @@ class ConversationTitle(BaseModel):
 
 
 @router.get("/api/conversations")
-async def list_conversations(username: str = Depends(get_current_user)) -> list[dict]:
-    return persistence_db.list_conversations(username)
+async def list_conversations(
+    username: str = Depends(get_current_user),
+    limit: Annotated[int, Query(ge=1, le=50)] = 15,
+    before_ts: int | None = None,
+    before_id: str | None = None,
+) -> list[dict]:
+    """Newest first; pass the timestamp and id of the last one shown for the next page (#123)."""
+    before = (before_ts, before_id) if before_ts is not None and before_id is not None else None
+    return persistence_db.list_conversations(username, before=before, limit=limit)
 
 
 @router.put("/api/conversations/{conv_id}")

@@ -20,8 +20,9 @@ import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
 import { personalizeQuestion } from '../suggestions'
 import {
-  clearCurrentChat, conversationRecord, loadConversationHistory, loadCurrentChat, newConversationId,
-  persistConversationHistory, persistCurrentChat, upsertConversation,
+  appendPage, clearCurrentChat, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory,
+  loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat,
+  upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
@@ -167,6 +168,8 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
@@ -185,14 +188,12 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
 
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
-    fetchConversations().then(serverConvs => {
-      if (serverConvs.length > 0) {
-        const parsed = serverConvs.map(c => ({
-          ...c,
-          messages: typeof c.messages === 'string' ? JSON.parse(c.messages) : c.messages,
-        }))
-        persistConversationHistory(parsed)
-        setConversationHistory(parsed)
+    fetchConversations({ limit: HISTORY_FETCH_LIMIT }).then(rows => {
+      if (rows.length > 0) {
+        const { items, hasMore } = historyPage(rows)
+        persistConversationHistory(items)
+        setConversationHistory(items)
+        setHasMoreHistory(hasMore)
       } else {
         const local = loadConversationHistory()
         if (local.length > 0) {
@@ -252,6 +253,20 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     setRestoredMessages(conv.messages)
     sendHistory(conv.messages)
   }, [clear, saveConversation, sendHistory])
+
+  // Older conversations stay on the server until asked for (#123).
+  const handleLoadMoreHistory = useCallback(() => {
+    if (!conversationHistory.length) return
+    setLoadingMoreHistory(true)
+    fetchConversations({ limit: HISTORY_FETCH_LIMIT, ...nextPageQuery(conversationHistory) })
+      .then(rows => {
+        const { items, hasMore } = historyPage(rows)
+        setConversationHistory(current => appendPage(current, items))
+        setHasMoreHistory(hasMore)
+      })
+      .catch(() => addToast('Oudere gesprekken laden is mislukt. Probeer het opnieuw.', 'error'))
+      .finally(() => setLoadingMoreHistory(false))
+  }, [conversationHistory, addToast])
 
   const handleDeleteConversation = useCallback((id) => {
     setPendingDelete(id)
@@ -403,6 +418,9 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
           </div>
           <ConversationHistory
             history={conversationHistory}
+            hasMore={hasMoreHistory}
+            loadingMore={loadingMoreHistory}
+            onLoadMore={handleLoadMoreHistory}
             onLoad={handleLoad}
             onDelete={handleDeleteConversation}
             onRename={handleRenameConversation}
@@ -761,7 +779,7 @@ function PlotlyFigure({ figureJson, label }) {
   )
 }
 
-export function ConversationHistory({ history, onLoad, onDelete, onRename }) {
+export function ConversationHistory({ history, hasMore = false, loadingMore = false, onLoadMore, onLoad, onDelete, onRename }) {
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState('')
   const titleInputRef = useRef(null)
@@ -856,6 +874,11 @@ export function ConversationHistory({ history, onLoad, onDelete, onRename }) {
           </div>
         ))}
       </div>
+      {hasMore && (
+        <button type="button" className="history-more-btn" onClick={onLoadMore} disabled={loadingMore}>
+          {loadingMore ? 'Laden…' : 'Meer laden'}
+        </button>
+      )}
     </div>
   )
 }

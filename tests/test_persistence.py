@@ -66,6 +66,31 @@ def test_list_conversations_max_15(db):
     assert len(result) == 15
 
 
+def test_list_conversations_pages_past_the_first_15(db):
+    # Gesprek 16+ is bereikbaar: de volgende pagina begint na het laatste van de vorige (#123).
+    for i in range(20):
+        db.upsert_conversation("alice", f"c{i:02d}", f"Chat {i}", (i + 1) * 1000, [])
+    eerste = db.list_conversations("alice")
+    laatste = eerste[-1]
+    rest = db.list_conversations("alice", before=(laatste["timestamp"], laatste["id"]))
+    assert [c["id"] for c in eerste + rest] == [f"c{i:02d}" for i in reversed(range(20))]
+
+
+def test_list_conversations_pages_through_equal_timestamps(db):
+    # Gelijke timestamps vallen niet tussen twee pagina's weg: id beslist de volgorde.
+    for i in range(4):
+        db.upsert_conversation("alice", f"c{i}", f"Chat {i}", 5000, [])
+    eerste = db.list_conversations("alice", limit=2)
+    rest = db.list_conversations("alice", before=(eerste[-1]["timestamp"], eerste[-1]["id"]), limit=2)
+    assert [c["id"] for c in eerste + rest] == ["c3", "c2", "c1", "c0"]
+
+
+def test_list_conversations_limit(db):
+    for i in range(5):
+        db.upsert_conversation("alice", f"c{i}", f"Chat {i}", (i + 1) * 1000, [])
+    assert [c["id"] for c in db.list_conversations("alice", limit=3)] == ["c4", "c3", "c2"]
+
+
 def test_list_conversations_ordered_newest_first(db):
     db.upsert_conversation("alice", "old", "Oud", 1000, [])
     db.upsert_conversation("alice", "new", "Nieuw", 9000, [])

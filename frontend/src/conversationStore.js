@@ -5,8 +5,9 @@ export function loadConversationHistory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
 }
 
+// Only the first page is cached; older pages come from the server again (#123).
 export function persistConversationHistory(list) {
-  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list)) } catch { /* noop */ }
+  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list.slice(0, MAX_CONVERSATIONS))) } catch { /* noop */ }
 }
 
 export const newConversationId = () => crypto.randomUUID()
@@ -38,5 +39,27 @@ export function conversationRecord(id, messages) {
 
 // Saving a conversation again replaces its earlier version instead of adding a copy.
 export function upsertConversation(list, record) {
-  return [record, ...list.filter(c => String(c.id) !== String(record.id))].slice(0, MAX_CONVERSATIONS)
+  return [record, ...list.filter(c => String(c.id) !== String(record.id))]
+}
+
+// The server is asked for one more than a page, so a full last page is not mistaken for "more" (#123).
+export const HISTORY_FETCH_LIMIT = MAX_CONVERSATIONS + 1
+
+export function historyPage(rows) {
+  const items = rows.slice(0, MAX_CONVERSATIONS).map(c => ({
+    ...c,
+    messages: typeof c.messages === 'string' ? JSON.parse(c.messages) : c.messages,
+  }))
+  return { items, hasMore: rows.length > MAX_CONVERSATIONS }
+}
+
+// The next page starts after the last conversation shown; the server orders by (timestamp, id).
+export function nextPageQuery(list) {
+  const last = list.at(-1)
+  return { before_ts: last.timestamp, before_id: String(last.id) }
+}
+
+export function appendPage(list, items) {
+  const known = new Set(list.map(c => String(c.id)))
+  return [...list, ...items.filter(c => !known.has(String(c.id)))]
 }

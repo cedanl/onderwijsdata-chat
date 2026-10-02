@@ -434,6 +434,13 @@ input, textarea { font: inherit; }
 .history-btn-content { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .history-btn-title { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .history-btn-date { font-size: .7rem; color: var(--muted-text); }
+.history-more-btn {
+  margin-top: 6px; width: 100%; padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200); background: transparent;
+  font-size: .75rem; color: var(--gray-500); cursor: pointer;
+}
+.history-more-btn:hover:not(:disabled) { background: var(--gray-50); color: var(--gray-700); }
+.history-more-btn:disabled { cursor: default; opacity: .6; }
 .history-actions { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 8px 28px; }
 .history-action-btn {
   padding: 6px 10px; border-radius: var(--radius-sm); font-size: .72rem; font-weight: 600;

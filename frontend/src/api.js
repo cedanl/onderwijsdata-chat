@@ -24,8 +24,9 @@ async function apiFetch(path, options = {}) {
   return res.json()
 }
 
-export async function fetchConversations() {
-  return apiFetch('/api/conversations')
+export async function fetchConversations(params = {}) {
+  const query = new URLSearchParams(params).toString()
+  return apiFetch(query ? `/api/conversations?${query}` : '/api/conversations')
 }
 
 export async function putConversation(id, data) {
