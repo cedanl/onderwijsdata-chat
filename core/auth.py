@@ -5,7 +5,7 @@ import os
 import time
 from typing import Annotated
 
-from fastapi import Header, HTTPException, Query
+from fastapi import Header, HTTPException
 
 _TOKEN_SECRET_RAW = os.getenv("CHAT_SECRET", "")
 _TOKEN_TTL = 24 * 3600
@@ -72,31 +72,34 @@ _TOKEN_SECRET = _TOKEN_SECRET_RAW.encode() or b"dev-only-no-secret-set"
 FALLBACK_USER = "gast"
 
 
-def _resolve_user(authorization: str | None, token: str | None) -> str | None:
+# Het token komt alleen via een header: een query-string belandt in proxy- en serverlogs (#103).
+def _resolve_user(authorization: str | None) -> str | None:
     if not AUTH_ENABLED:
         return FALLBACK_USER
-    raw = None
-    if authorization and authorization.startswith("Bearer "):
-        raw = authorization[7:]
-    elif token:
-        raw = token
-    return verify_token(raw or "")
+    raw = authorization.removeprefix("Bearer ") if authorization and authorization.startswith("Bearer ") else ""
+    return verify_token(raw)
 
 
-def get_current_user(
-    authorization: Annotated[str | None, Header()] = None,
-    token: Annotated[str | None, Query()] = None,
-) -> str:
+# Een browser kan bij een WebSocket geen header meegeven, wel subprotocollen: ["bearer", token].
+WS_SUBPROTOCOL = "bearer"
+
+
+def token_uit_protocol(header: str | None) -> str | None:
+    """Het token uit Sec-WebSocket-Protocol "bearer, <token>", of None."""
+    delen = [d.strip() for d in (header or "").split(",")]
+    if len(delen) == 2 and delen[0] == WS_SUBPROTOCOL and delen[1]:
+        return delen[1]
+    return None
+
+
+def get_current_user(authorization: Annotated[str | None, Header()] = None) -> str:
     """FastAPI dependency. Raises 401 when token ontbreekt of ongeldig is."""
-    username = _resolve_user(authorization, token)
+    username = _resolve_user(authorization)
     if not username:
         raise HTTPException(status_code=401, detail="Niet geautoriseerd")
     return username
 
 
-def get_optional_user(
-    authorization: Annotated[str | None, Header()] = None,
-    token: Annotated[str | None, Query()] = None,
-) -> str | None:
+def get_optional_user(authorization: Annotated[str | None, Header()] = None) -> str | None:
     """FastAPI dependency — retourneert gebruikersnaam of None (geen 401)."""
-    return _resolve_user(authorization, token)
+    return _resolve_user(authorization)

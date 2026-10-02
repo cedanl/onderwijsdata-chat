@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
-import { getToken } from '../auth'
+import { chatSocket } from '../auth'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -116,10 +116,7 @@ export default function useDashboardChat() {
     }
 
     function connect() {
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      const token = getToken()
-      const query = token ? `?token=${encodeURIComponent(token)}` : ''
-      const ws = new WebSocket(`${proto}://${location.host}/api/chat${query}`)
+      const ws = chatSocket()
       wsRef.current = ws
 
       ws.onopen = () => {

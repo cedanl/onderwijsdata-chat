@@ -35,7 +35,7 @@ export async function fetchAuthStatus() {
 // GitHub version (basic auth) doesn't have this endpoint
 export async function fetchUserInfo(token) {
   try {
-    const res = await fetch(`/api/auth/user?token=${encodeURIComponent(token)}`)
+    const res = await fetch('/api/auth/user', { headers: { Authorization: `Bearer ${token}` } })
     if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
     if (!res.ok) {
       if (res.status === 401) return null
@@ -103,11 +103,19 @@ export function tokenExpiresAt(token) {
   }
 }
 
-// After a redirect back from /api/auth/oidc/callback, the token arrives as
-// ?token=... on the URL. Pick it up, persist it, and strip it from the URL
-// (it shouldn't linger in browser history).
+// The chat socket carries the token as subprotocol ["bearer", token]: a browser
+// cannot set headers on a WebSocket, and a query string ends up in logs (#103).
+export function chatSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+  const token = getToken()
+  return new WebSocket(`${proto}://${location.host}/api/chat`, token ? ['bearer', token] : undefined)
+}
+
+// After a redirect back from /api/auth/oidc/callback, the token arrives in the
+// fragment (#token=...), which a browser never sends to a server or proxy (#103).
+// Pick it up, persist it, and strip it from the URL (it shouldn't linger in history).
 export function consumeTokenFromUrl() {
-  const params = new URLSearchParams(window.location.search)
+  const params = new URLSearchParams(window.location.hash.slice(1))
   const token = params.get('token')
   if (!token) return null
   setToken(token)
@@ -126,8 +134,8 @@ export function consumeTokenFromUrl() {
 
   params.delete('token')
   params.delete('user_data')
-  const query = params.toString()
-  window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''))
+  const rest = params.toString()
+  window.history.replaceState({}, '', window.location.pathname + window.location.search + (rest ? `#${rest}` : ''))
 
   return { token, userData }
 }

@@ -3,7 +3,7 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from agent import run as agent_run
@@ -11,7 +11,7 @@ from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.replay import replay_dashboard_figures, replay_data_calls
 from agent.report import generate as generate_report_spec
-from core.auth import AUTH_ENABLED, FALLBACK_USER, verify_token
+from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MODEL
 from core.errors import friendly_error
 
@@ -348,15 +348,17 @@ async def _handle_refresh_dashboard(
 
 
 @router.websocket("/api/chat")
-async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None)) -> None:
+async def chat_websocket(ws: WebSocket) -> None:
     username = None
+    token = token_uit_protocol(ws.headers.get("sec-websocket-protocol"))
     if AUTH_ENABLED:
         username = verify_token(token or "")
         if not username:
             await ws.close(code=4001, reason="Niet geautoriseerd")
             return
 
-    await ws.accept()
+    # Het subprotocol bevestigen, anders sluit de browser de verbinding (#103).
+    await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
     session = _new_session(username=username)
 
     async def emit(event: dict) -> None:
