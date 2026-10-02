@@ -8,6 +8,8 @@ import re
 
 _PATTERN_LOOKAHEAD = 40  # max. characters between a year and its value in the answer
 _YEARS = {str(y) for y in range(1990, 2040)}
+# Duizendtallen met punt of (harde/smalle) spatie, zoals gpt-oss schrijft: 91.500, 91 500.
+_ANSWER_NUMBER = re.compile(r"\d{1,3}(?:[.\s]\d{3})+|\d{4,}")
 
 
 def unpaired_years(answer: str, truth: dict[int, int]) -> list[str]:
@@ -28,5 +30,5 @@ def ungrounded_numbers(answer: str, tool_payloads: list) -> set[str]:
     tool_numbers: set[str] = set()
     for payload in tool_payloads:
         tool_numbers |= set(re.findall(r"\d{4,}", json.dumps(payload)))
-    answer_numbers = set(re.findall(r"\d{4,}", answer.replace(".", "")))
+    answer_numbers = {re.sub(r"[.\s]", "", n) for n in _ANSWER_NUMBER.findall(answer)}
     return answer_numbers - tool_numbers - _YEARS

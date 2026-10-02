@@ -11,9 +11,9 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from core.sentinels import mask_sentinels
+from core.sentinels import BETEKENIS, mask_sentinels
 from tools import store
-from tools.duo import count_cells, get_duo_data, sentinel_notes
+from tools.duo import count_cells, get_duo_data, resource_sentinel_notes, sentinel_notes
 from tools.query import _apply_aggregation, query_data
 
 
@@ -184,6 +184,13 @@ class TestMelding:
 
     def test_sentinel_notes_is_leeg_zonder_tellingen(self):
         assert sentinel_notes({}) == []
+
+    @pytest.mark.parametrize("melding", [sentinel_notes, resource_sentinel_notes])
+    def test_melding_noemt_de_betekenis_uit_core_sentinels(self, melding):
+        """Audit 11: de tool noemde -1 'leeg/n.v.t.', de rest van de app 'onderdrukte cel' (#244)."""
+        [tekst] = melding({"AANTAL": 3})
+        assert BETEKENIS in tekst
+        assert "n.v.t." not in tekst
 
 
 class TestAggregatie:

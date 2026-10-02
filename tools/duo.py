@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from riodata import duo as _duo
 
-from core.sentinels import EMPTY_CELLS
+from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import instelling, periode, store
 from .catalog import catalogus_titel, resource_titel
@@ -101,7 +101,7 @@ def sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
     return [
         f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten "
-        f"(betekent leeg/n.v.t., geen telwaarde) — totalen zijn hierdoor een ondergrens"
+        f"({BETEKENIS}) — totalen zijn hierdoor een ondergrens"
         for col, n in counts.items()
     ]
 
@@ -113,8 +113,8 @@ def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     model straks selecteert, en dat meldt query_data per selectie (#179).
     """
     return [
-        f"{n} cellen met DUO-sentinel -1 in '{col}' in de hele resource (betekent "
-        f"leeg/n.v.t., geen telwaarde; worden als leeg behandeld, rijen blijven staan). "
+        f"{n} cellen met DUO-sentinel -1 in '{col}' in de hele resource "
+        f"({BETEKENIS}; worden als leeg behandeld, rijen blijven staan). "
         f"Zegt niets over een gefilterd totaal: query_data meldt per selectie welke -1-cellen erin vallen"
         for col, n in counts.items()
     ]
