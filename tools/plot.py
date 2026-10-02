@@ -32,12 +32,14 @@ _LAYOUT_BASE = {
 
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
-_TIME_KEYWORDS = {"JAAR", "PERIODE", "MAAND", "KWARTAAL", "DATUM", "DATE", "YEAR", "MONTH"}
+_TIME_KEYWORDS = {
+    "JAAR", "STUDIEJAAR", "PERIODE", "PERIODEN", "MAAND", "KWARTAAL", "DATUM", "DATE", "YEAR", "MONTH",
+}
 
 
 def _is_time_axis(col_name: str) -> bool:
-    """Detect if column represents time."""
-    return col_name.upper() in _TIME_KEYWORDS
+    """Detect if column represents time, ook als label (STUDIEJAAR_LABEL, Perioden_label; #240)."""
+    return col_name.upper().removesuffix("_LABEL") in _TIME_KEYWORDS
 
 
 def _infer_chart_type(
@@ -217,6 +219,9 @@ def create_plot(
 
     if chart_type != "pie":
         layout["xaxis"] = {"title": x, **_AXIS_STYLE}
+        if _is_time_axis(x):
+            # Jaartallen als categorie: geen 2.023,5-tussenticks met duizendtalpunt (#240).
+            layout["xaxis"].update(type="category", categoryorder="category ascending")
         layout["yaxis"] = {"title": y, "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)

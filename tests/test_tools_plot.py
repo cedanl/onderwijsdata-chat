@@ -243,3 +243,33 @@ def test_figure_carries_the_store_rows_for_the_csv_export():
         {"SUBONDERDEEL": "economie", "AANTAL": 2351.0},
         {"SUBONDERDEEL": "recht", "AANTAL": None},
     ]
+
+
+# ── Tijdas (#240) ──
+
+_HAN = [
+    {"STUDIEJAAR": 2023, "aantal": 27367},
+    {"STUDIEJAAR": 2024, "aantal": 26900},
+    {"STUDIEJAAR": 2025, "aantal": 26445},
+]
+
+
+@pytest.mark.parametrize("kolom", ["STUDIEJAAR", "JAAR", "Perioden", "Perioden_label", "STUDIEJAAR_LABEL"])
+def test_tijdreeks_zonder_typeverzoek_wordt_een_lijn(kolom):
+    rows = [{kolom: r["STUDIEJAAR"], "aantal": r["aantal"]} for r in _HAN]
+    msg, fig = create_plot(rows, "auto", kolom, "aantal", "T")
+    assert fig.data[0].type == "scatter" and fig.data[0].mode.startswith("lines")
+    assert "lijngrafiek" in msg.lower()
+
+
+@pytest.mark.parametrize("chart_type", ["line", "bar"])
+def test_jaartallen_op_de_as_zonder_tussenwaarden_of_duizendtalpunt(chart_type):
+    # Audit 10: de HAN-grafiek toonde 2.023,5 / 2.024 / 2.024,5 op de x-as.
+    _, fig = create_plot(_HAN, chart_type, "STUDIEJAAR", "aantal", "T")
+    assert fig.layout.xaxis.type == "category"
+    assert fig.layout.xaxis.categoryorder == "category ascending"
+
+
+def test_geen_tijdas_houdt_een_gewone_as():
+    _, fig = create_plot([{"regio": "A", "n": 1}, {"regio": "B", "n": 2}], "bar", "regio", "n", "T")
+    assert fig.layout.xaxis.type is None
