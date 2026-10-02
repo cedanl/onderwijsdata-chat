@@ -12,6 +12,7 @@ import { WebSocket } from 'ws'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
+import { scoreRefusal } from './refusal.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations
@@ -218,12 +219,17 @@ test.describe('Productie-vragen (evaluatie)', () => {
       for (const model of MODELS) {
         const short = model.split('/').pop()
         const r = await chat(token, ev.message, model)
-        const scores = scoreResult(r, ev)
+        const scores = ev.expected.must_refuse ? scoreRefusal(r) : scoreResult(r, ev)
         allScores[short] = scores
 
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)
         console.log(`SCORE: ${scores.total}/${scores.max}`)
+        if (ev.expected.must_refuse) {
+          console.log(`Weigert: ${scores.refused}; verzonnen getallen: ${scores.fabricated.join(', ') || 'geen'}`)
+          console.log(`ANTWOORD (400 chars):\n${r.content.slice(0, 400)}`)
+          continue
+        }
         console.log(`TOOLS (${r.toolCalls.length}): ${r.toolCalls.join(' → ') || '(geen)'}`)
         console.log(`search_catalog: ${scores.search_count}x (limiet: ${ev.expected.max_search_catalog || 3})`)
         console.log(`Verplichte tools: ${JSON.stringify(scores.required_tools)}`)
@@ -252,6 +258,12 @@ test.describe('Productie-vragen (evaluatie)', () => {
 
       // Assertions per model
       for (const [modelName, scores] of Object.entries(allScores)) {
+        if (ev.expected.must_refuse) {
+          // Integraal weigeren: geen gok, ook niet naast een weigerzin (#36).
+          expect(scores.fabricated, `${modelName} noemt getallen zonder bron`).toEqual([])
+          expect(scores.refused, `${modelName} weigert niet`).toBe(true)
+          continue
+        }
         expect(scores.hallucination_risk, `${modelName} geeft data-getallen zonder bronnen`).toBe(false)
         expect(scores.total, `${modelName} scoort te laag (${scores.total}/${scores.max})`).toBeGreaterThanOrEqual(30)
       }
