@@ -3,6 +3,8 @@ import json
 import pandas as pd
 from riodata import duo as _duo
 
+from core.sentinels import EMPTY_CELLS
+
 from . import instelling, periode, store
 from .catalog import catalogus_titel, resource_titel
 from .duo_meta import teldefinitie
@@ -41,58 +43,13 @@ def _apply_glossary_patches(defs: dict[str, str]) -> dict[str, str]:
     return {**defs, **_GLOSSARY_PATCHES}
 
 
-_DUO_SENTINELS = (-1,)
-
-# Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel.
-# Niet beperken tot AANTAL*-kolommen: DUO kent pivot-datasets waarin de telling in de
-# kolomnaam zit (DIPMAN2023, JAAR_2022 — zie prompts/system.md), en die zouden dan
-# ongemaskeerd blijven.
-_SIGNED_HINTS = ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")
-
 # Per store-key: aantal gemaskeerde cellen per rij en kolom, alleen voor rijen met
 # minstens één (sparse). Per rij en niet per key, zodat query_data de telling met
 # dezelfde filter/selectie/groupby als de data kan meenemen: de melding hoort bij de
 # geselecteerde rijen, niet bij de hele dataset (#171). Na maskering is het aantal
-# niet meer uit de data af te leiden: de -1'en zijn dan weg.
+# niet meer uit de data af te leiden: de -1'en zijn dan weg. Het maskeren zelf staat
+# in core.sentinels en gebeurt in store.put() voor elke `duo:`-key.
 _sentinel_cells: dict[str, pd.DataFrame] = {}
-_EMPTY_CELLS = pd.DataFrame()
-
-
-def _is_maskable(df, col) -> bool:
-    if not pd.api.types.is_numeric_dtype(df[col]):
-        return False
-    return not any(hint in str(col).upper() for hint in _SIGNED_HINTS)
-
-
-def mask_sentinels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Vervang DUO-sentinels (-1) door pd.NA en geef per rij aan welke cellen dat waren.
-
-    DUO markeert onderdrukte waarden (kleine aantallen) met -1. Die mogen nooit als
-    telwaarde meedoen. De cellen worden bijgehouden omdat een onderdrukte cel betekent
-    dat een totaal een ondergrens is: bij 2 onderdrukte cellen kan 300 in werkelijkheid
-    hoger liggen, en dat moet de gebruiker kunnen zien.
-
-    Geeft (gemaskeerde df, cellen) terug; `cellen` heeft de index van df, alleen rijen
-    met minstens één sentinel, en per maskeerbare kolom het aantal (0/1).
-
-    Wordt aangeroepen vanuit store.put() voor elke `duo:`-key, dus ook voor data die
-    niet via get_duo_data binnenkomt. Idempotent: al gemaskeerde data levert niets op.
-    """
-    masks = {}
-    for col in df.columns:
-        if _is_maskable(df, col):
-            mask = df[col].isin(_DUO_SENTINELS)
-            if mask.any():
-                masks[col] = mask
-    if not masks:
-        return df, _EMPTY_CELLS
-    # Pas kopiëren als er echt iets te maskeren valt: put() draait dit op elke
-    # DataFrame die de store in gaat, ook de al gemaskeerde.
-    out = df.copy()
-    for col, mask in masks.items():
-        out.loc[mask, col] = pd.NA
-    cells = pd.DataFrame(masks).astype(int)
-    return out, cells[cells.any(axis=1)]
 
 
 def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
@@ -124,7 +81,7 @@ def clear_sentinel_cells() -> None:
 def select_cells(cells: pd.DataFrame | None, df: pd.DataFrame) -> pd.DataFrame:
     """Beperk de cellen tot de rijen en kolommen die in de selectie `df` zitten."""
     if cells is None or cells.empty:
-        return _EMPTY_CELLS
+        return EMPTY_CELLS
     return cells.loc[cells.index.intersection(df.index), [c for c in cells.columns if c in df.columns]]
 
 
@@ -133,7 +90,7 @@ def aggregate_cells(cells: pd.DataFrame, df: pd.DataFrame, group_by: list[str], 
     # Alleen geaggregeerde waardekolommen; een groepeerkolom zit al in df[group_by].
     cells = cells[[c for c in cells.columns if c in agg.columns and c not in group_by]]
     if cells.empty:
-        return _EMPTY_CELLS
+        return EMPTY_CELLS
     per_group = cells.join(df[group_by]).groupby(group_by, dropna=False).sum().reset_index()
     rows = agg[group_by].reset_index().merge(per_group, on=group_by).set_index("index")
     rows.index.name = None
