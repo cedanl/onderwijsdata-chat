@@ -120,7 +120,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 1. **Zoek de dataset**: gebruik `search_catalog` voor alle bronnen (CBS, RIO, DUO). DUO-datasets hebben leverancier='DUO' en een `_ckan_id` veld. De resultaten bevatten compacte metadata (naam, dimensies, geo-niveau, periode) — genoeg om 1-3 kandidaten te kiezen.
 
-   **Zoeklimiet:** roep `search_catalog` maximaal **3 keer** aan per analysevraag. Varieer niet eindeloos op zoektermen — als na 3 zoekacties geen geschikte dataset gevonden is, werk met de beste kandidaat of geef eerlijk aan dat de data niet beschikbaar is.
+   **Zoeklimiet:** roep `search_catalog` maximaal **{ZOEKLIMIET} keer** aan per analysevraag. Varieer niet eindeloos op zoektermen — als na {ZOEKLIMIET} zoekacties geen geschikte dataset gevonden is, werk met de beste kandidaat of geef eerlijk aan dat de data niet beschikbaar is.
 
 2. **Controleer kolomdetails** (verplicht vóór data laden): roep `dataset_details(dataset_id)` aan voor de top 1-3 kandidaten uit `search_catalog`. Dit toont kolommen, dimensiewaarden, kolomtypes en definities. Kies op basis hiervan de juiste dataset — roep pas daarna `get_duo_data`, `get_cbs_data` of `get_rio_data` aan. Dit voorkomt dat je de verkeerde dataset laadt en opnieuw moet proberen.
 

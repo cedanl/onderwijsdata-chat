@@ -20,6 +20,8 @@ CBS_ROW_LIMIT = int(os.getenv("CBS_ROW_LIMIT", "5000"))
 RIO_PAGE_SIZE = int(os.getenv("RIO_PAGE_SIZE", "50"))
 DUO_ROW_LIMIT = int(os.getenv("DUO_ROW_LIMIT", "500"))
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
+# Zoekacties per vraag: de code dwingt dit af en de systeemprompt noemt het (#52).
+SEARCH_CATALOG_LIMIT = 3
 # Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234).
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
