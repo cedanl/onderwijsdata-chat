@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { useChat } from '../hooks/useChat'
+import { useChat, REPORT_TIMEOUT_MS } from '../hooks/useChat'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -93,6 +93,67 @@ describe('useChat report errors', () => {
     expect(msg.isError).toBe(true)
     expect(chat.toasts).toEqual([])
     expect(chat.reportBusy).toBe(false)
+  })
+
+  // #219: report_ready never came, and the button kept saying "wordt gegenereerd" for good.
+  describe('when report_ready never comes', () => {
+    afterEach(() => vi.useRealTimers())
+
+    it('ends the wait after the timeout with a message, stops the server and frees the button', async () => {
+      vi.useFakeTimers()
+      const ws = FakeWebSocket.last
+      await act(async () => { chat.generateReport('tester') })
+      await act(async () => { ws.emit({ type: 'report_generating' }) })
+      expect(chat.reportBusy).toBe(true)
+
+      await act(async () => { vi.advanceTimersByTime(REPORT_TIMEOUT_MS - 1) })
+      expect(chat.reportBusy).toBe(true)
+      await act(async () => { vi.advanceTimersByTime(1) })
+
+      expect(chat.reportBusy).toBe(false)
+      const [msg] = assistantMessages()
+      expect(msg.isError).toBe(true)
+      expect(msg.content).toMatch(/rapport.*niet.*klaar.*opnieuw/is)
+      expect(ws.sent).toContainEqual({ action: 'stop' })
+    })
+
+    it('ignores what the stopped server still sends after the timeout', async () => {
+      vi.useFakeTimers()
+      const ws = FakeWebSocket.last
+      await act(async () => { chat.generateReport('tester') })
+      await act(async () => { vi.advanceTimersByTime(REPORT_TIMEOUT_MS) })
+      await act(async () => {
+        ws.emit({ type: 'report_error', message: 'Rapport kon niet worden gemaakt. Probeer het opnieuw.' })
+        ws.emit({ type: 'report_ready', spec: { titel: 'te laat' } })
+      })
+
+      expect(assistantMessages()).toHaveLength(1)
+      expect(chat.reportSpec).toBeNull()
+    })
+
+    it('does not fire after the report arrived in time', async () => {
+      vi.useFakeTimers()
+      const ws = FakeWebSocket.last
+      await act(async () => { chat.generateReport('tester') })
+      await act(async () => { ws.emit({ type: 'report_ready', spec: { titel: 'R' } }) })
+      await act(async () => { vi.advanceTimersByTime(REPORT_TIMEOUT_MS * 2) })
+
+      expect(chat.reportSpec).toEqual({ titel: 'R' })
+      expect(assistantMessages()).toEqual([])
+      expect(ws.sent).not.toContainEqual({ action: 'stop' })
+    })
+
+    it('says so when the connection drops while the report is being made', async () => {
+      const ws = FakeWebSocket.last
+      await act(async () => { chat.generateReport('tester') })
+      await act(async () => {
+        ws.readyState = 3
+        ws.onclose({ code: 1006 })
+      })
+
+      expect(chat.reportBusy).toBe(false)
+      expect(assistantMessages()[0].content).toMatch(/verbinding.*rapport/is)
+    })
   })
 })
 
