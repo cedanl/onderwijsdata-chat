@@ -30,6 +30,7 @@ import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
+import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps } from '../components/RunProgress'
@@ -316,9 +317,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     if (Object.keys(s).some(k => s[k])) sendSettings(s)
   }, [selectedModel, settings.instelling, settings.functie, sendSettings])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  useAutoScroll(messagesContainerRef, messages)
 
   // Verandert de toestand die het versturen blokkeerde, dan is de melding achterhaald.
   useEffect(() => { setSendNotice(null) }, [busy, connected, resetting])
