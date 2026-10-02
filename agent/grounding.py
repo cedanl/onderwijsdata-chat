@@ -13,8 +13,10 @@ import re
 from decimal import ROUND_HALF_UP, Decimal
 
 # Een getal in Nederlandse notatie: 378.490 of 378490, optioneel met decimale komma.
+# Duizendtallen ook met (harde of smalle) spatie: 378 490, zoals gpt-oss schrijft (#236).
 # Niet aan een letter of cijfer vast: 85423NED, 2024SJ00 en T001228 zijn codes (#48).
-_TEXT_NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?(?!\w)")
+_TEXT_NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:[. \u00a0\u202f]\d{3})+|\d+)(?:,\d+)?(?!\w)")
+_THOUSANDS = re.compile(r"[. \u00a0\u202f]")
 _TEXT_PERCENT = re.compile(r"(?<![\w.,])(\d+(?:,\d+)?)\s?(?:%|procent\b)")
 _TOOL_NUMBER = re.compile(r"\d+")
 # Decimalen in tooluitvoer: JSON schrijft 9.55, compute_kpi's weergave 9,6.
@@ -22,6 +24,10 @@ _TOOL_DECIMAL = re.compile(r"\d+(?:[.,]\d+)?")
 _MIN_DIGITS = 4
 _YEARS = range(1900, 2101)
 _TRIVIAL_PERCENTAGES = (Decimal(0), Decimal(100))
+
+
+def _digits(written: str) -> str:
+    return _THOUSANDS.sub("", written)
 
 
 def _checked(number: str) -> bool:
@@ -37,13 +43,13 @@ def checked_numbers(text: str) -> list[tuple[str, str]]:
     return [
         (m.group(0), digits)
         for m in _TEXT_NUMBER.finditer(text)
-        if "," not in m.group(0) and _checked(digits := m.group(1).replace(".", ""))
+        if "," not in m.group(0) and _checked(digits := _digits(m.group(1)))
     ]
 
 
 def unsourced_numbers(text: str, tool_results: list[str]) -> set[str]:
     """Getallen (≥ 4 cijfers, geen jaartal) uit `text` die in geen enkel toolresultaat staan."""
-    in_text = {m.group(1).replace(".", "") for m in _TEXT_NUMBER.finditer(text)}
+    in_text = {_digits(m.group(1)) for m in _TEXT_NUMBER.finditer(text)}
     return {n for n in in_text if _checked(n)} - _tool_integers(tool_results)
 
 
@@ -68,7 +74,7 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
     Nederlandse notatie gelezen (28.355 is één getal, geen 28 en 355).
     """
     integers = _tool_integers(tool_results) | {
-        m.group(1).replace(".", "") for said in conversation for m in _TEXT_NUMBER.finditer(said)
+        _digits(m.group(1)) for said in conversation for m in _TEXT_NUMBER.finditer(said)
     }
     decimals = {Decimal(n.replace(",", ".")) for r in tool_results for n in _TOOL_DECIMAL.findall(str(r))} | {
         Decimal(m.group(1).replace(",", ".")) for said in conversation for m in _TEXT_PERCENT.finditer(said)
@@ -83,7 +89,7 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
     for m in _TEXT_NUMBER.finditer(text):
         if any(start <= m.start() < end for start, end in percent_spans):
             continue
-        number = m.group(1).replace(".", "")
+        number = _digits(m.group(1))
         if _checked(number) and number not in integers:
             found.append((m.start(), m.group(0)))
 

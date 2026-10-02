@@ -553,10 +553,9 @@ def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> di
     Gebruik _uwv_vacatures_provincie voor weergave-overzichten (top-N).
     """
     _, _, alle = _uwv_raw_clusters(provincie)
-    if not alle:
-        return {}
-    gefilterd = _relevante_clusters(alle, sectoren)
-    return gefilterd or alle
+    # Geen match is geen reden om alle clusters te nemen: dan kreeg elke sector
+    # vacature-aandeel 0 en dus "overaanbod" (#229). Leeg geeft match_score None.
+    return _relevante_clusters(alle, sectoren)
 
 
 def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:

@@ -236,6 +236,11 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     return total * damping
 
 
+def _geo_niveaus(entry: dict) -> list[str]:
+    """Geografische niveaus van een dataset; zonder regiodimensie is dat landelijk (#237)."""
+    return entry.get("_geo_niveau") or ["landelijk"]
+
+
 def search_catalog(
     query: str,
     source: str = "both",
@@ -284,7 +289,7 @@ def search_catalog(
     hits = [r for _, r in results]
 
     if geo_niveau:
-        hits = [r for r in hits if geo_niveau in (r.get("_geo_niveau") or [])]
+        hits = [r for r in hits if geo_niveau in _geo_niveaus(r)]
         if not hits:
             logger.warning("search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
             return (

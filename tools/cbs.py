@@ -93,12 +93,13 @@ def check_dimensions_pinned(data_key: str, df: pd.DataFrame, keep: list[str]) ->
     )
 
 
-def _load_definitions(dataset_id: str) -> dict:
+def _load_definitions(dataset_id: str) -> dict | None:
+    """Kolomdefinities uit DataProperties; None als de call mislukt (#229)."""
     try:
         return definitions(dataset_id)
     except Exception as e:
         logger.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
-        return {}
+        return None
 
 
 def _dimension_names(col_defs: dict) -> list[str]:
@@ -174,7 +175,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         params["$top"] = CBS_ROW_LIMIT
     if "$select" in params:
         params["$select"] = _select_with_dimensions(
-            params["$select"], _dimension_names(_load_definitions(dataset_id))
+            params["$select"], _dimension_names(_load_definitions(dataset_id) or {})
         )
     try:
         rows = data(dataset_id, **params)
@@ -186,7 +187,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
         )
 
-    col_defs = _load_definitions(dataset_id)
+    loaded_defs = _load_definitions(dataset_id)
+    col_defs = loaded_defs or {}
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
@@ -229,6 +231,12 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     if laatste_update:
         result["laatste_update"] = laatste_update
 
+    if loaded_defs is None:
+        result["metadata_ontbreekt"] = (
+            "CBS-metadata (DataProperties) kon niet worden opgehaald: kolomdefinities, eenheden "
+            "en dimensielabels ontbreken in dit resultaat. Noem dat als je de cijfers duidt."
+        )
+
     if truncated:
         result["waarschuwing"] = f"Afgekapt op {CBS_ROW_LIMIT} rijen. Verfijn $filter of $select voor volledigere data."
 
@@ -243,7 +251,7 @@ def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
         reason = f"HTTP {e.response.status_code}" if isinstance(e, httpx.HTTPStatusError) else str(e)
         return (
             f"Dimensie '{dimension_name}' niet gevonden in {dataset_id} ({reason}). "
-            f"Beschikbare dimensies: {_dimension_names(_load_definitions(dataset_id))}. "
+            f"Beschikbare dimensies: {_dimension_names(_load_definitions(dataset_id) or {})}. "
             "De status van een periode is geen dimensie: die staat bij Perioden en als "
             f"kolom {_PERIODESTATUS} in get_cbs_data."
         )

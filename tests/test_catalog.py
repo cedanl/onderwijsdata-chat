@@ -121,6 +121,21 @@ def test_geo_niveau_filter_excludes_datasets_without_level():
     assert "landelijk" not in identifiers
 
 
+
+def test_dataset_zonder_regiodimensie_is_landelijk():
+    # Audit 10 (#237): 85368NED (vsv mbo) heeft geen regiodimensie, dus een lege _geo_niveau,
+    # en verdween bij geo_niveau="landelijk" terwijl hij precies dat niveau geeft.
+    cbs_entries = [
+        {"identifier": "zonder-regio", "title": "instroom data", "_geo_niveau": []},
+        {"identifier": "veld-ontbreekt", "title": "instroom data"},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        landelijk = json.loads(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
+        gemeente = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    assert {e.get("identifier") for e in landelijk} == {"zonder-regio", "veld-ontbreekt"}
+    assert "Geen datasets gevonden" in gemeente
+
 def test_geo_niveau_filter_returns_error_when_no_match():
     cbs_entries = [
         {"identifier": "alleen-landelijk", "title": "instroom data", "_geo_niveau": ["landelijk"]},
