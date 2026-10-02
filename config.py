@@ -27,17 +27,12 @@ class Config:
 
     # Optional database settings
     POSTGRES_URI: str | None = os.getenv("POSTGRES_URI")
-    DATABASE_PATH: str | None = os.getenv("DATABASE_PATH")
 
     # Optional API keys (at least one must be set for LLM functionality)
     ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
     AZURE_AI_API_KEY: str | None = os.getenv("AZURE_AI_API_KEY")
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
     GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
-
-    # Optional authentication
-    CHAT_USERS: str | None = os.getenv("CHAT_USERS")  # username:password format
-    CHAT_SECRET: str | None = os.getenv("CHAT_SECRET")
 
     # Optional OIDC/SRAM (see skill sram-oidc for the CEDA convention)
     OIDC_PROVIDER: str | None = os.getenv("OIDC_PROVIDER")

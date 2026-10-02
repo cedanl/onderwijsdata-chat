@@ -147,31 +147,6 @@ DOMEINEN: dict[str, list[str]] = {
 }
 
 
-def _extract_domain(email: str | None) -> str | None:
-    """Return the lowercase domain part of an email address, else None."""
-    if not email or "@" not in email:
-        return None
-    return email.rsplit("@", 1)[1].strip().lower() or None
-
-
-def sram_org_to_instelling(short: str | None) -> str | None:
-    """Map an SRAM short name (from entitlement) to a canonical instelling name."""
-    if not short:
-        return None
-    return SRAM_ORGS.get(short.strip().lower())
-
-
-def instelling_for_email(email_or_domein: str | None) -> str | None:
-    """Map an email address or domain to a canonical instelling name."""
-    domein = _extract_domain(email_or_domein) or (email_or_domein and email_or_domein.strip().lower())
-    if not domein:
-        return None
-    for naam, doms in DOMEINEN.items():
-        if domein in doms:
-            return naam
-    return None
-
-
 _cache: list[dict] | None = None
 _alias_lookup: dict[str, str] | None = None
 
