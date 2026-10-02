@@ -12,3 +12,8 @@ export function loadModelChoice() {
 export function saveModelChoice(id) {
   try { localStorage.setItem(STORAGE_MODEL, id) } catch { /* noop */ }
 }
+
+// The model of the conversation is the one its last question went out with (#242).
+export function conversationModel(messages) {
+  return messages.findLast(m => m.role === 'user' && m.model)?.model ?? null
+}

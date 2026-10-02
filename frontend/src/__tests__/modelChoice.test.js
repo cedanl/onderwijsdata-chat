@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
-import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
+import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 
 const models = [{ id: 'openai/gpt-oss-120b' }, { id: 'anthropic/claude-opus' }]
 
@@ -28,5 +28,21 @@ describe('model choice storage', () => {
 
   it('returns null when nothing was saved', () => {
     expect(loadModelChoice()).toBeNull()
+  })
+})
+
+describe('conversationModel', () => {
+  it('is the model of the last question, so a follow-up keeps it (#242)', () => {
+    const messages = [
+      { role: 'user', content: 'a', model: 'openai/gpt-oss-120b' },
+      { role: 'assistant', content: 'b' },
+      { role: 'user', content: 'c', model: 'anthropic/claude-opus' },
+      { role: 'assistant', content: 'd' },
+    ]
+    expect(conversationModel(messages)).toBe('anthropic/claude-opus')
+  })
+
+  it('is null for a conversation saved before questions carried a model', () => {
+    expect(conversationModel([{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }])).toBeNull()
   })
 })

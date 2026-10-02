@@ -16,7 +16,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
-import { pickModel, loadModelChoice, saveModelChoice } from '../modelChoice'
+import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
 import { personalizeQuestion } from '../suggestions'
 import {
@@ -162,6 +162,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   }, [rejectedDraft, clearRejectedDraft])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
+  const [defaultModel, setDefaultModel] = useState('')
   const [showSources, setShowSources] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [initialChat] = useState(loadCurrentChat)
@@ -241,8 +242,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     clearCurrentChat()
     setConversationId(newConversationId())
     savedJsonRef.current = '[]'
+    // A new conversation starts on the user's own choice, not on the model of the one just open.
+    setSelectedModel(pickModel(models, loadModelChoice(), defaultModel))
     startNewConversation()
-  }, [startNewConversation, saveConversation])
+  }, [startNewConversation, saveConversation, models, defaultModel])
 
   const handleLoad = useCallback((conv) => {
     saveConversation()
@@ -251,8 +254,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     setConversationId(String(conv.id))
     savedJsonRef.current = JSON.stringify(conv.messages)
     setRestoredMessages(conv.messages)
+    // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
+    setSelectedModel(current => pickModel(models, conversationModel(conv.messages), current))
     sendHistory(conv.messages)
-  }, [clear, saveConversation, sendHistory])
+  }, [clear, saveConversation, sendHistory, models])
 
   // Older conversations stay on the server until asked for (#123).
   const handleLoadMoreHistory = useCallback(() => {
@@ -319,11 +324,13 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     fetchSettingsConfig()
       .then(cfg => {
         const offered = cfg.models || []
+        const own = pickModel(offered, loadModelChoice(), cfg.default_model || '')
         setModels(offered)
-        setSelectedModel(pickModel(offered, loadModelChoice(), cfg.default_model || ''))
+        setDefaultModel(cfg.default_model || '')
+        setSelectedModel(pickModel(offered, conversationModel(initialChat.messages), own))
       })
       .catch(() => setModels([]))
-  }, [])
+  }, [initialChat])
 
   useEffect(() => {
     const s = { model: selectedModel || undefined }

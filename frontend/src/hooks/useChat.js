@@ -43,6 +43,8 @@ export function useChat({ onUnauthorized } = {}) {
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
   const pendingSettingsRef = useRef(null)
+  // Each question records the model it went out with, so a reopened conversation can resume it (#242).
+  const modelRef = useRef(null)
   const idRef = useRef(0)
   const manualCloseRef = useRef(false)
   const retryCountRef = useRef(0)
@@ -318,7 +320,7 @@ export function useChat({ onUnauthorized } = {}) {
     setThinking(true)
     const id = nextId()
     lastSentRef.current = { id, content, draft: true }
-    setMessages(prev => [...prev, { id, role: 'user', content, done: true }])
+    setMessages(prev => [...prev, { id, role: 'user', content, done: true, model: modelRef.current }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
     return true
   }, [])
@@ -329,11 +331,12 @@ export function useChat({ onUnauthorized } = {}) {
     setBusy(true)
     const id = nextId()
     lastSentRef.current = { id, content: choice, draft: false }
-    setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true }])
+    setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true, model: modelRef.current }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
   }, [])
 
   const sendSettings = useCallback((settings) => {
+    if (settings.model) modelRef.current = settings.model
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ action: 'settings', settings }))
     } else {
