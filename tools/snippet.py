@@ -11,6 +11,9 @@ import json
 from core.config import RIO_PAGE_SIZE
 
 from . import store
+from .duo import _DUO_SENTINELS, _SIGNED_HINTS
+from .periode import STUDIEJAAR_LABEL
+from .query import _parse_filter_key
 from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
@@ -32,11 +35,23 @@ def _lit(value) -> str:
 
 
 def _duo_laadregels(args: dict) -> list[str]:
-    return ["from riodata import duo", "",
+    return ["import pandas as pd", "from riodata import duo", "",
             f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})",
+            *_duo_sentinelregels(),
             # De app voegt dit label toe (#115); analysecode mag het gebruiken.
             'if "STUDIEJAAR" in df.columns:',
-            '    df["STUDIEJAAR_LABEL"] = df["STUDIEJAAR"].map(lambda j: f"{j}/{j + 1}")']
+            f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")']
+
+
+def _duo_sentinelregels() -> list[str]:
+    """Dezelfde maskering als duo.mask_sentinels in de app, met dezelfde constanten (#227)."""
+    return [
+        "# DUO markeert onderdrukte cellen (kleine aantallen) met -1: geen telwaarde, de app sluit ze uit.",
+        "# Totalen over een selectie met zulke cellen zijn een ondergrens.",
+        "for kolom in df.select_dtypes('number').columns:",
+        f"    if not any(h in str(kolom).upper() for h in {_SIGNED_HINTS!r}):",
+        f"        df[kolom] = df[kolom].mask(df[kolom].isin({list(_DUO_SENTINELS)!r}))",
+    ]
 
 
 def _cbs_laadregels(args: dict) -> list[str]:
@@ -94,24 +109,44 @@ def _laadregels(data_key: str) -> list[str]:
             "df = pd.DataFrame()"]
 
 
+_VERGELIJKING = {"gte": ">=", "lte": "<="}
+
+
+def _filterregel(key: str, val) -> str:
+    """Eén filter met de semantiek van query._apply_filters (#227).
+
+    Gelijkheid zonder hoofdletters op de tekstvorm, zodat "2025" ook een int-kolom
+    raakt; een bereik numeriek als de grens een getal is, anders op tekst.
+    """
+    col, op = _parse_filter_key(key)
+    if op in ("eq", "in"):
+        vals = [str(v).lower() for v in (val if isinstance(val, list) else [val])]
+        return f"df = df[df[{col!r}].astype(str).str.lower().isin({vals!r})]"
+    teken = _VERGELIJKING[op]
+    try:
+        grens = float(val)
+    except (TypeError, ValueError):
+        return f"df = df[df[{col!r}].astype(str).str.lower() {teken} {str(val).lower()!r}]"
+    return f'df = df[pd.to_numeric(df[{col!r}], errors="coerce") {teken} {grens!r}]'
+
+
+def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
+    """Zoals query._apply_aggregation: eerst numeriek maken, lege groepen houden (#227)."""
+    lines = [f"group_by = {group_by!r}"]
+    if "STUDIEJAAR" in group_by:
+        lines += [f'if "{STUDIEJAAR_LABEL}" in df.columns and "{STUDIEJAAR_LABEL}" not in group_by:',
+                  f'    group_by.append("{STUDIEJAAR_LABEL}")']
+    lines += [f"for kolom in {list(aggregate)!r}:",
+              '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
+              f"df = df.groupby(group_by, dropna=False).agg({aggregate!r}).reset_index()"]
+    return lines
+
+
 def _query_data_snippet(args: dict) -> str:
     lines = _laadregels(args.get("data_key", ""))
-
-    filters = args.get("filters")
-    if filters:
-        for key, val in filters.items():
-            if "__" in key:
-                col, op = key.rsplit("__", 1)
-                if op == "gte":
-                    lines.append(f'df = df[df["{col}"] >= {val!r}]')
-                elif op == "lte":
-                    lines.append(f'df = df[df["{col}"] <= {val!r}]')
-                elif op == "in":
-                    lines.append(f'df = df[df["{col}"].isin({val!r})]')
-            elif isinstance(val, list):
-                lines.append(f'df = df[df["{key}"].isin({val!r})]')
-            else:
-                lines.append(f'df = df[df["{key}"] == {val!r}]')
+    for key, val in (args.get("filters") or {}).items():
+        if _parse_filter_key(key)[1] in ("eq", "in", *_VERGELIJKING):
+            lines.append(_filterregel(key, val))
 
     columns = args.get("columns")
     if columns:
@@ -120,7 +155,7 @@ def _query_data_snippet(args: dict) -> str:
     group_by = args.get("group_by")
     aggregate = args.get("aggregate")
     if group_by and aggregate:
-        lines.append(f"df = df.groupby({group_by!r}).agg({aggregate!r}).reset_index()")
+        lines += _aggregatieregels(group_by, aggregate)
 
     lines.append("print(df)")
     return "\n".join(lines)
@@ -149,7 +184,8 @@ def _compute_kpi_snippet(args: dict) -> str:
     sort_column = args.get("sort_column")
     label = args.get("label", "")
 
-    lines = [f'# KPI: {label} ({metric})']
+    # Zelfstandig: de KPI laadt zijn eigen data, net als de andere snippets (#227).
+    lines = [*_laadregels(args.get("data_key", "")), "", f'# KPI: {label} ({metric})']
     if sort_column:
         lines.append(f"df = df.sort_values({sort_column!r})")
     lines.append(f's = pd.to_numeric(df[{value_column!r}], errors="coerce").dropna()')
