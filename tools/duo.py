@@ -130,7 +130,24 @@ def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     ]
 
 
+def _resource_index(dataset_id: str, resource: int | str) -> int | str:
+    """The resource as its index, so one file has one store key however it is named (#21).
+
+    A digit string is an index; a name resolves the way riodata picks it (first
+    resource whose name contains it). Unknown names stay as given, so the load
+    reports the source's own error.
+    """
+    if isinstance(resource, int) or resource.strip().isdigit():
+        return int(resource)
+    try:
+        namen = [r["naam"].lower() for r in _duo.resources(dataset_id)]
+    except Exception:
+        return resource
+    return next((i for i, naam in enumerate(namen) if resource.lower() in naam), resource)
+
+
 def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
+    resource = _resource_index(dataset_id, resource)
     key = f"duo:{dataset_id}:{resource}"
 
     df = store.get(key)
