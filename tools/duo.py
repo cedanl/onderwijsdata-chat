@@ -106,6 +106,17 @@ def sentinel_notes(counts: dict[str, int]) -> list[str]:
     ]
 
 
+PROGNOSE_NOOT = (
+    "Prognose-aantallen afgerond op hele personen: een prognose heeft geen decimale precisie. "
+    "Berekeningen (compute_kpi) gebruiken de onafgeronde waarden."
+)
+
+
+def is_prognose(known: store.KeyMeta | None) -> bool:
+    """DUO-prognosebestanden (voprognoses, wpoprognoses, studentprognoses-*) tellen in fracties (#247)."""
+    return known is not None and "prognose" in known.dataset.lower()
+
+
 def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Melding voor get_duo_data: telling over de hele resource, niet over een selectie.
 
