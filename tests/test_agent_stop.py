@@ -1,4 +1,5 @@
 """Stopping between tool iterations must end the answer, not report 'max steps'."""
+
 import asyncio
 import importlib
 
@@ -31,9 +32,15 @@ def test_stop_during_tool_step_ends_message_as_aborted(monkeypatch):
     async def emit(event: dict) -> None:
         events.append(event)
 
-    asyncio.run(run_module.run(
-        [{"role": "user", "content": "vraag"}], {}, emit, stop_event, model="openai/gpt-4o",
-    ))
+    asyncio.run(
+        run_module.run(
+            [{"role": "user", "content": "vraag"}],
+            {},
+            emit,
+            stop_event,
+            model="openai/gpt-4o",
+        )
+    )
 
     types = [e["type"] for e in events]
     assert "error" not in types, events

@@ -53,10 +53,12 @@ def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
     for woord, code in paren:
         vorm, code = woord.lower(), code.upper()
         if OPLEIDINGSVORMEN[code] != vorm:
-            problemen.append(Probleem(
-                f"'{woord}' met code {code}: {code} is {OPLEIDINGSVORMEN[code]}, {vorm} is {juiste_code[vorm]} "
-                "(DUO-datasetbeschrijving)."
-            ))
+            problemen.append(
+                Probleem(
+                    f"'{woord}' met code {code}: {code} is {OPLEIDINGSVORMEN[code]}, {vorm} is {juiste_code[vorm]} "
+                    "(DUO-datasetbeschrijving)."
+                )
+            )
     return problemen
 
 
@@ -95,7 +97,7 @@ def _geciteerd(zin: str, start: int, definitie: str) -> bool:
     """Staat het woord met zijn omgeving letterlijk in de DUO-teldefinitie (#239)?"""
     woorden = _WOORD.findall(zin.lower())
     i = len(_WOORD.findall(zin[:start]))
-    venster = woorden[max(0, i - _CITAAT_VOOR): i + _CITAAT_NA]
+    venster = woorden[max(0, i - _CITAAT_VOOR) : i + _CITAAT_NA]
     return f" {' '.join(venster)} " in f" {definitie} "
 
 
@@ -105,7 +107,7 @@ def _toegeschreven(verkeerd: re.Pattern, tekst: str, definities: list[str]) -> b
     for zin in _ZIN_EINDE.split(tekst):
         for treffer in verkeerd.finditer(zin):
             voor = zin[: treffer.start()].rsplit(" maar ", 1)[-1]
-            bijzin = zin[treffer.end():].split(",", 1)[0]
+            bijzin = zin[treffer.end() :].split(",", 1)[0]
             if _ONTKENNING.search(voor) or _UITGESLOTEN.search(bijzin):
                 continue
             if not _geciteerd(zin, treffer.start(), definitie):
@@ -143,7 +145,9 @@ def verkeerde_teleenheid(tekst: str, tool_results: list[str]) -> list[str]:
     )
     if not _toegeschreven(verkeerd, tekst, definities):
         return []
-    return [Probleem(
-        f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}.",
-        "Noem de teleenheid zoals de bron hem telt.",
-    )]
+    return [
+        Probleem(
+            f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}.",
+            "Noem de teleenheid zoals de bron hem telt.",
+        )
+    ]

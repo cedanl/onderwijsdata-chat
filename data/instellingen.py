@@ -228,7 +228,9 @@ def _build_registry() -> list[dict]:
             code = str(grp["INSTELLINGSCODE_ACTUEEL"].iloc[0])
             loc = adres.get(code, {})
             result[naam] = {
-                "naam": naam, "type": "hbo", "aliassen": ALIASSEN.get(naam, []),
+                "naam": naam,
+                "type": "hbo",
+                "aliassen": ALIASSEN.get(naam, []),
                 "instellingscode": code,
                 "provincie": loc.get("provincie"),
                 "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
@@ -245,7 +247,9 @@ def _build_registry() -> list[dict]:
             if naam not in result:
                 loc = adres.get(code, {})
                 result[naam] = {
-                    "naam": naam, "type": "wo", "aliassen": ALIASSEN.get(naam, []),
+                    "naam": naam,
+                    "type": "wo",
+                    "aliassen": ALIASSEN.get(naam, []),
                     "instellingscode": code,
                     "provincie": loc.get("provincie"),
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
@@ -262,7 +266,9 @@ def _build_registry() -> list[dict]:
             if naam not in result:
                 loc = adres.get(code, {})
                 result[naam] = {
-                    "naam": naam, "type": "mbo", "aliassen": ALIASSEN.get(naam, []),
+                    "naam": naam,
+                    "type": "mbo",
+                    "aliassen": ALIASSEN.get(naam, []),
                     "instellingscode": code,
                     "provincie": loc.get("provincie"),
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),

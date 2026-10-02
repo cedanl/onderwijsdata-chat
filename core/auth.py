@@ -64,7 +64,7 @@ AUTH_ENABLED = bool(USERS) or OIDC_ENABLED
 if AUTH_ENABLED and not _TOKEN_SECRET_RAW:
     raise ValueError(
         "CHAT_SECRET moet ingesteld zijn wanneer CHAT_USERS of OIDC_PROVIDER is geconfigureerd. "
-        "Genereer een willekeurige waarde: python -c \"import secrets; print(secrets.token_hex(32))\""
+        'Genereer een willekeurige waarde: python -c "import secrets; print(secrets.token_hex(32))"'
     )
 
 _TOKEN_SECRET = _TOKEN_SECRET_RAW.encode() or b"dev-only-no-secret-set"

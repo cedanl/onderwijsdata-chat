@@ -1,6 +1,5 @@
 """Tests for dynamic model context window resolution."""
 
-
 from agent.model_context import clamp_max_tokens, get_max_context
 
 

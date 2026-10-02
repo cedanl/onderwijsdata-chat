@@ -35,11 +35,16 @@ class TestBuildDatasetContext:
         assert [d["data_key"] for d in context["datasets"]] == ["cbs:85423NED"]
 
     def test_unhashable_cells_do_not_break_context(self):
-        store.put("rio:erkenningen", pd.DataFrame({
-            "code": ["30TX", "25DW"],
-            "_links": [{"self": {"href": "a"}}, {"self": {"href": "b"}}],
-            "tags": [["x"], ["y"]],
-        }))
+        store.put(
+            "rio:erkenningen",
+            pd.DataFrame(
+                {
+                    "code": ["30TX", "25DW"],
+                    "_links": [{"self": {"href": "a"}}, {"self": {"href": "b"}}],
+                    "tags": [["x"], ["y"]],
+                }
+            ),
+        )
 
         context = build_dataset_context({"data_keys": ["rio:erkenningen"], "chat_settings": {}})
 
@@ -90,10 +95,14 @@ class TestBuildRecipe:
 
     def test_reload_call_keeps_the_recorded_cbs_filters(self):
         # #174: zonder de filters herlaadt het recept een andere selectie dan de chat gebruikte.
-        load = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "Perioden eq '2024SJ00'"}}}
+        load = {
+            "name": "get_cbs_data",
+            "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "Perioden eq '2024SJ00'"}},
+        }
         query = {"name": "query_data", "arguments": {"data_key": "cbs:85423NED:aa", "columns": ["Perioden"]}}
         datasets = _datasets(
-            "cbs:85423NED:aa", "cbs:85423NED:aa:bb",
+            "cbs:85423NED:aa",
+            "cbs:85423NED:aa:bb",
             herkomst={"cbs:85423NED:aa": [load], "cbs:85423NED:aa:bb": [load, query]},
         )
 
@@ -164,14 +173,16 @@ class TestDashboardSpec:
 
 # --- KPI-validatie: geen getal in een dashboard dat niet uit compute_kpi komt ---
 
-_COMPUTED = json.dumps({
-    "label": "Voltijd 2025/26",
-    "value": "30.083",
-    "raw": 30083.0,
-    "trend": None,
-    "trendDirection": None,
-    "bron": {"data_key": "duo:t", "kolom": "AANTAL", "metric": "last"},
-})
+_COMPUTED = json.dumps(
+    {
+        "label": "Voltijd 2025/26",
+        "value": "30.083",
+        "raw": 30083.0,
+        "trend": None,
+        "trendDirection": None,
+        "bron": {"data_key": "duo:t", "kolom": "AANTAL", "metric": "last"},
+    }
+)
 
 
 def _computed_dict():
@@ -226,8 +237,18 @@ def test_generate_links_each_figure_to_the_query_before_it(monkeypatch):
     query = {"data_key": "cbs:85423NED", "columns": ["JAAR", "AANTAL"]}
     steps = [
         StreamResult(text="", tool_calls=[{"id": "q", "name": "query_data", "arguments": json.dumps(query)}]),
-        StreamResult(text="", tool_calls=[{"id": "p", "name": "create_plot", "arguments": json.dumps(
-            {"data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"})}]),
+        StreamResult(
+            text="",
+            tool_calls=[
+                {
+                    "id": "p",
+                    "name": "create_plot",
+                    "arguments": json.dumps(
+                        {"data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"}
+                    ),
+                }
+            ],
+        ),
         StreamResult(text='{"title": "Dashboard", "narrative": "Twee jaren."}', tool_calls=[]),
     ]
 
@@ -248,6 +269,10 @@ def test_generate_links_each_figure_to_the_query_before_it(monkeypatch):
     store.clear()
 
     assert len(spec.figures_json) == 1
-    assert spec.figure_recipes == [{"query": query, "plot": {
-        "data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"}}]
+    assert spec.figure_recipes == [
+        {
+            "query": query,
+            "plot": {"data_key": "cbs:85423NED", "chart_type": "line", "x": "JAAR", "y": "AANTAL", "title": "Reeks"},
+        }
+    ]
     assert [e["type"] for e in events].count("figure") == 1

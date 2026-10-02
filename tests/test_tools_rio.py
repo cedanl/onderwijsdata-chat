@@ -12,9 +12,11 @@ def test_catalogus_titel_from_catalog():
     rio_entries = [
         {"leverancier": "RIO", "_rio_resource": "organisatorische-eenheden", "bron": "Organisatorische eenheden"},
     ]
-    with patch("tools.rio.fetch", return_value=rows), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=rio_entries):
+    with (
+        patch("tools.rio.fetch", return_value=rows),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=rio_entries),
+    ):
         result = get_rio_data("organisatorische-eenheden")
     parsed = json.loads(result)
     assert parsed["catalogus_titel"] == "Organisatorische eenheden"
@@ -22,9 +24,11 @@ def test_catalogus_titel_from_catalog():
 
 def test_catalogus_titel_falls_back_for_resource_without_entry():
     rows = [{"id": 1}]
-    with patch("tools.rio.fetch", return_value=rows), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", return_value=rows),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         result = get_rio_data("opleiding")
     parsed = json.loads(result)
     assert parsed["catalogus_titel"] == "opleiding"
@@ -36,9 +40,11 @@ def test_nested_links_do_not_break_schema():
         {"code": "30TX", "_links": {"self": {"href": "https://rio/30TX"}}},
         {"code": "25DW", "_links": {"self": {"href": "https://rio/25DW"}}},
     ]
-    with patch("tools.rio.fetch", return_value=rows), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", return_value=rows),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         result = get_rio_data("erkenningen", {"volledigeNaam": "Aeres Hogeschool"})
     parsed = json.loads(result)
     links = next(k for k in parsed["kolommen"] if k["kolom"] == "_links")
@@ -67,9 +73,11 @@ def test_fetch_uses_single_page():
         captured["params"] = params
         return [{"code": str(i)} for i in range(120)]
 
-    with patch("tools.rio.fetch", side_effect=fake_fetch), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", side_effect=fake_fetch),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         result = get_rio_data("erkenningen", {"volledigeNaam": "Aeres Hogeschool"})
 
     assert captured["params"]["page"] == 0
@@ -86,18 +94,22 @@ def test_page_size_from_filters_is_ignored():
         captured["params"] = params
         return [{"code": "1"}]
 
-    with patch("tools.rio.fetch", side_effect=fake_fetch), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", side_effect=fake_fetch),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         get_rio_data("erkenningen", {"pageSize": 1000})
 
     assert captured["params"]["pageSize"] == RIO_PAGE_SIZE
 
 
 def _load(rows):
-    with patch("tools.rio.fetch", return_value=rows), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", return_value=rows),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         return json.loads(get_rio_data("aangeboden-opleidingen"))
 
 
@@ -138,6 +150,7 @@ def test_http_status_error_returns_explicit_fallback():
     assert "HTTP 400" in result
     assert "x" in result
     assert "Fout bij ophalen" in result
+
 
 def test_tool_description_sets_expectation_for_counts():
     # Het model moet vóóraf weten dat RIO geen totalen kan leveren (#170).

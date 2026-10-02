@@ -1,4 +1,5 @@
 """The WebSocket session: what it keeps between messages, and what it leaves to the frontend."""
+
 import contextlib
 import importlib
 import json
@@ -12,13 +13,17 @@ def client(tmp_path, monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     from core import auth
+
     importlib.reload(auth)
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     import server
+
     importlib.reload(server)
     from fastapi.testclient import TestClient
+
     return TestClient(server.app)
 
 
@@ -42,15 +47,19 @@ def test_websocket_leaves_saving_to_the_frontend(client):
 
 def test_opening_a_conversation_starts_a_fresh_session():
     from routes.chat import _new_session, _open_conversation
+
     session = _new_session(username="alice")
     session["turns"] = [{"question": "vorig gesprek"}]
     session["data_keys"] = ["rio:erkenningen"]
     session["chat_settings"] = {"instelling": "RUG"}
 
-    _open_conversation(session, [
-        {"role": "user", "content": "Hoeveel studenten heeft de HU?"},
-        {"role": "assistant", "content": "26.370", "figures": ["{}"]},
-    ])
+    _open_conversation(
+        session,
+        [
+            {"role": "user", "content": "Hoeveel studenten heeft de HU?"},
+            {"role": "assistant", "content": "26.370", "figures": ["{}"]},
+        ],
+    )
 
     assert session["turns"] == [] and session["data_keys"] == []
     assert session["messages"] == [
@@ -62,6 +71,7 @@ def test_opening_a_conversation_starts_a_fresh_session():
 
 def test_reset_session_clears_turns_but_keeps_settings():
     from routes.chat import _new_session, _reset_session
+
     session = _new_session(username="alice")
     session["messages"] = [{"role": "user", "content": "oud"}]
     session["turns"] = [{"question": "oud"}]
@@ -77,13 +87,16 @@ def test_reset_session_clears_turns_but_keeps_settings():
     assert session["chat_settings"] == {"model": "anthropic/claude-opus", "instelling": "RUG"}
 
 
-@pytest.mark.parametrize("action,handler,args", [
-    ("message", "_handle_message", ({"content": "Tweede vraag"},)),
-    ("clarification_choice", "_handle_clarification", ({"choice": "2024"},)),
-    ("generate_report", "_handle_generate_report", ({},)),
-    ("generate_dashboard", "_handle_generate_dashboard", ()),
-    ("refresh_dashboard", "_handle_refresh_dashboard", ({},)),
-])
+@pytest.mark.parametrize(
+    "action,handler,args",
+    [
+        ("message", "_handle_message", ({"content": "Tweede vraag"},)),
+        ("clarification_choice", "_handle_clarification", ({"choice": "2024"},)),
+        ("generate_report", "_handle_generate_report", ({},)),
+        ("generate_dashboard", "_handle_generate_dashboard", ()),
+        ("refresh_dashboard", "_handle_refresh_dashboard", ({},)),
+    ],
+)
 def test_a_request_during_a_run_is_answered_with_busy(action, handler, args):
     """#145: the server dropped it without a word, so the chat looked hung."""
     import asyncio

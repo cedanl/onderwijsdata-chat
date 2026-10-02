@@ -16,10 +16,12 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
         except litellm.RateLimitError:
             if attempt == _MAX_RETRIES - 1:
                 raise
-            delay = _BASE_DELAY * (2 ** attempt)
-            await emit({
-                "type": "toast",
-                "message": f"API rate limit bereikt, nieuwe poging over {delay:.0f}s…",
-                "level": "warning",
-            })
+            delay = _BASE_DELAY * (2**attempt)
+            await emit(
+                {
+                    "type": "toast",
+                    "message": f"API rate limit bereikt, nieuwe poging over {delay:.0f}s…",
+                    "level": "warning",
+                }
+            )
             await asyncio.sleep(delay)

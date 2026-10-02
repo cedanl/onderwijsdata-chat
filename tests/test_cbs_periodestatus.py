@@ -29,11 +29,13 @@ _PERIODEN = [
 
 def _load(perioden=_PERIODEN):
     side_effect = perioden if isinstance(perioden, Exception) else None
-    with patch("tools.cbs.data", return_value=_ROWS), \
-         patch("tools.cbs.definitions", return_value=_DEFS), \
-         patch("tools.cbs.get", return_value=perioden, side_effect=side_effect), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.cbs.data", return_value=_ROWS),
+        patch("tools.cbs.definitions", return_value=_DEFS),
+        patch("tools.cbs.get", return_value=perioden, side_effect=side_effect),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         return json.loads(get_cbs_data("85423NED", {"$filter": "Onderwijssoort eq 'A025294'"}))
 
 
@@ -44,7 +46,8 @@ def test_get_cbs_data_voegt_periodestatus_uit_de_bron_toe():
     assert "Perioden.Status" in kolom["definitie"]
     rijen = json.loads(query_data(result["data_key"]))["rijen"]
     assert {r["Perioden"]: r["Periodestatus"] for r in rijen} == {
-        "2024SJ00": "Definitief", "2025SJ00": "Voorlopig",
+        "2024SJ00": "Definitief",
+        "2025SJ00": "Voorlopig",
     }
 
 

@@ -87,8 +87,10 @@ class TestParseSpecFromResponse:
         # Live-audit 8: het model schreef "Inschrijvingen in het hoger onderwijs; instellingen,
         # opleidingen (85423NED)". Het ID klopte, de titel was verzonnen (#196).
         titels = {"p01hoinges": "Ingeschrevenen hoger onderwijs", "85423NED": "Hoger onderwijs; ingeschrevenen"}
-        with patch("agent.dashboard.catalogus_titel", side_effect=lambda d: titels.get(d, d)), \
-             patch("agent.dashboard.resource_titel", return_value="Ingeschrevenen hbo"):
+        with (
+            patch("agent.dashboard.catalogus_titel", side_effect=lambda d: titels.get(d, d)),
+            patch("agent.dashboard.resource_titel", return_value="Ingeschrevenen hbo"),
+        ):
             spec = _parse_spec_from_response(
                 '{"title": "T", "onderzoeksvraag": "V", "bronnen": ["CBS — Inschrijvingen; instellingen (85423NED)"]}',
                 figures_json=[],
@@ -101,10 +103,14 @@ class TestParseSpecFromResponse:
         ]
 
     def test_source_without_catalog_title_keeps_its_id(self):
-        with patch("agent.dashboard.catalogus_titel", side_effect=lambda d: d), \
-             patch("agent.dashboard.resource_titel", return_value=None):
+        with (
+            patch("agent.dashboard.catalogus_titel", side_effect=lambda d: d),
+            patch("agent.dashboard.resource_titel", return_value=None),
+        ):
             spec = _parse_spec_from_response(
-                '{"title": "T"}', figures_json=[], context={"topic": "V", "datasets": [{"data_key": "cbs:99999NED"}]},
+                '{"title": "T"}',
+                figures_json=[],
+                context={"topic": "V", "datasets": [{"data_key": "cbs:99999NED"}]},
             )
 
         assert spec.bronnen == ["CBS — 99999NED"]
@@ -131,16 +137,25 @@ class TestSystemPromptHerkomst:
         # #174 regressie: GPT vond in de chat de HU/VT-reeks, het rapport meldde daarna
         # "geen rijen voor 25DW" omdat het de selectie opnieuw moest raden.
         load = {"name": "get_duo_data", "arguments": {"dataset_id": "p01hoinges", "resource": 3}}
-        query = {"name": "query_data", "arguments": {
-            "data_key": "duo:p01hoinges:3",
-            "filters": {"INSTELLINGSCODE_ACTUEEL": "25DW", "OPLEIDINGSVORM": "VT"},
-            "group_by": ["STUDIEJAAR"], "aggregate": {"AANTAL": "sum"},
-        }}
-        context = {"datasets": [{
-            "data_key": "duo:p01hoinges:3:74a5c5e2", "row_count": 5,
-            "columns": [{"naam": "STUDIEJAAR", "type": "int64", "voorbeelden": ["2021"]}],
-            "herkomst": [load, query],
-        }]}
+        query = {
+            "name": "query_data",
+            "arguments": {
+                "data_key": "duo:p01hoinges:3",
+                "filters": {"INSTELLINGSCODE_ACTUEEL": "25DW", "OPLEIDINGSVORM": "VT"},
+                "group_by": ["STUDIEJAAR"],
+                "aggregate": {"AANTAL": "sum"},
+            },
+        }
+        context = {
+            "datasets": [
+                {
+                    "data_key": "duo:p01hoinges:3:74a5c5e2",
+                    "row_count": 5,
+                    "columns": [{"naam": "STUDIEJAAR", "type": "int64", "voorbeelden": ["2021"]}],
+                    "herkomst": [load, query],
+                }
+            ]
+        }
 
         prompt = _build_system_prompt(context)
 

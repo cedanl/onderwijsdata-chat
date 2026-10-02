@@ -25,6 +25,7 @@ def _stored() -> list[dict]:
 def db(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     return db
@@ -36,18 +37,23 @@ def _client(tmp_path, monkeypatch, enabled: str = "true") -> TestClient:
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     from core import auth, config
+
     importlib.reload(auth)
     importlib.reload(config)
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     from routes import config as config_route
     from routes import feedback as feedback_route
+
     importlib.reload(config_route)
     importlib.reload(feedback_route)
     import routes
+
     importlib.reload(routes)
     import server
+
     importlib.reload(server)
     return TestClient(server.app)
 
@@ -68,6 +74,7 @@ def _body(**answers):
 
 # ── Vragenlijst ──────────────────────────────────────────────────────────────
 
+
 def test_questions_have_unique_ids_and_known_types():
     ids = [q["id"] for q in QUESTIONS]
     assert len(ids) == len(set(ids))
@@ -81,21 +88,25 @@ def test_validate_keeps_valid_answers_and_drops_empty_ones():
     assert validate_answers(answers) == {_SCALE["id"]: _SCALE["options"][0], _TEXT["id"]: "meer duiding"}
 
 
-@pytest.mark.parametrize("answers", [
-    {},
-    {_TEXT["id"]: "   "},
-    {"onbekend": "x"},
-    {_SCALE["id"]: "9"},
-    {_CHOICE["id"]: "Wellicht"},
-    {_TEXT["id"]: "x" * 2001},
-    {_TEXT["id"]: 5},
-])
+@pytest.mark.parametrize(
+    "answers",
+    [
+        {},
+        {_TEXT["id"]: "   "},
+        {"onbekend": "x"},
+        {_SCALE["id"]: "9"},
+        {_CHOICE["id"]: "Wellicht"},
+        {_TEXT["id"]: "x" * 2001},
+        {_TEXT["id"]: 5},
+    ],
+)
 def test_validate_rejects(answers):
     with pytest.raises(ValueError):
         validate_answers(answers)
 
 
 # ── Opslag ───────────────────────────────────────────────────────────────────
+
 
 def test_add_feedback_stores_one_row_per_submission(db):
     db.add_feedback("alice", "wb-1", "report", "Instroom hbo", {"nuttig": "4"})
@@ -111,6 +122,7 @@ def test_add_feedback_stores_one_row_per_submission(db):
 
 
 # ── API ──────────────────────────────────────────────────────────────────────
+
 
 def test_config_announces_feedback(client):
     assert client.get("/api/config").json()["feedback_enabled"] is True
@@ -142,6 +154,7 @@ def test_given_lists_reports_with_feedback_for_logged_in_user(client):
     from core.auth import get_current_user
     from persistence import db
     from server import app
+
     db.add_feedback("alice", "wb-1", "report", "", {"nuttig": "4"})
     app.dependency_overrides[get_current_user] = lambda: "alice"
     try:

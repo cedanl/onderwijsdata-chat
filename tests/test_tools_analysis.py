@@ -21,11 +21,14 @@ def test_simple_sum():
 
 
 def test_groupby_in_script():
-    _put("test:an", [
-        {"JAAR": 2021, "N": 10},
-        {"JAAR": 2021, "N": 20},
-        {"JAAR": 2022, "N": 30},
-    ])
+    _put(
+        "test:an",
+        [
+            {"JAAR": 2021, "N": 10},
+            {"JAAR": 2021, "N": 20},
+            {"JAAR": 2022, "N": 30},
+        ],
+    )
     result = run_analysis(
         code="result = df.groupby('JAAR')['N'].sum().reset_index().to_dict(orient='records')",
         data_key="test:an",
@@ -199,8 +202,10 @@ def test_heatmap_rows_carry_the_values_from_z_not_the_labels():
     _put("test:an", [{"A": 1, "B": 3}, {"A": 2, "B": 1}, {"A": 3, "B": 2}])
     _, fig = run_analysis(code="figure = px.imshow(df.corr())\nresult = {'ok': True}", data_key="test:an")
     assert fig.layout.meta["data"] == [
-        {"rij": "A", "kolom": "A", "waarde": 1.0}, {"rij": "A", "kolom": "B", "waarde": -0.5},
-        {"rij": "B", "kolom": "A", "waarde": -0.5}, {"rij": "B", "kolom": "B", "waarde": 1.0},
+        {"rij": "A", "kolom": "A", "waarde": 1.0},
+        {"rij": "A", "kolom": "B", "waarde": -0.5},
+        {"rij": "B", "kolom": "A", "waarde": -0.5},
+        {"rij": "B", "kolom": "B", "waarde": 1.0},
     ]
 
 

@@ -37,8 +37,8 @@ _EVENT_OUTPUT_CHARS = 2000
 class ToolCall:
     id: str
     name: str
-    arguments: str       # raw JSON as the model sent it
-    args: dict | None    # parsed; None when not a JSON object
+    arguments: str  # raw JSON as the model sent it
+    args: dict | None  # parsed; None when not a JSON object
 
     @property
     def key(self) -> str:
@@ -54,12 +54,12 @@ class LoopResult:
     text: str = ""
     finish_reason: str | None = None
     tool_results: list[str] = field(default_factory=list)  # in full, for checks
-    tool_calls: list[dict] = field(default_factory=list)   # {"name", "arguments"} as sent
-    aborted: str | None = None           # "tools" or "stream": where a stop landed
-    halted_on: ToolCall | None = None    # a halt_on tool ended the turn
-    exhausted: bool = False              # max_iterations without an answer
+    tool_calls: list[dict] = field(default_factory=list)  # {"name", "arguments"} as sent
+    aborted: str | None = None  # "tools" or "stream": where a stop landed
+    halted_on: ToolCall | None = None  # a halt_on tool ended the turn
+    exhausted: bool = False  # max_iterations without an answer
     problems: list[str] = field(default_factory=list)  # check problems left after the correction
-    partial_error: str | None = None     # model call failed; kept what was collected
+    partial_error: str | None = None  # model call failed; kept what was collected
 
 
 def _parse_arguments(arguments: str) -> dict | None:
@@ -146,7 +146,9 @@ class _Loop:
             if self.on_llm_start:
                 await self.on_llm_start()
             sr = await accumulate_stream(
-                stream, stop_event=self.stop_event, emit=self.emit if self.stream_text else None,
+                stream,
+                stop_event=self.stop_event,
+                emit=self.emit if self.stream_text else None,
             )
             result.text, result.finish_reason = sr.text, sr.finish_reason
             if self._stopped():
@@ -157,17 +159,21 @@ class _Loop:
             if not sr.tool_calls:
                 return
 
-            calls = [ToolCall(tc["id"], tc["name"], tc["arguments"], _parse_arguments(tc["arguments"]))
-                     for tc in sr.tool_calls]
+            calls = [
+                ToolCall(tc["id"], tc["name"], tc["arguments"], _parse_arguments(tc["arguments"]))
+                for tc in sr.tool_calls
+            ]
             logger.debug("LLM KIEST  %d tool(s): %s", len(calls), ", ".join(c.name for c in calls))
-            self.messages.append({
-                "role": "assistant",
-                "content": sr.text or "",
-                "tool_calls": [
-                    {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.arguments}}
-                    for c in calls
-                ],
-            })
+            self.messages.append(
+                {
+                    "role": "assistant",
+                    "content": sr.text or "",
+                    "tool_calls": [
+                        {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.arguments}}
+                        for c in calls
+                    ],
+                }
+            )
             result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
             await self._run_tools(calls)
 
@@ -190,7 +196,8 @@ class _Loop:
                 logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", c.name, self.counts[c.name], limit)
 
         runnable = {
-            c.key: c for c in calls
+            c.key: c
+            for c in calls
             if c.id not in blocked and c.name not in self.halt_on and c.args is not None and c.key not in self.cache
         }
         outcomes = await asyncio.gather(*[_execute_tool(c, self.emit) for c in runnable.values()])
@@ -202,8 +209,10 @@ class _Loop:
             elif c.name in self.halt_on:
                 content = "OK"
             elif c.args is None:
-                content = (f"Fout: de argumenten voor `{c.name}` waren geen geldige JSON."
-                           " Lever opnieuw aan met geldige JSON-argumenten.")
+                content = (
+                    f"Fout: de argumenten voor `{c.name}` waren geen geldige JSON."
+                    " Lever opnieuw aan met geldige JSON-argumenten."
+                )
             else:
                 content, figure = self.cache[c.key]
                 # A cache hit is not a second chart: the figure is shown once per key (#218).
@@ -216,8 +225,9 @@ class _Loop:
                 self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:
                     await self.on_tool_result(c, content, figure)
-            self.messages.append({"role": "tool", "tool_call_id": c.id,
-                                  "content": _truncate(content, self.max_result_chars)})
+            self.messages.append(
+                {"role": "tool", "tool_call_id": c.id, "content": _truncate(content, self.max_result_chars)}
+            )
 
 
 async def tool_loop(
@@ -252,10 +262,19 @@ async def tool_loop(
     returned in ``partial_error`` instead of raised.
     """
     run = _Loop(
-        messages=messages, model=model, tools=tools, emit=emit, stop_event=stop_event,
-        max_iterations=max_iterations, max_result_chars=max_result_chars, system=system or [],
-        stream_text=stream_text, on_llm_start=on_llm_start, on_tool_result=on_tool_result,
-        tool_limits=tool_limits or {}, halt_on=halt_on,
+        messages=messages,
+        model=model,
+        tools=tools,
+        emit=emit,
+        stop_event=stop_event,
+        max_iterations=max_iterations,
+        max_result_chars=max_result_chars,
+        system=system or [],
+        stream_text=stream_text,
+        on_llm_start=on_llm_start,
+        on_tool_result=on_tool_result,
+        tool_limits=tool_limits or {},
+        halt_on=halt_on,
     )
     result = run.result
     try:

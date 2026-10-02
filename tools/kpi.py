@@ -15,10 +15,21 @@ from . import periode, store
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
 # aanleiding om iets anders te proberen.
-_ALLOWED_METRICS = frozenset({
-    "last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index",
-    "max_drop", "max_rise",
-})
+_ALLOWED_METRICS = frozenset(
+    {
+        "last",
+        "first",
+        "sum",
+        "mean",
+        "min",
+        "max",
+        "delta",
+        "pct_change",
+        "index",
+        "max_drop",
+        "max_rise",
+    }
+)
 
 # Grootste stap tussen twee opeenvolgende waarden: de uitkomst is een verschil, met de twee
 # rijen waartussen het zit (#116). Het model zoekt dat niet zelf in een tabel.
@@ -118,7 +129,9 @@ def compute_kpi(
     if metric in _STEP_METRICS:
         step = _largest_step(df, value_column, sort_column, metric)
         if step is None:
-            return _error(f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op.")
+            return _error(
+                f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op."
+            )
 
     if metric in ("pct_change", "index") and first == 0:
         return _error(

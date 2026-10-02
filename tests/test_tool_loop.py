@@ -3,6 +3,7 @@
 De LLM-stroom wordt nagebootst: elke stap is één StreamResult. Tools draaien echt
 via dispatch() tenzij een test _execute_tool vervangt.
 """
+
 import asyncio
 
 import pytest
@@ -45,10 +46,15 @@ def _run(messages=None, **kwargs):
 
     kwargs.setdefault("max_iterations", 5)
     kwargs.setdefault("max_result_chars", 1000)
-    result = asyncio.run(loop_module.tool_loop(
-        messages if messages is not None else [{"role": "user", "content": "vraag"}],
-        model="openai/gpt-4o", tools=[], emit=emit, **kwargs,
-    ))
+    result = asyncio.run(
+        loop_module.tool_loop(
+            messages if messages is not None else [{"role": "user", "content": "vraag"}],
+            model="openai/gpt-4o",
+            tools=[],
+            emit=emit,
+            **kwargs,
+        )
+    )
     return result, events
 
 
@@ -64,10 +70,13 @@ def test_answer_without_tools_ends_the_loop(monkeypatch):
 
 def test_tool_result_goes_back_to_the_model_and_is_kept_in_full(monkeypatch):
     lang = "x" * 50
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("query_data")]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     _fake_tools(monkeypatch, {"query_data": lang})
     messages = [{"role": "user", "content": "vraag"}]
 
@@ -80,10 +89,13 @@ def test_tool_result_goes_back_to_the_model_and_is_kept_in_full(monkeypatch):
 
 
 def test_invalid_tool_arguments_become_feedback_not_a_crash(monkeypatch):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("query_data", '{"data_key": "x",\x01}')]),
-        StreamResult(text="Hersteld.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data", '{"data_key": "x",\x01}')]),
+            StreamResult(text="Hersteld.", tool_calls=[]),
+        ],
+    )
     executed: list[str] = []
     _fake_tools(monkeypatch, {}, executed)
     messages = [{"role": "user", "content": "vraag"}]
@@ -96,11 +108,14 @@ def test_invalid_tool_arguments_become_feedback_not_a_crash(monkeypatch):
 
 
 def test_identical_calls_run_once(monkeypatch):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("query_data", call_id="a"), _call("query_data", call_id="b")]),
-        StreamResult(text="", tool_calls=[_call("query_data", call_id="c")]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data", call_id="a"), _call("query_data", call_id="b")]),
+            StreamResult(text="", tool_calls=[_call("query_data", call_id="c")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     executed: list[str] = []
     _fake_tools(monkeypatch, {"query_data": "rijen"}, executed)
 
@@ -111,11 +126,14 @@ def test_identical_calls_run_once(monkeypatch):
 
 
 def test_tool_limit_blocks_further_calls(monkeypatch):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 1}')]),
-        StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 2}')]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 1}')]),
+            StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 2}')]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     executed: list[str] = []
     _fake_tools(monkeypatch, {"search_catalog": "treffers"}, executed)
     messages = [{"role": "user", "content": "vraag"}]
@@ -127,10 +145,13 @@ def test_tool_limit_blocks_further_calls(monkeypatch):
 
 
 def test_on_tool_result_sees_every_call_with_its_parsed_arguments(monkeypatch):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("query_data", '{"data_key": "k"}')]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data", '{"data_key": "k"}')]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     _fake_tools(monkeypatch, {"query_data": "rijen"})
     seen: list = []
 
@@ -144,11 +165,16 @@ def test_on_tool_result_sees_every_call_with_its_parsed_arguments(monkeypatch):
 
 def test_identical_tool_call_shows_its_figure_once_but_answers_every_call(monkeypatch):
     # #218: a cache hit re-emitted the figure, so the user saw the same chart twice.
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "a"}', "t2")]),
-        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t3")]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(
+                text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "a"}', "t2")]
+            ),
+            StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t3")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     executed: list[str] = []
 
     async def fake_execute(call, emit):
@@ -171,10 +197,15 @@ def test_identical_tool_call_shows_its_figure_once_but_answers_every_call(monkey
 
 
 def test_same_tool_with_other_arguments_shows_another_figure(monkeypatch):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "b"}', "t2")]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(
+                text="", tool_calls=[_call("create_plot", '{"x": "a"}', "t1"), _call("create_plot", '{"x": "b"}', "t2")]
+            ),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
 
     async def fake_execute(call, emit):
         return "ok", f"FIG-{call.args['x']}"
@@ -250,7 +281,11 @@ def test_running_out_of_iterations_is_reported(monkeypatch):
 
 def test_check_gets_one_correction_round(monkeypatch):
     seen: list = []
-    _steps(monkeypatch, [StreamResult(text="Fout 12.345", tool_calls=[]), StreamResult(text="Goed 10", tool_calls=[])], seen)
+    _steps(
+        monkeypatch,
+        [StreamResult(text="Fout 12.345", tool_calls=[]), StreamResult(text="Goed 10", tool_calls=[])],
+        seen,
+    )
 
     result, _ = _run(
         check=lambda text, tool_results: ["12.345 staat niet in de data"] if "12.345" in text else [],
@@ -302,8 +337,11 @@ def test_caller_hears_about_the_correction_before_it_runs(monkeypatch):
     async def on_correction(problems):
         heard.append(problems)
 
-    _run(check=lambda text, tool_results: ["12.345"] if "12.345" in text else [],
-         correction=lambda problems: "Herstel", on_correction=on_correction)
+    _run(
+        check=lambda text, tool_results: ["12.345"] if "12.345" in text else [],
+        correction=lambda problems: "Herstel",
+        on_correction=on_correction,
+    )
 
     assert heard == [["12.345"]]
 
@@ -314,11 +352,14 @@ _TREFFERS = '[{"_cbs_id": "85423NED"}, {"_ckan_id": "p01hoinges"}, {"_ckan_id": 
 
 
 def _search_then_load(monkeypatch, laad_tool, laad_args):
-    _steps(monkeypatch, [
-        StreamResult(text="", tool_calls=[_call("search_catalog", '{"query": "ingeschrevenen"}', "t1")]),
-        StreamResult(text="", tool_calls=[_call(laad_tool, laad_args, "t2")]),
-        StreamResult(text="Klaar.", tool_calls=[]),
-    ])
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("search_catalog", '{"query": "ingeschrevenen"}', "t1")]),
+            StreamResult(text="", tool_calls=[_call(laad_tool, laad_args, "t2")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
     _fake_tools(monkeypatch, {"search_catalog": _TREFFERS, laad_tool: '{"data_key": "k"}'})
 
 

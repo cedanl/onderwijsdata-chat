@@ -85,6 +85,7 @@ async def security_headers(request, call_next):
 
 # ─── Health checks ───────────────────────────────────────────────────────────
 
+
 @app.get("/health", tags=["health"])
 async def health_endpoint() -> dict:
     """Liveness probe: application is running."""
@@ -106,12 +107,15 @@ async def startup_endpoint() -> dict:
 
 _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
+
 @app.get("/version", tags=["info"])
 async def version() -> dict:
     """Versie uit pyproject.toml en de commit waaruit het image is gebouwd (#231)."""
+
     def _read() -> str:
         with open(_PYPROJECT, "rb") as f:
             return tomllib.load(f)["project"]["version"]
+
     return {"version": await asyncio.to_thread(_read), "commit": Config.GIT_COMMIT or "onbekend"}
 
 
@@ -128,14 +132,18 @@ async def info() -> dict:
 
 # ─── Startup and Shutdown ────────────────────────────────────────────────────
 
+
 @app.on_event("startup")
 async def on_startup() -> None:
     """Initialize application and record startup time."""
     health.record_startup()
-    logger.info("Application startup completed", extra={
-        "oidc_enabled": is_oidc_configured(),
-        "database": "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
-    })
+    logger.info(
+        "Application startup completed",
+        extra={
+            "oidc_enabled": is_oidc_configured(),
+            "database": "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
+        },
+    )
 
 
 @app.on_event("shutdown")
@@ -144,7 +152,7 @@ async def on_shutdown() -> None:
     logger.info("Application shutdown initiated")
     try:
         # Cleanup database connections
-        if hasattr(persistence_db, 'close'):
+        if hasattr(persistence_db, "close"):
             persistence_db.close()
     except Exception as e:
         logger.warning(f"Error during shutdown cleanup: {e}")

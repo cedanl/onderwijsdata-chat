@@ -61,8 +61,7 @@ def test_teldefinitie_does_not_cache_failures():
 
 def test_get_duo_data_includes_teldefinitie():
     df = pd.DataFrame({"OPLEIDINGSVORM": ["VT", "DT"], "AANTAL_INGESCHREVENEN": [10, 5]})
-    with patch("tools.duo._duo.load", return_value=df), \
-         patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES):
+    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES):
         result = json.loads(get_duo_data("p01hoinges", 3))
 
     assert "natuurlijke personen" in result["teldefinitie"]
@@ -86,11 +85,17 @@ def test_get_duo_data_without_teldefinitie_omits_field():
 
 
 def test_dataset_details_includes_teldefinitie_for_duo():
-    entry = {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen hoger onderwijs",
-             "_resources": [{"naam": "hbo"}]}
-    with patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[entry]), \
-         patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES):
+    entry = {
+        "leverancier": "DUO",
+        "_ckan_id": "p01hoinges",
+        "bron": "Ingeschrevenen hoger onderwijs",
+        "_resources": [{"naam": "hbo"}],
+    }
+    with (
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[entry]),
+        patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES),
+    ):
         result = json.loads(dataset_details("p01hoinges"))
 
     assert "natuurlijke personen" in result["teldefinitie"]

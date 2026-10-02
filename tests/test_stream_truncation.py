@@ -1,4 +1,5 @@
 """An answer cut off at the output limit must not look like a finished one."""
+
 import asyncio
 import importlib
 from types import SimpleNamespace
@@ -30,7 +31,11 @@ def _final_message_end(monkeypatch, finish_reason):
         return object()
 
     async def fake_accumulate(stream, stop_event=None, emit=None):
-        return StreamResult(text="Conclusie – De gevraagde indicator is niet beschikbaar in de", tool_calls=[], finish_reason=finish_reason)
+        return StreamResult(
+            text="Conclusie – De gevraagde indicator is niet beschikbaar in de",
+            tool_calls=[],
+            finish_reason=finish_reason,
+        )
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
@@ -39,7 +44,9 @@ def _final_message_end(monkeypatch, finish_reason):
     async def emit(event):
         events.append(event)
 
-    asyncio.run(run_module.run([{"role": "user", "content": "vraag"}], {}, emit, asyncio.Event(), model="openai/gpt-4o"))
+    asyncio.run(
+        run_module.run([{"role": "user", "content": "vraag"}], {}, emit, asyncio.Event(), model="openai/gpt-4o")
+    )
     return next(e for e in events if e["type"] == "message_end")
 
 

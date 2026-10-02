@@ -61,26 +61,24 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
             tool_calls.append(event)
 
     messages = [
-        {"role": "user", "content": (
-            "Hoeveel eerstejaars bachelorstudenten stroomden in bij de "
-            "Vrije Universiteit Amsterdam? Totaal per studiejaar, alle beschikbare jaren."
-        )},
+        {
+            "role": "user",
+            "content": (
+                "Hoeveel eerstejaars bachelorstudenten stroomden in bij de "
+                "Vrije Universiteit Amsterdam? Totaal per studiejaar, alle beschikbare jaren."
+            ),
+        },
     ]
 
     answer = asyncio.run(run(messages, session={}, emit=emit))
 
     # 1. Check: LLM moet group_by/aggregate of run_analysis gebruiken
     used_aggregation = any(
-        tc.get("name") == "query_data"
-        and ("group_by" in json.dumps(tc.get("input", {})))
-        for tc in tool_calls
+        tc.get("name") == "query_data" and ("group_by" in json.dumps(tc.get("input", {}))) for tc in tool_calls
     )
-    used_analysis = any(
-        tc.get("name") == "run_analysis" for tc in tool_calls
-    )
+    used_analysis = any(tc.get("name") == "run_analysis" for tc in tool_calls)
     assert used_aggregation or used_analysis, (
-        f"LLM gebruikte geen server-side aggregatie. Tool calls: "
-        f"{[tc.get('name') for tc in tool_calls]}"
+        f"LLM gebruikte geen server-side aggregatie. Tool calls: {[tc.get('name') for tc in tool_calls]}"
     )
 
     # 2. Check: gerapporteerde getallen moeten matchen met ground truth
@@ -91,8 +89,7 @@ def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
 
     # 2b. Geen ongedekte getallen: elk getal >999 moet uit tool-output komen
     tool_payloads = [
-        tc.get("output") or tc.get("input", {})
-        for tc in events if tc.get("type") in ("tool_end", "tool_start")
+        tc.get("output") or tc.get("input", {}) for tc in events if tc.get("type") in ("tool_end", "tool_start")
     ]
     ongedekt = ungrounded_numbers(answer, tool_payloads)
     assert not ongedekt, f"Getallen zonder tool-herkomst: {ongedekt}"

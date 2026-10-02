@@ -3,15 +3,18 @@
 Live-audit 2: de chat filterde op 30TX (Aeres Hogeschool) en noemde dat Hogeschool
 Utrecht (25DW). De code kwam van het model; niets controleerde code en naam.
 """
+
 import pandas as pd
 
 from tools import instelling
 
-_DF = pd.DataFrame({
-    "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX", "25DW"],
-    "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool", "Hogeschool Utrecht"],
-    "AANTAL": [1, 2, 3],
-})
+_DF = pd.DataFrame(
+    {
+        "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX", "25DW"],
+        "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool", "Hogeschool Utrecht"],
+        "AANTAL": [1, 2, 3],
+    }
+)
 _NAMEN = {"25DW": "Hogeschool Utrecht", "30TX": "Aeres Hogeschool", "21PL": "Universiteit Utrecht"}
 
 
@@ -25,7 +28,10 @@ def test_dekking_en_namen():
     assert instelling.dekking(_DF, "INSTELLINGSCODE_ACTUEEL") == ("25DW", "30TX")
     assert instelling.dekking(_DF.iloc[0:0], "INSTELLINGSCODE_ACTUEEL") == ()
     assert instelling.dekking(_DF[["AANTAL"]], "INSTELLINGSCODE_ACTUEEL") is None
-    assert instelling.namen(_DF, "INSTELLINGSCODE_ACTUEEL") == {"25DW": "Hogeschool Utrecht", "30TX": "Aeres Hogeschool"}
+    assert instelling.namen(_DF, "INSTELLINGSCODE_ACTUEEL") == {
+        "25DW": "Hogeschool Utrecht",
+        "30TX": "Aeres Hogeschool",
+    }
 
 
 def test_volledige_naam_in_de_vraag():

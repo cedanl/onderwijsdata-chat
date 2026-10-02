@@ -60,6 +60,7 @@ class TestReplayDashboardFigures:
         ]
         query_result = json.dumps({"totaal_rijen": 1, "rijen": [{"JAAR": "2023", "AANTAL": 100}]})
         import plotly.graph_objects as go
+
         fig = go.Figure(go.Bar(x=["2023"], y=[100]))
 
         with patch("agent.replay.dispatch") as mock_dispatch:

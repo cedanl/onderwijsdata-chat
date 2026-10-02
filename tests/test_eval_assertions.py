@@ -3,11 +3,19 @@
 De oude assertie vergeleek twee verzamelingen en liet drie fouten door: omgedraaide jaren,
 een verzonnen getal, en één ontbrekend jaar. Elk daarvan staat hier als test die moet falen.
 """
+
 from tests.eval_assertions import ungrounded_numbers, unpaired_years
 
 TRUTH = {2021: 5000, 2022: 5500, 2023: 6000}
-TOOL = [{"rijen": [{"STUDIEJAAR": 2021, "AANTAL": 5000}, {"STUDIEJAAR": 2022, "AANTAL": 5500},
-                   {"STUDIEJAAR": 2023, "AANTAL": 6000}]}]
+TOOL = [
+    {
+        "rijen": [
+            {"STUDIEJAAR": 2021, "AANTAL": 5000},
+            {"STUDIEJAAR": 2022, "AANTAL": 5500},
+            {"STUDIEJAAR": 2023, "AANTAL": 6000},
+        ]
+    }
+]
 
 
 def test_correct_answer_passes_both_checks():

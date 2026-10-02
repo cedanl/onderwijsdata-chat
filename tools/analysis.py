@@ -32,13 +32,29 @@ _BLOCKED_PATTERNS = re.compile(
 )
 
 _SAFE_BUILTINS = {
-    "len": len, "range": range, "sorted": sorted,
-    "list": list, "dict": dict, "tuple": tuple, "set": set,
-    "str": str, "int": int, "float": float, "bool": bool,
-    "zip": zip, "enumerate": enumerate,
-    "min": min, "max": max, "sum": sum, "round": round, "abs": abs,
-    "isinstance": isinstance, "type": type,
-    "True": True, "False": False, "None": None,
+    "len": len,
+    "range": range,
+    "sorted": sorted,
+    "list": list,
+    "dict": dict,
+    "tuple": tuple,
+    "set": set,
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "zip": zip,
+    "enumerate": enumerate,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "round": round,
+    "abs": abs,
+    "isinstance": isinstance,
+    "type": type,
+    "True": True,
+    "False": False,
+    "None": None,
     "print": lambda *a, **kw: None,
 }
 
@@ -53,10 +69,7 @@ def _check_no_hardcoded_data(code: str) -> str | None:
     for node in ast.walk(tree):
         if isinstance(node, (ast.List, ast.Dict, ast.Tuple)):
             # Count numeric constants in this structure
-            nums = [
-                n for n in ast.walk(node)
-                if isinstance(n, ast.Constant) and isinstance(n.value, (int, float))
-            ]
+            nums = [n for n in ast.walk(node) if isinstance(n, ast.Constant) and isinstance(n.value, (int, float))]
             if len(nums) >= 6:
                 return (
                     "Script bevat een literal datastructuur met ≥6 getallen. "
@@ -80,7 +93,9 @@ def _check_code(code: str) -> str | None:
     # Check regex blocklist (security)
     match = _BLOCKED_PATTERNS.search(code)
     if match:
-        return f"Niet toegestaan in analyse-scripts: '{match.group()}'. Gebruik de beschikbare libraries (pd, np, px, go)."
+        return (
+            f"Niet toegestaan in analyse-scripts: '{match.group()}'. Gebruik de beschikbare libraries (pd, np, px, go)."
+        )
 
     # Check data sourcing (data integrity): reject hardcoded data
     if err := _check_no_hardcoded_data(code):
@@ -129,9 +144,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         # Forceer stop via async exception — best-effort, daemon thread wordt opgeruimd bij exit
         tid = worker.ident
         if tid is not None:
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(
-                ctypes.c_ulong(tid), ctypes.py_object(SystemExit)
-            )
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(tid), ctypes.py_object(SystemExit))
         return f"Script duurde langer dan {_TIMEOUT_SECONDS} seconden en is afgebroken."
 
     if exc_result[0]:
@@ -157,8 +170,13 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         store_df = pd.DataFrame(result)
         result_key = f"analysis:{id(store_df)}"
         if data_key is not None:
-            store.derive(data_key, result_key, store_df, stap="eigen berekening (run_analysis)",
-                         **dekking.van(store_df, store.meta(data_key)))
+            store.derive(
+                data_key,
+                result_key,
+                store_df,
+                stap="eigen berekening (run_analysis)",
+                **dekking.van(store_df, store.meta(data_key)),
+            )
         else:
             store.put(result_key, store_df)
 

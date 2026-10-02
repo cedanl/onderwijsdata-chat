@@ -88,12 +88,14 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         turn_tool_calls = session.get("_last_turn_tool_calls", [])
         session["_last_turn_tool_calls"] = []
         turns: list = session.get("turns", [])
-        turns.append({
-            "question": content,
-            "answer": response_text,
-            "tool_calls": turn_tool_calls,
-            "figures": session.get("turn_figures", []),
-        })
+        turns.append(
+            {
+                "question": content,
+                "answer": response_text,
+                "tool_calls": turn_tool_calls,
+                "figures": session.get("turn_figures", []),
+            }
+        )
         session["turns"] = turns
     session["messages"] = messages
 
@@ -127,26 +129,32 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         # actionable for the user, so fall back to the generic guidance.
         # JSONDecodeError is a ValueError subclass, so this must precede it.
         logger.warning("Report parser error (raw message kept out of UI): %s", e)
-        await emit({
-            "type": "report_error",
-            "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
-        })
+        await emit(
+            {
+                "type": "report_error",
+                "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
+            }
+        )
     except ValueError as e:
         # Raised on purpose with guidance for the user (e.g. no datasets loaded).
         await emit({"type": "report_error", "message": str(e)})
     except Exception:
         logger.exception("Report generation failed")
-        await emit({
-            "type": "report_error",
-            "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
-        })
+        await emit(
+            {
+                "type": "report_error",
+                "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
+            }
+        )
 
 
 class RefreshError(Exception):
     pass
 
 
-async def _do_refresh(recipe: list[dict], figure_recipes: list[dict], current_spec: dict) -> tuple[DashboardSpec, str | None]:
+async def _do_refresh(
+    recipe: list[dict], figure_recipes: list[dict], current_spec: dict
+) -> tuple[DashboardSpec, str | None]:
     """Shared refresh logic. Returns (updated_spec, info_message_or_None).
 
     Raises RefreshError if refresh fails entirely.
@@ -173,7 +181,9 @@ async def _do_refresh(recipe: list[dict], figure_recipes: list[dict], current_sp
     return spec, info
 
 
-async def _refresh_dashboard(recipe: list[dict], figure_recipes: list[dict], current_spec: dict, session: dict, emit, model: str | None) -> None:
+async def _refresh_dashboard(
+    recipe: list[dict], figure_recipes: list[dict], current_spec: dict, session: dict, emit, model: str | None
+) -> None:
     await emit({"type": "dashboard_generating"})
     try:
         spec, info = await _do_refresh(recipe, figure_recipes, current_spec)
@@ -251,9 +261,7 @@ def _stop_task(session: dict, task: asyncio.Task | None) -> None:
         task.cancel()
 
 
-async def _handle_message(
-    msg: dict, session: dict, emit, current_task: asyncio.Task | None
-) -> asyncio.Task | None:
+async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
@@ -286,9 +294,7 @@ async def _handle_clarification(
     return asyncio.create_task(_process_message(choice, session, emit, model))
 
 
-async def _handle_generate_dashboard(
-    session: dict, emit, current_task: asyncio.Task | None
-) -> asyncio.Task | None:
+async def _handle_generate_dashboard(session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if not DASHBOARDS_ENABLED:
         await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
         return current_task
@@ -323,9 +329,7 @@ async def _handle_refresh_dashboard(
     figure_recipes = msg.get("figure_recipes") or []
     current_spec = msg.get("spec") or {}
     model = session["chat_settings"].get("model") or None
-    return asyncio.create_task(
-        _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model)
-    )
+    return asyncio.create_task(_refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model))
 
 
 @router.websocket("/api/chat")
@@ -344,9 +348,15 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
         await ws.send_text(json.dumps(event))
 
     from core.config import get_all_api_key_env_vars
+
     is_ollama = MODEL.startswith(("ollama_chat/", "ollama/"))
     if not is_ollama and not any(os.getenv(k) for k in get_all_api_key_env_vars()):
-        await emit({"type": "system_message", "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app."})
+        await emit(
+            {
+                "type": "system_message",
+                "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app.",
+            }
+        )
 
     current_task: asyncio.Task | None = None
 

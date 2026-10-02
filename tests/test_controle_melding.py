@@ -6,6 +6,7 @@ bron hem telt." De eerste zin is voor de gebruiker, de tweede voor het model.
 Audit 10 en 11: na een correctieronde opende het antwoord zelf met "ik schreef ...",
 "De correctie is terecht" of "Volledig antwoord op basis van opgehaalde data:".
 """
+
 import json
 import re
 
@@ -33,17 +34,33 @@ def _zonder_modeltaal(melding: str) -> bool:
 @pytest.fixture(autouse=True)
 def _data():
     store.clear()
-    df = pd.DataFrame({
-        "STUDIEJAAR": [2024, 2025, 2024, 2025],
-        "INSTELLINGSCODE_ACTUEEL": ["25DW", "25DW", "30TX", "30TX"],
-        "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Hogeschool Utrecht", "Aeres Hogeschool", "Aeres Hogeschool"],
-        "AANTAL": [7418, 7408, 880, 900],
-    })
-    store.put("duo:p01hoinges:3", df, KeyMeta(
-        bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025),
-        instellingskolom="INSTELLINGSCODE_ACTUEEL", instellingen=("25DW", "30TX"),
-        teldefinitie="Ingeschrevenen: de hoofdinschrijvingen als personen.",
-    ))
+    df = pd.DataFrame(
+        {
+            "STUDIEJAAR": [2024, 2025, 2024, 2025],
+            "INSTELLINGSCODE_ACTUEEL": ["25DW", "25DW", "30TX", "30TX"],
+            "INSTELLINGSNAAM_ACTUEEL": [
+                "Hogeschool Utrecht",
+                "Hogeschool Utrecht",
+                "Aeres Hogeschool",
+                "Aeres Hogeschool",
+            ],
+            "AANTAL": [7418, 7408, 880, 900],
+        }
+    )
+    store.put(
+        "duo:p01hoinges:3",
+        df,
+        KeyMeta(
+            bron="duo",
+            dataset="p01hoinges",
+            resource=3,
+            periodekolom="STUDIEJAAR",
+            schooljaren=(2024, 2025),
+            instellingskolom="INSTELLINGSCODE_ACTUEEL",
+            instellingen=("25DW", "30TX"),
+            teldefinitie="Ingeschrevenen: de hoofdinschrijvingen als personen.",
+        ),
+    )
     yield
     store.clear()
 
@@ -86,21 +103,27 @@ def test_de_volledige_tekst_houdt_de_instructie_voor_de_herkansing():
     assert "Noem" not in teleenheid.melding
 
 
-@pytest.mark.parametrize("tekst", [
-    "Ik schreef eerder 'ruim 3.400', maar het zijn er 3.380.",
-    "De correctie is terecht: het zijn er 900.",
-    "Volledig antwoord op basis van opgehaalde data: 900 studenten.",
-    "Het verschil is bevestigd door compute_kpi.",
-    "Met query_data heb ik gefilterd op 2025.",
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Ik schreef eerder 'ruim 3.400', maar het zijn er 3.380.",
+        "De correctie is terecht: het zijn er 900.",
+        "Volledig antwoord op basis van opgehaalde data: 900 studenten.",
+        "Het verschil is bevestigd door compute_kpi.",
+        "Met query_data heb ik gefilterd op 2025.",
+    ],
+)
 def test_metatekst_over_de_controle_of_de_tools_wordt_gemeld(tekst):
     assert metatekst(tekst)
 
 
-@pytest.mark.parametrize("tekst", [
-    "Hogeschool Utrecht had in 2025/26 7.408 deeltijdstudenten.",
-    "Na correctie voor inflatie stijgt het budget.",
-    "**Bronnen**\n- DUO p01hoinges",
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Hogeschool Utrecht had in 2025/26 7.408 deeltijdstudenten.",
+        "Na correctie voor inflatie stijgt het budget.",
+        "**Bronnen**\n- DUO p01hoinges",
+    ],
+)
 def test_gewone_antwoordtekst_is_geen_metatekst(tekst):
     assert metatekst(tekst) == []

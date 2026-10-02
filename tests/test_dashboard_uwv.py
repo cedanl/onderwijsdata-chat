@@ -12,8 +12,12 @@ _CLUSTERS = {"Zorg en welzijn": 900, "ICT": 300, "Techniek": 200}
 
 
 def _met_clusters(sectoren):
-    with patch.object(dashboard, "_uwv_raw_clusters", return_value=(1400, "mei 2023", _CLUSTERS)), \
-         patch.object(dashboard, "_SECTOR_CLUSTER_MAP", {"GEZONDHEIDSZORG": ["Zorg en welzijn"], "ONBEKEND": ["Bestaat niet"]}):
+    with (
+        patch.object(dashboard, "_uwv_raw_clusters", return_value=(1400, "mei 2023", _CLUSTERS)),
+        patch.object(
+            dashboard, "_SECTOR_CLUSTER_MAP", {"GEZONDHEIDSZORG": ["Zorg en welzijn"], "ONBEKEND": ["Bestaat niet"]}
+        ),
+    ):
         return dashboard._uwv_clusters_voor_sectoren("Utrecht", sectoren)
 
 
@@ -28,12 +32,31 @@ def test_sector_zonder_clustermatch_geeft_geen_clusters():
 
 # --- #228: het dashboard telt DUO -1 niet als getal mee, net als de chat ---
 
+
 @pytest.fixture
 def mbo_met_sentinels():
-    ruw = pd.DataFrame([
-        {"JAAR": 2024, "INSTELLINGSNAAM": "Grafisch Lyceum", "INSTELLINGSCODE": "1", "BBL": 300, "BOLDT": -1, "BOLVT": 2079, "EX": -1},
-        {"JAAR": 2025, "INSTELLINGSNAAM": "Grafisch Lyceum", "INSTELLINGSCODE": "1", "BBL": 310, "BOLDT": 0, "BOLVT": 2100, "EX": 0},
-    ])
+    ruw = pd.DataFrame(
+        [
+            {
+                "JAAR": 2024,
+                "INSTELLINGSNAAM": "Grafisch Lyceum",
+                "INSTELLINGSCODE": "1",
+                "BBL": 300,
+                "BOLDT": -1,
+                "BOLVT": 2079,
+                "EX": -1,
+            },
+            {
+                "JAAR": 2025,
+                "INSTELLINGSNAAM": "Grafisch Lyceum",
+                "INSTELLINGSCODE": "1",
+                "BBL": 310,
+                "BOLDT": 0,
+                "BOLVT": 2100,
+                "EX": 0,
+            },
+        ]
+    )
     _leeg_laadcaches()
     with patch.object(dashboard.duo, "load", return_value=ruw):
         yield

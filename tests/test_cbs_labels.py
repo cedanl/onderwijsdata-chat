@@ -37,11 +37,13 @@ def _fake_get(dataset_id, endpoint, **params):
 
 
 def _load():
-    with patch("tools.cbs.data", return_value=_ROWS), \
-         patch("tools.cbs.definitions", return_value=_DEFS), \
-         patch("tools.cbs.get", side_effect=_fake_get), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.cbs.data", return_value=_ROWS),
+        patch("tools.cbs.definitions", return_value=_DEFS),
+        patch("tools.cbs.get", side_effect=_fake_get),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         return json.loads(get_cbs_data("85423NED", {"$filter": "x"}))
 
 
@@ -62,8 +64,7 @@ def test_labelkolom_heeft_een_definitie():
 
 def test_onbekende_dimensie_geeft_uitleg_met_beschikbare_dimensies():
     # Live-audit 6: get_cbs_dimension('Status') gaf een kale 404.
-    with patch("tools.cbs.get", side_effect=_fake_get), \
-         patch("tools.cbs.definitions", return_value=_DEFS):
+    with patch("tools.cbs.get", side_effect=_fake_get), patch("tools.cbs.definitions", return_value=_DEFS):
         melding = get_cbs_dimension("85423NED", "Status")
 
     assert "Opleidingsvorm" in melding and "Perioden" in melding

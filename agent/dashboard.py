@@ -38,7 +38,8 @@ from tools.schemas import (
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
 _DASHBOARD_TOOLS = [
-    s for s in TOOL_SCHEMAS
+    s
+    for s in TOOL_SCHEMAS
     if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_COMPUTE_KPI)  # ty: ignore[invalid-argument-type]
 ]
 
@@ -101,7 +102,10 @@ def _reload_call_from_key(key: str) -> dict | None:
     # Derived keys append a selection hash (duo:p01hoinges:3:74a5c5e2); reload the source.
     parts = key.split(":")
     if parts[0] == "duo" and len(parts) >= 3:
-        return {"name": TOOL_GET_DUO_DATA, "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])})}
+        return {
+            "name": TOOL_GET_DUO_DATA,
+            "arguments": json.dumps({"dataset_id": parts[1], "resource": _try_int(parts[2])}),
+        }
     if parts[0] == "cbs" and len(parts) >= 2:
         return {"name": TOOL_GET_CBS_DATA, "arguments": json.dumps({"dataset_id": parts[1]})}
     if parts[0] == "rio" and len(parts) >= 2:
@@ -129,12 +133,14 @@ def build_dataset_context(session: dict) -> dict:
     datasets: list[dict] = []
     for key in session_data_keys(session):
         df = store.get(key)
-        datasets.append({
-            "data_key": key,
-            "row_count": len(df),
-            "columns": [_column_summary(df, col) for col in df.columns],
-            "herkomst": data_lineage(session, key),
-        })
+        datasets.append(
+            {
+                "data_key": key,
+                "row_count": len(df),
+                "columns": [_column_summary(df, col) for col in df.columns],
+                "herkomst": data_lineage(session, key),
+            }
+        )
 
     settings = session.get("chat_settings") or {}
     instelling = settings.get("instelling", "")
@@ -161,13 +167,8 @@ def _build_system_prompt(context: dict) -> str:
 
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
-        cols = "\n".join(
-            f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}"
-            for c in ds["columns"]
-        )
-        dataset_blocks.append(
-            f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n- Kolommen:\n{cols}"
-        )
+        cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
+        dataset_blocks.append(f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n- Kolommen:\n{cols}")
 
     datasets_section = "\n\n".join(dataset_blocks) if dataset_blocks else "Geen datasets geladen."
 
@@ -181,8 +182,8 @@ def _build_system_prompt(context: dict) -> str:
 {datasets_section}
 
 ## Gebruikerscontext
-- Instelling: {instelling or 'niet opgegeven'}
-- Onderwerp: {topic or 'niet opgegeven'}
+- Instelling: {instelling or "niet opgegeven"}
+- Onderwerp: {topic or "niet opgegeven"}
 """
     return base + injected
 
@@ -218,10 +219,12 @@ async def generate(
             figure_json = pio.to_json(figure)
             figures.append(figure_json)
             await emit({"type": "figure", "label": LABELS.get(call.name, call.name), "figure_json": figure_json})
-            figure_recipes.append({
-                "query": last_query_args,
-                "plot": {k: v for k, v in call.args.items() if k != "data"},
-            })
+            figure_recipes.append(
+                {
+                    "query": last_query_args,
+                    "plot": {k: v for k, v in call.args.items() if k != "data"},
+                }
+            )
 
     result = await tool_loop(
         messages,
@@ -235,11 +238,13 @@ async def generate(
         keep_partial=lambda: bool(figures),
     )
     if result.partial_error:
-        await emit({
-            "type": "toast",
-            "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
-            "level": "warning",
-        })
+        await emit(
+            {
+                "type": "toast",
+                "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+                "level": "warning",
+            }
+        )
 
     spec = _parse_spec_from_response(result.text, figures, figure_recipes, context, session, computed_kpis)
 
@@ -250,8 +255,6 @@ async def generate(
         spec.kpis = []
 
     return spec
-
-
 
 
 def _extract_json_object(text: str) -> dict:
@@ -277,7 +280,7 @@ def _extract_json_object(text: str) -> dict:
             elif text[j] == "}":
                 depth -= 1
                 if depth == 0:
-                    candidates.append(text[i:j + 1])
+                    candidates.append(text[i : j + 1])
                     break
 
     # Return the largest candidate that parses as JSON with a "title" key
@@ -342,13 +345,15 @@ def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
         if bron is None:
             logger.warning("KPI geweigerd, waarde komt niet uit compute_kpi: %r", kpi)
             continue
-        gevalideerd.append({
-            **kpi,
-            "value": bron["value"],
-            "trend": bron.get("trend"),
-            "trendDirection": bron.get("trendDirection"),
-            "bron": bron.get("bron"),
-        })
+        gevalideerd.append(
+            {
+                **kpi,
+                "value": bron["value"],
+                "trend": bron.get("trend"),
+                "trendDirection": bron.get("trendDirection"),
+                "bron": bron.get("bron"),
+            }
+        )
     return gevalideerd
 
 

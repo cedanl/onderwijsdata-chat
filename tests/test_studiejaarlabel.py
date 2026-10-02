@@ -3,6 +3,7 @@
 STUDIEJAAR 2021 is studiejaar 2021/2022, maar het antwoord labelde de reeks 2021 t/m 2025 als
 2020/2021 … 2024/2025: het model rekende zelf om en schoof alles een jaar.
 """
+
 import json
 from unittest.mock import patch
 
@@ -12,11 +13,13 @@ from tools import periode, store
 from tools.duo import get_duo_data
 from tools.query import query_data
 
-_DATA = pd.DataFrame({
-    "STUDIEJAAR": [2021, 2021, 2022, 2025],
-    "OPLEIDINGSVORM": ["VT", "DT", "VT", "VT"],
-    "AANTAL": [10, 5, 20, 30],
-})
+_DATA = pd.DataFrame(
+    {
+        "STUDIEJAAR": [2021, 2021, 2022, 2025],
+        "OPLEIDINGSVORM": ["VT", "DT", "VT", "VT"],
+        "AANTAL": [10, 5, 20, 30],
+    }
+)
 
 
 def test_label_is_the_start_year_and_the_next():
@@ -26,8 +29,10 @@ def test_label_is_the_start_year_and_the_next():
 
 def test_loaded_duo_data_carries_the_label_next_to_the_raw_year():
     store.clear()
-    with patch("tools.duo._duo.load", return_value=_DATA.copy()), \
-         patch("tools.duo._duo.column_definitions", return_value={}):
+    with (
+        patch("tools.duo._duo.load", return_value=_DATA.copy()),
+        patch("tools.duo._duo.column_definitions", return_value={}),
+    ):
         result = json.loads(get_duo_data("p01hoinges", 3))
 
     kolommen = {k["kolom"]: k for k in result["kolommen"]}

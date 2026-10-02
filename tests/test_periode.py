@@ -1,16 +1,20 @@
 """Schooljaren: van de vraag naar de broncode en terug, in code in plaats van door het model (#187)."""
+
 import pandas as pd
 import pytest
 
 from tools import periode
 
 
-@pytest.mark.parametrize("tekst", [
-    "Hoeveel deeltijdstudenten had de HU in 2025/26?",
-    "studiejaar 2025-2026",
-    "in 2025/'26",
-    "schooljaar 2025–26",
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Hoeveel deeltijdstudenten had de HU in 2025/26?",
+        "studiejaar 2025-2026",
+        "in 2025/'26",
+        "schooljaar 2025–26",
+    ],
+)
 def test_eenduidige_schooljaren_uit_de_vraag(tekst):
     assert periode.gevraagde_schooljaren(tekst) == {2025}
 

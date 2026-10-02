@@ -13,14 +13,32 @@ _SCALE = ["1", "2", "3", "4", "5"]
 MAX_TEXT_LENGTH = 2000
 
 QUESTIONS: tuple[dict, ...] = (
-    {"id": "nuttig", "text": "Hoe nuttig was dit rapport voor je?", "type": "scale", "options": _SCALE,
-     "labels": ["Niet nuttig", "Zeer nuttig"]},
-    {"id": "duidelijk", "text": "Hoe duidelijk is de data gepresenteerd?", "type": "scale", "options": _SCALE,
-     "labels": ["Onduidelijk", "Zeer duidelijk"]},
-    {"id": "vertrouwen", "text": "Vertrouw je de cijfers in dit rapport?", "type": "choice",
-     "options": ["Ja", "Deels", "Nee", "Weet ik niet"]},
-    {"id": "delen", "text": "Zou je dit rapport delen met collega's?", "type": "choice",
-     "options": ["Ja", "Misschien", "Nee"]},
+    {
+        "id": "nuttig",
+        "text": "Hoe nuttig was dit rapport voor je?",
+        "type": "scale",
+        "options": _SCALE,
+        "labels": ["Niet nuttig", "Zeer nuttig"],
+    },
+    {
+        "id": "duidelijk",
+        "text": "Hoe duidelijk is de data gepresenteerd?",
+        "type": "scale",
+        "options": _SCALE,
+        "labels": ["Onduidelijk", "Zeer duidelijk"],
+    },
+    {
+        "id": "vertrouwen",
+        "text": "Vertrouw je de cijfers in dit rapport?",
+        "type": "choice",
+        "options": ["Ja", "Deels", "Nee", "Weet ik niet"],
+    },
+    {
+        "id": "delen",
+        "text": "Zou je dit rapport delen met collega's?",
+        "type": "choice",
+        "options": ["Ja", "Misschien", "Nee"],
+    },
     {"id": "mist", "text": "Mist er iets in dit rapport?", "type": "text"},
     {"id": "verbeteren", "text": "Wat zou je willen verbeteren?", "type": "text"},
 )

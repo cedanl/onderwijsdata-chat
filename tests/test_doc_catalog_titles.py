@@ -4,6 +4,7 @@ De prompt eist de exacte titel uit de catalogus, maar een voorbeeld noemde 85423
 "MBO; deelnemers naar geslacht en niveau" terwijl het "Hoger onderwijs; ingeschrevenen, …" is:
 het model leest voorbeelden als waarheid.
 """
+
 import re
 from pathlib import Path
 
@@ -34,4 +35,6 @@ def test_example_title_is_the_catalog_title(path, number, line, ids):
         verwacht = catalogus_titel(dataset_id)
         if verwacht == dataset_id:
             pytest.fail(f"{path}:{number} noemt {dataset_id}, dat niet in de catalogus staat")
-        assert verwacht in titels, f"{path}:{number}: titel van {dataset_id} moet '{verwacht}' zijn, niet {sorted(titels)}"
+        assert verwacht in titels, (
+            f"{path}:{number}: titel van {dataset_id} moet '{verwacht}' zijn, niet {sorted(titels)}"
+        )

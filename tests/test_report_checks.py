@@ -12,9 +12,9 @@ from agent.report_checks import report_problems
 from tools import store
 from tools.store import KeyMeta
 
-_HU_RESULT = json.dumps({"rijen": [
-    {"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904, 27441, 27135, 26370])
-]})
+_HU_RESULT = json.dumps(
+    {"rijen": [{"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904, 27441, 27135, 26370])]}
+)
 _HU_FIGURE = pio.to_json(go.Figure(go.Scatter(x=[2021, 2022, 2023, 2024, 2025], y=[28355, 27904, 27441, 27135, 26370])))
 
 
@@ -46,7 +46,9 @@ def test_consistent_rapport_heeft_geen_problemen():
 
 def test_getal_dat_niet_uit_de_data_komt():
     # Live-audit 6: het Opus-rapport gaf 336.800 waar de data 378.490 had.
-    spec = _spec(visualisaties=[{"titel": "Trend", "toelichting": "In 2024 waren het er 336.800.", "figure_json": _HU_FIGURE}])
+    spec = _spec(
+        visualisaties=[{"titel": "Trend", "toelichting": "In 2024 waren het er 336.800.", "figure_json": _HU_FIGURE}]
+    )
 
     [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
 
@@ -102,8 +104,11 @@ def test_verkeerde_opleidingsvorm_in_de_reikwijdte():
 
 def test_inschrijvingen_als_titel_boven_personen():
     store.clear()
-    store.put("duo:p01hoinges:3:a", pd.DataFrame({"AANTAL": [26370]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie="Ingeschrevenen: hoofdinschrijvingen als personen."))
+    store.put(
+        "duo:p01hoinges:3:a",
+        pd.DataFrame({"AANTAL": [26370]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie="Ingeschrevenen: hoofdinschrijvingen als personen."),
+    )
     resultaat = json.dumps({"data_key": "duo:p01hoinges:3:a", "rijen": [{"AANTAL": 26370}]})
     spec = _spec(title="Voltijds inschrijvingen HU", conclusie="In 2025 waren het 26.370.")
 

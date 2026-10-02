@@ -4,6 +4,7 @@ Audit 11: de gebruiker koos "2023 (laatste beschikbare werkelijke cijfers)"; het
 antwoord vergeleek de vo-prognose toch met 2018 uit een bestand dat bij 2018 ophoudt.
 Elk getal kwam uit een tool, dus de getalcontrole zweeg.
 """
+
 from agent.keuze import genegeerde_keuze
 
 _KEUZE = ["2023 (laatste beschikbare werkelijke cijfers)"]

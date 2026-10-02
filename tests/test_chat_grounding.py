@@ -3,6 +3,7 @@
 Live-audit 7a: de chat gaf 6.340 waar de toolrijen 5.943 optelden, en "9,5%"
 waar het 9,6% was. Rapport en dashboard werden gecontroleerd, de chat niet.
 """
+
 import asyncio
 import importlib
 import json
@@ -38,34 +39,45 @@ def _chat(monkeypatch, steps: list[StreamResult], messages=None, tool_result: st
     async def emit(event):
         events.append(event)
 
-    text = asyncio.run(run_module.run(
-        messages or [{"role": "user", "content": "Hoeveel eerstejaars?"}], {}, emit, asyncio.Event(),
-        model="openai/gpt-4o",
-    ))
+    text = asyncio.run(
+        run_module.run(
+            messages or [{"role": "user", "content": "Hoeveel eerstejaars?"}],
+            {},
+            emit,
+            asyncio.Event(),
+            model="openai/gpt-4o",
+        )
+    )
     return text, events
 
 
 def test_unsourced_number_gets_one_correction_and_the_unchecked_text_is_withdrawn(monkeypatch):
-    text, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[_QUERY]),
-        StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
-        StreamResult(text="In totaal 5.943 eerstejaars.", tool_calls=[]),
-    ])
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
+            StreamResult(text="In totaal 5.943 eerstejaars.", tool_calls=[]),
+        ],
+    )
 
     assert text == "In totaal 5.943 eerstejaars."
     types = [e["type"] for e in events]
     cancel = types.index("message_cancel")
-    assert types[cancel + 1:].count("message_start") == 1
+    assert types[cancel + 1 :].count("message_start") == 1
     end = events[-1]
     assert end["type"] == "message_end" and "controle" not in end
 
 
 def test_number_that_stays_unsourced_is_flagged_on_the_answer(monkeypatch):
-    text, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[_QUERY]),
-        StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
-        StreamResult(text="Toch 6.340.", tool_calls=[]),
-    ])
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
+            StreamResult(text="Toch 6.340.", tool_calls=[]),
+        ],
+    )
 
     assert text == "Toch 6.340."
     assert events[-1]["type"] == "message_end"
@@ -93,11 +105,18 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     from tools.store import KeyMeta
 
     store.clear()
-    store.put("duo:p01hoinges:3", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)))
+    store.put(
+        "duo:p01hoinges:3",
+        pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)),
+    )
+
     def query(jaar, cid):
-        return {"id": cid, "name": "query_data",
-                "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": jaar}})}
+        return {
+            "id": cid,
+            "name": "query_data",
+            "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": jaar}}),
+        }
 
     steps = [
         StreamResult(text="", tool_calls=[query(2024, "a")]),
@@ -121,10 +140,15 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     async def emit(event):
         events.append(event)
 
-    text = asyncio.run(run_module.run(
-        [{"role": "user", "content": "Hoeveel deeltijdstudenten had de HU in 2025/26?"}], {}, emit,
-        asyncio.Event(), model="openai/gpt-4o",
-    ))
+    text = asyncio.run(
+        run_module.run(
+            [{"role": "user", "content": "Hoeveel deeltijdstudenten had de HU in 2025/26?"}],
+            {},
+            emit,
+            asyncio.Event(),
+            model="openai/gpt-4o",
+        )
+    )
     store.clear()
 
     assert text == "In 2025/26 waren het 7.408 deeltijdstudenten."
@@ -141,18 +165,29 @@ def test_card_shows_the_finding_and_the_model_gets_the_instruction(monkeypatch):
     from tools.store import KeyMeta
 
     store.clear()
-    store.put("duo:p01hoinges:3", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)))
-    query = {"id": "a", "name": "query_data",
-             "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": 2024}})}
+    store.put(
+        "duo:p01hoinges:3",
+        pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)),
+    )
+    query = {
+        "id": "a",
+        "name": "query_data",
+        "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": 2024}}),
+    }
     from tools.query import query_data
 
     rows = query_data("duo:p01hoinges:3", filters={"STUDIEJAAR": 2024})
-    _, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[query]),
-        StreamResult(text="In 2025/26 waren het 7.418.", tool_calls=[]),
-        StreamResult(text="De correctie is terecht: in 2025/26 waren het 7.418.", tool_calls=[]),
-    ], [{"role": "user", "content": "Hoeveel deeltijdstudenten had de HU in 2025/26?"}], tool_result=rows)
+    _, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[query]),
+            StreamResult(text="In 2025/26 waren het 7.418.", tool_calls=[]),
+            StreamResult(text="De correctie is terecht: in 2025/26 waren het 7.418.", tool_calls=[]),
+        ],
+        [{"role": "user", "content": "Hoeveel deeltijdstudenten had de HU in 2025/26?"}],
+        tool_result=rows,
+    )
     store.clear()
 
     controle = events[-1]["controle"]
@@ -169,15 +204,30 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
     from tools.store import KeyMeta
 
     store.clear()
-    store.put("duo:p01hoinges:3", pd.DataFrame({
-        "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"], "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
-        "AANTAL": [26370, 2880],
-    }), KeyMeta(bron="duo", dataset="p01hoinges", resource=3,
-                instellingskolom="INSTELLINGSCODE_ACTUEEL", instellingen=("25DW", "30TX")))
+    store.put(
+        "duo:p01hoinges:3",
+        pd.DataFrame(
+            {
+                "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"],
+                "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
+                "AANTAL": [26370, 2880],
+            }
+        ),
+        KeyMeta(
+            bron="duo",
+            dataset="p01hoinges",
+            resource=3,
+            instellingskolom="INSTELLINGSCODE_ACTUEEL",
+            instellingen=("25DW", "30TX"),
+        ),
+    )
+
     def query(code, cid):
-        return {"id": cid, "name": "query_data",
-                "arguments": json.dumps({"data_key": "duo:p01hoinges:3",
-                                         "filters": {"INSTELLINGSCODE_ACTUEEL": code}})}
+        return {
+            "id": cid,
+            "name": "query_data",
+            "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"INSTELLINGSCODE_ACTUEEL": code}}),
+        }
 
     steps = [
         StreamResult(text="", tool_calls=[query("30TX", "a")]),
@@ -201,10 +251,15 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
     async def emit(event):
         events.append(event)
 
-    text = asyncio.run(run_module.run(
-        [{"role": "user", "content": "Hoeveel voltijdstudenten had de HU?"}], {}, emit, asyncio.Event(),
-        model="openai/gpt-4o",
-    ))
+    text = asyncio.run(
+        run_module.run(
+            [{"role": "user", "content": "Hoeveel voltijdstudenten had de HU?"}],
+            {},
+            emit,
+            asyncio.Event(),
+            model="openai/gpt-4o",
+        )
+    )
     store.clear()
 
     assert text == "De HU had 26.370 voltijdstudenten."
@@ -216,14 +271,19 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
 def test_count_on_a_truncated_rio_page_gets_a_correction(monkeypatch):
     # Live-audit 8 (#195): de tool meldde meer_beschikbaar, het antwoord zei toch "landelijk 50".
     store.clear()
-    store.put("rio:erkenningen", pd.DataFrame({"code": range(50)}),
-              KeyMeta(bron="rio", dataset="erkenningen", volledig=False))
+    store.put(
+        "rio:erkenningen", pd.DataFrame({"code": range(50)}), KeyMeta(bron="rio", dataset="erkenningen", volledig=False)
+    )
     page = json.dumps({"data_key": "rio:erkenningen", "opgehaalde_rijen": 50, "meer_beschikbaar": True})
-    text, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[{"id": "r", "name": "get_rio_data", "arguments": "{}"}]),
-        StreamResult(text="Er zijn landelijk 50 erkenningen.", tool_calls=[]),
-        StreamResult(text="Het landelijke totaal is met deze data niet vast te stellen.", tool_calls=[]),
-    ], tool_result=page)
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[{"id": "r", "name": "get_rio_data", "arguments": "{}"}]),
+            StreamResult(text="Er zijn landelijk 50 erkenningen.", tool_calls=[]),
+            StreamResult(text="Het landelijke totaal is met deze data niet vast te stellen.", tool_calls=[]),
+        ],
+        tool_result=page,
+    )
     store.clear()
 
     assert text == "Het landelijke totaal is met deze data niet vast te stellen."
@@ -232,11 +292,14 @@ def test_count_on_a_truncated_rio_page_gets_a_correction(monkeypatch):
 
 def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
     # Live-audit 8 (#196): het getal klopte, de opleidingsvorm erbij niet.
-    text, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[_QUERY]),
-        StreamResult(text="Deeltijd (DU): 5.943 eerstejaars.", tool_calls=[]),
-        StreamResult(text="Deeltijd (DT): 5.943 eerstejaars.", tool_calls=[]),
-    ])
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="Deeltijd (DU): 5.943 eerstejaars.", tool_calls=[]),
+            StreamResult(text="Deeltijd (DT): 5.943 eerstejaars.", tool_calls=[]),
+        ],
+    )
 
     assert text == "Deeltijd (DT): 5.943 eerstejaars."
     assert "message_cancel" in [e["type"] for e in events]
@@ -245,16 +308,29 @@ def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
 def test_number_from_another_selected_year_gets_a_correction(monkeypatch):
     # Live-audit 8 (#197): beide jaren en beide getallen in de selectie, maar verwisseld.
     store.clear()
-    store.put("duo:p01hoinges:3:s", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [27135, 26370]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", periodekolom="STUDIEJAAR", afgeleid_van="duo:p01hoinges:3"))
-    rows = json.dumps({"data_key": "duo:p01hoinges:3:s", "rijen": [
-        {"STUDIEJAAR": 2024, "AANTAL": 27135}, {"STUDIEJAAR": 2025, "AANTAL": 26370},
-    ]})
-    text, events = _chat(monkeypatch, [
-        StreamResult(text="", tool_calls=[_QUERY]),
-        StreamResult(text="In 2025/26 waren het 27.135 studenten.", tool_calls=[]),
-        StreamResult(text="In 2025/26 waren het 26.370 studenten.", tool_calls=[]),
-    ], tool_result=rows)
+    store.put(
+        "duo:p01hoinges:3:s",
+        pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [27135, 26370]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", periodekolom="STUDIEJAAR", afgeleid_van="duo:p01hoinges:3"),
+    )
+    rows = json.dumps(
+        {
+            "data_key": "duo:p01hoinges:3:s",
+            "rijen": [
+                {"STUDIEJAAR": 2024, "AANTAL": 27135},
+                {"STUDIEJAAR": 2025, "AANTAL": 26370},
+            ],
+        }
+    )
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="In 2025/26 waren het 27.135 studenten.", tool_calls=[]),
+            StreamResult(text="In 2025/26 waren het 26.370 studenten.", tool_calls=[]),
+        ],
+        tool_result=rows,
+    )
     store.clear()
 
     assert text == "In 2025/26 waren het 26.370 studenten."

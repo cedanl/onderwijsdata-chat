@@ -4,6 +4,7 @@ De getallen in de audit klopten; de woorden erbij niet: "Deeltijd (DU)" terwijl 
 duaal is, "Voltijds inschrijvingen" boven personen uit p01hoinges, en p01hoenges in
 plaats van p01hoinges.
 """
+
 import json
 from unittest.mock import patch
 
@@ -26,10 +27,16 @@ _INSCHRIJVINGEN = "Inschrijvingen: voor de inschrijvingen op de peildatum 1 okto
 @pytest.fixture(autouse=True)
 def _keys():
     store.clear()
-    store.put("duo:p01hoinges:3", pd.DataFrame({"AANTAL": [26370]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie=_PERSONEN))
-    store.put("duo:p03hoinschr:3", pd.DataFrame({"AANTAL": [28889]}),
-              KeyMeta(bron="duo", dataset="p03hoinschr", teldefinitie=_INSCHRIJVINGEN))
+    store.put(
+        "duo:p01hoinges:3",
+        pd.DataFrame({"AANTAL": [26370]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie=_PERSONEN),
+    )
+    store.put(
+        "duo:p03hoinschr:3",
+        pd.DataFrame({"AANTAL": [28889]}),
+        KeyMeta(bron="duo", dataset="p03hoinschr", teldefinitie=_INSCHRIJVINGEN),
+    )
     yield
     store.clear()
 
@@ -39,6 +46,7 @@ def _beurt(*keys: str) -> list[str]:
 
 
 # --- opleidingsvorm ---
+
 
 def test_deeltijd_met_code_du_is_verkeerd():
     [probleem] = verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU), 2021–2025.")
@@ -54,6 +62,7 @@ def test_juiste_codes_zijn_goed():
 
 
 # --- dataset-ID ---
+
 
 def test_dataset_id_dat_niet_in_de_catalogus_staat():
     with patch("agent.labels.catalogus_titel", side_effect=lambda d: "Ingeschrevenen" if d == "p01hoinges" else d):
@@ -105,6 +114,7 @@ def test_zonder_data_in_de_beurt_geen_melding():
 
 # --- teleenheid ---
 
+
 def test_inschrijvingen_boven_personen_is_verkeerd():
     [probleem] = verkeerde_teleenheid("Voltijds inschrijvingen HU 2021–2025", _beurt("duo:p01hoinges:3"))
     assert "personen" in probleem and "p01hoinges" in probleem
@@ -119,22 +129,28 @@ def test_hoofdinschrijvingen_bij_personen_is_goed():
     assert verkeerde_teleenheid("Geteld als hoofdinschrijvingen.", _beurt("duo:p01hoinges:3")) == []
 
 
-@pytest.mark.parametrize("tekst", [
-    "Het zijn geen inschrijvingen maar personen.",
-    "Het gaat hier niet om inschrijvingen maar om personen.",
-    "p01 telt personen, niet inschrijvingen. In 2025 waren het 24.169 personen.",
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Het zijn geen inschrijvingen maar personen.",
+        "Het gaat hier niet om inschrijvingen maar om personen.",
+        "p01 telt personen, niet inschrijvingen. In 2025 waren het 24.169 personen.",
+    ],
+)
 def test_ontkenning_van_het_verkeerde_woord_is_toelichting(tekst):
     # #214: een correcte weerlegging kreeg de waarschuwing toch.
     assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
 
 
-@pytest.mark.parametrize("tekst", [
-    # Audit 10: letterlijke DUO-tekst, ontkenning ná het woord.
-    "De inschrijvingen behorende bij opleidingen aan aangewezen instellingen worden niet meegeteld.",
-    "Inschrijvingen bij aangewezen instellingen worden niet meegeteld, en masters evenmin.",
-    "Inschrijvingen aan aangewezen instellingen blijven buiten beschouwing.",
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        # Audit 10: letterlijke DUO-tekst, ontkenning ná het woord.
+        "De inschrijvingen behorende bij opleidingen aan aangewezen instellingen worden niet meegeteld.",
+        "Inschrijvingen bij aangewezen instellingen worden niet meegeteld, en masters evenmin.",
+        "Inschrijvingen aan aangewezen instellingen blijven buiten beschouwing.",
+    ],
+)
 def test_uitsluiting_na_het_woord_is_toelichting(tekst):
     # #239: #214 keek alleen vóór het woord.
     assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
@@ -151,12 +167,15 @@ def test_naast_een_citaat_blijft_een_toeschrijving_een_probleem():
     assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3"))
 
 
-@pytest.mark.parametrize("tekst", [
-    "p01 telt hier 24.169 inschrijvingen.",
-    "Dat zijn geen cijfers van vorig jaar. p01 telt hier 24.169 inschrijvingen.",
-    "Het zijn niet personen maar inschrijvingen.",
-    "Er waren 24.169 inschrijvingen, masters niet meegeteld.",  # de uitsluiting hoort bij een andere bijzin
-])
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "p01 telt hier 24.169 inschrijvingen.",
+        "Dat zijn geen cijfers van vorig jaar. p01 telt hier 24.169 inschrijvingen.",
+        "Het zijn niet personen maar inschrijvingen.",
+        "Er waren 24.169 inschrijvingen, masters niet meegeteld.",  # de uitsluiting hoort bij een andere bijzin
+    ],
+)
 def test_toeschrijving_van_het_verkeerde_woord_blijft_een_probleem(tekst):
     assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3"))
 

@@ -172,11 +172,13 @@ async def generate(
         keep_partial=lambda: bool(figures),
     )
     if result.partial_error:
-        await emit({
-            "type": "toast",
-            "message": "Rapport deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
-            "level": "warning",
-        })
+        await emit(
+            {
+                "type": "toast",
+                "message": "Rapport deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+                "level": "warning",
+            }
+        )
     if result.problems:
         logger.error("RAPPORT GEWEIGERD: %s", result.problems)
         raise ValueError(f"Rapport niet consistent met de data: {meldingen(result.problems)[0]} Probeer het opnieuw.")

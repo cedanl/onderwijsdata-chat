@@ -33,11 +33,12 @@ Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update)
 2. **Implement modularly**: Small, single-responsibility functions
    ```python
    # tools/catalog.py — extract helper
-   def get_metadata_field(dataset_id: str) -> str | None:
-       ...  # Clean, testable, reusable
-   
+   def get_metadata_field(dataset_id: str) -> str | None: ...  # Clean, testable, reusable
+
+
    # tools/main.py — import & integrate
    from .catalog import get_metadata_field
+
    result["field"] = get_metadata_field(dataset_id)
    ```
 

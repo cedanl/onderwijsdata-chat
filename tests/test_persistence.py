@@ -9,6 +9,7 @@ def db(tmp_path, monkeypatch):
     import importlib
 
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     return db
@@ -17,10 +18,9 @@ def db(tmp_path, monkeypatch):
 def test_init_db_creates_tables(db):
     import os
     import sqlite3
+
     conn = sqlite3.connect(os.environ["DATABASE_PATH"])
-    tables = [r[0] for r in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    ).fetchall()]
+    tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
     conn.close()
     assert "conversations" in tables
     assert "workbooks" in tables
@@ -90,7 +90,10 @@ def test_delete_conversation_scoped_to_user(db):
 
 def test_upsert_and_list_workbook(db):
     db.upsert_workbook(
-        "alice", "wb1", "Dashboard 1", "beschrijving",
+        "alice",
+        "wb1",
+        "Dashboard 1",
+        "beschrijving",
         messages=[{"role": "user", "content": "test"}],
         figures=[{"type": "bar"}],
         instelling="HU",
@@ -143,7 +146,10 @@ def test_workbook_with_dashboard_spec(db):
         "recipe": [{"name": "get_duo_data", "arguments": "{}"}],
     }
     db.upsert_workbook(
-        "alice", "wb-spec", "Spec Dashboard", "met spec",
+        "alice",
+        "wb-spec",
+        "Spec Dashboard",
+        "met spec",
         dashboard_spec=spec,
         created_at="2024-01-01T00:00:00Z",
     )
@@ -180,18 +186,20 @@ def test_upsert_keeps_seconds_timestamp(db):
 def test_migrate_converts_existing_ms_timestamps(db):
     import os
     import sqlite3
+
     conn = sqlite3.connect(os.environ["DATABASE_PATH"])
     conn.execute(
-        "INSERT INTO conversations (id, username, title, timestamp, messages) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO conversations (id, username, title, timestamp, messages) VALUES (?, ?, ?, ?, ?)",
         ("c-old", "alice", "Oud", 1700000000000, "[]"),
     )
     conn.commit()
     conn.close()
 
     import importlib
-    importlib.reload(db._module if hasattr(db, '_module') else __import__('persistence.db', fromlist=['db']))
+
+    importlib.reload(db._module if hasattr(db, "_module") else __import__("persistence.db", fromlist=["db"]))
     from persistence import db as fresh_db
+
     importlib.reload(fresh_db)
     fresh_db.init_db()
 
@@ -206,6 +214,7 @@ def _reload_and_init(tmp_path, monkeypatch):
     import importlib
 
     from persistence import db as fresh
+
     importlib.reload(fresh)
     fresh.init_db()
     return fresh
@@ -213,8 +222,7 @@ def _reload_and_init(tmp_path, monkeypatch):
 
 def _raw_insert(conn, conv_id, username, title, timestamp, messages):
     conn.execute(
-        "INSERT INTO conversations (id, username, title, timestamp, messages) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO conversations (id, username, title, timestamp, messages) VALUES (?, ?, ?, ?, ?)",
         (conv_id, username, title, timestamp, json.dumps(messages)),
     )
 
@@ -316,10 +324,17 @@ def test_migrate_dedupe_keeps_threads_with_different_follow_up(db, tmp_path, mon
     # maar een andere vervolgvraag: twee gesprekken, geen duplicaat (#178).
     conn = _legacy_conn(db)
     first = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "A"}]
-    _raw_insert(conn, "1727160000010", "alice", "Studenten", 1700000000,
-                [*first, {"role": "user", "content": "En in deeltijd?"}])
-    _raw_insert(conn, "1727160000011", "alice", "Studenten", 1690000000,
-                [*first, {"role": "user", "content": "En bij HU?"}])
+    _raw_insert(
+        conn,
+        "1727160000010",
+        "alice",
+        "Studenten",
+        1700000000,
+        [*first, {"role": "user", "content": "En in deeltijd?"}],
+    )
+    _raw_insert(
+        conn, "1727160000011", "alice", "Studenten", 1690000000, [*first, {"role": "user", "content": "En bij HU?"}]
+    )
     conn.commit()
     conn.close()
 
@@ -365,10 +380,22 @@ def test_migrate_dedupe_keeps_threads_with_a_different_answer(db, tmp_path, monk
     # Zelfde titel en eerste vraag, nog geen vervolgvraag, maar een ander
     # antwoord: twee losse gesprekken, geen snapshot van één (#184).
     conn = _legacy_conn(db)
-    _raw_insert(conn, "1727160000016", "alice", "Studenten", 1700000000,
-                [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "28.355"}])
-    _raw_insert(conn, "1727160000017", "alice", "Studenten", 1690000000,
-                [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "30.284"}])
+    _raw_insert(
+        conn,
+        "1727160000016",
+        "alice",
+        "Studenten",
+        1700000000,
+        [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "28.355"}],
+    )
+    _raw_insert(
+        conn,
+        "1727160000017",
+        "alice",
+        "Studenten",
+        1690000000,
+        [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "30.284"}],
+    )
     conn.commit()
     conn.close()
 
@@ -414,8 +441,14 @@ def test_migrate_dedupe_removes_a_legacy_snapshot_of_a_uuid_conversation(db, tmp
     # nieuw id; zijn oude snapshot mag weg.
     conn = _legacy_conn(db)
     first = [{"role": "user", "content": "Hoeveel studenten?"}, {"role": "assistant", "content": "26.370"}]
-    _raw_insert(conn, "5b0e1f2a-0000-4000-8000-000000000003", "alice", "Studenten", 1700000000,
-                [*first, {"role": "user", "content": "En in deeltijd?"}])
+    _raw_insert(
+        conn,
+        "5b0e1f2a-0000-4000-8000-000000000003",
+        "alice",
+        "Studenten",
+        1700000000,
+        [*first, {"role": "user", "content": "En in deeltijd?"}],
+    )
     _raw_insert(conn, "1727160000099", "alice", "Studenten", 1690000000, first)
     conn.commit()
     conn.close()
