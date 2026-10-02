@@ -21,14 +21,20 @@ async def list_conversations(username: str = Depends(get_current_user)) -> list[
 @router.put("/api/conversations/{conv_id}")
 async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
     persistence_db.upsert_conversation(
-        username, conv_id, body["title"], body["timestamp"], body["messages"],
+        username,
+        conv_id,
+        body["title"],
+        body["timestamp"],
+        body["messages"],
     )
     return {"ok": True}
 
 
 @router.patch("/api/conversations/{conv_id}")
 async def rename_conversation(
-    conv_id: str, body: ConversationTitle, username: str = Depends(get_current_user),
+    conv_id: str,
+    body: ConversationTitle,
+    username: str = Depends(get_current_user),
 ) -> dict:
     if not persistence_db.rename_conversation(username, conv_id, body.title):
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -49,7 +55,9 @@ async def list_workbooks(username: str = Depends(get_current_user)) -> list[dict
 @router.put("/api/workbooks/{wb_id}")
 async def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
     persistence_db.upsert_workbook(
-        username, wb_id, body.get("title", ""),
+        username,
+        wb_id,
+        body.get("title", ""),
         body.get("description", ""),
         messages=body.get("messages"),
         figures=body.get("figures"),

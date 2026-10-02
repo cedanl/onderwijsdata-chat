@@ -1,4 +1,5 @@
 """Fonts are self-hosted, so the strict CSP (font-src 'self') needs no CDN exception."""
+
 from pathlib import Path
 
 from fastapi.testclient import TestClient

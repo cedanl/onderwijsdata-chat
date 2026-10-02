@@ -41,7 +41,9 @@ def _coerce_pair(a, b):
 def _stap(filters, columns, group_by, aggregate) -> str:
     """De selectie in woorden, met de argumenten zoals het model ze gaf (#118)."""
     delen = [("filters", filters), ("kolommen", columns), ("groepering", group_by), ("aggregatie", aggregate)]
-    return "; ".join(f"{naam} {json.dumps(waarde, ensure_ascii=False, default=str)}" for naam, waarde in delen if waarde)
+    return "; ".join(
+        f"{naam} {json.dumps(waarde, ensure_ascii=False, default=str)}" for naam, waarde in delen if waarde
+    )
 
 
 def _parse_filter_key(key: str) -> tuple[str, str]:
@@ -70,7 +72,10 @@ def _apply_filters(df, filters: dict, known=None):
         col, op = _parse_filter_key(key)
 
         if col not in df.columns:
-            return None, f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}{_resource_hint(known, col)}"
+            return (
+                None,
+                f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}{_resource_hint(known, col)}",
+            )
         if op not in _SUPPORTED_OPS:
             return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
 
@@ -125,9 +130,7 @@ def _filter_suggesties(origineel, filters: dict) -> dict:
         if op in ("eq", "in"):
             aanwezig = [str(v) for v in kolom.dropna().unique()[:_SUGGESTIE_MAX_UNIEK]]
             gezocht = str(val[0] if isinstance(val, list) and val else val)
-            dichtbij = difflib.get_close_matches(
-                gezocht, aanwezig, n=_SUGGESTIE_AANTAL, cutoff=_SUGGESTIE_DREMPEL
-            )
+            dichtbij = difflib.get_close_matches(gezocht, aanwezig, n=_SUGGESTIE_AANTAL, cutoff=_SUGGESTIE_DREMPEL)
             hints[col] = dichtbij or aanwezig[:_SUGGESTIE_AANTAL]
         elif op in ("gte", "lte"):
             numeriek = pd.to_numeric(kolom, errors="coerce").dropna()
@@ -143,7 +146,9 @@ def _row_count(n: int, complete: bool) -> dict:
 
 def _empty_melding(data_key: str, complete: bool) -> str:
     if complete:
-        return "Het filter leverde 0 rijen op. Controleer de waarden hieronder voor je concludeert dat de data ontbreekt."
+        return (
+            "Het filter leverde 0 rijen op. Controleer de waarden hieronder voor je concludeert dat de data ontbreekt."
+        )
     melding = (
         "Het filter leverde 0 rijen op in deze pagina. Niet in deze pagina is niet hetzelfde als niet in de "
         "bron: de data is één afgekapte pagina."
@@ -210,7 +215,8 @@ def query_data(
     gedekt = dekking.van(df, known)
     labels = (
         instelling.namen(df, known.instellingskolom)
-        if known and 0 < len(gedekt.get("instellingen") or ()) <= _MAX_INSTELLINGSLABELS else None
+        if known and 0 < len(gedekt.get("instellingen") or ()) <= _MAX_INSTELLINGSLABELS
+        else None
     )
 
     if columns:

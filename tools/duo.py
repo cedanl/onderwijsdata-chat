@@ -100,8 +100,7 @@ def aggregate_cells(cells: pd.DataFrame, df: pd.DataFrame, group_by: list[str], 
 def sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
     return [
-        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten "
-        f"({BETEKENIS}) — totalen zijn hierdoor een ondergrens"
+        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten ({BETEKENIS}) — totalen zijn hierdoor een ondergrens"
         for col, n in counts.items()
     ]
 
@@ -149,9 +148,14 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)
         meta = store.KeyMeta(
-            bron="duo", dataset=dataset_id, resource=resource, teldefinitie=teldefinitie(dataset_id),
-            periodekolom=kolom, schooljaren=periode.dekking(df, "duo", kolom),
-            instellingskolom=codekolom, instellingen=instelling.dekking(df, codekolom),
+            bron="duo",
+            dataset=dataset_id,
+            resource=resource,
+            teldefinitie=teldefinitie(dataset_id),
+            periodekolom=kolom,
+            schooljaren=periode.dekking(df, "duo", kolom),
+            instellingskolom=codekolom,
+            instellingen=instelling.dekking(df, codekolom),
             laad=("get_duo_data", {"dataset_id": dataset_id, "resource": resource}),
         )
         store.put(key, df, meta)
@@ -190,5 +194,3 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         result["databewerking"] = notes
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
-
-

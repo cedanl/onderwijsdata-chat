@@ -16,9 +16,9 @@ _ROWS = [
 
 _ROWS_GROUPED = [
     {"jaar": "2020", "waarde": 100, "groep": "A"},
-    {"jaar": "2020", "waarde": 80,  "groep": "B"},
+    {"jaar": "2020", "waarde": 80, "groep": "B"},
     {"jaar": "2021", "waarde": 120, "groep": "A"},
-    {"jaar": "2021", "waarde": 90,  "groep": "B"},
+    {"jaar": "2021", "waarde": 90, "groep": "B"},
 ]
 
 
@@ -158,17 +158,32 @@ _CHOROPLETH_ROWS = [
     {"RegioS": "PV21", "Waarde": 200},
 ]
 
-_FAKE_GEOJSON = {"type": "FeatureCollection", "features": [
-    {"type": "Feature", "id": "PV20", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [[[5, 52], [6, 52], [6, 53], [5, 52]]]}},
-    {"type": "Feature", "id": "PV21", "properties": {}, "geometry": {"type": "Polygon", "coordinates": [[[5, 51], [6, 51], [6, 52], [5, 51]]]}},
-]}
+_FAKE_GEOJSON = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": "PV20",
+            "properties": {},
+            "geometry": {"type": "Polygon", "coordinates": [[[5, 52], [6, 52], [6, 53], [5, 52]]]},
+        },
+        {
+            "type": "Feature",
+            "id": "PV21",
+            "properties": {},
+            "geometry": {"type": "Polygon", "coordinates": [[[5, 51], [6, 51], [6, 52], [5, 51]]]},
+        },
+    ],
+}
 
 
 def test_choropleth_data_key_reads_from_store():
     df = pd.DataFrame(_CHOROPLETH_ROWS)
     store.put("test:choro:result", df)
     with patch("tools.plot._load_geojson", return_value=_FAKE_GEOJSON):
-        msg, fig = create_choropleth_map(data_key="test:choro:result", location_col="RegioS", value_col="Waarde", title="Kaart test")
+        msg, fig = create_choropleth_map(
+            data_key="test:choro:result", location_col="RegioS", value_col="Waarde", title="Kaart test"
+        )
     assert isinstance(fig, go.Figure)
     assert "2" in msg
 
@@ -229,10 +244,12 @@ def test_two_datapoints_still_plot():
 def test_figure_carries_the_store_rows_for_the_csv_export():
     """De grafiek-CSV exporteert layout.meta.data (#183): elke rij uit de store,
     ook bij een herhaald x-label, met een ontbrekende waarde als null."""
-    df = pd.DataFrame({
-        "SUBONDERDEEL": ["economie", "economie", "recht"],
-        "AANTAL": [137.0, 2351.0, float("nan")],
-    })
+    df = pd.DataFrame(
+        {
+            "SUBONDERDEEL": ["economie", "economie", "recht"],
+            "AANTAL": [137.0, 2351.0, float("nan")],
+        }
+    )
     store.put("test:csv-export", df)
 
     _, fig = create_plot(data_key="test:csv-export", chart_type="bar", x="SUBONDERDEEL", y="AANTAL", title="t")

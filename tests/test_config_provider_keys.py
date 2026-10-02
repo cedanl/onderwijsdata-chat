@@ -50,12 +50,15 @@ class TestProviderApiKeyMapping:
         """All returned API key vars look like environment variable names."""
         all_keys = get_all_api_key_env_vars()
         expected = {
-            "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_API_KEY",
-            "AZURE_AI_API_KEY", "GEMINI_API_KEY", "WILLMA_API_KEY"
+            "ANTHROPIC_API_KEY",
+            "OPENAI_API_KEY",
+            "AZURE_API_KEY",
+            "AZURE_AI_API_KEY",
+            "GEMINI_API_KEY",
+            "WILLMA_API_KEY",
         }
         assert set(all_keys) == expected, (
-            f"API key vars changed. Got: {set(all_keys)}, "
-            f"Expected: {expected}. Update test if intentional."
+            f"API key vars changed. Got: {set(all_keys)}, Expected: {expected}. Update test if intentional."
         )
 
     def test_provider_extraction_from_model_id(self):

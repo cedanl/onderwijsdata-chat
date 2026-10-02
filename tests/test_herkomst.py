@@ -3,6 +3,7 @@
 Een CSV naast de grafiek moet te herleiden zijn tot dataset en filters; anders
 is het een tabel zonder bron.
 """
+
 import json
 
 import pandas as pd
@@ -14,11 +15,13 @@ from tools.plot import create_plot
 from tools.query import query_data
 from tools.store import KeyMeta
 
-_DF = pd.DataFrame({
-    "STUDIEJAAR": [2022, 2023, 2023],
-    "INSTELLINGSNAAM": ["HU", "HU", "Avans"],
-    "AANTAL": [10, 12, 7],
-})
+_DF = pd.DataFrame(
+    {
+        "STUDIEJAAR": [2022, 2023, 2023],
+        "INSTELLINGSNAAM": ["HU", "HU", "Avans"],
+        "AANTAL": [10, 12, 7],
+    }
+)
 
 
 @pytest.fixture(autouse=True)
@@ -39,12 +42,18 @@ def test_een_geladen_key_noemt_bron_dataset_en_resource():
 
 def test_een_selectie_noemt_ook_de_filters_kolommen_en_aggregatie():
     _bron()
-    key = json.loads(query_data("duo:p01hoinges:0", filters={"INSTELLINGSNAAM": "HU"},
-                                group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"}))["data_key"]
+    key = json.loads(
+        query_data(
+            "duo:p01hoinges:0", filters={"INSTELLINGSNAAM": "HU"}, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"}
+        )
+    )["data_key"]
 
     regels = store.herkomst(key)
     assert regels[0] == "bron: DUO, dataset p01hoinges, resource 0"
-    assert regels[1] == 'selectie: filters {"INSTELLINGSNAAM": "HU"}; groepering ["STUDIEJAAR"]; aggregatie {"AANTAL": "sum"}'
+    assert (
+        regels[1]
+        == 'selectie: filters {"INSTELLINGSNAAM": "HU"}; groepering ["STUDIEJAAR"]; aggregatie {"AANTAL": "sum"}'
+    )
 
 
 def test_een_selectie_van_een_selectie_houdt_beide_stappen_in_volgorde():

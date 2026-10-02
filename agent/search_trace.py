@@ -7,6 +7,7 @@ moeten corrigeren. Dat staat als aparte regel in de logs (CATALOGUS_AFWIJKING), 
 
 Per run, dus per sessie: een module-global zou gelijktijdige gebruikers door elkaar halen.
 """
+
 import json
 import logging
 from dataclasses import dataclass, field
@@ -53,5 +54,8 @@ class SearchTrace:
             logger.info("CATALOGUS_GELADEN geladen=%s query=%r top3=%s afwijking=nee", dataset_id, self.query, self.top)
         else:
             logger.warning(
-                "CATALOGUS_AFWIJKING geladen=%s query=%r top3=%s afwijking=ja", dataset_id, self.query, self.top,
+                "CATALOGUS_AFWIJKING geladen=%s query=%r top3=%s afwijking=ja",
+                dataset_id,
+                self.query,
+                self.top,
             )

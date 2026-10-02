@@ -66,9 +66,7 @@ async def build_authorization_url(state: str) -> str:
         redirect_uri=_redirect_uri(),
         scope=OAUTH_SCOPES,
     )
-    auth_url, _ = client.create_authorization_url(
-        oidc_config["authorization_endpoint"], state=state
-    )
+    auth_url, _ = client.create_authorization_url(oidc_config["authorization_endpoint"], state=state)
     return auth_url
 
 

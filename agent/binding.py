@@ -67,10 +67,12 @@ def _verkeerd(tekst: str, index: _Index, genoemd: Callable[[str], set], naam: Ca
         for geschreven, getal in checked_numbers(segment):
             bij = index.get(getal)
             if bij and not noemt & bij:
-                problemen.append(Probleem(
-                    f"{geschreven} hoort bij {naam(bij)}, niet bij {naam(noemt)} ('{segment}').",
-                    f"Neem het getal uit de rij van {naam(noemt)}.",
-                ))
+                problemen.append(
+                    Probleem(
+                        f"{geschreven} hoort bij {naam(bij)}, niet bij {naam(noemt)} ('{segment}').",
+                        f"Neem het getal uit de rij van {naam(noemt)}.",
+                    )
+                )
     return problemen
 
 
@@ -92,7 +94,9 @@ def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[str]:
     return [
         *_verkeerd(tekst, jaren, periode.gevraagde_schooljaren, lambda j: ", ".join(periode.labels(sorted(j)))),
         *_verkeerd(
-            tekst, instellingen, lambda s: instelling.genoemde(s, namen),
+            tekst,
+            instellingen,
+            lambda s: instelling.genoemde(s, namen),
             lambda codes: ", ".join(f"{namen.get(c, c)} ({c})" for c in sorted(codes)),
         ),
     ]

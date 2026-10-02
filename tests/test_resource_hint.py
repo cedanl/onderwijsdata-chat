@@ -3,6 +3,7 @@
 get_duo_data("p01hoinges") laadt resource 0 (geslacht, geen OPLEIDINGSVORM). Zonder hint
 concludeerde het model dat de data niet bestaat; resource 3 had de kolom.
 """
+
 import json
 from unittest.mock import patch
 
@@ -14,7 +15,9 @@ from tools.query import query_data
 from tools.store import KeyMeta
 
 _ENTRY = {
-    "leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen hoger onderwijs",
+    "leverancier": "DUO",
+    "_ckan_id": "p01hoinges",
+    "bron": "Ingeschrevenen hoger onderwijs",
     "_resources": [
         {"naam": "Ingeschrevenen hbo inclusief geslacht"},
         {"naam": "Ingeschrevenen wo inclusief geslacht"},
@@ -25,8 +28,11 @@ _ENTRY = {
 
 
 def _query(resource: int, **filters) -> str:
-    store.put("duo:p01hoinges:0", pd.DataFrame({"GESLACHT": ["M"], "AANTAL": [1]}),
-              KeyMeta(bron="duo", dataset="p01hoinges", resource=resource))
+    store.put(
+        "duo:p01hoinges:0",
+        pd.DataFrame({"GESLACHT": ["M"], "AANTAL": [1]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=resource),
+    )
     with patch("tools.catalog._rio_duo", return_value=[_ENTRY]):
         return query_data("duo:p01hoinges:0", filters=filters)
 
@@ -55,9 +61,11 @@ def test_non_duo_keys_get_no_hint():
 
 
 def test_dataset_details_gives_each_resource_its_index():
-    with patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[_ENTRY]), \
-         patch("tools.duo_meta._fetch_notes", return_value=None):
+    with (
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[_ENTRY]),
+        patch("tools.duo_meta._fetch_notes", return_value=None),
+    ):
         resources = json.loads(dataset_details("p01hoinges"))["_resources"]
 
     assert [r["index"] for r in resources] == [0, 1, 2, 3]

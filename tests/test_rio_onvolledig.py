@@ -5,6 +5,7 @@ en antwoordde "landelijk 50 erkenningen"; bij Aeres probeerde het een onbekend
 filter (HTTP 400), keek daarna in de ongefilterde eerste pagina en concludeerde
 dat de code niet bestond.
 """
+
 import json
 from unittest.mock import patch
 
@@ -32,9 +33,11 @@ def _clean_store():
 
 def _get(rows: int, filters: dict | None = None, fetch=None):
     records = [{"code": f"{i:02d}XX", "volledigeNaam": f"Instelling {i}", "aantal": i} for i in range(rows)]
-    with patch("tools.rio.fetch", fetch or (lambda *a, **k: records)), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=_CATALOG):
+    with (
+        patch("tools.rio.fetch", fetch or (lambda *a, **k: records)),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=_CATALOG),
+    ):
         return get_rio_data("erkenningen", filters)
 
 
@@ -111,6 +114,7 @@ def test_http_400_names_the_allowed_filters():
 
 # Live-audit 8: de tooluitvoer hierboven werkte, en toch schreef GPT-OSS "landelijk
 # 50 erkenningen". Het eindantwoord zelf wordt daarom ook getoetst (#195).
+
 
 def _beurt() -> list[str]:
     return [_get(RIO_PAGE_SIZE)]

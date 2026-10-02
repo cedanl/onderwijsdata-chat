@@ -29,6 +29,7 @@ def _connect() -> Any:
         try:
             import psycopg2
             import psycopg2.extras
+
             conn = psycopg2.connect(os.getenv("POSTGRES_URI"))
             conn.autocommit = False
             return conn
@@ -51,6 +52,7 @@ def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
     """
     if _USE_POSTGRES:
         import psycopg2.extras
+
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute(sql.replace("?", "%s"), params)
         return cursor
@@ -90,8 +92,10 @@ def _dedupe_conversations(conn: Any) -> None:
     questions only); the schema_migrations marker keeps it from running again.
     """
     rows = [
-        dict(r) for r in _execute(
-            conn, "SELECT id, username, title, timestamp, messages FROM conversations",
+        dict(r)
+        for r in _execute(
+            conn,
+            "SELECT id, username, title, timestamp, messages FROM conversations",
         ).fetchall()
     ]
     groups: dict = {}
@@ -142,13 +146,10 @@ def _migrate(conn: Any) -> None:
             cursor.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
             conn.commit()
 
-        cursor.execute(
-            "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
-        )
+        cursor.execute("SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1")
         if cursor.fetchone():
             cursor.execute(
-                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
-                "WHERE timestamp > 1000000000000"
+                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) WHERE timestamp > 1000000000000"
             )
             conn.commit()
         cursor.close()
@@ -159,13 +160,10 @@ def _migrate(conn: Any) -> None:
             conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
             conn.commit()
 
-        has_ms = conn.execute(
-            "SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1"
-        ).fetchone()
+        has_ms = conn.execute("SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1").fetchone()
         if has_ms:
             conn.execute(
-                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) "
-                "WHERE timestamp > 1000000000000"
+                "UPDATE conversations SET timestamp = CAST(timestamp / 1000 AS INTEGER) WHERE timestamp > 1000000000000"
             )
             conn.commit()
 
@@ -201,9 +199,7 @@ def init_db() -> None:
                 PRIMARY KEY (id, username)
             )
         """)
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS workbooks (
                 id             TEXT NOT NULL,
@@ -219,9 +215,7 @@ def init_db() -> None:
                 PRIMARY KEY (id, username)
             )
         """)
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
         cursor.execute(_FEEDBACK_TABLE)
         cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
@@ -265,8 +259,7 @@ def list_conversations(username: str) -> list[dict]:
     conn = _connect()
     rows = _execute(
         conn,
-        "SELECT id, title, timestamp, messages FROM conversations "
-        "WHERE username = ? ORDER BY timestamp DESC LIMIT ?",
+        "SELECT id, title, timestamp, messages FROM conversations WHERE username = ? ORDER BY timestamp DESC LIMIT ?",
         (username, _MAX_CONVERSATIONS),
     ).fetchall()
     conn.close()
@@ -280,9 +273,7 @@ def _normalize_ts(timestamp: float) -> int:
     return int(timestamp)
 
 
-def upsert_conversation(
-    username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]
-) -> None:
+def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
     conn = _connect()
     _execute(
         conn,
@@ -357,10 +348,14 @@ def upsert_workbook(
         "html_content=excluded.html_content, dashboard_spec=excluded.dashboard_spec, "
         "created_at=excluded.created_at",
         (
-            wb_id, username, title, description,
+            wb_id,
+            username,
+            title,
+            description,
             json.dumps(messages) if messages is not None else None,
             json.dumps(figures) if figures is not None else None,
-            instelling, html_content,
+            instelling,
+            html_content,
             json.dumps(dashboard_spec) if dashboard_spec is not None else None,
             created_at,
         ),
@@ -381,7 +376,11 @@ def delete_workbook(username: str, wb_id: str) -> None:
 
 
 def add_feedback(
-    username: str, workbook_id: str, report_type: str, report_title: str, answers: dict[str, str],
+    username: str,
+    workbook_id: str,
+    report_type: str,
+    report_title: str,
+    answers: dict[str, str],
 ) -> None:
     conn = _connect()
     _execute(
@@ -389,8 +388,13 @@ def add_feedback(
         "INSERT INTO feedback (id, username, workbook_id, report_type, report_title, answers, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
-            str(uuid.uuid4()), username, workbook_id, report_type, report_title,
-            json.dumps(answers), datetime.now(UTC).isoformat(timespec="seconds"),
+            str(uuid.uuid4()),
+            username,
+            workbook_id,
+            report_type,
+            report_title,
+            json.dumps(answers),
+            datetime.now(UTC).isoformat(timespec="seconds"),
         ),
     )
     conn.commit()
@@ -400,7 +404,9 @@ def add_feedback(
 def list_feedback_workbooks(username: str) -> list[str]:
     conn = _connect()
     rows = _execute(
-        conn, "SELECT DISTINCT workbook_id FROM feedback WHERE username = ? ORDER BY workbook_id", (username,),
+        conn,
+        "SELECT DISTINCT workbook_id FROM feedback WHERE username = ? ORDER BY workbook_id",
+        (username,),
     ).fetchall()
     conn.close()
     return [r["workbook_id"] for r in rows]

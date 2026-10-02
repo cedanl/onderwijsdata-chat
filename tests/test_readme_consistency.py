@@ -23,10 +23,7 @@ def catalogus_aantal(leverancier: str) -> int:
     """Aantal datasets per leverancier, uit dezelfde bron als search_catalog leest."""
     if leverancier == "CBS":
         return len(cbs_catalog())
-    return sum(
-        1 for entry in rio_catalog(source="all")
-        if str(entry.get("leverancier", "")).upper() == leverancier
-    )
+    return sum(1 for entry in rio_catalog(source="all") if str(entry.get("leverancier", "")).upper() == leverancier)
 
 
 class TestReadmeConsistency:
@@ -119,8 +116,7 @@ class TestReadmeConsistency:
         assert match, f"geen aantal voor {leverancier} gevonden in de bronnentabel"
 
         assert int(match.group(1)) == catalogus_aantal(leverancier), (
-            f"README zegt {match.group(1)} voor {leverancier}, "
-            f"catalogus heeft er {catalogus_aantal(leverancier)}"
+            f"README zegt {match.group(1)} voor {leverancier}, catalogus heeft er {catalogus_aantal(leverancier)}"
         )
 
     def test_readme_noemt_geen_bron_die_de_catalogus_wegfiltert(self):
@@ -147,12 +143,18 @@ class TestReadmeConsistency:
 
         # Public config variables (getenv calls in config.py)
         required_vars = [
-            "MODEL", "MAX_TOKENS", "MAX_TOOL_ITERATIONS",
-            "CBS_ROW_LIMIT", "RIO_PAGE_SIZE", "DUO_ROW_LIMIT", "MAX_HISTORY",
-            "WILLMA_API_KEY", "WILLMA_BASE_URL", "AVAILABLE_MODELS", "USER_MODELS"
+            "MODEL",
+            "MAX_TOKENS",
+            "MAX_TOOL_ITERATIONS",
+            "CBS_ROW_LIMIT",
+            "RIO_PAGE_SIZE",
+            "DUO_ROW_LIMIT",
+            "MAX_HISTORY",
+            "WILLMA_API_KEY",
+            "WILLMA_BASE_URL",
+            "AVAILABLE_MODELS",
+            "USER_MODELS",
         ]
 
         for var in required_vars:
-            assert var in env_content, (
-                f"'{var}' ontbreekt in .env.example maar staat in config.py"
-            )
+            assert var in env_content, f"'{var}' ontbreekt in .env.example maar staat in config.py"

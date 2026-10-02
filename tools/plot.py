@@ -18,8 +18,11 @@ _HIGHLIGHT_GREY = "#B0B0B0"
 _MAX_LABELED_POINTS = 20
 
 _CHART_TYPE_LABELS = {
-    "bar": "Staafgrafiek", "line": "Lijngrafiek", "scatter": "Spreidingsdiagram",
-    "pie": "Taartdiagram", "histogram": "Histogram",
+    "bar": "Staafgrafiek",
+    "line": "Lijngrafiek",
+    "scatter": "Spreidingsdiagram",
+    "pie": "Taartdiagram",
+    "histogram": "Histogram",
 }
 
 _LAYOUT_BASE = {
@@ -33,7 +36,16 @@ _LAYOUT_BASE = {
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
 _TIME_KEYWORDS = {
-    "JAAR", "STUDIEJAAR", "PERIODE", "PERIODEN", "MAAND", "KWARTAAL", "DATUM", "DATE", "YEAR", "MONTH",
+    "JAAR",
+    "STUDIEJAAR",
+    "PERIODE",
+    "PERIODEN",
+    "MAAND",
+    "KWARTAAL",
+    "DATUM",
+    "DATE",
+    "YEAR",
+    "MONTH",
 }
 
 
@@ -78,7 +90,12 @@ def _infer_chart_type(
 
 
 def resolve_chart_type(
-    data: list[dict], chart_type: str, x: str, y: str, color_by: str | None = None, is_share: bool = False,
+    data: list[dict],
+    chart_type: str,
+    x: str,
+    y: str,
+    color_by: str | None = None,
+    is_share: bool = False,
 ) -> str:
     """Het type dat create_plot tekent; de snippet leest het hier ook, zodat ze niet uiteenlopen (#245)."""
     if chart_type != "auto":
@@ -86,10 +103,11 @@ def resolve_chart_type(
     num_groups = len({row.get(color_by) for row in data}) if color_by else 1
     return _infer_chart_type(x, y, color_by, num_groups, is_share)
 
+
 _GEOJSON_URLS = {
     "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
-    "gemeente":  "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
-    "corop":     "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
+    "gemeente": "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
+    "corop": "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
 }
 _GEOJSON_CACHE: dict[str, dict] = {}
 
@@ -137,26 +155,42 @@ def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str
     return groups
 
 
-def _add_trace(fig: go.Figure, chart_type: str, x_vals: list, y_vals: list,
-               color: str, name: str | None = None, text: list[str] | None = None) -> None:
+def _add_trace(
+    fig: go.Figure,
+    chart_type: str,
+    x_vals: list,
+    y_vals: list,
+    color: str,
+    name: str | None = None,
+    text: list[str] | None = None,
+) -> None:
     """Add a single trace to the figure based on *chart_type*."""
     common = {"name": name} if name else {}
     if chart_type == "bar":
-        fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color=color, text=text,
-                              textposition="outside" if text else None, **common))
+        fig.add_trace(
+            go.Bar(
+                x=x_vals, y=y_vals, marker_color=color, text=text, textposition="outside" if text else None, **common
+            )
+        )
     elif chart_type == "line":
-        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="lines+markers" + ("+text" if text else ""),
-                                  text=text, textposition="top center",
-                                  line={"color": color, "width": 2}, marker={"size": 5}, **common))
+        fig.add_trace(
+            go.Scatter(
+                x=x_vals,
+                y=y_vals,
+                mode="lines+markers" + ("+text" if text else ""),
+                text=text,
+                textposition="top center",
+                line={"color": color, "width": 2},
+                marker={"size": 5},
+                **common,
+            )
+        )
     elif chart_type == "scatter":
-        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers",
-                                  marker={"color": color, "size": 7}, **common))
+        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers", marker={"color": color, "size": 7}, **common))
     elif chart_type == "histogram":
-        fig.add_trace(go.Histogram(x=x_vals, marker_color=color,
-                                    opacity=0.7 if name else 0.85, **common))
+        fig.add_trace(go.Histogram(x=x_vals, marker_color=color, opacity=0.7 if name else 0.85, **common))
     elif chart_type == "pie" and not name:
-        fig.add_trace(go.Pie(labels=x_vals, values=y_vals,
-                              marker={"colors": _PALETTE}, hole=0.3))
+        fig.add_trace(go.Pie(labels=x_vals, values=y_vals, marker={"colors": _PALETTE}, hole=0.3))
 
 
 def create_plot(
@@ -204,8 +238,9 @@ def create_plot(
                 color = _PALETTE[0] if name == highlight else _HIGHLIGHT_GREY
             else:
                 color = _PALETTE[i % len(_PALETTE)]
-            _add_trace(fig, chart_type, vals["x"], vals["y"], color, name=name,
-                       text=_value_labels(vals["y"], show_labels))
+            _add_trace(
+                fig, chart_type, vals["x"], vals["y"], color, name=name, text=_value_labels(vals["y"], show_labels)
+            )
 
         if chart_type == "bar":
             fig.update_layout(barmode="group")
@@ -232,8 +267,16 @@ def create_plot(
         layout["yaxis"] = {"title": y, "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)
-    fig.update_layout(meta={"data": data, "x": x, "y": y, "chart_type": chart_type, "color_by": color_by,
-                            "herkomst": store.herkomst(data_key) if data_key else []})
+    fig.update_layout(
+        meta={
+            "data": data,
+            "x": x,
+            "y": y,
+            "chart_type": chart_type,
+            "color_by": color_by,
+            "herkomst": store.herkomst(data_key) if data_key else [],
+        }
+    )
 
     chart_label = _CHART_TYPE_LABELS.get(chart_type, "Grafiek")
     return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig
@@ -360,6 +403,7 @@ def create_choropleth_map(
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
     import pandas as pd
+
     df = pd.DataFrame(cleaned)
 
     # Use px.choropleth_map (Plotly 6 maplibre renderer) — more reliable than geo projection

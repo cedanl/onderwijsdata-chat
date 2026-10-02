@@ -49,19 +49,20 @@ def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
 
 # ─── Settings ────────────────────────────────────────────────────────────────
 
+
 @router.get("/api/settings/config")
 async def get_settings_config(username: str | None = Depends(get_optional_user)) -> dict:
     available = get_available_models_for_user(username)
     return {
         "models": [
-            {"id": mid, "name": name, "description": desc, "icon": icon}
-            for mid, name, desc, icon in (available or [])
+            {"id": mid, "name": name, "description": desc, "icon": icon} for mid, name, desc, icon in (available or [])
         ],
         "default_model": MODEL,
     }
 
 
 # ─── Instellingen & Dashboard ───────────────────────────────────────────────
+
 
 @router.get("/api/instellingen")
 async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]:

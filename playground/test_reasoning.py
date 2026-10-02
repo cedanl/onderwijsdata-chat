@@ -113,9 +113,9 @@ SYSTEM_NO_REASONING: list[dict] = []
 
 
 def test_reasoning_modes(model: str):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  TEST 1: Reasoning modes — {model}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     configs = [
         ("Geen reasoning", SYSTEM_NO_REASONING),
@@ -221,17 +221,16 @@ TOOL_CALL_MSGS = [
     {
         "role": "user",
         "content": (
-            "Hoeveel MBO-studenten zijn er in 2023 per gemeente? "
-            "Gebruik search_catalog om de juiste dataset te vinden."
+            "Hoeveel MBO-studenten zijn er in 2023 per gemeente? Gebruik search_catalog om de juiste dataset te vinden."
         ),
     }
 ]
 
 
 def test_tool_calling(model: str):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  TEST 2: Tool calling — {model}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     result = chat(model, TOOL_CALL_MSGS, tools=MOCK_CATALOG_TOOLS)
 
@@ -303,9 +302,9 @@ REASONING_QUESTION = (
 
 
 def compare_models(models: list[str]):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  TEST 3: Vergelijking — reasoning vraag")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     for model in models:
         print(f"\n--- {model} ---")
@@ -365,6 +364,6 @@ if __name__ == "__main__":
     if len(test_models) > 1:
         compare_models(test_models)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  TESTS VOLTOOID")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")

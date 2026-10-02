@@ -22,16 +22,16 @@ ONVOLLEDIG = (
 class KeyMeta:
     """What the system knows about a dataset, as data instead of a tool message (#193)."""
 
-    bron: str                            # cbs | duo | rio
+    bron: str  # cbs | duo | rio
     dataset: str
     resource: str | int | None = None
-    volledig: bool = True                # False: a truncated page, not the whole source (#186)
-    teldefinitie: str | None = None      # what DUO counts: persons or enrolments (#172)
-    periodekolom: str | None = None      # STUDIEJAAR, JAAR or the CBS time dimension (#187)
+    volledig: bool = True  # False: a truncated page, not the whole source (#186)
+    teldefinitie: str | None = None  # what DUO counts: persons or enrolments (#172)
+    periodekolom: str | None = None  # STUDIEJAAR, JAAR or the CBS time dimension (#187)
     schooljaren: tuple[int, ...] | None = None  # start years in this data; None = unknown (#187)
     instellingskolom: str | None = None  # DUO institution code column (#143)
     instellingen: tuple[str, ...] | None = None  # institution codes in this data; None = unknown (#143)
-    afgeleid_van: str | None = None      # the key this one was derived from
+    afgeleid_van: str | None = None  # the key this one was derived from
     # The load call (tool, arguments): what a snippet needs to reproduce the data (#131). Provenance, not identity.
     laad: tuple[str, dict] | None = field(default=None, compare=False)
     # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
@@ -44,6 +44,7 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
     # is er geen route eromheen. Idempotent, dus al gemaskeerde data kost niets.
     if key.startswith(_DUO_PREFIX):
         from . import duo  # lazy: duo importeert store, dus niet bovenaan
+
         value, cells = mask_sentinels(value)
         duo.record_sentinel_cells(key, cells)
     _cache[key] = value
@@ -59,7 +60,13 @@ def derive(parent: str, key: str, value, **changes) -> None:
     `changes` overrides what the derivation changed, such as the schooljaren of a selection.
     """
     parent_meta = _meta.get(parent)
-    put(key, value, replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, **changes}) if parent_meta else None)
+    put(
+        key,
+        value,
+        replace(parent_meta, **{"afgeleid_van": parent, "laad": None, "stap": None, **changes})
+        if parent_meta
+        else None,
+    )
 
 
 def get(key: str):
@@ -114,5 +121,6 @@ def clear() -> None:
     _cache.clear()
     _meta.clear()
     from . import cbs, duo  # lazy: zie put()
+
     duo.clear_sentinel_cells()
     cbs.clear_dimensions()

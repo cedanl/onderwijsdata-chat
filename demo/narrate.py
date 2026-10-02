@@ -51,8 +51,7 @@ def download_voice():
     print(f"Stem downloaden: {VOICE}...")
     VOICES_DIR.mkdir(exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "piper.download_voices",
-         "--download-dir", str(VOICES_DIR), VOICE],
+        [sys.executable, "-m", "piper.download_voices", "--download-dir", str(VOICES_DIR), VOICE],
         check=True,
     )
     print("Stem gedownload.")
@@ -78,13 +77,22 @@ def combine():
     print("Video en audio samenvoegen...")
     result = subprocess.run(
         [
-            ffmpeg, "-y", "-v", "quiet",
-            "-i", str(SOURCE_VIDEO),
-            "-i", str(AUDIO_FILE),
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-map", "0:v:0",
-            "-map", "1:a:0",
+            ffmpeg,
+            "-y",
+            "-v",
+            "quiet",
+            "-i",
+            str(SOURCE_VIDEO),
+            "-i",
+            str(AUDIO_FILE),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
             str(OUTPUT_VIDEO),
         ],
         stderr=subprocess.PIPE,

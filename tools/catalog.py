@@ -36,27 +36,79 @@ _NIET_OPVRAAGBAAR = {
 def _via_chat(entry: dict) -> bool:
     return str(entry.get("leverancier", "")).upper() in CHAT_BRONNEN
 
+
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
 
 # F1: Nederlandse stopwoorden + vraagwoorden die ruis veroorzaken
-_STOPWOORDEN = frozenset({
-    "de", "het", "een", "en", "of", "aan", "bij", "voor", "in", "op", "uit", "met", "van", "naar",
-    "is", "zijn", "ben", "was", "waren", "dit", "dat", "deze", "die",
-    "hoe", "wat", "waar", "wanneer", "wie", "welke", "waarom",
-    "kan", "mag", "moet", "wil", "zal", "zou", "krijgt", "krijgen",
-    "heeft", "hebben", "dar", "door", "tot", "over", "om", "zonder",
-})
+_STOPWOORDEN = frozenset(
+    {
+        "de",
+        "het",
+        "een",
+        "en",
+        "of",
+        "aan",
+        "bij",
+        "voor",
+        "in",
+        "op",
+        "uit",
+        "met",
+        "van",
+        "naar",
+        "is",
+        "zijn",
+        "ben",
+        "was",
+        "waren",
+        "dit",
+        "dat",
+        "deze",
+        "die",
+        "hoe",
+        "wat",
+        "waar",
+        "wanneer",
+        "wie",
+        "welke",
+        "waarom",
+        "kan",
+        "mag",
+        "moet",
+        "wil",
+        "zal",
+        "zou",
+        "krijgt",
+        "krijgen",
+        "heeft",
+        "hebben",
+        "dar",
+        "door",
+        "tot",
+        "over",
+        "om",
+        "zonder",
+    }
+)
 
 # F3: Log-damping coefficient — scales penalty for oversized entries
 # Balances large-dataset bias without over-penalizing; see _length_damping_factor
 _DAMPING_SCALE = 0.2
 
-_SEARCH_KEEP_FIELDS = frozenset({
-    "_cbs_id", "_ckan_id", "_rio_resource",
-    "_dimensies", "_meetwaarden", "_geo_niveau",
-    "_perioden_formaat", "_periode_waarden",
-    "_archief", "_thema",
-})
+_SEARCH_KEEP_FIELDS = frozenset(
+    {
+        "_cbs_id",
+        "_ckan_id",
+        "_rio_resource",
+        "_dimensies",
+        "_meetwaarden",
+        "_geo_niveau",
+        "_perioden_formaat",
+        "_periode_waarden",
+        "_archief",
+        "_thema",
+    }
+)
 
 
 @cache
@@ -281,7 +333,9 @@ def search_catalog(
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
     if not active and not archive_fallback:
-        logger.warning("search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
+        logger.warning(
+            "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
+        )
         return f"Geen resultaten gevonden voor '{query}'."
 
     results = active or archive_fallback
@@ -291,23 +345,31 @@ def search_catalog(
     if geo_niveau:
         hits = [r for r in hits if geo_niveau in _geo_niveaus(r)]
         if not hits:
-            logger.warning("search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d", query, source, geo_niveau, elapsed_ms)
+            logger.warning(
+                "search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d",
+                query,
+                source,
+                geo_niveau,
+                elapsed_ms,
+            )
             return (
                 f"Geen datasets gevonden voor '{query}' die het niveau "
                 f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
                 f"(bijv. 'provincie' in plaats van 'gemeente')."
             )
 
-    top_ids = [
-        h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") or "?"
-        for h in hits[:3]
-    ]
-    logger.info("search_catalog query=%r source=%s geo=%s results=%d top=%s elapsed_ms=%d", query, source, geo_niveau, len(hits), top_ids, elapsed_ms)
+    top_ids = [h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") or "?" for h in hits[:3]]
+    logger.info(
+        "search_catalog query=%r source=%s geo=%s results=%d top=%s elapsed_ms=%d",
+        query,
+        source,
+        geo_niveau,
+        len(hits),
+        top_ids,
+        elapsed_ms,
+    )
 
-    lean = [
-        {k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
-        for h in hits[:top_n]
-    ]
+    lean = [{k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS} for h in hits[:top_n]]
     if hint:
         lean.append({"melding": hint})
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
@@ -398,7 +460,8 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
     for entry in _rio_duo():
         if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
             return [
-                (i, r["naam"]) for i, r in enumerate(entry.get("_resources") or [])
+                (i, r["naam"])
+                for i, r in enumerate(entry.get("_resources") or [])
                 if r.get("naam") and kolom.lower() in r["naam"].lower()
             ]
     return []

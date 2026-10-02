@@ -4,10 +4,14 @@ import json
 
 from agent.grounding import unsourced_numbers, unverified
 
-_CBS_RESULT = json.dumps({"rijen": [
-    {"Perioden": "2024SJ00", "TotaalIngeschrevenen_1": 378490},
-    {"Perioden": "2025SJ00", "TotaalIngeschrevenen_1": 367960.0},
-]})
+_CBS_RESULT = json.dumps(
+    {
+        "rijen": [
+            {"Perioden": "2024SJ00", "TotaalIngeschrevenen_1": 378490},
+            {"Perioden": "2025SJ00", "TotaalIngeschrevenen_1": 367960.0},
+        ]
+    }
+)
 
 
 def test_getallen_uit_de_data_zijn_gedekt_ook_met_duizendtalpunt():
@@ -38,11 +42,14 @@ def test_decimale_komma_is_geen_duizendtal():
     assert unsourced_numbers("Gemiddeld 1.234,5 per jaar.", []) == {"1234"}
 
 
-
 def test_spatie_als_duizendtalscheiding_is_een_getal():
     # Audit 10 (#236): gpt-oss schrijft 4 287; zonder normalisatie werden dat 4 en 287,
     # allebei onder de drempel, en ging een verzonnen getal ongecontroleerd door.
-    for tekst in ("Er waren 4 287 eerstejaars.", "Er waren 4\u00a0287 eerstejaars.", "Er waren 4\u202f287 eerstejaars."):
+    for tekst in (
+        "Er waren 4 287 eerstejaars.",
+        "Er waren 4\u00a0287 eerstejaars.",
+        "Er waren 4\u202f287 eerstejaars.",
+    ):
         assert unsourced_numbers(tekst, []) == {"4287"}
     assert unsourced_numbers("Landelijk 9\u202f876\u202f543 studenten.", []) == {"9876543"}
 
@@ -54,6 +61,7 @@ def test_spatienotatie_uit_de_data_is_gedekt():
 def test_losse_getallen_met_spatie_worden_niet_samengevoegd():
     # Alleen groepen van precies drie cijfers horen bij hetzelfde getal.
     assert unsourced_numbers("In 2024 12 opleidingen, in 2025 3 1234 keer.", []) == {"1234"}
+
 
 # ── Chatantwoorden (#185): ook percentages, in de vorm waarin ze in de tekst staan ──
 

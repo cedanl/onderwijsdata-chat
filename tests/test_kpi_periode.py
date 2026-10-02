@@ -5,12 +5,25 @@ import json
 from agent.kpi_periode import verkeerde_kpi_periodes
 
 # Audit 10 (WO, Sonnet): +29.040 is 2019/20 → 2025/26; het antwoord schreef 2024/25.
-_KPI = json.dumps({"label": "WO", "value": "+29.040", "raw": 29040.0, "trend": "+29.040",
-                   "periode": {"van": "2019/20", "tot": "2025/26"},
-                   "bron": {"data_key": "cbs:x", "kolom": "N", "metric": "delta"}})
-_PCT = json.dumps({"label": "WO", "value": "+9,5%", "raw": 9.5,
-                   "periode": {"van": "2019/20", "tot": "2025/26"},
-                   "bron": {"data_key": "cbs:x", "kolom": "N", "metric": "pct_change"}})
+_KPI = json.dumps(
+    {
+        "label": "WO",
+        "value": "+29.040",
+        "raw": 29040.0,
+        "trend": "+29.040",
+        "periode": {"van": "2019/20", "tot": "2025/26"},
+        "bron": {"data_key": "cbs:x", "kolom": "N", "metric": "delta"},
+    }
+)
+_PCT = json.dumps(
+    {
+        "label": "WO",
+        "value": "+9,5%",
+        "raw": 9.5,
+        "periode": {"van": "2019/20", "tot": "2025/26"},
+        "bron": {"data_key": "cbs:x", "kolom": "N", "metric": "pct_change"},
+    }
+)
 
 
 def test_verkeerd_eindjaar_bij_een_kpi_is_een_probleem():

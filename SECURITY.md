@@ -65,6 +65,7 @@ Bekende LiteLLM-fouttypen worden netjes afgevangen, maar onbekende exceptions (b
 **Aanbeveling:** Fallback veranderen naar een generieke tekst; de exception loggen naar server-stderr:
 ```python
 import logging
+
 logger = logging.getLogger(__name__)
 logger.exception("Unhandled error in agent run")
 return "❌ Er is een onverwachte fout opgetreden."

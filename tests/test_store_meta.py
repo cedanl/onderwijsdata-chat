@@ -3,6 +3,7 @@
 Een afgekapte RIO-pagina blijft afgekapt, ook na query_data of run_analysis (#186);
 dat kan alleen als de eigenschap aan de key hangt en niet aan een toolbericht.
 """
+
 import json
 from unittest.mock import patch
 
@@ -71,8 +72,10 @@ def test_clear_wipes_the_meta():
 
 
 def test_get_cbs_data_records_its_source():
-    with patch("tools.cbs.data", return_value=[{"Geslacht": "T001038", "Waarde": "1"}]), \
-         patch("tools.cbs._load_definitions", return_value={}):
+    with (
+        patch("tools.cbs.data", return_value=[{"Geslacht": "T001038", "Waarde": "1"}]),
+        patch("tools.cbs._load_definitions", return_value={}),
+    ):
         key = json.loads(get_cbs_data("85423NED"))["data_key"]
 
     assert store.meta(key) == KeyMeta(bron="cbs", dataset="85423NED")
@@ -80,17 +83,21 @@ def test_get_cbs_data_records_its_source():
 
 def test_get_duo_data_records_its_source_and_teldefinitie():
     df = pd.DataFrame({"OPLEIDINGSVORM": ["VT"], "AANTAL": [10]})
-    with patch("tools.duo._duo.load", return_value=df), \
-         patch("tools.duo.teldefinitie", return_value="natuurlijke personen"):
+    with (
+        patch("tools.duo._duo.load", return_value=df),
+        patch("tools.duo.teldefinitie", return_value="natuurlijke personen"),
+    ):
         key = json.loads(get_duo_data("p01hoinges", 3))["data_key"]
 
     assert store.meta(key) == KeyMeta(bron="duo", dataset="p01hoinges", resource=3, teldefinitie="natuurlijke personen")
 
 
 def _rio(rows: int) -> str:
-    with patch("tools.rio.fetch", return_value=[{"id": i} for i in range(rows)]), \
-         patch("tools.catalog._cbs", return_value=[]), \
-         patch("tools.catalog._rio_duo", return_value=[]):
+    with (
+        patch("tools.rio.fetch", return_value=[{"id": i} for i in range(rows)]),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
         return json.loads(get_rio_data("erkenningen"))["data_key"]
 
 
@@ -121,9 +128,15 @@ def test_run_analysis_on_an_incomplete_key_stays_incomplete():
 
 # ── Schooljaren per key (#187) ──
 
+
 def _duo_reeks() -> str:
-    df = pd.DataFrame({"STUDIEJAAR": [2024, 2024, 2025, 2025], "OPLEIDINGSVORM": ["DT", "VT"] * 2,
-                       "AANTAL": [7418, 27135, 7408, 26370]})
+    df = pd.DataFrame(
+        {
+            "STUDIEJAAR": [2024, 2024, 2025, 2025],
+            "OPLEIDINGSVORM": ["DT", "VT"] * 2,
+            "AANTAL": [7418, 27135, 7408, 26370],
+        }
+    )
     with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
         return get_duo_data("p01hoinges", 3)
 
@@ -139,18 +152,29 @@ def test_get_duo_data_records_and_reports_the_available_schooljaren():
 def test_query_data_records_the_schooljaren_of_its_selection_even_after_aggregation():
     key = json.loads(_duo_reeks())["data_key"]
 
-    derived = json.loads(query_data(key, filters={"STUDIEJAAR": 2024, "OPLEIDINGSVORM": "DT"},
-                                    group_by=["OPLEIDINGSVORM"], aggregate={"AANTAL": "sum"}))["data_key"]
+    derived = json.loads(
+        query_data(
+            key,
+            filters={"STUDIEJAAR": 2024, "OPLEIDINGSVORM": "DT"},
+            group_by=["OPLEIDINGSVORM"],
+            aggregate={"AANTAL": "sum"},
+        )
+    )["data_key"]
 
     assert store.meta(derived).schooljaren == (2024,)
 
 
 def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
     defs = {"Perioden": {"type": "TimeDimension"}, "Geslacht": {"type": "Dimension"}}
-    rows = [{"Perioden": "2024SJ00", "Geslacht": "T001038", "Waarde": 1},
-            {"Perioden": "2025SJ00", "Geslacht": "T001038", "Waarde": 2}]
-    with patch("tools.cbs.data", return_value=rows), patch("tools.cbs._load_definitions", return_value=defs), \
-         patch("tools.cbs._dimension_rows", return_value=()):
+    rows = [
+        {"Perioden": "2024SJ00", "Geslacht": "T001038", "Waarde": 1},
+        {"Perioden": "2025SJ00", "Geslacht": "T001038", "Waarde": 2},
+    ]
+    with (
+        patch("tools.cbs.data", return_value=rows),
+        patch("tools.cbs._load_definitions", return_value=defs),
+        patch("tools.cbs._dimension_rows", return_value=()),
+    ):
         result = json.loads(get_cbs_data("85423NED"))
 
     assert result["beschikbare_schooljaren"] == ["2024/25", "2025/26"]
@@ -159,10 +183,16 @@ def test_get_cbs_data_takes_the_period_column_from_the_time_dimension():
 
 # ── Instellingen per key (#143) ──
 
+
 def _duo_instellingen() -> str:
-    df = pd.DataFrame({"INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"],
-                       "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
-                       "STUDIEJAAR": [2025, 2025], "AANTAL": [26370, 2880]})
+    df = pd.DataFrame(
+        {
+            "INSTELLINGSCODE_ACTUEEL": ["25DW", "30TX"],
+            "INSTELLINGSNAAM_ACTUEEL": ["Hogeschool Utrecht", "Aeres Hogeschool"],
+            "STUDIEJAAR": [2025, 2025],
+            "AANTAL": [26370, 2880],
+        }
+    )
     with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
         return get_duo_data("p01hoinges", 3)
 
@@ -177,8 +207,11 @@ def test_query_data_names_the_institution_next_to_its_code():
     # Live-audit 2: "Instellingscode HU: 30TX". Met de naam ernaast valt dat op.
     key = json.loads(_duo_instellingen())["data_key"]
 
-    parsed = json.loads(query_data(key, filters={"INSTELLINGSCODE_ACTUEEL": "30TX"},
-                                   group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"}))
+    parsed = json.loads(
+        query_data(
+            key, filters={"INSTELLINGSCODE_ACTUEEL": "30TX"}, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"}
+        )
+    )
 
     assert parsed["instellingen"] == {"30TX": "Aeres Hogeschool"}
     assert store.meta(parsed["data_key"]).instellingen == ("30TX",)

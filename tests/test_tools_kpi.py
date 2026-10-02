@@ -50,8 +50,11 @@ def test_trend_en_richting_alleen_bij_veranderingsmaten():
 
 
 def test_stijging_krijgt_expliciet_plusteken():
-    store.put("duo:kpi:groei", pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [100, 150]}),
-              store.KeyMeta(bron="duo", dataset="kpi:groei"))
+    store.put(
+        "duo:kpi:groei",
+        pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [100, 150]}),
+        store.KeyMeta(bron="duo", dataset="kpi:groei"),
+    )
     result = json.loads(compute_kpi("duo:kpi:groei", "AANTAL", "pct_change", sort_column="JAAR", label="L"))
     assert result["value"] == "+50,0%"
     assert result["trendDirection"] == "up"
@@ -85,7 +88,10 @@ def test_sort_column_bepaalt_wat_laatste_is():
         ({"data_key": "bestaat:niet", "value_column": "AANTAL", "metric": "last"}, "Geen data gevonden"),
         ({"data_key": "duo:kpi:test", "value_column": "ONBEKEND", "metric": "last"}, "niet gevonden"),
         ({"data_key": "duo:kpi:test", "value_column": "AANTAL", "metric": "mediaan"}, "Onbekende metric"),
-        ({"data_key": "duo:kpi:test", "value_column": "STUDIEJAAR", "metric": "last", "sort_column": "X"}, "Sorteerkolom"),
+        (
+            {"data_key": "duo:kpi:test", "value_column": "STUDIEJAAR", "metric": "last", "sort_column": "X"},
+            "Sorteerkolom",
+        ),
     ],
 )
 def test_foutpaden_geven_uitlegbare_melding(kwargs, fragment):
@@ -94,26 +100,32 @@ def test_foutpaden_geven_uitlegbare_melding(kwargs, fragment):
 
 
 def test_deling_door_nul_wordt_geweigerd():
-    store.put("duo:kpi:nul", pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [0, 50]}),
-              store.KeyMeta(bron="duo", dataset="kpi:nul"))
+    store.put(
+        "duo:kpi:nul",
+        pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [0, 50]}),
+        store.KeyMeta(bron="duo", dataset="kpi:nul"),
+    )
     result = json.loads(compute_kpi("duo:kpi:nul", "AANTAL", "pct_change", sort_column="JAAR", label="L"))
     assert "eerste waarde" in result["fout"]
 
 
 def test_kolom_zonder_numerieke_waarden():
-    store.put("duo:kpi:tekst", pd.DataFrame({"NAAM": ["a", "b"]}),
-              store.KeyMeta(bron="duo", dataset="kpi:tekst"))
+    store.put("duo:kpi:tekst", pd.DataFrame({"NAAM": ["a", "b"]}), store.KeyMeta(bron="duo", dataset="kpi:tekst"))
     result = json.loads(compute_kpi("duo:kpi:tekst", "NAAM", "sum", label="L"))
     assert "geen numerieke waarden" in result["fout"]
 
 
 def test_grootste_daling_is_de_grootste_stap_niet_de_eerste_die_opvalt():
     # #116: 28.355 → 27.904 → 27.441 → 27.135 → 26.370. Het antwoord noemde -463; de grootste is -765.
-    store.put("duo:kpi:hu", pd.DataFrame({"STUDIEJAAR": [2021, 2022, 2023, 2024, 2025],
-                                          "AANTAL": [28355, 27904, 27441, 27135, 26370]}),
-              store.KeyMeta(bron="duo", dataset="kpi:hu"))
+    store.put(
+        "duo:kpi:hu",
+        pd.DataFrame({"STUDIEJAAR": [2021, 2022, 2023, 2024, 2025], "AANTAL": [28355, 27904, 27441, 27135, 26370]}),
+        store.KeyMeta(bron="duo", dataset="kpi:hu"),
+    )
 
-    result = json.loads(compute_kpi("duo:kpi:hu", "AANTAL", "max_drop", sort_column="STUDIEJAAR", label="Grootste daling"))
+    result = json.loads(
+        compute_kpi("duo:kpi:hu", "AANTAL", "max_drop", sort_column="STUDIEJAAR", label="Grootste daling")
+    )
 
     assert result["value"] == "-765"
     assert result["raw"] == -765
@@ -122,8 +134,11 @@ def test_grootste_daling_is_de_grootste_stap_niet_de_eerste_die_opvalt():
 
 
 def test_grootste_stijging_en_sortering_op_kolom():
-    store.put("duo:kpi:shuffled", pd.DataFrame({"JAAR": [2023, 2021, 2022], "N": [150, 100, 110]}),
-              store.KeyMeta(bron="duo", dataset="kpi:shuffled"))
+    store.put(
+        "duo:kpi:shuffled",
+        pd.DataFrame({"JAAR": [2023, 2021, 2022], "N": [150, 100, 110]}),
+        store.KeyMeta(bron="duo", dataset="kpi:shuffled"),
+    )
 
     result = json.loads(compute_kpi("duo:kpi:shuffled", "N", "max_rise", sort_column="JAAR", label="x"))
 
@@ -139,8 +154,8 @@ def test_zonder_daling_is_het_een_fout_geen_nul():
     assert "Geen daling" in json.loads(compute_kpi("duo:kpi:up", "N", "max_drop", sort_column="J", label="x"))["fout"]
 
 
-
 # --- #235: de periode hoort bij het resultaat, zodat het antwoord haar niet zelf hoeft te benoemen ---
+
 
 @pytest.mark.parametrize("metric", ["first", "last", "sum", "mean", "delta", "pct_change", "index"])
 def test_kpi_noemt_de_periode_waarover_hij_rekent(metric):
@@ -150,16 +165,26 @@ def test_kpi_noemt_de_periode_waarover_hij_rekent(metric):
 
 def test_cbs_schooljaren_krijgen_hun_label():
     # Audit 10: +29.040 was 2019/20 → 2025/26, het antwoord schreef 2024/25.
-    store.put("cbs:wo:test", pd.DataFrame({"Perioden": [f"{j}SJ00" for j in range(2019, 2026)],
-                                           "N": [305000, 310000, 315000, 320000, 325000, 330000, 334040]}),
-              store.KeyMeta(bron="cbs", dataset="wo:test"))
+    store.put(
+        "cbs:wo:test",
+        pd.DataFrame(
+            {
+                "Perioden": [f"{j}SJ00" for j in range(2019, 2026)],
+                "N": [305000, 310000, 315000, 320000, 325000, 330000, 334040],
+            }
+        ),
+        store.KeyMeta(bron="cbs", dataset="wo:test"),
+    )
     result = json.loads(compute_kpi("cbs:wo:test", "N", "delta", sort_column="Perioden"))
     assert result["periode"] == {"van": "2019/20", "tot": "2025/26"}
 
 
 def test_rijen_zonder_waarde_tellen_niet_mee_in_de_periode():
-    store.put("duo:kpi:gat", pd.DataFrame({"STUDIEJAAR": [2020, 2021, 2022], "AANTAL": [None, 10, 12]}),
-              store.KeyMeta(bron="duo", dataset="kpi:gat"))
+    store.put(
+        "duo:kpi:gat",
+        pd.DataFrame({"STUDIEJAAR": [2020, 2021, 2022], "AANTAL": [None, 10, 12]}),
+        store.KeyMeta(bron="duo", dataset="kpi:gat"),
+    )
     result = json.loads(compute_kpi("duo:kpi:gat", "AANTAL", "delta", sort_column="STUDIEJAAR"))
     assert result["periode"] == {"van": "2021/22", "tot": "2022/23"}
 
@@ -170,8 +195,11 @@ def test_grootste_daling_noemt_de_periode_van_de_stap():
 
 
 def test_kalenderjaren_blijven_zoals_de_bron_ze_noemt():
-    store.put("cbs:kj:test", pd.DataFrame({"Perioden": ["2023JJ00", "2024JJ00"], "N": [1, 2]}),
-              store.KeyMeta(bron="cbs", dataset="kj:test"))
+    store.put(
+        "cbs:kj:test",
+        pd.DataFrame({"Perioden": ["2023JJ00", "2024JJ00"], "N": [1, 2]}),
+        store.KeyMeta(bron="cbs", dataset="kj:test"),
+    )
     result = json.loads(compute_kpi("cbs:kj:test", "N", "delta", sort_column="Perioden"))
     assert result["periode"] == {"van": "2023JJ00", "tot": "2024JJ00"}
 

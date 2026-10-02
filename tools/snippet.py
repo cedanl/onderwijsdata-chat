@@ -37,12 +37,16 @@ def _lit(value) -> str:
 
 
 def _duo_laadregels(args: dict) -> list[str]:
-    return ["import pandas as pd", "from riodata import duo", "",
-            f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})",
-            *_duo_sentinelregels(),
-            # De app voegt dit label toe (#115); analysecode mag het gebruiken.
-            'if "STUDIEJAAR" in df.columns:',
-            f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")']
+    return [
+        "import pandas as pd",
+        "from riodata import duo",
+        "",
+        f"df = duo.load({_lit(args['dataset_id'])}, {_lit(args.get('resource', 0))})",
+        *_duo_sentinelregels(),
+        # De app voegt dit label toe (#115); analysecode mag het gebruiken.
+        'if "STUDIEJAAR" in df.columns:',
+        f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")',
+    ]
 
 
 def _duo_sentinelregels() -> list[str]:
@@ -59,14 +63,22 @@ def _duo_sentinelregels() -> list[str]:
 def _cbs_laadregels(args: dict) -> list[str]:
     filters = args.get("filters") or {}
     extra = f", **{filters!r}" if filters else ""
-    return ["import pandas as pd", "from onderwijsdata import data", "",
-            f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))"]
+    return [
+        "import pandas as pd",
+        "from onderwijsdata import data",
+        "",
+        f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))",
+    ]
 
 
 def _rio_laadregels(args: dict) -> list[str]:
     params = {**(args.get("filters") or {}), "page": 0, "pageSize": RIO_PAGE_SIZE}
-    return ["import pandas as pd", "from riodata import fetch", "",
-            f"df = pd.DataFrame(fetch({_lit(args['resource'])}, **{params!r}))"]
+    return [
+        "import pandas as pd",
+        "from riodata import fetch",
+        "",
+        f"df = pd.DataFrame(fetch({_lit(args['resource'])}, **{params!r}))",
+    ]
 
 
 _LAADREGELS = {"get_duo_data": _duo_laadregels, "get_cbs_data": _cbs_laadregels, "get_rio_data": _rio_laadregels}
@@ -103,12 +115,19 @@ def _laadregels(data_key: str) -> list[str]:
         root = data_key
         while (parent := store.meta(root)) and parent.afgeleid_van:
             root = parent.afgeleid_van
-        return [*_laadregels(root), "# NB: de grafiek of berekening gebruikt hier een selectie van deze data (eerdere stappen)."]
+        return [
+            *_laadregels(root),
+            "# NB: de grafiek of berekening gebruikt hier een selectie van deze data (eerdere stappen).",
+        ]
     laad = known.laad if known and known.laad else _bron_van_key(data_key)
     if laad:
         return _LAADREGELS[laad[0]](laad[1])
-    return ["import pandas as pd", "", f"# Geen laadstap bekend voor {data_key!r}: laad de data met de tool waarmee hij is opgehaald.",
-            "df = pd.DataFrame()"]
+    return [
+        "import pandas as pd",
+        "",
+        f"# Geen laadstap bekend voor {data_key!r}: laad de data met de tool waarmee hij is opgehaald.",
+        "df = pd.DataFrame()",
+    ]
 
 
 _VERGELIJKING = {"gte": ">=", "lte": "<="}
@@ -136,11 +155,15 @@ def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
     """Zoals query._apply_aggregation: eerst numeriek maken, lege groepen houden (#227)."""
     lines = [f"group_by = {group_by!r}"]
     if "STUDIEJAAR" in group_by:
-        lines += [f'if "{STUDIEJAAR_LABEL}" in df.columns and "{STUDIEJAAR_LABEL}" not in group_by:',
-                  f'    group_by.append("{STUDIEJAAR_LABEL}")']
-    lines += [f"for kolom in {list(aggregate)!r}:",
-              '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
-              f"df = df.groupby(group_by, dropna=False).agg({aggregate!r}).reset_index()"]
+        lines += [
+            f'if "{STUDIEJAAR_LABEL}" in df.columns and "{STUDIEJAAR_LABEL}" not in group_by:',
+            f'    group_by.append("{STUDIEJAAR_LABEL}")',
+        ]
+    lines += [
+        f"for kolom in {list(aggregate)!r}:",
+        '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
+        f"df = df.groupby(group_by, dropna=False).agg({aggregate!r}).reset_index()",
+    ]
     return lines
 
 
@@ -188,7 +211,7 @@ def _compute_kpi_snippet(args: dict) -> str:
     label = args.get("label", "")
 
     # Zelfstandig: de KPI laadt zijn eigen data, net als de andere snippets (#227).
-    lines = [*_laadregels(args.get("data_key", "")), "", f'# KPI: {label} ({metric})']
+    lines = [*_laadregels(args.get("data_key", "")), "", f"# KPI: {label} ({metric})"]
     if sort_column:
         lines.append(f"df = df.sort_values({sort_column!r})")
     lines.append(f's = pd.to_numeric(df[{value_column!r}], errors="coerce").dropna()')
@@ -239,8 +262,7 @@ def _create_plot_snippet(args: dict) -> str:
 
     df = store.get(data_key) if data_key else None
     rows = df.to_dict(orient="records") if df is not None else args.get("data") or []
-    chart_type = resolve_chart_type(
-        rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
+    chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
     color_arg = f', color="{color_by}"' if color_by else ""
     if chart_type == "pie":
         lines.append(f'fig = px.pie(df, names="{x}", values="{y}", title="{title}")')

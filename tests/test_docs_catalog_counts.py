@@ -1,4 +1,5 @@
 """Docs must quote the same dataset counts as the catalog the app searches."""
+
 import re
 from pathlib import Path
 

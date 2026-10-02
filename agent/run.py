@@ -65,11 +65,13 @@ async def _handle_figure(name: str, figure, session: dict, emit: Emit) -> None:
         figs = session.get(key, [])
         figs.append(figure)
         session[key] = figs
-    await emit({
-        "type": "figure",
-        "label": LABELS.get(name, name),
-        "figure_json": pio.to_json(figure),
-    })
+    await emit(
+        {
+            "type": "figure",
+            "label": LABELS.get(name, name),
+            "figure_json": pio.to_json(figure),
+        }
+    )
 
 
 async def _handle_clarify_scope(
@@ -95,11 +97,13 @@ async def _handle_clarify_scope(
     else:
         await emit({"type": "message_cancel"})
 
-    await emit({
-        "type": "clarification",
-        "vraag": args.get("vraag", ""),
-        "opties": args.get("opties") or [],
-    })
+    await emit(
+        {
+            "type": "clarification",
+            "vraag": args.get("vraag", ""),
+            "opties": args.get("opties") or [],
+        }
+    )
     return text_content
 
 
@@ -137,19 +141,20 @@ async def run(
 
     _raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
     last_user_msg = (
-        " ".join(b.get("text", "") for b in _raw if isinstance(b, dict))
-        if isinstance(_raw, list) else str(_raw)
+        " ".join(b.get("text", "") for b in _raw if isinstance(b, dict)) if isinstance(_raw, list) else str(_raw)
     )
     logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
 
     history, was_trimmed = trim(list(messages))
     initial_history_len = len(history)
     if was_trimmed:
-        await emit({
-            "type": "toast",
-            "message": "Oudere berichten vallen buiten de context van het model.",
-            "level": "warning",
-        })
+        await emit(
+            {
+                "type": "toast",
+                "message": "Oudere berichten vallen buiten de context van het model.",
+                "level": "warning",
+            }
+        )
 
     # What the conversation already said counts as sourced: a follow-up may repeat
     # a number from an earlier turn, or one the user gave. Taken before the loop,
@@ -174,11 +179,13 @@ async def run(
 
     async def withdraw(problems: list[str]) -> None:
         await emit({"type": "message_cancel"})
-        await emit({
-            "type": "toast",
-            "message": "Het antwoord klopte niet met de opgehaalde data; het wordt herschreven.",
-            "level": "info",
-        })
+        await emit(
+            {
+                "type": "toast",
+                "message": "Het antwoord klopte niet met de opgehaalde data; het wordt herschreven.",
+                "level": "info",
+            }
+        )
 
     async def keep(call: ToolCall, result: str, figure) -> None:
         record_data_key(session, result, {"name": call.name, "arguments": call.args})
@@ -186,11 +193,13 @@ async def run(
 
     async def _slow_warning():
         await asyncio.sleep(45)
-        await emit({
-            "type": "toast",
-            "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
-            "level": "info",
-        })
+        await emit(
+            {
+                "type": "toast",
+                "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
+                "level": "info",
+            }
+        )
 
     slow_task = asyncio.create_task(_slow_warning())
     try:
@@ -226,10 +235,17 @@ async def run(
     if result.halted_on:
         session["_last_turn_tool_calls"] = result.tool_calls
         return await _handle_clarify_scope(
-            result.halted_on, result.text, history[initial_history_len:], messages, session, emit,
+            result.halted_on,
+            result.text,
+            history[initial_history_len:],
+            messages,
+            session,
+            emit,
         )
     if result.exhausted:
-        await emit({"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."})
+        await emit(
+            {"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."}
+        )
         return "Het maximale aantal stappen is bereikt."
 
     text_content = result.text
@@ -242,11 +258,13 @@ async def run(
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
     if result.problems:
         logger.warning("CONTROLE na herkansing nog niet in orde  model=%s  %s", chosen_model, result.problems)
-    await emit({
-        "type": "message_end",
-        "content": text_content,
-        "actions": [],
-        **({"truncated": True} if truncated else {}),
-        **({"controle": meldingen(result.problems)} if result.problems else {}),
-    })
+    await emit(
+        {
+            "type": "message_end",
+            "content": text_content,
+            "actions": [],
+            **({"truncated": True} if truncated else {}),
+            **({"controle": meldingen(result.problems)} if result.problems else {}),
+        }
+    )
     return text_content

@@ -25,8 +25,10 @@ def metatekst(tekst: str) -> list[str]:
     if not gevonden:
         return []
     # De gevonden woorden alleen voor het model: een toolnaam hoort ook niet in de melding.
-    return [Probleem(
-        "Het antwoord verwijst naar een eerdere versie of een interne verwerkingsstap.",
-        f"Gevonden: {', '.join(gevonden)}. Schrijf het antwoord voor de gebruiker: geen verwijzing naar een "
-        "eerdere versie, de controle of toolnamen.",
-    )]
+    return [
+        Probleem(
+            "Het antwoord verwijst naar een eerdere versie of een interne verwerkingsstap.",
+            f"Gevonden: {', '.join(gevonden)}. Schrijf het antwoord voor de gebruiker: geen verwijzing naar een "
+            "eerdere versie, de controle of toolnamen.",
+        )
+    ]

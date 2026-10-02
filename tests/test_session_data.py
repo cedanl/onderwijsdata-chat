@@ -34,10 +34,14 @@ def test_session_keys_skip_data_no_longer_in_store():
 
 
 def test_agent_run_records_keys_of_its_tool_calls(monkeypatch):
-    steps = iter([
-        StreamResult(text="", tool_calls=[{"id": "t1", "name": "get_cbs_data", "arguments": '{"dataset_id": "85423NED"}'}]),
-        StreamResult(text="Antwoord", tool_calls=[]),
-    ])
+    steps = iter(
+        [
+            StreamResult(
+                text="", tool_calls=[{"id": "t1", "name": "get_cbs_data", "arguments": '{"dataset_id": "85423NED"}'}]
+            ),
+            StreamResult(text="Antwoord", tool_calls=[]),
+        ]
+    )
 
     async def fake_completion(*args, **kwargs):
         return object()
@@ -56,17 +60,30 @@ def test_agent_run_records_keys_of_its_tool_calls(monkeypatch):
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute_tool)
 
     session: dict = {}
-    asyncio.run(run_module.run(
-        [{"role": "user", "content": "vraag"}], session, emit, asyncio.Event(), model="openai/gpt-4o",
-    ))
+    asyncio.run(
+        run_module.run(
+            [{"role": "user", "content": "vraag"}],
+            session,
+            emit,
+            asyncio.Event(),
+            model="openai/gpt-4o",
+        )
+    )
     assert session["data_keys"] == ["cbs:85423NED"]
     assert session["data_provenance"]["cbs:85423NED"] == {
-        "name": "get_cbs_data", "arguments": {"dataset_id": "85423NED"},
+        "name": "get_cbs_data",
+        "arguments": {"dataset_id": "85423NED"},
     }
 
 
-_CBS_CALL = {"name": "get_cbs_data", "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "Onderwijssoort eq 'A025294'"}}}
-_QUERY_CALL = {"name": "query_data", "arguments": {"data_key": "cbs:85423NED:aa", "filters": {"Opleidingsvorm": "A028666"}}}
+_CBS_CALL = {
+    "name": "get_cbs_data",
+    "arguments": {"dataset_id": "85423NED", "filters": {"$filter": "Onderwijssoort eq 'A025294'"}},
+}
+_QUERY_CALL = {
+    "name": "query_data",
+    "arguments": {"data_key": "cbs:85423NED:aa", "filters": {"Opleidingsvorm": "A028666"}},
+}
 
 
 def test_lineage_of_a_derived_key_runs_from_the_load_call():

@@ -10,11 +10,14 @@ def client(tmp_path, monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     from core import auth
+
     importlib.reload(auth)
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     import server
+
     importlib.reload(server)
     return TestClient(server.app)
 
@@ -25,11 +28,14 @@ def authed_client(tmp_path, monkeypatch):
     monkeypatch.setenv("CHAT_USERS", "testuser:testpass")
     monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
     from core import auth
+
     importlib.reload(auth)
     from persistence import db
+
     importlib.reload(db)
     db.init_db()
     import server
+
     importlib.reload(server)
     c = TestClient(server.app)
     resp = c.post("/api/auth/login", json={"username": "testuser", "password": "testpass"})
@@ -39,6 +45,7 @@ def authed_client(tmp_path, monkeypatch):
 
 
 # ── Conversations (no auth) ──────────────────────────────────────────────────
+
 
 def test_get_conversations_empty(client):
     resp = client.get("/api/conversations")
@@ -99,6 +106,7 @@ def test_patch_unknown_conversation_returns_404(client):
 
 # ── Workbooks (no auth) ──────────────────────────────────────────────────────
 
+
 def test_get_workbooks_empty(client):
     resp = client.get("/api/workbooks")
     assert resp.status_code == 200
@@ -126,15 +134,21 @@ def test_put_and_get_workbook(client):
 
 
 def test_delete_workbook(client):
-    client.put("/api/workbooks/wb1", json={
-        "title": "X", "description": "", "createdAt": "2024-01-01T00:00:00Z",
-    })
+    client.put(
+        "/api/workbooks/wb1",
+        json={
+            "title": "X",
+            "description": "",
+            "createdAt": "2024-01-01T00:00:00Z",
+        },
+    )
     resp = client.delete("/api/workbooks/wb1")
     assert resp.status_code == 200
     assert client.get("/api/workbooks").json() == []
 
 
 # ── Auth enforcement ──────────────────────────────────────────────────────────
+
 
 def test_auth_enabled_no_token_returns_401(authed_client):
     c = TestClient(authed_client.app)

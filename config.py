@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigError(Exception):
     """Raised when required configuration is missing or invalid."""
+
     pass
 
 
@@ -59,7 +60,9 @@ class Config:
                 logger.error(error)
             raise ConfigError("; ".join(errors))
 
-        logger.info(f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}")
+        logger.info(
+            f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}"
+        )
 
     @classmethod
     def get_parsed_cors_origins(cls) -> list[str]:

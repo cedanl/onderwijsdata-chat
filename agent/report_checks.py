@@ -94,16 +94,13 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     unsourced = unsourced_numbers(text, sources)
     if unsourced:
         problems.append(
-            "Deze getallen staan niet in de opgehaalde data: "
-            f"{', '.join(_nl(n) for n in sorted(unsourced, key=int))}."
+            f"Deze getallen staan niet in de opgehaalde data: {', '.join(_nl(n) for n in sorted(unsourced, key=int))}."
         )
 
     if any(_has_values(f) for f in figures_json):
         for claim in _claims(spec):
             if match := _ABSENCE.search(claim or ""):
-                problems.append(
-                    f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden."
-                )
+                problems.append(f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden.")
                 break
 
     problems += verkeerde_opleidingsvormen(text)

@@ -3,6 +3,7 @@
 "Hoeveel studenten RUG?" kreeg een scopevraag en na het antwoord daarop nog een, terwijl
 "meest recente" al gekozen was. De prompt vraagt om één; hier staat dat het niet anders kan.
 """
+
 import asyncio
 
 from agent.run import tools_for

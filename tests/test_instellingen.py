@@ -20,6 +20,7 @@ def _bounded_network():
 @pytest.fixture(autouse=True)
 def _clear_cache():
     import data.instellingen as inst
+
     inst._cache = None
     inst._alias_lookup = None
     inst._ADRES_CACHE = None
@@ -31,8 +32,10 @@ def _clear_cache():
 
 # ─── Registry ────────────────────────────────────────────────────────────────
 
+
 def test_registry_returns_list():
     from data.instellingen import get_all
+
     result = get_all()
     assert isinstance(result, list)
     assert len(result) > 0
@@ -40,6 +43,7 @@ def test_registry_returns_list():
 
 def test_registry_sorted_alphabetically():
     from data.instellingen import get_all
+
     result = get_all()
     names = [i["naam"] for i in result]
     assert names == sorted(names, key=str.lower)
@@ -47,6 +51,7 @@ def test_registry_sorted_alphabetically():
 
 def test_registry_has_required_fields():
     from data.instellingen import get_all
+
     for inst in get_all():
         assert "naam" in inst
         assert "type" in inst
@@ -60,18 +65,21 @@ def test_registry_has_required_fields():
 
 def test_registry_most_have_provincie():
     from data.instellingen import get_all
+
     with_prov = [i for i in get_all() if i["provincie"]]
     assert len(with_prov) >= len(get_all()) - 2
 
 
 def test_registry_most_have_arbeidsmarktregio():
     from data.instellingen import get_all
+
     with_amr = [i for i in get_all() if i["arbeidsmarktregio"]]
     assert len(with_amr) >= len(get_all()) - 2
 
 
 def test_get_adres_lookup_returns_dict():
     from data.instellingen import get_adres_lookup
+
     lookup = get_adres_lookup()
     assert isinstance(lookup, dict)
     assert len(lookup) > 0
@@ -82,35 +90,42 @@ def test_get_adres_lookup_returns_dict():
 
 def test_get_adres_lookup_cached():
     from data.instellingen import get_adres_lookup
+
     assert get_adres_lookup() is get_adres_lookup()
 
 
 def test_registry_contains_all_types():
     from data.instellingen import get_all
+
     types = {i["type"] for i in get_all()}
     assert types == {"wo", "hbo", "mbo"}
 
 
 def test_registry_no_duplicate_names():
     from data.instellingen import get_all
+
     names = [i["naam"] for i in get_all()]
     assert len(names) == len(set(names))
 
 
 # ─── Alias resolve ───────────────────────────────────────────────────────────
 
+
 def test_resolve_exact_name():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("Hogeschool Utrecht") == "Hogeschool Utrecht"
 
 
 def test_resolve_case_insensitive():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("hogeschool utrecht") == "Hogeschool Utrecht"
 
 
 def test_resolve_known_alias():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("VU") == "Vrije Universiteit Amsterdam"
     assert resolve_alias("HvA") == "Hogeschool van Amsterdam"
     assert resolve_alias("TU Delft") == "Technische Universiteit Delft"
@@ -118,30 +133,36 @@ def test_resolve_known_alias():
 
 def test_resolve_alias_case_insensitive():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("vu") == "Vrije Universiteit Amsterdam"
     assert resolve_alias("hva") == "Hogeschool van Amsterdam"
 
 
 def test_resolve_mbo_alias():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("Mondriaan") == "ROC Mondriaan"
     assert resolve_alias("ROC MN") == "ROC Midden Nederland"
 
 
 def test_resolve_unknown_returns_input():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("Onbekende Instelling") == "Onbekende Instelling"
 
 
 def test_resolve_empty_string():
     from data.instellingen import resolve_alias
+
     assert resolve_alias("") == ""
 
 
 # ─── Dashboard HO ────────────────────────────────────────────────────────────
 
+
 def test_dashboard_ho_found():
     from data.dashboard import load_dashboard_ho
+
     result = load_dashboard_ho("Hogeschool Utrecht")
     assert result is not None
     assert "ingeschrevenen" in result
@@ -153,6 +174,7 @@ def test_dashboard_ho_found():
 
 def test_dashboard_ho_wo_found():
     from data.dashboard import load_dashboard_ho
+
     result = load_dashboard_ho("Vrije Universiteit Amsterdam")
     assert result is not None
     assert "ingeschrevenen" in result
@@ -160,12 +182,14 @@ def test_dashboard_ho_wo_found():
 
 def test_dashboard_ho_not_found():
     from data.dashboard import load_dashboard_ho
+
     result = load_dashboard_ho("Niet Bestaande Instelling")
     assert result is None
 
 
 def test_dashboard_ho_has_geslacht():
     from data.dashboard import load_dashboard_ho
+
     result = load_dashboard_ho("Hogeschool Utrecht")
     assert result is not None
     assert "geslacht" in result
@@ -173,8 +197,10 @@ def test_dashboard_ho_has_geslacht():
 
 # ─── Dashboard MBO ───────────────────────────────────────────────────────────
 
+
 def test_dashboard_mbo_found():
     from data.dashboard import load_dashboard_mbo
+
     result = load_dashboard_mbo("ROC Mondriaan")
     assert result is not None
     assert "ingeschrevenen" in result
@@ -184,6 +210,7 @@ def test_dashboard_mbo_found():
 
 def test_dashboard_mbo_has_leerwegen():
     from data.dashboard import load_dashboard_mbo
+
     result = load_dashboard_mbo("ROC Mondriaan")
     assert result is not None
     assert any(k in result["sectoren"] for k in ("BBL", "BOL voltijd", "BOL deeltijd"))
@@ -191,12 +218,14 @@ def test_dashboard_mbo_has_leerwegen():
 
 def test_dashboard_mbo_not_found():
     from data.dashboard import load_dashboard_mbo
+
     result = load_dashboard_mbo("Niet Bestaande Instelling")
     assert result is None
 
 
 def test_dashboard_mbo_has_gediplomeerden():
     from data.dashboard import load_dashboard_mbo
+
     result = load_dashboard_mbo("ROC Mondriaan")
     assert result is not None
     assert "gediplomeerden" in result
@@ -204,8 +233,10 @@ def test_dashboard_mbo_has_gediplomeerden():
 
 # ─── Dashboard regio ─────────────────────────────────────────────────────────
 
+
 def test_regio_dashboard_ho_has_arbeidsmarktregio():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Hogeschool Utrecht")
     assert result["gevonden"] is True
     assert "arbeidsmarktregio" in result
@@ -213,6 +244,7 @@ def test_regio_dashboard_ho_has_arbeidsmarktregio():
 
 def test_regio_dashboard_ho_benchmark_uses_regio():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Hogeschool Utrecht")
     assert result["gevonden"] is True
     bm = result.get("benchmark", {})
@@ -222,6 +254,7 @@ def test_regio_dashboard_ho_benchmark_uses_regio():
 
 def test_regio_dashboard_mbo_has_arbeidsmarktregio():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("ROC Mondriaan")
     assert result["gevonden"] is True
     assert "arbeidsmarktregio" in result
@@ -230,6 +263,7 @@ def test_regio_dashboard_mbo_has_arbeidsmarktregio():
 def test_regio_dashboard_mbo_benchmark_uses_arbeidsmarktregio():
     # Albeda zit in Rijnmond met 7 MBO peers — arbeidsmarktregio verwacht
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Albeda")
     bm = result.get("benchmark", {})
     assert bm, "Benchmark verwacht voor Albeda"
@@ -238,6 +272,7 @@ def test_regio_dashboard_mbo_benchmark_uses_arbeidsmarktregio():
 
 def test_regio_dashboard_benchmark_has_regio_type():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Hogeschool Utrecht")
     bm = result.get("benchmark", {})
     assert "regio_type" in bm
@@ -246,6 +281,7 @@ def test_regio_dashboard_benchmark_has_regio_type():
 
 def test_regio_dashboard_ho_provincie_still_present():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Hogeschool Utrecht")
     assert "provincie" in result
     assert result["provincie"] is not None
@@ -253,8 +289,10 @@ def test_regio_dashboard_ho_provincie_still_present():
 
 # ─── Dashboard composite ─────────────────────────────────────────────────────
 
+
 def test_load_dashboard_resolves_alias():
     from data.dashboard import load_dashboard
+
     result = load_dashboard("VU")
     assert result["gevonden"] is True
     assert result["instelling"] == "Vrije Universiteit Amsterdam"
@@ -262,6 +300,7 @@ def test_load_dashboard_resolves_alias():
 
 def test_load_dashboard_mbo_via_alias():
     from data.dashboard import load_dashboard
+
     result = load_dashboard("Mondriaan")
     assert result["gevonden"] is True
     assert result["instelling"] == "ROC Mondriaan"
@@ -269,6 +308,7 @@ def test_load_dashboard_mbo_via_alias():
 
 def test_load_dashboard_not_found_has_suggestions():
     from data.dashboard import load_dashboard
+
     result = load_dashboard("Niet Bestaande Instelling XYZ")
     assert result["gevonden"] is False
     assert "beschikbare_instellingen" in result
@@ -277,15 +317,19 @@ def test_load_dashboard_not_found_has_suggestions():
 
 # ─── API endpoint ────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     from core import auth
+
     importlib.reload(auth)
     import server
+
     importlib.reload(server)
     from fastapi.testclient import TestClient
+
     return TestClient(server.app)
 
 
@@ -338,8 +382,10 @@ def test_api_dashboard_mbo(client):
 
 # ─── Task 2: MBO regio improvements ─────────────────────────────────────────
 
+
 def test_regio_mbo_has_eerstejaars():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("ROC Mondriaan")
     assert result["gevonden"] is True
     assert result["type"] == "mbo"
@@ -360,6 +406,7 @@ def test_regio_mbo_has_eerstejaars():
 
 def test_regio_mbo_has_sectorkamers():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("ROC Mondriaan")
     assert result["gevonden"] is True
     assert result["type"] == "mbo"
@@ -378,8 +425,10 @@ def test_regio_mbo_has_sectorkamers():
 
 # ─── Task 3: HO regio improvements ───────────────────────────────────────────
 
+
 def test_regio_ho_has_geslacht_trend():
     from data.dashboard import load_dashboard_regio
+
     result = load_dashboard_regio("Hogeschool Utrecht")
     assert result["gevonden"] is True
     assert result["type"] == "ho"
@@ -398,8 +447,10 @@ def test_regio_ho_has_geslacht_trend():
 
 # ─── Task 4: Nationaal Marktaandeel ──────────────────────────────────────────
 
+
 def test_dashboard_nationaal_ho():
     from data.dashboard import load_dashboard_nationaal
+
     result = load_dashboard_nationaal("Hogeschool Utrecht")
     assert result["gevonden"] is True
     assert result["type"] == "ho"
@@ -448,8 +499,10 @@ def test_dashboard_nationaal_endpoint(client):
 
 # ─── Task 5: Rendementsmonitor ────────────────────────────────────────────────
 
+
 def test_dashboard_rendement_ho():
     from data.dashboard import load_dashboard_rendement
+
     result = load_dashboard_rendement("Hogeschool Utrecht")
     assert result["gevonden"] is True
     assert result["type"] == "ho"
@@ -503,8 +556,10 @@ def test_dashboard_rendement_endpoint(client):
 
 # ─── Task 6: Arbeidsmarktmatch ────────────────────────────────────────────────
 
+
 def test_dashboard_arbeidsmarktmatch():
     from data.dashboard import load_dashboard_arbeidsmarktmatch
+
     result = load_dashboard_arbeidsmarktmatch("ROC Mondriaan")
     assert result["gevonden"] is True
     assert "instelling" in result

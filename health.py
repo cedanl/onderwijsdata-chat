@@ -22,10 +22,11 @@ async def check_database_connection() -> bool:
     """Test database connection. Returns True if healthy."""
     try:
         from persistence import db
+
         conn = db._connect()
         # Simple query to verify connection
-        cursor = conn.cursor() if hasattr(conn, 'cursor') else conn
-        if hasattr(cursor, 'execute'):
+        cursor = conn.cursor() if hasattr(conn, "cursor") else conn
+        if hasattr(cursor, "execute"):
             cursor.execute("SELECT 1")
             cursor.fetchone()
         conn.close()
@@ -38,12 +39,15 @@ async def check_database_connection() -> bool:
 async def check_llm_configuration() -> bool:
     """Verify LLM configuration is available."""
     from config import Config
-    return any([
-        Config.ANTHROPIC_API_KEY,
-        Config.AZURE_AI_API_KEY,
-        Config.OPENAI_API_KEY,
-        Config.GOOGLE_API_KEY,
-    ])
+
+    return any(
+        [
+            Config.ANTHROPIC_API_KEY,
+            Config.AZURE_AI_API_KEY,
+            Config.OPENAI_API_KEY,
+            Config.GOOGLE_API_KEY,
+        ]
+    )
 
 
 async def health_check() -> dict:

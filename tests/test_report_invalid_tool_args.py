@@ -6,6 +6,7 @@ subclass, so it used to surface as-is to the user via the report_error
 handler. generate() must instead recover: report the malformed call to the
 model and continue, so a later well-formed step can still produce a report.
 """
+
 import asyncio
 import json
 
@@ -24,8 +25,11 @@ _DATASET = "cbs:85423NED"
 @pytest.fixture(autouse=True)
 def _dataset_in_store():
     store.clear()
-    store.put(_DATASET, pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [10, 20]}),
-              store.KeyMeta(bron="cbs", dataset="85423NED"))
+    store.put(
+        _DATASET,
+        pd.DataFrame({"JAAR": [2021, 2022], "AANTAL": [10, 20]}),
+        store.KeyMeta(bron="cbs", dataset="85423NED"),
+    )
     yield
     store.clear()
 
@@ -50,11 +54,13 @@ def _run_generate():
     async def emit(event: dict) -> None:
         events.append(event)
 
-    spec = asyncio.run(report_module.generate(
-        {"data_keys": [_DATASET], "chat_settings": {"instelling": "HU"}},
-        emit,
-        model="openai/gpt-4o",
-    ))
+    spec = asyncio.run(
+        report_module.generate(
+            {"data_keys": [_DATASET], "chat_settings": {"instelling": "HU"}},
+            emit,
+            model="openai/gpt-4o",
+        )
+    )
     return spec, events
 
 
@@ -73,16 +79,24 @@ def _run_generate_async():
 
 def _final(conclusie: str, title: str = "T") -> StreamResult:
     """Een volledig rapport (#189): reikwijdte, conclusie en een getal."""
-    report = {"title": title, "onderzoeksvraag": "Instroom", "beantwoordt": ["Instroom per jaar"], "conclusie": conclusie}
+    report = {
+        "title": title,
+        "onderzoeksvraag": "Instroom",
+        "beantwoordt": ["Instroom per jaar"],
+        "conclusie": conclusie,
+    }
     return StreamResult(text=json.dumps(report), tool_calls=[])
 
 
 def test_generate_recovers_from_invalid_tool_call_arguments(monkeypatch):
     bad_args = '{"JAAR": [2021, 2022], "AANTAL": [10, 20]}\x0a{"niet": "goed"}'
     steps = [
-        StreamResult(text="", tool_calls=[
-            {"id": "t1", "name": "query_data", "arguments": bad_args},
-        ]),
+        StreamResult(
+            text="",
+            tool_calls=[
+                {"id": "t1", "name": "query_data", "arguments": bad_args},
+            ],
+        ),
         _final("In 2021 waren het er 10.", title="Testrapport"),
     ]
     _make_generate(monkeypatch, steps)
@@ -102,9 +116,12 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
     # is a ValueError subclass; generate() must not leak the raw parser text.
     bad_args = '{"data_key": "cbs:00000NED"}\x08'
     steps = [
-        StreamResult(text="", tool_calls=[
-            {"id": "t1", "name": "query_data", "arguments": bad_args},
-        ]),
+        StreamResult(
+            text="",
+            tool_calls=[
+                {"id": "t1", "name": "query_data", "arguments": bad_args},
+            ],
+        ),
         _final("In 2021 waren het er 10.", title="Testrapport"),
     ]
     _make_generate(monkeypatch, steps)
@@ -115,13 +132,17 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
     assert isinstance(spec, ReportSpec)
     assert spec.title == "Testrapport"
 
+
 def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplog):
     # #174: de audit kon een misfilter in het rapport niet aanwijzen; de WS-frames tonen alleen toolnamen.
     query = {"data_key": _DATASET, "filters": {"JAAR": 2021}}
-    _make_generate(monkeypatch, [
-        StreamResult(text="", tool_calls=[{"id": "t1", "name": "query_data", "arguments": json.dumps(query)}]),
-        _final("In 2021 waren het er 10."),
-    ])
+    _make_generate(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[{"id": "t1", "name": "query_data", "arguments": json.dumps(query)}]),
+            _final("In 2021 waren het er 10."),
+        ],
+    )
 
     with caplog.at_level("INFO", logger="agent.report"):
         _run_generate()
@@ -130,8 +151,6 @@ def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplo
     assert "query_data" in record.message
     assert '"JAAR": 2021' in record.message
     assert "totaal_rijen=1" in record.message
-
-
 
 
 def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its_data(monkeypatch):
@@ -161,8 +180,10 @@ def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
 
 def test_generate_reads_a_report_with_a_raw_newline_in_a_string(monkeypatch):
     # #166: een ruwe regeleinde in de conclusie gaf "Invalid control character"; de inhoud is gaaf.
-    raw = ('{"title": "T", "onderzoeksvraag": "Instroom", "beantwoordt": ["Instroom per jaar"], '
-           '"conclusie": "Het waren er 20.\nTweede regel."}')
+    raw = (
+        '{"title": "T", "onderzoeksvraag": "Instroom", "beantwoordt": ["Instroom per jaar"], '
+        '"conclusie": "Het waren er 20.\nTweede regel."}'
+    )
     _make_generate(monkeypatch, [StreamResult(text=raw, tool_calls=[])])
 
     spec, _ = _run_generate()

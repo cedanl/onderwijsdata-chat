@@ -23,14 +23,25 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": (
-                        "2 tot 4 losse trefwoorden, GEEN volzin en GEEN vraagteken. Laat instellingsnamen, plaatsnamen en "
-                        "jaartallen weg: daar wordt niet op gefilterd. Goed: 'ingeschrevenen wo opleidingsvorm'. "
-                        "Fout: 'Hoeveel voltijdstudenten heeft de VU?'"
-                    )},
-                    "source": {"type": "string", "enum": ["cbs", "rio", "duo", "both"], "description": "Te doorzoeken bron: 'cbs', 'rio', 'duo' (alleen DUO-datasets), of 'both' (alles)"},
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "2 tot 4 losse trefwoorden, GEEN volzin en GEEN vraagteken. Laat instellingsnamen, plaatsnamen en "
+                            "jaartallen weg: daar wordt niet op gefilterd. Goed: 'ingeschrevenen wo opleidingsvorm'. "
+                            "Fout: 'Hoeveel voltijdstudenten heeft de VU?'"
+                        ),
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": ["cbs", "rio", "duo", "both"],
+                        "description": "Te doorzoeken bron: 'cbs', 'rio', 'duo' (alleen DUO-datasets), of 'both' (alles)",
+                    },
                     "top_n": {"type": "integer", "description": "Maximaal aantal resultaten (standaard: 15)"},
-                    "geo_niveau": {"type": "string", "enum": ["gemeente", "provincie", "corop", "landelijk", "landsdeel"], "description": "Filter: geef alleen datasets terug die dit geografisch niveau ondersteunen. Gebruik bij regionale vragen."},
+                    "geo_niveau": {
+                        "type": "string",
+                        "enum": ["gemeente", "provincie", "corop", "landelijk", "landsdeel"],
+                        "description": "Filter: geef alleen datasets terug die dit geografisch niveau ondersteunen. Gebruik bij regionale vragen.",
+                    },
                 },
                 "required": ["query"],
             },
@@ -66,7 +77,10 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "dataset_id": {"type": "string", "description": "CBS dataset ID, bijv. '85423NED'"},
-                    "filters": {"type": "object", "description": "OData parameters, bijv. {\"$filter\": \"Geslacht eq 'T001038'\"}"},
+                    "filters": {
+                        "type": "object",
+                        "description": 'OData parameters, bijv. {"$filter": "Geslacht eq \'T001038\'"}',
+                    },
                 },
                 "required": ["dataset_id"],
             },
@@ -100,8 +114,14 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "resource": {"type": "string", "description": "RIO resource naam, bijv. 'onderwijslocaties' of 'aangeboden-opleidingen'"},
-                    "filters": {"type": "object", "description": "Filter parameters, bijv. {\"organisatorischeEenheidcode\": \"25LH\"}"},
+                    "resource": {
+                        "type": "string",
+                        "description": "RIO resource naam, bijv. 'onderwijslocaties' of 'aangeboden-opleidingen'",
+                    },
+                    "filters": {
+                        "type": "object",
+                        "description": 'Filter parameters, bijv. {"organisatorischeEenheidcode": "25LH"}',
+                    },
                 },
                 "required": ["resource"],
             },
@@ -120,8 +140,14 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "dataset_id": {"type": "string", "description": "CKAN package-naam uit de catalogus, bijv. 'studentprognoses-mbo-v1'"},
-                    "resource": {"type": ["integer", "string"], "description": "Index (0, 1, ...) of naam-substring van het bestand binnen de dataset (default: 0)"},
+                    "dataset_id": {
+                        "type": "string",
+                        "description": "CKAN package-naam uit de catalogus, bijv. 'studentprognoses-mbo-v1'",
+                    },
+                    "resource": {
+                        "type": ["integer", "string"],
+                        "description": "Index (0, 1, ...) of naam-substring van het bestand binnen de dataset (default: 0)",
+                    },
                 },
                 "required": ["dataset_id"],
             },
@@ -135,9 +161,19 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "data_key": {"type": "string", "description": "data_key uit get_duo_data, get_cbs_data of get_rio_data"},
-                    "filters": {"type": "object", "description": "Kolomfilters: exacte waarden bijv. {\"Leerweg\": \"Voltijd\"}, of range-operatoren: {\"JAAR__gte\": \"2020\"}, {\"JAAR__lte\": \"2023\"}, {\"JAAR__in\": [\"2021\",\"2022\"]}"},
-                    "columns": {"type": "array", "items": {"type": "string"}, "description": "Alleen deze kolommen teruggeven"},
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key uit get_duo_data, get_cbs_data of get_rio_data",
+                    },
+                    "filters": {
+                        "type": "object",
+                        "description": 'Kolomfilters: exacte waarden bijv. {"Leerweg": "Voltijd"}, of range-operatoren: {"JAAR__gte": "2020"}, {"JAAR__lte": "2023"}, {"JAAR__in": ["2021","2022"]}',
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Alleen deze kolommen teruggeven",
+                    },
                     "max_rows": {"type": "integer", "description": "Maximaal aantal rijen (default: 500)"},
                     "group_by": {
                         "type": "array",
@@ -147,7 +183,7 @@ TOOL_SCHEMAS = [
                     "aggregate": {
                         "type": "object",
                         "additionalProperties": {"type": "string", "enum": ["sum", "mean", "count", "min", "max"]},
-                        "description": "Aggregatiefuncties per kolom, bijv. {\"AANTAL\": \"sum\"}. Alleen samen met 'group_by'.",
+                        "description": 'Aggregatiefuncties per kolom, bijv. {"AANTAL": "sum"}. Alleen samen met \'group_by\'.',
                     },
                 },
                 "required": ["data_key"],
@@ -205,7 +241,19 @@ TOOL_SCHEMAS = [
                     "value_column": {"type": "string", "description": "Kolom met de numerieke waarden"},
                     "metric": {
                         "type": "string",
-                        "enum": ["last", "first", "sum", "mean", "min", "max", "delta", "pct_change", "index", "max_drop", "max_rise"],
+                        "enum": [
+                            "last",
+                            "first",
+                            "sum",
+                            "mean",
+                            "min",
+                            "max",
+                            "delta",
+                            "pct_change",
+                            "index",
+                            "max_drop",
+                            "max_rise",
+                        ],
                         "description": (
                             "last/first = laatste of eerste waarde, sum/mean/min/max = aggregaat over alle rijen, "
                             "delta = laatste min eerste, pct_change = procentuele verandering van eerste naar laatste, "
@@ -233,14 +281,30 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "data_key": {"type": "string", "description": "data_key van een query_data-resultaat. De grafiek leest de data zelf uit de store, zodat de getallen gelijk zijn aan wat de tool heeft berekend."},
-                    "chart_type": {"type": "string", "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"], "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen. Eén datapunt wordt alleen getekend met 'bar', en dat kies je alleen als de gebruiker om een grafiek vraagt."},
+                    "data_key": {
+                        "type": "string",
+                        "description": "data_key van een query_data-resultaat. De grafiek leest de data zelf uit de store, zodat de getallen gelijk zijn aan wat de tool heeft berekend.",
+                    },
+                    "chart_type": {
+                        "type": "string",
+                        "enum": ["auto", "bar", "line", "scatter", "pie", "histogram"],
+                        "description": "Kies 'auto' tenzij je een specifiek type nodig hebt; de code bepaalt het dan uit de data (tijd-as zoals JAAR of PERIODE wordt line, een aandeel wordt pie bij maximaal 5 groepen en anders bar). Let op: 'histogram' en 'scatter' volgen nooit uit 'auto' en moet je zelf kiezen. Eén datapunt wordt alleen getekend met 'bar', en dat kies je alleen als de gebruiker om een grafiek vraagt.",
+                    },
                     "x": {"type": "string", "description": "Veldnaam voor de x-as (of labels bij pie)"},
                     "y": {"type": "string", "description": "Veldnaam voor de y-as (of waarden bij pie)"},
                     "title": {"type": "string", "description": "Titel van de grafiek"},
-                    "color_by": {"type": "string", "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)"},
-                    "highlight": {"type": "string", "description": "Werkt alleen samen met color_by: de groep met deze waarde krijgt de accentkleur, de rest wordt grijs. Gebruik dit als één categorie (bijv. één instelling in een benchmark) de aandacht moet krijgen."},
-                    "is_share": {"type": "boolean", "description": "Zet op true als de grafiek een aandeel of verhouding van een geheel toont (bijv. 'welk percentage van de studenten...'). Werkt alleen bij chart_type='auto' en stuurt de keuze richting pie of bar."},
+                    "color_by": {
+                        "type": "string",
+                        "description": "Veldnaam om op te groeperen (bijv. 'Geslacht' voor man/vrouw vergelijking)",
+                    },
+                    "highlight": {
+                        "type": "string",
+                        "description": "Werkt alleen samen met color_by: de groep met deze waarde krijgt de accentkleur, de rest wordt grijs. Gebruik dit als één categorie (bijv. één instelling in een benchmark) de aandacht moet krijgen.",
+                    },
+                    "is_share": {
+                        "type": "boolean",
+                        "description": "Zet op true als de grafiek een aandeel of verhouding van een geheel toont (bijv. 'welk percentage van de studenten...'). Werkt alleen bij chart_type='auto' en stuurt de keuze richting pie of bar.",
+                    },
                 },
                 "required": ["data_key", "chart_type", "x", "y", "title"],
             },
@@ -306,8 +370,14 @@ TOOL_SCHEMAS = [
                         "items": {
                             "type": "object",
                             "properties": {
-                                "label": {"type": "string", "description": "Korte antwoordtekst, bijv. 'Laatste schooljaar'"},
-                                "beschrijving": {"type": "string", "description": "Alleen voor bronopties: één zin over het verschil"},
+                                "label": {
+                                    "type": "string",
+                                    "description": "Korte antwoordtekst, bijv. 'Laatste schooljaar'",
+                                },
+                                "beschrijving": {
+                                    "type": "string",
+                                    "description": "Alleen voor bronopties: één zin over het verschil",
+                                },
                                 "aanbevolen": {"type": "boolean", "description": "True voor de aanbevolen optie"},
                             },
                             "required": ["label"],
