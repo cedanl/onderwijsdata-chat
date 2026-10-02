@@ -17,6 +17,8 @@ de laatste tag is 1.8.6.
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
+- Code-snippets geven dezelfde uitkomst als de app: filters met dezelfde semantiek, DUO-cellen met -1
+  uitgesloten, en ook een KPI-snippet laadt zijn eigen data.
 - De CSV-export van een grafiek decodeert binaire Plotly-arrays en weigert kapotte figuren met een reden.
 - Een herhaalde toolcall toont zijn grafiek niet twee keer.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
