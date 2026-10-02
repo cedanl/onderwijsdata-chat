@@ -31,6 +31,7 @@ include:
     inputs:
       name: docker:docker-build
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
+      build_args: --build-arg GIT_COMMIT=$CI_COMMIT_SHORT_SHA
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.12
     inputs:
       name: docker:docker-promote
