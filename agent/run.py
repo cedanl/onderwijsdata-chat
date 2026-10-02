@@ -11,6 +11,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 from .binding import verkeerd_gebonden
 from .grounding import unverified
 from .history import trim
+from .kpi_periode import verkeerde_kpi_periodes
 from .labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
 from .loop import ToolCall, tool_loop
 from .models import build_system
@@ -160,6 +161,7 @@ async def run(
             *onbekende_datasets(text),
             *verkeerde_teleenheid(text, tool_results),
             *verkeerd_gebonden(text, tool_results),
+            *verkeerde_kpi_periodes(text, tool_results),
         ]
 
     async def withdraw(problems: list[str]) -> None:
