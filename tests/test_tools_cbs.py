@@ -31,7 +31,9 @@ def test_row_limit_applied():
     import json
 
     parsed = json.loads(result)
-    assert parsed["totaal_rijen"] == CBS_ROW_LIMIT
+    # Afgekapt is geen totaal: de bron kan meer rijen hebben (#5).
+    assert "totaal_rijen" not in parsed
+    assert parsed["opgehaalde_rijen"] == CBS_ROW_LIMIT and parsed["volledig"] is False
     assert "data_key" in parsed
     assert parsed["catalogus_titel"] == "85423NED"
 

@@ -14,8 +14,14 @@ _DUO_PREFIX = "duo:"
 # What a tool answers when a count, sum or total would rest on truncated data (#186).
 ONVOLLEDIG = (
     "De data is afgekapt: één pagina van de bron, niet de hele bron. Daarop geen telling, "
-    "som of ander totaal. Verfijn met een serverfilter bij het laden, of gebruik DUO of CBS voor aantallen."
+    "som of ander totaal. Verfijn met een serverfilter bij het laden (bij CBS $filter of $select); "
+    "voor aantallen uit RIO: gebruik DUO of CBS."
 )
+
+
+def rijtelling(n: int, complete: bool) -> dict:
+    """Rijtelling onder een naam die past: een afgekapte pagina heeft geen totaal (#177, #186, #5)."""
+    return {"totaal_rijen": n} if complete else {"opgehaalde_rijen": n, "volledig": False}
 
 
 @dataclass(frozen=True)
