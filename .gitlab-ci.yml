@@ -119,6 +119,9 @@ pytest:
     - uv sync --frozen --extra postgres
     # Lint vóór de tests: een dubbele dict-key verborg de NHL Stenden-bug (#202, #203).
     - uv run ruff check .
+    - uv run ruff format --check .
+    # ty kent geen baseline; het script faalt alleen op diagnostics die nog niet in ty-baseline.txt staan (#230).
+    - uv run python scripts/ty_baseline.py
     - uv run pytest tests/ -q
 
 # Zelfde image als de frontend-stap in de Dockerfile, zodat Renovate ze samen bijwerkt.
