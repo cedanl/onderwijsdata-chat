@@ -31,6 +31,7 @@ import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps } from '../components/RunProgress'
 
 function codeTheme() {
@@ -149,6 +150,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
+  const [sendNotice, setSendNotice] = useState(null)
 
   // The server refused the question because a run was going: the typed text comes back (#145).
   useEffect(() => {
@@ -318,10 +320,18 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Verandert de toestand die het versturen blokkeerde, dan is de melding achterhaald.
+  useEffect(() => { setSendNotice(null) }, [busy, connected, resetting])
+
   const handleSend = () => {
     const q = input.trim()
+    if (!q || atContextLimit) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
-    if (!q || atContextLimit || !send(q)) return
+    if (!send(q)) {
+      setSendNotice(sendRefusalReason({ connected, busy, resetting }))
+      return
+    }
+    setSendNotice(null)
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
@@ -485,6 +495,9 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
               <p className="report-reload-hint">
                 Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
               </p>
+            )}
+            {sendNotice && (
+              <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{sendNotice}</p>
             )}
             <div className="chat-input-wrap">
               <textarea
