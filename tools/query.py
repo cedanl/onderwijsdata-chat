@@ -38,6 +38,12 @@ def _coerce_pair(a, b):
         return str(a).lower(), str(b).lower()
 
 
+def _stap(filters, columns, group_by, aggregate) -> str:
+    """De selectie in woorden, met de argumenten zoals het model ze gaf (#118)."""
+    delen = [("filters", filters), ("kolommen", columns), ("groepering", group_by), ("aggregatie", aggregate)]
+    return "; ".join(f"{naam} {json.dumps(waarde, ensure_ascii=False, default=str)}" for naam, waarde in delen if waarde)
+
+
 def _parse_filter_key(key: str) -> tuple[str, str]:
     if "__" in key:
         col, op = key.rsplit("__", 1)
@@ -240,7 +246,7 @@ def query_data(
         sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
-        store.derive(data_key, result_key, df, **gedekt)
+        store.derive(data_key, result_key, df, stap=_stap(filters, columns, group_by, aggregate), **gedekt)
         # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
         # van de selectie reizen wel mee: het totaal blijft een ondergrens.
         duo.record_sentinel_cells(result_key, cells)

@@ -99,6 +99,14 @@ function tracesToCsv(figure) {
 const toolRows = figure => figure.layout?.meta?.data
 const hasToolRows = figure => Array.isArray(toolRows(figure)) && toolRows(figure).length > 0
 
+// Source and selections from tools/plot.py, as '#' lines above the header:
+// pandas skips them with comment='#', a spreadsheet shows them as text (#118).
+function withProvenance(csv, figure) {
+  const lines = figure.layout?.meta?.herkomst
+  if (!csv || !Array.isArray(lines) || !lines.length) return csv
+  return [...lines.map(line => `# ${line}`), csv].join('\n')
+}
+
 export function figureToCsv(figure) {
-  return hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure)
+  return withProvenance(hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure), figure)
 }
