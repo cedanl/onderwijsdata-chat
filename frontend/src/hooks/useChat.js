@@ -4,6 +4,9 @@ import { MAX_HISTORY } from '../constants'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
+// A report without report_ready after this long counts as failed (#219). Reports take
+// a minute or two; the server has no limit of its own, so the wait ends here.
+export const REPORT_TIMEOUT_MS = 5 * 60 * 1000
 
 function buildHistory(messages) {
   return messages
@@ -49,7 +52,23 @@ export function useChat({ onUnauthorized } = {}) {
   const lastSentRef = useRef(null)
   const currentHasTextRef = useRef(false)
   const resettingRef = useRef(false)
+  const reportTimeoutRef = useRef(null)
   const nextId = () => ++idRef.current
+
+  // The report is over, with or without a result: no more waiting, button free again.
+  const endReport = useCallback(() => {
+    clearTimeout(reportTimeoutRef.current)
+    reportTimeoutRef.current = null
+    reportingRef.current = false
+    setReportBusy(false)
+  }, [])
+
+  // A failed report stays visible as a chat message; the button is the retry (#219).
+  const failReport = useCallback((message) => {
+    endReport()
+    setReportSpec(null)
+    setMessages(prev => [...prev, { id: ++idRef.current, role: 'assistant', content: message, done: true, isError: true }])
+  }, [endReport])
 
   const addToast = useCallback((message, level = 'info') => {
     const id = nextId()
@@ -201,18 +220,15 @@ export function useChat({ onUnauthorized } = {}) {
         setReportBusy(true)
         setReportSpec(null)
       },
+      // Not waiting any more (timed out, see generateReport): the user has been told already.
       report_ready(ev) {
-        reportingRef.current = false
-        setReportBusy(false)
+        if (!reportingRef.current) return
+        endReport()
         setReportSpec(ev.spec)
       },
       report_error(ev) {
-        reportingRef.current = false
-        setReportBusy(false)
-        setReportSpec(null)
-        setMessages(prev => [...prev, {
-          id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
-        }])
+        if (!reportingRef.current) return
+        failReport(ev.message)
       },
       error(ev) {
         setThinking(false)
@@ -256,6 +272,9 @@ export function useChat({ onUnauthorized } = {}) {
       ws.onclose = (e) => {
         setConnected(false)
         endInterruptedTurn()
+        if (reportingRef.current) {
+          failReport('De verbinding viel weg tijdens het maken van het rapport. Probeer het opnieuw.')
+        }
 
         if (e.code === 4001) {
           clearToken()
@@ -289,7 +308,7 @@ export function useChat({ onUnauthorized } = {}) {
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }
-  }, [addToast, cancelCurrentMsg, onUnauthorized])
+  }, [addToast, cancelCurrentMsg, endReport, failReport, onUnauthorized])
 
   // Returns whether the question went out, so the caller only clears what was typed when it did.
   const send = useCallback((content) => {
@@ -342,15 +361,20 @@ export function useChat({ onUnauthorized } = {}) {
     setReportBusy(true)
     setReportSpec(null)
     wsRef.current.send(JSON.stringify({ action: 'generate_report', author }))
-  }, [])
+    clearTimeout(reportTimeoutRef.current)
+    reportTimeoutRef.current = setTimeout(() => {
+      // Stop the server too: a report arriving after this message would contradict it.
+      wsRef.current?.send(JSON.stringify({ action: 'stop' }))
+      failReport('Het rapport is na 5 minuten nog niet klaar en is afgebroken. Probeer het opnieuw.')
+    }, REPORT_TIMEOUT_MS)
+  }, [failReport])
 
   const clearRejectedDraft = useCallback(() => setRejectedDraft(null), [])
 
   const clearReport = useCallback(() => {
-    reportingRef.current = false
-    setReportBusy(false)
+    endReport()
     setReportSpec(null)
-  }, [])
+  }, [endReport])
 
   const clear = useCallback(() => {
     setMessages([])
