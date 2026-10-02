@@ -69,3 +69,24 @@ def test_catalogus_titel_falls_back_to_dataset_id():
     import json
     parsed = json.loads(result)
     assert parsed["catalogus_titel"] == "onbekend-id"
+
+
+def test_mislukte_dataproperties_staat_in_de_toolresponse():
+    # #229: zonder DataProperties ontbreken labels, eenheden en dimensies; dat werd alleen gelogd.
+    import json
+    with patch("tools.cbs.data", return_value=[{"Perioden": "2024JJ00", "Waarde": 1}]), \
+         patch("tools.cbs.definitions", side_effect=Exception("timeout")), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        parsed = json.loads(get_cbs_data("85423NED"))
+    assert "metadata_ontbreekt" in parsed
+
+
+def test_gelukte_dataproperties_geeft_geen_metadatamelding():
+    import json
+    with patch("tools.cbs.data", return_value=[{"Perioden": "2024JJ00", "Waarde": 1}]), \
+         patch("tools.cbs.definitions", return_value={}), \
+         patch("tools.catalog._cbs", return_value=[]), \
+         patch("tools.catalog._rio_duo", return_value=[]):
+        parsed = json.loads(get_cbs_data("85423NED"))
+    assert "metadata_ontbreekt" not in parsed
