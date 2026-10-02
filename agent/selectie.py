@@ -14,6 +14,8 @@ import re
 from tools import instelling, periode, store
 from tools.store import KeyMeta
 
+from .probleem import Probleem
+
 
 def data_keys(tool_results: list[str]) -> list[str]:
     keys = []
@@ -62,10 +64,11 @@ def ontbrekende_schooljaren(vraag: str, tool_results: list[str]) -> list[str]:
             continue
         for jaar in sorted(gevraagd & set(bron.schooljaren) - jaren):
             selectie = ", ".join(periode.labels(sorted(jaren))) or "geen schooljaar"
-            problemen.append(
+            problemen.append(Probleem(
                 f"Gevraagd schooljaar {periode.label(jaar)} staat in de data ({bron.dataset}), maar niet in de "
-                f"selectie waarop het antwoord rust ({selectie}). Selecteer {periode.broncode(bron.bron, jaar)}."
-            )
+                f"selectie waarop het antwoord rust ({selectie}).",
+                f"Selecteer {periode.broncode(bron.bron, jaar)}.",
+            ))
     return problemen
 
 
@@ -78,10 +81,10 @@ def ontbrekende_instellingen(vraag: str, tool_results: list[str]) -> list[str]:
         namen = instelling.namen(store.get(root), bron.instellingskolom)
         for code in sorted(instelling.genoemde(vraag, namen) - codes):
             selectie = ", ".join(f"{namen.get(c, c)} ({c})" for c in sorted(codes)) or "geen instelling"
-            problemen.append(
-                f"De vraag noemt {namen[code]} ({code}), maar de selectie waarop het antwoord rust bevat "
-                f"{selectie}. Filter op {bron.instellingskolom}={code}."
-            )
+            problemen.append(Probleem(
+                f"De vraag noemt {namen[code]} ({code}), maar de selectie waarop het antwoord rust bevat {selectie}.",
+                f"Filter op {bron.instellingskolom}={code}.",
+            ))
     return problemen
 
 
@@ -111,13 +114,15 @@ def onvolledige_selecties(tekst: str, tool_results: list[str]) -> list[str]:
         if _ALS_PAGINA.search(zin):
             continue
         problemen.extend(
-            f"'{zin}': {getal} is het aantal opgehaalde rijen van een afgekapte selectie ({datasets}), "
-            "geen telling. Noem geen totaal, of zeg dat het met deze data niet vast te stellen is."
+            Probleem(
+                f"'{zin}': {getal} is het aantal opgehaalde rijen van een afgekapte selectie ({datasets}), geen telling.",
+                "Noem geen totaal, of zeg dat het met deze data niet vast te stellen is.",
+            )
             for getal in sorted(rijen & set(re.findall(r"\b\d+\b", zin)))
         )
         if _AFWEZIG.search(zin):
-            problemen.append(
-                f"'{zin}': de selectie ({datasets}) is afgekapt, dus dat iets ontbreekt is niet vast te stellen. "
-                "Zoek gericht met een filter, of zeg dat het met deze data niet vast te stellen is."
-            )
+            problemen.append(Probleem(
+                f"'{zin}': de selectie ({datasets}) is afgekapt, dus dat iets ontbreekt is niet vast te stellen.",
+                "Zoek gericht met een filter, of zeg dat het met deze data niet vast te stellen is.",
+            ))
     return problemen

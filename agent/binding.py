@@ -22,6 +22,7 @@ from tools import instelling, periode, store
 from tools.store import KeyMeta
 
 from .grounding import checked_numbers
+from .probleem import Probleem
 from .selectie import data_keys
 
 # Een zin of een tabelrij. Een punt in een getal (27.135) wordt niet gevolgd door witruimte.
@@ -66,10 +67,10 @@ def _verkeerd(tekst: str, index: _Index, genoemd: Callable[[str], set], naam: Ca
         for geschreven, getal in checked_numbers(segment):
             bij = index.get(getal)
             if bij and not noemt & bij:
-                problemen.append(
-                    f"{geschreven} hoort bij {naam(bij)}, niet bij {naam(noemt)} ('{segment}'). "
-                    f"Neem het getal uit de rij van {naam(noemt)}."
-                )
+                problemen.append(Probleem(
+                    f"{geschreven} hoort bij {naam(bij)}, niet bij {naam(noemt)} ('{segment}').",
+                    f"Neem het getal uit de rij van {naam(noemt)}.",
+                ))
     return problemen
 
 

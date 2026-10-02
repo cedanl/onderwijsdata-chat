@@ -26,6 +26,7 @@ from agent.dashboard import (
     build_dataset_context,
 )
 from agent.loop import ToolCall, tool_loop
+from agent.probleem import meldingen
 from agent.report_checks import report_problems
 from agent.stream import Emit
 from core.config import MODEL
@@ -178,7 +179,7 @@ async def generate(
         })
     if result.problems:
         logger.error("RAPPORT GEWEIGERD: %s", result.problems)
-        raise ValueError(f"Rapport niet consistent met de data: {result.problems[0]} Probeer het opnieuw.")
+        raise ValueError(f"Rapport niet consistent met de data: {meldingen(result.problems)[0]} Probeer het opnieuw.")
     return _parse_spec_from_response(result.text, figures, context, author)
 
 
