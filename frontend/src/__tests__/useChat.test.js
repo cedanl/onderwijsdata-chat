@@ -398,3 +398,15 @@ describe('useChat reasoning steps (#76)', () => {
     expect(assistantMessages()[0].tools.map(t => [t.done, t.snippet ?? null])).toEqual([[true, 'eerste'], [false, null]])
   })
 })
+
+describe('useChat question model', () => {
+  it('records on each question the model it was sent with (#242)', async () => {
+    await act(async () => { chat.sendSettings({ model: 'anthropic/claude-opus' }) })
+    await act(async () => { chat.send('Hoeveel eerstejaars?') })
+    await act(async () => { FakeWebSocket.last.emit({ type: 'message_end', content: 'Veel.' }) })
+    await act(async () => { chat.sendSettings({ model: 'openai/gpt-oss-120b' }) })
+    await act(async () => { chat.sendClarification('HBO') })
+    const questions = chat.messages.filter(m => m.role === 'user')
+    expect(questions.map(m => m.model)).toEqual(['anthropic/claude-opus', 'openai/gpt-oss-120b'])
+  })
+})
