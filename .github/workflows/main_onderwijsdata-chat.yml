@@ -21,14 +21,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # Python-versie uit .python-version, net als in de GitLab-pipeline.
       - name: Set up uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          python-version: '3.12'
+
+      # Dezelfde poorten als de pytest-job in .gitlab-ci.yml (#230).
+      - name: Lint, format en typecheck (backend)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run python scripts/ty_baseline.py
 
       - name: Run Python tests
-        run: uv run pytest tests/ -x -q --ignore=tests/test_eval_aggregation.py
+        run: uv run pytest tests/ -q
 
       - name: Install production dependencies
         run: |
@@ -51,6 +58,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm run lint
           npm test
           npm run build
 
