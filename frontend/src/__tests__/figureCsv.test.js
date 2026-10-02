@@ -159,5 +159,24 @@ describe('figureToCsv', () => {
       const withRows = { data: [{ x: ['a', 'b'], y: [1] }], layout: { meta: { data: [{ a: 1 }] } } }
       expect(figureCsvProblem(withRows)).toBeNull()
     })
+
+    it('exports a horizontal bar with its categories from y, without a false alarm', () => {
+      const figure = {
+        data: [{ type: 'bar', orientation: 'h', x: [10, 20], y: ['Avans', 'Fontys'] }],
+        layout: { xaxis: { title: { text: 'AANTAL' } }, yaxis: { title: { text: 'INSTELLING' } } },
+      }
+      expect(figureCsvProblem(figure)).toBeNull()
+      expect(lines(figureToCsv(figure))).toEqual(['INSTELLING;AANTAL', 'Avans;10', 'Fontys;20'])
+    })
+
+    it('never reads a heatmap without tool rows as points: no CSV, no alarm', () => {
+      // A correlation matrix has x and y of equal length; as points it exported ('a', 'a').
+      const square = { data: [{ type: 'heatmap', x: ['a', 'b'], y: ['a', 'b'], z: [[1, 0.5], [0.5, 1]] }] }
+      const wide = { data: [{ type: 'heatmap', x: ['p', 'q', 'r'], y: ['s'], z: [[1, 2, 3]] }] }
+      for (const figure of [square, wide]) {
+        expect(figureToCsv(figure)).toBeNull()
+        expect(figureCsvProblem(figure)).toBeNull()
+      }
+    })
   })
 })

@@ -250,8 +250,13 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
     run_analysis terug op de traces, waar Plotly arrays binair serialiseert.
     Een figuur waarvan x en y niet gelijk zijn, krijgt geen rijen: de export weigert
     hem dan met een reden in plaats van een CSV naast een kapotte grafiek.
+    Bij een heatmap staan de waarden in z, niet in y: die krijgt een rij per cel.
     """
     if fig.layout.meta and fig.layout.meta.get("data"):
+        return fig
+    if any(getattr(t, "z", None) is not None for t in fig.data):
+        if len(fig.data) == 1 and fig.data[0].type == "heatmap":
+            fig.update_layout(meta={"data": _heatmap_rows(fig, fig.data[0])})
         return fig
     traces = [t for t in fig.data if getattr(t, "x", None) is not None and getattr(t, "y", None) is not None]
     if not traces or any(len(t.x) != len(t.y) or len(t.y) == 0 for t in traces):
@@ -267,6 +272,23 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
             rows.append({**row, x_name: _plain(x_val), y_name: _plain(y_val)})
     fig.update_layout(meta={"data": rows, "x": x_name, "y": y_name})
     return fig
+
+
+def _heatmap_rows(fig: go.Figure, trace) -> list[dict]:
+    """Eén rij per cel: rij- en kolomlabel plus de waarde uit z. Zonder labels telt de positie."""
+    rij_naam = _axis_name(fig, "yaxis", "rij")
+    kolom_naam = _axis_name(fig, "xaxis", "kolom")
+    rijen = list(trace.y) if trace.y is not None else None
+    kolommen = list(trace.x) if trace.x is not None else None
+    return [
+        {
+            rij_naam: _plain(rijen[i]) if rijen is not None else i,
+            kolom_naam: _plain(kolommen[j]) if kolommen is not None else j,
+            "waarde": _plain(waarde),
+        }
+        for i, rij in enumerate(trace.z)
+        for j, waarde in enumerate(rij)
+    ]
 
 
 def _plain(value):
