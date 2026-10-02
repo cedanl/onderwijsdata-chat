@@ -22,6 +22,8 @@ DUO_ROW_LIMIT = int(os.getenv("DUO_ROW_LIMIT", "500"))
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
 # Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234).
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
+# Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
+FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 
 # Willma AI-Hub (SURF) — optioneel. Zet WILLMA_API_KEY om via Willma te draaien.
 # Zet MODEL naar bijv. "openai/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
