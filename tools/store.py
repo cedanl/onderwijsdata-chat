@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field, replace
 
+from core.sentinels import mask_sentinels
+
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
 # and datasets are read-only. Not suitable for per-user mutable state.
 _cache: dict = {}
@@ -40,7 +42,7 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
     # is er geen route eromheen. Idempotent, dus al gemaskeerde data kost niets.
     if key.startswith(_DUO_PREFIX):
         from . import duo  # lazy: duo importeert store, dus niet bovenaan
-        value, cells = duo.mask_sentinels(value)
+        value, cells = mask_sentinels(value)
         duo.record_sentinel_cells(key, cells)
     _cache[key] = value
     if meta is None:

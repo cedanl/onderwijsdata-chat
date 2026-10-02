@@ -11,8 +11,9 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from core.sentinels import mask_sentinels
 from tools import store
-from tools.duo import count_cells, get_duo_data, mask_sentinels, sentinel_notes
+from tools.duo import count_cells, get_duo_data, sentinel_notes
 from tools.query import _apply_aggregation, query_data
 
 

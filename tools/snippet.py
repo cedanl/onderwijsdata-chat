@@ -9,9 +9,9 @@ store bij de key bewaart.
 import json
 
 from core.config import RIO_PAGE_SIZE
+from core.sentinels import SENTINELS, SIGNED_HINTS
 
 from . import store
-from .duo import _DUO_SENTINELS, _SIGNED_HINTS
 from .periode import STUDIEJAAR_LABEL
 from .query import _parse_filter_key
 from .schemas import (
@@ -44,13 +44,13 @@ def _duo_laadregels(args: dict) -> list[str]:
 
 
 def _duo_sentinelregels() -> list[str]:
-    """Dezelfde maskering als duo.mask_sentinels in de app, met dezelfde constanten (#227)."""
+    """Dezelfde maskering als core.sentinels.mask_sentinels in de app, met dezelfde constanten (#227)."""
     return [
         "# DUO markeert onderdrukte cellen (kleine aantallen) met -1: geen telwaarde, de app sluit ze uit.",
         "# Totalen over een selectie met zulke cellen zijn een ondergrens.",
         "for kolom in df.select_dtypes('number').columns:",
-        f"    if not any(h in str(kolom).upper() for h in {_SIGNED_HINTS!r}):",
-        f"        df[kolom] = df[kolom].mask(df[kolom].isin({list(_DUO_SENTINELS)!r}))",
+        f"    if not any(h in str(kolom).upper() for h in {SIGNED_HINTS!r}):",
+        f"        df[kolom] = df[kolom].mask(df[kolom].isin({list(SENTINELS)!r}))",
     ]
 
 
