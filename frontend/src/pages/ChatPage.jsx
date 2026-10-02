@@ -681,7 +681,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
                 </button>
               </div>
             )}
-            {msg.controle?.map(zin => <div key={zin} className="message-stopped">Let op: {zin}</div>)}
+            {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
           </div>

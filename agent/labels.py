@@ -14,6 +14,7 @@ from tools import store
 from tools.catalog import catalogus_titel
 from tools.duo import OPLEIDINGSVORMEN
 
+from .probleem import Probleem
 from .selectie import data_keys
 
 _CODES = "|".join(OPLEIDINGSVORMEN)
@@ -52,17 +53,17 @@ def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
     for woord, code in paren:
         vorm, code = woord.lower(), code.upper()
         if OPLEIDINGSVORMEN[code] != vorm:
-            problemen.append(
+            problemen.append(Probleem(
                 f"'{woord}' met code {code}: {code} is {OPLEIDINGSVORMEN[code]}, {vorm} is {juiste_code[vorm]} "
                 "(DUO-datasetbeschrijving)."
-            )
+            ))
     return problemen
 
 
 def onbekende_datasets(tekst: str) -> list[str]:
     """Dataset-ID's in de tekst die niet in de catalogus staan, zoals een typfout in de bron."""
     return [
-        f"Dataset {dataset_id} bestaat niet in de catalogus; noem de dataset-ID zoals de tool hem gaf."
+        Probleem(f"Dataset {dataset_id} bestaat niet in de catalogus.", "Noem de dataset-ID zoals de tool hem gaf.")
         for dataset_id in sorted(set(_DATASET_ID.findall(tekst)))
         if catalogus_titel(dataset_id) == dataset_id
     ]
@@ -81,8 +82,10 @@ def ongebruikte_bronnen(tekst: str, tool_results: list[str]) -> list[str]:
     if not gebruikt or not sectie:
         return []
     return [
-        f"Dataset {dataset_id} staat in de bronnen, maar is in deze beurt niet gebruikt; "
-        f"noem alleen de datasets waar de getallen uit komen."
+        Probleem(
+            f"Dataset {dataset_id} staat in de bronnen, maar is in deze beurt niet gebruikt.",
+            "Noem alleen de datasets waar de getallen uit komen.",
+        )
         for dataset_id in sorted(set(_DATASET_ID.findall(sectie.group(1))))
         if dataset_id.lower() not in gebruikt and catalogus_titel(dataset_id) != dataset_id
     ]
@@ -140,7 +143,7 @@ def verkeerde_teleenheid(tekst: str, tool_results: list[str]) -> list[str]:
     )
     if not _toegeschreven(verkeerd, tekst, definities):
         return []
-    return [
-        f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}. "
-        f"Noem de teleenheid zoals de bron hem telt."
-    ]
+    return [Probleem(
+        f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}.",
+        "Noem de teleenheid zoals de bron hem telt.",
+    )]

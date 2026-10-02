@@ -11,6 +11,8 @@ import re
 
 from tools import periode
 
+from .probleem import Probleem
+
 _JAAR = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
 
 
@@ -32,8 +34,10 @@ def genegeerde_keuze(keuzes: list[str], tekst: str) -> list[str]:
         else:
             ontbreekt = [j for j in dict.fromkeys(_JAAR.findall(keuze)) if not _genoemd(int(j), tekst)]
         problemen += [
-            f"De gebruiker koos '{keuze}', maar het antwoord noemt {jaar} niet. Gebruik die periode, "
-            f"of zeg expliciet dat {jaar} niet in de data staat; kies niet stil een ander jaar."
+            Probleem(
+                f"Gekozen was '{keuze}', maar het antwoord noemt {jaar} niet.",
+                f"Gebruik die periode, of zeg expliciet dat {jaar} niet in de data staat; kies niet stil een ander jaar.",
+            )
             for jaar in ontbreekt
         ]
     return problemen

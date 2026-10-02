@@ -15,7 +15,9 @@ from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen, verkeerde_teleenheid
 from .loop import ToolCall, tool_loop
+from .metatekst import metatekst
 from .models import build_system
+from .probleem import Probleem, meldingen
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key
 from .stream import Emit
@@ -106,7 +108,9 @@ def _correction(problems: list[str]) -> str:
         "Controle van je antwoord tegen de data van dit gesprek:\n"
         + "\n".join(f"- {p}" for p in problems)
         + "\nReken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
-        "of compute_kpi, selecteer het gevraagde schooljaar en de gevraagde instelling, of laat het weg. Geef daarna je volledige antwoord opnieuw."
+        "of compute_kpi, selecteer het gevraagde schooljaar en de gevraagde instelling, of laat het weg.\n"
+        "Schrijf daarna een volledig nieuw antwoord voor de gebruiker, alsof het het eerste is: zonder kop of inleiding "
+        "over de herziening, zonder te verwijzen naar een eerdere versie of naar deze controle, en zonder toolnamen."
     )
 
 
@@ -154,7 +158,7 @@ async def run(
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         return [
-            *(f"{n} staat niet in de opgehaalde data." for n in unverified(text, tool_results, earlier)),
+            *(Probleem(f"{n} staat niet in de opgehaalde data.") for n in unverified(text, tool_results, earlier)),
             *ontbrekende_schooljaren(last_user_msg, tool_results),
             *ontbrekende_instellingen(last_user_msg, tool_results),
             *onvolledige_selecties(text, tool_results),
@@ -165,6 +169,7 @@ async def run(
             *verkeerd_gebonden(text, tool_results),
             *verkeerde_kpi_periodes(text, tool_results),
             *genegeerde_keuze(session.get("clarify_keuzes", []), text),
+            *metatekst(text),
         ]
 
     async def withdraw(problems: list[str]) -> None:
@@ -242,6 +247,6 @@ async def run(
         "content": text_content,
         "actions": [],
         **({"truncated": True} if truncated else {}),
-        **({"controle": result.problems} if result.problems else {}),
+        **({"controle": meldingen(result.problems)} if result.problems else {}),
     })
     return text_content

@@ -131,6 +131,34 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     assert "controle" not in events[-1]
 
 
+def test_card_shows_the_finding_and_the_model_gets_the_instruction(monkeypatch):
+    """#215: onder de kaart stond "Selecteer STUDIEJAAR=2025." — een opdracht aan het model."""
+    import pandas as pd
+
+    from tools import store
+    from tools.store import KeyMeta
+
+    store.clear()
+    store.put("duo:p01hoinges:3", pd.DataFrame({"STUDIEJAAR": [2024, 2025], "AANTAL": [7418, 7408]}),
+              KeyMeta(bron="duo", dataset="p01hoinges", resource=3, periodekolom="STUDIEJAAR", schooljaren=(2024, 2025)))
+    query = {"id": "a", "name": "query_data",
+             "arguments": json.dumps({"data_key": "duo:p01hoinges:3", "filters": {"STUDIEJAAR": 2024}})}
+    from tools.query import query_data
+
+    rows = query_data("duo:p01hoinges:3", filters={"STUDIEJAAR": 2024})
+    _, events = _chat(monkeypatch, [
+        StreamResult(text="", tool_calls=[query]),
+        StreamResult(text="In 2025/26 waren het 7.418.", tool_calls=[]),
+        StreamResult(text="De correctie is terecht: in 2025/26 waren het 7.418.", tool_calls=[]),
+    ], [{"role": "user", "content": "Hoeveel deeltijdstudenten had de HU in 2025/26?"}], tool_result=rows)
+    store.clear()
+
+    controle = events[-1]["controle"]
+    assert any("2025/26" in m for m in controle)
+    assert any("eerdere versie" in m for m in controle)
+    assert not any("Selecteer" in m or "Schrijf" in m for m in controle)
+
+
 def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
     """Live-audit 2: gevraagd de HU, gefilterd op 30TX (Aeres), reeks van Aeres getoond (#143)."""
     import pandas as pd

@@ -13,6 +13,7 @@ import re
 from tools import periode
 
 from .binding import segmenten
+from .probleem import Probleem
 
 
 def _kpis(tool_results: list[str]) -> list[dict]:
@@ -50,8 +51,9 @@ def verkeerde_kpi_periodes(tekst: str, tool_results: list[str]) -> list[str]:
                 continue
             if (min(genoemd), max(genoemd)) != bereik:
                 metric = kpi.get("bron", {}).get("metric", "KPI")
-                problemen.append(
-                    f"{kpi['value']} is de {metric} van {van} tot {tot} (compute_kpi), maar de tekst noemt "
-                    f"{periode.label(min(genoemd))} tot {periode.label(max(genoemd))}. Noem de periode uit `periode`."
-                )
+                problemen.append(Probleem(
+                    f"{kpi['value']} is de {metric} van {van} tot {tot}, maar de tekst noemt "
+                    f"{periode.label(min(genoemd))} tot {periode.label(max(genoemd))}.",
+                    "Die waarde komt uit compute_kpi: noem de periode uit `periode`.",
+                ))
     return list(dict.fromkeys(problemen))
