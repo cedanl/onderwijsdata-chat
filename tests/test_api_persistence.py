@@ -65,6 +65,21 @@ def test_put_and_get_conversation(client):
     assert data[0]["title"] == "Test"
 
 
+def test_get_conversations_next_page(client):
+    for i in range(4):
+        client.put(f"/api/conversations/c{i}", json={"title": f"C{i}", "timestamp": (i + 1) * 1000, "messages": []})
+    eerste = client.get("/api/conversations", params={"limit": 2}).json()
+    laatste = eerste[-1]
+    rest = client.get(
+        "/api/conversations", params={"limit": 2, "before_ts": laatste["timestamp"], "before_id": laatste["id"]}
+    ).json()
+    assert [c["id"] for c in eerste + rest] == ["c3", "c2", "c1", "c0"]
+
+
+def test_get_conversations_limit_is_capped(client):
+    assert client.get("/api/conversations", params={"limit": 1000}).status_code == 422
+
+
 def test_delete_conversation(client):
     client.put("/api/conversations/c1", json={"title": "X", "timestamp": 1, "messages": []})
     resp = client.delete("/api/conversations/c1")

@@ -11,6 +11,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _MAX_CONVERSATIONS = 15
+# A cursor before every conversation, so the first page needs no separate query.
+_FIRST_PAGE = (2**62, "")
 _USE_POSTGRES = bool(os.getenv("POSTGRES_URI"))
 
 
@@ -255,12 +257,22 @@ def init_db() -> None:
     conn.close()
 
 
-def list_conversations(username: str) -> list[dict]:
+def list_conversations(
+    username: str, before: tuple[int, str] | None = None, limit: int = _MAX_CONVERSATIONS
+) -> list[dict]:
+    """Newest first, one page at a time (#123).
+
+    The next page starts after `before`, the (timestamp, id) of the last
+    conversation on the previous one; id breaks ties between equal timestamps.
+    """
+    ts, conv_id = before or _FIRST_PAGE
     conn = _connect()
     rows = _execute(
         conn,
-        "SELECT id, title, timestamp, messages FROM conversations WHERE username = ? ORDER BY timestamp DESC LIMIT ?",
-        (username, _MAX_CONVERSATIONS),
+        "SELECT id, title, timestamp, messages FROM conversations "
+        "WHERE username = ? AND (timestamp < ? OR (timestamp = ? AND id < ?)) "
+        "ORDER BY timestamp DESC, id DESC LIMIT ?",
+        (username, ts, ts, conv_id, limit),
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
