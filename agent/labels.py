@@ -34,6 +34,11 @@ _TEKST_PERSONEN = re.compile(r"\bpersonen\b", re.IGNORECASE)
 # personen, niet om inschrijvingen") is toelichting, geen toeschrijving (#214).
 _ZIN_EINDE = re.compile(r"[!?;\n]|\.(?!\d)")
 _ONTKENNING = re.compile(r"\b(?:geen|niet|nooit)\b(?:\W+\w+){0,3}?\W*$", re.IGNORECASE)
+# Of erna, in DUO's eigen woorden: "Inschrijvingen … worden niet meegeteld" (#239).
+_UITGESLOTEN = re.compile(r"\bniet\s+(?:meegeteld|meegenomen|geteld)\b|\bbuiten\s+beschouwing\b", re.IGNORECASE)
+_WOORD = re.compile(r"\w+")
+# Zoveel woorden rond het woord moeten letterlijk in de teldefinitie staan om als citaat te tellen.
+_CITAAT_VOOR, _CITAAT_NA = 2, 4
 
 
 def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
@@ -61,12 +66,24 @@ def onbekende_datasets(tekst: str) -> list[str]:
     ]
 
 
-def _toegeschreven(verkeerd: re.Pattern, tekst: str) -> bool:
-    """Staat het woord ergens als bewering in de tekst, dus niet in een ontkenning?"""
+def _geciteerd(zin: str, start: int, definitie: str) -> bool:
+    """Staat het woord met zijn omgeving letterlijk in de DUO-teldefinitie (#239)?"""
+    woorden = _WOORD.findall(zin.lower())
+    i = len(_WOORD.findall(zin[:start]))
+    venster = woorden[max(0, i - _CITAAT_VOOR): i + _CITAAT_NA]
+    return f" {' '.join(venster)} " in f" {definitie} "
+
+
+def _toegeschreven(verkeerd: re.Pattern, tekst: str, definities: list[str]) -> bool:
+    """Staat het woord ergens als bewering in de tekst, dus niet in een ontkenning of citaat?"""
+    definitie = " ".join(" ".join(_WOORD.findall(d.lower())) for d in definities)
     for zin in _ZIN_EINDE.split(tekst):
         for treffer in verkeerd.finditer(zin):
             voor = zin[: treffer.start()].rsplit(" maar ", 1)[-1]
-            if not _ONTKENNING.search(voor):
+            bijzin = zin[treffer.end():].split(",", 1)[0]
+            if _ONTKENNING.search(voor) or _UITGESLOTEN.search(bijzin):
+                continue
+            if not _geciteerd(zin, treffer.start(), definitie):
                 return True
     return False
 
@@ -87,17 +104,19 @@ def verkeerde_teleenheid(tekst: str, tool_results: list[str]) -> list[str]:
     en p03 noemt terecht beide.
     """
     eenheden = {}
+    definities = []
     for key in data_keys(tool_results):
         known = store.meta(key)
         if known and (eenheid := _teleenheid(known.teldefinitie)):
             eenheden.setdefault(eenheid, known.dataset)
+            definities.append(known.teldefinitie)
     if len(eenheden) != 1:
         return []
     [(eenheid, dataset)] = eenheden.items()
     verkeerd, woord = (
         (_TEKST_INSCHRIJVINGEN, "inschrijvingen") if eenheid == "personen" else (_TEKST_PERSONEN, "personen")
     )
-    if not _toegeschreven(verkeerd, tekst):
+    if not _toegeschreven(verkeerd, tekst, definities):
         return []
     return [
         f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}. "
