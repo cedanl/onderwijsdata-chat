@@ -1,10 +1,12 @@
 """
-Application configuration and environment validation.
-Ensures all required settings are available at startup.
+Serverconfiguratie en validatie bij het opstarten: logging, CORS, database, OIDC.
+Runtime-instellingen (model, limieten, vlaggen) staan in core/config.py (#234).
 """
 
 import logging
 import os
+
+from core.config import MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class Config:
     """Application configuration from environment variables."""
 
     # Required settings
-    MODEL: str = os.getenv("MODEL", "willma/default")
+    MODEL: str = MODEL  # één default, in core/config.py (#234)
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
 
