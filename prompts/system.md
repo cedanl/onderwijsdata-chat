@@ -65,7 +65,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 ## Databronnen
 - **CBS** (266 datasets, waarvan ~105 actueel): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
-- **DUO** (57 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
+- **DUO** (56 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 
 ## Catalogusvelden
 

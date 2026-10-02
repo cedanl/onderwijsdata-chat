@@ -10,7 +10,7 @@ Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `E
 
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
-| **Instroom** | `/api/dashboard/instroom` | Eerstejaars inschrijvingen, trends per opleiding |
+| **Instroom** | `/api/dashboard/instroom` | Ingeschrevenen per jaar, verdeling over sectoren, gediplomeerden; bij HO ook geslacht en eerstejaars |
 | **Regio** | `/api/dashboard/regio` | Regionale vergelijking, SBB sectorkamers |
 | **Nationaal** | `/api/dashboard/nationaal` | Nationale onderwijsstatistieken, KPI's |
 | **Rendement** | `/api/dashboard/rendement` | Diplomering, doorstroom, uitval |
