@@ -1,9 +1,12 @@
 from pathlib import Path
 
+from core.config import SEARCH_CATALOG_LIMIT
+
 _PROMPT_DIR = Path(__file__).parent
 _GEEN_VOORKEUR = "Geen voorkeur"
 
-SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text()
+# Limieten komen uit de code, zodat prompt en afdwinging niet uit elkaar lopen (#52).
+SYSTEM_PROMPT = (_PROMPT_DIR / "system.md").read_text().replace("{ZOEKLIMIET}", str(SEARCH_CATALOG_LIMIT))
 
 
 def build_persona_block(settings: dict) -> str:

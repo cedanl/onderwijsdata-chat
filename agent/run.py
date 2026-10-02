@@ -4,7 +4,7 @@ import logging
 
 import plotly.io as pio
 
-from core.config import MAX_TOOL_ITERATIONS, MODEL
+from core.config import MAX_TOOL_ITERATIONS, MODEL, SEARCH_CATALOG_LIMIT
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -24,7 +24,7 @@ from .stream import Emit
 
 logger = logging.getLogger(__name__)
 
-_TOOL_LIMITS: dict[str, int] = {"search_catalog": 5}
+_TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
 _MAX_TOOL_RESULT_CHARS = 12000
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history

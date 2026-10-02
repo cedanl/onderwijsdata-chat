@@ -139,11 +139,6 @@ def _filter_suggesties(origineel, filters: dict) -> dict:
     return hints
 
 
-def _row_count(n: int, complete: bool) -> dict:
-    """Rijtelling onder een naam die past: een afgekapte pagina heeft geen totaal (#177, #186)."""
-    return {"totaal_rijen": n} if complete else {"opgehaalde_rijen": n, "volledig": False}
-
-
 def _empty_melding(data_key: str, complete: bool) -> str:
     if complete:
         return (
@@ -199,7 +194,7 @@ def query_data(
             return json.dumps(
                 {
                     "data_key": data_key,
-                    **_row_count(0, complete),
+                    **store.rijtelling(0, complete),
                     "rijen": [],
                     "melding": _empty_melding(data_key, complete),
                     "suggesties": _filter_suggesties(origineel, filters),
@@ -269,7 +264,7 @@ def query_data(
         {k: _json_waarde(v, afronden) for k, v in row.items()}
         for row in df.head(adaptive_max).to_dict(orient="records")
     ]
-    result: dict = {"data_key": result_key, **_row_count(total, complete), "rijen": rows}
+    result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
     if labels:
         result["instellingen"] = labels
     if notes:

@@ -168,6 +168,14 @@ def _column_definition(col: str, col_defs: dict) -> str | None:
     return col_defs.get(col, {}).get("description") or None
 
 
+def _page_size(top) -> int:
+    """The most rows one call can return; a non-numeric $top falls back to our limit."""
+    try:
+        return min(int(top), CBS_ROW_LIMIT)
+    except (TypeError, ValueError):
+        return CBS_ROW_LIMIT
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
@@ -193,12 +201,15 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
+    # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
+    truncated = len(rows) >= _page_size(params["$top"])
     store.put(
         key,
         df,
         store.KeyMeta(
             bron="cbs",
             dataset=dataset_id,
+            volledig=not truncated,
             periodekolom=kolom,
             schooljaren=schooljaren,
             laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
@@ -219,12 +230,11 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         for col in df.columns
     ]
     preview = df.head(_SAMPLE_ROWS).to_dict(orient="records")
-    truncated = len(rows) >= CBS_ROW_LIMIT
 
     result = {
         "data_key": key,
         "catalogus_titel": catalogus_titel(dataset_id),
-        "totaal_rijen": len(df),
+        **store.rijtelling(len(df), not truncated),
         "kolommen": schema,
         "preview": preview,
     }
@@ -244,7 +254,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         )
 
     if truncated:
-        result["waarschuwing"] = f"Afgekapt op {CBS_ROW_LIMIT} rijen. Verfijn $filter of $select voor volledigere data."
+        result["waarschuwing"] = f"Afgekapt op {len(df)} rijen. Verfijn $filter of $select voor volledigere data."
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
 

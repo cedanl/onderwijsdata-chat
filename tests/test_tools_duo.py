@@ -131,3 +131,42 @@ def test_successful_load_resolves_resource_by_name_substring():
         data["resource_titel"]
         == "Eerstejaarsingeschrevenen wetenschappelijk onderwijs niveau opleiding in het domein hoger onderwijs"
     )
+
+
+# #21: één resource, één store-key, of het model hem op nummer of op naam noemt.
+_RESOURCES = [{"naam": "Ingeschrevenen hbo"}, {"naam": "Ingeschrevenen wetenschappelijk onderwijs"}]
+
+
+def _load_twice(first, second):
+    with (
+        patch("tools.duo._duo.resources", return_value=_RESOURCES),
+        patch("tools.duo._duo.load", return_value=_make_df()) as load,
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
+        a = json.loads(get_duo_data("p01hoinges-t21", first))
+        b = json.loads(get_duo_data("p01hoinges-t21", second))
+    return a, b, load
+
+
+def test_resource_op_naam_en_op_nummer_geeft_dezelfde_key():
+    a, b, load = _load_twice(1, "wetenschappelijk")
+    assert a["data_key"] == b["data_key"] == "duo:p01hoinges-t21:1"
+    assert load.call_count == 1  # de tweede aanroep komt uit de store
+
+
+def test_resource_als_cijferstring_is_een_nummer():
+    a, b, load = _load_twice("1", 1)
+    assert a["data_key"] == b["data_key"] == "duo:p01hoinges-t21:1"
+    # riodata zoekt een str op naam: "1" zou een resource met een 1 in de naam pakken.
+    assert load.call_args.args == ("p01hoinges-t21", 1)
+
+
+def test_onbekende_resourcenaam_houdt_de_foutmelding_van_de_bron():
+    with (
+        patch("tools.duo._duo.resources", return_value=_RESOURCES),
+        patch("tools.duo._duo.load", side_effect=ValueError("Geen resource met 'mbo'")),
+        patch("tools.duo._duo.catalog", return_value=[]),
+    ):
+        result = get_duo_data("p01hoinges-t21b", "mbo")
+    assert "Geen resource met 'mbo'" in result
