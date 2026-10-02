@@ -376,3 +376,10 @@ def test_kpi_snippet_laadt_zelf_en_rekent_hetzelfde(duo_in_app_en_snippet, metri
     app = json.loads(compute_kpi(**args))
     namespace = _run(generate("compute_kpi", args))
     assert namespace["kpi"] == pytest.approx(app["raw"])
+
+
+def test_query_data_snippet_rondt_prognoses_af_zoals_de_app():
+    """De snippet toont hetzelfde getal als de tool: hele personen bij een prognose (#247)."""
+    store.put("duo:voprognoses:0", pd.DataFrame([{"AANTAL": 1.5}]), store.KeyMeta(
+        bron="duo", dataset="voprognoses", laad=("get_duo_data", {"dataset_id": "voprognoses", "resource": 0})))
+    assert "print(df.round())" in generate("query_data", {"data_key": "duo:voprognoses:0"})

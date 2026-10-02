@@ -12,6 +12,7 @@ from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
 from . import store
+from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
 from .plot import resolve_chart_type
 from .query import _parse_filter_key
@@ -158,7 +159,8 @@ def _query_data_snippet(args: dict) -> str:
     if group_by and aggregate:
         lines += _aggregatieregels(group_by, aggregate)
 
-    lines.append("print(df)")
+    # Prognoses op hele personen, zoals query_data ze teruggeeft (#247).
+    lines.append("print(df.round())" if is_prognose(store.meta(args.get("data_key", ""))) else "print(df)")
     return "\n".join(lines)
 
 

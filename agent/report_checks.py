@@ -18,7 +18,12 @@ from typing import TYPE_CHECKING
 from agent.binding import verkeerd_gebonden
 from agent.grounding import unsourced_numbers
 from agent.kpi_periode import verkeerde_kpi_periodes
-from agent.labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
+from agent.labels import (
+    onbekende_datasets,
+    ongebruikte_bronnen,
+    verkeerde_opleidingsvormen,
+    verkeerde_teleenheid,
+)
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -103,6 +108,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
 
     problems += verkeerde_opleidingsvormen(text)
     problems += onbekende_datasets(text)
+    problems += ongebruikte_bronnen(text, sources)
     problems += verkeerde_teleenheid(text, sources)
     problems += verkeerd_gebonden(text, sources)
     problems += verkeerde_kpi_periodes(text, sources)

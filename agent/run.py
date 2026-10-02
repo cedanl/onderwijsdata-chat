@@ -12,7 +12,7 @@ from .binding import verkeerd_gebonden
 from .grounding import unverified
 from .history import trim
 from .kpi_periode import verkeerde_kpi_periodes
-from .labels import onbekende_datasets, verkeerde_opleidingsvormen, verkeerde_teleenheid
+from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen, verkeerde_teleenheid
 from .loop import ToolCall, tool_loop
 from .models import build_system
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
@@ -159,6 +159,7 @@ async def run(
             *onvolledige_selecties(text, tool_results),
             *verkeerde_opleidingsvormen(text),
             *onbekende_datasets(text),
+            *ongebruikte_bronnen(text, tool_results),
             *verkeerde_teleenheid(text, tool_results),
             *verkeerd_gebonden(text, tool_results),
             *verkeerde_kpi_periodes(text, tool_results),

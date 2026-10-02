@@ -24,6 +24,8 @@ _CODE_VORM = re.compile(rf"\b({_CODES})\s*(?:=|:|staat voor|betekent)\s*({_VORME
 
 # DUO-ID's (p01hoinges, p02ho1ejrs) en CBS-tabelnummers (85423NED).
 _DATASET_ID = re.compile(r"\b(p\d{2}[a-z0-9]{3,}|\d{5}(?:NED|ENG))\b")
+# De Bronnen-sectie uit prompts/system.md, tot de Definities of het einde (#213).
+_BRONNEN = re.compile(r"\*\*Bronnen\*\*(.*?)(?=\*\*Definities\*\*|\Z)", re.DOTALL)
 
 # Wat een DUO-key telt, uit het label van zijn teldefinitie ("Ingeschrevenen: …").
 # p01 en p02 tellen hoofdinschrijvingen als personen, p03 alle inschrijvingen (#172).
@@ -63,6 +65,26 @@ def onbekende_datasets(tekst: str) -> list[str]:
         f"Dataset {dataset_id} bestaat niet in de catalogus; noem de dataset-ID zoals de tool hem gaf."
         for dataset_id in sorted(set(_DATASET_ID.findall(tekst)))
         if catalogus_titel(dataset_id) == dataset_id
+    ]
+
+
+def ongebruikte_bronnen(tekst: str, tool_results: list[str]) -> list[str]:
+    """Dataset-ID's in de Bronnen-sectie die bestaan, maar niet in de data van deze beurt zitten.
+
+    Alleen de Bronnen-sectie: daar wordt een dataset als bron opgegeven. Elders mag
+    een ID als context staan ("DUO publiceert ook p03hoinschr"). Zonder data in de
+    beurt zwijgt de controle: een vervolgvraag mag de bron van een eerdere beurt noemen.
+    Een ID dat niet bestaat meldt onbekende_datasets al.
+    """
+    gebruikt = {known.dataset.lower() for key in data_keys(tool_results) if (known := store.meta(key))}
+    sectie = _BRONNEN.search(tekst)
+    if not gebruikt or not sectie:
+        return []
+    return [
+        f"Dataset {dataset_id} staat in de bronnen, maar is in deze beurt niet gebruikt; "
+        f"noem alleen de datasets waar de getallen uit komen."
+        for dataset_id in sorted(set(_DATASET_ID.findall(sectie.group(1))))
+        if dataset_id.lower() not in gebruikt and catalogus_titel(dataset_id) != dataset_id
     ]
 
 
