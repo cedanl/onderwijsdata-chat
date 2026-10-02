@@ -76,6 +76,10 @@ export async function fetchFeedbackQuestions() {
   return apiFetch('/api/feedback/questions')
 }
 
+export async function fetchFeedbackGiven() {
+  return apiFetch('/api/feedback/given')
+}
+
 export async function postFeedback(feedback) {
   return apiFetch('/api/feedback', { method: 'POST', body: JSON.stringify(feedback) })
 }

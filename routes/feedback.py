@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, StringConstraints
 
-from core.auth import get_current_user
+from core.auth import FALLBACK_USER, get_current_user
 from core.config import FEEDBACK_ENABLED
 from core.feedback import QUESTIONS, validate_answers
 from core.rate_limit import RateLimiter
@@ -34,6 +34,14 @@ def _require_enabled() -> None:
 @router.get("/api/feedback/questions", dependencies=[Depends(_require_enabled)])
 async def get_questions() -> list[dict]:
     return list(QUESTIONS)
+
+
+@router.get("/api/feedback/given", dependencies=[Depends(_require_enabled)])
+async def get_given(username: str = Depends(get_current_user)) -> list[str]:
+    # Gasten delen één naam; dan zou feedback van de één bij iedereen als gegeven tonen.
+    if username == FALLBACK_USER:
+        return []
+    return persistence_db.list_feedback_workbooks(username)
 
 
 @router.post("/api/feedback", dependencies=[Depends(_require_enabled)])

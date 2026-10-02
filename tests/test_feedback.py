@@ -129,6 +129,33 @@ def test_post_feedback_stores_it_for_the_user(client):
     assert [(r["username"], r["workbook_id"]) for r in rows] == [("gast", "wb-1")]
 
 
+def test_list_feedback_workbooks_per_user(db):
+    db.add_feedback("alice", "wb-2", "report", "", {"nuttig": "4"})
+    db.add_feedback("alice", "wb-1", "report", "", {"nuttig": "3"})
+    db.add_feedback("alice", "wb-1", "report", "", {"nuttig": "5"})
+    db.add_feedback("bob", "wb-3", "report", "", {"nuttig": "5"})
+    assert db.list_feedback_workbooks("alice") == ["wb-1", "wb-2"]
+    assert db.list_feedback_workbooks("carol") == []
+
+
+def test_given_lists_reports_with_feedback_for_logged_in_user(client):
+    from core.auth import get_current_user
+    from persistence import db
+    from server import app
+    db.add_feedback("alice", "wb-1", "report", "", {"nuttig": "4"})
+    app.dependency_overrides[get_current_user] = lambda: "alice"
+    try:
+        assert client.get("/api/feedback/given").json() == ["wb-1"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_given_is_empty_for_guests(client):
+    # Alle gasten heten "gast": hun feedback mag niet bij elkaar als gegeven tonen.
+    assert client.post("/api/feedback", json=_body()).status_code == 200
+    assert client.get("/api/feedback/given").json() == []
+
+
 def test_post_feedback_rejects_invalid_answers(client):
     resp = client.post("/api/feedback", json=_body(onbekend="x"))
     assert resp.status_code == 422
