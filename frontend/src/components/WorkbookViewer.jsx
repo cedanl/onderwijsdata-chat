@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi } from '../api'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
+import FeedbackModal from './FeedbackModal'
 
 const BUILTIN_COMPONENTS = {
   [BUILTIN_MIJN_INSTELLING.id]: InlineDashboardMijnInstelling,
@@ -10,13 +11,21 @@ const BUILTIN_COMPONENTS = {
   [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
 }
 
-export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards' }) {
+export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false }) {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState(null)
   const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const titleInputRef = useRef(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackThanks, setFeedbackThanks] = useState(false)
+
+  useEffect(() => {
+    if (!feedbackThanks) return
+    const timer = setTimeout(() => setFeedbackThanks(false), 4000)
+    return () => clearTimeout(timer)
+  }, [feedbackThanks])
 
   const handleRefresh = useCallback(async () => {
     const spec = workbook?.dashboardSpec
@@ -95,8 +104,20 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
             )}
           </span>
         )}
-        <div />
+        {feedbackEnabled ? (
+          <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
+            Feedback geven
+          </button>
+        ) : <div />}
       </div>
+      {showFeedback && (
+        <FeedbackModal
+          workbook={workbook}
+          onClose={() => setShowFeedback(false)}
+          onSubmitted={() => { setShowFeedback(false); setFeedbackThanks(true) }}
+        />
+      )}
+      {feedbackThanks && <div className="toast info" role="status">Bedankt voor je feedback!</div>}
       {saveError && (
         <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{saveError}</div>
       )}

@@ -2,7 +2,9 @@ import json
 import logging
 import os
 import sqlite3
+import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -170,6 +172,20 @@ def _migrate(conn: Any) -> None:
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
 
 
+# Eén rij per inzending; answers is JSON {vraag-id: antwoord} (zie core/feedback.py).
+_FEEDBACK_TABLE = """
+    CREATE TABLE IF NOT EXISTS feedback (
+        id           TEXT PRIMARY KEY,
+        username     TEXT NOT NULL,
+        workbook_id  TEXT NOT NULL,
+        report_type  TEXT NOT NULL,
+        report_title TEXT NOT NULL DEFAULT '',
+        answers      TEXT NOT NULL,
+        created_at   TEXT NOT NULL
+    )
+"""
+
+
 def init_db() -> None:
     conn = _connect()
     cursor = conn.cursor()
@@ -206,6 +222,7 @@ def init_db() -> None:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
         )
+        cursor.execute(_FEEDBACK_TABLE)
         cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
         cursor.close()
@@ -238,6 +255,7 @@ def init_db() -> None:
 
             CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
         """)
+        conn.execute(_FEEDBACK_TABLE)
 
     _migrate(conn)
     conn.close()
@@ -357,6 +375,23 @@ def delete_workbook(username: str, wb_id: str) -> None:
         conn,
         "DELETE FROM workbooks WHERE id = ? AND username = ?",
         (wb_id, username),
+    )
+    conn.commit()
+    conn.close()
+
+
+def add_feedback(
+    username: str, workbook_id: str, report_type: str, report_title: str, answers: dict[str, str],
+) -> None:
+    conn = _connect()
+    _execute(
+        conn,
+        "INSERT INTO feedback (id, username, workbook_id, report_type, report_title, answers, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            str(uuid.uuid4()), username, workbook_id, report_type, report_title,
+            json.dumps(answers), datetime.now(UTC).isoformat(timespec="seconds"),
+        ),
     )
     conn.commit()
     conn.close()

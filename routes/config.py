@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from core.config import DASHBOARDS_ENABLED
+from core.config import DASHBOARDS_ENABLED, FEEDBACK_ENABLED
 from tools.catalog import dataset_counts
 
 router = APIRouter(tags=["config"])
@@ -11,6 +11,7 @@ async def get_config():
     """Return frontend configuration (public endpoint, no auth required)."""
     return {
         "dashboards_enabled": DASHBOARDS_ENABLED,
+        "feedback_enabled": FEEDBACK_ENABLED,
     }
 
 

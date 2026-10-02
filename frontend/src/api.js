@@ -13,7 +13,12 @@ async function apiFetch(path, options = {}) {
   if (res.status === 401) throw Object.assign(new Error('Unauthorized'), { status: 401 })
   if (!res.ok) {
     let detail = `API ${res.status}`
-    try { const body = await res.json(); if (body.error) detail = body.error } catch { /* noop */ }
+    try {
+      const body = await res.json()
+      // Own routes answer {error}; FastAPI's HTTPException answers {detail}.
+      if (body.error) detail = body.error
+      else if (typeof body.detail === 'string') detail = body.detail
+    } catch { /* noop */ }
     throw new Error(detail)
   }
   return res.json()
@@ -65,4 +70,12 @@ export async function refreshDashboard(spec, settings = {}) {
       settings,
     }),
   })
+}
+
+export async function fetchFeedbackQuestions() {
+  return apiFetch('/api/feedback/questions')
+}
+
+export async function postFeedback(feedback) {
+  return apiFetch('/api/feedback', { method: 'POST', body: JSON.stringify(feedback) })
 }
