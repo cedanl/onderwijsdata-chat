@@ -263,6 +263,7 @@ async def _handle_message(
     model = session["chat_settings"].get("model") or None
     session["current_model"] = model
     session["clarify_rondes"] = 0
+    session["clarify_keuzes"] = []
     if content in TAG_STARTERS:
         tags = TAG_STARTERS[content]
         label = content.removeprefix("Verken ")
@@ -280,6 +281,8 @@ async def _handle_clarification(
     choice = msg.get("choice", "")
     model = session.get("current_model")
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
+    # Afbakening voor de controle na het antwoord, niet alleen tekst in het gesprek (#246).
+    session.setdefault("clarify_keuzes", []).append(choice)
     return asyncio.create_task(_process_message(choice, session, emit, model))
 
 

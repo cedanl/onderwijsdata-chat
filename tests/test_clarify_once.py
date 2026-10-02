@@ -52,3 +52,14 @@ def test_a_clarification_choice_counts_as_a_round_and_a_new_question_resets_it()
 
     _run(chat._handle_message, {"content": "Hoeveel studenten heeft de RUG?"}, session, _emit, None)
     assert session["clarify_rondes"] == 0
+
+
+def test_een_gekozen_optie_blijft_bewaard_tot_een_nieuwe_vraag():
+    """De keuze is afbakening, geen losse tekst in het gesprek (#246)."""
+    session = chat._new_session()
+
+    _run(chat._handle_clarification, {"choice": "2023 (laatste werkelijke cijfers)"}, session, _emit, None)
+    assert session["clarify_keuzes"] == ["2023 (laatste werkelijke cijfers)"]
+
+    _run(chat._handle_message, {"content": "Hoeveel studenten heeft de RUG?"}, session, _emit, None)
+    assert session["clarify_keuzes"] == []
