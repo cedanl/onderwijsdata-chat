@@ -43,3 +43,8 @@ test-results/
 
 # Eval-uitvoer hoort in CI-artifacts, niet in git (#208)
 eval_results/
+
+# UX-audit uitvoer (screenshots, trace, har)
+audit/out/
+audit/node_modules/
+!audit/package.json

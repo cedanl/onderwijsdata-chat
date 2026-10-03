@@ -1,0 +1,14 @@
+{
+  "name": "onderwijsdata-chat-ux-audit",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Playwright-gebaseerde gebruikerservaringsaudit die elke feature van de app aanraakt",
+  "scripts": {
+    "audit": "node run-audit.mjs",
+    "install:browsers": "playwright install --with-deps chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}

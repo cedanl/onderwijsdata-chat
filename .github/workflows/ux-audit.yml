@@ -1,0 +1,70 @@
+name: UX-audit (Playwright)
+
+# Draait de gebruikerservaringsaudit uit audit/run-audit.mjs tegen een echte
+# omgeving. Alleen op de audit-branch: dit is geen onderdeel van de CI voor main.
+#
+# Secrets (gh secret set): AUDIT_BASE_URL, AUDIT_USER, AUDIT_PASS
+# Handmatig opnieuw: gh run rerun <run-id>  (of een wijziging in audit/ pushen)
+
+on:
+  push:
+    branches:
+      - arena/01a101f4-onderwijsdata-chat
+    paths:
+      - 'audit/**'
+      - '.github/workflows/ux-audit.yml'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Te auditen omgeving'
+        required: false
+        default: 'https://onderwijsdata-chat.test.sdp.surf.nl'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installeer Playwright
+        working-directory: audit
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Draai de audit
+        working-directory: audit
+        env:
+          AUDIT_BASE_URL: ${{ inputs.base_url || secrets.AUDIT_BASE_URL }}
+          AUDIT_USER: ${{ secrets.AUDIT_USER }}
+          AUDIT_PASS: ${{ secrets.AUDIT_PASS }}
+          AUDIT_OUT: ${{ runner.temp }}/audit-out
+        run: node run-audit.mjs 2>&1 | tee audit-log.txt
+
+      - name: Verzamel resultaten
+        if: always()
+        working-directory: audit
+        env:
+          AUDIT_OUT: ${{ runner.temp }}/audit-out
+        run: |
+          mkdir -p collected
+          cp -r "$AUDIT_OUT"/. collected/ 2>/dev/null || true
+          cp audit-log.txt collected/ 2>/dev/null || true
+          echo "steps:" >> collected/summary.txt
+          node -e "const r=require('./collected/report.json');for(const s of r.steps)console.log(\` \${s.status} \${String(s.n).padStart(2)} \${s.name} (\${s.ms}ms)\`)" 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux-audit-resultaten
+          path: audit/collected
+          retention-days: 14
+          if-no-files-found: warn
