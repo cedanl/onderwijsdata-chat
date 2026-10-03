@@ -1,0 +1,24 @@
+13:57:31 [ ok ] 01 server-endpoints (1531 ms)
+13:57:34   → [laag] ui: Geen favicon
+13:57:34   → [hoog] auth: Geen inlogformulier gevonden op /
+13:57:34 [ ok ] 02 inlogscherm-laden (3125 ms)
+13:57:35 [ ok ] 03 inloggen-verkeerd-wachtwoord (430 ms)
+13:57:55   → [middel] inloggen: Stap faalde
+13:57:55 [FOUT] 04 inloggen (20071 ms)
+13:58:55 [ ok ] 05 onboarding-modal (60010 ms)
+13:59:25   → [middel] profiel-instellen: Stap faalde
+13:59:25 [FOUT] 06 profiel-instellen (30006 ms)
+13:59:27 [ ok ] 07 startpagina (1478 ms)
+13:59:43   → [middel] chat-verbinden: Stap faalde
+13:59:44 [FOUT] 08 chat-verbinden (15003 ms)
+14:00:14   → [middel] vraag: Hoeveel studenten zijn er?: Stap faalde
+14:00:14 [FOUT] 09 vraag: Hoeveel studenten zijn er? (30003 ms)
+file:///home/runner/work/onderwijsdata-chat/onderwijsdata-chat/audit/run-audit.mjs:383
+  return rec
+  ^
+
+ReferenceError: rec is not defined
+    at ask (file:///home/runner/work/onderwijsdata-chat/onderwijsdata-chat/audit/run-audit.mjs:383:3)
+    at async file:///home/runner/work/onderwijsdata-chat/onderwijsdata-chat/audit/run-audit.mjs:386:1
+
+Node.js v22.23.3

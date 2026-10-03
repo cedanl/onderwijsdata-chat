@@ -1,0 +1,232 @@
+{
+  "meta": {
+    "base": "https://onderwijsdata-chat.test.sdp.surf.nl",
+    "user": "demo",
+    "startedAt": "2026-10-03T13:57:29.191Z",
+    "chatTimeoutMs": 420000,
+    "playwright": "1.63.0"
+  },
+  "endpoints": [
+    {
+      "path": "/health",
+      "status": 200,
+      "ms": 834,
+      "body": "{\"status\":\"ok\",\"timestamp\":1791035850.2930639}"
+    },
+    {
+      "path": "/version",
+      "status": 200,
+      "ms": 118,
+      "body": "{\"version\":\"1.8.6\",\"commit\":\"dd1c0857\"}"
+    },
+    {
+      "path": "/info",
+      "status": 200,
+      "ms": 116,
+      "body": "{\"name\":\"Onderwijsdata Chat\",\"oidc_enabled\":true,\"database_type\":\"PostgreSQL\",\"environment\":\"development\"}"
+    },
+    {
+      "path": "/api/config",
+      "status": 200,
+      "ms": 116,
+      "body": "{\"dashboards_enabled\":false,\"feedback_enabled\":true}"
+    },
+    {
+      "path": "/api/auth/status",
+      "status": 200,
+      "ms": 115,
+      "body": "{\"required\":true,\"oidc_enabled\":true}"
+    },
+    {
+      "path": "/api/catalog/counts",
+      "status": 200,
+      "ms": 116,
+      "body": "{\"CBS\":266,\"DUO\":56,\"RIO\":14}"
+    }
+  ],
+  "steps": [
+    {
+      "n": 1,
+      "name": "server-endpoints",
+      "status": "ok",
+      "ms": 1531,
+      "notes": [
+        "6/6 endpoints 200"
+      ],
+      "data": {
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.plot.ly; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws:; font-src ",
+          "x-frame-options": "DENY",
+          "strict-transport-security": "max-age=34214400; includeSubDomains",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "uvicorn, "
+        }
+      },
+      "shot": "01-server-endpoints.png"
+    },
+    {
+      "n": 2,
+      "name": "inlogscherm-laden",
+      "status": "ok",
+      "ms": 3125,
+      "notes": [],
+      "data": {
+        "url": "https://onderwijsdata-chat.test.sdp.surf.nl/",
+        "title": "openEDUdata+",
+        "htmlLang": "nl",
+        "metaDescription": "(geen)",
+        "favicon": false,
+        "loginFormPresent": false,
+        "autocomplete": {},
+        "labels": [],
+        "sramButton": 0
+      },
+      "shot": "02-inlogscherm-laden.png"
+    },
+    {
+      "n": 3,
+      "name": "inloggen-verkeerd-wachtwoord",
+      "status": "ok",
+      "ms": 430,
+      "notes": [],
+      "data": {
+        "ms": 399,
+        "alert": "Ongeldige inloggegevens"
+      },
+      "shot": "03-inloggen-verkeerd-wachtwoord.png"
+    },
+    {
+      "n": 4,
+      "name": "inloggen",
+      "status": "fout",
+      "ms": 20071,
+      "notes": [],
+      "data": {},
+      "error": "page.waitForSelector: Timeout 20000ms exceeded. | Call log: |   - waiting for locator('.navbar') to be visible",
+      "shot": "04-inloggen.png"
+    },
+    {
+      "n": 5,
+      "name": "onboarding-modal",
+      "status": "ok",
+      "ms": 60010,
+      "notes": [
+        "Geen onboarding-modal (al eerder onboarded in deze browser-profiel of feature uit)"
+      ],
+      "data": {
+        "dialogVisible": false,
+        "ariaLabel": "",
+        "headline": ""
+      },
+      "shot": "05-onboarding-modal.png"
+    },
+    {
+      "n": 6,
+      "name": "profiel-instellen",
+      "status": "fout",
+      "ms": 30006,
+      "notes": [],
+      "data": {},
+      "error": "page.click: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('button[title=\"Instellingen\"]')",
+      "shot": "06-profiel-instellen.png"
+    },
+    {
+      "n": 7,
+      "name": "startpagina",
+      "status": "ok",
+      "ms": 1478,
+      "notes": [
+        "Nav: "
+      ],
+      "data": {
+        "h1": "Inloggen",
+        "stats": [],
+        "navLabels": [],
+        "catalogCounts": "{\"CBS\":266,\"DUO\":56,\"RIO\":14}"
+      },
+      "shot": "07-startpagina.png"
+    },
+    {
+      "n": 8,
+      "name": "chat-verbinden",
+      "status": "fout",
+      "ms": 15003,
+      "notes": [],
+      "data": {},
+      "error": "page.waitForSelector: Timeout 15000ms exceeded. | Call log: |   - waiting for locator('textarea[aria-label=\"Chatbericht\"]') to be visible",
+      "shot": "08-chat-verbinden.png"
+    },
+    {
+      "n": 9,
+      "name": "vraag: Hoeveel studenten zijn er?",
+      "status": "fout",
+      "ms": 30003,
+      "notes": [],
+      "data": {},
+      "error": "page.fill: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('textarea[aria-label=\"Chatbericht\"]')",
+      "shot": "09-vraag-hoeveel-studenten-zijn-er-.png"
+    }
+  ],
+  "findings": [
+    {
+      "sev": "laag",
+      "area": "ui",
+      "title": "Geen favicon",
+      "detail": "",
+      "evidence": ""
+    },
+    {
+      "sev": "hoog",
+      "area": "auth",
+      "title": "Geen inlogformulier gevonden op /",
+      "detail": "URL: https://onderwijsdata-chat.test.sdp.surf.nl/",
+      "evidence": ""
+    },
+    {
+      "sev": "middel",
+      "area": "inloggen",
+      "title": "Stap faalde",
+      "detail": "page.waitForSelector: Timeout 20000ms exceeded. | Call log: |   - waiting for locator('.navbar') to be visible",
+      "evidence": ""
+    },
+    {
+      "sev": "middel",
+      "area": "profiel-instellen",
+      "title": "Stap faalde",
+      "detail": "page.click: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('button[title=\"Instellingen\"]')",
+      "evidence": ""
+    },
+    {
+      "sev": "middel",
+      "area": "chat-verbinden",
+      "title": "Stap faalde",
+      "detail": "page.waitForSelector: Timeout 15000ms exceeded. | Call log: |   - waiting for locator('textarea[aria-label=\"Chatbericht\"]') to be visible",
+      "evidence": ""
+    },
+    {
+      "sev": "middel",
+      "area": "vraag: Hoeveel studenten zijn er?",
+      "title": "Stap faalde",
+      "detail": "page.fill: Timeout 30000ms exceeded. | Call log: |   - waiting for locator('textarea[aria-label=\"Chatbericht\"]')",
+      "evidence": ""
+    }
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 ()",
+      "url": "https://onderwijsdata-chat.test.sdp.surf.nl/api/auth/login"
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "https://onderwijsdata-chat.test.sdp.surf.nl/api/auth/login",
+      "method": "POST",
+      "status": 401
+    }
+  ],
+  "wsFrames": [],
+  "downloads": [],
+  "metrics": {}
+}
