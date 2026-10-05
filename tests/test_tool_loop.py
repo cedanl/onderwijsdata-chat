@@ -6,6 +6,7 @@ via dispatch() tenzij een test _execute_tool vervangt.
 
 import asyncio
 
+import plotly.graph_objects as go
 import pytest
 
 from agent import loop as loop_module
@@ -194,6 +195,32 @@ def test_identical_tool_call_shows_its_figure_once_but_answers_every_call(monkey
     assert [figure for _, _, figure in seen] == ["FIG", None, None]
     assert all(result == "grafiek gemaakt" for _, result, _ in seen)
     assert [m["content"] for m in messages if m["role"] == "tool"] == ["grafiek gemaakt"] * 3
+
+
+def test_the_same_chart_from_differently_written_arguments_is_shown_once(monkeypatch):
+    # #327: after a correction round the model called create_plot again with the same arguments in
+    # another order. Another cache key, the same chart: the top-5 answer showed it twice.
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("create_plot", '{"x": "a", "y": "b"}', "t1")]),
+            StreamResult(text="", tool_calls=[_call("create_plot", '{"y":"b","x":"a"}', "t2")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
+
+    async def fake_execute(call, emit):
+        return "grafiek gemaakt", go.Figure(go.Bar(x=["a"], y=[1]))
+
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
+    seen: list = []
+
+    async def on_tool_result(call, result, figure):
+        seen.append(figure)
+
+    _run(on_tool_result=on_tool_result)
+
+    assert [f is not None for f in seen] == [True, False]
 
 
 def test_same_tool_with_other_arguments_shows_another_figure(monkeypatch):

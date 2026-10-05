@@ -290,3 +290,26 @@ def test_jaartallen_op_de_as_zonder_tussenwaarden_of_duizendtalpunt(chart_type):
 def test_geen_tijdas_houdt_een_gewone_as():
     _, fig = create_plot([{"regio": "A", "n": 1}, {"regio": "B", "n": 2}], "bar", "regio", "n", "T")
     assert fig.layout.xaxis.type is None
+
+
+def test_prognosegrafiek_en_csv_tonen_hele_personen():
+    """Audit 12: de prognose-CSV gaf 937657.4 terwijl de tekst hele personen toonde (#328, #247)."""
+    store.put(
+        "duo:voprognoses:0",
+        pd.DataFrame([{"JAAR": 2030, "AANTAL": 937657.4}, {"JAAR": 2031, "AANTAL": 930001.6}]),
+        store.KeyMeta(bron="duo", dataset="voprognoses"),
+    )
+    _, fig = create_plot(data_key="duo:voprognoses:0", chart_type="line", x="JAAR", y="AANTAL")
+    assert fig is not None
+    assert fig.layout.meta["data"] == [{"JAAR": 2030, "AANTAL": 937657}, {"JAAR": 2031, "AANTAL": 930002}]
+
+
+def test_grafiek_buiten_prognoses_houdt_decimalen():
+    store.put(
+        "duo:x:0",
+        pd.DataFrame([{"JAAR": 2030, "PCT": 12.5}, {"JAAR": 2031, "PCT": 13.25}]),
+        store.KeyMeta(bron="duo", dataset="x"),
+    )
+    _, fig = create_plot(data_key="duo:x:0", chart_type="line", x="JAAR", y="PCT")
+    assert fig is not None
+    assert [r["PCT"] for r in fig.layout.meta["data"]] == [12.5, 13.25]

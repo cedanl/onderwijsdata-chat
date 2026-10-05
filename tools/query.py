@@ -9,7 +9,6 @@ sentinelcellen die met de selectie meereizen (#171).
 import difflib
 import hashlib
 import json
-import math
 
 import pandas as pd
 
@@ -154,19 +153,6 @@ def _empty_melding(data_key: str, complete: bool) -> str:
     return melding
 
 
-def _json_waarde(v, afronden: bool = False):
-    """Een telling als telling: de -1-maskering maakt kolommen float, en 4147.0 belandde in antwoorden (#222).
-
-    `afronden`: prognoses op hele personen (#247), half-naar-even zoals pandas' round in de snippet.
-    """
-    if isinstance(v, float):
-        if math.isnan(v):
-            return None
-        if afronden or v.is_integer():
-            return round(v)
-    return v
-
-
 def query_data(
     data_key: str,
     filters: dict | None = None,
@@ -261,7 +247,7 @@ def query_data(
     if afronden:
         notes.append(duo.PROGNOSE_NOOT)
     rows = [
-        {k: _json_waarde(v, afronden) for k, v in row.items()}
+        {k: duo.json_waarde(v, afronden) for k, v in row.items()}
         for row in df.head(adaptive_max).to_dict(orient="records")
     ]
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}

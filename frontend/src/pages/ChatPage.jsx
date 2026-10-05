@@ -33,6 +33,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
+import ErrorRetry from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps } from '../components/RunProgress'
 
@@ -333,9 +334,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   }, [initialChat])
 
   useEffect(() => {
-    const s = { model: selectedModel || undefined }
-    if (settings.instelling) s.instelling = settings.instelling
-    if (settings.functie) s.functie = settings.functie
+    const s = chatSettings(selectedModel, settings.instelling, settings.functie)
     if (Object.keys(s).some(k => s[k])) sendSettings(s)
   }, [selectedModel, settings.instelling, settings.functie, sendSettings])
 
@@ -355,6 +354,16 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
     setSendNotice(null)
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
+  }
+
+  // Opnieuw na een foutmelding (#333). Met een ander model gaan de instellingen eerst:
+  // de server beantwoordt de vraag met het model uit zijn instellingen.
+  const handleRetry = (question, modelId) => {
+    if (modelId && modelId !== selectedModel) {
+      handleModelChange(modelId)
+      sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
+    }
+    if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting }))
   }
 
   const handleKey = (e) => {
@@ -462,11 +471,15 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 Ingeladen gesprek — stel een nieuwe vraag om door te gaan
               </div>
             )}
-            {displayMessages.map((msg) => (
+            {displayMessages.map((msg, i) => (
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
                 settings={settings}
+                retry={msg.isError ? {
+                  question: questionBefore(displayMessages, i),
+                  models, selectedModel, onRetry: handleRetry,
+                } : null}
               />
             ))}
             {thinking && (
@@ -651,7 +664,22 @@ function isAwaitingFirstToken(msg) {
   return !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
 }
 
-function Message({ msg, onClarification, onSend, busy, settings = {} }) {
+function chatSettings(model, instelling, functie) {
+  const s = { model: model || undefined }
+  if (instelling) s.instelling = instelling
+  if (functie) s.functie = functie
+  return s
+}
+
+// De gebruikersvraag waar het bericht op index i een antwoord op is.
+function questionBefore(messages, i) {
+  for (let j = i - 1; j >= 0; j--) {
+    if (messages[j].role === 'user') return messages[j]
+  }
+  return null
+}
+
+function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -664,6 +692,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
           <button type="button"
             className="resend-btn"
             title="Opnieuw sturen"
+            aria-label="Vraag opnieuw sturen"
             onClick={() => onSend(msg.content)}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
@@ -709,6 +738,15 @@ function Message({ msg, onClarification, onSend, busy, settings = {} }) {
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
+            {retry && (
+              <ErrorRetry
+                question={retry.question?.content}
+                failedModel={retry.question?.model || retry.selectedModel}
+                models={retry.models}
+                busy={busy}
+                onRetry={retry.onRetry}
+              />
+            )}
           </div>
         )}
       </div>

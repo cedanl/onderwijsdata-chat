@@ -121,3 +121,38 @@ def test_a_request_during_a_run_is_answered_with_busy(action, handler, args):
 
     assert returned is running
     assert events == [{"type": "busy", "message": chat.BUSY_MESSAGE}]
+
+
+def test_reset_waits_until_the_interrupted_run_has_ended():
+    """'Nieuw gesprek' during a run: no event of the old run may follow reset_done (#337)."""
+    import asyncio
+
+    from routes.chat import _stop_task_and_wait
+
+    sent: list[str] = []
+
+    async def old_run():
+        try:
+            await asyncio.sleep(60)
+        finally:
+            sent.append("laatste event van de oude run")
+
+    async def scenario():
+        session = {"stop_event": asyncio.Event()}
+        task = asyncio.create_task(old_run())
+        await asyncio.sleep(0)
+        await _stop_task_and_wait(session, task)
+        sent.append("reset_done")
+        assert task.done()
+        assert session["stop_event"].is_set()
+
+    asyncio.run(scenario())
+    assert sent == ["laatste event van de oude run", "reset_done"]
+
+
+def test_reset_without_a_run_does_not_wait():
+    import asyncio
+
+    from routes.chat import _stop_task_and_wait
+
+    asyncio.run(_stop_task_and_wait({}, None))

@@ -10,6 +10,7 @@ instead of three times.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -43,6 +44,16 @@ class ToolCall:
     @property
     def key(self) -> str:
         return f"{self.name}:{self.arguments}"
+
+
+def _figure_identity(figure: Any) -> str:
+    """Wat de gebruiker ziet, niet hoe het model de argumenten schreef (#327).
+
+    Na een correctieronde riep het model create_plot opnieuw aan met dezelfde argumenten in
+    een andere volgorde of spatiëring: een andere cachesleutel, dezelfde grafiek, twee keer in beeld.
+    """
+    data = figure.to_json() if hasattr(figure, "to_json") else repr(figure)
+    return hashlib.sha256(data.encode()).hexdigest()
 
 
 ToolHook = Callable[[ToolCall, str, Any], Awaitable[None]]
@@ -215,12 +226,14 @@ class _Loop:
                 )
             else:
                 content, figure = self.cache[c.key]
-                # A cache hit is not a second chart: the figure is shown once per key (#218).
+                # The same chart is shown once per run, whichever call made it (#218, #327).
                 # The text still goes back to the model, and cache hits don't count toward tool limits.
-                if c.key in self.figure_shown:
-                    figure = None
-                elif figure is not None:
-                    self.figure_shown.add(c.key)
+                if figure is not None:
+                    identity = _figure_identity(figure)
+                    if identity in self.figure_shown:
+                        figure = None
+                    else:
+                        self.figure_shown.add(identity)
                 self.result.tool_results.append(content)
                 self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:

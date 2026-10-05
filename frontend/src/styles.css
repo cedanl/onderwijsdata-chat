@@ -721,6 +721,7 @@ input, textarea { font: inherit; }
   font: inherit; font-style: normal; font-weight: 600; color: var(--accent-text);
   background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer;
 }
+.message-retry { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .82rem; }
 .message-continue:disabled { color: var(--gray-500); cursor: default; text-decoration: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--muted-text); margin-top: 8px; }
 
