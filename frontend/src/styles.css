@@ -545,6 +545,13 @@ input, textarea { font: inherit; }
 }
 .csv-download-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
 .plotly-figure-wrap:hover .csv-download-btn { opacity: 1; }
+.data-export { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.data-export-btn {
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: 4px;
+  padding: 3px 8px; font-size: .75rem; color: var(--gray-500); cursor: pointer;
+}
+.data-export-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
+.data-export-error { flex-basis: 100%; font-size: .75rem; color: var(--gray-500); }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }

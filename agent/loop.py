@@ -19,6 +19,7 @@ from typing import Any
 
 from core.config import MAX_TOKENS
 from tools import LABELS, dispatch, fouten, outcome
+from tools.csv_export import export_key
 from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
@@ -118,6 +119,8 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     }
     if snippet:
         end_event["snippet"] = snippet
+    if key := export_key(call.name, result):
+        end_event["export_key"] = key
     await emit(end_event)
     logger.debug("TOOL RESULT %-29s → %s", call.name, result[:_EVENT_OUTPUT_CHARS])
     return result, figure
