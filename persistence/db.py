@@ -376,6 +376,17 @@ def upsert_workbook(
     conn.close()
 
 
+def workbook_belongs_to(username: str, wb_id: str) -> bool:
+    conn = _connect()
+    row = _execute(
+        conn,
+        "SELECT 1 FROM workbooks WHERE id = ? AND username = ?",
+        (wb_id, username),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
 def delete_workbook(username: str, wb_id: str) -> None:
     conn = _connect()
     _execute(

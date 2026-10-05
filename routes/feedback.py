@@ -50,6 +50,9 @@ async def post_feedback(body: FeedbackIn, username: str = Depends(get_current_us
         answers = validate_answers(body.answers)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
+    # Alleen op een eigen werkboek; anders vervuilt de telling per rapport (#389).
+    if not persistence_db.workbook_belongs_to(username, body.workbook_id):
+        raise HTTPException(status_code=404, detail="Rapport niet gevonden")
     key = f"{username}|{body.workbook_id}"
     if not _limiter.is_allowed(key):
         retry = _limiter.retry_after(key)

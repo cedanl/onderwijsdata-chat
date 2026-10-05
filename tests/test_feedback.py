@@ -60,7 +60,13 @@ def _client(tmp_path, monkeypatch, enabled: str = "true") -> TestClient:
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    return _client(tmp_path, monkeypatch)
+    client = _client(tmp_path, monkeypatch)
+    from persistence import db
+
+    # Feedback mag alleen op een eigen werkboek (#389); zonder login heet iedereen "gast".
+    for wb_id in ("wb-1", "wb-2"):
+        db.upsert_workbook("gast", wb_id, "Instroom hbo", "")
+    return client
 
 
 def _body(**answers):
@@ -182,6 +188,22 @@ def test_post_feedback_is_rate_limited_per_report(client):
     assert "Retry-After" in resp.headers
     other = {**_body(), "workbook_id": "wb-2"}
     assert client.post("/api/feedback", json=other).status_code == 200
+
+
+def test_workbook_belongs_to(db):
+    db.upsert_workbook("alice", "wb-1", "Instroom hbo", "")
+    assert db.workbook_belongs_to("alice", "wb-1") is True
+    assert db.workbook_belongs_to("bob", "wb-1") is False
+    assert db.workbook_belongs_to("alice", "wb-onbekend") is False
+
+
+def test_post_feedback_on_someone_elses_workbook_is_refused(client):
+    from persistence import db
+
+    db.upsert_workbook("alice", "wb-van-alice", "Instroom hbo", "")
+    resp = client.post("/api/feedback", json={**_body(), "workbook_id": "wb-van-alice"})
+    assert resp.status_code == 404
+    assert _stored() == []
 
 
 def test_feedback_disabled(tmp_path, monkeypatch):
