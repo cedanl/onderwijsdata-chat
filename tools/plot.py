@@ -6,7 +6,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import store
+from . import duo, store
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +209,9 @@ def create_plot(
         if df is None:
             return f"Geen data gevonden voor '{data_key}'.", None
         data = df.to_dict(orient="records")
+        if duo.is_prognose(store.meta(data_key)):
+            # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).
+            data = [{k: duo.json_waarde(v, afronden=True) for k, v in row.items()} for row in data]
     elif data:
         # data staat niet meer in het tool-schema: alleen interne aanroepen
         # (zoals de replay in agent/replay.py) komen hier nog langs.
@@ -375,6 +378,9 @@ def create_choropleth_map(
         if df is None:
             return f"Geen data gevonden voor '{data_key}'.", None
         data = df.to_dict(orient="records")
+        if duo.is_prognose(store.meta(data_key)):
+            # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).
+            data = [{k: duo.json_waarde(v, afronden=True) for k, v in row.items()} for row in data]
     elif data:
         logger.info("create_choropleth_map zonder data_key aangeroepen, %d rijen", len(data))
     if not data:

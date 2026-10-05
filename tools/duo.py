@@ -1,4 +1,5 @@
 import json
+import math
 
 import pandas as pd
 from riodata import duo as _duo
@@ -114,6 +115,20 @@ PROGNOSE_NOOT = (
 def is_prognose(known: store.KeyMeta | None) -> bool:
     """DUO-prognosebestanden (voprognoses, wpoprognoses, studentprognoses-*) tellen in fracties (#247)."""
     return known is not None and "prognose" in known.dataset.lower()
+
+
+def json_waarde(v, afronden: bool = False):
+    """Een telling als telling: de -1-maskering maakt kolommen float, en 4147.0 belandde in antwoorden (#222).
+
+    `afronden`: prognoses op hele personen (#247), half-naar-even zoals pandas' round in de snippet.
+    Eén regel voor toolresultaat (query_data) en grafiekdata (create_plot, dus ook de CSV-export, #328).
+    """
+    if isinstance(v, float):
+        if math.isnan(v):
+            return None
+        if afronden or v.is_integer():
+            return round(v)
+    return v
 
 
 def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
