@@ -14,6 +14,7 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
+import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
@@ -167,6 +168,9 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const [defaultModel, setDefaultModel] = useState('')
   const [showSources, setShowSources] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Below the breakpoint the sidebar is a drawer: closed, it is out of reach (inert), and the
+  // welcome block carries the suggestions instead, so they are never in the page twice (#341).
+  const narrowScreen = useMediaQuery(NARROW_SCREEN)
   const [initialChat] = useState(loadCurrentChat)
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
@@ -423,7 +427,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
         )}
 
         {/* Sidebar */}
-        <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`}>
+        <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`} inert={narrowScreen && !sidebarOpen}>
           <button type="button" className="new-chat-btn" onClick={handleClear}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -448,14 +452,14 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
         {/* Main */}
         <div className="chat-main">
           <h1 className="sr-only">Chat</h1>
-          {/* Mobile topbar with hamburger */}
+          {/* Mobile toolbar: opens the drawer. The navbar above already carries the brand (#341). */}
           <div className="chat-mobile-topbar">
-            <button type="button" className="hamburger-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+            <button type="button" className="hamburger-btn" onClick={() => setSidebarOpen(o => !o)} aria-expanded={sidebarOpen}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: 20, height: 20 }}>
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
               </svg>
+              Gesprekken en suggesties
             </button>
-            <span className="chat-mobile-topbar-title">openEDUdata+</span>
           </div>
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
@@ -463,9 +467,11 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
             {!hasMessages && (
               <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
                 {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
-                <div className="chat-welcome-suggestions">
-                  <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
-                </div>
+                {narrowScreen && (
+                  <div className="chat-welcome-suggestions">
+                    <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
+                  </div>
+                )}
               </WelcomeScreen>
             )}
             {restoredMessages.length > 0 && messages.length === 0 && (
