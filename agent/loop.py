@@ -26,7 +26,7 @@ from .model_context import clamp_max_tokens
 from .models import litellm_kwargs
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
-from .stream import Emit, accumulate_stream
+from .stream import Emit, StreamResult, accumulate_stream
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +65,19 @@ Check = Callable[[str, list[str]], list[str]]
 class LoopResult:
     text: str = ""
     finish_reason: str | None = None
-    tool_results: list[str] = field(default_factory=list)  # in full, for checks
+    steps: list[tuple[str, str]] = field(default_factory=list)  # (tool, result in full), in order
     tool_calls: list[dict] = field(default_factory=list)  # {"name", "arguments"} as sent
     aborted: str | None = None  # "tools" or "stream": where a stop landed
     halted_on: ToolCall | None = None  # a halt_on tool ended the turn
-    exhausted: bool = False  # max_iterations without an answer
+    exhausted: bool = False  # max_iterations without an answer, also after the wrap-up round
+    wrapped_up: bool = False  # the answer came from the wrap-up round: a partial answer
     problems: list[str] = field(default_factory=list)  # check problems left after the correction
     partial_error: str | None = None  # model call failed; kept what was collected
+
+    @property
+    def tool_results(self) -> list[str]:
+        """The results in full, for checks."""
+        return [result for _, result in self.steps]
 
 
 def _parse_arguments(arguments: str) -> dict | None:
@@ -143,6 +149,7 @@ class _Loop:
     on_tool_result: ToolHook | None
     tool_limits: dict[str, int]
     halt_on: frozenset[str]
+    wrap_up: str | None
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
@@ -155,6 +162,31 @@ class _Loop:
     def _stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
 
+    async def _ask(self, **extra: Any) -> StreamResult | None:
+        """One model call; None when a stop landed during the stream."""
+        stream = await acompletion_with_backoff(
+            self.emit,
+            model=self.model,
+            max_tokens=clamp_max_tokens(self.model, MAX_TOKENS),
+            messages=[*self.system, *self.messages],
+            tools=self.tools,
+            stream=True,
+            **extra,
+            **litellm_kwargs(self.model),
+        )
+        if self.on_llm_start:
+            await self.on_llm_start()
+        sr = await accumulate_stream(
+            stream,
+            stop_event=self.stop_event,
+            emit=self.emit if self.stream_text else None,
+        )
+        self.result.text, self.result.finish_reason = sr.text, sr.finish_reason
+        if self._stopped():
+            self.result.aborted = "stream"
+            return None
+        return sr
+
     async def rounds(self) -> None:
         """Call the model until it answers, a tool halts the turn, or a stop lands."""
         result = self.result
@@ -163,26 +195,8 @@ class _Loop:
                 result.aborted = "tools"
                 return
             logger.debug("ITERATIE   %d", iteration + 1)
-
-            stream = await acompletion_with_backoff(
-                self.emit,
-                model=self.model,
-                max_tokens=clamp_max_tokens(self.model, MAX_TOKENS),
-                messages=[*self.system, *self.messages],
-                tools=self.tools,
-                stream=True,
-                **litellm_kwargs(self.model),
-            )
-            if self.on_llm_start:
-                await self.on_llm_start()
-            sr = await accumulate_stream(
-                stream,
-                stop_event=self.stop_event,
-                emit=self.emit if self.stream_text else None,
-            )
-            result.text, result.finish_reason = sr.text, sr.finish_reason
-            if self._stopped():
-                result.aborted = "stream"
+            sr = await self._ask()
+            if sr is None:
                 return
             if sr.text:
                 logger.debug("LLM TEKST  iter=%d  %r", iteration + 1, sr.text[:500])
@@ -211,7 +225,22 @@ class _Loop:
             if halt:
                 result.halted_on = halt
                 return
-        result.exhausted = True
+        await self._wrap_up()
+
+    async def _wrap_up(self) -> None:
+        """The budget is spent: one last call without tools, for an answer from what was fetched (#381)."""
+        if not self.wrap_up or self._stopped():
+            self.result.exhausted = True
+            return
+        logger.warning("STAPPENBUDGET OP na %d stappen, afrondronde", self.max_iterations)
+        self.messages.append({"role": "user", "content": self.wrap_up})
+        sr = await self._ask(tool_choice="none")
+        if sr is None:
+            return
+        if sr.tool_calls or not sr.text.strip():
+            self.result.exhausted = True
+            return
+        self.result.wrapped_up = True
 
     def _note_error(self, name: str, content: str) -> None:
         code = fouten.code(content)
@@ -269,7 +298,7 @@ class _Loop:
                     # Only searches that found something use up the limit (#323): a miss is a reason to rephrase.
                     self.counts[c.name] -= 1
                 self._note_error(c.name, content)
-                self.result.tool_results.append(content)
+                self.result.steps.append((c.name, content))
                 self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:
                     await self.on_tool_result(c, content, figure)
@@ -297,6 +326,7 @@ async def tool_loop(
     correction: Callable[[list[str]], str] | None = None,
     on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
     keep_partial: Callable[[], bool] | None = None,
+    wrap_up: str | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
 
@@ -307,7 +337,9 @@ async def tool_loop(
     ``on_correction(problems)`` before it runs; problems left after that are returned in
     ``LoopResult.problems`` for the caller to act on. When the model call fails
     and ``keep_partial()`` says what was collected is usable, the error is
-    returned in ``partial_error`` instead of raised.
+    returned in ``partial_error`` instead of raised. With ``wrap_up``, a spent
+    budget gets one more call without tools with that message, instead of ending
+    as ``exhausted`` right away.
     """
     run = _Loop(
         messages=messages,
@@ -323,6 +355,7 @@ async def tool_loop(
         on_tool_result=on_tool_result,
         tool_limits=tool_limits or {},
         halt_on=halt_on,
+        wrap_up=wrap_up,
     )
     result = run.result
     try:
