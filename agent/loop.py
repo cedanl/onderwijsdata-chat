@@ -92,6 +92,14 @@ def _truncate(result: str, limit: int) -> str:
     return result[:limit] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
 
 
+def _is_hit(content: str) -> bool:
+    try:
+        hits = json.loads(content)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(hits, list) and bool(hits)
+
+
 async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     label = LABELS.get(call.name, call.name)
     logger.debug("TOOL CALL  %-30s args=%s", call.name, call.arguments)
@@ -234,6 +242,9 @@ class _Loop:
                         figure = None
                     else:
                         self.figure_shown.add(identity)
+                if c.name in self.tool_limits and not _is_hit(content):
+                    # Only searches that found something use up the limit (#330): a miss is a reason to rephrase.
+                    self.counts[c.name] -= 1
                 self.result.tool_results.append(content)
                 self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:

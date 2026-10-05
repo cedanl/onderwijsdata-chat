@@ -136,13 +136,32 @@ def test_tool_limit_blocks_further_calls(monkeypatch):
         ],
     )
     executed: list[str] = []
-    _fake_tools(monkeypatch, {"search_catalog": "treffers"}, executed)
+    _fake_tools(monkeypatch, {"search_catalog": '[{"_cbs_id": "85423NED"}]'}, executed)
     messages = [{"role": "user", "content": "vraag"}]
 
     _run(messages, tool_limits={"search_catalog": 1})
 
     assert executed == ["search_catalog"]
     assert "LIMIET" in [m for m in messages if m["role"] == "tool"][-1]["content"]
+
+
+def test_a_search_without_hits_does_not_use_up_the_limit(monkeypatch):
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 1}')]),
+            StreamResult(text="", tool_calls=[_call("search_catalog", '{"q": 2}')]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
+    executed: list[str] = []
+    _fake_tools(monkeypatch, {"search_catalog": "Geen resultaten gevonden voor 'x'."}, executed)
+    messages = [{"role": "user", "content": "vraag"}]
+
+    _run(messages, tool_limits={"search_catalog": 1})
+
+    assert executed == ["search_catalog", "search_catalog"]
+    assert not any("LIMIET" in m["content"] for m in messages if m["role"] == "tool")
 
 
 def test_on_tool_result_sees_every_call_with_its_parsed_arguments(monkeypatch):

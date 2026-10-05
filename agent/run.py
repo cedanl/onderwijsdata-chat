@@ -8,6 +8,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, SEARCH_CATALOG_LIMIT
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
+from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .grounding import unverified
 from .history import trim
@@ -185,6 +186,8 @@ async def run(
             *verkeerd_gebonden(text, tool_results),
             *verkeerde_kpi_periodes(text, tool_results),
             *genegeerde_keuze(session.get("clarify_keuzes", []), text),
+            *onbeschikbaar_zonder_zoekpad(last_user_msg, text, tool_results),
+            *ongedekte_oorzaak(text, tool_results),
             *metatekst(text),
         ]
 
