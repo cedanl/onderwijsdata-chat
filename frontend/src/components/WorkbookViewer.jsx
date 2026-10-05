@@ -4,6 +4,7 @@ import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
+import WorkbookDownload from './WorkbookDownload'
 
 const BUILTIN_COMPONENTS = {
   [BUILTIN_MIJN_INSTELLING.id]: InlineDashboardMijnInstelling,
@@ -118,23 +119,26 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
             </span>
           )}
         </h1>
-        {feedbackEnabled ? (
-          feedbackGiven ? (
-            <span className="wb-feedback-given" role="status">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Feedback gegeven
-            </span>
-          ) : (
-            <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              Geef feedback op dit rapport
-            </button>
-          )
-        ) : <div />}
+        <div className="wb-viewer-actions">
+          <WorkbookDownload workbook={workbook} instelling={instelling} />
+          {feedbackEnabled && (
+            feedbackGiven ? (
+              <span className="wb-feedback-given" role="status">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Feedback gegeven
+              </span>
+            ) : (
+              <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                Geef feedback op dit rapport
+              </button>
+            )
+          )}
+        </div>
       </div>
       {showFeedback && (
         <FeedbackModal
