@@ -97,3 +97,12 @@ export async function fetchFeedbackGiven() {
 export async function postFeedback(feedback) {
   return apiFetch('/api/feedback', { method: 'POST', body: JSON.stringify(feedback) })
 }
+
+// Feedback per answer (#248): the judgement of each answer in a conversation, by message index.
+export async function fetchAnswerFeedback(conversationId) {
+  return apiFetch(`/api/answer-feedback?${new URLSearchParams({ conversation_id: conversationId })}`)
+}
+
+export async function postAnswerFeedback(body) {
+  return apiFetch('/api/answer-feedback', { method: 'POST', body: JSON.stringify(body) })
+}

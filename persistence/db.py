@@ -186,6 +186,23 @@ _FEEDBACK_TABLE = """
 """
 
 
+# Eén oordeel per antwoord; een nieuw oordeel vervangt het oude (#248). trace is
+# JSON uit het opgeslagen gesprek (core/answer_feedback.py), zodat de melding
+# reproduceerbaar blijft als het gesprek later verandert of verdwijnt.
+_ANSWER_FEEDBACK_TABLE = """
+    CREATE TABLE IF NOT EXISTS answer_feedback (
+        username        TEXT    NOT NULL,
+        conversation_id TEXT    NOT NULL,
+        message_index   INTEGER NOT NULL,
+        oordeel         TEXT    NOT NULL,
+        toelichting     TEXT    NOT NULL DEFAULT '',
+        trace           TEXT    NOT NULL,
+        created_at      TEXT    NOT NULL,
+        PRIMARY KEY (username, conversation_id, message_index)
+    )
+"""
+
+
 def init_db() -> None:
     conn = _connect()
     cursor = conn.cursor()
@@ -219,6 +236,7 @@ def init_db() -> None:
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
         cursor.execute(_FEEDBACK_TABLE)
+        cursor.execute(_ANSWER_FEEDBACK_TABLE)
         cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
         cursor.close()
@@ -252,6 +270,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
         """)
         conn.execute(_FEEDBACK_TABLE)
+        conn.execute(_ANSWER_FEEDBACK_TABLE)
 
     _migrate(conn)
     conn.close()
@@ -465,3 +484,61 @@ def list_feedback_workbooks(username: str) -> list[str]:
     ).fetchall()
     conn.close()
     return [r["workbook_id"] for r in rows]
+
+
+def conversation_messages(username: str, conv_id: str) -> list[dict] | None:
+    """De berichten van een eigen gesprek; None als deze gebruiker het niet heeft."""
+    conn = _connect()
+    row = _execute(
+        conn,
+        "SELECT messages FROM conversations WHERE id = ? AND username = ?",
+        (conv_id, username),
+    ).fetchone()
+    conn.close()
+    return json.loads(row["messages"]) if row else None
+
+
+def upsert_answer_feedback(
+    username: str, conv_id: str, message_index: int, oordeel: str, toelichting: str, trace: dict
+) -> None:
+    conn = _connect()
+    _execute(
+        conn,
+        "INSERT INTO answer_feedback "
+        "(username, conversation_id, message_index, oordeel, toelichting, trace, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT (username, conversation_id, message_index) DO UPDATE SET "
+        "oordeel=excluded.oordeel, toelichting=excluded.toelichting, trace=excluded.trace, "
+        "created_at=excluded.created_at",
+        (
+            username,
+            conv_id,
+            message_index,
+            oordeel,
+            toelichting,
+            json.dumps(trace, ensure_ascii=False),
+            datetime.now(UTC).isoformat(timespec="seconds"),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def answer_feedback_for(username: str, conv_id: str) -> dict[int, str]:
+    """Het oordeel per antwoord in een eigen gesprek, om de knoppen na heropenen te tonen."""
+    conn = _connect()
+    rows = _execute(
+        conn,
+        "SELECT message_index, oordeel FROM answer_feedback WHERE username = ? AND conversation_id = ?",
+        (username, conv_id),
+    ).fetchall()
+    conn.close()
+    return {r["message_index"]: r["oordeel"] for r in rows}
+
+
+def all_answer_feedback() -> list[dict]:
+    """Alle meldingen, nieuwste eerst: de lijst voor het team."""
+    conn = _connect()
+    rows = _execute(conn, "SELECT * FROM answer_feedback ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
