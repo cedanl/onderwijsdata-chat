@@ -463,7 +463,6 @@ input, textarea { font: inherit; }
 .history-item-row:focus-within .history-item-actions { opacity: 1; pointer-events: auto; }
 @media (hover: none) {
   .history-item-actions { opacity: 1; pointer-events: auto; }
-  .history-item-row .history-btn { padding-right: 56px; }
 }
 .history-action-icon {
   padding: 4px; border: none; background: transparent; color: var(--muted-text);
@@ -473,6 +472,12 @@ input, textarea { font: inherit; }
 .history-action-icon svg { width: 13px; height: 13px; }
 .history-action-icon:hover { color: var(--gray-700); background: var(--gray-100); }
 .history-action-icon-delete:hover { color: #DC2626; background: #FEF2F2; }
+/* Touch screens: icon buttons get a 44x44 tap target (#388), the icon itself stays small. */
+@media (pointer: coarse), (max-width: 1024px) {
+  .history-action-icon, .wb-delete-btn, .hamburger-btn { min-width: 44px; min-height: 44px; }
+  .new-chat-btn, .suggested-category-btn, .navbar-cta, .navbar-profile-btn { min-height: 44px; }
+  .history-item-row .history-btn { padding-right: 96px; }
+}
 /* Inline title editing (history, workbook viewer). The underline is always there, so focus needs its own ring. */
 .title-edit-input {
   width: 100%; border: none; border-bottom: 2px solid var(--blue-600);

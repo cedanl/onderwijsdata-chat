@@ -36,9 +36,10 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
           {user && (
             <button type="button"
+              className="navbar-profile-btn"
               onClick={onOpenSettings}
               style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center',
                 background: 'none', border: 'none',
                 cursor: onOpenSettings ? 'pointer' : 'default', padding: '4px 6px',
                 borderRadius: 'var(--radius-sm)', transition: 'all .15s',
