@@ -9,14 +9,14 @@ const MAX_RETRIES = 4
 // a minute or two; the server has no limit of its own, so the wait ends here.
 export const REPORT_TIMEOUT_MS = 5 * 60 * 1000
 
-function buildHistory(messages) {
+// A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
+export function buildHistory(messages) {
   return messages
     .filter(m =>
       (m.role === 'user' || m.role === 'assistant') &&
       m.content &&
       !m.isError &&
       !m.figures &&
-      !m.clarification &&
       !m.starterQuestions
     )
     .map(({ role, content }) => ({ role, content }))
