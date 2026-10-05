@@ -28,13 +28,15 @@ GOED = [
     ("prognoses vo per instelling", "voprognoses", 1),
     ("onderwijslocaties van een instelling", "onderwijslocaties", 1),
     ("opleidingserkenningen", "opleidingserkenningen", 1),
+    # Gelijke score met p02ho1ejrs op rang 3/4; sinds de ID-tie-break (#344) staat p01hoinges voor.
+    # Geen betere score: verschuift de score, dan kan deze vraag terug naar de missers.
+    ("ingeschrevenen wo opleidingsvorm", "p01hoinges", 3),
+    ("ingeschrevenen hbo voltijd deeltijd", "p01hoinges", 3),
 ]
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
 BEKENDE_MISSERS = [
     ("Hoeveel voltijd studenten heeft de VU Amsterdam?", "p01hoinges", 3, 12),
-    ("ingeschrevenen wo opleidingsvorm", "p01hoinges", 3, 4),
-    ("ingeschrevenen hbo voltijd deeltijd", "p01hoinges", 3, 4),
     ("Hoeveel deeltijdstudenten zijn er landelijk in het hoger onderwijs?", "85423NED", 5, 12),
     ("Hoeveel vsv'ers zijn er in het mbo?", "85368NED", 5, None),
     # Audit 11: het model koos 01voins-v1 (alleen 2014-2018) voor een vo-prognose.

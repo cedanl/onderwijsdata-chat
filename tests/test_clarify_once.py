@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import json
 
 from agent.run import tools_for
 from routes import chat
@@ -64,3 +65,42 @@ def test_een_gekozen_optie_blijft_bewaard_tot_een_nieuwe_vraag():
 
     _run(chat._handle_message, {"content": "Hoeveel studenten heeft de RUG?"}, session, _emit, None)
     assert session["clarify_keuzes"] == []
+
+
+def _clarify(content: str, vraag: str = "Welk schooljaar bedoel je?") -> list[dict]:
+    """Ask a clarification through run's handler; returns the history the next turn gets."""
+    from agent.loop import ToolCall
+    from agent.run import _handle_clarify_scope
+
+    arguments = json.dumps({"vraag": vraag, "opties": ["2024/25", "2025/26"]})
+    turn = [
+        {
+            "role": "assistant",
+            "content": content,
+            "tool_calls": [
+                {"id": "c1", "type": "function", "function": {"name": "clarify_scope", "arguments": arguments}}
+            ],
+        },
+        {"role": "tool", "tool_call_id": "c1", "content": "OK"},
+    ]
+    messages: list[dict] = [{"role": "user", "content": "Hoeveel studenten heeft de HU?"}]
+
+    async def emit(_event):
+        pass
+
+    call = ToolCall("c1", "clarify_scope", arguments, json.loads(arguments))
+    asyncio.run(_handle_clarify_scope(call, content, turn, messages, {}, emit))
+    return messages
+
+
+def test_a_clarification_leaves_no_empty_assistant_text_in_the_history():
+    """An empty assistant text becomes "[System: Empty message content sanitised…]" in LiteLLM,
+    and the model repeated that to the user after the clarification (#322)."""
+    [assistant] = [m for m in _clarify("") if m["role"] == "assistant"]
+    assert assistant["content"] == "Welk schooljaar bedoel je?"
+    assert assistant["tool_calls"]
+
+
+def test_text_the_model_wrote_before_the_clarification_stays():
+    [assistant] = [m for m in _clarify("Dat hangt af van het jaar.") if m["role"] == "assistant"]
+    assert assistant["content"] == "Dat hangt af van het jaar."

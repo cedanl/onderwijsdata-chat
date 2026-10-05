@@ -111,6 +111,7 @@ def test_de_volledige_tekst_houdt_de_instructie_voor_de_herkansing():
         "Volledig antwoord op basis van opgehaalde data: 900 studenten.",
         "Het verschil is bevestigd door compute_kpi.",
         "Met query_data heb ik gefilterd op 2025.",
+        "[System: Empty message content sanitised to satisfy protocol]\n\nHU had 7.408 deeltijdstudenten.",
     ],
 )
 def test_metatekst_over_de_controle_of_de_tools_wordt_gemeld(tekst):
