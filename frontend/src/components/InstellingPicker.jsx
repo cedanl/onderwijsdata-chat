@@ -25,6 +25,7 @@ export default function InstellingPicker({ inputId, value, onChange }) {
   const [highlightIdx, setHighlightIdx] = useState(-1)
   const wrapperRef = useRef(null)
   const listRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => { setQuery(value || '') }, [value])
 
@@ -53,6 +54,13 @@ export default function InstellingPicker({ inputId, value, onChange }) {
     })
     setOpen(true)
     setHighlightIdx(-1)
+  }
+
+  const clearNiveauFilter = () => {
+    setNiveauFilter(new Set())
+    setHighlightIdx(-1)
+    setOpen(true)
+    inputRef.current?.focus()
   }
 
   const select = (inst) => {
@@ -115,6 +123,7 @@ export default function InstellingPicker({ inputId, value, onChange }) {
         ))}
       </div>
       <input
+        ref={inputRef}
         id={inputId}
         type="text"
         value={query}
@@ -125,16 +134,45 @@ export default function InstellingPicker({ inputId, value, onChange }) {
           setHighlightIdx(-1)
         }}
         onFocus={() => setOpen(true)}
+        onBlur={e => {
+          // Focus moving into the picker (list scrollbar, "Filter wissen") keeps it open.
+          if (!wrapperRef.current?.contains(e.relatedTarget)) setOpen(false)
+        }}
         onKeyDown={handleKeyDown}
         placeholder="Zoek op naam of afkorting..."
         autoComplete="off"
         className="instelling-search"
       />
+      {open && filtered.length === 0 && query.trim() && allInstellingen.length > 0 && (
+        <div
+          className="instelling-empty"
+          role="status"
+          style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+            marginTop: 4, padding: '10px 14px', fontSize: '.85rem', color: 'var(--gray-700)',
+            background: 'var(--white)', border: '1.5px solid var(--gray-200)',
+            borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)',
+          }}
+        >
+          Geen instellingen gevonden voor &lsquo;{query.trim()}&rsquo;
+          {niveauFilter.size > 0 && (
+            <>
+              {' '}binnen {NIVEAUS.filter(n => niveauFilter.has(n.id)).map(n => n.label).join(' of ')}.{' '}
+              <button type="button" className="instelling-clear-filter" onClick={clearNiveauFilter}
+                style={{ border: 'none', background: 'none', padding: 0, color: 'var(--blue-700)', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>
+                Filter wissen
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {open && filtered.length > 0 && (
         <div
           ref={listRef}
+          role="listbox"
+          tabIndex={-1}
           style={{
-            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
             marginTop: 4, maxHeight: 220, overflowY: 'auto',
             background: 'var(--white)', border: '1.5px solid var(--gray-200)',
             borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-lg)',
