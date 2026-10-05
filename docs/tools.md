@@ -259,7 +259,6 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `query` | string | Zoekterm, bijv. `"mbo studenten prognose"` |
-| `source` | string | `"cbs"`, `"rio"`, `"duo"` of `"both"` (standaard: alles) |
 | `top_n` | integer | Maximaal aantal resultaten (standaard: 15) |
 | `geo_niveau` | string | Filter op geografisch niveau (optioneel) |
 

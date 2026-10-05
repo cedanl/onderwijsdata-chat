@@ -10,7 +10,7 @@ import re
 
 import pandas as pd
 
-from data.instellingen import ALIASSEN
+from data.instellingen import ALIASSEN, get_all
 
 # DUO: ho-bestanden gebruiken de actuele code en naam, mbo-bestanden de gewone.
 _KOLOMPAREN = {
@@ -67,3 +67,12 @@ def genoemde(vraag: str, bekende: dict[str, str]) -> set[str]:
         bezet.append((start, eind))
         gevonden.add(code)
     return gevonden
+
+
+def noemt_instelling(vraag: str) -> bool:
+    """Noemt de vraag een instelling uit het register? Zonder register (offline) geldt: nee."""
+    try:
+        bekende = {i["naam"]: i["naam"] for i in get_all()}
+    except Exception:  # register bouwt uit DUO-downloads; een zoekopdracht mag daar niet op stuklopen
+        return False
+    return bool(genoemde(vraag, bekende))

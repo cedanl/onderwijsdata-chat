@@ -9,7 +9,7 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
-from . import duo_meta
+from . import duo_meta, instelling
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +265,6 @@ _FIELD_WEIGHTS = {
     "bron": 5,
     "tags": 4,
     "voorbeeldvragen": 3,
-    "niet_geschikt_voor": 3,
     "beschrijving": 2,
     "doel": 2,
     "samenvatting": 2,
@@ -273,12 +272,15 @@ _FIELD_WEIGHTS = {
     "onderwijstype": 2,
 }
 _DEFAULT_WEIGHT = 1
+# Blijft zichtbaar in het resultaat, maar scoort niet: "Niet geschikt voor gemeente" is geen treffer voor "gemeente" (#350).
+_NIET_ZOEKBAAR = frozenset({"niet_geschikt_voor"})
+_HISTORISCH = frozenset({"historisch", "historische", "archief", "gearchiveerd", "gearchiveerde"})
 
 
 def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     total = 0
     for key, val in entry.items():
-        if key.startswith("_"):
+        if key.startswith("_") or key in _NIET_ZOEKBAAR:
             continue
 
         # Determine field weight: explicit weight or default
@@ -306,6 +308,39 @@ def _geo_niveaus(entry: dict) -> list[str]:
     return entry.get("_geo_niveau") or ["landelijk"]
 
 
+def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
+    """De scorende treffers uit `source`, gesplitst in actief en archief."""
+    active: list = []
+    archive: list = []
+
+    if source in ("cbs", "both"):
+        for entry in _cbs():
+            if s := _score(entry, words):
+                (archive if entry.get("_archief") else active).append((s, {"bron": "CBS", **entry}))
+
+    if source in ("rio", "both", "duo"):
+        for entry in _rio_duo():
+            if str(entry.get("leverancier", "")).upper() not in SUPPORTED_LEVERANCIERS:
+                continue
+            is_duo = str(entry.get("leverancier", "")).upper() == "DUO"
+            if source == "duo" and not is_duo:
+                continue
+            if s := _score(entry, words):
+                hit = {**entry} if _via_chat(entry) else {**entry, **_NIET_OPVRAAGBAAR}
+                (archive if entry.get("_archief") else active).append((s, hit))
+
+    return active, archive
+
+
+def _gerangschikt(treffers: list, geo_niveau: str | None) -> list[dict]:
+    # Gelijke score: de dataset-ID beslist, niet de inleesvolgorde van de catalogus (#344).
+    treffers = sorted(treffers, key=lambda x: (-x[0], _dataset_id(x[1])))
+    hits = [r for _, r in treffers]
+    if geo_niveau:
+        hits = [r for r in hits if geo_niveau in _geo_niveaus(r)]
+    return hits
+
+
 def search_catalog(
     query: str,
     source: str = "both",
@@ -318,59 +353,41 @@ def search_catalog(
     filtered_words = _filter_stopwoorden(query_words)
     hint = _volzin_hint(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
-    active = []
-    archive_fallback = []
 
-    if source in ("cbs", "both"):
-        for entry in _cbs():
-            s = _score(entry, words)
-            if s:
-                tagged = {"bron": "CBS", **entry}
-                if entry.get("_archief"):
-                    archive_fallback.append((s, tagged))
-                else:
-                    active.append((s, tagged))
-
-    if source in ("rio", "both", "duo"):
-        for entry in _rio_duo():
-            if str(entry.get("leverancier", "")).upper() not in SUPPORTED_LEVERANCIERS:
-                continue
-            is_duo = str(entry.get("leverancier", "")).upper() == "DUO"
-            if source == "duo" and not is_duo:
-                continue
-            s = _score(entry, words)
-            if s:
-                hit = {**entry} if _via_chat(entry) else {**entry, **_NIET_OPVRAAGBAAR}
-                (archive_fallback if entry.get("_archief") else active).append((s, hit))
+    # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
+    # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.
+    instellingsvraag = source in ("cbs", "both") and instelling.noemt_instelling(query)
+    active, archive = _verzamel(words, "rio" if instellingsvraag else source)
+    if instellingsvraag and not (active or archive):
+        active, archive = _verzamel(words, source)
+    historisch = bool(_HISTORISCH & set(query_words))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
-    if not active and not archive_fallback:
+    if not active and not archive:
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
         )
         return f"Geen resultaten gevonden voor '{query}'."
 
-    results = active or archive_fallback
-    # Gelijke score: de dataset-ID beslist, niet de inleesvolgorde van de catalogus (#344).
-    results.sort(key=lambda x: (-x[0], _dataset_id(x[1])))
-    hits = [r for _, r in results]
+    # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
+    # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.
+    primair, reserve = (archive, active) if historisch else (active, archive)
+    hits = _gerangschikt(primair, geo_niveau) or _gerangschikt(reserve, geo_niveau)
 
-    if geo_niveau:
-        hits = [r for r in hits if geo_niveau in _geo_niveaus(r)]
-        if not hits:
-            logger.warning(
-                "search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d",
-                query,
-                source,
-                geo_niveau,
-                elapsed_ms,
-            )
-            return (
-                f"Geen datasets gevonden voor '{query}' die het niveau "
-                f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
-                f"(bijv. 'provincie' in plaats van 'gemeente')."
-            )
+    if geo_niveau and not hits:
+        logger.warning(
+            "search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d",
+            query,
+            source,
+            geo_niveau,
+            elapsed_ms,
+        )
+        return (
+            f"Geen datasets gevonden voor '{query}' die het niveau "
+            f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
+            f"(bijv. 'provincie' in plaats van 'gemeente')."
+        )
 
     top_ids = [_dataset_id(h) for h in hits[:3]]
     logger.info(
