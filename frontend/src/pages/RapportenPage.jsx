@@ -19,7 +19,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   // setSearchParams/History API calls that can hit Firefox's rate limit.
   const navWorkbook = location.state?.pendingWorkbook ?? null
 
-  const { workbooks: rapporten, loading, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks: rapporten, loading, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'report',
       pendingId: navWorkbook ? null : pendingId,
@@ -29,10 +29,10 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
     })
 
   useEffect(() => {
-    if (!selected && pendingId) {
+    if (!selected && pendingId && missingId === pendingId) {
       setSearchParams({}, { replace: true })
     }
-  }, [selected, pendingId, setSearchParams])
+  }, [selected, pendingId, missingId, setSearchParams])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
@@ -46,6 +46,17 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
         backLabel="Rapporten"
         feedbackEnabled={feedbackEnabled}
       />
+    )
+  }
+
+  if (pendingId && !navWorkbook && missingId !== pendingId) {
+    return (
+      <div className="wb-gallery-page">
+        <div className="wb-gallery-loading" aria-busy="true" role="status">
+          <span className="spinner" aria-hidden="true" />
+          Rapport wordt opgehaald…
+        </div>
+      </div>
     )
   }
 
@@ -68,9 +79,15 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
           </div>
         </div>
 
+        {missingId && (
+          <div className="wb-gallery-notice" role="alert">
+            Dit rapport is niet gevonden. Het is misschien verwijderd of opgeslagen onder een ander account.
+          </div>
+        )}
+
         {loading && rapporten.length === 0 ? (
-          <div className="wb-gallery-loading" aria-busy="true" role="status"
-            style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--muted-text)' }}>
+          <div className="wb-gallery-loading" aria-busy="true" role="status">
+            <span className="spinner" aria-hidden="true" />
             Rapporten laden…
           </div>
         ) : rapporten.length === 0 ? (

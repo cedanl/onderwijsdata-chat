@@ -51,8 +51,8 @@ function ToolStep({ tool }) {
   return (
     <div className="tool-step-wrap">
       <div className="tool-step">
-        <div className={`tool-step-dot${tool.done ? ' done' : ''}`} />
-        {tool.label}
+        <div className={`tool-step-dot${tool.done ? ' done' : ''}${tool.done && tool.status ? ` ${tool.status}` : ''}`} />
+        {(tool.done && tool.statusLabel) || tool.label}
         {tool.snippet && (
           <button type="button" className="tool-snippet-btn" onClick={() => setOpen(o => !o)} title="Toon reproduceerbare code">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

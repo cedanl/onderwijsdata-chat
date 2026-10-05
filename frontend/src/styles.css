@@ -183,18 +183,19 @@ input, textarea { font: inherit; }
 }
 .hamburger-btn {
   display: none;
-  background: none; border: none; cursor: pointer; padding: 6px;
-  color: var(--gray-600); border-radius: var(--radius-sm);
+  align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer; padding: 6px 8px;
+  color: var(--gray-700); border-radius: var(--radius-sm);
+  font-size: .85rem; font-weight: 600;
   transition: background .15s;
 }
 .hamburger-btn:hover { background: var(--gray-100); }
 .chat-mobile-topbar {
   display: none;
-  align-items: center; gap: 10px;
-  padding: 10px 12px; background: var(--white);
+  align-items: center;
+  padding: 0 8px; background: var(--white);
   border-bottom: 1px solid var(--gray-200);
 }
-.chat-mobile-topbar-title { font-size: .9rem; font-weight: 600; color: var(--gray-800); }
 
 /* ─── Mobile bottom tab bar ──────────────────────────────── */
 .mobile-tabs {
@@ -463,7 +464,6 @@ input, textarea { font: inherit; }
 .history-item-row:focus-within .history-item-actions { opacity: 1; pointer-events: auto; }
 @media (hover: none) {
   .history-item-actions { opacity: 1; pointer-events: auto; }
-  .history-item-row .history-btn { padding-right: 56px; }
 }
 .history-action-icon {
   padding: 4px; border: none; background: transparent; color: var(--muted-text);
@@ -473,6 +473,12 @@ input, textarea { font: inherit; }
 .history-action-icon svg { width: 13px; height: 13px; }
 .history-action-icon:hover { color: var(--gray-700); background: var(--gray-100); }
 .history-action-icon-delete:hover { color: #DC2626; background: #FEF2F2; }
+/* Touch screens: icon buttons get a 44x44 tap target (#388), the icon itself stays small. */
+@media (pointer: coarse), (max-width: 1024px) {
+  .history-action-icon, .wb-delete-btn, .hamburger-btn { min-width: 44px; min-height: 44px; }
+  .new-chat-btn, .suggested-category-btn, .navbar-cta, .navbar-profile-btn { min-height: 44px; }
+  .history-item-row .history-btn { padding-right: 96px; }
+}
 /* Inline title editing (history, workbook viewer). The underline is always there, so focus needs its own ring. */
 .title-edit-input {
   width: 100%; border: none; border-bottom: 2px solid var(--blue-600);
@@ -506,7 +512,7 @@ input, textarea { font: inherit; }
 .chat-welcome-icon svg { width: 32px; height: 32px; color: white; }
 .chat-welcome h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
 .chat-welcome p { font-size: .95rem; color: var(--gray-500); max-width: 380px; line-height: 1.6; }
-.chat-welcome-suggestions { display: none; width: 100%; max-width: 380px; margin-top: 24px; text-align: left; }
+.chat-welcome-suggestions { width: 100%; max-width: 380px; margin-top: 24px; text-align: left; }
 
 .message { display: flex; gap: 12px; max-width: 800px; }
 .message.user { align-self: flex-end; flex-direction: row-reverse; max-width: 600px; }
@@ -607,6 +613,11 @@ input, textarea { font: inherit; }
   animation: pulse 1.2s infinite;
 }
 .reasoning-step-dot.done { background: var(--green-500); animation: none; }
+.reasoning-step-dot.empty, .tool-step-dot.empty { background: #F59E0B; }
+.reasoning-step-dot.error, .tool-step-dot.error { background: #DC2626; }
+.reasoning-step.empty, .reasoning-step.error { align-items: flex-start; color: var(--gray-700); }
+.reasoning-step.empty .reasoning-step-dot, .reasoning-step.error .reasoning-step-dot { margin-top: 6px; }
+.reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
 
 
 .reasoning-snippets { margin-top: 8px; }
@@ -1065,6 +1076,24 @@ html.dark .context-limit-banner--full {
 .wb-viewer-title { font-size: .9rem; font-weight: 700; color: var(--gray-800); }
 .wb-viewer-content { flex: 1; overflow: hidden; }
 .wb-iframe { width: 100%; height: 100%; border: none; }
+/* Never a blank report page (#387): a spinner while the link or the report frame loads. */
+.wb-viewer-content { position: relative; }
+.wb-viewer-loading, .wb-gallery-loading {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 64px 24px; color: var(--muted-text); font-size: .9rem;
+}
+.wb-viewer-loading { position: absolute; inset: 0; align-items: flex-start; background: var(--white); }
+.wb-gallery-notice {
+  margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .12); color: var(--gray-700); font-size: .85rem;
+}
+.spinner {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--gray-200); border-top-color: var(--blue-600, #2563EB);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 
 
 /* ─── DASHBOARD PAGE ──────────────────────────────────────── */
@@ -1330,7 +1359,6 @@ html.dark .suggested-btn:hover {
     box-shadow: 4px 0 24px rgba(0,0,0,.15);
   }
   .sidebar-overlay { display: block; }
-  .chat-welcome-suggestions { display: block; }
   .chat-welcome { padding: 24px 16px; }
 
   /* Hamburger en mobiele topbar */

@@ -15,7 +15,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
   const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)
 
-  const { workbooks, setWorkbooks, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks, setWorkbooks, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'dashboard',
       pendingId,
@@ -33,10 +33,10 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
   }, [pendingId])
 
   useEffect(() => {
-    if (!selected && pendingId) {
+    if (!selected && pendingId && missingId === pendingId) {
       setSearchParams({}, { replace: true })
     }
-  }, [selected, pendingId, setSearchParams])
+  }, [selected, pendingId, missingId, setSearchParams])
 
   const handleSelect = (wb) => {
     setSelected(wb)

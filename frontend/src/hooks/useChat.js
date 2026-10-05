@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { chatSocket, clearToken } from '../auth'
 import { MAX_HISTORY } from '../constants'
+import { finishStep } from '../toolSteps'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -160,7 +161,7 @@ export function useChat({ onUnauthorized } = {}) {
           // The first step of this name still running: the same tool can run twice in one card.
           tools: m.tools.map((t, i, all) =>
             t.name === ev.name && !t.done && all.findIndex(x => x.name === ev.name && !x.done) === i
-              ? { ...t, done: true, snippet: ev.snippet || null }
+              ? finishStep(t, ev)
               : t
           ),
         }))

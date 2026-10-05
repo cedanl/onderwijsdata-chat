@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
-from tools import LABELS, dispatch
+from tools import LABELS, dispatch, outcome
 from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
@@ -110,7 +110,12 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     snippet = _generate_snippet(call.name, call.args)
     if snippet:
         logger.info("REPRODUCEER %-28s\n%s", call.name, snippet)
-    end_event = {"type": "tool_end", "name": call.name, "output": result[:_EVENT_OUTPUT_CHARS]}
+    end_event = {
+        "type": "tool_end",
+        "name": call.name,
+        "output": result[:_EVENT_OUTPUT_CHARS],
+        **outcome(call.name, result),
+    }
     if snippet:
         end_event["snippet"] = snippet
     await emit(end_event)

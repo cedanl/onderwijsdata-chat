@@ -17,16 +17,30 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
     }).finally(() => setLoading(false))
   }, [type])
 
+  // A linked id may only be known to the server (other device, cleared storage): look again
+  // once the server list is in, and only then call it missing (#387).
+  const [missingId, setMissingId] = useState(null)
   useEffect(() => {
     if (!pendingId) return
     const wbs = getWorkbooks()
-    const wb = wbs.find(w => w.id === pendingId)
-    if (wb) {
+    const local = wbs.find(w => w.id === pendingId)
+    if (local) {
       setWorkbooks(type ? wbs.filter(w => getWorkbookType(w) === type) : wbs)
-      setSelected(wb)
+      setSelected(local)
       clearPending?.()
+      return
     }
-  }, [pendingId, clearPending, type])
+    if (loading) return
+    const fromServer = workbooks.find(w => w.id === pendingId)
+    if (fromServer) {
+      setSelected(fromServer)
+      clearPending?.()
+    } else {
+      setMissingId(pendingId)
+    }
+  // workbooks only matters once the server list is in, and that flips loading too.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingId, clearPending, type, loading])
 
   const handleUpdate = useCallback((updated) => {
     setSelected(updated)
@@ -45,5 +59,5 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
     })
   }, [type, deleteMessage, selected])
 
-  return { workbooks, setWorkbooks, loading, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete }
+  return { workbooks, setWorkbooks, loading, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete }
 }

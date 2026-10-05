@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 import { chatSocket } from '../auth'
+import { finishStep } from '../toolSteps'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -77,7 +78,7 @@ export default function useDashboardChat() {
             tools: (m.tools || []).map(t => {
               if (!matched && t.name === ev.name && !t.done) {
                 matched = true
-                return { ...t, done: true, snippet: ev.snippet || null }
+                return finishStep(t, ev)
               }
               return t
             }),
