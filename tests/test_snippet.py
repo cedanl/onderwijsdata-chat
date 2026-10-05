@@ -343,13 +343,13 @@ def test_loaders_record_the_call_that_a_snippet_needs():
         patch("tools.duo._duo.column_definitions", return_value={}),
     ):
         get_duo_data("p01hoinges", 3)
-    with patch("tools.rio.fetch", return_value=_ROWS), patch("tools.rio.rio_filters", return_value=[]):
-        get_rio_data("erkenningen", {"status": "actief"})
+    with patch("tools.rio.fetch", return_value=_ROWS):
+        get_rio_data("erkenningen", {"plaatsnaam": "Utrecht"})
 
     assert store.meta("duo:p01hoinges:3").laad == ("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
-    assert store.meta("rio:erkenningen:status=actief").laad == (
+    assert store.meta("rio:erkenningen:plaatsnaam=Utrecht").laad == (
         "get_rio_data",
-        {"resource": "erkenningen", "filters": {"status": "actief"}},
+        {"resource": "erkenningen", "filters": {"plaatsnaam": "Utrecht"}},
     )
     store.clear()
 

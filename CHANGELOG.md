@@ -14,6 +14,11 @@ de laatste tag is 1.8.6.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.
 - `run_analysis` weigert overgetypte data en scripts die geen data lezen.
+- DUO-teldefinitie en publicatieregels (aantallen 1-4 gepubliceerd als 4) komen uit de riodata-catalogus,
+  zonder CKAN-aanroep tijdens het gesprek. Kan de package een beschrijving niet lezen, dan meldt de tool dat.
+- Kolomdefinities gelden per DUO-dataset: mbo-opleidingsaanbod krijgt geen hbo-codes VT/DT/DU meer.
+- RIO-filters worden vóór het request getoetst aan het filtercontract van RIO, ook enum-waarden en datums;
+  de melding noemt de geldige codes (bijv. status `G`, niet `OPEN`).
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
@@ -32,3 +37,4 @@ de laatste tag is 1.8.6.
 ### Beheer
 - De `pytest`-job draait ook `ruff check`; de pipeline blokkeert op falende tests.
 - Evaluatie-uitvoer staat niet meer in git.
+- riodata is gepind op 0.3.1 (rio-onderwijsdata `c0b4bce`); `/version` noemt de meegebouwde catalogusrevisies.
