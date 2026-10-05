@@ -29,6 +29,11 @@ _ROA_BRON = (
 )
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
+# Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
+REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
+    "_CITY_COORDS": {"bijgewerkt": "2026-07-30", "bron": "handmatig: benaderde coördinaten van onderwijssteden"},
+}
+
 # Approximate coordinates for Dutch educational cities (PLAATSNAAM uppercase → lat/lon).
 _CITY_COORDS: dict[str, tuple[float, float]] = {
     "AMSTERDAM": (52.374, 4.899),

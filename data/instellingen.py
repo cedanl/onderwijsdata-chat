@@ -11,6 +11,18 @@ logger = logging.getLogger(__name__)
 # RPA-GEBIED NAAM is the official UWV arbeidsmarktregio name (35 regions).
 _ADRES_CACHE: dict[str, dict] | None = None
 
+# Handgemaakte referentielijsten: wanneer elk voor het laatst is bijgewerkt en
+# waarvandaan (#316). Pas de datum aan bij elke wijziging aan een lijst;
+# tests/test_referentielijsten.py bewaakt dit en de botsingen tussen de lijsten.
+REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
+    "ALIASSEN": {"bijgewerkt": "2026-09-26", "bron": "handmatig: gangbare afkortingen per instelling"},
+    "SRAM_ORGS": {
+        "bijgewerkt": "2026-09-08",
+        "bron": "SURF, Institutions using SRAM (servicedesk.surf.nl/wiki/spaces/IAM/pages/74226143)",
+    },
+    "DOMEINEN": {"bijgewerkt": "2026-09-26", "bron": "handmatig: e-maildomeinen van de instellingen"},
+}
+
 ALIASSEN: dict[str, list[str]] = {
     # WO
     "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit"],
