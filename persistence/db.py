@@ -278,6 +278,38 @@ def list_conversations(
     return [dict(r) for r in rows]
 
 
+def search_conversations(username: str, query: str, limit: int = _MAX_CONVERSATIONS) -> list[dict]:
+    """Conversations whose title or message text contains `query`, newest first (#124).
+
+    Matched in Python on the parsed messages, not with LIKE on the stored JSON:
+    that JSON escapes non-ASCII ("é" is stored as "\\u00e9") and would
+    match its own keys ("role", "content").
+    """
+    needle = query.casefold()
+    conn = _connect()
+    rows = _execute(
+        conn,
+        "SELECT id, title, timestamp, messages FROM conversations WHERE username = ? ORDER BY timestamp DESC, id DESC",
+        (username,),
+    ).fetchall()
+    conn.close()
+    hits = [dict(r) for r in rows if _contains(dict(r), needle)]
+    return hits[:limit]
+
+
+def _contains(row: dict, needle: str) -> bool:
+    if needle in (row.get("title") or "").casefold():
+        return True
+    try:
+        messages = json.loads(row.get("messages") or "[]")
+    except ValueError:
+        return False
+    return any(
+        isinstance(m, dict) and isinstance(m.get("content"), str) and needle in m["content"].casefold()
+        for m in messages
+    )
+
+
 def _normalize_ts(timestamp: float) -> int:
     """Normalize millisecond timestamps to seconds."""
     if timestamp > 1e12:

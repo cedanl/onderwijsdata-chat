@@ -19,8 +19,14 @@ async def list_conversations(
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
     before_ts: int | None = None,
     before_id: str | None = None,
+    q: str = "",
 ) -> list[dict]:
-    """Newest first; pass the timestamp and id of the last one shown for the next page (#123)."""
+    """Newest first; pass the timestamp and id of the last one shown for the next page (#123).
+
+    With `q`, only the conversations whose title or text contains it, in one page (#124).
+    """
+    if q.strip():
+        return persistence_db.search_conversations(username, q.strip(), limit=limit)
     before = (before_ts, before_id) if before_ts is not None and before_id is not None else None
     return persistence_db.list_conversations(username, before=before, limit=limit)
 

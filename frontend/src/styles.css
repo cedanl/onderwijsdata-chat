@@ -442,6 +442,13 @@ input, textarea { font: inherit; }
 }
 .history-more-btn:hover:not(:disabled) { background: var(--gray-50); color: var(--gray-700); }
 .history-more-btn:disabled { cursor: default; opacity: .6; }
+.history-search {
+  width: 100%; margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200); background: transparent; color: inherit;
+  font: inherit; font-size: .8rem;
+}
+.history-search:focus { outline: 2px solid var(--blue-400); outline-offset: 1px; }
+.history-search-note { margin: 0 0 8px; font-size: .75rem; color: var(--muted-text); }
 .history-actions { display: flex; flex-direction: column; gap: 4px; padding: 4px 10px 8px 28px; }
 .history-action-btn {
   padding: 6px 10px; border-radius: var(--radius-sm); font-size: .72rem; font-weight: 600;

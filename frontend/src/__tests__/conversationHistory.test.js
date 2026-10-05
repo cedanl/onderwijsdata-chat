@@ -62,3 +62,41 @@ describe('conversation history: load more', () => {
     expect(moreButton().disabled).toBe(true)
   })
 })
+
+// #124: the search field filters the history; results replace the list while there is a query.
+describe('conversation history: search', () => {
+  const zoek = (props) => ({ query: '', setQuery: vi.fn(), results: null, searching: false, error: false, ...props })
+
+  it('types into the search', async () => {
+    const search = zoek()
+    await renderHistory({ search })
+    const input = container.querySelector('input[type="search"]')
+    expect(input.getAttribute('aria-label')).toBe('Zoek in gesprekken')
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      setter.call(input, 'uitval')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(search.setQuery).toHaveBeenCalledWith('uitval')
+  })
+
+  it('shows the results instead of the list, without "Meer laden"', async () => {
+    await renderHistory({
+      hasMore: true,
+      search: zoek({ query: 'uitval', results: [{ id: 'c9', title: 'Uitval hbo', timestamp: Date.now() }] }),
+    })
+    const titels = [...container.querySelectorAll('.history-btn-title')].map(t => t.textContent)
+    expect(titels).toEqual(['Uitval hbo'])
+    expect(moreButton()).toBeNull()
+  })
+
+  it('says when nothing was found', async () => {
+    await renderHistory({ search: zoek({ query: 'xyz', results: [] }) })
+    expect(container.textContent).toContain('Geen gesprekken gevonden')
+  })
+
+  it('says when the search failed', async () => {
+    await renderHistory({ search: zoek({ query: 'xyz', error: true }) })
+    expect(container.textContent).toContain('Zoeken lukt nu niet')
+  })
+})
