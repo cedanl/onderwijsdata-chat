@@ -8,6 +8,7 @@ from functools import cache
 
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
+from riodata import scope
 
 from . import duo_meta, instelling
 
@@ -119,7 +120,12 @@ def _cbs() -> list:
 
 @cache
 def _rio_duo() -> list:
-    return _rio_catalog(source="all")
+    """De RIO/DUO-catalogus zonder records die riodata buiten mbo/hbo/wo plaatst (#375).
+
+    Het scopebesluit staat per record in riodata; zoeken, details en telling volgen het,
+    ook bij een leverancier die de chat verder ondersteunt.
+    """
+    return [e for e in _rio_catalog(source="all") if not scope.buiten_scope(e)]
 
 
 def _dataset_id(entry: dict) -> str:
@@ -145,6 +151,18 @@ def dataset_counts() -> dict[str, int]:
         "DUO": sum(1 for e in rio_duo if e.get("leverancier") == "DUO"),
         "RIO": sum(1 for e in rio_duo if e.get("leverancier") == "RIO"),
     }
+
+
+def catalogus_telling() -> str:
+    """De telling als toolresultaat: een aantal datasets komt uit code, niet uit zoekresultaten (#168)."""
+    return json.dumps(
+        {
+            "datasets_per_bron": dataset_counts(),
+            "cbs_gearchiveerd": sum(1 for e in _cbs() if e.get("_archief")),
+            "toelichting": "Datasets die deze chat kan opvragen. CBS telt gearchiveerde tabellen mee.",
+        },
+        ensure_ascii=False,
+    )
 
 
 _SYNONYMS: dict[str, list[str]] = {
@@ -390,7 +408,11 @@ def search_catalog(
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
         )
-        return f"Geen resultaten gevonden voor '{query}'."
+        # Een gemiste zoekopdracht las het model als "geen geschikte bron" (#168).
+        return (
+            f"Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
+            "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
+        )
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.

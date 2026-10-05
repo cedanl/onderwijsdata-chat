@@ -1,8 +1,11 @@
+from typing import Any
+
 from core.config import RIO_PAGE_SIZE
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_DATASET_DETAILS = "dataset_details"
+TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -14,7 +17,7 @@ TOOL_CREATE_CHOROPLETH_MAP = "create_choropleth_map"
 TOOL_RUN_ANALYSIS = "run_analysis"
 TOOL_COMPUTE_KPI = "compute_kpi"
 
-TOOL_SCHEMAS = [
+TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
@@ -61,6 +64,17 @@ TOOL_SCHEMAS = [
                 },
                 "required": ["dataset_id"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_DATASET_COUNTS,
+            "description": (
+                "Aantal datasets per bron (CBS, DUO, RIO) dat deze chat kan opvragen. Gebruik dit voor een vraag "
+                "naar hoeveel datasets er zijn, niet het aantal zoekresultaten."
+            ),
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {

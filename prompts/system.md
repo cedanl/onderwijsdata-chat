@@ -67,6 +67,8 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (56 datasets): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 
+Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en noem die telling. Een zoekopdracht zonder treffers betekent niet dat een bron ontbreekt.
+
 ## Catalogusvelden
 
 `search_catalog` retourneert compacte metadata per dataset — genoeg om te kiezen, niet alles. Gebruik `dataset_details` voor kolominformatie van een specifieke kandidaat.
