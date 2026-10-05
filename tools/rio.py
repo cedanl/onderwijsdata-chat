@@ -2,30 +2,55 @@ import json
 
 import httpx
 import pandas as pd
-from riodata import fetch
+from riodata import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 
 from . import store
-from .catalog import catalogus_titel, rio_filters
+from .catalog import catalogus_titel
 from .columns import sample_values
 
 _SAMPLE_ROWS = 5
 _PAGING = frozenset({"page", "pageSize"})
 
 
+def rio_filters(resource: str) -> list[str]:
+    """De serverfilters van een RIO-resource, uit het filtercontract van riodata; leeg als onbekend."""
+    filters = filtercontract()["resources"].get(resource, {}).get("filters", [])
+    return [f["naam"] for f in filters]
+
+
 def _filter_hint(allowed: list[str]) -> str:
     return f" Toegestane filters: {allowed} (exacte waarden, geen operatoren als __contains)." if allowed else ""
 
 
-def get_rio_data(resource: str, filters: dict | None = None) -> str:
-    # Een onbekend filter kost anders een HTTP 400, waarna het model in een
-    # ongefilterde eerste pagina gaat zoeken (#186). De catalogus weet welke kan.
-    allowed = rio_filters(resource)
-    unknown = [k for k in (filters or {}) if allowed and k not in allowed and k not in _PAGING]
-    if unknown:
-        return f"RIO-resource '{resource}' kent de filters {unknown} niet.{_filter_hint(allowed)}"
+def _filterfout(resource: str, filters: dict) -> str | None:
+    """Wat er mis is aan resource of filters, met de herstelhint van riodata; None als RIO ze accepteert.
 
+    Een ongeldig filter of een ongeldige waarde kost anders een HTTP 400, waarna het
+    model in een ongefilterde eerste pagina gaat zoeken (#186). Het filtercontract komt
+    uit de OpenAPI-spec van RIO: ook enum-waarden ("G", niet "OPEN") en datums (#353, #373).
+    """
+    # Paging zet get_rio_data zelf; een getal als code ("erkendeopleidingscode": 25295)
+    # stuurt httpx als tekst door, dus toetsen we het ook zo.
+    params = {k: v if isinstance(v, str) else str(v) for k, v in filters.items() if k not in _PAGING}
+    try:
+        problemen = valideer_filters(resource, params)
+    except ValueError as e:
+        return f"Fout bij ophalen RIO data: {e}"
+    # 'waarschuwing': de catalogus noemt het filter, de spec niet; RIO beslist zelf.
+    fouten = [p["herstel"] for p in problemen if p["probleem"] != "waarschuwing"]
+    if not fouten:
+        return None
+    return (
+        f"RIO-resource '{resource}' weigert deze filters: {' '.join(fouten)} "
+        "(exacte waarden, geen operatoren als __contains)."
+    )
+
+
+def get_rio_data(resource: str, filters: dict | None = None) -> str:
+    if fout := _filterfout(resource, filters or {}):
+        return fout
     # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
     # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
     # zou onderstaande slice toch weer afkappen.
@@ -35,7 +60,7 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     except httpx.HTTPStatusError as e:
         return (
             f"Fout bij ophalen RIO data: HTTP {e.response.status_code} voor "
-            f"resource '{resource}' met filters {filters or {}}.{_filter_hint(allowed)}"
+            f"resource '{resource}' met filters {filters or {}}.{_filter_hint(rio_filters(resource))}"
         )
     except Exception as e:
         return f"Fout bij ophalen RIO data: {e}"

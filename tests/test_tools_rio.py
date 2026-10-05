@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 import httpx
+import pytest
 
 from core.config import RIO_PAGE_SIZE
 from tools.rio import get_rio_data
@@ -29,9 +30,9 @@ def test_catalogus_titel_falls_back_for_resource_without_entry():
         patch("tools.catalog._cbs", return_value=[]),
         patch("tools.catalog._rio_duo", return_value=[]),
     ):
-        result = get_rio_data("opleiding")
+        result = get_rio_data("opleidingen")
     parsed = json.loads(result)
-    assert parsed["catalogus_titel"] == "opleiding"
+    assert parsed["catalogus_titel"] == "opleidingen"
 
 
 def test_nested_links_do_not_break_schema():
@@ -59,7 +60,7 @@ def test_empty_result_returns_message():
 
 def test_fetch_exception_returns_error_string():
     with patch("tools.rio.fetch", side_effect=Exception("timeout")):
-        result = get_rio_data("x")
+        result = get_rio_data("erkenningen")
     assert "Fout" in result
     assert "timeout" in result
 
@@ -145,10 +146,10 @@ def test_http_status_error_returns_explicit_fallback():
     error = httpx.HTTPStatusError("Client error", request=request, response=response)
 
     with patch("tools.rio.fetch", side_effect=error):
-        result = get_rio_data("x", {"volledigeNaam": "Foo"})
+        result = get_rio_data("erkenningen", {"volledigeNaam": "Foo"})
 
     assert "HTTP 400" in result
-    assert "x" in result
+    assert "erkenningen" in result
     assert "Fout bij ophalen" in result
 
 
@@ -161,33 +162,60 @@ def test_tool_description_sets_expectation_for_counts():
     assert "totalen" in tool["description"]
 
 
-_COHORTEN = [
-    {
-        "leverancier": "RIO",
-        "_rio_resource": "aangeboden-opleiding-cohorten",
-        "filters": ["aangebodenOpleidingCohorttype", "datumGeldigOp"],
-    },
-]
-
-
 def test_status_filter_op_cohorten_gaat_door_naar_rio():
-    # #353: RIO accepteert status live (codes als "G"), de catalogus noemde het niet.
-    with (
-        patch("tools.rio.fetch", return_value=[{"id": 1, "status": "G"}]) as fetch,
-        patch("tools.catalog._cbs", return_value=[]),
-        patch("tools.catalog._rio_duo", return_value=_COHORTEN),
-    ):
+    # #353: RIO accepteert status live (codes als "G"); de oude allowlist kende het niet.
+    with patch("tools.rio.fetch", return_value=[{"id": 1, "status": "G"}]) as fetch:
         get_rio_data("aangeboden-opleiding-cohorten", filters={"status": "G"})
     assert fetch.call_args.kwargs["status"] == "G"
 
 
 def test_onbekend_filter_blijft_geweigerd():
-    with (
-        patch("tools.rio.fetch") as fetch,
-        patch("tools.catalog._cbs", return_value=[]),
-        patch("tools.catalog._rio_duo", return_value=_COHORTEN),
-    ):
+    with patch("tools.rio.fetch") as fetch:
         result = get_rio_data("aangeboden-opleiding-cohorten", filters={"onzin": "x"})
     fetch.assert_not_called()
-    assert "kent de filters ['onzin'] niet" in result
-    assert "status" in result  # de aanvulling staat in de hint
+    assert "Onbekend filter 'onzin'" in result
+    assert "status" in result  # de geldige filters staan in de hint
+
+
+@pytest.mark.parametrize(
+    ("resource", "filters", "herstel"),
+    [
+        # Leesbare waarden gaven live HTTP 400 (#353): het contract noemt de codes.
+        ("aangeboden-opleiding-cohorten", {"status": "OPEN"}, "Geldig: O, G"),
+        ("opleidingen", {"opleidingseenheidtype": "HBO"}, "HOOPLEIDING"),
+        ("erkenningen", {"datumGeldigOp": "2026-13-01"}, "YYYY-MM-DD"),
+    ],
+)
+def test_ongeldige_waarde_wordt_geweigerd_met_de_geldige_waarden(resource, filters, herstel):
+    with patch("tools.rio.fetch") as fetch:
+        result = get_rio_data(resource, filters)
+    fetch.assert_not_called()
+    assert herstel in result
+
+
+def test_geldige_enumwaarde_gaat_door():
+    with patch("tools.rio.fetch", return_value=[{"id": 1}]) as fetch:
+        get_rio_data("opleidingen", {"opleidingseenheidtype": "HOOPLEIDING"})
+    assert fetch.call_args.kwargs["opleidingseenheidtype"] == "HOOPLEIDING"
+
+
+def test_onbekende_resource_noemt_de_bedoelde():
+    with patch("tools.rio.fetch") as fetch:
+        result = get_rio_data("opleiding")
+    fetch.assert_not_called()
+    assert "Bedoelde je: opleidingen" in result
+
+
+def test_getal_als_code_en_paging_als_tekst_worden_niet_geweigerd():
+    # httpx stuurt 25295 als tekst; paging zet get_rio_data zelf.
+    with patch("tools.rio.fetch", return_value=[{"id": 1}]) as fetch:
+        get_rio_data("opleidingserkenningen", {"erkendeopleidingscode": 25295, "page": "3"})
+    assert fetch.call_args.kwargs["erkendeopleidingscode"] == 25295
+    assert fetch.call_args.kwargs["page"] == 0
+
+
+def test_filters_komen_uit_het_riodata_contract():
+    from tools.rio import rio_filters
+
+    assert "status" in rio_filters("aangeboden-opleiding-cohorten")
+    assert rio_filters("bestaat-niet") == []

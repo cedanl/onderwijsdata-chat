@@ -15,8 +15,9 @@ import pandas as pd
 from core.config import DUO_ROW_LIMIT
 
 from . import dekking, duo, instelling, periode, store
-from .catalog import resources_met_kolom, rio_filters
+from .catalog import resources_met_kolom
 from .cbs import check_dimensions_pinned
+from .rio import rio_filters
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
 _ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
