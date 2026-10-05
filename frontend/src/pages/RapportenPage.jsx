@@ -19,7 +19,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   // setSearchParams/History API calls that can hit Firefox's rate limit.
   const navWorkbook = location.state?.pendingWorkbook ?? null
 
-  const { workbooks: rapporten, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks: rapporten, loading, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'report',
       pendingId: navWorkbook ? null : pendingId,
@@ -62,11 +62,18 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
         <div className="wb-gallery-header">
           <div>
             <h1 className="wb-gallery-title">Rapporten</h1>
-            <div className="wb-gallery-sub">{rapporten.length} rapport{rapporten.length !== 1 ? 'en' : ''}</div>
+            <div className="wb-gallery-sub">
+              {loading && rapporten.length === 0 ? '' : `${rapporten.length} rapport${rapporten.length !== 1 ? 'en' : ''}`}
+            </div>
           </div>
         </div>
 
-        {rapporten.length === 0 ? (
+        {loading && rapporten.length === 0 ? (
+          <div className="wb-gallery-loading" aria-busy="true" role="status"
+            style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--muted-text)' }}>
+            Rapporten laden…
+          </div>
+        ) : rapporten.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 24px', color: 'var(--gray-500)' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 48, height: 48, margin: '0 auto 16px', display: 'block', opacity: .4 }}>
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
