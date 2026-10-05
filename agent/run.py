@@ -23,6 +23,7 @@ from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolle
 from .session_data import record_data_key
 from .stream import Emit
 from .telling import met_telling
+from .vaste_antwoorden import sentinelvraag, weigering
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,11 @@ async def run(
     )
     logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
 
+    if vast := sentinelvraag(last_user_msg):
+        await emit({"type": "message_start"})
+        await emit({"type": "message_end", "content": vast, "actions": []})
+        return vast
+
     history, was_trimmed = trim(list(messages))
     initial_history_len = len(history)
     if was_trimmed:
@@ -262,7 +268,7 @@ async def run(
         )
         return "Het maximale aantal stappen is bereikt."
 
-    text_content = met_telling(result.text, result.tool_results)
+    text_content = weigering(result.text, result.tool_calls) or met_telling(result.text, result.tool_results)
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"
