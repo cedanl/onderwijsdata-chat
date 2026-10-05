@@ -107,3 +107,8 @@ def test_toolresultaat_zonder_bron_is_geen_bewijs():
     bronloos = json.dumps({"bron": None, "resultaat": 987654})
     assert unverified("Het totaal is 987654.", [bronloos]) == ["987654"]
     assert unverified("Het totaal is 987654.", [json.dumps({"bron": "duo", "resultaat": 987654})]) == []
+
+
+def test_getal_dat_alleen_de_gebruiker_noemde_is_niet_gedekt():
+    # #211: run.py geeft alleen assistentberichten als bron mee.
+    assert unverified("Het totaal is 987654.", [], []) == ["987654"]

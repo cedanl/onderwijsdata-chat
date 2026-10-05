@@ -368,3 +368,21 @@ def test_duo_answer_gets_the_telling_block_from_code(monkeypatch):
     assert "**Telling**" in text
     assert events[-1]["type"] == "message_end" and events[-1]["content"] == text
     assert "controle" not in events[-1]
+
+
+def test_number_only_from_the_user_is_a_claim_to_verify(monkeypatch):
+    # #211: een getal dat de gebruiker noemde is geen bewijs.
+    earlier = [{"role": "user", "content": "Het waren toch 987654 studenten?"}]
+    _, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="Ja, 987654 studenten.", tool_calls=[]),
+            StreamResult(text="Toch 987654.", tool_calls=[]),
+        ],
+        earlier,
+    )
+
+    assert events[-1]["controle"] == [
+        "987654 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
+    ]

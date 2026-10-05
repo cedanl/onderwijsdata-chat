@@ -95,3 +95,35 @@ def test_cbs_label_zonder_periodecode():
     )
     [probleem] = verkeerd_gebonden("In 2025/26 waren het 378.490.", [json.dumps({"data_key": "cbs:85423NED:x"})])
     assert "2024/25" in probleem
+
+
+def test_gecombineerde_binding_die_twee_losse_controles_passeert():
+    # 2024/25 en Aeres staan elk in een rij met 2.880, maar niet in dezelfde rij (die is 2025/26).
+    [probleem] = verkeerd_gebonden("Aeres Hogeschool telde in 2024/25 in totaal 2.880 voltijdstudenten.", _beurt())
+    assert "2.880" in probleem and "2025/26" in probleem
+
+
+def test_gecombineerde_binding_in_dezelfde_rij_is_goed():
+    assert verkeerd_gebonden("Aeres Hogeschool telde in 2025/26 in totaal 2.880 voltijdstudenten.", _beurt()) == []
+
+
+def test_vergelijking_met_twee_jaren_moet_bij_een_van_beide_passen():
+    # 2.880 hoort bij 2025/26 en blijft dus goed in een zin over 2024/25 en 2025/26.
+    assert verkeerd_gebonden("Aeres: 2.991 in 2024/25 en 2.880 in 2025/26.", _beurt()) == []
+
+
+def test_vergelijking_met_twee_jaren_en_een_getal_van_een_ander_jaar():
+    store.put(
+        "duo:p01hoinges:3:drie",
+        pd.DataFrame(
+            {
+                "STUDIEJAAR": [2023, 2024, 2025],
+                "AANTAL": [11111, 27135, 26370],
+            }
+        ),
+        KeyMeta(bron="duo", dataset="p01hoinges", periodekolom="STUDIEJAAR", afgeleid_van="duo:p01hoinges:3"),
+    )
+    [probleem] = verkeerd_gebonden(
+        "Van 27.135 in 2024/25 naar 11.111 in 2025/26.", [json.dumps({"data_key": "duo:p01hoinges:3:drie"})]
+    )
+    assert "11.111" in probleem and "2023/24" in probleem

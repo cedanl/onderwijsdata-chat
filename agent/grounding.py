@@ -84,8 +84,9 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
 
     Getallen volgen de regel van unsourced_numbers; elk percentage moet, afgerond
     op zijn eigen decimalen, als waarde of als fractie in de bronnen staan. Bronnen
-    zijn de toolresultaten en `conversation`: eerdere berichten van het gesprek, in
-    Nederlandse notatie gelezen (28.355 is één getal, geen 28 en 355).
+    zijn de toolresultaten en `conversation`: eerdere berichten van de assistent, in
+    Nederlandse notatie gelezen (28.355 is één getal, geen 28 en 355). Wat de
+    gebruiker zei is een bewering om te toetsen en hoort er niet bij (#211).
     """
     integers = _tool_integers(tool_results) | {
         _digits(m.group(1)) for said in conversation for m in _TEXT_NUMBER.finditer(said)
