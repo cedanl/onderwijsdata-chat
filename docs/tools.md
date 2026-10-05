@@ -280,6 +280,16 @@ Haalt metagegevens van een specifieke dataset op (kolommen, dimensies, beschrijv
 
 ---
 
+## dataset_counts
+
+Geeft het aantal datasets per bron (CBS, DUO, RIO) dat de chat kan opvragen, plus het aantal gearchiveerde CBS-tabellen. Geen parameters. Dezelfde telling voedt de startpagina.
+
+**Gebruik:** bij een vraag naar hoeveel datasets er zijn. Een telling van zoekresultaten is geen catalogustotaal (#168).
+
+Records die riodata buiten mbo/hbo/wo plaatst (`_scope.mbo_hbo_wo = buiten_scope`) tellen niet mee en zijn ook voor zoeken en `dataset_details` onzichtbaar (#375).
+
+---
+
 ## get_cbs_data
 
 Haalt rijen op uit een CBS-dataset via de OData API.
