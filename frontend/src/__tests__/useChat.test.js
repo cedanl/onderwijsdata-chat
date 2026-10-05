@@ -258,6 +258,34 @@ describe('useChat new conversation', () => {
     await act(async () => { chat.startNewConversation() })
     expect(chat.messages).toEqual([])
   })
+
+  // #337: "Nieuw gesprek" during a run refused the next question until the old run ended.
+  it('sends a question right after a reset that interrupted a run', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Hoeveel studenten heeft de HU?') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { chat.startNewConversation() })
+    await act(async () => { ws.emit({ type: 'reset_done' }) })
+    expect(chat.busy).toBe(false)
+
+    let sent
+    await act(async () => { sent = chat.send('Hoeveel eerstejaars heeft de UU?') })
+    expect(sent).toBe(true)
+    expect(ws.sent.filter(m => m.action === 'message')).toHaveLength(2)
+  })
+
+  it('drops stream events of the old run that arrive before reset_done', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Hoeveel studenten heeft de HU?') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { chat.startNewConversation() })
+    await act(async () => {
+      ws.emit({ type: 'text_delta', content: 'oud' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'reset_done' })
+    })
+    expect(chat.messages).toEqual([])
+  })
 })
 
 describe('useChat connection loss', () => {

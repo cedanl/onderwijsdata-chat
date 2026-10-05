@@ -261,6 +261,21 @@ def _stop_task(session: dict, task: asyncio.Task | None) -> None:
         task.cancel()
 
 
+_STOP_TIMEOUT_S = 5
+
+
+async def _stop_task_and_wait(session: dict, task: asyncio.Task | None) -> None:
+    """Stop the run and wait until it has really ended (#337).
+
+    cancel() only asks; the old run could still send text_deltas after the reset_done of a new
+    conversation, which then landed in the new chat.
+    """
+    if task is None or task.done():
+        return
+    _stop_task(session, task)
+    await asyncio.wait({task}, timeout=_STOP_TIMEOUT_S)
+
+
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
@@ -369,14 +384,14 @@ async def chat_websocket(ws: WebSocket, token: str | None = Query(default=None))
             if action == "stop":
                 _handle_stop(session)
             elif action == "reset":
-                _stop_task(session, current_task)
+                await _stop_task_and_wait(session, current_task)
                 _reset_session(session)
                 current_task = None
                 await emit({"type": "reset_done"})
             elif action == "settings":
                 session["chat_settings"] = msg.get("settings", {})
             elif action == "history":
-                _stop_task(session, current_task)
+                await _stop_task_and_wait(session, current_task)
                 _open_conversation(session, msg.get("messages") or [])
                 current_task = None
             elif action == "message":

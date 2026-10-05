@@ -298,6 +298,8 @@ export function useChat({ onUnauthorized } = {}) {
       ws.onmessage = (e) => {
         const event = JSON.parse(e.data)
         if (reportingRef.current && chatStreamEvents.has(event.type)) return
+        // Until reset_done, stream events belong to the run of the conversation that was just left (#337).
+        if (resettingRef.current && chatStreamEvents.has(event.type)) return
         const handler = messageHandlers[event.type]
         if (handler) handler(event)
       }
@@ -381,8 +383,12 @@ export function useChat({ onUnauthorized } = {}) {
 
   const clear = useCallback(() => {
     setMessages([])
+    // The ref too: send() checks it, and a stale true refused every next question (#337).
+    busyRef.current = false
     setBusy(false)
+    setThinking(false)
     currentMsgRef.current = null
+    lastSentRef.current = null
   }, [])
 
   // "Nieuw gesprek": the server must forget the previous conversation too,
