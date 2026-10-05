@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import RunProgress, { countRunSteps, formatElapsed } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, formatElapsed } from '../components/RunProgress'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -21,6 +21,24 @@ describe('countRunSteps', () => {
   it('is zero without tools or messages', () => {
     expect(countRunSteps([])).toBe(0)
     expect(countRunSteps([{ role: 'user', content: 'x' }])).toBe(0)
+  })
+})
+
+// UX-10.4: time and step number said nothing about what the run was doing.
+describe('currentRunStep', () => {
+  it('is the running step of this run', () => {
+    const messages = [
+      { role: 'user', content: 'eerste' },
+      { role: 'assistant', tools: [{ label: 'Oud', done: false }] },
+      { role: 'user', content: 'tweede' },
+      { role: 'assistant', tools: [{ label: 'Catalogus doorzoeken', done: true }, { label: 'DUO-data ophalen', done: false }] },
+    ]
+    expect(currentRunStep(messages)).toBe('DUO-data ophalen')
+  })
+
+  it('falls back to the last step taken, or nothing', () => {
+    expect(currentRunStep([{ role: 'user' }, { role: 'assistant', tools: [{ label: 'Grafiek maken', done: true }] }])).toBe('Grafiek maken')
+    expect(currentRunStep([{ role: 'user' }])).toBeNull()
   })
 })
 
@@ -61,6 +79,11 @@ describe('RunProgress', () => {
 
     await act(async () => { vi.advanceTimersByTime(7000) })
     expect(container.textContent).toContain('0:07')
+  })
+
+  it('names the current step', async () => {
+    await render({ busy: true, steps: 2, stepLabel: 'DUO-data ophalen' })
+    expect(container.querySelector('.run-progress-step').textContent).toBe('DUO-data ophalen')
   })
 
   it('disappears when the run ends', async () => {

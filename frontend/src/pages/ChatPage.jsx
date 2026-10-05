@@ -18,6 +18,7 @@ import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from 
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
+import { answerModels } from '../answerModel'
 import { personalizeQuestion } from '../suggestions'
 import {
   appendPage, clearCurrentChat, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory,
@@ -35,7 +36,7 @@ import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
 import ErrorRetry from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
-import RunProgress, { countRunSteps } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -404,6 +405,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   }, [reportSpec, settings?.instelling, openRapport, clearReport])
 
   const displayMessages = [...restoredMessages, ...messages]
+  const modelLabels = answerModels(displayMessages, models)
   const hasMessages = displayMessages.length > 0
   const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
   const atContextLimit = userTurnCount >= MAX_CHAT_TURNS
@@ -475,7 +477,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
-                settings={settings}
+                settings={settings} modelLabel={modelLabels[msg.id]}
                 retry={msg.isError ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
@@ -495,7 +497,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 </div>
               </div>
             )}
-            <RunProgress busy={busy} steps={countRunSteps(messages)} />
+            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
@@ -679,7 +681,7 @@ function questionBefore(messages, i) {
   return null
 }
 
-function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null }) {
+function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -749,6 +751,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
             )}
           </div>
         )}
+        {modelLabel && <div className="message-model">Antwoord van {modelLabel}</div>}
       </div>
     </div>
   )
@@ -887,7 +890,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
                       onClick={e => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="history-btn-title">{conv.title}</span>
+                    <span className="history-btn-title" title={conv.title}>{conv.title}</span>
                   )}
                   <span className="history-btn-date">{relativeDate(conv.timestamp)}</span>
                 </div>
