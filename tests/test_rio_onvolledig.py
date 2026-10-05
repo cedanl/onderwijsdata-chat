@@ -151,3 +151,41 @@ def test_een_afgeleide_selectie_van_een_afgekapte_pagina_blijft_onvolledig():
 
 def test_andere_getallen_zijn_geen_telling_van_de_pagina():
     assert onvolledige_selecties("De erkenning dateert van 2019 en heeft 12 vestigingen.", _beurt()) == []
+
+
+# Audit UX N2 / audit 13: de controle las losse cijfers uit bereiken en decimalen als
+# telling, en zette dezelfde waarschuwing meerdere keren onder een correct antwoord (#380, #384).
+
+
+def _afgeleid(rijen: int) -> list[str]:
+    return [query_data(_page(), filters={"aantal__lte": rijen - 1})]
+
+
+def test_kleine_aantallen_en_bereiken_zijn_geen_telling_van_de_pagina():
+    tekst = "DUO onderdrukt kleine aantallen (1–4 studenten per cel). Het aandeel ligt tussen 3-5 en 3-6 procent."
+    assert onvolledige_selecties(tekst, _afgeleid(1) + _afgeleid(3)) == []
+
+
+def test_bereik_met_tot_is_geen_telling():
+    assert onvolledige_selecties("Tussen 20 tot 50 erkenningen per provincie.", _beurt()) == []
+
+
+def test_decimaal_en_percentage_zijn_geen_telling():
+    tekst = "Het aandeel vrouwen is 48,3% en de groei 50 % ten opzichte van 50,0 eerder."
+    assert onvolledige_selecties(tekst, _beurt()) == []
+
+
+def test_duizendtalscheiding_splitst_het_getal_niet():
+    # 46.046 is één getal, niet de zinnen "46" en "046".
+    beurt = _afgeleid(46)
+    assert onvolledige_selecties("Er stonden 46.046 studenten ingeschreven.", beurt) == []
+
+
+def test_een_getal_krijgt_een_melding_ook_als_het_vaker_voorkomt():
+    tekst = "Er zijn 50 erkenningen. Landelijk gaat het om 50 erkenningen."
+    assert len(onvolledige_selecties(tekst, _beurt())) == 1
+
+
+def test_afgeleide_selectie_boven_de_drempel_blijft_een_probleem():
+    problemen = onvolledige_selecties("Er zijn 46 erkenningen.", _afgeleid(46))
+    assert len(problemen) == 1 and "46" in problemen[0]
