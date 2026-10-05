@@ -4,7 +4,8 @@ De getalcontrole ziet dat +29.040 uit compute_kpi komt, maar niet over welke
 jaren. Audit 10: "2019/20 → 2024/25: +29.040", terwijl de KPI 2019/20 → 2025/26
 was. compute_kpi geeft die jaren nu mee als `periode`; noemt een zin het
 KPI-getal samen met een bereik van schooljaren, dan moet dat bereik kloppen.
-Eén genoemd schooljaar is geen bereik: daarover gaat binding.py.
+Eén genoemd schooljaar is geen bereik: daarover gaat binding.py. Een bereik mag ook in
+kale jaartallen staan ("2024 tot 2030"); DUO-prognoses kennen geen schooljaarnotatie.
 """
 
 import json
@@ -28,33 +29,34 @@ def _kpis(tool_results: list[str]) -> list[dict]:
     return kpis
 
 
+# Duizendtallen met (harde of smalle) spatie, zoals gpt-oss ze schrijft (#236).
+_SPATIE_DUIZENDTAL = re.compile(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?!\d))")
+
+
 def _noemt(segment: str, waarde: str) -> bool:
     """Staat de KPI-waarde (zonder teken of %) als los getal in het segment?"""
     kaal = waarde.lstrip("+-−").rstrip("%")
+    segment = _SPATIE_DUIZENDTAL.sub(".", segment)
     return re.search(rf"(?<![\d.,]){re.escape(kaal)}(?![\d,]|\.\d)", segment) is not None
-
-
-def _startjaar(label: str) -> int | None:
-    return next(iter(periode.gevraagde_schooljaren(label)), None)
 
 
 def verkeerde_kpi_periodes(tekst: str, tool_results: list[str]) -> list[str]:
     problemen = []
     for kpi in _kpis(tool_results):
         van, tot = kpi["periode"]["van"], kpi["periode"]["tot"]
-        bereik = (_startjaar(van), _startjaar(tot))
-        if None in bereik:
+        bereik = periode.schooljaarbereik(van, tot)
+        if bereik is None:
             continue
         for segment in segmenten(tekst):
-            genoemd = periode.gevraagde_schooljaren(segment)
-            if len(genoemd) < 2 or not _noemt(segment, kpi["value"]):
+            genoemd = periode.genoemd_bereik(segment)
+            if genoemd is None or not _noemt(segment, kpi["value"]):
                 continue
-            if (min(genoemd), max(genoemd)) != bereik:
+            if genoemd != bereik:
                 metric = kpi.get("bron", {}).get("metric", "KPI")
                 problemen.append(
                     Probleem(
                         f"{kpi['value']} is de {metric} van {van} tot {tot}, maar de tekst noemt "
-                        f"{periode.label(min(genoemd))} tot {periode.label(max(genoemd))}.",
+                        f"{periode.label(genoemd[0])} tot {periode.label(genoemd[1])}.",
                         "Die waarde komt uit compute_kpi: noem de periode uit `periode`.",
                     )
                 )

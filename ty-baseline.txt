@@ -1,7 +1,6 @@
 agent/dashboard.py: error[unresolved-attribute] Attribute `items` is not defined on `None` in union `dict[Unknown, Unknown] | None`
 agent/grounding.py: error[invalid-parameter-default] Default value of type `tuple[()]` is not assignable to annotated parameter type `list[str]`
 agent/grounding.py: warning[invalid-argument-type] Argument to bound method `Decimal.scaleb` is incorrect: Expected `Decimal | int`, found `int | Literal["n", "N", "F"]`
-agent/labels.py: warning[invalid-argument-type] Argument to function `_toegeschreven` is incorrect: Expected `list[str]`, found `list[str | None]`
 agent/loop.py: warning[invalid-argument-type] Argument to function `generate` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
 agent/loop.py: warning[invalid-argument-type] Argument to function `to_thread` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
 agent/metatekst.py: warning[invalid-argument-type] Argument to function `sorted` is incorrect: Argument type `Unknown | str | dict[str, str | dict[str, dict[str, str] | dict[str, str | list[str]]] | list[str]] | ... omitted 3 union elements` does not satisfy upper bound `SupportsDunderLT[Any] | SupportsDunderGT[Any]` of type variable `SupportsRichComparisonT`
@@ -70,7 +69,6 @@ tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supporte
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `not in` is not supported between objects of type `Literal["store"]` and `str | None`
-tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`
 tests/test_snippet.py: warning[invalid-argument-type] Argument to function `_run` is incorrect: Expected `str`, found `str | None`

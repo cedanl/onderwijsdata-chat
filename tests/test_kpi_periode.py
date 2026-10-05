@@ -55,3 +55,39 @@ def test_zin_zonder_het_kpi_getal_wordt_niet_gecontroleerd():
 def test_ander_toolresultaat_wordt_genegeerd():
     andere = json.dumps({"data_key": "duo:x", "rijen": [{"N": 29040}]})
     assert verkeerde_kpi_periodes("2019/20 → 2024/25: +29.040", [andere, "geen json"]) == []
+
+
+# --- kale jaartallen en getallen met spatie (#320) ---
+
+_PROGNOSE = json.dumps(
+    {
+        "label": "Verschil",
+        "value": "-41.558",
+        "raw": -41558.0,
+        "periode": {"van": "2024/25", "tot": "2043/44"},
+        "bron": {"data_key": "duo:x", "kolom": "N", "metric": "delta"},
+    }
+)
+
+
+def test_kaal_jaartalbereik_met_verkeerd_eindjaar_is_een_probleem():
+    # Audit 12 (gpt-oss): −28.377 onder het label "Verschil 2030-2024"; de KPI ging tot 2043.
+    [probleem] = verkeerde_kpi_periodes("Het verschil 2024 tot 2030 is -41.558 leerlingen.", [_PROGNOSE])
+    assert "2043/44" in probleem
+
+
+def test_kaal_jaartalbereik_met_het_juiste_bereik_is_goed():
+    assert verkeerde_kpi_periodes("Van 2024 tot 2043 daalt het met 41.558.", [_PROGNOSE]) == []
+
+
+def test_omgekeerd_jaartalbereik_met_streepje_wordt_gecontroleerd():
+    assert verkeerde_kpi_periodes("Verschil 2030-2024: -41.558", [_PROGNOSE])
+
+
+def test_twee_opeenvolgende_jaren_met_streepje_zijn_een_schooljaar_geen_bereik():
+    assert verkeerde_kpi_periodes("In 2024-2025 was het verschil -41.558.", [_PROGNOSE]) == []
+
+
+def test_getal_met_spatie_wordt_herkend_als_kpi_waarde():
+    for spatie in (" ", " ", " "):
+        assert verkeerde_kpi_periodes(f"2024 tot 2030: -41{spatie}558", [_PROGNOSE])

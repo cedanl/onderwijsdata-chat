@@ -200,6 +200,18 @@ _KPI_EXPRESSIES = {
 }
 
 
+def _bereikregels(sort_column: str | None, van: int | None, tot: int | None) -> list[str]:
+    """De `van`/`tot`-selectie van compute_kpi: rijen waarvan het startjaar binnen het bereik valt."""
+    if not sort_column or (van is None and tot is None):
+        return []
+    ondergrens = "-inf" if van is None else van
+    bovengrens = "inf" if tot is None else tot
+    return [
+        f"jaar = pd.to_numeric(df[{sort_column!r}].astype(str).str[:4], errors='coerce')",
+        f"df = df[jaar.between(float('{ondergrens}'), float('{bovengrens}'))]",
+    ]
+
+
 def _compute_kpi_snippet(args: dict) -> str:
     """Maak de KPI-berekening reproduceerbaar, zodat de gebruiker het getal kan narekenen."""
     metric = args.get("metric", "")
@@ -212,6 +224,7 @@ def _compute_kpi_snippet(args: dict) -> str:
 
     # Zelfstandig: de KPI laadt zijn eigen data, net als de andere snippets (#227).
     lines = [*_laadregels(args.get("data_key", "")), "", f"# KPI: {label} ({metric})"]
+    lines += _bereikregels(sort_column, args.get("van"), args.get("tot"))
     if sort_column:
         lines.append(f"df = df.sort_values({sort_column!r})")
     lines.append(f's = pd.to_numeric(df[{value_column!r}], errors="coerce").dropna()')

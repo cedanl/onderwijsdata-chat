@@ -217,3 +217,49 @@ def test_grootste_daling_bij_herhaalde_indexlabels():
 
     assert result["raw"] == -7
     assert result["tussen"] == ["2022", "2023"]
+
+
+# --- van/tot en label (#320) ---
+
+_PROGNOSE = pd.DataFrame({"JAAR": list(range(2024, 2044)), "AANTAL": [937_657 - 2_000 * i for i in range(20)]})
+
+
+@pytest.fixture
+def _prognose():
+    store.put("duo:kpi:prognose", _PROGNOSE, store.KeyMeta(bron="duo", dataset="kpi:prognose"))
+
+
+def test_van_en_tot_beperken_de_reeks_en_de_periode(_prognose):
+    kpi = json.loads(
+        compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="Verschil", van=2024, tot=2030)
+    )
+    assert kpi["raw"] == -12_000
+    assert kpi["periode"] == {"van": "2024/25", "tot": "2030/31"}
+
+
+def test_zonder_van_en_tot_rekent_de_kpi_over_de_hele_reeks(_prognose):
+    kpi = json.loads(compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="Verschil"))
+    assert kpi["periode"] == {"van": "2024/25", "tot": "2043/44"}
+
+
+def test_van_zonder_sort_column_is_een_fout(_prognose):
+    assert "sort_column" in json.loads(compute_kpi("duo:kpi:prognose", "AANTAL", "delta", label="L", van=2024))["fout"]
+
+
+def test_van_en_tot_zonder_rijen_is_een_fout(_prognose):
+    assert "fout" in json.loads(
+        compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="L", van=1990, tot=1995)
+    )
+
+
+def test_label_met_ander_bereik_dan_de_kpi_wordt_geweigerd(_prognose):
+    # Audit 12: delta over 2024–2043, label "Verschil 2030-2024".
+    fout = json.loads(
+        compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="Verschil 2030-2024")
+    )["fout"]
+    assert "2024/25 tot 2043/44" in fout and "`van` en `tot`" in fout
+
+
+def test_label_met_het_bereik_van_de_kpi_wordt_doorgelaten(_prognose):
+    kpi = compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="Verschil 2024 tot 2043")
+    assert "fout" not in json.loads(kpi)

@@ -58,3 +58,20 @@ def test_duo_periodekolom():
     assert periode.duo_periodekolom(["INSTELLINGSCODE", "STUDIEJAAR", "AANTAL"]) == "STUDIEJAAR"
     assert periode.duo_periodekolom(["JAAR", "AANTAL"]) == "JAAR"
     assert periode.duo_periodekolom(["AANTAL"]) is None
+
+
+def test_jaarbereiken_in_kale_jaartallen():
+    assert periode.jaarbereiken("van 2024 tot 2030, en 2031 t/m 2035") == {2024, 2030, 2031, 2035}
+    assert periode.jaarbereiken("Verschil 2030-2024") == {2024, 2030}
+    assert periode.jaarbereiken("in 2024-2025 en 2024/2025") == set()
+
+
+def test_genoemd_bereik_combineert_schooljaren_en_kale_jaren():
+    assert periode.genoemd_bereik("2024/25 → 2030/31") == (2024, 2030)
+    assert periode.genoemd_bereik("2024 tot 2030") == (2024, 2030)
+    assert periode.genoemd_bereik("alleen 2025/26") is None
+
+
+def test_schooljaarbereik_van_twee_labels():
+    assert periode.schooljaarbereik("2024/25", "2043/44") == (2024, 2043)
+    assert periode.schooljaarbereik("2024/25", "onbekend") is None

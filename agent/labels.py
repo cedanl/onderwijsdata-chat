@@ -28,21 +28,6 @@ _DATASET_ID = re.compile(r"\b(p\d{2}[a-z0-9]{3,}|\d{5}(?:NED|ENG))\b")
 # De Bronnen-sectie uit prompts/system.md, tot de Definities of het einde (#213).
 _BRONNEN = re.compile(r"\*\*Bronnen\*\*(.*?)(?=\*\*Definities\*\*|\Z)", re.DOTALL)
 
-# Wat een DUO-key telt, uit het label van zijn teldefinitie ("Ingeschrevenen: …").
-# p01 en p02 tellen hoofdinschrijvingen als personen, p03 alle inschrijvingen (#172).
-_TEKST_INSCHRIJVINGEN = re.compile(r"(?<!hoofd)inschrijving", re.IGNORECASE)
-_TEKST_PERSONEN = re.compile(r"\bpersonen\b", re.IGNORECASE)
-
-# Een ontkenning vlak vóór het woord ("geen inschrijvingen maar personen", "gaat om
-# personen, niet om inschrijvingen") is toelichting, geen toeschrijving (#214).
-_ZIN_EINDE = re.compile(r"[!?;\n]|\.(?!\d)")
-_ONTKENNING = re.compile(r"\b(?:geen|niet|nooit)\b(?:\W+\w+){0,3}?\W*$", re.IGNORECASE)
-# Of erna, in DUO's eigen woorden: "Inschrijvingen … worden niet meegeteld" (#239).
-_UITGESLOTEN = re.compile(r"\bniet\s+(?:meegeteld|meegenomen|geteld)\b|\bbuiten\s+beschouwing\b", re.IGNORECASE)
-_WOORD = re.compile(r"\w+")
-# Zoveel woorden rond het woord moeten letterlijk in de teldefinitie staan om als citaat te tellen.
-_CITAAT_VOOR, _CITAAT_NA = 2, 4
-
 
 def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
     """Een opleidingsvormcode naast het woord van een andere vorm."""
@@ -90,64 +75,4 @@ def ongebruikte_bronnen(tekst: str, tool_results: list[str]) -> list[str]:
         )
         for dataset_id in sorted(set(_DATASET_ID.findall(sectie.group(1))))
         if dataset_id.lower() not in gebruikt and catalogus_titel(dataset_id) != dataset_id
-    ]
-
-
-def _geciteerd(zin: str, start: int, definitie: str) -> bool:
-    """Staat het woord met zijn omgeving letterlijk in de DUO-teldefinitie (#239)?"""
-    woorden = _WOORD.findall(zin.lower())
-    i = len(_WOORD.findall(zin[:start]))
-    venster = woorden[max(0, i - _CITAAT_VOOR) : i + _CITAAT_NA]
-    return f" {' '.join(venster)} " in f" {definitie} "
-
-
-def _toegeschreven(verkeerd: re.Pattern, tekst: str, definities: list[str]) -> bool:
-    """Staat het woord ergens als bewering in de tekst, dus niet in een ontkenning of citaat?"""
-    definitie = " ".join(" ".join(_WOORD.findall(d.lower())) for d in definities)
-    for zin in _ZIN_EINDE.split(tekst):
-        for treffer in verkeerd.finditer(zin):
-            voor = zin[: treffer.start()].rsplit(" maar ", 1)[-1]
-            bijzin = zin[treffer.end() :].split(",", 1)[0]
-            if _ONTKENNING.search(voor) or _UITGESLOTEN.search(bijzin):
-                continue
-            if not _geciteerd(zin, treffer.start(), definitie):
-                return True
-    return False
-
-
-def _teleenheid(teldefinitie: str | None) -> str | None:
-    label = (teldefinitie or "").split(":", 1)[0].strip().lower()
-    if label.startswith("inschrijving"):
-        return "inschrijvingen"
-    if label.endswith("ingeschrevenen"):
-        return "personen"
-    return None
-
-
-def verkeerde_teleenheid(tekst: str, tool_results: list[str]) -> list[str]:
-    """Personen als inschrijvingen gebracht, of andersom.
-
-    Alleen als alle keys van de beurt hetzelfde tellen: een vergelijking van p01
-    en p03 noemt terecht beide.
-    """
-    eenheden = {}
-    definities = []
-    for key in data_keys(tool_results):
-        known = store.meta(key)
-        if known and (eenheid := _teleenheid(known.teldefinitie)):
-            eenheden.setdefault(eenheid, known.dataset)
-            definities.append(known.teldefinitie)
-    if len(eenheden) != 1:
-        return []
-    [(eenheid, dataset)] = eenheden.items()
-    verkeerd, woord = (
-        (_TEKST_INSCHRIJVINGEN, "inschrijvingen") if eenheid == "personen" else (_TEKST_PERSONEN, "personen")
-    )
-    if not _toegeschreven(verkeerd, tekst, definities):
-        return []
-    return [
-        Probleem(
-            f"{dataset} telt {eenheid} (teldefinitie van DUO), maar de tekst spreekt van {woord}.",
-            "Noem de teleenheid zoals de bron hem telt.",
-        )
     ]

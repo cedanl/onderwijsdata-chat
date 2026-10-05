@@ -268,6 +268,14 @@ TOOL_SCHEMAS = [
                         "description": "Kolom om op te sorteren voor last/first/delta/pct_change/index/max_drop/max_rise, bijv. STUDIEJAAR. Zonder deze kolom telt de rijvolgorde.",
                     },
                     "label": {"type": "string", "description": "Label van de KPI, bijv. 'Voltijd 2025/26'"},
+                    "van": {
+                        "type": "integer",
+                        "description": "Startjaar waarmee de reeks begint (2024 = 2024/25). Zonder `van` en `tot` rekent de KPI over alle rijen. Vereist sort_column.",
+                    },
+                    "tot": {
+                        "type": "integer",
+                        "description": "Startjaar waarmee de reeks eindigt, inclusief. Vereist sort_column.",
+                    },
                 },
                 "required": ["data_key", "value_column", "metric", "label"],
             },

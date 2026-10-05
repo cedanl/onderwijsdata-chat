@@ -16,7 +16,7 @@ Het rapport heeft ALTIJD deze structuur:
 ## Werkwijze
 
 1. Bekijk de beschikbare datasets (kolommen, types, voorbeeldwaarden en **herkomst**)
-2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie komt uit het gesprek en beantwoordt de onderzoeksvraag. De chatcontroles dekken niet alles, en dit rapport wordt na afloop op eigen controles getoetst (getallen, opleidingsvorm, dataset-ID, teleenheid, jaar en instelling per rij):
+2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie komt uit het gesprek en beantwoordt de onderzoeksvraag. De chatcontroles dekken niet alles, en dit rapport wordt na afloop op eigen controles getoetst (getallen, opleidingsvorm, dataset-ID, jaar en instelling per rij):
    - Gebruik voor de getallen van de onderzoeksvraag de afgeleide dataset uit het gesprek zoals hij is.
    - Filter een brondataset alleen opnieuw voor iets wat het gesprek niet deed, en neem dan de filters en codes uit de herkomst letterlijk over. Kies geen andere codes, perioden of definities.
    - Getallen, codes, statussen (zoals `Periodestatus`) en definities in het rapport komen uit deze data, niet uit eigen kennis.

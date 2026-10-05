@@ -8,8 +8,9 @@ de laatste tag is 1.8.6.
 
 ### Betrouwbaarheid van antwoorden
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
-- Opleidingsvorm, dataset-ID en teleenheid in een antwoord worden getoetst aan de bron, en een
-  ontkenning ("geen inschrijvingen maar personen") geeft geen vals alarm meer.
+- Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
+- De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en
+  wanneer totalen een ondergrens zijn (-1-cellen in de selectie); de teleenheid-regex is vervallen.
 - Grootste daling of stijging komt uit code (`compute_kpi`: `max_drop`, `max_rise`) en niet uit het model.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.

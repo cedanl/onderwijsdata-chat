@@ -5,7 +5,7 @@ grafieken, is met code te controleren, voor elk model gelijk:
 - het rapport heeft inhoud: reikwijdte, conclusie en een getal of grafiek (#189);
 - elk groot getal in de tekst komt uit de data van het rapport;
 - de tekst claimt geen afwezigheid van data naast een gevulde grafiek;
-- opleidingsvorm, dataset-ID en teleenheid in de tekst kloppen met de bron (#196);
+- opleidingsvorm en dataset-ID in de tekst kloppen met de bron (#196);
 - een getal staat bij het jaar en de instelling van zijn eigen rij (#197).
 """
 
@@ -22,7 +22,6 @@ from agent.labels import (
     onbekende_datasets,
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
-    verkeerde_teleenheid,
 )
 
 if TYPE_CHECKING:
@@ -106,7 +105,6 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += verkeerde_opleidingsvormen(text)
     problems += onbekende_datasets(text)
     problems += ongebruikte_bronnen(text, sources)
-    problems += verkeerde_teleenheid(text, sources)
     problems += verkeerd_gebonden(text, sources)
     problems += verkeerde_kpi_periodes(text, sources)
     return problems
