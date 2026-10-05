@@ -613,6 +613,11 @@ input, textarea { font: inherit; }
   animation: pulse 1.2s infinite;
 }
 .reasoning-step-dot.done { background: var(--green-500); animation: none; }
+.reasoning-step-dot.empty, .tool-step-dot.empty { background: #F59E0B; }
+.reasoning-step-dot.error, .tool-step-dot.error { background: #DC2626; }
+.reasoning-step.empty, .reasoning-step.error { align-items: flex-start; color: var(--gray-700); }
+.reasoning-step.empty .reasoning-step-dot, .reasoning-step.error .reasoning-step-dot { margin-top: 6px; }
+.reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
 
 
 .reasoning-snippets { margin-top: 8px; }

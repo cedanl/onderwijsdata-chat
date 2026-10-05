@@ -14,6 +14,7 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
+import ReasoningStep from '../components/ReasoningStep'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
@@ -114,10 +115,7 @@ function ReasoningPanel({ tools, isDone }) {
       {open && (
         <div className="reasoning-content">
           {tools.map((t, i) => (
-            <div key={`${t.name}-${i}`} className="reasoning-step">
-              <div className={`reasoning-step-dot${t.done ? ' done' : ''}`} />
-              <span>{t.label}</span>
-            </div>
+            <ReasoningStep key={`${t.name}-${i}`} tool={t} />
           ))}
           {hasSnippets && (
             <div className="reasoning-snippets">

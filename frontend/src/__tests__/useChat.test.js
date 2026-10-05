@@ -425,6 +425,20 @@ describe('useChat reasoning steps (#76)', () => {
     })
     expect(assistantMessages()[0].tools.map(t => [t.done, t.snippet ?? null])).toEqual([[true, 'eerste'], [false, null]])
   })
+
+  it('keeps the outcome of a step, so an empty filter is not shown as a success (#386)', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data gefilterd' })
+      ws.emit({
+        type: 'tool_end', name: 'query_data', status: 'empty',
+        status_label: 'Filter leverde 0 rijen op', suggesties: { Niveau: ['Hbo', 'Wo'] },
+      })
+    })
+    const [step] = assistantMessages()[0].tools
+    expect(step).toMatchObject({ done: true, status: 'empty', statusLabel: 'Filter leverde 0 rijen op', suggesties: { Niveau: ['Hbo', 'Wo'] } })
+  })
 })
 
 describe('useChat question model', () => {

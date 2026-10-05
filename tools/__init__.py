@@ -5,6 +5,7 @@ from .catalog import dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data
 from .kpi import compute_kpi
+from .outcome import outcome  # noqa: F401
 from .plot import create_choropleth_map, create_plot
 from .query import query_data
 from .rio import get_rio_data
