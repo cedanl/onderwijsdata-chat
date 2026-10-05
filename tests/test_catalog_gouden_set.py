@@ -36,6 +36,7 @@ GOED = [
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
 BEKENDE_MISSERS = [
+    # Alleen de score; de bronkeuze voor instellingsvragen (#334) is buiten deze set gedekt.
     ("Hoeveel voltijd studenten heeft de VU Amsterdam?", "p01hoinges", 3, 12),
     ("Hoeveel deeltijdstudenten zijn er landelijk in het hoger onderwijs?", "85423NED", 5, 12),
     ("Hoeveel vsv'ers zijn er in het mbo?", "85368NED", 5, None),
@@ -44,6 +45,12 @@ BEKENDE_MISSERS = [
 ]
 
 _TOP_N = 15
+
+
+@pytest.fixture(autouse=True)
+def _zonder_instellingsregister(monkeypatch):
+    # Het register bouwt uit DUO-downloads; deze set meet alleen de score (#334 heeft eigen tests).
+    monkeypatch.setattr("tools.catalog.instelling.noemt_instelling", lambda vraag: False)
 
 
 def _ids(query: str) -> list[str]:

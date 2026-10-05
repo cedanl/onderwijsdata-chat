@@ -525,3 +525,63 @@ def test_tool_description_shows_a_good_and_a_bad_query():
     schema = next(t for t in TOOL_SCHEMAS if t["function"]["name"] == "search_catalog")
     beschrijving = schema["function"]["parameters"]["properties"]["query"]["description"]
     assert "Goed:" in beschrijving and "Fout:" in beschrijving
+
+
+# --- #350: waarschuwingstekst scoort niet; archief pas na de filters ---
+
+
+def _zoek_catalogus(query: str, cbs=(), rio=(), **kwargs) -> list[dict]:
+    with patch("tools.catalog._cbs", return_value=list(cbs)), patch("tools.catalog._rio_duo", return_value=list(rio)):
+        resultaat = search_catalog(query, **kwargs)
+    return json.loads(resultaat) if resultaat.startswith("[") else []
+
+
+def test_niet_geschikt_voor_scoort_niet_maar_blijft_zichtbaar():
+    entries = [{"identifier": "a", "title": "instroom", "niet_geschikt_voor": "Niet geschikt voor gemeente"}]
+    assert _zoek_catalogus("gemeente", cbs=entries, source="cbs") == []
+    [hit] = _zoek_catalogus("instroom", cbs=entries, source="cbs")
+    assert hit["niet_geschikt_voor"] == "Niet geschikt voor gemeente"
+
+
+def test_afgevallen_actieve_hit_blokkeert_geen_passende_archiefhit():
+    entries = [
+        {"identifier": "actief", "title": "instroom", "_archief": False, "_geo_niveau": ["landelijk"]},
+        {"identifier": "archief", "title": "instroom", "_archief": True, "_geo_niveau": ["gemeente"]},
+    ]
+    hits = _zoek_catalogus("instroom", cbs=entries, source="cbs", geo_niveau="gemeente")
+    assert [h["identifier"] for h in hits] == ["archief"]
+
+
+def test_historische_vraag_kiest_direct_het_archief():
+    entries = [
+        {"identifier": "actief", "title": "instroom", "_archief": False},
+        {"identifier": "archief", "title": "instroom", "_archief": True},
+    ]
+    hits = _zoek_catalogus("historische instroom", cbs=entries, source="cbs")
+    assert hits[0]["identifier"] == "archief"
+
+
+# --- #334: de bron van een instellingsvraag kiest de code ---
+
+
+def test_instellingsvraag_zoekt_in_duo_en_rio_ook_als_het_model_cbs_stuurt():
+    cbs = [{"_cbs_id": "85423NED", "title": "voltijd studenten"}]
+    duo = [{"_ckan_id": "p01hoinges", "leverancier": "DUO", "title": "voltijd studenten"}]
+    with patch("tools.catalog.instelling.noemt_instelling", return_value=True):
+        hits = _zoek_catalogus("voltijd studenten Hogeschool Utrecht", cbs=cbs, rio=duo, source="cbs")
+    assert [h["_ckan_id"] for h in hits] == ["p01hoinges"]
+
+
+def test_instellingsvraag_valt_terug_op_cbs_zonder_duo_of_rio_treffer():
+    cbs = [{"_cbs_id": "85423NED", "title": "voltijd studenten"}]
+    with patch("tools.catalog.instelling.noemt_instelling", return_value=True):
+        hits = _zoek_catalogus("voltijd studenten Hogeschool Utrecht", cbs=cbs, source="cbs")
+    assert [h["_cbs_id"] for h in hits] == ["85423NED"]
+
+
+def test_vraag_zonder_instelling_houdt_de_gekozen_bron():
+    cbs = [{"_cbs_id": "85423NED", "title": "voltijd studenten"}]
+    duo = [{"_ckan_id": "p01hoinges", "leverancier": "DUO", "title": "voltijd studenten"}]
+    with patch("tools.catalog.instelling.noemt_instelling", return_value=False):
+        hits = _zoek_catalogus("voltijd studenten", cbs=cbs, rio=duo, source="cbs")
+    assert [h["_cbs_id"] for h in hits] == ["85423NED"]

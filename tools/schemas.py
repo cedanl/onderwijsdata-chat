@@ -31,11 +31,6 @@ TOOL_SCHEMAS = [
                             "Fout: 'Hoeveel voltijdstudenten heeft de VU?'"
                         ),
                     },
-                    "source": {
-                        "type": "string",
-                        "enum": ["cbs", "rio", "duo", "both"],
-                        "description": "Te doorzoeken bron: 'cbs', 'rio', 'duo' (alleen DUO-datasets), of 'both' (alles)",
-                    },
                     "top_n": {"type": "integer", "description": "Maximaal aantal resultaten (standaard: 15)"},
                     "geo_niveau": {
                         "type": "string",
