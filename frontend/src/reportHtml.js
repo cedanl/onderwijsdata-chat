@@ -1,4 +1,4 @@
-function escapeHtml(str) {
+export function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -24,7 +24,7 @@ function bullets(items) {
 
 // Moet meelopen met de plotly.js-versie in package.json: de figure-JSON wordt
 // door de gebundelde versie gegenereerd en door deze CDN-versie gerenderd.
-const PLOTLY_CDN_VERSION = '4.1.0'
+export const PLOTLY_CDN_VERSION = '4.1.0'
 
 function plotlyHtml(figureJson, id) {
   return `<script src="https://cdn.plot.ly/plotly-${PLOTLY_CDN_VERSION}.min.js"></script>

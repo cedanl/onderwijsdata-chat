@@ -1202,6 +1202,13 @@ html.dark .context-limit-banner--full {
 .export-conversation-btn:hover { color: var(--accent-text); }
 
 /* ─── Feedback Modal ──────────────────────────────────────── */
+.wb-viewer-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.wb-download-btn {
+  font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);
+  color: var(--accent-text); background: none; border: 1.5px solid var(--gray-200); cursor: pointer;
+}
+.wb-download-btn:hover { border-color: var(--blue-300); }
+.wb-download-error { font-size: .8rem; color: var(--red-500); }
 .wb-feedback-btn, .wb-feedback-given {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: var(--radius-sm);
