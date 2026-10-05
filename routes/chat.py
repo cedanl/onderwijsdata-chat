@@ -10,6 +10,7 @@ from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.replay import replay_dashboard_figures, replay_data_calls
+from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MODEL
@@ -124,6 +125,8 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
             author=author or session.get("username"),
         )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
+    except RapportGeannuleerd:
+        await emit({"type": "report_cancelled"})
     except json.JSONDecodeError as e:
         # LLM produced invalid structured output; the raw parser error is not
         # actionable for the user, so fall back to the generic guidance.

@@ -68,6 +68,10 @@ def _nl_datum(today: date | None = None) -> str:
     return f"{today.day} {_DUTCH_MONTHS[today.month - 1]} {today.year}"
 
 
+class RapportGeannuleerd(Exception):
+    """De gebruiker stopte de rapportgeneratie: er komt geen (half) rapport (#339)."""
+
+
 @dataclass
 class ReportSpec:
     title: str = ""
@@ -172,6 +176,8 @@ async def generate(
         correction=_correction,
         keep_partial=lambda: bool(figures),
     )
+    if result.aborted:
+        raise RapportGeannuleerd
     if result.partial_error:
         await emit(
             {

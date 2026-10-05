@@ -39,6 +39,7 @@ import ChatInputFooter from '../components/ChatInputFooter'
 import ErrorRetry from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
+import ReportProgress from '../components/ReportProgress'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -149,7 +150,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast } = useChat({
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -527,6 +528,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                   </svg>
                   {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
                 </button>
+                <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
                 {saveError && (
                   <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0' }}>
                     Rapport opslaan mislukt: {saveError}
