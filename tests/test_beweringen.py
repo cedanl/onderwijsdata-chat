@@ -1,4 +1,4 @@
-"""Een "niet beschikbaar"- of oorzaakclaim zonder dekking wordt teruggestuurd (#330, #225)."""
+"""Een "niet beschikbaar"- of oorzaakclaim zonder dekking wordt teruggestuurd (#323, #225)."""
 
 import json
 

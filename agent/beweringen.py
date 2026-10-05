@@ -1,4 +1,4 @@
-"""Beweringen over wat er wel of niet te zeggen valt, zonder dat de data het draagt (#330, #225).
+"""Beweringen over wat er wel of niet te zeggen valt, zonder dat de data het draagt (#323, #225).
 
 Getallen, labels en selecties worden elders gecontroleerd. Dit zijn twee uitspraken
 die geen getal zijn en toch een claim: "die data is er niet" en "dit komt doordat ...".

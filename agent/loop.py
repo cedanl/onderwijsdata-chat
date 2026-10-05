@@ -243,7 +243,7 @@ class _Loop:
                     else:
                         self.figure_shown.add(identity)
                 if c.name in self.tool_limits and not _is_hit(content):
-                    # Only searches that found something use up the limit (#330): a miss is a reason to rephrase.
+                    # Only searches that found something use up the limit (#323): a miss is a reason to rephrase.
                     self.counts[c.name] -= 1
                 self.result.tool_results.append(content)
                 self.trace.note(c.name, c.args, content)
