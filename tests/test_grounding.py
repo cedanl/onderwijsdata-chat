@@ -100,3 +100,10 @@ def test_afgerond_getal_telt_als_ongedekt():
 def test_getal_uit_een_eerder_bericht_telt_in_nederlandse_notatie():
     assert unverified("Nog steeds 28.355.", [], ["In 2021/22 waren het 28.355 personen."]) == []
     assert unverified("Een daling van 7,0%.", [], ["De daling was 7,0%."]) == []
+
+
+def test_toolresultaat_zonder_bron_is_geen_bewijs():
+    # #201: run_analysis zonder gelezen key geeft {"bron": null, ...}.
+    bronloos = json.dumps({"bron": None, "resultaat": 987654})
+    assert unverified("Het totaal is 987654.", [bronloos]) == ["987654"]
+    assert unverified("Het totaal is 987654.", [json.dumps({"bron": "duo", "resultaat": 987654})]) == []

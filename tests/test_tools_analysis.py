@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pandas as pd
 
@@ -217,3 +218,42 @@ def test_non_square_heatmap_gets_a_row_per_cell():
     )
     assert [r["waarde"] for r in fig.layout.meta["data"]] == [1, 2, 3]
     assert fig.layout.meta["data"][2] == {"rij": "s", "kolom": "r", "waarde": 3}
+
+
+# --- #201: bewijs en volledigheid horen bij alle gelezen keys ---
+
+
+def _half(key: str = "test:half") -> None:
+    store.put(key, pd.DataFrame({"N": range(50)}), store.KeyMeta(bron="rio", dataset="x", volledig=False))
+
+
+def _json(uitkomst) -> Any:
+    return json.loads(str(uitkomst))
+
+
+def test_store_get_van_een_onvolledige_key_wordt_geweigerd():
+    _half()
+    assert run_analysis(code="result = len(store_get('test:half'))") == store.ONVOLLEDIG
+
+
+def test_onvolledige_key_naast_een_volledige_data_key_wordt_geweigerd():
+    _put("test:an", [{"N": 1}])
+    _half()
+    assert run_analysis(code="result = len(df) + len(store_get('test:half'))", data_key="test:an") == store.ONVOLLEDIG
+
+
+def test_store_get_van_een_volledige_key_erft_de_metadata():
+    _put("test:an", [{"JAAR": 2021, "N": 100}])
+    parsed = _json(run_analysis(code="result = store_get('test:an')"))
+    known = store.meta(parsed["data_key"])
+    assert known is not None and known.afgeleid_van == "test:an"
+
+
+def test_resultaat_zonder_gelezen_key_heeft_geen_bron():
+    # Het script noemt store_get maar leest niets: het getal komt uit het model.
+    assert _json(run_analysis(code="store_get\nresult = 987654")) == {"bron": None, "resultaat": 987654}
+
+
+def test_resultaat_met_gelezen_key_heeft_een_bron():
+    _put("test:an", [{"N": 100}])
+    assert _json(run_analysis(code="result = int(store_get('test:an')['N'].sum())")) == 100

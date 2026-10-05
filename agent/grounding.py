@@ -9,6 +9,7 @@ Voor chatantwoorden (#185) geldt dat ook voor percentages: een percentage is
 bijna altijd een berekening, en die hoort in een tool, niet in het model.
 """
 
+import json
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -34,8 +35,21 @@ def _checked(number: str) -> bool:
     return len(number) >= _MIN_DIGITS and int(number) not in _YEARS
 
 
+def _bronloos(result: str) -> bool:
+    """Een toolresultaat dat zelf zegt geen data gelezen te hebben (run_analysis zonder gelezen key, #201)."""
+    try:
+        parsed = json.loads(result)
+    except ValueError:
+        return False
+    return isinstance(parsed, dict) and "bron" in parsed and parsed["bron"] is None
+
+
+def _bewijs(tool_results: list[str]) -> list[str]:
+    return [r for r in tool_results if not _bronloos(str(r))]
+
+
 def _tool_integers(tool_results: list[str]) -> set[str]:
-    return {n for result in tool_results for n in _TOOL_NUMBER.findall(str(result))}
+    return {n for result in _bewijs(tool_results) for n in _TOOL_NUMBER.findall(str(result))}
 
 
 def checked_numbers(text: str) -> list[tuple[str, str]]:
@@ -76,7 +90,7 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
     integers = _tool_integers(tool_results) | {
         _digits(m.group(1)) for said in conversation for m in _TEXT_NUMBER.finditer(said)
     }
-    decimals = {Decimal(n.replace(",", ".")) for r in tool_results for n in _TOOL_DECIMAL.findall(str(r))} | {
+    decimals = {Decimal(n.replace(",", ".")) for r in _bewijs(tool_results) for n in _TOOL_DECIMAL.findall(str(r))} | {
         Decimal(m.group(1).replace(",", ".")) for said in conversation for m in _TEXT_PERCENT.finditer(said)
     }
 
