@@ -66,3 +66,18 @@ def metadata(entry: dict) -> dict:
             "ontbreken. Noem ze niet als ze hier niet staan."
         )
     return velden
+
+
+KOLOMMEN_STEEKPROEF = (
+    "Waarden en bereik in _kolommen komen uit een steekproef van het bestand: voorbeelden, "
+    "geen volledige dekking van jaren of waarden. get_duo_data geeft per kolom het bereik, "
+    "de unieke waarden en het aantal -1-cellen van het hele bestand."
+)
+
+
+def kolomdekking(entry: dict) -> dict:
+    """Wat dataset_details over de catalogusvoorbeelden zegt (#362): steekproef, en van wanneer."""
+    velden: dict = {"kolommen_steekproef": KOLOMMEN_STEEKPROEF} if entry.get("_kolommen") else {}
+    if gewijzigd := (entry.get("_notes_provenance") or {}).get("metadata_modified"):
+        velden["catalogus_bron_gewijzigd"] = gewijzigd[:10]
+    return velden
