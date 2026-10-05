@@ -8,6 +8,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, SEARCH_CATALOG_LIMIT
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
+from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .grounding import unverified
@@ -87,13 +88,15 @@ async def _handle_clarify_scope(
 ) -> str:
     """End the turn with a clarification card; returns the text for ``run()``."""
     args = call.args or {}
+    vraag = je_vorm(args.get("vraag") or "")
+    opties = [_optie_in_je_vorm(o) for o in args.get("opties") or []]
 
     # The assistant turn that asked has no text of its own; an empty content makes LiteLLM
     # put "[System: Empty message content sanitised…]" in the history, which the model then
     # repeats to the user (#322). The question it asked is the honest text for that turn.
     for m in turn_history:
         if m.get("role") == "assistant" and not (m.get("content") or "").strip():
-            m["content"] = args.get("vraag") or "Verduidelijkingsvraag gesteld."
+            m["content"] = vraag or "Verduidelijkingsvraag gesteld."
 
     # Persist the clarification exchange back to messages so the next
     # turn has the tool_calls context (prevents re-asking same question).
@@ -110,11 +113,19 @@ async def _handle_clarify_scope(
     await emit(
         {
             "type": "clarification",
-            "vraag": args.get("vraag", ""),
-            "opties": args.get("opties") or [],
+            "vraag": vraag,
+            "opties": opties,
         }
     )
     return text_content
+
+
+def _optie_in_je_vorm(optie):
+    if isinstance(optie, str):
+        return je_vorm(optie)
+    if isinstance(optie, dict):
+        return {k: je_vorm(v) if k in ("label", "beschrijving") and isinstance(v, str) else v for k, v in optie.items()}
+    return optie
 
 
 def _correction(problems: list[str]) -> str:
