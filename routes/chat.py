@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -252,7 +253,7 @@ async def _reject_busy(emit) -> None:
     await emit({"type": "busy", "message": BUSY_MESSAGE})
 
 
-def _handle_stop(session: dict) -> None:
+def _signal_stop(session: dict) -> None:
     stop_event = session.get("stop_event")
     if stop_event:
         stop_event.set()
@@ -260,7 +261,7 @@ def _handle_stop(session: dict) -> None:
 
 def _stop_task(session: dict, task: asyncio.Task | None) -> None:
     if _task_busy(task):
-        _handle_stop(session)
+        _signal_stop(session)
         task.cancel()
 
 
@@ -277,6 +278,27 @@ async def _stop_task_and_wait(session: dict, task: asyncio.Task | None) -> None:
         return
     _stop_task(session, task)
     await asyncio.wait({task}, timeout=_STOP_TIMEOUT_S)
+
+
+async def _handle_stop(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    _signal_stop(session)
+    return current_task
+
+
+async def _handle_reset(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> None:
+    await _stop_task_and_wait(session, current_task)
+    _reset_session(session)
+    await emit({"type": "reset_done"})
+
+
+async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    session["chat_settings"] = msg.get("settings", {})
+    return current_task
+
+
+async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> None:
+    await _stop_task_and_wait(session, current_task)
+    _open_conversation(session, msg.get("messages") or [])
 
 
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
@@ -312,7 +334,9 @@ async def _handle_clarification(
     return asyncio.create_task(_process_message(choice, session, emit, model))
 
 
-async def _handle_generate_dashboard(session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+async def _handle_generate_dashboard(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
     if not DASHBOARDS_ENABLED:
         await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
         return current_task
@@ -350,6 +374,30 @@ async def _handle_refresh_dashboard(
     return asyncio.create_task(_refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model))
 
 
+Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]
+
+# Per actie van de frontend een handler: (bericht, sessie, emit, lopende taak) -> lopende taak (#206).
+ACTIES: dict[str, Handler] = {
+    "stop": _handle_stop,
+    "reset": _handle_reset,
+    "settings": _handle_settings,
+    "history": _handle_history,
+    "message": _handle_message,
+    "clarification_choice": _handle_clarification,
+    "generate_dashboard": _handle_generate_dashboard,
+    "generate_report": _handle_generate_report,
+    "refresh_dashboard": _handle_refresh_dashboard,
+}
+
+
+async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    handler = ACTIES.get(msg.get("action"))
+    if handler is None:
+        logger.warning("Onbekende websocket-actie genegeerd: %r", msg.get("action"))
+        return current_task
+    return await handler(msg, session, emit, current_task)
+
+
 @router.websocket("/api/chat")
 async def chat_websocket(ws: WebSocket) -> None:
     username = None
@@ -384,35 +432,6 @@ async def chat_websocket(ws: WebSocket) -> None:
         while True:
             raw = await ws.receive_text()
             msg = json.loads(raw)
-            action = msg.get("action")
-
-            if action == "stop":
-                _handle_stop(session)
-            elif action == "reset":
-                await _stop_task_and_wait(session, current_task)
-                _reset_session(session)
-                current_task = None
-                await emit({"type": "reset_done"})
-            elif action == "settings":
-                session["chat_settings"] = msg.get("settings", {})
-            elif action == "history":
-                await _stop_task_and_wait(session, current_task)
-                _open_conversation(session, msg.get("messages") or [])
-                current_task = None
-            elif action == "message":
-                current_task = await _handle_message(msg, session, emit, current_task)
-            elif action == "clarification_choice":
-                current_task = await _handle_clarification(msg, session, emit, current_task)
-            elif action == "generate_dashboard":
-                current_task = await _handle_generate_dashboard(session, emit, current_task)
-            elif action == "generate_report":
-                current_task = await _handle_generate_report(msg, session, emit, current_task)
-            elif action == "refresh_dashboard":
-                current_task = await _handle_refresh_dashboard(msg, session, emit, current_task)
-
+            current_task = await _dispatch(msg, session, emit, current_task)
     except WebSocketDisconnect:
-        if current_task is not None and _task_busy(current_task):
-            current_task.cancel()
-            stop_event = session.get("stop_event")
-            if stop_event:
-                stop_event.set()
+        _stop_task(session, current_task)
