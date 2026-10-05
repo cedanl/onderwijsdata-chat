@@ -28,6 +28,7 @@ from agent.dashboard import (
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import meldingen
 from agent.report_checks import report_problems
+from agent.report_definities import definities_uit_bron, samengevoegd
 from agent.stream import Emit
 from core.config import MODEL
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
@@ -238,7 +239,7 @@ def _parse_spec_from_response(
     return ReportSpec(
         title=title,
         onderzoeksvraag=onderzoeksvraag,
-        definities=spec_data.get("definities") or [],
+        definities=samengevoegd(definities_uit_bron(context.get("datasets", [])), spec_data.get("definities") or []),
         beantwoordt=spec_data.get("beantwoordt") or [],
         beantwoordt_niet=spec_data.get("beantwoordt_niet") or [],
         conclusie=(spec_data.get("conclusie") or "").strip(),

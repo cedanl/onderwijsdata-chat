@@ -108,6 +108,12 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if violation:
         return violation
 
+    gelezen: list[str] = []  # elke key die het script las, via data_key of store_get (#201)
+
+    def store_get(key: str):
+        gelezen.append(key)
+        return store.readonly(key)
+
     namespace = {
         "__builtins__": _SAFE_BUILTINS,
         "pd": pd,
@@ -115,7 +121,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         "math": math,
         "px": px,
         "go": go,
-        "store_get": lambda key: store.readonly(key),
+        "store_get": store_get,
         "result": None,
         "figure": None,
     }
@@ -127,6 +133,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
             hint = f" Beschikbaar: {available}" if available else ""
             return f"Geen data gevonden voor '{data_key}'.{hint}"
         namespace["df"] = df.copy()
+        gelezen.append(data_key)
 
     exc_result: list = [None]
 
@@ -161,7 +168,9 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
 
     # Op afgekapte data is een los getal of een samenvatting (len(df) = 50) een
     # telling van de pagina, niet van de bron (#186). Rijen mogen, met melding.
-    complete = data_key is None or store.volledig(data_key)
+    # Dat geldt voor elke gelezen key, niet alleen voor data_key (#201).
+    bronnen = list(dict.fromkeys(gelezen))
+    complete = all(store.volledig(k) for k in bronnen)
     if not complete and result is not None and not isinstance(result, list):
         return store.ONVOLLEDIG
 
@@ -169,13 +178,13 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if isinstance(result, list) and result:
         store_df = pd.DataFrame(result)
         result_key = f"analysis:{id(store_df)}"
-        if data_key is not None:
+        if bronnen:
             store.derive(
-                data_key,
+                bronnen[0],
                 result_key,
                 store_df,
                 stap="eigen berekening (run_analysis)",
-                **dekking.van(store_df, store.meta(data_key)),
+                **dekking.van(store_df, store.meta(bronnen[0])),
             )
         else:
             store.put(result_key, store_df)
@@ -185,6 +194,9 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
         text_obj = {"data_key": result_key, "rijen": result}
         if not complete:
             text_obj["waarschuwing"] = store.ONVOLLEDIG
+    if not bronnen:
+        # Een uitkomst die geen data las is geen bewijs: de getalcontrole telt haar niet mee (#201).
+        text_obj = {"bron": None, "resultaat": text_obj}
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):

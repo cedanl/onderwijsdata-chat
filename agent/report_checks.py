@@ -23,6 +23,7 @@ from agent.labels import (
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
 )
+from agent.probleem import Probleem
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -35,6 +36,9 @@ _ABSENCE = re.compile(
     re.IGNORECASE,
 )
 
+
+# "resource 3" zegt een lezer niets: de naam van het bestand staat in de bronvermelding (#329).
+_RESOURCE_VERWIJZING = re.compile(r"\bresource\s*\d+\b", re.IGNORECASE)
 
 # Een getal dat geen jaartal is: "2021" alleen is een periode, geen bevinding.
 _FINDING_NUMBER = re.compile(r"\b(?!(?:19|20)\d{2}\b)\d+")
@@ -101,6 +105,14 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
             if match := _ABSENCE.search(claim or ""):
                 problems.append(f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden.")
                 break
+
+    if match := _RESOURCE_VERWIJZING.search(text):
+        problems.append(
+            Probleem(
+                f"De tekst verwijst naar '{match.group(0)}', dat een lezer niets zegt.",
+                "Noem het bestand bij zijn titel of laat de verwijzing weg.",
+            )
+        )
 
     problems += verkeerde_opleidingsvormen(text, sources)
     problems += onbekende_datasets(text)

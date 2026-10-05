@@ -106,3 +106,12 @@ def test_verkeerde_opleidingsvorm_in_de_reikwijdte():
     store.clear()
 
     assert "duaal" in probleem
+
+
+def test_resource_nummer_in_de_rapporttekst_wordt_afgewezen():
+    # #329: "resource 3" zegt een lezer niets.
+    spec = _spec(conclusie="Uit resource 3 blijkt een daling van 28.355 naar 26.370.")
+
+    [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+
+    assert "resource 3" in probleem
