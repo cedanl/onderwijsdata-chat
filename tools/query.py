@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import dekking, duo, instelling, periode, store
+from . import cbs_afronding, dekking, duo, instelling, periode, store
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
@@ -228,6 +228,8 @@ def query_data(
         # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
         # leest, en onderdrukte cellen in de selectie maken dat totaal een ondergrens.
         notes = duo.sentinel_notes(duo.count_cells(cells))
+        if noot := cbs_afronding.van_key(data_key):
+            notes.append(noot)
         cells = duo.aggregate_cells(cells, df, group_by, agg)
         df = agg
 

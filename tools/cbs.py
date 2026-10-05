@@ -13,7 +13,7 @@ from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import periode, store
+from . import cbs_afronding, periode, store
 from .catalog import catalogus_laatste_update, catalogus_titel
 from .columns import sample_values
 
@@ -180,6 +180,22 @@ def _dimension_rows(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
     )
 
 
+@lru_cache(maxsize=128)
+def _tabelbeschrijving(dataset_id: str) -> str:
+    """TableInfos.Description: daar zet CBS publicatieregels zoals de afronding (#352)."""
+    rows = get(dataset_id, "TableInfos")
+    return (rows[0].get("Description") or "") if rows else ""
+
+
+def _afronding(dataset_id: str) -> tuple[int | None, bool]:
+    """(afrondingseenheid, bekend). Een mislukte call is onbekend, niet exact."""
+    try:
+        return cbs_afronding.uit_beschrijving(_tabelbeschrijving(dataset_id)), True
+    except Exception as e:
+        logger.warning("CBS TableInfos ophalen mislukt voor %s: %s", dataset_id, e)
+        return None, False
+
+
 def _add_dimension_context(df: pd.DataFrame, dataset_id: str, col_defs: dict) -> pd.DataFrame:
     """Zet naast elke dimensiecode het officiële label en de periodestatus.
 
@@ -253,6 +269,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     schooljaren = periode.dekking(df, "cbs", kolom)
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
     truncated = len(rows) >= _page_size(params["$top"])
+    eenheid, afronding_bekend = _afronding(dataset_id)
     store.put(
         key,
         df,
@@ -262,6 +279,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             volledig=not truncated,
             periodekolom=kolom,
             schooljaren=schooljaren,
+            afronding=eenheid,
             laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
         ),
     )
@@ -302,6 +320,11 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "CBS-metadata (DataProperties) kon niet worden opgehaald: kolomdefinities, eenheden "
             "en dimensielabels ontbreken in dit resultaat. Noem dat als je de cijfers duidt."
         )
+
+    if eenheid:
+        result["afronding"] = cbs_afronding.noot(eenheid)
+    elif not afronding_bekend:
+        result["afronding_onbekend"] = cbs_afronding.ONBEKEND
 
     if truncated:
         result["waarschuwing"] = f"Afgekapt op {len(df)} rijen. Verfijn $filter of $select voor volledigere data."

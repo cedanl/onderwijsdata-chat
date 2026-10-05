@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from . import periode, store
+from . import cbs_afronding, periode, store
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
 # aanleiding om iets anders te proberen.
@@ -212,6 +212,7 @@ def compute_kpi(
             "trendDirection": trend_direction,
             **tussen,
             **periode_van_kpi,
+            **({"afronding": noot} if (noot := cbs_afronding.van_key(data_key)) else {}),
             "bron": {
                 "data_key": data_key,
                 "kolom": value_column,

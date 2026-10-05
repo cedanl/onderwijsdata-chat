@@ -38,6 +38,7 @@ class KeyMeta:
     instellingskolom: str | None = None  # DUO institution code column (#143)
     instellingen: tuple[str, ...] | None = None  # institution codes in this data; None = unknown (#143)
     afgeleid_van: str | None = None  # the key this one was derived from
+    afronding: int | None = None  # CBS publishes the counts rounded to this unit, e.g. 10 (#352)
     # The load call (tool, arguments): what a snippet needs to reproduce the data (#131). Provenance, not identity.
     laad: tuple[str, dict] | None = field(default=None, compare=False)
     # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
@@ -105,7 +106,12 @@ def herkomst(key: str) -> list[str]:
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
     if known.resource is not None:
         bron += f", resource {known.resource}"
-    return [bron, *reversed(stappen)]
+    regels = [bron, *reversed(stappen)]
+    if known.afronding:
+        from .cbs_afronding import noot  # lazy: cbs_afronding importeert store
+
+        regels.append(f"afronding: {noot(known.afronding)}")
+    return regels
 
 
 def volledig(key: str) -> bool:
