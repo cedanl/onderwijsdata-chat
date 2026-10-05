@@ -1,3 +1,4 @@
+import difflib
 import hashlib
 import json
 import logging
@@ -112,6 +113,38 @@ def _select_with_dimensions(select: str, dims: list[str]) -> str:
     return ",".join(cols + [d for d in dims if d not in cols])
 
 
+_MAX_GENOEMDE_SLEUTELS = 15
+
+
+def _onbekende_select(select: str, col_defs: dict) -> str | None:
+    """Een $select met een label of een verschreven sleutel, vóór het request gemeld (#354).
+
+    CBS wil de kolomsleutel (TotaalIngeschrevenen_1), niet de titel ("Totaal ingeschrevenen").
+    Dat faalde pas bij het datarequest, met een ruwe providerfout. Zonder DataProperties
+    controleren we niets: bronuitval is niet hetzelfde als een kolom die niet bestaat.
+    """
+    if not col_defs:
+        return None
+    sleutels = {"ID", *col_defs}
+    per_titel = {d.get("title", "").lower(): k for k, d in col_defs.items() if d.get("title")}
+    fouten = []
+    for kolom in (c.strip() for c in select.split(",")):
+        if not kolom or kolom in sleutels:
+            continue
+        alternatief = per_titel.get(kolom.lower()) or next(
+            iter(difflib.get_close_matches(kolom, list(col_defs), n=1, cutoff=0.6)), None
+        )
+        fouten.append(f"'{kolom}'" + (f" → gebruik '{alternatief}'" if alternatief else ""))
+    if not fouten:
+        return None
+    genoemd = ", ".join(list(col_defs)[:_MAX_GENOEMDE_SLEUTELS])
+    meer = ", …" if len(col_defs) > _MAX_GENOEMDE_SLEUTELS else ""
+    return (
+        f"Onbekende kolom in $select: {'; '.join(fouten)}. $select vraagt kolomsleutels, geen titels. "
+        f"Sleutels van deze tabel: {genoemd}{meer}."
+    )
+
+
 _PERIODESTATUS_DEFINITIE = (
     "CBS-status van de periode uit Perioden.Status (bijv. Definitief, Voorlopig, "
     "Nader voorlopig). Gebruik deze kolom; leid de status niet af uit de periodecode. "
@@ -181,9 +214,10 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
     if "$select" in params:
-        params["$select"] = _select_with_dimensions(
-            params["$select"], _dimension_names(_load_definitions(dataset_id) or {})
-        )
+        col_defs = _load_definitions(dataset_id) or {}
+        if fout := _onbekende_select(params["$select"], col_defs):
+            return fout
+        params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
     try:
         rows = data(dataset_id, **params)
     except Exception as e:
