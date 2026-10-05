@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import KolomKop from '../components/KolomKop'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -88,6 +89,7 @@ function CodeBlock({ className, children }) {
 const MARKDOWN_COMPONENTS = {
   pre({ children }) { return <>{children}</> },
   code: CodeBlock,
+  th: KolomKop,
 }
 
 // Announced once an answer is complete; streaming deltas would flood a screen reader.
