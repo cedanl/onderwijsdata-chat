@@ -7,14 +7,13 @@ Audit 10 en 11: na een correctieronde opende het antwoord zelf met "ik schreef .
 "De correctie is terecht" of "Volledig antwoord op basis van opgehaalde data:".
 """
 
-import json
 import re
 
 import pandas as pd
 import pytest
 
 from agent.keuze import genegeerde_keuze
-from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_teleenheid
+from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from agent.metatekst import metatekst
 from agent.probleem import Probleem, meldingen
 from agent.selectie import ontbrekende_instellingen, ontbrekende_schooljaren
@@ -81,7 +80,7 @@ def _beurt_problemen() -> list[str]:
     return [
         *ontbrekende_schooljaren("Hoeveel studenten in 2025/26?", beurt),
         *ontbrekende_instellingen("Hoeveel studenten had Hogeschool Utrecht?", beurt),
-        *verkeerde_teleenheid("Het waren 900 inschrijvingen.", beurt),
+        *verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU)."),
         *onbekende_datasets("Bron: p01hoenges."),
         *ongebruikte_bronnen("**Bronnen**\n- p03hoinschr", beurt),
         *genegeerde_keuze(["2023"], "In 2018 waren het er 900."),
@@ -98,9 +97,9 @@ def test_elke_controle_heeft_een_melding_zonder_modelinstructie():
 
 
 def test_de_volledige_tekst_houdt_de_instructie_voor_de_herkansing():
-    [teleenheid] = verkeerde_teleenheid("Het waren 900 inschrijvingen.", [json.dumps({"data_key": "duo:p01hoinges:3"})])
-    assert "Noem de teleenheid" in teleenheid
-    assert "Noem" not in teleenheid.melding
+    [onbekend] = onbekende_datasets("Bron: p01hoenges.")
+    assert "Noem de dataset-ID" in onbekend
+    assert "Noem" not in onbekend.melding
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,9 @@ import pandas as pd
 
 # 2025/26, 2025-2026, 2025/'26, 2025–26. Een los "2025" is dubbelzinnig en telt niet.
 _SCHOOLJAAR = re.compile(r"(?<!\d)(20\d{2})\s*[/\-–]\s*'?(\d{4}|\d{2})(?!\d)")
+# 2024 tot 2030, 2024 t/m 2030, 2030-2024, 2024 → 2030: kale jaartallen, zoals DUO's JAAR ze heeft.
+# Twee opeenvolgende jaren met een streepje (2024-2025) zijn een schooljaar, geen bereik.
+_JAARBEREIK = re.compile(r"(?<![\d/'])(20\d{2})\s*(tot(?:\s+en\s+met)?|t/m|[-–→]|naar)\s*(20\d{2})(?![\d/])")
 _CBS_SCHOOLJAAR = re.compile(r"^(\d{4})SJ\d{2}$")
 _DUO_PERIODEKOLOMMEN = ("STUDIEJAAR", "JAAR")
 
@@ -24,6 +27,29 @@ def gevraagde_schooljaren(tekst: str) -> set[int]:
         if int(eind) == volgend:
             jaren.add(begin)
     return jaren
+
+
+def jaarbereiken(tekst: str) -> set[int]:
+    """Begin- en eindjaar van elk bereik in kale jaartallen dat de tekst noemt."""
+    jaren: set[int] = set()
+    for begin, scheiding, eind in _JAARBEREIK.findall(tekst):
+        if abs(int(begin) - int(eind)) == 1 and scheiding in "-–":
+            continue
+        jaren |= {int(begin), int(eind)}
+    return jaren
+
+
+def genoemd_bereik(tekst: str) -> tuple[int, int] | None:
+    """Eerste en laatste startjaar van het periodebereik dat de tekst noemt; None zonder bereik."""
+    jaren = gevraagde_schooljaren(tekst) | jaarbereiken(tekst)
+    return (min(jaren), max(jaren)) if len(jaren) >= 2 else None
+
+
+def schooljaarbereik(van: str, tot: str) -> tuple[int, int] | None:
+    """Startjaren van twee periodelabels (2024/25); None als een van beide geen schooljaar is."""
+    begin = next(iter(gevraagde_schooljaren(van)), None)
+    eind = next(iter(gevraagde_schooljaren(tot)), None)
+    return None if begin is None or eind is None else (begin, eind)
 
 
 def label(startjaar: int) -> str:

@@ -3,14 +3,11 @@ en is geen lege schil (#189)."""
 
 import json
 
-import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
-from tools import store
-from tools.store import KeyMeta
 
 _HU_RESULT = json.dumps(
     {"rijen": [{"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904, 27441, 27135, 26370])]}
@@ -106,19 +103,3 @@ def test_verkeerde_opleidingsvorm_in_de_reikwijdte():
     store.clear()
 
     assert "duaal" in probleem
-
-
-def test_inschrijvingen_als_titel_boven_personen():
-    store.clear()
-    store.put(
-        "duo:p01hoinges:3:a",
-        pd.DataFrame({"AANTAL": [26370]}),
-        KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie="Ingeschrevenen: hoofdinschrijvingen als personen."),
-    )
-    resultaat = json.dumps({"data_key": "duo:p01hoinges:3:a", "rijen": [{"AANTAL": 26370}]})
-    spec = _spec(title="Voltijds inschrijvingen HU", conclusie="In 2025 waren het 26.370.")
-
-    problemen = report_problems(spec, [_HU_FIGURE], [resultaat])
-    store.clear()
-
-    assert any("personen" in p for p in problemen)

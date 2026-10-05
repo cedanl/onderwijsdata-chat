@@ -337,3 +337,34 @@ def test_number_from_another_selected_year_gets_a_correction(monkeypatch):
     assert text == "In 2025/26 waren het 26.370 studenten."
     assert "message_cancel" in [e["type"] for e in events]
     assert "controle" not in events[-1]
+
+
+def test_duo_answer_gets_the_telling_block_from_code(monkeypatch):
+    """Definitie en ondergrens komen uit de metadata, niet uit de formulering van het model (#321)."""
+    import pandas as pd
+
+    from tools import store
+    from tools.store import KeyMeta
+
+    store.clear()
+    store.put(
+        "duo:p01",
+        pd.DataFrame({"AANTAL": [5943]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", teldefinitie="Ingeschrevenen: hoofdinschrijvingen op de peildatum."),
+    )
+    rows = json.dumps({"data_key": "duo:p01", "rijen": [{"AANTAL": 5943}]})
+
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="In totaal 5.943 eerstejaars, geteld op peildatum.", tool_calls=[]),
+        ],
+        tool_result=rows,
+    )
+
+    assert text.startswith("In totaal 5.943 eerstejaars")
+    assert text.endswith("Ingeschrevenen: hoofdinschrijvingen op de peildatum.")
+    assert "**Telling**" in text
+    assert events[-1]["type"] == "message_end" and events[-1]["content"] == text
+    assert "controle" not in events[-1]

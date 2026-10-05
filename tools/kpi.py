@@ -87,14 +87,39 @@ def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step,
     return {"periode": {"van": _periodelabel(bron, van), "tot": _periodelabel(bron, tot)}}
 
 
+def _binnen_bereik(df: pd.DataFrame, sort_column: str, van: int | None, tot: int | None, bron: str) -> pd.DataFrame:
+    """De rijen waarvan het startjaar tussen `van` en `tot` (inclusief) ligt; rijen zonder jaar vallen af."""
+    jaren = pd.to_numeric(df[sort_column].map(lambda waarde: periode.startjaar(bron, waarde)), errors="coerce")
+    return df[jaren.between(float("-inf") if van is None else van, float("inf") if tot is None else tot)]
+
+
+def _label_klopt_niet(label: str, periode_van_kpi: dict) -> str | None:
+    """Een label dat een ander bereik noemt dan waarover de KPI rekent, is een fout in het label (#320)."""
+    genoemd = periode.genoemd_bereik(label)
+    kpi = periode_van_kpi.get("periode")
+    if genoemd is None or not kpi:
+        return None
+    bereik = periode.schooljaarbereik(kpi["van"], kpi["tot"])
+    if bereik is None or genoemd == bereik:
+        return None
+    return (
+        f"Het label '{label}' noemt {periode.label(genoemd[0])} tot {periode.label(genoemd[1])}, maar de KPI rekent over "
+        f"{kpi['van']} tot {kpi['tot']}. Geef `van` en `tot` op voor het bereik dat je bedoelt, of pas het label aan."
+    )
+
+
 def compute_kpi(
     data_key: str,
     value_column: str,
     metric: str,
     sort_column: str | None = None,
     label: str = "",
+    van: int | None = None,
+    tot: int | None = None,
 ) -> str:
     """Bereken één KPI over data uit de store.
+
+    `van` en `tot` (startjaren, inclusief) beperken de reeks; zonder rekent de KPI over alle rijen.
 
     Geeft JSON terug met de waarde in Nederlandse notatie, de ruwe waarde voor
     de frontend, en een `bron`-blok dat vastlegt waar het getal vandaan komt.
@@ -115,6 +140,15 @@ def compute_kpi(
         return _error(f"Kolom '{value_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
     if sort_column and sort_column not in df.columns:
         return _error(f"Sorteerkolom '{sort_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
+
+    known = store.meta(data_key)
+    bron = known.bron if known else ""
+    if van is not None or tot is not None:
+        if not sort_column:
+            return _error("`van` en `tot` werken op een periodekolom: geef ook `sort_column` op.")
+        df = _binnen_bereik(df, sort_column, van, tot, bron)
+        if df.empty:
+            return _error(f"Geen rijen tussen {van} en {tot} in '{sort_column}'.")
 
     if sort_column:
         df = df.sort_values(sort_column)
@@ -166,8 +200,9 @@ def compute_kpi(
         trend_direction = "up" if value > 0 else "down" if value < 0 else None
 
     tussen = {"tussen": [str(step[1]), str(step[2])]} if step else {}
-    known = store.meta(data_key)
-    periode_van_kpi = _periode(df, value_column, sort_column, step, known.bron if known else "")
+    periode_van_kpi = _periode(df, value_column, sort_column, step, bron)
+    if foutief_label := _label_klopt_niet(label, periode_van_kpi):
+        return _error(foutief_label)
     return json.dumps(
         {
             "label": label,

@@ -220,3 +220,5 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - **Gediplomeerden**: Studenten die in het studiejaar een diploma of getuigschrift hebben behaald.
 ```
 Vermeld alleen definities van kolommen die je daadwerkelijk gebruikt in de analyse. Sla kolommen over waarvan de naam zichzelf verklaart (bijv. GEMEENTENAAM, GESLACHT).
+
+De app zet zelf een **Telling**-blok onder je antwoord: wat een DUO-bestand telt (personen of inschrijvingen) en of totalen een ondergrens zijn door onderdrukte cellen. Schrijf dat niet zelf en leg het niet anders uit.

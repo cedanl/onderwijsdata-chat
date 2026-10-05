@@ -15,7 +15,6 @@ from agent.labels import (
     onbekende_datasets,
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
-    verkeerde_teleenheid,
 )
 from tools import store
 from tools.store import KeyMeta
@@ -126,81 +125,3 @@ def test_zonder_data_in_de_beurt_geen_melding():
     # Een vervolgvraag mag de bron van een eerdere beurt noemen.
     with _BEKEND:
         assert ongebruikte_bronnen("**Bronnen**\n- DUO (**p03hoinschr**)", []) == []
-
-
-# --- teleenheid ---
-
-
-def test_inschrijvingen_boven_personen_is_verkeerd():
-    [probleem] = verkeerde_teleenheid("Voltijds inschrijvingen HU 2021–2025", _beurt("duo:p01hoinges:3"))
-    assert "personen" in probleem and "p01hoinges" in probleem
-
-
-def test_personen_boven_inschrijvingen_is_verkeerd():
-    assert verkeerde_teleenheid("In 2025 waren het 28.889 personen.", _beurt("duo:p03hoinschr:3"))
-
-
-def test_hoofdinschrijvingen_bij_personen_is_goed():
-    # p01 telt hoofdinschrijvingen als personen; dat woord hoort erbij.
-    assert verkeerde_teleenheid("Geteld als hoofdinschrijvingen.", _beurt("duo:p01hoinges:3")) == []
-
-
-@pytest.mark.parametrize(
-    "tekst",
-    [
-        "Het zijn geen inschrijvingen maar personen.",
-        "Het gaat hier niet om inschrijvingen maar om personen.",
-        "p01 telt personen, niet inschrijvingen. In 2025 waren het 24.169 personen.",
-    ],
-)
-def test_ontkenning_van_het_verkeerde_woord_is_toelichting(tekst):
-    # #214: een correcte weerlegging kreeg de waarschuwing toch.
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
-
-
-@pytest.mark.parametrize(
-    "tekst",
-    [
-        # Audit 10: letterlijke DUO-tekst, ontkenning ná het woord.
-        "De inschrijvingen behorende bij opleidingen aan aangewezen instellingen worden niet meegeteld.",
-        "Inschrijvingen bij aangewezen instellingen worden niet meegeteld, en masters evenmin.",
-        "Inschrijvingen aan aangewezen instellingen blijven buiten beschouwing.",
-    ],
-)
-def test_uitsluiting_na_het_woord_is_toelichting(tekst):
-    # #239: #214 keek alleen vóór het woord.
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
-
-
-def test_citaat_van_de_teldefinitie_is_geen_toeschrijving():
-    # #239: wie de DUO-definitie letterlijk aanhaalt, gebruikt de teleenheid goed.
-    tekst = "In 2025 waren het 26.370 personen. DUO: van alle inschrijvingen op de peildatum 1 oktober worden de hoofdinschrijvingen bepaald."
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3")) == []
-
-
-def test_naast_een_citaat_blijft_een_toeschrijving_een_probleem():
-    tekst = "In 2025 waren het 26.370 inschrijvingen. Van alle inschrijvingen op de peildatum 1 oktober worden de hoofdinschrijvingen bepaald."
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3"))
-
-
-@pytest.mark.parametrize(
-    "tekst",
-    [
-        "p01 telt hier 24.169 inschrijvingen.",
-        "Dat zijn geen cijfers van vorig jaar. p01 telt hier 24.169 inschrijvingen.",
-        "Het zijn niet personen maar inschrijvingen.",
-        "Er waren 24.169 inschrijvingen, masters niet meegeteld.",  # de uitsluiting hoort bij een andere bijzin
-    ],
-)
-def test_toeschrijving_van_het_verkeerde_woord_blijft_een_probleem(tekst):
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3"))
-
-
-def test_vergelijking_van_beide_teleenheden_is_goed():
-    tekst = "26.370 personen tegenover 28.889 inschrijvingen."
-    assert verkeerde_teleenheid(tekst, _beurt("duo:p01hoinges:3", "duo:p03hoinschr:3")) == []
-
-
-def test_afgeleide_key_erft_de_teleenheid():
-    store.derive("duo:p01hoinges:3", "duo:p01hoinges:3:abc", pd.DataFrame({"AANTAL": [26370]}))
-    assert verkeerde_teleenheid("Voltijdinschrijvingen", _beurt("duo:p01hoinges:3:abc"))

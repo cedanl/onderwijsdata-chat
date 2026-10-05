@@ -13,7 +13,7 @@ from .grounding import unverified
 from .history import trim
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
-from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen, verkeerde_teleenheid
+from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from .loop import ToolCall, tool_loop
 from .metatekst import metatekst
 from .models import build_system
@@ -21,6 +21,7 @@ from .probleem import Probleem, meldingen
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key
 from .stream import Emit
+from .telling import met_telling
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +182,6 @@ async def run(
             *verkeerde_opleidingsvormen(text, tool_results),
             *onbekende_datasets(text),
             *ongebruikte_bronnen(text, tool_results),
-            *verkeerde_teleenheid(text, tool_results),
             *verkeerd_gebonden(text, tool_results),
             *verkeerde_kpi_periodes(text, tool_results),
             *genegeerde_keuze(session.get("clarify_keuzes", []), text),
@@ -259,7 +259,7 @@ async def run(
         )
         return "Het maximale aantal stappen is bereikt."
 
-    text_content = result.text
+    text_content = met_telling(result.text, result.tool_results)
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"

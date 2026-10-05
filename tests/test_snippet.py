@@ -1,6 +1,7 @@
 import json
 import sys
 import types
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -438,9 +439,24 @@ def test_snippet_sluit_duo_minus_een_uit_net_als_de_app(duo_in_app_en_snippet):
 @pytest.mark.parametrize("metric", ["last", "first", "sum", "mean", "delta", "pct_change", "index"])
 def test_kpi_snippet_laadt_zelf_en_rekent_hetzelfde(duo_in_app_en_snippet, metric):
     # Een KPI-snippet las een df uit een eerdere stap: niet zelfstandig (audit 10).
-    args = {"data_key": _DUO_KEY, "value_column": "EX", "metric": metric, "sort_column": "JAAR"}
+    args: dict[str, Any] = {"data_key": _DUO_KEY, "value_column": "EX", "metric": metric, "sort_column": "JAAR"}
     app = json.loads(compute_kpi(**args))
-    namespace = _run(generate("compute_kpi", args))
+    namespace = _run(generate("compute_kpi", args) or "")
+    assert namespace["kpi"] == pytest.approx(app["raw"])
+
+
+@pytest.mark.parametrize("bereik", [{"van": 2024}, {"tot": 2024}, {"van": 2024, "tot": 2025}])
+def test_kpi_snippet_past_van_en_tot_toe_zoals_de_app(duo_in_app_en_snippet, bereik):
+    args: dict[str, Any] = {
+        "data_key": _DUO_KEY,
+        "value_column": "EX",
+        "metric": "delta",
+        "sort_column": "JAAR",
+        "label": "L",
+        **bereik,
+    }
+    app = json.loads(compute_kpi(**args))
+    namespace = _run(generate("compute_kpi", args) or "")
     assert namespace["kpi"] == pytest.approx(app["raw"])
 
 
