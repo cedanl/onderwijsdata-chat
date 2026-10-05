@@ -2,7 +2,16 @@ import json
 import logging
 from unittest.mock import patch
 
-from tools.catalog import catalogus_digest, catalogus_titel, dataset_details, resource_titel, search_catalog
+import pytest
+
+from tools.catalog import (
+    catalogus_digest,
+    catalogus_titel,
+    dataset_details,
+    geodekking,
+    resource_titel,
+    search_catalog,
+)
 
 # --- Fix #37: archief-filter ---
 
@@ -135,14 +144,53 @@ def test_dataset_zonder_regiodimensie_is_landelijk():
     # Audit 10 (#237): 85368NED (vsv mbo) heeft geen regiodimensie, dus een lege _geo_niveau,
     # en verdween bij geo_niveau="landelijk" terwijl hij precies dat niveau geeft.
     cbs_entries = [
-        {"identifier": "zonder-regio", "title": "instroom data", "_geo_niveau": []},
-        {"identifier": "veld-ontbreekt", "title": "instroom data"},
+        {"identifier": "zonder-regio", "title": "instroom data", "_geo_niveau": [], "_dimensies": ["Perioden"]},
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         landelijk = json.loads(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
         gemeente = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
-    assert {e.get("identifier") for e in landelijk} == {"zonder-regio", "veld-ontbreekt"}
+    assert [e.get("identifier") for e in landelijk] == ["zonder-regio"]
     assert "Geen datasets gevonden" in gemeente
+
+
+# --- Geodekking in drie toestanden (#351) ---
+
+
+@pytest.mark.parametrize(
+    ("entry", "niveau", "dekking"),
+    [
+        ({"_geo_niveau": ["gemeente", "provincie"]}, "gemeente", "ja"),
+        ({"_geo_niveau": ["provincie"]}, "gemeente", "nee"),
+        # Leeg met bekende structuur: geen regiodimensie of -kolom gevonden, dus landelijk (#237).
+        ({"_geo_niveau": [], "_dimensies": ["Perioden"]}, "landelijk", "ja"),
+        ({"_geo_niveau": [], "_kolommen": {"bestand": {"JAAR": "numeriek"}}}, "landelijk", "ja"),
+        ({"_geo_niveau": [], "_dimensies": ["Perioden"]}, "gemeente", "nee"),
+        # Leeg zonder bekende structuur, of het veld ontbreekt: niemand heeft gekeken.
+        ({"_geo_niveau": []}, "landelijk", "onbekend"),
+        ({}, "landelijk", "onbekend"),
+        ({}, "gemeente", "onbekend"),
+    ],
+)
+def test_geodekking(entry, niveau, dekking):
+    assert geodekking(entry, niveau) == dekking
+
+
+def test_onbekende_dekking_wordt_niet_als_landelijk_gekozen():
+    cbs_entries = [
+        {"identifier": "bewezen", "title": "instroom data", "_geo_niveau": [], "_dimensies": ["Perioden"]},
+        {"identifier": "onbekend", "title": "instroom data instroom"},
+    ]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
+        result = json.loads(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
+    assert [e.get("identifier") for e in result if "identifier" in e] == ["bewezen"]
+    assert "onbekend" in result[-1]["melding"] and "dataset_details" in result[-1]["melding"]
+
+
+def test_alleen_onbekende_dekking_vraagt_om_inspectie():
+    cbs_entries = [{"identifier": "onbekend", "title": "instroom data", "_cbs_id": "99999NED"}]
+    with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    assert "onbekend" in result and "99999NED" in result and "dataset_details" in result
 
 
 def test_geo_niveau_filter_returns_error_when_no_match():
