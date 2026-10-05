@@ -14,6 +14,7 @@ load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
 from config import Config, ConfigError
+from core.catalogusversie import catalogusversie
 from logging_config import setup_logging
 
 json_format = Config.is_production()
@@ -110,13 +111,18 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
 @app.get("/version", tags=["info"])
 async def version() -> dict:
-    """Versie uit pyproject.toml en de commit waaruit het image is gebouwd (#231)."""
+    """Versie uit pyproject.toml, de commit waaruit het image is gebouwd (#231) en de catalogus (#361)."""
 
     def _read() -> str:
         with open(_PYPROJECT, "rb") as f:
             return tomllib.load(f)["project"]["version"]
 
-    return {"version": await asyncio.to_thread(_read), "commit": Config.GIT_COMMIT or "onbekend"}
+    return {
+        "version": await asyncio.to_thread(_read),
+        "commit": Config.GIT_COMMIT or "onbekend",
+        # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361).
+        "catalogus": catalogusversie(),
+    }
 
 
 @app.get("/info", tags=["info"])
