@@ -10,7 +10,7 @@ from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 from riodata import scope
 
-from . import duo_meta, instelling
+from . import cbs_meta, duo_meta, instelling
 
 logger = logging.getLogger(__name__)
 
@@ -468,6 +468,7 @@ _DETAILS_EXTRA = frozenset(
         "kolommen_steekproef",
         "catalogus_bron_gewijzigd",
         "kolomprofiel",
+        "methodiek",
     }
 )
 
@@ -558,7 +559,8 @@ def dataset_details(dataset_id: str) -> str:
     for entry in _cbs():
         if entry.get("_cbs_id") == dataset_id:
             logger.info("dataset_details id=%s bron=CBS", dataset_id)
-            return _build_details({"bron": "CBS", **entry}, dataset_id)
+            # Afronding en dubbeltelling vóór het model optelt of verklaart (#383).
+            return _build_details({"bron": "CBS", **entry, **cbs_meta.metadata(dataset_id)}, dataset_id)
 
     for entry in _rio_duo():
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
