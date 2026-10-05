@@ -189,3 +189,12 @@ def test_een_getal_krijgt_een_melding_ook_als_het_vaker_voorkomt():
 def test_afgeleide_selectie_boven_de_drempel_blijft_een_probleem():
     problemen = onvolledige_selecties("Er zijn 46 erkenningen.", _afgeleid(46))
     assert len(problemen) == 1 and "46" in problemen[0]
+
+
+def test_getal_dat_als_waarde_in_de_selectie_staat_is_geen_rijtelling():
+    # Audit 13: correcte getallen kregen de melding omdat ze toevallig gelijk waren aan
+    # het aantal opgehaalde rijen. Staat het getal als waarde in de data, dan is het
+    # daaruit overgenomen en niet geteld (#384).
+    records = [{"code": f"{i:02d}XX", "volledigeNaam": f"Instelling {i}", "aantal": 50} for i in range(RIO_PAGE_SIZE)]
+    beurt = [_get(RIO_PAGE_SIZE, fetch=lambda *a, **k: records)]
+    assert onvolledige_selecties("Instelling 3 heeft 50 erkenningen.", beurt) == []
