@@ -9,19 +9,21 @@ const MAX_RETRIES = 4
 // a minute or two; the server has no limit of its own, so the wait ends here.
 export const REPORT_TIMEOUT_MS = 5 * 60 * 1000
 
-function buildHistory(messages) {
+// A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
+export function buildHistory(messages) {
   return messages
     .filter(m =>
       (m.role === 'user' || m.role === 'assistant') &&
       m.content &&
       !m.isError &&
       !m.figures &&
-      !m.clarification &&
       !m.starterQuestions
     )
     .map(({ role, content }) => ({ role, content }))
     .slice(-MAX_HISTORY)
 }
+
+const NO_REPORT_PROGRESS = { steps: 0, label: null }
 
 export function useChat({ onUnauthorized } = {}) {
   const [messages, setMessages] = useState([])
@@ -31,6 +33,8 @@ export function useChat({ onUnauthorized } = {}) {
   const [connected, setConnected] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
+  // Steps of the report run, shown while the report is being made (#339).
+  const [reportProgress, setReportProgress] = useState(NO_REPORT_PROGRESS)
   const [resetting, setResetting] = useState(false)
   const [rejectedDraft, setRejectedDraft] = useState(null)
   const wsRef = useRef(null)
@@ -49,6 +53,8 @@ export function useChat({ onUnauthorized } = {}) {
   const currentHasTextRef = useRef(false)
   const resettingRef = useRef(false)
   const reportTimeoutRef = useRef(null)
+  // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
+  const reportAbandonedRef = useRef(false)
   const nextId = () => ++idRef.current
 
   // The report is over, with or without a result: no more waiting, button free again.
@@ -60,6 +66,14 @@ export function useChat({ onUnauthorized } = {}) {
   }, [])
 
   // A failed report stays visible as a chat message; the button is the retry (#219).
+  // Stop the report run: nothing it still sends may reach the user, until the server ends it.
+  const abandonReport = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ action: 'stop' }))
+    reportAbandonedRef.current = true
+    endReport()
+    setReportSpec(null)
+  }, [endReport])
+
   const failReport = useCallback((message) => {
     endReport()
     setReportSpec(null)
@@ -216,6 +230,9 @@ export function useChat({ onUnauthorized } = {}) {
         setReportBusy(true)
         setReportSpec(null)
       },
+      report_cancelled() {
+        if (reportingRef.current) endReport()
+      },
       // Not waiting any more (timed out, see generateReport): the user has been told already.
       report_ready(ev) {
         if (!reportingRef.current) return
@@ -241,6 +258,7 @@ export function useChat({ onUnauthorized } = {}) {
       'message_start', 'message_cancel', 'text_delta', 'tool_start',
       'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error',
     ])
+    const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
 
     function connect() {
       const ws = chatSocket()
@@ -253,6 +271,7 @@ export function useChat({ onUnauthorized } = {}) {
         setResetting(false)
         retryCountRef.current = 0
         reportingRef.current = false
+        reportAbandonedRef.current = false
         setReportBusy(false)
         setReportSpec(null)
         if (pendingHistoryRef.current?.length > 0) {
@@ -291,7 +310,16 @@ export function useChat({ onUnauthorized } = {}) {
 
       ws.onmessage = (e) => {
         const event = JSON.parse(e.data)
-        if (reportingRef.current && chatStreamEvents.has(event.type)) return
+        if (reportAbandonedRef.current) {
+          if (reportEndEvents.has(event.type)) reportAbandonedRef.current = false
+          if (reportEndEvents.has(event.type) || chatStreamEvents.has(event.type)) return
+        }
+        if (reportingRef.current && chatStreamEvents.has(event.type)) {
+          if (event.type === 'tool_start') {
+            setReportProgress(p => ({ steps: p.steps + 1, label: event.label || null }))
+          }
+          return
+        }
         // Until reset_done, stream events belong to the run of the conversation that was just left (#337).
         if (resettingRef.current && chatStreamEvents.has(event.type)) return
         const handler = messageHandlers[event.type]
@@ -359,14 +387,21 @@ export function useChat({ onUnauthorized } = {}) {
     reportingRef.current = true
     setReportBusy(true)
     setReportSpec(null)
+    setReportProgress(NO_REPORT_PROGRESS)
     wsRef.current.send(JSON.stringify({ action: 'generate_report', author }))
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = setTimeout(() => {
       // Stop the server too: a report arriving after this message would contradict it.
-      wsRef.current?.send(JSON.stringify({ action: 'stop' }))
+      abandonReport()
       failReport('Het rapport is na 5 minuten nog niet klaar en is afgebroken. Probeer het opnieuw.')
     }, REPORT_TIMEOUT_MS)
-  }, [failReport])
+  }, [abandonReport, failReport])
+
+  // The user stops the report (#339): no error, the button is free at once.
+  const cancelReport = useCallback(() => {
+    if (!reportingRef.current) return
+    abandonReport()
+  }, [abandonReport])
 
   const clearRejectedDraft = useCallback(() => setRejectedDraft(null), [])
 
@@ -397,5 +432,5 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [clear])
 
-  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }

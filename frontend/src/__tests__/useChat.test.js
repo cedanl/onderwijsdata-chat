@@ -157,6 +157,69 @@ describe('useChat report errors', () => {
   })
 })
 
+// #339: a report takes one to two minutes; the wait shows progress and can be cancelled.
+describe('useChat report progress and cancel', () => {
+  it('counts the steps of the report run without putting them in the chat', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => {
+      ws.emit({ type: 'report_generating' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data opvragen' })
+      ws.emit({ type: 'tool_end', name: 'query_data', output: '' })
+      ws.emit({ type: 'tool_start', name: 'create_plot', label: 'Grafiek maken' })
+    })
+    expect(chat.reportProgress).toEqual({ steps: 2, label: 'Grafiek maken' })
+    expect(chat.messages).toEqual([])
+  })
+
+  it('starts counting afresh for the next report', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data opvragen' }) })
+    await act(async () => { ws.emit({ type: 'report_ready', spec: { titel: 'R' } }) })
+    await act(async () => { chat.generateReport('tester') })
+    expect(chat.reportProgress).toEqual({ steps: 0, label: null })
+  })
+
+  it('cancelling stops the server and frees the button at once', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { chat.cancelReport() })
+
+    expect(ws.sent).toContainEqual({ action: 'stop' })
+    expect(chat.reportBusy).toBe(false)
+    expect(chat.reportSpec).toBeNull()
+    expect(assistantMessages().filter(m => m.isError)).toEqual([])
+  })
+
+  it('ignores what the cancelled run still sends until the server confirms', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { chat.cancelReport() })
+    await act(async () => {
+      ws.emit({ type: 'tool_start', name: 'create_plot', label: 'Grafiek maken' })
+      ws.emit({ type: 'report_ready', spec: { titel: 'te laat' } })
+    })
+    expect(chat.messages).toEqual([])
+    expect(chat.reportSpec).toBeNull()
+
+    await act(async () => { ws.emit({ type: 'report_cancelled' }) })
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'volgende vraag' })
+    })
+    expect(assistantMessages().map(m => m.content)).toEqual(['volgende vraag'])
+  })
+
+  it('a stop from elsewhere ends the wait without an error', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { ws.emit({ type: 'report_cancelled' }) })
+    expect(chat.reportBusy).toBe(false)
+    expect(assistantMessages()).toEqual([])
+  })
+})
+
 describe('useChat stop', () => {
   it('marks an aborted answer as stopped and keeps its partial text', async () => {
     const ws = FakeWebSocket.last

@@ -40,6 +40,9 @@ import ChatInputFooter from '../components/ChatInputFooter'
 import ErrorRetry from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
+import ReportProgress from '../components/ReportProgress'
+import ClarificationButtons from '../components/ClarificationButtons'
+import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -151,7 +154,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, user }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, clearReport, clear, startNewConversation, addToast } = useChat({
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -476,13 +479,16 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
             )}
             {restoredMessages.length > 0 && messages.length === 0 && (
               <div className="restored-banner">
-                Ingeladen gesprek — stel een nieuwe vraag om door te gaan
+                {hasOpenClarification(restoredMessages)
+                  ? 'Ingeladen gesprek — kies een optie of stel een nieuwe vraag om door te gaan'
+                  : 'Ingeladen gesprek — stel een nieuwe vraag om door te gaan'}
               </div>
             )}
             {displayMessages.map((msg, i) => (
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
+                clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
                 retry={msg.isError ? {
                   question: questionBefore(displayMessages, i),
@@ -529,6 +535,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                   </svg>
                   {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
                 </button>
+                <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
                 {saveError && (
                   <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0' }}>
                     Rapport opslaan mislukt: {saveError}
@@ -617,33 +624,6 @@ function userInitials(settings) {
   return '?'
 }
 
-function ClarificationButtons({ options, onSelect, busy }) {
-  const [selected, setSelected] = useState(null)
-
-  if (!options) return null
-
-  const handleSelect = (label) => {
-    if (busy || selected) return
-    setSelected(label)
-    onSelect(label)
-  }
-
-  return (
-    <div className="clarification-btns">
-      {options.map((opt, _i) => {
-        const label = typeof opt === 'string' ? opt : opt.label
-        const desc = typeof opt === 'object' ? opt.beschrijving : null
-        const isSelected = selected === label
-        return (
-          <button type="button" key={label} className={`clarification-btn${isSelected ? ' selected' : ''}`} onClick={() => handleSelect(label)} disabled={busy || selected}>
-            {isSelected ? '✓ ' : ''}{label}{desc ? ` — ${desc}` : ''}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function StarterButtons({ questions, onSend, busy }) {
   if (!questions) return null
   return (
@@ -687,7 +667,7 @@ function questionBefore(messages, i) {
   return null
 }
 
-function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null }) {
+function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null, clarification = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -732,7 +712,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
-            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} />
+            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
             {msg.truncated && (
