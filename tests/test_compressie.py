@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 def test_grote_response_is_gzip():
     import server
 
-    resp = TestClient(server.app).get("/openapi.json", headers={"Accept-Encoding": "gzip"})
+    resp = TestClient(server.app).get("/api/openapi.json", headers={"Accept-Encoding": "gzip"})
     assert resp.status_code == 200
     assert resp.headers.get("content-encoding") == "gzip"
 
