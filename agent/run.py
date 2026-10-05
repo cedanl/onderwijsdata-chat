@@ -11,6 +11,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
+from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .grounding import unverified
 from .history import trim
 from .keuze import genegeerde_keuze
@@ -263,6 +264,7 @@ async def run(
             check=check,
             correction=_correction,
             on_correction=withdraw,
+            wrap_up=AFRONDEN,
         )
     finally:
         slow_task.cancel()
@@ -286,12 +288,13 @@ async def run(
             emit,
         )
     if result.exhausted:
-        await emit(
-            {"type": "error", "message": "Het maximale aantal stappen is bereikt. Probeer een specifiekere vraag."}
-        )
-        return "Het maximale aantal stappen is bereikt."
+        text_content = zonder_antwoord(result.steps)
+        await emit({"type": "message_end", "content": text_content, "actions": []})
+        return text_content
 
     text_content = weigering(result.text, result.tool_calls) or met_telling(result.text, result.tool_results)
+    if result.wrapped_up:
+        text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"

@@ -325,6 +325,60 @@ def test_running_out_of_iterations_is_reported(monkeypatch):
     assert result.exhausted
 
 
+def _steps_with_kwargs(monkeypatch, steps: list[StreamResult], seen: list) -> None:
+    async def fake_completion(*args, **kwargs):
+        seen.append(kwargs)
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return steps.pop(0)
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+
+
+def test_budget_op_eindigt_in_een_afrondronde_zonder_tools(monkeypatch):
+    """#381: de stappen haalden al data op; het model rondt af met wat er is."""
+    seen: list = []
+    tool_steps = [StreamResult(text="", tool_calls=[_call("query_data", call_id=str(i))]) for i in range(2)]
+    _steps_with_kwargs(monkeypatch, [*tool_steps, StreamResult(text="Deelantwoord.", tool_calls=[])], seen)
+    _fake_tools(monkeypatch, {"query_data": "rijen"})
+
+    result, _ = _run(max_iterations=2, wrap_up="Rond af met wat je hebt.")
+
+    assert result.text == "Deelantwoord."
+    assert result.wrapped_up and not result.exhausted
+    assert seen[-1]["tool_choice"] == "none"
+    assert seen[-1]["messages"][-1] == {"role": "user", "content": "Rond af met wat je hebt."}
+    assert "tool_choice" not in seen[0]
+
+
+def test_afrondronde_die_toch_tools_vraagt_is_op(monkeypatch):
+    seen: list = []
+    steps = [StreamResult(text="", tool_calls=[_call("query_data", call_id=str(i))]) for i in range(3)]
+    _steps_with_kwargs(monkeypatch, steps, seen)
+    _fake_tools(monkeypatch, {"query_data": "rijen"})
+    messages = [{"role": "user", "content": "vraag"}]
+
+    result, _ = _run(messages, max_iterations=2, wrap_up="Rond af.")
+
+    assert result.exhausted and not result.wrapped_up
+    assert sum(1 for m in messages if m.get("tool_calls")) == 2  # de afrondronde voert niets meer uit
+
+
+def test_stappen_onthouden_welke_tool_wat_gaf(monkeypatch):
+    _steps(
+        monkeypatch,
+        [StreamResult(text="", tool_calls=[_call("query_data")]), StreamResult(text="Klaar.", tool_calls=[])],
+    )
+    _fake_tools(monkeypatch, {"query_data": "rijen"})
+
+    result, _ = _run()
+
+    assert result.steps == [("query_data", "rijen")]
+    assert result.tool_results == ["rijen"]
+
+
 def test_check_gets_one_correction_round(monkeypatch):
     seen: list = []
     _steps(
