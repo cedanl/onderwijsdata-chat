@@ -3,11 +3,11 @@ import logging
 import secrets
 import urllib.parse
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from auth.oidc import build_authorization_url, exchange_code_for_user, is_oidc_configured
-from core.auth import AUTH_ENABLED, USERS, check_credentials, make_token
+from core.auth import AUTH_ENABLED, USERS, check_credentials, get_current_user, make_token
 from core.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -76,19 +76,12 @@ def _get_oidc_user(username: str) -> dict | None:
 if is_oidc_configured():
 
     @router.get("/user")
-    async def get_current_user_info(token: str | None = None) -> dict:
+    async def get_current_user_info(username: str = Depends(get_current_user)) -> dict:
         """
         Get current user's info. Server-side source of truth.
         Only available with OIDC. GitHub version uses localStorage.
+        The token comes in the Authorization header, never in the URL (#103).
         """
-        if not token:
-            raise HTTPException(status_code=401, detail="Token erforderlich")
-
-        from core.auth import verify_token
-
-        username = verify_token(token)
-        if not username:
-            raise HTTPException(status_code=401, detail="Ungültiger oder abgelaufener Token")
 
         # For basic auth users, minimal info
         user_info = {"username": username, "name": username}
@@ -216,6 +209,7 @@ async def oidc_callback(request: Request) -> RedirectResponse:
 
     # Also send in URL for frontend initialization (temporary, deprecated in favor of /api/user)
     user_data_encoded = urllib.parse.quote(json.dumps(user_data))
-    response = RedirectResponse(f"/?token={token}&user_data={user_data_encoded}", status_code=302)
+    # In het fragment, niet in de query: een browser stuurt '#…' nooit naar een server of proxy (#103).
+    response = RedirectResponse(f"/#token={token}&user_data={user_data_encoded}", status_code=302)
     response.delete_cookie(_OIDC_STATE_COOKIE)
     return response

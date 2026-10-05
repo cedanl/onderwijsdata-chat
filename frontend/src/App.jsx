@@ -1,10 +1,7 @@
-import { Component, useState, useEffect } from 'react'
+import { Component, Suspense, lazy, useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
-import ChatPage from './pages/ChatPage'
-import DashboardPage from './pages/DashboardPage'
-import RapportenPage from './pages/RapportenPage'
 import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
@@ -12,6 +9,11 @@ import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUs
 import { matchKnownInstelling } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 import { applyMode } from './theme'
+
+// Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
+const ChatPage = lazy(() => import('./pages/ChatPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const RapportenPage = lazy(() => import('./pages/RapportenPage'))
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}') } catch { return {} }
@@ -191,13 +193,15 @@ function AppShell() {
       />
       <main className="page-wrap">
         <ErrorBoundary key={location.pathname}>
-          <Routes>
-            <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-            <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
-            <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
-            <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
+            <Routes>
+              <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
+              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
+              <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
+              <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </main>
       <MobileTabs dashboardsEnabled={dashboardsEnabled} />

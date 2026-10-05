@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
@@ -62,6 +63,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Bundel, catalogus en API-antwoorden gecomprimeerd: de ingress doet het niet (#110).
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.middleware("http")

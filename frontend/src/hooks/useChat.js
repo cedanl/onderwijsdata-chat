@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getToken, clearToken } from '../auth'
+import { chatSocket, clearToken } from '../auth'
 import { MAX_HISTORY } from '../constants'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
@@ -20,13 +20,6 @@ function buildHistory(messages) {
     )
     .map(({ role, content }) => ({ role, content }))
     .slice(-MAX_HISTORY)
-}
-
-function buildWsUrl() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const token = getToken()
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return `${proto}://${location.host}/api/chat${query}`
 }
 
 export function useChat({ onUnauthorized } = {}) {
@@ -249,7 +242,7 @@ export function useChat({ onUnauthorized } = {}) {
     ])
 
     function connect() {
-      const ws = new WebSocket(buildWsUrl())
+      const ws = chatSocket()
       wsRef.current = ws
 
       ws.onopen = () => {
