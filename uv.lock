@@ -2202,8 +2202,8 @@ wheels = [
 
 [[package]]
 name = "onderwijsdata"
-version = "0.1.1"
-source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git#f75a1c14fd802cc697b1636638ef8a1c144dc2ca" }
+version = "0.2.0"
+source = { git = "https://github.com/cedanl/cbs-onderwijsdata.git?rev=v0.2.0#ed09a10a2cdc472ed2f1a9bbbc5a023170cb20f5" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -2258,7 +2258,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.40" },
     { name = "markdown", specifier = ">=3.10.2" },
     { name = "nh3", specifier = ">=0.3.6" },
-    { name = "onderwijsdata", git = "https://github.com/cedanl/cbs-onderwijsdata.git" },
+    { name = "onderwijsdata", git = "https://github.com/cedanl/cbs-onderwijsdata.git?rev=v0.2.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "piper-tts", specifier = ">=1.4.2" },
     { name = "plotly", specifier = ">=5.0" },
