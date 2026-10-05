@@ -33,7 +33,7 @@ def _kpis(tool_results: list[str]) -> list[dict]:
 _SPATIE_DUIZENDTAL = re.compile(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?!\d))")
 
 
-def _noemt(segment: str, waarde: str) -> bool:
+def noemt(segment: str, waarde: str) -> bool:
     """Staat de KPI-waarde (zonder teken of %) als los getal in het segment?"""
     kaal = waarde.lstrip("+-−").rstrip("%")
     segment = _SPATIE_DUIZENDTAL.sub(".", segment)
@@ -49,7 +49,7 @@ def verkeerde_kpi_periodes(tekst: str, tool_results: list[str]) -> list[str]:
             continue
         for segment in segmenten(tekst):
             genoemd = periode.genoemd_bereik(segment)
-            if genoemd is None or not _noemt(segment, kpi["value"]):
+            if genoemd is None or not noemt(segment, kpi["value"]):
                 continue
             if genoemd != bereik:
                 metric = kpi.get("bron", {}).get("metric", "KPI")

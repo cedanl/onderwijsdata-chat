@@ -14,6 +14,7 @@ from .grounding import unverified
 from .history import trim
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
+from .kpi_scope import kpi_naast_filter
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from .loop import ToolCall, tool_loop
 from .metatekst import metatekst
@@ -201,6 +202,7 @@ async def run(
             *ongebruikte_bronnen(text, tool_results),
             *verkeerd_gebonden(text, tool_results),
             *verkeerde_kpi_periodes(text, tool_results),
+            *kpi_naast_filter(text, tool_results),
             *genegeerde_keuze(session.get("clarify_keuzes", []), text),
             *onbeschikbaar_zonder_zoekpad(last_user_msg, text, tool_results),
             *ongedekte_oorzaak(text, tool_results),
