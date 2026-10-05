@@ -1,8 +1,9 @@
 """De ty-poort faalt alleen op diagnostics die niet in de baseline staan (#230)."""
 
 from collections import Counter
+from datetime import date
 
-from scripts.ty_baseline import nieuwe, sleutels
+from scripts.ty_baseline import AFBOUWPLAN, doel, nieuwe, sleutels, voortgang
 
 UITVOER = """\
 agent/loop.py:88:67: warning[invalid-argument-type] Argument to function `to_thread` is incorrect
@@ -45,3 +46,35 @@ def test_opgeloste_diagnostic_is_niet_nieuw():
     huidig = Counter(baseline)
     del huidig["agent/grounding.py: error[invalid-parameter-default] Default value of type `tuple[()]`"]
     assert nieuwe(huidig, baseline) == []
+
+
+# ── Afbouwplan (#391) ────────────────────────────────────────────────────────
+
+
+def test_afbouwplan_daalt_naar_nul():
+    datums = [d for d, _ in AFBOUWPLAN]
+    plafonds = [n for _, n in AFBOUWPLAN]
+    assert datums == sorted(datums)
+    assert plafonds == sorted(plafonds, reverse=True)
+    assert plafonds[-1] == 0
+
+
+def test_doel_is_het_eerstvolgende_plafond():
+    eerste, tweede = AFBOUWPLAN[0], AFBOUWPLAN[1]
+    assert doel(date(2026, 10, 5)) == eerste
+    assert doel(eerste[0]) == eerste
+    assert doel(date.fromordinal(eerste[0].toordinal() + 1)) == tweede
+    assert doel(date(2099, 1, 1)) is None
+
+
+def test_voortgang_noemt_wat_er_nog_af_moet():
+    datum, plafond = AFBOUWPLAN[0]
+    regel = voortgang(plafond + 29, date(2026, 10, 5))
+    assert f"≤{plafond}" in regel
+    assert datum.isoformat() in regel
+    assert "nog 29" in regel
+
+
+def test_voortgang_onder_het_plafond():
+    _, plafond = AFBOUWPLAN[0]
+    assert "nog" not in voortgang(plafond, date(2026, 10, 5))

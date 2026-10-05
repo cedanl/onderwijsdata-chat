@@ -11,6 +11,8 @@ selectie kan dragen.
 import json
 import re
 
+import pandas as pd
+
 from tools import instelling, periode, store
 from tools.store import KeyMeta
 
@@ -123,18 +125,29 @@ def _tellingen(zin: str) -> set[int]:
     return tellingen
 
 
+def _waarden(data) -> set[int]:
+    """De gehele getallen die als cel in de selectie staan."""
+    if not isinstance(data, pd.DataFrame):
+        return set()
+    cellen = data.select_dtypes("number").stack()
+    return {int(v) for v in cellen if float(v).is_integer()}
+
+
 def onvolledige_selecties(tekst: str, tool_results: list[str]) -> list[str]:
     """Tellingen en afwezigheidsclaims in `tekst` die rusten op een afgekapte selectie.
 
     Eén melding per getal en één voor afwezigheid: dezelfde waarschuwing drie keer
-    onder een antwoord zei niets extra's (#380).
+    onder een antwoord zei niets extra's (#380). Een getal dat als waarde in de selectie
+    staat, is daaruit overgenomen en geen rijtelling (#384).
     """
     onvolledig = {key: known for key in data_keys(tool_results) if (known := store.meta(key)) and not known.volledig}
     if not onvolledig:
         return []
+    waarden = set().union(*(_waarden(store.get(key)) for key in onvolledig))
     datasets_per_rijen: dict[int, set[str]] = {}
     for key, known in onvolledig.items():
-        datasets_per_rijen.setdefault(len(store.get(key)), set()).add(known.dataset)
+        if (rijen := len(store.get(key))) not in waarden:
+            datasets_per_rijen.setdefault(rijen, set()).add(known.dataset)
     alle_datasets = ", ".join(sorted({known.dataset for known in onvolledig.values()}))
     problemen = []
     gemeld: set[int] = set()

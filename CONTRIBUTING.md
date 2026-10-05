@@ -28,6 +28,10 @@ cd frontend && npm run lint && npm test      # lint en tests (frontend)
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
 baseline niet bij om een nieuwe diagnostic weg te krijgen; los die op.
 
+De baseline krimpt per kwartaal naar nul (`AFBOUWPLAN` in `scripts/ty_baseline.py`, #391):
+≤100 eind 2026, ≤70 eind Q1 2027, ≤40 eind Q2 en 0 eind Q3 2027. Het script meldt bij elke run
+hoeveel er nog af moet.
+
 De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en
 draait de workflow alleen bij een major-tag (deploy naar Azure).
 
