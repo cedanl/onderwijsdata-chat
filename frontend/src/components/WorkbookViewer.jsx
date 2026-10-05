@@ -21,6 +21,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackThanks, setFeedbackThanks] = useState(false)
   const [feedbackGiven, setFeedbackGiven] = useState(false)
+  const [frameLoadedFor, setFrameLoadedFor] = useState(null)
 
   useEffect(() => {
     setFeedbackGiven(false)
@@ -165,7 +166,18 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
               )}
             </>
           )
-          return <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts" />
+          return (
+            <>
+              {frameLoadedFor !== workbook.id && (
+                <div className="wb-viewer-loading" role="status" aria-busy="true">
+                  <span className="spinner" aria-hidden="true" />
+                  Rapport wordt geladen…
+                </div>
+              )}
+              <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts"
+                onLoad={() => setFrameLoadedFor(workbook.id)} />
+            </>
+          )
         })()}
       </div>
     </div>
