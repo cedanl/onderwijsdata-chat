@@ -9,7 +9,7 @@ import json
 from unittest.mock import patch
 
 from tools import dispatch
-from tools.catalog import search_catalog
+from tools.catalog import _rio_duo, dataset_counts, dataset_details, search_catalog
 
 _CBS = [{"_cbs_id": "a", "bron": "x"}, {"_cbs_id": "b", "bron": "y", "_archief": True}]
 _RIO_DUO = [
@@ -43,3 +43,29 @@ def test_een_zoekopdracht_zonder_treffers_zegt_niet_dat_de_bron_ontbreekt():
     assert "zegt niet dat" in result
     assert "dataset_details" in result
     assert "bestaat niet" not in result
+
+
+# ── Scopebesluit uit riodata (#375) ───────────────────────────────────────────
+
+_BUITEN_SCOPE = {
+    "leverancier": "DUO",
+    "_ckan_id": "vo-examens",
+    "bron": "Examenkandidaten vo",
+    "_scope": {"mbo_hbo_wo": "buiten_scope", "reden": "Beschrijft VO."},
+}
+
+
+def test_een_dataset_buiten_scope_is_voor_de_chat_onzichtbaar():
+    """riodata legt per record vast wat buiten mbo/hbo/wo valt; de chat volgt dat besluit,
+    ook bij een ondersteunde leverancier."""
+    with (
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_catalog", return_value=[*_RIO_DUO, _BUITEN_SCOPE]),
+    ):
+        _rio_duo.cache_clear()
+        try:
+            assert dataset_counts()["DUO"] == 2
+            assert "niet gevonden" in dataset_details("vo-examens")
+            assert "vo-examens" not in search_catalog("examenkandidaten")
+        finally:
+            _rio_duo.cache_clear()

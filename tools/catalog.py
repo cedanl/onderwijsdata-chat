@@ -8,6 +8,7 @@ from functools import cache
 
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
+from riodata import scope
 
 from . import duo_meta, instelling
 
@@ -119,7 +120,12 @@ def _cbs() -> list:
 
 @cache
 def _rio_duo() -> list:
-    return _rio_catalog(source="all")
+    """De RIO/DUO-catalogus zonder records die riodata buiten mbo/hbo/wo plaatst (#375).
+
+    Het scopebesluit staat per record in riodata; zoeken, details en telling volgen het,
+    ook bij een leverancier die de chat verder ondersteunt.
+    """
+    return [e for e in _rio_catalog(source="all") if not scope.buiten_scope(e)]
 
 
 def _dataset_id(entry: dict) -> str:
