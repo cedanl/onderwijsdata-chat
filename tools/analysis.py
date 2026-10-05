@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import dekking, plot, store
+from . import dekking, fouten, plot, store
 
 logger = logging.getLogger(__name__)
 
@@ -129,9 +129,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if data_key is not None:
         df = store.get(data_key)
         if df is None:
-            available = store.list_keys()
-            hint = f" Beschikbaar: {available}" if available else ""
-            return f"Geen data gevonden voor '{data_key}'.{hint}"
+            return fouten.onbekende_key(data_key)
         namespace["df"] = df.copy()
         gelezen.append(data_key)
 

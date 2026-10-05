@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from . import periode, store
+from . import cbs_afronding, fouten, periode, store
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
 # aanleiding om iets anders te proberen.
@@ -129,9 +129,7 @@ def compute_kpi(
 
     df = store.get(data_key)
     if df is None:
-        beschikbaar = store.list_keys()
-        hint = f" Beschikbare datasets: {beschikbaar}." if beschikbaar else ""
-        return _error(f"Geen data gevonden voor '{data_key}'.{hint}")
+        return _error(fouten.onbekende_key(data_key))
 
     if not store.volledig(data_key):
         return _error(store.ONVOLLEDIG)
@@ -212,6 +210,7 @@ def compute_kpi(
             "trendDirection": trend_direction,
             **tussen,
             **periode_van_kpi,
+            **({"afronding": noot} if (noot := cbs_afronding.van_key(data_key)) else {}),
             "bron": {
                 "data_key": data_key,
                 "kolom": value_column,

@@ -6,14 +6,13 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-import httpx
 import pandas as pd
 from onderwijsdata import data, definitions
 from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import periode, store
+from . import cbs_afronding, fouten, periode, store
 from .catalog import catalogus_laatste_update, catalogus_titel
 from .columns import sample_values
 
@@ -180,6 +179,22 @@ def _dimension_rows(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
     )
 
 
+@lru_cache(maxsize=128)
+def _tabelbeschrijving(dataset_id: str) -> str:
+    """TableInfos.Description: daar zet CBS publicatieregels zoals de afronding (#352)."""
+    rows = get(dataset_id, "TableInfos")
+    return (rows[0].get("Description") or "") if rows else ""
+
+
+def _afronding(dataset_id: str) -> tuple[int | None, bool]:
+    """(afrondingseenheid, bekend). Een mislukte call is onbekend, niet exact."""
+    try:
+        return cbs_afronding.uit_beschrijving(_tabelbeschrijving(dataset_id)), True
+    except Exception as e:
+        logger.warning("CBS TableInfos ophalen mislukt voor %s: %s", dataset_id, e)
+        return None, False
+
+
 def _add_dimension_context(df: pd.DataFrame, dataset_id: str, col_defs: dict) -> pd.DataFrame:
     """Zet naast elke dimensiecode het officiële label en de periodestatus.
 
@@ -225,6 +240,9 @@ def _page_size(top) -> int:
         return CBS_ROW_LIMIT
 
 
+_CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS wil codes, geen labels."
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
@@ -237,7 +255,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     try:
         rows = data(dataset_id, **params)
     except Exception as e:
-        return f"Fout bij ophalen CBS data: {e}"
+        return fouten.bronfout("CBS", e, _CBS_HERSTEL)
     if not rows:
         return (
             f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
@@ -253,6 +271,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     schooljaren = periode.dekking(df, "cbs", kolom)
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
     truncated = len(rows) >= _page_size(params["$top"])
+    eenheid, afronding_bekend = _afronding(dataset_id)
     store.put(
         key,
         df,
@@ -262,6 +281,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             volledig=not truncated,
             periodekolom=kolom,
             schooljaren=schooljaren,
+            afronding=eenheid,
             laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
         ),
     )
@@ -303,6 +323,11 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             "en dimensielabels ontbreken in dit resultaat. Noem dat als je de cijfers duidt."
         )
 
+    if eenheid:
+        result["afronding"] = cbs_afronding.noot(eenheid)
+    elif not afronding_bekend:
+        result["afronding_onbekend"] = cbs_afronding.ONBEKEND
+
     if truncated:
         result["waarschuwing"] = f"Afgekapt op {len(df)} rijen. Verfijn $filter of $select voor volledigere data."
 
@@ -314,12 +339,13 @@ def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     try:
         rows = _dimension_rows(dataset_id, dimension_name)
     except Exception as e:
-        reason = f"HTTP {e.response.status_code}" if isinstance(e, httpx.HTTPStatusError) else str(e)
-        return (
-            f"Dimensie '{dimension_name}' niet gevonden in {dataset_id} ({reason}). "
+        return fouten.bronfout(
+            "CBS",
+            e,
+            f" Dimensie '{dimension_name}' niet gevonden in {dataset_id}. "
             f"Beschikbare dimensies: {_dimension_names(_load_definitions(dataset_id) or {})}. "
             "De status van een periode is geen dimensie: die staat bij Perioden en als "
-            f"kolom {_PERIODESTATUS} in get_cbs_data."
+            f"kolom {_PERIODESTATUS} in get_cbs_data.",
         )
     values = {r["Key"]: {"titel": r["Title"], "status": r["Status"]} if r.get("Status") else r["Title"] for r in rows}
     return json.dumps(values, ensure_ascii=False, separators=(",", ":"))

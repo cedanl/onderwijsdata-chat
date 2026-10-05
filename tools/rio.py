@@ -1,12 +1,11 @@
 import json
 
-import httpx
 import pandas as pd
 from riodata import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 
-from . import store
+from . import fouten, store
 from .catalog import catalogus_titel
 from .columns import sample_values
 
@@ -37,13 +36,14 @@ def _filterfout(resource: str, filters: dict) -> str | None:
     try:
         problemen = valideer_filters(resource, params)
     except ValueError as e:
-        return f"Fout bij ophalen RIO data: {e}"
+        # Het filtercontract uit de OpenAPI-spec, lokaal en vast: die tekst mag naar het model.
+        return fouten.melding(fouten.Fout.BRON_WEIGERT, str(e))
     # 'waarschuwing': de catalogus noemt het filter, de spec niet; RIO beslist zelf.
-    fouten = [p["herstel"] for p in problemen if p["probleem"] != "waarschuwing"]
-    if not fouten:
+    herstel = [p["herstel"] for p in problemen if p["probleem"] != "waarschuwing"]
+    if not herstel:
         return None
     return (
-        f"RIO-resource '{resource}' weigert deze filters: {' '.join(fouten)} "
+        f"RIO-resource '{resource}' weigert deze filters: {' '.join(herstel)} "
         "(exacte waarden, geen operatoren als __contains)."
     )
 
@@ -57,13 +57,9 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     params = {**(filters or {}), "page": 0, "pageSize": RIO_PAGE_SIZE}
     try:
         results = fetch(resource, **params)
-    except httpx.HTTPStatusError as e:
-        return (
-            f"Fout bij ophalen RIO data: HTTP {e.response.status_code} voor "
-            f"resource '{resource}' met filters {filters or {}}.{_filter_hint(rio_filters(resource))}"
-        )
     except Exception as e:
-        return f"Fout bij ophalen RIO data: {e}"
+        uitleg = f" Resource '{resource}' met filters {filters or {}}.{_filter_hint(rio_filters(resource))}"
+        return fouten.bronfout("RIO", e, uitleg)
 
     if not results:
         return f"Geen resultaten voor RIO resource '{resource}' met filters {filters or {}}."

@@ -1,4 +1,4 @@
-"""Wat de getallen tellen en wanneer ze een ondergrens zijn, uit code (#321).
+"""Wat de getallen tellen, wanneer ze een ondergrens zijn en hoe ze afgerond zijn, uit code (#321, #352).
 
 DUO-bestanden tellen personen of inschrijvingen en onderdrukken kleine aantallen
 als -1. Beide staan in de metadata van de selectie, dus de app zet ze zelf onder
@@ -7,7 +7,7 @@ regex achteraf (#239): elke parafrase van de DUO-tekst gold als een fout.
 """
 
 from core.sentinels import BETEKENIS
-from tools import duo, store
+from tools import cbs_afronding, duo, store
 from tools.catalog import catalogus_titel
 
 from .selectie import data_keys
@@ -27,11 +27,14 @@ def _naam(dataset: str) -> str:
 
 
 def telling_blok(tool_results: list[str]) -> str:
-    """Het blok onder het antwoord; leeg als de beurt geen DUO-data met een teldefinitie gebruikte."""
+    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens of afronding raakte."""
     definities: dict[str, str] = {}
     ondergrens: dict[str, None] = {}
+    afgerond: dict[str, str] = {}
     for key in data_keys(tool_results):
         known = store.meta(key)
+        if known is not None and (noot := cbs_afronding.van_key(key)):
+            afgerond.setdefault(known.dataset, noot)
         if known is None or known.bron != "duo":
             continue
         if known.teldefinitie:
@@ -39,6 +42,7 @@ def telling_blok(tool_results: list[str]) -> str:
         if _ondergrens(key):
             ondergrens.setdefault(known.dataset)
     regels = [f"- {_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
+    regels += [f"- {_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
     if ondergrens:
         regels.append(
             f"- Ondergrens: in de gekozen selectie van {', '.join(ondergrens)} zijn cellen met -1 uitgesloten "

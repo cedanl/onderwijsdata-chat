@@ -6,7 +6,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import duo, store
+from . import cbs_afronding, duo, fouten, store
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +195,12 @@ def _add_trace(
         fig.add_trace(go.Pie(labels=x_vals, values=y_vals, marker={"colors": _PALETTE}, hole=0.3))
 
 
+def _ondertitel(data_key: str | None) -> dict:
+    """Dezelfde afrondingsnoot als in tekst, KPI en export, onder de titel (#352)."""
+    noot = cbs_afronding.van_key(data_key) if data_key else None
+    return {"subtitle": {"text": noot, "font": {"size": 11, "color": "#666"}}} if noot else {}
+
+
 def create_plot(
     data: list[dict] | None = None,
     chart_type: str = "auto",
@@ -209,7 +215,7 @@ def create_plot(
     if data_key:
         df = store.get(data_key)
         if df is None:
-            return f"Geen data gevonden voor '{data_key}'.", None
+            return fouten.onbekende_key(data_key), None
         data = df.to_dict(orient="records")
         if duo.is_prognose(store.meta(data_key)):
             # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).
@@ -258,7 +264,7 @@ def create_plot(
         _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0], text=_value_labels(y_vals, show_labels))
 
     layout = {
-        "title": {"text": title, "font": {"size": 16, "color": "#222"}},
+        "title": {"text": title, "font": {"size": 16, "color": "#222"}, **_ondertitel(data_key)},
         "legend_title": color_by or "",
         "separators": ",.",  # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22)
         **_LAYOUT_BASE,
@@ -378,7 +384,7 @@ def create_choropleth_map(
     if data_key:
         df = store.get(data_key)
         if df is None:
-            return f"Geen data gevonden voor '{data_key}'.", None
+            return fouten.onbekende_key(data_key), None
         data = df.to_dict(orient="records")
         if duo.is_prognose(store.meta(data_key)):
             # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).

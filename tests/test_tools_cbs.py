@@ -1,13 +1,15 @@
 from unittest.mock import patch
 
+from tools import fouten
 from tools.cbs import get_cbs_data
 
 
-def test_api_exception_returns_error_string():
+def test_api_exception_returns_a_coded_error_without_the_raw_text():
+    # De ruwe providertekst gaat naar het log, niet naar het model (#331).
     with patch("tools.cbs.data", side_effect=Exception("timeout")):
         result = get_cbs_data("85423NED")
-    assert "Fout" in result
-    assert "timeout" in result
+    assert fouten.code(result) == "bron_fout"
+    assert "timeout" not in result
 
 
 def test_empty_result_returns_helpful_message():

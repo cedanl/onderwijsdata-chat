@@ -1,5 +1,6 @@
 from typing import Any
 
+from . import fouten, store
 from .analysis import run_analysis
 from .catalog import dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
@@ -59,10 +60,13 @@ def dispatch(name: str, tool_input: dict) -> tuple[str, Any]:
     handler = _HANDLERS.get(name)
     if not handler:
         return f"Onbekende tool: {name}", None
+    if isinstance(key := tool_input.get("data_key"), str):
+        # cbs_85353NED en CBS:85353ned vonden niets en kostten een ronde per variant (#331).
+        tool_input = {**tool_input, "data_key": store.canoniek(key)}
     try:
         result = handler(**tool_input)
         if isinstance(result, tuple):
             return result
         return result, None
     except Exception as e:
-        return f"Fout bij uitvoeren van {name}: {e}", None
+        return fouten.toolfout(name, e), None

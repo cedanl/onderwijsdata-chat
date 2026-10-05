@@ -303,9 +303,19 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     return total * damping
 
 
-def _geo_niveaus(entry: dict) -> list[str]:
-    """Geografische niveaus van een dataset; zonder regiodimensie is dat landelijk (#237)."""
-    return entry.get("_geo_niveau") or ["landelijk"]
+def geodekking(entry: dict, niveau: str) -> str:
+    """Biedt de dataset dit geografische niveau: "ja", "nee" of "onbekend" (#351).
+
+    Een lege `_geo_niveau` is alleen landelijk (#237) als de catalogus de structuur
+    kent: CBS-dimensies of DUO/RIO-kolommen zonder regio. Ontbreekt het veld of de
+    structuur, dan heeft niemand gekeken; dat is onbekend, niet landelijk.
+    """
+    niveaus = entry.get("_geo_niveau")
+    if niveaus:
+        return "ja" if niveau in niveaus else "nee"
+    if niveaus is None or not (entry.get("_dimensies") or entry.get("_kolommen")):
+        return "onbekend"
+    return "ja" if niveau == "landelijk" else "nee"
 
 
 def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
@@ -332,13 +342,25 @@ def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
     return active, archive
 
 
-def _gerangschikt(treffers: list, geo_niveau: str | None) -> list[dict]:
+def _gerangschikt(treffers: list, geo_niveau: str | None) -> tuple[list[dict], list[str]]:
+    """De treffers op volgorde, en de dataset-ID's waarvan de geodekking onbekend is."""
     # Gelijke score: de dataset-ID beslist, niet de inleesvolgorde van de catalogus (#344).
     treffers = sorted(treffers, key=lambda x: (-x[0], _dataset_id(x[1])))
     hits = [r for _, r in treffers]
-    if geo_niveau:
-        hits = [r for r in hits if geo_niveau in _geo_niveaus(r)]
-    return hits
+    if not geo_niveau:
+        return hits, []
+    dekking = [(r, geodekking(r, geo_niveau)) for r in hits]
+    return [r for r, d in dekking if d == "ja"], [_dataset_id(r) for r, d in dekking if d == "onbekend"]
+
+
+_MAX_ONBEKEND = 5
+
+
+def _onbekende_dekking(ids: list[str], geo_niveau: str) -> str:
+    return (
+        f"Weggelaten omdat onbekend is of ze niveau '{geo_niveau}' hebben: {ids[:_MAX_ONBEKEND]}. "
+        "Controleer dat met dataset_details voordat je er een kiest."
+    )
 
 
 def search_catalog(
@@ -373,8 +395,15 @@ def search_catalog(
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.
     primair, reserve = (archive, active) if historisch else (active, archive)
-    hits = _gerangschikt(primair, geo_niveau) or _gerangschikt(reserve, geo_niveau)
+    hits, onbekend = _gerangschikt(primair, geo_niveau)
+    if not hits:
+        hits, onbekend_reserve = _gerangschikt(reserve, geo_niveau)
+        onbekend += onbekend_reserve
 
+    if geo_niveau and not hits and onbekend:
+        return f"Geen datasets gevonden voor '{query}' die zeker niveau '{geo_niveau}' hebben. " + _onbekende_dekking(
+            onbekend, geo_niveau
+        )
     if geo_niveau and not hits:
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d",
@@ -403,6 +432,8 @@ def search_catalog(
     lean = [{k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS} for h in hits[:top_n]]
     if hint:
         lean.append({"melding": hint})
+    if geo_niveau and onbekend:
+        lean.append({"melding": _onbekende_dekking(onbekend, geo_niveau)})
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
 
 

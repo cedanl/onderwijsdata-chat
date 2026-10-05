@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
-from tools import LABELS, dispatch, outcome
+from tools import LABELS, dispatch, fouten, outcome
 from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
@@ -143,6 +143,9 @@ class _Loop:
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
+    # Per (tool, foutcode) hoe vaak; de tweede keer gaat de tool op slot voor de rest van de beurt (#331).
+    errors: dict[tuple[str, str], int] = field(default_factory=dict)
+    locked: dict[str, str] = field(default_factory=dict)
     figure_shown: set[str] = field(default_factory=set)
     trace: SearchTrace = field(default_factory=SearchTrace)
 
@@ -207,9 +210,21 @@ class _Loop:
                 return
         result.exhausted = True
 
+    def _note_error(self, name: str, content: str) -> None:
+        code = fouten.code(content)
+        if code is None:
+            return
+        n = self.errors[name, code] = self.errors.get((name, code), 0) + 1
+        if n >= 2 and name not in self.locked:
+            self.locked[name] = code
+            logger.warning("TOOL OP SLOT  %s: %dx %s", name, n, code)
+
     async def _run_tools(self, calls: list[ToolCall]) -> None:
         blocked: dict[str, str] = {}
         for c in calls:
+            if c.name in self.locked:
+                blocked[c.id] = fouten.op_slot(c.name, self.locked[c.name])
+                continue
             self.counts[c.name] = self.counts.get(c.name, 0) + 1
             limit = self.tool_limits.get(c.name)
             if limit and self.counts[c.name] > limit:
@@ -250,6 +265,7 @@ class _Loop:
                 if c.name in self.tool_limits and not _is_hit(content):
                     # Only searches that found something use up the limit (#323): a miss is a reason to rephrase.
                     self.counts[c.name] -= 1
+                self._note_error(c.name, content)
                 self.result.tool_results.append(content)
                 self.trace.note(c.name, c.args, content)
                 if self.on_tool_result:
