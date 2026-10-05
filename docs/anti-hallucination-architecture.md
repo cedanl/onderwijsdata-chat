@@ -18,7 +18,7 @@ Per key bewaart de store ook wat er over de data bekend is (`KeyMeta`): bron, da
 
 - `query_data` met `group_by` en `aggregate` voor sommen, gemiddelden, tellingen, minima en maxima.
 - `compute_kpi` (`tools/kpi.py`) voor een verschil, percentage, index of de grootste daling of stijging. Het model neemt de teruggegeven waarde over; het rekent niet zelf.
-- `run_analysis` (`tools/analysis.py`) voor wat daar niet mee kan, in een afgeschermde sandbox. Een AST-controle weigert een script met een literal datastructuur van zes of meer getallen (overgetypte data) en een script dat geen data leest (`df` of `store_get`).
+- `run_analysis` (`tools/analysis.py`) voor wat daar niet mee kan. Dat draait in het serverproces, achter een regex-lijst; afgeschermd is het niet (#62). Een AST-controle weigert een script met een literal datastructuur van zes of meer getallen (overgetypte data) en een script dat geen data leest (`df` of `store_get`).
 
 ### 3. Het antwoord wordt gecontroleerd tegen de data
 

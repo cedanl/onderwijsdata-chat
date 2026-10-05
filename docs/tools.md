@@ -280,6 +280,16 @@ Haalt metagegevens van een specifieke dataset op (kolommen, dimensies, beschrijv
 
 ---
 
+## dataset_counts
+
+Geeft het aantal datasets per bron (CBS, DUO, RIO) dat de chat kan opvragen, plus het aantal gearchiveerde CBS-tabellen. Geen parameters. Dezelfde telling voedt de startpagina.
+
+**Gebruik:** bij een vraag naar hoeveel datasets er zijn. Een telling van zoekresultaten is geen catalogustotaal (#168).
+
+Records die riodata buiten mbo/hbo/wo plaatst (`_scope.mbo_hbo_wo = buiten_scope`) tellen niet mee en zijn ook voor zoeken en `dataset_details` onzichtbaar (#375).
+
+---
+
 ## get_cbs_data
 
 Haalt rijen op uit een CBS-dataset via de OData API.
@@ -360,14 +370,14 @@ Berekent één KPI-waarde deterministisch in code over data die al in de store s
 
 ## run_analysis
 
-Voert pandas/numpy-code uit in een beveiligde sandbox op eerder opgehaalde data.
+Voert pandas/numpy-code uit op eerder opgehaalde data, in het serverproces.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `code` | string | Python-code (pandas, numpy, plotly express beschikbaar) |
 | `data_key` | string | Optionele data_key — het bijbehorende DataFrame is beschikbaar als `df` |
 
-De sandbox blokkeert imports, `exec`, `eval`, `os`, `sys` en andere onveilige operaties. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`.
+Een regex-lijst blokkeert imports, `exec`, `eval`, `os`, `sys` en `open`. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`. Dit is geen sandbox: de bestandsfuncties van pandas en numpy werken, en de lijst is te omzeilen. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox) en #62.
 
 ---
 

@@ -1,5 +1,6 @@
 import ast
 import ctypes
+import hashlib
 import json
 import logging
 import math
@@ -103,6 +104,13 @@ def _check_code(code: str) -> str | None:
     return _check_reads_data(code)
 
 
+def _analysekey(bronnen: list[str], df: pd.DataFrame) -> str:
+    """De key volgt herkomst en inhoud: een identieke run geeft dezelfde key (#62, #47)."""
+    # JSON en niet hash_pandas_object: die faalt op een cel met een lijst of dict.
+    inhoud = f"{json.dumps(bronnen)}{df.to_json(orient='split', default_handler=str)}"
+    return f"analysis:{hashlib.sha256(inhoud.encode()).hexdigest()[:12]}"
+
+
 def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.Figure]:
     violation = _check_code(code)
     if violation:
@@ -175,7 +183,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     result_key = None
     if isinstance(result, list) and result:
         store_df = pd.DataFrame(result)
-        result_key = f"analysis:{id(store_df)}"
+        result_key = _analysekey(bronnen, store_df)
         if bronnen:
             store.derive(
                 bronnen[0],
