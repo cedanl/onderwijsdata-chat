@@ -6,6 +6,7 @@ import pytest
 
 from agent import beweringen
 from agent.beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
+from agent.probleem import meldingen
 
 _DATA = [json.dumps({"data_key": "duo:p01hoinges:a", "rijen": []})]
 

@@ -3,11 +3,14 @@ en is geen lege schil (#189)."""
 
 import json
 
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
+from tools import store
+from tools.store import KeyMeta
 
 _HU_RESULT = json.dumps(
     {"rijen": [{"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904, 27441, 27135, 26370])]}

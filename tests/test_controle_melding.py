@@ -12,6 +12,7 @@ import re
 import pandas as pd
 import pytest
 
+from agent.beweringen import ongedekte_oorzaak
 from agent.keuze import genegeerde_keuze
 from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from agent.metatekst import metatekst
@@ -80,17 +81,18 @@ def _beurt_problemen() -> list[str]:
     return [
         *ontbrekende_schooljaren("Hoeveel studenten in 2025/26?", beurt),
         *ontbrekende_instellingen("Hoeveel studenten had Hogeschool Utrecht?", beurt),
-        *verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU)."),
+        *verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU).", beurt),
         *onbekende_datasets("Bron: p01hoenges."),
         *ongebruikte_bronnen("**Bronnen**\n- p03hoinschr", beurt),
         *genegeerde_keuze(["2023"], "In 2018 waren het er 900."),
+        *ongedekte_oorzaak("Het verschil komt doordat studenten verhuizen.", beurt),
         *metatekst("Ik schreef eerder 3.400; compute_kpi bevestigt 900."),
     ]
 
 
 def test_elke_controle_heeft_een_melding_zonder_modelinstructie():
     problemen = _beurt_problemen()
-    assert len(problemen) >= 7
+    assert len(problemen) >= 8
     for p in problemen:
         assert isinstance(p, Probleem), p
         assert _zonder_modeltaal(p.melding), p.melding
