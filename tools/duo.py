@@ -6,9 +6,8 @@ from riodata import duo as _duo
 
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
-from . import instelling, periode, store
+from . import duo_meta, instelling, periode, store
 from .catalog import catalogus_titel, resource_titel
-from .duo_meta import teldefinitie
 
 _SAMPLE_ROWS = 3
 
@@ -181,7 +180,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             bron="duo",
             dataset=dataset_id,
             resource=resource,
-            teldefinitie=teldefinitie(dataset_id),
+            teldefinitie=duo_meta.teldefinitie(duo_meta.record(dataset_id)),
             periodekolom=kolom,
             schooljaren=periode.dekking(df, "duo", kolom),
             instellingskolom=codekolom,
@@ -213,9 +212,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         "kolommen": schema,
         "preview": preview,
     }
-    definitie = teldefinitie(dataset_id)
-    if definitie:
-        result["teldefinitie"] = definitie
+    result.update(duo_meta.metadata(duo_meta.record(dataset_id)))
     known = store.meta(key)
     if known and known.schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)

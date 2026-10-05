@@ -9,7 +9,7 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
-from .duo_meta import teldefinitie
+from . import duo_meta
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +389,7 @@ def search_catalog(
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
 
 
-_DETAILS_EXTRA = frozenset({"_resources", "teldefinitie"})
+_DETAILS_EXTRA = frozenset({"_resources", "teldefinitie", "publicatieregels", "metadata_onbekend"})
 
 
 def _build_details(entry: dict, dataset_id: str) -> str:
@@ -505,7 +505,7 @@ def dataset_details(dataset_id: str) -> str:
                 return json.dumps({"bron": entry.get("bron", dataset_id), **_NIET_OPVRAAGBAAR}, ensure_ascii=False)
             if entry.get("leverancier") == "DUO":
                 # Het moment waarop het model tussen bijv. p01 en p03 kiest (#172).
-                entry = {**entry, "teldefinitie": teldefinitie(dataset_id)}
+                entry = {**entry, **duo_meta.metadata(entry)}
             return _build_details(entry, dataset_id)
 
     logger.warning("dataset_details miss id=%s", dataset_id)

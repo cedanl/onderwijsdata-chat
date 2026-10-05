@@ -85,7 +85,7 @@ def test_get_duo_data_records_its_source_and_teldefinitie():
     df = pd.DataFrame({"OPLEIDINGSVORM": ["VT"], "AANTAL": [10]})
     with (
         patch("tools.duo._duo.load", return_value=df),
-        patch("tools.duo.teldefinitie", return_value="natuurlijke personen"),
+        patch("tools.duo_meta.teldefinitie", return_value="natuurlijke personen"),
     ):
         key = json.loads(get_duo_data("p01hoinges", 3))["data_key"]
 
@@ -137,7 +137,7 @@ def _duo_reeks() -> str:
             "AANTAL": [7418, 27135, 7408, 26370],
         }
     )
-    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
+    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo_meta.teldefinitie", return_value=None):
         return get_duo_data("p01hoinges", 3)
 
 
@@ -193,7 +193,7 @@ def _duo_instellingen() -> str:
             "AANTAL": [26370, 2880],
         }
     )
-    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo.teldefinitie", return_value=None):
+    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo_meta.teldefinitie", return_value=None):
         return get_duo_data("p01hoinges", 3)
 
 
