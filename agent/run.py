@@ -85,6 +85,13 @@ async def _handle_clarify_scope(
     """End the turn with a clarification card; returns the text for ``run()``."""
     args = call.args or {}
 
+    # The assistant turn that asked has no text of its own; an empty content makes LiteLLM
+    # put "[System: Empty message content sanitised…]" in the history, which the model then
+    # repeats to the user (#322). The question it asked is the honest text for that turn.
+    for m in turn_history:
+        if m.get("role") == "assistant" and not (m.get("content") or "").strip():
+            m["content"] = args.get("vraag") or "Verduidelijkingsvraag gesteld."
+
     # Persist the clarification exchange back to messages so the next
     # turn has the tool_calls context (prevents re-asking same question).
     messages.extend(turn_history)
