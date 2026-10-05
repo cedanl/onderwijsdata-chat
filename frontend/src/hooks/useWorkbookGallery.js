@@ -8,11 +8,13 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
   })
   const [selected, setSelected] = useState(initialSelected)
   const [pendingConfirm, setPendingConfirm] = useState(null)
+  // The localStorage list can be empty or stale; only the server list may say "nothing saved".
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     migrateLocalWorkbooks().then(() => loadWorkbooksFromServer()).then(wbs => {
       setWorkbooks(type ? wbs.filter(w => getWorkbookType(w) === type) : wbs)
-    })
+    }).finally(() => setLoading(false))
   }, [type])
 
   useEffect(() => {
@@ -43,5 +45,5 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
     })
   }, [type, deleteMessage, selected])
 
-  return { workbooks, setWorkbooks, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete }
+  return { workbooks, setWorkbooks, loading, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete }
 }
