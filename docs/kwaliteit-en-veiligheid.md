@@ -23,12 +23,15 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 
 ### Analyse-sandbox
 
-De `run_analysis`-tool voert arbitrary Python uit in een beveiligde omgeving:
+De `run_analysis`-tool voert door het model geschreven Python uit in het serverproces. Dat is **geen vertrouwensgrens** (#62):
 
-- **Geblokkeerde patronen:** `import`, `exec`, `eval`, `os.`, `sys.`, `subprocess`, `open`, `breakpoint`
-- **Beperkte builtins:** alleen veilige functies (`len`, `range`, `sorted`, `sum`, `round`, etc.)
-- **Beschikbare bibliotheken:** pandas, numpy, math, plotly.express, plotly.graph_objects — geen netwerktoegang, geen bestands-I/O
-- **Timeout:** 10 seconden via daemon thread
+- **Geblokkeerde patronen:** een regex-lijst (`import`, `exec`, `eval`, `os.`, `sys.`, `subprocess`, `open`, `breakpoint`). Een tekstpatroon, geen semantische controle: via objectattributen is het te omzeilen.
+- **Beperkte builtins:** alleen `len`, `range`, `sorted`, `sum`, `round` en vergelijkbare functies.
+- **Beschikbare bibliotheken:** pandas, numpy, math, plotly.express, plotly.graph_objects. De bestandsfuncties daarvan (`pd.read_csv`, `df.to_csv`, `np.load`) zijn niet geblokkeerd: een script kan bestanden lezen en schrijven waar het serverproces bij kan.
+- **Timeout:** 10 seconden in een daemon-thread, best effort: code die in I/O blokkeert, wordt niet altijd gestopt.
+- **AST-controle:** weigert een script dat geen data leest of zelf een reeks getallen intypt. Dat bewaakt de herkomst van getallen, niet de toegang.
+
+Procesisolatie of getypeerde operaties in plaats van vrije scripts staat open in #62.
 
 ### Hard tool limits
 
@@ -114,7 +117,7 @@ Transparantie over wat nog niet getest is:
 
 - Negatieve gevragen (model moet "nee" zeggen bij niet-bestaande instellingen of toekomstige jaren)
 - Multi-turn gesprekken
-- `run_analysis` sandbox niet gestresstest
+- `run_analysis` is niet geïsoleerd: bestands-I/O via pandas/numpy werkt en de patroonlijst is te omzeilen (#62)
 - Reference values kunnen verouderen na dataverversing
 - Geen max-lengte op chat-berichten
 
