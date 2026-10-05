@@ -1,8 +1,22 @@
 import { getToken } from './auth'
+import { saveFile } from './saveFile'
 
 function authHeaders() {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function throwIfFailed(res) {
+  if (res.status === 401) throw Object.assign(new Error('Unauthorized'), { status: 401 })
+  if (res.ok) return
+  let detail = `API ${res.status}`
+  try {
+    const body = await res.json()
+    // Own routes answer {error}; FastAPI's HTTPException answers {detail}.
+    if (body.error) detail = body.error
+    else if (typeof body.detail === 'string') detail = body.detail
+  } catch { /* noop */ }
+  throw new Error(detail)
 }
 
 async function apiFetch(path, options = {}) {
@@ -10,18 +24,17 @@ async function apiFetch(path, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options.headers },
   })
-  if (res.status === 401) throw Object.assign(new Error('Unauthorized'), { status: 401 })
-  if (!res.ok) {
-    let detail = `API ${res.status}`
-    try {
-      const body = await res.json()
-      // Own routes answer {error}; FastAPI's HTTPException answers {detail}.
-      if (body.error) detail = body.error
-      else if (typeof body.detail === 'string') detail = body.detail
-    } catch { /* noop */ }
-    throw new Error(detail)
-  }
+  await throwIfFailed(res)
   return res.json()
+}
+
+// The table behind an answer as a file (#269). A plain link cannot carry the token,
+// so the CSV is fetched and handed to the browser as a blob.
+export async function downloadDataCsv(key) {
+  const res = await fetch(`/api/data/csv?${new URLSearchParams({ key })}`, { headers: authHeaders() })
+  await throwIfFailed(res)
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'data.csv'
+  saveFile(await res.blob(), filename)
 }
 
 export async function fetchConversations(params = {}) {

@@ -32,6 +32,9 @@ import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
+import { saveFile } from '../saveFile'
+import DataExport from '../components/DataExport'
+import ConversationExport from '../components/ConversationExport'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
@@ -528,6 +531,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
               </div>
             )}
+            {hasMessages && !busy && <ConversationExport messages={displayMessages} />}
             {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'ready' && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
@@ -715,6 +719,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
+            <DataExport tools={msg.tools} done={msg.done} />
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
@@ -747,13 +752,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
 }
 
 function downloadCsv(csv, filename) {
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  saveFile(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename)
 }
 
 function PlotlyFigure({ figureJson, label }) {

@@ -552,6 +552,13 @@ input, textarea { font: inherit; }
 }
 .csv-download-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
 .plotly-figure-wrap:hover .csv-download-btn { opacity: 1; }
+.data-export { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.data-export-btn {
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: 4px;
+  padding: 3px 8px; font-size: .75rem; color: var(--gray-500); cursor: pointer;
+}
+.data-export-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
+.data-export-error { flex-basis: 100%; font-size: .75rem; color: var(--gray-500); }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }
@@ -1184,6 +1191,15 @@ html.dark .context-limit-banner--full {
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--gray-200); background: none; cursor: pointer; }
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
+.confirm-primary { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-700); color: white; cursor: pointer; font-weight: 600; }
+.export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
+.export-option:last-of-type { margin-bottom: 20px; }
+.export-conversation-btn {
+  display: block; margin: 0 auto 8px; padding: 4px 10px;
+  background: none; border: none; font-size: .78rem; color: var(--muted-text);
+  text-decoration: underline; cursor: pointer;
+}
+.export-conversation-btn:hover { color: var(--accent-text); }
 
 /* ─── Feedback Modal ──────────────────────────────────────── */
 .wb-feedback-btn, .wb-feedback-given {
