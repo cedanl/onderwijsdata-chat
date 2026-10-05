@@ -373,6 +373,19 @@ def test_load_inside_the_top_three_is_logged_without_deviation(monkeypatch, capl
     assert not any("CATALOGUS_AFWIJKING" in r.message for r in caplog.records)
 
 
+def test_load_lines_carry_the_catalogue_digest(monkeypatch, caplog):
+    # A shifted top three after a catalogue update must be told apart from a behaviour change (#344).
+    from tools.catalog import catalogus_digest
+
+    _search_then_load(monkeypatch, "get_duo_data", '{"dataset_id": "p01hoinges"}')
+
+    with caplog.at_level("INFO", logger="agent.search_trace"):
+        _run()
+
+    [record] = [r for r in caplog.records if "CATALOGUS_GELADEN" in r.message]
+    assert f"catalogus={catalogus_digest()}" in record.message
+
+
 def test_load_outside_the_top_three_is_a_separate_metric(monkeypatch, caplog):
     # "ver-weg" is hit four: the model had to correct the ranking.
     _search_then_load(monkeypatch, "get_duo_data", '{"dataset_id": "ver-weg"}')

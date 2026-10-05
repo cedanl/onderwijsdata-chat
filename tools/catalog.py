@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import math
@@ -119,6 +120,18 @@ def _cbs() -> list:
 @cache
 def _rio_duo() -> list:
     return _rio_catalog(source="all")
+
+
+def _dataset_id(entry: dict) -> str:
+    return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or "?"
+
+
+@cache
+def catalogus_digest() -> str:
+    """Korte hash over de geladen catalogus: een verschoven top-3 is zo terug te voeren op een
+    andere catalogus of op een codewijziging (#344)."""
+    inhoud = json.dumps([_cbs(), _rio_duo()], sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(inhoud.encode()).hexdigest()[:12]
 
 
 def dataset_counts() -> dict[str, int]:
@@ -339,7 +352,8 @@ def search_catalog(
         return f"Geen resultaten gevonden voor '{query}'."
 
     results = active or archive_fallback
-    results.sort(key=lambda x: -x[0])
+    # Gelijke score: de dataset-ID beslist, niet de inleesvolgorde van de catalogus (#344).
+    results.sort(key=lambda x: (-x[0], _dataset_id(x[1])))
     hits = [r for _, r in results]
 
     if geo_niveau:
@@ -358,7 +372,7 @@ def search_catalog(
                 f"(bijv. 'provincie' in plaats van 'gemeente')."
             )
 
-    top_ids = [h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") or "?" for h in hits[:3]]
+    top_ids = [_dataset_id(h) for h in hits[:3]]
     logger.info(
         "search_catalog query=%r source=%s geo=%s results=%d top=%s elapsed_ms=%d",
         query,

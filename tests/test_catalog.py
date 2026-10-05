@@ -2,7 +2,7 @@ import json
 import logging
 from unittest.mock import patch
 
-from tools.catalog import catalogus_titel, dataset_details, resource_titel, search_catalog
+from tools.catalog import catalogus_digest, catalogus_titel, dataset_details, resource_titel, search_catalog
 
 # --- Fix #37: archief-filter ---
 
@@ -45,6 +45,23 @@ def test_active_entries_rank_before_archive_via_separate_sort():
     # archive entries excluded; active entries appear sorted by score
     assert "archief-hi" not in identifiers
     assert identifiers[0] == "actief-hi"
+
+
+def test_gelijke_score_volgt_de_dataset_id_niet_de_inleesvolgorde():
+    """#344: SearchTrace telt een top-3-afwijking als faalsignaal; die top-3 mag dus niet
+    afhangen van de volgorde waarin de catalogus werd ingelezen."""
+    entries = [{"_cbs_id": i, "title": "studenten hbo"} for i in ("85423NED", "03753", "85525NED", "71450ned")]
+
+    def volgorde(catalogus):
+        with patch("tools.catalog._cbs", return_value=catalogus), patch("tools.catalog._rio_duo", return_value=[]):
+            return [e["_cbs_id"] for e in json.loads(search_catalog("studenten hbo", source="cbs"))]
+
+    assert volgorde(entries) == volgorde(list(reversed(entries))) == sorted(i["_cbs_id"] for i in entries)
+
+
+def test_catalogus_digest_is_kort_en_stabiel():
+    assert catalogus_digest() == catalogus_digest()
+    assert len(catalogus_digest()) == 12
 
 
 def test_no_archief_field_treated_as_active():
