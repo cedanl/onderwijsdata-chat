@@ -1,6 +1,9 @@
 import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import KolomKop from './KolomKop'
+
+const MARKDOWN_COMPONENTS = { th: KolomKop }
 
 const TREND_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E']
 const KPI_BACKGROUNDS = ['#EFF6FF', '#F0FDFA', '#FFF7ED', '#F0FDF4']
@@ -134,7 +137,7 @@ export default function GeneratedDashboard({ spec, instelling, onRefresh, refres
 
       {narrative && (
         <div className="chart-card" style={{ marginTop: 16 }}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{narrative}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{narrative}</ReactMarkdown>
         </div>
       )}
 

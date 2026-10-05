@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import KolomKop from './KolomKop'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { saveWorkbookWithSync } from '../workbooks'
 import { fetchSettingsConfig } from '../api'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 import ConfirmModal from './ConfirmModal'
+
+const MARKDOWN_COMPONENTS = { th: KolomKop }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -240,7 +243,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 {msg.tools?.map((t, i) => <ToolStep key={t.name || i} tool={t} />)}
                 {!msg.done && !msg.content && !msg.tools?.length
                   ? <div className="ai-typing"><span/><span/><span/></div>
-                  : msg.content ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown> : null
+                  : msg.content ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown> : null
                 }
                 {msg.clarification && (
                   <div className="dc-clarification-btns">
