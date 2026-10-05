@@ -10,6 +10,9 @@ dezelfde zin of tabelrij noemt. De index loopt per rij (jaar, instelling), niet
 per as: anders komt "2024/25 + NHL Stenden + 55.555" door twee losse helften.
 Noemt een zin meer waarden op één as (een vergelijking), dan is niet vast te
 stellen welk getal waarbij hoort; de rij moet dan bij een van die waarden
+passen. Een vergelijking in de tijd noemt vaak maar één jaar ("ten opzichte van
+2020/21 gedaald van 518.940 naar 475.460", #379): staat een getal van de zin bij
+het genoemde jaar, dan hoeven de andere alleen bij de genoemde instelling te
 passen. Staat een getal in geen enkele rij (een som, een KPI), dan beslist de
 getalcontrole erover, niet deze.
 """
@@ -25,6 +28,13 @@ from tools.store import KeyMeta
 
 from .grounding import checked_numbers
 from .selectie import data_keys
+
+# Een zin die een verandering in de tijd beschrijft; het andere jaar staat er vaak niet bij (#379).
+_VERGELIJKING = re.compile(
+    r"\bvan\b.+\bnaar\b|ten opzichte van|t\.o\.v\.|vergeleken met|\beerder\b|vorig jaar"
+    r"|\b(?:gedaald|daalde|gestegen|steeg|toegenomen|afgenomen)\b|\b(?:daling|stijging|groei|toename|afname)\b",
+    re.IGNORECASE,
+)
 
 # Een zin of een tabelrij. Een punt in een getal (27.135) wordt niet gevolgd door witruimte.
 _SEGMENT = re.compile(r"\n|(?<=[.!?;])\s+")
@@ -84,6 +94,16 @@ def _label(rij: _Rij, genoemd: tuple[set, set], namen: dict[str, str]) -> str:
     return " · ".join(delen)
 
 
+def _vergelijkt(segment: str, getallen: list[tuple[str, str]], index: _Index, genoemd: tuple[set, set]) -> bool:
+    """Beschrijft de zin een verandering vanaf één genoemd jaar, met een van zijn getallen bij dat jaar?
+
+    Noemt de zin beide jaren, dan moet elk getal bij een van beide passen: dan is er niets te raden.
+    """
+    return bool(len(genoemd[0]) == 1 and _VERGELIJKING.search(segment)) and any(
+        any(_past(rij, genoemd) for rij in index.get(getal, ())) for _, getal in getallen
+    )
+
+
 def _verkeerd(tekst: str, index: _Index, bekend: tuple[set, set], namen: dict[str, str]) -> list[str]:
     problemen = []
     for segment in segmenten(tekst):
@@ -94,9 +114,12 @@ def _verkeerd(tekst: str, index: _Index, bekend: tuple[set, set], namen: dict[st
         if not any(genoemd):
             continue
         gevraagd = ", ".join(_label(r, genoemd, namen) for r in product(genoemd[0] or [None], genoemd[1] or [None]))
-        for geschreven, getal in checked_numbers(segment):
+        getallen = checked_numbers(segment)
+        # Het andere jaar van een vergelijking staat niet in de zin: dan telt alleen de instelling.
+        eis = (set(), genoemd[1]) if _vergelijkt(segment, getallen, index, genoemd) else genoemd
+        for geschreven, getal in getallen:
             rijen = index.get(getal)
-            if rijen and not any(_past(rij, genoemd) for rij in rijen):
+            if rijen and not any(_past(rij, eis) for rij in rijen):
                 echt = ", ".join(sorted({_label(r, genoemd, namen) for r in rijen}))
                 problemen.append(
                     f"{geschreven} hoort bij {echt}, niet bij {gevraagd} ('{segment}'). "
