@@ -9,7 +9,7 @@ Stel een compact professioneel rapport op dat de onderzoeksvraag beantwoordt. Fo
 Het rapport heeft ALTIJD deze structuur:
 
 1. **Onderzoeksvraag** — bovenaan en centraal: herhaal de onderzoeksvraag (bijna) letterlijk
-2. **Gekozen definities** — definieer de begrippen die je gebruikt en maak expliciet wat dit rapport wel en niet beantwoordt
+2. **Gekozen definities** — definieer de inhoudelijke begrippen die je gebruikt en maak expliciet wat dit rapport wel en niet beantwoordt. Wat een bron telt (personen of inschrijvingen) en wat de opleidingsvormcodes betekenen voegt de code uit de bron toe: beschrijf dat niet zelf
 3. **1 of 2 visualisaties met toelichting** — maximaal twee grafieken, elk met een duidelijke inhoudelijke toelichting
 4. **Conclusie** — kopje "Conclusie" met de kernbevindingen en het antwoord op de onderzoeksvraag
 
@@ -51,6 +51,11 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
   "conclusie": "2-3 zinnen met de kernbevindingen en het antwoord op de onderzoeksvraag."
 }
 ```
+
+## Definities en verwijzingen
+
+- Schrijf in `definities` alleen getalvrije begrippen. Zeg niets over hoe een dataset telt en omschrijf voltijd, deeltijd en duaal niet zelf; de code zet de definitie van de bron erboven.
+- Verwijs nooit naar "resource 3" of een ander bestandsnummer; noem een bestand bij zijn titel.
 
 ## Bronvermeldingen
 
