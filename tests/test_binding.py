@@ -76,6 +76,23 @@ def test_zin_met_twee_jaren_is_niet_eenduidig():
     assert verkeerd_gebonden(tekst, _beurt()) == []
 
 
+def test_vergelijking_met_een_eerder_jaar_noemt_maar_een_jaar():
+    """#379: 'vijf jaar eerder (2020/'21) … van 518.940 naar 475.460' werd geweigerd, terwijl het klopte."""
+    tekst = "Ten opzichte van een jaar eerder (2024/'25) is het aantal gedaald van 27.135 naar 26.370."
+    assert verkeerd_gebonden(tekst, _beurt()) == []
+
+
+def test_vergelijking_zonder_getal_bij_het_genoemde_jaar_blijft_verkeerd():
+    [probleem] = verkeerd_gebonden("In 2025/26 waren het 27.135 studenten, een stijging.", _beurt())
+    assert "27.135" in probleem
+
+
+def test_vergelijking_bindt_nog_wel_aan_de_instelling():
+    tekst = "Hogeschool Utrecht ging van 27.135 in 2024/25 naar 2.880."
+    [probleem] = verkeerd_gebonden(tekst, _beurt())
+    assert "2.880" in probleem and "Aeres Hogeschool" in probleem
+
+
 def test_getal_dat_niet_in_de_rijen_staat_is_niet_aan_deze_controle():
     # Een som of KPI: de getalcontrole beslist daarover, niet deze.
     assert verkeerd_gebonden("In 2025/26 samen 29.250.", _beurt()) == []
