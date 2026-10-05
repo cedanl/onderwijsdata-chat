@@ -10,6 +10,10 @@ ty kent zelf geen baseline. Dit script vergelijkt per bestand, regel en melding 
 een diagnostic voorkomt; het regelnummer telt niet mee, zodat een regel erboven toevoegen
 geen nieuwe fout oplevert. Los je diagnostics op, draai dan --update zodat de baseline
 mee krimpt.
+
+De baseline krimpt volgens AFBOUWPLAN (#391): per kwartaal een plafond, eind 2027-Q3 nul.
+Het script meldt het eerstvolgende plafond en hoeveel er nog af moet; het faalt er niet op,
+zodat een MR niet blokkeert op schuld die er al was.
 """
 
 from __future__ import annotations
@@ -18,12 +22,37 @@ import re
 import subprocess
 import sys
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 BASELINE = Path(__file__).resolve().parent.parent / "ty-baseline.txt"
 
 # agent/loop.py:88:67: warning[invalid-argument-type] Argument ...
 _DIAGNOSTIC = re.compile(r"^(?P<pad>[^:\s]+):\d+:\d+: (?P<rest>\w+\[[\w-]+\] .*)$")
+
+
+# (uiterste datum, maximaal aantal diagnostics in de baseline)
+AFBOUWPLAN: tuple[tuple[date, int], ...] = (
+    (date(2026, 12, 31), 100),
+    (date(2027, 3, 31), 70),
+    (date(2027, 6, 30), 40),
+    (date(2027, 9, 30), 0),
+)
+
+
+def doel(vandaag: date) -> tuple[date, int] | None:
+    """Het eerstvolgende plafond uit het afbouwplan; None als het plan voorbij is."""
+    return next(((datum, plafond) for datum, plafond in AFBOUWPLAN if vandaag <= datum), None)
+
+
+def voortgang(aantal: int, vandaag: date) -> str:
+    """Eén regel over de stand ten opzichte van het eerstvolgende plafond."""
+    volgend = doel(vandaag)
+    if volgend is None:
+        return f"Afbouwplan voorbij; nog {aantal} diagnostics in de baseline." if aantal else "Baseline is leeg."
+    datum, plafond = volgend
+    regel = f"Afbouwplan (#391): ≤{plafond} vóór {datum.isoformat()}, nu {aantal}"
+    return f"{regel}; nog {aantal - plafond} op te lossen." if aantal > plafond else f"{regel}."
 
 
 def sleutels(uitvoer: str) -> Counter[str]:
@@ -64,6 +93,7 @@ def main(argv: list[str]) -> int:
     print(f"ty: {huidig.total()} diagnostics, geen nieuwe.")
     if opgelost:
         print(f"{opgelost} uit de baseline zijn opgelost; draai --update zodat de baseline krimpt.")
+    print(voortgang(baseline.total(), date.today()))
     return 0
 
 
