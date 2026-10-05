@@ -6,6 +6,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+from .tekens import normaliseer
+
 # The callback every agent loop uses to send events to the client.
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -50,9 +52,11 @@ async def accumulate_stream(
         delta = choice.delta
 
         if delta.content:
-            text_parts.append(delta.content)
+            # Per teken, dus veilig per fragment: deltas en eindtekst zijn dezelfde tekst (#326).
+            content = normaliseer(delta.content)
+            text_parts.append(content)
             if emit is not None:
-                await emit({"type": "text_delta", "content": delta.content})
+                await emit({"type": "text_delta", "content": content})
 
         if delta.tool_calls:
             for tc in delta.tool_calls:
