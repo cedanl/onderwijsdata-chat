@@ -34,6 +34,7 @@ import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
+import ConversationExport from '../components/ConversationExport'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
@@ -527,6 +528,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                 Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
               </div>
             )}
+            {hasMessages && !busy && <ConversationExport messages={displayMessages} />}
             {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'ready' && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
