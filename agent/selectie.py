@@ -100,31 +100,62 @@ _AFWEZIG = re.compile(
     re.IGNORECASE,
 )
 _ALS_PAGINA = re.compile(r"\b(?:eerste|opgehaald\w*|pagina|afgekapt|niet vastgesteld|onvolledig)\b", re.IGNORECASE)
-_ZIN = re.compile(r"[^.!?\n]+")
+# Een zin eindigt bij een leesteken gevolgd door witruimte, niet bij de punt in 475.460.
+_ZIN = re.compile(r"\S.*?(?:[.!?](?=\s|$)|\n|$)")
+# Een heel getal als één token: 475.460, 48,3 en 1–4 vallen niet uiteen in losse cijfers.
+_GETAL = re.compile(r"(?<![\w.,])\d{1,3}(?:\.\d{3})+(?:,\d+)?(?![\w])|(?<![\w.,])\d+(?:,\d+)?(?![\w])")
+_BEREIK = re.compile(r"^\s*(?:[-\u2010-\u2014]|tot\b)\s*\d")
+_BEREIK_VOOR = re.compile(r"\d\s*(?:[-\u2010-\u2014]|tot)\s*$")
+# Een klein getal ("1 opleiding", "3 jaar") is bijna nooit de lengte van een afgekapte
+# pagina; het vals alarm erop ondermijnde correcte antwoorden (#380).
+_KLEIN = 12
+
+
+def _tellingen(zin: str) -> set[int]:
+    """De gehele getallen in `zin` die als telling kunnen gelden: geen decimaal, percentage, bereik of klein getal."""
+    tellingen = set()
+    for m in _GETAL.finditer(zin):
+        token, voor, na = m.group(0), zin[: m.start()], zin[m.end() :]
+        if "," in token or na.lstrip().startswith("%") or _BEREIK.match(na) or _BEREIK_VOOR.search(voor):
+            continue
+        if (getal := int(token.replace(".", ""))) > _KLEIN:
+            tellingen.add(getal)
+    return tellingen
 
 
 def onvolledige_selecties(tekst: str, tool_results: list[str]) -> list[str]:
-    """Tellingen en afwezigheidsclaims in `tekst` die rusten op een afgekapte selectie."""
+    """Tellingen en afwezigheidsclaims in `tekst` die rusten op een afgekapte selectie.
+
+    Eén melding per getal en één voor afwezigheid: dezelfde waarschuwing drie keer
+    onder een antwoord zei niets extra's (#380).
+    """
     onvolledig = {key: known for key in data_keys(tool_results) if (known := store.meta(key)) and not known.volledig}
     if not onvolledig:
         return []
-    datasets = ", ".join(sorted({known.dataset for known in onvolledig.values()}))
-    rijen = {str(len(store.get(key))) for key in onvolledig}
+    datasets_per_rijen: dict[int, set[str]] = {}
+    for key, known in onvolledig.items():
+        datasets_per_rijen.setdefault(len(store.get(key)), set()).add(known.dataset)
+    alle_datasets = ", ".join(sorted({known.dataset for known in onvolledig.values()}))
     problemen = []
+    gemeld: set[int] = set()
+    afwezig_gemeld = False
     for zin in (m.group(0).strip() for m in _ZIN.finditer(tekst)):
         if _ALS_PAGINA.search(zin):
             continue
-        problemen.extend(
-            Probleem(
-                f"'{zin}': {getal} is het aantal opgehaalde rijen van een afgekapte selectie ({datasets}), geen telling.",
-                "Noem geen totaal, of zeg dat het met deze data niet vast te stellen is.",
-            )
-            for getal in sorted(rijen & set(re.findall(r"\b\d+\b", zin)))
-        )
-        if _AFWEZIG.search(zin):
+        for getal in sorted(_tellingen(zin) & datasets_per_rijen.keys() - gemeld):
+            gemeld.add(getal)
+            datasets = ", ".join(sorted(datasets_per_rijen[getal]))
             problemen.append(
                 Probleem(
-                    f"'{zin}': de selectie ({datasets}) is afgekapt, dus dat iets ontbreekt is niet vast te stellen.",
+                    f"'{zin}': {getal} is het aantal opgehaalde rijen van een afgekapte selectie ({datasets}), geen telling.",
+                    "Noem geen totaal, of zeg dat het met deze data niet vast te stellen is.",
+                )
+            )
+        if not afwezig_gemeld and _AFWEZIG.search(zin):
+            afwezig_gemeld = True
+            problemen.append(
+                Probleem(
+                    f"'{zin}': de selectie ({alle_datasets}) is afgekapt, dus dat iets ontbreekt is niet vast te stellen.",
                     "Zoek gericht met een filter, of zeg dat het met deze data niet vast te stellen is.",
                 )
             )

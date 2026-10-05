@@ -143,7 +143,7 @@ TOOL_SCHEMAS = [
                     },
                     "resource": {
                         "type": ["integer", "string"],
-                        "description": "Index (0, 1, ...) of naam-substring van het bestand binnen de dataset (default: 0)",
+                        "description": "Index (0, 1, ...) uit _resources van dataset_details, of de exacte bestandsnaam (default: 0). Een naamdeel dat op meerdere bestanden past laadt niets en noemt de opties.",
                     },
                 },
                 "required": ["dataset_id"],
