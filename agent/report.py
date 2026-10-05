@@ -29,6 +29,7 @@ from agent.loop import ToolCall, tool_loop
 from agent.probleem import meldingen
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron, samengevoegd
+from agent.report_periode import bijgesneden, gevraagd_bereik
 from agent.stream import Emit
 from core.config import MODEL
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
@@ -221,20 +222,23 @@ def _parse_spec_from_response(
 
     bronnen = _sources_from_recipe(recipe)
 
+    onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
+    title = (spec_data.get("title") or "").strip() or onderzoeksvraag[:60] or "Rapport"
+
     vis_meta = spec_data.get("visualisaties") or []
     visualisaties: list[dict] = []
     for idx, figure_json in enumerate(figures_json):
         meta = vis_meta[idx] if idx < len(vis_meta) else {}
+        titel = (meta.get("titel") or "").strip()
+        # De grafiek toont de periode die erboven staat, niet de volle dataset (#385).
+        bereik = gevraagd_bereik(titel, title, onderzoeksvraag)
         visualisaties.append(
             {
-                "titel": (meta.get("titel") or "").strip() or f"Visualisatie {idx + 1}",
+                "titel": titel or f"Visualisatie {idx + 1}",
                 "toelichting": (meta.get("toelichting") or "").strip(),
-                "figure_json": figure_json,
+                "figure_json": bijgesneden(figure_json, bereik) if bereik else figure_json,
             }
         )
-
-    onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
-    title = (spec_data.get("title") or "").strip() or onderzoeksvraag[:60] or "Rapport"
 
     return ReportSpec(
         title=title,
