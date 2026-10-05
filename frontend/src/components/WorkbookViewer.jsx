@@ -87,34 +87,36 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           </svg>
           {backLabel}
         </button>
-        {editingTitle ? (
-          <input
-            ref={titleInputRef}
-            className="wb-viewer-title title-edit-input"
-            value={titleDraft}
-            onChange={e => setTitleDraft(e.target.value)}
-            onBlur={handleTitleSave}
-            onKeyDown={e => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false) }}
-          />
-        ) : (
-          <span
-            className="wb-viewer-title"
-            role={workbook.builtin ? undefined : "button"}
-            tabIndex={workbook.builtin ? undefined : 0}
-            onClick={handleTitleEdit}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTitleEdit() } }}
-            style={{ cursor: workbook.builtin ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            title={workbook.builtin ? undefined : 'Klik om titel te bewerken'}
-          >
-            {workbook.title}
-            {!workbook.builtin && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, opacity: 0.4, flexShrink: 0 }}>
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            )}
-          </span>
-        )}
+        <h1 className="wb-viewer-heading">
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              className="wb-viewer-title title-edit-input"
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={e => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false) }}
+            />
+          ) : (
+            <span
+              className="wb-viewer-title"
+              role={workbook.builtin ? undefined : "button"}
+              tabIndex={workbook.builtin ? undefined : 0}
+              onClick={handleTitleEdit}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTitleEdit() } }}
+              style={{ cursor: workbook.builtin ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              title={workbook.builtin ? undefined : 'Klik om titel te bewerken'}
+            >
+              {workbook.title}
+              {!workbook.builtin && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, opacity: 0.4, flexShrink: 0 }}>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              )}
+            </span>
+          )}
+        </h1>
         {feedbackEnabled ? (
           feedbackGiven ? (
             <span className="wb-feedback-given" role="status">
@@ -144,7 +146,9 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
       {saveError && (
         <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{saveError}</div>
       )}
-      <div className="wb-viewer-content" style={{ overflowY: 'auto' }}>
+      {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+      <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label="Rapportinhoud">
         {(() => {
           const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
           if (BuiltinDash) return <BuiltinDash instelling={instelling} />

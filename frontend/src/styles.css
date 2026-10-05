@@ -1059,6 +1059,7 @@ html.dark .context-limit-banner--full {
 }
 .wb-back-btn:hover { background: var(--blue-50); }
 .wb-back-btn svg { width: 18px; height: 18px; }
+.wb-viewer-heading { margin: 0; font: inherit; min-width: 0; }
 .wb-viewer-title { font-size: .9rem; font-weight: 700; color: var(--gray-800); }
 .wb-viewer-content { flex: 1; overflow: hidden; }
 .wb-iframe { width: 100%; height: 100%; border: none; }
