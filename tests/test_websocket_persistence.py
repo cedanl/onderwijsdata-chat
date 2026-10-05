@@ -93,7 +93,7 @@ def test_reset_session_clears_turns_but_keeps_settings():
         ("message", "_handle_message", ({"content": "Tweede vraag"},)),
         ("clarification_choice", "_handle_clarification", ({"choice": "2024"},)),
         ("generate_report", "_handle_generate_report", ({},)),
-        ("generate_dashboard", "_handle_generate_dashboard", ()),
+        ("generate_dashboard", "_handle_generate_dashboard", ({},)),
         ("refresh_dashboard", "_handle_refresh_dashboard", ({},)),
     ],
 )
