@@ -437,7 +437,17 @@ def search_catalog(
     return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
 
 
-_DETAILS_EXTRA = frozenset({"_resources", "teldefinitie", "publicatieregels", "metadata_onbekend"})
+_DETAILS_EXTRA = frozenset(
+    {
+        "_resources",
+        "teldefinitie",
+        "publicatieregels",
+        "metadata_onbekend",
+        "kolommen_steekproef",
+        "catalogus_bron_gewijzigd",
+        "kolomprofiel",
+    }
+)
 
 
 def _build_details(entry: dict, dataset_id: str) -> str:
@@ -535,8 +545,16 @@ def dataset_details(dataset_id: str) -> str:
             if not _via_chat(entry):
                 return json.dumps({"bron": entry.get("bron", dataset_id), **_NIET_OPVRAAGBAAR}, ensure_ascii=False)
             if entry.get("leverancier") == "DUO":
-                # Het moment waarop het model tussen bijv. p01 en p03 kiest (#172).
-                entry = {**entry, **duo_meta.metadata(entry)}
+                from . import duo  # lazy: duo importeert catalog
+
+                # Het moment waarop het model tussen bijv. p01 en p03 kiest (#172), en
+                # vóór het filtert ziet wat er per kolom in zit (#362).
+                entry = {
+                    **entry,
+                    **duo_meta.metadata(entry),
+                    **duo_meta.kolomdekking(entry),
+                    "kolomprofiel": duo.geladen_profielen(dataset_id),
+                }
             return _build_details(entry, dataset_id)
 
     logger.warning("dataset_details miss id=%s", dataset_id)

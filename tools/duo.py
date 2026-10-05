@@ -6,7 +6,7 @@ from riodata import duo as _duo
 
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
-from . import duo_meta, fouten, instelling, periode, store
+from . import duo_meta, fouten, instelling, kolomprofiel, periode, store
 from .catalog import catalogus_titel, resource_titel
 
 _SAMPLE_ROWS = 3
@@ -142,6 +142,19 @@ def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     ]
 
 
+def geladen_profielen(dataset_id: str) -> dict[str, dict]:
+    """Het kolomprofiel van elk bestand van deze dataset dat al geladen is, per resource-index.
+
+    Voor dataset_details: zonder te downloaden, en een afgeleide key (een selectie) telt niet mee.
+    """
+    prefix = f"duo:{dataset_id}:"
+    return {
+        index: kolomprofiel.profiel(df, count_cells(_sentinel_cells.get(key)))
+        for key in store.list_keys()
+        if (index := key.removeprefix(prefix)) != key and index.isdigit() and (df := store.get(key)) is not None
+    }
+
+
 class MeerdereResources(ValueError):
     """Een resourcenaam past op meer dan één bestand; kiezen is aan de aanroeper (#382)."""
 
@@ -213,11 +226,19 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         df = store.get(key)
 
     defs = column_definitions(list(df.columns), dataset_id)
+    min1 = count_cells(_sentinel_cells.get(key))
+    profielen = kolomprofiel.profiel(df, min1)
     schema = [
         {
             "kolom": col,
             "type": str(df[col].dtype),
-            "voorbeelden": df[col].dropna().unique()[:3].tolist(),
+            # Naast een bereik of een volledige waardenlijst zijn voorbeelden dubbel.
+            **(
+                {}
+                if profielen[col].keys() & {"bereik", "waarden"}
+                else {"voorbeelden": df[col].dropna().unique()[:3].tolist()}
+            ),
+            **profielen[col],
             **({"definitie": defs[col]} if col in defs else {}),
         }
         for col in df.columns
@@ -236,7 +257,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     known = store.meta(key)
     if known and known.schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)
-    notes = resource_sentinel_notes(count_cells(_sentinel_cells.get(key)))
+    notes = resource_sentinel_notes(min1)
     if notes:
         result["databewerking"] = notes
 

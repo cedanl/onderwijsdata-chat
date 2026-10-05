@@ -37,7 +37,7 @@ def test_loaded_duo_data_carries_the_label_next_to_the_raw_year():
 
     kolommen = {k["kolom"]: k for k in result["kolommen"]}
     assert "STUDIEJAAR_LABEL" in kolommen
-    assert "2021/2022" in kolommen["STUDIEJAAR_LABEL"]["voorbeelden"]
+    assert "2021/2022" in kolommen["STUDIEJAAR_LABEL"]["waarden"]
     assert "reken jaren niet zelf om" in kolommen["STUDIEJAAR_LABEL"]["definitie"]
     frame = store.get("duo:p01hoinges:3")
     assert frame.loc[frame["STUDIEJAAR"] == 2021, "STUDIEJAAR_LABEL"].unique().tolist() == ["2021/2022"]
