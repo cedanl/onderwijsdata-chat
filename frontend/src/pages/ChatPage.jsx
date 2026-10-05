@@ -43,6 +43,7 @@ import RunProgress, { countRunSteps, currentRunStep } from '../components/RunPro
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
+import { useConversationSearch } from '../hooks/useConversationSearch'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -178,6 +179,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
+  const historySearch = useConversationSearch()
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false)
   const [saveError, setSaveError] = useState(null)
@@ -449,6 +451,7 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
             onLoad={handleLoad}
             onDelete={handleDeleteConversation}
             onRename={handleRenameConversation}
+            search={historySearch}
           />
         </aside>
 
@@ -813,7 +816,7 @@ function PlotlyFigure({ figureJson, label }) {
   )
 }
 
-export function ConversationHistory({ history, hasMore = false, loadingMore = false, onLoadMore, onLoad, onDelete, onRename }) {
+export function ConversationHistory({ history, hasMore = false, loadingMore = false, onLoadMore, onLoad, onDelete, onRename, search = null }) {
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState('')
   const titleInputRef = useRef(null)
@@ -847,11 +850,30 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
     setEditingId(null)
   }
 
+  // While there is a query, the hits replace the list (#124); they come from the server in one page.
+  const searchActive = !!search?.query.trim()
+  const shown = searchActive ? (search.results ?? []) : history
+  let searchNote = null
+  if (searchActive && search.error) searchNote = 'Zoeken lukt nu niet. Probeer het zo opnieuw.'
+  else if (searchActive && search.searching && !search.results) searchNote = 'Zoeken…'
+  else if (searchActive && !shown.length) searchNote = 'Geen gesprekken gevonden'
+
   return (
     <div style={{ marginTop: 24 }}>
       <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Gesprek geschiedenis</div>
+      {search && (
+        <input
+          type="search"
+          className="history-search"
+          placeholder="Zoek in gesprekken"
+          aria-label="Zoek in gesprekken"
+          value={search.query}
+          onChange={e => search.setQuery(e.target.value)}
+        />
+      )}
+      {searchNote && <p className="history-search-note" role="status">{searchNote}</p>}
       <div className="history-list">
-        {history.map(conv => (
+        {shown.map(conv => (
           <div key={conv.id} className="history-item">
             <div className="history-item-row">
               <button type="button"
@@ -908,7 +930,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
           </div>
         ))}
       </div>
-      {hasMore && (
+      {hasMore && !searchActive && (
         <button type="button" className="history-more-btn" onClick={onLoadMore} disabled={loadingMore}>
           {loadingMore ? 'Laden…' : 'Meer laden'}
         </button>

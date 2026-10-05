@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "budget": "vite build && node scripts/bundleBudget.js"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",

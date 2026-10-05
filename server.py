@@ -6,16 +6,16 @@ import tomllib
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
 from config import Config, ConfigError
 from core.catalogusversie import catalogusversie
+from frontend_static import mount_frontend
 from logging_config import setup_logging
 
 json_format = Config.is_production()
@@ -193,8 +193,4 @@ app.include_router(chat_router)
 _FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 
 if _FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str) -> Response:
-        return Response(content=(_FRONTEND_DIST / "index.html").read_text(), media_type="text/html")
+    mount_frontend(app, _FRONTEND_DIST)

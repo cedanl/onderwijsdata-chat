@@ -37,6 +37,7 @@ COPY server.py ./
 COPY app.py ./
 COPY config.py ./
 COPY health.py ./
+COPY frontend_static.py ./
 COPY logging_config.py ./
 COPY routes/ ./routes/
 COPY persistence/ ./persistence/

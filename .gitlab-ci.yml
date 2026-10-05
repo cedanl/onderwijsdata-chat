@@ -145,6 +145,8 @@ frontend:
     - npm ci --cache .npm --prefer-offline
     - npx eslint src/
     - npx vitest run
+    # De eerste load (/login) blijft klein: Plotly en co. horen in de lazy chunks (#110).
+    - npm run budget
 
 docker:docker-build:
   rules:
