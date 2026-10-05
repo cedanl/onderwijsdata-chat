@@ -159,3 +159,35 @@ def test_tool_description_sets_expectation_for_counts():
     tool = next(t["function"] for t in TOOL_SCHEMAS if t["function"]["name"] == TOOL_GET_RIO_DATA)
     assert str(RIO_PAGE_SIZE) in tool["description"]
     assert "totalen" in tool["description"]
+
+
+_COHORTEN = [
+    {
+        "leverancier": "RIO",
+        "_rio_resource": "aangeboden-opleiding-cohorten",
+        "filters": ["aangebodenOpleidingCohorttype", "datumGeldigOp"],
+    },
+]
+
+
+def test_status_filter_op_cohorten_gaat_door_naar_rio():
+    # #353: RIO accepteert status live (codes als "G"), de catalogus noemde het niet.
+    with (
+        patch("tools.rio.fetch", return_value=[{"id": 1, "status": "G"}]) as fetch,
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=_COHORTEN),
+    ):
+        get_rio_data("aangeboden-opleiding-cohorten", filters={"status": "G"})
+    assert fetch.call_args.kwargs["status"] == "G"
+
+
+def test_onbekend_filter_blijft_geweigerd():
+    with (
+        patch("tools.rio.fetch") as fetch,
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=_COHORTEN),
+    ):
+        result = get_rio_data("aangeboden-opleiding-cohorten", filters={"onzin": "x"})
+    fetch.assert_not_called()
+    assert "kent de filters ['onzin'] niet" in result
+    assert "status" in result  # de aanvulling staat in de hint

@@ -127,6 +127,10 @@ def _correction(problems: list[str]) -> str:
 
 _MAX_CLARIFY_RONDES = 1
 
+# Na 45 s kwam de melding pas als de gebruiker al dacht dat de app hing (UX-audit P3-5).
+# De voortgangsbalk toont de verstreken tijd; deze melding zegt dat lang duren normaal is.
+SLOW_WARNING_S = 20
+
 
 def tools_for(session: dict) -> list[dict]:
     """De toolset van deze beurt. Na een beantwoorde scopevraag is clarify_scope er niet meer:
@@ -199,7 +203,7 @@ async def run(
         await _handle_figure(call.name, figure, session, emit)
 
     async def _slow_warning():
-        await asyncio.sleep(45)
+        await asyncio.sleep(SLOW_WARNING_S)
         await emit(
             {
                 "type": "toast",

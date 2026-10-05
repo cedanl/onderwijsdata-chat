@@ -424,11 +424,20 @@ def catalogus_titel(dataset_id: str) -> str:
     return dataset_id
 
 
+# Filters die RIO live accepteert maar die de riodata-catalogus nog niet noemt (#353).
+# Live geverifieerd op 5 oktober 2026; hoort upstream in het riodata-contract, daarna kan dit weg.
+_RIO_FILTERS_AANVULLING: dict[str, list[str]] = {
+    # Statuscode van het cohort, bijv. "G"; RIO weigert leesbare waarden als "OPEN" met HTTP 400.
+    "aangeboden-opleiding-cohorten": ["status"],
+}
+
+
 def rio_filters(resource: str) -> list[str]:
     """De serverfilters die een RIO-resource accepteert, uit de catalogus; leeg als onbekend."""
     for entry in _rio_duo():
         if entry.get("_rio_resource") == resource:
-            return list(entry.get("filters") or [])
+            filters = list(entry.get("filters") or [])
+            return filters + [f for f in _RIO_FILTERS_AANVULLING.get(resource, []) if f not in filters]
     return []
 
 

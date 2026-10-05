@@ -714,6 +714,7 @@ input, textarea { font: inherit; }
 .send-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,.4); }
 /* aria-disabled keeps the send button in the Tab order, so screen reader users can find it. */
 .send-btn:disabled, .send-btn[aria-disabled="true"] { background: var(--gray-200); color: var(--muted-text); cursor: not-allowed; box-shadow: none; transform: none; }
+.message-model { font-size: .72rem; color: var(--muted-text); margin-left: 2px; }
 .message-stopped { font-size: .78rem; color: var(--gray-500); font-style: italic; margin-top: 4px; }
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
@@ -1382,4 +1383,5 @@ html.dark .suggested-btn:hover {
   color: var(--muted-text); font-size: .78rem;
 }
 .run-progress-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.run-progress-step { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 768px) { .run-progress { margin-left: 8px; } }
