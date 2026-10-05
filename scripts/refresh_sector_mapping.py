@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 # Voeg projectroot toe zodat imports werken
@@ -95,7 +96,12 @@ def main() -> None:
         for k in onbekend:
             del mapping[k]
 
-    OUTPUT.write_text(json.dumps(mapping, indent=2, ensure_ascii=False))
+    manifest = {
+        "bijgewerkt": date.today().isoformat(),
+        "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
+        "script": "scripts/refresh_sector_mapping.py",
+    }
+    OUTPUT.write_text(json.dumps({"_manifest": manifest, **mapping}, indent=2, ensure_ascii=False))
     print(f"\nGeschreven naar {OUTPUT}", flush=True)
     for sector, items in sorted(mapping.items()):
         print(f"  {sector}: {len(items)} clusters", flush=True)

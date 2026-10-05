@@ -29,6 +29,11 @@ _ROA_BRON = (
 )
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
+# Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
+REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
+    "_CITY_COORDS": {"bijgewerkt": "2026-07-30", "bron": "handmatig: benaderde coördinaten van onderwijssteden"},
+}
+
 # Approximate coordinates for Dutch educational cities (PLAATSNAAM uppercase → lat/lon).
 _CITY_COORDS: dict[str, tuple[float, float]] = {
     "AMSTERDAM": (52.374, 4.899),
@@ -508,11 +513,14 @@ def _mode_str(series: pd.Series) -> str | None:
     return str(vals.mode().iloc[0])
 
 
-def _load_sector_cluster_map() -> dict[str, list[str]]:
-    path = Path(__file__).parent / "sector_cluster_mapping.json"
+_SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
+
+
+def _load_sector_cluster_map(path: Path = _SECTOR_CLUSTER_PATH) -> dict[str, list[str]]:
+    """Sector → UWV-clusters; `_manifest` (peildatum en bron, #313) is geen sector."""
     if path.exists():
         try:
-            return json.loads(path.read_text())
+            return {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith("_")}
         except Exception:
             logger.warning("sector_cluster_mapping.json onleesbaar", exc_info=True)
     else:

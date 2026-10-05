@@ -31,7 +31,7 @@ def data_keys(tool_results: list[str]) -> list[str]:
     return keys
 
 
-def _root(key: str) -> str:
+def laadkey(key: str) -> str:
     """De laadkey waar een afgeleide key uiteindelijk vandaan komt."""
     seen = {key}
     while (known := store.meta(key)) and known.afgeleid_van and known.afgeleid_van not in seen:
@@ -46,7 +46,7 @@ def _selecties(tool_results: list[str], veld: str) -> dict[str, set]:
     for key in data_keys(tool_results):
         known = store.meta(key)
         if known and known.afgeleid_van and getattr(known, veld) is not None:
-            gekozen.setdefault(_root(key), set()).update(getattr(known, veld))
+            gekozen.setdefault(laadkey(key), set()).update(getattr(known, veld))
     return gekozen
 
 

@@ -1,4 +1,9 @@
 {
+  "_manifest": {
+    "bijgewerkt": "2026-08-17",
+    "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
+    "script": "scripts/refresh_sector_mapping.py"
+  },
   "ECONOMIE": [
     "Accountants, controllers en belastinginspecteurs",
     "Accountmanagers",
