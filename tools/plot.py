@@ -135,7 +135,9 @@ def _validate_axes(data: list[dict], x: str, y: str) -> str | None:
 def _dutch_number(v: float) -> str:
     """30083 -> '30.083', 2.1 -> '2,1' — punt voor duizendtallen, komma voor decimalen."""
     text = f"{v:,.0f}" if float(v).is_integer() else f"{v:,.1f}"
-    return text.translate(str.maketrans({",": "\u0000", ".": ",", "\u0000": "."}))
+    # translate() vervangt alle tekens in één doorgang, dus een directe wissel is veilig;
+    # een tussenteken (NUL) zou nooit worden teruggezet (#378).
+    return text.translate(str.maketrans({",": ".", ".": ","}))
 
 
 def _value_labels(y_vals: list, enabled: bool) -> list[str] | None:
