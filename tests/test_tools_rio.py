@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from core.config import RIO_PAGE_SIZE
+from tools import fouten
 from tools.rio import get_rio_data
 
 
@@ -58,11 +59,12 @@ def test_empty_result_returns_message():
     assert "Geen resultaten" in result
 
 
-def test_fetch_exception_returns_error_string():
+def test_fetch_exception_returns_a_coded_error_without_the_raw_text():
+    # De ruwe providertekst gaat naar het log, niet naar het model (#331).
     with patch("tools.rio.fetch", side_effect=Exception("timeout")):
         result = get_rio_data("erkenningen")
-    assert "Fout" in result
-    assert "timeout" in result
+    assert fouten.code(result) == "bron_fout"
+    assert "timeout" not in result
 
 
 def test_fetch_uses_single_page():
@@ -150,7 +152,7 @@ def test_http_status_error_returns_explicit_fallback():
 
     assert "HTTP 400" in result
     assert "erkenningen" in result
-    assert "Fout bij ophalen" in result
+    assert fouten.code(result) == "bron_weigert"
 
 
 def test_tool_description_sets_expectation_for_counts():

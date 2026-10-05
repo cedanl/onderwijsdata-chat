@@ -6,7 +6,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import cbs_afronding, duo, store
+from . import cbs_afronding, duo, fouten, store
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +215,7 @@ def create_plot(
     if data_key:
         df = store.get(data_key)
         if df is None:
-            return f"Geen data gevonden voor '{data_key}'.", None
+            return fouten.onbekende_key(data_key), None
         data = df.to_dict(orient="records")
         if duo.is_prognose(store.meta(data_key)):
             # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).
@@ -384,7 +384,7 @@ def create_choropleth_map(
     if data_key:
         df = store.get(data_key)
         if df is None:
-            return f"Geen data gevonden voor '{data_key}'.", None
+            return fouten.onbekende_key(data_key), None
         data = df.to_dict(orient="records")
         if duo.is_prognose(store.meta(data_key)):
             # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).

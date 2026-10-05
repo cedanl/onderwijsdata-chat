@@ -6,14 +6,13 @@ from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-import httpx
 import pandas as pd
 from onderwijsdata import data, definitions
 from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import cbs_afronding, periode, store
+from . import cbs_afronding, fouten, periode, store
 from .catalog import catalogus_laatste_update, catalogus_titel
 from .columns import sample_values
 
@@ -241,6 +240,9 @@ def _page_size(top) -> int:
         return CBS_ROW_LIMIT
 
 
+_CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS wil codes, geen labels."
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     params = dict(filters or {})
     if "$top" not in params:
@@ -253,7 +255,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     try:
         rows = data(dataset_id, **params)
     except Exception as e:
-        return f"Fout bij ophalen CBS data: {e}"
+        return fouten.bronfout("CBS", e, _CBS_HERSTEL)
     if not rows:
         return (
             f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
@@ -337,12 +339,13 @@ def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     try:
         rows = _dimension_rows(dataset_id, dimension_name)
     except Exception as e:
-        reason = f"HTTP {e.response.status_code}" if isinstance(e, httpx.HTTPStatusError) else str(e)
-        return (
-            f"Dimensie '{dimension_name}' niet gevonden in {dataset_id} ({reason}). "
+        return fouten.bronfout(
+            "CBS",
+            e,
+            f" Dimensie '{dimension_name}' niet gevonden in {dataset_id}. "
             f"Beschikbare dimensies: {_dimension_names(_load_definitions(dataset_id) or {})}. "
             "De status van een periode is geen dimensie: die staat bij Perioden en als "
-            f"kolom {_PERIODESTATUS} in get_cbs_data."
+            f"kolom {_PERIODESTATUS} in get_cbs_data.",
         )
     values = {r["Key"]: {"titel": r["Title"], "status": r["Status"]} if r.get("Status") else r["Title"] for r in rows}
     return json.dumps(values, ensure_ascii=False, separators=(",", ":"))

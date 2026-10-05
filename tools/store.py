@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field, replace
 
 from core.sentinels import mask_sentinels
@@ -123,6 +124,18 @@ def volledig(key: str) -> bool:
     """
     known = _meta.get(key)
     return known is not None and known.volledig
+
+
+def canoniek(key: str) -> str:
+    """De key in de store waar een variant als `cbs_85353NED` of `CBS:85353ned` op doelt (#331).
+
+    Alleen een eenduidige treffer; anders blijft de key zoals hij was en meldt de tool hem onbekend.
+    """
+    if key in _cache:
+        return key
+    gezocht = re.sub(r"^(cbs|duo|rio)[_/]", r"\1:", key, flags=re.IGNORECASE).lower()
+    treffers = [k for k in _cache if k.lower() == gezocht]
+    return treffers[0] if len(treffers) == 1 else key
 
 
 def list_keys() -> list[str]:

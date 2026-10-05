@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import cbs_afronding, dekking, duo, instelling, periode, store
+from . import cbs_afronding, dekking, duo, fouten, instelling, periode, store
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
@@ -164,9 +164,7 @@ def query_data(
 ) -> str:
     df = store.get(data_key)
     if df is None:
-        available = store.list_keys()
-        hint = f" Beschikbare datasets: {available}" if available else ""
-        return f"Geen data gevonden voor '{data_key}'.{hint} Laad eerst data via get_duo_data, get_cbs_data of get_rio_data."
+        return fouten.onbekende_key(data_key)
 
     complete = store.volledig(data_key)
     if not complete and (group_by or aggregate):

@@ -6,7 +6,7 @@ from riodata import duo as _duo
 
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
-from . import duo_meta, instelling, periode, store
+from . import duo_meta, fouten, instelling, periode, store
 from .catalog import catalogus_titel, resource_titel
 
 _SAMPLE_ROWS = 3
@@ -193,7 +193,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
                 hint = f" Vergelijkbare datasets: {[c.get('_ckan_id') for c in matches[:3]]}" if matches else ""
             except Exception:
                 hint = ""
-            return f"Fout bij laden DUO dataset '{dataset_id}': {e}.{hint}"
+            return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)
         meta = store.KeyMeta(
