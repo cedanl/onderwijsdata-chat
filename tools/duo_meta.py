@@ -1,57 +1,68 @@
-"""DUO-metadata uit de CKAN-beschrijving die niet in de catalogus zit (#172).
+"""Wat een DUO-dataset telt, uit de riodata-catalogus (#172, #369).
 
-De catalogus bewaart van de DUO-beschrijving alleen de eerste alinea. De sectie
-'## Selectie' zegt wat er geteld wordt (bijv. p01: hoofdinschrijvingen als
-natuurlijke personen; p03: hoofd- én neveninschrijvingen). Zonder die definitie
-verwisselt het model datasets met verschillende telling zonder het te merken.
+De sectie 'Selectie' van de DUO-beschrijving zegt wat er geteld wordt (bijv. p01:
+hoofdinschrijvingen als natuurlijke personen; p03: hoofd- én neveninschrijvingen).
+Zonder die definitie verwisselt het model datasets met verschillende telling zonder
+het te merken. De package parset die sectie en de publicatieregels (aantallen 1-4
+gepubliceerd als 4) bij het bouwen van de catalogus: geen CKAN-aanroep tijdens het
+gesprek, en de tekst hoort bij de gepinde catalogusversie.
 """
 
-import logging
-import re
+from functools import cache
 
-import httpx
-from riodata import duo as _duo
-
-logger = logging.getLogger(__name__)
-
-# De langste selectiesectie over alle DUO-datasets is ~1.100 tekens (gemeten 2026-09-24).
-_MAX_TEKENS = 1500
-# DUO gebruikt 'Selectie', 'Selecties' en 'Selectiecriteria' als kop.
-_SELECTIE_SECTIE = re.compile(r"^##\s*Selectie\w*\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
-
-# Alleen successen: een tijdelijke CKAN-storing mag niet blijvend 'geen definitie' geven.
-_cache: dict[str, str | None] = {}
+from riodata import catalog as _rio_catalog
 
 
-def selectie_sectie(notes: str) -> str | None:
-    """De tekst onder de selectiekop, op één regel; None als die ontbreekt of leeg is."""
-    match = _SELECTIE_SECTIE.search(notes or "")
-    if not match:
-        return None
-    tekst = " ".join(match.group(1).split())
-    if len(tekst) > _MAX_TEKENS:
-        tekst = tekst[:_MAX_TEKENS].rsplit(" ", 1)[0] + " …"
-    return tekst or None
+@cache
+def _records() -> dict[str, dict]:
+    return {r["_ckan_id"]: r for r in _rio_catalog(source="duo") if r.get("_ckan_id")}
 
 
-def _fetch_notes(dataset_id: str) -> str:
-    r = httpx.get(f"{_duo.CKAN_BASE}/package_show", params={"id": dataset_id}, timeout=30)
-    r.raise_for_status()
-    return r.json()["result"].get("notes") or ""
+def record(dataset_id: str) -> dict:
+    """Het catalogusrecord van een DUO-dataset; leeg als de dataset er niet in staat."""
+    return _records().get(dataset_id, {})
 
 
-def teldefinitie(dataset_id: str) -> str | None:
-    """Wat een DUO-dataset telt, letterlijk uit de DUO-beschrijving."""
-    if dataset_id in _cache:
-        return _cache[dataset_id]
-    try:
-        tekst = selectie_sectie(_fetch_notes(dataset_id))
-    except Exception as e:
-        logger.warning("DUO-beschrijving ophalen mislukt voor %s: %s", dataset_id, e)
-        return None
-    _cache[dataset_id] = tekst
-    return tekst
+def teldefinitie(entry: dict) -> str | None:
+    """De selectiesectie, op één regel; None als de beschrijving er geen heeft."""
+    selectie = (entry.get("_teldefinitie") or {}).get("selectie")
+    return " ".join(selectie.split()) if selectie else None
 
 
-def clear_cache() -> None:
-    _cache.clear()
+def publicatieregels(entry: dict) -> list[dict]:
+    """Regels als 'aantallen 1-4 gepubliceerd als 4', met de bronpassage.
+
+    Naast de -1-sentinel, niet ervoor in de plaats: 4 is een gepubliceerde waarde,
+    geen lege cel.
+    """
+    return [
+        {
+            "maat": regel.get("maat"),
+            "bereik": regel["bereik"],
+            "gepubliceerd_als": regel["gepubliceerd_als"],
+            "bronpassage": regel.get("bronpassage"),
+        }
+        for regel in entry.get("_publicatieregels") or []
+        if "bereik" in regel and "gepubliceerd_als" in regel
+    ]
+
+
+def beschrijving_onvolledig(entry: dict) -> bool:
+    """De package kon de beschrijving niet (volledig) lezen: ontbrekende regels zijn dan onbekend."""
+    status = (entry.get("_notes_provenance") or {}).get("parse_status")
+    return status is not None and status != "ok"
+
+
+def metadata(entry: dict) -> dict:
+    """De velden die get_duo_data en dataset_details meegeven; alleen wat er is."""
+    velden: dict = {}
+    if definitie := teldefinitie(entry):
+        velden["teldefinitie"] = definitie
+    if regels := publicatieregels(entry):
+        velden["publicatieregels"] = regels
+    if beschrijving_onvolledig(entry):
+        velden["metadata_onbekend"] = (
+            "De DUO-beschrijving is niet volledig te lezen: teldefinitie en publicatieregels kunnen "
+            "ontbreken. Noem ze niet als ze hier niet staan."
+        )
+    return velden

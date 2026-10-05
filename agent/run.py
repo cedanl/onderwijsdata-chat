@@ -178,7 +178,7 @@ async def run(
             *ontbrekende_schooljaren(last_user_msg, tool_results),
             *ontbrekende_instellingen(last_user_msg, tool_results),
             *onvolledige_selecties(text, tool_results),
-            *verkeerde_opleidingsvormen(text),
+            *verkeerde_opleidingsvormen(text, tool_results),
             *onbekende_datasets(text),
             *ongebruikte_bronnen(text, tool_results),
             *verkeerde_teleenheid(text, tool_results),

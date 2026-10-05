@@ -64,7 +64,6 @@ def test_dataset_details_gives_each_resource_its_index():
     with (
         patch("tools.catalog._cbs", return_value=[]),
         patch("tools.catalog._rio_duo", return_value=[_ENTRY]),
-        patch("tools.duo_meta._fetch_notes", return_value=None),
     ):
         resources = json.loads(dataset_details("p01hoinges"))["_resources"]
 

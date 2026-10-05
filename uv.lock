@@ -6,10 +6,10 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -2265,7 +2265,7 @@ requires-dist = [
     { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git" },
+    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=c0b4bceaea7c40f13a0fe386ce278db94c39e7f7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 provides-extras = ["postgres"]
@@ -3248,7 +3248,7 @@ wheels = [
 [[package]]
 name = "riodata"
 version = "0.3.1"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git#40c8aee213dee4919e43f9e125a5c1c8c74a7975" }
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=c0b4bceaea7c40f13a0fe386ce278db94c39e7f7#c0b4bceaea7c40f13a0fe386ce278db94c39e7f7" }
 dependencies = [
     { name = "httpx" },
 ]

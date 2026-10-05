@@ -1,101 +1,97 @@
-"""DUO-teldefinitie en opleidingsvorm-codes komen uit DUO zelf (#172).
+"""DUO-teldefinitie, publicatieregels en opleidingsvorm-codes komen uit DUO zelf (#172, #369).
 
 Live-audit 5: een model noemde DT 'duaal-tijd' (officieel: deeltijd) en
-verwisselde p01 (personen) en p03 (inschrijvingen) zonder dat te melden.
+verwisselde p01 (personen) en p03 (inschrijvingen) zonder dat te melden. De
+definities komen uit de gepinde riodata-catalogus, niet uit een live CKAN-aanroep.
 """
 
 import json
+import math
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 
 from tools import duo_meta
 from tools.catalog import dataset_details
 from tools.duo import get_duo_data
 
-_P01_NOTES = """## Hoger Onderwijs
-Het hoger beroepsonderwijs (hbo) en het wetenschappelijk onderwijs (wo) vormen samen het hoger onderwijs.
 
-## Selecties
-Ingeschrevenen: van alle inschrijvingen op de peildatum 1 oktober worden de
-hoofdinschrijvingen bepaald en geteld als ingeschrevenen (natuurlijke personen).
-
-## Periode
-De bestanden worden één keer per jaar bijgewerkt.
-"""
+@pytest.fixture(autouse=True)
+def geen_ckan():
+    with patch("httpx.get", side_effect=AssertionError("geen netwerkaanroep naar CKAN")):
+        yield
 
 
-def test_selectie_sectie_takes_section_until_next_heading():
-    tekst = duo_meta.selectie_sectie(_P01_NOTES)
-
-    assert tekst.startswith("Ingeschrevenen: van alle inschrijvingen")
-    assert "natuurlijke personen" in tekst
-    assert "één keer per jaar" not in tekst
+def _get(dataset_id: str, df: pd.DataFrame | None = None) -> dict:
+    df = pd.DataFrame({"OPLEIDINGSVORM": ["VT", "DT"], "AANTAL": [10, 5]}) if df is None else df
+    with patch("tools.duo._duo.load", return_value=df):
+        return json.loads(get_duo_data(dataset_id, 3))
 
 
-def test_selectie_sectie_accepts_heading_variants():
-    # DUO gebruikt 'Selectie' (44×), 'Selecties' (4×) en 'Selectiecriteria' (1×).
-    for kop in ("Selectie", "Selecties", "Selectiecriteria"):
-        assert duo_meta.selectie_sectie(f"## {kop}\nTelt personen.\n") == "Telt personen."
+def test_p01_p02_en_p03_zijn_onderscheidbaar():
+    p01, p02, p03 = (duo_meta.record(d)["_teldefinitie"] for d in ("p01hoinges", "p02ho1ejrs", "p03hoinschr"))
+
+    assert (p01["teleenheid"], p01["inschrijvingstype"]) == ("personen", "hoofdinschrijvingen")
+    assert p02["teleenheid"] == "personen"
+    assert (p03["teleenheid"], p03["inschrijvingstype"]) == ("inschrijvingen", "hoofd- en neveninschrijvingen")
+    assert "natuurlijke personen" in _get("p01hoinges")["teldefinitie"]
+    assert "neveninschrijvingen" in _get("p03hoinschr")["teldefinitie"]
 
 
-def test_selectie_sectie_without_section_is_none():
-    assert duo_meta.selectie_sectie("## Inleiding\nIets.\n") is None
-    assert duo_meta.selectie_sectie("") is None
+@pytest.mark.parametrize("dataset", ["p01hoinges", "p02ho1ejrs", "p03hoinschr"])
+def test_get_duo_data_geeft_de_publicatieregel(dataset):
+    [regel] = _get(dataset)["publicatieregels"]
+
+    assert regel["bereik"] == [1, 4]
+    assert regel["gepubliceerd_als"] == 4
+    assert regel["bronpassage"]
 
 
-def test_selectie_sectie_caps_length_on_a_word_boundary():
-    tekst = duo_meta.selectie_sectie("## Selectie\n" + "woord " * 1000)
+def test_publicatieregel_maakt_4_niet_leeg():
+    # De 1-4-regel is geen sentinel: een gepubliceerde 4 blijft 4, alleen -1 wordt leeg.
+    df = pd.DataFrame({"AANTAL_INGESCHREVENEN": [4, -1, 12]})
+    result = _get("p01hoinges", df)
 
-    assert len(tekst) <= duo_meta._MAX_TEKENS + 2
-    assert tekst.endswith(" …")
-
-
-def test_teldefinitie_does_not_cache_failures():
-    # Een tijdelijke CKAN-storing mag niet de rest van het proces 'geen definitie' geven.
-    with patch("tools.duo_meta._fetch_notes", side_effect=Exception("timeout")):
-        assert duo_meta.teldefinitie("p01hoinges") is None
-    with patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES):
-        assert "natuurlijke personen" in duo_meta.teldefinitie("p01hoinges")
-
-
-def test_get_duo_data_includes_teldefinitie():
-    df = pd.DataFrame({"OPLEIDINGSVORM": ["VT", "DT"], "AANTAL_INGESCHREVENEN": [10, 5]})
-    with patch("tools.duo._duo.load", return_value=df), patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES):
-        result = json.loads(get_duo_data("p01hoinges", 3))
-
-    assert "natuurlijke personen" in result["teldefinitie"]
+    vier, leeg, twaalf = (r["AANTAL_INGESCHREVENEN"] for r in result["preview"])
+    assert (vier, twaalf) == (4, 12)
+    assert math.isnan(leeg)
 
 
 def test_get_duo_data_defines_opleidingsvorm_codes():
-    df = pd.DataFrame({"OPLEIDINGSVORM": ["VT", "DT"], "AANTAL_INGESCHREVENEN": [10, 5]})
-    with patch("tools.duo._duo.load", return_value=df):
-        result = json.loads(get_duo_data("p01hoinges", 3))
-
-    kolom = next(k for k in result["kolommen"] if k["kolom"] == "OPLEIDINGSVORM")
+    kolom = next(k for k in _get("p01hoinges")["kolommen"] if k["kolom"] == "OPLEIDINGSVORM")
     assert "DT = deeltijd" in kolom["definitie"]
 
 
 def test_get_duo_data_without_teldefinitie_omits_field():
-    df = pd.DataFrame({"AANTAL": [1]})
-    with patch("tools.duo._duo.load", return_value=df):
-        result = json.loads(get_duo_data("zonder-selectie", 0))
+    result = _get("zonder-selectie", pd.DataFrame({"AANTAL": [1]}))
 
     assert "teldefinitie" not in result
+    assert "publicatieregels" not in result
+
+
+def test_onleesbare_beschrijving_meldt_onbekend():
+    entry = {"_notes_provenance": {"parse_status": "ongestructureerd", "parse_fouten": ["geen secties"]}}
+
+    assert set(duo_meta.metadata(entry)) == {"metadata_onbekend"}
+
+
+def test_gedeeltelijk_gelezen_beschrijving_geeft_wat_er_is_en_meldt_onbekend():
+    entry = {
+        "_teldefinitie": {"selectie": "Leerlingen:  op 1 oktober."},
+        "_notes_provenance": {"parse_status": "gedeeltelijk"},
+    }
+
+    velden = duo_meta.metadata(entry)
+
+    assert velden["teldefinitie"] == "Leerlingen: op 1 oktober."
+    assert "metadata_onbekend" in velden
 
 
 def test_dataset_details_includes_teldefinitie_for_duo():
-    entry = {
-        "leverancier": "DUO",
-        "_ckan_id": "p01hoinges",
-        "bron": "Ingeschrevenen hoger onderwijs",
-        "_resources": [{"naam": "hbo"}],
-    }
-    with (
-        patch("tools.catalog._cbs", return_value=[]),
-        patch("tools.catalog._rio_duo", return_value=[entry]),
-        patch("tools.duo_meta._fetch_notes", return_value=_P01_NOTES),
-    ):
+    entry = {**duo_meta.record("p01hoinges"), "leverancier": "DUO", "_resources": [{"naam": "hbo"}]}
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[entry]):
         result = json.loads(dataset_details("p01hoinges"))
 
     assert "natuurlijke personen" in result["teldefinitie"]
+    assert result["publicatieregels"][0]["gepubliceerd_als"] == 4

@@ -49,16 +49,32 @@ def _beurt(*keys: str) -> list[str]:
 
 
 def test_deeltijd_met_code_du_is_verkeerd():
-    [probleem] = verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU), 2021–2025.")
+    [probleem] = verkeerde_opleidingsvormen("Reikwijdte: Deeltijd (DU), 2021–2025.", _beurt("duo:p01hoinges:3"))
     assert "DU" in probleem and "duaal" in probleem and "DT" in probleem
 
 
 def test_code_gevolgd_door_verkeerde_uitleg():
-    assert verkeerde_opleidingsvormen("DT = duaal onderwijs")
+    assert verkeerde_opleidingsvormen("DT = duaal onderwijs", _beurt("duo:p01hoinges:3"))
 
 
 def test_juiste_codes_zijn_goed():
-    assert verkeerde_opleidingsvormen("Voltijd (VT), deeltijd (DT) en duaal (DU); DT = deeltijd.") == []
+    assert (
+        verkeerde_opleidingsvormen(
+            "Voltijd (VT), deeltijd (DT) en duaal (DU); DT = deeltijd.", _beurt("duo:p01hoinges:3")
+        )
+        == []
+    )
+
+
+def test_codes_buiten_de_ho_datasets_worden_niet_gecontroleerd():
+    # mbo_opleidingsaanbod kent KLASSIKAAL/COACHING, geen VT/DT/DU (#371).
+    store.put(
+        "duo:mbo_opleidingsaanbod:0",
+        pd.DataFrame({"OPLEIDINGSVORM": ["KLASSIKAAL"]}),
+        KeyMeta(bron="duo", dataset="mbo_opleidingsaanbod"),
+    )
+    assert verkeerde_opleidingsvormen("DT = duaal onderwijs", _beurt("duo:mbo_opleidingsaanbod:0")) == []
+    assert verkeerde_opleidingsvormen("DT = duaal onderwijs", []) == []
 
 
 # --- dataset-ID ---

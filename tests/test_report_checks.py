@@ -97,8 +97,14 @@ def test_conclusie_zonder_getal_en_zonder_grafiek_is_onvolledig():
 
 def test_verkeerde_opleidingsvorm_in_de_reikwijdte():
     # Live-audit 8 (#196): juiste p01-waarden, maar "Deeltijd (DU)" in de reikwijdte.
+    store.clear()
+    store.put("duo:p01hoinges:3", pd.DataFrame({"AANTAL": [26370]}), KeyMeta(bron="duo", dataset="p01hoinges"))
+    resultaat = json.dumps({"data_key": "duo:p01hoinges:3", **json.loads(_HU_RESULT)})
     spec = _spec(beantwoordt=["Deeltijd (DU) bij de HU, 2021–2025"])
-    [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+
+    [probleem] = report_problems(spec, [_HU_FIGURE], [resultaat])
+    store.clear()
+
     assert "duaal" in probleem
 
 
