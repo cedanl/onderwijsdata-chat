@@ -2,7 +2,7 @@ from typing import Any
 
 from . import fouten, store
 from .analysis import run_analysis
-from .catalog import dataset_details, search_catalog
+from .catalog import catalogus_telling, dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data
 from .kpi import compute_kpi
@@ -15,6 +15,7 @@ from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
     TOOL_CREATE_PLOT,
+    TOOL_DATASET_COUNTS,
     TOOL_DATASET_DETAILS,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
@@ -29,6 +30,7 @@ from .schemas import TOOL_SCHEMAS as SCHEMAS  # noqa: F401
 LABELS = {
     TOOL_SEARCH_CATALOG: "Catalogus doorzocht",
     TOOL_DATASET_DETAILS: "Datasetdetails opgehaald",
+    TOOL_DATASET_COUNTS: "Catalogus geteld",
     TOOL_CLARIFY_SCOPE: "Scope vastgesteld",
     TOOL_GET_CBS_DATA: "CBS data opgehaald",
     TOOL_GET_CBS_DIMENSION: "CBS dimensie opgehaald",
@@ -44,6 +46,7 @@ LABELS = {
 _HANDLERS = {
     TOOL_SEARCH_CATALOG: search_catalog,
     TOOL_DATASET_DETAILS: dataset_details,
+    TOOL_DATASET_COUNTS: catalogus_telling,
     TOOL_GET_CBS_DATA: get_cbs_data,
     TOOL_GET_CBS_DIMENSION: get_cbs_dimension,
     TOOL_GET_RIO_DATA: get_rio_data,

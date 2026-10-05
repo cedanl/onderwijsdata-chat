@@ -147,6 +147,18 @@ def dataset_counts() -> dict[str, int]:
     }
 
 
+def catalogus_telling() -> str:
+    """De telling als toolresultaat: een aantal datasets komt uit code, niet uit zoekresultaten (#168)."""
+    return json.dumps(
+        {
+            "datasets_per_bron": dataset_counts(),
+            "cbs_gearchiveerd": sum(1 for e in _cbs() if e.get("_archief")),
+            "toelichting": "Datasets die deze chat kan opvragen. CBS telt gearchiveerde tabellen mee.",
+        },
+        ensure_ascii=False,
+    )
+
+
 _SYNONYMS: dict[str, list[str]] = {
     "hbo": ["ho", "hoger beroepsonderwijs"],
     "wo": ["ho", "wetenschappelijk onderwijs"],
@@ -390,7 +402,11 @@ def search_catalog(
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
         )
-        return f"Geen resultaten gevonden voor '{query}'."
+        # Een gemiste zoekopdracht las het model als "geen geschikte bron" (#168).
+        return (
+            f"Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
+            "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
+        )
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.

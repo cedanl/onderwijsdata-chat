@@ -36,11 +36,7 @@ from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
-_REPORT_TOOLS = [
-    s
-    for s in TOOL_SCHEMAS
-    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)  # ty: ignore[invalid-argument-type]
-]
+_REPORT_TOOLS = [s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)]
 
 logger = logging.getLogger(__name__)
 

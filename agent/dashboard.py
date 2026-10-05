@@ -38,9 +38,7 @@ from tools.schemas import (
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "dashboard.md"
 
 _DASHBOARD_TOOLS = [
-    s
-    for s in TOOL_SCHEMAS
-    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_COMPUTE_KPI)  # ty: ignore[invalid-argument-type]
+    s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_COMPUTE_KPI)
 ]
 
 logger = logging.getLogger(__name__)
