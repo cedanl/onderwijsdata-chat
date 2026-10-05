@@ -114,8 +114,9 @@ def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[str]:
         if known is None or df is None:
             continue
         kolom = known.instellingskolom
-        codes = df[kolom].astype(str) if kolom and kolom in df.columns and instelling.codekolom(df.columns) else None
-        if codes is not None:
+        codes = None
+        if kolom and kolom in df.columns and instelling.codekolom(df.columns):
+            codes = df[kolom].astype(str)
             namen |= instelling.namen(df, kolom)
         _index(df, _jaren(df, known), codes, index)
 
