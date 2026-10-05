@@ -121,6 +121,7 @@ def test_successful_load_includes_catalog_titles_by_index():
 def test_successful_load_resolves_resource_by_name_substring():
     df = _make_df()
     with (
+        patch("tools.duo._duo.resources", return_value=_DUO_ENTRIES[0]["_resources"]),
         patch("tools.duo._duo.load", return_value=df),
         patch("tools.catalog._cbs", return_value=[]),
         patch("tools.catalog._rio_duo", return_value=_DUO_ENTRIES),

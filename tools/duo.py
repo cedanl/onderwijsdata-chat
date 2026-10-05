@@ -142,24 +142,44 @@ def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     ]
 
 
+class MeerdereResources(ValueError):
+    """Een resourcenaam past op meer dan één bestand; kiezen is aan de aanroeper (#382)."""
+
+
 def _resource_index(dataset_id: str, resource: int | str) -> int | str:
     """The resource as its index, so one file has one store key however it is named (#21).
 
-    A digit string is an index; a name resolves the way riodata picks it (first
-    resource whose name contains it). Unknown names stay as given, so the load
-    reports the source's own error.
+    In volgorde: een index, het stabiele resource-ID, de exacte naam, en een naamdeel dat
+    op precies één bestand past. Een naamdeel dat op meerdere bestanden past koos eerst
+    stilzwijgend het eerste (#382) — 'Ingeschrevenen' gaf de uitsplitsing naar geslacht —
+    en geeft nu MeerdereResources. Onbekende namen blijven zoals gegeven, zodat de bron
+    zelf de fout meldt.
     """
     if isinstance(resource, int) or resource.strip().isdigit():
         return int(resource)
     try:
-        namen = [r["naam"].lower() for r in _duo.resources(dataset_id)]
+        bestanden = _duo.resources(dataset_id)
     except Exception:
         return resource
-    return next((i for i, naam in enumerate(namen) if resource.lower() in naam), resource)
+    gezocht = resource.strip().lower()
+    for veld in ("id", "naam"):
+        if (i := next((i for i, r in enumerate(bestanden) if r.get(veld, "").lower() == gezocht), None)) is not None:
+            return i
+    treffers = [i for i, r in enumerate(bestanden) if gezocht in r.get("naam", "").lower()]
+    if len(treffers) > 1:
+        opties = ", ".join(f"{i} = '{bestanden[i]['naam']}'" for i in treffers)
+        raise MeerdereResources(
+            f"Resource '{resource}' past op meerdere bestanden van {dataset_id}: {opties}. "
+            f"Kies er één met de index, bijv. get_duo_data('{dataset_id}', {treffers[0]})."
+        )
+    return treffers[0] if treffers else resource
 
 
 def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
-    resource = _resource_index(dataset_id, resource)
+    try:
+        resource = _resource_index(dataset_id, resource)
+    except MeerdereResources as e:
+        return str(e)
     key = f"duo:{dataset_id}:{resource}"
 
     df = store.get(key)
