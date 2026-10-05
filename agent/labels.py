@@ -12,7 +12,7 @@ import re
 
 from tools import store
 from tools.catalog import catalogus_titel
-from tools.duo import OPLEIDINGSVORMEN
+from tools.duo import OPLEIDINGSVORM_DATASETS, OPLEIDINGSVORMEN
 
 from .probleem import Probleem
 from .selectie import data_keys
@@ -44,8 +44,16 @@ _WOORD = re.compile(r"\w+")
 _CITAAT_VOOR, _CITAAT_NA = 2, 4
 
 
-def verkeerde_opleidingsvormen(tekst: str) -> list[str]:
-    """Een opleidingsvormcode naast het woord van een andere vorm."""
+def verkeerde_opleidingsvormen(tekst: str, tool_results: list[str]) -> list[str]:
+    """Een opleidingsvormcode naast het woord van een andere vorm.
+
+    Alleen als de beurt data heeft uit een dataset waarvan de beschrijving deze codes
+    noemt; elders betekent OPLEIDINGSVORM iets anders (#371).
+    """
+    if not any(
+        (known := store.meta(key)) and known.dataset in OPLEIDINGSVORM_DATASETS for key in data_keys(tool_results)
+    ):
+        return []
     problemen = []
     paren = [(m.group(1), m.group(2)) for m in _VORM_CODE.finditer(tekst)]
     paren += [(m.group(2), m.group(1)) for m in _CODE_VORM.finditer(tekst)]

@@ -103,7 +103,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
                 problems.append(f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden.")
                 break
 
-    problems += verkeerde_opleidingsvormen(text)
+    problems += verkeerde_opleidingsvormen(text, sources)
     problems += onbekende_datasets(text)
     problems += ongebruikte_bronnen(text, sources)
     problems += verkeerde_teleenheid(text, sources)

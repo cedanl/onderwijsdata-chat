@@ -292,6 +292,7 @@ def test_count_on_a_truncated_rio_page_gets_a_correction(monkeypatch):
 
 def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
     # Live-audit 8 (#196): het getal klopte, de opleidingsvorm erbij niet.
+    store.put("duo:p02:a", pd.DataFrame({"AANTAL": [5943]}), KeyMeta(bron="duo", dataset="p02ho1ejrs"))
     text, events = _chat(
         monkeypatch,
         [

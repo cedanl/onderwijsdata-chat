@@ -16,32 +16,30 @@ _SAMPLE_ROWS = 3
 # OPLEIDINGSVORM-codes, letterlijk uit de DUO-datasetbeschrijving: "VT voltijd onderwijs,
 # DT deeltijd onderwijs en DU duaal onderwijs". Ook de antwoordcontrole leest ze (#196).
 OPLEIDINGSVORMEN = {"VT": "voltijd", "DT": "deeltijd", "DU": "duaal"}
+# Alleen deze beschrijvingen noemen die codes; mbo_opleidingsaanbod gebruikt bijv. KLASSIKAAL (#371).
+OPLEIDINGSVORM_DATASETS = frozenset({"p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"})
 
-# Lokale glossary-correcties en -aanvullingen op riodata (zie #31, #23, #172).
-# Deze patches worden toegepast op column_definitions() tot de upstream fix.
-_GLOSSARY_PATCHES = {
-    "STUDIEJAAR": "Startjaar van het studiejaar als geheel getal (2023 = studiejaar 2023/2024). Peildatum 1 oktober.",
-    periode.STUDIEJAAR_LABEL: (
-        "Volledig label van het studiejaar (2023 -> 2023/2024), afgeleid van STUDIEJAAR. "
-        "Gebruik dit label in tekst, tabellen en grafieken; reken jaren niet zelf om."
-    ),
-    "LEERWEG": "Mbo-leerweg: BOL (beroepsopleidende leerweg) of BBL (beroepsbegeleidende leerweg).",
-    # Ontbreekt upstream; zonder definitie raadde een model 'DT = duaal-tijd' (#172).
-    "OPLEIDINGSVORM": "Opleidingsvorm hoger onderwijs: "
+# Definities die alleen de chat kent. Al het andere komt per dataset uit riodata (#371).
+_STUDIEJAAR_LABEL_DEFINITIE = (
+    "Volledig label van het studiejaar (2023 -> 2023/2024), afgeleid van STUDIEJAAR. "
+    "Gebruik dit label in tekst, tabellen en grafieken; reken jaren niet zelf om."
+)
+# Ontbreekt upstream; zonder definitie raadde een model 'DT = duaal-tijd' (#172).
+_OPLEIDINGSVORM_DEFINITIE = (
+    "Opleidingsvorm hoger onderwijs: "
     + ", ".join(f"{code} = {vorm}" for code, vorm in OPLEIDINGSVORMEN.items())
-    + " (bron: DUO-datasetbeschrijving).",
-}
+    + " (bron: DUO-datasetbeschrijving)."
+)
 
 
-def _apply_glossary_patches(defs: dict[str, str]) -> dict[str, str]:
-    """Pas lokale correcties toe op riodata glossary-definities.
-
-    Zie #31, #23: upstream bugs in STUDIEJAAR en LEERWEG definities in riodata;
-    #172: OPLEIDINGSVORM ontbreekt upstream.
-    Deze patches zorgen dat het schema correcte definities bevat totdat upstream dit
-    adressen. Idempotent: kan veilig op al gepatched dicts worden toegepast.
-    """
-    return {**defs, **_GLOSSARY_PATCHES}
+def column_definitions(columns: list[str], dataset_id: str) -> dict[str, str]:
+    """Kolomdefinities voor deze dataset: riodata, aangevuld met wat alleen de chat kent."""
+    defs = _duo.column_definitions(columns, dataset_id)
+    if periode.STUDIEJAAR_LABEL in columns:
+        defs[periode.STUDIEJAAR_LABEL] = _STUDIEJAAR_LABEL_DEFINITIE
+    if "OPLEIDINGSVORM" in columns and dataset_id in OPLEIDINGSVORM_DATASETS:
+        defs.setdefault("OPLEIDINGSVORM", _OPLEIDINGSVORM_DEFINITIE)
+    return defs
 
 
 # Per store-key: aantal gemaskeerde cellen per rij en kolom, alleen voor rijen met
@@ -195,7 +193,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         # preview moeten van de versie komen die daadwerkelijk is opgeslagen.
         df = store.get(key)
 
-    defs = _apply_glossary_patches(_duo.column_definitions(list(df.columns)))
+    defs = column_definitions(list(df.columns), dataset_id)
     schema = [
         {
             "kolom": col,
