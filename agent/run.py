@@ -175,14 +175,24 @@ async def run(
             }
         )
 
-    # What the conversation already said counts as sourced: a follow-up may repeat
-    # a number from an earlier turn, or one the user gave. Taken before the loop,
-    # so the correction message with the suspect numbers does not source them.
-    earlier = [str(m.get("content") or "") for m in history if m.get("role") in ("user", "assistant")]
+    # What the assistant already said counts as sourced: a follow-up may repeat a
+    # number from an earlier turn. What the user said does not (#211): that is a
+    # claim to verify, not evidence. Taken before the loop, so the correction
+    # message with the suspect numbers does not source them.
+    earlier = [str(m.get("content") or "") for m in history if m.get("role") == "assistant"]
+    said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
+
+    def ongedekt(n: str) -> Probleem:
+        if unverified(n, [], said_by_user):
+            return Probleem(f"{n} staat niet in de opgehaalde data.")
+        return Probleem(
+            f"{n} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
+            "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
+        )
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         return [
-            *(Probleem(f"{n} staat niet in de opgehaalde data.") for n in unverified(text, tool_results, earlier)),
+            *(ongedekt(n) for n in unverified(text, tool_results, earlier)),
             *ontbrekende_schooljaren(last_user_msg, tool_results),
             *ontbrekende_instellingen(last_user_msg, tool_results),
             *onvolledige_selecties(text, tool_results),
