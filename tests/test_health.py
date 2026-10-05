@@ -55,3 +55,17 @@ def test_version_zonder_build_arg_zegt_onbekend(client, monkeypatch):
 
     monkeypatch.setattr(Config, "GIT_COMMIT", None)
     assert client.get("/version").json()["commit"] == "onbekend"
+
+
+def test_version_noemt_de_meegebouwde_catalogusrevisies(client):
+    # #361: playground liep een CBS-catalogus-commit achter, en /version liet dat niet zien.
+    catalogus = client.get("/version").json()["catalogus"]
+    assert [p["pakket"] for p in catalogus] == ["onderwijsdata", "riodata"]
+    assert all(p["versie"] for p in catalogus)
+    assert all(len(p["commit"] or "") == 40 for p in catalogus)  # git-dependency: de commit uit uv.lock
+
+
+def test_catalogusversie_zonder_package_geeft_geen_fout():
+    from core.catalogusversie import _pakket
+
+    assert _pakket("bestaat-niet-xyz") == {"pakket": "bestaat-niet-xyz", "versie": None, "commit": None}

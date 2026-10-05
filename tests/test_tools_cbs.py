@@ -112,3 +112,48 @@ def test_gelukte_dataproperties_geeft_geen_metadatamelding():
     ):
         parsed = json.loads(get_cbs_data("85423NED"))
     assert "metadata_ontbreekt" not in parsed
+
+
+_DEFS_85423 = {
+    "Geslacht": {"title": "Geslacht", "type": "Dimension"},
+    "Perioden": {"title": "Perioden", "type": "TimeDimension"},
+    "TotaalIngeschrevenen_1": {"title": "Totaal ingeschrevenen", "type": "Topic"},
+}
+
+
+def test_titel_in_select_wordt_voor_het_request_gemeld_met_de_sleutel():
+    # #354: "Totaal ingeschrevenen" faalde pas bij CBS, met een ruwe providerfout.
+    with (
+        patch("tools.cbs.data") as data,
+        patch("tools.cbs.definitions", return_value=_DEFS_85423),
+    ):
+        result = get_cbs_data("85423NED", filters={"$select": "Perioden,Totaal ingeschrevenen"})
+    data.assert_not_called()
+    assert "Onbekende kolom in $select" in result
+    assert "'Totaal ingeschrevenen' → gebruik 'TotaalIngeschrevenen_1'" in result
+
+
+def test_verschreven_sleutel_krijgt_de_dichtstbijzijnde_als_alternatief():
+    with patch("tools.cbs.data") as data, patch("tools.cbs.definitions", return_value=_DEFS_85423):
+        result = get_cbs_data("85423NED", filters={"$select": "TotaalIngeschrevenen"})
+    data.assert_not_called()
+    assert "gebruik 'TotaalIngeschrevenen_1'" in result
+
+
+def test_geldige_sleutels_gaan_door_naar_cbs():
+    with (
+        patch("tools.cbs.data", return_value=[]) as data,
+        patch("tools.cbs.definitions", return_value=_DEFS_85423),
+    ):
+        get_cbs_data("85423NED", filters={"$select": "ID,Perioden,TotaalIngeschrevenen_1"})
+    data.assert_called_once()
+
+
+def test_zonder_dataproperties_geen_selectcontrole():
+    # Bronuitval is geen "bestaat niet": dan beslist CBS zelf.
+    with (
+        patch("tools.cbs.data", return_value=[]) as data,
+        patch("tools.cbs.definitions", side_effect=Exception("timeout")),
+    ):
+        get_cbs_data("85423NED", filters={"$select": "Totaal ingeschrevenen"})
+    data.assert_called_once()
