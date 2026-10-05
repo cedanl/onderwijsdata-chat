@@ -10,7 +10,7 @@ dependencies = [
     "litellm>=1.40",
     "plotly>=5.0",
     "python-dotenv>=1.0",
-    "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git",
+    "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git@v0.2.0",
     "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git@c0b4bceaea7c40f13a0fe386ce278db94c39e7f7",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
