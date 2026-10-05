@@ -1191,6 +1191,20 @@ html.dark .context-limit-banner--full {
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--gray-200); background: none; cursor: pointer; }
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
+.answer-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.answer-feedback-btn {
+  background: none; border: 1px solid transparent; border-radius: 4px;
+  padding: 2px 6px; font-size: .85rem; cursor: pointer; opacity: .55; filter: grayscale(1);
+}
+.answer-feedback-btn:hover, .answer-feedback-btn[aria-pressed="true"] { opacity: 1; filter: none; }
+.answer-feedback-btn[aria-pressed="true"] { border-color: var(--gray-200); background: var(--gray-50); }
+.answer-feedback-note { font-size: .75rem; color: var(--muted-text); margin-left: 4px; }
+.answer-feedback-form { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-width: 480px; }
+.answer-feedback-form textarea {
+  font: inherit; font-size: .85rem; padding: 6px 8px; resize: vertical;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); color: inherit;
+}
+.answer-feedback-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .confirm-primary { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-700); color: white; cursor: pointer; font-weight: 600; }
 .export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
 .export-option:last-of-type { margin-bottom: 20px; }

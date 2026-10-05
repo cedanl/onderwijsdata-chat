@@ -33,6 +33,7 @@ import health
 from auth.oidc import is_oidc_configured
 from persistence import db as persistence_db
 from routes import (
+    answer_feedback_router,
     auth_router,
     chat_router,
     config_router,
@@ -184,6 +185,7 @@ signal.signal(signal.SIGTERM, _handle_sigterm)
 
 app.include_router(config_router)
 app.include_router(feedback_router)
+app.include_router(answer_feedback_router)
 app.include_router(auth_router)
 app.include_router(persistence_router)
 app.include_router(instellingen_router)

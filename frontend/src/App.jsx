@@ -196,7 +196,7 @@ function AppShell() {
           <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
             <Routes>
               <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} />} />
+              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} feedbackEnabled={feedbackEnabled} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
               <Route path="*" element={<NotFoundPage />} />

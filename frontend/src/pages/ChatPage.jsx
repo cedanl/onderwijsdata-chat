@@ -35,6 +35,8 @@ import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import ConversationExport from '../components/ConversationExport'
+import AnswerFeedback from '../components/AnswerFeedback'
+import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
@@ -156,7 +158,7 @@ function MessageContent({ msg }) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
 }
 
-export default function ChatPage({ openRapport, settings = {}, user }) {
+export default function ChatPage({ openRapport, settings = {}, user, feedbackEnabled = false }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
@@ -192,6 +194,8 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   const textareaRef = useRef(null)
   const openChatRef = useRef(initialChat)
   const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
+  // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
+  const savingRef = useRef(Promise.resolve())
   const initialHistorySentRef = useRef(false)
 
   // Seed backend with restored history on first connection
@@ -232,17 +236,20 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
   }, [conversationId, messages, restoredMessages])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
+  // Returns the save in flight, so a caller can wait until the server has the conversation.
   const saveConversation = useCallback(() => {
     const { id, messages: all } = openChatRef.current
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
-    if (!record || json === savedJsonRef.current) return
+    if (!record || json === savedJsonRef.current) return savingRef.current
     savedJsonRef.current = json
     const updated = upsertConversation(loadConversationHistory(), record)
     persistConversationHistory(updated)
     setConversationHistory(updated)
-    putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
+    savingRef.current = putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
+    return savingRef.current
   }, [])
+  const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
   // Save every finished answer, so closing the tab loses nothing.
   useEffect(() => {
@@ -500,6 +507,10 @@ export default function ChatPage({ openRapport, settings = {}, user }) {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
                 } : null}
+                feedback={feedbackEnabled && !busy && canJudge(msg) ? {
+                  value: answerFeedback.oordelen[i] ?? null,
+                  onSubmit: (oordeel, toelichting) => answerFeedback.submit(i, oordeel, toelichting),
+                } : null}
               />
             ))}
             {thinking && (
@@ -674,7 +685,10 @@ function questionBefore(messages, i) {
   return null
 }
 
-function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null, clarification = null }) {
+// What the server can judge: a finished answer with text (core/answer_feedback.py).
+const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
+
+function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -746,6 +760,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
           </div>
         )}
         {modelLabel && <div className="message-model">Antwoord van {modelLabel}</div>}
+        {feedback && <AnswerFeedback value={feedback.value} onSubmit={feedback.onSubmit} />}
       </div>
     </div>
   )
