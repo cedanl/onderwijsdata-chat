@@ -80,3 +80,23 @@ def test_dashboard_laadt_duo_alleen_via_de_maskerende_helper():
     # Elke nieuwe duo.load in het dashboard zou het -1-gat opnieuw openen.
     bron = inspect.getsource(dashboard)
     assert bron.count("duo.load(") == 1, "laad DUO-data in data/dashboard.py via _duo_load"
+
+
+# --- #313: de sector-clustermapping draagt haar peildatum ---
+
+
+def test_mapping_bestand_heeft_een_manifest():
+    import json
+    from datetime import date
+    from pathlib import Path
+
+    ruw = json.loads((Path(dashboard.__file__).parent / "sector_cluster_mapping.json").read_text())
+    manifest = ruw["_manifest"]
+    date.fromisoformat(manifest["bijgewerkt"])
+    assert "UWV" in manifest["bron"]
+
+
+def test_manifest_is_geen_sector(tmp_path):
+    bestand = tmp_path / "sector_cluster_mapping.json"
+    bestand.write_text('{"_manifest": {"bijgewerkt": "2026-08-17"}, "TECHNIEK": ["ICT"]}')
+    assert dashboard._load_sector_cluster_map(bestand) == {"TECHNIEK": ["ICT"]}

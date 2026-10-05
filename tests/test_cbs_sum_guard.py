@@ -235,3 +235,22 @@ def test_label_column_is_guarded_on_a_derived_key(twee_jaren):
     result = query_data(derived, aggregate={"TotaalIngeschrevenen_1": "sum"})
     assert "746450" not in result
     assert "Perioden_label" in result
+
+
+def test_aggregate_without_known_dimensions_is_refused():
+    # Een mislukte DataProperties-call liet de guard stil uitstaan: een som kon
+    # de totaalrij meetellen zonder dat iets het zag (#313).
+    store.put(
+        "cbs:00000NED:x",
+        pd.DataFrame({"Regio": ["Totaal", "A", "B"], "Aantal": [3, 1, 2]}),
+        store.KeyMeta(bron="cbs", dataset="00000NED"),
+    )
+    result = query_data("cbs:00000NED:x", aggregate={"Aantal": "sum"})
+    assert not result.startswith("{")
+    assert "dimensies" in result
+
+
+def test_only_cbs_keys_need_known_dimensions():
+    assert cbs.check_dimensions_known("duo:x:0") is None
+    cbs.register_dimensions(_DS, _DIMS)
+    assert cbs.check_dimensions_known(_KEY) is None

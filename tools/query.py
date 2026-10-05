@@ -16,7 +16,7 @@ from core.config import DUO_ROW_LIMIT
 
 from . import dekking, duo, instelling, periode, store
 from .catalog import resources_met_kolom
-from .cbs import check_dimensions_pinned
+from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
@@ -207,6 +207,8 @@ def query_data(
             return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
 
     # Vóór de kolomselectie: daarna zijn weggeselecteerde dimensies onzichtbaar.
+    if aggregate and (err := check_dimensions_known(data_key)):
+        return err
     if aggregate or columns:
         err = check_dimensions_pinned(data_key, df, keep=(group_by or []) if aggregate else columns)
         if err:

@@ -508,11 +508,14 @@ def _mode_str(series: pd.Series) -> str | None:
     return str(vals.mode().iloc[0])
 
 
-def _load_sector_cluster_map() -> dict[str, list[str]]:
-    path = Path(__file__).parent / "sector_cluster_mapping.json"
+_SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
+
+
+def _load_sector_cluster_map(path: Path = _SECTOR_CLUSTER_PATH) -> dict[str, list[str]]:
+    """Sector → UWV-clusters; `_manifest` (peildatum en bron, #313) is geen sector."""
     if path.exists():
         try:
-            return json.loads(path.read_text())
+            return {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith("_")}
         except Exception:
             logger.warning("sector_cluster_mapping.json onleesbaar", exc_info=True)
     else:

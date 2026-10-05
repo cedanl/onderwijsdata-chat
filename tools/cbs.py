@@ -94,6 +94,22 @@ def check_dimensions_pinned(data_key: str, df: pd.DataFrame, keep: list[str]) ->
     )
 
 
+def check_dimensions_known(data_key: str) -> str | None:
+    """Weiger een CBS-aggregatie als de dimensies onbekend zijn (#313).
+
+    Zonder dimensies (DataProperties mislukte bij het laden) kan
+    check_dimensions_pinned geen totaalrijen zien en laat hij alles door. Een som
+    kan dan stil dubbel tellen; een kolomselectie zonder som niet.
+    """
+    if not data_key.startswith("cbs:") or dimension_columns(data_key):
+        return None
+    return (
+        "Van deze CBS-tabel zijn de dimensies onbekend (de metadata kon niet worden opgehaald), "
+        "dus niet te controleren of een som totaalrijen meetelt. Aggregeer niet: laad de data "
+        "opnieuw met get_cbs_data, of toon de rijen zonder aggregatie."
+    )
+
+
 def _load_definitions(dataset_id: str) -> dict | None:
     """Kolomdefinities uit DataProperties; None als de call mislukt (#229)."""
     try:
