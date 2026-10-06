@@ -212,6 +212,8 @@ export function useChat({ onUnauthorized } = {}) {
             ...(ev.partial && { partial: true }),
             // What the server's check on this answer still found wrong (#185, #187).
             ...(ev.controle?.length && { controle: ev.controle }),
+            // The numbers that passed the check, each with the step it came from (#365).
+            ...(ev.citaties?.length && { citaties: ev.citaties }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }
