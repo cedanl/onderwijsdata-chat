@@ -23,6 +23,16 @@ def test_vaste_spaties_en_koppeltekens_worden_gewone_tekens():
     assert normaliseer("6\u202f447 bij Avans\u00a0Hogeschool, \u20115%") == "6 447 bij Avans Hogeschool, -5%"
 
 
+def test_en_dash_en_minteken_worden_een_gewoon_minteken():
+    """Audit 14 §3.7: '\u201341 558' bleef staan (U+2013); alleen U+2011 werd omgezet."""
+    assert normaliseer("\u201341\u202f558 en \u22123,2%") == "-41 558 en -3,2%"
+
+
+def test_grondingscontrole_herkent_een_negatief_getal_na_normalisatie():
+    data = [json.dumps({"rijen": [{"VERSCHIL": -41558}]})]
+    assert unverified(normaliseer("Een daling van \u201341\u202f558."), data, []) == []
+
+
 def test_deltas_en_eindtekst_zijn_genormaliseerd():
     events: list[dict] = []
 

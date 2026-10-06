@@ -151,6 +151,15 @@ def _filterregel(key: str, val) -> str:
     return f'df = df[pd.to_numeric(df[{col!r}], errors="coerce") {teken} {grens!r}]'
 
 
+def _aggregatiefuncties(aggregate: dict) -> str:
+    """Het agg-argument als code: een som zonder één waarde blijft leeg, zoals in query (#394)."""
+    delen = [
+        f"{kolom!r}: " + ("lambda s: s.sum(min_count=1)" if fn == "sum" else repr(fn))
+        for kolom, fn in aggregate.items()
+    ]
+    return "{" + ", ".join(delen) + "}"
+
+
 def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
     """Zoals query._apply_aggregation: eerst numeriek maken, lege groepen houden (#227)."""
     lines = [f"group_by = {group_by!r}"]
@@ -162,7 +171,7 @@ def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
     lines += [
         f"for kolom in {list(aggregate)!r}:",
         '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
-        f"df = df.groupby(group_by, dropna=False).agg({aggregate!r}).reset_index()",
+        f"df = df.groupby(group_by, dropna=False).agg({_aggregatiefuncties(aggregate)}).reset_index()",
     ]
     return lines
 

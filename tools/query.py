@@ -108,11 +108,33 @@ def _validate_aggregation(df, group_by, aggregate):
     return None
 
 
+def _som_of_leeg(series):
+    """Som, maar leeg als er geen enkele waarde is: onderdrukt is niet nul (#394)."""
+    return series.sum(min_count=1)
+
+
 def _apply_aggregation(df, group_by, aggregate):
     df = df.copy()
     for col in aggregate:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df.groupby(group_by, dropna=False).agg(aggregate).reset_index()
+    fns = {col: _som_of_leeg if fn == "sum" else fn for col, fn in aggregate.items()}
+    return df.groupby(group_by, dropna=False).agg(fns).reset_index()
+
+
+def _lege_groepen_noten(agg, group_by, aggregate) -> list[str]:
+    """Per som-kolom de groepen zonder één waarde: daar staat null, en dat is geen 0 (#394)."""
+    noten = []
+    for col, fn in aggregate.items():
+        if fn != "sum" or not (leeg := agg[agg[col].isna()]).size:
+            continue
+        groepen = ", ".join(
+            "/".join(f"{g}={rij[g]}" for g in group_by) for rij in leeg[group_by].to_dict(orient="records")
+        )
+        noten.append(
+            f"'{col}' is voor {groepen} volledig onderdrukt of leeg (null): niet vast te stellen. "
+            "Noem dit 'onderdrukt', nooit 0."
+        )
+    return noten
 
 
 def _filter_suggesties(origineel, filters: dict) -> dict:
@@ -225,7 +247,7 @@ def query_data(
         agg = _apply_aggregation(df, group_by, aggregate)
         # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
         # leest, en onderdrukte cellen in de selectie maken dat totaal een ondergrens.
-        notes = duo.sentinel_notes(duo.count_cells(cells))
+        notes = duo.sentinel_notes(duo.count_cells(cells)) + _lege_groepen_noten(agg, group_by, aggregate)
         if noot := cbs_afronding.van_key(data_key):
             notes.append(noot)
         cells = duo.aggregate_cells(cells, df, group_by, agg)
