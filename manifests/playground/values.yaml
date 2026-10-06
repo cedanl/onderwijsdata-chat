@@ -80,7 +80,7 @@ env:
         name: onderwijsdata-chat-app
         key: uri
   - name: MODEL
-    value: "openai/gpt-oss-120b"
+    value: "azure_ai/claude-sonnet-5-5"
   - name: WILLMA_BASE_URL
     value: "https://willma.surf.nl/api/v0"
   - name: WILLMA_API_KEY
@@ -108,6 +108,6 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
         key: AZURE_AI_API_BASE
-  # Model-picker toont zowel Willma als Azure AI Foundry modellen.
+  # Model-picker toont de Foundry-modellen.
   - name: AVAILABLE_MODELS
-    value: "openai/gpt-oss-120b,azure_ai/claude-sonnet-4-6,azure_ai/claude-opus-4-6"
+    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
