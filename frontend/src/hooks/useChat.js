@@ -248,6 +248,7 @@ export function useChat({ onUnauthorized } = {}) {
         cancelCurrentMsg()
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
+          modelafhankelijk: ev.modelafhankelijk !== false,
         }])
         busyRef.current = false
         setBusy(false)

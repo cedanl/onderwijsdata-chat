@@ -87,6 +87,20 @@ def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step,
     return {"periode": {"van": _periodelabel(bron, van), "tot": _periodelabel(bron, tot)}}
 
 
+def _startjaar(waarde: int | float | str | None) -> int | None:
+    """`van`/`tot` als startjaar; een model stuurt soms '2020' of '2020/21' als string (#405)."""
+    if waarde is None or isinstance(waarde, int):
+        return waarde
+    tekst = str(waarde).strip()
+    if isinstance(waarde, float) and waarde.is_integer():
+        return int(waarde)
+    if tekst.isdigit():
+        return int(tekst)
+    if len(jaren := periode.gevraagde_schooljaren(tekst)) == 1:
+        return next(iter(jaren))
+    raise ValueError(f"`van` en `tot` zijn startjaren, zoals 2020; '{waarde}' is er geen.")
+
+
 def _binnen_bereik(df: pd.DataFrame, sort_column: str, van: int | None, tot: int | None, bron: str) -> pd.DataFrame:
     """De rijen waarvan het startjaar tussen `van` en `tot` (inclusief) ligt; rijen zonder jaar vallen af."""
     jaren = pd.to_numeric(df[sort_column].map(lambda waarde: periode.startjaar(bron, waarde)), errors="coerce")
@@ -114,8 +128,8 @@ def compute_kpi(
     metric: str,
     sort_column: str | None = None,
     label: str = "",
-    van: int | None = None,
-    tot: int | None = None,
+    van: int | str | None = None,
+    tot: int | str | None = None,
 ) -> str:
     """Bereken één KPI over data uit de store.
 
@@ -138,6 +152,11 @@ def compute_kpi(
         return _error(f"Kolom '{value_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
     if sort_column and sort_column not in df.columns:
         return _error(f"Sorteerkolom '{sort_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
+
+    try:
+        van, tot = _startjaar(van), _startjaar(tot)
+    except ValueError as exc:
+        return _error(str(exc))
 
     known = store.meta(data_key)
     bron = known.bron if known else ""

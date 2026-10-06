@@ -263,3 +263,19 @@ def test_label_met_ander_bereik_dan_de_kpi_wordt_geweigerd(_prognose):
 def test_label_met_het_bereik_van_de_kpi_wordt_doorgelaten(_prognose):
     kpi = compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="Verschil 2024 tot 2043")
     assert "fout" not in json.loads(kpi)
+
+
+@pytest.mark.parametrize(("van", "tot"), [("2024", "2030"), ("2024/25", "2030/31"), (2024.0, 2030.0)])
+def test_van_en_tot_als_string_rekenen_hetzelfde(_prognose, van, tot):
+    """#405: '2024' als string gaf een ongevangen TypeError in de vergelijking."""
+    kpi = json.loads(
+        compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="V", van=van, tot=tot)
+    )
+    assert kpi["raw"] == -12_000
+
+
+def test_van_die_geen_jaar_is_wordt_een_toolfout(_prognose):
+    fout = json.loads(
+        compute_kpi("duo:kpi:prognose", "AANTAL", "delta", sort_column="JAAR", label="V", van="vorig jaar")
+    )
+    assert "startjaren" in fout["fout"]

@@ -506,6 +506,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 retry={msg.isError ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
+                  modelafhankelijk: msg.modelafhankelijk !== false,
                 } : null}
                 feedback={feedbackEnabled && !busy && canJudge(msg) ? {
                   value: answerFeedback.oordelen[i] ?? null,
@@ -753,6 +754,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
                 question={retry.question?.content}
                 failedModel={retry.question?.model || retry.selectedModel}
                 models={retry.models}
+                modelafhankelijk={retry.modelafhankelijk}
                 busy={busy}
                 onRetry={retry.onRetry}
               />

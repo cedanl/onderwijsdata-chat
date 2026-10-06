@@ -15,7 +15,7 @@ from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MODEL
-from core.errors import friendly_error
+from core.errors import error_event, friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -76,7 +76,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     try:
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
-        await emit({"type": "error", "message": friendly_error(e)})
+        await emit(error_event(e))
         # Keep the user message and add a placeholder so the conversation stays
         # in alternating user/assistant order. This lets the user retry without
         # the agent losing context of what was asked.
@@ -110,7 +110,7 @@ async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
     except ValueError as e:
         await emit({"type": "error", "message": str(e)})
     except Exception as e:
-        await emit({"type": "error", "message": friendly_error(e)})
+        await emit(error_event(e))
 
 
 async def _generate_report(session: dict, emit, model: str | None, author: str | None = None) -> None:
@@ -198,7 +198,7 @@ async def _refresh_dashboard(
     except RefreshError as e:
         await emit({"type": "error", "message": str(e)})
     except Exception as e:
-        await emit({"type": "error", "message": friendly_error(e)})
+        await emit(error_event(e))
 
 
 @router.post("/api/dashboard/refresh")

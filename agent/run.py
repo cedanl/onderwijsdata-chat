@@ -21,10 +21,11 @@ from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleiding
 from .loop import ToolCall, tool_loop
 from .metatekst import metatekst
 from .models import build_system
-from .probleem import Probleem, meldingen
+from .probleem import Probleem, meldingen, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key
 from .stream import Emit
+from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .vaste_antwoorden import sentinelvraag, weigering
 
@@ -203,22 +204,25 @@ async def run(
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
         )
 
+    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
+        return [ongedekt(n) for n in unverified(text, tool_results, earlier)]
+
     def check(text: str, tool_results: list[str]) -> list[str]:
         return [
-            *(ongedekt(n) for n in unverified(text, tool_results, earlier)),
-            *ontbrekende_schooljaren(last_user_msg, tool_results),
-            *ontbrekende_instellingen(last_user_msg, tool_results),
-            *onvolledige_selecties(text, tool_results),
-            *verkeerde_opleidingsvormen(text, tool_results),
-            *onbekende_datasets(text),
-            *ongebruikte_bronnen(text, tool_results),
-            *verkeerd_gebonden(text, tool_results),
-            *verkeerde_kpi_periodes(text, tool_results),
-            *kpi_naast_filter(text, tool_results),
-            *genegeerde_keuze(session.get("clarify_keuzes", []), text),
-            *onbeschikbaar_zonder_zoekpad(last_user_msg, text, tool_results),
-            *ongedekte_oorzaak(text, tool_results),
-            *metatekst(text),
+            *veilig(ongedekte_getallen, text, tool_results),
+            *veilig(ontbrekende_schooljaren, last_user_msg, tool_results),
+            *veilig(ontbrekende_instellingen, last_user_msg, tool_results),
+            *veilig(onvolledige_selecties, text, tool_results),
+            *veilig(verkeerde_opleidingsvormen, text, tool_results),
+            *veilig(onbekende_datasets, text),
+            *veilig(ongebruikte_bronnen, text, tool_results),
+            *veilig(verkeerd_gebonden, text, tool_results),
+            *veilig(verkeerde_kpi_periodes, text, tool_results),
+            *veilig(kpi_naast_filter, text, tool_results),
+            *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),
+            *veilig(onbeschikbaar_zonder_zoekpad, last_user_msg, text, tool_results),
+            *veilig(ongedekte_oorzaak, text, tool_results),
+            *veilig(metatekst, text),
         ]
 
     async def withdraw(problems: list[str]) -> None:
@@ -292,7 +296,9 @@ async def run(
         await emit({"type": "message_end", "content": text_content, "actions": []})
         return text_content
 
-    text_content = weigering(result.text, result.tool_calls) or met_telling(result.text, result.tool_results)
+    text_content = weigering(
+        result.text, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
+    ) or met_telling(zonder_citaatkop(result.text), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])

@@ -112,10 +112,10 @@ WILLMA_API_KEY=<jouw-willma-key>
 WILLMA_BASE_URL=https://willma.surf.nl/api/v0
 ```
 
-Gebruik `playground/willma_poc.py` om beschikbare modelnamen op te halen:
+De beschikbare modelnamen haal je op bij Willma zelf:
 
 ```bash
-uv run python playground/willma_poc.py
+curl -H "X-API-KEY: $WILLMA_API_KEY" "$WILLMA_BASE_URL/models"
 ```
 
 !!! note "Hoe werkt dit in de code?"
