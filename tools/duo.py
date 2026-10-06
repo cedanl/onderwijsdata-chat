@@ -7,7 +7,7 @@ from riodata import duo as _duo
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import duo_meta, fouten, instelling, kolomprofiel, periode, store
-from .catalog import catalogus_titel, resource_titel
+from .catalog import catalogus_titel, is_documentbestand, resource_titel, tabelbestanden
 
 _SAMPLE_ROWS = 3
 
@@ -188,6 +188,26 @@ def _resource_index(dataset_id: str, resource: int | str) -> int | str:
     return treffers[0] if treffers else resource
 
 
+def _vergelijkbare_datasets(dataset_id: str) -> str:
+    try:
+        cats = _duo.catalog()
+    except Exception:
+        return ""
+    matches = [c for c in cats if dataset_id.lower() in json.dumps(c, ensure_ascii=False).lower()]
+    return f" Vergelijkbare datasets: {[c.get('_ckan_id') for c in matches[:3]]}" if matches else ""
+
+
+def _andere_bestanden(dataset_id: str, bestanden: list[tuple[int, str]], behalve: int | str) -> str:
+    """De overige tabelbestanden van de dataset: één kapot bestand is niet de hele dataset (#408)."""
+    andere = [f"{i} = '{naam}'" for i, naam in bestanden if i != behalve]
+    if not andere:
+        return ""
+    return (
+        f" Andere bestanden van deze dataset: {', '.join(andere)}."
+        f" Kies er één met get_duo_data('{dataset_id}', <index>)."
+    )
+
+
 def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     try:
         resource = _resource_index(dataset_id, resource)
@@ -197,15 +217,18 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
 
     df = store.get(key)
     if df is None:
+        bestanden = tabelbestanden(dataset_id)
+        if isinstance(resource, int) and is_documentbestand(dataset_id, resource):
+            # Een PDF of PNG is documentatie, geen data; niet downloaden (#408).
+            return fouten.melding(
+                fouten.Fout.BRON_WEIGERT,
+                f"DUO: bestand {resource} van '{dataset_id}' is documentatie, geen tabel."
+                + (_andere_bestanden(dataset_id, bestanden, resource) or " De dataset bevat alleen documentatie."),
+            )
         try:
             df = periode.met_studiejaarlabel(_duo.load(dataset_id, resource))
         except Exception as e:
-            try:
-                cats = _duo.catalog()
-                matches = [c for c in cats if dataset_id.lower() in json.dumps(c, ensure_ascii=False).lower()]
-                hint = f" Vergelijkbare datasets: {[c.get('_ckan_id') for c in matches[:3]]}" if matches else ""
-            except Exception:
-                hint = ""
+            hint = _andere_bestanden(dataset_id, bestanden, resource) or _vergelijkbare_datasets(dataset_id)
             return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)

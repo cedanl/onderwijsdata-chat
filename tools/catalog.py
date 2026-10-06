@@ -35,8 +35,37 @@ _NIET_OPVRAAGBAAR = {
 }
 
 
+# Formaten die riodata.duo.load als tabel leest. Een DUO-changelog is alleen een PDF (#408).
+_TABELFORMATEN = frozenset({"CSV", "XLSX", "XLS"})
+_ALLEEN_DOCUMENTATIE = {
+    "opvraagbaar": False,
+    "melding": (
+        "Deze dataset bevat alleen documentatie (bijv. een PDF-changelog) en geen tabel: er zijn "
+        "geen cijfers uit op te halen. Zoek de dataset met de data zelf."
+    ),
+}
+
+
 def _via_chat(entry: dict) -> bool:
     return str(entry.get("leverancier", "")).upper() in CHAT_BRONNEN
+
+
+def _is_tabel(resource: dict) -> bool:
+    """Zonder opgegeven formaat beslist riodata bij het laden; alleen een bekend ander formaat valt af."""
+    return not resource.get("format") or str(resource["format"]).upper() in _TABELFORMATEN
+
+
+def _tabelbestanden(entry: dict) -> list[tuple[int, str]]:
+    return [(i, r.get("naam") or "") for i, r in enumerate(entry.get("_resources") or []) if _is_tabel(r)]
+
+
+def _niet_opvraagbaar(entry: dict) -> dict | None:
+    """Waarom de chat geen data voor deze catalogusregel kan ophalen; None als het wel kan."""
+    if not _via_chat(entry):
+        return _NIET_OPVRAAGBAAR
+    if entry.get("_resources") and not _tabelbestanden(entry):
+        return _ALLEEN_DOCUMENTATIE
+    return None
 
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
@@ -354,7 +383,7 @@ def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
             if source == "duo" and not is_duo:
                 continue
             if s := _score(entry, words):
-                hit = {**entry} if _via_chat(entry) else {**entry, **_NIET_OPVRAAGBAAR}
+                hit = {**entry, **(_niet_opvraagbaar(entry) or {})}
                 (archive if entry.get("_archief") else active).append((s, hit))
 
     return active, archive
@@ -596,6 +625,28 @@ def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
     return None
 
 
+def _duo_entry(dataset_id: str) -> dict:
+    return next((e for e in _rio_duo() if e.get("_ckan_id") == dataset_id), {})
+
+
+def tabelbestanden(dataset_id: str) -> list[tuple[int, str]]:
+    """(index, naam) van de bestanden van een DUO-dataset die als tabel te laden zijn (#408).
+
+    Uit de catalogus, zonder download; leeg als de catalogus de bestanden niet kent.
+    """
+    return _tabelbestanden(_duo_entry(dataset_id))
+
+
+def is_documentbestand(dataset_id: str, resource: int) -> bool:
+    """De catalogus kent dit bestand als iets anders dan een tabel, bijv. een PDF-changelog (#408).
+
+    Een index die de catalogus niet kent, beoordeelt riodata bij het laden: de catalogus
+    kan achterlopen op de bron.
+    """
+    bestanden = _duo_entry(dataset_id).get("_resources") or []
+    return 0 <= resource < len(bestanden) and not _is_tabel(bestanden[resource])
+
+
 def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
     """(index, naam) van de resources van een DUO-dataset die de kolom hebben of noemen.
 
@@ -626,8 +677,8 @@ def dataset_details(dataset_id: str) -> str:
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
         if eid == dataset_id:
             logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
-            if not _via_chat(entry):
-                return json.dumps({"bron": entry.get("bron", dataset_id), **_NIET_OPVRAAGBAAR}, ensure_ascii=False)
+            if reden := _niet_opvraagbaar(entry):
+                return json.dumps({"bron": entry.get("bron", dataset_id), **reden}, ensure_ascii=False)
             if entry.get("leverancier") == "DUO":
                 from . import duo  # lazy: duo importeert catalog
 
