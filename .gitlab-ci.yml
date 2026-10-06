@@ -222,7 +222,7 @@ debug:logs:
   variables:
     KUBERNETES_NAMESPACE: services-onderwijsdata-chat
     CLUSTER: $ENVIRONMENT_CLUSTER
-  image: cr.surf.nl/proxy-quay/helmpack/chart-testing:v3.14.0@sha256:425ff3058dfc192fffb94e471e732b9bc995c375df963eba417ff01aea594e83
+  image: cr.surf.nl/proxy-quay/helmpack/chart-testing:v3.15.0@sha256:54317f2d93730ea9ca1236e3d79cd95d74110b8d733b6ab124e5829209b5f4e4
   script:
     - kubectl config use-context surf-internal/sdp/infrastructure/kubernetes-clusters:${CLUSTER}
     - kubectl get pods -n ${KUBERNETES_NAMESPACE}
