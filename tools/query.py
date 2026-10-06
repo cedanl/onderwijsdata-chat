@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import cbs_afronding, dekking, duo, fouten, instelling, periode, store
+from . import cbs_afronding, dekking, duo, fouten, instelling, kleine_aantallen, periode, store
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
@@ -179,6 +179,17 @@ def _empty_melding(data_key: str, complete: bool) -> str:
     return melding
 
 
+def _met_ondergrens(rows: list[dict], df: pd.DataFrame, vier: pd.DataFrame) -> None:
+    """Zet bij een som met als-4-cellen de ondergrens ernaast: het werkelijke totaal ligt ertussen (#406)."""
+    for row, index in zip(rows, df.index, strict=True):
+        if index not in vier.index:
+            continue
+        for kolom, n in vier.loc[index].items():
+            if n and row.get(kolom) is not None:
+                laag, _ = kleine_aantallen.bereik(row[kolom], int(n))
+                row[f"{kolom} (ondergrens bij 1-4 als 4)"] = laag
+
+
 def query_data(
     data_key: str,
     filters: dict | None = None,
@@ -241,6 +252,8 @@ def query_data(
         df = df[columns]
 
     cells = duo.select_cells(duo.sentinel_cells(data_key), df)
+    vier = kleine_aantallen.vier_cellen(df) if known and known.vier_regel else None
+    vier_totaal = int(vier.to_numpy().sum()) if vier is not None else None
     notes = []
     if group_by or aggregate:
         group_by = periode.met_labelkolom_in_groep(df, group_by)
@@ -254,6 +267,9 @@ def query_data(
         if noot := cbs_afronding.van_key(data_key):
             notes.append(noot)
         cells = duo.aggregate_cells(cells, df, group_by, agg)
+        if vier is not None and vier_totaal:
+            notes += kleine_aantallen.noten({str(c): int(n) for c, n in vier.sum().items() if n})
+            vier = duo.aggregate_cells(vier, df, group_by or [], agg)
         df = agg
 
     transformed = filters or columns or group_by
@@ -261,7 +277,14 @@ def query_data(
         sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
         suffix = hashlib.md5(sig.encode()).hexdigest()[:8]
         result_key = f"{data_key}:{suffix}"
-        store.derive(data_key, result_key, df, stap=_stap(filters, columns, group_by, aggregate), **gedekt)
+        store.derive(
+            data_key,
+            result_key,
+            df,
+            stap=_stap(filters, columns, group_by, aggregate),
+            vier_cellen=vier_totaal,
+            **gedekt,
+        )
         # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
         # van de selectie reizen wel mee: het totaal blijft een ondergrens.
         duo.record_sentinel_cells(result_key, cells)
@@ -278,6 +301,8 @@ def query_data(
         {k: duo.json_waarde(v, afronden) for k, v in row.items()}
         for row in df.head(adaptive_max).to_dict(orient="records")
     ]
+    if vier is not None and vier_totaal and (group_by or aggregate):
+        _met_ondergrens(rows, df.head(adaptive_max), vier)
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
     if labels:
         result["instellingen"] = labels

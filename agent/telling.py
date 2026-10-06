@@ -43,6 +43,7 @@ def telling_blok(tool_results: list[str]) -> str:
     """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens of afronding raakte."""
     definities = _teldefinities(tool_results)
     ondergrens: dict[str, None] = {}
+    bovengrens: dict[str, None] = {}
     afgerond: dict[str, str] = {}
     for key in data_keys(tool_results):
         known = store.meta(key)
@@ -52,12 +53,19 @@ def telling_blok(tool_results: list[str]) -> str:
             continue
         if _ondergrens(key):
             ondergrens.setdefault(known.dataset)
+        if known.afgeleid_van and known.vier_cellen:
+            bovengrens.setdefault(known.dataset)
     regels = [f"- {_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
     regels += [f"- {_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
     if ondergrens:
         regels.append(
             f"- Ondergrens: in de gekozen selectie van {', '.join(ondergrens)} zijn cellen met -1 uitgesloten "
             f"({BETEKENIS}); de totalen zijn daardoor een ondergrens."
+        )
+    if bovengrens:
+        regels.append(
+            f"- Bovengrens: in de gekozen selectie van {', '.join(bovengrens)} zijn kleine aantallen (1 t/m 4) als 4 "
+            "gepubliceerd; de totalen zijn daardoor een bovengrens."
         )
     return f"{_KOP}\n" + "\n".join(regels) if regels else ""
 
