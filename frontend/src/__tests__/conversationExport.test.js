@@ -7,6 +7,7 @@ const GESPREK = [
   { role: 'user', content: 'Hoeveel studenten heeft de HU?' },
   {
     role: 'assistant', content: 'De HU had **38.000** studenten.', done: true,
+    tussentekst: ['We need to capture the result from previous run_analysis.'],
     controle: ['het jaar 2025 staat niet in de data'],
     tools: [
       { name: 'get_duo_data', label: 'Data opgehaald', done: true, snippet: SNIPPET },
@@ -33,6 +34,10 @@ describe('conversationMarkdown (#366)', () => {
     expect(tekst).toContain('## Vraag 1\n\nHoeveel studenten heeft de HU?')
     expect(tekst).toContain('### Antwoord\n\nDe HU had **38.000** studenten.')
     expect(tekst).toContain('## Vraag 2\n\nEn de HAN?')
+  })
+
+  it('laat tekst uit de toolronden buiten het antwoord (#393)', () => {
+    expect(md()).not.toContain('We need to capture')
   })
 
   it('geeft per stap het label en de code die hem reproduceert', () => {
