@@ -24,7 +24,7 @@ from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleiding
 from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst
 from .models import build_system
-from .probleem import Probleem, meldingen, veilig
+from .probleem import INGEHOUDEN, Probleem, hard, harde, meldingen, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
@@ -198,7 +198,9 @@ async def run(
 
     def ongedekt(n: str) -> Probleem:
         if unverified(n, [], said_by_user):
-            return Probleem(f"{n} staat niet in de opgehaalde data.")
+            (verzonnen,) = hard([Probleem(f"{n} staat niet in de opgehaalde data.")])
+            return verzonnen
+        # Zacht: een correcte weerlegging citeert het getal van de gebruiker ook (#207, #214).
         return Probleem(
             f"{n} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
@@ -208,17 +210,18 @@ async def run(
         return [ongedekt(n) for n in unverified(text, tool_results, earlier)]
 
     def check(text: str, tool_results: list[str]) -> list[str]:
+        # hard(): blijft het probleem na de herkansing, dan wordt het antwoord ingehouden (#207).
         return [
             *veilig(ongedekte_getallen, text, tool_results),
-            *veilig(ontbrekende_schooljaren, last_user_msg, tool_results),
-            *veilig(ontbrekende_instellingen, last_user_msg, tool_results),
-            *veilig(onvolledige_selecties, text, tool_results),
+            *hard(veilig(ontbrekende_schooljaren, last_user_msg, tool_results)),
+            *hard(veilig(ontbrekende_instellingen, last_user_msg, tool_results)),
+            *hard(veilig(onvolledige_selecties, text, tool_results)),
             *veilig(verkeerde_opleidingsvormen, text, tool_results),
             *veilig(onbekende_datasets, text),
             *veilig(ongebruikte_bronnen, text, tool_results),
-            *veilig(verkeerd_gebonden, text, tool_results),
-            *veilig(verkeerde_kenmerken, text, tool_results),
-            *veilig(verkeerde_kpi_periodes, text, tool_results),
+            *hard(veilig(verkeerd_gebonden, text, tool_results)),
+            *hard(veilig(verkeerde_kenmerken, text, tool_results)),
+            *hard(veilig(verkeerde_kpi_periodes, text, tool_results)),
             *veilig(kpi_naast_filter, text, tool_results),
             *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),
             *veilig(onbeschikbaar_zonder_zoekpad, last_user_msg, text, tool_results),
@@ -310,6 +313,9 @@ async def run(
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
     if result.problems:
         logger.warning("CONTROLE na herkansing nog niet in orde  model=%s  %s", chosen_model, result.problems)
+    if harde(result.problems):
+        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", chosen_model, text_content[:500])
+        text_content = INGEHOUDEN
     await emit(
         {
             "type": "message_end",

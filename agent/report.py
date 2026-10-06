@@ -26,7 +26,7 @@ from agent.dashboard import (
     build_dataset_context,
 )
 from agent.loop import ToolCall, tool_loop
-from agent.probleem import meldingen
+from agent.probleem import harde, meldingen
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron, samengevoegd
 from agent.report_periode import bijgesneden, gevraagd_bereik
@@ -209,9 +209,13 @@ async def generate(
                 "level": "warning",
             }
         )
-    if result.problems:
+    # Alleen een hard probleem houdt het rapport tegen; een zacht wordt een waarschuwing (#207).
+    if fout := harde(result.problems):
         logger.error("RAPPORT GEWEIGERD: %s", result.problems)
-        raise ValueError(f"Rapport niet consistent met de data: {meldingen(result.problems)[0]} Probeer het opnieuw.")
+        raise ValueError(f"Rapport niet consistent met de data: {meldingen(fout)[0]} Probeer het opnieuw.")
+    if result.problems:
+        logger.warning("RAPPORT MET WAARSCHUWING: %s", result.problems)
+        await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
     return _parse_spec_from_response(result.text, figures, context, author)
 
 
