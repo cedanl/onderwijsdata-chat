@@ -16,8 +16,11 @@ met een waarschuwing.
 """
 
 from collections.abc import Callable, Iterable
+from typing import TypeVar
 
 from core.errors import log_interne_fout
+
+T = TypeVar("T")
 
 # Wat de gebruiker ziet in plaats van een antwoord met een hard probleem; de meldingen staan eronder.
 INGEHOUDEN = (
@@ -41,7 +44,7 @@ def meldingen(problemen: list[str]) -> list[str]:
     return list(dict.fromkeys(getattr(p, "melding", p) for p in problemen))
 
 
-def veilig(controle: Callable[..., Iterable[str]], *args) -> list[str]:
+def veilig(controle: Callable[..., Iterable[T]], *args) -> list[T]:
     """De problemen van een controle; leeg als de controle zelf een fout geeft."""
     try:
         return list(controle(*args))

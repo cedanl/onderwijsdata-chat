@@ -3,6 +3,8 @@ import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
+import CitedNumber from '../components/CitedNumber'
+import { rehypeCitaties } from '../citations'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -103,6 +105,7 @@ const MARKDOWN_COMPONENTS = {
   pre({ children }) { return <>{children}</> },
   code: CodeBlock,
   th: KolomKop,
+  span: CitedNumber,
 }
 
 // Announced once an answer is complete; streaming deltas would flood a screen reader.
@@ -164,7 +167,15 @@ function MessageContent({ msg }) {
   if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
   if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
   const { antwoord, telling, samenvatting } = splitsTelling(msg.content)
-  const markdown = text => <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{text}</ReactMarkdown>
+  const markdown = text => (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeCitaties(msg.citaties)]}
+      components={MARKDOWN_COMPONENTS}
+    >
+      {text}
+    </ReactMarkdown>
+  )
   if (!telling) return markdown(msg.content)
   return (
     <>

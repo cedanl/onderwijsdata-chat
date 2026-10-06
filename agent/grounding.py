@@ -48,8 +48,13 @@ def _bewijs(tool_results: list[str]) -> list[str]:
     return [r for r in tool_results if not _bronloos(str(r))]
 
 
+def bewijs_getallen(result: str) -> set[str]:
+    """De gehele getallen (cijfers) die één toolresultaat als bewijs levert; leeg bij een bronloos resultaat."""
+    return set() if _bronloos(str(result)) else set(_TOOL_NUMBER.findall(str(result)))
+
+
 def _tool_integers(tool_results: list[str]) -> set[str]:
-    return {n for result in _bewijs(tool_results) for n in _TOOL_NUMBER.findall(str(result))}
+    return {n for result in tool_results for n in bewijs_getallen(result)}
 
 
 def checked_numbers(text: str) -> list[tuple[str, str]]:

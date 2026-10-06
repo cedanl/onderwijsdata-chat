@@ -12,6 +12,7 @@ from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
+from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
 from .grafiekvraag import ontbrekende_grafiek
@@ -323,6 +324,7 @@ async def run(
             "type": "message_end",
             "content": text_content,
             "actions": [],
+            **({"citaties": cites} if (cites := veilig(citaties, text_content, result.steps)) else {}),
             **({"truncated": True} if truncated else {}),
             **({"partial": True} if result.wrapped_up else {}),
             **({"controle": meldingen(result.problems)} if result.problems else {}),

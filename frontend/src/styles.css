@@ -640,6 +640,19 @@ input, textarea { font: inherit; }
 .reasoning-tussentekst { margin: 6px 0 0; font-size: .75rem; font-style: italic; color: var(--gray-500); white-space: pre-wrap; }
 
 
+.citatie { position: relative; display: inline-block; }
+.citatie-getal {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  border-bottom: 1px dotted var(--accent-text);
+}
+.citatie-getal:hover, .citatie-getal[aria-expanded="true"] { color: var(--accent-text); }
+.citatie-getal:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
+.citatie-uitleg {
+  position: absolute; z-index: 10; left: 0; top: 100%; margin-top: 4px; min-width: 14rem; max-width: 20rem;
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; font-size: .75rem; font-weight: 400;
+  background: var(--white); color: var(--gray-700, inherit); border: 1px solid var(--gray-200);
+  border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); overflow-wrap: anywhere;
+}
 .reasoning-snippets { margin-top: 8px; }
 .reasoning-snippet-block { margin-bottom: 8px; }
 .reasoning-snippet-label {
