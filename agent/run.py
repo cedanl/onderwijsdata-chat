@@ -4,7 +4,7 @@ import logging
 
 import plotly.io as pio
 
-from core.config import MAX_TOOL_ITERATIONS, MODEL, SEARCH_CATALOG_LIMIT
+from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -20,7 +20,7 @@ from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
 from .kpi_scope import kpi_naast_filter
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
-from .loop import ToolCall, tool_loop
+from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst
 from .models import build_system
 from .probleem import Probleem, meldingen, veilig
@@ -29,6 +29,7 @@ from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
+from .timebox import timebox
 from .vaste_antwoorden import sentinelvraag, weigering
 
 logger = logging.getLogger(__name__)
@@ -146,10 +147,6 @@ def _correction(problems: list[str]) -> str:
 
 _MAX_CLARIFY_RONDES = 1
 
-# Na 45 s kwam de melding pas als de gebruiker al dacht dat de app hing (UX-audit P3-5).
-# De voortgangsbalk toont de verstreken tijd; deze melding zegt dat lang duren normaal is.
-SLOW_WARNING_S = 20
-
 
 def tools_for(session: dict) -> list[dict]:
     """De toolset van deze beurt. Na een beantwoorde scopevraag is clarify_scope er niet meer:
@@ -243,39 +240,35 @@ async def run(
         record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
         await _handle_figure(call.name, figure, session, emit)
 
-    async def _slow_warning():
-        await asyncio.sleep(SLOW_WARNING_S)
-        await emit(
-            {
-                "type": "toast",
-                "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
-                "level": "info",
-            }
-        )
-
-    slow_task = asyncio.create_task(_slow_warning())
-    try:
-        result = await tool_loop(
-            history,
-            model=chosen_model,
-            tools=tools_for(session),
-            emit=emit,
-            stop_event=stop_event,
-            system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
-            stream_text=True,
-            on_llm_start=lambda: emit({"type": "message_start"}),
-            on_tool_result=keep,
-            tool_limits=_TOOL_LIMITS,
-            halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
-            max_iterations=MAX_TOOL_ITERATIONS,
-            max_result_chars=_MAX_TOOL_RESULT_CHARS,
-            check=check,
-            correction=_correction,
-            on_correction=withdraw,
-            wrap_up=AFRONDEN,
-        )
-    finally:
-        slow_task.cancel()
+    stop = stop_event or asyncio.Event()
+    async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
+        try:
+            async with asyncio.timeout(box.afbreken_s):
+                result = await tool_loop(
+                    history,
+                    model=chosen_model,
+                    tools=tools_for(session),
+                    emit=emit,
+                    stop_event=stop,
+                    system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
+                    stream_text=True,
+                    on_llm_start=lambda: emit({"type": "message_start"}),
+                    on_tool_result=keep,
+                    tool_limits=_TOOL_LIMITS,
+                    halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+                    max_iterations=MAX_TOOL_ITERATIONS,
+                    max_result_chars=_MAX_TOOL_RESULT_CHARS,
+                    check=check,
+                    correction=_correction,
+                    on_correction=withdraw,
+                    wrap_up=AFRONDEN,
+                )
+        except TimeoutError:
+            # Vastgelopen aanroep die het stopsignaal niet zag.
+            result = LoopResult(aborted="tools")
+    if box.verlopen:
+        logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
+        await emit(box.melding())
 
     if result.aborted == "tools":
         # Stopped while tools ran: close the open message as aborted. No
