@@ -26,7 +26,7 @@ import { answerModels } from '../answerModel'
 import { personalizeQuestion } from '../suggestions'
 import {
   appendPage, clearCurrentChat, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory,
-  loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat,
+  loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, restorableMessages,
   upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
@@ -280,11 +280,12 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
     clear()
     setSidebarOpen(false)
     setConversationId(String(conv.id))
-    savedJsonRef.current = JSON.stringify(conv.messages)
-    setRestoredMessages(conv.messages)
+    const restored = restorableMessages(conv.messages)
+    savedJsonRef.current = JSON.stringify(restored)
+    setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
-    setSelectedModel(current => pickModel(models, conversationModel(conv.messages), current))
-    sendHistory(conv.messages)
+    setSelectedModel(current => pickModel(models, conversationModel(restored), current))
+    sendHistory(restored)
   }, [clear, saveConversation, sendHistory, models])
 
   // Older conversations stay on the server until asked for (#123).

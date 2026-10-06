@@ -1,0 +1,15 @@
+{
+  "_toelichting": "Opgeslagen gesprek met een verduidelijking, in de vormen die op test in de database staan: berichten uit de server-kopie van voor !133 (tool-rol, tool_calls zonder tekst, 'OK' en catalogus-JSON als toolresultaat) en een afgebroken antwoord zonder inhoud.",
+  "messages": [
+    { "id": 1, "role": "user", "content": "Hoeveel mbo-studenten zijn er?" },
+    { "role": "assistant", "content": null, "tool_calls": [{ "id": "c1", "type": "function", "function": { "name": "search_datasets", "arguments": "{\"query\":\"mbo studenten\"}" } }] },
+    { "role": "tool", "tool_call_id": "c1", "content": "[{\"_ckan_id\":\"p01-mbo-studenten\",\"title\":\"Studenten mbo\"}]" },
+    { "role": "assistant", "content": null, "tool_calls": [{ "id": "c2", "type": "function", "function": { "name": "clarify_scope", "arguments": "{}" } }] },
+    { "role": "tool", "tool_call_id": "c2", "content": "OK" },
+    { "id": 2, "role": "assistant", "content": "Welk schooljaar bedoel je?", "clarification": ["2023/24", "Alle jaren"], "done": true },
+    { "id": 3, "role": "user", "content": "2023/24" },
+    { "id": 4, "role": "assistant", "content": "In 2023/24 waren er …", "figures": [{ "label": "Studenten mbo", "json": "{\"data\":[{\"type\":\"bar\",\"x\":[\"2023/24\"],\"y\":[1]}],\"layout\":{}}" }], "tools": [{ "name": "duo_query", "label": "DUO-data ophalen", "done": true }], "done": true },
+    { "id": 5, "role": "user", "content": "En per sector?" },
+    { "id": 6, "role": "assistant" }
+  ]
+}
