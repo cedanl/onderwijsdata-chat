@@ -34,6 +34,13 @@ def test_version_returns_200(client):
     assert resp.status_code == 200
 
 
+def test_api_version_geeft_json_en_geen_spa(client):
+    """#405: /api/version viel terug op de SPA-HTML."""
+    resp = client.get("/api/version")
+    assert resp.headers["content-type"].startswith("application/json")
+    assert resp.json()["version"] == client.get("/version").json()["version"]
+
+
 def test_version_returns_version_string(client):
     resp = client.get("/version")
     data = resp.json()

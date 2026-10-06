@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from agent.grounding import unverified
 from agent.stream import accumulate_stream
-from agent.tekens import normaliseer
+from agent.tekens import normaliseer, zonder_citaatkop
 
 
 def _chunk(content):
@@ -39,3 +39,17 @@ def test_grondingscontrole_herkent_het_getal_voor_en_na_normalisatie():
     ruw = "Avans had 6\u202f447 eerstejaars."
     assert unverified(ruw, data, []) == []
     assert unverified(normaliseer(ruw), data, []) == []
+
+
+def test_openingscitaat_met_onderzoeksvraag_wordt_een_alinea():
+    """#405: Opus begon met twee lege regels en '> **Onderzoeksvraag**'."""
+    tekst = "\n\n> **Onderzoeksvraag**: hoeveel eerstejaars\n> had de HU?\n\nDe HU had 8.123 eerstejaars."
+    assert (
+        zonder_citaatkop(tekst)
+        == "**Onderzoeksvraag**: hoeveel eerstejaars\nhad de HU?\n\nDe HU had 8.123 eerstejaars."
+    )
+
+
+def test_ander_citaat_blijft_staan():
+    tekst = "> Bron: DUO\n\nTekst."
+    assert zonder_citaatkop(tekst) == tekst

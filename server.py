@@ -116,6 +116,7 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
 
 @app.get("/version", tags=["info"])
+@app.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
     """Versie uit pyproject.toml, de commit waaruit het image is gebouwd (#231) en de catalogus (#361)."""
 

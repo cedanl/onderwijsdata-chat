@@ -25,6 +25,7 @@ from .probleem import Probleem, meldingen, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key
 from .stream import Emit
+from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .vaste_antwoorden import sentinelvraag, weigering
 
@@ -297,7 +298,7 @@ async def run(
 
     text_content = weigering(
         result.text, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(result.text, result.tool_results)
+    ) or met_telling(zonder_citaatkop(result.text), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
