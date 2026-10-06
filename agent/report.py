@@ -30,6 +30,7 @@ from agent.probleem import meldingen
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron, samengevoegd
 from agent.report_periode import bijgesneden, gevraagd_bereik
+from agent.session_data import rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
@@ -90,6 +91,10 @@ def _describe_call(call: dict) -> str:
     return f"{call['name']} {json.dumps(call['arguments'], ensure_ascii=False)}"
 
 
+# Per eerdere berekening in de rapportprompt; de controle ziet het hele resultaat (#397).
+_MAX_BEWIJS_TEKENS = 1500
+
+
 def _describe_herkomst(herkomst: list[dict]) -> str:
     """The tool calls that produced a dataset, so the report reuses that selection (#174)."""
     if not herkomst:
@@ -113,12 +118,30 @@ def _build_system_prompt(context: dict) -> str:
 
     instelling = context.get("instelling", "")
     topic = context.get("topic", "")
+    berekeningen = "\n".join(
+        f"- {b['tool']}({json.dumps(b['argumenten'], ensure_ascii=False, default=str)}): "
+        f"{b['resultaat'][:_MAX_BEWIJS_TEKENS]}"
+        for b in context.get("berekeningen") or []
+    )
+    berekeningen_section = (
+        f"""
+
+## Eerder berekend in het gesprek
+
+Deze uitkomsten kwamen uit de data; je mag ze in het rapport gebruiken, met dezelfde selectie.
+
+{berekeningen}
+"""
+        if berekeningen
+        else ""
+    )
 
     injected = f"""
 
 ## Beschikbare datasets in deze sessie
 
 {datasets_section}
+{berekeningen_section}
 
 ## Gebruikerscontext
 - Instelling: {instelling or "niet opgegeven"}
@@ -144,6 +167,9 @@ async def generate(
     if not context["datasets"]:
         raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
+    # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
+    bewijs = rekenbewijs(session)
+    context["berekeningen"] = bewijs
     messages: list[dict] = [
         {"role": "system", "content": _build_system_prompt(context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
@@ -158,7 +184,7 @@ async def generate(
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         spec = _parse_spec_from_response(text, figures, context, author)
-        return report_problems(spec, figures, [*tool_results, dataset_context])
+        return report_problems(spec, figures, [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs)])
 
     result = await tool_loop(
         messages,

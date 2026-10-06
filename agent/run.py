@@ -23,7 +23,7 @@ from .metatekst import metatekst
 from .models import build_system
 from .probleem import Probleem, meldingen, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
-from .session_data import record_data_key
+from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
@@ -237,6 +237,7 @@ async def run(
 
     async def keep(call: ToolCall, result: str, figure) -> None:
         record_data_key(session, result, {"name": call.name, "arguments": call.args})
+        record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
         await _handle_figure(call.name, figure, session, emit)
 
     async def _slow_warning():
