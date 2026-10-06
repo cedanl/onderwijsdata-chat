@@ -19,6 +19,9 @@ loop_module = importlib.import_module("agent.loop")
         "wat betekent -1 in de data",
         "Wat is -1 bij DUO?",
         "Waarvoor staat − 1 in een cel?",
+        # #403: een langere vraag raakte de regex niet; Opus antwoordde uit het geheugen.
+        "In de DUO-data staan soms waarden van -1. Wat betekent dat, en hoe moet ik daarmee rekenen?",
+        "Ik zie -1 in het bestand met eerstejaars; waar staat dat voor?",
     ],
 )
 def test_betekenisvraag_over_min_een_krijgt_het_vaste_antwoord(vraag):
@@ -27,7 +30,12 @@ def test_betekenisvraag_over_min_een_krijgt_het_vaste_antwoord(vraag):
 
 @pytest.mark.parametrize(
     "vraag",
-    ["Hoeveel studenten had de HU in 2024?", "Wat betekent een groei van -1,5% voor het hbo?", "Wat is 21 of -10?"],
+    [
+        "Hoeveel studenten had de HU in 2024?",
+        "Wat betekent een groei van -1,5% voor het hbo?",
+        "Wat is 21 of -10?",
+        "Het aantal daalde met -1 procentpunt; hoeveel studenten zijn dat?",
+    ],
 )
 def test_andere_vragen_zijn_geen_betekenisvraag(vraag):
     assert sentinelvraag(vraag) is None
@@ -90,3 +98,25 @@ def test_run_vervangt_een_kale_weigering(monkeypatch):
     )
     assert text == WEIGER_ANTWOORD
     assert events[-1]["content"] == WEIGER_ANTWOORD
+
+
+def test_bewering_zonder_tools_en_zonder_data_wordt_de_weigering():
+    """#403: gpt-oss verzon 'op 30 september 2023' zonder tool of bron."""
+    assert weigering("Ajax speelt thuis tegen PSV op 30 september 2023.", []) == WEIGER_ANTWOORD
+
+
+def test_vervolgvraag_over_eerdere_data_mag_zonder_tools_een_getal_noemen():
+    assert weigering("Dat is een daling van 2,8%.", [], eerder_gesprek=True) is None
+
+
+def test_antwoord_zonder_getal_en_zonder_tools_blijft():
+    assert weigering("Hallo! Stel gerust een vraag over onderwijsdata.", []) is None
+
+
+def test_run_vervangt_een_verzonnen_feit_zonder_tools(monkeypatch):
+    text, _ = _run(
+        monkeypatch,
+        "Wanneer speelt Ajax thuis tegen PSV?",
+        [StreamResult(text="Ajax speelt thuis tegen PSV op 30 september 2023.", tool_calls=[])] * 3,
+    )
+    assert text == WEIGER_ANTWOORD

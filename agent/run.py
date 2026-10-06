@@ -295,7 +295,9 @@ async def run(
         await emit({"type": "message_end", "content": text_content, "actions": []})
         return text_content
 
-    text_content = weigering(result.text, result.tool_calls) or met_telling(result.text, result.tool_results)
+    text_content = weigering(
+        result.text, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
+    ) or met_telling(result.text, result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
