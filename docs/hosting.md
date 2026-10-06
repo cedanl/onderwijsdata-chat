@@ -75,8 +75,8 @@ docker run -p 8000:8000 \
   -e CHAT_SECRET="..." \
   -e CHAT_USERS="admin:wachtwoord" \
   -e AZURE_AI_API_KEY="..." \
-  -e MODEL="azure_ai/claude-sonnet-4-6" \
-  -e AVAILABLE_MODELS="azure_ai/claude-haiku-4-5,azure_ai/claude-sonnet-4-6,azure_ai/gpt-4o" \
+  -e MODEL="azure_ai/claude-sonnet-5-5" \
+  -e AVAILABLE_MODELS="azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5" \
   onderwijsdata-chat
 ```
 
