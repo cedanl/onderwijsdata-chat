@@ -12,12 +12,24 @@ export function persistConversationHistory(list) {
 
 export const newConversationId = () => crypto.randomUUID()
 
+const showsSomething = m =>
+  !!(m.content || m.figures?.length || m.tools?.length || m.clarification || m.vervangen?.length)
+
+// A reopened conversation shows what the chat showed (#109). Records from the old server copy
+// also hold tool messages ('OK', catalogue JSON) and tool calls without text, and a stopped
+// answer can be saved empty; those would render as raw JSON or a bubble that keeps typing.
+export function restorableMessages(messages) {
+  return messages.filter(m => m.role === 'user' || (m.role === 'assistant' && showsSomething(m)))
+}
+
 // The open conversation survives a reload as {id, messages}; older builds stored only the messages.
 export function loadCurrentChat() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT) || 'null')
-    if (Array.isArray(stored)) return { id: newConversationId(), messages: stored }
-    if (typeof stored?.id === 'string' && Array.isArray(stored.messages)) return stored
+    if (Array.isArray(stored)) return { id: newConversationId(), messages: restorableMessages(stored) }
+    if (typeof stored?.id === 'string' && Array.isArray(stored.messages)) {
+      return { id: stored.id, messages: restorableMessages(stored.messages) }
+    }
   } catch { /* unreadable: start fresh */ }
   return { id: newConversationId(), messages: [] }
 }

@@ -3,8 +3,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS } from '../constants'
 import {
   appendPage, conversationRecord, historyPage, loadConversationHistory, loadCurrentChat, nextPageQuery,
-  persistConversationHistory, persistCurrentChat, upsertConversation,
+  persistConversationHistory, persistCurrentChat, restorableMessages, upsertConversation,
 } from '../conversationStore'
+import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
+import herstelClarify from './fixtures/herstelClarify.json'
 
 const question = { role: 'user', content: 'Hoeveel studenten heeft de HU?' }
 const answer = { role: 'assistant', content: '26.370', figures: ['{"data":[]}'] }
@@ -110,5 +112,37 @@ describe('conversation history', () => {
     expect(loadConversationHistory()).toEqual([{ id: 'a', title: 'T' }])
     localStorage.setItem('openEDUdata_conversations', 'x')
     expect(loadConversationHistory()).toEqual([])
+  })
+})
+
+// #109: a reopened conversation showed raw tool JSON, 'OK' and a bubble that kept typing.
+describe('restorableMessages', () => {
+  const { messages } = herstelClarify
+  const restored = restorableMessages(messages)
+
+  it('keeps only what the chat itself showed', () => {
+    expect(restored.map(m => m.id)).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it('shows no tool results, OK or catalogue JSON', () => {
+    const text = restored.map(m => m.content).join('\n')
+    expect(text).not.toMatch(/_ckan_id|^OK$/m)
+    expect(restored.some(m => m.tool_calls)).toBe(false)
+  })
+
+  it('leaves no assistant message that renders as an empty or typing bubble', () => {
+    const empty = restored.filter(m => m.role === 'assistant' && !m.content && !m.figures?.length && !m.tools?.length)
+    expect(empty).toEqual([])
+  })
+
+  it('keeps the card answered after a reload', () => {
+    const card = restored.findIndex(m => m.clarification)
+    expect(clarificationAnswer(restored, card)).toEqual({ answered: true, choice: '2023/24' })
+    expect(hasOpenClarification(restored)).toBe(false)
+  })
+
+  it('applies to the chat that was open before the reload', () => {
+    persistCurrentChat('conv-a', messages)
+    expect(loadCurrentChat().messages).toEqual(restored)
   })
 })
