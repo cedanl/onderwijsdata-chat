@@ -19,7 +19,7 @@ export default function HomePage({ dashboardsEnabled = true }) {
         <div className="container">
           <div className="hero-content">
             <h1>Van open onderwijsdata naar <em>reproduceerbare inzichten</em></h1>
-            <p>openEDUdata+ koppelt en harmoniseert alle open-onderwijs-databronnen alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg een onderbouwd, herleidbaar antwoord.</p>
+            <p>openEDUdata+ koppelt en harmoniseert open onderwijsdata van CBS, DUO en RIO alvast voor je. Stel een ad-hoc vraag over instroom, voortgang, arbeidsmarkt of diplomering en krijg een onderbouwd, herleidbaar antwoord.</p>
             <div className="hero-actions">
               <button type="button" className="btn-primary" onClick={() => navigate('/chat')}>Probeer de chat →</button>
               {dashboardsEnabled && (

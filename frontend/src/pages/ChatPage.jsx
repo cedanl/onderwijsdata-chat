@@ -625,7 +625,7 @@ function WelcomeScreen({ instelling, functie, children }) {
     : 'Stel je vraag aan openEDUdata+'
   const sub = functie
     ? `Als ${functie} krijg je onderbouwde antwoorden over instroom, voortgang, arbeidsmarkt en diplomering — direct uit open onderwijsdata.`
-    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer de open-onderwijs-databronnen en geef je een onderbouwd antwoord.'
+    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
   return (
     <div className="chat-welcome">
       <div className="chat-welcome-icon">
