@@ -1218,6 +1218,14 @@ html.dark .context-limit-banner--full {
 }
 .export-conversation-btn:hover { color: var(--accent-text); }
 
+/* An answer the check withdrew (#398): muted, collapsed, still readable. */
+.message-ingetrokken { font-size: .8rem; color: var(--muted-text); }
+.message-ingetrokken summary { cursor: pointer; padding: 4px 0; }
+.message-ingetrokken-tekst {
+  white-space: pre-wrap; margin: 4px 0 0; padding: 8px 12px;
+  border-left: 3px solid var(--gray-200);
+}
+
 /* ─── Feedback Modal ──────────────────────────────────────── */
 .wb-viewer-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .wb-download-btn {

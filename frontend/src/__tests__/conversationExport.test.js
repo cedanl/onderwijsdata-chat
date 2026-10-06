@@ -76,3 +76,29 @@ describe('conversationMarkdown (#366)', () => {
     expect(stappen).toEqual(['1. Data opgehaald', '2. Catalogus doorzocht'])
   })
 })
+
+describe('conversationMarkdown na een correctie (#398)', () => {
+  const GECORRIGEERD = [
+    { role: 'user', content: 'Hoeveel eerstejaars?' },
+    {
+      role: 'assistant', content: 'Het zijn er 36.201.', done: true,
+      vervangen: [{ tekst: 'Het zijn er 99.\nDat is veel.', naStap: 2 }],
+      tools: [
+        { name: 'search_catalog', label: 'Catalogus doorzocht', done: true },
+        { name: 'get_duo_data', label: 'Data opgehaald', done: true },
+        { name: 'compute_kpi', label: 'KPI berekend', done: true },
+      ],
+    },
+  ]
+  const tekst = conversationMarkdown(GECORRIGEERD, { datum: '6 oktober 2026', snippets: false })
+
+  it('neemt de ingetrokken tekst op, gemarkeerd', () => {
+    expect(tekst).toContain('> **Ingetrokken na controle:**\n> Het zijn er 99.\n> Dat is veel.')
+    expect(tekst.indexOf('Ingetrokken')).toBeLessThan(tekst.indexOf('### Antwoord'))
+  })
+
+  it('houdt de oorspronkelijke stappen en markeert wat na de correctie kwam', () => {
+    const stappen = tekst.split('\n').filter(r => /^\d+\. /.test(r))
+    expect(stappen).toEqual(['1. Catalogus doorzocht', '2. Data opgehaald', '3. KPI berekend (na de correctie)'])
+  })
+})
