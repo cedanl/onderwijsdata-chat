@@ -20,6 +20,8 @@ de laatste tag is 1.8.6.
 - Kolomdefinities gelden per DUO-dataset: mbo-opleidingsaanbod krijgt geen hbo-codes VT/DT/DU meer.
 - RIO-filters worden vóór het request getoetst aan het filtercontract van RIO, ook enum-waarden en datums;
   de melding noemt de geldige codes (bijv. status `G`, niet `OPEN`).
+- Een oorzaak in chat of rapport mag alleen als een eigen dataset haar aantoont (een getal uit een andere
+  bron dan het effect); anders staat er dat ze met deze gegevens niet vast te stellen is.
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
