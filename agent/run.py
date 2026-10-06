@@ -14,6 +14,7 @@ from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .grounding import unverified
 from .history import trim
+from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
 from .kpi_scope import kpi_naast_filter
@@ -217,6 +218,7 @@ async def run(
             *veilig(onbekende_datasets, text),
             *veilig(ongebruikte_bronnen, text, tool_results),
             *veilig(verkeerd_gebonden, text, tool_results),
+            *veilig(verkeerde_kenmerken, text, tool_results),
             *veilig(verkeerde_kpi_periodes, text, tool_results),
             *veilig(kpi_naast_filter, text, tool_results),
             *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),

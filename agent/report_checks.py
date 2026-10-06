@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from agent.binding import verkeerd_gebonden
 from agent.grounding import unsourced_numbers
+from agent.kenmerken import verkeerde_kenmerken
 from agent.kpi_periode import verkeerde_kpi_periodes
 from agent.labels import (
     onbekende_datasets,
@@ -118,5 +119,6 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += veilig(onbekende_datasets, text)
     problems += veilig(ongebruikte_bronnen, text, sources)
     problems += veilig(verkeerd_gebonden, text, sources)
+    problems += veilig(verkeerde_kenmerken, text, sources)
     problems += veilig(verkeerde_kpi_periodes, text, sources)
     return problems
