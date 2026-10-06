@@ -12,6 +12,7 @@ from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
+from .genoemde_bronnen import genoemde_bronnen
 from .grounding import unverified
 from .history import trim
 from .keuze import genegeerde_keuze
@@ -258,7 +259,7 @@ async def run(
             tools=tools_for(session),
             emit=emit,
             stop_event=stop_event,
-            system=build_system(settings),
+            system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
             stream_text=True,
             on_llm_start=lambda: emit({"type": "message_start"}),
             on_tool_result=keep,
