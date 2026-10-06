@@ -9,14 +9,19 @@ import json
 from unittest.mock import patch
 
 from tools import dispatch
-from tools.catalog import _rio_duo, dataset_counts, dataset_details, search_catalog
+from tools.catalog import _rio_duo, _rio_duo_alles, dataset_counts, dataset_details, search_catalog
 
 _CBS = [{"_cbs_id": "a", "bron": "x"}, {"_cbs_id": "b", "bron": "y", "_archief": True}]
 _RIO_DUO = [
-    {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen hoger onderwijs"},
-    {"leverancier": "DUO", "_ckan_id": "p03hoinges", "bron": "Ingeschrevenen hbo"},
-    {"leverancier": "RIO", "_rio_resource": "onderwijslocaties", "bron": "Onderwijslocaties"},
-    {"leverancier": "SBB", "_ckan_id": "sbb", "bron": "Stages"},
+    {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen hoger onderwijs", "onderwijstype": ["HO"]},
+    {"leverancier": "DUO", "_ckan_id": "p03hoinges", "bron": "Ingeschrevenen hbo", "onderwijstype": ["HO"]},
+    {
+        "leverancier": "RIO",
+        "_rio_resource": "onderwijslocaties",
+        "bron": "Onderwijslocaties",
+        "onderwijstype": ["Allen"],
+    },
+    {"leverancier": "SBB", "_ckan_id": "sbb", "bron": "Stages", "onderwijstype": ["MBO"]},
 ]
 
 
@@ -51,6 +56,7 @@ _BUITEN_SCOPE = {
     "leverancier": "DUO",
     "_ckan_id": "vo-examens",
     "bron": "Examenkandidaten vo",
+    "onderwijstype": ["MBO"],
     "_scope": {"mbo_hbo_wo": "buiten_scope", "reden": "Beschrijft VO."},
 }
 
@@ -62,10 +68,13 @@ def test_een_dataset_buiten_scope_is_voor_de_chat_onzichtbaar():
         patch("tools.catalog._cbs", return_value=[]),
         patch("tools.catalog._rio_catalog", return_value=[*_RIO_DUO, _BUITEN_SCOPE]),
     ):
+        _rio_duo_alles.cache_clear()
         _rio_duo.cache_clear()
         try:
             assert dataset_counts()["DUO"] == 2
-            assert "niet gevonden" in dataset_details("vo-examens")
+            # Het besluit van riodata geldt ook als onderwijstype mbo zegt (#355).
+            assert json.loads(dataset_details("vo-examens"))["buiten_scope"] is True
             assert "vo-examens" not in search_catalog("examenkandidaten")
         finally:
+            _rio_duo_alles.cache_clear()
             _rio_duo.cache_clear()

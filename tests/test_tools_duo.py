@@ -2,9 +2,13 @@ import json
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 
 from tools.duo import get_duo_data
 from tools.query import _apply_filters
+
+# Laadmechaniek met test-ID's; de scopegrens staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
 
 
 def _make_df(n: int = 5) -> pd.DataFrame:
@@ -12,23 +16,10 @@ def _make_df(n: int = 5) -> pd.DataFrame:
 
 
 def test_load_exception_returns_error_string():
-    with (
-        patch("tools.duo._duo.load", side_effect=Exception("niet gevonden")),
-        patch("tools.duo._duo.catalog", return_value=[]),
-    ):
+    with patch("tools.duo._duo.load", side_effect=Exception("niet gevonden")):
         result = get_duo_data("bestaat-niet")
     assert "Fout" in result
     assert "bestaat-niet" in result
-
-
-def test_load_exception_includes_similar_dataset_hint():
-    match = {"_ckan_id": "bestaat-niet-v2", "title": "bestaat-niet dataset"}
-    with (
-        patch("tools.duo._duo.load", side_effect=Exception("404")),
-        patch("tools.duo._duo.catalog", return_value=[match]),
-    ):
-        result = get_duo_data("bestaat-niet")
-    assert "bestaat-niet-v2" in result
 
 
 def test_successful_load_returns_schema_and_data_key():
@@ -167,7 +158,6 @@ def test_onbekende_resourcenaam_houdt_de_foutmelding_van_de_bron():
     with (
         patch("tools.duo._duo.resources", return_value=_RESOURCES),
         patch("tools.duo._duo.load", side_effect=ValueError("Geen resource met 'mbo'")),
-        patch("tools.duo._duo.catalog", return_value=[]),
     ):
         result = get_duo_data("p01hoinges-t21b", "mbo")
     assert "Geen resource met 'mbo'" in result

@@ -8,6 +8,9 @@ from core.config import RIO_PAGE_SIZE
 from tools import fouten
 from tools.rio import get_rio_data
 
+# Ophaalmechaniek met test-resources; de scopegrens staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
+
 
 def test_catalogus_titel_from_catalog():
     rows = [{"id": 1}]

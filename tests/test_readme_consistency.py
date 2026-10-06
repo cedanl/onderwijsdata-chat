@@ -5,10 +5,9 @@ from functools import cache
 from pathlib import Path
 
 import pytest
-from onderwijsdata import catalog as cbs_catalog
-from riodata import catalog as rio_catalog
 
 from core import config
+from tools.catalog import dataset_counts
 
 README_PATH = Path(__file__).parent.parent / "README.md"
 
@@ -20,10 +19,8 @@ def read_readme() -> str:
 
 @cache
 def catalogus_aantal(leverancier: str) -> int:
-    """Aantal datasets per leverancier, uit dezelfde bron als search_catalog leest."""
-    if leverancier == "CBS":
-        return len(cbs_catalog())
-    return sum(1 for entry in rio_catalog(source="all") if str(entry.get("leverancier", "")).upper() == leverancier)
+    """Aantal datasets per leverancier dat de chat kan opvragen, binnen het profiel mbo/hbo/wo (#355)."""
+    return dataset_counts()[leverancier]
 
 
 class TestReadmeConsistency:

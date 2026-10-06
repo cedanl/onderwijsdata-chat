@@ -75,7 +75,6 @@ def test_rio_geeft_een_code_en_geen_ruwe_providertekst():
 def test_duo_geeft_een_code_en_geen_ruwe_providertekst():
     with (
         patch("tools.duo._duo.load", side_effect=RuntimeError(_GEHEIM)),
-        patch("tools.duo._duo.catalog", return_value=[]),
         patch("tools.duo._resource_index", return_value=0),
     ):
         result = get_duo_data("p01hoinges")

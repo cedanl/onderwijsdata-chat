@@ -11,6 +11,8 @@ from tools import kleine_aantallen, store
 from tools.duo import get_duo_data
 from tools.query import query_data
 
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
+
 _DF = pd.DataFrame(
     {
         "GEMEENTE": ["A", "A", "A", "B", "B"],
@@ -20,7 +22,7 @@ _DF = pd.DataFrame(
 
 
 @pytest.fixture(autouse=True)
-def _geladen():
+def _geladen(zonder_scopegrens):
     store.clear()
     with patch("tools.duo._duo.load", return_value=_DF), patch("httpx.get", side_effect=AssertionError):
         json.loads(get_duo_data("01voins-v1", 0))

@@ -286,7 +286,7 @@ Geeft het aantal datasets per bron (CBS, DUO, RIO) dat de chat kan opvragen, plu
 
 **Gebruik:** bij een vraag naar hoeveel datasets er zijn. Een telling van zoekresultaten is geen catalogustotaal (#168).
 
-Records die riodata buiten mbo/hbo/wo plaatst (`_scope.mbo_hbo_wo = buiten_scope`) tellen niet mee en zijn ook voor zoeken en `dataset_details` onzichtbaar (#375).
+De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopeprofiel.py`, #355). Een record valt erbinnen als `onderwijstype` alleen MBO, HBO, WO of HO noemt, of als het ID met een reden in `TOEGELATEN` staat. Al het andere valt erbuiten: po/so/vo, gemengde bestanden, records zonder besluit, en wat riodata als `buiten_scope` markeert (#375). Zoeken telt ze niet mee; `dataset_details`, `get_duo_data` en `get_rio_data` geven voor zo'n ID `opvraagbaar: false` en `buiten_scope: true` in plaats van data, ook als het ID rechtstreeks uit de vraag komt.
 
 ---
 

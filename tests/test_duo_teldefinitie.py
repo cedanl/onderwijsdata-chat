@@ -44,6 +44,7 @@ _VIER = pd.DataFrame({"AANTAL LEERLINGEN": [4, 4, 25]})
 _MIN_EEN = pd.DataFrame({"AANTAL_INGESCHREVENEN": [-1, 12, 30]})
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_publicatieregel_wordt_meegegeven_als_de_data_hem_volgt():
     [regel] = _get("01voins-v1", _VIER)["publicatieregels"]
 
@@ -61,6 +62,7 @@ def test_publicatieregel_ontbreekt_als_de_data_kleine_aantallen_als_min_een_geef
     assert "-1" in result["publicatieregels_niet_gebruikt"]
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_publicatieregel_niet_gebruikt_bij_1_tot_3_cellen():
     assert "publicatieregels" not in _get("01voins-v1", pd.DataFrame({"AANTAL LEERLINGEN": [4, 2, 25]}))
 
@@ -80,6 +82,7 @@ def test_get_duo_data_defines_opleidingsvorm_codes():
     assert "DT = deeltijd" in kolom["definitie"]
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_get_duo_data_without_teldefinitie_omits_field():
     result = _get("zonder-selectie", pd.DataFrame({"AANTAL": [1]}))
 
@@ -117,6 +120,7 @@ def test_dataset_details_includes_teldefinitie_for_duo():
 # --- #402: een teldefinitie over een ander onderwijstype dan het bestand ---
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_voprognoses_krijgt_geen_basisonderwijstekst():
     """Audit 14 §3.4: de DUO-beschrijving van voprognoses is een kopie van de po-tekst."""
     result = _get("voprognoses", pd.DataFrame({"JAAR": [2030], "AANTAL": [10.5]}))
@@ -131,6 +135,7 @@ def test_teldefinitie_over_het_eigen_onderwijstype_blijft(dataset):
     assert duo_meta.teldefinitie(duo_meta.record(dataset))
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_dataset_details_volgt_dezelfde_regel():
     details = json.loads(dataset_details("voprognoses"))
 
@@ -138,6 +143,7 @@ def test_dataset_details_volgt_dezelfde_regel():
     assert "teldefinitie_niet_gebruikt" in details
 
 
+@pytest.mark.usefixtures("zonder_scopegrens")
 def test_telling_blok_onder_een_voprognoses_antwoord_noemt_geen_basisonderwijs():
     key = _get("voprognoses", pd.DataFrame({"JAAR": [2030], "AANTAL": [10.5]}))["data_key"]
 

@@ -7,7 +7,7 @@ from riodata import duo as _duo
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import duo_meta, fouten, instelling, kleine_aantallen, kolomprofiel, periode, store
-from .catalog import catalogus_titel, is_documentbestand, resource_titel, tabelbestanden
+from .catalog import catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
 
 _SAMPLE_ROWS = 3
 
@@ -188,15 +188,6 @@ def _resource_index(dataset_id: str, resource: int | str) -> int | str:
     return treffers[0] if treffers else resource
 
 
-def _vergelijkbare_datasets(dataset_id: str) -> str:
-    try:
-        cats = _duo.catalog()
-    except Exception:
-        return ""
-    matches = [c for c in cats if dataset_id.lower() in json.dumps(c, ensure_ascii=False).lower()]
-    return f" Vergelijkbare datasets: {[c.get('_ckan_id') for c in matches[:3]]}" if matches else ""
-
-
 def _andere_bestanden(dataset_id: str, bestanden: list[tuple[int, str]], behalve: int | str) -> str:
     """De overige tabelbestanden van de dataset: één kapot bestand is niet de hele dataset (#408)."""
     andere = [f"{i} = '{naam}'" for i, naam in bestanden if i != behalve]
@@ -209,6 +200,8 @@ def _andere_bestanden(dataset_id: str, bestanden: list[tuple[int, str]], behalve
 
 
 def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
+    if blokkade := scope_blokkade(dataset_id):
+        return blokkade
     try:
         resource = _resource_index(dataset_id, resource)
     except MeerdereResources as e:
@@ -228,7 +221,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         try:
             df = periode.met_studiejaarlabel(_duo.load(dataset_id, resource))
         except Exception as e:
-            hint = _andere_bestanden(dataset_id, bestanden, resource) or _vergelijkbare_datasets(dataset_id)
+            hint = _andere_bestanden(dataset_id, bestanden, resource)
             return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)
