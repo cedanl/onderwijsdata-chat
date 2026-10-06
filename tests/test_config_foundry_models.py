@@ -14,10 +14,7 @@ def test_foundry_55_models_require_azure_ai_key():
 
 def test_foundry_55_models_have_display_names():
     """Picker toont een display-naam + omschrijving, niet het kale model-ID."""
-    rendered = {
-        mid: (name, desc, icon)
-        for mid, name, desc, icon in _models_from_ids([SONNET_55, OPUS_55])
-    }
+    rendered = {mid: (name, desc, icon) for mid, name, desc, icon in _models_from_ids([SONNET_55, OPUS_55])}
     for mid in (SONNET_55, OPUS_55):
         name, desc, _icon = rendered[mid]
         assert name != mid.split("/")[-1], f"{mid} heeft geen display-naam"
