@@ -128,8 +128,8 @@ def compute_kpi(
     metric: str,
     sort_column: str | None = None,
     label: str = "",
-    van: int | None = None,
-    tot: int | None = None,
+    van: int | str | None = None,
+    tot: int | str | None = None,
 ) -> str:
     """Bereken één KPI over data uit de store.
 
