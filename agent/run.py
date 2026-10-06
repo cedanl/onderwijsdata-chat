@@ -13,6 +13,7 @@ from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .genoemde_bronnen import genoemde_bronnen
+from .grafiekvraag import ontbrekende_grafiek
 from .grounding import unverified
 from .history import trim
 from .kenmerken import verkeerde_kenmerken
@@ -222,6 +223,7 @@ async def run(
             *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),
             *veilig(onbeschikbaar_zonder_zoekpad, last_user_msg, text, tool_results),
             *veilig(ongedekte_oorzaak, text, tool_results),
+            *veilig(ontbrekende_grafiek, last_user_msg, text, tool_results, session.get("data_keys", [])),
             *veilig(metatekst, text),
         ]
 
