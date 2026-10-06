@@ -44,7 +44,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
-import ErrorRetry from '../components/ErrorRetry'
+import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
@@ -440,7 +440,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
   return (
     <>
       {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.level}`}>{t.message}</div>
+        <div key={t.id} className={`toast ${t.level}`} role="status">{t.message}</div>
       ))}
       <div className="chat-layout">
         {/* Sidebar overlay (mobile) */}
@@ -511,7 +511,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
-                retry={msg.isError ? {
+                retry={offersRetry(msg) ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
                   modelafhankelijk: msg.modelafhankelijk !== false,

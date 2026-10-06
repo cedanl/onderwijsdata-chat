@@ -103,11 +103,18 @@ def test_afrondronde_geeft_een_deelantwoord(monkeypatch):
     assert not any(e["type"] == "error" for e in events)
 
 
+def test_deelantwoord_is_gemarkeerd_voor_de_herstelknop(monkeypatch):
+    # Een ander model lukt vaak wel (#405, UX N10): de frontend toont dan 'Opnieuw met …'.
+    _, events = _chat(monkeypatch, [*_tools(2), StreamResult(text="Er is data geladen.", tool_calls=[])], _geladen())
+    assert events[-1]["partial"] is True
+
+
 def test_zonder_afronding_zegt_code_wat_er_is(monkeypatch):
     text, events = _chat(monkeypatch, _tools(3), _geladen())
     end = events[-1]
     assert end["type"] == "message_end"
     assert end["content"] == text
+    assert end["partial"] is True
     assert "DUO, dataset p01hoinges" in text
     assert not any(e["type"] == "error" for e in events)
 

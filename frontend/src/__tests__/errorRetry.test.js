@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import ErrorRetry, { alternativeModel } from '../components/ErrorRetry'
+import ErrorRetry, { alternativeModel, offersRetry } from '../components/ErrorRetry'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -73,5 +73,13 @@ describe('alternativeModel', () => {
   it('is the first model that is not the failed one', () => {
     expect(alternativeModel(MODELS, 'claude-sonnet').id).toBe('gpt-oss-120b')
     expect(alternativeModel([], 'x')).toBeNull()
+  })
+})
+
+describe('offersRetry (#405)', () => {
+  it('biedt herstel bij een fout en bij een deelantwoord, niet bij een gewoon antwoord', () => {
+    expect(offersRetry({ isError: true })).toBe(true)
+    expect(offersRetry({ partial: true, content: 'Dit is een deelantwoord.' })).toBe(true)
+    expect(offersRetry({ content: 'Het zijn er 36.201.', done: true })).toBe(false)
   })
 })

@@ -203,6 +203,8 @@ export function useChat({ onUnauthorized } = {}) {
             done: true,
             ...(ev.aborted && { stopped: true }),
             ...(ev.truncated && { truncated: true }),
+            // Step budget spent: a partial answer, which another model often completes (#405).
+            ...(ev.partial && { partial: true }),
             // What the server's check on this answer still found wrong (#185, #187).
             ...(ev.controle?.length && { controle: ev.controle }),
             // A finished turn without text would otherwise render nothing at all.
@@ -409,7 +411,8 @@ export function useChat({ onUnauthorized } = {}) {
   const cancelReport = useCallback(() => {
     if (!reportingRef.current) return
     abandonReport()
-  }, [abandonReport])
+    addToast('Rapport geannuleerd')
+  }, [abandonReport, addToast])
 
   const clearRejectedDraft = useCallback(() => setRejectedDraft(null), [])
 

@@ -2,6 +2,9 @@
 // "Maximaal aantal stappen" of een limiet bij één model lukt vaak wél bij een ander.
 // Een interne fout (#404) faalt bij elk model gelijk: dan alleen 'Opnieuw'.
 
+// An error, or a partial answer after the step budget ran out (#405): both get the retry buttons.
+export const offersRetry = msg => !!(msg.isError || msg.partial)
+
 export function alternativeModel(models, failedModel) {
   return models.find(m => m.id !== failedModel) ?? null
 }
