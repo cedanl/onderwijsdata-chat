@@ -226,6 +226,76 @@ describe('useChat report progress and cancel', () => {
   })
 })
 
+describe('useChat tooltrace bij intrekken (#398)', () => {
+  const stappen = ws => {
+    ws.emit({ type: 'message_start' })
+    ws.emit({ type: 'tool_start', name: 'search_catalog', label: 'Zoeken' })
+    ws.emit({ type: 'tool_end', name: 'search_catalog', output: '' })
+    ws.emit({ type: 'message_start' })
+    ws.emit({ type: 'tool_start', name: 'get_duo_data', label: 'Data laden' })
+    ws.emit({ type: 'tool_end', name: 'get_duo_data', output: '' })
+  }
+
+  it('houdt de stappen en markeert de ingetrokken tekst als vervangen', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      stappen(ws)
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Het zijn er 99.' })
+      ws.emit({ type: 'message_cancel' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'compute_kpi', label: 'Rekenen' })
+      ws.emit({ type: 'tool_end', name: 'compute_kpi', output: '' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Het zijn er 36.201.' })
+      ws.emit({ type: 'message_end', content: 'Het zijn er 36.201.' })
+    })
+    const [msg] = assistantMessages()
+    expect(assistantMessages()).toHaveLength(1)
+    expect(msg.tools.map(t => t.name)).toEqual(['search_catalog', 'get_duo_data', 'compute_kpi'])
+    expect(msg.vervangen).toEqual([{ tekst: 'Het zijn er 99.', naStap: 2 }])
+    expect(msg.content).toBe('Het zijn er 36.201.')
+    expect(msg.done).toBe(true)
+  })
+
+  it('houdt de stappen vóór een verduidelijkingsvraag', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      stappen(ws)
+      ws.emit({ type: 'message_cancel' })
+      ws.emit({ type: 'clarification', vraag: 'Welk jaar?', opties: ['2023', '2024'] })
+    })
+    const [trace, vraag] = assistantMessages()
+    expect(trace.tools.map(t => t.name)).toEqual(['search_catalog', 'get_duo_data'])
+    expect(trace.done).toBe(true)
+    expect(vraag.clarification).toEqual(['2023', '2024'])
+  })
+
+  it('houdt de stappen vóór een fout, zonder de halve tekst', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      stappen(ws)
+      ws.emit({ type: 'text_delta', content: 'Half' })
+      ws.emit({ type: 'error', message: 'Er ging iets mis.' })
+    })
+    const [trace, fout] = assistantMessages()
+    expect(trace.tools).toHaveLength(2)
+    expect(trace.content).toBe('')
+    expect(trace.done).toBe(true)
+    expect(fout.isError).toBe(true)
+  })
+
+  it('laat geen lege kaart achter als er niets was', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_cancel' })
+      ws.emit({ type: 'clarification', vraag: 'Welk jaar?', opties: ['2023'] })
+    })
+    expect(assistantMessages().map(m => m.content)).toEqual(['Welk jaar?'])
+  })
+})
+
 describe('useChat deelantwoord', () => {
   it('markeert een deelantwoord, zodat er een herstelknop onder komt (#405, UX N10)', async () => {
     const ws = FakeWebSocket.last

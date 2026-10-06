@@ -44,7 +44,50 @@ def test_trace_bevat_vraag_antwoord_stappen_en_controle():
             {"name": "get_duo_data", "label": "Data opgehaald", "status": None, "snippet": "df = laad()"},
             {"name": "query_data", "label": "Data gefilterd", "status": "empty", "snippet": None},
         ],
+        "ingetrokken": [],
     }
+
+
+# Het eindbericht heeft vaak zelf geen stappen: die staan aan het tussenbericht van
+# dezelfde beurt, en een correctie bewaart de ingetrokken tekst (#398).
+BEURT = [
+    {"role": "user", "content": "Hoeveel eerstejaars?"},
+    {
+        "role": "assistant",
+        "content": "",
+        "done": True,
+        "vervangen": [{"tekst": "Het zijn er 99.", "naStap": 1}],
+        "tools": [{"name": "get_duo_data", "label": "Data opgehaald", "snippet": "df = laad()"}],
+    },
+    {"role": "assistant", "content": "Ik reken het na.", "tools": [{"name": "compute_kpi", "label": "KPI"}]},
+    {"role": "assistant", "content": "Het zijn er 36.201.", "done": True, "tools": []},
+]
+
+
+def test_trace_neemt_de_stappen_van_de_hele_beurt():
+    trace = antwoord_trace(
+        [
+            {"role": "user", "content": "Eerder"},
+            {"role": "assistant", "content": "x", "tools": [{"name": "oud"}]},
+            *BEURT,
+        ],
+        5,
+    )
+    assert trace is not None
+    assert [s["name"] for s in trace["stappen"]] == ["get_duo_data", "compute_kpi"]
+    assert trace["ingetrokken"] == ["Het zijn er 99."]
+    assert trace["antwoord"] == "Het zijn er 36.201."
+
+
+def test_overzicht_noemt_de_ingetrokken_tekst():
+    rij = {"oordeel": "down", "created_at": "t", "username": "u", "conversation_id": "c", "toelichting": ""}
+    trace = antwoord_trace(BEURT, 3)
+    assert trace is not None
+    tekst = als_markdown([{**rij, "trace": json.dumps(trace)}])
+    assert "Ingetrokken na controle: Het zijn er 99." in tekst
+    # Een melding van vóór #398 heeft het veld nog niet.
+    oud = {k: v for k, v in trace.items() if k != "ingetrokken"}
+    assert "Ingetrokken" not in als_markdown([{**rij, "trace": json.dumps(oud)}])
 
 
 def test_alleen_een_afgerond_antwoord_heeft_een_trace():

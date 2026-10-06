@@ -6,11 +6,12 @@ import { conversationTitle } from './conversationTitle'
 
 const failed = step => step.status === 'error' || step.status === 'empty'
 
-function stepLines(tools, { snippets, fouten }) {
-  const steps = (tools || []).filter(t => fouten || !failed(t))
+// Steps from index `correctie` on ran after a withdrawn answer (#398).
+function stepLines(tools, { snippets, fouten }, correctie = Infinity) {
+  const steps = (tools || []).map((t, i) => ({ ...t, naCorrectie: i >= correctie })).filter(t => fouten || !failed(t))
   return steps.flatMap((t, i) => {
     const label = failed(t) && t.statusLabel ? `${t.label} (${t.statusLabel})` : t.label
-    const lines = [`${i + 1}. ${label}`]
+    const lines = [`${i + 1}. ${label}${t.naCorrectie ? ' (na de correctie)' : ''}`]
     if (snippets && t.snippet) lines.push('', '```python', t.snippet, '```', '')
     return lines
   })
@@ -19,10 +20,13 @@ function stepLines(tools, { snippets, fouten }) {
 function answerBlocks(msg, options) {
   if (msg.isError && !options.fouten) return []
   const blocks = []
+  for (const { tekst } of msg.vervangen || []) {
+    blocks.push(['**Ingetrokken na controle:**', ...tekst.split('\n')].map(r => `> ${r}`).join('\n'))
+  }
   if (msg.content) blocks.push('### Antwoord', msg.content)
   for (const zin of msg.controle || []) blocks.push(`> Let op: ${zin}`)
   for (const fig of msg.figures || []) blocks.push(`_Grafiek: ${fig.label || 'zonder titel'}_`)
-  const steps = stepLines(msg.tools, options)
+  const steps = stepLines(msg.tools, options, msg.vervangen?.[0]?.naStap)
   if (steps.length) blocks.push('#### Stappen', steps.join('\n').trim())
   return blocks
 }

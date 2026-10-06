@@ -35,6 +35,7 @@ import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
+import IngetrokkenVersies from '../components/IngetrokkenVersies'
 import { exportKeys, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
@@ -726,7 +727,7 @@ function Message({ msg, onClarification, onSend, busy, settled = true, settings 
   const awaiting = isAwaitingFirstToken(msg)
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && exportKeys(msg.tools).length > 0
-  if (!awaiting && !msg.tools?.length && !hasAssistantContent(msg)) return null
+  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
 
   return (
     <div className="message assistant">
@@ -737,6 +738,7 @@ function Message({ msg, onClarification, onSend, busy, settled = true, settings 
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
+        <IngetrokkenVersies versies={msg.vervangen} />
         {(awaiting || exportable || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { chatSocket, clearToken } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
+import { closeWithoutText, withdrawText } from '../turnTrace'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -86,10 +87,11 @@ export function useChat({ onUnauthorized } = {}) {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
   }, [])
 
-  const cancelCurrentMsg = useCallback(() => {
+  // The open card ends without an answer: its steps stay as the turn's trace (#398).
+  const closeCurrentMsg = useCallback(() => {
     if (!currentMsgRef.current) return
     const id = currentMsgRef.current
-    setMessages(prev => prev.filter(m => m.id !== id))
+    setMessages(prev => prev.flatMap(m => m.id !== id ? [m] : (closeWithoutText(m) ?? [])))
     currentMsgRef.current = null
   }, [])
 
@@ -162,8 +164,11 @@ export function useChat({ onUnauthorized } = {}) {
         currentMsgRef.current = msgId
         setMessages(prev => [...prev, { id: msgId, role: 'assistant', content: '', tools: [], done: false }])
       },
+      // The answer was withdrawn (correction or clarification): the next round writes on in
+      // the same card, so the steps before and after the correction stay together (#398).
       message_cancel() {
-        cancelCurrentMsg()
+        currentHasTextRef.current = false
+        updateCurrentMsg(withdrawText)
       },
       text_delta(ev) {
         currentHasTextRef.current = true
@@ -215,6 +220,7 @@ export function useChat({ onUnauthorized } = {}) {
       },
       clarification(ev) {
         setThinking(false)
+        closeCurrentMsg()
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant',
           content: ev.vraag, clarification: ev.opties, done: true,
@@ -254,7 +260,7 @@ export function useChat({ onUnauthorized } = {}) {
       },
       error(ev) {
         setThinking(false)
-        cancelCurrentMsg()
+        closeCurrentMsg()
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', content: ev.message, done: true, isError: true,
           modelafhankelijk: ev.modelafhankelijk !== false,
@@ -344,7 +350,7 @@ export function useChat({ onUnauthorized } = {}) {
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }
-  }, [addToast, cancelCurrentMsg, endReport, failReport, onUnauthorized])
+  }, [addToast, closeCurrentMsg, endReport, failReport, onUnauthorized])
 
   // Returns whether the question went out, so the caller only clears what was typed when it did.
   const send = useCallback((content) => {
