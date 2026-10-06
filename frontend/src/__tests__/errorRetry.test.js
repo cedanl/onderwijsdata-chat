@@ -52,6 +52,12 @@ describe('ErrorRetry', () => {
     expect(buttons().map(b => b.textContent)).toEqual(['Opnieuw'])
   })
 
+  // #404: een interne fout faalt bij elk model gelijk; een ander model aanbieden helpt niet.
+  it('offers no other model after an internal error', async () => {
+    await render({ failedModel: 'gpt-oss-120b', modelafhankelijk: false })
+    expect(buttons().map(b => b.textContent)).toEqual(['Opnieuw'])
+  })
+
   it('is disabled while a run is going', async () => {
     await render({ failedModel: 'gpt-oss-120b', busy: true })
     expect(buttons().every(b => b.disabled)).toBe(true)
