@@ -50,7 +50,9 @@ env:
         name: onderwijsdata-chat-secrets
         key: CHAT_USERS
   - name: MODEL
-    value: "openai/gpt-oss-120b"
+    value: "azure_ai/claude-sonnet-5-5"
+  - name: AVAILABLE_MODELS
+    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
   - name: WILLMA_BASE_URL
     value: "https://willma.surf.nl/api/v0"
   - name: WILLMA_API_KEY
@@ -58,6 +60,18 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
         key: WILLMA_API_KEY
+  # Azure AI Foundry — default + picker draaien hierop.
+  # AZURE_AI_API_KEY + AZURE_AI_API_BASE moeten in onderwijsdata-chat-secrets staan.
+  - name: AZURE_AI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: AZURE_AI_API_KEY
+  - name: AZURE_AI_API_BASE
+    valueFrom:
+      secretKeyRef:
+        name: onderwijsdata-chat-secrets
+        key: AZURE_AI_API_BASE
   - name: LOG_LEVEL
     value: "INFO"
   - name: CORS_ORIGINS

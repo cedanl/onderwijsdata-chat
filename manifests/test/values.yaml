@@ -58,14 +58,11 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-app
         key: uri
-  # openai/gpt-oss-120b: strongest model that's "Always" hosted (no cold-start
-  # latency) on Willma right now — 120B, and already tagged "sterk in tool
-  # calling" in the model picker, which matters given how tool-call-heavy this
-  # app is (CBS/RIO/DUO tools). Sehyo/Qwen3.5-122B-A10B-NVFP4 is nominally
-  # larger but On-demand (cold start) and an unofficial finetune — not worth
-  # the reliability tradeoff for the default model.
+  # azure_ai/claude-sonnet-5-5: default — Foundry-modellen zijn het enige
+  # aanbod (Willma-model eruit, endpoint blijft als fallback-optie staan).
+  # Sonnet als gebalanceerde default, Opus 5.5 als zware optie in de picker.
   - name: MODEL
-    value: "openai/gpt-oss-120b"
+    value: "azure_ai/claude-sonnet-5-5"
   - name: WILLMA_BASE_URL
     value: "https://willma.surf.nl/api/v0"
   - name: WILLMA_API_KEY
@@ -93,6 +90,6 @@ env:
       secretKeyRef:
         name: onderwijsdata-chat-secrets
         key: AZURE_AI_API_BASE
-  # Model-picker toont zowel Willma als Azure AI Foundry modellen.
+  # Model-picker toont de Foundry-modellen.
   - name: AVAILABLE_MODELS
-    value: "openai/gpt-oss-120b,azure_ai/claude-sonnet-4-6,azure_ai/claude-opus-4-6"
+    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
