@@ -466,16 +466,22 @@ describe('useChat reasoning steps (#76)', () => {
     expect(msg.content).toBe('Antwoord.')
   })
 
-  it('starts a new message after a round that wrote text', async () => {
+  it('keeps text from a tool round out of the answer, in the same reasoning card (#393)', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {
       ws.emit({ type: 'message_start' })
-      ws.emit({ type: 'text_delta', content: 'Even kijken.' })
-      ws.emit({ type: 'tool_start', name: 'search_catalog', label: 'Catalogus' })
+      ws.emit({ type: 'text_delta', content: 'We need to capture the result. ' })
+      ws.emit({ type: 'tool_start', name: 'run_analysis', label: 'Analyse' })
+      ws.emit({ type: 'tool_end', name: 'run_analysis', output: '' })
       ws.emit({ type: 'message_start' })
-      ws.emit({ type: 'text_delta', content: 'Klaar.' })
+      ws.emit({ type: 'text_delta', content: 'Samenvatting' })
+      ws.emit({ type: 'message_end', content: 'Samenvatting' })
     })
-    expect(assistantMessages()).toHaveLength(2)
+    const [antwoord, ...rest] = assistantMessages()
+    expect(rest).toEqual([])
+    expect(antwoord.content).toBe('Samenvatting')
+    expect(antwoord.tussentekst).toEqual(['We need to capture the result. '])
+    expect(antwoord.tools.map(t => t.name)).toEqual(['run_analysis'])
   })
 
   it('finishes the right step when the same tool runs twice', async () => {

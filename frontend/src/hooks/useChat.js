@@ -147,9 +147,16 @@ export function useChat({ onUnauthorized } = {}) {
       message_start() {
         lastSentRef.current = null
         setThinking(false)
-        // Every model round announces itself, but a round that only called tools wrote no
-        // text: its steps belong in the same reasoning card as the next round's (#76).
-        if (currentMsgRef.current !== null && !currentHasTextRef.current) return
+        // Every model round announces itself. A round before the last one called tools: its
+        // steps belong in the same reasoning card as the next round's (#76), and what it
+        // wrote on the way ('We need to capture the result…') is no answer (#393).
+        if (currentMsgRef.current !== null) {
+          if (currentHasTextRef.current) {
+            updateCurrentMsg(m => ({ ...m, content: '', tussentekst: [...(m.tussentekst || []), m.content] }))
+            currentHasTextRef.current = false
+          }
+          return
+        }
         currentHasTextRef.current = false
         const msgId = nextId()
         currentMsgRef.current = msgId

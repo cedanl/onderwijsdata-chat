@@ -107,7 +107,7 @@ function lastAnswerText(messages) {
   return last?.role === 'assistant' && last.done ? last.content : ''
 }
 
-function ReasoningPanel({ tools, isDone }) {
+function ReasoningPanel({ tools, tussentekst, isDone }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   if (!tools?.length) return null
   const hasSnippets = tools.some(t => t.snippet)
@@ -127,6 +127,10 @@ function ReasoningPanel({ tools, isDone }) {
         <div className="reasoning-content">
           {tools.map((t, i) => (
             <ReasoningStep key={`${t.name}-${i}`} tool={t} />
+          ))}
+          {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
+          {tussentekst?.map((tekst, i) => (
+            <p key={i} className="reasoning-tussentekst">{tekst}</p>
           ))}
           {hasSnippets && (
             <div className="reasoning-snippets">
@@ -726,7 +730,7 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        <ReasoningPanel tools={msg.tools} isDone={msg.done} />
+        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
         {(awaiting || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
