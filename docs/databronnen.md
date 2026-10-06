@@ -18,7 +18,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 | Tijdreeksen | Beschikbaar voor de meeste datasets |
 
 **Voorbeeldvragen:**
-- *"Hoeveel leerlingen zaten er in 2022 in het voortgezet onderwijs?"*
+- *"Hoeveel studenten zaten er in 2022 in het mbo?"*
 - *"Toon het aantal gediplomeerden in het mbo per jaar als grafiek."*
 - *"Wat zijn de beschikbare dimensies in CBS dataset 85423NED?"*
 
@@ -52,14 +52,14 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## DUO — Dienst Uitvoering Onderwijs
 
-**56 open datasets** gepubliceerd door DUO, inclusief prognoses, diplomering, instroom, adressen en meer.
+**14 open datasets** gepubliceerd door DUO over mbo, hbo en wo, inclusief prognoses, diplomering, instroom en adressen. DUO publiceert ook po-, so- en vo-bestanden; die vallen buiten het profiel van de chat.
 
 | Eigenschap | Details |
 |------------|---------|
 | Toegang | CKAN-gebaseerde open data portal |
 | Catalogus | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | Formaten | Excel/CSV via CKAN |
-| Dekking | PO, VO, MBO, HBO, WO |
+| Dekking | MBO, HBO, WO |
 
 **Categorieën:**
 
@@ -69,7 +69,6 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 | Diplomering | Geslaagden per opleiding, sector |
 | Instroom | Eerstejaars inschrijvingen |
 | Adressen | Vestigingsadressen instellingen |
-| Bekostiging | Leerlinggewichten, bekostigingsgegevens |
 
 **Twee-stap patroon:**
 DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview), dan `query_data` (gefilterde rijen). Eenmaal geladen data wordt hergebruikt binnen een gesprek via de sessiecache.

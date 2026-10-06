@@ -224,6 +224,7 @@ class TestMelding:
 
         assert "databewerking" in result
 
+    @pytest.mark.usefixtures("zonder_scopegrens")
     def test_get_duo_data_meldt_telling_als_resourcebreed(self):
         # Live-audit 6: de resourcebrede telling (101 in p01hoinges) werd aan gefilterde
         # totalen zonder -1 geplakt als "ondergrens". Die kwalificatie hoort bij query_data (#179).

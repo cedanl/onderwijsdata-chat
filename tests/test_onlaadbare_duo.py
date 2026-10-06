@@ -57,10 +57,9 @@ def test_pdf_resource_wordt_niet_gedownload():
 
 def test_laadfout_noemt_de_andere_bestanden_van_de_dataset():
     fout = pd.errors.ParserError("Expected 1 fields in line 7, saw 2")
-    with _catalogus(_SO_VSO), patch("tools.duo._duo.load", side_effect=fout), patch("tools.duo._duo.catalog") as cat:
+    with _catalogus(_SO_VSO), patch("tools.duo._duo.load", side_effect=fout):
         result = get_duo_data("leerling_so_en_vso-v1")
     assert fouten.code(result) == "bron_weigert"
     assert "1 = 'residentiële plaatsen'" in result
     assert "2 = 'naar uitstroomprofiel'" in result
     assert "0 = " not in result
-    cat.assert_not_called()  # geen omweg naar andere datasets

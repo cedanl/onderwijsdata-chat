@@ -19,6 +19,9 @@ from tools.query import query_data
 from tools.rio import get_rio_data
 from tools.store import KeyMeta
 
+# Ophalen met test-ID's; de scopegrens staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
+
 
 @pytest.fixture(autouse=True)
 def _clean_store():

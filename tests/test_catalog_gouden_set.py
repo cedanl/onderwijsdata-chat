@@ -25,7 +25,6 @@ GOED = [
     ("gediplomeerden hoger onderwijs", "p04hogdipl", 1),
     ("gediplomeerde mbo-studenten", "gediplomeerde-mbo-studenten", 5),
     ("studentprognoses mbo per instelling", "studentprognoses-mbo-per-instelling", 1),
-    ("prognoses vo per instelling", "voprognoses", 1),
     ("onderwijslocaties van een instelling", "onderwijslocaties", 1),
     ("opleidingserkenningen", "opleidingserkenningen", 1),
     # Gelijke score met p02ho1ejrs op rang 3/4; sinds de ID-tie-break (#344) staat p01hoinges voor.
@@ -40,8 +39,6 @@ BEKENDE_MISSERS = [
     ("Hoeveel voltijd studenten heeft de VU Amsterdam?", "p01hoinges", 3, 12),
     ("Hoeveel deeltijdstudenten zijn er landelijk in het hoger onderwijs?", "85423NED", 5, 12),
     ("Hoeveel vsv'ers zijn er in het mbo?", "85368NED", 5, None),
-    # Audit 11: het model koos 01voins-v1 (alleen 2014-2018) voor een vo-prognose.
-    ("leerlingenprognose voortgezet onderwijs", "voprognoses", 5, None),
 ]
 
 _TOP_N = 15
@@ -89,3 +86,16 @@ def test_zelfde_vraag_geeft_dezelfde_volgorde():
     """Determinisme: bij bijna gelijke scores mag de volgorde niet per aanroep wisselen (#33)."""
     for query, _, _ in GOED:
         assert _ids(query) == _ids(query)
+
+
+# Vo valt buiten het chatprofiel (#355): ook een letterlijke vo-vraag geeft geen vo-bestand.
+BUITEN_PROFIEL = [
+    ("prognoses vo per instelling", "voprognoses"),
+    ("leerlingenprognose voortgezet onderwijs", "voprognoses"),
+    ("mbo studenten per instelling DUO", "voprognoses"),  # de proef uit de testaudit van 6 okt
+]
+
+
+@pytest.mark.parametrize(("query", "buiten"), BUITEN_PROFIEL)
+def test_een_bestand_buiten_het_profiel_is_geen_treffer(query, buiten):
+    assert buiten not in _ids(query)
