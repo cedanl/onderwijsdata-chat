@@ -29,6 +29,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `RUN_SLOW_S` | `20` | Seconden tot de melding "dit duurt langer dan normaal" |
+| `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
