@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from tools import store
+from tools.csv_export import naar_csv
 from tools.query import query_data
 
 
@@ -352,6 +353,37 @@ def test_aggregation_filters_duo_sentinel_minus_one():
     # Verify databewerking notes were generated
     assert "databewerking" in result
     assert any("sentinel" in note.lower() for note in result["databewerking"])
+
+
+def test_volledig_onderdrukte_groep_is_geen_nul():
+    """Testaudit L4: ONBEKEND=[-1,-1] werd '0'; onderdrukt is niet nul (#394)."""
+    df = pd.DataFrame(
+        {
+            "GESLACHT": ["ONBEKEND", "ONBEKEND", "MAN", "VROUW", "VROUW", "ANDERS"],
+            "AANTAL": [-1, -1, 12, 0, -1, 0],
+        }
+    )
+    store.put("duo:test:onderdrukt", df, store.KeyMeta(bron="duo", dataset="test:onderdrukt"))
+
+    result = json.loads(query_data("duo:test:onderdrukt", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"}))
+
+    rows = {row["GESLACHT"]: row["AANTAL"] for row in result["rijen"]}
+    assert rows["ONBEKEND"] is None  # volledig onderdrukt: niet vast te stellen
+    assert rows["MAN"] == 12
+    assert rows["VROUW"] == 0  # gemengd: echte 0 plus onderdrukte cel, ondergrens
+    assert rows["ANDERS"] == 0  # echte bronwaarde 0 blijft 0
+    assert any("ONBEKEND" in noot and "onderdrukt" in noot for noot in result["databewerking"])
+
+
+def test_volledig_onderdrukte_groep_blijft_leeg_in_store_en_csv():
+    """Grafiek, KPI en CSV lezen de store: daar moet de groep leeg zijn, geen 0 (#394)."""
+    df = pd.DataFrame({"JAAR": [2022, 2023, 2023], "AANTAL": [10, -1, -1]})
+    store.put("duo:test:kpi", df, store.KeyMeta(bron="duo", dataset="test:kpi"))
+    key = json.loads(query_data("duo:test:kpi", group_by=["JAAR"], aggregate={"AANTAL": "sum"}))["data_key"]
+
+    assert store.get(key)["AANTAL"].isna().tolist() == [False, True]
+    csv = naar_csv(key)
+    assert csv is not None and csv.splitlines()[-1] == "2023;"
 
 
 def test_gehele_aantallen_komen_als_gehele_getallen_terug():
