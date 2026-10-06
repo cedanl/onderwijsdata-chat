@@ -12,6 +12,7 @@ from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
+from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
 from .grounding import unverified
 from .history import trim
@@ -213,6 +214,7 @@ async def run(
             *veilig(ontbrekende_instellingen, last_user_msg, tool_results),
             *veilig(onvolledige_selecties, text, tool_results),
             *veilig(verkeerde_opleidingsvormen, text, tool_results),
+            *veilig(verkeerde_dimensielabels, text, tool_results),
             *veilig(onbekende_datasets, text),
             *veilig(ongebruikte_bronnen, text, tool_results),
             *veilig(verkeerd_gebonden, text, tool_results),

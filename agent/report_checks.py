@@ -16,6 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 from agent.binding import verkeerd_gebonden
+from agent.dimensielabels import verkeerde_dimensielabels
 from agent.grounding import unsourced_numbers
 from agent.kenmerken import verkeerde_kenmerken
 from agent.kpi_periode import verkeerde_kpi_periodes
@@ -116,6 +117,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
         )
 
     problems += veilig(verkeerde_opleidingsvormen, text, sources)
+    problems += veilig(verkeerde_dimensielabels, text, sources)
     problems += veilig(onbekende_datasets, text)
     problems += veilig(ongebruikte_bronnen, text, sources)
     problems += veilig(verkeerd_gebonden, text, sources)
