@@ -23,4 +23,6 @@ spec:
   serviceAccountName: tenant-admin
   valuesFrom:
     - kind: ConfigMap
+      name: base-config
+    - kind: ConfigMap
       name: playground-config

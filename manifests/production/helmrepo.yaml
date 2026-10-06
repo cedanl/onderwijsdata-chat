@@ -9,6 +9,5 @@ spec:
   provider: generic
   secretRef:
     name: sdp-harbor-credentials
-    namespace: infra-secret-reflector
   type: oci
   url: oci://cr.surf.nl/ceda-onderwijsdata-chat/onderwijsdata-chat
