@@ -541,6 +541,12 @@ def _build_details(entry: dict, dataset_id: str) -> str:
     )
 
 
+def genoemde_datasets(tekst: str) -> list[str]:
+    """Dataset-ID's uit de catalogus die letterlijk in de tekst staan, zoals in een vraag (#396)."""
+    ids = {_dataset_id(e) for e in [*_cbs(), *_rio_duo()]} - {"?"}
+    return [i for i in sorted(ids) if re.search(rf"(?<![\w-]){re.escape(i)}(?![\w-])", tekst, re.IGNORECASE)]
+
+
 def catalogus_titel(dataset_id: str) -> str:
     """Menselijke titel (bron-veld) uit de catalogus voor een dataset-ID.
 
