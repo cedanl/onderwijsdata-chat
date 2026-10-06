@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import DataExport from '../components/DataExport'
-import { exportKeys } from '../dataExport'
+import { exportKeys, roundSettled } from '../dataExport'
 import { finishStep } from '../toolSteps'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -27,6 +27,29 @@ describe('exportKeys (#269)', () => {
   })
 })
 
+describe('roundSettled (#399)', () => {
+  // A round with text and tools, then the final round with text only: the server sends
+  // message_end only for the last, so the first keeps done=false.
+  const turn = [
+    { role: 'user', content: 'Hoeveel?' },
+    { role: 'assistant', content: 'Ik zoek het op.', tools: [stap('a')], done: false },
+    { role: 'assistant', content: 'Het zijn er 36.201.', tools: [], done: true },
+  ]
+
+  it('telt een tussenbericht als klaar zodra er een volgende ronde is', () => {
+    expect(roundSettled(turn, 1, true)).toBe(true)
+  })
+
+  it('telt het bericht dat nog streamt niet als klaar', () => {
+    const lopend = [...turn.slice(0, 2)]
+    expect(roundSettled(lopend, 1, true)).toBe(false)
+  })
+
+  it('telt een ingeladen gesprek als klaar, ook met done=false', () => {
+    expect(roundSettled(turn.slice(0, 2), 1, false)).toBe(true)
+  })
+})
+
 describe('DataExport', () => {
   let root
   let container
@@ -40,7 +63,7 @@ describe('DataExport', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    act(() => root.render(createElement(DataExport, { done: true, download: vi.fn(), ...props })))
+    act(() => root.render(createElement(DataExport, { settled: true, download: vi.fn(), ...props })))
     return [...container.querySelectorAll('button')]
   }
 
@@ -49,7 +72,7 @@ describe('DataExport', () => {
   })
 
   it('toont geen knop zolang het antwoord nog loopt', () => {
-    expect(render({ tools: [stap('a')], done: false })).toEqual([])
+    expect(render({ tools: [stap('a')], settled: false })).toEqual([])
   })
 
   it('downloadt de tabel achter het antwoord', async () => {

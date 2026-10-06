@@ -7,6 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from . import cbs_afronding, duo, fouten, store
+from .kolomlabel import kolomlabel
 
 logger = logging.getLogger(__name__)
 
@@ -265,17 +266,17 @@ def create_plot(
 
     layout = {
         "title": {"text": title, "font": {"size": 16, "color": "#222"}, **_ondertitel(data_key)},
-        "legend_title": color_by or "",
+        "legend_title": kolomlabel(color_by) if color_by else "",
         "separators": ",.",  # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22)
         **_LAYOUT_BASE,
     }
 
     if chart_type != "pie":
-        layout["xaxis"] = {"title": x, **_AXIS_STYLE}
+        layout["xaxis"] = {"title": kolomlabel(x), **_AXIS_STYLE}
         if _is_time_axis(x):
             # Jaartallen als categorie: geen 2.023,5-tussenticks met duizendtalpunt (#240).
             layout["xaxis"].update(type="category", categoryorder="category ascending")
-        layout["yaxis"] = {"title": y, "tickformat": ",", **_AXIS_STYLE}
+        layout["yaxis"] = {"title": kolomlabel(y), "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)
     fig.update_layout(

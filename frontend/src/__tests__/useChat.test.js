@@ -192,6 +192,12 @@ describe('useChat report progress and cancel', () => {
     expect(assistantMessages().filter(m => m.isError)).toEqual([])
   })
 
+  it('bevestigt het annuleren met een melding (#405, UX N12)', async () => {
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { chat.cancelReport() })
+    expect(chat.toasts.map(t => t.message)).toEqual(['Rapport geannuleerd'])
+  })
+
   it('ignores what the cancelled run still sends until the server confirms', async () => {
     const ws = FakeWebSocket.last
     await act(async () => { chat.generateReport('tester') })
@@ -217,6 +223,19 @@ describe('useChat report progress and cancel', () => {
     await act(async () => { ws.emit({ type: 'report_cancelled' }) })
     expect(chat.reportBusy).toBe(false)
     expect(assistantMessages()).toEqual([])
+  })
+})
+
+describe('useChat deelantwoord', () => {
+  it('markeert een deelantwoord, zodat er een herstelknop onder komt (#405, UX N10)', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Dit is een deelantwoord.', partial: true })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Volledig antwoord.' })
+    })
+    expect(assistantMessages().map(m => !!m.partial)).toEqual([true, false])
   })
 })
 

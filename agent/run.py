@@ -293,7 +293,8 @@ async def run(
         )
     if result.exhausted:
         text_content = zonder_antwoord(result.steps)
-        await emit({"type": "message_end", "content": text_content, "actions": []})
+        # partial: the frontend offers 'Opnieuw met <ander model>' (#405).
+        await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
         return text_content
 
     text_content = weigering(
@@ -316,6 +317,7 @@ async def run(
             "content": text_content,
             "actions": [],
             **({"truncated": True} if truncated else {}),
+            **({"partial": True} if result.wrapped_up else {}),
             **({"controle": meldingen(result.problems)} if result.problems else {}),
         }
     )

@@ -15,6 +15,7 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
+import { useEscape } from '../hooks/useEscape'
 import ReasoningStep from '../components/ReasoningStep'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
@@ -34,6 +35,7 @@ import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
+import { exportKeys, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
 import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
@@ -42,7 +44,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
-import ErrorRetry from '../components/ErrorRetry'
+import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
@@ -181,6 +183,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
   const [defaultModel, setDefaultModel] = useState('')
   const [showSources, setShowSources] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  useEscape(sidebarOpen, () => setSidebarOpen(false))
   // Below the breakpoint the sidebar is a drawer: closed, it is out of reach (inert), and the
   // welcome block carries the suggestions instead, so they are never in the page twice (#341).
   const narrowScreen = useMediaQuery(NARROW_SCREEN)
@@ -437,7 +440,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
   return (
     <>
       {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.level}`}>{t.message}</div>
+        <div key={t.id} className={`toast ${t.level}`} role="status">{t.message}</div>
       ))}
       <div className="chat-layout">
         {/* Sidebar overlay (mobile) */}
@@ -507,7 +510,8 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 onClarification={sendClarification} onSend={send} busy={busy}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
-                retry={msg.isError ? {
+                settled={roundSettled(displayMessages, i, busy)}
+                retry={offersRetry(msg) ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
                   modelafhankelijk: msg.modelafhankelijk !== false,
@@ -621,7 +625,7 @@ function WelcomeScreen({ instelling, functie, children }) {
     : 'Stel je vraag aan openEDUdata+'
   const sub = functie
     ? `Als ${functie} krijg je onderbouwde antwoorden over instroom, voortgang, arbeidsmarkt en diplomering — direct uit open onderwijsdata.`
-    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer de open-onderwijs-databronnen en geef je een onderbouwd antwoord.'
+    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
   return (
     <div className="chat-welcome">
       <div className="chat-welcome-icon">
@@ -693,7 +697,7 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
+function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -720,6 +724,8 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
   }
 
   const awaiting = isAwaitingFirstToken(msg)
+  // A round with only data steps has no text, but its tables can still be downloaded.
+  const exportable = settled && exportKeys(msg.tools).length > 0
   if (!awaiting && !msg.tools?.length && !hasAssistantContent(msg)) return null
 
   return (
@@ -731,14 +737,14 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
-        {(awaiting || hasAssistantContent(msg)) && (
+        {(awaiting || exportable || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
             <MessageContent msg={msg} />
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
-            <DataExport tools={msg.tools} done={msg.done} />
+            <DataExport tools={msg.tools} settled={settled} />
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
