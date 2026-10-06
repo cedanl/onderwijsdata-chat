@@ -93,10 +93,15 @@ def _parse_arguments(arguments: str) -> dict | None:
     return parsed if isinstance(parsed, dict) else None
 
 
-def _truncate(result: str, limit: int) -> str:
+def _truncate(result: str, limit: int, *, tool: str) -> str:
     if len(result) <= limit:
         return result
-    return result[:limit] + f"\n... (afgekapt, {len(result)} chars totaal. Gebruik filters of selecteer kolommen.)"
+    # Wat na de grens staat, heeft het model niet gezien; de log maakt dat in de trace zichtbaar (#395).
+    logger.warning("TOOL_AFGEKAPT tool=%s tekens=%d limiet=%d", tool, len(result), limit)
+    return result[:limit] + (
+        f"\n... (afgekapt: {len(result) - limit} van {len(result)} tekens niet getoond. Wat hierna kwam heb je "
+        "niet gezien; concludeer niet dat het ontbreekt. Gebruik filters of selecteer kolommen.)"
+    )
 
 
 def _is_hit(content: str) -> bool:
@@ -303,7 +308,11 @@ class _Loop:
                 if self.on_tool_result:
                     await self.on_tool_result(c, content, figure)
             self.messages.append(
-                {"role": "tool", "tool_call_id": c.id, "content": _truncate(content, self.max_result_chars)}
+                {
+                    "role": "tool",
+                    "tool_call_id": c.id,
+                    "content": _truncate(content, self.max_result_chars, tool=c.name),
+                }
             )
 
 

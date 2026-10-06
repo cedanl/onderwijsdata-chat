@@ -64,7 +64,10 @@ def _resource_hint(known, col: str) -> str:
     voorstellen = "; ".join(
         f"resource {i} ('{naam}'): get_duo_data('{known.dataset}', {i})" for i, naam in andere[:_SUGGESTIE_AANTAL]
     )
-    return f". Een andere resource van deze dataset noemt '{col.lower()}' in de naam en bevat de kolom waarschijnlijk: {voorstellen}."
+    return (
+        f". Dat geldt alleen voor dit bestand: een andere resource van deze dataset heeft of noemt "
+        f"'{col.lower()}': {voorstellen}."
+    )
 
 
 def _apply_filters(df, filters: dict, known=None):
