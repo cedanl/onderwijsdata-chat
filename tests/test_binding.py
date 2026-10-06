@@ -144,3 +144,37 @@ def test_vergelijking_met_twee_jaren_en_een_getal_van_een_ander_jaar():
         "Van 27.135 in 2024/25 naar 11.111 in 2025/26.", [json.dumps({"data_key": "duo:p01hoinges:3:drie"})]
     )
     assert "11.111" in probleem and "2023/24" in probleem
+
+
+def _tekstselectie(key: str, df: pd.DataFrame, **meta) -> list[str]:
+    store.put(key, df, KeyMeta(bron=meta.pop("bron", "duo"), dataset="x", afgeleid_van=key, **meta))
+    return [json.dumps({"data_key": key})]
+
+
+@pytest.mark.parametrize(
+    ("df", "meta"),
+    [
+        # mbo_opleidingsaanbod_cohorten: alleen tekstkolommen (testaudit L1).
+        (
+            pd.DataFrame({"OPLEIDINGSVORM": ["BOL", "BBL"], "STUDIEJAAR": ["2024", "2025"]}),
+            {"periodekolom": "STUDIEJAAR"},
+        ),
+        # RIO: tekst, zonder periode- of instellingskolom.
+        (pd.DataFrame({"naam": ["Hogeschool Utrecht"], "kenmerk": ["hbo"]}), {"bron": "rio"}),
+        # Getallen als string.
+        (pd.DataFrame({"STUDIEJAAR": [2024], "AANTAL": ["22410"]}).astype(str), {"periodekolom": "STUDIEJAAR"}),
+        # Leeg.
+        (pd.DataFrame({"STUDIEJAAR": pd.Series([], dtype=str)}), {"periodekolom": "STUDIEJAAR"}),
+    ],
+)
+def test_selectie_zonder_numerieke_kolom_crasht_niet(df, meta):
+    """#392: zip(strict=True) gaf 'argument 3 is shorter' op een selectie zonder getallen."""
+    beurt = _tekstselectie("duo:tekst:1:sel", df, **meta)
+    assert verkeerd_gebonden("In 2024/25 waren het 22.410 studenten bij Hogeschool Utrecht.", beurt) == []
+
+
+def test_tekstselectie_naast_getallen_houdt_de_controle():
+    """Een tekstselectie in dezelfde beurt zet de controle op de numerieke selectie niet uit."""
+    beurt = _beurt() + _tekstselectie("duo:tekst:1:sel", pd.DataFrame({"OPLEIDINGSVORM": ["BOL"]}))
+    [probleem] = verkeerd_gebonden("In 2025/26 waren het 27.135 voltijdstudenten.", beurt)
+    assert "27.135" in probleem

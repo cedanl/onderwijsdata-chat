@@ -66,14 +66,18 @@ def _waarden(reeks: pd.Series | None, rijen: int) -> list:
 
 
 def _index(df: pd.DataFrame, jaren: pd.Series | None, codes: pd.Series | None, index: _Index) -> None:
+    getallen = df.select_dtypes("number")
+    if getallen.columns.empty:
+        # Alleen tekst (RIO, labels, '22410' als string): geen getal om te binden (#392).
+        return
     per_rij = zip(
         _waarden(jaren, len(df)),
         _waarden(codes, len(df)),
-        df.select_dtypes("number").itertuples(index=False),
+        getallen.itertuples(index=False),
         strict=True,
     )
-    for jaar, code, getallen in per_rij:
-        for v in getallen:
+    for jaar, code, rij in per_rij:
+        for v in rij:
             if pd.notna(v) and float(v).is_integer():
                 index[str(int(v))].add((jaar, code))
 

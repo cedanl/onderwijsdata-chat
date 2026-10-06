@@ -115,3 +115,28 @@ def test_resource_nummer_in_de_rapporttekst_wordt_afgewezen():
     [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
 
     assert "resource 3" in probleem
+
+
+def test_rapport_met_tekstselectie_crasht_niet():
+    """#392: het rapportpad draait dezelfde bindingscontrole; een selectie zonder getallen gaf een ValueError."""
+    store.clear()
+    key = "rio:onderwijsaanbieders:1:sel"
+    store.put(key, pd.DataFrame({"naam": ["Hogeschool Utrecht"]}), KeyMeta(bron="rio", dataset="x", afgeleid_van=key))
+    try:
+        assert report_problems(_spec(), [_HU_FIGURE], [_HU_RESULT, json.dumps({"data_key": key})]) == []
+    finally:
+        store.clear()
+
+
+def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
+    """Een fout in een controle wordt gelogd met een fout-ID; de andere controles gaan door (#392)."""
+
+    def kapot(*_):
+        raise ValueError("zip() argument 3 is shorter than arguments 1-2")
+
+    monkeypatch.setattr("agent.report_checks.verkeerd_gebonden", kapot)
+    spec = _spec(conclusie="p01hoinges bevat geen rijen met INSTELLINGSCODE_ACTUEEL = 25DW.")
+    with caplog.at_level("ERROR"):
+        [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+    assert "geen rijen" in probleem
+    assert "Interne fout" in caplog.text and "kapot" in caplog.text

@@ -23,7 +23,7 @@ from agent.labels import (
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
 )
-from agent.probleem import Probleem
+from agent.probleem import Probleem, veilig
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -114,9 +114,9 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
             )
         )
 
-    problems += verkeerde_opleidingsvormen(text, sources)
-    problems += onbekende_datasets(text)
-    problems += ongebruikte_bronnen(text, sources)
-    problems += verkeerd_gebonden(text, sources)
-    problems += verkeerde_kpi_periodes(text, sources)
+    problems += veilig(verkeerde_opleidingsvormen, text, sources)
+    problems += veilig(onbekende_datasets, text)
+    problems += veilig(ongebruikte_bronnen, text, sources)
+    problems += veilig(verkeerd_gebonden, text, sources)
+    problems += veilig(verkeerde_kpi_periodes, text, sources)
     return problems
