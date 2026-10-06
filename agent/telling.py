@@ -6,6 +6,8 @@ het antwoord. Het model formuleerde ze eerder zelf en kreeg er vals alarm van ee
 regex achteraf (#239): elke parafrase van de DUO-tekst gold als een fout.
 """
 
+import re
+
 from core.sentinels import BETEKENIS
 from tools import cbs_afronding, duo, store
 from tools.catalog import catalogus_titel
@@ -13,6 +15,8 @@ from tools.catalog import catalogus_titel
 from .selectie import data_keys
 
 _KOP = "**Telling**"
+# De eigen Definities-paragraaf van het model, tot de volgende vetgedrukte kop of het einde.
+_EIGEN_DEFINITIES = re.compile(r"\n*\*\*Definities\*\*\n.*?(?=\n\n\*\*[^*\n]+\*\*|\Z)", re.DOTALL)
 
 
 def _ondergrens(key: str) -> bool:
@@ -26,9 +30,18 @@ def _naam(dataset: str) -> str:
     return dataset if titel == dataset else f"{dataset} ({titel})"
 
 
+def _teldefinities(tool_results: list[str]) -> dict[str, str]:
+    definities: dict[str, str] = {}
+    for key in data_keys(tool_results):
+        known = store.meta(key)
+        if known is not None and known.bron == "duo" and known.teldefinitie:
+            definities.setdefault(known.dataset, known.teldefinitie)
+    return definities
+
+
 def telling_blok(tool_results: list[str]) -> str:
     """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens of afronding raakte."""
-    definities: dict[str, str] = {}
+    definities = _teldefinities(tool_results)
     ondergrens: dict[str, None] = {}
     afgerond: dict[str, str] = {}
     for key in data_keys(tool_results):
@@ -37,8 +50,6 @@ def telling_blok(tool_results: list[str]) -> str:
             afgerond.setdefault(known.dataset, noot)
         if known is None or known.bron != "duo":
             continue
-        if known.teldefinitie:
-            definities.setdefault(known.dataset, known.teldefinitie)
         if _ondergrens(key):
             ondergrens.setdefault(known.dataset)
     regels = [f"- {_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
@@ -52,8 +63,14 @@ def telling_blok(tool_results: list[str]) -> str:
 
 
 def met_telling(tekst: str, tool_results: list[str]) -> str:
-    """Het antwoord met het telling-blok eronder."""
+    """Het antwoord met het telling-blok eronder.
+
+    Met een teldefinitie uit de bron vervalt de eigen Definities-paragraaf van het model:
+    één definitieblok, uit de bron. Bij TU Delft spraken ze elkaar tegen (#402).
+    """
     blok = telling_blok(tool_results)
     if not blok or not tekst.strip():
         return tekst
+    if _teldefinities(tool_results):
+        tekst = _EIGEN_DEFINITIES.sub("", tekst)
     return f"{tekst.rstrip()}\n\n{blok}"

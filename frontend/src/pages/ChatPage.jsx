@@ -51,6 +51,7 @@ import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
 import { useConversationSearch } from '../hooks/useConversationSearch'
+import { splitsTelling } from '../telling'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -161,7 +162,18 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
 function MessageContent({ msg }) {
   if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
   if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
-  return <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{msg.content}</ReactMarkdown>
+  const { antwoord, telling, samenvatting } = splitsTelling(msg.content)
+  const markdown = text => <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{text}</ReactMarkdown>
+  if (!telling) return markdown(msg.content)
+  return (
+    <>
+      {markdown(antwoord)}
+      <details className="telling">
+        <summary><strong>Telling</strong> {samenvatting}</summary>
+        {markdown(telling)}
+      </details>
+    </>
+  )
 }
 
 export default function ChatPage({ openRapport, settings = {}, user, feedbackEnabled = false }) {
