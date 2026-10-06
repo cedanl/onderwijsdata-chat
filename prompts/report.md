@@ -54,7 +54,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 ## Definities en verwijzingen
 
-- Schrijf in `definities` alleen getalvrije begrippen. Zeg niets over hoe een dataset telt en omschrijf voltijd, deeltijd en duaal niet zelf; de code zet de definitie van de bron erboven.
+- Schrijf in `definities` alleen getalvrije begrippen. Zeg niets over hoe een dataset telt of wat wel of niet meetelt, en omschrijf voltijd, deeltijd en duaal niet zelf; de code zet de definitie van de bron erboven.
 - Verwijs nooit naar "resource 3" of een ander bestandsnummer; noem een bestand bij zijn titel.
 
 ## Bronvermeldingen

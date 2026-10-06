@@ -11,8 +11,14 @@ import re
 from tools import store
 from tools.duo import OPLEIDINGSVORM_DATASETS, OPLEIDINGSVORMEN
 
-# Wat een model over tellen schrijft als de bron zelf al zegt wat hij telt.
-_TELLING = re.compile(r"\b(?:tel(?:t|len|ling|lingen)|geteld|meegeteld)\b|\bper opleidingsvorm\b", re.IGNORECASE)
+# Wat een model over tellen schrijft als de bron zelf al zegt wat hij telt, ook wat
+# wel of niet meetelt: bij TU Delft zei het model 'WO-masters buiten beschouwing'
+# waar DUO de hbo-master uitsluit (#402).
+_TELLING = re.compile(
+    r"\b(?:tel(?:t|len|ling|lingen)|geteld|meegeteld|meegenomen|uitgesloten|uitgezonderd|inclusief|exclusief)\b"
+    r"|\bper opleidingsvorm\b|\bbuiten beschouwing\b",
+    re.IGNORECASE,
+)
 
 
 def definities_uit_bron(datasets: list[dict]) -> list[dict]:
