@@ -7,6 +7,9 @@ resources:
   - secret.yaml
 
 configMapGenerator:
+  - name: base-config
+    files:
+      - values.yaml=../base/values-base.yaml
   - name: playground-config
     files:
       - values.yaml=values.yaml

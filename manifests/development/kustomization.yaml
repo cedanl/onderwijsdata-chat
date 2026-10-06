@@ -8,6 +8,9 @@ resources:
   - middleware.yaml
 
 configMapGenerator:
+  - name: base-config
+    files:
+      - values.yaml=../base/values-base.yaml
   - name: development-config
     files:
       - values.yaml=values.yaml
