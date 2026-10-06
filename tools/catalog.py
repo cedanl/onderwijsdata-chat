@@ -547,6 +547,14 @@ def genoemde_datasets(tekst: str) -> list[str]:
     return [i for i in sorted(ids) if re.search(rf"(?<![\w-]){re.escape(i)}(?![\w-])", tekst, re.IGNORECASE)]
 
 
+def leverancier(dataset_id: str) -> str | None:
+    """De bron van een catalogus-ID ("CBS", "DUO", "RIO", ...); None als de catalogus het ID niet kent."""
+    if any(e.get("_cbs_id") == dataset_id for e in _cbs()):
+        return "CBS"
+    entry = next((e for e in _rio_duo() if _dataset_id(e) == dataset_id), {})
+    return str(entry.get("leverancier", "")).upper() or None
+
+
 def catalogus_titel(dataset_id: str) -> str:
     """Menselijke titel (bron-veld) uit de catalogus voor een dataset-ID.
 

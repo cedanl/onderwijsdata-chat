@@ -23,8 +23,12 @@ def litellm_kwargs(model: str) -> dict:
     return dict(_SAMPLING_KWARGS)
 
 
-def build_system(settings: dict | None = None) -> list[dict]:
+def build_system(settings: dict | None = None, beurt: str = "") -> list[dict]:
+    """Eén systeembericht; `beurt` (context van deze vraag) komt na het gecachete deel."""
     settings = settings or {}
     persona = build_persona_block(settings)
     text = persona + "\n\n" + SYSTEM_PROMPT if persona else SYSTEM_PROMPT
-    return [{"role": "system", "content": [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]}]
+    content = [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+    if beurt:
+        content.append({"type": "text", "text": beurt})
+    return [{"role": "system", "content": content}]
