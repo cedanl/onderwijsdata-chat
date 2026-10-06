@@ -12,6 +12,7 @@ import re
 from tools import instelling, store
 from tools.catalog import genoemde_datasets
 
+from .grounding import checked_numbers
 from .probleem import Probleem
 from .selectie import data_keys
 
@@ -38,6 +39,8 @@ _OORZAAK = re.compile(
     r"|\bhangt\s+samen\s+met\b",
     re.IGNORECASE,
 )
+# De oorzaak tot het einde van haar zin; de punt in 24.740 is geen zinseinde.
+_OORZAAKZIN = re.compile(rf"(?:{_OORZAAK.pattern})(?:[^.!?\n]|\.(?=\d))*", re.IGNORECASE)
 _VOORBEHOUD = re.compile(
     r"\bniet\s+(?:vast\s+te\s+stellen|af\s+te\s+leiden|te\s+herleiden|uit\s+(?:deze|de)\s+(?:data|gegevens))\b"
     r"|\bniet\s+(?:met|uit)\s+deze\s+(?:data|gegevens)\b|\bmogelijk(?:e)?\b[^.\n]{0,40}\bniet\s+getoetst\b",
@@ -109,19 +112,50 @@ def onbeschikbaar_zonder_zoekpad(vraag: str, tekst: str, tool_results: list[str]
     ]
 
 
+def _getallen_per_dataset(tool_results: list[str]) -> dict[str, set[str]]:
+    """Per dataset de getallen uit zijn toolresultaten; de rapportcontext noemt er meerdere tegelijk."""
+    per: dict[str, set[str]] = {}
+    for item in _resultaten(tool_results):
+        onderdelen = [item, *(d for d in item.get("datasets") or [] if isinstance(d, dict))]
+        for deel in onderdelen:
+            if isinstance(key := deel.get("data_key"), str):
+                dataset = known.dataset.lower() if (known := store.meta(key)) else key
+                per.setdefault(dataset, set()).update(re.findall(r"\d+", json.dumps(deel, default=str)))
+    return per
+
+
+def _bronnen(tekst: str, per_dataset: dict[str, set[str]]) -> set[str]:
+    getallen = {cijfers for _, cijfers in checked_numbers(tekst)}
+    return {dataset for dataset, bekend in per_dataset.items() if getallen & bekend}
+
+
+def _gedekt(clausule: str, effect: set[str], per_dataset: dict[str, set[str]]) -> bool:
+    """De oorzaak rust op een getal uit een andere bron dan het effect dat ze verklaart."""
+    return bool(effect) and bool(_bronnen(clausule, per_dataset) - effect)
+
+
 def ongedekte_oorzaak(tekst: str, tool_results: list[str]) -> list[str]:
     """Een oorzaak of duiding die niet uit de data volgt, moet als zodanig gemarkeerd zijn.
 
     Zonder opgehaalde data zwijgt de controle (een algemene vraag mag uitleg geven). Met data
     bewijzen de aggregaten een verschil, niet de reden ervan. Per alinea: staat er een
     voorbehoud ("niet vast te stellen met deze gegevens") bij de oorzaak, dan is het eerlijk.
+    Gedekt is een oorzaak waarvan de zin een getal noemt uit een andere dataset dan de
+    getallen van het effect; de getallen van het effect zelf bewijzen alleen het verschil.
     """
-    if not data_keys(tool_results):
+    per_dataset = _getallen_per_dataset(tool_results)
+    if not per_dataset:
         return []
+    alineas = [alinea.strip() for alinea in re.split(r"\n\s*\n", tekst)]
+    clausules = {alinea: [m.group(0) for m in _OORZAAKZIN.finditer(alinea)] for alinea in alineas}
+    effecttekst = tekst
+    for clausule in (c for lijst in clausules.values() for c in lijst):
+        effecttekst = effecttekst.replace(clausule, " ")
+    effect = _bronnen(effecttekst, per_dataset)
     ongedekt = [
-        alinea.strip()
-        for alinea in re.split(r"\n\s*\n", tekst)
-        if _OORZAAK.search(alinea) and not _VOORBEHOUD.search(alinea)
+        alinea
+        for alinea, lijst in clausules.items()
+        if lijst and not _VOORBEHOUD.search(alinea) and not all(_gedekt(c, effect, per_dataset) for c in lijst)
     ]
     if not ongedekt:
         return []

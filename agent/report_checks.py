@@ -6,7 +6,8 @@ grafieken, is met code te controleren, voor elk model gelijk:
 - elk groot getal in de tekst komt uit de data van het rapport;
 - de tekst claimt geen afwezigheid van data naast een gevulde grafiek;
 - opleidingsvorm en dataset-ID in de tekst kloppen met de bron (#196);
-- een getal staat bij het jaar en de instelling van zijn eigen rij (#197).
+- een getal staat bij het jaar en de instelling van zijn eigen rij (#197);
+- een oorzaak rust op een eigen bron of staat er als niet vast te stellen (#225).
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import json
 import re
 from typing import TYPE_CHECKING
 
+from agent.beweringen import ongedekte_oorzaak
 from agent.binding import verkeerd_gebonden
 from agent.dimensielabels import verkeerde_dimensielabels
 from agent.grounding import unsourced_numbers
@@ -128,4 +130,5 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += hard(veilig(verkeerd_gebonden, text, sources))
     problems += hard(veilig(verkeerde_kenmerken, text, sources))
     problems += hard(veilig(verkeerde_kpi_periodes, text, sources))
+    problems += veilig(ongedekte_oorzaak, "\n\n".join(_claims(spec)), sources)
     return problems
