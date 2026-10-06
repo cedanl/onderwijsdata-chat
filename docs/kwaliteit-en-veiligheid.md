@@ -17,6 +17,17 @@ De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM 
 | **Professionele toon** | Geen complimenten ("goede vraag!"), geen opvulzinnen, direct antwoord. |
 | **Voorzichtig met causaliteit** | Causale claims worden geformuleerd als hypothese, niet als feit. |
 
+### Controle na het antwoord (#207)
+
+Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, dan krijgt het model één herkansing. Wat daarna blijft, wordt per soort behandeld:
+
+| Soort | Voorbeelden | Chat | Rapport |
+|-------|-------------|------|---------|
+| **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
+| **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook) | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
+
+Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepast in `agent/run.py` en `agent/report_checks.py`.
+
 ---
 
 ## Beveiligingsmaatregelen

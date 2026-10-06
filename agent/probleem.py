@@ -7,15 +7,28 @@ de herkansing, logs en bestaande vergelijkingen blijven werken.
 
 Een controle die zelf faalt, mag het antwoord niet vervangen (#392): `veilig`
 logt de fout onder een fout-ID en gaat door zonder die controle.
+
+Een probleem is hard of zacht (#207, besluit optie C). Hard: het antwoord geeft een
+getal of feit dat niet bij de data hoort (getal zonder bron, afgekapte data,
+verkeerd jaar of verkeerde instelling). Blijft dat na de herkansing, dan houdt de
+app het antwoord in. Zacht (label, teleenheid, woordkeuze): het antwoord blijft,
+met een waarschuwing.
 """
 
 from collections.abc import Callable, Iterable
 
 from core.errors import log_interne_fout
 
+# Wat de gebruiker ziet in plaats van een antwoord met een hard probleem; de meldingen staan eronder.
+INGEHOUDEN = (
+    "Dit antwoord is ingehouden: het klopte na controle niet met de opgehaalde data. "
+    "Hieronder staat wat er niet klopte. Stel de vraag opnieuw, of preciezer."
+)
+
 
 class Probleem(str):
     melding: str
+    hard: bool = False
 
     def __new__(cls, melding: str, opdracht: str = ""):
         probleem = super().__new__(cls, f"{melding} {opdracht}".strip())
@@ -35,3 +48,18 @@ def veilig(controle: Callable[..., Iterable[str]], *args) -> list[str]:
     except Exception as exc:
         log_interne_fout(exc, f"controle {getattr(controle, '__name__', controle)}")
         return []
+
+
+def hard(problemen: Iterable[str]) -> list[Probleem]:
+    """Dezelfde problemen, gemarkeerd als hard: blijven ze, dan wordt het antwoord ingehouden."""
+    gemarkeerd = []
+    for p in problemen:
+        probleem = str.__new__(Probleem, p)
+        probleem.melding = getattr(p, "melding", p)
+        probleem.hard = True
+        gemarkeerd.append(probleem)
+    return gemarkeerd
+
+
+def harde(problemen: list[str]) -> list[str]:
+    return [p for p in problemen if getattr(p, "hard", False)]

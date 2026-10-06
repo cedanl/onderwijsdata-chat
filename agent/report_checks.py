@@ -24,7 +24,7 @@ from agent.labels import (
     ongebruikte_bronnen,
     verkeerde_opleidingsvormen,
 )
-from agent.probleem import Probleem, veilig
+from agent.probleem import Probleem, hard, veilig
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -92,19 +92,24 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
 
     `sources` zijn de toolresultaten en de datasetcontext van deze rapportrun.
     """
-    problems = _missing(spec)
+    # Hard (#207): een leeg rapport, of een getal of feit dat niet bij de data hoort.
+    problems: list[str] = [*hard(_missing(spec))]
     text = _all_text(spec)
 
     unsourced = unsourced_numbers(text, sources)
     if unsourced:
-        problems.append(
-            f"Deze getallen staan niet in de opgehaalde data: {', '.join(_nl(n) for n in sorted(unsourced, key=int))}."
+        problems += hard(
+            [
+                f"Deze getallen staan niet in de opgehaalde data: {', '.join(_nl(n) for n in sorted(unsourced, key=int))}."
+            ]
         )
 
     if any(_has_values(f) for f in figures_json):
         for claim in _claims(spec):
             if match := _ABSENCE.search(claim or ""):
-                problems.append(f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden.")
+                problems += hard(
+                    [f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden."]
+                )
                 break
 
     if match := _RESOURCE_VERWIJZING.search(text):
@@ -118,7 +123,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += veilig(verkeerde_opleidingsvormen, text, sources)
     problems += veilig(onbekende_datasets, text)
     problems += veilig(ongebruikte_bronnen, text, sources)
-    problems += veilig(verkeerd_gebonden, text, sources)
-    problems += veilig(verkeerde_kenmerken, text, sources)
-    problems += veilig(verkeerde_kpi_periodes, text, sources)
+    problems += hard(veilig(verkeerd_gebonden, text, sources))
+    problems += hard(veilig(verkeerde_kenmerken, text, sources))
+    problems += hard(veilig(verkeerde_kpi_periodes, text, sources))
     return problems
