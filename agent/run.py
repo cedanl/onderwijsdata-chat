@@ -4,7 +4,7 @@ import logging
 
 import plotly.io as pio
 
-from core.config import MAX_TOOL_ITERATIONS, MODEL, SEARCH_CATALOG_LIMIT
+from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -12,7 +12,9 @@ from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
+from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
+from .grafiekvraag import ontbrekende_grafiek
 from .grounding import unverified
 from .history import trim
 from .kenmerken import verkeerde_kenmerken
@@ -20,15 +22,16 @@ from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
 from .kpi_scope import kpi_naast_filter
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
-from .loop import ToolCall, tool_loop
+from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst
 from .models import build_system
-from .probleem import Probleem, meldingen, veilig
+from .probleem import INGEHOUDEN, Probleem, hard, harde, meldingen, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
+from .timebox import timebox
 from .vaste_antwoorden import sentinelvraag, weigering
 
 logger = logging.getLogger(__name__)
@@ -146,10 +149,6 @@ def _correction(problems: list[str]) -> str:
 
 _MAX_CLARIFY_RONDES = 1
 
-# Na 45 s kwam de melding pas als de gebruiker al dacht dat de app hing (UX-audit P3-5).
-# De voortgangsbalk toont de verstreken tijd; deze melding zegt dat lang duren normaal is.
-SLOW_WARNING_S = 20
-
 
 def tools_for(session: dict) -> list[dict]:
     """De toolset van deze beurt. Na een beantwoorde scopevraag is clarify_scope er niet meer:
@@ -200,7 +199,9 @@ async def run(
 
     def ongedekt(n: str) -> Probleem:
         if unverified(n, [], said_by_user):
-            return Probleem(f"{n} staat niet in de opgehaalde data.")
+            (verzonnen,) = hard([Probleem(f"{n} staat niet in de opgehaalde data.")])
+            return verzonnen
+        # Zacht: een correcte weerlegging citeert het getal van de gebruiker ook (#207, #214).
         return Probleem(
             f"{n} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
@@ -210,21 +211,24 @@ async def run(
         return [ongedekt(n) for n in unverified(text, tool_results, earlier)]
 
     def check(text: str, tool_results: list[str]) -> list[str]:
+        # hard(): blijft het probleem na de herkansing, dan wordt het antwoord ingehouden (#207).
         return [
             *veilig(ongedekte_getallen, text, tool_results),
-            *veilig(ontbrekende_schooljaren, last_user_msg, tool_results),
-            *veilig(ontbrekende_instellingen, last_user_msg, tool_results),
-            *veilig(onvolledige_selecties, text, tool_results),
+            *hard(veilig(ontbrekende_schooljaren, last_user_msg, tool_results)),
+            *hard(veilig(ontbrekende_instellingen, last_user_msg, tool_results)),
+            *hard(veilig(onvolledige_selecties, text, tool_results)),
             *veilig(verkeerde_opleidingsvormen, text, tool_results),
+            *veilig(verkeerde_dimensielabels, text, tool_results),
             *veilig(onbekende_datasets, text),
             *veilig(ongebruikte_bronnen, text, tool_results),
-            *veilig(verkeerd_gebonden, text, tool_results),
-            *veilig(verkeerde_kenmerken, text, tool_results),
-            *veilig(verkeerde_kpi_periodes, text, tool_results),
+            *hard(veilig(verkeerd_gebonden, text, tool_results)),
+            *hard(veilig(verkeerde_kenmerken, text, tool_results)),
+            *hard(veilig(verkeerde_kpi_periodes, text, tool_results)),
             *veilig(kpi_naast_filter, text, tool_results),
             *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),
             *veilig(onbeschikbaar_zonder_zoekpad, last_user_msg, text, tool_results),
             *veilig(ongedekte_oorzaak, text, tool_results),
+            *veilig(ontbrekende_grafiek, last_user_msg, text, tool_results, session.get("data_keys", [])),
             *veilig(metatekst, text),
         ]
 
@@ -243,39 +247,35 @@ async def run(
         record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
         await _handle_figure(call.name, figure, session, emit)
 
-    async def _slow_warning():
-        await asyncio.sleep(SLOW_WARNING_S)
-        await emit(
-            {
-                "type": "toast",
-                "message": "Het model is nog bezig — bij complexe vragen kan dit even duren.",
-                "level": "info",
-            }
-        )
-
-    slow_task = asyncio.create_task(_slow_warning())
-    try:
-        result = await tool_loop(
-            history,
-            model=chosen_model,
-            tools=tools_for(session),
-            emit=emit,
-            stop_event=stop_event,
-            system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
-            stream_text=True,
-            on_llm_start=lambda: emit({"type": "message_start"}),
-            on_tool_result=keep,
-            tool_limits=_TOOL_LIMITS,
-            halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
-            max_iterations=MAX_TOOL_ITERATIONS,
-            max_result_chars=_MAX_TOOL_RESULT_CHARS,
-            check=check,
-            correction=_correction,
-            on_correction=withdraw,
-            wrap_up=AFRONDEN,
-        )
-    finally:
-        slow_task.cancel()
+    stop = stop_event or asyncio.Event()
+    async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
+        try:
+            async with asyncio.timeout(box.afbreken_s):
+                result = await tool_loop(
+                    history,
+                    model=chosen_model,
+                    tools=tools_for(session),
+                    emit=emit,
+                    stop_event=stop,
+                    system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
+                    stream_text=True,
+                    on_llm_start=lambda: emit({"type": "message_start"}),
+                    on_tool_result=keep,
+                    tool_limits=_TOOL_LIMITS,
+                    halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+                    max_iterations=MAX_TOOL_ITERATIONS,
+                    max_result_chars=_MAX_TOOL_RESULT_CHARS,
+                    check=check,
+                    correction=_correction,
+                    on_correction=withdraw,
+                    wrap_up=AFRONDEN,
+                )
+        except TimeoutError:
+            # Vastgelopen aanroep die het stopsignaal niet zag.
+            result = LoopResult(aborted="tools")
+    if box.verlopen:
+        logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
+        await emit(box.melding())
 
     if result.aborted == "tools":
         # Stopped while tools ran: close the open message as aborted. No
@@ -315,6 +315,9 @@ async def run(
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
     if result.problems:
         logger.warning("CONTROLE na herkansing nog niet in orde  model=%s  %s", chosen_model, result.problems)
+    if harde(result.problems):
+        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", chosen_model, text_content[:500])
+        text_content = INGEHOUDEN
     await emit(
         {
             "type": "message_end",

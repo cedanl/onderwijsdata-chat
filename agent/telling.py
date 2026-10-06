@@ -12,6 +12,7 @@ from core.sentinels import BETEKENIS
 from tools import cbs_afronding, duo, store
 from tools.catalog import catalogus_titel
 
+from .dimensielabels import selectie_regels
 from .selectie import data_keys
 
 _KOP = "**Telling**"
@@ -40,9 +41,10 @@ def _teldefinities(tool_results: list[str]) -> dict[str, str]:
 
 
 def telling_blok(tool_results: list[str]) -> str:
-    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens of afronding raakte."""
+    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding of CBS-selectie raakte."""
     definities = _teldefinities(tool_results)
     ondergrens: dict[str, None] = {}
+    bovengrens: dict[str, None] = {}
     afgerond: dict[str, str] = {}
     for key in data_keys(tool_results):
         known = store.meta(key)
@@ -52,12 +54,20 @@ def telling_blok(tool_results: list[str]) -> str:
             continue
         if _ondergrens(key):
             ondergrens.setdefault(known.dataset)
+        if known.afgeleid_van and known.vier_cellen:
+            bovengrens.setdefault(known.dataset)
     regels = [f"- {_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
     regels += [f"- {_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
+    regels += selectie_regels(tool_results)
     if ondergrens:
         regels.append(
             f"- Ondergrens: in de gekozen selectie van {', '.join(ondergrens)} zijn cellen met -1 uitgesloten "
             f"({BETEKENIS}); de totalen zijn daardoor een ondergrens."
+        )
+    if bovengrens:
+        regels.append(
+            f"- Bovengrens: in de gekozen selectie van {', '.join(bovengrens)} zijn kleine aantallen (1 t/m 4) als 4 "
+            "gepubliceerd; de totalen zijn daardoor een bovengrens."
         )
     return f"{_KOP}\n" + "\n".join(regels) if regels else ""
 

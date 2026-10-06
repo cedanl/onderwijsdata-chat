@@ -6,7 +6,7 @@ from riodata import duo as _duo
 
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
-from . import duo_meta, fouten, instelling, kolomprofiel, periode, store
+from . import duo_meta, fouten, instelling, kleine_aantallen, kolomprofiel, periode, store
 from .catalog import catalogus_titel, is_documentbestand, resource_titel, tabelbestanden
 
 _SAMPLE_ROWS = 3
@@ -241,6 +241,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
             schooljaren=periode.dekking(df, "duo", kolom),
             instellingskolom=codekolom,
             instellingen=instelling.dekking(df, codekolom),
+            vier_regel=kleine_aantallen.regel_geldt(df),
             laad=("get_duo_data", {"dataset_id": dataset_id, "resource": resource}),
         )
         store.put(key, df, meta)
@@ -276,8 +277,8 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         "kolommen": schema,
         "preview": preview,
     }
-    result.update(duo_meta.metadata(duo_meta.record(dataset_id)))
     known = store.meta(key)
+    result.update(duo_meta.metadata(duo_meta.record(dataset_id), known.vier_regel if known else None))
     if known and known.schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)
     notes = resource_sentinel_notes(min1)

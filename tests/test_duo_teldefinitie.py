@@ -40,13 +40,29 @@ def test_p01_p02_en_p03_zijn_onderscheidbaar():
     assert "neveninschrijvingen" in _get("p03hoinschr")["teldefinitie"]
 
 
-@pytest.mark.parametrize("dataset", ["p01hoinges", "p02ho1ejrs", "p03hoinschr"])
-def test_get_duo_data_geeft_de_publicatieregel(dataset):
-    [regel] = _get(dataset)["publicatieregels"]
+_VIER = pd.DataFrame({"AANTAL LEERLINGEN": [4, 4, 25]})
+_MIN_EEN = pd.DataFrame({"AANTAL_INGESCHREVENEN": [-1, 12, 30]})
+
+
+def test_publicatieregel_wordt_meegegeven_als_de_data_hem_volgt():
+    [regel] = _get("01voins-v1", _VIER)["publicatieregels"]
 
     assert regel["bereik"] == [1, 4]
     assert regel["gepubliceerd_als"] == 4
     assert regel["bronpassage"]
+
+
+@pytest.mark.parametrize("dataset", ["p01hoinges", "p02ho1ejrs", "p03hoinschr"])
+def test_publicatieregel_ontbreekt_als_de_data_kleine_aantallen_als_min_een_geeft(dataset):
+    """#407: de HO-beschrijving noemt '1-4 als 4', de bestanden gebruiken -1."""
+    result = _get(dataset, _MIN_EEN)
+
+    assert "publicatieregels" not in result
+    assert "-1" in result["publicatieregels_niet_gebruikt"]
+
+
+def test_publicatieregel_niet_gebruikt_bij_1_tot_3_cellen():
+    assert "publicatieregels" not in _get("01voins-v1", pd.DataFrame({"AANTAL LEERLINGEN": [4, 2, 25]}))
 
 
 def test_publicatieregel_maakt_4_niet_leeg():

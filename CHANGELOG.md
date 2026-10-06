@@ -22,6 +22,8 @@ de laatste tag is 1.8.6.
   de melding noemt de geldige codes (bijv. status `G`, niet `OPEN`).
 - Een oorzaak in chat of rapport mag alleen als een eigen dataset haar aantoont (een getal uit een andere
   bron dan het effect); anders staat er dat ze met deze gegevens niet vast te stellen is.
+- Heeft een DUO-bestand een teldefinitie, dan schrijft het rapport niet ook een eigen afbakening
+  ("buiten beschouwing", "exclusief") naast de brontekst.
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.

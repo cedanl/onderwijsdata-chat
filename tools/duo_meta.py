@@ -13,6 +13,8 @@ from functools import cache
 
 from riodata import catalog as _rio_catalog
 
+from . import kleine_aantallen
+
 
 @cache
 def _records() -> dict[str, dict]:
@@ -97,15 +99,22 @@ def beschrijving_onvolledig(entry: dict) -> bool:
     return status is not None and status != "ok"
 
 
-def metadata(entry: dict) -> dict:
-    """De velden die get_duo_data en dataset_details meegeven; alleen wat er is."""
+def metadata(entry: dict, regel_geldt: bool | None = None) -> dict:
+    """De velden die get_duo_data en dataset_details meegeven; alleen wat er is.
+
+    `regel_geldt`: of de geladen data de publicatieregel volgt (#407). None = data niet
+    geladen (dataset_details): de regel uit de beschrijving blijft dan staan.
+    """
     velden: dict = {}
     if definitie := teldefinitie(entry):
         velden["teldefinitie"] = definitie
     elif melding := ander_onderwijstype(entry):
         velden["teldefinitie_niet_gebruikt"] = melding
     if regels := publicatieregels(entry):
-        velden["publicatieregels"] = regels
+        if regel_geldt is False:
+            velden["publicatieregels_niet_gebruikt"] = kleine_aantallen.NOOT_ALS_MIN_EEN
+        else:
+            velden["publicatieregels"] = regels
     if beschrijving_onvolledig(entry):
         velden["metadata_onbekend"] = (
             "De DUO-beschrijving is niet volledig te lezen: teldefinitie en publicatieregels kunnen "

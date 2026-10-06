@@ -10,6 +10,7 @@ import json
 
 import pandas as pd
 
+from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
@@ -69,7 +70,8 @@ def test_unsourced_number_gets_one_correction_and_the_unchecked_text_is_withdraw
     assert end["type"] == "message_end" and "controle" not in end
 
 
-def test_number_that_stays_unsourced_is_flagged_on_the_answer(monkeypatch):
+def test_number_that_stays_unsourced_withholds_the_answer(monkeypatch):
+    """Besluit #207 (optie C): een getal zonder bron is hard; het antwoord wordt ingehouden."""
     text, events = _chat(
         monkeypatch,
         [
@@ -79,9 +81,28 @@ def test_number_that_stays_unsourced_is_flagged_on_the_answer(monkeypatch):
         ],
     )
 
-    assert text == "Toch 6.340."
+    assert text == INGEHOUDEN
     assert events[-1]["type"] == "message_end"
+    assert events[-1]["content"] == INGEHOUDEN
     assert events[-1]["controle"] == ["6.340 staat niet in de opgehaalde data."]
+
+
+def test_soft_problem_keeps_the_answer_with_a_warning(monkeypatch):
+    """Een getal dat alleen de gebruiker noemde is zacht: een weerlegging citeert het ook (#207, #214)."""
+    earlier = [{"role": "user", "content": "Het waren toch 987654 studenten?"}]
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="Nee, niet 987654 maar 5.943.", tool_calls=[]),
+            StreamResult(text="Nee: niet 987654, het waren er 5.943.", tool_calls=[]),
+        ],
+        earlier,
+    )
+
+    assert text == "Nee: niet 987654, het waren er 5.943."
+    assert events[-1]["content"] == text
+    assert len(events[-1]["controle"]) == 1
 
 
 def test_number_from_an_earlier_turn_is_sourced(monkeypatch):

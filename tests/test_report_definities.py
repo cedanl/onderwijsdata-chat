@@ -48,6 +48,29 @@ def test_getalvrij_begrip_van_het_model_blijft():
     assert samengevoegd(definities_uit_bron(_datasets()), [eerstejaars])[-1] == eerstejaars
 
 
+@pytest.mark.parametrize(
+    "afbakening",
+    [
+        {"begrip": "Ingeschrevenen", "definitie": "WO-masters zijn buiten beschouwing gelaten."},
+        {"begrip": "Studenten", "definitie": "Exclusief hbo-masters."},
+        {"begrip": "Studenten", "definitie": "Inclusief de associate degree."},
+        {"begrip": "Bachelors", "definitie": "Promovendi zijn niet meegenomen."},
+        {"begrip": "Bachelors", "definitie": "Hbo-masters zijn uitgesloten."},
+    ],
+)
+def test_wat_de_telling_afbakent_zegt_de_bron_en_niet_het_model(afbakening):
+    """TU Delft (#402): model 'WO-masters buiten beschouwing', bron 'hbo-master uitgesloten'."""
+    uit_bron = definities_uit_bron(_datasets())
+
+    assert samengevoegd(uit_bron, [afbakening]) == uit_bron
+
+
+def test_zonder_teldefinitie_mag_het_model_afbakenen():
+    afbakening = {"begrip": "Studenten", "definitie": "Exclusief hbo-masters."}
+
+    assert samengevoegd([], [afbakening]) == [afbakening]
+
+
 def test_rapportspec_neemt_de_bronblok_over_en_niet_de_modelomschrijving():
     antwoord = (
         '{"title": "t", "definities": [{"begrip": "Voltijd", "definitie": "per opleidingsvorm geteld"}], '

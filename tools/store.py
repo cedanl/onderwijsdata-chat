@@ -40,6 +40,8 @@ class KeyMeta:
     instellingen: tuple[str, ...] | None = None  # institution codes in this data; None = unknown (#143)
     afgeleid_van: str | None = None  # the key this one was derived from
     afronding: int | None = None  # CBS publishes the counts rounded to this unit, e.g. 10 (#352)
+    vier_regel: bool = False  # the data publishes 1-4 as 4: sums are an upper bound (#406)
+    vier_cellen: int | None = None  # cells published as 4 in this selection; None = whole resource
     # The load call (tool, arguments): what a snippet needs to reproduce the data (#131). Provenance, not identity.
     laad: tuple[str, dict] | None = field(default=None, compare=False)
     # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
