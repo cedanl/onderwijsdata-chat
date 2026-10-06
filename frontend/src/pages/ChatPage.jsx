@@ -15,6 +15,7 @@ SyntaxHighlighter.registerLanguage('sql', sql)
 SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
+import { useEscape } from '../hooks/useEscape'
 import ReasoningStep from '../components/ReasoningStep'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
@@ -182,6 +183,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
   const [defaultModel, setDefaultModel] = useState('')
   const [showSources, setShowSources] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  useEscape(sidebarOpen, () => setSidebarOpen(false))
   // Below the breakpoint the sidebar is a drawer: closed, it is out of reach (inert), and the
   // welcome block carries the suggestions instead, so they are never in the page twice (#341).
   const narrowScreen = useMediaQuery(NARROW_SCREEN)
