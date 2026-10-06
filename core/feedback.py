@@ -34,6 +34,11 @@ QUESTIONS: tuple[dict, ...] = (
         "options": ["Ja", "Deels", "Nee", "Weet ik niet"],
     },
     {
+        "id": "vertrouwen_waarom",
+        "text": "Kun je toelichten waarom je de cijfers (niet) vertrouwt?",
+        "type": "text",
+    },
+    {
         "id": "delen",
         "text": "Zou je dit rapport delen met collega's?",
         "type": "choice",

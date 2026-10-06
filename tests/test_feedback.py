@@ -94,6 +94,14 @@ def test_validate_keeps_valid_answers_and_drops_empty_ones():
     assert validate_answers(answers) == {_SCALE["id"]: _SCALE["options"][0], _TEXT["id"]: "meer duiding"}
 
 
+def test_vertrouwen_heeft_een_eigen_toelichting():
+    """Het waarom achter (wan)trouwen blijft gekoppeld aan de vertrouwensvraag, niet aan 'verbeteren'."""
+    ids = [q["id"] for q in QUESTIONS]
+    assert ids.index("vertrouwen_waarom") == ids.index("vertrouwen") + 1
+    answers = {"vertrouwen": "Deels", "vertrouwen_waarom": "  De totalen tellen niet op.  "}
+    assert validate_answers(answers) == {"vertrouwen": "Deels", "vertrouwen_waarom": "De totalen tellen niet op."}
+
+
 @pytest.mark.parametrize(
     "answers",
     [
