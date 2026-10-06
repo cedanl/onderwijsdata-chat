@@ -633,3 +633,10 @@ def test_vraag_zonder_instelling_houdt_de_gekozen_bron():
     with patch("tools.catalog.instelling.noemt_instelling", return_value=False):
         hits = _zoek_catalogus("voltijd studenten", cbs=cbs, rio=duo, source="cbs")
     assert [h["_cbs_id"] for h in hits] == ["85423NED"]
+
+
+def test_genoemde_datasets_vindt_ids_uit_de_catalogus_in_een_vraag():
+    from tools.catalog import genoemde_datasets
+
+    vraag = "Hoeveel studenten volgens mbo-studenten-per-instelling en p01hoinges, niet p01hoxyz?"
+    assert set(genoemde_datasets(vraag)) == {"mbo-studenten-per-instelling", "p01hoinges"}
