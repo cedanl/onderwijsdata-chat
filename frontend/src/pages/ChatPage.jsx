@@ -34,6 +34,7 @@ import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
+import { exportKeys, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
 import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
@@ -507,6 +508,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 onClarification={sendClarification} onSend={send} busy={busy}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
+                settled={roundSettled(displayMessages, i, busy)}
                 retry={msg.isError ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
@@ -693,7 +695,7 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-function Message({ msg, onClarification, onSend, busy, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
+function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -720,6 +722,8 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
   }
 
   const awaiting = isAwaitingFirstToken(msg)
+  // A round with only data steps has no text, but its tables can still be downloaded.
+  const exportable = settled && exportKeys(msg.tools).length > 0
   if (!awaiting && !msg.tools?.length && !hasAssistantContent(msg)) return null
 
   return (
@@ -731,14 +735,14 @@ function Message({ msg, onClarification, onSend, busy, settings = {}, retry = nu
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
-        {(awaiting || hasAssistantContent(msg)) && (
+        {(awaiting || exportable || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
             <MessageContent msg={msg} />
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
-            <DataExport tools={msg.tools} done={msg.done} />
+            <DataExport tools={msg.tools} settled={settled} />
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}

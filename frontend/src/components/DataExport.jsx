@@ -3,10 +3,10 @@ import { downloadDataCsv } from '../api'
 import { exportKeys } from '../dataExport'
 
 // A CSV download per table the answer was built on (#269); none for a free-text answer.
-export default function DataExport({ tools, done, download = downloadDataCsv }) {
+export default function DataExport({ tools, settled, download = downloadDataCsv }) {
   const [error, setError] = useState(null)
   const keys = exportKeys(tools)
-  if (!done || !keys.length) return null
+  if (!settled || !keys.length) return null
 
   async function onClick(key) {
     setError(null)
