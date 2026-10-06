@@ -634,6 +634,9 @@ input, textarea { font: inherit; }
 .reasoning-step.empty, .reasoning-step.error { align-items: flex-start; color: var(--gray-700); }
 .reasoning-step.empty .reasoning-step-dot, .reasoning-step.error .reasoning-step-dot { margin-top: 6px; }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
+.telling { margin-top: 12px; font-size: .85rem; color: var(--gray-600); }
+.telling summary { cursor: pointer; }
+.telling[open] summary { margin-bottom: 4px; }
 .reasoning-tussentekst { margin: 6px 0 0; font-size: .75rem; font-style: italic; color: var(--gray-500); white-space: pre-wrap; }
 
 

@@ -36,8 +36,9 @@ _ONDERWIJSTYPE_TERMEN = {
 
 
 def _selectie(entry: dict) -> str | None:
+    """De selectiesectie op één regel; DUO's <br> wordt een spatie, de chat toont geen HTML (#402)."""
     selectie = (entry.get("_teldefinitie") or {}).get("selectie")
-    return " ".join(selectie.split()) if selectie else None
+    return " ".join(re.sub(r"<br\s*/?>", " ", selectie, flags=re.IGNORECASE).split()) if selectie else None
 
 
 def _genoemde_typen(tekst: str) -> set[str]:

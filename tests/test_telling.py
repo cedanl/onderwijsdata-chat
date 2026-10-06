@@ -82,3 +82,33 @@ def test_blok_is_onafhankelijk_van_de_formulering_van_het_model():
 
 def test_leeg_antwoord_blijft_leeg():
     assert met_telling("  ", _beurt("duo:p01hoinges:0")) == "  "
+
+
+# Eén definitieblok, uit de bron (#402, audit 14 §3.4): bij TU Delft spraken de eigen
+# Definities van het model en de DUO-teldefinitie elkaar tegen.
+_MET_DEFINITIES = (
+    "De TU Delft had 26.370 ingeschrevenen.\n\n"
+    "**Bronnen**\n- DUO — *Ingeschrevenen hoger onderwijs* (**p01hoinges**)\n\n"
+    "**Definities**\n- **Ingeschrevenen**: WO-masters buiten beschouwing.\n"
+)
+
+
+def test_eigen_definities_wijken_voor_de_teldefinitie_uit_de_bron():
+    tekst = met_telling(_MET_DEFINITIES, _beurt("duo:p01hoinges:0"))
+
+    assert "**Definities**" not in tekst and "WO-masters" not in tekst
+    assert "**Bronnen**" in tekst and _PERSONEN in tekst
+
+
+def test_eigen_definities_blijven_zonder_teldefinitie():
+    tekst = met_telling(_MET_DEFINITIES, _beurt("cbs:85423NED"))
+
+    assert "**Definities**" in tekst
+
+
+def test_definities_voor_een_volgende_kop_laten_die_kop_staan():
+    tekst = met_telling(
+        "Antwoord.\n\n**Definities**\n- **X**: eigen tekst.\n\n**Kanttekening**\nLet op.", _beurt("duo:p01hoinges:0")
+    )
+
+    assert "eigen tekst" not in tekst and "**Kanttekening**\nLet op." in tekst

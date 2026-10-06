@@ -133,3 +133,9 @@ def test_zonder_onderwijstype_wordt_niets_weggelaten():
     entry = {"_teldefinitie": {"selectie": "Leerlingen in het basisonderwijs."}}
 
     assert duo_meta.teldefinitie(entry) == "Leerlingen in het basisonderwijs."
+
+
+def test_html_regeleinden_uit_de_duo_beschrijving_worden_spaties():
+    entry = {"_teldefinitie": {"selectie": "Het aantal bestaat uit: <br> • bol <br/> • bbl <BR>  Per instelling."}}
+
+    assert duo_meta.teldefinitie(entry) == "Het aantal bestaat uit: • bol • bbl Per instelling."
