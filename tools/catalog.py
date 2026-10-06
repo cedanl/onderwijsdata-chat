@@ -474,11 +474,61 @@ _DETAILS_EXTRA = frozenset(
 )
 
 
+# DUO-details blijven onder het toolbudget van de agent (agent/run.py): de hele steekproef
+# duwde de kolommen van latere bestanden erbuiten (#395). Voorbeeldwaarden per kolom worden
+# stapsgewijs minder, tot het past; drie laten de codering nog zien.
+_DETAILS_BUDGET = 11_000
+_VOORBEELDEN = (10, 5, 3)
+
+
+def _per_resource(entry: dict, veld: str) -> dict[str, dict] | None:
+    """Het veld per resourcenaam, als de catalogus het zo indeelt; anders None."""
+    waarde = entry.get(veld)
+    namen = {r.get("naam") for r in entry.get("_resources") or []}
+    per_naam = isinstance(waarde, dict) and waarde and set(waarde) <= namen
+    return waarde if per_naam and all(isinstance(v, dict) for v in waarde.values()) else None
+
+
+def _resource_kolommen(entry: dict) -> dict[str, list[str]]:
+    """Kolomnamen per resourcenaam uit de catalogus; leeg als die niet per bestand is ingedeeld."""
+    per = _per_resource(entry, "_kolomtypes") or _per_resource(entry, "_kolommen") or {}
+    return {naam: list(kolommen) for naam, kolommen in per.items()}
+
+
+def _ingekort(kolommen, maximum: int):
+    """Voorbeeldlijsten van ten hoogste `maximum` waarden, met het aantal dat weg is."""
+    if isinstance(kolommen, dict):
+        return {k: _ingekort(v, maximum) for k, v in kolommen.items()}
+    if isinstance(kolommen, list) and len(kolommen) > maximum:
+        weg = len(kolommen) - maximum + 1
+        return [*kolommen[: maximum - 1], f"… (+{weg} meer in de steekproef)"]
+    return kolommen
+
+
+def _duo_details(entry: dict, dataset_id: str) -> str:
+    """_build_details met zo veel voorbeeldwaarden als binnen _DETAILS_BUDGET past."""
+    for maximum in _VOORBEELDEN:
+        tekst = _build_details({**entry, "_kolommen": _ingekort(entry.get("_kolommen"), maximum)}, dataset_id)
+        if len(tekst) <= _DETAILS_BUDGET:
+            break
+    return tekst
+
+
 def _build_details(entry: dict, dataset_id: str) -> str:
     details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v}
     if details.get("_resources"):
-        # De index is wat get_duo_data(dataset, resource) verwacht (#173).
-        details["_resources"] = [{"index": i, **r} for i, r in enumerate(details["_resources"])]
+        # De index is wat get_duo_data(dataset, resource) verwacht (#173); de kolomnamen per
+        # bestand staan vóór de voorbeeldlijsten, zodat het model het juiste bestand kiest. De
+        # download-url laadt het model nooit zelf en kostte bij veel bestanden het budget (#395).
+        kolommen = _resource_kolommen(entry)
+        details["_resources"] = [
+            {
+                "index": i,
+                **{k: v for k, v in r.items() if k != "url"},
+                **({"kolommen": kolommen[r["naam"]]} if r.get("naam") in kolommen else {}),
+            }
+            for i, r in enumerate(details["_resources"])
+        ]
     if not details:
         return json.dumps(
             {"bron": entry.get("bron", dataset_id), "melding": "Geen kolomdetails beschikbaar."},
@@ -541,16 +591,19 @@ def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
 
 
 def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
-    """(index, naam) van de resources van een DUO-dataset waarvan de naam de kolom noemt (#173).
+    """(index, naam) van de resources van een DUO-dataset die de kolom hebben of noemen.
 
-    Alleen namen, geen downloads: "OPLEIDINGSVORM" vindt "…inclusief opleidingsvorm…".
+    Geen downloads: de kolomlijst per bestand uit de catalogus (#395), of de naam
+    (#173): "OPLEIDINGSVORM" vindt "…inclusief opleidingsvorm…".
     """
     for entry in _rio_duo():
         if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
+            kolommen = {naam: {k.lower() for k in ks} for naam, ks in _resource_kolommen(entry).items()}
             return [
                 (i, r["naam"])
                 for i, r in enumerate(entry.get("_resources") or [])
-                if r.get("naam") and kolom.lower() in r["naam"].lower()
+                if r.get("naam")
+                and (kolom.lower() in r["naam"].lower() or kolom.lower() in kolommen.get(r["naam"], set()))
             ]
     return []
 
@@ -580,6 +633,7 @@ def dataset_details(dataset_id: str) -> str:
                     **duo_meta.kolomdekking(entry),
                     "kolomprofiel": duo.geladen_profielen(dataset_id),
                 }
+                return _duo_details(entry, dataset_id)
             return _build_details(entry, dataset_id)
 
     logger.warning("dataset_details miss id=%s", dataset_id)

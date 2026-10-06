@@ -84,7 +84,7 @@ Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en n
 - **`_kolommen`** — dimensiewaarden en kolomwaarden per kolom
 - **`_kolomtypes`** — type per kolom: dimensie, geo-dimensie, tijd-dimensie, meetwaarde, numeriek, categorie
 - **`_kolomdefinities`** — kolomdefinities uit de DUO glossary (indien beschikbaar)
-- **`_resources`** — downloadbare bestanden per DUO-dataset (naam, url, format). Gebruik de resource-naam als `resource`-parameter bij `get_duo_data`
+- **`_resources`** — de bestanden per DUO-dataset (index, naam, id, format en `kolommen` per bestand). Gebruik de index of de resource-naam als `resource`-parameter bij `get_duo_data`. Een kolom die in het geladen bestand ontbreekt, kan in een ander bestand staan: kijk naar `kolommen` voordat je zegt dat de dataset hem niet heeft
 
 Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kiezen vóór het laden van data. Roep het aan voor de top 1-3 kandidaten.
 
@@ -112,7 +112,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - Actuele instellingen / locaties / opleidingen → **RIO**
 - Historische statistieken instroom, diplomering, arbeidsmarkt → **CBS of DUO**
 
-**DUO numerieke kolomcodes:** als `_kolommen` uitsluitend numerieke waarden toont (bijv. `ONDERWIJSSECTOR: ["1","2","3","4"]`), raadpleeg de `documentatie.url` uit de catalogus vóór het filteren. Filter nooit blind op een numerieke code.
+**DUO numerieke kolomcodes:** als `_kolommen` uitsluitend numerieke waarden toont (bijv. `ONDERWIJSSECTOR: ["1","2","3","4"]`), raadpleeg de `documentatie.url` uit de catalogus vóór het filteren. Filter nooit blind op een numerieke code. Een code zonder toelichting in `_kolomdefinities`, `teldefinitie` of de documentatie heeft een onbekende betekenis: zeg dat, en leid geen betekenis af uit de afkorting.
 
 **DUO pivot-datasets:** sommige DUO-datasets bevatten jaar en/of geslacht als kolomnaam in plaats van als rij: `DIPMAN2023`, `DIPVROUW2023`, `JAAR_2022`, etc. Er is dan geen `JAAR`- of `GESLACHT`-kolom om op te filteren. Stel de kolomnaam samen uit de beschikbare kolomnamen: `DIP` + `MAN`/`VROUW` + jaar, of `JAAR_` + jaar.
 
