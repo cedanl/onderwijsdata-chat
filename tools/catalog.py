@@ -463,6 +463,7 @@ _DETAILS_EXTRA = frozenset(
     {
         "_resources",
         "teldefinitie",
+        "teldefinitie_niet_gebruikt",
         "publicatieregels",
         "metadata_onbekend",
         "kolommen_steekproef",

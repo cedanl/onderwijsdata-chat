@@ -8,6 +8,7 @@ gepubliceerd als 4) bij het bouwen van de catalogus: geen CKAN-aanroep tijdens h
 gesprek, en de tekst hoort bij de gepinde catalogusversie.
 """
 
+import re
 from functools import cache
 
 from riodata import catalog as _rio_catalog
@@ -23,10 +24,52 @@ def record(dataset_id: str) -> dict:
     return _records().get(dataset_id, {})
 
 
-def teldefinitie(entry: dict) -> str | None:
-    """De selectiesectie, op één regel; None als de beschrijving er geen heeft."""
+# Hoe een selectietekst een onderwijstype noemt. DUO kopieerde de po-tekst ('Leerlingen met een
+# bekostigde inschrijving in het basisonderwijs') naar o.a. voprognoses (#402).
+_ONDERWIJSTYPE_TERMEN = {
+    "PO": ("basisonderwijs", "basisschool", "basisscholen"),
+    "SO": ("speciaal onderwijs", "speciaal basisonderwijs", "speciale (basis)scholen"),
+    "VO": ("voortgezet onderwijs", "voortgezet speciaal onderwijs"),
+    "MBO": ("mbo", "middelbaar beroepsonderwijs"),
+    "HO": ("hoger onderwijs", "hbo", "wo"),
+}
+
+
+def _selectie(entry: dict) -> str | None:
     selectie = (entry.get("_teldefinitie") or {}).get("selectie")
     return " ".join(selectie.split()) if selectie else None
+
+
+def _genoemde_typen(tekst: str) -> set[str]:
+    laag = tekst.lower()
+    return {
+        type_
+        for type_, termen in _ONDERWIJSTYPE_TERMEN.items()
+        if any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", laag) for term in termen)
+    }
+
+
+def _typen(typen: set[str]) -> str:
+    return ", ".join(f"{_ONDERWIJSTYPE_TERMEN[t][0]} ({t})" for t in sorted(typen))
+
+
+def ander_onderwijstype(entry: dict) -> str | None:
+    """De melding als de selectietekst alleen over een ander onderwijstype gaat dan het bestand; anders None."""
+    eigen: set[str] = set(entry.get("onderwijstype") or ())
+    if not (tekst := _selectie(entry)) or not eigen or not eigen <= _ONDERWIJSTYPE_TERMEN.keys():
+        return None  # geen type, of 'Allen', 'Arbeidsmarkt' e.d.: niets om tegen te toetsen
+    genoemd = _genoemde_typen(tekst)
+    if not genoemd or genoemd & eigen:
+        return None
+    return (
+        f"De DUO-beschrijving van dit bestand gaat over {_typen(genoemd)}, het bestand is {_typen(eigen)}. "
+        "Die tekst is daarom niet gebruikt; noem geen teldefinitie."
+    )
+
+
+def teldefinitie(entry: dict) -> str | None:
+    """De selectiesectie, op één regel; None als er geen is of als hij over een ander onderwijstype gaat."""
+    return None if ander_onderwijstype(entry) else _selectie(entry)
 
 
 def publicatieregels(entry: dict) -> list[dict]:
@@ -58,6 +101,8 @@ def metadata(entry: dict) -> dict:
     velden: dict = {}
     if definitie := teldefinitie(entry):
         velden["teldefinitie"] = definitie
+    elif melding := ander_onderwijstype(entry):
+        velden["teldefinitie_niet_gebruikt"] = melding
     if regels := publicatieregels(entry):
         velden["publicatieregels"] = regels
     if beschrijving_onvolledig(entry):

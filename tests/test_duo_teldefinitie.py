@@ -12,6 +12,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from agent.telling import telling_blok
 from tools import duo_meta
 from tools.catalog import dataset_details
 from tools.duo import get_duo_data
@@ -95,3 +96,40 @@ def test_dataset_details_includes_teldefinitie_for_duo():
 
     assert "natuurlijke personen" in result["teldefinitie"]
     assert result["publicatieregels"][0]["gepubliceerd_als"] == 4
+
+
+# --- #402: een teldefinitie over een ander onderwijstype dan het bestand ---
+
+
+def test_voprognoses_krijgt_geen_basisonderwijstekst():
+    """Audit 14 §3.4: de DUO-beschrijving van voprognoses is een kopie van de po-tekst."""
+    result = _get("voprognoses", pd.DataFrame({"JAAR": [2030], "AANTAL": [10.5]}))
+
+    assert "teldefinitie" not in result
+    assert "basisonderwijs" in result["teldefinitie_niet_gebruikt"]
+    assert "VO" in result["teldefinitie_niet_gebruikt"]
+
+
+@pytest.mark.parametrize("dataset", ["wpoprognoses", "pogemeente", "p01hoinges", "weccluster-v1"])
+def test_teldefinitie_over_het_eigen_onderwijstype_blijft(dataset):
+    assert duo_meta.teldefinitie(duo_meta.record(dataset))
+
+
+def test_dataset_details_volgt_dezelfde_regel():
+    details = json.loads(dataset_details("voprognoses"))
+
+    assert "teldefinitie" not in details
+    assert "teldefinitie_niet_gebruikt" in details
+
+
+def test_telling_blok_onder_een_voprognoses_antwoord_noemt_geen_basisonderwijs():
+    key = _get("voprognoses", pd.DataFrame({"JAAR": [2030], "AANTAL": [10.5]}))["data_key"]
+
+    with patch("agent.telling.catalogus_titel", side_effect=lambda d: d):
+        assert "basisonderwijs" not in telling_blok([json.dumps({"data_key": key})])
+
+
+def test_zonder_onderwijstype_wordt_niets_weggelaten():
+    entry = {"_teldefinitie": {"selectie": "Leerlingen in het basisonderwijs."}}
+
+    assert duo_meta.teldefinitie(entry) == "Leerlingen in het basisonderwijs."
