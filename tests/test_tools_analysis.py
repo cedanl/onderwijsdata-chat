@@ -136,7 +136,8 @@ def test_store_get_available():
         code="other = store_get('test:b')\nresult = {'v': int(other['V'].iloc[0])}",
     )
     assert isinstance(result, str)
-    assert json.loads(result)["resultaat"]["v"] == 2
+    # .iloc[0] typt een getal: het resultaat staat naast de scriptconstanten (#410).
+    assert json.loads(result) == {"gelezen": ["test:b"], "resultaat": {"v": 2}, "scriptconstanten": [0]}
 
 
 def test_store_get_returns_a_copy_not_the_shared_object():

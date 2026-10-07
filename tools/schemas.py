@@ -379,7 +379,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": (
                             "Python code. Beschikbaar: df (het DataFrame), pd, np, math, px, go, "
-                            "store_get(key) voor extra datasets. Wijs resultaat toe aan 'result'."
+                            "store_get('key') voor extra datasets (key letterlijk). Wijs resultaat toe aan 'result'. "
+                            "Geen imports, bestanden of netwerk."
                         ),
                     },
                     "data_key": {
