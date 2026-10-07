@@ -127,7 +127,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += veilig(verkeerde_dimensielabels, text, sources)
     problems += veilig(onbekende_datasets, text)
     problems += veilig(ongebruikte_bronnen, text, sources)
-    problems += hard(veilig(verkeerd_gebonden, text, sources))
+    problems += veilig(verkeerd_gebonden, text, sources)
     problems += hard(veilig(verkeerde_kenmerken, text, sources))
     problems += hard(veilig(verkeerde_kpi_periodes, text, sources))
     problems += veilig(ongedekte_oorzaak, "\n\n".join(_claims(spec)), sources)

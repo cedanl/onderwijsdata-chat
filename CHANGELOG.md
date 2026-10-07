@@ -29,6 +29,9 @@ de laatste tag is 1.8.6.
   niet de reden ervan. Een getal uit een tweede telbron geldt niet meer als bewijs van een oorzaak.
 - Heeft een DUO-bestand een teldefinitie, dan schrijft het rapport niet ook een eigen afbakening
   ("buiten beschouwing", "exclusief") naast de brontekst.
+- Een verschil tussen twee genoemde schooljaren, of een `compute_kpi`-waarde over die jaren, geldt niet meer
+  als verkeerd gebonden omdat hetzelfde getal toevallig ook in een ander jaar staat; zo'n antwoord wordt niet
+  meer ingehouden. Lijkt een getal in een vergelijking afgeleid, dan volgt een waarschuwing in plaats van intrekken.
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.

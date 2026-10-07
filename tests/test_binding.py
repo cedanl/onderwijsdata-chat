@@ -178,3 +178,69 @@ def test_tekstselectie_naast_getallen_houdt_de_controle():
     beurt = _beurt() + _tekstselectie("duo:tekst:1:sel", pd.DataFrame({"OPLEIDINGSVORM": ["BOL"]}))
     [probleem] = verkeerd_gebonden("In 2025/26 waren het 27.135 voltijdstudenten.", beurt)
     assert "27.135" in probleem
+
+
+# ── Afgeleide waarden (#409) ─────────────────────────────────────────────────
+
+_CH01 = "cbs:85423NED:ch01"
+
+
+def _ch01() -> list[str]:
+    """CH-01: ingeschrevenen per jaar, met een tweede kolom waarin 3.200 toevallig twee keer staat."""
+    store.put(
+        _CH01,
+        pd.DataFrame(
+            {
+                "Perioden": ["2020SJ00", "2021SJ00", "2022SJ00", "2023SJ00", "2024SJ00"],
+                "TotaalIngeschrevenen_1": [518940, 501100, 489020, 478660, 475460],
+                "Promovendi_2": [3150, 3200, 3200, 3240, 3260],
+            }
+        ),
+        KeyMeta(bron="cbs", dataset="85423NED", periodekolom="Perioden", afgeleid_van="cbs:85423NED"),
+    )
+    return [json.dumps({"data_key": _CH01})]
+
+
+def test_ch01_verschil_tussen_de_genoemde_jaren_is_geen_verkeerde_binding():
+    """Run 46: 478.660 - 475.460 = 3.200 werd ingetrokken omdat 3.200 ook een cel van 2021/22 en 2022/23 is."""
+    tekst = (
+        "Van 2023/'24 naar 2024/'25 daalde het aantal ingeschrevenen met 3.200, van 478.660 naar 475.460.\n"
+        "| Schooljaar | Ingeschrevenen |\n|---|---|\n| 2023/'24 | 478.660 |\n| 2024/'25 | 475.460 |"
+    )
+    assert verkeerd_gebonden(tekst, _ch01()) == []
+
+
+def test_verschil_tussen_andere_jaren_blijft_verkeerd():
+    # 501.100 − 489.020 = 12.080 is 2021/22 → 2022/23, niet de genoemde jaren; 3.200 is daar geen verschil.
+    store.put(
+        "cbs:85423NED:verschil",
+        pd.DataFrame(
+            {
+                "Perioden": ["2021SJ00", "2022SJ00", "2023SJ00", "2024SJ00"],
+                "TotaalIngeschrevenen_1": [501100, 489020, 478660, 475460],
+                "Verschil_2": [None, 12080, 10360, 3200],
+            }
+        ),
+        KeyMeta(bron="cbs", dataset="85423NED", periodekolom="Perioden", afgeleid_van="cbs:85423NED"),
+    )
+    tekst = "Van 2023/'24 naar 2024/'25 daalde het aantal met 12.080."
+    [probleem] = verkeerd_gebonden(tekst, [json.dumps({"data_key": "cbs:85423NED:verschil"})])
+    assert "12.080" in probleem and probleem.hard
+
+
+def test_kpi_met_periode_is_bron_voor_zijn_eigen_jaren():
+    """Een compute_kpi-waarde over de genoemde jaren bindt aan die KPI, niet aan een toevallig gelijke cel."""
+    kpi = json.dumps({"value": "-3.200", "periode": {"van": "2023/24", "tot": "2024/25"}, "bron": {"metric": "delta"}})
+    assert verkeerd_gebonden("Tussen 2023/'24 en 2024/'25 nam het aantal af met 3.200.", [*_ch01(), kpi]) == []
+
+
+def test_afgeleid_getal_naast_een_volledige_vergelijking_is_twijfel_en_zacht():
+    """Beide jaren hebben hun eigen getal; het derde getal is vermoedelijk afgeleid (som, afgerond verschil)."""
+    tekst = "Van 2023/'24 naar 2024/'25: van 478.660 naar 475.460, bijna 3.150 minder."
+    [probleem] = verkeerd_gebonden(tekst, _ch01())
+    assert "3.150" in probleem and not probleem.hard
+
+
+def test_verkeerde_binding_is_hard():
+    [probleem] = verkeerd_gebonden("In 2025/26 waren het 27.135 voltijdstudenten.", _beurt())
+    assert probleem.hard
