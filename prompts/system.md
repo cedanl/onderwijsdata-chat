@@ -184,7 +184,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 >   Voorbeeld: `query_data(data_key, group_by=["STUDIEJAAR"], aggregate={"AANTAL": "sum"})`
 > - `compute_kpi` voor een verschil of percentage over een reeks (`delta`, `pct_change`, `index`) en voor de grootste daling of stijging tussen twee opeenvolgende jaren (`max_drop`, `max_rise`, met `tussen` voor de twee jaren); neem de teruggegeven `value` letterlijk over.
 > - `run_analysis(data_key=..., code=...)` voor complexe berekeningen, afgeleide variabelen of transformaties die niet met group_by/aggregate kunnen.
->   Gebruik `df` (het DataFrame uit data_key) en `store_get(key)` voor extra datasets. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
+>   Gebruik `df` (het DataFrame uit data_key) en `store_get('key')` met een letterlijke key voor extra datasets. Het script draait afgeschermd: geen imports, bestanden of netwerk. **Kopieer nooit data handmatig in je code** — lees altijd via `df` of `store_get`.
 >   Het resultaat (list of DataFrame) wordt automatisch opgeslagen met een `data_key` die je kunt doorpassen.
 >
 > Elk getal van vier of meer cijfers en elk percentage in je antwoord wordt na afloop gecontroleerd tegen de toolresultaten en het eerdere gesprek. Een getal dat daar niet staat — ook een afgerond getal als "circa 10.000" — levert een correctieronde op. Noem dus exacte getallen uit de tools.

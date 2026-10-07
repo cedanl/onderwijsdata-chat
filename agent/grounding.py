@@ -13,6 +13,8 @@ import json
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
+from tools.analysis import SCRIPTCONSTANTEN
+
 # Een getal in Nederlandse notatie: 378.490 of 378490, optioneel met decimale komma.
 # Duizendtallen ook met (harde of smalle) spatie: 378 490, zoals gpt-oss schrijft (#236).
 # Niet aan een letter of cijfer vast: 85423NED, 2024SJ00 en T001228 zijn codes (#48).
@@ -35,22 +37,42 @@ def _checked(number: str) -> bool:
     return len(number) >= _MIN_DIGITS and int(number) not in _YEARS
 
 
-def _bronloos(result: str) -> bool:
-    """Een toolresultaat dat zelf zegt geen data gelezen te hebben (run_analysis zonder gelezen key, #201)."""
+def _als_dict(result: str) -> dict:
     try:
         parsed = json.loads(result)
     except ValueError:
-        return False
-    return isinstance(parsed, dict) and "bron" in parsed and parsed["bron"] is None
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
-def _bewijs(tool_results: list[str]) -> list[str]:
-    return [r for r in tool_results if not _bronloos(str(r))]
+def _bronloos(result: str) -> bool:
+    """Een toolresultaat dat zelf zegt geen data gelezen te hebben (run_analysis zonder gelezen key, #201)."""
+    parsed = _als_dict(result)
+    return "bron" in parsed and parsed["bron"] is None
+
+
+def _scriptconstanten(result: str) -> list:
+    """Getallen die een run_analysis-script zelf typte: die bewijzen niets (#410)."""
+    constanten = _als_dict(result).get(SCRIPTCONSTANTEN)
+    return constanten if isinstance(constanten, list) else []
 
 
 def bewijs_getallen(result: str) -> set[str]:
     """De gehele getallen (cijfers) die één toolresultaat als bewijs levert; leeg bij een bronloos resultaat."""
-    return set() if _bronloos(str(result)) else set(_TOOL_NUMBER.findall(str(result)))
+    result = str(result)
+    if _bronloos(result):
+        return set()
+    eigen = {n for c in _scriptconstanten(result) for n in _TOOL_NUMBER.findall(str(c))}
+    return set(_TOOL_NUMBER.findall(result)) - eigen
+
+
+def _bewijs_decimalen(result: str) -> set[Decimal]:
+    """De decimalen die één toolresultaat als bewijs levert, zoals bewijs_getallen."""
+    result = str(result)
+    if _bronloos(result):
+        return set()
+    eigen = {Decimal(n) for c in _scriptconstanten(result) for n in _TOOL_DECIMAL.findall(str(c))}
+    return {Decimal(n.replace(",", ".")) for n in _TOOL_DECIMAL.findall(result)} - eigen
 
 
 def _tool_integers(tool_results: list[str]) -> set[str]:
@@ -96,7 +118,7 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
     integers = _tool_integers(tool_results) | {
         _digits(m.group(1)) for said in conversation for m in _TEXT_NUMBER.finditer(said)
     }
-    decimals = {Decimal(n.replace(",", ".")) for r in _bewijs(tool_results) for n in _TOOL_DECIMAL.findall(str(r))} | {
+    decimals = {d for r in tool_results for d in _bewijs_decimalen(r)} | {
         Decimal(m.group(1).replace(",", ".")) for said in conversation for m in _TEXT_PERCENT.finditer(said)
     }
 
