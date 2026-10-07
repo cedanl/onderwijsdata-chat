@@ -19,6 +19,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
 import ReasoningStep from '../components/ReasoningStep'
+import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
@@ -132,7 +133,7 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
       </button>
       {open && (
         <div className="reasoning-content">
-          {tools.map((t, i) => (
+          {markRecovered(tools).map((t, i) => (
             <ReasoningStep key={`${t.name}-${i}`} tool={t} />
           ))}
           {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
