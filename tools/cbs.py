@@ -221,6 +221,21 @@ def _add_dimension_context(df: pd.DataFrame, dataset_id: str, col_defs: dict) ->
     return df.assign(**extra)
 
 
+def kolomtitels(col_defs: dict, schooljaren: tuple[int, ...] | None) -> dict[str, str]:
+    """Kolom → titel uit DataProperties, voor as- en legendatitels (#418).
+
+    De tijddimensie heet naar wat ze telt: CBS noemt haar 'Perioden', ook als het
+    schooljaren zijn ('2024/'25').
+    """
+    titels = {}
+    for col, d in col_defs.items():
+        if d.get("type") == "TimeDimension":
+            titels[col] = "Studiejaar" if schooljaren else "Periode"
+        elif d.get("title"):
+            titels[col] = d["title"]
+    return titels
+
+
 def _column_definition(col: str, col_defs: dict) -> str | None:
     if col == _PERIODESTATUS:
         return _PERIODESTATUS_DEFINITIE
@@ -285,6 +300,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             schooljaren=schooljaren,
             afronding=eenheid,
             laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
+            kolomtitels=kolomtitels(col_defs, schooljaren),
         ),
     )
 

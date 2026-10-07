@@ -6,7 +6,7 @@ import plotly.io as pio
 import pytest
 
 from tools import store
-from tools.plot import _dutch_number, create_plot
+from tools.plot import create_plot
 
 _ROWS = [
     {"jaar": "2020", "waarde": 100},
@@ -109,10 +109,12 @@ def test_dutch_number_separators_on_the_layout():
 
 
 def test_dutch_number_value_labels():
-    # #378: de waardelabels kregen een NUL-teken als duizendtalscheiding.
-    assert _dutch_number(27367) == "27.367"
-    assert _dutch_number(1234567.5) == "1.234.567,5"
-    assert _dutch_number(2.1) == "2,1"
+    # #378: de waardelabels kregen een NUL-teken als duizendtalscheiding; de notatie zelf: test_getal.py.
+    _, fig = create_plot(
+        [{"jaar": "2020", "waarde": 27367}, {"jaar": "2021", "waarde": 2.1}], "bar", "jaar", "waarde", "T"
+    )
+    assert fig is not None
+    assert list(fig.data[0].text) == ["27.367", "2,1"]
 
 
 def test_highlight_gives_one_group_the_accent_color_and_the_rest_grey():

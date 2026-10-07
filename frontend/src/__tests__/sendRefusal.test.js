@@ -6,6 +6,10 @@ describe('sendRefusalReason (#241)', () => {
     expect(sendRefusalReason({ connected: true, busy: true, resetting: false })).toMatch(/loopt nog een vraag/)
   })
 
+  it('noemt een rapport dat nog wordt gemaakt (#417)', () => {
+    expect(sendRefusalReason({ connected: true, busy: false, resetting: false, reporting: true })).toMatch(/rapport/i)
+  })
+
   it('noemt een gesprek dat nog wordt gestart', () => {
     expect(sendRefusalReason({ connected: true, busy: false, resetting: true })).toMatch(/nieuwe gesprek/)
   })

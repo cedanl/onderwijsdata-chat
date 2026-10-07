@@ -16,15 +16,29 @@ from tools.plot import create_plot
         ("CROHO_ONDERDEEL", "CROHO onderdeel"),
         # Een afgeleide labelkolom (#240) heet naar wat hij toont.
         ("STUDIEJAAR_LABEL", "Studiejaar"),
+        # Een los woord in hoofdletters ook, vanaf vier letters (#418).
+        ("OPLEIDINGSVORM", "Opleidingsvorm"),
+        ("STUDIEJAAR", "Studiejaar"),
+        # De labelkolom die get_cbs_data naast een CBS-dimensie zet (#163, #418).
+        ("Perioden_label", "Perioden"),
     ],
 )
 def test_bronkolom_wordt_zinsnotatie(kop, label):
     assert kolomlabel(kop) == label
 
 
-@pytest.mark.parametrize("kop", ["Aantal", "jaar", "Perioden_label", "WO", "Instroom per jaar"])
+# Korte woorden in hoofdletters zijn meestal codes of afkortingen.
+@pytest.mark.parametrize("kop", ["Aantal", "jaar", "WO", "BRIN", "CROHO", "VT", "Instroom per jaar"])
 def test_andere_koppen_blijven_staan(kop):
     assert kolomlabel(kop) == kop
+
+
+def test_titel_uit_de_bron_gaat_voor():
+    titels = {"MboStudenten_1": "Mbo-studenten", "Perioden": "Studiejaar"}
+    assert kolomlabel("MboStudenten_1", titels) == "Mbo-studenten"
+    # Een labelkolom heet naar de titel van haar dimensie.
+    assert kolomlabel("Perioden_label", titels) == "Studiejaar"
+    assert kolomlabel("Onbekend_1", titels) == "Onbekend_1"
 
 
 def test_grafiek_toont_leesbare_assen_en_legenda():

@@ -1512,7 +1512,9 @@ html.dark .suggested-btn:hover {
 .run-progress-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 .run-progress-step { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 768px) { .run-progress { margin-left: 8px; } }
-.report-progress { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.report-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; }
+.report-progress-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.report-progress-note { margin: 0; color: var(--muted-text); font-size: .78rem; }
 .report-progress .run-progress { margin: 0; }
 .report-cancel-btn {
   padding: 3px 12px; border-radius: 999px; border: 1px solid var(--gray-200);

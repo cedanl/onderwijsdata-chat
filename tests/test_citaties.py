@@ -37,7 +37,7 @@ def test_maat_wint_van_code_met_hetzelfde_getal():
     [citatie] = citaties("Er zijn 36.201 studenten.", [("get_duo_data", _CODE), ("query_data", _MAAT)])
     assert citatie["vastgesteld"] is True
     assert (citatie["stap"], citatie["tool"], citatie["maat"]) == (2, "query_data", "Aantal ingeschrevenen")
-    assert citatie["selectie"] == "STUDIEJAAR: 2023 · Opleiding naam: Rechten"
+    assert citatie["selectie"] == "Studiejaar: 2023 · Opleiding naam: Rechten"
 
 
 def test_getal_krijgt_de_eerste_stap_waarin_het_als_maat_staat():

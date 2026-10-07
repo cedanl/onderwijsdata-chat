@@ -28,6 +28,7 @@ from agent.labels import (
     verkeerde_opleidingsvormen,
 )
 from agent.probleem import Probleem, hard, veilig
+from tools.getal import nl_getal
 
 if TYPE_CHECKING:
     from agent.report import ReportSpec
@@ -69,10 +70,6 @@ def _has_values(figure_json: str) -> bool:
     return any(len(t.get("y") or t.get("values") or []) > 0 for t in traces)
 
 
-def _nl(number: str) -> str:
-    return f"{int(number):,}".replace(",", ".")
-
-
 def _missing(spec: ReportSpec) -> list[str]:
     """Wat een rapport minimaal nodig heeft.
 
@@ -103,7 +100,7 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     if unsourced:
         problems += hard(
             [
-                f"Deze getallen staan niet in de opgehaalde data: {', '.join(_nl(n) for n in sorted(unsourced, key=int))}."
+                f"Deze getallen staan niet in de opgehaalde data: {', '.join(nl_getal(int(n)) for n in sorted(unsourced, key=int))}."
             ]
         )
 

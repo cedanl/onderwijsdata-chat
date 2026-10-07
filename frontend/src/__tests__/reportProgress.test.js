@@ -31,6 +31,13 @@ describe('ReportProgress', () => {
     expect(timer.textContent).toContain('Grafiek maken')
   })
 
+  // #417: na de laatste stap schrijft het model minutenlang zonder nieuwe stap; zeg dat dat hoort.
+  it('zegt dat een rapport een paar minuten duurt', () => {
+    render({ busy: true, progress: { steps: 2, label: 'Grafiek maken' }, onCancel: () => {} })
+    const melding = container.querySelector('.report-progress-note')
+    expect(melding.textContent).toMatch(/paar minuten/)
+  })
+
   it('cancels on click', () => {
     const onCancel = vi.fn()
     render({ busy: true, progress: { steps: 0, label: null }, onCancel })

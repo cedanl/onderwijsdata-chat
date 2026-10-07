@@ -226,6 +226,48 @@ describe('useChat report progress and cancel', () => {
   })
 })
 
+// #417: een vraag tijdens het rapport zette de chat op bezig. Dat verborg de voortgang en de
+// Annuleer-knop, en de server weigerde de vraag, zodat de chat tot na het rapport bezig bleef.
+describe('useChat vraag tijdens een rapport (#417)', () => {
+  it('weigert een vraag zolang het rapport loopt, zonder de chat op bezig te zetten', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    let verstuurd
+    await act(async () => { verstuurd = chat.send('Tussendoor?') })
+
+    expect(verstuurd).toBe(false)
+    expect(chat.busy).toBe(false)
+    expect(chat.reportBusy).toBe(true)
+    expect(ws.sent.filter(m => m.action === 'message')).toEqual([])
+  })
+
+  it('weigert ook een keuze op een verduidelijkingsvraag', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.generateReport('tester') })
+    await act(async () => { chat.sendClarification('2023/24') })
+
+    expect(chat.busy).toBe(false)
+    expect(ws.sent.filter(m => m.action === 'clarification_choice')).toEqual([])
+  })
+
+  it('maakt de chat weer vrij als de server een vraag weigert', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Tweede vraag') })
+    expect(chat.busy).toBe(true)
+    await act(async () => { ws.emit({ type: 'busy', message: 'Er loopt nog iets.' }) })
+
+    expect(chat.busy).toBe(false)
+    let verstuurd
+    await act(async () => { verstuurd = chat.send('Derde vraag') })
+    expect(verstuurd).toBe(true)
+  })
+
+  // Rapporten duren rond de vijf minuten (CH-10): de wachttijd mag ze niet op de grens afbreken.
+  it('wacht ruim langer dan een rapport gewoonlijk duurt', () => {
+    expect(REPORT_TIMEOUT_MS).toBeGreaterThanOrEqual(10 * 60 * 1000)
+  })
+})
+
 describe('useChat tooltrace bij intrekken (#398)', () => {
   const stappen = ws => {
     ws.emit({ type: 'message_start' })

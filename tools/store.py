@@ -1,4 +1,5 @@
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
 from core.sentinels import mask_sentinels
@@ -48,6 +49,8 @@ class KeyMeta:
     stap: str | None = field(default=None, compare=False)
     # The keys an own computation (run_analysis) read: its selection, which it inherits suppression from (#414).
     gelezen: tuple[str, ...] | None = field(default=None, compare=False)
+    # Column -> title from the source, for axis and legend titles (CBS DataProperties, #418).
+    kolomtitels: Mapping[str, str] | None = field(default=None, compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:

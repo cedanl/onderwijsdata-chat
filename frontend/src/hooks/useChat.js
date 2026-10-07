@@ -7,8 +7,8 @@ import { closeWithoutText, withdrawText } from '../turnTrace'
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
 // A report without report_ready after this long counts as failed (#219). Reports take
-// a minute or two; the server has no limit of its own, so the wait ends here.
-export const REPORT_TIMEOUT_MS = 5 * 60 * 1000
+// around five minutes (#417); the server has no limit of its own, so the wait ends here.
+export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
 
 // A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
 export function buildHistory(messages) {
@@ -143,6 +143,8 @@ export function useChat({ onUnauthorized } = {}) {
         lastSentRef.current = null
         setThinking(false)
         if (!sent) return
+        // The refused question never became a run: nothing will end it, so the chat is free (#417).
+        finishStream()
         setMessages(prev => prev.filter(m => m.id !== sent.id))
         if (sent.draft) setRejectedDraft(sent.content)
       },
@@ -356,9 +358,14 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [addToast, closeCurrentMsg, endReport, failReport, onUnauthorized])
 
+  // A question can go out: connected, no run, no reset and no report going (#417).
+  const canSend = useCallback(() =>
+    wsRef.current?.readyState === WebSocket.OPEN && !busyRef.current && !resettingRef.current && !reportingRef.current,
+  [])
+
   // Returns whether the question went out, so the caller only clears what was typed when it did.
   const send = useCallback((content) => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return false
+    if (!canSend()) return false
     busyRef.current = true
     setBusy(true)
     setThinking(true)
@@ -367,17 +374,17 @@ export function useChat({ onUnauthorized } = {}) {
     setMessages(prev => [...prev, { id, role: 'user', content, done: true, model: modelRef.current }])
     wsRef.current.send(JSON.stringify({ action: 'message', content }))
     return true
-  }, [])
+  }, [canSend])
 
   const sendClarification = useCallback((choice) => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN || busyRef.current || resettingRef.current) return
+    if (!canSend()) return
     busyRef.current = true
     setBusy(true)
     const id = nextId()
     lastSentRef.current = { id, content: choice, draft: false }
     setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true, model: modelRef.current }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
-  }, [])
+  }, [canSend])
 
   const sendSettings = useCallback((settings) => {
     if (settings.model) modelRef.current = settings.model
@@ -413,7 +420,7 @@ export function useChat({ onUnauthorized } = {}) {
     reportTimeoutRef.current = setTimeout(() => {
       // Stop the server too: a report arriving after this message would contradict it.
       abandonReport()
-      failReport('Het rapport is na 5 minuten nog niet klaar en is afgebroken. Probeer het opnieuw.')
+      failReport(`Het rapport is na ${REPORT_TIMEOUT_MS / 60000} minuten nog niet klaar en is afgebroken. Probeer het opnieuw.`)
     }, REPORT_TIMEOUT_MS)
   }, [abandonReport, failReport])
 

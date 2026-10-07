@@ -401,7 +401,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
     if (!q || atContextLimit) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
-      setSendNotice(sendRefusalReason({ connected, busy, resetting }))
+      setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
       return
     }
     setSendNotice(null)
@@ -416,7 +416,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
       handleModelChange(modelId)
       sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
     }
-    if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting }))
+    if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
   }
 
   const handleKey = (e) => {
@@ -588,7 +588,6 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                   </svg>
                   {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
                 </button>
-                <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
                 {saveError && (
                   <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0' }}>
                     Rapport opslaan mislukt: {saveError}
@@ -596,6 +595,8 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 )}
               </div>
             )}
+            {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
+            <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
             {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'needs_reload' && (
               <p className="report-reload-hint">
                 Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
