@@ -422,6 +422,8 @@ def _records(df: pd.DataFrame) -> list[dict]:
         {"filters": {"JAAR__gte": 2024}, "group_by": ["JAAR"], "aggregate": {"EX": "sum"}},  # -1 telt niet mee
         {"group_by": ["JAAR"], "aggregate": {"EX": "count"}},
         {"group_by": ["INSTELLING"], "aggregate": {"EX": "sum"}},  # alleen -1: leeg, geen 0 (#394)
+        {"group_by": ["JAAR"], "aggregate": {"INSTELLING": "count"}},  # tekstkolom: geen 0 (#411)
+        {"group_by": ["JAAR"], "aggregate": {"INSTELLING": "nunique", "EX": "size"}},
     ],
 )
 def test_query_data_snippet_geeft_wat_de_app_geeft(duo_in_app_en_snippet, args):
