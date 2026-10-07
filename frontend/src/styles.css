@@ -959,6 +959,10 @@ html.dark .context-limit-banner--full {
 .wb-gallery-title { font-size: 1.25rem; font-weight: 800; color: var(--gray-900); }
 .wb-gallery-sub { font-size: .8rem; color: var(--muted-text); margin-top: 2px; }
 
+.wb-gallery-group + .wb-gallery-group { margin-top: 32px; }
+.wb-gallery-group-title { font-size: .95rem; font-weight: 700; color: var(--gray-900); margin: 0 0 12px; }
+.wb-gallery-group-title span { font-weight: 400; color: var(--muted-text); }
+
 .wb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

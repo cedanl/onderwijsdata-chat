@@ -5,9 +5,41 @@ import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
+import { groupByMonth } from '../workbookGroups'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function RapportCard({ wb, onOpen, onDelete }) {
+  return (
+    <a
+      href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
+      className="wb-card"
+      onClick={e => { e.preventDefault(); onOpen() }}
+    >
+      <div className="wb-card-thumb">
+        <WorkbookPreview wb={wb} />
+      </div>
+      <div className="wb-card-body">
+        <div className="wb-card-title">{wb.title}</div>
+        <div className="wb-card-desc">{wb.description}</div>
+        <div className="wb-card-footer">
+          <span className="wb-card-date">{formatDate(wb.createdAt)}</span>
+          <button type="button"
+            className="wb-delete-btn"
+            title="Verwijder"
+            aria-label={`Verwijder rapport ${wb.title}`}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onDelete() }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </a>
+  )
 }
 
 export default function RapportenPage({ settings, feedbackEnabled = false }) {
@@ -106,37 +138,21 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
             </p>
           </div>
         ) : (
-          <div className="wb-grid">
-            {rapporten.map(wb => (
-              <a
-                key={wb.id}
-                href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
-                className="wb-card"
-                onClick={e => { e.preventDefault(); setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }}
-              >
-                <div className="wb-card-thumb">
-                  <WorkbookPreview wb={wb} />
-                </div>
-                <div className="wb-card-body">
-                  <div className="wb-card-title">{wb.title}</div>
-                  <div className="wb-card-desc">{wb.description}</div>
-                  <div className="wb-card-footer">
-                    <span className="wb-card-date">{formatDate(wb.createdAt)}</span>
-                    <button type="button"
-                      className="wb-delete-btn"
-                      title="Verwijder"
-                      aria-label={`Verwijder rapport ${wb.title}`}
-                      onClick={e => { e.preventDefault(); e.stopPropagation(); handleDelete(wb.id) }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </a>
-            ))}
-          </div>
+          groupByMonth(rapporten).map(groep => (
+            <section key={groep.label} className="wb-gallery-group">
+              <h2 className="wb-gallery-group-title">{groep.label} <span>({groep.workbooks.length})</span></h2>
+              <div className="wb-grid">
+                {groep.workbooks.map(wb => (
+                  <RapportCard
+                    key={wb.id}
+                    wb={wb}
+                    onOpen={() => { setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }}
+                    onDelete={() => handleDelete(wb.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
         )}
       </div>
     </>

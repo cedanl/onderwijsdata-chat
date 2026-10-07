@@ -137,9 +137,12 @@ export default function WorkbookPreview({ wb }) {
         className="wb-preview-frame-outer"
         style={{ transform: `scale(${scale})`, height: Math.ceil(155 / scale) }}
       >
+        {/* No scripts in a thumbnail (#427): each report would load and draw Plotly once per
+            card, and with a hundred cards some stayed blank. The top of a report is static. */}
         <iframe
           srcDoc={wb.htmlContent}
-          sandbox="allow-scripts"
+          sandbox=""
+          loading="lazy"
           onLoad={() => setLoaded(true)}
           style={{ width: 960, height: '100%', border: 'none' }}
           title={wb.title}

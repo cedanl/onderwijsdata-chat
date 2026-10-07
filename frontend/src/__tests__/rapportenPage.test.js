@@ -54,6 +54,18 @@ describe('RapportenPage first load', () => {
     expect(container.textContent).toContain('Instroom hbo')
   })
 
+  it('groups the reports under a heading per month (#427)', async () => {
+    await render()
+    await act(async () => {
+      server.resolve([
+        { id: 'wb-1', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z' },
+        { id: 'wb-2', type: 'report', title: 'Uitval mbo', createdAt: '2026-09-15T00:00:00Z' },
+      ])
+    })
+    const headings = [...container.querySelectorAll('.wb-gallery-group-title')].map(h => h.textContent)
+    expect(headings).toEqual(['Oktober 2026 (1)', 'September 2026 (1)'])
+  })
+
   it('shows the empty state only when the server list is empty', async () => {
     await render()
     await act(async () => { server.resolve([]) })
