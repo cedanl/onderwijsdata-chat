@@ -108,8 +108,7 @@ def get_roa_benchmark(sector: str | None = None) -> str:
 
         if sector:
             result["opmerking"] = (
-                f"ROA-data voor '{sector}' is niet per sektor beschikbaar; "
-                "zie benchmark per onderwijsniveau hierboven."
+                f"ROA-data voor '{sector}' is niet per sektor beschikbaar; zie benchmark per onderwijsniveau hierboven."
             )
 
         return json.dumps(result, ensure_ascii=False)
