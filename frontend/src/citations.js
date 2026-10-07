@@ -1,6 +1,7 @@
-// Zichtbare citaties (#365): de server stuurt per gecontroleerd getal de toolstap mee
-// (agent/citaties.py). Dit rehype-plugin zet precies die getallen om in een element met de
-// herkomst erbij; getallen zonder citatie en getallen in code blijven tekst.
+// Zichtbare citaties (#365, #415): de server stuurt per gecontroleerd getal de meetwaarde mee
+// waar het uit komt, of dat de herkomst niet is vastgesteld (agent/citaties.py). Dit
+// rehype-plugin zet precies die getallen om in een element met de herkomst erbij; getallen
+// zonder citatie en getallen in code blijven tekst.
 const GEEN_CITATIE = new Set(['code', 'pre'])
 
 function escape(tekst) {
@@ -19,8 +20,12 @@ function citatieElement(c) {
     tagName: 'span',
     properties: {
       dataCitatie: c.getal,
-      dataLabel: c.label || c.tool,
+      ...(c.vastgesteld === false && { dataOnbepaald: '' }),
+      ...((c.label || c.tool) && { dataLabel: c.label || c.tool }),
+      ...(c.stap && { dataStap: String(c.stap) }),
       ...(c.bron && { dataBron: c.bron }),
+      ...(c.selectie && { dataSelectie: c.selectie }),
+      ...(c.maat && { dataMaat: c.eenheid ? `${c.maat} (${c.eenheid})` : c.maat }),
       ...(c.data_key && { dataKey: c.data_key }),
     },
     children: [{ type: 'text', value: c.getal }],
