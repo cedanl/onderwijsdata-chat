@@ -120,7 +120,7 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     result, figure = await asyncio.to_thread(dispatch, call.name, call.args)
     result = str(result)
 
-    snippet = _generate_snippet(call.name, call.args)
+    snippet = _generate_snippet(call.name, call.args, result)
     if snippet:
         logger.info("REPRODUCEER %-28s\n%s", call.name, snippet)
     end_event = {

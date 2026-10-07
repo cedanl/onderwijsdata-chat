@@ -1,3 +1,4 @@
+import asyncio
 import json
 import sys
 import types
@@ -8,6 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
+from agent import loop as loop_module
 from tools import store
 from tools.kpi import compute_kpi
 from tools.query import query_data
@@ -473,3 +475,59 @@ def test_query_data_snippet_rondt_prognoses_af_zoals_de_app():
         ),
     )
     assert "print(df.round())" in generate("query_data", {"data_key": "duo:voprognoses:0"})
+
+
+# ── Databewerking uit de tool-response (#4) ──────────────────────────────────
+
+
+def test_databewerking_uit_de_response_staat_als_commentaar_bovenaan():
+    noot = "38 cellen met DUO-sentinel -1 in 'AANTAL' uitgesloten — totalen zijn hierdoor een ondergrens"
+    result = json.dumps({"data_key": "duo:abc:resource:ab12", "totaal_rijen": 3, "databewerking": [noot]})
+    snippet = generate("query_data", {"data_key": "duo:abc:resource"}, result)
+    assert snippet is not None
+    regels = snippet.splitlines()
+    assert regels[:2] == ["# Databewerking in de app:", f"# {noot}"]
+    assert 'duo.load("abc"' in snippet
+
+
+def test_cbs_afronding_en_afgekapte_pagina_staan_in_de_snippet():
+    result = json.dumps(
+        {"data_key": "cbs:83753NED", "opgehaalde_rijen": 9999, "volledig": False, "afronding": "Afgerond op 10-tallen."}
+    )
+    snippet = generate("get_cbs_data", {"dataset_id": "83753NED"}, result)
+    assert snippet is not None
+    assert "# Afgerond op 10-tallen." in snippet
+    assert "# Afgekapt: 9999 rijen opgehaald, niet de hele bron." in snippet
+
+
+def test_rio_pagina_met_meer_beschikbaar_is_afgekapt():
+    result = json.dumps({"data_key": "rio:x", "opgehaalde_rijen": 100, "meer_beschikbaar": True})
+    snippet = generate("get_rio_data", {"resource": "x"}, result)
+    assert snippet is not None
+    assert "# Afgekapt: 100 rijen opgehaald" in snippet
+
+
+@pytest.mark.parametrize(
+    "result",
+    [None, "", "Fout: dataset bestaat niet", json.dumps([1, 2]), json.dumps({"data_key": "duo:abc:resource"})],
+)
+def test_zonder_bewerking_blijft_de_snippet_gelijk(result):
+    args = {"data_key": "duo:abc:resource"}
+    assert generate("query_data", args, result) == generate("query_data", args)
+
+
+def test_tool_end_snippet_draagt_de_databewerking(monkeypatch):
+    """Naad: de loop geeft de response door aan de snippet."""
+    noot = "2 cellen met DUO-sentinel -1 in 'AANTAL' uitgesloten"
+    result = json.dumps({"data_key": "duo:abc:resource:ab12", "totaal_rijen": 1, "databewerking": [noot]})
+    monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (result, None))
+    events: list[dict] = []
+
+    async def emit(ev):
+        events.append(ev)
+
+    args = {"data_key": "duo:abc:resource"}
+    call = loop_module.ToolCall(id="t1", name="query_data", arguments=json.dumps(args), args=args)
+    asyncio.run(loop_module._execute_tool(call, emit))
+    end = next(e for e in events if e["type"] == "tool_end")
+    assert f"# {noot}" in end["snippet"]

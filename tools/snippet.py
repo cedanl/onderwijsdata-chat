@@ -4,6 +4,9 @@ Een snippet moet buiten de app draaien met alleen de gedocumenteerde pakketten
 (pandas, plotly, onderwijsdata, riodata): `store` bestaat daar niet (#131). Elke
 snippet begint daarom met de laadstap van zijn bron, uit de laadaanroep die de
 store bij de key bewaart.
+
+Wat de tool met de data deed (sentinels uitgesloten, CBS-afronding, een afgekapte
+pagina) komt als commentaar bovenaan, uit dezelfde response die het model las (#4).
 """
 
 import json
@@ -324,8 +327,30 @@ _GENERATORS = {
 }
 
 
-def generate(tool_name: str, args: dict) -> str | None:
+def _bewerkingsregels(result: str | None) -> list[str]:
+    """De bewerkingen en publicatieregels uit de tool-response, als commentaarregels.
+
+    Uit de response zelf, niet opnieuw berekend: de verantwoording in de snippet
+    kan zo niet uit de pas lopen met wat de tool deed en het model las.
+    """
+    try:
+        data = json.loads(result) if result else None
+    except ValueError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    regels = [r for r in data.get("databewerking") or [] if isinstance(r, str)]
+    regels += [data[k] for k in ("afronding", "afronding_onbekend") if isinstance(data.get(k), str)]
+    if data.get("volledig") is False or data.get("meer_beschikbaar") is True:
+        regels.append(f"Afgekapt: {data.get('opgehaalde_rijen', '?')} rijen opgehaald, niet de hele bron.")
+    return [f"# {r}" for r in regels]
+
+
+def generate(tool_name: str, args: dict, result: str | None = None) -> str | None:
     gen = _GENERATORS.get(tool_name)
     if gen is None:
         return None
-    return gen(args)
+    snippet = gen(args)
+    if snippet and (regels := _bewerkingsregels(result)):
+        return "\n".join(["# Databewerking in de app:", *regels, "", snippet])
+    return snippet
