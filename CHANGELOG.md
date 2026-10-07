@@ -36,6 +36,11 @@ de laatste tag is 1.8.6.
 - Een verschil tussen twee genoemde schooljaren, of een `compute_kpi`-waarde over die jaren, geldt niet meer
   als verkeerd gebonden omdat hetzelfde getal toevallig ook in een ander jaar staat; zo'n antwoord wordt niet
   meer ingehouden. Lijkt een getal in een vergelijking afgeleid, dan volgt een waarschuwing in plaats van intrekken.
+- Een vraag naar bestuur, instellingen of vestigingen van één instelling volgt een vaste route in code
+  (`get_rio_instelling`: naam → bevoegd gezag → instellingen → vestigingen), met de aantallen uit code.
+  Dezelfde vraag geeft zo hetzelfde antwoord (#412).
+- Zinnen waarin het model zichzelf herziet ("Mijn tussenzin ... was onjuist") staan niet meer in het
+  antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.

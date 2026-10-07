@@ -8,6 +8,7 @@ from core.config import RIO_PAGE_SIZE
 from . import fouten, store
 from .catalog import catalogus_titel, scope_blokkade
 from .columns import sample_values
+from .schemas import TOOL_GET_RIO_INSTELLING
 
 _SAMPLE_ROWS = 5
 _PAGING = frozenset({"page", "pageSize"})
@@ -45,6 +46,17 @@ def _filterfout(resource: str, filters: dict) -> str | None:
     return (
         f"RIO-resource '{resource}' weigert deze filters: {' '.join(herstel)} "
         "(exacte waarden, geen operatoren als __contains)."
+    )
+
+
+def _vaste_route(resource: str, filters: dict) -> str | None:
+    """Een instelling op naam zoeken en zelf tellen gaf per run een ander antwoord (#412)."""
+    if resource != "erkenningen" or not (naam := filters.get("volledigeNaam")):
+        return None
+    return (
+        "Tel bestuur, instellingen, vestigingen of erkenningen van een instelling niet uit deze rijen: "
+        f"{TOOL_GET_RIO_INSTELLING}(naam={json.dumps(naam, ensure_ascii=False)}) volgt het bevoegd gezag "
+        "en telt in code."
     )
 
 
@@ -109,5 +121,7 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
             "RIO levert geen totaal-aantal: beantwoord 'hoeveel'-vragen over het "
             "register niet met deze data. Verfijn met filters of gebruik DUO/CBS voor aantallen."
         )
+    if verwijzing := _vaste_route(resource, filters or {}):
+        result["instellingsoverzicht"] = verwijzing
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)

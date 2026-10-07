@@ -35,6 +35,7 @@ from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
 from .vaste_antwoorden import sentinelvraag, weigering
+from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
 
@@ -317,9 +318,13 @@ async def run(
         await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
         return text_content
 
+    # Wat het model onderweg herzag, gaat naar de redeneerkaart; het antwoord zelf herziet niets (#412).
+    antwoord, herzien = zonder_zelfcorrectie(result.text)
+    if herzien:
+        logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
     text_content = weigering(
-        result.text, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(zonder_citaatkop(result.text), result.tool_results)
+        antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
+    ) or met_telling(zonder_citaatkop(antwoord), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
@@ -340,6 +345,7 @@ async def run(
             "content": text_content,
             "actions": [],
             **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
+            **({"tussentekst": herzien} if herzien else {}),
             **({"truncated": True} if truncated else {}),
             **({"partial": True} if result.wrapped_up else {}),
             **({"controle": meldingen(result.problems)} if result.problems else {}),

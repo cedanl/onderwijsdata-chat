@@ -296,6 +296,24 @@ describe('useChat tooltrace bij intrekken (#398)', () => {
   })
 })
 
+describe('useChat zelfcorrectie (#412)', () => {
+  it('zet de zelfcorrectie van de server bij de tussentekst in de redeneerkaart', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'ROC Mondriaan heeft zes vestigingen.' })
+      ws.emit({ type: 'tool_start', name: 'get_rio_instelling', label: 'Instelling in RIO opgezocht' })
+      ws.emit({ type: 'tool_end', name: 'get_rio_instelling', output: '' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Het zijn er 30. Mijn tussenzin was onjuist.' })
+      ws.emit({ type: 'message_end', content: 'Het zijn er 30.', tussentekst: ['Mijn tussenzin was onjuist.'] })
+    })
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('Het zijn er 30.')
+    expect(msg.tussentekst).toEqual(['ROC Mondriaan heeft zes vestigingen.', 'Mijn tussenzin was onjuist.'])
+  })
+})
+
 describe('useChat deelantwoord', () => {
   it('markeert een deelantwoord, zodat er een herstelknop onder komt (#405, UX N10)', async () => {
     const ws = FakeWebSocket.last

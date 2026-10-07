@@ -110,6 +110,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 - VSV / voortijdig schoolverlaten → **altijd CBS** (DUO heeft geen VSV-data)
 - Prognoses instroom/diplomering → **altijd DUO** (CBS heeft geen prognosedata)
 - Actuele instellingen / locaties / opleidingen → **RIO**
+- Bestuur, instellingen, vestigingen of erkenningen van één instelling → **`get_rio_instelling`** met de naam; neem de aantallen letterlijk over
 - Historische statistieken instroom, diplomering, arbeidsmarkt → **CBS of DUO**
 
 **DUO numerieke kolomcodes:** als `_kolommen` uitsluitend numerieke waarden toont (bijv. `ONDERWIJSSECTOR: ["1","2","3","4"]`), raadpleeg de `documentatie.url` uit de catalogus vóór het filteren. Filter nooit blind op een numerieke code. Een code zonder toelichting in `_kolomdefinities`, `teldefinitie` of de documentatie heeft een onbekende betekenis: zeg dat, en leid geen betekenis af uit de afkorting.
