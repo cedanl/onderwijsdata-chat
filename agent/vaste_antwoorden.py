@@ -28,10 +28,13 @@ _BETEKENISWOORD = re.compile(
 _GETAL = re.compile(r"\d")
 
 SENTINEL_ANTWOORD = (
-    f"In DUO-bestanden is −1 een {BETEKENIS}. De app behandelt zulke cellen als leeg en meldt bij een totaal dat "
-    "het een ondergrens is, omdat de onderdrukte aantallen erbij ontbreken. Een drempel of een bandbreedte "
-    "(bijvoorbeeld 'minder dan 10') noemt de app niet: die staat niet in de brontekst die de app gebruikt.\n\n"
-    "Bron: de DUO-bestandsbeschrijving, zoals vastgelegd in de app."
+    f"In DUO-bestanden is −1 een {BETEKENIS}. Een totaal over zulke cellen is daarom een ondergrens: "
+    "de onderdrukte aantallen ontbreken erin.\n\n"
+    "Voor kleine aantallen noemt DUO in de bestandsbeschrijving de regel '1 t/m 4 gepubliceerd als 4'. "
+    "Niet elk bestand volgt die: de vo-bestanden publiceren een aantal van 1 t/m 4 als 4 (een som is dan een "
+    "bovengrens), andere bestanden, zoals die van het hoger onderwijs, zetten kleine aantallen op −1. Welk aantal "
+    "achter een −1 zit, staat niet in de DUO-beschrijving.\n\n"
+    "Bron: de DUO-bestandsbeschrijving, getoetst aan de data van de bestanden."
 )
 
 _WEIGERING = re.compile(
