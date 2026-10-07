@@ -73,7 +73,7 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
                 }
             )
             await asyncio.sleep(delay)
-        except (TimeoutError, asyncio.TimeoutError, litellm.APIConnectionError) as exc:
+        except (TimeoutError, litellm.APIConnectionError) as exc:
             # Timeout of verbinding verloren: herprobeert met backoff
             if attempt == _MAX_RETRIES - 1:
                 logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, exc)

@@ -24,11 +24,9 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None) -> str:
         JSON met vacaturecijfers per sektor, peildatum en herkomst.
     """
     try:
-        from riodata import uwv
         from data.dashboard import (
-            _uwv_raw_clusters,
             _uwv_clusters_voor_sectoren,
-            _SECTOR_CLUSTER_MAP,
+            _uwv_raw_clusters,
         )
 
         if not provincie:
