@@ -6,3 +6,13 @@ export function finishStep(step, ev) {
   if (!ev.status) return done
   return { ...done, status: ev.status, statusLabel: ev.status_label, suggesties: ev.suggesties || null }
 }
+
+// A failed or empty step that a later run of the same tool made good (#426): the app
+// recovered by itself, so the card says so instead of leaving a bare "Filter mislukt".
+export function markRecovered(steps) {
+  return steps.map((step, i) => {
+    if (!step.done || !step.status) return step
+    const later = steps.slice(i + 1).some(s => s.name === step.name && s.done && !s.status)
+    return later ? { ...step, recovered: true } : step
+  })
+}
