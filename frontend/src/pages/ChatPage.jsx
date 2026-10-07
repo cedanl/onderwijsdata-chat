@@ -723,7 +723,7 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
+export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -768,6 +768,9 @@ function Message({ msg, onClarification, onSend, busy, settled = true, settings 
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
             <MessageContent msg={msg} />
+            {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
+                niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
+            {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
@@ -783,7 +786,6 @@ function Message({ msg, onClarification, onSend, busy, settled = true, settings 
                 </button>
               </div>
             )}
-            {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
             {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
             {retry && (
