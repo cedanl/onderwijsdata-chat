@@ -15,6 +15,7 @@ from core.config import CBS_ROW_LIMIT
 from . import cbs_afronding, fouten, periode, store
 from .catalog import catalogus_laatste_update, catalogus_titel
 from .columns import sample_values
+from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 5
 _MAX_GENOEMDE_WAARDEN = 5
@@ -229,7 +230,8 @@ def _column_definition(col: str, col_defs: dict) -> str | None:
             "Gebruik dit label in tekst en grafieken; vertaal codes niet zelf. "
             "Groepeer je op de code, neem het label dan mee in group_by."
         )
-    return col_defs.get(col, {}).get("description") or None
+    description = col_defs.get(col, {}).get("description")
+    return met_voorbeeldstatus(description) if description else None
 
 
 def _page_size(top) -> int:

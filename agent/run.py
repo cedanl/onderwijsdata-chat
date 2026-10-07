@@ -5,6 +5,7 @@ import logging
 import plotly.io as pio
 
 from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
+from core.errors import log_interne_fout
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -146,6 +147,15 @@ def _correction(problems: list[str]) -> str:
         "Schrijf daarna een volledig nieuw antwoord voor de gebruiker, alsof het het eerste is: zonder kop of inleiding "
         "over de herziening, zonder te verwijzen naar een eerdere versie of naar deze controle, en zonder toolnamen."
     )
+
+
+def _veilige_citaties(text: str, steps: list[tuple[str, str]]) -> list[dict]:
+    """Citaties zijn geen controle: lukt het niet, dan gaat het antwoord zonder citaties (#392, #419)."""
+    try:
+        return citaties(text, steps)
+    except Exception as exc:
+        log_interne_fout(exc, "citaties")
+        return []
 
 
 _MAX_CLARIFY_RONDES = 1
@@ -315,7 +325,7 @@ async def run(
     if not text_content.strip():
         logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
     if result.problems:
-        logger.warning("CONTROLE na herkansing nog niet in orde  model=%s  %s", chosen_model, result.problems)
+        logger.warning("CONTROLE niet in orde of niet gecontroleerd  model=%s  %s", chosen_model, result.problems)
     if harde(result.problems):
         logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", chosen_model, text_content[:500])
         text_content = INGEHOUDEN
@@ -324,7 +334,7 @@ async def run(
             "type": "message_end",
             "content": text_content,
             "actions": [],
-            **({"citaties": cites} if (cites := veilig(citaties, text_content, result.steps)) else {}),
+            **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
             **({"truncated": True} if truncated else {}),
             **({"partial": True} if result.wrapped_up else {}),
             **({"controle": meldingen(result.problems)} if result.problems else {}),

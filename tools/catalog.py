@@ -10,6 +10,7 @@ from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
 from . import cbs_meta, duo_meta, instelling, scopeprofiel
+from .definitie import met_voorbeeldstatus
 
 logger = logging.getLogger(__name__)
 
@@ -569,6 +570,9 @@ def _duo_details(entry: dict, dataset_id: str) -> str:
 
 def _build_details(entry: dict, dataset_id: str) -> str:
     details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v}
+    if defs := details.get("_kolomdefinities"):
+        # Voorbeelden in de glossary zijn geen gesloten lijst (#430).
+        details["_kolomdefinities"] = {k: met_voorbeeldstatus(v) for k, v in defs.items()}
     if details.get("_resources"):
         # De index is wat get_duo_data(dataset, resource) verwacht (#173); de kolomnamen per
         # bestand staan vóór de voorbeeldlijsten, zodat het model het juiste bestand kiest. De

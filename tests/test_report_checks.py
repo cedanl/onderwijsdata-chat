@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from agent.probleem import Probleem
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
 from tools import store
@@ -129,7 +130,10 @@ def test_rapport_met_tekstselectie_crasht_niet():
 
 
 def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
-    """Een fout in een controle wordt gelogd met een fout-ID; de andere controles gaan door (#392)."""
+    """Een fout in een controle wordt gelogd met een fout-ID; de andere controles gaan door (#392).
+
+    Het rapport zegt dat het op dat punt niet gecontroleerd is, als zachte melding (#419).
+    """
 
     def kapot(*_):
         raise ValueError("zip() argument 3 is shorter than arguments 1-2")
@@ -137,6 +141,8 @@ def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
     monkeypatch.setattr("agent.report_checks.verkeerd_gebonden", kapot)
     spec = _spec(conclusie="p01hoinges bevat geen rijen met INSTELLINGSCODE_ACTUEEL = 25DW.")
     with caplog.at_level("ERROR"):
-        [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+        probleem, niet_gecontroleerd = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
     assert "geen rijen" in probleem
+    assert isinstance(niet_gecontroleerd, Probleem)
+    assert niet_gecontroleerd.niet_gecontroleerd and not niet_gecontroleerd.hard
     assert "Interne fout" in caplog.text and "kapot" in caplog.text
