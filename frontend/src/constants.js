@@ -33,33 +33,33 @@ export const SUGGESTED = [
   {
     category: 'Arbeidsmarktmatch',
     questions: [
-      'Hoe sluiten onze gediplomeerden aan op de vacatures in onze regio?',
-      'Wat is de arbeidsmarkt-vraag naar onze kernopleidingen?',
-      'Hoe vergelijken onze sectoren met de regionale arbeidsmarkt-benchmarks?',
+      'Hoe sluiten gediplomeerden van onze instelling aan op de vacatures in mijn regio?',
+      'Wat is de arbeidsmarktvraag naar ons onderwijsaanbod?',
+      'Hoe verhouden de sectoren van onze instelling zich tot de arbeidsmarkt in mijn regio?',
     ],
   },
   {
     category: 'Rendement & Diplomering',
     questions: [
       'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de regio?',
-      'Hoe staan onze diplomerings-aantallen tegen peers in dezelfde regio?',
-      'Wat is het doorstroom-risico voor onze kernopleidingen landelijk gezien?',
+      'Hoe verhouden de diploma-aantallen van onze instelling zich tot andere instellingen in mijn regio?',
+      'Hoe groot is landelijk gezien het uitvalrisico in ons onderwijsaanbod?',
     ],
   },
   {
     category: 'Groei & Instroom',
     questions: [
-      'Groeien we sneller dan het regionale gemiddelde?',
-      'Met welke instellingen concurreren we in de regio om dezelfde doelgroep?',
-      'Hoe volgen onze inschrijving-trends de regionale trends?',
+      'Groeit de instroom bij ons sneller dan het gemiddelde in mijn regio?',
+      'Met welke instellingen in mijn regio concurreert onze instelling om dezelfde doelgroep?',
+      'Volgt het aantal inschrijvingen bij ons de trend in mijn regio?',
     ],
   },
   {
     category: 'Regionale Context',
     questions: [
-      'Welke sectoren hebben het meeste arbeidsmarkt-potentieel in onze regio?',
-      'Waar komen onze lerenden vandaan en welke regio\'s zijn onze doelmarkt?',
-      'Hoe verandert de studentenpopulatie in onze regio?',
+      'Welke sectoren hebben het meeste arbeidsmarktpotentieel in mijn regio?',
+      'Waar komen mijn lerenden vandaan en welke regio\'s zijn onze doelmarkt?',
+      'Hoe verandert de studentenpopulatie in mijn regio?',
     ],
   },
 ]
