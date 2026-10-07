@@ -50,7 +50,7 @@ def _noten(key: str, afronden: bool) -> list[str]:
     known = store.meta(key)
     if known is not None and not known.volledig:
         noten.append(store.ONVOLLEDIG)
-    noten += duo.sentinel_notes(duo.count_cells(duo.sentinel_cells(key)))
+    noten += duo.sentinel_notes(duo.onderdrukt(key))
     if afronden:
         noten.append(duo.PROGNOSE_NOOT)
     return noten

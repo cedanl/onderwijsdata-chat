@@ -190,6 +190,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
                 result_key,
                 store_df,
                 stap="eigen berekening (run_analysis)",
+                gelezen=tuple(bronnen),
                 **dekking.van(store_df, store.meta(bronnen[0])),
             )
         else:
@@ -203,6 +204,9 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if not bronnen:
         # Een uitkomst die geen data las is geen bewijs: de getalcontrole telt haar niet mee (#201).
         text_obj = {"bron": None, "resultaat": text_obj}
+    elif not result_key:
+        # Een los getal heeft geen eigen key; wat het las is zijn selectie, ook voor de onderdrukking (#414).
+        text_obj = {"gelezen": bronnen, "resultaat": text_obj}
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):
