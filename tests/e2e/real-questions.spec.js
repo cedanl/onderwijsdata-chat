@@ -225,6 +225,7 @@ test.describe('Productie-vragen (evaluatie)', () => {
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)
         console.log(`SCORE: ${scores.total}/${scores.max}`)
+        if (ev.expected.foutcategorie) console.log(`Foutcategorie bij falen: ${ev.expected.foutcategorie} (bron: ${ev.expected.bron_versie})`)
         if (ev.expected.must_refuse) {
           console.log(`Weigert: ${scores.refused}; verzonnen getallen: ${scores.fabricated.join(', ') || 'geen'}`)
           console.log(`ANTWOORD (400 chars):\n${r.content.slice(0, 400)}`)
@@ -256,7 +257,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
         console.log('═'.repeat(60))
       }
 
-      // Assertions per model
+      // Assertions per model; een audit-case noemt de schakel die faalt (#360)
+      const categorie = ev.expected.foutcategorie ? ` [${ev.expected.foutcategorie}]` : ''
       for (const [modelName, scores] of Object.entries(allScores)) {
         if (ev.expected.must_refuse) {
           // Integraal weigeren: geen gok, ook niet naast een weigerzin (#36).
@@ -264,8 +266,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
           expect(scores.refused, `${modelName} weigert niet`).toBe(true)
           continue
         }
-        expect(scores.hallucination_risk, `${modelName} geeft data-getallen zonder bronnen`).toBe(false)
-        expect(scores.total, `${modelName} scoort te laag (${scores.total}/${scores.max})`).toBeGreaterThanOrEqual(30)
+        expect(scores.hallucination_risk, `${modelName} geeft data-getallen zonder bronnen${categorie}`).toBe(false)
+        expect(scores.total, `${modelName} scoort te laag (${scores.total}/${scores.max})${categorie}`).toBeGreaterThanOrEqual(30)
       }
     })
   }

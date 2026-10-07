@@ -31,6 +31,13 @@ GOED = [
     # Geen betere score: verschuift de score, dan kan deze vraag terug naar de missers.
     ("ingeschrevenen wo opleidingsvorm", "p01hoinges", 3),
     ("ingeschrevenen hbo voltijd deeltijd", "p01hoinges", 3),
+    # Metadata-audit CHAT-10 (#360), gemeten op 7 oktober 2026; de modelroute staat in tests/e2e/evaluations.json.
+    ("unieke studenten versus inschrijvingen hoger onderwijs", "p03hoinschr", 3),
+    ("unieke studenten versus inschrijvingen hoger onderwijs", "p01hoinges", 4),
+    ("Hoeveel inschrijvingen in het hbo?", "p03hoinschr", 6),
+    ("Hoeveel eerstejaars heeft deze instelling?", "p02ho1ejrs", 6),
+    ("Mbo-studentprognose in 2035", "studentprognoses-mbo-per-instelling", 1),
+    ("cohorten mbo status open", "aangeboden-opleiding-cohorten", 2),
 ]
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
@@ -39,6 +46,9 @@ BEKENDE_MISSERS = [
     ("Hoeveel voltijd studenten heeft de VU Amsterdam?", "p01hoinges", 3, 12),
     ("Hoeveel deeltijdstudenten zijn er landelijk in het hoger onderwijs?", "85423NED", 5, 12),
     ("Hoeveel vsv'ers zijn er in het mbo?", "85368NED", 5, None),
+    # Metadata-audit CHAT-10 (#360): 'unieke' en 'open' vinden de bron niet (niet in de top 15).
+    ("Hoeveel unieke hbo-studenten zijn er?", "p01hoinges", 5, None),
+    ("Open mbo-cohorten", "aangeboden-opleiding-cohorten", 5, None),
 ]
 
 _TOP_N = 15
