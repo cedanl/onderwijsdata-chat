@@ -66,7 +66,7 @@ def veilig(controle: Callable[..., Iterable[T]], *args) -> list[T | Probleem]:
         return [niet_gecontroleerd(log_interne_fout(exc, f"controle {getattr(controle, '__name__', controle)}"))]
 
 
-def herstelbare(problemen: list[str]) -> list[str]:
+def herstelbare(problemen: Iterable[str]) -> list[str]:
     """De problemen waar een herkansing van het model iets aan kan doen."""
     return [p for p in problemen if not getattr(p, "niet_gecontroleerd", False)]
 
@@ -76,9 +76,9 @@ def hard(problemen: Iterable[str]) -> list[Probleem]:
 
     Een niet-gecontroleerd-probleem blijft zacht: een mislukte controle is geen bevinding.
     """
-    gemarkeerd = []
+    gemarkeerd: list[Probleem] = []
     for p in problemen:
-        if getattr(p, "niet_gecontroleerd", False):
+        if isinstance(p, Probleem) and p.niet_gecontroleerd:
             gemarkeerd.append(p)
             continue
         probleem = str.__new__(Probleem, p)
@@ -88,5 +88,5 @@ def hard(problemen: Iterable[str]) -> list[Probleem]:
     return gemarkeerd
 
 
-def harde(problemen: list[str]) -> list[str]:
+def harde(problemen: Iterable[str]) -> list[str]:
     return [p for p in problemen if getattr(p, "hard", False)]

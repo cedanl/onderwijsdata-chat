@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
+from agent.probleem import Probleem
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
 from tools import store
@@ -142,5 +143,6 @@ def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
     with caplog.at_level("ERROR"):
         probleem, niet_gecontroleerd = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
     assert "geen rijen" in probleem
+    assert isinstance(niet_gecontroleerd, Probleem)
     assert niet_gecontroleerd.niet_gecontroleerd and not niet_gecontroleerd.hard
     assert "Interne fout" in caplog.text and "kapot" in caplog.text

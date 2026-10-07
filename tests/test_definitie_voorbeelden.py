@@ -98,4 +98,5 @@ def test_cbs_kolomdefinitie_markeert_voorbeelden():
     from tools.cbs import _column_definition
 
     col_defs = {"Onderwijssoort": {"description": "Soort onderwijs, zoals hbo en wo."}}
-    assert VOORBEELDEN in _column_definition("Onderwijssoort", col_defs)
+    definitie = _column_definition("Onderwijssoort", col_defs)
+    assert definitie and VOORBEELDEN in definitie
