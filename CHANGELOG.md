@@ -43,6 +43,8 @@ de laatste tag is 1.8.6.
 - Een vraag tijdens een lopend antwoord krijgt een melding, de getypte tekst blijft staan.
 - Een onbekend pad toont een 404-pagina; een uitgeschakelde dashboardroute meldt dat hij nog niet beschikbaar is.
 - Hernoem- en verwijderknoppen hebben een `aria-label`.
+- Stuit een antwoord na alle pogingen op de rate limit, dan blijven de al opgehaalde stappen in het
+  gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
 - De `pytest`-job draait ook `ruff check`; de pipeline blokkeert op falende tests.
