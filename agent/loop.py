@@ -24,6 +24,7 @@ from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
 from .models import litellm_kwargs
+from .probleem import herstelbare
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
 from .stream import Emit, StreamResult, accumulate_stream
@@ -344,7 +345,8 @@ async def tool_loop(
     returns problems with a finished answer: the model then gets one correction
     round with ``correction(problems)``, announced to the caller through
     ``on_correction(problems)`` before it runs; problems left after that are returned in
-    ``LoopResult.problems`` for the caller to act on. When the model call fails
+    ``LoopResult.problems`` for the caller to act on. A check that could not run
+    (``niet_gecontroleerd``) gets no correction round but is returned as well. When the model call fails
     and ``keep_partial()`` says what was collected is usable, the error is
     returned in ``partial_error`` instead of raised. With ``wrap_up``, a spent
     budget gets one more call without tools with that message, instead of ending
@@ -371,16 +373,19 @@ async def tool_loop(
         await run.rounds()
         if check and _answered(result):
             problems = check(result.text, result.tool_results)
-            if problems:
-                logger.warning("CONTROLE MISLUKT, herkansing: %s", problems)
+            # Alleen wat het model kan herstellen geeft een herkansing; een niet-gecontroleerd
+            # punt (#419) gaat zonder herkansing mee in result.problems.
+            if te_herstellen := herstelbare(problems):
+                logger.warning("CONTROLE MISLUKT, herkansing: %s", te_herstellen)
                 if on_correction:
-                    await on_correction(problems)
+                    await on_correction(te_herstellen)
                 messages += [
                     {"role": "assistant", "content": result.text},
-                    {"role": "user", "content": correction(problems) if correction else "\n".join(problems)},
+                    {"role": "user", "content": correction(te_herstellen) if correction else "\n".join(te_herstellen)},
                 ]
                 await run.rounds()
-                result.problems = check(result.text, result.tool_results) if _answered(result) else []
+                problems = check(result.text, result.tool_results) if _answered(result) else []
+            result.problems = problems
     except Exception as exc:
         if not (keep_partial and keep_partial()):
             raise

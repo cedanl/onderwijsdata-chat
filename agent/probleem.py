@@ -6,7 +6,10 @@ gebruiker ziet onder de kaart alleen de melding: wat er niet klopt, zonder
 de herkansing, logs en bestaande vergelijkingen blijven werken.
 
 Een controle die zelf faalt, mag het antwoord niet vervangen (#392): `veilig`
-logt de fout onder een fout-ID en gaat door zonder die controle.
+logt de fout onder een fout-ID en gaat door. Stil akkoord is het niet (#419): de
+gebruiker ziet dat het antwoord op dat punt niet gecontroleerd is. Dat probleem is
+zacht (er is niets fout bevonden) en geeft geen herkansing (het model kan het niet
+herstellen).
 
 Een probleem is hard of zacht (#207, besluit optie C). Hard: het antwoord geeft een
 getal of feit dat niet bij de data hoort (getal zonder bron, afgekapte data,
@@ -32,6 +35,7 @@ INGEHOUDEN = (
 class Probleem(str):
     melding: str
     hard: bool = False
+    niet_gecontroleerd: bool = False
 
     def __new__(cls, melding: str, opdracht: str = ""):
         probleem = super().__new__(cls, f"{melding} {opdracht}".strip())
@@ -44,19 +48,39 @@ def meldingen(problemen: list[str]) -> list[str]:
     return list(dict.fromkeys(getattr(p, "melding", p) for p in problemen))
 
 
-def veilig(controle: Callable[..., Iterable[T]], *args) -> list[T]:
-    """De problemen van een controle; leeg als de controle zelf een fout geeft."""
+def niet_gecontroleerd(fout_id: str) -> Probleem:
+    """Een controle kon niet draaien: zacht, want er is niets fout bevonden, maar ook niets getoetst."""
+    probleem = Probleem(
+        f"Op één punt niet gecontroleerd: een controle kon niet draaien (fout-ID {fout_id}), "
+        "dus daar is de tekst niet aan de data getoetst."
+    )
+    probleem.niet_gecontroleerd = True
+    return probleem
+
+
+def veilig(controle: Callable[..., Iterable[T]], *args) -> list[T | Probleem]:
+    """De problemen van een controle; kan de controle zelf niet draaien, dan één niet-gecontroleerd-probleem."""
     try:
         return list(controle(*args))
     except Exception as exc:
-        log_interne_fout(exc, f"controle {getattr(controle, '__name__', controle)}")
-        return []
+        return [niet_gecontroleerd(log_interne_fout(exc, f"controle {getattr(controle, '__name__', controle)}"))]
+
+
+def herstelbare(problemen: list[str]) -> list[str]:
+    """De problemen waar een herkansing van het model iets aan kan doen."""
+    return [p for p in problemen if not getattr(p, "niet_gecontroleerd", False)]
 
 
 def hard(problemen: Iterable[str]) -> list[Probleem]:
-    """Dezelfde problemen, gemarkeerd als hard: blijven ze, dan wordt het antwoord ingehouden."""
+    """Dezelfde problemen, gemarkeerd als hard: blijven ze, dan wordt het antwoord ingehouden.
+
+    Een niet-gecontroleerd-probleem blijft zacht: een mislukte controle is geen bevinding.
+    """
     gemarkeerd = []
     for p in problemen:
+        if getattr(p, "niet_gecontroleerd", False):
+            gemarkeerd.append(p)
+            continue
         probleem = str.__new__(Probleem, p)
         probleem.melding = getattr(p, "melding", p)
         probleem.hard = True
