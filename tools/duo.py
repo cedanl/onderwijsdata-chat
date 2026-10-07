@@ -8,6 +8,7 @@ from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import duo_meta, fouten, instelling, kleine_aantallen, kolomprofiel, periode, store
 from .catalog import catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
+from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 3
 
@@ -256,7 +257,7 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
                 else {"voorbeelden": df[col].dropna().unique()[:3].tolist()}
             ),
             **profielen[col],
-            **({"definitie": defs[col]} if col in defs else {}),
+            **({"definitie": met_voorbeeldstatus(defs[col])} if col in defs else {}),
         }
         for col in df.columns
     ]
