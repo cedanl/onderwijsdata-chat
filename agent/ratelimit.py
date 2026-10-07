@@ -78,7 +78,7 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
             if attempt == _MAX_RETRIES - 1:
                 logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, exc)
                 raise
-            delay = min(_BASE_DELAY * (2 ** attempt), _MAX_DELAY)
+            delay = min(_BASE_DELAY * (2**attempt), _MAX_DELAY)
             logger.warning(
                 "Model timeout (poging %d/%d): wacht %d seconden",
                 attempt + 1,
