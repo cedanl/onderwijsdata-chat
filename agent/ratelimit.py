@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 import litellm
 
@@ -11,6 +12,8 @@ _MAX_RETRIES = 4
 _BASE_DELAY = 2.0
 # Een Retry-After van de provider volgen, maar niet langer dan dit: de run heeft een tijdsgrens (#90).
 _MAX_DELAY = 30.0
+# LiteLLM request timeout (seconden). Azure AI kan traag zijn; standaard 600s → 1200s (#431).
+_REQUEST_TIMEOUT = float(os.getenv("LITELLM_REQUEST_TIMEOUT", "1200"))
 
 
 def _retry_after(exc: litellm.RateLimitError) -> float | None:
@@ -45,7 +48,14 @@ def _log(exc: litellm.RateLimitError, attempt: int, delay: float | None) -> None
 
 
 async def acompletion_with_backoff(emit: Emit, **kwargs):
-    """litellm.acompletion met backoff bij een rate limit; een Retry-After van de provider gaat voor."""
+    """litellm.acompletion met backoff bij rate limit en timeout retry (#431).
+
+    Timeout configuratie: stel LITELLM_REQUEST_TIMEOUT in (seconden, default 1200 voor Azure AI).
+    """
+    # Voeg request_timeout toe tenzij al meegegeven
+    if "request_timeout" not in kwargs:
+        kwargs["request_timeout"] = _REQUEST_TIMEOUT
+
     for attempt in range(_MAX_RETRIES):
         try:
             return await litellm.acompletion(**kwargs)
@@ -59,6 +69,26 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
                 {
                     "type": "toast",
                     "message": f"API rate limit bereikt, nieuwe poging over {delay:.0f}s…",
+                    "level": "warning",
+                }
+            )
+            await asyncio.sleep(delay)
+        except (TimeoutError, asyncio.TimeoutError, litellm.APIConnectionError) as exc:
+            # Timeout of verbinding verloren: herprobeert met backoff
+            if attempt == _MAX_RETRIES - 1:
+                logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, exc)
+                raise
+            delay = min(_BASE_DELAY * (2 ** attempt), _MAX_DELAY)
+            logger.warning(
+                "Model timeout (poging %d/%d): wacht %d seconden",
+                attempt + 1,
+                _MAX_RETRIES,
+                delay,
+            )
+            await emit(
+                {
+                    "type": "toast",
+                    "message": f"Model antwoordt traag, nieuwe poging over {delay:.0f}s…",
                     "level": "warning",
                 }
             )
