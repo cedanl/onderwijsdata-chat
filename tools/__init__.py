@@ -2,6 +2,7 @@ from typing import Any
 
 from . import fouten, store
 from .analysis import run_analysis
+from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_telling, dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data
@@ -23,6 +24,8 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
+    TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_UWV_VACATURES,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
     TOOL_SEARCH_CATALOG,
@@ -44,6 +47,8 @@ LABELS = {
     TOOL_COMPUTE_KPI: "KPI berekend",
     TOOL_CREATE_PLOT: "Grafiek aangemaakt",
     TOOL_CREATE_CHOROPLETH_MAP: "Kaart aangemaakt",
+    TOOL_GET_UWV_VACATURES: "UWV vacatures opgehaald",
+    TOOL_GET_ROA_BENCHMARK: "ROA benchmark opgehaald",
 }
 
 _HANDLERS = {
@@ -60,6 +65,8 @@ _HANDLERS = {
     TOOL_COMPUTE_KPI: compute_kpi,
     TOOL_CREATE_PLOT: create_plot,
     TOOL_CREATE_CHOROPLETH_MAP: create_choropleth_map,
+    TOOL_GET_UWV_VACATURES: get_uwv_vacatures,
+    TOOL_GET_ROA_BENCHMARK: get_roa_benchmark,
 }
 
 

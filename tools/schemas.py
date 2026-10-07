@@ -17,6 +17,8 @@ TOOL_CREATE_PLOT = "create_plot"
 TOOL_CREATE_CHOROPLETH_MAP = "create_choropleth_map"
 TOOL_RUN_ANALYSIS = "run_analysis"
 TOOL_COMPUTE_KPI = "compute_kpi"
+TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
+TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -438,6 +440,52 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["vraag", "opties"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_UWV_VACATURES,
+            "description": (
+                "Haal UWV-vacaturegegevens op per provincie en sektor (momentopname mei 2023). "
+                "Geeft arbeidsmarkt-context bij onderwijs-vragen. ROA/UWV zijn landelijk only; "
+                "geen instelling-niveau beschikbaar."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "provincie": {
+                        "type": "string",
+                        "description": "Provincienaam, bijv. 'Utrecht', 'Noord-Holland'",
+                    },
+                    "sector": {
+                        "type": "string",
+                        "description": "Optioneel: sektor om op te filteren (bijv. 'ICT', 'Zorg')",
+                    },
+                },
+                "required": ["provincie"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_ROA_BENCHMARK,
+            "description": (
+                "Haal ROA-doorstroom-benchmarks op (landelijke referentiewaarden). "
+                "Geeft werkloosheidsrisico en aansluiting onderwijs-arbeidsmarkt per onderwijsniveau. "
+                "ROA/UWV zijn landelijk only; geen instelling-niveau beschikbaar."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sector": {
+                        "type": "string",
+                        "description": "Optioneel: sektor (ROA-data is niet per sektor beschikbaar; zie benchmark per niveau)",
+                    },
+                },
+                "required": [],
             },
         },
     },
