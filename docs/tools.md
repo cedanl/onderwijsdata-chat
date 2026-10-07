@@ -325,6 +325,23 @@ Zie [Databronnen → RIO](databronnen.md) voor beschikbare resources.
 
 ---
 
+## get_rio_instelling
+
+Overzicht van één onderwijsinstelling uit RIO, in een vaste route in code (#412): zoek het
+bevoegd gezag op naam (of via de instelling met die naam), volg de hiërarchische
+instellingsrelaties naar de erkende instellingen en van daar naar de vestigingen, geldig op de
+peildatum. Het resultaat noemt het bevoegd gezag, per instelling de vestigingscodes, en
+`aantallen` (erkenningen = bestuur + instellingen + vestigingen). Lijsten zijn gesorteerd: dezelfde
+registertoestand geeft hetzelfde resultaat. Past de naam op meer besturen, dan komen er
+`kandidaten` in plaats van aantallen. Een bestuur zonder mbo- of ho-instelling (WEB/WHW) valt
+buiten het profiel; po/vo/so-instellingen onder een mbo-bestuur tellen niet mee.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `naam` | string | Naam van de instelling of het bestuur, bijv. `"ROC Mondriaan"` |
+
+---
+
 ## get_duo_data
 
 Laadt een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en een `data_key` voor vervolgquery's.

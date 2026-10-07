@@ -10,6 +10,7 @@ TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
 TOOL_GET_RIO_DATA = "get_rio_data"
+TOOL_GET_RIO_INSTELLING = "get_rio_instelling"
 TOOL_GET_DUO_DATA = "get_duo_data"
 TOOL_QUERY_DATA = "query_data"
 TOOL_CREATE_PLOT = "create_plot"
@@ -118,7 +119,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "Haal RIO data op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna "
                 f"query_data om gefilterde rijen op te halen. Levert maximaal {RIO_PAGE_SIZE} rijen "
                 "(één pagina) en géén totalen: gebruik RIO niet voor aantallen over het hele register "
-                "('hoeveel opleidingen staan er in RIO?'), maar DUO of CBS."
+                "('hoeveel opleidingen staan er in RIO?'), maar DUO of CBS. Voor bestuur, instellingen, "
+                f"vestigingen of erkenningen van één instelling: {TOOL_GET_RIO_INSTELLING}."
             ),
             "parameters": {
                 "type": "object",
@@ -133,6 +135,30 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["resource"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_RIO_INSTELLING,
+            "description": (
+                "Overzicht van één onderwijsinstelling uit RIO: het bevoegd gezag (bestuur), de erkende "
+                "instellingen eronder en hun vestigingen, met de aantallen erkenningen, instellingen en "
+                "vestigingen op de peildatum. Gebruik dit voor elke vraag naar het bestuur, de instellingen, "
+                "vestigingen of erkenningen van een instelling. De code zoekt en telt: neem `aantallen` "
+                "letterlijk over en tel niet zelf. Bij `status: meerdere` vraag je welke van de `kandidaten` "
+                "bedoeld is."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "naam": {
+                        "type": "string",
+                        "description": "Naam van de instelling of het bestuur zoals de gebruiker hem noemt, bijv. 'ROC Mondriaan'",
+                    },
+                },
+                "required": ["naam"],
             },
         },
     },

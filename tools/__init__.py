@@ -10,6 +10,7 @@ from .outcome import outcome  # noqa: F401
 from .plot import create_choropleth_map, create_plot
 from .query import query_data
 from .rio import get_rio_data
+from .rio_instelling import get_rio_instelling
 from .schemas import (
     TOOL_CLARIFY_SCOPE,
     TOOL_COMPUTE_KPI,
@@ -21,6 +22,7 @@ from .schemas import (
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_RIO_INSTELLING,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
     TOOL_SEARCH_CATALOG,
@@ -35,6 +37,7 @@ LABELS = {
     TOOL_GET_CBS_DATA: "CBS data opgehaald",
     TOOL_GET_CBS_DIMENSION: "CBS dimensie opgehaald",
     TOOL_GET_RIO_DATA: "RIO data opgehaald",
+    TOOL_GET_RIO_INSTELLING: "Instelling in RIO opgezocht",
     TOOL_GET_DUO_DATA: "DUO dataset geladen",
     TOOL_QUERY_DATA: "Data gefilterd",
     TOOL_RUN_ANALYSIS: "Analyse uitgevoerd",
@@ -50,6 +53,7 @@ _HANDLERS = {
     TOOL_GET_CBS_DATA: get_cbs_data,
     TOOL_GET_CBS_DIMENSION: get_cbs_dimension,
     TOOL_GET_RIO_DATA: get_rio_data,
+    TOOL_GET_RIO_INSTELLING: get_rio_instelling,
     TOOL_GET_DUO_DATA: get_duo_data,
     TOOL_QUERY_DATA: query_data,
     TOOL_RUN_ANALYSIS: run_analysis,
