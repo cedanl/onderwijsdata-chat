@@ -12,6 +12,7 @@ import json
 import pandas as pd
 
 from . import cbs_afronding, fouten, periode, store
+from .getal import nl_getal
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
 # aanleiding om iets anders te proberen.
@@ -42,12 +43,6 @@ _TREND_METRICS = frozenset({"delta", "pct_change", "max_drop", "max_rise"})
 _DECIMAL_METRICS = frozenset({"pct_change", "index", "mean"})
 
 _DECIMALS = 1
-
-
-def _nl_format(value: float, decimals: int = 0) -> str:
-    """Nederlandse notatie: punt als duizendtalscheiding, komma als decimaalteken."""
-    formatted = f"{value:,.{decimals}f}"
-    return formatted.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
 def _error(message: str) -> str:
@@ -206,7 +201,7 @@ def compute_kpi(
     value = waarden[metric]
 
     decimals = _DECIMALS if metric in _DECIMAL_METRICS else 0
-    formatted = _nl_format(value, decimals)
+    formatted = nl_getal(value, decimals)
     if metric in _TREND_METRICS and value > 0:
         formatted = f"+{formatted}"
 

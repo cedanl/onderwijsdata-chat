@@ -7,7 +7,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from . import cbs_afronding, duo, fouten, store
-from .kolomlabel import kolomlabel
+from .getal import nl_getal
+from .kolomlabel import kolomlabel, leesbaar, waardelabels
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ _LAYOUT_BASE = {
     "margin": {"t": 60, "b": 50, "l": 70, "r": 20},
     "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1},
 }
+
+# Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22).
+_NL_SEPARATORS = ",."
 
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
@@ -133,18 +137,10 @@ def _validate_axes(data: list[dict], x: str, y: str) -> str | None:
     return None
 
 
-def _dutch_number(v: float) -> str:
-    """30083 -> '30.083', 2.1 -> '2,1' — punt voor duizendtallen, komma voor decimalen."""
-    text = f"{v:,.0f}" if float(v).is_integer() else f"{v:,.1f}"
-    # translate() vervangt alle tekens in één doorgang, dus een directe wissel is veilig;
-    # een tussenteken (NUL) zou nooit worden teruggezet (#378).
-    return text.translate(str.maketrans({",": ".", ".": ","}))
-
-
 def _value_labels(y_vals: list, enabled: bool) -> list[str] | None:
     if not enabled or len(y_vals) > _MAX_LABELED_POINTS:
         return None
-    return ["" if _is_missing(v) else _dutch_number(v) for v in y_vals]
+    return ["" if _is_missing(v) else nl_getal(v) for v in y_vals]
 
 
 def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str, dict]:
@@ -240,18 +236,32 @@ def create_plot(
 
     chart_type = resolve_chart_type(data, chart_type, x, y, color_by, is_share)
 
+    # Titels en woorden uit de bron in plaats van kolomnamen en codes (#418); de rijen in
+    # meta blijven zoals de bron ze geeft, voor de export.
+    known = store.meta(data_key) if data_key else None
+    titels = known.kolomtitels if known else None
+    dataset = known.dataset if known else None
+    x_labels = waardelabels(x, dataset)
+
     fig = go.Figure()
     show_labels = chart_type in ("bar", "line") and len(data) <= _MAX_LABELED_POINTS
 
     if color_by:
         groups = _group_by_color(data, x, y, color_by)
+        groep_labels = waardelabels(color_by, dataset)
         for i, (name, vals) in enumerate(groups.items()):
             if highlight:
                 color = _PALETTE[0] if name == highlight else _HIGHLIGHT_GREY
             else:
                 color = _PALETTE[i % len(_PALETTE)]
             _add_trace(
-                fig, chart_type, vals["x"], vals["y"], color, name=name, text=_value_labels(vals["y"], show_labels)
+                fig,
+                chart_type,
+                leesbaar(vals["x"], x_labels),
+                vals["y"],
+                color,
+                name=groep_labels.get(name, name),
+                text=_value_labels(vals["y"], show_labels),
             )
 
         if chart_type == "bar":
@@ -260,23 +270,23 @@ def create_plot(
             fig.update_layout(barmode="overlay")
 
     else:
-        x_vals = [row.get(x) for row in data]
+        x_vals = leesbaar([row.get(x) for row in data], x_labels)
         y_vals = [row.get(y) for row in data]
         _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0], text=_value_labels(y_vals, show_labels))
 
     layout = {
         "title": {"text": title, "font": {"size": 16, "color": "#222"}, **_ondertitel(data_key)},
-        "legend_title": kolomlabel(color_by) if color_by else "",
-        "separators": ",.",  # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22)
+        "legend_title": kolomlabel(color_by, titels) if color_by else "",
+        "separators": _NL_SEPARATORS,
         **_LAYOUT_BASE,
     }
 
     if chart_type != "pie":
-        layout["xaxis"] = {"title": kolomlabel(x), **_AXIS_STYLE}
+        layout["xaxis"] = {"title": kolomlabel(x, titels), **_AXIS_STYLE}
         if _is_time_axis(x):
             # Jaartallen als categorie: geen 2.023,5-tussenticks met duizendtalpunt (#240).
             layout["xaxis"].update(type="category", categoryorder="category ascending")
-        layout["yaxis"] = {"title": kolomlabel(y), "tickformat": ",", **_AXIS_STYLE}
+        layout["yaxis"] = {"title": kolomlabel(y, titels), "tickformat": ",", **_AXIS_STYLE}
 
     fig.update_layout(**layout)
     fig.update_layout(
@@ -327,6 +337,22 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
             row = {"reeks": trace.name or ""} if grouped else {}
             rows.append({**row, x_name: _plain(x_val), y_name: _plain(y_val)})
     fig.update_layout(meta={"data": rows, "x": x_name, "y": y_name})
+    return fig
+
+
+def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:
+    """Een eigen figuur (run_analysis) zoals create_plot hem tekent: titels uit de bron
+    in plaats van kolomnamen, en de Nederlandse getalnotatie (#418).
+
+    Na with_export_rows: de exportrijen houden de bronnamen.
+    """
+    titels = known.kolomtitels if known else None
+    for as_ in ("xaxis", "yaxis"):
+        if tekst := fig.layout[as_].title.text:
+            fig.layout[as_].title.text = kolomlabel(tekst, titels)
+    if tekst := fig.layout.legend.title.text:
+        fig.layout.legend.title.text = kolomlabel(tekst, titels)
+    fig.update_layout(separators=_NL_SEPARATORS)
     return fig
 
 

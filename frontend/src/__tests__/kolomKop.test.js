@@ -20,9 +20,21 @@ describe('kolomLabel (#222)', () => {
   })
 
   it('laat een kop die al leesbaar is staan', () => {
-    for (const kop of ['Schooljaar', 'Aantal studenten', 'BRIN', 'STUDIEJAAR', '2024/25']) {
+    for (const kop of ['Schooljaar', 'Aantal studenten', 'BRIN', '2024/25']) {
       expect(kolomLabel(kop)).toBe(kop)
     }
+  })
+
+  // Zelfde regel als tools/kolomlabel.py voor de grafiekassen (#418).
+  it('maakt ook een los woord in hoofdletters leesbaar, vanaf vier letters', () => {
+    expect(kolomLabel('OPLEIDINGSVORM')).toBe('Opleidingsvorm')
+    expect(kolomLabel('STUDIEJAAR')).toBe('Studiejaar')
+    for (const code of ['VT', 'MAN', 'WO', 'CROHO']) expect(kolomLabel(code)).toBe(code)
+  })
+
+  it('noemt een labelkolom naar wat hij toont', () => {
+    expect(kolomLabel('STUDIEJAAR_LABEL')).toBe('Studiejaar')
+    expect(kolomLabel('Perioden_label')).toBe('Perioden')
   })
 })
 

@@ -210,5 +210,6 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):
-        return text, plot.with_export_rows(figure)
+        known = store.meta(bronnen[0]) if bronnen else None
+        return text, plot.leesbare_titels(plot.with_export_rows(figure), known)
     return text
