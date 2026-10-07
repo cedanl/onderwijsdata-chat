@@ -52,3 +52,5 @@ de laatste tag is 1.8.6.
 - Evaluatie-uitvoer staat niet meer in git.
 - riodata is gepind op 0.3.1 (rio-onderwijsdata `c0b4bce`); `/version` noemt de meegebouwde catalogusrevisies.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
+- Productie-manifest geauditeerd: de allowlist-middleware waar de ingress naar verwijst wordt meegeleverd,
+  dashboards staan uit zoals op test, en productie draait één pod zolang data en limiters in het geheugen leven.
