@@ -8,7 +8,11 @@ import { rehypeCitaties } from '../citations'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const CITATIES = [{ getal: '378.490', tool: 'get_cbs_data', label: 'CBS-data ophalen', bron: 'CBS 85423NED', data_key: 'cbs:1' }]
+const CITATIES = [{
+  getal: '378.490', vastgesteld: true, stap: 3, tool: 'query_data', label: 'Data gefilterd',
+  bron: 'CBS · Studenten; onderwijssoort', maat: 'Totaal', eenheid: 'aantal',
+  selectie: 'Onderwijssoort: Hbo · Perioden: 2024', data_key: 'cbs:85353NED:854e2215',
+}]
 
 describe('zichtbare citaties (#365)', () => {
   let root
@@ -41,11 +45,28 @@ describe('zichtbare citaties (#365)', () => {
     expect(knop.getAttribute('aria-expanded')).toBe('false')
     act(() => knop.click())
     const uitleg = container.querySelector('[role="note"]')
-    expect(uitleg.textContent).toContain('CBS-data ophalen')
-    expect(uitleg.textContent).toContain('CBS 85423NED')
+    expect(uitleg.textContent).toContain('Data gefilterd')
     expect(knop.getAttribute('aria-expanded')).toBe('true')
     act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })) })
     expect(container.querySelector('[role="note"]')).toBeNull()
+  })
+
+  it('zet bron en filters in woorden bovenaan, de hash eronder (#415)', () => {
+    toon('Er waren 378.490 studenten.')
+    act(() => container.querySelector('button').click())
+    const regels = [...container.querySelector('[role="note"]').children].map(r => r.textContent)
+    expect(regels[0]).toBe('CBS · Studenten; onderwijssoort')
+    expect(regels[1]).toBe('Onderwijssoort: Hbo · Perioden: 2024')
+    expect(regels).toContain('Totaal (aantal)')
+    expect(regels.at(-1)).toBe('cbs:85353NED:854e2215')
+  })
+
+  it('zegt het als de herkomst niet is vastgesteld (#415)', () => {
+    toon('Er waren 36.201 studenten.', [{ getal: '36.201', vastgesteld: false }])
+    act(() => container.querySelector('button').click())
+    const uitleg = container.querySelector('[role="note"]')
+    expect(uitleg.textContent).toContain('Herkomst niet vastgesteld')
+    expect(container.querySelector('.citatie-getal').classList.contains('citatie-onbepaald')).toBe(true)
   })
 
   it('laat getallen in code en onderdelen van een groter getal met rust', () => {

@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-// Een getal dat de grondingscontrole doorstond, met de stap waar het vandaan komt (#365).
-// Een knop, dus bereikbaar met het toetsenbord; Escape of buiten klikken sluit de uitleg.
+// Een getal uit een dataantwoord met zijn herkomst (#365, #415): eerst bron en selectie in
+// woorden, dan maat en stap, de technische key onderaan. Zonder vastgestelde herkomst zegt
+// de uitleg dat. Een knop, dus bereikbaar met het toetsenbord; Escape of buiten klikken sluit.
 // eslint-disable-next-line no-unused-vars -- node is react-markdown's AST node, not a DOM attribute
 export default function CitedNumber({ node, children, ...props }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const id = useId()
-  const label = props['data-label']
+  const onbepaald = props['data-onbepaald'] !== undefined
 
   useEffect(() => {
     if (!open) return undefined
@@ -27,7 +28,7 @@ export default function CitedNumber({ node, children, ...props }) {
     <span className="citatie" ref={ref}>
       <button
         type="button"
-        className="citatie-getal"
+        className={onbepaald ? 'citatie-getal citatie-onbepaald' : 'citatie-getal'}
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-label={`${children}, herkomst tonen`}
@@ -37,11 +38,32 @@ export default function CitedNumber({ node, children, ...props }) {
       </button>
       {open && (
         <span id={id} role="note" className="citatie-uitleg">
-          <strong>{label}</strong>
-          {props['data-bron'] && <span>Bron: {props['data-bron']}</span>}
-          {props['data-key'] && <span>Selectie: {props['data-key']}</span>}
+          {onbepaald ? <Onbepaald /> : <Herkomst {...props} />}
         </span>
       )}
     </span>
+  )
+}
+
+function Onbepaald() {
+  return (
+    <>
+      <strong>Herkomst niet vastgesteld</strong>
+      <span>Dit getal staat niet als meetwaarde in de opgehaalde data.</span>
+    </>
+  )
+}
+
+function Herkomst(props) {
+  const stap = props['data-stap']
+  const label = props['data-label']
+  return (
+    <>
+      <strong>{props['data-bron'] || label}</strong>
+      {props['data-selectie'] && <span>{props['data-selectie']}</span>}
+      {props['data-maat'] && <span>{props['data-maat']}</span>}
+      {stap && <span className="citatie-stap">Stap {stap}: {label}</span>}
+      {props['data-key'] && <code className="citatie-key">{props['data-key']}</code>}
+    </>
   )
 }

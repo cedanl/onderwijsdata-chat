@@ -16,6 +16,10 @@ de laatste tag is 1.8.6.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en
   wanneer totalen een ondergrens zijn (-1-cellen in de selectie); de teleenheid-regex is vervallen.
+- Citaties bij getallen wijzen een meetwaarde aan (maatkolom, KPI-uitkomst of analyseresultaat), nooit een
+  code, rijtelling of stuk van een key. Elk gecontroleerd getal in een dataantwoord krijgt er een, zodat
+  hetzelfde antwoord altijd evenveel citaties heeft; zonder binding staat er "Herkomst niet vastgesteld".
+  De uitleg begint met bron en selectie in woorden, met maat, eenheid en stap; de `data_key` staat eronder.
 - Grootste daling of stijging komt uit code (`compute_kpi`: `max_drop`, `max_rise`) en niet uit het model.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.
