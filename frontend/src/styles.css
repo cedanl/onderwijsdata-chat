@@ -769,6 +769,14 @@ input, textarea { font: inherit; }
 .message-retry { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .82rem; }
 .message-continue:disabled { color: var(--gray-500); cursor: default; text-decoration: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--muted-text); margin-top: 8px; }
+.disclaimer-link {
+  background: none; border: none; padding: 0; font: inherit;
+  color: var(--accent-text); text-decoration: underline; cursor: pointer;
+}
+/* A link in a line of small text: the padding makes the tap target 44px, the negative margin keeps the line as is (#425). */
+@media (pointer: coarse), (max-width: 1024px) {
+  .disclaimer-link { padding: 16px 0; margin: -16px 0; }
+}
 
 /* ─── Context limit banners ──────────────────────────────── */
 .context-limit-banner {

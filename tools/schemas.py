@@ -193,8 +193,14 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "aggregate": {
                         "type": "object",
-                        "additionalProperties": {"type": "string", "enum": ["sum", "mean", "count", "min", "max"]},
-                        "description": 'Aggregatiefuncties per kolom, bijv. {"AANTAL": "sum"}. Alleen samen met \'group_by\'.',
+                        "additionalProperties": {
+                            "type": "string",
+                            "enum": ["sum", "mean", "count", "nunique", "size", "min", "max"],
+                        },
+                        "description": (
+                            'Aggregatiefuncties per kolom, bijv. {"AANTAL": "sum"}. Alleen samen met \'group_by\'. '
+                            "count = niet-lege waarden, nunique = verschillende waarden, size = rijen (ook lege)."
+                        ),
                     },
                 },
                 "required": ["data_key"],

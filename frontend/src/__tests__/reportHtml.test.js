@@ -106,4 +106,12 @@ describe('buildReportHtml', () => {
     expect(html).toContain('&lt;svg onload=alert(2)&gt;')
     expect(html).toContain('&lt;b&gt;evil&lt;/b&gt;')
   })
+
+  it('gives each section a heading under the single h1 (#424)', () => {
+    const html = buildReportHtml({ ...fullSpec, conclusie: '# Kort\nDe instroom steeg.' })
+    const kop = n => [...html.matchAll(new RegExp(`<h${n}[ >][^]*?</h${n}>`, 'g'))].map(m => m[0].replace(/<[^>]+>/g, ''))
+    expect(kop(1)).toEqual(['Instroom ROC van Flevoland 2018–2024'])
+    expect(kop(2)).toEqual(expect.arrayContaining(['Reikwijdte', 'Gekozen definities', 'Visualisaties', 'Conclusie', 'Bronnen']))
+    expect(kop(3)).toEqual(expect.arrayContaining(['Instroom per jaar', 'Kort']))
+  })
 })

@@ -625,7 +625,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit}
               />
             </div>
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" onClick={() => setShowSources(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 'inherit', color: 'var(--accent-text)', textDecoration: 'underline', cursor: 'pointer' }}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
           </div>
         </div>
       </div>

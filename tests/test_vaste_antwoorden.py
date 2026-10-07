@@ -42,7 +42,14 @@ def test_andere_vragen_zijn_geen_betekenisvraag(vraag):
 
 
 def test_vast_antwoord_noemt_geen_verzonnen_drempel():
-    assert "1–4" not in SENTINEL_ANTWOORD and "onderdrukte cel" in SENTINEL_ANTWOORD
+    assert "onderdrukte cel" in SENTINEL_ANTWOORD and "minder dan" not in SENTINEL_ANTWOORD
+
+
+def test_vast_antwoord_noemt_de_duo_regel_met_bron_en_duo_als_afzender():
+    # CH-16 (#423): het antwoord was kaal en sprak over "de app".
+    assert "1 t/m 4 gepubliceerd als 4" in SENTINEL_ANTWOORD
+    assert "Bron: de DUO-bestandsbeschrijving" in SENTINEL_ANTWOORD
+    assert "de app" not in SENTINEL_ANTWOORD
 
 
 @pytest.mark.parametrize(

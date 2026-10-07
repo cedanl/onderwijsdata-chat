@@ -20,7 +20,10 @@ from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
-_ALLOWED_AGG = {"sum", "mean", "count", "min", "max"}
+_ALLOWED_AGG = {"sum", "mean", "count", "nunique", "size", "min", "max"}
+# Alleen deze rekenen met getallen. count, nunique en size tellen de oorspronkelijke
+# waarden: een tekst- of UUID-kolom numeriek maken gaf overal 0 (#411).
+NUMERIEKE_AGG = frozenset({"sum", "mean", "min", "max"})
 
 # Grenzen voor de suggesties bij een leeg filterresultaat. Het scannen van
 # unieke waarden is lineair in de kolomlengte, vandaar een bovengrens.
@@ -118,8 +121,9 @@ def _som_of_leeg(series):
 
 def _apply_aggregation(df, group_by, aggregate):
     df = df.copy()
-    for col in aggregate:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col, fn in aggregate.items():
+        if fn in NUMERIEKE_AGG:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     fns = {col: _som_of_leeg if fn == "sum" else fn for col, fn in aggregate.items()}
     return df.groupby(group_by, dropna=False).agg(fns).reset_index()
 

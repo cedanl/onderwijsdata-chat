@@ -15,7 +15,7 @@ from . import store
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
 from .plot import resolve_chart_type
-from .query import _parse_filter_key
+from .query import NUMERIEKE_AGG, _parse_filter_key
 from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
@@ -161,16 +161,20 @@ def _aggregatiefuncties(aggregate: dict) -> str:
 
 
 def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
-    """Zoals query._apply_aggregation: eerst numeriek maken, lege groepen houden (#227)."""
+    """Zoals query._apply_aggregation: rekenkolommen numeriek, lege groepen houden (#227, #411)."""
     lines = [f"group_by = {group_by!r}"]
     if "STUDIEJAAR" in group_by:
         lines += [
             f'if "{STUDIEJAAR_LABEL}" in df.columns and "{STUDIEJAAR_LABEL}" not in group_by:',
             f'    group_by.append("{STUDIEJAAR_LABEL}")',
         ]
+    numeriek = [kolom for kolom, fn in aggregate.items() if fn in NUMERIEKE_AGG]
+    if numeriek:
+        lines += [
+            f"for kolom in {numeriek!r}:",
+            '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
+        ]
     lines += [
-        f"for kolom in {list(aggregate)!r}:",
-        '    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")',
         f"df = df.groupby(group_by, dropna=False).agg({_aggregatiefuncties(aggregate)}).reset_index()",
     ]
     return lines

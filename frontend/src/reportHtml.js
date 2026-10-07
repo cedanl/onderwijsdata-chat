@@ -7,11 +7,10 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#39;')
 }
 
+// Koppen in de conclusie vallen onder de sectiekop (h2), dus allemaal h3: één h1 per rapport (#424).
 function mdToHtml(src) {
   return String(src)
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^#{1,3} (.+)$/gm, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
     .replace(/\n{2,}/g, '</p><p>')
@@ -46,28 +45,28 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
 
   const beantwoordt = (s.beantwoordt || []).length
     ? `<div class="scope-col">
-        <div class="scope-title scope-yes">Wat dit rapport wel beantwoordt</div>
+        <h3 class="scope-title scope-yes">Wat dit rapport wel beantwoordt</h3>
         <ul>${bullets(s.beantwoordt)}</ul>
       </div>`
     : ''
 
   const beantwoordtNiet = (s.beantwoordt_niet || []).length
     ? `<div class="scope-col">
-        <div class="scope-title scope-no">Wat dit rapport niet beantwoordt</div>
+        <h3 class="scope-title scope-no">Wat dit rapport niet beantwoordt</h3>
         <ul>${bullets(s.beantwoordt_niet)}</ul>
       </div>`
     : ''
 
   const scopeHtml = (beantwoordt || beantwoordtNiet)
     ? `<div class="card">
-        <div class="section-label">Reikwijdte</div>
+        <h2 class="section-label">Reikwijdte</h2>
         <div class="scope-row">${beantwoordt}${beantwoordtNiet}</div>
       </div>`
     : ''
 
   const visualisaties = (s.visualisaties || []).map((v, i) =>
     `<div class="vis">
-       <div class="vis-title">${escapeHtml(v.titel || `Visualisatie ${i + 1}`)}</div>
+       <h3 class="vis-title">${escapeHtml(v.titel || `Visualisatie ${i + 1}`)}</h3>
        ${plotlyHtml(v.figure_json, `rp${i}`)}
        ${v.toelichting ? `<p class="vis-note">${escapeHtml(v.toelichting)}</p>` : ''}
      </div>`
@@ -76,7 +75,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   const conclusieProse = mdToHtml(escapeHtml(s.conclusie || ''))
   const conclusieHtml = conclusieProse
     ? `<div class="card conf">
-        <div class="section-label">Conclusie</div>
+        <h2 class="section-label">Conclusie</h2>
         <div class="prose"><p>${conclusieProse}</p></div>
       </div>`
     : ''
@@ -84,7 +83,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   const bronnen = (s.bronnen || [])
   const bronnenHtml = bronnen.length
     ? `<div class="card">
-        <div class="section-label">Bronnen</div>
+        <h2 class="section-label">Bronnen</h2>
         <ol class="bronnen">${bronnen.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ol>
       </div>`
     : ''
@@ -172,12 +171,12 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
 </div>
 <div class="body">
   <div class="vraag">
-    <div class="section-label">Onderzoeksvraag</div>
+    <h2 class="section-label">Onderzoeksvraag</h2>
     <div class="vraag-text">${escapeHtml(s.onderzoeksvraag || '')}</div>
   </div>
   ${scopeHtml}
-  ${definitionHtml ? `<div class="card"><div class="section-label">Gekozen definities</div>${definitionHtml}</div>` : ''}
-  ${visualisaties ? `<div class="card"><div class="section-label">Visualisaties</div>${visualisaties}</div>` : ''}
+  ${definitionHtml ? `<div class="card"><h2 class="section-label">Gekozen definities</h2>${definitionHtml}</div>` : ''}
+  ${visualisaties ? `<div class="card"><h2 class="section-label">Visualisaties</h2>${visualisaties}</div>` : ''}
   ${conclusieHtml}
   ${bronnenHtml}
 </div>
