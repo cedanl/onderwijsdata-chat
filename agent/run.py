@@ -18,7 +18,7 @@ from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import unverified
-from .history import trim
+from .history import afgeronde_stappen, trim
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
@@ -284,6 +284,11 @@ async def run(
         except TimeoutError:
             # Vastgelopen aanroep die het stopsignaal niet zag.
             result = LoopResult(aborted="tools")
+        except Exception:
+            # Bijvoorbeeld een rate limit na alle pogingen: wat al opgehaald is, blijft in het
+            # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
+            messages.extend(afgeronde_stappen(history[initial_history_len:]))
+            raise
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
         await emit(box.melding())
