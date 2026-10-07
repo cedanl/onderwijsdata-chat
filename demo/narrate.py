@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Voeg een Nederlandse narratie toe aan de demo-video."""
+"""Voeg een Nederlandse narratie toe aan de demo-video.
+
+Gebruik: uv run --group demo demo/narrate.py
+"""
 
 import subprocess
 import sys
@@ -58,7 +61,8 @@ def download_voice():
 
 
 def generate_audio():
-    from piper import PiperVoice
+    # piper/imageio_ffmpeg zitten in de optionele group `demo`; CI installeert die niet.
+    from piper import PiperVoice  # ty: ignore[unresolved-import]
 
     onnx = VOICES_DIR / f"{VOICE}.onnx"
     print("Narratie genereren...")
@@ -71,7 +75,7 @@ def generate_audio():
 
 
 def combine():
-    import imageio_ffmpeg
+    import imageio_ffmpeg  # ty: ignore[unresolved-import]
 
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     print("Video en audio samenvoegen...")

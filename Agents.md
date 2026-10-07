@@ -110,6 +110,15 @@ git push github main
 # (do this on GitHub side to avoid conflicts)
 ```
 
+## Worktrees
+
+Parallel werken in een git worktree mag, maar ruim op:
+
+- **Hergebruik** een bestaande worktree voor een volgend issue (`git switch -c <branch> origin/main`) in plaats van per issue een nieuwe te maken.
+- **Verwijder** de worktree zodra de MR gemerged is: `git worktree remove <pad> && git worktree prune`.
+- **`frontend/node_modules`** alleen installeren als je aan de frontend werkt (~350 MB per worktree).
+- Zet geen projectlokale uv-cache (`cache-dir`, `UV_CACHE_DIR`) — met de gedeelde `~/.cache/uv` hardlinkt uv elke `.venv`, zodat een extra worktree vrijwel geen ruimte kost.
+
 ## Secrets & Security
 
 ### Core principle: nooit secrets via LLM
