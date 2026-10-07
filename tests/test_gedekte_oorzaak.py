@@ -1,9 +1,10 @@
-"""Een oorzaak is gedekt als een andere bron haar aantoont dan die van het effect (#225).
+"""Telreeksen bewijzen een verschil, niet de oorzaak ervan (#225, #413).
 
 Avans: het verschil tussen personen (p01hoinges) en inschrijvingen (p03hoinges) is bewezen,
 "meervoudige inschrijvingen" als oorzaak niet; de getallen erbij zijn die van het effect zelf.
-HU: een daling uit p01hoinges, verklaard met het aantal 18-jarigen uit een CBS-tabel, is wel
-gedekt: de oorzaak rust op een eigen bron. Dezelfde regel geldt voor chat en rapport.
+HU: een daling uit p01hoinges naast het aantal 18-jarigen uit een CBS-tabel is samenhang, geen
+bewijs: een getal uit een tweede telbron dekt de oorzaak evenmin (#413). Zo'n verklaring mag
+alleen met voorbehoud. Dezelfde regel geldt voor chat en rapport.
 """
 
 import json
@@ -53,12 +54,26 @@ _AVANS = (
 )
 
 
-def test_oorzaak_uit_een_tweede_bron_is_gedekt():
-    assert ongedekte_oorzaak(_HU_VERKLAARD, [_resultaat(_HU), _resultaat(_JONGEREN)]) == []
+_HU_ELDERS = (
+    "De HU daalde van 28.355 naar 26.370 studenten. Dit komt doordat elders 210.450 jongeren van 18 jaar wonen."
+)
+_HU_VOORBEHOUD = (
+    "Het aantal daalde van 28.355 in 2021 naar 26.370 in 2025; het aantal 18-jarigen daalde in dezelfde "
+    "periode van 210.450 naar 198.320. De oorzaak van de daling is met deze gegevens niet vast te stellen."
+)
+
+
+@pytest.mark.parametrize("tekst", [_HU_VERKLAARD, _HU_ELDERS])
+def test_oorzaak_uit_een_tweede_telbron_blijft_ongedekt(tekst):
+    assert len(ongedekte_oorzaak(tekst, [_resultaat(_HU), _resultaat(_JONGEREN)])) == 1
 
 
 def test_zonder_die_tweede_bron_is_dezelfde_oorzaak_ongedekt():
     assert len(ongedekte_oorzaak(_HU_VERKLAARD, [_resultaat(_HU)])) == 1
+
+
+def test_twee_telreeksen_met_voorbehoud_zijn_eerlijk():
+    assert ongedekte_oorzaak(_HU_VOORBEHOUD, [_resultaat(_HU), _resultaat(_JONGEREN)]) == []
 
 
 def test_getallen_van_het_effect_dekken_de_oorzaak_niet():
@@ -92,9 +107,16 @@ def test_rapport_mag_zeggen_dat_de_oorzaak_niet_vast_te_stellen_is():
     assert _oorzaakproblemen(report_problems(_rapport(conclusie), [], beurt)) == []
 
 
-def test_rapport_houdt_een_gedekte_verklaring_uit_de_datasetcontext():
+def _datasetcontext(*keys: str) -> str:
     """Het rapport ziet de geladen datasets als één context, niet als losse toolresultaten."""
-    context = json.dumps(
-        {"datasets": [{"data_key": k, "voorbeelden": store.get(k).to_dict("records")} for k in (_HU, _JONGEREN)]}
-    )
-    assert _oorzaakproblemen(report_problems(_rapport(_HU_VERKLAARD), [], [context])) == []
+    return json.dumps({"datasets": [{"data_key": k, "voorbeelden": store.get(k).to_dict("records")} for k in keys]})
+
+
+def test_rapport_houdt_een_oorzaak_uit_een_tweede_telbron_tegen():
+    context = _datasetcontext(_HU, _JONGEREN)
+    assert len(_oorzaakproblemen(report_problems(_rapport(_HU_VERKLAARD), [], [context]))) == 1
+
+
+def test_rapport_mag_twee_telreeksen_met_voorbehoud_naast_elkaar_zetten():
+    context = _datasetcontext(_HU, _JONGEREN)
+    assert _oorzaakproblemen(report_problems(_rapport(_HU_VOORBEHOUD), [], [context])) == []
