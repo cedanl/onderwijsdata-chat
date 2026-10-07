@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js).",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py.",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -149,6 +149,109 @@
       "message": "Hoeveel studenten van de Hanzehogeschool hadden in 2024 een burn-out?",
       "description": "Geen open data over gezondheid van studenten: moet weigeren",
       "expected": { "must_refuse": true }
+    },
+    {
+      "label": "audit-uniek-vs-inschrijvingen",
+      "message": "Hoeveel unieke hbo-studenten zijn er in 2024, en hoeveel inschrijvingen?",
+      "description": "Metadata-audit CHAT-10 (#360): ingeschrevenen (p01, personen) en inschrijvingen (p03) zijn verschillende tellingen",
+      "expected": {
+        "foutcategorie": "metadata",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["duo:p01hoinges", "duo:p03hoinschr"],
+        "must_contain_tools": ["search_catalog"],
+        "max_search_catalog": 3,
+        "must_mention": ["ingeschrevenen|unieke", "inschrijvingen"],
+        "acceptable_outcomes": ["Een student met meerdere inschrijvingen telt eenmaal als ingeschrevene en vaker als inschrijving"]
+      }
+    },
+    {
+      "label": "audit-eerstejaars-instelling",
+      "message": "Hoeveel eerstejaars had de Hogeschool Utrecht in 2024?",
+      "description": "Metadata-audit CHAT-10 (#360): eerstejaars aan de instelling is niet zonder check gelijk aan eerstejaars in het hoger onderwijs",
+      "expected": {
+        "foutcategorie": "cijferduiding",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["duo:p02ho1ejrs"],
+        "must_contain_tools": ["search_catalog"],
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht", "eerstejaars"],
+        "acceptable_outcomes": ["Het antwoord noemt of het gaat om eerstejaars aan de instelling of eerstejaars in het hoger onderwijs"]
+      }
+    },
+    {
+      "label": "audit-publicatieregel-4",
+      "message": "In het DUO-bestand met hbo-ingeschrevenen staat bij een opleiding van de Hogeschool Utrecht het aantal 4. Is dat het exacte aantal?",
+      "description": "Metadata-audit CHAT-10 (#360): de HO-bestanden onderdrukken kleine aantallen als -1, dus een 4 is daar exact; alleen VO publiceert 1 t/m 4 als 4 (#406, #407)",
+      "expected": {
+        "foutcategorie": "cijferduiding",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["duo:p01hoinges"],
+        "max_search_catalog": 3,
+        "must_mention": ["exact|echte 4"],
+        "acceptable_outcomes": ["Een 4 in een hbo-bestand is exact omdat kleine aantallen daar als -1 onderdrukt staan"]
+      }
+    },
+    {
+      "label": "audit-cbs-afronding",
+      "message": "Waarom tellen de CBS-cijfers over ingeschrevenen in het hoger onderwijs per onderdeel niet op tot het totaal?",
+      "description": "Metadata-audit CHAT-10 (#360): afronding én aggregatiestructuur verklaren het verschil",
+      "expected": {
+        "foutcategorie": "aggregatie",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["cbs:85423NED"],
+        "max_search_catalog": 3,
+        "must_mention": ["afrond"],
+        "acceptable_outcomes": ["CBS rondt af en sommige categorieën overlappen of vallen buiten de indeling"]
+      }
+    },
+    {
+      "label": "audit-mbo-prognose-2035",
+      "message": "Hoeveel mbo-studenten worden er in 2035 verwacht?",
+      "description": "Metadata-audit CHAT-10 (#360): de prognose loopt tot 2040 ondanks een oude catalogusperiode tot 2030; editie en status noemen",
+      "expected": {
+        "foutcategorie": "metadata",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["duo:studentprognoses-mbo-per-instelling"],
+        "must_contain_tools": ["search_catalog"],
+        "max_search_catalog": 3,
+        "must_mention": ["2035", "prognose"]
+      }
+    },
+    {
+      "label": "audit-open-mbo-cohorten",
+      "message": "Welke mbo-opleidingscohorten zijn open?",
+      "description": "Metadata-audit CHAT-10 (#360): 'open' is een statusfilter, geen lopende aanmeldperiode",
+      "expected": {
+        "foutcategorie": "toolcall",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["rio:aangeboden-opleiding-cohorten"],
+        "max_search_catalog": 3,
+        "must_mention": ["status"],
+        "acceptable_outcomes": ["Cohorten met status open, los van de vraag of de aanmeldperiode nu loopt"]
+      }
+    },
+    {
+      "label": "audit-gemeentecode-voorloopnul",
+      "message": "Hoeveel mbo-studenten zijn er in de gemeente met gemeentecode 0106?",
+      "description": "Metadata-audit CHAT-10 (#360): het filter op 0106 (Assen) houdt de voorloopnul (#24)",
+      "expected": {
+        "foutcategorie": "toolcall",
+        "bron_versie": "riodata@c0b4bce",
+        "max_search_catalog": 3,
+        "must_mention": ["Assen|0106"]
+      }
+    },
+    {
+      "label": "audit-vooropleiding-context",
+      "message": "Uit welke vooropleiding komen de hbo-eerstejaars van de Hogeschool Utrecht?",
+      "description": "Metadata-audit CHAT-10 (#360): vooropleiding is context bij hbo-instroom, geen zelfstandige po/vo-analyse (#355)",
+      "expected": {
+        "foutcategorie": "resourcekeuze",
+        "bron_versie": "riodata@c0b4bce",
+        "datasets": ["duo:p02ho1ejrs"],
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht", "vooropleiding"]
+      }
     }
   ]
 }
