@@ -28,11 +28,11 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 
 ## Deploy & Verificatie
 
-Push naar `main` → Azure Web App build + deploy.
+Tag push (X.0.0) → Flux HelmRelease auto-reconciles to all environments (dev, test, playground, production).
 
 ```bash
-curl https://onderwijsdata-chat.azurewebsites.net/health   # {"status":"ok"}
-curl https://onderwijsdata-chat.azurewebsites.net/version  # {"version":"x.y.z"}
+curl https://<environment-url>/health   # {"status":"ok"}
+curl https://<environment-url>/version  # {"version":"x.y.z"}
 ```
 
 ## Data Context

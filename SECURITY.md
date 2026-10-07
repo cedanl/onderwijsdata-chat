@@ -76,9 +76,9 @@ return "❌ Er is een onverwachte fout opgetreden."
 ### S5 — Geen rate limiting op login en chat ❌ Open
 
 **Locatie:** `POST /api/auth/login`, WebSocket `/api/chat`  
-**Probleem:** Geen beperking op het aantal loginpogingen (brute force wachtwoord) en geen limiet op chatberichten per sessie (LLM-kosten misbruik). Op Azure App Service is er geen ingebouwde WAF geconfigureerd.  
+**Probleem:** Geen beperking op het aantal loginpogingen (brute force wachtwoord) en geen limiet op chatberichten per sessie (LLM-kosten misbruik).  
 **Aanbeveling:**
-- Login: `slowapi` of Azure Front Door rate limiting; account-lockout na N mislukte pogingen
+- Login: `slowapi` of ingress rate limiting; account-lockout na N mislukte pogingen
 - Chat: max N berichten per minuut per WebSocket-verbinding; max berichtlengte
 
 ---
@@ -109,10 +109,10 @@ content = msg.get("content", "").strip()[:4000]
 ### S8 — CORS staat standaard op `*` ❌ Open (configuratie)
 
 **Locatie:** `server.py` — `os.getenv("CORS_ORIGINS", "*")`  
-**Probleem:** Als `CORS_ORIGINS` niet is ingesteld (bijv. lokale dev of verse Azure-deploy), accepteert de API cross-origin verzoeken van elke website.  
-**Actie voor productie:** Stel in Azure App Service → Configuration:
+**Probleem:** Als `CORS_ORIGINS` niet is ingesteld (bijv. lokale dev of verse deploy), accepteert de API cross-origin verzoeken van elke website.  
+**Actie voor productie:** Stel `CORS_ORIGINS` environment variable in:
 ```
-CORS_ORIGINS=https://onderwijsdata-chat.azurewebsites.net
+CORS_ORIGINS=https://onderwijsdata-chat.example.com
 ```
 Voor lokale dev: `CORS_ORIGINS=http://localhost:5173`
 
@@ -160,5 +160,5 @@ Beide zijn informational (blokkeren deploy niet). Output is zichtbaar in Actions
 
 1. **S4 oplossen** — generieke fallback + server-side logging (klein, hoge waarde)
 2. **S5 aanpakken** — rate limiting op login en max berichtlengte (S7)
-3. **S8 instellen** — CORS_ORIGINS in Azure App Service production config
+3. **S8 instellen** — CORS_ORIGINS environment variable in production config
 4. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — na bovenstaande fixes, met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
