@@ -15,11 +15,20 @@ passen. Een vergelijking in de tijd noemt vaak maar één jaar ("ten opzichte va
 het genoemde jaar, dan hoeven de andere alleen bij de genoemde instelling te
 passen. Staat een getal in geen enkele rij (een som, een KPI), dan beslist de
 getalcontrole erover, niet deze.
+
+Een afgeleide waarde (#409) staat niet in een rij en kan toevallig gelijk zijn aan
+een cel van een ander jaar: 478.660 - 475.460 = 3.200, terwijl 3.200 ook een cel
+van 2021/22 is. Is het getal het verschil tussen twee genoemde jaren in dezelfde
+kolom, of een compute_kpi-waarde over de genoemde jaren, dan hoort het daarbij.
+Past het alleen niet bij het jaar, in een vergelijking waarvan elk genoemd jaar
+al een eigen getal heeft, dan is het vermoedelijk afgeleid: twijfel, dus een
+zacht probleem (#207) in plaats van een ingehouden antwoord.
 """
 
 import re
 from collections import defaultdict
-from itertools import product
+from dataclasses import dataclass, field
+from itertools import combinations, product
 
 import pandas as pd
 
@@ -27,6 +36,9 @@ from tools import instelling, periode, store
 from tools.store import KeyMeta
 
 from .grounding import checked_numbers
+from .kpi_bron import bereik as kpi_bereik
+from .kpi_bron import met_periode
+from .probleem import Probleem, hard
 from .selectie import data_keys
 
 # Een zin die een verandering in de tijd beschrijft; het andere jaar staat er vaak niet bij (#379).
@@ -41,6 +53,16 @@ _SEGMENT = re.compile(r"\n|(?<=[.!?;])\s+")
 
 _Rij = tuple[int | None, str | None]  # (startjaar, instellingscode); None als de selectie die as mist
 _Index = dict[str, set[_Rij]]  # getal (cijfers) → de dimensies van de rijen waarin het staat
+# (selectie en kolom, instellingscode) → startjaar → de gehele waarden in die kolom
+_Reeksen = dict[tuple[str, str | None], dict[int, set[int]]]
+
+
+@dataclass
+class _Data:
+    index: _Index = field(default_factory=lambda: defaultdict(set))
+    reeksen: _Reeksen = field(default_factory=lambda: defaultdict(lambda: defaultdict(set)))
+    namen: dict[str, str] = field(default_factory=dict)
+    kpis: list[tuple[str, set[int]]] = field(default_factory=list)  # (cijfers, startjaren van de periode)
 
 
 def segmenten(tekst: str) -> list[str]:
@@ -65,7 +87,7 @@ def _waarden(reeks: pd.Series | None, rijen: int) -> list:
     return [None if pd.isna(v) else v for v in reeks]
 
 
-def _index(df: pd.DataFrame, jaren: pd.Series | None, codes: pd.Series | None, index: _Index) -> None:
+def _index(key: str, df: pd.DataFrame, jaren: pd.Series | None, codes: pd.Series | None, data: _Data) -> None:
     getallen = df.select_dtypes("number")
     if getallen.columns.empty:
         # Alleen tekst (RIO, labels, '22410' als string): geen getal om te binden (#392).
@@ -77,9 +99,21 @@ def _index(df: pd.DataFrame, jaren: pd.Series | None, codes: pd.Series | None, i
         strict=True,
     )
     for jaar, code, rij in per_rij:
-        for v in rij:
+        for kolom, v in zip(getallen.columns, rij, strict=True):
             if pd.notna(v) and float(v).is_integer():
-                index[str(int(v))].add((jaar, code))
+                data.index[str(int(v))].add((jaar, code))
+                if jaar is not None:
+                    data.reeksen[(f"{key}:{kolom}", code)][jaar].add(int(v))
+
+
+def _kpis(tool_results: list[str]) -> list[tuple[str, set[int]]]:
+    """De gehele compute_kpi-waarden (cijfers) met de startjaren waarover ze rekenen."""
+    kpis = []
+    for kpi in met_periode(tool_results):
+        waarde = str(kpi["value"]).lstrip("+-−").rstrip("%")
+        if "," not in waarde and (jaren := kpi_bereik(kpi)):
+            kpis.append((waarde.replace(".", ""), set(jaren)))
+    return kpis
 
 
 def _past(rij: _Rij, genoemd: tuple[set, set]) -> bool:
@@ -108,34 +142,79 @@ def _vergelijkt(segment: str, getallen: list[tuple[str, str]], index: _Index, ge
     )
 
 
-def _verkeerd(tekst: str, index: _Index, bekend: tuple[set, set], namen: dict[str, str]) -> list[str]:
+def _verschil(getal: str, genoemd: tuple[set, set], reeksen: _Reeksen) -> bool:
+    """Is het getal het verschil tussen twee genoemde jaren in dezelfde kolom en instelling?"""
+    n = int(getal)
+    for (_, code), per_jaar in reeksen.items():
+        if genoemd[1] and code is not None and code not in genoemd[1]:
+            continue
+        for a, b in combinations(sorted(genoemd[0] & per_jaar.keys()), 2):
+            if any(x - n in per_jaar[b] or x + n in per_jaar[b] for x in per_jaar[a]):
+                return True
+    return False
+
+
+def _afgeleid(getal: str, genoemd: tuple[set, set], data: _Data) -> bool:
+    """Komt het getal uit de genoemde jaren zelf: hun verschil, of een KPI over precies die periode?"""
+    kpi = any(cijfers == getal and jaren <= genoemd[0] for cijfers, jaren in data.kpis)
+    return kpi or _verschil(getal, genoemd, data.reeksen)
+
+
+def _twijfel(segment: str, getal: str, getallen: list[tuple[str, str]], data: _Data, genoemd: tuple[set, set]) -> bool:
+    """Past het getal alleen niet bij het jaar, in een vergelijking waarvan elk genoemd jaar al een getal heeft?
+
+    Dan is het vermoedelijk afgeleid (een afgerond verschil, een som) en toevallig gelijk aan een cel.
+    """
+    if not (genoemd[0] and _VERGELIJKING.search(segment)):
+        return False
+    if not any(_past(rij, (set(), genoemd[1])) for rij in data.index.get(getal, ())):
+        return False
+    anderen = [rij for _, ander in getallen if ander != getal for rij in data.index.get(ander, ())]
+    return all(any(_past(rij, ({jaar}, genoemd[1])) for rij in anderen) for jaar in genoemd[0])
+
+
+def _verkeerd(tekst: str, data: _Data, bekend: tuple[set, set]) -> list[Probleem]:
     problemen = []
     for segment in segmenten(tekst):
         genoemd = (
             periode.gevraagde_schooljaren(segment) & bekend[0],
-            instelling.genoemde(segment, namen) & bekend[1],
+            instelling.genoemde(segment, data.namen) & bekend[1],
         )
         if not any(genoemd):
             continue
-        gevraagd = ", ".join(_label(r, genoemd, namen) for r in product(genoemd[0] or [None], genoemd[1] or [None]))
+        gevraagd = ", ".join(
+            _label(r, genoemd, data.namen) for r in product(genoemd[0] or [None], genoemd[1] or [None])
+        )
         getallen = checked_numbers(segment)
         # Het andere jaar van een vergelijking staat niet in de zin: dan telt alleen de instelling.
-        eis = (set(), genoemd[1]) if _vergelijkt(segment, getallen, index, genoemd) else genoemd
+        eis = (set(), genoemd[1]) if _vergelijkt(segment, getallen, data.index, genoemd) else genoemd
         for geschreven, getal in getallen:
-            rijen = index.get(getal)
-            if rijen and not any(_past(rij, eis) for rij in rijen):
-                echt = ", ".join(sorted({_label(r, genoemd, namen) for r in rijen}))
+            rijen = data.index.get(getal)
+            if not rijen or any(_past(rij, eis) for rij in rijen) or _afgeleid(getal, genoemd, data):
+                continue
+            echt = ", ".join(sorted({_label(r, genoemd, data.namen) for r in rijen}))
+            opdracht = f"Neem het getal uit de rij van {gevraagd}."
+            if _twijfel(segment, getal, getallen, data, genoemd):
                 problemen.append(
-                    f"{geschreven} hoort bij {echt}, niet bij {gevraagd} ('{segment}'). "
-                    f"Neem het getal uit de rij van {gevraagd}."
+                    Probleem(
+                        f"{geschreven} staat in de data bij {echt}, niet bij {gevraagd} ('{segment}'); "
+                        "als afgeleide waarde is het niet na te rekenen.",
+                        f"{opdracht} Een verschil of som reken je uit met compute_kpi over die jaren.",
+                    )
+                )
+            else:
+                problemen += hard(
+                    [Probleem(f"{geschreven} hoort bij {echt}, niet bij {gevraagd} ('{segment}').", opdracht)]
                 )
     return problemen
 
 
-def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[str]:
-    """Getallen in de tekst die in de data bij een andere jaar-instellingcombinatie staan dan de zin noemt."""
-    index: _Index = defaultdict(set)
-    namen: dict[str, str] = {}
+def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[Probleem]:
+    """Getallen in de tekst die in de data bij een andere jaar-instellingcombinatie staan dan de zin noemt.
+
+    Een zeker verkeerde binding is hard; een vermoedelijk afgeleide waarde zacht (#409).
+    """
+    data = _Data(kpis=_kpis(tool_results))
     for key in data_keys(tool_results):
         known, df = store.meta(key), store.get(key)
         if known is None or df is None:
@@ -144,9 +223,9 @@ def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[str]:
         codes = None
         if kolom and kolom in df.columns and instelling.codekolom(df.columns):
             codes = df[kolom].astype(str)
-            namen |= instelling.namen(df, kolom)
-        _index(df, _jaren(df, known), codes, index)
+            data.namen |= instelling.namen(df, kolom)
+        _index(key, df, _jaren(df, known), codes, data)
 
-    rijen = set().union(*index.values()) if index else set()
+    rijen = set().union(*data.index.values()) if data.index else set()
     bekend = ({j for j, _ in rijen if j is not None}, {c for _, c in rijen if c is not None})
-    return _verkeerd(tekst, index, bekend, namen)
+    return _verkeerd(tekst, data, bekend)

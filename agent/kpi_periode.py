@@ -8,26 +8,14 @@ Eén genoemd schooljaar is geen bereik: daarover gaat binding.py. Een bereik mag
 kale jaartallen staan ("2024 tot 2030"); DUO-prognoses kennen geen schooljaarnotatie.
 """
 
-import json
 import re
 
 from tools import periode
 
 from .binding import segmenten
+from .kpi_bron import bereik as kpi_bereik
+from .kpi_bron import met_periode
 from .probleem import Probleem
-
-
-def _kpis(tool_results: list[str]) -> list[dict]:
-    kpis = []
-    for result in tool_results:
-        try:
-            data = json.loads(result)
-        except (TypeError, ValueError):
-            continue
-        if isinstance(data, dict) and "periode" in data and "value" in data:
-            kpis.append(data)
-    return kpis
-
 
 # Duizendtallen met (harde of smalle) spatie, zoals gpt-oss ze schrijft (#236).
 _SPATIE_DUIZENDTAL = re.compile(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?!\d))")
@@ -42,9 +30,9 @@ def noemt(segment: str, waarde: str) -> bool:
 
 def verkeerde_kpi_periodes(tekst: str, tool_results: list[str]) -> list[str]:
     problemen = []
-    for kpi in _kpis(tool_results):
+    for kpi in met_periode(tool_results):
         van, tot = kpi["periode"]["van"], kpi["periode"]["tot"]
-        bereik = periode.schooljaarbereik(van, tot)
+        bereik = kpi_bereik(kpi)
         if bereik is None:
             continue
         for segment in segmenten(tekst):

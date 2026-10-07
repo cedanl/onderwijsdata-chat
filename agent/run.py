@@ -232,7 +232,7 @@ async def run(
             *veilig(verkeerde_dimensielabels, text, tool_results),
             *veilig(onbekende_datasets, text),
             *veilig(ongebruikte_bronnen, text, tool_results),
-            *hard(veilig(verkeerd_gebonden, text, tool_results)),
+            *veilig(verkeerd_gebonden, text, tool_results),
             *hard(veilig(verkeerde_kenmerken, text, tool_results)),
             *hard(veilig(verkeerde_kpi_periodes, text, tool_results)),
             *veilig(kpi_naast_filter, text, tool_results),
