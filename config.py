@@ -23,7 +23,8 @@ class Config:
     # Required settings
     MODEL: str = MODEL  # één default, in core/config.py (#234)
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    # Leeg = geen cross-origin toegang: de frontend praat via dezelfde origin (#421).
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
     # Commit van het image, meegegeven als build-arg in CI (#231)
     GIT_COMMIT: str | None = os.getenv("GIT_COMMIT")
@@ -55,6 +56,10 @@ class Config:
         if not cls.MODEL or "/" not in cls.MODEL:
             errors.append(f"MODEL must be in format 'provider/model-name', got: {cls.MODEL}")
 
+        # Met allow_credentials laat "*" elke site namens een ingelogde gebruiker de API aanroepen.
+        if "*" in cls.get_parsed_cors_origins():
+            errors.append("CORS_ORIGINS mag geen '*' bevatten; noem de origins expliciet")
+
         if errors:
             for error in errors:
                 logger.error(error)
@@ -67,7 +72,7 @@ class Config:
     @classmethod
     def get_parsed_cors_origins(cls) -> list[str]:
         """Parse CORS_ORIGINS into a list."""
-        return [o.strip() for o in cls.CORS_ORIGINS.split(",")]
+        return [o.strip() for o in cls.CORS_ORIGINS.split(",") if o.strip()]
 
     @classmethod
     def is_production(cls) -> bool:
