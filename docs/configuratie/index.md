@@ -34,7 +34,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
-| `CORS_ORIGINS` | `*` | Komma-gescheiden lijst van toegestane origins voor CORS |
+| `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait; `*` wordt bij het opstarten geweigerd |
 | `DATABASE_PATH` | `app.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `true` | Zet op `false` om de dashboardfunctie (pagina en `/api/dashboard/*`) uit te schakelen |
