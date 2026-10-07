@@ -1,15 +1,18 @@
-"""Het definitieblok van een rapport komt uit de bron, niet uit het model (#329)."""
+"""Het definitieblok van een rapport komt uitsluitend uit de bron (#329, #402, #422)."""
+
+import json
 
 import pandas as pd
 import pytest
 
 from agent.report import _parse_spec_from_response
-from agent.report_definities import definities_uit_bron, samengevoegd
+from agent.report_definities import definities_uit_bron
 from tools import store
 from tools.store import KeyMeta
 
 _TELLING = "Ingeschrevenen: personen, één keer geteld in het hele domein hoger onderwijs."
 _KEY = "duo:p01hoinges:3:sel"
+_VORMEN = {"begrip": "Opleidingsvorm", "definitie": "VT = voltijd, DT = deeltijd, DU = duaal"}
 
 
 @pytest.fixture(autouse=True)
@@ -28,60 +31,52 @@ def _datasets() -> list[dict]:
     return [{"data_key": _KEY}]
 
 
+def _spec(**velden):
+    antwoord = json.dumps({"title": "Ingeschrevenen Universiteit Twente", "conclusie": "c", **velden})
+    return _parse_spec_from_response(antwoord, [], {"datasets": _datasets(), "topic": "Twente"})
+
+
 def test_teldefinitie_en_opleidingsvormen_komen_letterlijk_uit_de_bron():
-    definities = definities_uit_bron(_datasets())
+    definities = definities_uit_bron(_datasets(), "Voltijd en deeltijd per jaar")
 
-    assert {"begrip": "Telling (p01hoinges)", "definitie": _TELLING} in definities
-    assert {"begrip": "Opleidingsvorm", "definitie": "VT = voltijd, DT = deeltijd, DU = duaal"} in definities
-
-
-def test_hetzelfde_blok_voor_dezelfde_selectie_ongeacht_wat_het_model_schrijft():
-    kwaad = {"begrip": "Telling", "definitie": "Eén persoon telt één keer per opleidingsvorm."}
-    uit_bron = definities_uit_bron(_datasets())
-
-    assert samengevoegd(uit_bron, [kwaad]) == samengevoegd(uit_bron, []) == uit_bron
+    assert definities == [{"begrip": "Telling (p01hoinges)", "definitie": _TELLING}, _VORMEN]
 
 
-def test_getalvrij_begrip_van_het_model_blijft():
+@pytest.mark.parametrize("tekst", ["per OPLEIDINGSVORM", "het aandeel DU", "Deeltijdstudenten", "duaal"])
+def test_opleidingsvorm_als_het_rapport_erover_gaat(tekst):
+    assert _VORMEN in definities_uit_bron(_datasets(), tekst)
+
+
+@pytest.mark.parametrize("tekst", ["Ingeschrevenen per jaar", '{"dtick": 1, "dus": 2}'])
+def test_geen_opleidingsvorm_als_het_rapport_er_niet_over_gaat(tekst):
+    assert _VORMEN not in definities_uit_bron(_datasets(), tekst)
+
+
+def test_twente_rapport_zonder_opleidingsvorm_toont_alleen_de_telling():
+    """CH-15: naast de brondefinitie een modelbegrip 'Ingeschrevene' en een irrelevante opleidingsvorm."""
+    spec = _spec(
+        definities=[{"begrip": "Ingeschrevene", "definitie": "Student met een inschrijving"}],
+        conclusie="Het aantal ingeschrevenen bij de Universiteit Twente daalde.",
+    )
+
+    assert spec.definities == [{"begrip": "Telling (p01hoinges)", "definitie": _TELLING}]
+
+
+def test_het_model_schrijft_geen_definities_meer():
+    kwaad = {"begrip": "Voltijd", "definitie": "per opleidingsvorm geteld"}
     eerstejaars = {"begrip": "Eerstejaars", "definitie": "Student die voor het eerst staat ingeschreven"}
 
-    assert samengevoegd(definities_uit_bron(_datasets()), [eerstejaars])[-1] == eerstejaars
+    assert _spec(definities=[kwaad, eerstejaars]).definities == _spec().definities
 
 
-@pytest.mark.parametrize(
-    "afbakening",
-    [
-        {"begrip": "Ingeschrevenen", "definitie": "WO-masters zijn buiten beschouwing gelaten."},
-        {"begrip": "Studenten", "definitie": "Exclusief hbo-masters."},
-        {"begrip": "Studenten", "definitie": "Inclusief de associate degree."},
-        {"begrip": "Bachelors", "definitie": "Promovendi zijn niet meegenomen."},
-        {"begrip": "Bachelors", "definitie": "Hbo-masters zijn uitgesloten."},
-    ],
-)
-def test_wat_de_telling_afbakent_zegt_de_bron_en_niet_het_model(afbakening):
-    """TU Delft (#402): model 'WO-masters buiten beschouwing', bron 'hbo-master uitgesloten'."""
-    uit_bron = definities_uit_bron(_datasets())
+def test_opleidingsvorm_in_een_grafiek_telt_mee():
+    figuur = json.dumps({"data": [{"x": ["VT", "DT"], "y": [1, 2]}], "layout": {}})
+    antwoord = json.dumps({"title": "Ingeschrevenen", "conclusie": "c"})
+    spec = _parse_spec_from_response(antwoord, [figuur], {"datasets": _datasets(), "topic": "Twente"})
 
-    assert samengevoegd(uit_bron, [afbakening]) == uit_bron
+    assert _VORMEN in spec.definities
 
 
-def test_zonder_teldefinitie_mag_het_model_afbakenen():
-    afbakening = {"begrip": "Studenten", "definitie": "Exclusief hbo-masters."}
-
-    assert samengevoegd([], [afbakening]) == [afbakening]
-
-
-def test_rapportspec_neemt_de_bronblok_over_en_niet_de_modelomschrijving():
-    antwoord = (
-        '{"title": "t", "definities": [{"begrip": "Voltijd", "definitie": "per opleidingsvorm geteld"}], '
-        '"conclusie": "c"}'
-    )
-    spec = _parse_spec_from_response(antwoord, [], {"datasets": _datasets(), "topic": "Fontys"})
-
-    assert spec.definities[0]["definitie"] == _TELLING
-    assert all("per opleidingsvorm" not in d["definitie"] for d in spec.definities)
-
-
-def test_zonder_metadata_blijft_alleen_het_modelblok():
+def test_zonder_metadata_geen_definities():
     store.clear()
-    assert definities_uit_bron(_datasets()) == []
+    assert definities_uit_bron(_datasets(), "voltijd") == []

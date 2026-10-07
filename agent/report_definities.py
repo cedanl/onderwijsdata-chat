@@ -1,9 +1,11 @@
-"""Het definitieblok van een rapport komt uit de bron, niet uit het model (#329).
+"""Het definitieblok van een rapport komt uitsluitend uit de bron (#329, #402, #422).
 
 Een model schreef bij p01hoinges "één persoon telt één keer per opleidingsvorm" waar
 DUO één keer in het hele domein hoger onderwijs zegt, en verwees naar "resource 3".
-Wat een bron telt en wat de opleidingsvormcodes betekenen staat in de metadata van
-de geladen keys; het model schrijft alleen de getalvrije begrippen erbij.
+Na het weren van zulke tellingzinnen bleef het model eigen begrippen naast de bron
+zetten ("Ingeschrevene" naast de DUO-teldefinitie). Wat een bron telt en wat de
+opleidingsvormcodes betekenen staat in de metadata van de geladen keys; het model
+schrijft geen definities meer.
 """
 
 import re
@@ -11,18 +13,16 @@ import re
 from tools import store
 from tools.duo import OPLEIDINGSVORM_DATASETS, OPLEIDINGSVORMEN
 
-# Wat een model over tellen schrijft als de bron zelf al zegt wat hij telt, ook wat
-# wel of niet meetelt: bij TU Delft zei het model 'WO-masters buiten beschouwing'
-# waar DUO de hbo-master uitsluit (#402).
-_TELLING = re.compile(
-    r"\b(?:tel(?:t|len|ling|lingen)|geteld|meegeteld|meegenomen|uitgesloten|uitgezonderd|inclusief|exclusief)\b"
-    r"|\bper opleidingsvorm\b|\bbuiten beschouwing\b",
+# Het rapport gaat over opleidingsvorm als de kolom, een code of een vorm erin staat.
+# Anders is de codelijst ruis: het Twente-rapport toonde hem zonder één opleidingsvorm (#422).
+_OVER_OPLEIDINGSVORM = re.compile(
+    r"opleidingsvorm|\b(?:" + "|".join(OPLEIDINGSVORMEN) + r")\b|\b(?:" + "|".join(OPLEIDINGSVORMEN.values()) + ")",
     re.IGNORECASE,
 )
 
 
-def definities_uit_bron(datasets: list[dict]) -> list[dict]:
-    """De teldefinitie en opleidingsvormcodes van de geladen datasets, zoals de bron ze geeft."""
+def definities_uit_bron(datasets: list[dict], rapporttekst: str = "") -> list[dict]:
+    """De teldefinitie van de geladen datasets en, als het rapport erover gaat, de opleidingsvormcodes."""
     definities: list[dict] = []
     vormen = False
     for ds in datasets:
@@ -35,20 +35,7 @@ def definities_uit_bron(datasets: list[dict]) -> list[dict]:
         ):
             definities.append(telling)
         vormen = vormen or known.dataset in OPLEIDINGSVORM_DATASETS
-    if vormen:
+    if vormen and _OVER_OPLEIDINGSVORM.search(rapporttekst):
         codes = ", ".join(f"{code} = {vorm}" for code, vorm in OPLEIDINGSVORMEN.items())
         definities.append({"begrip": "Opleidingsvorm", "definitie": codes})
     return definities
-
-
-def samengevoegd(uit_bron: list[dict], van_model: list[dict]) -> list[dict]:
-    """De definities uit de bron eerst; die van het model alleen waar de bron niets te zeggen heeft."""
-    begrippen = {d["begrip"].lower() for d in uit_bron}
-    heeft_telling = any(d["begrip"].startswith("Telling") for d in uit_bron)
-    behouden = [
-        d
-        for d in van_model
-        if str(d.get("begrip", "")).lower() not in begrippen
-        and not (heeft_telling and _TELLING.search(f"{d.get('begrip', '')} {d.get('definitie', '')}"))
-    ]
-    return [*uit_bron, *behouden]

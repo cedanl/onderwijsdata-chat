@@ -28,7 +28,7 @@ from agent.dashboard import (
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import harde, meldingen
 from agent.report_checks import report_problems
-from agent.report_definities import definities_uit_bron, samengevoegd
+from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
@@ -272,13 +272,28 @@ def _parse_spec_from_response(
             }
         )
 
+    beantwoordt = spec_data.get("beantwoordt") or []
+    beantwoordt_niet = spec_data.get("beantwoordt_niet") or []
+    conclusie = (spec_data.get("conclusie") or "").strip()
+    # Wat het rapport toont, om te bepalen welke brondefinities erbij horen (#422).
+    rapporttekst = "\n".join(
+        [
+            title,
+            onderzoeksvraag,
+            conclusie,
+            *map(str, beantwoordt),
+            *map(str, beantwoordt_niet),
+            *(f"{v['titel']} {v['toelichting']} {v['figure_json']}" for v in visualisaties),
+        ]
+    )
+
     return ReportSpec(
         title=title,
         onderzoeksvraag=onderzoeksvraag,
-        definities=samengevoegd(definities_uit_bron(context.get("datasets", [])), spec_data.get("definities") or []),
-        beantwoordt=spec_data.get("beantwoordt") or [],
-        beantwoordt_niet=spec_data.get("beantwoordt_niet") or [],
-        conclusie=(spec_data.get("conclusie") or "").strip(),
+        definities=definities_uit_bron(context.get("datasets", []), rapporttekst),
+        beantwoordt=beantwoordt,
+        beantwoordt_niet=beantwoordt_niet,
+        conclusie=conclusie,
         visualisaties=visualisaties,
         bronnen=bronnen,
         auteur=(author or "").strip(),
