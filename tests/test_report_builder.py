@@ -43,8 +43,8 @@ class TestParseSpecFromResponse:
         assert spec.title == "Instroom ROC van Flevoland 2018-2024"
         assert spec.auteur == "jansen"
         assert spec.datum == _nl_datum()
-        assert len(spec.definities) == 1
-        assert spec.definities[0]["begrip"] == "Eerstejaars"
+        # Definities komen uit de bron, niet uit het model (#422); hier geen datasets.
+        assert spec.definities == []
         assert spec.beantwoordt == ["De jaarlijkse ontwikkeling van de instroom"]
         assert spec.beantwoordt_niet == ["Arbeidsmarktuitstroom van gediplomeerden"]
         assert spec.conclusie == "De instroom is met 18% gestegen."

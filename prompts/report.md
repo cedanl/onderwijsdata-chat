@@ -9,7 +9,7 @@ Stel een compact professioneel rapport op dat de onderzoeksvraag beantwoordt. Fo
 Het rapport heeft ALTIJD deze structuur:
 
 1. **Onderzoeksvraag** — bovenaan en centraal: herhaal de onderzoeksvraag (bijna) letterlijk
-2. **Gekozen definities** — definieer de inhoudelijke begrippen die je gebruikt en maak expliciet wat dit rapport wel en niet beantwoordt. Wat een bron telt (personen of inschrijvingen) en wat de opleidingsvormcodes betekenen voegt de code uit de bron toe: beschrijf dat niet zelf
+2. **Reikwijdte** — maak expliciet wat dit rapport wel en niet beantwoordt. De definities (wat een bron telt, wat de opleidingsvormcodes betekenen) voegt de code uit de bron toe: schrijf geen definities
 3. **1 of 2 visualisaties met toelichting** — maximaal twee grafieken, elk met een duidelijke inhoudelijke toelichting
 4. **Conclusie** — kopje "Conclusie" met de kernbevindingen en het antwoord op de onderzoeksvraag
 
@@ -40,9 +40,6 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 {
   "title": "Concrete, beschrijvende rapporttitel",
   "onderzoeksvraag": "De onderzoeksvraag van de gebruiker, (bijna) letterlijk",
-  "definities": [
-    {"begrip": "Eerstejaars", "definitie": "Student die voor het eerst staat ingeschreven bij een opleiding"}
-  ],
   "beantwoordt": ["wat dit rapport wel beantwoordt"],
   "beantwoordt_niet": ["wat dit rapport niet beantwoordt (buiten de scope)"],
   "visualisaties": [
@@ -54,7 +51,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 ## Definities en verwijzingen
 
-- Schrijf in `definities` alleen getalvrije begrippen. Zeg niets over hoe een dataset telt of wat wel of niet meetelt, en omschrijf voltijd, deeltijd en duaal niet zelf; de code zet de definitie van de bron erboven.
+- Schrijf geen definities: het definitieblok komt uit de bron. Zeg ook in de toelichting en conclusie niets over hoe een dataset telt of wat wel of niet meetelt, en omschrijf voltijd, deeltijd en duaal niet zelf.
 - Verwijs nooit naar "resource 3" of een ander bestandsnummer; noem een bestand bij zijn titel.
 
 ## Bronvermeldingen
