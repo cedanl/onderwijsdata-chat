@@ -1,5 +1,6 @@
 import json
 import math
+from collections import Counter
 
 import pandas as pd
 from riodata import duo as _duo
@@ -70,6 +71,23 @@ def record_sentinel_cells(key: str, cells: pd.DataFrame) -> None:
 def sentinel_cells(key: str) -> pd.DataFrame | None:
     """De gemaskeerde cellen van deze key; query_data neemt ze mee naar zijn selectie."""
     return _sentinel_cells.get(key)
+
+
+def onderdrukt(key: str, _gezien: frozenset[str] = frozenset()) -> dict[str, int]:
+    """Gemaskeerde cellen per kolom achter de tabel van `key` (#414).
+
+    Een eigen berekening (run_analysis) heeft geen eigen cellen: ze erft die van de
+    selecties die ze las. Een hele resource telt daarbij niet mee, daaruit filtert het
+    script zelf (#179).
+    """
+    known = store.meta(key)
+    if known is None or known.gelezen is None:
+        return count_cells(_sentinel_cells.get(key))
+    totaal: Counter[str] = Counter()
+    for bron in known.gelezen:
+        if bron not in _gezien and (gelezen := store.meta(bron)) is not None and gelezen.afgeleid_van:
+            totaal.update(onderdrukt(bron, _gezien | {key}))
+    return dict(totaal)
 
 
 def clear_sentinel_cells() -> None:

@@ -46,6 +46,8 @@ class KeyMeta:
     laad: tuple[str, dict] | None = field(default=None, compare=False)
     # How this key was derived from afgeleid_van, in words for the export (#118). Provenance, not identity.
     stap: str | None = field(default=None, compare=False)
+    # The keys an own computation (run_analysis) read: its selection, which it inherits suppression from (#414).
+    gelezen: tuple[str, ...] | None = field(default=None, compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:

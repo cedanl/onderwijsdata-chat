@@ -18,7 +18,7 @@ def test_simple_sum():
         data_key="test:an",
     )
     assert isinstance(result, str)
-    assert json.loads(result)["totaal"] == 300
+    assert json.loads(result)["resultaat"]["totaal"] == 300
 
 
 def test_groupby_in_script():
@@ -51,7 +51,7 @@ def test_returns_figure():
     )
     assert isinstance(result, tuple)
     text, fig = result
-    assert json.loads(text)["ok"] is True
+    assert json.loads(text)["resultaat"]["ok"] is True
     assert hasattr(fig, "to_json")
 
 
@@ -70,7 +70,7 @@ def test_dataframe_result_converted():
 def test_no_data_key_leaves_df_undefined_but_store_get_works():
     _put("test:an", [{"N": 1}, {"N": 2}])
     result = run_analysis(code="result = {'sum': int(store_get('test:an')['N'].sum())}")
-    assert json.loads(result)["sum"] == 3
+    assert json.loads(result)["resultaat"]["sum"] == 3
 
 
 def test_script_without_a_data_source_is_refused():
@@ -136,7 +136,7 @@ def test_store_get_available():
         code="other = store_get('test:b')\nresult = {'v': int(other['V'].iloc[0])}",
     )
     assert isinstance(result, str)
-    assert json.loads(result)["v"] == 2
+    assert json.loads(result)["resultaat"]["v"] == 2
 
 
 def test_store_get_returns_a_copy_not_the_shared_object():
@@ -256,4 +256,7 @@ def test_resultaat_zonder_gelezen_key_heeft_geen_bron():
 
 def test_resultaat_met_gelezen_key_heeft_een_bron():
     _put("test:an", [{"N": 100}])
-    assert _json(run_analysis(code="result = int(store_get('test:an')['N'].sum())")) == 100
+    assert _json(run_analysis(code="result = int(store_get('test:an')['N'].sum())")) == {
+        "gelezen": ["test:an"],
+        "resultaat": 100,
+    }
