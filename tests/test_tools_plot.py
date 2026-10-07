@@ -113,6 +113,7 @@ def test_dutch_number_value_labels():
     _, fig = create_plot(
         [{"jaar": "2020", "waarde": 27367}, {"jaar": "2021", "waarde": 2.1}], "bar", "jaar", "waarde", "T"
     )
+    assert fig is not None
     assert list(fig.data[0].text) == ["27.367", "2,1"]
 
 

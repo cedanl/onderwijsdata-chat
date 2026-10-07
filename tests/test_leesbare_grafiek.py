@@ -10,6 +10,7 @@ import json
 from unittest.mock import patch
 
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 from tools import store
@@ -18,6 +19,13 @@ from tools.cbs import clear_dimensions, get_cbs_data
 from tools.plot import create_plot
 from tools.query import query_data
 from tools.store import KeyMeta
+
+
+def _plot(**kwargs) -> go.Figure:
+    _, fig = create_plot(**kwargs)
+    assert fig is not None
+    return fig
+
 
 _DEFS = {
     "Onderwijssoort": {"type": "Dimension", "title": "Onderwijssoort"},
@@ -51,7 +59,7 @@ def cbs_key():
 
 
 def test_cbs_astitels_komen_uit_de_kolomtitels_van_de_bron(cbs_key):
-    _, fig = create_plot(data_key=cbs_key, chart_type="line", x="Perioden_label", y="MboStudenten_1", title="T")
+    fig = _plot(data_key=cbs_key, chart_type="line", x="Perioden_label", y="MboStudenten_1", title="T")
     assert fig.layout.xaxis.title.text == "Studiejaar"
     assert fig.layout.yaxis.title.text == "Mbo-studenten"
     # De export houdt de bronnamen (#217).
@@ -60,7 +68,7 @@ def test_cbs_astitels_komen_uit_de_kolomtitels_van_de_bron(cbs_key):
 
 def test_ook_na_een_bewerking_met_query_data(cbs_key):
     afgeleid = json.loads(query_data(cbs_key, columns=["Perioden_label", "MboStudenten_1"]))["data_key"]
-    _, fig = create_plot(data_key=afgeleid, chart_type="bar", x="Perioden_label", y="MboStudenten_1", title="T")
+    fig = _plot(data_key=afgeleid, chart_type="bar", x="Perioden_label", y="MboStudenten_1", title="T")
     assert fig.layout.xaxis.title.text == "Studiejaar"
     assert fig.layout.yaxis.title.text == "Mbo-studenten"
 
@@ -92,7 +100,7 @@ def duo_key():
 
 
 def test_opleidingsvormcodes_worden_woorden(duo_key):
-    _, fig = create_plot(data_key=duo_key, chart_type="bar", x="OPLEIDINGSVORM", y="AANTAL_INGESCHREVENEN", title="T")
+    fig = _plot(data_key=duo_key, chart_type="bar", x="OPLEIDINGSVORM", y="AANTAL_INGESCHREVENEN", title="T")
     assert fig.layout.xaxis.title.text == "Opleidingsvorm"
     assert set(fig.data[0].x) == {"Voltijd", "Deeltijd", "Duaal"}
     # De export houdt de codes uit de bron.
@@ -100,7 +108,7 @@ def test_opleidingsvormcodes_worden_woorden(duo_key):
 
 
 def test_geslacht_in_de_legenda_in_gewone_schrijfwijze(duo_key):
-    _, fig = create_plot(
+    fig = _plot(
         data_key=duo_key,
         chart_type="bar",
         x="OPLEIDINGSVORM",
@@ -123,15 +131,17 @@ def test_opleidingsvorm_buiten_de_ho_bestanden_blijft_staan():
         pd.DataFrame({"OPLEIDINGSVORM": ["DT", "VT"], "N": [1, 2]}),
         KeyMeta(bron="duo", dataset="ander"),
     )
-    _, fig = create_plot(data_key="duo:ander:0", chart_type="bar", x="OPLEIDINGSVORM", y="N", title="T")
+    fig = _plot(data_key="duo:ander:0", chart_type="bar", x="OPLEIDINGSVORM", y="N", title="T")
     assert list(fig.data[0].x) == ["DT", "VT"]
 
 
 def test_figuur_uit_run_analysis_krijgt_leesbare_titels_en_nederlandse_notatie(cbs_key):
-    _, fig = run_analysis(
+    uit = run_analysis(
         code="figure = px.bar(df, x='Perioden_label', y='MboStudenten_1')\nresult = {'ok': True}",
         data_key=cbs_key,
     )
+    assert isinstance(uit, tuple)
+    _, fig = uit
     assert fig.layout.xaxis.title.text == "Studiejaar"
     assert fig.layout.yaxis.title.text == "Mbo-studenten"
     assert fig.layout.separators == ",."
