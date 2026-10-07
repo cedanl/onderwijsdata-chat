@@ -36,3 +36,40 @@ def test_annuleren_meldt_report_cancelled_en_geen_fout(monkeypatch):
 
     asyncio.run(chat._generate_report({"username": "u"}, emit, model=None))
     assert [e["type"] for e in events] == ["report_generating", "report_cancelled"]
+
+
+def _afgebroken_rapport(monkeypatch, emit):
+    """Een rapportrun die hangt tot een reset of ander gesprek haar taak afbreekt."""
+
+    async def hangt(*args, **kwargs):
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(chat, "generate_report_spec", hangt)
+
+    async def run():
+        taak = asyncio.create_task(chat._generate_report({"username": "u"}, emit, model=None))
+        await asyncio.sleep(0)
+        taak.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await taak
+
+    asyncio.run(run())
+
+
+def test_afgebroken_rapporttaak_meldt_report_cancelled(monkeypatch):
+    # #417: een reset breekt de taak af zonder eindbericht; de frontend wachtte dan tot de time-out.
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    _afgebroken_rapport(monkeypatch, emit)
+    assert [e["type"] for e in events] == ["report_generating", "report_cancelled"]
+
+
+def test_afbreken_blijft_afbreken_als_de_verbinding_al_weg_is(monkeypatch):
+    async def emit(event):
+        if event["type"] != "report_generating":
+            raise RuntimeError("socket gesloten")
+
+    _afgebroken_rapport(monkeypatch, emit)

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -128,6 +129,12 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         await emit({"type": "report_ready", "spec": spec.to_dict()})
     except RapportGeannuleerd:
         await emit({"type": "report_cancelled"})
+    except asyncio.CancelledError:
+        # Een reset of ander gesprek breekt de taak af; zonder eindbericht wachtte de
+        # frontend met voortgang en Annuleer-knop tot de time-out (#417).
+        with contextlib.suppress(Exception):
+            await emit({"type": "report_cancelled"})
+        raise
     except json.JSONDecodeError as e:
         # LLM produced invalid structured output; the raw parser error is not
         # actionable for the user, so fall back to the generic guidance.
