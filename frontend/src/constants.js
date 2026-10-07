@@ -31,27 +31,35 @@ export const WARN_CHAT_TURNS = 16
 // ─── Suggested questions ──────────────────────────────────────────────────────
 export const SUGGESTED = [
   {
-    category: 'Arbeidsmarkt',
+    category: 'Arbeidsmarktmatch',
     questions: [
-      'Welk percentage van de bevolking in mijn regio neemt deel aan LLO?',
-      'Wat is in mijn regio het opleidingsniveau van werkzoekenden?',
-      'Hoeveel vacatures zijn er in mijn regio voor ons onderwijsaanbod?',
+      'Hoe sluiten onze gediplomeerden aan op de vacatures in onze regio?',
+      'Wat is de arbeidsmarkt-vraag naar onze kernopleidingen?',
+      'Hoe vergelijken onze sectoren met de regionale arbeidsmarkt-benchmarks?',
     ],
   },
   {
-    category: 'Uitstroom',
+    category: 'Rendement & Diplomering',
     questions: [
-      'Hoeveel gediplomeerden levert ons onderwijsaanbod op ten opzichte van andere instellingen in de regio?',
-      'Wat verdienen gediplomeerden van onze instelling gemiddeld in de regio?',
-      'Hoe groot is het aandeel voortijdig schoolverlaters dat werk heeft gevonden in mijn regio?',
+      'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de regio?',
+      'Hoe staan onze diplomerings-aantallen tegen peers in dezelfde regio?',
+      'Wat is het doorstroom-risico voor onze kernopleidingen landelijk gezien?',
     ],
   },
   {
-    category: 'Instroom',
+    category: 'Groei & Instroom',
     questions: [
-      'Waar komen mijn lerenden vandaan en met welke instellingen in de regio concurreer ik om dezelfde doelgroep?',
-      'Hoeveel instromers bij ons komen rechtstreeks vanuit een andere opleiding in de regio?',
-      'Hoe heeft de deelname aan voltijdonderwijs bij ons zich ontwikkeld?',
+      'Groeien we sneller dan het regionale gemiddelde?',
+      'Met welke instellingen concurreren we in de regio om dezelfde doelgroep?',
+      'Hoe volgen onze inschrijving-trends de regionale trends?',
+    ],
+  },
+  {
+    category: 'Regionale Context',
+    questions: [
+      'Welke sectoren hebben het meeste arbeidsmarkt-potentieel in onze regio?',
+      'Waar komen onze lerenden vandaan en welke regio\'s zijn onze doelmarkt?',
+      'Hoe verandert de studentenpopulatie in onze regio?',
     ],
   },
 ]
