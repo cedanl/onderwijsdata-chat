@@ -2,7 +2,8 @@
 
 Elk gecontroleerd getal in een dataantwoord krijgt een citatie, zodat hetzelfde antwoord
 altijd hetzelfde aantal heeft. Een getal dat als meetwaarde in een toolstap staat, linkt
-naar de eerste zo'n stap: bron, maat, eenheid en de rij waarin het staat, in woorden. Staat
+naar die stap: bron, maat, eenheid en de rij waarin het staat, in woorden. Staat het in
+meer selecties, dan wijst de zin er een aan (CH-08, agent/claimbinding.py). Staat
 het alleen als code, rijtelling of stuk van een key in de uitvoer, of nergens, dan zegt de
 citatie dat de herkomst niet is vastgesteld. Het model schrijft zelf geen markering.
 """
@@ -11,6 +12,7 @@ from tools import LABELS, store
 from tools.catalog import catalogus_titel
 from tools.kolomlabel import kolomlabel
 
+from .claimbinding import betekenis, kenmerken, kies, zin_van
 from .grounding import checked_numbers
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden
 from .selectie import SCHEIDING as _SCHEIDING
@@ -51,7 +53,9 @@ def citaties(tekst: str, steps: list[tuple[str, str]]) -> list[dict]:
     for geschreven, cijfers in checked_numbers(tekst):
         if geschreven in gevonden:
             continue
-        bron = next(((s, t, w) for s, t, ws in waarden for w in ws if cijfers in w.cijfers), None)
+        # Niet de eerste stap met dit getal: de zin wijst de selectie aan (CH-08).
+        kandidaten = [(s, t, w) for s, t, ws in waarden for w in ws if cijfers in w.cijfers]
+        bron = kies(kandidaten, lambda k: betekenis(k[2]), lambda k: kenmerken(k[2]), zin_van(tekst, geschreven))
         gevonden[geschreven] = (
             _citatie(geschreven, *bron, eenheid) if bron else {"getal": geschreven, "vastgesteld": False}
         )
