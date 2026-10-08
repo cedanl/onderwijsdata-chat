@@ -3,7 +3,9 @@ import { downloadDataCsv } from '../api'
 import { exportKeys } from '../dataExport'
 
 // A CSV download per table the answer was built on (#269); none for a free-text answer.
-export default function DataExport({ tools, settled, download = downloadDataCsv }) {
+// A failed download says why and offers to ask the question again (CH-44): the table is
+// gone from the server's memory, and only a new answer brings it back.
+export default function DataExport({ tools, settled, onHerhaal = null, busy = false, download = downloadDataCsv }) {
   const [error, setError] = useState(null)
   const keys = exportKeys(tools)
   if (!settled || !keys.length) return null
@@ -24,7 +26,16 @@ export default function DataExport({ tools, settled, download = downloadDataCsv 
           {keys.length === 1 ? 'Download data als CSV' : `Tabel ${i + 1} als CSV`}
         </button>
       ))}
-      {error && <div className="data-export-error" role="alert">{error}</div>}
+      {error && (
+        <div className="data-export-error" role="alert">
+          {error}
+          {onHerhaal && (
+            <button type="button" className="message-continue" disabled={busy} onClick={onHerhaal}>
+              Vraag opnieuw stellen
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

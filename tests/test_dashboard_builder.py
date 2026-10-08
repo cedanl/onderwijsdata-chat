@@ -1,6 +1,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from agent.dashboard import (
     DashboardSpec,
@@ -25,6 +26,16 @@ class TestBuildDatasetContext:
         assert ds["data_key"] == "cbs:85423NED"
         assert ds["row_count"] == 2
         assert len(ds["columns"]) == 3
+
+    def test_data_die_niet_meer_in_de_store_staat_geeft_een_uitleg_met_vervolgactie(self):
+        """CH-44 (#466): na een herstart is de store leeg. Een rapport op de rest van de data, of de
+        algemene 'Probeer het opnieuw', helpt de gebruiker niet: de vraag moet opnieuw."""
+        store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
+        session = {"data_keys": ["cbs:85423NED", "duo:weg:0"], "chat_settings": {}}
+
+        with pytest.raises(ValueError, match="niet meer beschikbaar") as fout:
+            build_dataset_context(session)
+        assert "Stel je vraag opnieuw" in str(fout.value)
 
     def test_excludes_data_loaded_by_other_conversations(self):
         store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))

@@ -92,7 +92,26 @@ describe('DataExport', () => {
     const download = vi.fn().mockRejectedValue(new Error('Deze data is niet meer beschikbaar.'))
     const [knop] = render({ tools: [stap('a')], download })
     await act(async () => knop.click())
-    expect(container.querySelector('[role="alert"]').textContent).toBe('Deze data is niet meer beschikbaar.')
+    expect(container.querySelector('[role="alert"]').textContent).toContain('Deze data is niet meer beschikbaar.')
+  })
+
+  // CH-44 (#466): na een mislukte download bleven alleen de knoppen staan; de foutmelding krijgt een vervolgactie.
+  it('biedt na een mislukte download aan de vraag opnieuw te stellen', async () => {
+    const download = vi.fn().mockRejectedValue(new Error('Deze data is niet meer beschikbaar.'))
+    const onHerhaal = vi.fn()
+    const [knop] = render({ tools: [stap('a')], download, onHerhaal })
+    await act(async () => knop.click())
+    const opnieuw = [...container.querySelectorAll('[role="alert"] button')]
+    expect(opnieuw.map(k => k.textContent)).toEqual(['Vraag opnieuw stellen'])
+    await act(async () => opnieuw[0].click())
+    expect(onHerhaal).toHaveBeenCalledOnce()
+  })
+
+  it('toont geen vervolgactie zonder vraag om te herhalen', async () => {
+    const download = vi.fn().mockRejectedValue(new Error('x'))
+    const [knop] = render({ tools: [stap('a')], download })
+    await act(async () => knop.click())
+    expect(container.querySelectorAll('[role="alert"] button')).toHaveLength(0)
   })
 })
 

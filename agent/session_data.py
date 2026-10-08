@@ -57,9 +57,21 @@ def data_lineage(session: dict, key: str) -> list[dict]:
     return lineage
 
 
+# De store leeft in het geheugen: na een herstart is de data van een gesprek weg (CH-44).
+DATA_WEG = (
+    "De data van dit gesprek is niet meer beschikbaar: de server is intussen herstart. "
+    "Stel je vraag opnieuw om de data op te halen; daarna kun je het rapport maken."
+)
+
+
 def session_data_keys(session: dict) -> list[str]:
     """This conversation's data keys that are still in the store, in load order."""
     return [key for key in session.get("data_keys", []) if store.get(key) is not None]
+
+
+def ontbrekende_data_keys(session: dict) -> list[str]:
+    """Keys this conversation loaded that the store no longer holds."""
+    return [key for key in session.get("data_keys", []) if store.get(key) is None]
 
 
 def record_rekenbewijs(session: dict, tool_result: str, call: dict) -> None:
