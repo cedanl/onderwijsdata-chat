@@ -88,6 +88,11 @@ de laatste tag is 1.8.6.
   (dat gold ook voor stijlcontroles). De ingetrokken versie noemt de reden in gewone taal, en het uitklapblok
   verschijnt alleen als die versie tekst had en anders was dan het eindantwoord. Het log noemt per herschrijving
   welke controle afging.
+- Minder valse intrekkingen. Het verschil van twee getallen die het antwoord zelf noemt en die uit de data komen
+  ("van 478.660 naar 475.460, 3.200 minder") geldt niet meer als getal zonder bron. "Komt uit van … en komt uit
+  op …", "begon … eindigde" en "verschil tussen" tellen als vergelijking, zodat het tweede getal niet aan het
+  enige genoemde jaar wordt gehangen. Een toolnaam in de Bronnen-sectie haalt de app er zelf uit, zonder
+  herschrijving. Het log noemt per antwoord elke controle met haar uitkomst (`CONTROLES`), ook als die `ok` was.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en

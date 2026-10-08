@@ -94,6 +94,7 @@ def hard(problemen: Iterable[str]) -> list[Probleem]:
             continue
         probleem = str.__new__(Probleem, p)
         probleem.melding = getattr(p, "melding", p)
+        probleem.controle = getattr(p, "controle", None)
         probleem.hard = True
         gemarkeerd.append(probleem)
     return gemarkeerd
@@ -101,3 +102,19 @@ def hard(problemen: Iterable[str]) -> list[Probleem]:
 
 def harde(problemen: Iterable[str]) -> list[str]:
     return [p for p in problemen if getattr(p, "hard", False)]
+
+
+def uitkomsten(controles: Iterable[str], problemen: Iterable[str]) -> dict[str, str]:
+    """Per controle wat ze gaf: hard, zacht, niet gecontroleerd of ok; voor het log per antwoord (CH-01)."""
+    per_controle: dict[str, list] = {naam: [] for naam in controles}
+    for p in problemen:
+        per_controle.setdefault(str(getattr(p, "controle", None)), []).append(p)
+
+    def uitkomst(gevonden: list) -> str:
+        if any(getattr(p, "hard", False) for p in gevonden):
+            return "hard"
+        if any(not getattr(p, "niet_gecontroleerd", False) for p in gevonden):
+            return "zacht"
+        return "niet gecontroleerd" if gevonden else "ok"
+
+    return {naam: uitkomst(gevonden) for naam, gevonden in per_controle.items()}
