@@ -268,6 +268,8 @@ async def run(
         record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
         await _handle_figure(call.name, figure, session, emit)
 
+    # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
+    system = await asyncio.to_thread(build_system, settings, beurt=genoemde_bronnen(last_user_msg))
     stop = stop_event or asyncio.Event()
     async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
         try:
@@ -278,7 +280,7 @@ async def run(
                     tools=tools_for(session),
                     emit=emit,
                     stop_event=stop,
-                    system=build_system(settings, beurt=genoemde_bronnen(last_user_msg)),
+                    system=system,
                     stream_text=True,
                     on_llm_start=lambda: emit({"type": "message_start"}),
                     on_tool_result=keep,

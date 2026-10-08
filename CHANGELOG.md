@@ -36,6 +36,11 @@ de laatste tag is 1.8.6.
   dashboard is nu landelijk; daarvoor won de typering van de laatst gelezen regio.
 
 ### Betrouwbaarheid van antwoorden
+- Staat er een instelling in het profiel, dan krijgt de chat haar sector (mbo/hbo/wo), instellingscode,
+  provincie en arbeidsmarktregio mee uit de DUO-instellingsadressen, in plaats van zelf een provincie te kiezen.
+  Bij "mijn regio" gebruikt het antwoord die provincie of arbeidsmarktregio en noemt het welk niveau. Een
+  instelling met vestigingen in meer provincies krijgt de regio van haar instellingsadres; een naam die niet in
+  de instellingenlijst staat krijgt geen regio.
 - De controlemelding over een KPI over de hele selectie noemt bron en periode in woorden
   ("DUO · Ingeschrevenen hbo, 2020/21 t/m 2024/25"), niet de interne sleutel.
 - Een lege modelrespons (vaak een contentfilter van de provider) krijgt een vaste uitleg in plaats van
