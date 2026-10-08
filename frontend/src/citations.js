@@ -20,7 +20,7 @@ function citatieElement(c) {
     tagName: 'span',
     properties: {
       dataCitatie: c.getal,
-      ...(c.vastgesteld === false && { dataOnbepaald: '' }),
+      ...(c.vastgesteld === false && { dataOnbepaald: c.reden || '' }),
       ...((c.label || c.tool) && { dataLabel: c.label || c.tool }),
       ...(c.stap && { dataStap: String(c.stap) }),
       ...(c.bron && { dataBron: c.bron }),

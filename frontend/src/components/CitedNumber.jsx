@@ -38,18 +38,24 @@ export default function CitedNumber({ node, children, ...props }) {
       </button>
       {open && (
         <span id={id} role="note" className="citatie-uitleg">
-          {onbepaald ? <Onbepaald /> : <Herkomst {...props} />}
+          {onbepaald ? <Onbepaald reden={props['data-onbepaald']} /> : <Herkomst {...props} />}
         </span>
       )}
     </span>
   )
 }
 
-function Onbepaald() {
+// Waarom de herkomst niet vaststaat (agent/citaties.py, CH-38): het getal staat er niet als
+// meetwaarde in, of het staat er meer dan eens in en de zin wijst geen van die plekken aan.
+function Onbepaald({ reden }) {
   return (
     <>
       <strong>Herkomst niet vastgesteld</strong>
-      <span>Dit getal staat niet als meetwaarde in de opgehaalde data.</span>
+      <span>
+        {reden === 'meerdere'
+          ? 'Dit getal staat meer dan eens in de opgehaalde data; de zin wijst niet aan welke het is.'
+          : 'Dit getal staat niet als meetwaarde in de opgehaalde data.'}
+      </span>
     </>
   )
 }

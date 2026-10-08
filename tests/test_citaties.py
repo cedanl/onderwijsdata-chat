@@ -31,7 +31,7 @@ _MAAT = json.dumps(
 
 def test_code_met_hetzelfde_getal_is_geen_herkomst():
     [citatie] = citaties("Er zijn 36.201 studenten.", [("get_duo_data", _CODE)])
-    assert citatie == {"getal": "36.201", "vastgesteld": False}
+    assert citatie == {"getal": "36.201", "vastgesteld": False, "reden": "geen_meetwaarde"}
 
 
 def test_maat_wint_van_code_met_hetzelfde_getal():
@@ -65,7 +65,7 @@ def test_eenheid_uit_het_schema_van_de_laadstap():
 
 def test_ongebonden_getal_in_dataantwoord_krijgt_herkomst_niet_vastgesteld():
     assert citaties("Het waren 99.999 studenten.", [("get_cbs_data", _CBS)]) == [
-        {"getal": "99.999", "vastgesteld": False}
+        {"getal": "99.999", "vastgesteld": False, "reden": "geen_meetwaarde"}
     ]
 
 
@@ -153,4 +153,47 @@ def test_de_zin_bepaalt_de_selectie_niet_de_toolvolgorde(volgorde):
 def test_niet_te_onderscheiden_kandidaten_geven_herkomst_niet_vastgesteld(volgorde):
     steps = [("query_data", _B), ("query_data", _A)][::volgorde]
 
-    assert citaties("Het waren 10.000 studenten.", steps) == [{"getal": "10.000", "vastgesteld": False}]
+    assert citaties("Het waren 10.000 studenten.", steps) == [
+        {"getal": "10.000", "vastgesteld": False, "reden": "meerdere"}
+    ]
+
+
+# --- CH-38 (#458): één getal in een selectie én in een analyse op die selectie ---
+
+
+@pytest.fixture
+def keten():
+    """De HAN-route uit audit 17: query_data op p04hogdipl, run_analysis op die selectie."""
+    store.clear()
+    store.put("duo:p04:0", pd.DataFrame({"x": [1]}), KeyMeta(bron="duo", dataset="p04hogdipl"))
+    store.derive("duo:p04:0", "duo:p04:0:sel", pd.DataFrame({"x": [1]}))
+    store.derive("duo:p04:0:sel", "analysis:han", pd.DataFrame({"x": [1]}), gelezen=("duo:p04:0:sel",))
+    yield
+    store.clear()
+
+
+_SELECTIE = json.dumps(
+    {
+        "data_key": "duo:p04:0:sel",
+        "rijen": [{"DIPLOMAJAAR": 2020, "INSTELLINGSNAAM": "HAN", "AANTAL_GEDIPLOMEERDEN": 6323}],
+    }
+)
+_ANALYSE = json.dumps({"data_key": "analysis:han", "rijen": [{"DIPLOMAJAAR": 2020, "HAN": 6323, "andere": 1910}]})
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_een_getal_in_een_selectie_en_een_analyse_daarop_krijgt_de_bron(keten, volgorde):
+    """Audit 17: 6.323 stond in beide en kreeg 'staat niet als meetwaarde in de opgehaalde data'."""
+    steps = [("query_data", _SELECTIE), ("run_analysis", _ANALYSE)][::volgorde]
+
+    [citatie] = citaties("| 2020 | 6.323 | 76,8% |", steps)
+
+    assert citatie["vastgesteld"] is True
+    assert citatie["data_key"] == "duo:p04:0:sel"  # het dichtst bij de bron
+
+
+def test_twijfel_tussen_losse_selecties_blijft_twijfel(keten):
+    """De afleidingsketen beslist alleen binnen één keten; Hogeschool A en B blijven onbeslist (CH-08)."""
+    steps = [("query_data", _B), ("query_data", _A), ("run_analysis", _ANALYSE)]
+
+    assert citaties("Het waren 10.000 studenten.", steps)[0]["reden"] == "meerdere"

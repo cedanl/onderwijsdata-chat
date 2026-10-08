@@ -7,8 +7,9 @@ selectie met dat getal er een had. De volgorde van de stappen bepaalde zo de bet
 Hier beslist de zin waarin het getal staat. Elke kandidaat heeft kenmerken: de waarden
 van zijn rij (instelling, jaar, ...) en zijn maat. Een kandidaat wint als de zin er meer
 van noemt dan van elke andere. Zijn de kandidaten niet te onderscheiden, dan is er geen
-binding. Kandidaten met dezelfde betekenis (maat en rij) tellen als één, zodat dezelfde
-cel in een laadstap en een selectie geen twijfel geeft. De volgorde doet er niet toe.
+binding, tenzij `voorkeur` er een aanwijst (de bronhiërarchie van agent/citaties.py).
+Kandidaten met dezelfde betekenis (maat en rij) tellen als één, zodat dezelfde cel in een
+laadstap en een selectie geen twijfel geeft. De volgorde doet er niet toe.
 """
 
 import re
@@ -47,8 +48,11 @@ def kies(
     sleutel: Callable[[T], Hashable],
     kenmerk: Callable[[T], Iterable[str]],
     zin: str,
+    voorkeur: Callable[[list[T]], T | None] | None = None,
 ) -> T | None:
     """De ene kandidaat die de zin aanwijst; None bij twijfel of zonder kandidaat.
+
+    Wijst de zin er niet één aan, dan kiest `voorkeur` uit de gelijk geëindigde kandidaten.
 
     Bij gelijke betekenis (`sleutel`) blijft de eerste staan: de betekenis hangt niet van
     de volgorde af, alleen welke stap ernaar verwijst.
@@ -61,4 +65,6 @@ def kies(
     scores = {s: sum(_noemt(zin, w) for w in set(kenmerk(k))) for s, k in uniek.items()}
     beste = max(scores.values())
     winnaars = [s for s, score in scores.items() if score == beste]
-    return uniek[winnaars[0]] if beste > 0 and len(winnaars) == 1 else None
+    if beste > 0 and len(winnaars) == 1:
+        return uniek[winnaars[0]]
+    return voorkeur([uniek[s] for s in winnaars]) if voorkeur else None
