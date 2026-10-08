@@ -4,6 +4,39 @@
     "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
     "script": "scripts/refresh_sector_mapping.py"
   },
+  "_indelingen": {
+    "hbo/wo": [
+      "ECONOMIE",
+      "GEDRAG_EN_MAATSCHAPPIJ",
+      "GEZONDHEIDSZORG",
+      "LANDBOUW_EN_NATUURLIJKE_OMGEVING",
+      "NATUUR",
+      "ONDERWIJS",
+      "RECHT",
+      "SECTOROVERSTIJGEND",
+      "TAAL_EN_CULTUUR",
+      "TECHNIEK"
+    ],
+    "mbo": [
+      "Afbouw, hout en onderhoud",
+      "Ambacht, laboratorium en gezondheidstechniek",
+      "Bouw en infra",
+      "Economie en administratie",
+      "Entree",
+      "Handel en ondernemerschap",
+      "Horeca en bakkerij",
+      "Informatie en communicatietechnologie",
+      "Media en vormgeving",
+      "Mobiliteit en voertuigen",
+      "Techniek en procesindustrie",
+      "Toerisme en recreatie",
+      "Transport, scheepvaart en logistiek",
+      "Uiterlijke verzorging",
+      "Veiligheid en sport",
+      "Voedsel, natuur en leefomgeving",
+      "Zorg en welzijn"
+    ]
+  },
   "ECONOMIE": [
     "Accountants, controllers en belastinginspecteurs",
     "Accountmanagers",

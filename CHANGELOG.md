@@ -34,6 +34,10 @@ de laatste tag is 1.8.6.
   komt uit de data, en een onbekende sector of provincie geeft de geldige keuzes.
 - De arbeidsmarktdata staat in `data/arbeidsmarkt.py`, gedeeld door tools en dashboards. De ROA-prognose in het
   dashboard is nu landelijk; daarvoor won de typering van de laatst gelezen regio.
+- `get_uwv_vacatures` telt een beroepencluster dat bij meer sectoren hoort niet meer dubbel: het telt per sector
+  naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal (TECHNIEK en ECONOMIE in Utrecht
+  kwamen samen op 21.027 van de 25.225). Het resultaat zegt dat UWV geen opleidingsniveau kent, en de vacatures zijn
+  ook per gemeente op te vragen.
 
 ### Betrouwbaarheid van antwoorden
 - Staat er een instelling in het profiel, dan krijgt de chat haar sector (mbo/hbo/wo), instellingscode,

@@ -66,7 +66,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **CBS** (117 datasets, mbo/hbo/wo): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (9 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (14 datasets, mbo/hbo/wo): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
-- **UWV** (vacaturedata): arbeidsmarkt-context per provincie en onderwijssector, één momentopname (peildatum in het resultaat) — als context bij onderwijsvragen
+- **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
 - **ROA** (AIS 2030): landelijke schoolverlatersinformatie (SIS 2024) en prognoses tot 2030 per opleidingsniveau of -sector — als arbeidsmarkt-context
 
 Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en noem die telling. Een zoekopdracht zonder treffers betekent niet dat een bron ontbreekt.

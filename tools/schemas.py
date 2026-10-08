@@ -449,9 +449,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_GET_UWV_VACATURES,
             "description": (
-                "UWV-vacatures per provincie en beroepencluster, optioneel voor één onderwijssector. "
-                "Een momentopname (peildatum in het resultaat), geen reeks en niet per instelling. "
-                "Arbeidsmarkt-context bij een onderwijsvraag."
+                "UWV-vacatures per provincie of gemeente en beroepencluster, optioneel voor één onderwijssector. "
+                "Een momentopname (peildatum in het resultaat), geen reeks, niet per instelling en zonder "
+                "opleidingsniveau. Arbeidsmarkt-context bij een onderwijsvraag."
             ),
             "parameters": {
                 "type": "object",
@@ -464,6 +464,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "string",
                         "enum": sorted(SECTOR_CLUSTER_MAP),
                         "description": "Optioneel: de onderwijssector waarvan de beroepenclusters meetellen",
+                    },
+                    "gemeente": {
+                        "type": "string",
+                        "description": "Optioneel: een gemeente in die provincie, bijv. 'Amersfoort'",
                     },
                 },
                 "required": ["provincie"],

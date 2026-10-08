@@ -2,7 +2,8 @@
 
 CH-37: get_roa_benchmark gaf vaste, in de code geschreven waarden ("~80%") als ROA-cijfers door,
 en beide tools liepen buiten de scopepoort. CH-23: ze haalden private functies uit
-data/dashboard.py, terwijl dashboards overal uit staan.
+data/dashboard.py, terwijl dashboards overal uit staan. #449: get_uwv_vacatures telde clusters
+die bij twee sectoren horen dubbel en zei niet dat UWV geen opleidingsniveau kent.
 """
 
 import ast
@@ -18,10 +19,11 @@ from tools.arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 
 _UWV = pd.DataFrame(
     {
-        "PEILDATUM": ["16-05-2023"] * 3,
-        "PROVINCIE": ["Utrecht", "Utrecht", "Gelderland"],
-        "BEROEPENCLUSTER": ["Zorg en welzijn", "ICT", "ICT"],
-        "AANTAL": [900, 300, 50],
+        "PEILDATUM": ["16-05-2023"] * 4,
+        "PROVINCIE": ["Utrecht", "Utrecht", "Utrecht", "Gelderland"],
+        "GEMEENTE": ["Utrecht", "Amersfoort", "Utrecht", "Arnhem"],
+        "BEROEPENCLUSTER": ["Zorg en welzijn", "ICT", "ICT", "ICT"],
+        "AANTAL": [900, 200, 100, 50],
     }
 )
 
@@ -114,6 +116,116 @@ def test_uwv_sector_filtert_via_de_mapping(bronnen):
 
 def test_uwv_onbekende_provincie_noemt_de_geldige(bronnen):
     assert "Gelderland" in get_uwv_vacatures("Atlantis")
+
+
+# --- #449: geen dubbeltelling, geen niveau dat er niet is, uitsplitsing naar gemeente ---
+
+_DEELKAART = {
+    "TECHNIEK": ["Chauffeurs", "Programmeurs"],
+    "ECONOMIE": ["Chauffeurs", "Accountants"],
+    "Transport en logistiek": ["Chauffeurs"],
+}
+_DEELINDELING = {"TECHNIEK": "hbo/wo", "ECONOMIE": "hbo/wo", "Transport en logistiek": "mbo"}
+
+
+@pytest.fixture
+def gedeelde_clusters():
+    uwv = pd.DataFrame(
+        {
+            "PEILDATUM": ["16-05-2023"] * 4,
+            "PROVINCIE": ["Utrecht"] * 4,
+            "GEMEENTE": ["Utrecht"] * 4,
+            "BEROEPENCLUSTER": ["Chauffeurs", "Programmeurs", "Accountants", "Kappers"],
+            "AANTAL": [2000, 500, 300, 100],
+        }
+    )
+    with (
+        patch.object(arbeidsmarkt, "_uwv", return_value=uwv),
+        patch.dict(arbeidsmarkt.SECTOR_CLUSTER_MAP, _DEELKAART, clear=True),
+        patch.dict(arbeidsmarkt.SECTOR_INDELING, _DEELINDELING, clear=True),
+        patch("tools.arbeidsmarkt.scope_blokkade", return_value=None),
+    ):
+        yield
+
+
+def test_uwv_cluster_in_twee_sectoren_telt_niet_dubbel(gedeelde_clusters):
+    techniek = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
+    economie = json.loads(get_uwv_vacatures("Utrecht", "ECONOMIE"))
+
+    # Chauffeurs (2000) horen bij TECHNIEK én ECONOMIE: elk de helft, niet elk 2000.
+    assert techniek["vacatures_sector"] == 1000 + 500
+    assert economie["vacatures_sector"] == 1000 + 300
+    assert techniek["vacatures_sector"] + economie["vacatures_sector"] <= techniek["totaal_vacatures"]
+    # De ruwe clustergetallen blijven staan; het resultaat zegt met wie een cluster gedeeld is en hoe er geteld is.
+    assert techniek["clusters"] == {"Chauffeurs": 2000, "Programmeurs": 500}
+    assert techniek["gedeelde_clusters"] == {"Chauffeurs": ["ECONOMIE"]}
+    assert "naar rato" in techniek["telling_sector"]
+
+
+def test_uwv_mbo_en_hbo_wo_zijn_aparte_indelingen(gedeelde_clusters):
+    """Mbo- en hbo/wo-sectoren delen elk dezelfde vacatures in; daartussen wordt niet gewogen."""
+    uit = json.loads(get_uwv_vacatures("Utrecht", "Transport en logistiek"))
+
+    assert uit["vacatures_sector"] == 2000
+    assert "gedeelde_clusters" not in uit
+
+
+def test_uwv_sectoren_van_een_indeling_tellen_nooit_op_tot_meer_dan_het_totaal():
+    """Met de echte mapping: per indeling samen hooguit het totaal, ook met oneven aantallen."""
+    kaart = arbeidsmarkt.SECTOR_CLUSTER_MAP
+    clusters = sorted({c for cs in kaart.values() for c in cs})
+    uwv = pd.DataFrame(
+        {
+            "PEILDATUM": "16-05-2023",
+            "PROVINCIE": "Utrecht",
+            "GEMEENTE": "Utrecht",
+            "BEROEPENCLUSTER": [*clusters, "Niet in de mapping"],
+            "AANTAL": [7 + i % 5 for i in range(len(clusters))] + [11],
+        }
+    )
+    with (
+        patch.object(arbeidsmarkt, "_uwv", return_value=uwv),
+        patch("tools.arbeidsmarkt.scope_blokkade", return_value=None),
+    ):
+        per_sector = {s: json.loads(get_uwv_vacatures("Utrecht", s)) for s in kaart}
+
+    totaal = int(uwv["AANTAL"].sum())
+    for indeling in set(arbeidsmarkt.SECTOR_INDELING.values()):
+        som = sum(u["vacatures_sector"] for s, u in per_sector.items() if arbeidsmarkt.SECTOR_INDELING[s] == indeling)
+        assert som <= totaal, indeling
+
+
+def test_elke_sector_in_de_mapping_hoort_bij_precies_een_indeling():
+    """Zonder indeling weegt een sector niet mee met de sectoren die hetzelfde cluster hebben."""
+    ruw = json.loads(arbeidsmarkt.SECTOR_CLUSTER_PATH.read_text())
+    toegewezen = [s for sectoren in ruw["_indelingen"].values() for s in sectoren]
+
+    assert sorted(toegewezen) == sorted(arbeidsmarkt.SECTOR_CLUSTER_MAP)
+
+
+@pytest.mark.parametrize("args", [("Utrecht",), ("Utrecht", "GEZONDHEIDSZORG")])
+def test_uwv_zegt_dat_het_opleidingsniveau_onbekend_is(bronnen, args):
+    """De niveaukolommen zijn bij vacatures leeg: chauffeursbanen zijn geen hbo-vraag."""
+    with patch.dict(arbeidsmarkt.SECTOR_CLUSTER_MAP, {"GEZONDHEIDSZORG": ["Zorg en welzijn"]}, clear=True):
+        uit = json.loads(get_uwv_vacatures(*args))
+
+    assert uit["opleidingsniveau"].startswith("onbekend")
+
+
+def test_uwv_per_gemeente(bronnen):
+    uit = json.loads(get_uwv_vacatures("Utrecht", gemeente="utrecht"))
+
+    assert uit["gemeente"] == "utrecht"
+    assert uit["totaal_vacatures"] == 1000
+    assert uit["clusters"] == {"Zorg en welzijn": 900, "ICT": 100}
+
+
+@pytest.mark.parametrize("gemeente", ["Atlantis", "Arnhem"])
+def test_uwv_onbekende_gemeente_noemt_de_gemeenten_van_de_provincie(bronnen, gemeente):
+    uit = get_uwv_vacatures("Utrecht", gemeente=gemeente)
+
+    assert "Amersfoort" in uit and "Utrecht" in uit
+    assert "Arnhem" not in uit.replace(f"'{gemeente}'", "")
 
 
 @pytest.mark.parametrize(("tool", "args"), [(get_uwv_vacatures, ("Utrecht",)), (get_roa_benchmark, ())])

@@ -1,6 +1,6 @@
 """Arbeidsmarkt na mbo/hbo/wo in de chat: UWV-vacatures en ROA-schoolverlatersinformatie (#441).
 
-Beide bronnen zijn landelijk of per provincie, niet per instelling. De data komt uit
+Beide bronnen zijn landelijk, per provincie of per gemeente, niet per instelling. De data komt uit
 `data/arbeidsmarkt.py` (gedeeld met de dashboards, CH-23) en elke aanroep loopt langs
 dezelfde scopepoort als CBS, DUO en RIO (`scope_blokkade`, CH-37). Elk getal komt uit de
 bron, met de peildatum of versie uit de data zelf: tot CH-37 gaf get_roa_benchmark vaste,
@@ -16,23 +16,58 @@ from .catalog import catalogus_titel, scope_blokkade
 
 UWV_ID = "uwv-open-match-data"
 ROA_ID = "ais2030"
-# Zoveel beroepenclusters zonder sectorfilter; het totaal staat er altijd bij.
+# Zoveel beroepenclusters in het resultaat; het totaal staat er altijd bij.
 _MAX_CLUSTERS = 15
+# De niveaukolommen zijn bij vacatures leeg; zonder deze regel las het model chauffeursbanen als hbo-vraag (#449).
+_OPLEIDINGSNIVEAU = (
+    "onbekend: UWV legt bij vacatures geen opleidingsniveau vast. Een sector telt ook banen op een ander "
+    "niveau mee (bijv. chauffeurs bij TECHNIEK); het is geen vraag naar mbo-, hbo- of wo-gediplomeerden."
+)
+_TELLING_SECTOR = (
+    "Een cluster dat {sector} deelt met andere sectoren van dezelfde indeling (hbo/wo of mbo) telt naar rato "
+    "mee, bij twee sectoren voor de helft, naar beneden afgerond. Zo tellen de sectoren samen nooit op tot meer "
+    "dan het totaal; de clustergetallen zelf zijn ongewogen."
+)
 
 
 def _json(result: dict) -> str:
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
 
 
-def get_uwv_vacatures(provincie: str, sector: str | None = None) -> str:
+def _grootste_clusters(clusters: dict[str, int]) -> dict:
+    """De grootste clusters (de invoer is aflopend), met een melding als er meer zijn."""
+    uit: dict = {"clusters": dict(list(clusters.items())[:_MAX_CLUSTERS])}
+    if len(clusters) > _MAX_CLUSTERS:
+        uit["clusters_getoond"] = f"de {_MAX_CLUSTERS} grootste van {len(clusters)} beroepenclusters"
+    return uit
+
+
+def _sectordeel(clusters: dict[str, int], sector: str) -> dict:
+    deel = arbeidsmarkt.sector_vacatures(clusters, sector)
+    getoond = _grootste_clusters(deel.clusters)
+    uit: dict = {"sector": sector, "vacatures_sector": deel.totaal} | getoond
+    if deel.gedeeld:
+        uit["telling_sector"] = _TELLING_SECTOR.format(sector=sector)
+    if gedeeld := {c: deel.gedeeld[c] for c in getoond["clusters"] if c in deel.gedeeld}:
+        uit["gedeelde_clusters"] = gedeeld
+    return uit
+
+
+def _geen_vacatures(provincie: str, gemeente: str | None) -> str:
+    if gemeente and (gemeenten := arbeidsmarkt.gemeenten(provincie)):
+        return f"Geen UWV-vacatures voor gemeente '{gemeente}' in {provincie}. Gemeenten: {gemeenten}."
+    return f"Geen UWV-vacatures voor provincie '{provincie}'. Provincies: {arbeidsmarkt.provincies()}."
+
+
+def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str | None = None) -> str:
     if blokkade := scope_blokkade(UWV_ID):
         return blokkade
     if sector and sector not in arbeidsmarkt.SECTOR_CLUSTER_MAP:
         return f"Sector '{sector}' is onbekend. Kies een van: {sorted(arbeidsmarkt.SECTOR_CLUSTER_MAP)}."
     try:
-        stand = arbeidsmarkt.uwv_stand(provincie)
+        stand = arbeidsmarkt.uwv_stand(provincie, gemeente)
         if stand is None:
-            return f"Geen UWV-vacatures voor provincie '{provincie}'. Provincies: {arbeidsmarkt.provincies()}."
+            return _geen_vacatures(provincie, gemeente)
     except Exception as e:
         return fouten.bronfout("UWV", e)
 
@@ -42,15 +77,11 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None) -> str:
         "peildatum": stand.peildatum,
         "momentopname": "Vacatures op de peildatum; geen actuele stand en geen reeks.",
         "provincie": provincie,
+        **({"gemeente": gemeente} if gemeente else {}),
         "totaal_vacatures": stand.totaal,
+        "opleidingsniveau": _OPLEIDINGSNIVEAU,
     }
-    if sector:
-        clusters = arbeidsmarkt.relevante_clusters(stand.clusters, (sector,))
-        result |= {"sector": sector, "vacatures_sector": sum(clusters.values()), "clusters": clusters}
-    else:
-        result["clusters"] = dict(list(stand.clusters.items())[:_MAX_CLUSTERS])
-        if len(stand.clusters) > _MAX_CLUSTERS:
-            result["clusters_getoond"] = f"de {_MAX_CLUSTERS} grootste van {len(stand.clusters)} beroepenclusters"
+    result |= _sectordeel(stand.clusters, sector) if sector else _grootste_clusters(stand.clusters)
     return _json(result)
 
 
