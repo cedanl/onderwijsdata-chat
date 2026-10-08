@@ -13,9 +13,8 @@ from tools.kolomlabel import kolomlabel
 
 from .grounding import checked_numbers
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden
+from .selectie import SCHEIDING as _SCHEIDING
 from .selectie import data_keys, laadkey
-
-_SCHEIDING = " · "
 
 
 def _bron(data_key: str | None, tool: str) -> str:

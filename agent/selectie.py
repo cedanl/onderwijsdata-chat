@@ -14,9 +14,12 @@ import re
 import pandas as pd
 
 from tools import instelling, periode, store
+from tools.catalog import catalogus_titel
 from tools.store import KeyMeta
 
 from .probleem import Probleem
+
+SCHEIDING = " · "
 
 
 def data_keys(tool_results: list[str]) -> list[str]:
@@ -29,6 +32,18 @@ def data_keys(tool_results: list[str]) -> list[str]:
         if isinstance(parsed, dict) and isinstance(parsed.get("data_key"), str):
             keys.append(parsed["data_key"])
     return keys
+
+
+def selectie_in_woorden(data_key: str) -> str | None:
+    """De selectie van een key in woorden, voor de gebruiker: DUO · <titel>, met de periode
+    als die bekend is. None als de key onbekend is; de key zelf hoort er niet in (CH-30)."""
+    if not (known := store.meta(laadkey(data_key))):
+        return None
+    tekst = f"{known.bron.upper()}{SCHEIDING}{catalogus_titel(known.dataset)}"
+    if known.schooljaren:
+        van, tot = min(known.schooljaren), max(known.schooljaren)
+        tekst += f", {periode.label(van)}" + (f" t/m {periode.label(tot)}" if tot != van else "")
+    return tekst
 
 
 def laadkey(key: str) -> str:
