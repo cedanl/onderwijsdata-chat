@@ -7,5 +7,6 @@ export function personalizeQuestion(q, instelling) {
     .replaceAll('onze instelling', instelling)
     .replaceAll('mijn lerenden', `de lerenden van ${instelling}`)
     .replaceAll('mijn regio', `de regio van ${instelling}`)
+    .replaceAll('mijn provincie', `de provincie van ${instelling}`)
     .replaceAll('bij ons', `bij ${instelling}`)
 }

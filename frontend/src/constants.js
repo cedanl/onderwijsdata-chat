@@ -29,13 +29,15 @@ export const MAX_CHAT_TURNS = 20
 export const WARN_CHAT_TURNS = 16
 
 // ─── Suggested questions ──────────────────────────────────────────────────────
+// Each question must be answerable with the connected sources (#446): vacancies are a UWV
+// snapshot per province (mei 2023), the ROA forecast is national, and hbo/wo dropout exists
+// only nationally. No source links graduates to jobs.
 export const SUGGESTED = [
   {
     category: 'Arbeidsmarktmatch',
     questions: [
-      'Hoe sluiten gediplomeerden van onze instelling aan op de vacatures in mijn regio?',
-      'Wat is de arbeidsmarktvraag naar ons onderwijsaanbod?',
-      'Hoe verhouden de sectoren van onze instelling zich tot de arbeidsmarkt in mijn regio?',
+      'Hoe verhoudt het diploma-aanbod van onze instelling per sector zich tot de UWV-vacatures in mijn provincie (mei 2023)?',
+      'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief van de brede sectoren in ons onderwijsaanbod?',
     ],
   },
   {
@@ -43,7 +45,7 @@ export const SUGGESTED = [
     questions: [
       'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de regio?',
       'Hoe verhouden de diploma-aantallen van onze instelling zich tot andere instellingen in mijn regio?',
-      'Hoe groot is landelijk gezien het uitvalrisico in ons onderwijsaanbod?',
+      'Hoeveel studenten verlaten landelijk het mbo, hbo en wo zonder diploma?',
     ],
   },
   {
@@ -57,8 +59,8 @@ export const SUGGESTED = [
   {
     category: 'Regionale Context',
     questions: [
-      'Welke sectoren hebben het meeste arbeidsmarktpotentieel in mijn regio?',
-      'Waar komen mijn lerenden vandaan en welke regio\'s zijn onze doelmarkt?',
+      'Voor welke sectoren stonden in mijn provincie de meeste UWV-vacatures open (mei 2023)?',
+      'Waar komen mijn lerenden vandaan en welke regio\'s vormen de doelmarkt van onze instelling?',
       'Hoe verandert de studentenpopulatie in mijn regio?',
     ],
   },
