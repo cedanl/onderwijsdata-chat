@@ -81,19 +81,19 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## ROA — Landelijk referentiekader arbeidsmarkt
 
-**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. In de chat via `get_roa_benchmark`: schoolverlatersinformatie (SIS 2024) en de prognose tot 2030 per opleidingsniveau (mbo2-4, bachelor, master) of opleidingssector, landelijk. Ook gebruikt in het regiodashboard.
+**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. In de chat via `get_roa_benchmark`: schoolverlatersinformatie (SIS 2024, alleen landelijk) en de prognose tot 2030 per opleidingsniveau (mbo2-4, bachelor, master) of opleidingssector, landelijk of per arbeidsmarktregio of provincie. Het resultaat noemt per onderdeel de regio waar de cijfers vandaan komen. Ook gebruikt in het regiodashboard.
 
 | Eigenschap | Details |
 |------------|---------|
 | Toegang | Via CBS Open Data |
 | Inhoud | Doorstroompercentages, match scores per opleidingssector |
-| Formaat | Landelijke referentiewaarden (geen regionale uitsplitsing) |
+| Formaat | Landelijke referentiewaarden; de prognose ook per arbeidsmarktregio (35) en provincie (12) |
 
 ---
 
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie en onderwijssector; ook ingezet in het arbeidsmarktdashboard.
+**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector; ook ingezet in het arbeidsmarktdashboard. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
 
 | Eigenschap | Details |
 |------------|---------|
