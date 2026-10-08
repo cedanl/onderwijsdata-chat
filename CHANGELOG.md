@@ -47,6 +47,11 @@ de laatste tag is 1.8.6.
   `INSTROOM OPLEIDING` hebben een definitie (totaal is alle ingeschrevenen, geen instroom). Zoekt iemand naar
   woonplaats of herkomst in het hoger onderwijs, dan zegt de catalogus bij deze bestanden dat ze daar niet
   geschikt voor zijn.
+- Het mbo-diplomabestand, de instroombestanden en de bestanden van mbo-studenten per instelling hebben een
+  kolom `PROVINCIE INSTELLING` (adres van de instelling volgens DUO, niet de woonprovincie van de student).
+  "Gediplomeerden van ROC Midden Nederland tegenover de andere instellingen in Utrecht" is zo één selectie na
+  het laden: drie toolaanroepen in plaats van vijf, zonder tweede bestand of koppeling. Een instelling zonder
+  adres krijgt geen provincie.
 - De controlemelding over een KPI over de hele selectie noemt bron en periode in woorden
   ("DUO · Ingeschrevenen hbo, 2020/21 t/m 2024/25"), niet de interne sleutel.
 - Een lege modelrespons (vaak een contentfilter van de provider) krijgt een vaste uitleg in plaats van

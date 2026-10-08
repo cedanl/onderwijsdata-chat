@@ -20,6 +20,12 @@ def no_cbs_dimension_call(monkeypatch):
     cbs._tabelbeschrijving.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def geen_adresdownload(monkeypatch):
+    """Unittests downloaden geen DUO-adresbestanden voor de instellingsprovincie (#453); tests die hem nodig hebben patchen zelf."""
+    monkeypatch.setattr("tools.instellingsprovincie.get_adres_lookup", lambda: {})
+
+
 @pytest.fixture
 def zonder_scopegrens():
     """Voor tests van de laad- en metadatamechaniek met test-ID's of vo-bestanden.

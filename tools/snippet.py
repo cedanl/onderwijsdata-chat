@@ -14,7 +14,7 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import scopeprofiel, store
+from . import instellingsprovincie, scopeprofiel, store
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
 from .plot import resolve_chart_type
@@ -49,6 +49,21 @@ def _duo_laadregels(args: dict) -> list[str]:
         # De app voegt dit label toe (#115); analysecode mag het gebruiken.
         'if "STUDIEJAAR" in df.columns:',
         f'    df["{STUDIEJAAR_LABEL}"] = df["STUDIEJAAR"].map(lambda j: f"{{j}}/{{j + 1}}")',
+        *_provincieregels(args["dataset_id"]),
+    ]
+
+
+def _provincieregels(dataset_id: str) -> list[str]:
+    """De provincie van de instelling, zoals de app hem bij deze mbo-bestanden toevoegt (#453)."""
+    if dataset_id not in instellingsprovincie.DATASETS:
+        return []
+    kolom, (adressen, resource) = instellingsprovincie.KOLOM, instellingsprovincie.ADRESBESTAND
+    return [
+        f"# De app voegt {kolom} toe uit DUO's adressenbestand; een code zonder adres blijft leeg.",
+        f'if "INSTELLINGSCODE" in df.columns and "{kolom}" not in df.columns:',
+        f"    adressen = duo.load({_lit(adressen)}, {resource}).dropna(subset=['PROVINCIE'])",
+        "    provincie = dict(zip(adressen['INSTELLINGSCODE'].astype(str).str.strip(), adressen['PROVINCIE']))",
+        f'    df["{kolom}"] = df["INSTELLINGSCODE"].astype(str).str.strip().map(provincie)',
     ]
 
 
