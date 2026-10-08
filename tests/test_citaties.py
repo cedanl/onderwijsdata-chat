@@ -110,6 +110,17 @@ def test_analyse_resultaat_is_een_meetwaarde():
     assert citaties("Samen 12.345.", [("run_analysis", gelezen)])[0]["data_key"] == "duo:2"
 
 
+def test_een_getal_dat_niet_van_de_data_afhangt_is_geen_meetwaarde():
+    """CH-27: `a = 987650; result = a + 4 + len(df) * 0` gaf vastgesteld:true met bron DUO."""
+    eigen = json.dumps({"gelezen": ["duo:2"], "resultaat": 987654, "scriptconstanten": [987654]})
+    rijen = json.dumps(
+        {"gelezen": ["duo:2"], "resultaat": {"totaal": 4600, "drempel": 1000}, "scriptconstanten": [1000]}
+    )
+
+    assert not any(c["vastgesteld"] for c in citaties("Samen 987.654.", [("run_analysis", eigen)]))
+    assert [w.maat for w in meetwaarden(rijen, "run_analysis")] == ["totaal"]
+
+
 def test_metadata_van_een_laadstap_is_geen_meetwaarde():
     assert meetwaarden(_CODE, "get_duo_data") == []
     assert meetwaarden("Fout (onbekende_key): 12345", "query_data") == []

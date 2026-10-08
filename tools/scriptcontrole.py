@@ -8,17 +8,12 @@ De controle werkt op de AST, niet op tekst:
 - `store_get` alleen met een letterlijke key: de sandbox krijgt precies die tabellen mee;
 - geen overgetypte data, en het script leest data (`df` of `store_get`).
 
-Daarnaast verzamelt hij de getallen die het script zelf typt (`constanten`): een
-getal in de uitkomst dat het script zelf schreef, is geen bewijs (#410).
+Welke getallen in de uitkomst niet van de data afhangen, meet `tools/afhankelijkheid.py`
+na de uitvoering (CH-27): een lijst van getypte constanten miste variabelen.
 """
 
 import ast
-import math
-import operator
-import re
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 _VERBODEN_NAMEN = frozenset(
     {
@@ -58,15 +53,6 @@ _VERBODEN_ATTRIBUTEN = frozenset(
     }
 )
 _HARDCODED_MIN = 6
-_GETAL_IN_TEKST = re.compile(r"\d+(?:\.\d+)?")
-_REKENEN: dict[type[ast.operator], Callable[[Any, Any], Any]] = {
-    ast.Add: operator.add,
-    ast.Sub: operator.sub,
-    ast.Mult: operator.mul,
-    ast.Div: operator.truediv,
-    ast.FloorDiv: operator.floordiv,
-    ast.Mod: operator.mod,
-}
 
 
 class Geweigerd(ValueError):
@@ -76,7 +62,6 @@ class Geweigerd(ValueError):
 @dataclass(frozen=True)
 class Script:
     keys: tuple[str, ...]  # letterlijke store_get-keys, in volgorde
-    constanten: tuple[int | float, ...]  # getallen die het script zelf typt
 
 
 def _niet_toegestaan(wat: str) -> Geweigerd:
@@ -112,34 +97,6 @@ def _hardcoded(tree: ast.AST) -> bool:
     return False
 
 
-def _vouw(node: ast.AST) -> int | float | None:
-    """De waarde van een expressie uit alleen getallen (987650 + 4), anders None."""
-    if isinstance(node, ast.Constant):
-        return node.value if isinstance(node.value, (int, float)) and not isinstance(node.value, bool) else None
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
-        waarde = _vouw(node.operand)
-        return None if waarde is None else (-waarde if isinstance(node.op, ast.USub) else waarde)
-    if isinstance(node, ast.BinOp) and type(node.op) in _REKENEN:
-        links, rechts = _vouw(node.left), _vouw(node.right)
-        if links is None or rechts is None:
-            return None
-        try:
-            return _REKENEN[type(node.op)](links, rechts)
-        except ArithmeticError:
-            return None
-    return None
-
-
-def _constanten(tree: ast.AST) -> tuple[int | float, ...]:
-    gevonden: set[int | float] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            gevonden.update(float(g) if "." in g else int(g) for g in _GETAL_IN_TEKST.findall(node.value))
-        elif (waarde := _vouw(node)) is not None:
-            gevonden.add(waarde)
-    return tuple(sorted(w for w in gevonden if math.isfinite(w)))
-
-
 def ontleed(code: str) -> Script:
     """Controleer `code`; Geweigerd (of SyntaxError) als het niet mag draaien."""
     tree = ast.parse(code)
@@ -159,4 +116,4 @@ def ontleed(code: str) -> Script:
         )
     if not leest:
         raise Geweigerd("Script leest geen data. Lees data via `df` of `store_get(key)`; typ nooit data over.")
-    return Script(keys=tuple(dict.fromkeys(keys)), constanten=_constanten(tree))
+    return Script(keys=tuple(dict.fromkeys(keys)))

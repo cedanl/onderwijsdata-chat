@@ -32,8 +32,10 @@ de laatste tag is 1.8.6.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.
 - `run_analysis` weigert overgetypte data en scripts die geen data lezen.
-- Een getal dat een `run_analysis`-script zelf typt (`987654 + 0 * len(df)`), telt niet meer als bron
-  van een getal of percentage in het antwoord.
+- Een getal in een `run_analysis`-uitkomst dat niet van de data afhangt, telt niet als bron van een getal,
+  percentage of citatie in het antwoord: ook niet via een variabele (`a = 987650; result = a + 4 + len(df) * 0`)
+  of als df wel gelezen maar niet gebruikt wordt. De app draait het script daarvoor nog twee keer op
+  verstoorde data (andere celwaarden, een rij erbij); wat dan gelijk blijft, komt niet uit de data.
 - DUO-teldefinitie en publicatieregels (aantallen 1-4 gepubliceerd als 4) komen uit de riodata-catalogus,
   zonder CKAN-aanroep tijdens het gesprek. Kan de package een beschrijving niet lezen, dan meldt de tool dat.
 - Kolomdefinities gelden per DUO-dataset: mbo-opleidingsaanbod krijgt geen hbo-codes VT/DT/DU meer.

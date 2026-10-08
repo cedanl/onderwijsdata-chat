@@ -116,6 +116,12 @@ def test_oneindige_lus_wordt_echt_gestopt(data, monkeypatch):
         "result = int('987654') + int(df.shape[0] * 0)",
         "result = {'totaal': 987654, 'n': len(df)}",
         "result = df.assign(T=987654)",
+        # CH-27: een constante via een variabele, of df gelezen maar niet gebruikt.
+        "a = 987650\nb = 4\nresult = a + b + len(df) * 0",
+        "a = 987650\nresult = a + 4 + int(df['N'].sum()) * 0",
+        "x = df['N'].sum()\nresult = 987654",
+        "basis = {'n': 987650}\nresult = basis['n'] + 4 + len(df) * 0",
+        "result = f'totaal {987650 + 4}' if len(df) else ''",
     ],
 )
 def test_getal_uit_het_script_telt_niet_als_bron(data, code):
@@ -128,12 +134,33 @@ def test_percentage_uit_het_script_telt_niet_als_bron(data):
     assert grounding.unverified("Dat is 12,5%.", [uitkomst]) == ["12,5%"]
 
 
-def test_getal_uit_de_data_blijft_bewijs(data):
-    uitkomst = run_analysis(code="result = int(df['N'].sum()) + 0", data_key=data)
-    assert grounding.unverified("Er zijn 4.600 studenten.", [uitkomst]) == []
+def test_percentage_via_een_variabele_telt_niet_als_bron(data):
+    uitkomst = run_analysis(code="p = 12.5\nresult = p + len(df) * 0", data_key=data)
+    assert grounding.unverified("Dat is 12,5%.", [uitkomst]) == ["12,5%"]
+
+
+@pytest.mark.parametrize(
+    ("code", "tekst"),
+    [
+        ("result = int(df['N'].sum()) + 0", "Er zijn 4.600 studenten."),  # som
+        ("result = int(df['N'].iloc[1] - df['N'].iloc[0])", "Een verschil van 2.200 studenten."),  # verschil
+        ("result = round(df['N'].iloc[0] / df['N'].sum() * 100, 1)", "Dat is 26,1%."),  # percentage
+        ("totaal = df['N'].sum()\nresult = int(totaal)", "Er zijn 4.600 studenten."),  # via een variabele
+        ("result = len(df) * 1000 + 0", "Dat zijn 2000 rijen."),  # een telling hangt ook van de data af
+    ],
+)
+def test_een_afleiding_uit_de_data_blijft_bewijs(data, code, tekst):
+    uitkomst = run_analysis(code=code, data_key=data)
+    assert grounding.unverified(tekst, [uitkomst]) == []
 
 
 def test_scriptconstanten_staan_bij_het_resultaat(data):
-    parsed = json.loads(run_analysis(code="result = {'totaal': int(df['N'].sum()) // 1000}", data_key=data))
-    assert parsed["resultaat"] == {"totaal": 4}
+    parsed = json.loads(run_analysis(code="result = {'totaal': int(df['N'].sum()), 'drempel': 1000}", data_key=data))
+    assert parsed["resultaat"] == {"totaal": 4600, "drempel": 1000}
     assert parsed["scriptconstanten"] == [1000]
+
+
+def test_een_getal_uit_de_invoer_is_geen_scriptconstante(data):
+    """De invoer is zelf bewijs: een opgezochte celwaarde hoort niet bij de scriptconstanten."""
+    parsed = json.loads(run_analysis(code="result = {'max': int(df['N'].max()), 'vast': 1200}", data_key=data))
+    assert "scriptconstanten" not in parsed
