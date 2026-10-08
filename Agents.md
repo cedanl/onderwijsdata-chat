@@ -63,32 +63,27 @@ Clean commits mean cherry-picking to GitHub is trivial.
 
 ## Deployment & versioning
 
-**The app promotes through environments via tag-triggered Flux reconciliation:**
+**Ladder: test → playground** (development en production doen niet mee):
 
-| Trigger | Environments | Mechanism | Duration |
-|---------|---|---|---|
-| `git push origin main` | dev, test | CI builds image; Flux auto-picks (1m reconcile) | ~5 min total |
-| `git tag X.0.0` (major) | playground, production | CI publishes chart; Flux auto-picks (1m reconcile) | ~5 min total |
-| Tag push to GitLab | GitHub mirror | CI syncs via GitHub token | automatic |
+| Trigger | Environment | Mechanism |
+|---|---|---|
+| `git push origin main` | test | CI builds; Flux volgt de open range `>=0.0.1-0.0` |
+| `git tag X.Y.Z` (bare, no `v`) | geen | publiceert alleen de chart + GitHub-spiegel |
+| MR `chore/promote-playground` | playground | wijzigt de pin in `manifests/playground/helmrelease.yaml`; Flux installeert die versie |
 
-**Ladder promotion (Flux-based):**
+```bash
+git tag 2.0.0 && git push origin 2.0.0                 # release (main moet groen zijn)
+uv run python scripts/promotie.py promote              # branch chore/promote-playground, MR
+uv run python scripts/promotie.py mark                 # na merge: env/playground/<versie>
 ```
-git tag 1.0.0 && git push origin 1.0.0
-  ↓
-GitLab CI: version:promote → publishes chart 1.0.0
-  ↓
-Flux (all envs watch chart >=0.0.1-0.0):
-  - development:  HelmRelease auto-picks 1.0.0 (reconciles in 1m)
-  - test:         HelmRelease auto-picks 1.0.0 (reconciles in 1m)
-  - playground:   HelmRelease auto-picks 1.0.0 (reconciles in 1m)
-  - production:   HelmRelease auto-picks 1.0.0 (reconciles in 1m)
-```
+
+Procedure: `docs/promoten.md`. CI-poort `env:promotion-ladder` bewaakt de pin.
 
 See `manifests/README.md` and `docs/test-environment.md` for details.
 
 **When you're done:**
 - For bugfixes/features: Push to `main` → CI auto-deploys dev/test
-- For release: Tag with `X.0.0` → CI auto-deploys playground/production via Flux
+- For release: tag `X.Y.Z`, see test, then promote playground via MR (`docs/promoten.md`)
 
 ## Git commands
 
@@ -97,9 +92,9 @@ See `manifests/README.md` and `docs/test-environment.md` for details.
 git log origin/main          # GitLab
 git log github/main          # GitHub (if synced)
 
-# Tag for playground/production promotion (major releases only)
-git tag 1.4.0                # No 'v' prefix (simplified format)
-git push origin 1.4.0        # Triggers GitLab CI → Flux promotion
+# Release tag (no 'v' prefix; deploys nothing by itself)
+git tag 1.4.0
+git push origin 1.4.0
 
 # Cherry-pick a commit to GitHub
 git checkout github/main

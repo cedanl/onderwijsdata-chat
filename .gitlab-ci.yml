@@ -4,6 +4,10 @@ workflow:
   auto_cancel:
     on_new_commit: interruptible
   rules:
+    # Markers (env/playground/<versie>) zijn een record van een promotie en
+    # starten geen pipeline (docs/promoten.md).
+    - if: $CI_COMMIT_TAG =~ /^env\//
+      when: never
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
       variables:
         ENVIRONMENT_CLUSTER: "testing"
@@ -210,9 +214,28 @@ kubernetes:verify-up:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
+# Uit: playground staat vast op een eerdere release en haalt de nieuwe tag pas
+# binnen bij een promotie-MR, dus deze job kan tijdens de tag-pipeline niet slagen.
 kubernetes:verify-up:tag:
   rules:
-    - if: $CI_COMMIT_TAG
+    - when: never
+
+# De ladder: test houdt de open range, playground pint een bestaande release-tag.
+env:promotion-ladder:
+  stage: .pre
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+  needs: []
+  image:
+    name: python:3.14-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
+  variables:
+    GIT_DEPTH: "0"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    - pip install --no-cache-dir pyyaml
+  script:
+    - python scripts/promotie.py check
 
 debug:logs:
   stage: .post
