@@ -21,12 +21,12 @@ import { useEscape } from '../hooks/useEscape'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { SUGGESTED, MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
+import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
 import { answerModels } from '../answerModel'
-import { personalizeQuestion } from '../suggestions'
+import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import {
   appendPage, clearCurrentChat, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory,
   loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, restorableMessages,
@@ -189,7 +189,7 @@ function MessageContent({ msg }) {
   )
 }
 
-export default function ChatPage({ openRapport, settings = {}, user, feedbackEnabled = false }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
@@ -484,7 +484,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
           </button>
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
-            <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
+            <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} sector={sector} />
           </div>
           <ConversationHistory
             history={conversationHistory}
@@ -518,7 +518,7 @@ export default function ChatPage({ openRapport, settings = {}, user, feedbackEna
                 {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
                 {narrowScreen && (
                   <div className="chat-welcome-suggestions">
-                    <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} />
+                    <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} sector={sector} />
                   </div>
                 )}
               </WelcomeScreen>
@@ -995,8 +995,8 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
   )
 }
 
-function SuggestedQuestions({ onSend, busy, instelling }) {
-  return SUGGESTED.map(cat => (
+export function SuggestedQuestions({ onSend, busy, instelling, sector = null }) {
+  return suggestionsFor(sector).map(cat => (
     <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={onSend} busy={busy} instelling={instelling} />
   ))
 }

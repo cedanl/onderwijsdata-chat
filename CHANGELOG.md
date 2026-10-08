@@ -102,6 +102,10 @@ de laatste tag is 1.8.6.
 - De suggestievragen over de arbeidsmarkt beloven niet meer dat gediplomeerden "aansluiten" op vacatures:
   ze vragen naar de UWV-vacatures per provincie (momentopname mei 2023) en de landelijke ROA-prognose. De
   uitvalvraag gaat over landelijke uitval, want voor hbo en wo bestaat uitval niet per opleiding.
+- De suggestievragen hangen af van de sector van de instelling in het profiel. De herkomstvraag staat alleen bij
+  mbo, want alleen de mbo-bestanden kennen de woonplaats van studenten. Een universiteit wordt vergeleken met
+  het wo als geheel in plaats van met haar provincie, waar ze meestal de enige is. Zonder bekende instelling
+  staan alleen de vragen die voor elke sector te beantwoorden zijn.
 - Eén redeneerkaart per antwoord in plaats van een kaart per stap.
 - Een vraag tijdens een lopend antwoord krijgt een melding, de getypte tekst blijft staan.
 - Een onbekend pad toont een 404-pagina; een uitgeschakelde dashboardroute meldt dat hij nog niet beschikbaar is.

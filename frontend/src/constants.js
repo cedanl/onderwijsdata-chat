@@ -32,36 +32,49 @@ export const WARN_CHAT_TURNS = 16
 // Each question must be answerable with the connected sources (#446): vacancies are a UWV
 // snapshot per province (mei 2023), the ROA forecast is national, and hbo/wo dropout exists
 // only nationally. No source links graduates to jobs.
+// What the sources hold differs per sector (#447): only mbo files have the students' place of
+// residence, and a university is usually the whole wo of its province. `sectoren` lists where
+// a question holds; without a known sector only the questions that hold everywhere show.
+export const SECTOREN = ['mbo', 'hbo', 'wo']
+
 export const SUGGESTED = [
   {
     category: 'Arbeidsmarktmatch',
     questions: [
-      'Hoe verhoudt het diploma-aanbod van onze instelling per sector zich tot de UWV-vacatures in mijn provincie (mei 2023)?',
-      'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief van de brede sectoren in ons onderwijsaanbod?',
+      { tekst: 'Hoe verhoudt het diploma-aanbod van onze instelling per sector zich tot de UWV-vacatures in mijn provincie (mei 2023)?', sectoren: SECTOREN },
+      { tekst: 'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief van de brede sectoren in ons onderwijsaanbod?', sectoren: ['mbo', 'hbo'] },
+      { tekst: 'Wat is volgens de landelijke ROA-cijfers het arbeidsmarktperspectief van masterafgestudeerden?', sectoren: ['wo'] },
     ],
   },
   {
     category: 'Rendement & Diplomering',
     questions: [
-      'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de regio?',
-      'Hoe verhouden de diploma-aantallen van onze instelling zich tot andere instellingen in mijn regio?',
-      'Hoeveel studenten verlaten landelijk het mbo, hbo en wo zonder diploma?',
+      { tekst: 'Hoe heeft het aantal gediplomeerden van onze instelling zich de afgelopen jaren ontwikkeld?', sectoren: SECTOREN },
+      { tekst: 'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de andere instellingen in mijn provincie?', sectoren: ['mbo', 'hbo'] },
+      { tekst: 'Hoe verhouden de diploma-aantallen van onze instelling zich tot die van de andere universiteiten?', sectoren: ['wo'] },
+      { tekst: 'Hoe groot is landelijk gezien het uitvalrisico in ons onderwijsaanbod?', sectoren: ['mbo'] },
+      { tekst: 'Hoeveel studenten verlaten landelijk het hbo zonder diploma?', sectoren: ['hbo'] },
+      { tekst: 'Hoeveel studenten verlaten landelijk het wo zonder diploma?', sectoren: ['wo'] },
     ],
   },
   {
     category: 'Groei & Instroom',
     questions: [
-      'Groeit de instroom bij ons sneller dan het gemiddelde in mijn regio?',
-      'Met welke instellingen in mijn regio concurreert onze instelling om dezelfde doelgroep?',
-      'Volgt het aantal inschrijvingen bij ons de trend in mijn regio?',
+      { tekst: 'Hoe heeft het aantal inschrijvingen bij onze instelling zich de afgelopen vijf jaar ontwikkeld?', sectoren: SECTOREN },
+      { tekst: 'Groeit de instroom bij ons sneller dan het gemiddelde in mijn provincie?', sectoren: ['mbo', 'hbo'] },
+      { tekst: 'Groeit de instroom bij ons sneller dan in het wo als geheel?', sectoren: ['wo'] },
+      { tekst: 'Met welke instellingen concurreert onze instelling om studenten uit dezelfde woongemeenten?', sectoren: ['mbo'] },
+      { tekst: 'Welke andere hogescholen in mijn provincie bieden opleidingen in dezelfde sectoren aan als onze instelling?', sectoren: ['hbo'] },
+      { tekst: 'Welke andere universiteiten bieden opleidingen in dezelfde sectoren aan als onze instelling?', sectoren: ['wo'] },
     ],
   },
   {
     category: 'Regionale Context',
     questions: [
-      'Voor welke sectoren stonden in mijn provincie de meeste UWV-vacatures open (mei 2023)?',
-      'Waar komen mijn lerenden vandaan en welke regio\'s vormen de doelmarkt van onze instelling?',
-      'Hoe verandert de studentenpopulatie in mijn regio?',
+      { tekst: 'Voor welke sectoren stonden in mijn provincie de meeste UWV-vacatures open (mei 2023)?', sectoren: SECTOREN },
+      { tekst: 'Waar komen mijn lerenden vandaan en welke regio\'s vormen de doelmarkt van onze instelling?', sectoren: ['mbo'] },
+      { tekst: 'Hoe verandert het aantal mbo-studenten dat in mijn provincie woont?', sectoren: ['mbo'] },
+      { tekst: 'Hoe verandert het aantal hbo-studenten bij de hogescholen in mijn provincie?', sectoren: ['hbo'] },
     ],
   },
 ]

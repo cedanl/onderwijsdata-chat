@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { SUGGESTED } from '../constants'
-import { personalizeQuestion } from '../suggestions'
+import { SUGGESTED, SECTOREN } from '../constants'
+import { personalizeQuestion, suggestionsFor } from '../suggestions'
 
-const all = SUGGESTED.flatMap(c => c.questions)
+const questionsFor = sector => suggestionsFor(sector).flatMap(c => c.questions)
+const all = SUGGESTED.flatMap(c => c.questions).map(q => q.tekst)
 const FIRST_PERSON = /\b(ons|onze|mijn)\b/i
 
 describe('personalizeQuestion', () => {
@@ -45,7 +46,45 @@ describe('suggested questions promise only what the data can show', () => {
     expect(all.filter(q => /vacature/i.test(q) && !q.includes('provincie'))).toEqual([])
   })
 
-  it('does not ask for dropout within the own programmes; hbo and wo only have it nationally', () => {
-    expect(all.filter(q => /uitval/i.test(q) && FIRST_PERSON.test(q))).toEqual([])
+  it('does not ask for dropout within the own programmes in hbo or wo; there it is only national', () => {
+    const own = s => questionsFor(s).filter(q => /uitval/i.test(q) && FIRST_PERSON.test(q))
+    expect([...own('hbo'), ...own('wo'), ...own(null)]).toEqual([])
+  })
+
+  // "Regio" means the location of the institution in one source and where students live in
+  // another; until the region is derived in code (#448), a question names the province.
+  it('does not leave "mijn regio" for the model to interpret', () => {
+    expect(all.filter(q => q.includes('mijn regio'))).toEqual([])
+  })
+})
+
+// Which questions the sources answer depends on the sector of the institution (#447).
+describe('suggestionsFor', () => {
+  it('gives every sector, and an unknown one, at least one question per category', () => {
+    for (const sector of [...SECTOREN, null]) {
+      const cats = suggestionsFor(sector)
+      expect(cats.map(c => c.category)).toEqual(SUGGESTED.map(c => c.category))
+      expect(cats.filter(c => c.questions.length === 0)).toEqual([])
+    }
+  })
+
+  it('tags every question with known sectors', () => {
+    const tags = SUGGESTED.flatMap(c => c.questions).flatMap(q => q.sectoren)
+    expect(tags.filter(s => !SECTOREN.includes(s))).toEqual([])
+  })
+
+  it('asks where students come from only in mbo; hbo and wo have no place of residence', () => {
+    expect(questionsFor('mbo').some(q => /vandaan/.test(q))).toBe(true)
+    for (const sector of ['hbo', 'wo', null]) expect(questionsFor(sector).filter(q => /vandaan|woongemeente/.test(q))).toEqual([])
+  })
+
+  // With one university in most provinces, the institution is the region.
+  it('compares a university with the wo nationally, not with its province', () => {
+    expect(questionsFor('wo').filter(q => /provincie/.test(q) && !/vacature/i.test(q))).toEqual([])
+  })
+
+  it('shows only the questions that hold for every sector when the sector is unknown', () => {
+    const everywhere = SUGGESTED.flatMap(c => c.questions).filter(q => SECTOREN.every(s => q.sectoren.includes(s)))
+    expect(questionsFor(null)).toEqual(everywhere.map(q => q.tekst))
   })
 })

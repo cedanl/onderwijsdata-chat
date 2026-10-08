@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildInstellingenLookup, matchKnownInstelling } from '../instellingenMatch'
+import { buildInstellingenLookup, matchKnownInstelling, instellingType } from '../instellingenMatch'
 
 const INSTELLINGEN = [
   { naam: 'Hogeschool Utrecht', aliassen: ['HU'], domeinen: ['hu.nl'] },
@@ -51,5 +51,24 @@ describe('buildInstellingenLookup', () => {
     expect(lookup.get('hu')).toBe('Hogeschool Utrecht')
     expect(lookup.get('hogeschool utrecht')).toBe('Hogeschool Utrecht')
     expect(lookup.get('nope')).toBeUndefined()
+  })
+})
+// The sector decides which suggested questions the data can answer (#447).
+describe('instellingType', () => {
+  const TYPED = [
+    { naam: 'Hogeschool Utrecht', type: 'hbo', aliassen: ['HU'] },
+    { naam: 'ROC Midden Nederland', type: 'mbo', aliassen: [] },
+  ]
+
+  it('gives the type of a known name or alias, case-insensitively', () => {
+    expect(instellingType('Hogeschool Utrecht', TYPED)).toBe('hbo')
+    expect(instellingType(' hu ', TYPED)).toBe('hbo')
+    expect(instellingType('roc midden nederland', TYPED)).toBe('mbo')
+  })
+
+  it('does not guess for free text, an empty profile or a list that has not loaded', () => {
+    expect(instellingType('Hogeschool', TYPED)).toBeNull()
+    expect(instellingType('', TYPED)).toBeNull()
+    expect(instellingType('Hogeschool Utrecht', [])).toBeNull()
   })
 })

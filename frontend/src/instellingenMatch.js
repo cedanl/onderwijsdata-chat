@@ -41,3 +41,11 @@ export function matchKnownInstelling(candidates, instellingen) {
   }
   return null
 }
+// The sector (mbo, hbo, wo) of the profile institution, by exact name or alias; free text that
+// is not in the list gets null rather than a guess (#447).
+export function instellingType(naam, instellingen) {
+  const key = normalize(naam)
+  if (!key) return null
+  const inst = (instellingen || []).find(i => [i.naam, ...(i.aliassen || [])].some(n => normalize(n) === key))
+  return inst?.type || null
+}
