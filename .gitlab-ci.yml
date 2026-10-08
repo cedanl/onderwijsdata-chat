@@ -45,7 +45,9 @@ include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.15
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-promote@0.9.15
     inputs:
-      chart: oci://$HARBOR_HOST/$HARBOR_PROJECT/onderwijsdata-chat
+      # helm:publish pusht naar .../onderwijsdata-chat en Helm voegt de chartnaam toe;
+      # helm:promote pult het exacte pad, dus dat moet die naam zelf bevatten.
+      chart: oci://$HARBOR_HOST/$HARBOR_PROJECT/onderwijsdata-chat/onderwijsdata-chat
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/helm/helm-publish@0.9.15
     inputs:
       name: helm:publish-promoted
