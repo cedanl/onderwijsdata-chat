@@ -10,6 +10,14 @@ de laatste tag is 1.8.6.
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `voprognoses`,
   `02voins-v1`) zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
   vraag. De DUO-telling gaat daardoor van 56 naar 14 datasets. Een record zonder scopebesluit valt erbuiten.
+- Dezelfde grens geldt nu voor CBS: tabellen over alle onderwijssoorten (zoals `85701NED`) of over po/vo
+  zijn niet te vinden, op te vragen of te laden, ook niet als herstelpoging na een lege selectie. De
+  CBS-telling gaat van 266 naar 117 tabellen. Bij de VSV-tabellen over mbo én vo laadt de chat alleen de
+  mbo-rijen; dat selecteert de code, niet het filter van het model (de CBS-feed negeert een EN-clausule).
+- RIO-registers over alle sectoren (aangeboden opleidingen, opleidingen, opleidingserkenningen,
+  onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
+  sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
+  hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Betrouwbaarheid van antwoorden
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.

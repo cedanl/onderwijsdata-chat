@@ -9,9 +9,13 @@ import json
 from unittest.mock import patch
 
 import httpx
+import pytest
 
 from tools.cbs import get_cbs_data, get_cbs_dimension
 from tools.query import query_data
+
+# Laad- en metadatamechaniek met test-ID's; de scopegrens zelf staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
 
 _DEFS = {
     "Onderwijssoort": {"type": "Dimension"},

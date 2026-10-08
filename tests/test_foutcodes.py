@@ -65,7 +65,7 @@ def test_cbs_dimensie_geeft_een_code_en_geen_ruwe_providertekst():
     assert "secret-host" not in result
 
 
-def test_rio_geeft_een_code_en_geen_ruwe_providertekst():
+def test_rio_geeft_een_code_en_geen_ruwe_providertekst(zonder_scopegrens):
     with patch("tools.rio.fetch", side_effect=httpx.ReadTimeout(_GEHEIM)):
         result = get_rio_data("erkenningen")
     assert fouten.code(result) == "bron_onbereikbaar"

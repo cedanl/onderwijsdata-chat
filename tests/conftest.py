@@ -29,8 +29,10 @@ def zonder_scopegrens():
     from tools.catalog import _rio_duo_alles
 
     with (
+        patch("tools.cbs.scope_blokkade", return_value=None),
         patch("tools.duo.scope_blokkade", return_value=None),
         patch("tools.rio.scope_blokkade", return_value=None),
+        patch("tools.rio.scopeprofiel.sectorfilter_ontbreekt", return_value=None),
         patch("tools.catalog._rio_duo", side_effect=_rio_duo_alles),
     ):
         yield

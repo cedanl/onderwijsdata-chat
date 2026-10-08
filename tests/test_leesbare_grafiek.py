@@ -20,6 +20,9 @@ from tools.plot import create_plot
 from tools.query import query_data
 from tools.store import KeyMeta
 
+# Laad- en metadatamechaniek met test-ID's; de scopegrens zelf staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
+
 
 def _plot(**kwargs) -> go.Figure:
     _, fig = create_plot(**kwargs)

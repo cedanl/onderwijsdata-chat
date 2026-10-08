@@ -14,7 +14,7 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import store
+from . import scopeprofiel, store
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
 from .plot import resolve_chart_type
@@ -66,12 +66,17 @@ def _duo_sentinelregels() -> list[str]:
 def _cbs_laadregels(args: dict) -> list[str]:
     filters = args.get("filters") or {}
     extra = f", **{filters!r}" if filters else ""
-    return [
+    regels = [
         "import pandas as pd",
         "from onderwijsdata import data",
         "",
         f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))",
     ]
+    if args["dataset_id"] in scopeprofiel.CBS_SECTORFILTER:
+        # Dezelfde mbo-selectie als de app (CH-03).
+        dimensie, codes = scopeprofiel.CBS_SECTORFILTER[args["dataset_id"]]
+        regels.append(f"df = df[df[{dimensie!r}].str.strip().isin({sorted(codes)!r})]  # alleen mbo")
+    return regels
 
 
 def _rio_laadregels(args: dict) -> list[str]:

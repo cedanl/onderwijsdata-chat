@@ -1,7 +1,12 @@
 from unittest.mock import patch
 
+import pytest
+
 from tools import fouten
 from tools.cbs import get_cbs_data
+
+# Laad- en metadatamechaniek met test-ID's; de scopegrens zelf staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
 
 
 def test_api_exception_returns_a_coded_error_without_the_raw_text():

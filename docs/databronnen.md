@@ -8,7 +8,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**266 datasets** met statistische onderwijsdata: aantallen leerlingen, studenten, diploma's, personeel en meer, uitgesplitst naar diverse dimensies.
+**117 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over alle onderwijssoorten of po/vo laadt de chat niet; bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -26,7 +26,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## RIO — Register Instellingen en Opleidingen
 
-**14 resources** met het officiële register van alle erkende Nederlandse onderwijsinstellingen en hun aangeboden opleidingen.
+**9 resources** uit het officiële register van erkende Nederlandse onderwijsinstellingen en hun aangeboden opleidingen. Registers over alle sectoren haalt de chat alleen op met een filter op mbo/hbo/wo; bestuur, instellingen en vestigingen van één instelling lopen via een vaste route.
 
 | Eigenschap | Details |
 |------------|---------|

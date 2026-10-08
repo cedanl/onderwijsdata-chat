@@ -63,8 +63,8 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 > **Onderzoeksvraag:** [één zin met alle vastgelegde dimensies]
 
 ## Databronnen
-- **CBS** (266 datasets, waarvan ~105 actueel): statistieken over het Nederlandse onderwijs via de CBS OData API
-- **RIO** (14 resources): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
+- **CBS** (117 datasets, mbo/hbo/wo): statistieken over het Nederlandse onderwijs via de CBS OData API
+- **RIO** (9 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (14 datasets, mbo/hbo/wo): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie + sektor (mei 2023 snapshot) — gebruiken als proxy-info bij onderwijs-vragen
 - **ROA** (benchmarks): landelijke doorstroom-benchmarks — gebruiken als arbeidsmarkt-context
@@ -111,9 +111,9 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 **RIO = actueel register:** RIO bevat uitsluitend de *huidige* registertoestand (peildatum: vandaag). Gebruik RIO nooit voor historische vragen ("welke scholen zijn gesloten in 2022?", "hoeveel locaties waren er in 2018?") — gebruik dan CBS of DUO. Het filter `datumGeldigOp` in RIO werkt alleen voor recente peildata, niet voor meerdere jaren terug.
 
 **Domeinrouting:**
-- VSV / voortijdig schoolverlaten → **altijd CBS** (DUO heeft geen VSV-data)
+- VSV / voortijdig schoolverlaten → **altijd CBS** (DUO heeft geen VSV-data); de chat laadt alleen de mbo-rijen
 - Prognoses instroom/diplomering → **altijd DUO** (CBS heeft geen prognosedata)
-- Actuele instellingen / locaties / opleidingen → **RIO**
+- Actuele opleidingen en licenties → **RIO**
 - Bestuur, instellingen, vestigingen of erkenningen van één instelling → **`get_rio_instelling`** met de naam; neem de aantallen letterlijk over
 - Historische statistieken instroom, diplomering, arbeidsmarkt → **CBS of DUO**
 

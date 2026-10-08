@@ -143,8 +143,14 @@ _SEARCH_KEEP_FIELDS = frozenset(
 
 
 @cache
-def _cbs() -> list:
+def _cbs_alles() -> list:
     return _cbs_catalog()
+
+
+@cache
+def _cbs() -> list:
+    """De CBS-tabellen binnen het chatprofiel mbo/hbo/wo: dezelfde regel als DUO (#355, CH-03)."""
+    return [e for e in _cbs_alles() if scopeprofiel.in_scope(e)]
 
 
 @cache
@@ -162,22 +168,24 @@ def _rio_duo() -> list:
 
 
 def _ruw_record(dataset_id: str) -> dict | None:
-    """Het record uit de volledige riodata-inventaris, ook als het buiten het profiel valt."""
-    return next((e for e in _rio_duo_alles() if scopeprofiel.dataset_id(e) == dataset_id), None)
+    """Het record uit de volledige CBS- en riodata-inventaris, ook als het buiten het profiel valt."""
+    return next((e for e in [*_cbs_alles(), *_rio_duo_alles()] if scopeprofiel.dataset_id(e) == dataset_id), None)
 
 
 def scope_blokkade(dataset_id: str) -> str | None:
     """Waarom een datatool `dataset_id` niet laadt; None als het binnen het profiel valt.
 
-    Een directe ID uit de vraag of van het model omzeilt de grens niet (#355).
+    Een directe ID uit de vraag of van het model omzeilt de grens niet (#355), ook niet
+    bij een herstelpoging met een andere tabel (CH-03).
     """
-    if any(scopeprofiel.dataset_id(e) == dataset_id for e in _rio_duo()):
+    binnen = [*_cbs(), *_rio_duo()]
+    if any(scopeprofiel.dataset_id(e) == dataset_id for e in binnen):
         return None
     if bekend := _ruw_record(dataset_id):
         logger.info("scope_blokkade id=%s buiten profiel", dataset_id)
-        return json.dumps(scopeprofiel.buiten_scope(bekend.get("bron") or dataset_id), ensure_ascii=False)
+        return json.dumps(scopeprofiel.buiten_scope_voor(bekend), ensure_ascii=False)
     logger.warning("scope_blokkade id=%s niet in de catalogus", dataset_id)
-    ids = [i for e in _rio_duo() if (i := scopeprofiel.dataset_id(e)) and dataset_id.lower() in i.lower()]
+    ids = [i for e in binnen if (i := scopeprofiel.dataset_id(e)) and dataset_id.lower() in i.lower()]
     hint = f" Vergelijkbare datasets: {ids[:3]}." if ids else " Zoek de juiste dataset-ID met search_catalog."
     return f"Dataset '{dataset_id}' staat niet in de catalogus; zonder scopebesluit laadt de chat hem niet.{hint}"
 
@@ -731,6 +739,6 @@ def dataset_details(dataset_id: str) -> str:
 
     if buiten := _ruw_record(dataset_id):
         # Bekend maar buiten het profiel: zeg waarom, anders leest het model 'bestaat niet' (#355, #396).
-        return json.dumps(scopeprofiel.buiten_scope(buiten.get("bron") or dataset_id), ensure_ascii=False)
+        return json.dumps(scopeprofiel.buiten_scope_voor(buiten), ensure_ascii=False)
     logger.warning("dataset_details miss id=%s", dataset_id)
     return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
