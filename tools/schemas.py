@@ -1,6 +1,7 @@
 from typing import Any
 
 from core.config import RIO_PAGE_SIZE
+from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
@@ -448,9 +449,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_GET_UWV_VACATURES,
             "description": (
-                "Haal UWV-vacaturegegevens op per provincie en sektor (momentopname mei 2023). "
-                "Geeft arbeidsmarkt-context bij onderwijs-vragen. ROA/UWV zijn landelijk only; "
-                "geen instelling-niveau beschikbaar."
+                "UWV-vacatures per provincie en beroepencluster, optioneel voor één onderwijssector. "
+                "Een momentopname (peildatum in het resultaat), geen reeks en niet per instelling. "
+                "Arbeidsmarkt-context bij een onderwijsvraag."
             ),
             "parameters": {
                 "type": "object",
@@ -461,7 +462,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "sector": {
                         "type": "string",
-                        "description": "Optioneel: sektor om op te filteren (bijv. 'ICT', 'Zorg')",
+                        "enum": sorted(SECTOR_CLUSTER_MAP),
+                        "description": "Optioneel: de onderwijssector waarvan de beroepenclusters meetellen",
                     },
                 },
                 "required": ["provincie"],
@@ -473,16 +475,19 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_GET_ROA_BENCHMARK,
             "description": (
-                "Haal ROA-doorstroom-benchmarks op (landelijke referentiewaarden). "
-                "Geeft werkloosheidsrisico en aansluiting onderwijs-arbeidsmarkt per onderwijsniveau. "
-                "ROA/UWV zijn landelijk only; geen instelling-niveau beschikbaar."
+                "ROA (AIS 2030), landelijk: schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, "
+                "buiten de vakrichting) en de prognose tot 2030, per opleidingsniveau mbo2-4, bachelor en "
+                "master, of voor één opleidingssector. Niet per instelling of regio."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "sector": {
                         "type": "string",
-                        "description": "Optioneel: sektor (ROA-data is niet per sektor beschikbaar; zie benchmark per niveau)",
+                        "description": (
+                            "Optioneel: een ROA-opleidingssector, bijv. 'Mbo4 - techniek en ict' of "
+                            "'Bachelor - zorg en onderwijs'. Zonder sector: alle mbo/hbo/wo-niveaus."
+                        ),
                     },
                 },
                 "required": [],

@@ -514,6 +514,7 @@ def test_dataset_counts_per_source():
 
 # Live-audit 8 (#200): ROA en UWV staan in de catalogus, maar de chat heeft er geen
 # datatool voor. Sonnet schreef daarop "een UWV-koppeling bestaat niet".
+_ROA_OUD = {"leverancier": "ROA", "_roa_id": "ais2028", "bron": "AIS tot 2028", "title": "vacatures roa prognose"}
 _UWV = {
     "leverancier": "UWV",
     "_ckan_id": "uwv-open-match-data",
@@ -524,18 +525,28 @@ _DUO = {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen 
 
 
 def test_catalogusbron_zonder_datatool_is_gemarkeerd_in_zoekresultaat():
-    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_UWV, _DUO]):
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_ROA_OUD, _DUO]):
         hits = {h["bron"]: h for h in json.loads(search_catalog("vacatures", source="rio"))}
-    assert hits["UWV Open Match Data"]["opvraagbaar"] is False
-    assert "niet op te vragen" in hits["UWV Open Match Data"]["melding"]
+    assert hits["AIS tot 2028"]["opvraagbaar"] is False
+    assert "niet op te vragen" in hits["AIS tot 2028"]["melding"]
     assert "opvraagbaar" not in hits["Ingeschrevenen hbo"]
 
 
 def test_dataset_details_van_catalogusbron_zonder_datatool_meldt_dat():
-    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_UWV]):
-        details = json.loads(dataset_details("uwv-open-match-data"))
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_ROA_OUD]):
+        details = json.loads(dataset_details("ais2028"))
     assert details["opvraagbaar"] is False
     assert "niet bestaat" in details["melding"]
+
+
+def test_catalogusbron_met_eigen_tool_noemt_die_tool():
+    """UWV en ROA AIS 2030 hebben een eigen tool (#441): 'niet op te vragen' zou dan onwaar zijn."""
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_UWV]):
+        hit = json.loads(search_catalog("vacatures", source="rio"))[0]
+        details = json.loads(dataset_details("uwv-open-match-data"))
+    for uit in (hit, details):
+        assert uit["via_tool"] == "get_uwv_vacatures"
+        assert "opvraagbaar" not in uit
 
 
 # --- #17: een volzin wordt als trefwoorden gezocht, met een hint ---

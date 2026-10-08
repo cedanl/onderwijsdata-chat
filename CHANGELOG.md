@@ -26,6 +26,15 @@ de laatste tag is 1.8.6.
   runners sturen het token als WS-subprotocol en tellen ingetrokken tekst niet mee. De poort heeft
   unittests die in CI draaien.
 
+### Arbeidsmarkt
+- `get_roa_benchmark` geeft echte ROA-cijfers (AIS 2030, landelijk): schoolverlatersinformatie (SIS 2024) en de
+  prognose tot 2030 per opleidingsniveau of -sector. Daarvoor gaf hij vaste waarden uit de code ("~80%") als
+  ROA-cijfers door.
+- `get_uwv_vacatures` en `get_roa_benchmark` lopen langs dezelfde scopepoort als CBS, DUO en RIO; de peildatum
+  komt uit de data, en een onbekende sector of provincie geeft de geldige keuzes.
+- De arbeidsmarktdata staat in `data/arbeidsmarkt.py`, gedeeld door tools en dashboards. De ROA-prognose in het
+  dashboard is nu landelijk; daarvoor won de typering van de laatst gelezen regio.
+
 ### Betrouwbaarheid van antwoorden
 - De controlemelding over een KPI over de hele selectie noemt bron en periode in woorden
   ("DUO · Ingeschrevenen hbo, 2020/21 t/m 2024/25"), niet de interne sleutel.

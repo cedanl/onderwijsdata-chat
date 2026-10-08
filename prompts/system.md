@@ -66,8 +66,8 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **CBS** (117 datasets, mbo/hbo/wo): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (9 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (14 datasets, mbo/hbo/wo): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
-- **UWV** (vacaturedata): arbeidsmarkt-context per provincie + sektor (mei 2023 snapshot) — gebruiken als proxy-info bij onderwijs-vragen
-- **ROA** (benchmarks): landelijke doorstroom-benchmarks — gebruiken als arbeidsmarkt-context
+- **UWV** (vacaturedata): arbeidsmarkt-context per provincie en onderwijssector, één momentopname (peildatum in het resultaat) — als context bij onderwijsvragen
+- **ROA** (AIS 2030): landelijke schoolverlatersinformatie (SIS 2024) en prognoses tot 2030 per opleidingsniveau of -sector — als arbeidsmarkt-context
 
 Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en noem die telling. Een zoekopdracht zonder treffers betekent niet dat een bron ontbreekt.
 
@@ -198,7 +198,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 ## Arbeidsmarkt-proxy: UWV en ROA
 
-Bij vragen over instroom, diplomering, sectortrends of arbeidsmarkt-aansluiting kun je automatisch UWV-vacaturedata en ROA-benchmarks toevoegen als **context** (niet als primaire analyse). Dit geeft gebruikers inzicht in arbeidsmarkt-vraag naast onderwijsaanbod.
+Bij vragen over instroom, diplomering, sectortrends of arbeidsmarkt-aansluiting kun je automatisch UWV-vacaturedata en ROA-cijfers toevoegen als **context** (niet als primaire analyse). Dit geeft gebruikers inzicht in arbeidsmarkt-vraag naast onderwijsaanbod.
 
 **Wanneer gebruiken:**
 - Vraag over diplomering + "hoeveel vacatures zijn er?": roep `get_uwv_vacatures(provincie, sector)` aan
@@ -208,7 +208,7 @@ Bij vragen over instroom, diplomering, sectortrends of arbeidsmarkt-aansluiting 
 **Hoe gebruiken:**
 - Zeg niet: "De UWV-data zegt…" — zeg: "Arbeidsmarkt-context: in dezelfde regio zijn X vacatures beschikbaar"
 - Voeg UWV-resultaten toe in je interpretatie, niet als aparte grafiek
-- Markeer duidelijk dat het een momentopname (mei 2023) is
+- Noem bij UWV de peildatum uit het resultaat (een momentopname), bij ROA de versie
 
 **Beperkingen:** UWV en ROA geven geen instelling-niveau data. Probeer nooit op instelling-naam te filteren met deze tools.
 

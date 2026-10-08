@@ -2,7 +2,7 @@
 
 De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste bron wordt automatisch gekozen op basis van je vraag.
 
-**ROA** en **UWV** staan in de catalogus en voeden de [dashboards](dashboards.md), maar de chat kan hun data niet ophalen. Vraag je ernaar, dan noemt de assistent de dataset zonder cijfers te geven.
+**ROA** en **UWV** geeft de assistent als arbeidsmarkt-context bij een onderwijsvraag, met een eigen tool: landelijk of per provincie, niet per instelling. Ze voeden ook de [dashboards](dashboards.md).
 
 ---
 
@@ -81,7 +81,7 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## ROA — Landelijk referentiekader arbeidsmarkt
 
-**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. Gebruikt in het regiodashboard als benchmark; niet via de chat op te vragen.
+**ROA-data** biedt landelijke referentiewaarden voor de aansluiting tussen onderwijs en arbeidsmarkt. In de chat via `get_roa_benchmark`: schoolverlatersinformatie (SIS 2024) en de prognose tot 2030 per opleidingsniveau (mbo2-4, bachelor, master) of opleidingssector, landelijk. Ook gebruikt in het regiodashboard.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -93,7 +93,7 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. Ingezet in het arbeidsmarktdashboard; niet via de chat op te vragen.
+**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie en onderwijssector; ook ingezet in het arbeidsmarktdashboard.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -108,7 +108,7 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## Catalogus doorzoeken
 
-De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`; ROA- en UWV-treffers zijn gemarkeerd als niet via de chat op te vragen. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
+De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`; UWV- en ROA-treffers (AIS 2030) noemen de tool waarmee ze op te vragen zijn; oudere ROA-edities zijn gemarkeerd als niet via de chat op te vragen. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
 
 > *"Welke datasets zijn beschikbaar over zij-instroom?"*
 

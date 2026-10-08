@@ -11,6 +11,7 @@ from riodata import catalog as _rio_catalog
 
 from . import cbs_meta, duo_meta, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
+from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,11 @@ logger = logging.getLogger(__name__)
 SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 
 # Bronnen waarvan de chat data kan ophalen (get_cbs_data, get_duo_data, get_rio_data).
-# ROA en UWV staan wel in de catalogus en voeden de dashboards, maar zonder datatool
-# mag het model er geen cijfers voor geven, en ook niet concluderen dat ze niet
-# bestaan (#200).
+# ROA en UWV staan wel in de catalogus; zonder datatool mag het model er geen cijfers
+# voor geven, en ook niet concluderen dat ze niet bestaan (#200). Twee ervan hebben
+# een eigen tool (#441).
 CHAT_BRONNEN = ("CBS", "DUO", "RIO")
+_EIGEN_TOOL = {"uwv-open-match-data": TOOL_GET_UWV_VACATURES, "ais2030": TOOL_GET_ROA_BENCHMARK}
 _NIET_OPVRAAGBAAR = {
     "opvraagbaar": False,
     "melding": (
@@ -61,6 +63,11 @@ def _tabelbestanden(entry: dict) -> list[tuple[int, str]]:
 
 def _niet_opvraagbaar(entry: dict) -> dict | None:
     """Waarom de chat geen data voor deze catalogusregel kan ophalen; None als het wel kan."""
+    if tool := _EIGEN_TOOL.get(scopeprofiel.dataset_id(entry) or ""):
+        return {
+            "via_tool": tool,
+            "melding": f"Op te vragen met {tool}; get_*_data, query_data en run_analysis werken hier niet op.",
+        }
     if not _via_chat(entry):
         return _NIET_OPVRAAGBAAR
     if entry.get("_resources") and not _tabelbestanden(entry):
@@ -630,7 +637,7 @@ def catalogus_titel(dataset_id: str) -> str:
         if entry.get("_cbs_id") == dataset_id:
             return entry.get("bron") or dataset_id
     for entry in _rio_duo():
-        if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
+        if scopeprofiel.dataset_id(entry) == dataset_id:
             return entry.get("bron") or dataset_id
     return dataset_id
 
