@@ -19,7 +19,8 @@ _FILTER = "duo:p01hoinges:0:abc123"
 
 
 def _laad():
-    store.put(_HEEL, pd.DataFrame({"N": range(3893)}), KeyMeta(bron="duo", dataset="p01hoinges", resource=0))
+    meta = KeyMeta(bron="duo", dataset="p01hoinges", resource=0, schooljaren=(2020, 2021, 2022, 2023, 2024))
+    store.put(_HEEL, pd.DataFrame({"N": range(3893)}), meta)
     store.derive(_HEEL, _FILTER, pd.DataFrame({"N": [10, 8]}), stap='filters {"INSTELLINGSNAAM": "HU"}')
 
 
@@ -34,8 +35,19 @@ def _geladen(key: str) -> str:
 def test_kpi_over_de_hele_selectie_naast_een_filter_is_een_probleem():
     _laad()
     [probleem] = kpi_naast_filter("De groei was +463.", [_geladen(_HEEL), _geladen(_FILTER), _kpi(_HEEL)])
-    assert "+463" in probleem and _FILTER in probleem
-    assert "3893" in meldingen([probleem])[0]
+    assert "+463" in probleem and _FILTER in probleem  # het model krijgt de keys
+    [melding] = meldingen([probleem])
+    assert "3893" in melding
+
+
+def test_de_melding_voor_de_gebruiker_noemt_bron_en_periode_in_woorden_zonder_sleutels():
+    """CH-30: 'rekent over de hele selectie cbs:85354NED:931dab6d' is een interne sleutel."""
+    _laad()
+    [probleem] = kpi_naast_filter("De groei was +463.", [_geladen(_HEEL), _geladen(_FILTER), _kpi(_HEEL)])
+    [melding] = meldingen([probleem])
+
+    assert "DUO" in melding and "2020/21" in melding and "2024/25" in melding
+    assert _HEEL not in melding and _FILTER not in melding and "abc123" not in melding
 
 
 def test_kpi_over_de_gefilterde_selectie_is_goed():

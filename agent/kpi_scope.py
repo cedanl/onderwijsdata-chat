@@ -13,7 +13,7 @@ from tools import store
 
 from .kpi_periode import noemt
 from .probleem import Probleem
-from .selectie import data_keys, laadkey
+from .selectie import data_keys, laadkey, selectie_in_woorden
 
 
 def _kpis(tool_results: list[str]) -> list[dict]:
@@ -39,11 +39,14 @@ def kpi_naast_filter(tekst: str, tool_results: list[str]) -> list[str]:
         if not key or key not in filters or not noemt(tekst, kpi["value"]):
             continue
         n = kpi["bron"].get("aantal_waarden")
-        over = f"de hele selectie {key}" + (f" ({n} waarden)" if n is not None else "")
+        # De gebruiker leest bron en periode in woorden, het model de keys (CH-30).
+        selectie = selectie_in_woorden(key) or "de opgehaalde data"
+        aantal = f", {n} waarden" if n is not None else ""
         problemen.append(
             Probleem(
-                f"{kpi['value']} rekent over {over}, niet over het filter daarop "
-                f"({', '.join(sorted(set(filters[key])))}).",
+                f"{kpi['value']} rekent over de hele selectie ({selectie}{aantal}), "
+                "niet over het filter dat het antwoord daarop maakte.",
+                f"Hele selectie: {key}; filter: {', '.join(sorted(set(filters[key])))}. "
                 "Reken de KPI over de gefilterde data_key, of zeg dat het getal over de hele selectie gaat.",
             )
         )
