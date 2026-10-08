@@ -185,6 +185,14 @@ def cbs_sectorrijen(dataset_id: str, rows: list[dict]) -> list[dict]:
     return [r for r in rows if str(r.get(dimensie, "")).strip() in codes]
 
 
+def cbs_sectordeel(dataset_id: str) -> str | None:
+    """Welk deel van een CBS-tabel over mbo én vo de chat laadt; None voor een andere tabel.
+
+    `cbs_sectorrijen` en de snippet laden zo'n tabel altijd zonder de vo-rijen, dus de bron
+    van die data is het mbo-deel, niet de hele tabel (CH-45)."""
+    return "alleen mbo" if dataset_id in CBS_SECTORFILTER else None
+
+
 def buiten_scope(bron: str, *, register: bool = False) -> dict:
     """Het toolresultaat voor een record buiten de grens; `opvraagbaar: false` zoals bij #200,
     zodat de afwezigheidscontrole (#396) 'niet via de chat' als eerlijk antwoord ziet."""

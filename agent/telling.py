@@ -11,7 +11,7 @@ import re
 
 from core.sentinels import BETEKENIS
 from tools import cbs_afronding, duo, store
-from tools.catalog import catalogus_titel
+from tools.catalog import bron_naam
 
 from .claimbinding import betekenis, kenmerken, kies, zin_van
 from .dimensielabels import selectie_regels
@@ -106,11 +106,6 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
     return (onder, boven) if gedragen else None
 
 
-def _naam(dataset: str) -> str:
-    titel = catalogus_titel(dataset)
-    return dataset if titel == dataset else f"{dataset} ({titel})"
-
-
 def _teldefinities(tool_results: list[str]) -> dict[str, str]:
     definities: dict[str, str] = {}
     for key in data_keys(tool_results):
@@ -137,8 +132,8 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     if grenzen is None:
         grenzen = _grenzen([k for r in tool_results for k in _stapkeys(r)])
     ondergrens, bovengrens = (sorted(g) for g in grenzen)
-    regels = [f"- {_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
-    regels += [f"- {_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
+    regels = [f"- {bron_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
+    regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
     regels += selectie_regels(tool_results)
     if ondergrens:
         regels.append(

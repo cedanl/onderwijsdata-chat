@@ -170,7 +170,7 @@ def test_dataset_details_volgt_dezelfde_regel():
 def test_telling_blok_onder_een_voprognoses_antwoord_noemt_geen_basisonderwijs():
     key = _get("voprognoses", pd.DataFrame({"JAAR": [2030], "AANTAL": [10.5]}))["data_key"]
 
-    with patch("agent.telling.catalogus_titel", side_effect=lambda d: d):
+    with patch("agent.telling.bron_naam", side_effect=lambda d: d):
         assert "basisonderwijs" not in telling_blok([json.dumps({"data_key": key})])
 
 

@@ -276,6 +276,37 @@ def test_de_snippet_selecteert_dezelfde_mbo_rijen():
     assert "isin(" in regels[-1] and "A025290" in regels[-1] and "A042781" not in regels[-1]
 
 
+def test_elke_bronregel_van_een_mbo_en_vo_tabel_noemt_alleen_mbo(catalogus):
+    """Audit 17 (CH-45): bij een vo-vraag noemde het antwoord 85368NED als bron, terwijl de chat
+    alleen de mbo-rijen laadt. Elke bronregel volgt de selectie die get_cbs_data maakt."""
+    from agent.citaties import _bron
+    from agent.dashboard import _source_label
+    from agent.selectie import selectie_in_woorden
+    from tools import store
+    from tools.catalog import bron_naam
+
+    with patch("tools.cbs.data", return_value=_VSV_RIJEN), patch("tools.cbs.definitions", return_value={}):
+        result = json.loads(get_cbs_data("85368NED"))
+
+    regels = [
+        result["catalogus_titel"],
+        _bron(result["data_key"], "get_cbs_data"),
+        selectie_in_woorden(result["data_key"]) or "",
+        bron_naam("85368NED"),
+        _source_label("CBS", "85368NED", None),
+    ]
+    assert all(f"{_CBS_VSV['bron']}, alleen mbo" in regel for regel in regels), regels
+    assert store.herkomst(result["data_key"])[0] == "bron: CBS, dataset 85368NED, alleen mbo"  # CSV- en grafiekexport
+
+
+def test_de_bronregel_van_een_mbo_tabel_is_de_catalogustitel(catalogus):
+    from tools.catalog import bron_naam, bron_titel
+
+    assert bron_titel("85353NED") == _CBS_MBO["bron"]
+    assert bron_naam("85353NED") == f"85353NED ({_CBS_MBO['bron']})"
+    assert bron_naam("onbekend-id") == "onbekend-id"
+
+
 # ── RIO: registers over alle sectoren alleen met een sectorfilter (CH-03) ────────
 
 

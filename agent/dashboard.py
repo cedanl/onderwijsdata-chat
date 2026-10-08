@@ -23,7 +23,7 @@ from agent.session_data import data_lineage, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
 from tools import LABELS, store
-from tools.catalog import catalogus_titel, resource_titel
+from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
     TOOL_COMPUTE_KPI,
@@ -396,7 +396,7 @@ def _source_label(prefix: str, dataset: str, resource) -> str:
     """ "CBS — Hoger onderwijs; ingeschrevenen, … (85423NED)": titel uit de catalogus, niet van het model."""
     if not dataset:
         return prefix
-    titel = catalogus_titel(dataset)
+    titel = bron_titel(dataset)
     label = f"{prefix} — {titel} ({dataset})" if titel != dataset else f"{prefix} — {dataset}"
     if prefix == "DUO" and resource is not None and (naam := resource_titel(dataset, resource)):
         label += f", {naam}"

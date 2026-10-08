@@ -9,14 +9,13 @@ citatie dat de herkomst niet is vastgesteld. Het model schrijft zelf geen marker
 """
 
 from tools import LABELS, store
-from tools.catalog import catalogus_titel
 from tools.kolomlabel import kolomlabel
 
 from .claimbinding import betekenis, kenmerken, kies, zin_van
 from .grounding import checked_numbers
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden
 from .selectie import SCHEIDING as _SCHEIDING
-from .selectie import data_keys, laadkey
+from .selectie import bron_in_woorden, data_keys, laadkey
 
 
 def _bron(data_key: str | None, tool: str) -> str:
@@ -24,7 +23,7 @@ def _bron(data_key: str | None, tool: str) -> str:
     known = store.meta(laadkey(data_key)) if data_key else None
     if known is None:
         return LABELS.get(tool, tool)
-    return f"{known.bron.upper()}{_SCHEIDING}{catalogus_titel(known.dataset)}"
+    return bron_in_woorden(known)
 
 
 def _citatie(geschreven: str, stap: int, tool: str, waarde: Meetwaarde, eenheid: dict[str, str]) -> dict:

@@ -644,6 +644,20 @@ def catalogus_titel(dataset_id: str) -> str:
     return dataset_id
 
 
+def bron_titel(dataset_id: str) -> str:
+    """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45).
+    Net als catalogus_titel het kale ID als de catalogus de dataset niet kent."""
+    titel = catalogus_titel(dataset_id)
+    deel = scopeprofiel.cbs_sectordeel(dataset_id)
+    return f"{titel}, {deel}" if deel and titel != dataset_id else titel
+
+
+def bron_naam(dataset_id: str) -> str:
+    """'85368NED (<titel>, alleen mbo)'; het kale ID als de catalogus de dataset niet kent."""
+    titel = bron_titel(dataset_id)
+    return dataset_id if titel == dataset_id else f"{dataset_id} ({titel})"
+
+
 def catalogus_laatste_update(dataset_id: str) -> str | None:
     """Laatste update datum uit de catalogus voor een CBS dataset-ID.
 

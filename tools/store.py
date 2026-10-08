@@ -4,6 +4,8 @@ from dataclasses import dataclass, field, replace
 
 from core.sentinels import mask_sentinels
 
+from .scopeprofiel import cbs_sectordeel
+
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
 # and datasets are read-only. Not suitable for per-user mutable state.
 _cache: dict = {}
@@ -112,6 +114,8 @@ def herkomst(key: str) -> list[str]:
     if known is None:
         return []
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
+    if deel := cbs_sectordeel(known.dataset):
+        bron += f", {deel}"
     if known.resource is not None:
         bron += f", resource {known.resource}"
     regels = [bron, *reversed(stappen)]
