@@ -122,6 +122,11 @@ def test_oneindige_lus_wordt_echt_gestopt(data, monkeypatch):
         "x = df['N'].sum()\nresult = 987654",
         "basis = {'n': 987650}\nresult = basis['n'] + 4 + len(df) * 0",
         "result = f'totaal {987650 + 4}' if len(df) else ''",
+        # CH-27 ronde 2: een conditionele constante kiest bij verstoorde waarden de andere tak.
+        "result = 987654 if df['N'].iloc[0] == 1200 else 0",
+        "result = (987650 + 4) if df['N'].iloc[0] == 1200 else 0",
+        # Een verstoringsproef die faalt (lege selectie, dan .iloc[0]) stelt niets vast: geen bewijs.
+        "rij = df[df['N'] == 1200].iloc[0]\nresult = int(rij['N']) * 823 + 54",
     ],
 )
 def test_getal_uit_het_script_telt_niet_als_bron(data, code):
@@ -158,6 +163,26 @@ def test_scriptconstanten_staan_bij_het_resultaat(data):
     parsed = json.loads(run_analysis(code="result = {'totaal': int(df['N'].sum()), 'drempel': 1000}", data_key=data))
     assert parsed["resultaat"] == {"totaal": 4600, "drempel": 1000}
     assert parsed["scriptconstanten"] == [1000]
+
+
+def test_een_afgekeurde_waarde_blijft_afgekeurd_in_een_volgende_stap(data):
+    """CH-27: een scriptconstante kreeg haar bronstatus terug via een volgende stap op de afgeleide key."""
+    from tools.query import query_data
+
+    parsed = json.loads(run_analysis(code="result = [{'T': 987654, 'n': len(df)}]", data_key=data))
+    key = parsed["data_key"]
+
+    assert grounding.unverified("Er zijn 987.654 studenten.", [query_data(key)]) == ["987.654"]
+    assert grounding.unverified("Er zijn 987.654 studenten.", [query_data(key, columns=["T"])]) == ["987.654"]
+    opnieuw = run_analysis(code="result = int(df['T'].iloc[0])", data_key=key)
+    assert grounding.unverified("Er zijn 987.654 studenten.", [opnieuw]) == ["987.654"]
+
+
+def test_een_niet_vastgestelde_afhankelijkheid_staat_bij_het_resultaat(data):
+    code = "rij = df[df['N'] == 1200].iloc[0]\nresult = int(rij['N']) * 823 + 54"
+    parsed = json.loads(run_analysis(code=code, data_key=data))
+    assert parsed["scriptconstanten"] == [987654]
+    assert "niet vast te stellen" in parsed["afhankelijkheid"]
 
 
 def test_een_getal_uit_de_invoer_is_geen_scriptconstante(data):
