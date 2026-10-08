@@ -80,8 +80,7 @@ git push gitlab v2.0.0
 # 3. Packages Helm chart
 # 4. Publishes to Harbor Helm repo
 # 5. Flux reconciles new image tag
-# 6. sync:github mirrors main + this tag (major-version tags only) to GitHub,
-#    which triggers the Azure deploy workflow there
+# 6. sync:github mirrors main + this tag to GitHub (every tag; no deploy there)
 
 # Flux reconciliation (per environment):
 # - development/test: always sync latest main (push-triggered)

@@ -245,12 +245,6 @@ sync:github:
   script:
     - git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
     - |
-      case "$CI_COMMIT_TAG" in
-        [0-9]*.0.0)
-          echo "Major release tag $CI_COMMIT_TAG — pushing to GitHub"
-          git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" "refs/tags/$CI_COMMIT_TAG"
-          ;;
-        *)
-          echo "No tag, or not a major release tag (want X.0.0) — skipping GitHub tag push"
-          ;;
-      esac
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" "refs/tags/$CI_COMMIT_TAG"
+      fi

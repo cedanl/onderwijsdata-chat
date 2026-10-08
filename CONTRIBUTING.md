@@ -32,8 +32,8 @@ De baseline krimpt per kwartaal naar nul (`AFBOUWPLAN` in `scripts/ty_baseline.p
 ≤100 eind 2026, ≤70 eind Q1 2027, ≤40 eind Q2 en 0 eind Q3 2027. Het script meldt bij elke run
 hoeveel er nog af moet.
 
-De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en
-draait de workflow alleen bij een major-tag (deploy naar Azure).
+De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en alle tags;
+er draait daar geen deploy meer.
 
 Werk test-first: schrijf de test die het gedrag vastlegt, laat hem falen, en maak hem dan groen.
 Houd functies klein en met één verantwoordelijkheid, en ruim dode code op die je tegenkomt.
