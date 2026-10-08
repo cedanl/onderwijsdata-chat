@@ -13,6 +13,7 @@
  */
 import { test, expect } from 'playwright/test'
 import { WebSocket } from 'ws'
+import { protocollen } from './chatstream.js'
 
 const API = 'http://localhost:8000'
 const WS_URL = 'ws://localhost:8000/api/chat'
@@ -54,7 +55,7 @@ async function getToken() {
 
 function chatViaWebSocket(token, message, model, timeoutMs = 120_000) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${WS_URL}?token=${token}`)
+    const ws = new WebSocket(WS_URL, protocollen(token))
     const toolCalls = []
     const textParts = []
     const allEvents = []
@@ -84,6 +85,9 @@ function chatViaWebSocket(token, message, model, timeoutMs = 120_000) {
         allEvents.push(event.type + (event.name ? `:${event.name}` : ''))
         if (event.type === 'tool_start') toolCalls.push(event.name)
         if (event.type === 'text_delta') textParts.push(event.content)
+        // Een ingetrokken versie telt niet mee; message_end draagt het eindantwoord (CH-28).
+        if (event.type === 'message_cancel') textParts.length = 0
+        if (event.type === 'message_end' && typeof event.content === 'string') textParts.splice(0, textParts.length, event.content)
         if (event.type === 'clarification') {
           gotClarification = true
           finish({ timeout: false, clarificationData: event })
