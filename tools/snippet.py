@@ -80,6 +80,10 @@ def _duo_sentinelregels() -> list[str]:
 
 def _cbs_laadregels(args: dict) -> list[str]:
     filters = args.get("filters") or {}
+    # Dezelfde mbo-selectie als de app, in de aanroep en op de rijen (CH-03).
+    selectie = scopeprofiel.cbs_sectorselectie(args["dataset_id"], filters)
+    if isinstance(selectie, scopeprofiel.CbsSectorselectie):
+        filters = selectie.params
     extra = f", **{filters!r}" if filters else ""
     regels = [
         "import pandas as pd",
@@ -87,10 +91,8 @@ def _cbs_laadregels(args: dict) -> list[str]:
         "",
         f"df = pd.DataFrame(data({_lit(args['dataset_id'])}{extra}))",
     ]
-    if args["dataset_id"] in scopeprofiel.CBS_SECTORFILTER:
-        # Dezelfde mbo-selectie als de app (CH-03).
-        dimensie, codes = scopeprofiel.CBS_SECTORFILTER[args["dataset_id"]]
-        regels.append(f"df = df[df[{dimensie!r}].str.strip().isin({sorted(codes)!r})]  # alleen mbo")
+    if isinstance(selectie, scopeprofiel.CbsSectorselectie):
+        regels.append(f"df = df[df[{selectie.dimensie!r}].str.strip().isin({sorted(selectie.codes)!r})]  # alleen mbo")
     return regels
 
 

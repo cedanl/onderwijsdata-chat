@@ -15,7 +15,9 @@ de laatste tag is 1.8.6.
   CBS-telling gaat van 266 naar 117 tabellen. Bij de VSV-tabellen over mbo én vo laadt de chat alleen de
   mbo-rijen; dat selecteert de code, niet het filter van het model (de CBS-feed negeert een EN-clausule).
   Elke bronvermelding van zo'n tabel zegt dat ook ("…, alleen mbo"): in de citaties, het Telling-blok, de
-  rapportbronnen en de CSV- en grafiekexport.
+  rapportbronnen en de CSV- en grafiekexport. De mbo-selectie zit nu ook in de aanroep zelf, vooraan in
+  `$filter` (de feed gebruikt bij twee clausules op dezelfde dimensie alleen de eerste); een vo-code gaat niet
+  meer de deur uit. Een volle pagina zonder mbo-rijen heet onvolledig, niet leeg.
 - RIO-registers over alle sectoren (aangeboden opleidingen, opleidingen, opleidingserkenningen,
   onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
