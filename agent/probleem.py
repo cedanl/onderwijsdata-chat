@@ -36,6 +36,7 @@ class Probleem(str):
     melding: str
     hard: bool = False
     niet_gecontroleerd: bool = False
+    controle: str | None = None  # welke controle het vond: voor het log en de afvuurfrequentie (CH-01)
 
     def __new__(cls, melding: str, opdracht: str = ""):
         probleem = super().__new__(cls, f"{melding} {opdracht}".strip())
@@ -58,12 +59,22 @@ def niet_gecontroleerd(fout_id: str) -> Probleem:
     return probleem
 
 
-def veilig(controle: Callable[..., Iterable[T]], *args) -> list[T | Probleem]:
+def _van(probleem, controle: str) -> Probleem:
+    """Het probleem als Probleem, met de naam van de controle die het vond."""
+    if not isinstance(probleem, Probleem):
+        probleem = Probleem(str(probleem))
+    if probleem.controle is None:
+        probleem.controle = controle
+    return probleem
+
+
+def veilig(controle: Callable[..., Iterable[T]], *args) -> list[Probleem]:
     """De problemen van een controle; kan de controle zelf niet draaien, dan één niet-gecontroleerd-probleem."""
+    naam = getattr(controle, "__name__", str(controle))
     try:
-        return list(controle(*args))
+        return [_van(p, naam) for p in controle(*args)]
     except Exception as exc:
-        return [niet_gecontroleerd(log_interne_fout(exc, f"controle {getattr(controle, '__name__', controle)}"))]
+        return [niet_gecontroleerd(log_interne_fout(exc, f"controle {naam}"))]
 
 
 def herstelbare(problemen: Iterable[str]) -> list[str]:

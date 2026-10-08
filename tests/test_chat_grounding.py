@@ -407,3 +407,23 @@ def test_number_only_from_the_user_is_a_claim_to_verify(monkeypatch):
     assert events[-1]["controle"] == [
         "987654 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
     ]
+
+
+def test_de_intrekking_noemt_de_reden_en_de_controle_wordt_gelogd(monkeypatch, caplog):
+    """CH-01: elke controle vuurde dezelfde toast af, 'klopte niet met de opgehaalde data', ook bij een
+    stijlcontrole. De reden gaat nu mee in gewone taal, en het log noemt welke controle afging."""
+    with caplog.at_level("INFO", logger="agent.run"):
+        _, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
+                StreamResult(text="In totaal 5.943 eerstejaars.", tool_calls=[]),
+            ],
+        )
+
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert cancel["reden"] and "6.340" in cancel["reden"][0]
+    [toast] = [e for e in events if e["type"] == "toast"]
+    assert "klopte niet met de opgehaalde data" not in toast["message"]
+    assert "HERKANSING" in caplog.text and "ongedekte_getallen" in caplog.text

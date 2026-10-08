@@ -4,9 +4,10 @@
 
 // The server withdrew the text (message_cancel): the card stays open for the rewrite.
 // `naStap` is how many steps had run, so an export can mark which came after the correction.
-export function withdrawText(msg) {
+export function withdrawText(msg, reden) {
   if (!msg.content?.trim()) return msg
-  const versie = { tekst: msg.content, naStap: msg.tools?.length || 0 }
+  // De reden in gewone taal, van de controle die de versie introk (CH-01).
+  const versie = { tekst: msg.content, naStap: msg.tools?.length || 0, ...(reden?.length && { reden }) }
   return { ...msg, content: '', vervangen: [...(msg.vervangen || []), versie] }
 }
 

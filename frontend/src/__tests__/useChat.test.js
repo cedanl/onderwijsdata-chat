@@ -300,6 +300,21 @@ describe('useChat tooltrace bij intrekken (#398)', () => {
     expect(msg.done).toBe(true)
   })
 
+  it('bewaart de reden van de controle bij de ingetrokken versie (CH-01)', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      stappen(ws)
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Het zijn er 99.' })
+      ws.emit({ type: 'message_cancel', reden: ['99 staat niet in de opgehaalde data.'] })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Het zijn er 36.201.' })
+      ws.emit({ type: 'message_end', content: 'Het zijn er 36.201.' })
+    })
+    const [msg] = assistantMessages()
+    expect(msg.vervangen).toEqual([{ tekst: 'Het zijn er 99.', naStap: 2, reden: ['99 staat niet in de opgehaalde data.'] }])
+  })
+
   it('houdt de stappen vóór een verduidelijkingsvraag', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {
