@@ -110,4 +110,4 @@ env:
         key: AZURE_AI_API_BASE
   # Model-picker toont de Foundry-modellen.
   - name: AVAILABLE_MODELS
-    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
+    value: "azure_ai/claude-sonnet-5-5"

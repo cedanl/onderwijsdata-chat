@@ -60,7 +60,7 @@ env:
         key: uri
   # azure_ai/claude-sonnet-5-5: default — Foundry-modellen zijn het enige
   # aanbod (Willma-model eruit, endpoint blijft als fallback-optie staan).
-  # Sonnet als gebalanceerde default, Opus 5.5 als zware optie in de picker.
+  # Sonnet 5.5 is het enige model in de picker.
   - name: MODEL
     value: "azure_ai/claude-sonnet-5-5"
   - name: WILLMA_BASE_URL
@@ -92,4 +92,4 @@ env:
         key: AZURE_AI_API_BASE
   # Model-picker toont de Foundry-modellen.
   - name: AVAILABLE_MODELS
-    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
+    value: "azure_ai/claude-sonnet-5-5"
