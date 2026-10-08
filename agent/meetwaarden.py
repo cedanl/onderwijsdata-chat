@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from tools import TOOL_RUN_ANALYSIS
 from tools.analysis import SCRIPTCONSTANTEN
+from tools.arbeidsmarkt import ROA_ID, UWV_ID
 from tools.kolomlabel import kolomlabel
 
 # Een kolom die iets aanwijst in plaats van meet: OPLEIDINGSCODE, BRIN_NUMMER, CBS' ID.
@@ -37,6 +38,7 @@ class Meetwaarde:
     selectie: tuple[str, ...] = ()  # de andere cellen van haar rij, in woorden
     data_key: str | None = None
     eenheid: str | None = None
+    bron: str | None = None  # zonder data_key: de bron in woorden (UWV, ROA)
 
 
 def _getal(waarde) -> frozenset[str] | None:
@@ -105,7 +107,55 @@ def _uit_analyse(resultaat, data_key: str | None) -> Iterator[Meetwaarde]:
         yield from _uit_rijen([resultaat], data_key)
 
 
+def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
+    """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum."""
+    bron = f"{parsed.get('bron')}, {parsed.get('peildatum')}"  # de toolbron noemt UWV al
+    plaats = tuple(
+        f"{label}: {parsed[k]}" for k, label in (("provincie", "Provincie"), ("gemeente", "Gemeente")) if parsed.get(k)
+    )
+    sector = (f"Sector: {parsed['sector']}",) if parsed.get("sector") else ()
+    for veld, maat, selectie in (
+        ("totaal_vacatures", "Vacatures", plaats),
+        ("vacatures_sector", "Vacatures in de sector", plaats + sector),
+    ):
+        if (cijfers := _getal(parsed.get(veld))) is not None:
+            yield Meetwaarde(cijfers, maat, selectie, bron=bron)
+    for veld, maat in (("clusters", "Vacatures"), ("gedeelde_clusters", "Vacatures naar rato in de sector")):
+        clusters = parsed.get(veld)
+        for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
+            if (cijfers := _getal(aantal)) is not None:
+                yield Meetwaarde(cijfers, maat, (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
+
+
+_ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
+
+
+def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
+    """ROA per onderdeel, opleiding en indicator (CH-39); de regio per onderdeel uit `herkomst`,
+    zodat een landelijke terugval landelijk heet."""
+    bron = f"{parsed.get('bron')} ({parsed.get('versie')})"  # "ROA, AIS tot 2030"
+    gegeven = parsed.get("herkomst")
+    herkomst: dict = gegeven if isinstance(gegeven, dict) else {}
+    for onderdeel, naam in _ROA_ONDERDELEN.items():
+        regio = herkomst.get(onderdeel) or parsed.get("regio")
+        opleidingen = parsed.get(onderdeel)
+        for opleiding, indicatoren in opleidingen.items() if isinstance(opleidingen, dict) else ():
+            for indicator, waarden in indicatoren.items() if isinstance(indicatoren, dict) else ():
+                for soort, waarde in waarden.items() if isinstance(waarden, dict) else ():
+                    if (cijfers := _getal(waarde)) is not None:
+                        selectie = (f"Opleiding: {opleiding}", f"Regio: {regio}", naam)
+                        yield Meetwaarde(
+                            cijfers, indicator, selectie, eenheid="%" if soort == "perc" else None, bron=bron
+                        )
+
+
+_ARBEIDSMARKT = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa}
+
+
 def _uit(parsed, analyse: bool) -> Iterator[Meetwaarde]:
+    if isinstance(parsed, dict) and (vertaler := _ARBEIDSMARKT.get(parsed.get("dataset"))):
+        yield from vertaler(parsed)
+        return
     if not isinstance(parsed, dict):
         if analyse:
             yield from _uit_analyse(parsed, None)

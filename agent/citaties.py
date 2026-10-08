@@ -33,7 +33,7 @@ def _citatie(geschreven: str, stap: int, tool: str, waarde: Meetwaarde, eenheid:
         "stap": stap,
         "tool": tool,
         "label": LABELS.get(tool, tool),
-        "bron": _bron(waarde.data_key, tool),
+        "bron": waarde.bron or _bron(waarde.data_key, tool),
         "maat": kolomlabel(waarde.maat),
         **({"eenheid": e} if (e := waarde.eenheid or eenheid.get(waarde.maat)) else {}),
         **({"selectie": _SCHEIDING.join(waarde.selectie)} if waarde.selectie else {}),
