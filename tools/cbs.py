@@ -260,6 +260,26 @@ def _page_size(top) -> int:
 _CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS wil codes, geen labels."
 
 
+def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pagina: bool) -> str:
+    """Waarom er niets te laden is: de bron gaf niets, de pagina is vol, of de mbo-selectie is leeg (CH-03)."""
+    if not opgehaald:
+        return (
+            f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
+            "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
+        )
+    if volle_pagina:
+        return (
+            f"De eerste {len(opgehaald)} rijen van dataset '{dataset_id}' bevatten geen mbo-rijen. De selectie is "
+            "onvolledig: de bron kan er verder nog hebben. Verfijn $filter of verhoog $top."
+        )
+    # Rijen opgehaald en geen over: alleen de mbo-selectie van een tabel over mbo én vo filtert zo.
+    dimensie, codes = scopeprofiel.CBS_SECTORFILTER[dataset_id]
+    return (
+        f"Dataset '{dataset_id}' gaat over mbo en vo; de chat laadt alleen de mbo-rijen, en deze "
+        f"selectie bevat er geen. Filter in $filter op {dimensie} met een mbo-code: {sorted(codes)}."
+    )
+
+
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
@@ -271,22 +291,21 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         if fout := _onbekende_select(params["$select"], col_defs):
             return fout
         params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
+    # Bij een tabel over mbo én vo ligt de scopegrens vóór de aanroep, en nog eens op de rijen (CH-03).
+    selectie = scopeprofiel.cbs_sectorselectie(dataset_id, params)
+    if isinstance(selectie, str):
+        return selectie
+    if selectie:
+        params = selectie.params
     try:
         opgehaald = data(dataset_id, **params)
     except Exception as e:
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
-    rows = scopeprofiel.cbs_sectorrijen(dataset_id, opgehaald)
-    if opgehaald and not rows:
-        dimensie, codes = scopeprofiel.CBS_SECTORFILTER[dataset_id]
-        return (
-            f"Dataset '{dataset_id}' gaat over mbo en vo; de chat laadt alleen de mbo-rijen, en deze "
-            f"selectie bevat er geen. Filter in $filter op {dimensie} met een mbo-code: {sorted(codes)}."
-        )
+    rows = selectie.rijen(opgehaald) if selectie else opgehaald
+    # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
+    truncated = len(opgehaald) >= _page_size(params["$top"])
     if not rows:
-        return (
-            f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
-            "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
-        )
+        return _geen_rijen(dataset_id, filters, opgehaald, truncated)
 
     loaded_defs = _load_definitions(dataset_id)
     col_defs = loaded_defs or {}
@@ -295,8 +314,6 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
-    # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
-    truncated = len(opgehaald) >= _page_size(params["$top"])
     eenheid, afronding_bekend = _afronding(dataset_id)
     store.put(
         key,

@@ -260,12 +260,78 @@ def test_een_cbs_tabel_over_mbo_en_vo_geeft_alleen_de_mbo_rijen(catalogus):
 
 
 def test_een_vo_selectie_uit_een_mbo_en_vo_tabel_geeft_geen_data(catalogus):
-    with patch("tools.cbs.data", return_value=_VSV_RIJEN[:2]), patch("tools.cbs.definitions", return_value={}):
+    with patch("tools.cbs.data", return_value=_VSV_RIJEN[:2]) as data, patch("tools.cbs.definitions", return_value={}):
         result = get_cbs_data("85368NED", {"$filter": "Onderwijssoort eq 'A042781'"})
 
+    data.assert_not_called()  # de scopegrens ligt vóór de netwerkaanroep (CH-03)
     assert "data_key" not in result
     assert "4000" not in result
     assert "A025290" in result  # de mbo-codes om mee te filteren
+
+
+# De CBS-feed gebruikt bij twee clausules op dezelfde dimensie alleen de eerste (live 08-10:
+# "(vo) and (mbo)" gaf de vo-rijen, "(mbo) and (vo)" de mbo-rijen). De mbo-selectie gaat dus vooraan.
+_MBO_EERST = "(Onderwijssoort eq 'A025290' or "
+
+
+def test_de_aanroep_van_een_mbo_en_vo_tabel_selecteert_mbo_vooraf(catalogus):
+    """CH-03: de mock registreerde call('85368NED', $top=5000) zonder onderwijssoortfilter."""
+    with patch("tools.cbs.data", return_value=_VSV_RIJEN) as data, patch("tools.cbs.definitions", return_value={}):
+        get_cbs_data("85368NED")
+        get_cbs_data("85368NED", {"$filter": "Perioden eq '2023SJ00'"})
+
+    eerste, tweede = (c.kwargs["$filter"] for c in data.call_args_list)
+    assert eerste.startswith(_MBO_EERST.removesuffix(" or ").removeprefix("("))
+    assert "A042781" not in eerste and "A043837" not in eerste
+    assert tweede.startswith(_MBO_EERST) and tweede.endswith(") and (Perioden eq '2023SJ00')")
+
+
+def test_een_mbo_code_van_het_model_versmalt_de_selectie(catalogus):
+    """De feed negeert de tweede clausule op Onderwijssoort: de code zet de doorsnede vooraan en filtert erop."""
+    from tools import store
+
+    rijen = [*_VSV_RIJEN, {"Onderwijssoort": "A041868", "Perioden": "2023SJ00", "VoortijdigSchoolverlaters_1": 3000}]
+    with patch("tools.cbs.data", return_value=rijen) as data, patch("tools.cbs.definitions", return_value={}):
+        result = json.loads(
+            get_cbs_data("85368NED", {"$filter": "Onderwijssoort eq 'A041868' or Onderwijssoort eq 'A042781'"})
+        )
+
+    assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A041868') and (")
+    assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A041868"]
+
+
+def test_een_onbekende_vorm_van_het_sectorfilter_wordt_niet_opgehaald(catalogus):
+    with patch("tools.cbs.data") as data:
+        result = get_cbs_data("85368NED", {"$filter": "startswith(Onderwijssoort, 'A04')"})
+
+    data.assert_not_called()
+    assert "Onderwijssoort eq" in result
+
+
+def test_select_houdt_de_sectordimensie(catalogus):
+    """Zonder Onderwijssoort in $select valt elke rij weg in de controle achteraf."""
+    with patch("tools.cbs.data", return_value=_VSV_RIJEN) as data, patch("tools.cbs.definitions", return_value={}):
+        get_cbs_data("85368NED", {"$select": "Perioden,VoortijdigSchoolverlaters_1"})
+
+    assert "Onderwijssoort" in data.call_args.kwargs["$select"].split(",")
+
+
+def test_een_volle_pagina_zonder_mbo_rijen_is_onvolledig_niet_leeg(catalogus):
+    """$top=2 met twee rijen buiten scope: de bron kan verder nog mbo-rijen hebben (CH-03, P2)."""
+    with patch("tools.cbs.data", return_value=_VSV_RIJEN[:2]), patch("tools.cbs.definitions", return_value={}):
+        result = get_cbs_data("85368NED", {"$top": 2})
+
+    assert "data_key" not in result
+    assert "onvolledig" in result.lower()
+    assert "bevat er geen" not in result
+
+
+def test_de_snippet_laadt_met_dezelfde_aanroep():
+    from tools.snippet import _cbs_laadregels
+
+    regels = _cbs_laadregels({"dataset_id": "85368NED", "filters": {"$filter": "Perioden eq '2023SJ00'"}})
+
+    assert _MBO_EERST in "\n".join(regels)
 
 
 def test_de_snippet_selecteert_dezelfde_mbo_rijen():
