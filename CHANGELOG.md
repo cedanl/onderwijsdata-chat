@@ -12,6 +12,10 @@ de laatste tag is 1.8.6.
   vraag. De DUO-telling gaat daardoor van 56 naar 14 datasets. Een record zonder scopebesluit valt erbuiten.
 
 ### Betrouwbaarheid van antwoorden
+- De controlemelding over een KPI over de hele selectie noemt bron en periode in woorden
+  ("DUO · Ingeschrevenen hbo, 2020/21 t/m 2024/25"), niet de interne sleutel.
+- Een lege modelrespons (vaak een contentfilter van de provider) krijgt een vaste uitleg in plaats van
+  "stuur je vraag opnieuw", wat dan niet helpt.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en

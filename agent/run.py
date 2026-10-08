@@ -39,6 +39,12 @@ from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
 
+# Een lege modelrespons zonder weigering of fout (CH-32): "stuur je vraag opnieuw" helpt dan niet.
+LEEG_ANTWOORD = (
+    "Het model gaf op deze vraag geen antwoord, ook geen weigering. Opnieuw sturen helpt meestal niet: "
+    "formuleer de vraag anders, of stel een vraag over de open onderwijsdata."
+)
+
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
 _MAX_TOOL_RESULT_CHARS = 12000
 
@@ -333,7 +339,9 @@ async def run(
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     if not text_content.strip():
-        logger.warning("LEEG ANTWOORD  model=%s", chosen_model)
+        # Vaak een contentfilter van de provider: opnieuw sturen geeft weer niets (CH-32).
+        logger.warning("LEEG ANTWOORD  model=%s  finish_reason=%s", chosen_model, result.finish_reason)
+        text_content = LEEG_ANTWOORD
     if result.problems:
         logger.warning("CONTROLE niet in orde of niet gecontroleerd  model=%s  %s", chosen_model, result.problems)
     if harde(result.problems):
