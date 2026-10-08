@@ -6,11 +6,11 @@ import traceback
 import pandas as pd
 import plotly.graph_objects as go
 
-from . import dekking, fouten, plot, sandbox, scriptcontrole, store
+from . import afhankelijkheid, dekking, fouten, plot, sandbox, scriptcontrole, store
 
 logger = logging.getLogger(__name__)
 
-# Getallen die het script zelf typte; de getalcontrole telt ze niet als bewijs (#410).
+# Getallen die niet van de data afhangen; de getalcontrole telt ze niet als bewijs (#410, CH-27).
 SCRIPTCONSTANTEN = "scriptconstanten"
 
 
@@ -89,8 +89,8 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     elif not result_key:
         # Een los getal heeft geen eigen key; wat het las is zijn selectie, ook voor de onderdrukking (#414).
         text_obj = {"gelezen": bronnen, "resultaat": text_obj}
-    if bronnen and script.constanten:
-        text_obj[SCRIPTCONSTANTEN] = list(script.constanten)
+    if bronnen and (eigen := afhankelijkheid.onafhankelijke_getallen(code, df, tabellen, result)):
+        text_obj[SCRIPTCONSTANTEN] = list(eigen)
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):

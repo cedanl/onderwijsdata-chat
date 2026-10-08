@@ -14,6 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 from tools import TOOL_RUN_ANALYSIS
+from tools.analysis import SCRIPTCONSTANTEN
 from tools.kolomlabel import kolomlabel
 
 # Een kolom die iets aanwijst in plaats van meet: OPLEIDINGSCODE, BRIN_NUMMER, CBS' ID.
@@ -124,13 +125,20 @@ def _uit(parsed, analyse: bool) -> Iterator[Meetwaarde]:
         yield from _uit_analyse(parsed, None)
 
 
+def _onafhankelijk(parsed) -> set[frozenset[str]]:
+    """De getallen van een analyse die niet van de data afhangen (CH-27): geen meetwaarde."""
+    waarden = parsed.get(SCRIPTCONSTANTEN) if isinstance(parsed, dict) else None
+    return {c for w in waarden if (c := _getal(w)) is not None} if isinstance(waarden, list) else set()
+
+
 def meetwaarden(result: str, tool: str | None = None) -> list[Meetwaarde]:
     """De getypeerde meetwaarden van één toolresultaat; leeg bij een fout, metadata of een bronloze uitkomst."""
     try:
         parsed = json.loads(result)
     except (TypeError, ValueError):
         return []
-    return list(_uit(parsed, tool == TOOL_RUN_ANALYSIS))
+    eigen = _onafhankelijk(parsed)
+    return [w for w in _uit(parsed, tool == TOOL_RUN_ANALYSIS) if w.cijfers not in eigen]
 
 
 def eenheden(result: str) -> dict[str, str]:
