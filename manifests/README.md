@@ -71,6 +71,6 @@ sops -d manifests/development/secret.yaml | kubectl apply -f -
 
 1. **development/test** volgen elke push naar `main` op GitLab (canonical remote)
 2. **playground/production** volgen alleen major-version tags (`X.0.0`)
-3. GitLab CI bouwt en publiceert het image/chart, en synct `main` (incl. major
-   tags) door naar GitHub als publieke spiegel
+3. GitLab CI bouwt en publiceert het image/chart, en synct `main` en alle
+   tags door naar GitHub als publieke spiegel
 4. Flux detecteert nieuwe image tag → reconciliatie in de betreffende environment
