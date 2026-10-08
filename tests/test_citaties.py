@@ -197,3 +197,57 @@ def test_twijfel_tussen_losse_selecties_blijft_twijfel(keten):
     steps = [("query_data", _B), ("query_data", _A), ("run_analysis", _ANALYSE)]
 
     assert citaties("Het waren 10.000 studenten.", steps)[0]["reden"] == "meerdere"
+
+
+# --- CH-39 (#459): arbeidsmarktantwoorden hadden nul citaties ---
+
+_UWV = json.dumps(
+    {
+        "bron": "UWV Open Match",
+        "dataset": "uwv-open-match-data",
+        "peildatum": "mei 2023",
+        "provincie": "Gelderland",
+        "totaal_vacatures": 23574,
+        "clusters": {"Zorg en welzijn": 9607, "Techniek": 5426},
+    }
+)
+_ROA = json.dumps(
+    {
+        "bron": "ROA, AIS tot 2030",
+        "dataset": "ais2030",
+        "versie": "v20251218",
+        "regio": "provincie Gelderland",
+        "herkomst": {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "provincie Gelderland"},
+        "schoolverlaters_sis_2024": {"Bachelor": {"werkloosheid": {"perc": 4}}},
+        "prognose_tot_2030": {
+            "Bachelor": {
+                "verwachte baanopeningen tot 2030": {"aantal": 435600},
+                "ITA toekomstige arbeidsmarktsituatie in 2030": {"typering": "matig"},
+            }
+        },
+    }
+)
+
+
+def test_uwv_vacatures_krijgen_een_citatie_met_provincie_en_cluster():
+    [totaal, zorg] = citaties(
+        "In Gelderland stonden 23.574 vacatures open, waarvan 9.607 in Zorg en welzijn.",
+        [("get_uwv_vacatures", _UWV)],
+    )
+    assert totaal["vastgesteld"] is True and "UWV" in totaal["bron"] and "Gelderland" in totaal["selectie"]
+    assert zorg["vastgesteld"] is True and "Zorg en welzijn" in zorg["selectie"]
+
+
+def test_een_roa_prognose_krijgt_een_citatie_met_regio_uit_de_herkomst():
+    [citatie] = citaties("Tot 2030 verwacht ROA 435.600 baanopeningen voor bachelors.", [("get_roa_benchmark", _ROA)])
+    assert citatie["vastgesteld"] is True
+    assert "ROA" in citatie["bron"] and "v20251218" in citatie["bron"]
+    assert "Bachelor" in citatie["selectie"] and "provincie Gelderland" in citatie["selectie"]
+    assert citatie["maat"] == "verwachte baanopeningen tot 2030"
+
+
+def test_een_ander_getal_in_een_arbeidsmarktantwoord_is_expliciet_onbepaald():
+    """Klaar als: elk getal uit een ROA-/UWV-antwoord heeft een citatie of expliciet 'onbepaald'."""
+    assert citaties("Er zijn 12.345 vacatures.", [("get_uwv_vacatures", _UWV)]) == [
+        {"getal": "12.345", "vastgesteld": False, "reden": "geen_meetwaarde"}
+    ]

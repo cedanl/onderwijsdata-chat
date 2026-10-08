@@ -48,6 +48,9 @@ de laatste tag is 1.8.6.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
 
 ### Betrouwbaarheid van antwoorden
+- Getallen in een arbeidsmarktantwoord krijgen een citatie: UWV-vacatures met provincie, sector en
+  beroepencluster en de peildatum, ROA-cijfers met opleiding, indicator, regio en versie. Een landelijke ROA-
+  terugval heet in de citatie ook landelijk.
 - Een getal dat zowel in een selectie als in een analyse op die selectie staat, krijgt de selectie als
   herkomst in plaats van "herkomst niet vastgesteld". Blijft de herkomst toch onzeker, dan zegt de uitleg
   waarom: het getal staat niet als meetwaarde in de data, of staat er meer dan eens in zonder dat de zin
