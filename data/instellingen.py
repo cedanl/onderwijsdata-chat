@@ -314,3 +314,27 @@ def _get_alias_lookup() -> dict[str, str]:
 
 def resolve_alias(naam: str) -> str:
     return _get_alias_lookup().get(naam.lower(), naam)
+
+
+def instellingsprofiel(naam: str) -> dict | None:
+    """Sector, provincie, arbeidsmarktregio en instellingscode van een profielinstelling (#448).
+
+    Alleen een exacte naam of alias, hoofdletterongevoelig: een deel van een naam geeft
+    niets, want een gegokte regio is erger dan geen regio. Onbekend → None.
+
+    De regio is die van het instellingsadres in DUO ("Adressen van instellingen": één adres
+    per instelling, geen vestigingen). Een instelling met vestigingen in meer provincies
+    (Fontys, Inholland, NHL Stenden) krijgt de provincie en het RPA-gebied van dat adres.
+    Zonder adres blijven provincie en arbeidsmarktregio None.
+    """
+    canoniek = _get_alias_lookup().get(naam.strip().lower())
+    inst = next((i for i in get_all() if i["naam"] == canoniek), None)
+    if inst is None:
+        return None
+    return {
+        "naam": inst["naam"],
+        "sector": inst["type"],
+        "provincie": inst["provincie"],
+        "arbeidsmarktregio": inst["arbeidsmarktregio"],
+        "instellingscode": inst["instellingscode"],
+    }
