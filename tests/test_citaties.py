@@ -78,8 +78,9 @@ def test_jaartallen_en_kleine_getallen_krijgen_er_geen():
     assert [c["getal"] for c in citaties("In 2024 waren er 12 van 378490.", [("get_cbs_data", _CBS)])] == ["378490"]
 
 
-def test_zelfde_getal_twee_keer_geeft_een_citatie():
-    assert len(citaties("378.490 is 378.490.", [("get_cbs_data", _CBS)])) == 1
+def test_elk_voorkomen_van_een_getal_krijgt_een_eigen_citatie():
+    """CH-08 (#462): de tweede claim met hetzelfde getal kreeg nooit een eigen citatie."""
+    assert len(citaties("378.490 is 378.490.", [("get_cbs_data", _CBS)])) == 2
 
 
 def test_aantal_citaties_hangt_alleen_van_de_tekst_af():
@@ -251,3 +252,16 @@ def test_een_ander_getal_in_een_arbeidsmarktantwoord_is_expliciet_onbepaald():
     assert citaties("Er zijn 12.345 vacatures.", [("get_uwv_vacatures", _UWV)]) == [
         {"getal": "12.345", "vastgesteld": False, "reden": "geen_meetwaarde"}
     ]
+
+
+# --- CH-08 (#462): hetzelfde getal in twee claims ---
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_twee_claims_met_hetzelfde_getal_krijgen_elk_hun_eigen_selectie(volgorde):
+    """Audit 17: 'Instelling B had 10.000. Instelling A had 10.000.' gaf één B-citatie."""
+    steps = [("query_data", _B), ("query_data", _A)][::volgorde]
+
+    b, a = citaties("Hogeschool B had 10.000 studenten. Hogeschool A had 10.000 studenten.", steps)
+
+    assert (b["data_key"], a["data_key"]) == ("duo:b", "duo:a")

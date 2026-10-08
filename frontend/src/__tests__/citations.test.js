@@ -84,6 +84,19 @@ describe('zichtbare citaties (#365)', () => {
     expect(uitleg).not.toContain('staat niet als meetwaarde')
   })
 
+  // CH-08 (#462): hetzelfde getal in twee zinnen kan twee bronnen hebben.
+  it('geeft elk voorkomen van een getal zijn eigen citatie, in volgorde', () => {
+    toon('B had 10.000 studenten. A had 10.000 studenten.', [
+      { getal: '10.000', vastgesteld: true, bron: 'DUO · B', label: 'Data gefilterd', stap: 1 },
+      { getal: '10.000', vastgesteld: true, bron: 'DUO · A', label: 'Data gefilterd', stap: 2 },
+    ])
+    const [b, a] = container.querySelectorAll('button')
+    act(() => b.click())
+    expect(container.querySelector('[role="note"]').textContent).toContain('DUO · B')
+    act(() => a.click())
+    expect([...container.querySelectorAll('[role="note"]')].at(-1).textContent).toContain('DUO · A')
+  })
+
   it('laat getallen in code en onderdelen van een groter getal met rust', () => {
     toon('Code `378.490` en 1378.490 en 378.490,5.')
     expect(container.querySelectorAll('button')).toHaveLength(0)

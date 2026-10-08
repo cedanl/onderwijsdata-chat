@@ -13,9 +13,10 @@ from core.sentinels import BETEKENIS
 from tools import cbs_afronding, duo, store
 from tools.catalog import bron_naam
 
-from .claimbinding import betekenis, kenmerken, kies, zin_van
+from .binding import zin_op
+from .claimbinding import betekenis, kenmerken, kies
 from .dimensielabels import selectie_regels
-from .grounding import bewijs_getallen, checked_numbers
+from .grounding import bewijs_getallen, getallen_met_positie
 from .meetwaarden import meetwaarden
 from .selectie import data_keys
 
@@ -77,7 +78,7 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
     onder: set[str] = set()
     boven: set[str] = set()
     gedragen = False
-    for geschreven, cijfers in checked_numbers(tekst):
+    for _, cijfers, positie in getallen_met_positie(tekst):
         kandidaten = [
             (tuple(keys), w)
             for keys, getallen, ws in stappen
@@ -91,7 +92,7 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
             kandidaten,
             lambda k: (k[0], betekenis(k[1]) if k[1] else None),
             lambda k: kenmerken(k[1]) if k[1] else (),
-            zin_van(tekst, geschreven),
+            zin_op(tekst, positie),
         )
         if gekozen:
             o, b = _grenzen(list(gekozen[0]))

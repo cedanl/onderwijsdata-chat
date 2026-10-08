@@ -112,3 +112,23 @@ def test_definities_voor_een_volgende_kop_laten_die_kop_staan():
     )
 
     assert "eigen tekst" not in tekst and "**Kanttekening**\nLet op." in tekst
+
+
+# --- CH-08 (#462): de ondergrens van de tweede claim met hetzelfde getal ---
+
+
+def test_de_tweede_claim_met_hetzelfde_getal_krijgt_haar_eigen_ondergrens():
+    """Audit 17: A = [10000, -1], B = [10000]; de ondergrens van A ontbrak als B eerst kwam."""
+    store.put("duo:x:0", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="duo", dataset="x"))
+    store.derive("duo:x:0", "duo:x:0:a", pd.DataFrame({"INSTELLINGSNAAM": ["Hogeschool A"], "AANTAL": [10000]}))
+    duo.record_sentinel_cells("duo:x:0:a", pd.DataFrame({"AANTAL": [1]}))
+    store.derive("duo:x:0", "duo:x:0:b", pd.DataFrame({"INSTELLINGSNAAM": ["Hogeschool B"], "AANTAL": [10000]}))
+    duo.record_sentinel_cells("duo:x:0:b", pd.DataFrame({"AANTAL": [0]}))
+    stappen = [
+        json.dumps({"data_key": k, "rijen": [{"INSTELLINGSNAAM": naam, "AANTAL": 10000}]})
+        for k, naam in (("duo:x:0:b", "Hogeschool B"), ("duo:x:0:a", "Hogeschool A"))
+    ]
+
+    blok = telling_blok(stappen, "Hogeschool B had 10.000 studenten. Hogeschool A had 10.000 studenten.")
+
+    assert "Ondergrens" in blok

@@ -84,13 +84,18 @@ def _tool_integers(tool_results: list[str]) -> set[str]:
     return {n for result in tool_results for n in bewijs_getallen(result)}
 
 
-def checked_numbers(text: str) -> list[tuple[str, str]]:
-    """Gehele getallen die de controle meeneemt: (zoals geschreven, cijfers)."""
+def getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
+    """Elk voorkomen van een gecontroleerd getal: (zoals geschreven, cijfers, positie in de tekst)."""
     return [
-        (m.group(0), digits)
+        (m.group(0), digits, m.start())
         for m in _TEXT_NUMBER.finditer(text)
         if "," not in m.group(0) and _checked(digits := _digits(m.group(1)))
     ]
+
+
+def checked_numbers(text: str) -> list[tuple[str, str]]:
+    """Gehele getallen die de controle meeneemt: (zoals geschreven, cijfers)."""
+    return [(geschreven, cijfers) for geschreven, cijfers, _ in getallen_met_positie(text)]
 
 
 def afgeleide_verschillen(text: str, tool_results: list[str]) -> set[str]:
