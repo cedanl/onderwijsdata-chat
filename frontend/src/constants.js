@@ -30,51 +30,83 @@ export const WARN_CHAT_TURNS = 16
 
 // ─── Suggested questions ──────────────────────────────────────────────────────
 // Each question must be answerable with the connected sources (#446): vacancies are a UWV
-// snapshot per province (mei 2023), the ROA forecast is national, and hbo/wo dropout exists
-// only nationally. No source links graduates to jobs.
+// snapshot per province (mei 2023), the ROA forecast is national, and ho dropout exists only
+// nationally, in the CBS cohort tables (CH-43). No source links graduates to jobs.
 // What the sources hold differs per sector (#447): only mbo files have the students' place of
-// residence, and a university is usually the whole wo of its province. `sectoren` lists where
-// a question holds; without a known sector only the questions that hold everywhere show.
+// residence (woongemeente per instelling), and a university is usually the whole wo of its
+// province. `sectoren` lists where a question holds; without a known sector only the
+// questions that hold everywhere show.
+// One question per subject (CH-43): where the sectors differ, `{variant}` in `tekst` takes the
+// text for the sector from `varianten`, or `standaard` when the sector is unknown.
+// `profiel: true` needs an institution in the profile; `profiel: false` shows only without one,
+// so a demo never asks about "onze instelling" the chat does not know (CH-42, #465).
 export const SECTOREN = ['mbo', 'hbo', 'wo']
+
+const ANDERE_INSTELLINGEN = {
+  mbo: 'de andere mbo-instellingen in mijn provincie',
+  hbo: 'de andere hogescholen in mijn provincie',
+  wo: 'de andere universiteiten',
+  standaard: 'de andere instellingen in mijn provincie',
+}
 
 export const SUGGESTED = [
   {
     category: 'Arbeidsmarktmatch',
     questions: [
-      { tekst: 'Hoe verhoudt het diploma-aanbod van onze instelling per sector zich tot de UWV-vacatures in mijn provincie (mei 2023)?', sectoren: SECTOREN },
-      { tekst: 'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief van de brede sectoren in ons onderwijsaanbod?', sectoren: ['mbo', 'hbo'] },
-      { tekst: 'Wat is volgens de landelijke ROA-cijfers het arbeidsmarktperspectief van masterafgestudeerden?', sectoren: ['wo'] },
+      { tekst: 'Hoe verhoudt het diploma-aanbod van onze instelling per sector zich tot de UWV-vacatures in mijn provincie (mei 2023)?', sectoren: SECTOREN, profiel: true },
+      {
+        tekst: 'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief van {variant}?',
+        sectoren: SECTOREN,
+        profiel: true,
+        varianten: { mbo: 'de brede sectoren in ons onderwijsaanbod', hbo: 'de brede sectoren in ons onderwijsaanbod', wo: 'masterafgestudeerden', standaard: 'de brede sectoren in ons onderwijsaanbod' },
+      },
+      { tekst: 'Voor welke sectoren stonden per provincie de meeste UWV-vacatures open (mei 2023)?', sectoren: SECTOREN, profiel: false },
+      { tekst: 'Wat is volgens de landelijke ROA-prognose het arbeidsmarktperspectief per brede sector in het mbo en hbo?', sectoren: SECTOREN, profiel: false },
     ],
   },
   {
     category: 'Rendement & Diplomering',
     questions: [
-      { tekst: 'Hoe heeft het aantal gediplomeerden van onze instelling zich de afgelopen jaren ontwikkeld?', sectoren: SECTOREN },
-      { tekst: 'Hoeveel gediplomeerden levert onze instelling af ten opzichte van de andere instellingen in mijn provincie?', sectoren: ['mbo', 'hbo'] },
-      { tekst: 'Hoe verhouden de diploma-aantallen van onze instelling zich tot die van de andere universiteiten?', sectoren: ['wo'] },
-      { tekst: 'Hoe groot is landelijk gezien het uitvalrisico in ons onderwijsaanbod?', sectoren: ['mbo'] },
-      { tekst: 'Hoeveel studenten verlaten landelijk het hbo zonder diploma?', sectoren: ['hbo'] },
-      { tekst: 'Hoeveel studenten verlaten landelijk het wo zonder diploma?', sectoren: ['wo'] },
+      { tekst: 'Hoe heeft het aantal gediplomeerden van onze instelling zich de afgelopen jaren ontwikkeld?', sectoren: SECTOREN, profiel: true },
+      { tekst: 'Hoeveel gediplomeerden levert onze instelling af ten opzichte van {variant}?', sectoren: SECTOREN, profiel: true, varianten: ANDERE_INSTELLINGEN },
+      { tekst: 'Hoe groot is landelijk gezien het uitvalrisico in ons onderwijsaanbod?', sectoren: ['mbo'], profiel: true },
+      {
+        tekst: 'Welk deel van de {variant}-instromers heeft na vijf jaar een diploma (CBS-cohorten)?',
+        sectoren: SECTOREN,
+        varianten: { mbo: 'mbo', hbo: 'hbo', wo: 'wo', standaard: 'mbo-, hbo- en wo' },
+      },
     ],
   },
   {
     category: 'Groei & Instroom',
     questions: [
-      { tekst: 'Hoe heeft het aantal inschrijvingen bij onze instelling zich de afgelopen vijf jaar ontwikkeld?', sectoren: SECTOREN },
-      { tekst: 'Groeit de instroom bij ons sneller dan het gemiddelde in mijn provincie?', sectoren: ['mbo', 'hbo'] },
-      { tekst: 'Groeit de instroom bij ons sneller dan in het wo als geheel?', sectoren: ['wo'] },
-      { tekst: 'Met welke instellingen concurreert onze instelling om studenten uit dezelfde woongemeenten?', sectoren: ['mbo'] },
-      { tekst: 'Welke andere hogescholen in mijn provincie bieden opleidingen in dezelfde sectoren aan als onze instelling?', sectoren: ['hbo'] },
-      { tekst: 'Welke andere universiteiten bieden opleidingen in dezelfde sectoren aan als onze instelling?', sectoren: ['wo'] },
+      { tekst: 'Hoe heeft het aantal inschrijvingen bij onze instelling zich de afgelopen vijf jaar ontwikkeld?', sectoren: SECTOREN, profiel: true },
+      {
+        tekst: 'Groeit de instroom bij ons sneller dan {variant}?',
+        sectoren: SECTOREN,
+        profiel: true,
+        varianten: { mbo: 'het gemiddelde in mijn provincie', hbo: 'het gemiddelde in mijn provincie', wo: 'in het wo als geheel', standaard: 'het gemiddelde in mijn provincie' },
+      },
+      {
+        tekst: 'Welke van {variant} bieden opleidingen in dezelfde sectoren aan als onze instelling?',
+        sectoren: SECTOREN,
+        profiel: true,
+        varianten: ANDERE_INSTELLINGEN,
+      },
+      { tekst: 'Uit welke woongemeenten komen de studenten van onze instelling, en welke andere mbo-instellingen hebben studenten uit dezelfde gemeenten?', sectoren: ['mbo'], profiel: true },
+      { tekst: 'Hoe heeft het aantal studenten in het mbo, hbo en wo zich landelijk ontwikkeld in de afgelopen vijf jaar?', sectoren: SECTOREN, profiel: false },
     ],
   },
   {
     category: 'Regionale Context',
     questions: [
-      { tekst: 'Voor welke sectoren stonden in mijn provincie de meeste UWV-vacatures open (mei 2023)?', sectoren: SECTOREN },
-      { tekst: 'Waar komen mijn lerenden vandaan en welke regio\'s vormen de doelmarkt van onze instelling?', sectoren: ['mbo'] },
-      { tekst: 'Hoe verandert het aantal mbo-studenten dat in mijn provincie woont?', sectoren: ['mbo'] },
-      { tekst: 'Hoe verandert het aantal hbo-studenten bij de hogescholen in mijn provincie?', sectoren: ['hbo'] },
+      {
+        tekst: 'Hoe verandert het aantal {variant}?',
+        sectoren: ['mbo', 'hbo'],
+        profiel: true,
+        varianten: { mbo: 'mbo-studenten dat in mijn provincie woont', hbo: 'hbo-studenten bij de hogescholen in mijn provincie' },
+      },
+      { tekst: 'In welke provincies wonen de meeste mbo-studenten, en hoe verandert dat?', sectoren: SECTOREN, profiel: false },
     ],
   },
 ]

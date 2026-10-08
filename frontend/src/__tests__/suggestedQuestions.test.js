@@ -34,12 +34,19 @@ async function shownQuestions(props) {
 describe('SuggestedQuestions', () => {
   it('shows the origin question to an mbo institution, named', async () => {
     const shown = await shownQuestions({ instelling: 'ROC Midden Nederland', sector: 'mbo' })
-    expect(shown.some(q => q.includes('vandaan') && q.includes('ROC Midden Nederland'))).toBe(true)
+    expect(shown.some(q => q.includes('woongemeenten') && q.includes('ROC Midden Nederland'))).toBe(true)
   })
 
   it('does not show it to a university of applied sciences', async () => {
     const shown = await shownQuestions({ instelling: 'Hogeschool Utrecht', sector: 'hbo' })
     expect(shown.length).toBeGreaterThan(0)
-    expect(shown.filter(q => q.includes('vandaan'))).toEqual([])
+    expect(shown.filter(q => q.includes('woongemeente'))).toEqual([])
+  })
+
+  // CH-42 (#465): a demo without a profile clicked "onze instelling" into a scope refusal.
+  it('without an institution, shows only questions about the open data in general', async () => {
+    const shown = await shownQuestions({ instelling: '', sector: null })
+    expect(shown.length).toBeGreaterThanOrEqual(4)
+    expect(shown.filter(q => /\b(ons|onze|mijn)\b/i.test(q))).toEqual([])
   })
 })
