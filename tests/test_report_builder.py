@@ -88,7 +88,7 @@ class TestParseSpecFromResponse:
         # opleidingen (85423NED)". Het ID klopte, de titel was verzonnen (#196).
         titels = {"p01hoinges": "Ingeschrevenen hoger onderwijs", "85423NED": "Hoger onderwijs; ingeschrevenen"}
         with (
-            patch("agent.dashboard.catalogus_titel", side_effect=lambda d: titels.get(d, d)),
+            patch("agent.dashboard.bron_titel", side_effect=lambda d: titels.get(d, d)),
             patch("agent.dashboard.resource_titel", return_value="Ingeschrevenen hbo"),
         ):
             spec = _parse_spec_from_response(
@@ -104,7 +104,7 @@ class TestParseSpecFromResponse:
 
     def test_source_without_catalog_title_keeps_its_id(self):
         with (
-            patch("agent.dashboard.catalogus_titel", side_effect=lambda d: d),
+            patch("agent.dashboard.bron_titel", side_effect=lambda d: d),
             patch("agent.dashboard.resource_titel", return_value=None),
         ):
             spec = _parse_spec_from_response(

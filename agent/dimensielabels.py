@@ -10,7 +10,7 @@ er niet iets ruimers van maken.
 import re
 
 from tools import cbs, store
-from tools.catalog import catalogus_titel
+from tools.catalog import bron_naam
 
 from .probleem import Probleem
 from .selectie import data_keys
@@ -63,10 +63,8 @@ def selectie_regels(tool_results: list[str]) -> list[str]:
     """Regels voor het telling-blok: per CBS-dataset de gekozen dimensielabels."""
     regels = []
     for dataset, gekozen in _selecties(tool_results).items():
-        titel = catalogus_titel(dataset)
-        naam = dataset if titel == dataset else f"{dataset} ({titel})"
         keuzes = "; ".join(f"{dim}: {label}" for dim, (_, label) in gekozen.items())
-        regels.append(f"- {naam}: selectie {keuzes}")
+        regels.append(f"- {bron_naam(dataset)}: selectie {keuzes}")
     return regels
 
 

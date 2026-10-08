@@ -13,7 +13,7 @@ from onderwijsdata.client import get
 from core.config import CBS_ROW_LIMIT
 
 from . import cbs_afronding, fouten, periode, scopeprofiel, store
-from .catalog import catalogus_laatste_update, catalogus_titel, scope_blokkade
+from .catalog import bron_titel, catalogus_laatste_update, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
@@ -330,7 +330,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
 
     result = {
         "data_key": key,
-        "catalogus_titel": catalogus_titel(dataset_id),
+        "catalogus_titel": bron_titel(dataset_id),
         **store.rijtelling(len(df), not truncated),
         "kolommen": schema,
         "preview": preview,
