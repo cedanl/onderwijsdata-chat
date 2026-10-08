@@ -10,8 +10,7 @@ from . import afhankelijkheid, dekking, fouten, plot, sandbox, scriptcontrole, s
 
 logger = logging.getLogger(__name__)
 
-# Getallen die niet van de data afhangen; de getalcontrole telt ze niet als bewijs (#410, CH-27).
-SCRIPTCONSTANTEN = "scriptconstanten"
+SCRIPTCONSTANTEN = afhankelijkheid.SCRIPTCONSTANTEN
 
 
 def _analysekey(bronnen: list[str], df: pd.DataFrame) -> str:
@@ -62,6 +61,10 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     if not complete and result is not None and not isinstance(result, list):
         return store.ONVOLLEDIG
 
+    # Vóór het opslaan: wat niet van de data afhangt, reist mee met de afgeleide key (#456).
+    geerfd = tuple(dict.fromkeys(c for k in bronnen if (m := store.meta(k)) for c in m.scriptconstanten))
+    controle = afhankelijkheid.toets(code, df, tabellen, result, geerfd) if bronnen else None
+
     result_key = None
     if isinstance(result, list) and result:
         store_df = pd.DataFrame(result)
@@ -73,6 +76,7 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
                 store_df,
                 stap="eigen berekening (run_analysis)",
                 gelezen=tuple(bronnen),
+                scriptconstanten=controle.constanten if controle else (),
                 **dekking.van(store_df, store.meta(bronnen[0])),
             )
         else:
@@ -89,8 +93,10 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     elif not result_key:
         # Een los getal heeft geen eigen key; wat het las is zijn selectie, ook voor de onderdrukking (#414).
         text_obj = {"gelezen": bronnen, "resultaat": text_obj}
-    if bronnen and (eigen := afhankelijkheid.onafhankelijke_getallen(code, df, tabellen, result)):
-        text_obj[SCRIPTCONSTANTEN] = list(eigen)
+    if controle and controle.constanten:
+        text_obj[SCRIPTCONSTANTEN] = list(controle.constanten)
+    if controle and controle.soort == afhankelijkheid.ONBEPAALD:
+        text_obj["afhankelijkheid"] = afhankelijkheid.ONBEPAALD_MELDING
     text = json.dumps(text_obj, ensure_ascii=False, default=str)
 
     if isinstance(figure, go.Figure):

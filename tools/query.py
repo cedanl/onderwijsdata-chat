@@ -14,7 +14,7 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import cbs_afronding, dekking, duo, fouten, instelling, kleine_aantallen, periode, store
+from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, instelling, kleine_aantallen, periode, store
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
@@ -320,6 +320,9 @@ def query_data(
     if vier is not None and vier_totaal and (group_by or aggregate):
         _met_ondergrens(rows, df.head(adaptive_max), vier)
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
+    if known and known.scriptconstanten:
+        # Een eigen berekening maakte deze getallen; ook hier zijn ze geen bron (CH-27, #456).
+        result[afhankelijkheid.SCRIPTCONSTANTEN] = list(known.scriptconstanten)
     if labels:
         result["instellingen"] = labels
     if notes:

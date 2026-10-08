@@ -51,6 +51,9 @@ class KeyMeta:
     gelezen: tuple[str, ...] | None = field(default=None, compare=False)
     # Column -> title from the source, for axis and legend titles (CBS DataProperties, #418).
     kolomtitels: Mapping[str, str] | None = field(default=None, compare=False)
+    # Getallen in deze data die een eigen berekening zelf maakte, niet uit de bron: ze blijven
+    # afgekeurd in elke volgende stap op deze key of zijn afleidingen (CH-27, #456).
+    scriptconstanten: tuple[int | float, ...] = field(default=(), compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:

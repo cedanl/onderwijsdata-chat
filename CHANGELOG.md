@@ -44,6 +44,10 @@ de laatste tag is 1.8.6.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
 
 ### Betrouwbaarheid van antwoorden
+- Een getal uit een eigen berekening (`run_analysis`) telt alleen als bron als de controle vaststelt dat het
+  van de data afhangt. Loopt die controle vast, dan geldt elk getal dat niet in de invoer staat niet als bron
+  (was: alles bewijs). Een conditionele constante (`987654 if … else 0`) telt niet meer, en een afgekeurd getal
+  blijft afgekeurd in een volgende `query_data` of `run_analysis` op dezelfde data.
 - Staat er een instelling in het profiel, dan krijgt de chat haar sector (mbo/hbo/wo), instellingscode,
   provincie en arbeidsmarktregio mee uit de DUO-instellingsadressen, in plaats van zelf een provincie te kiezen.
   Bij "mijn regio" gebruikt het antwoord die provincie of arbeidsmarktregio en noemt het welk niveau. Een
