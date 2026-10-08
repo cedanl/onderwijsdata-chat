@@ -9,7 +9,7 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
-from . import cbs_meta, duo_meta, instelling, scopeprofiel
+from . import cbs_meta, duo_correcties, duo_meta, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
@@ -169,9 +169,10 @@ def _rio_duo_alles() -> list:
 def _rio_duo() -> list:
     """De RIO/DUO-records binnen het chatprofiel mbo/hbo/wo (#355, #375).
 
-    Zoeken, details, telling en laden volgen deze lijst; tools/scopeprofiel.py beslist.
+    Zoeken, details, telling en laden volgen deze lijst; tools/scopeprofiel.py beslist. De
+    records dragen de correcties op DUO's kolombeschrijvingen (#451).
     """
-    return [e for e in _rio_duo_alles() if scopeprofiel.in_scope(e)]
+    return [duo_correcties.catalogusrecord(e) for e in _rio_duo_alles() if scopeprofiel.in_scope(e)]
 
 
 def _ruw_record(dataset_id: str) -> dict | None:
@@ -539,6 +540,7 @@ _DETAILS_EXTRA = frozenset(
         "catalogus_bron_gewijzigd",
         "kolomprofiel",
         "methodiek",
+        "niet_geschikt_voor",
     }
 )
 

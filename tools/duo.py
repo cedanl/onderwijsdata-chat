@@ -7,7 +7,7 @@ from riodata import duo as _duo
 
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
-from . import duo_meta, fouten, instelling, kleine_aantallen, kolomprofiel, periode, store
+from . import duo_correcties, duo_meta, fouten, instelling, kleine_aantallen, kolomprofiel, periode, store
 from .catalog import catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
 from .definitie import met_voorbeeldstatus
 
@@ -34,8 +34,8 @@ _OPLEIDINGSVORM_DEFINITIE = (
 
 
 def column_definitions(columns: list[str], dataset_id: str) -> dict[str, str]:
-    """Kolomdefinities voor deze dataset: riodata, aangevuld met wat alleen de chat kent."""
-    defs = _duo.column_definitions(columns, dataset_id)
+    """Kolomdefinities voor deze dataset: riodata, gecorrigeerd en aangevuld met wat alleen de chat kent."""
+    defs = _duo.column_definitions(columns, dataset_id) | duo_correcties.kolomdefinities(columns, dataset_id)
     if periode.STUDIEJAAR_LABEL in columns:
         defs[periode.STUDIEJAAR_LABEL] = _STUDIEJAAR_LABEL_DEFINITIE
     if "OPLEIDINGSVORM" in columns and dataset_id in OPLEIDINGSVORM_DATASETS:
