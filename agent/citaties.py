@@ -15,7 +15,7 @@ from .claimbinding import betekenis, kenmerken, kies, zin_van
 from .grounding import checked_numbers
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden
 from .selectie import SCHEIDING as _SCHEIDING
-from .selectie import bron_in_woorden, data_keys, laadkey
+from .selectie import bron_in_woorden, data_keys, keten, laadkey
 
 
 def _bron(data_key: str | None, tool: str) -> str:
@@ -41,6 +41,21 @@ def _citatie(geschreven: str, stap: int, tool: str, waarde: Meetwaarde, eenheid:
     }
 
 
+def _dichtst_bij_de_bron(kandidaten: list[tuple[int, str, Meetwaarde]]) -> tuple[int, str, Meetwaarde] | None:
+    """Bronhiërarchie bij twijfel (CH-38): staan alle kandidaten in één afleidingsketen, dan
+    wint de stap die het dichtst bij de bron zit, zoals de selectie onder een analyse.
+    Losse selecties (instelling A en B) blijven twijfel: daar beslist de zin (CH-08)."""
+    for kandidaat in kandidaten:
+        if (key := kandidaat[2].data_key) and all((ander := k[2].data_key) and key in keten(ander) for k in kandidaten):
+            return kandidaat
+    return None
+
+
+def _onbepaald(geschreven: str, kandidaten: list) -> dict:
+    """Geen herkomst: het getal staat niet als meetwaarde in de data, of meer dan eens zonder dat de zin kiest."""
+    return {"getal": geschreven, "vastgesteld": False, "reden": "meerdere" if kandidaten else "geen_meetwaarde"}
+
+
 def citaties(tekst: str, steps: list[tuple[str, str]]) -> list[dict]:
     """Per gecontroleerd getal in `tekst` een citatie; leeg als de beurt geen data las."""
     results = [result for _, result in steps]
@@ -54,8 +69,12 @@ def citaties(tekst: str, steps: list[tuple[str, str]]) -> list[dict]:
             continue
         # Niet de eerste stap met dit getal: de zin wijst de selectie aan (CH-08).
         kandidaten = [(s, t, w) for s, t, ws in waarden for w in ws if cijfers in w.cijfers]
-        bron = kies(kandidaten, lambda k: betekenis(k[2]), lambda k: kenmerken(k[2]), zin_van(tekst, geschreven))
-        gevonden[geschreven] = (
-            _citatie(geschreven, *bron, eenheid) if bron else {"getal": geschreven, "vastgesteld": False}
+        bron = kies(
+            kandidaten,
+            lambda k: betekenis(k[2]),
+            lambda k: kenmerken(k[2]),
+            zin_van(tekst, geschreven),
+            voorkeur=_dichtst_bij_de_bron,
         )
+        gevonden[geschreven] = _citatie(geschreven, *bron, eenheid) if bron else _onbepaald(geschreven, kandidaten)
     return list(gevonden.values())

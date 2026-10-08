@@ -51,13 +51,18 @@ def selectie_in_woorden(data_key: str) -> str | None:
     return tekst
 
 
+def keten(key: str) -> list[str]:
+    """De key en waar hij van is afgeleid, tot en met de laadkey."""
+    stappen = [key]
+    while (known := store.meta(key)) and known.afgeleid_van and known.afgeleid_van not in stappen:
+        key = known.afgeleid_van
+        stappen.append(key)
+    return stappen
+
+
 def laadkey(key: str) -> str:
     """De laadkey waar een afgeleide key uiteindelijk vandaan komt."""
-    seen = {key}
-    while (known := store.meta(key)) and known.afgeleid_van and known.afgeleid_van not in seen:
-        key = known.afgeleid_van
-        seen.add(key)
-    return key
+    return keten(key)[-1]
 
 
 def _selecties(tool_results: list[str], veld: str) -> dict[str, set]:

@@ -69,6 +69,21 @@ describe('zichtbare citaties (#365)', () => {
     expect(container.querySelector('.citatie-getal').classList.contains('citatie-onbepaald')).toBe(true)
   })
 
+  it('zegt dat een getal zonder meetwaarde niet in de data staat', () => {
+    toon('Er waren 36.201 studenten.', [{ getal: '36.201', vastgesteld: false, reden: 'geen_meetwaarde' }])
+    act(() => container.querySelector('button').click())
+    expect(container.querySelector('[role="note"]').textContent).toContain('staat niet als meetwaarde in de opgehaalde data')
+  })
+
+  // CH-38 (#458): een getal dat meer dan eens in de data staat, staat er wél in.
+  it('zegt bij twijfel tussen plekken dat het getal er meer dan eens in staat', () => {
+    toon('Er waren 36.201 studenten.', [{ getal: '36.201', vastgesteld: false, reden: 'meerdere' }])
+    act(() => container.querySelector('button').click())
+    const uitleg = container.querySelector('[role="note"]').textContent
+    expect(uitleg).toContain('meer dan eens in de opgehaalde data')
+    expect(uitleg).not.toContain('staat niet als meetwaarde')
+  })
+
   it('laat getallen in code en onderdelen van een groter getal met rust', () => {
     toon('Code `378.490` en 1378.490 en 378.490,5.')
     expect(container.querySelectorAll('button')).toHaveLength(0)

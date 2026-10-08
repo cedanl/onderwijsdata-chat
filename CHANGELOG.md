@@ -48,6 +48,10 @@ de laatste tag is 1.8.6.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
 
 ### Betrouwbaarheid van antwoorden
+- Een getal dat zowel in een selectie als in een analyse op die selectie staat, krijgt de selectie als
+  herkomst in plaats van "herkomst niet vastgesteld". Blijft de herkomst toch onzeker, dan zegt de uitleg
+  waarom: het getal staat niet als meetwaarde in de data, of staat er meer dan eens in zonder dat de zin
+  aanwijst welke plek het is.
 - Een getal uit een eigen berekening (`run_analysis`) telt alleen als bron als de controle vaststelt dat het
   van de data afhangt. Loopt die controle vast, dan geldt elk getal dat niet in de invoer staat niet als bron
   (was: alles bewijs). Een conditionele constante (`987654 if … else 0`) telt niet meer, en een afgekeurd getal
