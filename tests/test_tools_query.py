@@ -411,3 +411,35 @@ def test_prognose_aantallen_afgerond_op_hele_personen():
 def test_decimalen_buiten_prognoses_blijven_staan():
     store.put("duo:x:0", pd.DataFrame([{"JAAR": 2030, "AANTAL": 12.5}]), store.KeyMeta(bron="duo", dataset="x"))
     assert json.loads(query_data("duo:x:0"))["rijen"] == [{"JAAR": 2030, "AANTAL": 12.5}]
+
+
+def _per_jaar_bron():
+    df = pd.DataFrame(
+        {
+            "INSTELLINGSNAAM": ["TU Delft"] * 4 + ["Elders"] * 3,
+            "STUDIEJAAR": [2024, 2024, 2025, 2025, 2025, 2025, 2025],
+            "AANTAL": [100, -1, -1, -1, -1, -1, -1],
+        }
+    )
+    meta = store.KeyMeta(bron="duo", dataset="test:jaar", periodekolom="STUDIEJAAR")
+    store.put("duo:test:jaar", df, meta)
+
+
+@pytest.mark.parametrize(
+    "aanroep",
+    [
+        {"filters": {"INSTELLINGSNAAM": "TU Delft"}},
+        {"filters": {"INSTELLINGSNAAM": "TU Delft"}, "group_by": ["STUDIEJAAR"], "aggregate": {"AANTAL": "sum"}},
+        {"filters": {"INSTELLINGSNAAM": "TU Delft"}, "columns": ["AANTAL"]},
+    ],
+)
+def test_onderdrukte_cellen_per_jaar_van_de_selectie(aanroep):
+    """CH-07: TU Delft kreeg '115 onderdrukte cellen' (het hele bestand), Utrecht 12 (2021-2025) bij een
+    antwoord over 2025. De tool telt ze per jaar binnen de selectie, zodat het model niet hoeft te kiezen."""
+    _per_jaar_bron()
+
+    result = json.loads(query_data("duo:test:jaar", **aanroep))
+
+    [noot] = [n for n in result["databewerking"] if "per jaar" in n]
+    assert "2024/25: 1" in noot and "2025/26: 2" in noot
+    assert "2025/26: 5" not in noot  # de cellen van 'Elders' tellen niet mee

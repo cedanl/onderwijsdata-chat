@@ -141,3 +141,32 @@ def test_antwoord_en_csv_van_een_analysetabel_zeggen_hetzelfde(onderdrukt):
     csv = _csv(json.loads(tabel)["data_key"])
 
     assert ("Ondergrens" in blok) == ("DUO-sentinel -1" in csv) == bool(onderdrukt)
+
+
+def _instelling(naam: str, aantallen: list[int], onderdrukt: int = 0) -> str:
+    """Een selectie van één instelling; een onderdrukte cel staat als lege waarde in de rij."""
+    key = f"{_BRON}:{naam}"
+    df = pd.DataFrame(
+        {"INSTELLINGSNAAM": [naam] * len(aantallen), "JAAR": [2023] * len(aantallen), "AANTAL": aantallen}
+    )
+    store.derive(_BRON, key, df)
+    duo.record_sentinel_cells(key, pd.DataFrame({"AANTAL": [0] * (len(aantallen) - onderdrukt) + [1] * onderdrukt}))
+    return _query(key)
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_de_zin_bindt_het_getal_aan_zijn_selectie_ook_als_een_andere_exact_is(volgorde):
+    """CH-07: A = [10000, -1], B = [10000]. De claim over A kreeg geen ondergrens: B maakte hem exact."""
+    a = _instelling("Hogeschool A", [10000, 0], onderdrukt=1)
+    b = _instelling("Hogeschool B", [10000])
+
+    blok = telling_blok([a, b][::volgorde], "Hogeschool A had 10.000 studenten.")
+
+    assert "Ondergrens" in blok
+
+
+def test_een_zin_over_de_exacte_selectie_geeft_geen_ondergrens():
+    a = _instelling("Hogeschool A", [10000, 0], onderdrukt=1)
+    b = _instelling("Hogeschool B", [10000])
+
+    assert "Ondergrens" not in telling_blok([a, b], "Hogeschool B had 10.000 studenten.")

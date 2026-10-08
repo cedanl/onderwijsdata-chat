@@ -252,6 +252,16 @@ def query_data(
         if err:
             return err
 
+    # Per jaar, vóór kolomkeuze en aggregatie: daarna is de periodekolom er misschien niet meer (CH-07).
+    kolom = known.periodekolom if known else None
+    per_jaar = (
+        duo.per_periode(
+            duo.select_cells(duo.sentinel_cells(data_key), df[columns] if columns else df), df[kolom], known.bron
+        )
+        if known and kolom in df.columns
+        else {}
+    )
+
     if columns:
         df = df[columns]
 
@@ -275,6 +285,8 @@ def query_data(
             notes += kleine_aantallen.noten({str(c): int(n) for c, n in vier.sum().items() if n})
             vier = duo.aggregate_cells(vier, df, group_by or [], agg)
         df = agg
+
+    notes += duo.periode_noot(per_jaar, kolom or "")
 
     transformed = filters or columns or group_by
     if transformed:
