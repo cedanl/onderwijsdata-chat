@@ -7,8 +7,10 @@ omgevingen uit staan.
 - UWV: Open Match, een momentopname. De peildatum komt uit de kolom PEILDATUM, niet uit tekst.
   Vacatures hebben geen opleidingsniveau: de kolommen AANT_OPLNIV_* zijn alleen bij werkzoekenden
   gevuld (nagekeken voor de snapshots van 2021 en 2023, #449).
-- ROA: AIS 2030, landelijk (regionaam 'Nederland'). Prognoserijen bestaan ook per regio; zonder
-  dat filter won de typering van de laatst gelezen regio.
+- ROA: AIS 2030, landelijk (regionaam 'Nederland') tenzij een regio gevraagd is; zonder dat filter
+  won de typering van de laatst gelezen regio. De prognose staat er ook per arbeidsmarktregio (35)
+  en provincie (12, als 'provincie Utrecht'), alleen als typering; de schoolverlatersinformatie
+  alleen landelijk (#450).
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
 # Niveaus binnen het chatprofiel; ROA kent ook basisonderwijs, vmbo en havo/vwo.
 ROA_NIVEAUS: dict[str, tuple[str, ...]] = {"mbo": ("Mbo2", "Mbo3", "Mbo4"), "ho": ("Bachelor", "Master, doctor")}
 ROA_LANDELIJK = "Nederland"
+_ROA_PROVINCIE = "provincie "
 _ROA_NIVEAU = "opleidingsniveau (ONR2019)"
 _ROA_SECTOR = "  opleidingssector (ONR2019)"
 _ROA_SIS = "Schoolverlatersinformatie (SIS 2024)"
@@ -186,13 +189,39 @@ def _getal(waarde) -> float | int | None:
     return int(getal) if getal.is_integer() else getal
 
 
+def roa_regios() -> list[str]:
+    """Alle ROA-regionamen: Nederland, de arbeidsmarktregio's en de provincies ('provincie Utrecht')."""
+    return sorted(_roa()["regionaam"].dropna().astype(str).unique())
+
+
+def roa_regio(naam: str) -> str | None:
+    """De ROA-regionaam bij een naam, hoofdletterongevoelig; None als ROA hem niet kent.
+
+    Exact, zonder te raden. Een provincie mag ook op haar eigen naam ('Utrecht' → 'provincie Utrecht').
+    Groningen, Drenthe, Friesland, Flevoland en Zeeland zijn ook arbeidsmarktregio's: dan wint die.
+    """
+    namen = {r.lower(): r for r in roa_regios()}
+    sleutel = naam.strip().lower()
+    return namen.get(sleutel) or namen.get(_ROA_PROVINCIE + sleutel)
+
+
+def roa_regiotype(regionaam: str) -> str:
+    if regionaam == ROA_LANDELIJK:
+        return "landelijk"
+    return "provincie" if regionaam.startswith(_ROA_PROVINCIE) else "arbeidsmarktregio"
+
+
 def roa_waarden(
-    detailniveaus: tuple[str, ...], onderwerpen: tuple[str, ...], thema: str, aggregatieniveau: str = _ROA_NIVEAU
+    detailniveaus: tuple[str, ...],
+    onderwerpen: tuple[str, ...],
+    thema: str,
+    aggregatieniveau: str = _ROA_NIVEAU,
+    regio: str = ROA_LANDELIJK,
 ) -> dict[str, dict[str, dict[str, float | int | str]]]:
-    """Landelijke ROA-waarden: detailniveau → onderwerp → {perc, aantal, typering}, alleen wat er staat."""
+    """ROA-waarden van één regio: detailniveau → onderwerp → {perc, aantal, typering}, alleen wat er staat."""
     df = _roa()
     rijen = df[
-        (df["regionaam"] == ROA_LANDELIJK)
+        (df["regionaam"] == regio)
         & (df["thema"] == thema)
         & (df["aggregatieniveau"] == aggregatieniveau)
         & df["detailniveau"].isin(detailniveaus)
@@ -211,16 +240,22 @@ def roa_waarden(
 
 
 def roa_sectoren() -> list[str]:
-    """De opleidingssectoren van ROA binnen het profiel (mbo2-4, bachelor, master)."""
+    """De opleidingssectoren van ROA binnen het profiel (mbo2-4, bachelor, master).
+
+    ROA noemt het niveau 'Master, doctor', maar de sectoren 'Master - …'; met het niveau als prefix
+    vielen de mastersectoren weg en heette 'Master - techniek en ict' onbekend (#450).
+    """
     df = _roa()
-    niveaus = tuple(n for ns in ROA_NIVEAUS.values() for n in ns)
+    prefixen = tuple(f"{n.split(',')[0]} - " for ns in ROA_NIVEAUS.values() for n in ns)
     sectoren = df.loc[df["aggregatieniveau"] == _ROA_SECTOR, "detailniveau"].dropna().astype(str).unique()
-    return sorted(s for s in sectoren if s.startswith(niveaus))
+    return sorted(s for s in sectoren if s.startswith(prefixen))
 
 
-def roa_schoolverlaters(detailniveaus: tuple[str, ...], sector: bool = False) -> dict:
-    return roa_waarden(detailniveaus, ROA_SIS_INDICATOREN, _ROA_SIS, _ROA_SECTOR if sector else _ROA_NIVEAU)
+def roa_schoolverlaters(detailniveaus: tuple[str, ...], sector: bool = False, regio: str = ROA_LANDELIJK) -> dict:
+    niveau = _ROA_SECTOR if sector else _ROA_NIVEAU
+    return roa_waarden(detailniveaus, ROA_SIS_INDICATOREN, _ROA_SIS, niveau, regio)
 
 
-def roa_prognose(detailniveaus: tuple[str, ...], sector: bool = False) -> dict:
-    return roa_waarden(detailniveaus, ROA_PROGNOSE_INDICATOREN, _ROA_PROGNOSE, _ROA_SECTOR if sector else _ROA_NIVEAU)
+def roa_prognose(detailniveaus: tuple[str, ...], sector: bool = False, regio: str = ROA_LANDELIJK) -> dict:
+    niveau = _ROA_SECTOR if sector else _ROA_NIVEAU
+    return roa_waarden(detailniveaus, ROA_PROGNOSE_INDICATOREN, _ROA_PROGNOSE, niveau, regio)

@@ -67,11 +67,11 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 - **RIO** (9 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (14 datasets, mbo/hbo/wo): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
-- **ROA** (AIS 2030): landelijke schoolverlatersinformatie (SIS 2024) en prognoses tot 2030 per opleidingsniveau of -sector — als arbeidsmarkt-context
+- **ROA** (AIS 2030): schoolverlatersinformatie (SIS 2024, landelijk) en prognoses tot 2030 (landelijk, per arbeidsmarktregio of provincie) per opleidingsniveau of -sector — als arbeidsmarkt-context
 
 Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en noem die telling. Een zoekopdracht zonder treffers betekent niet dat een bron ontbreekt.
 
-**UWV/ROA zijn landelijk-only:** geen instelling-niveau beschikbaar. Gebruik `get_uwv_vacatures(provincie)` en `get_roa_benchmark()` als arbeidsmarkt-context bij vragen over instroom, diplomering of sectortrends. Ze geven geen antwoord op instelling-specifieke vragen ("vacatures voor deze school"), maar wel context ("hoeveel vacatures in deze regio/sektor landelijk").
+**UWV/ROA gaan niet over één instelling:** UWV is per provincie of gemeente, ROA landelijk of per regio. Gebruik `get_uwv_vacatures(provincie)` en `get_roa_benchmark()` als arbeidsmarkt-context bij vragen over instroom, diplomering of sectortrends. Ze geven geen antwoord op instelling-specifieke vragen ("vacatures voor deze school"), maar wel context ("hoeveel vacatures in deze regio/sektor landelijk").
 
 ## Catalogusvelden
 
@@ -202,13 +202,13 @@ Bij vragen over instroom, diplomering, sectortrends of arbeidsmarkt-aansluiting 
 
 **Wanneer gebruiken:**
 - Vraag over diplomering + "hoeveel vacatures zijn er?": roep `get_uwv_vacatures(provincie, sector)` aan
-- Vraag over sectortrends + "wat is de arbeidsmarkt-outlook?": roep `get_roa_benchmark()` aan
+- Vraag over sectortrends + "wat is de arbeidsmarkt-outlook?": roep `get_roa_benchmark()` aan, met `regio` (arbeidsmarktregio of provincie) als de vraag een regio noemt
 - Vragen zonder specifieke instelling/provincie: `get_roa_benchmark()` volstaat (landelijke benchmark)
 
 **Hoe gebruiken:**
 - Zeg niet: "De UWV-data zegt…" — zeg: "Arbeidsmarkt-context: in dezelfde regio zijn X vacatures beschikbaar"
 - Voeg UWV-resultaten toe in je interpretatie, niet als aparte grafiek
-- Noem bij UWV de peildatum uit het resultaat (een momentopname), bij ROA de versie
+- Noem bij UWV de peildatum uit het resultaat (een momentopname), bij ROA de versie en per onderdeel de regio uit `herkomst`
 
 **Beperkingen:** UWV en ROA geven geen instelling-niveau data. Probeer nooit op instelling-naam te filteren met deze tools.
 

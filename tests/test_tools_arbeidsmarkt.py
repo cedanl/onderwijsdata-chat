@@ -3,7 +3,8 @@
 CH-37: get_roa_benchmark gaf vaste, in de code geschreven waarden ("~80%") als ROA-cijfers door,
 en beide tools liepen buiten de scopepoort. CH-23: ze haalden private functies uit
 data/dashboard.py, terwijl dashboards overal uit staan. #449: get_uwv_vacatures telde clusters
-die bij twee sectoren horen dubbel en zei niet dat UWV geen opleidingsniveau kent.
+die bij twee sectoren horen dubbel en zei niet dat UWV geen opleidingsniveau kent. #450:
+get_roa_benchmark gooide de regionale prognoses weg en kende de mastersectoren niet.
 """
 
 import ast
@@ -32,7 +33,7 @@ def _roa_rij(regio, niveau, onderwerp, perc=None, aantal=None, typering=None, th
     return {
         "regionaam": regio,
         "thema": thema,
-        "aggregatieniveau": arbeidsmarkt._ROA_NIVEAU,
+        "aggregatieniveau": arbeidsmarkt._ROA_SECTOR if " - " in niveau else arbeidsmarkt._ROA_NIVEAU,
         "detailniveau": niveau,
         "onderwerp": onderwerp,
         "perc": perc,
@@ -42,6 +43,7 @@ def _roa_rij(regio, niveau, onderwerp, perc=None, aantal=None, typering=None, th
     }
 
 
+_ITA = "ITA toekomstige arbeidsmarktsituatie in 2030"
 _ROA = pd.DataFrame(
     [
         _roa_rij("Nederland", "Mbo4", "werkloosheid", perc="3"),
@@ -61,6 +63,11 @@ _ROA = pd.DataFrame(
             typering="redelijk",
             thema=arbeidsmarkt._ROA_PROGNOSE,
         ),
+        # Regionaal heeft ROA alleen de prognose, geen schoolverlatersinformatie.
+        _roa_rij("Midden-Utrecht", "Mbo4", _ITA, typering="goed", thema=arbeidsmarkt._ROA_PROGNOSE),
+        _roa_rij("provincie Utrecht", "Mbo4", _ITA, typering="redelijk", thema=arbeidsmarkt._ROA_PROGNOSE),
+        _roa_rij("Nederland", "Mbo4 - techniek en ict", _ITA, typering="slecht", thema=arbeidsmarkt._ROA_PROGNOSE),
+        _roa_rij("Nederland", "Master - techniek en ict", "werkloosheid", perc="4"),
     ]
 )
 
@@ -88,6 +95,57 @@ def test_roa_geeft_alleen_bronwaarden_landelijk_en_binnen_het_profiel(bronnen):
         "Mbo4": {"ITA toekomstige arbeidsmarktsituatie in 2030": {"typering": "redelijk"}}
     }
     assert "~" not in json.dumps(uit)
+
+
+def test_roa_zonder_regio_is_landelijk_zonder_terugval(bronnen):
+    uit = json.loads(get_roa_benchmark())
+
+    assert uit["regio"] == "Nederland"
+    assert "terugval" not in uit and "regiotype" not in uit
+
+
+def test_roa_bestaande_arbeidsmarktregio(bronnen):
+    uit = json.loads(get_roa_benchmark(regio="midden-utrecht"))
+
+    assert (uit["regio"], uit["regiotype"]) == ("Midden-Utrecht", "arbeidsmarktregio")
+    assert uit["prognose_tot_2030"] == {"Mbo4": {_ITA: {"typering": "goed"}}}
+    # Schoolverlatersinformatie is er alleen landelijk: dat staat erbij, het wordt niet stil vervangen.
+    assert uit["schoolverlaters_sis_2024"]["Mbo4"] == {"werkloosheid": {"perc": 3}}
+    assert uit["herkomst"] == {"schoolverlaters_sis_2024": "Nederland", "prognose_tot_2030": "Midden-Utrecht"}
+    assert "Midden-Utrecht" in uit["terugval"] and "landelijk" in uit["terugval"]
+
+
+def test_roa_provincie_op_haar_eigen_naam(bronnen):
+    uit = json.loads(get_roa_benchmark(regio="Utrecht"))
+
+    assert (uit["regio"], uit["regiotype"]) == ("provincie Utrecht", "provincie")
+    assert uit["prognose_tot_2030"] == {"Mbo4": {_ITA: {"typering": "redelijk"}}}
+
+
+def test_roa_regio_zonder_cijfers_voor_de_sector_valt_terug_op_landelijk(bronnen):
+    with patch.object(arbeidsmarkt, "roa_sectoren", return_value=["Mbo4 - techniek en ict"]):
+        uit = json.loads(get_roa_benchmark("Mbo4 - techniek en ict", regio="Midden-Utrecht"))
+
+    assert uit["prognose_tot_2030"] == {"Mbo4 - techniek en ict": {_ITA: {"typering": "slecht"}}}
+    assert uit["herkomst"]["prognose_tot_2030"] == "Nederland"
+
+
+@pytest.mark.parametrize("regio", ["Atlantis", "Utrech", "Midden Utrecht"])
+def test_roa_onbekende_regio_noemt_de_geldige_en_raadt_niet(bronnen, regio):
+    uit = get_roa_benchmark(regio=regio)
+
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(uit)
+    assert "Midden-Utrecht" in uit and "provincie Utrecht" in uit
+
+
+def test_roa_kent_de_mastersectoren(bronnen):
+    """ROA noemt het niveau 'Master, doctor' maar de sectoren 'Master - …'; die vielen buiten de lijst."""
+    assert "Master - techniek en ict" in arbeidsmarkt.roa_sectoren()
+
+    uit = json.loads(get_roa_benchmark("Master - techniek en ict"))
+
+    assert uit["schoolverlaters_sis_2024"] == {"Master - techniek en ict": {"werkloosheid": {"perc": 4}}}
 
 
 def test_roa_onbekende_sector_noemt_de_geldige(bronnen):
@@ -228,7 +286,10 @@ def test_uwv_onbekende_gemeente_noemt_de_gemeenten_van_de_provincie(bronnen, gem
     assert "Arnhem" not in uit.replace(f"'{gemeente}'", "")
 
 
-@pytest.mark.parametrize(("tool", "args"), [(get_uwv_vacatures, ("Utrecht",)), (get_roa_benchmark, ())])
+@pytest.mark.parametrize(
+    ("tool", "args"),
+    [(get_uwv_vacatures, ("Utrecht",)), (get_roa_benchmark, ()), (get_roa_benchmark, (None, "Utrecht"))],
+)
 def test_buiten_de_scopepoort_wordt_niets_geladen(tool, args):
     """Dezelfde fail-closed poort als CBS/DUO/RIO (CH-37): zonder scopebesluit geen data."""
     blokkade = json.dumps({"buiten_scope": True})

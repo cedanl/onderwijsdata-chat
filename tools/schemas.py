@@ -479,9 +479,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_GET_ROA_BENCHMARK,
             "description": (
-                "ROA (AIS 2030), landelijk: schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, "
-                "buiten de vakrichting) en de prognose tot 2030, per opleidingsniveau mbo2-4, bachelor en "
-                "master, of voor één opleidingssector. Niet per instelling of regio."
+                "ROA (AIS 2030): schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, buiten de "
+                "vakrichting; alleen landelijk) en de prognose tot 2030 (landelijk, of per arbeidsmarktregio "
+                "of provincie), per opleidingsniveau mbo2-4, bachelor en master, of voor één opleidingssector. "
+                "Niet per instelling."
             ),
             "parameters": {
                 "type": "object",
@@ -490,7 +491,14 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": (
                             "Optioneel: een ROA-opleidingssector, bijv. 'Mbo4 - techniek en ict' of "
-                            "'Bachelor - zorg en onderwijs'. Zonder sector: alle mbo/hbo/wo-niveaus."
+                            "'Master - zorg en onderwijs'. Zonder sector: alle mbo/hbo/wo-niveaus."
+                        ),
+                    },
+                    "regio": {
+                        "type": "string",
+                        "description": (
+                            "Optioneel: een arbeidsmarktregio (bijv. 'Midden-Utrecht') of provincie (bijv. "
+                            "'Utrecht'). Zonder regio: landelijk."
                         ),
                     },
                 },
