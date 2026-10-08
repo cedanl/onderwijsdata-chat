@@ -19,6 +19,13 @@ de laatste tag is 1.8.6.
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
+### Evaluatie
+- De productievragen-eval (`tests/e2e/real-questions.spec.js`) keurt een leeg, mislukt of afgebroken
+  resultaat niet meer goed: een geldig einde, tekst, geen fout en geen timeout zijn harde poorten, en elke
+  eis (tool, dataset, term, referentiewaarde, grafiek) faalt apart in plaats van in één totaalscore. De
+  runners sturen het token als WS-subprotocol en tellen ingetrokken tekst niet mee. De poort heeft
+  unittests die in CI draaien.
+
 ### Betrouwbaarheid van antwoorden
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.

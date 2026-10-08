@@ -147,6 +147,8 @@ frontend:
     - npx vitest run
     # De eerste load (/login) blijft klein: Plotly en co. horen in de lazy chunks (#110).
     - npm run budget
+    # De e2e-evals draaien niet in CI, hun poort en scores wel: zonder app en zonder LLM (CH-28, #36).
+    - cd .. && node --test tests/e2e/score-unit.mjs tests/e2e/refusal-unit.mjs
 
 docker:docker-build:
   rules:
