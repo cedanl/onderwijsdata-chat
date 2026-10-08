@@ -99,11 +99,12 @@ def beschrijving_onvolledig(entry: dict) -> bool:
     return status is not None and status != "ok"
 
 
-def metadata(entry: dict, regel_geldt: bool | None = None) -> dict:
+def metadata(entry: dict, profiel: dict | None = None, geladen: bool = False) -> dict:
     """De velden die get_duo_data en dataset_details meegeven; alleen wat er is.
 
-    `regel_geldt`: of de geladen data de publicatieregel volgt (#407). None = data niet
-    geladen (dataset_details): de regel uit de beschrijving blijft dan staan.
+    De publicatieregel uit de beschrijving blijft altijd staan. Is de data geladen
+    (`geladen`), dan komen ernaast het waargenomen `profiel` van het bestand en de
+    conflictstatus, met een melding per oorzaak (#407, CH-31).
     """
     velden: dict = {}
     if definitie := teldefinitie(entry):
@@ -111,10 +112,14 @@ def metadata(entry: dict, regel_geldt: bool | None = None) -> dict:
     elif melding := ander_onderwijstype(entry):
         velden["teldefinitie_niet_gebruikt"] = melding
     if regels := publicatieregels(entry):
-        if regel_geldt is False:
-            velden["publicatieregels_niet_gebruikt"] = kleine_aantallen.NOOT_ALS_MIN_EEN
-        else:
-            velden["publicatieregels"] = regels
+        velden["publicatieregels"] = regels
+        if geladen:
+            status, melding = kleine_aantallen.beoordeling(profiel)
+            velden["publicatieregel_status"] = status
+            if profiel is not None:
+                velden["publicatieregel_waargenomen"] = profiel
+            if melding:
+                velden["publicatieregel_melding"] = melding
     if beschrijving_onvolledig(entry):
         velden["metadata_onbekend"] = (
             "De DUO-beschrijving is niet volledig te lezen: teldefinitie en publicatieregels kunnen "

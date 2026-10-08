@@ -314,7 +314,8 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
         "preview": preview,
     }
     known = store.meta(key)
-    result.update(duo_meta.metadata(duo_meta.record(dataset_id), known.vier_regel if known else None))
+    profiel = kleine_aantallen.waargenomen(df, min1)
+    result.update(duo_meta.metadata(duo_meta.record(dataset_id), profiel, geladen=True))
     if known and known.schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)
     notes = resource_sentinel_notes(min1)
