@@ -7,15 +7,18 @@ import pandas as pd
 import pytest
 
 import data.dashboard as dashboard
+from data import arbeidsmarkt
 
 _CLUSTERS = {"Zorg en welzijn": 900, "ICT": 300, "Techniek": 200}
 
 
 def _met_clusters(sectoren):
     with (
-        patch.object(dashboard, "_uwv_raw_clusters", return_value=(1400, "mei 2023", _CLUSTERS)),
+        patch.object(arbeidsmarkt, "uwv_stand", return_value=arbeidsmarkt.UwvStand(1400, "2023-05-16", _CLUSTERS)),
         patch.object(
-            dashboard, "_SECTOR_CLUSTER_MAP", {"GEZONDHEIDSZORG": ["Zorg en welzijn"], "ONBEKEND": ["Bestaat niet"]}
+            arbeidsmarkt,
+            "SECTOR_CLUSTER_MAP",
+            {"GEZONDHEIDSZORG": ["Zorg en welzijn"], "ONBEKEND": ["Bestaat niet"]},
         ),
     ):
         return dashboard._uwv_clusters_voor_sectoren("Utrecht", sectoren)
@@ -90,7 +93,7 @@ def test_mapping_bestand_heeft_een_manifest():
     from datetime import date
     from pathlib import Path
 
-    ruw = json.loads((Path(dashboard.__file__).parent / "sector_cluster_mapping.json").read_text())
+    ruw = json.loads((Path(arbeidsmarkt.__file__).parent / "sector_cluster_mapping.json").read_text())
     manifest = ruw["_manifest"]
     date.fromisoformat(manifest["bijgewerkt"])
     assert "UWV" in manifest["bron"]
@@ -99,4 +102,28 @@ def test_mapping_bestand_heeft_een_manifest():
 def test_manifest_is_geen_sector(tmp_path):
     bestand = tmp_path / "sector_cluster_mapping.json"
     bestand.write_text('{"_manifest": {"bijgewerkt": "2026-08-17"}, "TECHNIEK": ["ICT"]}')
-    assert dashboard._load_sector_cluster_map(bestand) == {"TECHNIEK": ["ICT"]}
+    assert arbeidsmarkt.load_sector_cluster_map(bestand) == {"TECHNIEK": ["ICT"]}
+
+
+def test_roa_prognose_in_het_dashboard_is_landelijk():
+    """Per niveau staan er 48 regio's; zonder filter won de typering van de laatst gelezen regio (#441)."""
+    rijen = pd.DataFrame(
+        [
+            {
+                "regionaam": r,
+                "thema": arbeidsmarkt._ROA_PROGNOSE,
+                "aggregatieniveau": arbeidsmarkt._ROA_NIVEAU,
+                "detailniveau": "Mbo4",
+                "onderwerp": "ITA toekomstige arbeidsmarktsituatie in 2030",
+                "perc": None,
+                "aantal": None,
+                "typering": t,
+                "versie": "v1",
+            }
+            for r, t in (("Nederland", "redelijk"), ("Groningen", "slecht"))
+        ]
+    )
+    dashboard._roa_prognose.cache_clear()
+    with patch.object(arbeidsmarkt, "_roa", return_value=rijen):
+        assert dashboard._roa_prognose("mbo") == {"Mbo4": {"ITA toekomstige arbeidsmarktsituatie in 2030": "redelijk"}}
+    dashboard._roa_prognose.cache_clear()

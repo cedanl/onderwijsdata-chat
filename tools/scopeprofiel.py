@@ -130,7 +130,8 @@ TOEGELATEN: dict[str, str] = {
     **dict.fromkeys(SECTORFILTER, "RIO-register; alleen met een mbo/hbo/wo-sectorfilter"),
     # Examenlicenties bestaan alleen in het mbo (WEB).
     "examenlicenties": "RIO-register; examenlicenties bestaan alleen in het mbo",
-    # Arbeidsmarkt na mbo/hbo/wo: de arbeidsmarktkant van het chatprofiel.
+    # Arbeidsmarkt na mbo/hbo/wo: de arbeidsmarktkant van het chatprofiel, via get_uwv_vacatures
+    # en get_roa_benchmark (besluit 08-10, #441).
     "ais2030": "ROA-prognoses per mbo/hbo/wo-opleiding",
     "ais2028": "ROA-prognoses per mbo/hbo/wo-opleiding",
     "uwv-open-match-data": "UWV-vacatures; arbeidsmarktkant van het chatprofiel",

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import functools
-import json
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 
 _INSTROOM_MBO = "INSTROOM MBO"
 _BOL_VOLTIJD = "BOL voltijd"
@@ -15,6 +13,7 @@ from riodata import duo
 
 from core.sentinels import mask_sentinels
 
+from . import arbeidsmarkt
 from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
@@ -513,147 +512,70 @@ def _mode_str(series: pd.Series) -> str | None:
     return str(vals.mode().iloc[0])
 
 
-_SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
-
-
-def _load_sector_cluster_map(path: Path = _SECTOR_CLUSTER_PATH) -> dict[str, list[str]]:
-    """Sector → UWV-clusters; `_manifest` (peildatum en bron, #313) is geen sector."""
-    if path.exists():
-        try:
-            return {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith("_")}
-        except Exception:
-            logger.warning("sector_cluster_mapping.json onleesbaar", exc_info=True)
-    else:
-        logger.warning("sector_cluster_mapping.json niet gevonden — run scripts/refresh_sector_mapping.py")
-    return {}
-
-
-_SECTOR_CLUSTER_MAP: dict[str, list[str]] = _load_sector_cluster_map()
-
-
-@functools.cache
-def _uwv_raw_clusters(provincie: str) -> tuple[int, str, dict[str, int]]:
-    try:
-        from riodata import uwv
-
-        df = uwv.load("latest", rec_type="Vacature")
-        if df.empty or "PROVINCIE" not in df.columns:
-            return 0, "onbekend", {}
-        subset = df[df["PROVINCIE"].str.lower() == provincie.lower()]
-        if subset.empty:
-            return 0, "onbekend", {}
-        totaal = int(subset["AANTAL"].sum())
-        per_cluster = subset.groupby("BEROEPENCLUSTER")["AANTAL"].sum().sort_values(ascending=False)
-        return totaal, "mei 2023", {str(k): int(v) for k, v in per_cluster.items()}
-    except Exception:
-        logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
-        return 0, "onbekend", {}
-
-
-def _relevante_clusters(alle_clusters: dict[str, int], sectoren: tuple[str, ...]) -> dict[str, int]:
-    """Filter clusters op sectoren via de mapping. Geeft lege dict als geen match."""
-    if not sectoren or not _SECTOR_CLUSTER_MAP:
-        return {}
-    relevant = {c for s in sectoren for c in _SECTOR_CLUSTER_MAP.get(s, [])}
-    return {naam: n for naam, n in alle_clusters.items() if naam in relevant}
-
-
-def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    """Alle vacatureclusters voor de gegeven sectoren, zonder top-N cap.
-
-    Gebruik dit voor berekeningen (supply-demand, match score).
-    Gebruik _uwv_vacatures_provincie voor weergave-overzichten (top-N).
-    """
-    _, _, alle = _uwv_raw_clusters(provincie)
-    # Geen match is geen reden om alle clusters te nemen: dan kreeg elke sector
-    # vacature-aandeel 0 en dus "overaanbod" (#229). Leeg geeft match_score None.
-    return _relevante_clusters(alle, sectoren)
-
-
 def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> dict:
     """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
 
     Bedoeld voor weergave-overzichten (UwvSection). Gebruik
-    _uwv_clusters_voor_sectoren voor supply-demand berekeningen.
+    arbeidsmarkt.clusters_voor_sectoren voor supply-demand berekeningen.
     """
-    totaal, peildatum, alle_clusters = _uwv_raw_clusters(provincie)
-    if not alle_clusters:
+    try:
+        stand = arbeidsmarkt.uwv_stand(provincie)
+    except Exception:
+        logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
+        return {}
+    if not stand:
         return {}
 
     if sectoren:
-        gefilterd = _relevante_clusters(alle_clusters, sectoren)
+        gefilterd = arbeidsmarkt.relevante_clusters(stand.clusters, sectoren)
         if gefilterd:
             top = dict(sorted(gefilterd.items(), key=lambda x: -x[1])[:_MAX_VACATURE_CLUSTERS])
             return {
-                "totaal": totaal,
-                "peildatum": peildatum,
+                "totaal": stand.totaal,
+                "peildatum": stand.peildatum,
                 "clusters": top,
                 "gefilterd_op": sorted(sectoren),
             }
 
-    top = dict(list(alle_clusters.items())[:_MAX_VACATURE_CLUSTERS])
+    top = dict(list(stand.clusters.items())[:_MAX_VACATURE_CLUSTERS])
     return {
-        "totaal": totaal,
-        "peildatum": peildatum,
+        "totaal": stand.totaal,
+        "peildatum": stand.peildatum,
         "clusters": top,
         "gefilterd_op": [],
     }
 
 
+def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
+    try:
+        return arbeidsmarkt.clusters_voor_sectoren(provincie, sectoren)
+    except Exception:
+        logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
+        return {}
+
+
 @functools.cache
 def _roa_prognose(onderwijs_type: str) -> dict:
-    """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau."""
+    """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau (typering), landelijk."""
     try:
-        from riodata import roa
-
-        df = roa.load("ais2030", "arbeidsmarkt")
-        prog = df[df["thema"].str.contains("prognose", case=False, na=False)]
-        niveaus = ["Bachelor", "Master, doctor"] if onderwijs_type == "ho" else ["Mbo4", "Mbo3", "Mbo2"]
-        subset = prog[(prog["aggregatieniveau"] == "opleidingsniveau (ONR2019)") & (prog["detailniveau"].isin(niveaus))]
-        indicatoren = [
-            "ITA toekomstige arbeidsmarktsituatie in 2030",
-            "verwachte baanopeningen tot 2030",
-            "verwachte instroom van schoolverlaters tot 2030",
-        ]
-        rows = subset[subset["onderwerp"].isin(indicatoren)][["detailniveau", "onderwerp", "typering"]].dropna(
-            subset=["typering"]
-        )
-        if rows.empty:
-            return {}
-        out: dict = {}
-        for _, row in rows.iterrows():
-            niveau = str(row["detailniveau"])
-            onderwerp = str(row["onderwerp"])
-            out.setdefault(niveau, {})[onderwerp] = str(row["typering"])
-        return out
+        waarden = arbeidsmarkt.roa_prognose(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception:
         logger.warning("roa: prognose %s niet beschikbaar", onderwijs_type, exc_info=True)
         return {}
+    uit = {n: {o: w["typering"] for o, w in ow.items() if "typering" in w} for n, ow in waarden.items()}
+    return {n: ow for n, ow in uit.items() if ow}
 
 
 @functools.cache
 def _roa_schoolverlaters(onderwijs_type: str) -> dict:
+    """ROA-schoolverlatersinformatie (SIS 2024) per opleidingsniveau, in hele procenten, landelijk."""
     try:
-        from riodata import roa
-
-        df = roa.load("ais2030", "arbeidsmarkt")
-        sv = df[df["thema"] == "Schoolverlatersinformatie (SIS 2024)"]
-        niveaus = ["Bachelor", "Master, doctor"] if onderwijs_type == "ho" else ["Mbo4", "Mbo3", "Mbo2"]
-        subset = sv[(sv["aggregatieniveau"] == "opleidingsniveau (ONR2019)") & (sv["detailniveau"].isin(niveaus))]
-        indicatoren = ["werkloosheid", "vast dienstverband", "buiten de vakrichting"]
-        rows = subset[subset["onderwerp"].isin(indicatoren)][["detailniveau", "onderwerp", "perc"]]
-        rows = rows.dropna(subset=["perc"])
-        if rows.empty:
-            return {}
-        out: dict = {}
-        for _, row in rows.iterrows():
-            niveau = str(row["detailniveau"])
-            indicator = str(row["onderwerp"])
-            out.setdefault(niveau, {})[indicator] = round(float(row["perc"]))
-        return out
+        waarden = arbeidsmarkt.roa_schoolverlaters(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception:
         logger.warning("roa: schoolverlaters %s niet beschikbaar", onderwijs_type, exc_info=True)
         return {}
+    uit = {n: {o: round(w["perc"]) for o, w in ow.items() if "perc" in w} for n, ow in waarden.items()}
+    return {n: ow for n, ow in uit.items() if ow}
 
 
 def _load_dashboard_regio_ho(instelling: str) -> dict | None:
@@ -1520,7 +1442,7 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
 
     # sector_cluster_mapping
     gps_final = result.get("gediplomeerden_per_sector", {})
-    result["sector_cluster_mapping"] = {s: _SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
+    result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
 
     # match_score: schaarste if vac-aandeel > dipl-aandeel * 1.2
     vpc = result["vacatures_per_cluster"]
