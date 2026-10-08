@@ -11,8 +11,9 @@ citatie dat de herkomst niet is vastgesteld. Het model schrijft zelf geen marker
 from tools import LABELS, store
 from tools.kolomlabel import kolomlabel
 
-from .claimbinding import betekenis, kenmerken, kies, zin_van
-from .grounding import checked_numbers
+from .binding import zin_op
+from .claimbinding import betekenis, kenmerken, kies
+from .grounding import getallen_met_positie
 from .meetwaarden import Meetwaarde, eenheden, meetwaarden
 from .selectie import SCHEIDING as _SCHEIDING
 from .selectie import bron_in_woorden, data_keys, keten, laadkey
@@ -57,24 +58,23 @@ def _onbepaald(geschreven: str, kandidaten: list) -> dict:
 
 
 def citaties(tekst: str, steps: list[tuple[str, str]]) -> list[dict]:
-    """Per gecontroleerd getal in `tekst` een citatie; leeg als de beurt geen data las."""
+    """Per voorkomen van een gecontroleerd getal in `tekst` een citatie, in tekstvolgorde; leeg als de
+    beurt geen data las. Hetzelfde getal in twee zinnen kan twee bronnen hebben (CH-08)."""
     results = [result for _, result in steps]
     waarden = [(stap, tool, meetwaarden(result, tool)) for stap, (tool, result) in enumerate(steps, 1)]
     if not data_keys(results) and not any(w for _, _, w in waarden):
         return []
     eenheid = {k: v for result in results for k, v in eenheden(result).items()}
-    gevonden: dict[str, dict] = {}
-    for geschreven, cijfers in checked_numbers(tekst):
-        if geschreven in gevonden:
-            continue
+    gevonden: list[dict] = []
+    for geschreven, cijfers, positie in getallen_met_positie(tekst):
         # Niet de eerste stap met dit getal: de zin wijst de selectie aan (CH-08).
         kandidaten = [(s, t, w) for s, t, ws in waarden for w in ws if cijfers in w.cijfers]
         bron = kies(
             kandidaten,
             lambda k: betekenis(k[2]),
             lambda k: kenmerken(k[2]),
-            zin_van(tekst, geschreven),
+            zin_op(tekst, positie),
             voorkeur=_dichtst_bij_de_bron,
         )
-        gevonden[geschreven] = _citatie(geschreven, *bron, eenheid) if bron else _onbepaald(geschreven, kandidaten)
-    return list(gevonden.values())
+        gevonden.append(_citatie(geschreven, *bron, eenheid) if bron else _onbepaald(geschreven, kandidaten))
+    return gevonden

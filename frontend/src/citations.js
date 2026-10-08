@@ -32,12 +32,17 @@ function citatieElement(c) {
   }
 }
 
-export function splitTekst(tekst, citaties, regex) {
+// De server geeft per voorkomen een citatie, in tekstvolgorde (CH-08): het k-de voorkomen van een
+// getal krijgt de k-de citatie met dat getal. `teller` telt over de hele tekst.
+export function splitTekst(tekst, citaties, regex, teller = new Map()) {
   const delen = []
   let van = 0
   for (const m of tekst.matchAll(regex)) {
     if (m.index > van) delen.push({ type: 'text', value: tekst.slice(van, m.index) })
-    delen.push(citatieElement(citaties.find(c => c.getal === m[0])))
+    const n = teller.get(m[0]) ?? 0
+    teller.set(m[0], n + 1)
+    const metGetal = citaties.filter(c => c.getal === m[0])
+    delen.push(citatieElement(metGetal[n] ?? metGetal.at(-1)))
     van = m.index + m[0].length
   }
   if (van === 0) return null
@@ -45,11 +50,11 @@ export function splitTekst(tekst, citaties, regex) {
   return delen
 }
 
-function verwerk(node, citaties, regex) {
+function verwerk(node, citaties, regex, teller) {
   if (!node.children || GEEN_CITATIE.has(node.tagName)) return
   node.children = node.children.flatMap(kind => {
-    if (kind.type === 'text') return splitTekst(kind.value, citaties, regex) ?? [kind]
-    verwerk(kind, citaties, regex)
+    if (kind.type === 'text') return splitTekst(kind.value, citaties, regex, teller) ?? [kind]
+    verwerk(kind, citaties, regex, teller)
     return [kind]
   })
 }
@@ -58,6 +63,6 @@ export function rehypeCitaties(citaties) {
   return () => {
     if (!citaties?.length) return () => {}
     const regex = patroon(citaties)
-    return tree => verwerk(tree, citaties, regex)
+    return tree => verwerk(tree, citaties, regex, new Map())
   }
 }

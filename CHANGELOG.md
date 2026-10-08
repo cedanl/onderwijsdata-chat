@@ -48,6 +48,9 @@ de laatste tag is 1.8.6.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
 
 ### Betrouwbaarheid van antwoorden
+- Staat hetzelfde getal in twee zinnen ("Instelling B had 10.000 … Instelling A had 10.000"), dan krijgt
+  elke vermelding een eigen citatie en de ondergrens van haar eigen selectie. Eerder erfde de tweede de
+  bron van de eerste.
 - Getallen in een arbeidsmarktantwoord krijgen een citatie: UWV-vacatures met provincie, sector en
   beroepencluster en de peildatum, ROA-cijfers met opleiding, indicator, regio en versie. Een landelijke ROA-
   terugval heet in de citatie ook landelijk.

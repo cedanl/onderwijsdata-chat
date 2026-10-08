@@ -18,15 +18,9 @@ from typing import TypeVar
 
 from tools.kolomlabel import kolomlabel
 
-from .binding import segmenten
 from .meetwaarden import Meetwaarde
 
 T = TypeVar("T")
-
-
-def zin_van(tekst: str, geschreven: str) -> str:
-    """De zin of tabelrij waarin het getal staat; de hele tekst als het niet te vinden is."""
-    return next((s for s in segmenten(tekst) if geschreven in s), tekst)
 
 
 def kenmerken(waarde: Meetwaarde) -> frozenset[str]:

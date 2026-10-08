@@ -73,6 +73,16 @@ def segmenten(tekst: str) -> list[str]:
     return [s for s in (s.strip() for s in _SEGMENT.split(tekst)) if s]
 
 
+def zin_op(tekst: str, positie: int) -> str:
+    """De zin of tabelrij waarin de tekst op `positie` staat (CH-08: niet de eerste met hetzelfde getal)."""
+    begin = 0
+    for scheiding in _SEGMENT.finditer(tekst):
+        if scheiding.start() >= positie:
+            return tekst[begin : scheiding.start()].strip()
+        begin = scheiding.end()
+    return tekst[begin:].strip()
+
+
 def _jaren(df: pd.DataFrame, known: KeyMeta) -> pd.Series | None:
     """Het startjaar per rij, uit de periodecode of, zonder code, uit haar label (#194)."""
     kolom = known.periodekolom
