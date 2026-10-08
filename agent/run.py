@@ -17,7 +17,7 @@ from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
 from .grafiekvraag import ontbrekende_grafiek
-from .grounding import unverified
+from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
@@ -25,9 +25,9 @@ from .kpi_periode import verkeerde_kpi_periodes
 from .kpi_scope import kpi_naast_filter
 from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
 from .loop import LoopResult, ToolCall, tool_loop
-from .metatekst import metatekst
+from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
-from .probleem import INGEHOUDEN, Probleem, hard, harde, meldingen, veilig
+from .probleem import INGEHOUDEN, Probleem, hard, harde, meldingen, uitkomsten, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
@@ -226,29 +226,41 @@ async def run(
         )
 
     def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
-        return [ongedekt(n) for n in unverified(text, tool_results, earlier)]
+        # Het verschil van twee genoemde getallen uit de data is na te rekenen, niet verzonnen (CH-01).
+        afgeleid = afgeleide_verschillen(text, tool_results)
+        return [ongedekt(n) for n in unverified(text, tool_results, earlier) if n not in afgeleid]
 
     def check(text: str, tool_results: list[str]) -> list[str]:
-        # hard(): blijft het probleem na de herkansing, dan wordt het antwoord ingehouden (#207).
-        return [
-            *veilig(ongedekte_getallen, text, tool_results),
-            *hard(veilig(ontbrekende_schooljaren, last_user_msg, tool_results)),
-            *hard(veilig(ontbrekende_instellingen, last_user_msg, tool_results)),
-            *hard(veilig(onvolledige_selecties, text, tool_results)),
-            *veilig(verkeerde_opleidingsvormen, text, tool_results),
-            *veilig(verkeerde_dimensielabels, text, tool_results),
-            *veilig(onbekende_datasets, text),
-            *veilig(ongebruikte_bronnen, text, tool_results),
-            *veilig(verkeerd_gebonden, text, tool_results),
-            *hard(veilig(verkeerde_kenmerken, text, tool_results)),
-            *hard(veilig(verkeerde_kpi_periodes, text, tool_results)),
-            *veilig(kpi_naast_filter, text, tool_results),
-            *veilig(genegeerde_keuze, session.get("clarify_keuzes", []), text),
-            *veilig(onbeschikbaar_zonder_zoekpad, last_user_msg, text, tool_results),
-            *veilig(ongedekte_oorzaak, text, tool_results),
-            *veilig(ontbrekende_grafiek, last_user_msg, text, tool_results, session.get("data_keys", [])),
-            *veilig(metatekst, text),
+        # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
+        # ingehouden (#207).
+        controles = [
+            (ongedekte_getallen, (text, tool_results), False),
+            (ontbrekende_schooljaren, (last_user_msg, tool_results), True),
+            (ontbrekende_instellingen, (last_user_msg, tool_results), True),
+            (onvolledige_selecties, (text, tool_results), True),
+            (verkeerde_opleidingsvormen, (text, tool_results), False),
+            (verkeerde_dimensielabels, (text, tool_results), False),
+            (onbekende_datasets, (text,), False),
+            (ongebruikte_bronnen, (text, tool_results), False),
+            (verkeerd_gebonden, (text, tool_results), False),
+            (verkeerde_kenmerken, (text, tool_results), True),
+            (verkeerde_kpi_periodes, (text, tool_results), True),
+            (kpi_naast_filter, (text, tool_results), False),
+            (genegeerde_keuze, (session.get("clarify_keuzes", []), text), False),
+            (onbeschikbaar_zonder_zoekpad, (last_user_msg, text, tool_results), False),
+            (ongedekte_oorzaak, (text, tool_results), False),
+            (ontbrekende_grafiek, (last_user_msg, text, tool_results, session.get("data_keys", [])), False),
+            (metatekst, (text,), False),
         ]
+        problemen: list[str] = [
+            p
+            for controle, args, streng in controles
+            for p in (hard(veilig(controle, *args)) if streng else veilig(controle, *args))
+        ]
+        # Per antwoord welke controle wat gaf: regressietestbaar en de afvuurfrequentie per controle (CH-01).
+        per_controle = uitkomsten((c.__name__ for c, _, _ in controles), problemen)
+        logger.info("CONTROLES  %s", "  ".join(f"{naam}={uitkomst}" for naam, uitkomst in per_controle.items()))
+        return problemen
 
     async def withdraw(problems: list[str]) -> None:
         # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
@@ -335,7 +347,7 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
     text_content = weigering(
         antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(zonder_citaatkop(antwoord), result.tool_results)
+    ) or met_telling(zonder_citaatkop(zonder_toolnamen(antwoord)), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])

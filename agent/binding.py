@@ -13,7 +13,8 @@ stellen welk getal waarbij hoort; de rij moet dan bij een van die waarden
 passen. Een vergelijking in de tijd noemt vaak maar één jaar ("ten opzichte van
 2020/21 gedaald van 518.940 naar 475.460", #379): staat een getal van de zin bij
 het genoemde jaar, dan hoeven de andere alleen bij de genoemde instelling te
-passen. Staat een getal in geen enkele rij (een som, een KPI), dan beslist de
+passen. Niet elke vergelijking zegt "van … naar": ook "komt uit van … en komt uit
+op …" en "begon … eindigde" zijn er een (CH-01). Staat een getal in geen enkele rij (een som, een KPI), dan beslist de
 getalcontrole erover, niet deze.
 
 Een afgeleide waarde (#409) staat niet in een rij en kan toevallig gelijk zijn aan
@@ -44,7 +45,9 @@ from .selectie import data_keys
 # Een zin die een verandering in de tijd beschrijft; het andere jaar staat er vaak niet bij (#379).
 _VERGELIJKING = re.compile(
     r"\bvan\b.+\bnaar\b|ten opzichte van|t\.o\.v\.|vergeleken met|\beerder\b|vorig jaar"
-    r"|\b(?:gedaald|daalde|gestegen|steeg|toegenomen|afgenomen)\b|\b(?:daling|stijging|groei|toename|afname)\b",
+    r"|\b(?:gedaald|daalde|gestegen|steeg|toegenomen|afgenomen)\b|\b(?:daling|stijging|groei|toename|afname)\b"
+    # Zonder "van … naar": "komt uit van … en komt uit op …", "begon … eindigde", "verschil tussen" (CH-01).
+    r"|\b(?:komt|kwam) uit (?:van|op)\b|\bbegon\b.+\beindigde\b|\bverschil tussen\b",
     re.IGNORECASE,
 )
 

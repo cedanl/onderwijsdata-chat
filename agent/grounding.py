@@ -7,11 +7,16 @@ Jaartallen en kleinere getallen vallen buiten de controle.
 
 Voor chatantwoorden (#185) geldt dat ook voor percentages: een percentage is
 bijna altijd een berekening, en die hoort in een tool, niet in het model.
+
+Een uitzondering is het verschil van twee getallen die het antwoord zelf noemt en
+die uit de data komen (#409): "van 478.660 naar 475.460, 3.200 minder" is na te
+rekenen zonder tool. Dat getal staat niet in de data, maar is niet verzonnen.
 """
 
 import json
 import re
 from decimal import ROUND_HALF_UP, Decimal
+from itertools import combinations
 
 from tools.analysis import SCRIPTCONSTANTEN
 
@@ -86,6 +91,15 @@ def checked_numbers(text: str) -> list[tuple[str, str]]:
         for m in _TEXT_NUMBER.finditer(text)
         if "," not in m.group(0) and _checked(digits := _digits(m.group(1)))
     ]
+
+
+def afgeleide_verschillen(text: str, tool_results: list[str]) -> set[str]:
+    """Getallen in de tekst, zoals geschreven, die het verschil zijn van twee andere getallen uit de data in de tekst."""
+    integers = _tool_integers(tool_results)
+    getallen = checked_numbers(text)
+    uit_data = {int(cijfers) for _, cijfers in getallen if cijfers in integers}
+    verschillen = {abs(a - b) for a, b in combinations(uit_data, 2)}
+    return {geschreven for geschreven, cijfers in getallen if cijfers not in integers and int(cijfers) in verschillen}
 
 
 def unsourced_numbers(text: str, tool_results: list[str]) -> set[str]:

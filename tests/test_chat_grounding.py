@@ -427,3 +427,49 @@ def test_de_intrekking_noemt_de_reden_en_de_controle_wordt_gelogd(monkeypatch, c
     [toast] = [e for e in events if e["type"] == "toast"]
     assert "klopte niet met de opgehaalde data" not in toast["message"]
     assert "HERKANSING" in caplog.text and "ongedekte_getallen" in caplog.text
+
+
+def test_ch01_verschil_van_twee_genoemde_getallen_wordt_niet_ingetrokken(monkeypatch, caplog):
+    """N23: 478.660 - 475.460 = 3.200 → '3.200 staat niet in de opgehaalde data' → harde intrekking."""
+    rijen = json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 15943}, {"AANTAL": 12120}]})
+    antwoord = "Het aantal daalde van 15.943 naar 12.120, dat is 3.823 minder."
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text=antwoord, tool_calls=[])],
+            tool_result=rijen,
+        )
+
+    assert text == antwoord
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert "controle" not in events[-1]
+    assert "CONTROLES" in caplog.text and "ongedekte_getallen=ok" in caplog.text
+
+
+def test_het_log_noemt_per_antwoord_de_uitkomst_van_elke_controle(monkeypatch, caplog):
+    with caplog.at_level("INFO", logger="agent.run"):
+        _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="In totaal 6.340 eerstejaars.", tool_calls=[]),
+                StreamResult(text="In totaal 5.943 eerstejaars.", tool_calls=[]),
+            ],
+        )
+
+    controles = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    assert len(controles) == 2  # vóór en na de herkansing
+    assert "ongedekte_getallen=hard" in controles[0] and "metatekst=ok" in controles[0]
+    assert "ongedekte_getallen=ok" in controles[1]
+
+
+def test_toolnaam_in_de_bronnen_kost_geen_herschrijving(monkeypatch):
+    """N25: het bronnenblok noemde get_rio_instelling; dat werd een extra modelronde."""
+    antwoord = "In totaal 5.943 eerstejaars.\n\n**Bronnen**\n- DUO (via `query_data`)"
+    text, events = _chat(
+        monkeypatch,
+        [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text=antwoord, tool_calls=[])],
+    )
+
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert text == "In totaal 5.943 eerstejaars.\n\n**Bronnen**\n- DUO"

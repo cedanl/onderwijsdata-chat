@@ -82,6 +82,19 @@ def test_vergelijking_met_een_eerder_jaar_noemt_maar_een_jaar():
     assert verkeerd_gebonden(tekst, _beurt()) == []
 
 
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Hogeschool Utrecht komt uit van 27.135 in 2024/25 en komt uit op 26.370.",
+        "Hogeschool Utrecht begon in 2024/25 met 27.135 en eindigde met 26.370.",
+        "Het verschil tussen 2024/25 (27.135) en het jaar erna (26.370) is klein.",
+    ],
+)
+def test_ch01_vergelijking_zonder_van_naar_noemt_maar_een_jaar(tekst):
+    """N22: 'komt uit van … en komt uit op …' had geen cue; 26.370 werd aan 2024/25 gehangen en ingetrokken."""
+    assert verkeerd_gebonden(tekst, _beurt()) == []
+
+
 def test_vergelijking_zonder_getal_bij_het_genoemde_jaar_blijft_verkeerd():
     [probleem] = verkeerd_gebonden("In 2025/26 waren het 27.135 studenten, een stijging.", _beurt())
     assert "27.135" in probleem
