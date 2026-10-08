@@ -35,7 +35,7 @@ env:
   - name: MODEL
     value: "azure_ai/claude-sonnet-5-5"
   - name: AVAILABLE_MODELS
-    value: "azure_ai/claude-sonnet-5-5,azure_ai/claude-opus-5-5"
+    value: "azure_ai/claude-sonnet-5-5"
   - name: WILLMA_BASE_URL
     value: "https://willma.surf.nl/api/v0"
   - name: WILLMA_API_KEY
