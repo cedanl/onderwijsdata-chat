@@ -45,6 +45,13 @@ de laatste tag is 1.8.6.
   onderscheiden kandidaten geven "herkomst niet vastgesteld".
 - `query_data` telt de onderdrukte cellen (-1) per jaar binnen de selectie, zodat het antwoord niet een
   bestandsbreed getal of een som over jaren aan één jaar hangt.
+- `get_rio_instelling` toetst naast de relatie ook de erkenning zelf op type en bedrijfsstatus op de peildatum:
+  een vestiging die uit bedrijf is, telt niet meer mee achter een nog geldige relatie. Een relatie zonder object
+  in RIO staat als `niet_te_lezen` in het resultaat, en andere erkenningen onder het bestuur (zoals erkende
+  onderwijsondersteuners) als `niet_meegeteld`.
+- De DUO-publicatieregel ('1-4 gepubliceerd als 4') blijft zichtbaar; ernaast staan wat het bestand laat zien
+  en een status (`volgt`, `conflict`, `niet_vast_te_stellen`) met een melding per oorzaak. De tool zegt niet meer
+  dat "een 4 hier een echte 4" is.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en

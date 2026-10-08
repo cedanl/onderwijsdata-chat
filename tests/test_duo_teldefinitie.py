@@ -54,17 +54,40 @@ def test_publicatieregel_wordt_meegegeven_als_de_data_hem_volgt():
 
 
 @pytest.mark.parametrize("dataset", ["p01hoinges", "p02ho1ejrs", "p03hoinschr"])
-def test_publicatieregel_ontbreekt_als_de_data_kleine_aantallen_als_min_een_geeft(dataset):
-    """#407: de HO-beschrijving noemt '1-4 als 4', de bestanden gebruiken -1."""
+def test_regel_profiel_en_conflict_staan_apart_als_de_data_min_een_geeft(dataset):
+    """#407, CH-31: de HO-beschrijving noemt '1-4 als 4', de bestanden gebruiken -1. De officiële regel
+    blijft zichtbaar, met wat het bestand laat zien en de conflictstatus ernaast."""
     result = _get(dataset, _MIN_EEN)
 
-    assert "publicatieregels" not in result
-    assert "-1" in result["publicatieregels_niet_gebruikt"]
+    assert result["publicatieregels"]  # de officiële regel, uit de beschrijving
+    assert result["publicatieregel_status"] == "conflict"
+    assert result["publicatieregel_waargenomen"]["cellen_min_een"] == 1
+    assert "-1" in result["publicatieregel_melding"]
+
+
+def test_geen_universele_exactheidsclaim():
+    """CH-31: 'Een 4 is hier een echte 4' volgde uit een bestandspatroon, niet uit de bron."""
+    result = _get("p01hoinges", pd.DataFrame({"AANTAL_INGESCHREVENEN": [-1, 2, 4, 30]}))
+
+    melding = result["publicatieregel_melding"].lower()
+    assert "echte 4" not in melding and "echt aantal" not in melding
+    assert "niet vast te stellen" in melding
 
 
 @pytest.mark.usefixtures("zonder_scopegrens")
-def test_publicatieregel_niet_gebruikt_bij_1_tot_3_cellen():
-    assert "publicatieregels" not in _get("01voins-v1", pd.DataFrame({"AANTAL LEERLINGEN": [4, 2, 25]}))
+def test_publicatieregel_conflict_bij_1_tot_3_cellen():
+    result = _get("01voins-v1", pd.DataFrame({"AANTAL LEERLINGEN": [4, 2, 25]}))
+
+    assert result["publicatieregel_status"] == "conflict"
+    assert "1 t/m 3" in result["publicatieregel_melding"]
+
+
+def test_zonder_aantalkolom_wordt_geen_oorzaak_verzonnen():
+    """CH-31: de oude False-tak beweerde -1-cellen ook als er gewoon geen aantalkolom was."""
+    result = _get("p01hoinges", pd.DataFrame({"OPLEIDINGSVORM": ["VT"], "STUDENTEN": [12]}))
+
+    assert result["publicatieregel_status"] == "niet_vast_te_stellen"
+    assert "-1" not in result.get("publicatieregel_melding", "")
 
 
 def test_publicatieregel_maakt_4_niet_leeg():
