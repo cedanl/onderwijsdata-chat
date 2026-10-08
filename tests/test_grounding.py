@@ -2,7 +2,7 @@
 
 import json
 
-from agent.grounding import unsourced_numbers, unverified
+from agent.grounding import afgeleide_verschillen, unsourced_numbers, unverified
 
 _CBS_RESULT = json.dumps(
     {
@@ -112,3 +112,20 @@ def test_toolresultaat_zonder_bron_is_geen_bewijs():
 def test_getal_dat_alleen_de_gebruiker_noemde_is_niet_gedekt():
     # #211: run.py geeft alleen assistentberichten als bron mee.
     assert unverified("Het totaal is 987654.", [], []) == ["987654"]
+
+
+def test_verschil_van_twee_genoemde_getallen_uit_de_data_is_afgeleid():
+    """CH-01 N23: 478.660 - 475.460 = 3.200 stond niet in de data en werd hard ingetrokken."""
+    tekst = "Van 378.490 naar 367.960: 10.530 minder."
+    assert afgeleide_verschillen(tekst, [_CBS_RESULT]) == {"10.530"}
+
+
+def test_verschil_met_een_verzonnen_getal_is_niet_afgeleid():
+    # 378.490 - 336.800 = 41.690, maar 336.800 staat niet in de data.
+    tekst = "Van 378.490 naar 336.800: 41.690 minder."
+    assert afgeleide_verschillen(tekst, [_CBS_RESULT]) == set()
+
+
+def test_verschil_van_getallen_die_de_tekst_niet_noemt_is_niet_afgeleid():
+    # 10.530 is het verschil van twee cellen, maar het antwoord noemt die cellen niet: niet na te rekenen.
+    assert afgeleide_verschillen("Het aantal daalde met 10.530.", [_CBS_RESULT]) == set()

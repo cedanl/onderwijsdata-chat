@@ -26,7 +26,7 @@ _CODE_VORM = re.compile(rf"\b({_CODES})\s*(?:=|:|staat voor|betekent)\s*({_VORME
 # DUO-ID's (p01hoinges, p02ho1ejrs) en CBS-tabelnummers (85423NED).
 _DATASET_ID = re.compile(r"\b(p\d{2}[a-z0-9]{3,}|\d{5}(?:NED|ENG))\b")
 # De Bronnen-sectie uit prompts/system.md, tot de Definities of het einde (#213).
-_BRONNEN = re.compile(r"\*\*Bronnen\*\*(.*?)(?=\*\*Definities\*\*|\Z)", re.DOTALL)
+BRONNEN = re.compile(r"\*\*Bronnen\*\*(.*?)(?=\*\*Definities\*\*|\Z)", re.DOTALL)
 
 
 def verkeerde_opleidingsvormen(tekst: str, tool_results: list[str]) -> list[str]:
@@ -73,7 +73,7 @@ def ongebruikte_bronnen(tekst: str, tool_results: list[str]) -> list[str]:
     Een ID dat niet bestaat meldt onbekende_datasets al.
     """
     gebruikt = {known.dataset.lower() for key in data_keys(tool_results) if (known := store.meta(key))}
-    sectie = _BRONNEN.search(tekst)
+    sectie = BRONNEN.search(tekst)
     if not gebruikt or not sectie:
         return []
     return [

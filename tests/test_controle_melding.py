@@ -15,7 +15,7 @@ import pytest
 from agent.beweringen import ongedekte_oorzaak
 from agent.keuze import genegeerde_keuze
 from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
-from agent.metatekst import metatekst
+from agent.metatekst import metatekst, zonder_toolnamen
 from agent.probleem import Probleem, meldingen
 from agent.selectie import ontbrekende_instellingen, ontbrekende_schooljaren
 from tools import store
@@ -129,3 +129,24 @@ def test_metatekst_over_de_controle_of_de_tools_wordt_gemeld(tekst):
 )
 def test_gewone_antwoordtekst_is_geen_metatekst(tekst):
     assert metatekst(tekst) == []
+
+
+@pytest.mark.parametrize(
+    ("bron", "schoon"),
+    [
+        ("- RIO — instellingsregister (via `get_rio_instelling`)", "- RIO — instellingsregister"),
+        ("- RIO — instellingsregister, opgehaald via get_rio_instelling", "- RIO — instellingsregister"),
+        ("- CBS 85423NED (`get_cbs_data`, `query_data`)", "- CBS 85423NED"),
+    ],
+)
+def test_toolnaam_in_de_bronnen_wordt_gefilterd_niet_herschreven(bron, schoon):
+    """CH-01 N25: een correct RIO-antwoord werd herschreven omdat de Bronnen-sectie get_rio_instelling noemde."""
+    tekst = f"ROC Mondriaan staat in RIO.\n\n**Bronnen**\n{bron}"
+    assert metatekst(tekst) == []
+    assert zonder_toolnamen(tekst) == f"ROC Mondriaan staat in RIO.\n\n**Bronnen**\n{schoon}"
+
+
+def test_toolnaam_buiten_de_bronnen_blijft_metatekst():
+    tekst = "Met query_data heb ik gefilterd op 2025.\n\n**Bronnen**\n- DUO p01hoinges"
+    assert metatekst(tekst)
+    assert zonder_toolnamen(tekst) == tekst

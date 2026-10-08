@@ -6,7 +6,7 @@ import pytest
 
 from agent import report
 from agent.loop import LoopResult
-from agent.probleem import Probleem, hard, harde, meldingen
+from agent.probleem import Probleem, hard, harde, meldingen, niet_gecontroleerd, uitkomsten, veilig
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
 
@@ -28,6 +28,32 @@ def test_harde_filtert_alleen_harde_problemen():
     (streng,) = hard([Probleem("6.340 staat niet in de data.")])
     assert harde([zacht, "los", streng]) == [streng]
     assert meldingen([zacht, streng]) == ["Label klopt niet.", "6.340 staat niet in de data."]
+
+
+def verkeerde_kpi_periodes():
+    return ["2023/24 valt buiten de KPI."]
+
+
+def test_hard_behoudt_de_naam_van_de_controle():
+    """CH-01: het HERKANSING-log noemde bij een harde controle None in plaats van haar naam."""
+    (p,) = hard(veilig(verkeerde_kpi_periodes))
+    assert p.hard and p.controle == "verkeerde_kpi_periodes"
+
+
+def test_uitkomsten_noemen_elke_controle_ook_zonder_bevinding():
+    """CH-01: per antwoord loggen welke controles draaiden en met welke uitkomst."""
+    (streng,) = hard(veilig(verkeerde_kpi_periodes))
+    zacht = Probleem("Label klopt niet.")
+    zacht.controle = "verkeerde_dimensielabels"
+    stuk = niet_gecontroleerd("abc123")
+    stuk.controle = "metatekst"
+    namen = ["ongedekte_getallen", "verkeerde_kpi_periodes", "verkeerde_dimensielabels", "metatekst"]
+    assert uitkomsten(namen, [streng, zacht, stuk]) == {
+        "ongedekte_getallen": "ok",
+        "verkeerde_kpi_periodes": "hard",
+        "verkeerde_dimensielabels": "zacht",
+        "metatekst": "niet gecontroleerd",
+    }
 
 
 # ── Rapport: alleen een hard probleem houdt het tegen ────────────────────────
