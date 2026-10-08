@@ -6,7 +6,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
-import { matchKnownInstelling } from './instellingenMatch'
+import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 import { applyMode } from './theme'
 
@@ -196,7 +196,7 @@ function AppShell() {
           <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
             <Routes>
               <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} user={user} feedbackEnabled={feedbackEnabled} />} />
+              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
               <Route path="*" element={<NotFoundPage />} />
