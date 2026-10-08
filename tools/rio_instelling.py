@@ -13,9 +13,13 @@ naam onder hetzelfde bestuur. De relaties volgen doet beide goed.
 """
 
 import json
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlparse
 
+import httpx
 from riodata import fetch, get, related
 
 from . import fouten, scopeprofiel
@@ -24,6 +28,9 @@ from .catalog import catalogus_titel
 _ERKENNINGEN = "erkenningen"
 _BEVOEGD_GEZAG = "BEVOEGD_GEZAG"
 _INSTELLING = "ERKENDE_ONDERWIJSINSTELLING"
+_VESTIGING = "ERKENDE_VESTIGING"
+# Zoveel erkenningen tegelijk lezen: elk doelobject is een eigen RIO-aanroep (CH-29).
+_PARALLEL = 8
 _HIERARCHISCH = "HIERARCHISCH"
 # mbo (WEB) en ho (WHW) maken een bestuur tot een bestuur binnen het profiel (#355);
 # po/vo/so-instellingen eronder tellen niet mee.
@@ -79,7 +86,7 @@ def _besturen(naam: str, peildatum: str) -> list[dict]:
         return besturen
     instellingen = _zoek(naam, _INSTELLING, peildatum)[:_MAX_INSTELLINGEN_OMHOOG]
     codes = sorted({b for i in instellingen for b in _boven(i["code"], peildatum)})
-    return [e for c in codes if (e := get(_ERKENNINGEN, c)).get("type") == _BEVOEGD_GEZAG]
+    return [e for e in _lees(codes)[0].values() if e.get("type") == _BEVOEGD_GEZAG and _geldig(e, peildatum)]
 
 
 def _kies(naam: str, besturen: list[dict]) -> dict | list[dict]:
@@ -94,24 +101,60 @@ def _kies(naam: str, besturen: list[dict]) -> dict | list[dict]:
     return [{"code": c, "naam": _naam(uniek[c])} for c in sorted(uniek)]
 
 
-def _instelling(code: str, peildatum: str) -> dict | None:
-    """De instelling met haar vestigingen; None als `code` geen instelling in bedrijf is."""
-    erkenning = get(_ERKENNINGEN, code)
-    if erkenning.get("type") != _INSTELLING or not _geldig(erkenning, peildatum):
-        return None
-    vestigingen = _onder(code, peildatum)
+def _lees(codes: list[str]) -> tuple[dict[str, dict], list[str]]:
+    """De erkenningen achter `codes`, en de codes waarvan RIO geen object heeft (404)."""
+
+    def een(code: str) -> tuple[str, dict | None]:
+        try:
+            return code, get(_ERKENNINGEN, code)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return code, None
+            raise
+
+    with ThreadPoolExecutor(max_workers=_PARALLEL) as pool:
+        paren = list(pool.map(een, codes))
+    return {c: e for c, e in paren if e is not None}, sorted(c for c, e in paren if e is None)
+
+
+@dataclass
+class _Telling:
+    """Wat onder een erkenning hangt, getoetst op het doelobject zelf (CH-29)."""
+
+    passend: dict[str, dict]  # code → erkenning van het gezochte type, in bedrijf op de peildatum
+    onleesbaar: list[str]  # relatie zonder object in RIO
+    anders: Counter  # andere typen erkenning: genoemd, niet geteld
+
+
+def _onder_van(code: str, soort: str, peildatum: str) -> _Telling:
+    """De erkenningen van `soort` onder `code`: relatie én doelobject geldig en in bedrijf op de peildatum.
+
+    Een geldige relatie naar een vestiging die uit bedrijf is, telde eerder gewoon mee.
+    """
+    gelezen, onleesbaar = _lees(_onder(code, peildatum))
+    passend = {c: e for c, e in gelezen.items() if e.get("type") == soort and _geldig(e, peildatum)}
+    anders = Counter(str(e.get("type")) for e in gelezen.values() if e.get("type") != soort)
+    return _Telling(passend, onleesbaar, anders)
+
+
+def _instelling(code: str, erkenning: dict, peildatum: str) -> tuple[dict, _Telling]:
+    """De instelling met haar vestigingen in bedrijf."""
+    vestigingen = _onder_van(code, _VESTIGING, peildatum)
+    codes = sorted(vestigingen.passend)
     return {
         "code": code,
         "naam": _naam(erkenning),
         "wet": erkenning.get("wet"),
         "erkenner": erkenning.get("erkenner"),
-        "vestigingen": len(vestigingen),
-        "vestigingscodes": vestigingen,
-    }
+        "vestigingen": len(codes),
+        "vestigingscodes": codes,
+    }, vestigingen
 
 
 def _overzicht(bestuur: dict, peildatum: str) -> dict:
-    instellingen = [i for c in _onder(bestuur["code"], peildatum) if (i := _instelling(c, peildatum))]
+    onder = _onder_van(bestuur["code"], _INSTELLING, peildatum)
+    paren = [_instelling(c, e, peildatum) for c, e in sorted(onder.passend.items())]
+    instellingen = [i for i, _ in paren]
     if not any(i["wet"] in _WETTEN_IN_SCOPE for i in instellingen):
         return {
             **scopeprofiel.buiten_scope("RIO"),
@@ -124,6 +167,9 @@ def _overzicht(bestuur: dict, peildatum: str) -> dict:
     binnen = [i for i in instellingen if not str(i["wet"] or "").startswith(_WETTEN_BUITEN_SCOPE)]
     weggelaten = sorted(i["code"] for i in instellingen if i not in binnen)
     vestigingen = sum(i["vestigingen"] for i in binnen)
+    tellingen = [onder, *(t for i, t in paren if i in binnen)]
+    anders = sum((t.anders for t in tellingen), Counter())
+    onleesbaar = sorted({c for t in tellingen for c in t.onleesbaar})
     uit = {
         "bevoegd_gezag": {"code": bestuur["code"], "naam": _naam(bestuur)},
         # Een erkenning is het bestuur, een instelling of een vestiging.
@@ -137,6 +183,11 @@ def _overzicht(bestuur: dict, peildatum: str) -> dict:
     }
     if weggelaten:
         uit["buiten_scope_weggelaten"] = weggelaten
+    if anders:
+        # Fontys: "23 erkenningen" verzweeg twee erkende onderwijsondersteuners (CH-29).
+        uit["niet_meegeteld"] = dict(sorted(anders.items()))
+    if onleesbaar:
+        uit["niet_te_lezen"] = onleesbaar
     return uit
 
 

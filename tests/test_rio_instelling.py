@@ -106,6 +106,9 @@ class _NepRio:
 
     def get(self, resource: str, id: str, **params):
         self.aanroepen.append((f"{resource}/{id}", params))
+        if id not in self.erkenningen:
+            verzoek = httpx.Request("GET", f"{_BASIS}/{id}")
+            raise httpx.HTTPStatusError("404", request=verzoek, response=httpx.Response(404, request=verzoek))
         return self.erkenningen[id]
 
 
@@ -256,3 +259,52 @@ def test_get_rio_data_op_erkenningen_verwijst_naar_de_vaste_route(monkeypatch):
     assert not opgehaald
     assert uit["buiten_scope"] is True
     assert "get_rio_instelling" in uit["melding"]
+
+
+# --- CH-29: de relatie én het doelobject op de peildatum ---
+
+
+def test_een_vestiging_uit_bedrijf_achter_een_geldige_relatie_telt_niet(rio):
+    """CH-29: _onder() telde relaties zonder de vestiging zelf te lezen; 'in bedrijf' was niet afgedwongen."""
+    erkenningen, relaties = _mondriaan()
+    erkenningen[_VESTIGINGEN[0]]["uitBedrijfdatum"] = "2020-01-01"
+    rio(erkenningen, relaties)
+
+    uit = _overzicht("ROC Mondriaan")
+
+    assert uit["aantallen"] == {"erkenningen": 33, "instellingen": 3, "vestigingen": 29}
+    roc = next(i for i in uit["instellingen"] if i["code"] == "27GZ")
+    assert _VESTIGINGEN[0] not in roc["vestigingscodes"]
+
+
+def test_een_relatie_naar_een_ander_type_is_geen_vestiging(rio):
+    erkenningen, relaties = _mondriaan()
+    erkenningen[_VESTIGINGEN[1]]["type"] = "ERKENDE_SAMENWERKING"
+    rio(erkenningen, relaties)
+
+    assert _overzicht("ROC Mondriaan")["aantallen"]["vestigingen"] == 29
+
+
+def test_een_ontbrekend_doelobject_wordt_genoemd_en_niet_geteld(rio):
+    erkenningen, relaties = _mondriaan()
+    del erkenningen[_VESTIGINGEN[2]]
+    rio(erkenningen, relaties)
+
+    uit = _overzicht("ROC Mondriaan")
+
+    assert uit["aantallen"]["vestigingen"] == 29
+    assert uit["niet_te_lezen"] == [_VESTIGINGEN[2]]
+
+
+def test_andere_erkenningen_onder_het_bestuur_worden_genoemd(rio):
+    """Fontys: 'RIO telt 23 erkenningen' verzweeg twee erkende onderwijsondersteuners."""
+    erkenningen, relaties = _mondriaan()
+    for code in ("OO1", "OO2"):
+        erkenningen[code] = _erkenning(code, "Ondersteuner", "ERKENDE_ONDERWIJSONDERSTEUNER")
+        relaties["41171"].append(_relatie("41171", code))
+    rio(erkenningen, relaties)
+
+    uit = _overzicht("ROC Mondriaan")
+
+    assert uit["aantallen"]["erkenningen"] == 34
+    assert uit["niet_meegeteld"] == {"ERKENDE_ONDERWIJSONDERSTEUNER": 2}
