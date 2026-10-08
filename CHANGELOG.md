@@ -97,6 +97,8 @@ de laatste tag is 1.8.6.
   op …", "begon … eindigde" en "verschil tussen" tellen als vergelijking, zodat het tweede getal niet aan het
   enige genoemde jaar wordt gehangen. Een toolnaam in de Bronnen-sectie haalt de app er zelf uit, zonder
   herschrijving. Het log noemt per antwoord elke controle met haar uitkomst (`CONTROLES`), ook als die `ok` was.
+  Een KPI over de hele selectie naast een filter wordt alleen nog gemeld als dezelfde KPI over het filter een
+  ander getal geeft; de code rekent dat na.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en

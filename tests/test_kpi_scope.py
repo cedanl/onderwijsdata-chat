@@ -70,3 +70,40 @@ def test_filter_op_een_andere_bron_telt_niet():
     ander = "cbs:85423NED"
     store.put(ander, pd.DataFrame({"N": [1]}), KeyMeta(bron="cbs", dataset="85423NED"))
     assert kpi_naast_filter("De groei was +463.", [_geladen(_FILTER), _kpi(ander)]) == []
+
+
+def _wo_cbs() -> list[str]:
+    """CH-01 wo-cbs-afronding: de KPI over de laadkey geeft hetzelfde getal als over het filter."""
+    heel, filter_ = "cbs:85423NED:wo", "cbs:85423NED:wo:f1"
+    meta = KeyMeta(bron="cbs", dataset="85423NED", periodekolom="Perioden")
+    reeks = pd.DataFrame(
+        {"Perioden": ["2021SJ00", "2022SJ00", "2023SJ00", "2024SJ00"], "Wo_1": [351200, 349800, 344630, 335930]}
+    )
+    store.put(heel, reeks, meta)
+    store.derive(heel, filter_, reeks.iloc[2:], stap='filters {"Perioden": ["2023SJ00", "2024SJ00"]}')
+    kpi = json.dumps(
+        {
+            "value": "-8.700",
+            "periode": {"van": "2023/24", "tot": "2024/25"},
+            "bron": {
+                "data_key": heel,
+                "kolom": "Wo_1",
+                "metric": "delta",
+                "sort_column": "Perioden",
+                "aantal_waarden": 2,
+            },
+        }
+    )
+    return [_geladen(heel), _geladen(filter_), kpi]
+
+
+def test_kpi_die_op_het_filter_hetzelfde_getal_geeft_is_geen_probleem():
+    """Audit 4a5586a: 'rekent over de hele selectie' bij 344.630 → 335.930, terwijl het antwoord klopte."""
+    assert kpi_naast_filter("Van 344.630 naar 335.930: -8.700.", _wo_cbs()) == []
+
+
+def test_kpi_die_op_het_filter_een_ander_getal_geeft_blijft_een_probleem():
+    beurt = _wo_cbs()
+    beurt[-1] = beurt[-1].replace('"-8.700"', '"-15.270"').replace('"2023/24"', '"2021/22"')
+    [probleem] = kpi_naast_filter("Het aantal daalde met -15.270.", beurt)
+    assert "-15.270" in probleem
