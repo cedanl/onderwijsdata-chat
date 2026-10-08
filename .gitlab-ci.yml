@@ -24,15 +24,15 @@ include:
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/base/security@0.10.10
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/generate-version@1.0.3
   - component: $CI_SERVER_FQDN/surf-internal/sdp/components/semver/promote-version@1.0.3
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.12
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-lint@1.0.13
     inputs:
       name: docker:docker-lint
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.12
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-build@1.0.13
     inputs:
       name: docker:docker-build
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
       build_args: --build-arg GIT_COMMIT=$CI_COMMIT_SHORT_SHA
-  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.12
+  - component: $CI_SERVER_FQDN/surf-internal/sdp/components/docker/docker-promote@1.0.13
     inputs:
       name: docker:docker-promote
       image: $HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME
