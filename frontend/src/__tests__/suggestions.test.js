@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { SUGGESTED, SECTOREN } from '../constants'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 
-const questionsFor = sector => suggestionsFor(sector).flatMap(c => c.questions)
-const all = SUGGESTED.flatMap(c => c.questions).map(q => q.tekst)
+const questionsFor = (sector, profiel = true) => suggestionsFor(sector, { profiel }).flatMap(c => c.questions)
+// Every question as a user can see it: each sector, an unknown one, with and without a profile.
+const all = [...new Set([...SECTOREN, null].flatMap(s => [...questionsFor(s), ...questionsFor(s, false)]))]
 const FIRST_PERSON = /\b(ons|onze|mijn)\b/i
 
 describe('personalizeQuestion', () => {
@@ -60,12 +61,16 @@ describe('suggested questions promise only what the data can show', () => {
 
 // Which questions the sources answer depends on the sector of the institution (#447).
 describe('suggestionsFor', () => {
-  it('gives every sector, and an unknown one, at least one question per category', () => {
+  it('never shows an empty category', () => {
     for (const sector of [...SECTOREN, null]) {
-      const cats = suggestionsFor(sector)
-      expect(cats.map(c => c.category)).toEqual(SUGGESTED.map(c => c.category))
-      expect(cats.filter(c => c.questions.length === 0)).toEqual([])
+      for (const profiel of [true, false]) {
+        expect(suggestionsFor(sector, { profiel }).filter(c => c.questions.length === 0)).toEqual([])
+      }
     }
+  })
+
+  it('gives every sector at least three categories', () => {
+    for (const sector of [...SECTOREN, null]) expect(suggestionsFor(sector).length).toBeGreaterThanOrEqual(3)
   })
 
   it('tags every question with known sectors', () => {
@@ -73,8 +78,10 @@ describe('suggestionsFor', () => {
     expect(tags.filter(s => !SECTOREN.includes(s))).toEqual([])
   })
 
-  it('asks where students come from only in mbo; hbo and wo have no place of residence', () => {
-    expect(questionsFor('mbo').some(q => /vandaan/.test(q))).toBe(true)
+  // Audit 17 (CH-43) said no open source has a place of residence per institution; for mbo DUO
+  // has one (mbo-studenten-per-instelling, woongemeente per instelling), for hbo and wo not.
+  it('asks where students live only in mbo; hbo and wo have no place of residence', () => {
+    expect(questionsFor('mbo').filter(q => /woongemeente/.test(q))).toHaveLength(1)
     for (const sector of ['hbo', 'wo', null]) expect(questionsFor(sector).filter(q => /vandaan|woongemeente/.test(q))).toEqual([])
   })
 
@@ -85,6 +92,42 @@ describe('suggestionsFor', () => {
 
   it('shows only the questions that hold for every sector when the sector is unknown', () => {
     const everywhere = SUGGESTED.flatMap(c => c.questions).filter(q => SECTOREN.every(s => q.sectoren.includes(s)))
-    expect(questionsFor(null)).toEqual(everywhere.map(q => q.tekst))
+    expect(questionsFor(null)).toHaveLength(everywhere.filter(q => q.profiel !== false).length)
+  })
+})
+
+// CH-42 (#465): without an institution in the profile, "onze instelling" ended in a scope refusal.
+describe('suggestions without a profile', () => {
+  it('never speak of an institution or a province the chat does not know', () => {
+    expect(questionsFor(null, false).filter(q => FIRST_PERSON.test(q))).toEqual([])
+  })
+
+  it('still offer a question in every category', () => {
+    expect(suggestionsFor(null, { profiel: false }).map(c => c.category)).toEqual(SUGGESTED.map(c => c.category))
+  })
+})
+
+// CH-43 (#469): sector variants were separate questions, and the set held near-duplicates.
+describe('the suggestion set', () => {
+  it('fills in every sector variant', () => {
+    expect(all.filter(q => /[{}]/.test(q))).toEqual([])
+  })
+
+  it('asks about UWV vacancies once per view', () => {
+    for (const sector of [...SECTOREN, null]) {
+      for (const profiel of [true, false]) expect(questionsFor(sector, profiel).filter(q => /UWV/.test(q))).toHaveLength(1)
+    }
+  })
+
+  it('asks for ho dropout through the CBS cohorts, not an old rendement table', () => {
+    const uitval = s => questionsFor(s).filter(q => /diploma \(CBS-cohorten\)/.test(q))
+    expect(uitval('hbo')).toHaveLength(1)
+    expect(uitval('wo')).toHaveLength(1)
+    expect(all.filter(q => /zonder diploma/.test(q))).toEqual([])
+  })
+
+  it('puts the vacancy question under the labour market', () => {
+    const regionaal = SUGGESTED.find(c => c.category === 'Regionale Context').questions
+    expect(regionaal.filter(q => /UWV/.test(q.tekst))).toEqual([])
   })
 })

@@ -129,6 +129,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Zonder instelling in het profiel tonen de suggesties alleen algemene vragen over de open data, één of twee
+  per categorie; een vraag over "onze instelling" eindigde daar in een scope-weigering. Met een profiel staat elke
+  vraag er één keer, met de tekst voor de eigen sector. De uitvalvraag voor hbo en wo gaat over het
+  diplomarendement uit de CBS-cohorten, de UWV-vraag staat er nog maar één keer, onder Arbeidsmarktmatch, en
+  de herkomstvraag voor mbo noemt de woongemeente.
 - De suggestievragen over de arbeidsmarkt beloven niet meer dat gediplomeerden "aansluiten" op vacatures:
   ze vragen naar de UWV-vacatures per provincie (momentopname mei 2023) en de landelijke ROA-prognose. De
   uitvalvraag gaat over landelijke uitval, want voor hbo en wo bestaat uitval niet per opleiding.

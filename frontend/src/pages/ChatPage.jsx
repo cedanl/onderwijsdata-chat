@@ -996,7 +996,8 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
 }
 
 export function SuggestedQuestions({ onSend, busy, instelling, sector = null }) {
-  return suggestionsFor(sector).map(cat => (
+  // Without an institution only the general questions: "onze instelling" ended in a scope refusal (CH-42).
+  return suggestionsFor(sector, { profiel: Boolean(instelling?.trim()) }).map(cat => (
     <SuggestedCategory key={cat.category} category={cat.category} questions={cat.questions} onSend={onSend} busy={busy} instelling={instelling} />
   ))
 }
