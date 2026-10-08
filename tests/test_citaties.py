@@ -3,6 +3,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from agent.citaties import citaties
 from agent.meetwaarden import meetwaarden
@@ -130,3 +131,26 @@ def test_duo_labelkolom_wint_van_de_jaarcode():
     rij = {"STUDIEJAAR": 2023, "STUDIEJAAR_LABEL": "2023/2024", "AANTAL": 4567}
     [waarde] = meetwaarden(json.dumps({"data_key": "duo:1", "rijen": [rij]}))
     assert waarde.selectie == ("Studiejaar: 2023/2024",)
+
+
+_A = json.dumps({"data_key": "duo:a", "rijen": [{"INSTELLINGSNAAM": "Hogeschool A", "AANTAL": 10000}]})
+_B = json.dumps({"data_key": "duo:b", "rijen": [{"INSTELLINGSNAAM": "Hogeschool B", "AANTAL": 10000}]})
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_de_zin_bepaalt_de_selectie_niet_de_toolvolgorde(volgorde):
+    """CH-08: met B vóór A wees 'Instelling A had 10.000' naar B (eerste numerieke match)."""
+    steps = [("query_data", _B), ("query_data", _A)][::volgorde]
+
+    [citatie] = citaties("Hogeschool A had 10.000 studenten.", steps)
+
+    assert citatie["vastgesteld"] is True
+    assert citatie["data_key"] == "duo:a"
+    assert "Hogeschool A" in citatie["selectie"]
+
+
+@pytest.mark.parametrize("volgorde", [1, -1])
+def test_niet_te_onderscheiden_kandidaten_geven_herkomst_niet_vastgesteld(volgorde):
+    steps = [("query_data", _B), ("query_data", _A)][::volgorde]
+
+    assert citaties("Het waren 10.000 studenten.", steps) == [{"getal": "10.000", "vastgesteld": False}]

@@ -114,6 +114,30 @@ def aggregate_cells(cells: pd.DataFrame, df: pd.DataFrame, group_by: list[str], 
     return rows[list(cells.columns)]
 
 
+def per_periode(cells: pd.DataFrame | None, periodes: pd.Series, bron: str) -> dict[str, int]:
+    """Gemaskeerde cellen per periode (schooljaar) van een selectie; leeg zonder onderdrukking (CH-07)."""
+    if cells is None or cells.empty:
+        return {}
+    per_rij = cells.sum(axis=1)
+    uit: Counter[str] = Counter()
+    for index, n in per_rij[per_rij > 0].items():
+        waarde = periodes.get(index)
+        start = periode.startjaar(bron, waarde)
+        uit[periode.label(start) if start is not None else str(waarde)] += int(n)
+    return dict(sorted(uit.items()))
+
+
+def periode_noot(per_periode: dict[str, int], kolom: str) -> list[str]:
+    """De telling per jaar voor de tool-output: het model kiest dan geen bestandsbreed getal (CH-07)."""
+    if not per_periode:
+        return []
+    telling = ", ".join(f"{p}: {n}" for p, n in per_periode.items())
+    return [
+        f"Onderdrukte cellen (-1) in deze selectie per jaar ({kolom}): {telling}. Noem bij een antwoord over "
+        "één jaar alleen het getal van dat jaar; een telling over het hele bestand hoort niet bij deze selectie."
+    ]
+
+
 def sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
     return [

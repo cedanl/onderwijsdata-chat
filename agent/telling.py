@@ -13,8 +13,10 @@ from core.sentinels import BETEKENIS
 from tools import cbs_afronding, duo, store
 from tools.catalog import catalogus_titel
 
+from .claimbinding import betekenis, kenmerken, kies, zin_van
 from .dimensielabels import selectie_regels
 from .grounding import bewijs_getallen, checked_numbers
+from .meetwaarden import meetwaarden
 from .selectie import data_keys
 
 _KOP = "**Telling**"
@@ -65,19 +67,38 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
     """De grenzen van de selecties waarop de getallen in `tekst` rusten (#414).
 
     Een getal rust op de toolstappen waarin het staat, net als bij de citaties (#365).
-    Staat het ook in een selectie zonder grens, dan is het daar exact: een bredere
-    verkenning met onderdrukte cellen maakt het geen ondergrens. None als geen getal
-    in de tekst op een selectie rust.
+    Wijst de zin één selectie aan (instelling, jaar, maat), dan gelden haar grenzen: een
+    exacte andere selectie met hetzelfde getal maakt de claim niet exact (CH-07). Wijst
+    de zin niets aan en staat het getal ook in een selectie zonder grens, dan is het daar
+    exact: een bredere verkenning met onderdrukte cellen maakt het geen ondergrens.
+    None als geen getal in de tekst op een selectie rust.
     """
-    stappen = [(keys, bewijs_getallen(r)) for r in tool_results if (keys := _stapkeys(r))]
+    stappen = [(keys, bewijs_getallen(r), meetwaarden(r)) for r in tool_results if (keys := _stapkeys(r))]
     onder: set[str] = set()
     boven: set[str] = set()
     gedragen = False
-    for _, cijfers in checked_numbers(tekst):
-        dragers = [_grenzen(keys) for keys, getallen in stappen if cijfers in getallen]
-        if not dragers:
+    for geschreven, cijfers in checked_numbers(tekst):
+        kandidaten = [
+            (tuple(keys), w)
+            for keys, getallen, ws in stappen
+            if cijfers in getallen
+            for w in [w for w in ws if cijfers in w.cijfers] or [None]
+        ]
+        if not kandidaten:
             continue
         gedragen = True
+        gekozen = kies(
+            kandidaten,
+            lambda k: (k[0], betekenis(k[1]) if k[1] else None),
+            lambda k: kenmerken(k[1]) if k[1] else (),
+            zin_van(tekst, geschreven),
+        )
+        if gekozen:
+            o, b = _grenzen(list(gekozen[0]))
+            onder |= o
+            boven |= b
+            continue
+        dragers = [_grenzen(list(keys)) for keys in dict.fromkeys(k for k, _ in kandidaten)]
         if all(o for o, _ in dragers):
             onder.update(*(o for o, _ in dragers))
         if all(b for _, b in dragers):

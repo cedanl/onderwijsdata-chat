@@ -40,6 +40,11 @@ de laatste tag is 1.8.6.
   ("DUO · Ingeschrevenen hbo, 2020/21 t/m 2024/25"), niet de interne sleutel.
 - Een lege modelrespons (vaak een contentfilter van de provider) krijgt een vaste uitleg in plaats van
   "stuur je vraag opnieuw", wat dan niet helpt.
+- Staat een getal in meer selecties (10.000 bij instelling A én B), dan wijst de zin de selectie aan, niet de
+  volgorde van de toolstappen: de citatie wijst naar A, en de ondergrens van A geldt ook als B exact is. Niet te
+  onderscheiden kandidaten geven "herkomst niet vastgesteld".
+- `query_data` telt de onderdrukte cellen (-1) per jaar binnen de selectie, zodat het antwoord niet een
+  bestandsbreed getal of een som over jaren aan één jaar hangt.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en
