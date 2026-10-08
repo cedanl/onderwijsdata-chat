@@ -251,11 +251,14 @@ async def run(
         ]
 
     async def withdraw(problems: list[str]) -> None:
-        await emit({"type": "message_cancel"})
+        # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
+        logger.info("HERKANSING  controles=%s", sorted({str(getattr(p, "controle", None)) for p in problems}))
+        # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
+        await emit({"type": "message_cancel", "reden": meldingen(problems)})
         await emit(
             {
                 "type": "toast",
-                "message": "Het antwoord klopte niet met de opgehaalde data; het wordt herschreven.",
+                "message": "Een controle vond iets om aan te passen; het antwoord wordt herschreven.",
                 "level": "info",
             }
         )

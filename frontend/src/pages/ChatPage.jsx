@@ -764,7 +764,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
-        <IngetrokkenVersies versies={msg.vervangen} />
+        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
         {(awaiting || exportable || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}

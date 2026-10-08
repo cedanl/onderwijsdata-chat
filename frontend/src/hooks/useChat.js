@@ -168,9 +168,9 @@ export function useChat({ onUnauthorized } = {}) {
       },
       // The answer was withdrawn (correction or clarification): the next round writes on in
       // the same card, so the steps before and after the correction stay together (#398).
-      message_cancel() {
+      message_cancel(ev) {
         currentHasTextRef.current = false
-        updateCurrentMsg(withdrawText)
+        updateCurrentMsg(m => withdrawText(m, ev.reden))
       },
       text_delta(ev) {
         currentHasTextRef.current = true

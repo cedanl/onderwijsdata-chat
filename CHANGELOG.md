@@ -52,6 +52,10 @@ de laatste tag is 1.8.6.
 - De DUO-publicatieregel ('1-4 gepubliceerd als 4') blijft zichtbaar; ernaast staan wat het bestand laat zien
   en een status (`volgt`, `conflict`, `niet_vast_te_stellen`) met een melding per oorzaak. De tool zegt niet meer
   dat "een 4 hier een echte 4" is.
+- Trekt een controle een antwoord in, dan zegt de melding niet meer dat het "niet klopte met de opgehaalde data"
+  (dat gold ook voor stijlcontroles). De ingetrokken versie noemt de reden in gewone taal, en het uitklapblok
+  verschijnt alleen als die versie tekst had en anders was dan het eindantwoord. Het log noemt per herschrijving
+  welke controle afging.
 - Getallen, schooljaren en instellingen in een antwoord worden getoetst aan de data van het gesprek.
 - Opleidingsvorm en dataset-ID in een antwoord worden getoetst aan de bron.
 - De app zet zelf onder een DUO-antwoord wat de bestanden tellen (personen of inschrijvingen) en
