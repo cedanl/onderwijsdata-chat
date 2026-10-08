@@ -245,18 +245,14 @@ def test_een_bronfout_wordt_een_gecodeerde_fout(monkeypatch):
     assert "geen netwerk" not in uit
 
 
-def test_get_rio_data_op_naam_verwijst_naar_de_vaste_route(monkeypatch):
-    """De vrije route (erkenningen zoeken en zelf tellen) gaf per run een ander getal."""
-    monkeypatch.setattr(
-        "tools.rio.fetch", lambda resource, **params: [{"code": "27GZ", "volledigeNaam": "ROC Mondriaan"}]
-    )
+def test_get_rio_data_op_erkenningen_verwijst_naar_de_vaste_route(monkeypatch):
+    """De vrije route (erkenningen zoeken en zelf tellen) gaf per run een ander getal (#412), en
+    het register is niet per sector te selecteren (CH-03): de chat haalt het niet op."""
+    opgehaald = []
+    monkeypatch.setattr("tools.rio.fetch", lambda resource, **params: opgehaald.append(resource) or [])
 
     uit = json.loads(get_rio_data("erkenningen", {"volledigeNaam": "ROC Mondriaan"}))
 
-    assert 'get_rio_instelling(naam="ROC Mondriaan")' in uit["instellingsoverzicht"]
-
-
-def test_get_rio_data_zonder_naam_verwijst_niet(monkeypatch):
-    monkeypatch.setattr("tools.rio.fetch", lambda resource, **params: [{"code": "27GZ"}])
-
-    assert "instellingsoverzicht" not in json.loads(get_rio_data("erkenningen", {"plaatsnaam": "Delft"}))
+    assert not opgehaald
+    assert uit["buiten_scope"] is True
+    assert "get_rio_instelling" in uit["melding"]

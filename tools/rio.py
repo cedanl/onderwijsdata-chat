@@ -5,10 +5,9 @@ from riodata import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 
-from . import fouten, store
+from . import fouten, scopeprofiel, store
 from .catalog import catalogus_titel, scope_blokkade
 from .columns import sample_values
-from .schemas import TOOL_GET_RIO_INSTELLING
 
 _SAMPLE_ROWS = 5
 _PAGING = frozenset({"page", "pageSize"})
@@ -49,23 +48,14 @@ def _filterfout(resource: str, filters: dict) -> str | None:
     )
 
 
-def _vaste_route(resource: str, filters: dict) -> str | None:
-    """Een instelling op naam zoeken en zelf tellen gaf per run een ander antwoord (#412)."""
-    if resource != "erkenningen" or not (naam := filters.get("volledigeNaam")):
-        return None
-    return (
-        "Tel bestuur, instellingen, vestigingen of erkenningen van een instelling niet uit deze rijen: "
-        f"{TOOL_GET_RIO_INSTELLING}(naam={json.dumps(naam, ensure_ascii=False)}) volgt het bevoegd gezag "
-        "en telt in code."
-    )
-
-
 def get_rio_data(resource: str, filters: dict | None = None) -> str:
     # Eerst het filtercontract: dat noemt bij een tikfout de bedoelde resource.
     if fout := _filterfout(resource, filters or {}):
         return fout
     if blokkade := scope_blokkade(resource):
         return blokkade
+    if ontbreekt := scopeprofiel.sectorfilter_ontbreekt(resource, filters or {}):
+        return ontbreekt
     # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
     # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
     # zou onderstaande slice toch weer afkappen.
@@ -121,7 +111,5 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
             "RIO levert geen totaal-aantal: beantwoord 'hoeveel'-vragen over het "
             "register niet met deze data. Verfijn met filters of gebruik DUO/CBS voor aantallen."
         )
-    if verwijzing := _vaste_route(resource, filters or {}):
-        result["instellingsoverzicht"] = verwijzing
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)

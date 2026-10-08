@@ -336,7 +336,7 @@ def test_big_derived_result_loads_the_source_with_a_note(clean_packages):
     assert "NB:" in snippet
 
 
-def test_loaders_record_the_call_that_a_snippet_needs():
+def test_loaders_record_the_call_that_a_snippet_needs(zonder_scopegrens):
     store.clear()
     from tools.duo import get_duo_data
     from tools.rio import get_rio_data

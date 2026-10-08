@@ -12,8 +12,8 @@ from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import cbs_afronding, fouten, periode, store
-from .catalog import catalogus_laatste_update, catalogus_titel
+from . import cbs_afronding, fouten, periode, scopeprofiel, store
+from .catalog import catalogus_laatste_update, catalogus_titel, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
@@ -261,6 +261,8 @@ _CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS w
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
+    if blokkade := scope_blokkade(dataset_id):
+        return blokkade
     params = dict(filters or {})
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
@@ -270,9 +272,16 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             return fout
         params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
     try:
-        rows = data(dataset_id, **params)
+        opgehaald = data(dataset_id, **params)
     except Exception as e:
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
+    rows = scopeprofiel.cbs_sectorrijen(dataset_id, opgehaald)
+    if opgehaald and not rows:
+        dimensie, codes = scopeprofiel.CBS_SECTORFILTER[dataset_id]
+        return (
+            f"Dataset '{dataset_id}' gaat over mbo en vo; de chat laadt alleen de mbo-rijen, en deze "
+            f"selectie bevat er geen. Filter in $filter op {dimensie} met een mbo-code: {sorted(codes)}."
+        )
     if not rows:
         return (
             f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
@@ -287,7 +296,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
-    truncated = len(rows) >= _page_size(params["$top"])
+    truncated = len(opgehaald) >= _page_size(params["$top"])
     eenheid, afronding_bekend = _afronding(dataset_id)
     store.put(
         key,
@@ -354,6 +363,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
 
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
+    if blokkade := scope_blokkade(dataset_id):
+        return blokkade
     try:
         rows = _dimension_rows(dataset_id, dimension_name)
     except Exception as e:

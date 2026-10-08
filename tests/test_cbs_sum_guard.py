@@ -11,6 +11,9 @@ from tools import cbs, store
 from tools.cbs import get_cbs_data
 from tools.query import query_data
 
+# Laad- en metadatamechaniek met test-ID's; de scopegrens zelf staat in test_scopeprofiel.py.
+pytestmark = pytest.mark.usefixtures("zonder_scopegrens")
+
 _DS = "85423NED"
 _KEY = f"cbs:{_DS}:abc12345"
 _DIMS = ["Geslacht", "Onderwijssoort", "Opleidingsfase", "Opleidingsvorm", "Perioden"]

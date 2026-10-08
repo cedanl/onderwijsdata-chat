@@ -25,7 +25,6 @@ GOED = [
     ("gediplomeerden hoger onderwijs", "p04hogdipl", 1),
     ("gediplomeerde mbo-studenten", "gediplomeerde-mbo-studenten", 5),
     ("studentprognoses mbo per instelling", "studentprognoses-mbo-per-instelling", 1),
-    ("onderwijslocaties van een instelling", "onderwijslocaties", 1),
     ("opleidingserkenningen", "opleidingserkenningen", 1),
     # Gelijke score met p02ho1ejrs op rang 3/4; sinds de ID-tie-break (#344) staat p01hoinges voor.
     # Geen betere score: verschuift de score, dan kan deze vraag terug naar de missers.
@@ -103,6 +102,10 @@ BUITEN_PROFIEL = [
     ("prognoses vo per instelling", "voprognoses"),
     ("leerlingenprognose voortgezet onderwijs", "voprognoses"),
     ("mbo studenten per instelling DUO", "voprognoses"),  # de proef uit de testaudit van 6 okt
+    # Register zonder sectorfilter: een pagina bevat ook po/vo-locaties (CH-03).
+    ("onderwijslocaties van een instelling", "onderwijslocaties"),
+    # CBS-tabel over alle onderwijssoorten, uit de Assen-replay (CH-03).
+    ("leerlingen en studenten onderwijssoort woonregio", "85701NED"),
 ]
 
 
