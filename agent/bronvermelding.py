@@ -17,8 +17,10 @@ from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
 
 # De eigen Bronnen-kop van het model (**Bronnen**, **Bronnen:** of **Bronnen**:) met de regels eronder:
 # tot een lege regel zonder lijstitem erna, een vetgedrukte kop zoals **Definities**, of het einde.
+# Alleen vanaf de eerste van een reeks lege regels: elk beginpunt erbinnen kostte kwadratische tijd
+# op een lange reeks, en dat bevroor de event loop voor iedereen.
 _EIGEN_BRONNEN = re.compile(
-    r"\n*^\*\*Bronnen(?::\*\*|\*\*:?)[^\n]*"
+    r"(?<!\n)\n*^\*\*Bronnen(?::\*\*|\*\*:?)[^\n]*"
     r"(?:\n(?!\n|\*\*)[^\n]*|\n+(?=[ \t]*(?:[-*+]|\d+[.)])[ \t])[^\n]*)*",
     re.MULTILINE,
 )

@@ -8,6 +8,7 @@ model vervalt, net als zijn Definities bij een teldefinitie uit de bron (#402).
 import asyncio
 import importlib
 import json
+import time
 
 import pandas as pd
 import pytest
@@ -157,6 +158,29 @@ def test_eigen_bronnen_vervallen_als_de_app_ze_geeft(sectie):
 def test_definities_en_slotzin_na_de_bronnen_blijven_staan():
     tekst = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges\n\n{_DEFINITIES}\n\nDe cijfers zijn definitief."
     assert zonder_eigen_bronnen(tekst, [_DUO]) == f"{_ANTWOORD}\n\n{_DEFINITIES}\n\nDe cijfers zijn definitief."
+
+
+_VIJANDIG = {
+    "lege regels zonder sectie": "a" + "\n" * 50_000 + "b",
+    "lege regels voor de sectie": "a" + "\n" * 50_000 + "**Bronnen**\n- x",
+    "lege regels in de sectie": "a\n\n**Bronnen**\n- x" + "\n" * 50_000 + "b",
+    "lege regels na een kale kop": "**Bronnen**" + "\n" * 50_000 + "b",
+    "spaties en lege regels": "a" + " \n" * 25_000 + "**Bronnen**\n- x",
+    "veel koppen": "**Bronnen**\n" * 20_000,
+    "veel lijstitems": "**Bronnen**\n" + "- x\n\n" * 20_000,
+}
+
+
+@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_blijft_snel(tekst):
+    """zonder_eigen_bronnen draait synchroon in run(): traag zoeken bevriest elke sessie op de worker."""
+    start = time.perf_counter()
+    zonder_eigen_bronnen(tekst, [_DUO])
+    assert time.perf_counter() - start < 0.5
+
+
+def test_lange_reeks_lege_regels_voor_de_sectie():
+    assert zonder_eigen_bronnen("a" + "\n" * 50_000 + "**Bronnen**\n- x", [_DUO]) == "a"
 
 
 def test_eigen_bronnen_blijven_zonder_bronnen_uit_code():
