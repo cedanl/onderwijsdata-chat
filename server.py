@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 
 load_dotenv()
 
@@ -100,10 +101,10 @@ async def health_endpoint() -> dict:
 
 
 @app.get("/ready", tags=["health"])
-async def ready_endpoint() -> tuple[dict, int]:
-    """Readiness probe: application is ready to serve traffic."""
+async def ready_endpoint() -> JSONResponse:
+    """Readiness probe: application is ready to serve traffic (503 if a check fails, #482)."""
     result, status_code = await health.readiness_check()
-    return result, status_code
+    return JSONResponse(content=result, status_code=status_code)
 
 
 @app.get("/startup", tags=["health"])
