@@ -6,8 +6,8 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 
 | Omgeving | Ingress Class | Replicas | Resources | URL |
 |----------|---------------|----------|-----------|-----|
-| **development** | traefik-internal | 1 | 200m CPU / 256Mi RAM | `dev.sdp.surf.nl` |
-| **test** | traefik-internal | 1 | 200m CPU / 256Mi RAM | `test.sdp.surf.nl` |
+| **development** | traefik-external | 1 | 200m CPU / 256Mi RAM | `dev.sdp.surf.nl` |
+| **test** | traefik-external | 1 | 200m CPU / 256Mi RAM | `test.sdp.surf.nl` |
 | **playground** | traefik-external | 2 | 500m CPU / 512Mi RAM | `playground.sdp.surf.nl` |
 | **production** | traefik-external | 3–10 (HPA) | 1000m CPU / 1Gi RAM | `sdp.surf.nl` |
 
@@ -27,11 +27,11 @@ manifests/
 │   └── values-base.yaml          # Shared defaults
 ├── development/
 │   ├── kustomization.yaml        # Dev patches
-│   ├── values.yaml               # Dev ingress (traefik-internal)
+│   ├── values.yaml               # Dev ingress (traefik-external)
 │   └── secret.yaml               # SOPS-encrypted secrets (niet in git)
 ├── test/
 │   ├── kustomization.yaml        # Test patches
-│   └── values.yaml               # Test ingress (traefik-internal)
+│   └── values.yaml               # Test ingress (traefik-external)
 ├── playground/
 │   ├── kustomization.yaml        # Playground patches
 │   └── values.yaml               # Playground ingress (traefik-external)
@@ -42,8 +42,8 @@ manifests/
 
 ## Ingress tiers
 
-- **traefik-internal**: SURF-interne access (dev/test)
-- **traefik-external**: Public internet access (playground/production)
+- **traefik-internal**: SURF-interne access; geen omgeving van deze app gebruikt dit nu (dev kreeg hiermee geen DNS-record)
+- **traefik-external**: publiek DNS-record en toegang via de allowlist-middleware (dev/test/playground/production)
 
 ## Flux deployment
 
