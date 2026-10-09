@@ -34,6 +34,20 @@ def data_keys(tool_results: list[str]) -> list[str]:
     return keys
 
 
+def stapkeys(result: str) -> list[str]:
+    """De keys waarop één toolstap rust: zijn data_key, wat run_analysis las, of de bron van een KPI."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(parsed, dict):
+        return []
+    kandidaten = [parsed.get("data_key"), *(parsed.get("gelezen") or [])]
+    if isinstance(bron := parsed.get("bron"), dict):
+        kandidaten.append(bron.get("data_key"))
+    return [k for k in kandidaten if isinstance(k, str)]
+
+
 def bron_in_woorden(known: KeyMeta) -> str:
     """De bron van een selectie in woorden: DUO · <titel>, met het deel dat de chat laadt (CH-45)."""
     return f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)}"
