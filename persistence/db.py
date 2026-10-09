@@ -203,6 +203,21 @@ _ANSWER_FEEDBACK_TABLE = """
 """
 
 
+# Hoe een data-key van een gesprek ontstond, zodat hij een herstart overleeft (#472).
+# recipe is JSON: {laad: [tool, args]} of {afgeleid_van, tool, args, stap}; nooit een script.
+_DATA_RECIPES_TABLE = """
+    CREATE TABLE IF NOT EXISTS data_recipes (
+        username   TEXT NOT NULL,
+        conv_id    TEXT NOT NULL,
+        data_key   TEXT NOT NULL,
+        recipe     TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (username, conv_id, data_key)
+    )
+"""
+_DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipes(username, data_key, created_at DESC)"
+
+
 def init_db() -> None:
     conn = _connect()
     cursor = conn.cursor()
@@ -237,6 +252,8 @@ def init_db() -> None:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
         cursor.execute(_FEEDBACK_TABLE)
         cursor.execute(_ANSWER_FEEDBACK_TABLE)
+        cursor.execute(_DATA_RECIPES_TABLE)
+        cursor.execute(_DATA_RECIPES_INDEX)
         cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
         cursor.close()
@@ -271,6 +288,8 @@ def init_db() -> None:
         """)
         conn.execute(_FEEDBACK_TABLE)
         conn.execute(_ANSWER_FEEDBACK_TABLE)
+        conn.execute(_DATA_RECIPES_TABLE)
+        conn.execute(_DATA_RECIPES_INDEX)
 
     _migrate(conn)
     conn.close()
@@ -370,8 +389,50 @@ def delete_conversation(username: str, conv_id: str) -> None:
         "DELETE FROM conversations WHERE id = ? AND username = ?",
         (conv_id, username),
     )
+    _execute(conn, "DELETE FROM data_recipes WHERE conv_id = ? AND username = ?", (conv_id, username))
     conn.commit()
     conn.close()
+
+
+def save_recipes(username: str, conv_id: str, recipes: dict[str, dict]) -> None:
+    """Bewaar per data-key van een gesprek zijn recept; een bestaand recept wordt bijgewerkt (#472)."""
+    if not recipes:
+        return
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    conn = _connect()
+    for key, recipe in recipes.items():
+        _execute(
+            conn,
+            "INSERT INTO data_recipes (username, conv_id, data_key, recipe, created_at) VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT (username, conv_id, data_key) DO UPDATE SET recipe=excluded.recipe",
+            (username, conv_id, key, json.dumps(recipe, ensure_ascii=False, default=str), now),
+        )
+    conn.commit()
+    conn.close()
+
+
+def recipes_for(username: str, conv_id: str) -> dict[str, dict]:
+    """De recepten van een eigen gesprek, per data-key."""
+    conn = _connect()
+    rows = _execute(
+        conn,
+        "SELECT data_key, recipe FROM data_recipes WHERE username = ? AND conv_id = ?",
+        (username, conv_id),
+    ).fetchall()
+    conn.close()
+    return {r["data_key"]: json.loads(r["recipe"]) for r in rows}
+
+
+def recipe_for_key(username: str, key: str) -> dict | None:
+    """Het nieuwste recept van deze gebruiker voor `key`, over al zijn gesprekken; nooit dat van een ander."""
+    conn = _connect()
+    row = _execute(
+        conn,
+        "SELECT recipe FROM data_recipes WHERE username = ? AND data_key = ? ORDER BY created_at DESC LIMIT 1",
+        (username, key),
+    ).fetchone()
+    conn.close()
+    return json.loads(row["recipe"]) if row else None
 
 
 def list_workbooks(username: str) -> list[dict]:

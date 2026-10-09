@@ -24,6 +24,7 @@ from agent.dashboard import (
     _extract_json_object,
     _sources_from_recipe,
     build_dataset_context,
+    herstel_data,
 )
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import harde, meldingen
@@ -162,6 +163,7 @@ async def generate(
     The report must agree with its own data (#175). If it does not, the model
     gets one correction; a report that still contradicts its data is refused.
     """
+    await herstel_data(session, emit)
     context = build_dataset_context(session)
 
     if not context["datasets"]:

@@ -53,6 +53,13 @@ describe('canGenerateReport', () => {
     expect(canGenerateReport([], [snippetMessage])).toBe('needs_reload')
   })
 
+  // #472: the server restored the data keys this conversation saved a recipe for.
+  it('is ready for restored history once the server restored its data keys', () => {
+    expect(canGenerateReport([], [snippetMessage], 2)).toBe('ready')
+    expect(canGenerateReport([], [snippetMessage], 0)).toBe('needs_reload')
+    expect(canGenerateReport([], [plainMessage], 2)).toBe('no_data')
+  })
+
   it('reports no_data when no reportable answer exists', () => {
     expect(canGenerateReport([plainMessage], [plainMessage])).toBe('no_data')
     expect(canGenerateReport([], [])).toBe('no_data')

@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
+from agent import recepten
 from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
@@ -55,14 +56,16 @@ def _reset_session(session: dict) -> None:
     session.update(fresh)
 
 
-def _open_conversation(session: dict, messages: list) -> None:
-    """Continue a stored conversation: a fresh session that knows only its text.
+def _open_conversation(session: dict, messages: list, data_keys: list[str] | None = None) -> None:
+    """Continue a stored conversation: a fresh session that knows its text and its own data keys.
 
     Nothing of the previously open conversation may leak into it — not its turns,
-    and not its loaded data, which a report would otherwise pick up.
+    and not its loaded data, which a report would otherwise pick up. `data_keys` are the
+    keys this user saved a recipe for with this conversation (#472).
     """
     _reset_session(session)
     session["messages"] = _parse_history(messages)
+    session["data_keys"] = list(data_keys or [])
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -305,7 +308,12 @@ async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio
 
 async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> None:
     await _stop_task_and_wait(session, current_task)
-    _open_conversation(session, msg.get("messages") or [])
+    conv_id = msg.get("conv_id")
+    data_keys = await asyncio.to_thread(recepten.keys_van_gesprek, session["username"], conv_id)
+    _open_conversation(session, msg.get("messages") or [], data_keys)
+    if conv_id is not None:
+        # Of een rapport op de data van dit gesprek kan, zonder eerst een vraag opnieuw te stellen (#472).
+        await emit({"type": "history_data", "data_keys": len(data_keys)})
 
 
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:

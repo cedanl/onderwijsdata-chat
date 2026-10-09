@@ -179,3 +179,19 @@ def test_endpoint_meldt_verdwenen_data(client):
 def test_endpoint_vraagt_inlog(client):
     _bron()
     assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 401
+
+
+def test_endpoint_zonder_recept_houdt_de_melding_van_voor_de_recepten(client):
+    """Een key zonder bewaard recept komt na een herstart niet terug, met dezelfde melding als vóór #472."""
+    from core import auth
+
+    client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
+    _bron()
+    assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 200
+    store.clear()
+
+    resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
+    assert "X-Data-Herladen" not in resp.headers

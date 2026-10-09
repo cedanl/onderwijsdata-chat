@@ -29,12 +29,14 @@ async function apiFetch(path, options = {}) {
 }
 
 // The table behind an answer as a file (#269). A plain link cannot carry the token,
-// so the CSV is fetched and handed to the browser as a blob.
+// so the CSV is fetched and handed to the browser as a blob. Returns the server's notice
+// when the data was fetched again after a restart (#472), else null.
 export async function downloadDataCsv(key) {
   const res = await fetch(`/api/data/csv?${new URLSearchParams({ key })}`, { headers: authHeaders() })
   await throwIfFailed(res)
   const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'data.csv'
   saveFile(await res.blob(), filename)
+  return res.headers.get('X-Data-Herladen')
 }
 
 export async function fetchConversations(params = {}) {

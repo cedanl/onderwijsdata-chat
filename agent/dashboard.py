@@ -19,7 +19,7 @@ import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
-from agent.session_data import DATA_WEG, data_lineage, ontbrekende_data_keys, session_data_keys
+from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
 from tools import LABELS, store
@@ -126,11 +126,26 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
     }
 
 
+async def herstel_data(session: dict, emit: Emit) -> None:
+    """Haal terug wat een herstart uit de store wiste, vóór build_dataset_context (#472).
+
+    Alleen een heropend gesprek kan keys hebben die de store kwijt is: de keys komen uit de
+    recepten die bij het gesprek zijn bewaard. Herladen gaat naar de bron: in een thread, niet
+    op de event loop. Herladen data krijgt een melding, want de bron kan intussen zijn gewijzigd.
+    """
+    herstel = await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
+    if herstel.onherstelbaar:
+        raise ValueError(herstel.melding)
+    if herstel.notitie:
+        await emit({"type": "toast", "message": herstel.notitie, "level": "info"})
+
+
 def build_dataset_context(session: dict) -> dict:
     """Build a context dict describing the available datasets for the LLM.
 
     Fail-closed when data this conversation loaded is gone: a report on the rest, or a
     generic 'try again', would not tell the user that the question has to be asked again (CH-44).
+    Reloading it is herstel_data's job, before this (#472).
     """
     if ontbrekende_data_keys(session):
         raise ValueError(DATA_WEG)
