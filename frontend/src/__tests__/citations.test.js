@@ -51,14 +51,66 @@ describe('zichtbare citaties (#365)', () => {
     expect(container.querySelector('[role="note"]')).toBeNull()
   })
 
-  it('zet bron en filters in woorden bovenaan, de hash eronder (#415)', () => {
+  it('zet bron en filters in woorden bovenaan, de key dicht onder technische details (#415, CH-30r)', () => {
     toon('Er waren 378.490 studenten.')
     act(() => container.querySelector('button').click())
-    const regels = [...container.querySelector('[role="note"]').children].map(r => r.textContent)
+    const uitleg = container.querySelector('[role="note"]')
+    const details = uitleg.lastElementChild
+    const regels = [...uitleg.children].filter(r => r !== details).map(r => r.textContent)
     expect(regels[0]).toBe('CBS · Studenten; onderwijssoort')
     expect(regels[1]).toBe('Onderwijssoort: Hbo · Perioden: 2024')
     expect(regels).toContain('Totaal (aantal)')
-    expect(regels.at(-1)).toBe('cbs:85353NED:854e2215')
+    expect(regels.join(' ')).not.toContain('cbs:85353NED:854e2215')
+    expect(details.tagName).toBe('DETAILS')
+    expect(details.open).toBe(false)
+    expect(details.querySelector('summary').textContent).toBe('Technische details')
+    expect(details.querySelector('code.citatie-key').textContent).toBe('cbs:85353NED:854e2215')
+  })
+
+  it('toont geen technische details zonder key (CH-30r)', () => {
+    toon('Er waren 378.490 studenten.', [{ ...CITATIES[0], data_key: undefined }])
+    act(() => container.querySelector('button').click())
+    expect(container.querySelector('[role="note"]').textContent).toContain('CBS · Studenten; onderwijssoort')
+    expect(container.querySelector('[role="note"] details')).toBeNull()
+  })
+
+  it('toont geen technische details als de herkomst niet is vastgesteld (CH-30r)', () => {
+    toon('Er waren 36.201 studenten.', [{ getal: '36.201', vastgesteld: false, data_key: 'cbs:85353NED:854e2215' }])
+    act(() => container.querySelector('button').click())
+    expect(container.querySelector('[role="note"]').textContent).toContain('Herkomst niet vastgesteld')
+    expect(container.querySelector('[role="note"] details')).toBeNull()
+  })
+
+  it('houdt de uitleg open bij een klik in technische details (CH-30r)', () => {
+    toon('Er waren 378.490 studenten.')
+    act(() => container.querySelector('button').click())
+    const summary = container.querySelector('[role="note"] summary')
+    act(() => {
+      summary.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+      summary.click()
+    })
+    expect(container.querySelector('[role="note"]')).not.toBeNull()
+    expect(container.querySelector('[role="note"] details').open).toBe(true)
+  })
+
+  it('bereikt technische details met het toetsenbord en sluit met Escape terug op de knop (CH-30r)', () => {
+    toon('Er waren 378.490 studenten.')
+    const knop = container.querySelector('button')
+    act(() => knop.click())
+    const summary = container.querySelector('[role="note"] summary')
+    act(() => summary.focus())
+    expect(document.activeElement).toBe(summary)
+    act(() => { summary.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(container.querySelector('[role="note"]')).toBeNull()
+    expect(document.activeElement).toBe(knop)
+  })
+
+  it('sluit de uitleg met een klik erbuiten, ook met technische details (CH-30r)', () => {
+    toon('Er waren 378.490 studenten.')
+    act(() => container.querySelector('button').click())
+    act(() => { container.querySelector('[role="note"] summary').click() })
+    act(() => { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
+    expect(container.querySelector('[role="note"]')).toBeNull()
   })
 
   it('zegt het als de herkomst niet is vastgesteld (#415)', () => {
