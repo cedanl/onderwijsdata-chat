@@ -397,11 +397,27 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
 _REGISTERS = frozenset({"DUO", "RIO"})
 # Een treffer is pas kandidaat als hij minstens één gebruikersterm raakt en, bij trefwoorden, dit deel (#351).
 _MIN_AANDEEL_TERMEN = 0.5
+_MIN_TREFWOORDEN = 3
 
 
 def _geraakte_termen(entry: dict, termen: list[str]) -> set[str]:
     """De door de gebruiker genoemde termen die de treffer raakt; een synoniem is geen bewijs (#351)."""
     return {term for term in termen if _score(entry, [(term, 1.0)])}
+
+
+def _drempel(query: str, woorden: list[str], termen: list[str]) -> tuple[list[str], int]:
+    """De gebruikerstermen die tellen en hoeveel een kandidaat er moet raken (#351).
+
+    In een volzin zijn niet alle woorden criteria: daar volstaat één term. Bij trefwoorden telt elke
+    term mee, ook een die geen dataset kent; alleen een instellingsnaam is geen onderwerp.
+    """
+    if _is_volzin(query, woorden) or len(termen) < _MIN_TREFWOORDEN:
+        return termen, 1
+    naam = {w for n in instelling.genoemde_namen(query) for w in _woorden(n)}
+    kern = [t for t in termen if t not in naam]
+    if len(kern) < _MIN_TREFWOORDEN:
+        return kern or termen, 1
+    return kern, math.ceil(len(kern) * _MIN_AANDEEL_TERMEN)
 
 
 def geodekking(entry: dict, niveau: str) -> str:
@@ -426,9 +442,7 @@ def geodekking(entry: dict, niveau: str) -> str:
     return "ja" if niveau == "landelijk" else "nee"
 
 
-def _verzamel(
-    words: list[tuple[str, float]], source: str, termen: list[str], aandeel: float
-) -> tuple[list, list, list]:
+def _verzamel(words: list[tuple[str, float]], source: str, termen: list[str], nodig: int) -> tuple[list, list, list]:
     """De scorende treffers uit `source`: actief, archief, en te zwak voor de drempel (#351)."""
     treffers: list = []
 
@@ -445,14 +459,12 @@ def _verzamel(
             if s := _score(entry, words):
                 treffers.append((s, entry, {**entry, **(_niet_opvraagbaar(entry) or {})}))
 
-    # Een term die geen treffer kent (bijv. een instellingsnaam) onderscheidt niets en telt niet mee.
-    geraakt = [_geraakte_termen(entry, termen) for _, entry, _ in treffers]
-    nodig = max(1, math.ceil(len(set().union(*geraakt)) * aandeel))
     active: list = []
     archive: list = []
     zwak: list = []
-    for (s, entry, hit), raak in zip(treffers, geraakt, strict=True):
-        (zwak if len(raak) < nodig else archive if entry.get("_archief") else active).append((s, hit))
+    for s, entry, hit in treffers:
+        te_zwak = len(_geraakte_termen(entry, termen)) < nodig
+        (zwak if te_zwak else archive if entry.get("_archief") else active).append((s, hit))
     return active, archive, zwak
 
 
@@ -480,18 +492,25 @@ def _onbekende_dekking(ids: list[str], geo_niveau: str) -> str:
 _MAX_SUGGESTIES = 3
 
 
-def _no_match(query: str, zwak: list) -> str:
-    """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168)."""
+def _no_match(query: str, zwak: list, geo_niveau: str | None) -> str:
+    """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168).
+
+    Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py), dus de tekst dekt beide gevallen.
+    """
     melding = (
         f"no_match: Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
         "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
     )
-    ids = [i for i in map(_dataset_id, _gerangschikt(zwak, None)[0]) if i != "?"][:_MAX_SUGGESTIES]
-    if not ids:
+    passend = [(s, h) for s, h in zwak if not geo_niveau or geodekking(h, geo_niveau) != "nee"]
+    suggesties = [h for h in _gerangschikt(passend, None)[0] if _dataset_id(h) != "?"][:_MAX_SUGGESTIES]
+    if not suggesties:
         return melding
+    namen = ", ".join(f"{_dataset_id(h)} ({h.get('bron') or h.get('title') or '-'})" for h in suggesties)
     return (
-        f"{melding} needs_clarification: deze datasets raken te weinig zoektermen en zijn geen keuze, "
-        f"alleen een suggestie: {ids}. Vraag de gebruiker om verduidelijking voordat je er een laadt."
+        f"{melding}\nneeds_clarification: deze datasets raken te weinig zoektermen; het zijn suggesties, geen "
+        f"keuze: {namen}. Laad geen van deze. Is clarify_scope beschikbaar, stel daarmee één vraag met deze "
+        "datasets als opties; anders zeg dat geen dataset de vraag goed dekt, noem deze suggesties bij hun "
+        "titel, en zeg niet dat de data niet bestaat."
     )
 
 
@@ -506,16 +525,15 @@ def search_catalog(
     # F1: Filter stopwoorden
     filtered_words = _filter_stopwoorden(query_words)
     hint = _volzin_hint(query, query_words, filtered_words)
-    # In een volzin zijn niet alle woorden criteria: daar volstaat één geraakte gebruikersterm (#351).
-    aandeel = 0.0 if _is_volzin(query, query_words) else _MIN_AANDEEL_TERMEN
+    termen, nodig = _drempel(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
 
     # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
     # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.
     instellingsvraag = source in ("cbs", "both") and instelling.noemt_instelling(query)
-    active, archive, zwak = _verzamel(words, "rio" if instellingsvraag else source, filtered_words, aandeel)
+    active, archive, zwak = _verzamel(words, "rio" if instellingsvraag else source, termen, nodig)
     if instellingsvraag and not (active or archive):
-        active, archive, zwak = _verzamel(words, source, filtered_words, aandeel)
+        active, archive, zwak = _verzamel(words, source, termen, nodig)
     historisch = bool(_HISTORISCH & set(query_words))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -524,7 +542,7 @@ def search_catalog(
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
         )
-        return _no_match(query, zwak)
+        return _no_match(query, zwak, geo_niveau)
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.

@@ -302,10 +302,63 @@ def test_een_van_twee_termen_blijft_kandidaat():
     assert sorted(h["_cbs_id"] for h in hits) == ["a", "b"]
 
 
-def test_term_die_geen_dataset_kent_telt_niet_mee():
-    # "hogeschool" en "utrecht" staan in geen enkele beschrijving: ze kunnen geen treffer onderscheiden.
-    hits = _zoek_catalogus("studenten Hogeschool Utrecht", cbs=[{"_cbs_id": "a", "title": "studenten"}], source="cbs")
+def test_onderwerpterm_die_geen_dataset_kent_telt_mee():
+    # "leraren" en "tekort" kent geen dataset: dat is juist het teken dat de catalogus het onderwerp niet dekt.
+    cbs = [{"_cbs_id": "mbo-studenten", "title": "mbo studenten"}]
+    with (
+        patch("tools.catalog.instelling.genoemde_namen", return_value=set()),
+        patch("tools.catalog._cbs", return_value=cbs),
+        patch("tools.catalog._rio_duo", return_value=[]),
+    ):
+        result = search_catalog("leraren tekort mbo", source="cbs")
+    assert result.startswith("no_match") and "needs_clarification" in result and "mbo-studenten" in result
+
+
+@pytest.mark.parametrize(("namen", "ids"), [({"Hogeschool Utrecht", "HU"}, ["a"]), (set(), [])])
+def test_instellingsnaam_telt_niet_mee_als_term(namen, ids):
+    # Een instellingsnaam is geen onderwerp; alleen een naam die de code herkent valt uit de drempel.
+    with patch("tools.catalog.instelling.genoemde_namen", return_value=namen):
+        hits = _zoek_catalogus(
+            "studenten Hogeschool Utrecht", cbs=[{"_cbs_id": "a", "title": "studenten"}], source="cbs"
+        )
+    assert [h["_cbs_id"] for h in hits] == ids
+
+
+def test_alleen_een_instellingsnaam_vraagt_een_geraakte_term():
+    with patch("tools.catalog.instelling.genoemde_namen", return_value={"Vrije Universiteit Amsterdam"}):
+        hits = _zoek_catalogus("Vrije Universiteit Amsterdam", cbs=[{"_cbs_id": "a", "title": "universiteit"}])
     assert [h["_cbs_id"] for h in hits] == ["a"]
+
+
+def test_needs_clarification_laadt_niets_en_werkt_ook_zonder_clarify_scope():
+    zwak = [{"_cbs_id": "11111NED", "title": "ingeschrevenen", "bron": "Ingeschrevenen hbo"}]
+    with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("studenten", source="cbs")
+    eerste, tweede = result.split("\n")
+    assert eerste.startswith("no_match") and tweede.startswith("needs_clarification")
+    assert "11111NED (Ingeschrevenen hbo)" in tweede and "[" not in tweede
+    # Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py): de tekst dekt beide gevallen.
+    assert "Laad geen van deze" in tweede and "Is clarify_scope beschikbaar" in tweede
+    assert "noem deze suggesties bij hun titel" in tweede and "zeg niet dat de data niet bestaat" in tweede
+
+
+def test_suggestie_zonder_het_gevraagde_geo_niveau_valt_af():
+    zwak = [
+        {"_cbs_id": "landelijk", "title": "ingeschrevenen", "_geo_niveau": ["landelijk"]},
+        {"_cbs_id": "gemeente", "title": "ingeschrevenen", "_geo_niveau": ["gemeente"]},
+    ]
+    with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("studenten", source="cbs", geo_niveau="gemeente")
+    assert "needs_clarification" in result and "gemeente (" in result and "landelijk (" not in result
+
+
+def test_instellingsvraag_met_alleen_een_zwakke_duo_treffer_valt_terug_op_cbs():
+    # Een DUO-treffer die alleen via een synoniem raakt, is geen kandidaat: dan telt de CBS-benchmark (#334).
+    cbs = [{"_cbs_id": "85423NED", "title": "studenten"}]
+    duo = [{"_ckan_id": "duo-zwak", "leverancier": "DUO", "title": "ingeschrevenen"}]
+    with patch("tools.catalog.instelling.noemt_instelling", return_value=True):
+        hits = _zoek_catalogus("studenten", cbs=cbs, rio=duo, source="cbs")
+    assert [h["_cbs_id"] for h in hits] == ["85423NED"]
 
 
 def test_volzin_vraagt_een_gebruikersterm_geen_aandeel():
@@ -359,7 +412,7 @@ def test_title_match_ranks_higher_than_column_sample_match():
         },
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
-        result = search_catalog("eerstejaars bachelor universiteit", source="duo")
+        result = search_catalog("eerstejaars bachelor", source="duo")
     data = json.loads(result)
     assert data[0]["bron"] == "Eerstejaars ingeschrevenen hoger onderwijs"
 
