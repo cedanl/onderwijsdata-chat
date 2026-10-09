@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { JSDOM, VirtualConsole } from 'jsdom'
 import { buildReportHtml } from '../reportHtml.js'
+import { buildDashboardHtml } from '../dashboardHtml.js'
 
 const fullSpec = {
   title: 'Instroom ROC van Flevoland 2018–2024',
@@ -121,5 +123,54 @@ describe('buildReportHtml', () => {
     expect(kop(1)).toEqual(['Instroom ROC van Flevoland 2018–2024'])
     expect(kop(2)).toEqual(expect.arrayContaining(['Reikwijdte', 'Gekozen definities', 'Visualisaties', 'Conclusie', 'Bronnen']))
     expect(kop(3)).toEqual(expect.arrayContaining(['Instroom per jaar', 'Kort']))
+  })
+})
+
+// Loads generated HTML in a fresh DOM that runs its inline scripts, with Plotly, the
+// dialogs and matchMedia stubbed, and records what the page did.
+function runPage(html) {
+  const seen = { dialogs: [], plots: [], errors: [] }
+  const virtualConsole = new VirtualConsole()
+  virtualConsole.on('jsdomError', err => seen.errors.push(err.message))
+  const dom = new JSDOM(html, {
+    runScripts: 'dangerously',
+    virtualConsole,
+    beforeParse(window) {
+      for (const name of ['alert', 'confirm', 'prompt']) window[name] = (...args) => seen.dialogs.push([name, ...args])
+      window.matchMedia = () => ({ matches: false })
+      window.Plotly = { newPlot: (...args) => seen.plots.push(args) }
+    },
+  })
+  seen.images = dom.window.document.querySelectorAll('img').length
+  dom.window.close()
+  return seen
+}
+
+describe('figure JSON in an inline script (#474)', () => {
+  const TITLE = '</script><img src=x onerror=alert(1)>'
+  const figureJson = JSON.stringify({ data: [], layout: { title: TITLE } })
+  const html = buildReportHtml({ ...fullSpec, visualisaties: [{ titel: 'Evil', figure_json: figureJson }] })
+
+  it('leaves only the structural script tags in the report', () => {
+    expect(html).not.toContain('</script><img')
+    expect(html.match(/<script/g).length).toBe(html.match(/<\/script>/g).length)
+  })
+
+  it('renders a report title with </script> as chart text, not as markup', () => {
+    const seen = runPage(html)
+    expect(seen.images).toBe(0)
+    expect(seen.dialogs).toEqual([])
+    expect(seen.errors).toEqual([])
+    expect(seen.plots).toHaveLength(1)
+    expect(seen.plots[0][1]).toEqual([])
+    expect(seen.plots[0][2].title).toBe(TITLE)
+  })
+
+  it('renders a dashboard title with </script> as chart text, not as markup', () => {
+    const seen = runPage(buildDashboardHtml({ figures_json: [figureJson] }, { title: 'D' }))
+    expect(seen.images).toBe(0)
+    expect(seen.dialogs).toEqual([])
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].title).toBe(TITLE)
   })
 })

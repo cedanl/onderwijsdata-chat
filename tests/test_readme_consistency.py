@@ -87,6 +87,16 @@ class TestReadmeConsistency:
             f"README says {readme_value} but config.MAX_HISTORY is {config.MAX_HISTORY}"
         )
 
+    def test_max_message_chars_matches_config(self):
+        """README should show correct MAX_MESSAGE_CHARS default (#481)."""
+        readme = read_readme()
+        match = re.search(r"\|\s*`MAX_MESSAGE_CHARS`\s*\|\s*`(\d+)`", readme)
+        assert match, "MAX_MESSAGE_CHARS not found in README table"
+        readme_value = int(match.group(1))
+        assert readme_value == config.MAX_MESSAGE_CHARS, (
+            f"README says {readme_value} but config.MAX_MESSAGE_CHARS is {config.MAX_MESSAGE_CHARS}"
+        )
+
     def test_databronnen_section_includes_major_sources(self):
         """README databronnen table should mention all major sources."""
         readme = read_readme()

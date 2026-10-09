@@ -104,6 +104,11 @@ def harde(problemen: Iterable[str]) -> list[str]:
     return [p for p in problemen if getattr(p, "hard", False)]
 
 
+def controlenamen(problemen: Iterable[str]) -> list[str]:
+    """Welke controles afgingen, voor het log: een melding kan antwoordtekst citeren, een naam niet (#475)."""
+    return sorted({str(getattr(p, "controle", None)) for p in problemen})
+
+
 def uitkomsten(controles: Iterable[str], problemen: Iterable[str]) -> dict[str, str]:
     """Per controle wat ze gaf: hard, zacht, niet gecontroleerd of ok; voor het log per antwoord (CH-01)."""
     per_controle: dict[str, list] = {naam: [] for naam in controles}

@@ -26,6 +26,7 @@ describe('NotFoundPage (#223)', () => {
   it('says an unknown path does not exist and links back home', async () => {
     await renderPage({})
     expect(container.querySelector('h1').textContent).toBe('Deze pagina bestaat niet (meer)')
+    expect(document.title).toBe('Pagina niet gevonden — openEDUdata+')
     expect(container.querySelector('a').getAttribute('href')).toBe('/')
   })
 
@@ -33,6 +34,8 @@ describe('NotFoundPage (#223)', () => {
     await renderPage({ unavailable: true })
     expect(container.querySelector('h1').textContent).toBe('Nog niet beschikbaar')
     expect(container.textContent).not.toContain('bestaat niet')
+    // Only the dashboards route renders this state (#491).
+    expect(document.title).toBe('Dashboards — openEDUdata+')
     expect(container.querySelector('a').getAttribute('href')).toBe('/')
   })
 })

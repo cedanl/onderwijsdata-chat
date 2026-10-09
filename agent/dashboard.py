@@ -22,6 +22,7 @@ from agent.loop import ToolCall, tool_loop
 from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
+from core.logging_util import tekst_kenmerk
 from tools import LABELS, store
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
@@ -336,7 +337,7 @@ def _collect_kpi(computed: dict[str, dict], result: str) -> None:
             elif "value" in payload:
                 computed[_normaliseer_waarde(payload["value"])] = payload
     except json.JSONDecodeError:
-        logger.warning("compute_kpi returned invalid JSON: %r", result[:100])
+        logger.warning("compute_kpi returned invalid JSON: %s", tekst_kenmerk(result))
 
 
 def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None:
@@ -362,7 +363,12 @@ def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
     for kpi in kpis:
         bron = computed.get(_normaliseer_waarde(kpi.get("value", "")))
         if bron is None:
-            logger.warning("KPI geweigerd, waarde komt niet uit compute_kpi: %r", kpi)
+            # Label en waarde zijn modeltekst: op WARNING alleen de lengte en hash (#475).
+            logger.warning(
+                "KPI geweigerd, waarde komt niet uit compute_kpi: %s",
+                tekst_kenmerk(json.dumps(kpi, ensure_ascii=False, default=str), "kpi_"),
+            )
+            logger.debug("KPI geweigerd  %r", kpi)
             continue
         gevalideerd.append(
             {

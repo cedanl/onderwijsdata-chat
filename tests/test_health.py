@@ -150,3 +150,43 @@ def test_version_zonder_arbeidsmarktrecord_geeft_200(client, monkeypatch):
         arbeidsmarktversie.cache_clear()
     assert resp.status_code == 200
     assert resp.json()["arbeidsmarkt"][1] == {"bron": "ROA", "dataset": "ais2030", "periode": None}
+
+
+async def _gezond() -> bool:
+    return True
+
+
+async def _kapot() -> bool:
+    return False
+
+
+@pytest.mark.parametrize(
+    ("check", "naam"), [("check_database_connection", "database"), ("check_llm_configuration", "llm")]
+)
+def test_ready_meldt_falende_check_als_503(client, monkeypatch, check, naam):
+    """#482: de probe kijkt naar de statuscode; /ready gaf 200 met een JSON-array."""
+    import health
+
+    monkeypatch.setattr(health, "check_database_connection", _gezond)
+    monkeypatch.setattr(health, "check_llm_configuration", _gezond)
+    monkeypatch.setattr(health, check, _kapot)
+    resp = client.get("/ready")
+    assert resp.status_code == 503
+    assert resp.headers["content-type"].startswith("application/json")
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert data["status"] == "not_ready"
+    assert data["checks"][naam] is False
+
+
+def test_ready_geeft_200_als_alles_werkt(client, monkeypatch):
+    import health
+
+    monkeypatch.setattr(health, "check_database_connection", _gezond)
+    monkeypatch.setattr(health, "check_llm_configuration", _gezond)
+    resp = client.get("/ready")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert data["status"] == "ready"
+    assert data["checks"] == {"database": True, "llm": True}

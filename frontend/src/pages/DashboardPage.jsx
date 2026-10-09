@@ -7,10 +7,12 @@ import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
 const BUILTINS = [BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL]
 
 export default function DashboardPage({ settings, feedbackEnabled = false }) {
+  useDocumentTitle(pageTitle('Dashboards'))
   const [searchParams, setSearchParams] = useSearchParams()
   const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)

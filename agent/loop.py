@@ -18,13 +18,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
+from core.logging_util import tekst_kenmerk
 from tools import LABELS, dispatch, fouten, outcome
 from tools.csv_export import export_key
 from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
 from .models import litellm_kwargs
-from .probleem import herstelbare
+from .probleem import controlenamen, herstelbare
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
 from .stream import Emit, StreamResult, accumulate_stream
@@ -122,7 +123,9 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
 
     snippet = _generate_snippet(call.name, call.args, result)
     if snippet:
-        logger.info("REPRODUCEER %-28s\n%s", call.name, snippet)
+        # De snippet bevat de toolargumenten, dus tekst uit de vraag: alleen op DEBUG (#475).
+        logger.info("REPRODUCEER %-28s %s", call.name, tekst_kenmerk(snippet))
+        logger.debug("REPRODUCEER %-28s\n%s", call.name, snippet)
     end_event = {
         "type": "tool_end",
         "name": call.name,
@@ -376,7 +379,8 @@ async def tool_loop(
             # Alleen wat het model kan herstellen geeft een herkansing; een niet-gecontroleerd
             # punt (#419) gaat zonder herkansing mee in result.problems.
             if te_herstellen := herstelbare(problems):
-                logger.warning("CONTROLE MISLUKT, herkansing: %s", te_herstellen)
+                logger.warning("CONTROLE MISLUKT, herkansing: controles=%s", controlenamen(te_herstellen))
+                logger.debug("CONTROLE MELDINGEN  %s", te_herstellen)
                 if on_correction:
                     await on_correction(te_herstellen)
                 messages += [

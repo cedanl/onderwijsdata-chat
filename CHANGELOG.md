@@ -214,6 +214,11 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Het log bevat op INFO en hoger geen vraag- of antwoordtekst meer: `RUN START`, `FINALE ANTWOORD`,
+  `ANTWOORD INGEHOUDEN`, `ZELFCORRECTIE`, de controle-, zoek-, `CATALOGUS_GELADEN`/`CATALOGUS_AFWIJKING`-, rapport-,
+  KPI- en `REPRODUCEER`-regels noemen model, lengte, een korte SHA-256-hash of de namen van de controles. De
+  tekst zelf staat alleen op DEBUG. Het log valt buiten "gesprek verwijderen", dus wat de gebruiker typte bleef
+  daar staan.
 - `run_analysis` draait in een eigen proces zonder omgevingsvariabelen, netwerk, schrijfrechten of
   toegang tot bestanden buiten Python, met een harde time-out en geheugenlimiet. Een AST-controle
   (imports, dunders zoals `__globals__`, frame-attributen) vervangt de regex-lijst. `store_get` vraagt
@@ -226,3 +231,6 @@ de laatste tag is 1.8.6.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
 - Productie-manifest geauditeerd: de allowlist-middleware waar de ingress naar verwijst wordt meegeleverd,
   dashboards staan uit zoals op test, en productie draait één pod zolang data en limiters in het geheugen leven.
+- `/ready` geeft bij een falende check (database of LLM-sleutels) HTTP 503 met een JSON-object, in plaats
+  van 200 met een JSON-array. De readiness-probe van de chart gebruikt `/health` en merkt hier niets van.
+- Een onbekend pad onder `/api` geeft een JSON-404 (`{"detail": "Not Found"}`) in plaats van de SPA met 200.

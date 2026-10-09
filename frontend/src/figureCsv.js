@@ -12,8 +12,21 @@ function axisTitle(axis) {
   return typeof title === 'string' ? title : title?.text
 }
 
-function cell(value) {
+// Excel runs a text cell that starts with = + - or @ as a formula (#483). Such
+// text gets a leading ' (so the CSV differs from the tool rows there, on
+// purpose); numbers and numeric text like '-1' or '-0,5' stay as they are.
+// Same rule as _veilig in tools/csv_export.py.
+const NEEDS_PREFIX = /^[=+\-@]/
+const NUMERIC = /^[+-]?\d+([.,]\d+)*$/
+
+function safeText(value) {
   const s = String(value ?? '')
+  if (typeof value === 'number' || !NEEDS_PREFIX.test(s) || NUMERIC.test(s)) return s
+  return `'${s}`
+}
+
+function cell(value) {
+  const s = safeText(value)
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

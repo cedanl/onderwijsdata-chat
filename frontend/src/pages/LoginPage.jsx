@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { login } from '../auth'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
 export default function LoginPage({ onLogin, oidcEnabled }) {
+  useDocumentTitle(pageTitle('Inloggen'))
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(() =>

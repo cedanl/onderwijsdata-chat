@@ -6,7 +6,7 @@ import pytest
 
 from agent import report
 from agent.loop import LoopResult
-from agent.probleem import Probleem, hard, harde, meldingen, niet_gecontroleerd, uitkomsten, veilig
+from agent.probleem import Probleem, controlenamen, hard, harde, meldingen, niet_gecontroleerd, uitkomsten, veilig
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
 
@@ -54,6 +54,16 @@ def test_uitkomsten_noemen_elke_controle_ook_zonder_bevinding():
         "verkeerde_dimensielabels": "zacht",
         "metatekst": "niet gecontroleerd",
     }
+
+
+def test_controlenamen_geven_namen_en_geen_meldingen():
+    """#475: het log krijgt de naam van de controle, niet de melding die antwoordtekst kan citeren."""
+    (streng,) = hard(veilig(verkeerde_kpi_periodes))
+    zacht = Probleem("6.340 staat niet in de data.")
+    zacht.controle = "ongedekte_getallen"
+    namen = controlenamen([streng, zacht, zacht, "los"])
+    assert namen == ["None", "ongedekte_getallen", "verkeerde_kpi_periodes"]
+    assert not any("6.340" in n or "2023/24" in n for n in namen)
 
 
 # ── Rapport: alleen een hard probleem houdt het tegen ────────────────────────
