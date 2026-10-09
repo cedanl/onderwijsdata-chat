@@ -48,6 +48,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
       ref={dialogRef}
+      className="settings-modal"
       style={{
         position: 'fixed', inset: 0, zIndex: 2000,
         background: 'linear-gradient(160deg, rgba(13,35,64,.92) 0%, rgba(30,74,122,.88) 60%, rgba(13,148,136,.82) 100%)',
