@@ -8,7 +8,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**117 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over alle onderwijssoorten of po/vo laadt de chat niet; bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen.
+**119 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat.
 
 | Eigenschap | Details |
 |------------|---------|
