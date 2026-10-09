@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
-import { chatSocket, checkSession } from '../auth'
+import { chatSocket, checkSession, getToken, sessionEndedSince } from '../auth'
 import { finishStep } from '../toolSteps'
-import { getToken, sessionEndedSince } from '../auth'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
