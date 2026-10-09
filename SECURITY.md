@@ -14,7 +14,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ⚠️ Gedeeltelijk — zie S4 |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ❌ Open |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ❌ Open |
-| S7 | Geen maximale inputlengte op chatberichten | Laag | ❌ Open |
+| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS`) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ❌ Open (configuratie) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9 |
 | S10 | Sessie-timeout 24 uur | Laag | ℹ️ Instelbaar via env |
@@ -79,7 +79,7 @@ return "❌ Er is een onverwachte fout opgetreden."
 **Probleem:** Geen beperking op het aantal loginpogingen (brute force wachtwoord) en geen limiet op chatberichten per sessie (LLM-kosten misbruik).  
 **Aanbeveling:**
 - Login: `slowapi` of ingress rate limiting; account-lockout na N mislukte pogingen
-- Chat: max N berichten per minuut per WebSocket-verbinding; max berichtlengte
+- Chat: max N berichten per minuut per WebSocket-verbinding (de max berichtlengte is opgelost, zie S7)
 
 ---
 
@@ -95,14 +95,11 @@ return "❌ Er is een onverwachte fout opgetreden."
 
 ---
 
-### S7 — Geen maximale inputlengte op chatberichten ❌ Open
+### S7 — Geen maximale inputlengte op chatberichten ✅ Opgelost
 
-**Locatie:** `server.py` regel 348 — `content = msg.get("content", "").strip()`  
-**Probleem:** Een gebruiker kan een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
-**Aanbeveling:** Begrenzing op bijv. 4000 tekens:
-```python
-content = msg.get("content", "").strip()[:4000]
-```
+**Locatie:** `routes/chat.py` — de WebSocket-acties `message` en `clarification_choice`  
+**Probleem:** Een gebruiker kon een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
+**Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk heeft `maxLength`, toont vanaf 80% een teller en verstuurt niets boven de grens. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is.
 
 ---
 
@@ -159,6 +156,6 @@ Beide zijn informational (blokkeren deploy niet). Output is zichtbaar in Actions
 ## Aanbevelingen voor volgende stap
 
 1. **S4 oplossen** — generieke fallback + server-side logging (klein, hoge waarde)
-2. **S5 aanpakken** — rate limiting op login en max berichtlengte (S7)
+2. **S5 aanpakken** — rate limiting op login en chatberichten
 3. **S8 instellen** — CORS_ORIGINS environment variable in production config
 4. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — na bovenstaande fixes, met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
