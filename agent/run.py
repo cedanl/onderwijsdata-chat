@@ -327,6 +327,7 @@ def _eindtekst(
 
 
 # Vaste antwoorden uit code: ze rusten niet op de data van de beurt, dus ook geen bronnen eronder.
+# Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
 _ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, WEIGER_ANTWOORD})
 
 

@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 
 from agent.bronvermelding import bronnen_van, zonder_eigen_bronnen
+from agent.loop import LoopResult
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
@@ -250,7 +251,28 @@ def test_dataantwoord_krijgt_de_bronnen_en_verliest_de_eigen_sectie(monkeypatch)
     assert "**Bronnen**" not in einde["content"] and einde["content"].startswith(_ANTWOORD)
 
 
+def test_valt_de_bronnenlijst_uit_dan_blijft_de_eigen_sectie(monkeypatch):
+    """Net als de citaties faalt de lijst zacht: geen bronnen uit code, dan blijven die van het model staan."""
+
+    def kapot(steps):
+        raise ValueError("kapot")
+
+    monkeypatch.setattr(run_module, "bronnen_van", kapot)
+    antwoord = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges"
+    einde = _slot(monkeypatch, [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=antwoord, tool_calls=[])])
+
+    assert einde["bronnen"] == []
+    assert "**Bronnen**\n- DUO p01hoinges" in einde["content"]
+
+
+@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, WEIGER_ANTWOORD])
+def test_een_vast_antwoord_krijgt_nooit_bronnen(vast):
+    """Ook als de beurt data las: een vast antwoord uit code rust er niet op, dus geen dataantwoord."""
+    assert run_module._slotbericht(vast, LoopResult(), [], False, [_DUO])["bronnen"] == []
+
+
 def test_weigering_heeft_lege_bronnen(monkeypatch):
+    """Van begin tot eind: een weigering zonder tools stuurt een lege lijst mee."""
     weigering = [StreamResult(text="Dat valt buiten mijn domein.", tool_calls=[])]
     einde = _slot(monkeypatch, weigering, vraag="Wie wint het WK?")
 
