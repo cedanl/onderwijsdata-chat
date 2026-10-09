@@ -218,6 +218,8 @@ export function useChat({ onUnauthorized } = {}) {
             ...(ev.tussentekst?.length && { tussentekst: [...(m.tussentekst || []), ...ev.tussentekst] }),
             // The numbers that passed the check, each with the step it came from (#365).
             ...(ev.citaties?.length && { citaties: ev.citaties }),
+            // The sources the server derived from the steps, also when empty: they mark a data answer (#416).
+            ...(Array.isArray(ev.bronnen) && { bronnen: ev.bronnen }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }
