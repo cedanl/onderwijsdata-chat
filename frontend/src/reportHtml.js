@@ -1,3 +1,5 @@
+import { topMarginOfJson } from './figureMargin'
+
 export function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -28,7 +30,7 @@ export const PLOTLY_CDN_VERSION = '4.1.0'
 function plotlyHtml(figureJson, id) {
   return `<script src="https://cdn.plot.ly/plotly-${PLOTLY_CDN_VERSION}.min.js"></script>
     <div class="card"><div id="${id}" style="height:360px"></div></div>
-    <script>(function(){var f=${figureJson},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('${id}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:48,r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
+    <script>(function(){var f=${figureJson},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('${id}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
 }
 
 export function buildReportHtml(spec, { instelling = '' } = {}) {

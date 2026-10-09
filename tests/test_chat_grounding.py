@@ -100,9 +100,12 @@ def test_soft_problem_keeps_the_answer_with_a_warning(monkeypatch):
         earlier,
     )
 
-    assert text == "Nee: niet 987654, het waren er 5.943."
+    # Het antwoord en de waarschuwing eronder in dezelfde notatie als de grafiek (CH-11r, #445).
+    assert text == "Nee: niet 987.654, het waren er 5.943."
     assert events[-1]["content"] == text
-    assert len(events[-1]["controle"]) == 1
+    assert events[-1]["controle"] == [
+        "987.654 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
+    ]
 
 
 def test_number_from_an_earlier_turn_is_sourced(monkeypatch):
@@ -405,7 +408,7 @@ def test_number_only_from_the_user_is_a_claim_to_verify(monkeypatch):
     )
 
     assert events[-1]["controle"] == [
-        "987654 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
+        "987.654 staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data."
     ]
 
 

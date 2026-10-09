@@ -1,6 +1,7 @@
 import json as _json
 import logging
 import math
+import textwrap
 import urllib.request
 
 import plotly.express as px
@@ -27,13 +28,19 @@ _CHART_TYPE_LABELS = {
     "histogram": "Histogram",
 }
 
+_MARGE = {"t": 60, "b": 50, "l": 70, "r": 20}
+
 _LAYOUT_BASE = {
     "font": {"family": "Inter, Arial, sans-serif", "size": 13},
     "plot_bgcolor": "white",
     "paper_bgcolor": "white",
-    "margin": {"t": 60, "b": 50, "l": 70, "r": 20},
+    "margin": _MARGE,
     "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1},
 }
+
+# Titel plus de afgebroken noot eronder (drie regels), boven het plotvlak en de waardelabels (CH-34).
+_MARGE_MET_NOOT = 100
+_NOOT_BREEDTE = 55  # tekens: past ook in een smalle grafiek op mobiel
 
 # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22).
 _NL_SEPARATORS = ",."
@@ -193,9 +200,25 @@ def _add_trace(
 
 
 def _ondertitel(data_key: str | None) -> dict:
-    """Dezelfde afrondingsnoot als in tekst, KPI en export, onder de titel (#352)."""
+    """Dezelfde afrondingsnoot als in tekst, KPI en export, onder de titel (#352).
+
+    Afgebroken in regels: Plotly breekt een ondertitel niet zelf af, en de noot is breder dan de grafiek.
+    """
     noot = cbs_afronding.van_key(data_key) if data_key else None
-    return {"subtitle": {"text": noot, "font": {"size": 11, "color": "#666"}}} if noot else {}
+    if not noot:
+        return {}
+    regels = textwrap.wrap(noot, _NOOT_BREEDTE, break_on_hyphens=False)
+    return {"subtitle": {"text": "<br>".join(regels), "font": {"size": 11, "color": "#666"}}}
+
+
+def _titel(title: str, data_key: str | None) -> tuple[dict, dict]:
+    """De titel en de marge erboven. Met een noot staan beide bovenaan de figuur, in een hogere
+    marge: anders liggen ze over het plotvlak en het bovenste waardelabel (CH-34)."""
+    titel = {"text": title, "font": {"size": 16, "color": "#222"}}
+    if not (ondertitel := _ondertitel(data_key)):
+        return titel, _MARGE
+    plaats = {"yref": "container", "yanchor": "top", "y": 0.98}
+    return {**titel, **plaats, **ondertitel}, {**_MARGE, "t": _MARGE_MET_NOOT}
 
 
 def create_plot(
@@ -274,11 +297,13 @@ def create_plot(
         y_vals = [row.get(y) for row in data]
         _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0], text=_value_labels(y_vals, show_labels))
 
+    titel, marge = _titel(title, data_key)
     layout = {
-        "title": {"text": title, "font": {"size": 16, "color": "#222"}, **_ondertitel(data_key)},
+        **_LAYOUT_BASE,
+        "title": titel,
+        "margin": marge,
         "legend_title": kolomlabel(color_by, titels) if color_by else "",
         "separators": _NL_SEPARATORS,
-        **_LAYOUT_BASE,
     }
 
     if chart_type != "pie":

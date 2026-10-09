@@ -44,7 +44,12 @@ class Meetwaarde:
 
 def _getal(waarde) -> frozenset[str] | None:
     """De gehele cijfers van een getal zoals een tekst ze schrijft: afgekapt of afgerond, zonder teken."""
-    if isinstance(waarde, bool) or not isinstance(waarde, int | float) or not math.isfinite(waarde):
+    if isinstance(waarde, bool) or not isinstance(waarde, int | float):
+        return None
+    try:
+        if not math.isfinite(waarde):
+            return None
+    except OverflowError:  # een int van 309+ cijfers past niet in een float: geen meetwaarde, geen crash
         return None
     n = abs(waarde)
     return frozenset({str(math.trunc(n)), str(round(n))})
@@ -204,6 +209,58 @@ def meetwaarden(result: str, tool: str | None = None) -> list[Meetwaarde]:
         return []
     eigen = _onafhankelijk(parsed)
     return [w for w in _uit(parsed, tool == TOOL_RUN_ANALYSIS) if w.cijfers not in eigen]
+
+
+def _codecijfers(waarde) -> str | None:
+    """Een code zoals een tekst haar schrijft: 50800, ook als JSON-tekst of als 50800.0 van pandas."""
+    if isinstance(waarde, str):
+        return waarde if waarde.isascii() and waarde.isdigit() else None
+    if isinstance(waarde, float) and waarde.is_integer():
+        waarde = int(waarde)
+    return str(abs(waarde)) if isinstance(waarde, int) and not isinstance(waarde, bool) else None
+
+
+def _sleutelwaarden(parsed) -> Iterator[tuple[str, object]]:
+    """(sleutel, waarde) op elke diepte; een lijst geeft elk element onder haar eigen sleutel.
+
+    RIO zet een bestuurscode in bevoegd_gezag.code en kandidaten[].code, niet in een rij.
+    Met een stapel, niet recursief: een diep genest analyseresultaat haalt de stacklimiet niet."""
+    stapel: list[tuple[str | None, object]] = [(None, parsed)]
+    while stapel:
+        sleutel, waarde = stapel.pop()
+        if isinstance(waarde, dict):
+            stapel.extend(waarde.items())
+        elif isinstance(waarde, list):
+            stapel.extend((sleutel, w) for w in waarde)
+        elif sleutel is not None:
+            yield sleutel, waarde
+
+
+def _schemacellen(parsed: dict) -> Iterator[tuple[str, object]]:
+    """(kolom, waarde) uit het kolomschema van een laadstap: de waardenlijst en de voorbeelden."""
+    kolommen = parsed.get("kolommen")
+    for k in kolommen if isinstance(kolommen, list) else ():
+        if isinstance(k, dict) and isinstance(kolom := k.get("kolom"), str):
+            for soort in ("waarden", "voorbeelden"):
+                waarden = k.get(soort)
+                yield from ((kolom, w) for w in (waarden if isinstance(waarden, list) else ()))
+
+
+def identificaties(result: str) -> set[str]:
+    """De cijfers onder een identificatiesleutel, waar ook in één toolresultaat: OPLEIDINGSCODE 50800 is een code.
+
+    CBS' kolom ID telt niet mee: dat is een rijnummer, geen code die een tekst noemt."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return set()
+    if not isinstance(parsed, dict):
+        return set()
+    return {
+        cijfers
+        for kolom, waarde in (*_sleutelwaarden(parsed), *_schemacellen(parsed))
+        if kolom.upper() != "ID" and _IDENTIFICATIE.search(kolom) and (cijfers := _codecijfers(waarde))
+    }
 
 
 def eenheden(result: str) -> dict[str, str]:

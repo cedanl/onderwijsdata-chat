@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
+import { topMargin } from '../figureMargin'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -836,7 +837,7 @@ function PlotlyFigure({ figureJson, label }) {
     ...figure.layout,
     paper_bgcolor: bg,
     plot_bgcolor: bg,
-    margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: 32, b: 40 },
+    margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: topMargin(figure.layout, 32), b: 40 },
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     legend: {
       ...figure.layout?.legend,
