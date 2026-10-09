@@ -113,7 +113,7 @@ def _laad(key: str, laad: object) -> Herlaadresultaat:
         logger.warning("herladen %s via %s mislukt: %r", key, tool, e)
         uitkomst = ""
     if store.get(key) is None:
-        reden = _reden(uitkomst) or "geen data"
+        reden = _reden(uitkomst) or "geen data."
         return Herlaadresultaat(
             key, gelukt=False, bronfout=True, melding=f"{bron} gaf de data voor key {key} niet opnieuw: {reden}"
         )
@@ -141,7 +141,7 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
         uitkomst = ""
     if store.get(key) is None:
         stap = recept.get("stap") or "selectie"
-        reden = _reden(uitkomst) or "geen data"
+        reden = _reden(uitkomst) or "geen data."
         return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
     # De selectie erft de markering van haar ouder, ook als die door een eerder verzoek werd herladen.
     return _terug(key)
