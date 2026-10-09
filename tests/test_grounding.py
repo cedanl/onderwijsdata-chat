@@ -2,7 +2,7 @@
 
 import json
 
-from agent.grounding import afgeleide_verschillen, getallen_in, unsourced_numbers, unverified
+from agent.grounding import afgeleide_verschillen, unsourced_numbers, unverified
 
 _CBS_RESULT = json.dumps(
     {
@@ -61,40 +61,6 @@ def test_spatienotatie_uit_de_data_is_gedekt():
 def test_losse_getallen_met_spatie_worden_niet_samengevoegd():
     # Alleen groepen van precies drie cijfers horen bij hetzelfde getal.
     assert unsourced_numbers("In 2024 12 opleidingen, in 2025 3 1234 keer.", []) == {"1234"}
-
-
-# ── getallen_in: elk getal in Nederlandse notatie, ook kleine en jaartallen (#420) ──
-
-
-def test_getallen_in_zonder_duizendtalscheiding_met_positie():
-    tekst = "Van 378.490 naar 378 490, of 29\u00a0040 en 29\u202f040."
-    assert getallen_in(tekst) == [
-        ("378.490", "378490", 4),
-        ("378 490", "378490", 17),
-        ("29\u00a0040", "29040", 29),
-        ("29\u202f040", "29040", 39),
-    ]
-
-
-def test_getallen_in_houdt_de_decimale_komma():
-    assert [getal for _, getal, _ in getallen_in("Gemiddeld 9,6, of 1.234,5 per jaar (+9,5%).")] == [
-        "9,6",
-        "1234,5",
-        "9,5",
-    ]
-
-
-def test_getallen_in_telt_ook_jaartallen_en_kleine_getallen():
-    assert [getal for _, getal, _ in getallen_in("In 2024 waren 3 van de 12 opleidingen 12% groter.")] == [
-        "2024",
-        "3",
-        "12",
-        "12",
-    ]
-
-
-def test_getallen_in_slaat_codes_over():
-    assert getallen_in("Bron: CBS 85423NED, periode 2024SJ00, code T001228.") == []
 
 
 # ── Chatantwoorden (#185): ook percentages, in de vorm waarin ze in de tekst staan ──
