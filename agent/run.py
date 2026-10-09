@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+from collections.abc import Callable
+from functools import partial
 
 import plotly.io as pio
 
@@ -177,44 +179,19 @@ def tools_for(session: dict) -> list[dict]:
     return [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
 
 
-async def run(
-    messages: list[dict],
-    session: dict,
-    emit: Emit,
-    stop_event: asyncio.Event | None = None,
-    model: str | None = None,
-) -> str:
-    settings: dict = session.get("chat_settings") or {}
-    chosen_model = model or MODEL
+def _laatste_vraag(messages: list[dict]) -> str:
+    raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
+    return " ".join(b.get("text", "") for b in raw if isinstance(b, dict)) if isinstance(raw, list) else str(raw)
 
-    _raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
-    last_user_msg = (
-        " ".join(b.get("text", "") for b in _raw if isinstance(b, dict)) if isinstance(_raw, list) else str(_raw)
-    )
-    logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
 
-    if vast := sentinelvraag(last_user_msg):
-        await emit({"type": "message_start"})
-        await emit({"type": "message_end", "content": vast, "actions": []})
-        return vast
+def _antwoordcontrole(
+    vraag: str, earlier: list[str], said_by_user: list[str], session: dict
+) -> Callable[[str, list[str]], list[str]]:
+    """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop.
 
-    history, was_trimmed = trim(list(messages))
-    initial_history_len = len(history)
-    if was_trimmed:
-        await emit(
-            {
-                "type": "toast",
-                "message": "Oudere berichten vallen buiten de context van het model.",
-                "level": "warning",
-            }
-        )
-
-    # What the assistant already said counts as sourced: a follow-up may repeat a
-    # number from an earlier turn. What the user said does not (#211): that is a
-    # claim to verify, not evidence. Taken before the loop, so the correction
-    # message with the suspect numbers does not source them.
-    earlier = [str(m.get("content") or "") for m in history if m.get("role") == "assistant"]
-    said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
+    Wat de assistent al zei telt als bron: een vervolgvraag mag een getal uit een eerdere
+    beurt herhalen. Wat de gebruiker zei niet (#211): dat is een bewering om te toetsen.
+    """
 
     def ongedekt(n: str) -> Probleem:
         # In de notatie van het antwoord dat de gebruiker ziet (CH-11r).
@@ -238,8 +215,8 @@ async def run(
         # ingehouden (#207).
         controles = [
             (ongedekte_getallen, (text, tool_results), False),
-            (ontbrekende_schooljaren, (last_user_msg, tool_results), True),
-            (ontbrekende_instellingen, (last_user_msg, tool_results), True),
+            (ontbrekende_schooljaren, (vraag, tool_results), True),
+            (ontbrekende_instellingen, (vraag, tool_results), True),
             (onvolledige_selecties, (text, tool_results), True),
             (verkeerde_opleidingsvormen, (text, tool_results), False),
             (verkeerde_dimensielabels, (text, tool_results), False),
@@ -250,9 +227,9 @@ async def run(
             (verkeerde_kpi_periodes, (text, tool_results), True),
             (kpi_naast_filter, (text, tool_results), False),
             (genegeerde_keuze, (session.get("clarify_keuzes", []), text), False),
-            (onbeschikbaar_zonder_zoekpad, (last_user_msg, text, tool_results), False),
+            (onbeschikbaar_zonder_zoekpad, (vraag, text, tool_results), False),
             (ongedekte_oorzaak, (text, tool_results), False),
-            (ontbrekende_grafiek, (last_user_msg, text, tool_results, session.get("data_keys", [])), False),
+            (ontbrekende_grafiek, (vraag, text, tool_results, session.get("data_keys", [])), False),
             (metatekst, (text,), False),
         ]
         problemen: list[str] = [
@@ -265,23 +242,120 @@ async def run(
         logger.info("CONTROLES  %s", "  ".join(f"{naam}={uitkomst}" for naam, uitkomst in per_controle.items()))
         return problemen
 
-    async def withdraw(problems: list[str]) -> None:
-        # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
-        logger.info("HERKANSING  controles=%s", sorted({str(getattr(p, "controle", None)) for p in problems}))
-        # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
-        await emit({"type": "message_cancel", "reden": meldingen(problems)})
+    return check
+
+
+async def _intrekken(emit: Emit, problems: list[str]) -> None:
+    # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
+    logger.info("HERKANSING  controles=%s", sorted({str(getattr(p, "controle", None)) for p in problems}))
+    # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
+    await emit({"type": "message_cancel", "reden": meldingen(problems)})
+    await emit(
+        {
+            "type": "toast",
+            "message": "Een controle vond iets om aan te passen; het antwoord wordt herschreven.",
+            "level": "info",
+        }
+    )
+
+
+async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, figure) -> None:
+    record_data_key(session, result, {"name": call.name, "arguments": call.args})
+    record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
+    await _handle_figure(call.name, figure, session, emit)
+
+
+async def _vroeg_einde(
+    result: LoopResult, nieuw: list[dict], messages: list[dict], session: dict, emit: Emit
+) -> str | None:
+    """Het einde van een beurt zonder gewoon antwoord; None als er een gewoon antwoord is."""
+    if result.aborted == "tools":
+        # Stopped while tools ran: close the open message as aborted. No
+        # content key, so the client keeps the text it already has.
+        await emit({"type": "message_end", "aborted": True})
+        return ""
+    if result.aborted == "stream":
+        await emit({"type": "message_end", "content": result.text, "aborted": True})
+        return result.text
+    if result.halted_on:
+        session["_last_turn_tool_calls"] = result.tool_calls
+        return await _handle_clarify_scope(result.halted_on, result.text, nieuw, messages, session, emit)
+    if result.exhausted:
+        text_content = zonder_antwoord(result.steps)
+        # partial: the frontend offers 'Opnieuw met <ander model>' (#405).
+        await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
+        return text_content
+    return None
+
+
+def _eindtekst(result: LoopResult, antwoord: str, earlier: list[str], session: dict, model: str) -> str:
+    """Het antwoord zoals de gebruiker het ziet: weigering of antwoord met Telling, of ingehouden."""
+    text_content = weigering(
+        antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
+    ) or met_telling(
+        nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord)), result.steps, earlier), result.tool_results
+    )
+    if result.wrapped_up:
+        text_content = f"{DEELANTWOORD}\n\n{text_content}"
+    logger.info("FINALE ANTWOORD  %r", text_content[:500])
+    if not text_content.strip():
+        # Vaak een contentfilter van de provider: opnieuw sturen geeft weer niets (CH-32).
+        logger.warning("LEEG ANTWOORD  model=%s  finish_reason=%s", model, result.finish_reason)
+        text_content = LEEG_ANTWOORD
+    if result.problems:
+        logger.warning("CONTROLE niet in orde of niet gecontroleerd  model=%s  %s", model, result.problems)
+    if harde(result.problems):
+        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", model, text_content[:500])
+        text_content = INGEHOUDEN
+    return text_content
+
+
+def _slotbericht(text_content: str, result: LoopResult, herzien: list[str], truncated: bool) -> dict:
+    """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn."""
+    return {
+        "type": "message_end",
+        "content": text_content,
+        "actions": [],
+        **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
+        **({"tussentekst": herzien} if herzien else {}),
+        **({"truncated": True} if truncated else {}),
+        **({"partial": True} if result.wrapped_up else {}),
+        **({"controle": meldingen(result.problems)} if result.problems else {}),
+    }
+
+
+async def run(
+    messages: list[dict],
+    session: dict,
+    emit: Emit,
+    stop_event: asyncio.Event | None = None,
+    model: str | None = None,
+) -> str:
+    settings: dict = session.get("chat_settings") or {}
+    chosen_model = model or MODEL
+
+    last_user_msg = _laatste_vraag(messages)
+    logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
+
+    if vast := sentinelvraag(last_user_msg):
+        await emit({"type": "message_start"})
+        await emit({"type": "message_end", "content": vast, "actions": []})
+        return vast
+
+    history, was_trimmed = trim(list(messages))
+    initial_history_len = len(history)
+    if was_trimmed:
         await emit(
             {
                 "type": "toast",
-                "message": "Een controle vond iets om aan te passen; het antwoord wordt herschreven.",
-                "level": "info",
+                "message": "Oudere berichten vallen buiten de context van het model.",
+                "level": "warning",
             }
         )
 
-    async def keep(call: ToolCall, result: str, figure) -> None:
-        record_data_key(session, result, {"name": call.name, "arguments": call.args})
-        record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
-        await _handle_figure(call.name, figure, session, emit)
+    # Vóór de loop: dan maakt het correctiebericht met de verdachte getallen ze geen bron.
+    earlier = [str(m.get("content") or "") for m in history if m.get("role") == "assistant"]
+    said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
     system = await asyncio.to_thread(build_system, settings, beurt=genoemde_bronnen(last_user_msg))
@@ -298,14 +372,14 @@ async def run(
                     system=system,
                     stream_text=True,
                     on_llm_start=lambda: emit({"type": "message_start"}),
-                    on_tool_result=keep,
+                    on_tool_result=partial(_bewaar_stap, session, emit),
                     tool_limits=_TOOL_LIMITS,
                     halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
                     max_iterations=MAX_TOOL_ITERATIONS,
                     max_result_chars=_MAX_TOOL_RESULT_CHARS,
-                    check=check,
+                    check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
                     correction=_correction,
-                    on_correction=withdraw,
+                    on_correction=partial(_intrekken, emit),
                     wrap_up=AFRONDEN,
                 )
         except TimeoutError:
@@ -320,65 +394,17 @@ async def run(
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
         await emit(box.melding())
 
-    if result.aborted == "tools":
-        # Stopped while tools ran: close the open message as aborted. No
-        # content key, so the client keeps the text it already has.
-        await emit({"type": "message_end", "aborted": True})
-        return ""
-    if result.aborted == "stream":
-        await emit({"type": "message_end", "content": result.text, "aborted": True})
-        return result.text
-    if result.halted_on:
-        session["_last_turn_tool_calls"] = result.tool_calls
-        return await _handle_clarify_scope(
-            result.halted_on,
-            result.text,
-            history[initial_history_len:],
-            messages,
-            session,
-            emit,
-        )
-    if result.exhausted:
-        text_content = zonder_antwoord(result.steps)
-        # partial: the frontend offers 'Opnieuw met <ander model>' (#405).
-        await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
-        return text_content
+    if (einde := await _vroeg_einde(result, history[initial_history_len:], messages, session, emit)) is not None:
+        return einde
 
     # Wat het model onderweg herzag, gaat naar de redeneerkaart; het antwoord zelf herziet niets (#412).
     antwoord, herzien = zonder_zelfcorrectie(result.text)
     if herzien:
         logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
-    text_content = weigering(
-        antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(
-        nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord)), result.steps, earlier), result.tool_results
-    )
-    if result.wrapped_up:
-        text_content = f"{DEELANTWOORD}\n\n{text_content}"
-    logger.info("FINALE ANTWOORD  %r", text_content[:500])
+    text_content = _eindtekst(result, antwoord, earlier, session, chosen_model)
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
-    if not text_content.strip():
-        # Vaak een contentfilter van de provider: opnieuw sturen geeft weer niets (CH-32).
-        logger.warning("LEEG ANTWOORD  model=%s  finish_reason=%s", chosen_model, result.finish_reason)
-        text_content = LEEG_ANTWOORD
-    if result.problems:
-        logger.warning("CONTROLE niet in orde of niet gecontroleerd  model=%s  %s", chosen_model, result.problems)
-    if harde(result.problems):
-        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", chosen_model, text_content[:500])
-        text_content = INGEHOUDEN
-    await emit(
-        {
-            "type": "message_end",
-            "content": text_content,
-            "actions": [],
-            **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
-            **({"tussentekst": herzien} if herzien else {}),
-            **({"truncated": True} if truncated else {}),
-            **({"partial": True} if result.wrapped_up else {}),
-            **({"controle": meldingen(result.problems)} if result.problems else {}),
-        }
-    )
+    await emit(_slotbericht(text_content, result, herzien, truncated))
     return text_content

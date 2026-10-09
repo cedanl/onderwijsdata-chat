@@ -117,6 +117,74 @@ def _label_klopt_niet(label: str, periode_van_kpi: dict) -> str | None:
     )
 
 
+def _invoerfout(df: pd.DataFrame, value_column: str, sort_column: str | None) -> str | None:
+    if value_column not in df.columns:
+        return f"Kolom '{value_column}' niet gevonden. Beschikbaar: {list(df.columns)}."
+    if sort_column and sort_column not in df.columns:
+        return f"Sorteerkolom '{sort_column}' niet gevonden. Beschikbaar: {list(df.columns)}."
+    return None
+
+
+def _reeks(
+    df: pd.DataFrame, sort_column: str | None, van: int | str | None, tot: int | str | None, bron: str
+) -> pd.DataFrame | str:
+    """De rijen waarover de KPI rekent, op volgorde; een foutmelding als het bereik niet klopt of leeg is."""
+    try:
+        van, tot = _startjaar(van), _startjaar(tot)
+    except ValueError as exc:
+        return str(exc)
+    if van is not None or tot is not None:
+        if not sort_column:
+            return "`van` en `tot` werken op een periodekolom: geef ook `sort_column` op."
+        df = _binnen_bereik(df, sort_column, van, tot, bron)
+        if df.empty:
+            return f"Geen rijen tussen {van} en {tot} in '{sort_column}'."
+    return df.sort_values(sort_column) if sort_column else df
+
+
+def _rekenfout(metric: str, value_column: str, series: pd.Series, step) -> str | None:
+    """Een maat die over deze reeks niet bestaat: geen stap die kant op, of delen door een eerste 0."""
+    if metric in _STEP_METRICS and step is None:
+        return (
+            f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op."
+        )
+    if metric in ("pct_change", "index") and float(series.iloc[0]) == 0:
+        return (
+            f"Kan '{metric}' niet berekenen: de eerste waarde in '{value_column}' is 0. "
+            "Gebruik een andere maat of een ander startpunt."
+        )
+    return None
+
+
+def _waarde(metric: str, series: pd.Series, step) -> float:
+    """De maat over de reeks; bij max_drop en max_rise het verschil van de grootste stap."""
+    if metric in _STEP_METRICS:
+        return step[0]
+    first, last = float(series.iloc[0]), float(series.iloc[-1])
+    return {
+        "last": last,
+        "first": first,
+        "sum": float(series.sum()),
+        "mean": float(series.mean()),
+        "min": float(series.min()),
+        "max": float(series.max()),
+        "delta": last - first,
+        "pct_change": (last / first - 1) * 100 if first else 0.0,
+        "index": last / first * 100 if first else 0.0,
+    }[metric]
+
+
+def _opmaak(metric: str, value: float) -> tuple[str, str | None, str | None]:
+    """(waarde in Nederlandse notatie, trend, trendrichting); een trend alleen bij een verandering."""
+    formatted = nl_getal(value, _DECIMALS if metric in _DECIMAL_METRICS else 0)
+    if metric not in _TREND_METRICS:
+        return formatted, None, None
+    if value > 0:
+        formatted = f"+{formatted}"
+    tekst = f"{formatted}%" if metric == "pct_change" else formatted
+    return tekst, tekst, "up" if value > 0 else "down" if value < 0 else None
+
+
 def compute_kpi(
     data_key: str,
     value_column: str,
@@ -139,90 +207,37 @@ def compute_kpi(
     df = store.get(data_key)
     if df is None:
         return _error(fouten.onbekende_key(data_key))
-
     if not store.volledig(data_key):
         return _error(store.ONVOLLEDIG)
-
-    if value_column not in df.columns:
-        return _error(f"Kolom '{value_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
-    if sort_column and sort_column not in df.columns:
-        return _error(f"Sorteerkolom '{sort_column}' niet gevonden. Beschikbaar: {list(df.columns)}.")
-
-    try:
-        van, tot = _startjaar(van), _startjaar(tot)
-    except ValueError as exc:
-        return _error(str(exc))
+    if fout := _invoerfout(df, value_column, sort_column):
+        return _error(fout)
 
     known = store.meta(data_key)
     bron = known.bron if known else ""
-    if van is not None or tot is not None:
-        if not sort_column:
-            return _error("`van` en `tot` werken op een periodekolom: geef ook `sort_column` op.")
-        df = _binnen_bereik(df, sort_column, van, tot, bron)
-        if df.empty:
-            return _error(f"Geen rijen tussen {van} en {tot} in '{sort_column}'.")
+    reeks = _reeks(df, sort_column, van, tot, bron)
+    if isinstance(reeks, str):
+        return _error(reeks)
 
-    if sort_column:
-        df = df.sort_values(sort_column)
-
-    series = pd.to_numeric(df[value_column], errors="coerce").dropna()
+    series = pd.to_numeric(reeks[value_column], errors="coerce").dropna()
     if series.empty:
         return _error(f"Kolom '{value_column}' bevat geen numerieke waarden.")
+    step = _largest_step(reeks, value_column, sort_column, metric) if metric in _STEP_METRICS else None
+    if fout := _rekenfout(metric, value_column, series, step):
+        return _error(fout)
 
-    first, last = float(series.iloc[0]), float(series.iloc[-1])
-
-    step = None
-    if metric in _STEP_METRICS:
-        step = _largest_step(df, value_column, sort_column, metric)
-        if step is None:
-            return _error(
-                f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op."
-            )
-
-    if metric in ("pct_change", "index") and first == 0:
-        return _error(
-            f"Kan '{metric}' niet berekenen: de eerste waarde in '{value_column}' is 0. "
-            "Gebruik een andere maat of een ander startpunt."
-        )
-
-    waarden = {
-        "last": last,
-        "first": first,
-        "sum": float(series.sum()),
-        "mean": float(series.mean()),
-        "min": float(series.min()),
-        "max": float(series.max()),
-        "delta": last - first,
-        "pct_change": (last / first - 1) * 100 if first else 0.0,
-        "index": last / first * 100 if first else 0.0,
-        "max_drop": step[0] if step else 0.0,
-        "max_rise": step[0] if step else 0.0,
-    }
-    value = waarden[metric]
-
-    decimals = _DECIMALS if metric in _DECIMAL_METRICS else 0
-    formatted = nl_getal(value, decimals)
-    if metric in _TREND_METRICS and value > 0:
-        formatted = f"+{formatted}"
-
-    trend = None
-    trend_direction = None
-    if metric in _TREND_METRICS:
-        trend = f"{formatted}%" if metric == "pct_change" else formatted
-        trend_direction = "up" if value > 0 else "down" if value < 0 else None
-
-    tussen = {"tussen": [str(step[1]), str(step[2])]} if step else {}
-    periode_van_kpi = _periode(df, value_column, sort_column, step, bron)
+    value = _waarde(metric, series, step)
+    tekst, trend, trend_direction = _opmaak(metric, value)
+    periode_van_kpi = _periode(reeks, value_column, sort_column, step, bron)
     if foutief_label := _label_klopt_niet(label, periode_van_kpi):
         return _error(foutief_label)
     return json.dumps(
         {
             "label": label,
-            "value": f"{formatted}%" if metric == "pct_change" else formatted,
+            "value": tekst,
             "raw": value,
             "trend": trend,
             "trendDirection": trend_direction,
-            **tussen,
+            **({"tussen": [str(step[1]), str(step[2])]} if step else {}),
             **periode_van_kpi,
             **({"afronding": noot} if (noot := cbs_afronding.van_key(data_key)) else {}),
             "bron": {
