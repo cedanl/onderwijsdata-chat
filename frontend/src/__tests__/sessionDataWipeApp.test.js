@@ -1,17 +1,19 @@
 // @vitest-environment jsdom
 // #498: logout, a fresh login, the SRAM landing and a session the server ended remove the
 // dashboard chat from this browser, so the next user of a shared device does not see it.
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '../App'
+import { endSession } from '../auth'
 import { STORAGE_TOKEN, STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-const auth = await import('../auth')
+// Each App test renders the whole app; on a busy machine that nears the 5 s default.
+const APP_TEST = { timeout: 20000 }
 
 const response = (status, body = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => body })
 
@@ -89,6 +91,9 @@ async function openDashboardChat() {
   expect(dcKeys()).not.toEqual([])
 }
 
+// Load the lazy dashboard page once up front, so the first test does not pay for it.
+beforeAll(async () => { await import('../pages/DashboardPage') }, APP_TEST.timeout)
+
 beforeEach(() => {
   localStorage.clear()
   FakeWebSocket.last = null
@@ -108,7 +113,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-describe('App wipes the dashboard chat', () => {
+describe('App wipes the dashboard chat', APP_TEST, () => {
   it('on logout while the dashboard chat is open, also when its socket delivers late', async () => {
     await openDashboardChat()
     const ws = FakeWebSocket.last
@@ -149,12 +154,11 @@ describe('App wipes the dashboard chat', () => {
   })
 })
 
-// endSession arrives with !384 (#480); until then this case is skipped.
-describe('App wipes the dashboard chat when the server ends the session', () => {
-  it.skipIf(!auth.endSession)('while the dashboard chat is open', async () => {
+describe('App wipes the dashboard chat when the server ends the session', APP_TEST, () => {
+  it('while the dashboard chat is open', async () => {
     await openDashboardChat()
 
-    await act(async () => { auth.endSession() })
+    await act(async () => { endSession() })
 
     expect(container.querySelector('#login-username')).not.toBeNull()
     expect(dcKeys()).toEqual([])
