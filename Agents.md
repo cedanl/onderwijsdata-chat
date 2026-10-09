@@ -122,6 +122,11 @@ Secrets mogen NOOIT door een LLM-sessie gaan. Niet als input, niet als output,
 niet als variabele, niet in commando's. Zodra een secret in een LLM-context
 verschijnt, is het gecompromitteerd.
 
+### Logs: geen gebruikerstekst op INFO+
+
+Vraag, antwoord, toolargumenten en modeltekst komen op INFO en hoger alleen als lengte en hash in het log
+(`core.logging_util.tekst_kenmerk`), de tekst zelf alleen op DEBUG (#475): het log valt buiten "gesprek verwijderen".
+
 ### Rollen
 
 | Rol | Doet WEL | Doet NIET |
