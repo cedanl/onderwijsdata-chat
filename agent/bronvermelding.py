@@ -15,15 +15,36 @@ from tools.schemas import TOOL_GET_RIO_INSTELLING
 from .meetwaarden import meetwaarden
 from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
 
-# De eigen Bronnen-kop van het model (**Bronnen**, **Bronnen:** of **Bronnen**:) met de regels eronder:
-# tot een lege regel zonder lijstitem erna, een vetgedrukte kop zoals **Definities**, of het einde.
+# De eigen Bronnen-sectie van het model: de kop (**Bronnen**, **Bronnen:** of **Bronnen**:) en zijn lijst.
+_KOP = r"\*\*Bronnen(?::\*\*|\*\*:?)"
+_OPSOMMING = r"[ \t]*[-*+][ \t]"
+_GENUMMERD = r"[ \t]*\d+[.)][ \t]"
+# Onder een kale kop mogen de bronnen ook als losse regels staan, tot een lege regel, lijst of vetgedrukte kop.
+_LOSSE_REGELS = rf"(?:\n(?!{_OPSOMMING}|{_GENUMMERD}|\n|\*\*)[^\n]*)*"
+
+
+def _lijst(item: str) -> str:
+    """Items van één soort, ook met lege regels ertussen, elk met zijn ingesprongen vervolgregels.
+
+    Een regel die zonder inspringen tegen de lijst plakt (een kanttekening) of een lijst van een
+    andere soort na een lege regel (vervolgstappen) hoort er niet meer bij.
+    """
+    return rf"(?:\n+{item}[^\n]*(?:\n[ \t]+\S[^\n]*)*)+"
+
+
 # Alleen vanaf de eerste van een reeks lege regels: elk beginpunt erbinnen kostte kwadratische tijd
 # op een lange reeks, en dat bevroor de event loop voor iedereen.
 _EIGEN_BRONNEN = re.compile(
-    r"(?<!\n)\n*^\*\*Bronnen(?::\*\*|\*\*:?)[^\n]*"
-    r"(?:\n(?!\n|\*\*)[^\n]*|\n+(?=[ \t]*(?:[-*+]|\d+[.)])[ \t])[^\n]*)*",
+    rf"(?<!\n)\n*^{_KOP}(?:[ \t]*(?=\n|\Z){_LOSSE_REGELS}|[^\n]*)"
+    rf"(?:{_lijst(_OPSOMMING)}|{_lijst(_GENUMMERD)})?(?:\n\Z)?",
     re.MULTILINE,
 )
+
+
+def _zonder_sectie(sectie: re.Match[str]) -> str:
+    """Plakt er een regel direct onder de sectie, dan houdt die een lege regel boven zich: een eigen alinea."""
+    volgt = sectie.string[sectie.end() : sectie.end() + 2]
+    return "\n" if len(volgt) == 2 and volgt[0] == "\n" and volgt[1] != "\n" else ""
 
 
 def _datasetbron(key: str) -> str | None:
@@ -67,4 +88,4 @@ def bronnen_van(steps: list[tuple[str, str]]) -> list[str]:
 
 def zonder_eigen_bronnen(tekst: str, bronnen: list[str]) -> str:
     """Het antwoord zonder de eigen Bronnen-sectie van het model, als de app de bronnen zelf geeft."""
-    return _EIGEN_BRONNEN.sub("", tekst) if bronnen else tekst
+    return _EIGEN_BRONNEN.sub(_zonder_sectie, tekst) if bronnen else tekst

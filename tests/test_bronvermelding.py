@@ -148,6 +148,9 @@ _DEFINITIES = "**Definities**\n- **Ingeschrevenen**: hoofdinschrijvingen op 1 ok
         "**Bronnen**\n- DUO — *Ingeschrevenen hoger onderwijs* (**p01hoinges**)\n- CBS 85423NED",
         "**Bronnen:** DUO p01hoinges, CBS 85423NED",
         "**Bronnen**:\n\n- DUO p01hoinges\n\n- CBS 85423NED",
+        "**Bronnen**\n1. DUO p01hoinges\n2. CBS 85423NED",
+        "**Bronnen**\n- DUO — *Ingeschrevenen hoger onderwijs*\n  resource *Ingeschrevenen*\n- CBS 85423NED",
+        "**Bronnen**\nDUO p01hoinges\nCBS 85423NED",
     ],
 )
 def test_eigen_bronnen_vervallen_als_de_app_ze_geeft(sectie):
@@ -158,6 +161,21 @@ def test_eigen_bronnen_vervallen_als_de_app_ze_geeft(sectie):
 def test_definities_en_slotzin_na_de_bronnen_blijven_staan():
     tekst = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges\n\n{_DEFINITIES}\n\nDe cijfers zijn definitief."
     assert zonder_eigen_bronnen(tekst, [_DUO]) == f"{_ANTWOORD}\n\n{_DEFINITIES}\n\nDe cijfers zijn definitief."
+
+
+@pytest.mark.parametrize("sectie", ["**Bronnen**\n- DUO p01hoinges", "**Bronnen:** DUO p01hoinges"])
+def test_een_kanttekening_direct_onder_de_bronnen_blijft_staan(sectie):
+    """Een regel die tegen de lijst aan plakt, hoort er niet bij: de kanttekening blijft een eigen alinea."""
+    kanttekening = "Let op: de cijfers over 2024 zijn voorlopig."
+    tekst = f"{_ANTWOORD}\n\n{sectie}\n{kanttekening}"
+    assert zonder_eigen_bronnen(tekst, [_DUO]) == f"{_ANTWOORD}\n\n{kanttekening}"
+
+
+def test_een_genummerde_lijst_na_de_bronnen_blijft_staan():
+    """Na een lege regel loopt de sectie alleen door met items van dezelfde soort."""
+    vervolg = "1. Vergelijk met het mbo.\n2. Kijk per instelling."
+    tekst = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges\n\n{vervolg}"
+    assert zonder_eigen_bronnen(tekst, [_DUO]) == f"{_ANTWOORD}\n\n{vervolg}"
 
 
 _VIJANDIG = {
