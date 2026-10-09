@@ -271,10 +271,13 @@ def _woorden(query: str) -> list[str]:
     return [w for w in (w.strip(_SPLITSTEKENS) for w in query.lower().split()) if w]
 
 
+def _is_volzin(query: str, woorden: list[str]) -> bool:
+    return len(woorden) >= _VOLZIN_MIN_WOORDEN or query.rstrip().endswith("?")
+
+
 def _volzin_hint(query: str, woorden: list[str], trefwoorden: list[str]) -> str | None:
     """Een volzin of vraag wordt als trefwoorden gezocht; zeg dat, zodat het model het afleert (#17)."""
-    is_volzin = len(woorden) >= _VOLZIN_MIN_WOORDEN or query.rstrip().endswith("?")
-    if not is_volzin or trefwoorden == woorden:
+    if not _is_volzin(query, woorden) or trefwoorden == woorden:
         return None
     return (
         f"Query genormaliseerd naar trefwoorden: '{' '.join(trefwoorden)}'. "
@@ -391,30 +394,46 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
     return total * damping
 
 
+_REGISTERS = frozenset({"DUO", "RIO"})
+# Een treffer is pas kandidaat als hij minstens één gebruikersterm raakt en, bij trefwoorden, dit deel (#351).
+_MIN_AANDEEL_TERMEN = 0.5
+
+
+def _geraakte_termen(entry: dict, termen: list[str]) -> set[str]:
+    """De door de gebruiker genoemde termen die de treffer raakt; een synoniem is geen bewijs (#351)."""
+    return {term for term in termen if _score(entry, [(term, 1.0)])}
+
+
 def geodekking(entry: dict, niveau: str) -> str:
     """Biedt de dataset dit geografische niveau: "ja", "nee" of "onbekend" (#351).
 
     Een lege `_geo_niveau` is alleen landelijk (#237) als de catalogus de structuur
     kent: CBS-dimensies of DUO/RIO-kolommen zonder regio. Ontbreekt het veld of de
     structuur, dan heeft niemand gekeken; dat is onbekend, niet landelijk.
+
+    Een instellingskolom (INSTELLINGSCODE) is geen geo-niveau: de instellingseenheid maakt
+    een register niet regionaal of landelijk. Een DUO/RIO-register met regiokolom telt
+    misschien op tot landelijk, maar zonder bewijs is dat onbekend, niet "ja" (testaudit L2).
     """
     niveaus = entry.get("_geo_niveau")
     if niveaus:
-        return "ja" if niveau in niveaus else "nee"
+        if niveau in niveaus:
+            return "ja"
+        register = str(entry.get("leverancier", "")).upper() in _REGISTERS
+        return "onbekend" if register and niveau == "landelijk" else "nee"
     if niveaus is None or not (entry.get("_dimensies") or entry.get("_kolommen")):
         return "onbekend"
     return "ja" if niveau == "landelijk" else "nee"
 
 
-def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
-    """De scorende treffers uit `source`, gesplitst in actief en archief."""
-    active: list = []
-    archive: list = []
+def _verzamel(
+    words: list[tuple[str, float]], source: str, termen: list[str], aandeel: float
+) -> tuple[list, list, list]:
+    """De scorende treffers uit `source`: actief, archief, en te zwak voor de drempel (#351)."""
+    treffers: list = []
 
     if source in ("cbs", "both"):
-        for entry in _cbs():
-            if s := _score(entry, words):
-                (archive if entry.get("_archief") else active).append((s, {"bron": "CBS", **entry}))
+        treffers += [(s, entry, {"bron": "CBS", **entry}) for entry in _cbs() if (s := _score(entry, words))]
 
     if source in ("rio", "both", "duo"):
         for entry in _rio_duo():
@@ -424,10 +443,17 @@ def _verzamel(words: list[tuple[str, float]], source: str) -> tuple[list, list]:
             if source == "duo" and not is_duo:
                 continue
             if s := _score(entry, words):
-                hit = {**entry, **(_niet_opvraagbaar(entry) or {})}
-                (archive if entry.get("_archief") else active).append((s, hit))
+                treffers.append((s, entry, {**entry, **(_niet_opvraagbaar(entry) or {})}))
 
-    return active, archive
+    # Een term die geen treffer kent (bijv. een instellingsnaam) onderscheidt niets en telt niet mee.
+    geraakt = [_geraakte_termen(entry, termen) for _, entry, _ in treffers]
+    nodig = max(1, math.ceil(len(set().union(*geraakt)) * aandeel))
+    active: list = []
+    archive: list = []
+    zwak: list = []
+    for (s, entry, hit), raak in zip(treffers, geraakt, strict=True):
+        (zwak if len(raak) < nodig else archive if entry.get("_archief") else active).append((s, hit))
+    return active, archive, zwak
 
 
 def _gerangschikt(treffers: list, geo_niveau: str | None) -> tuple[list[dict], list[str]]:
@@ -451,6 +477,24 @@ def _onbekende_dekking(ids: list[str], geo_niveau: str) -> str:
     )
 
 
+_MAX_SUGGESTIES = 3
+
+
+def _no_match(query: str, zwak: list) -> str:
+    """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168)."""
+    melding = (
+        f"no_match: Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
+        "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
+    )
+    ids = [i for i in map(_dataset_id, _gerangschikt(zwak, None)[0]) if i != "?"][:_MAX_SUGGESTIES]
+    if not ids:
+        return melding
+    return (
+        f"{melding} needs_clarification: deze datasets raken te weinig zoektermen en zijn geen keuze, "
+        f"alleen een suggestie: {ids}. Vraag de gebruiker om verduidelijking voordat je er een laadt."
+    )
+
+
 def search_catalog(
     query: str,
     source: str = "both",
@@ -462,14 +506,16 @@ def search_catalog(
     # F1: Filter stopwoorden
     filtered_words = _filter_stopwoorden(query_words)
     hint = _volzin_hint(query, query_words, filtered_words)
+    # In een volzin zijn niet alle woorden criteria: daar volstaat één geraakte gebruikersterm (#351).
+    aandeel = 0.0 if _is_volzin(query, query_words) else _MIN_AANDEEL_TERMEN
     words = _expand_query(filtered_words)
 
     # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
     # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.
     instellingsvraag = source in ("cbs", "both") and instelling.noemt_instelling(query)
-    active, archive = _verzamel(words, "rio" if instellingsvraag else source)
+    active, archive, zwak = _verzamel(words, "rio" if instellingsvraag else source, filtered_words, aandeel)
     if instellingsvraag and not (active or archive):
-        active, archive = _verzamel(words, source)
+        active, archive, zwak = _verzamel(words, source, filtered_words, aandeel)
     historisch = bool(_HISTORISCH & set(query_words))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -478,11 +524,7 @@ def search_catalog(
         logger.warning(
             "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
         )
-        # Een gemiste zoekopdracht las het model als "geen geschikte bron" (#168).
-        return (
-            f"Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
-            "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
-        )
+        return _no_match(query, zwak)
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.

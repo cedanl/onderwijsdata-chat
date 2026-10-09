@@ -193,6 +193,127 @@ def test_alleen_onbekende_dekking_vraagt_om_inspectie():
     assert "onbekend" in result and "99999NED" in result and "dataset_details" in result
 
 
+@pytest.mark.parametrize(
+    ("entry", "dekking"),
+    [
+        # Een regiokolom in een DUO/RIO-register telt misschien op tot landelijk, maar dat is niet bewezen.
+        ({"leverancier": "DUO", "_geo_niveau": ["gemeente", "provincie"]}, "onbekend"),
+        ({"leverancier": "RIO", "_geo_niveau": ["gemeente"]}, "onbekend"),
+        # CBS zet landelijk er zelf bij als de regiodimensie Nederland bevat; zonder is er geen totaal.
+        ({"_geo_niveau": ["gemeente", "landsdeel"]}, "nee"),
+    ],
+)
+def test_landelijk_bij_een_register_met_regiokolom_is_onbekend(entry, dekking):
+    assert geodekking(entry, "landelijk") == dekking
+
+
+def test_mbo_instellingsbestand_blijft_vindbaar_bij_landelijk():
+    """Testaudit 6 okt (L2): met geo_niveau='landelijk' verdween mbo-studenten-per-instelling zonder melding."""
+    duo = {
+        "title": "Mbo-studenten per instelling",
+        "leverancier": "DUO",
+        "_ckan_id": "mbo-studenten-per-instelling",
+        "_geo_niveau": ["gemeente", "provincie"],
+    }
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[duo]):
+        result = search_catalog("mbo studenten instelling", source="duo", geo_niveau="landelijk")
+    assert "mbo-studenten-per-instelling" in result and "dataset_details" in result
+
+
+_INSTELLINGSREGISTER = {
+    "_ckan_id": "instellingsregister",
+    "leverancier": "DUO",
+    "title": "studenten per instelling",
+    "_geo_niveau": [],
+    "_kolommen": {"bestand": {"INSTELLINGSCODE": ["21PA"], "JAAR": [2024]}},
+}
+
+
+@pytest.mark.parametrize(("niveau", "dekking"), [("landelijk", "ja"), ("gemeente", "nee"), ("provincie", "nee")])
+def test_instellingskolom_is_geen_geo_niveau(niveau, dekking):
+    assert geodekking(_INSTELLINGSREGISTER, niveau) == dekking
+
+
+def test_instellingsvraag_met_geo_niveau_telt_de_instelling_niet_als_regio():
+    query = "studenten instelling Hogeschool Utrecht"
+    with (
+        patch("tools.catalog.instelling.noemt_instelling", return_value=True),
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[_INSTELLINGSREGISTER]),
+    ):
+        landelijk = json.loads(search_catalog(query, geo_niveau="landelijk"))
+        gemeente = search_catalog(query, geo_niveau="gemeente")
+    assert [h["_ckan_id"] for h in landelijk] == ["instellingsregister"]
+    assert "Geen datasets gevonden" in gemeente and "instellingsregister" not in gemeente
+
+
+# --- Minimumgeschiktheid en no_match (#351) ---
+
+
+def test_geen_geschikte_kandidaat_geeft_no_match():
+    # "studenten" raakt alleen via het synoniem "ingeschrevenen" (0.35); dat is geen bewijs.
+    alleen_synoniem = [{"_cbs_id": "11111NED", "title": "ingeschrevenen"}]
+    for cbs in (alleen_synoniem, []):
+        with patch("tools.catalog._cbs", return_value=cbs), patch("tools.catalog._rio_duo", return_value=[]):
+            result = search_catalog("studenten", source="cbs")
+        assert result.startswith("no_match")
+        assert not result.lstrip().startswith("[")
+        assert "zegt niet dat de data ontbreekt" in result
+
+
+def test_zwakke_kandidaten_zijn_een_suggestie_geen_keuze():
+    zwak = [{"_cbs_id": f"{i}NED", "title": "ingeschrevenen"} for i in range(10000, 10005)]
+    with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
+        result = search_catalog("studenten", source="cbs")
+    assert result.startswith("no_match") and "needs_clarification" in result
+    assert sum(f"{i}NED" in result for i in range(10000, 10005)) == 3
+
+
+def test_alleen_synoniem_wordt_geen_top_1_naast_de_gebruikersterm():
+    cbs = [
+        # Het synoniem scoort hier zwaarder (veel velden) dan de gebruikersterm in één veld.
+        {
+            "_cbs_id": "synoniem",
+            "bron": "ingeschrevenen",
+            "tags": ["ingeschrevenen"],
+            "voorbeeldvragen": ["ingeschrevenen"],
+            "beschrijving": "ingeschrevenen",
+        },
+        {"_cbs_id": "gebruikersterm", "title": "studenten"},
+    ]
+    hits = _zoek_catalogus("studenten", cbs=cbs, source="cbs")
+    assert [h["_cbs_id"] for h in hits] == ["gebruikersterm"]
+
+
+def test_minder_dan_de_helft_van_de_termen_valt_af():
+    cbs = [
+        # Scoort het hoogst, maar raakt één van de vier termen.
+        {"_cbs_id": "een-van-vier", "bron": "instroom", "tags": ["instroom"], "beschrijving": "instroom"},
+        {"_cbs_id": "twee-van-vier", "title": "instroom mbo"},
+        {"_cbs_id": "andere-twee", "title": "geslacht leeftijd"},
+    ]
+    hits = _zoek_catalogus("instroom mbo geslacht leeftijd", cbs=cbs, source="cbs")
+    assert sorted(h["_cbs_id"] for h in hits) == ["andere-twee", "twee-van-vier"]
+
+
+def test_een_van_twee_termen_blijft_kandidaat():
+    cbs = [{"_cbs_id": "a", "title": "instroom"}, {"_cbs_id": "b", "title": "geslacht"}]
+    hits = _zoek_catalogus("instroom geslacht", cbs=cbs, source="cbs")
+    assert sorted(h["_cbs_id"] for h in hits) == ["a", "b"]
+
+
+def test_term_die_geen_dataset_kent_telt_niet_mee():
+    # "hogeschool" en "utrecht" staan in geen enkele beschrijving: ze kunnen geen treffer onderscheiden.
+    hits = _zoek_catalogus("studenten Hogeschool Utrecht", cbs=[{"_cbs_id": "a", "title": "studenten"}], source="cbs")
+    assert [h["_cbs_id"] for h in hits] == ["a"]
+
+
+def test_volzin_vraagt_een_gebruikersterm_geen_aandeel():
+    cbs = [{"_cbs_id": "vsv", "title": "voortijdig schoolverlaters"}, {"_cbs_id": "werk", "title": "werk gevonden"}]
+    hits = _zoek_catalogus("Hoe groot is het aandeel schoolverlaters dat werk heeft gevonden?", cbs=cbs, source="cbs")
+    assert sorted(h["_cbs_id"] for h in hits if "_cbs_id" in h) == ["vsv", "werk"]
+
+
 def test_geo_niveau_filter_returns_error_when_no_match():
     cbs_entries = [
         {"identifier": "alleen-landelijk", "title": "instroom data", "_geo_niveau": ["landelijk"]},
