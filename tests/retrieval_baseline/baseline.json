@@ -1,0 +1,400 @@
+{
+  "catalogus_digest": "bd49429078c4",
+  "catalogusversie": [
+    {
+      "pakket": "onderwijsdata",
+      "versie": "0.2.0",
+      "commit": "ed09a10a2cdc472ed2f1a9bbbc5a023170cb20f5"
+    },
+    {
+      "pakket": "riodata",
+      "versie": "0.3.1",
+      "commit": "c0b4bceaea7c40f13a0fe386ce278db94c39e7f7"
+    }
+  ],
+  "dataset_counts": {
+    "CBS": 119,
+    "DUO": 14,
+    "RIO": 9
+  },
+  "doorzoekbaar": [
+    "3733chd",
+    "37379ou",
+    "37742CHV",
+    "70006NED",
+    "70007NED",
+    "70962ned",
+    "71054ned",
+    "71063ned",
+    "71064ned",
+    "71065ned",
+    "71066ned",
+    "71073ned",
+    "71074ned",
+    "71113ned",
+    "71172ned",
+    "71199ned",
+    "71200ned",
+    "71201ned",
+    "71202ned",
+    "71229ned",
+    "71247ned",
+    "71535ned",
+    "71732ned",
+    "71733ned",
+    "71734ned",
+    "71735ned",
+    "71796ned",
+    "71797ned",
+    "71798ned",
+    "71799ned",
+    "71824ned",
+    "71825ned",
+    "71826ned",
+    "71827ned",
+    "71895ned",
+    "71896ned",
+    "71897ned",
+    "71898ned",
+    "71994ned",
+    "71995ned",
+    "71996ned",
+    "72008ned",
+    "80362ned",
+    "80363ned",
+    "80364ned",
+    "80466ned",
+    "80467ned",
+    "80468ned",
+    "80704ned",
+    "81623NED",
+    "81624NED",
+    "81625NED",
+    "81626NED",
+    "81627NED",
+    "82961NED",
+    "82963NED",
+    "83196NED",
+    "83197NED",
+    "83216NED",
+    "83217NED",
+    "83218NED",
+    "83282NED",
+    "83285NED",
+    "83286NED",
+    "83305NED",
+    "83815NED",
+    "83828NED",
+    "83829NED",
+    "83830NED",
+    "83831NED",
+    "83832NED",
+    "83850NED",
+    "83851NED",
+    "83852NED",
+    "83893NED",
+    "83894NED",
+    "83895NED",
+    "83896NED",
+    "83897NED",
+    "83966NED",
+    "84317NED",
+    "84318NED",
+    "84319NED",
+    "84534NED",
+    "84553NED",
+    "85124NED",
+    "85125NED",
+    "85352NED",
+    "85353NED",
+    "85354NED",
+    "85355NED",
+    "85356NED",
+    "85357NED",
+    "85368NED",
+    "85421NED",
+    "85422NED",
+    "85423NED",
+    "85424NED",
+    "85425NED",
+    "85519NED",
+    "85569NED",
+    "85574NED",
+    "85696NED",
+    "85698NED",
+    "85699NED",
+    "85700NED",
+    "85701NED",
+    "85702NED",
+    "85776NED",
+    "85777NED",
+    "85778NED",
+    "85779NED",
+    "85859NED",
+    "85860NED",
+    "85861NED",
+    "85862NED",
+    "85907NED",
+    "86238NED",
+    "86240NED",
+    "aangeboden-opleiding-cohorten",
+    "aangeboden-opleidingen",
+    "adressen_ho",
+    "adressen_mbo",
+    "ais2028",
+    "ais2030",
+    "examenlicenties",
+    "gediplomeerde-mbo-studenten",
+    "ho_opleidingsoverzicht",
+    "instromende-mbo-studenten",
+    "mbo-studenten-per-instelling",
+    "mbo-studenten-per-sectorkamer-en-leerweg",
+    "mbo_opleidingsaanbod",
+    "onderwijslicenties",
+    "opleidingen",
+    "opleidingserkenningen",
+    "opleidingsfasen",
+    "opleidingsgroepen",
+    "opleidingsonderdelen",
+    "overzicht-erkenningen-ho",
+    "p01hoinges",
+    "p02ho1ejrs",
+    "p03hoinschr",
+    "p04hogdipl",
+    "studentprognoses-mbo-per-instelling",
+    "uwv-open-match-data"
+  ],
+  "gemeten_op": "2026-10-09",
+  "metingen": {
+    "mbo/ontwikkel": {
+      "n": 18,
+      "n_beantwoordbaar": 16,
+      "recall_at_5": 0.9375,
+      "recall_at_5_95": [
+        0.7167,
+        0.9889
+      ],
+      "mrr": 0.8099,
+      "mrr_95": [
+        0.6588,
+        0.9375
+      ],
+      "recall_at_5_vraag": 0.75,
+      "mrr_vraag": 0.6823,
+      "onbeantwoordbaar_geslaagd": [
+        1,
+        2
+      ],
+      "kritiek_geslaagd": [
+        5,
+        5
+      ]
+    },
+    "mbo/test": {
+      "n": 8,
+      "n_beantwoordbaar": 7,
+      "recall_at_5": 0.8571,
+      "recall_at_5_95": [
+        0.4869,
+        0.9743
+      ],
+      "mrr": 0.75,
+      "mrr_95": [
+        0.4643,
+        1.0
+      ],
+      "recall_at_5_vraag": 0.8571,
+      "mrr_vraag": 0.5595,
+      "onbeantwoordbaar_geslaagd": [
+        0,
+        1
+      ],
+      "kritiek_geslaagd": [
+        1,
+        1
+      ]
+    },
+    "hbo/ontwikkel": {
+      "n": 16,
+      "n_beantwoordbaar": 14,
+      "recall_at_5": 0.8571,
+      "recall_at_5_95": [
+        0.6006,
+        0.9599
+      ],
+      "mrr": 0.7107,
+      "mrr_95": [
+        0.4891,
+        0.8929
+      ],
+      "recall_at_5_vraag": 0.7857,
+      "mrr_vraag": 0.6294,
+      "onbeantwoordbaar_geslaagd": [
+        0,
+        2
+      ],
+      "kritiek_geslaagd": [
+        2,
+        3
+      ]
+    },
+    "hbo/test": {
+      "n": 8,
+      "n_beantwoordbaar": 7,
+      "recall_at_5": 0.8571,
+      "recall_at_5_95": [
+        0.4869,
+        0.9743
+      ],
+      "mrr": 0.6714,
+      "mrr_95": [
+        0.3429,
+        0.9286
+      ],
+      "recall_at_5_vraag": 0.5714,
+      "mrr_vraag": 0.5714,
+      "onbeantwoordbaar_geslaagd": [
+        0,
+        1
+      ],
+      "kritiek_geslaagd": [
+        0,
+        1
+      ]
+    },
+    "wo/ontwikkel": {
+      "n": 17,
+      "n_beantwoordbaar": 15,
+      "recall_at_5": 0.8667,
+      "recall_at_5_95": [
+        0.6212,
+        0.9626
+      ],
+      "mrr": 0.8429,
+      "mrr_95": [
+        0.6667,
+        1.0
+      ],
+      "recall_at_5_vraag": 0.8,
+      "mrr_vraag": 0.6611,
+      "onbeantwoordbaar_geslaagd": [
+        0,
+        2
+      ],
+      "kritiek_geslaagd": [
+        1,
+        2
+      ]
+    },
+    "wo/test": {
+      "n": 8,
+      "n_beantwoordbaar": 7,
+      "recall_at_5": 0.7143,
+      "recall_at_5_95": [
+        0.3589,
+        0.9178
+      ],
+      "mrr": 0.7381,
+      "mrr_95": [
+        0.4286,
+        1.0
+      ],
+      "recall_at_5_vraag": 0.8571,
+      "mrr_vraag": 0.8,
+      "onbeantwoordbaar_geslaagd": [
+        1,
+        1
+      ],
+      "kritiek_geslaagd": [
+        1,
+        2
+      ]
+    },
+    "totaal/ontwikkel": {
+      "n": 51,
+      "n_beantwoordbaar": 45,
+      "recall_at_5": 0.8889,
+      "recall_at_5_95": [
+        0.765,
+        0.9516
+      ],
+      "mrr": 0.79,
+      "mrr_95": [
+        0.6845,
+        0.8907
+      ],
+      "recall_at_5_vraag": 0.7778,
+      "mrr_vraag": 0.6588,
+      "onbeantwoordbaar_geslaagd": [
+        1,
+        6
+      ],
+      "kritiek_geslaagd": [
+        8,
+        10
+      ]
+    },
+    "totaal/test": {
+      "n": 24,
+      "n_beantwoordbaar": 21,
+      "recall_at_5": 0.8095,
+      "recall_at_5_95": [
+        0.6,
+        0.9233
+      ],
+      "mrr": 0.7198,
+      "mrr_95": [
+        0.5452,
+        0.881
+      ],
+      "recall_at_5_vraag": 0.7619,
+      "mrr_vraag": 0.6437,
+      "onbeantwoordbaar_geslaagd": [
+        1,
+        3
+      ],
+      "kritiek_geslaagd": [
+        2,
+        4
+      ]
+    },
+    "buiten_profiel": {
+      "n": 6,
+      "n_beantwoordbaar": 0,
+      "recall_at_5": null,
+      "recall_at_5_95": [
+        0.0,
+        1.0
+      ],
+      "mrr": null,
+      "mrr_95": [
+        0.0,
+        1.0
+      ],
+      "recall_at_5_vraag": null,
+      "mrr_vraag": null,
+      "onbeantwoordbaar_geslaagd": [
+        0,
+        6
+      ],
+      "kritiek_geslaagd": [
+        6,
+        6
+      ]
+    }
+  },
+  "kritiek_falend": {
+    "hbo-09": {
+      "p01hoinges": 1
+    },
+    "hbo-10": {
+      "p04hogdipl": 1
+    },
+    "wo-11": {
+      "p01hoinges": 1
+    },
+    "wo-25": {
+      "p04hogdipl": 4
+    }
+  }
+}
