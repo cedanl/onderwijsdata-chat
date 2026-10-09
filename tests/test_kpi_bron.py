@@ -9,8 +9,10 @@ import json
 
 import pytest
 
+from agent.binding import verkeerd_gebonden
 from agent.kpi_bron import kpis, noemt
 from agent.kpi_periode import verkeerde_kpi_periodes
+from agent.kpi_scope import kpi_naast_filter
 
 _SCHOOLJAREN = {"van": "2019/20", "tot": "2025/26"}
 
@@ -159,3 +161,55 @@ def test_de_periodecontrole_ziet_een_kpi_met_markdown_nadruk():
     tekst = "Van 2018/19 tot 2024/25 groeide het wo met _+29.040_ studenten."
     [probleem] = verkeerde_kpi_periodes(tekst, [kpi])
     assert "2019/20" in probleem
+
+
+# --- welke KPI's elke controle ziet: de filters blijven bij de controle ---
+
+
+def test_de_periodecontrole_slaat_een_kpi_zonder_schooljaren_over():
+    kalenderjaren = json.dumps({"value": "-41.558", "periode": {"van": "2024", "tot": "2030"}})
+    zonder_periode = json.dumps({"value": "-41.558", "bron": {"data_key": "duo:x", "metric": "delta"}})
+    tekst = "Van 2024 tot 2029 daalt het met 41.558."
+    assert verkeerde_kpi_periodes(tekst, [kalenderjaren, zonder_periode]) == []
+
+
+def test_de_scopecontrole_slaat_een_kpi_zonder_bron_over():
+    zonder_bron = json.dumps({"value": "+463", "periode": _SCHOOLJAREN})
+    assert kpi_naast_filter("De groei was +463.", [zonder_bron]) == []
+
+
+# --- misvormde KPI-JSON: een periode of bron die geen object is, telt als afwezig ---
+# Vóór #420 liepen de controles hierop vast (TypeError, KeyError). compute_kpi maakt zulke JSON niet.
+
+
+@pytest.mark.parametrize(
+    ("data", "periode", "bron"),
+    [
+        ({"value": "+1", "periode": None}, None, None),
+        ({"value": "+1", "periode": "2019/20 tot 2025/26"}, None, None),
+        ({"value": "+1", "periode": {"van": "2019/20"}}, {"van": "2019/20"}, None),
+        ({"value": "+1", "bron": None}, None, None),
+        ({"value": "+1", "bron": "duo:x"}, None, None),
+        ({"value": "+1", "bron": ["duo:x"]}, None, None),
+    ],
+)
+def test_misvormde_periode_of_bron(data, periode, bron):
+    [kpi] = kpis([json.dumps(data)])
+    assert (kpi.periode, kpi.bereik, kpi.bron) == (periode, None, bron)
+
+
+def test_de_controles_lopen_niet_vast_op_misvormde_kpis():
+    misvormd = [
+        json.dumps({"value": "+29.040", "periode": None}),
+        json.dumps({"value": "+29.040", "periode": {"van": "2019/20"}}),
+        json.dumps({"value": "+29.040", "periode": "2019/20 tot 2025/26", "bron": "duo:x"}),
+    ]
+    tekst = "Van 2018/19 tot 2024/25 groeide het wo met 29.040."
+    assert verkeerde_kpi_periodes(tekst, misvormd) == []
+    assert kpi_naast_filter(tekst, misvormd) == []
+    assert verkeerd_gebonden(tekst, misvormd) == []
+
+
+def test_een_waarde_die_geen_tekst_is_wordt_tekst():
+    [kpi] = kpis([json.dumps({"value": 463, "periode": _SCHOOLJAREN})])
+    assert (kpi.waarde, kpi.cijfers) == ("463", "463")
