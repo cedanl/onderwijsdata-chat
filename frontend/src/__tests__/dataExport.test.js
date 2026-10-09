@@ -107,6 +107,23 @@ describe('DataExport', () => {
     expect(onHerhaal).toHaveBeenCalledOnce()
   })
 
+  // #472: na een herstart haalt de server de data opnieuw op; de cijfers kunnen afwijken.
+  it('zegt het als de data opnieuw is opgehaald', async () => {
+    const download = vi.fn().mockResolvedValue('opnieuw opgehaald op 09-10-2026; de bron kan intussen zijn gewijzigd')
+    const [knop] = render({ tools: [stap('a')], download })
+    await act(async () => knop.click())
+    const melding = container.querySelector('[role="status"]').textContent
+    expect(melding).toContain('opnieuw opgehaald op 09-10-2026; de bron kan intussen zijn gewijzigd')
+    expect(melding).toContain('kunnen afwijken van het antwoord')
+  })
+
+  it('zegt niets extra bij data uit het eerste antwoord', async () => {
+    const download = vi.fn().mockResolvedValue(null)
+    const [knop] = render({ tools: [stap('a')], download })
+    await act(async () => knop.click())
+    expect(container.querySelector('[role="status"]')).toBeNull()
+  })
+
   it('toont geen vervolgactie zonder vraag om te herhalen', async () => {
     const download = vi.fn().mockRejectedValue(new Error('x'))
     const [knop] = render({ tools: [stap('a')], download })
@@ -133,6 +150,20 @@ describe('downloadDataCsv', () => {
 
     expect(fetch.mock.calls[0][0]).toBe('/api/data/csv?key=duo%3Ap01hoinges%3A0%3Aab')
     expect(saved).toBe('p01hoinges.csv')
+    click.mockRestore()
+  })
+
+  it('geeft de herlaadmelding van de server terug, of null', async () => {
+    const { downloadDataCsv } = await import('../api')
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const csv = headers => new Response('a;b\n1;2', { headers: { 'Content-Disposition': 'attachment; filename="x.csv"', ...headers } })
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(csv({ 'X-Data-Herladen': 'opnieuw opgehaald op 09-10-2026' })))
+    expect(await downloadDataCsv('k')).toBe('opnieuw opgehaald op 09-10-2026')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(csv({})))
+    expect(await downloadDataCsv('k')).toBeNull()
     click.mockRestore()
   })
 

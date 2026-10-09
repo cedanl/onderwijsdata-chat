@@ -192,7 +192,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
   })
   const [input, setInput] = useState('')
@@ -235,8 +235,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useEffect(() => {
     if (!connected || initialHistorySentRef.current || !restoredMessages.length) return
     initialHistorySentRef.current = true
-    sendHistory(restoredMessages)
-  }, [connected, restoredMessages, sendHistory])
+    sendHistory(restoredMessages, conversationId)
+  }, [connected, restoredMessages, sendHistory, conversationId])
 
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
@@ -311,7 +311,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
-    sendHistory(restored)
+    sendHistory(restored, String(conv.id))
   }, [clear, saveConversation, sendHistory, models])
 
   // Older conversations stay on the server until asked for (#123).
@@ -586,7 +586,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               </div>
             )}
             {hasMessages && !busy && <ConversationExport messages={displayMessages} />}
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'ready' && (
+            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
@@ -605,7 +605,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'needs_reload' && (
+            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'needs_reload' && (
               <p className="report-reload-hint">
                 Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
               </p>
