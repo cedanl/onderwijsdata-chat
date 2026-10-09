@@ -9,9 +9,9 @@ komma blijft staan.
 Wat geen hoeveelheid is, blijft zoals het staat: jaartallen (dezelfde grens als de
 grondingscontrole), codes (85423NED, een voorloopnul, een getal na "CROHO" of "code",
 een cel in een kolom met zo'n kop, een getal dat de tooluitvoer van de beurt alleen als
-code geeft), een postcode, al genoteerde getallen, een Engelse decimale punt, code,
-links en HTML. De grondingscontrole leest 3303 en 3.303 als hetzelfde getal, dus ze
-vindt na de omzetting hetzelfde.
+code geeft of dat een eerder antwoord zonder punt schreef), een postcode, al genoteerde
+getallen, een Engelse decimale punt, code, links en HTML. De grondingscontrole leest 3303
+en 3.303 als hetzelfde getal, dus ze vindt na de omzetting hetzelfde.
 
 Alles loopt in lineaire tijd: de functie draait synchroon op het eindantwoord, en een
 patroon dat terugzoekt over modeluitvoer bevriest elke sessie op de worker.
@@ -54,7 +54,11 @@ _VENSTER = 80
 
 # Ongemoeid: inline code (ook tussen dubbele backticks), links en hun doel, HTML-tags.
 # Lineair: geen alternatief zoekt vanaf elk volgend begin opnieuw tot het einde van de regel.
-_BESCHERMD = re.compile(r"``[^\n]*?``|`[^`\n]*`|https?://[^\s<>()]+|www\.[^\s<>()]+|\]\([^()\n]*\)|<[^<>\n]+>")
+# Een linkdoel mag één paar haakjes bevatten (wiki/Lijst_(12345)); elk teken past op één
+# manier, dus terugzoeken blijft binnen dat ene doel.
+_BESCHERMD = re.compile(
+    r"``[^\n]*?``|`[^`\n]*`|https?://[^\s<>()]+|www\.[^\s<>()]+|\]\((?:[^()\n]|\([^()\n]*\))*\)|<[^<>\n]+>"
+)
 _CODEBLOK = re.compile(r"^\s*(```|~~~)")
 _REFERENTIE = re.compile(r" {0,3}\[[^\]\n]*\]:")  # [1]: /pad?n=12345
 _TABELTEKENS = " \t\r|:-"
@@ -105,20 +109,33 @@ def _tabelrij(regel: str, codekolommen: set[int], codes: frozenset[str]) -> str:
     return "|".join(cel if i in codekolommen else _in_tekst(cel, codes) for i, cel in enumerate(regel.split("|")))
 
 
-def _codes(stappen: Iterable[tuple[str, str]]) -> frozenset[str]:
-    """De cijfers die de tooluitvoer van de beurt alleen als code geeft, nooit als meetwaarde.
+def _ongepunt(eerder: Iterable[str]) -> set[str]:
+    """Getallen van vier of meer cijfers die een eerder antwoord zonder punt schreef: daar bleven ze als code staan."""
+    return {
+        cijfers
+        for tekst in eerder
+        for m in _GETAL.finditer(tekst)
+        if len(cijfers := m.group("geheel")) >= 4 and cijfers.isascii() and cijfers.isdigit()
+    }
 
-    "Rechten (50800)" las met een punt als een aantal, naast "3.303 studenten" (#445)."""
+
+def _codes(stappen: Iterable[tuple[str, str]], eerder: Iterable[str]) -> frozenset[str]:
+    """De cijfers die de tooluitvoer van de beurt of een eerder antwoord alleen als code geeft, nooit als meetwaarde.
+
+    "Rechten (50800)" las met een punt als een aantal, naast "3.303 studenten" (#445). Een
+    vervolgvraag die de code herhaalt zonder haar opnieuw te laden, vindt haar in het eerdere antwoord."""
     stappen = list(stappen)
     gemeten = {c for tool, result in stappen for w in meetwaarden(result, tool) for c in w.cijfers}
-    return frozenset(c for _, result in stappen for c in identificaties(result)) - gemeten
+    codes = {c for _, result in stappen for c in identificaties(result)} | _ongepunt(eerder)
+    return frozenset(codes - gemeten)
 
 
-def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = ()) -> str:
+def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iterable[str] = ()) -> str:
     """`tekst` met elk geheel getal van vier of meer cijfers, geen jaar of code, als 3.303.
 
-    `stappen`: (tool, resultaat) van de beurt; een getal dat daar alleen als code staat, blijft staan."""
-    codes = _codes(stappen)
+    `stappen`: (tool, resultaat) van de beurt; een getal dat daar alleen als code staat, blijft staan.
+    `eerder`: de eerdere antwoorden; een getal dat daar zonder punt staat, blijft ook staan."""
+    codes = _codes(stappen, eerder)
     regels = tekst.split("\n")
     uit: list[str] = []
     in_codeblok = False

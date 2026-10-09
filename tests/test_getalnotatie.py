@@ -9,8 +9,10 @@ import pytest
 
 from agent.getalnotatie import nl_notatie
 from agent.grounding import getallen_met_positie, unverified
-from agent.meetwaarden import identificaties
+from agent.loop import LoopResult
+from agent.meetwaarden import identificaties, meetwaarden
 from agent.stream import StreamResult
+from agent.telling import met_telling
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -90,6 +92,8 @@ def test_codeblok_inline_code_en_links_blijven_staan():
         '   [bron]: https://x.nl/a "Tabel 12345"',
         "Zie ``df[df.AANTAL > 12345]`` hier.",
         "Zie ``a ` 12345`` hier.",
+        # Een linkdoel met één paar haakjes (#445).
+        "[wiki](https://nl.wikipedia.org/wiki/Lijst_(12345)) en [l](/p/(12345)).",
     ],
 )
 def test_links_zonder_schema_referenties_en_dubbele_backticks_blijven_staan(tekst):
@@ -168,23 +172,97 @@ def test_een_getal_dat_de_data_ook_als_meetwaarde_geeft_krijgt_de_notatie():
     )
 
 
-def test_identificaties_uit_rijen_en_kolomschema():
+def test_identificaties_uit_rijen_kolomschema_en_geneste_codes():
     resultaat = json.dumps(
         {
             "rijen": [{"ID": 3303, "BRIN_NUMMER": "30RD", "OPLEIDINGSCODE": 50800.0, "AANTAL": 9999}],
             "preview": [{"crebo_code": "25180", "JAAR": 2023}],
             "kolommen": [{"kolom": "OPLEIDINGSCODE", "waarden": ["34479", "B Rechten"]}],
+            "bevoegd_gezag": {"code": "41171", "naam": "Stichting ROC Mondriaan"},
+            "resultaat": [[{"code": 41843}]],
         }
     )
     # ID is CBS' rijnummer, geen code die een tekst noemt; 30RD heeft letters.
-    assert identificaties(resultaat) == {"50800", "25180", "34479"}
+    assert identificaties(resultaat) == {"50800", "25180", "34479", "41171", "41843"}
     assert identificaties("geen json") == set()
+
+
+# get_rio_instelling zoals de tool het schrijft (tools/rio_instelling.py, tests/test_rio_instelling.py).
+_RIO_KOP = {"bron": "RIO", "catalogus_titel": "RIO erkenningen", "peildatum": "2026-10-09", "gezocht": "Mondriaan"}
+_RIO_MEERDERE = {
+    **_RIO_KOP,
+    "status": "meerdere",
+    "kandidaten": [
+        {"code": "41171", "naam": "Stichting ROC Mondriaan"},
+        {"code": "41843", "naam": "Stg. Primair onderw. Mondriaan Abcoude"},
+    ],
+    "melding": "De naam past bij meer besturen. Vraag welke bedoeld is, of zoek opnieuw met de volledige naam.",
+}
+_RIO_OVERZICHT = {
+    **_RIO_KOP,
+    "bevoegd_gezag": {"code": "41171", "naam": "Stichting ROC Mondriaan"},
+    "aantallen": {"erkenningen": 5, "instellingen": 1, "vestigingen": 3},
+    "instellingen": [
+        {
+            "code": "27GZ",
+            "naam": "ROC Mondriaan",
+            "wet": "WEB",
+            "erkenner": "OCW",
+            "vestigingen": 3,
+            "vestigingscodes": ["27GZ00", "27GZ01", "27GZ02"],
+        }
+    ],
+    "definitie": "Een erkenning is het bestuur, een instelling of een vestiging.",
+}
+
+
+def test_bestuurscodes_uit_rio_blijven_een_code():
+    """RIO geeft de bestuurscode in kandidaten[].code en bevoegd_gezag.code, niet in een rij (#445)."""
+    meerdere = [("get_rio_instelling", json.dumps(_RIO_MEERDERE, ensure_ascii=False))]
+    tekst = (
+        "Er zijn twee besturen: Stichting ROC Mondriaan (41171) en "
+        "Stg. Primair onderw. Mondriaan Abcoude (41843). Welke bedoelt u?"
+    )
+    assert nl_notatie(tekst, meerdere) == tekst
+    overzicht = [("get_rio_instelling", json.dumps(_RIO_OVERZICHT, ensure_ascii=False))]
+    tabel = "| Bevoegd gezag | Naam |\n|---|---|\n| 41171 | Stichting ROC Mondriaan |"
+    assert nl_notatie(tabel, overzicht) == tabel
+
+
+def test_cbs_rijnummer_is_geen_code():
+    stappen = [("query_data", json.dumps({"preview": [{"ID": 4567, "Perioden": "2024JJ00", "Leerlingen": 312}]}))]
+    assert nl_notatie("Er waren 4567 leerlingen.", stappen) == "Er waren 4.567 leerlingen."
+
+
+def test_een_code_uit_een_eerder_antwoord_blijft_een_code():
+    """Een vervolgvraag die de code herhaalt zonder haar te laden, maakte 'Rechten (50.800)' (#445)."""
+    eerder = ["B Rechten (50800) had 3.303 studenten in 2023."]
+    tekst = "Rechten (50800) had 4210 studenten, 3303 het jaar ervoor."
+    assert nl_notatie(tekst, (), eerder) == "Rechten (50800) had 4.210 studenten, 3.303 het jaar ervoor."
+    # Meet de data van deze beurt het getal, dan is het een aantal.
+    gemeten = [("query_data", json.dumps({"rijen": [{"AANTAL": 50800}]}))]
+    assert nl_notatie("Het waren er 50800.", gemeten, eerder) == "Het waren er 50.800."
+
+
+def test_een_reusachtig_getal_in_de_tooluitvoer_laat_de_beurt_niet_vallen():
+    """Een int van 309+ cijfers past niet in een float: math.isfinite gaf een OverflowError (#445)."""
+    groot = 10**400
+    stappen = [
+        ("run_analysis", json.dumps({"bron": None, "resultaat": 1, "scriptconstanten": [groot]})),
+        ("query_data", json.dumps({"data_key": "k", "rijen": [{"AANTAL": groot}]})),
+        ("run_analysis", json.dumps({"gelezen": ["k"], "resultaat": groot})),
+    ]
+    assert meetwaarden(stappen[1][1], "query_data") == []
+    assert nl_notatie("Er waren 3303 studenten.", stappen) == "Er waren 3.303 studenten."
+    assert met_telling("Er waren 3.303 studenten.", [r for _, r in stappen]).startswith("Er waren 3.303")
 
 
 # Modeluitvoer die de oude patronen kwadratisch liet zoeken (12 s bij 50.000 tekens, #445).
 _VIJANDIG = {
     "tabelscheiding": "| a |\n|" + "-" * 50_000 + "x",
     "linkdoel": "](" * 25_000,
+    "linkdoel met haakjes": "](" + "(1" * 25_000,
+    "linkdoelen met haakjes": "]((a)" * 10_000,
     "dubbele backticks": "``" + " `" * 25_000,
     "html": "<" * 50_000,
     "duizendtallen met spaties": "1" + " 234" * 12_500 + "x",
@@ -254,3 +332,26 @@ def test_het_antwoord_in_de_chat_krijgt_de_notatie(monkeypatch):
     einde = next(e for e in events if e["type"] == "message_end")
     assert einde["content"] == "Het waren er 3.303, in 2023."
     assert "controle" not in einde
+
+
+def test_de_chat_houdt_een_code_uit_de_tooluitvoer_van_de_beurt(monkeypatch):
+    """run() geeft de stappen van de beurt aan de notatie: zonder die stappen werd het 'Rechten (50.800)'."""
+
+    async def fake_tool_loop(*args, **kwargs):
+        return LoopResult(
+            text="Rechten (50800) had 3303 studenten.",
+            finish_reason="stop",
+            steps=_OPLEIDINGEN,
+            tool_calls=[{"name": "query_data", "arguments": "{}"}],
+        )
+
+    monkeypatch.setattr(run_module, "tool_loop", fake_tool_loop)
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    gesprek = [{"role": "user", "content": "Hoeveel studenten had Rechten?"}]
+    asyncio.run(run_module.run(gesprek, {}, emit, asyncio.Event(), model="openai/gpt-4o"))
+    einde = next(e for e in events if e["type"] == "message_end")
+    assert einde["content"].startswith("Rechten (50800) had 3.303 studenten.")
