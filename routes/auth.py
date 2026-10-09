@@ -1,13 +1,26 @@
 import json
 import logging
 import secrets
+import time
 import urllib.parse
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from auth.oidc import build_authorization_url, exchange_code_for_user, is_oidc_configured
-from core.auth import AUTH_ENABLED, USERS, check_credentials, get_current_user, make_token
+from core.auth import (
+    AUTH_ENABLED,
+    SESSION_MAX,
+    USERS,
+    bearer_token,
+    check_credentials,
+    get_current_user,
+    make_token,
+    revoke_token,
+    session_start,
+    verify_token,
+)
 from core.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -97,26 +110,33 @@ if is_oidc_configured():
         """
         Refresh auth token before expiration.
         Only available with OIDC.
-        Prevents "logged out" surprise after 24h inactivity.
+        The new token keeps the session start: after SESSION_MAX_HOURS the user logs in again (#479).
         """
         old_token = body.get("token", "").strip()
         if not old_token:
             raise HTTPException(status_code=400, detail="Token erforderlich")
 
-        from core.auth import verify_token
-
         username = verify_token(old_token)
-        if not username:
+        start = session_start(old_token)
+        if not username or start is None or time.time() >= start + SESSION_MAX:
             raise HTTPException(status_code=401, detail="Ungültiger oder abgelaufener Token")
 
-        from core.auth import make_token
-
-        new_token = make_token(username)
+        new_token = make_token(username, start)
         user_info = {"username": username, "name": username}
         if oidc_data := _get_oidc_user(username):
             user_info.update(oidc_data)
 
         return {"token": new_token, "user": user_info}
+
+
+@router.post("/logout", status_code=204)
+def logout(authorization: Annotated[str | None, Header()] = None) -> None:
+    """Trekt het token server-side in (#479).
+
+    Altijd 204, ook zonder, met een ongeldig of met een al ingetrokken token: uitloggen
+    mag de client nooit in een 401-lus brengen. Zonder login raakt het de database niet.
+    """
+    revoke_token(bearer_token(authorization))
 
 
 @router.post("/login")
