@@ -8,6 +8,7 @@ from riodata import duo as _duo
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import (
+    duo_bestandskeuze,
     duo_correcties,
     duo_meta,
     fouten,
@@ -272,7 +273,13 @@ def _resource_index(dataset_id: str, resource: int | str) -> int | str:
             return i
     treffers = [i for i, r in enumerate(bestanden) if gezocht in r.get("naam", "").lower()]
     if len(treffers) > 1:
-        opties = ", ".join(f"{i} = '{bestanden[i]['naam']}'" for i in treffers)
+        # Het leidende bestand voor totalen vooraan, ook als voorbeeld (#325).
+        leidend = duo_bestandskeuze.leidende_ids(dataset_id)
+        treffers.sort(key=lambda i: bestanden[i].get("id") not in leidend)
+        opties = ", ".join(
+            f"{i} = '{bestanden[i]['naam']}'" + (" (leidend voor totalen)" if bestanden[i].get("id") in leidend else "")
+            for i in treffers
+        )
         raise MeerdereResources(
             f"Resource '{resource}' past op meerdere bestanden van {dataset_id}: {opties}. "
             f"Kies er één met de index, bijv. get_duo_data('{dataset_id}', {treffers[0]})."
@@ -291,9 +298,12 @@ def _andere_bestanden(dataset_id: str, bestanden: list[tuple[int, str]], behalve
     )
 
 
-def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
+def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    if resource is None:
+        # Zonder keuze het leidende bestand, niet index 0: dat was bij p01 het geslacht-bestand (#325).
+        resource = duo_bestandskeuze.standaard(dataset_id)
     try:
         resource = _resource_index(dataset_id, resource)
     except MeerdereResources as e:
@@ -369,6 +379,8 @@ def get_duo_data(dataset_id: str, resource: int | str = 0) -> str:
     result.update(duo_meta.metadata(duo_meta.record(dataset_id), profiel, geladen=True))
     if known and known.schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(known.schooljaren)
+    if keuze := duo_bestandskeuze.melding(dataset_id, resource):
+        result["bestandskeuze"] = keuze
     notes = resource_sentinel_notes(min1)
     if notes:
         result["databewerking"] = notes

@@ -9,7 +9,7 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
-from . import cbs_meta, duo_correcties, duo_meta, instelling, scopeprofiel
+from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
@@ -654,11 +654,14 @@ def _build_details(entry: dict, dataset_id: str) -> str:
         # De index is wat get_duo_data(dataset, resource) verwacht (#173); de kolomnamen per
         # bestand staan vóór de voorbeeldlijsten, zodat het model het juiste bestand kiest. De
         # download-url laadt het model nooit zelf en kostte bij veel bestanden het budget (#395).
+        # Het leidende bestand voor een totaal per instelling staat erbij (#325).
         kolommen = _resource_kolommen(entry)
+        leidend = duo_bestandskeuze.leidende_ids(dataset_id)
         details["_resources"] = [
             {
                 "index": i,
                 **{k: v for k, v in r.items() if k != "url"},
+                **({"leidend_voor_totalen": True} if r.get("id") in leidend else {}),
                 **({"kolommen": kolommen[r["naam"]]} if r.get("naam") in kolommen else {}),
             }
             for i, r in enumerate(details["_resources"])
