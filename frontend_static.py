@@ -4,11 +4,15 @@ Bestanden onder /assets dragen een inhoudshash in hun naam: een nieuwe build gee
 nieuwe namen, dus de browser mag ze een jaar bewaren zonder opnieuw te vragen.
 index.html verwijst naar die namen en moet daarom bij elke load vers zijn, anders
 draait een browser na een deploy nog de oude app.
+
+Onbekende paden onder /api krijgen een JSON-404 in plaats van index.html (#482):
+een client die een API-pad verkeerd spelt, hoort een fout te zien en geen HTML met 200.
 """
 
 from pathlib import Path
 
 from fastapi import FastAPI, Response
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 _EEN_JAAR = "public, max-age=31536000, immutable"
@@ -24,6 +28,11 @@ class _GehashteAssets(StaticFiles):
 
 def mount_frontend(app: FastAPI, dist: Path) -> None:
     app.mount("/assets", _GehashteAssets(directory=dist / "assets"), name="assets")
+
+    @app.get("/api", include_in_schema=False)
+    @app.get("/api/{rest:path}", include_in_schema=False)
+    async def onbekende_api_route() -> JSONResponse:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str) -> Response:
