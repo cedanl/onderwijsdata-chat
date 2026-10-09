@@ -648,6 +648,11 @@ input, textarea { font: inherit; }
 .answer-block-nvt { color: var(--muted-text); }
 .answer-block .telling, .answer-block .data-export { margin-top: 0; font-size: inherit; }
 .answer-bronnen { margin: 0; padding-left: 16px; }
+/* Narrow screens: label above its content, so the CSV buttons and sources get the full bubble width. */
+@media (max-width: 480px) {
+  .answer-block { flex-direction: column; align-items: stretch; gap: 2px; }
+  .answer-block dt, .answer-block dd { flex: none; }
+}
 .reasoning-tussentekst { margin: 6px 0 0; font-size: .75rem; font-style: italic; color: var(--gray-500); white-space: pre-wrap; }
 
 
