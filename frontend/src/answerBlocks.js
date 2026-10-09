@@ -9,12 +9,18 @@ export const BLOKKEN = ['citaties', 'telling', 'export', 'bronnen']
 export const AANWEZIG = 'aanwezig'
 export const NVT = 'n.v.t.'
 
+// Alleen de bronnen die tekst zijn: een bericht uit localStorage of de gespreksopslag kan er iets
+// anders in hebben, en React kan een object niet tonen.
+export function bronnenTekst(bronnen) {
+  return Array.isArray(bronnen) ? bronnen.filter(b => typeof b === 'string' && b.trim()) : []
+}
+
 // Een dataantwoord: klaar, geen fout, met de bronnenlijst van de server (een bericht van vóór #416
 // heeft er geen; dan geen valse "n.v.t.") en met data erachter. Ingehouden, geweigerd of leeg: de
 // server stuurt dan een lege lijst en er zijn geen citaties.
 function isDataAnswer(msg, settled) {
   if (!settled || !msg || msg.isError || !Array.isArray(msg.bronnen)) return false
-  return msg.bronnen.length > 0 || msg.citaties?.length > 0
+  return bronnenTekst(msg.bronnen).length > 0 || msg.citaties?.length > 0
 }
 
 // De blokken in vaste volgorde, elk aanwezig of n.v.t.; null voor elk ander bericht, dat blijft zoals het was.
@@ -24,7 +30,7 @@ export function answerBlocks(msg, { settled = false } = {}) {
     citaties: msg.citaties?.length > 0,
     telling: Boolean(splitsTelling(msg.content).telling),
     export: exportKeys(msg.tools).length > 0,
-    bronnen: msg.bronnen.length > 0,
+    bronnen: bronnenTekst(msg.bronnen).length > 0,
   }
   return BLOKKEN.map(kind => ({ kind, status: gevuld[kind] ? AANWEZIG : NVT }))
 }
@@ -40,8 +46,8 @@ export function citatieSamenvatting(citaties = []) {
 // De bronnen als markdown, voor kopiëren en de gespreksexport: de server haalde de eigen
 // Bronnen-sectie van het model uit de tekst, dus anders gingen ze daar verloren.
 export function bronnenMarkdown(bronnen) {
-  if (!Array.isArray(bronnen) || !bronnen.length) return ''
-  return ['**Bronnen**', ...bronnen.map(b => `- ${b}`)].join('\n')
+  const lijst = bronnenTekst(bronnen)
+  return lijst.length ? ['**Bronnen**', ...lijst.map(b => `- ${b}`)].join('\n') : ''
 }
 
 // De tekst van een antwoord met de bronnen eronder.

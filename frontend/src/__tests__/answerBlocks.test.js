@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { answerBlocks, bronnenMarkdown, citatieSamenvatting, metBronnen } from '../answerBlocks'
+import { answerBlocks, bronnenMarkdown, bronnenTekst, citatieSamenvatting, metBronnen } from '../answerBlocks'
 import { ALLEEN_CITATIES, DUO, TEKST, VIJF_ANTWOORDEN } from './fixtures/vijfAntwoorden'
 
 const kinds = msg => answerBlocks(msg, { settled: true }).map(b => b.kind).join(' · ')
@@ -80,5 +80,22 @@ describe('bronnen in de tekst voor kopiëren en export', () => {
     expect(metBronnen(TEKST, [])).toBe(TEKST)
     expect(metBronnen(TEKST, undefined)).toBe(TEKST)
     expect(metBronnen('', [DUO])).toBe('')
+  })
+
+  it('neemt alleen bronnen die tekst zijn', () => {
+    expect(bronnenMarkdown([{ titel: DUO }, DUO, null, 3, ' '])).toBe(`**Bronnen**\n- ${DUO}`)
+    expect(metBronnen(TEKST, [{ titel: DUO }])).toBe(TEKST)
+  })
+})
+
+// Een bericht uit localStorage of de gespreksopslag kan in bronnen iets anders dan tekst hebben.
+describe('bronnen die geen tekst zijn', () => {
+  const data = VIJF_ANTWOORDEN[1]
+
+  it('tellen niet mee', () => {
+    expect(bronnenTekst([DUO, { titel: 'x' }, null, 3, '', ' '])).toEqual([DUO])
+    expect(bronnenTekst(undefined)).toEqual([])
+    expect(statussen({ ...data, bronnen: [{ titel: DUO }] })).toContain('bronnen: n.v.t.')
+    expect(answerBlocks({ ...ALLEEN_CITATIES, citaties: [], bronnen: [{ titel: DUO }] }, { settled: true })).toBeNull()
   })
 })

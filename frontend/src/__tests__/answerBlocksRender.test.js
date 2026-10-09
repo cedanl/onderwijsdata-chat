@@ -86,6 +86,11 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
     expect([...blok(el, 'bronnen').querySelectorAll('li')].map(li => li.textContent)).toEqual([DUO, CBS])
   })
 
+  it('slaan een bron over die geen tekst is, in plaats van te crashen', () => {
+    const el = render({ ...VIJF_ANTWOORDEN[1], bronnen: [DUO, { titel: CBS }, null] })
+    expect([...blok(el, 'bronnen').querySelectorAll('li')].map(li => li.textContent)).toEqual([DUO])
+  })
+
   it('tonen de Telling en de CSV-knoppen niet ook nog buiten de blokken', () => {
     const el = render(VIJF_ANTWOORDEN[1])
     expect(el.querySelectorAll('details.telling')).toHaveLength(1)

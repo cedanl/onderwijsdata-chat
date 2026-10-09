@@ -1,4 +1,4 @@
-import { NVT, citatieSamenvatting } from '../answerBlocks'
+import { NVT, bronnenTekst, citatieSamenvatting } from '../answerBlocks'
 
 // De vaste bouwstenen onder een dataantwoord (#416): altijd dezelfde rijen in dezelfde volgorde,
 // gevuld of met "n.v.t.". Telling en export zijn de bestaande onderdelen; ChatPage geeft ze mee.
@@ -11,7 +11,7 @@ export default function AnswerBlocks({ blocks, msg, telling = null, dataExport =
     export: () => dataExport,
     bronnen: () => (
       <ul className="answer-bronnen">
-        {msg.bronnen.map(bron => <li key={bron}>{bron}</li>)}
+        {bronnenTekst(msg.bronnen).map(bron => <li key={bron}>{bron}</li>)}
       </ul>
     ),
   }
