@@ -1,0 +1,44 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { messageLengthState } from '../messageLength'
+import { MAX_MESSAGE_CHARS } from '../constants'
+
+// #481: the composer keeps new input within the server's MAX_MESSAGE_CHARS.
+describe('messageLengthState', () => {
+  it('telt de tekst zonder witruimte aan begin en eind, zoals de server', () => {
+    expect(messageLengthState('  abc \n', 10)).toEqual({ count: 3, max: 10, atLimit: false, over: false, showCounter: false })
+  })
+
+  it('toont de teller vanaf 80% van het maximum', () => {
+    expect(messageLengthState('x'.repeat(7), 10).showCounter).toBe(false)
+    expect(messageLengthState('x'.repeat(8), 10).showCounter).toBe(true)
+    expect(messageLengthState('x'.repeat(3199), 4000).showCounter).toBe(false)
+    expect(messageLengthState('x'.repeat(3200), 4000).showCounter).toBe(true)
+  })
+
+  it('staat precies op het maximum aan de grens, maar niet erover', () => {
+    const state = messageLengthState('x'.repeat(10), 10)
+    expect(state.atLimit).toBe(true)
+    expect(state.over).toBe(false)
+  })
+
+  it('is boven het maximum te lang', () => {
+    const state = messageLengthState('x'.repeat(11), 10)
+    expect(state).toMatchObject({ count: 11, atLimit: true, over: true, showCounter: true })
+  })
+
+  it('gebruikt standaard MAX_MESSAGE_CHARS', () => {
+    expect(messageLengthState('').max).toBe(MAX_MESSAGE_CHARS)
+    expect(messageLengthState('x'.repeat(MAX_MESSAGE_CHARS + 1)).over).toBe(true)
+  })
+})
+
+describe('MAX_MESSAGE_CHARS', () => {
+  it('is gelijk aan de standaard in core/config.py', () => {
+    const config = readFileSync(join(__dirname, '..', '..', '..', 'core', 'config.py'), 'utf8')
+    const match = config.match(/MAX_MESSAGE_CHARS = int\(os\.getenv\("MAX_MESSAGE_CHARS", "(\d+)"\)\)/)
+    expect(match).not.toBeNull()
+    expect(MAX_MESSAGE_CHARS).toBe(Number(match[1]))
+  })
+})
