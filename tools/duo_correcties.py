@@ -40,7 +40,8 @@ KOLOMCORRECTIES: dict[str, dict[str, str]] = {
         **_HO_VESTIGING,
         "DIPLOMAJAAR": (
             "Jaar waarin het hoger-onderwijsdiploma uit SOORT_DIPLOMA is behaald; DUO publiceert de "
-            "laatste vijf diplomajaren. Niet het jaar van een vooropleidingsdiploma."
+            "laatste vijf diplomajaren. Niet het jaar van een vooropleidingsdiploma. DUO legt niet vast of "
+            "het een kalenderjaar of een studiejaar is: noem het 'diplomajaar 2023', niet studiejaar 2023/24."
         ),
         "SOORT_DIPLOMA": (
             "Het behaalde hoger-onderwijsdiploma: hbo associate degree, hbo bachelor of hbo master in de "

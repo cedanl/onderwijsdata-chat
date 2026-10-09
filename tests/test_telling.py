@@ -114,6 +114,29 @@ def test_definities_voor_een_volgende_kop_laten_die_kop_staan():
     assert "eigen tekst" not in tekst and "**Kanttekening**\nLet op." in tekst
 
 
+# --- CH-41 (#464): een diplomajaar is geen schooljaar ---
+
+
+def test_een_antwoord_op_diplomajaren_zegt_dat_het_geen_studiejaar_is():
+    store.put(
+        "duo:p04hogdipl:0",
+        pd.DataFrame({"DIPLOMAJAAR": [2023, 2024], "AANTAL_GEDIPLOMEERDEN": [5100, 5300]}),
+        KeyMeta(bron="duo", dataset="p04hogdipl"),
+    )
+    # Een selectie die de jaarkolom wegliet: de getallen gaan nog steeds over diplomajaren.
+    store.derive("duo:p04hogdipl:0", "duo:p04hogdipl:0:som", pd.DataFrame({"AANTAL_GEDIPLOMEERDEN": [5100]}))
+
+    for key in ("duo:p04hogdipl:0", "duo:p04hogdipl:0:som"):
+        blok = telling_blok(_beurt(key))
+        assert "niet aantoonbaar studiejaar 2023/24" in blok and "kalenderjaar of een studiejaar" in blok
+    assert blok.count("DIPLOMAJAAR") == 1
+
+
+def test_een_studiejaar_krijgt_geen_diplomajaarnoot():
+    store.put("duo:x:0", pd.DataFrame({"STUDIEJAAR": [2023], "AANTAL": [10]}), KeyMeta(bron="duo", dataset="x"))
+    assert "DIPLOMAJAAR" not in telling_blok(_beurt("duo:x:0"))
+
+
 # --- CH-08 (#462): de ondergrens van de tweede claim met hetzelfde getal ---
 
 
