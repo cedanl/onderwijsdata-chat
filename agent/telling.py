@@ -17,7 +17,7 @@ from .binding import zin_op
 from .claimbinding import betekenis, kenmerken, kies
 from .dimensielabels import selectie_regels
 from .grounding import bewijs_getallen, getallen_met_positie
-from .meetwaarden import meetwaarden
+from .meetwaarden import Meetwaarde, meetwaarden
 from .selectie import data_keys, laadkey
 
 _KOP = "**Telling**"
@@ -29,6 +29,18 @@ def _ondergrens(key: str) -> bool:
     """Valt er een onderdrukte cel in de selectie achter deze key? Een hele resource is geen selectie (#179)."""
     known = store.meta(key)
     return bool(known and known.afgeleid_van and duo.onderdrukt(key))
+
+
+def _groepstotaal_exact(waarde: Meetwaarde | None) -> bool:
+    """Is dit getal een groepstotaal zonder onderdrukte cel (CH-07)?
+
+    De selectie per geslacht heeft een -1 bij MAN; het totaal voor VROUW is dan toch exact.
+    Alleen bij groepstotalen van query_data: bij losse rijen kan een getal in de tekst ook
+    een eigen som zijn die toevallig gelijk is aan één cel, en dan geldt de selectie.
+    """
+    if waarde is None or waarde.rij is None or waarde.data_key is None:
+        return False
+    return duo.onderdrukt_in_groep(waarde.data_key, waarde.rij, waarde.maat) == 0
 
 
 def _bovengrens(key: str) -> bool:
@@ -96,7 +108,7 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
         )
         if gekozen:
             o, b = _grenzen(list(gekozen[0]))
-            onder |= o
+            onder |= set() if _groepstotaal_exact(gekozen[1]) else o
             boven |= b
             continue
         dragers = [_grenzen(list(keys)) for keys in dict.fromkeys(k for k, _ in kandidaten)]
