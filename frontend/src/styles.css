@@ -699,6 +699,8 @@ input, textarea { font: inherit; }
 .code-block-wrap { position: relative; }
 .copy-btn-code { top: 16px; right: 8px; }
 .code-block-wrap:hover .copy-btn-code { opacity: 1; }
+/* Copied: show the check mark with "Gekopieerd", also without hover (#492). Grows leftward. */
+.copy-btn[data-copied] { opacity: 1; width: auto; padding: 0 8px; gap: 4px; font-size: .75rem; }
 
 .clarification-btns { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .clarification-btn {
