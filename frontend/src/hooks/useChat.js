@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { chatSocket, clearToken } from '../auth'
+import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
@@ -26,7 +26,7 @@ export function buildHistory(messages) {
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
 
-export function useChat({ onUnauthorized } = {}) {
+export function useChat() {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [thinking, setThinking] = useState(false)
@@ -290,8 +290,10 @@ export function useChat({ onUnauthorized } = {}) {
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
+      let opened = false
 
       ws.onopen = () => {
+        opened = true
         setConnected(true)
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
@@ -321,12 +323,13 @@ export function useChat({ onUnauthorized } = {}) {
         }
 
         if (e.code === 4001) {
-          clearToken()
-          onUnauthorized?.()
+          endSession()
           return
         }
 
         if (manualCloseRef.current) return
+        // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
+        if (!opened) checkSession()
 
         if (retryCountRef.current < MAX_RETRIES) {
           const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
@@ -363,7 +366,7 @@ export function useChat({ onUnauthorized } = {}) {
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }
-  }, [addToast, closeCurrentMsg, endReport, failReport, onUnauthorized])
+  }, [addToast, closeCurrentMsg, endReport, failReport])
 
   // A question can go out: connected, no run, no reset and no report going (#417).
   const canSend = useCallback(() =>
