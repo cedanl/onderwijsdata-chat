@@ -9,6 +9,8 @@ from functools import cache
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 
+from core.logging_util import tekst_kenmerk
+
 from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
@@ -537,11 +539,11 @@ def search_catalog(
     historisch = bool(_HISTORISCH & set(query_words))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    # De zoekterm komt uit de vraag van de gebruiker: in het log alleen lengte en hash (#475).
+    kenmerk = tekst_kenmerk(query, "query_")
 
     if not active and not archive:
-        logger.warning(
-            "search_catalog miss query=%r source=%s geo=%s elapsed_ms=%d", query, source, geo_niveau, elapsed_ms
-        )
+        logger.warning("search_catalog miss %s source=%s geo=%s elapsed_ms=%d", kenmerk, source, geo_niveau, elapsed_ms)
         return _no_match(query, zwak, geo_niveau)
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
@@ -558,8 +560,8 @@ def search_catalog(
         )
     if geo_niveau and not hits:
         logger.warning(
-            "search_catalog miss query=%r source=%s geo=%s (geo filter) elapsed_ms=%d",
-            query,
+            "search_catalog miss %s source=%s geo=%s (geo filter) elapsed_ms=%d",
+            kenmerk,
             source,
             geo_niveau,
             elapsed_ms,
@@ -572,8 +574,8 @@ def search_catalog(
 
     top_ids = [_dataset_id(h) for h in hits[:3]]
     logger.info(
-        "search_catalog query=%r source=%s geo=%s results=%d top=%s elapsed_ms=%d",
-        query,
+        "search_catalog %s source=%s geo=%s results=%d top=%s elapsed_ms=%d",
+        kenmerk,
         source,
         geo_niveau,
         len(hits),

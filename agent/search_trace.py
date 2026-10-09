@@ -8,12 +8,15 @@ Elke regel draagt de catalogus_digest: een verschoven top-3 na een catalogusupda
 onderscheiden van een gedragswijziging (#344).
 
 Per run, dus per sessie: een module-global zou gelijktijdige gebruikers door elkaar halen.
+De zoekterm komt uit de vraag van de gebruiker en staat daarom alleen als lengte en hash in het
+log, dezelfde als op de search_catalog-regel; de tekst zelf alleen op DEBUG (#475).
 """
 
 import json
 import logging
 from dataclasses import dataclass, field
 
+from core.logging_util import tekst_kenmerk
 from tools.catalog import catalogus_digest
 from tools.schemas import TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA, TOOL_SEARCH_CATALOG
 
@@ -55,19 +58,23 @@ class SearchTrace:
         self.loaded.append(dataset_id)
         if self.top is None:
             logger.info("CATALOGUS_GELADEN geladen=%s zonder voorafgaande zoekactie", dataset_id)
-        elif dataset_id in self.top:
+            return
+        # The model writes the query as JSON; str() keeps a non-string value from breaking the log call.
+        kenmerk = tekst_kenmerk(str(self.query or ""), "query_")
+        if dataset_id in self.top:
             logger.info(
-                "CATALOGUS_GELADEN geladen=%s query=%r top3=%s afwijking=nee catalogus=%s",
+                "CATALOGUS_GELADEN geladen=%s %s top3=%s afwijking=nee catalogus=%s",
                 dataset_id,
-                self.query,
+                kenmerk,
                 self.top,
                 self.catalogus_digest,
             )
         else:
             logger.warning(
-                "CATALOGUS_AFWIJKING geladen=%s query=%r top3=%s afwijking=ja catalogus=%s",
+                "CATALOGUS_AFWIJKING geladen=%s %s top3=%s afwijking=ja catalogus=%s",
                 dataset_id,
-                self.query,
+                kenmerk,
                 self.top,
                 self.catalogus_digest,
             )
+        logger.debug("CATALOGUS ZOEKTERM  geladen=%s query=%r", dataset_id, self.query)
