@@ -4,11 +4,14 @@ import logging
 
 from riodata import duo
 
+from data import arbeidsmarktregio
+
 logger = logging.getLogger(__name__)
 
 # Maps instellingscode → {provincie, arbeidsmarktregio} via DUO address data.
 # HO uses adressen_ho (instellingenho.csv); MBO uses adressen_mbo (instellingenmbo.csv).
-# RPA-GEBIED NAAM is the official UWV arbeidsmarktregio name (35 regions).
+# The arbeidsmarktregio comes from the address's gemeente (CBS indeling, the 35 regions of
+# UWV and ROA), not from DUO's RPA-GEBIED NAAM: an older indeling ROA does not know (#454).
 _ADRES_CACHE: dict[str, dict] | None = None
 
 # Handgemaakte referentielijsten: wanneer elk voor het laatst is bijgewerkt en
@@ -174,34 +177,25 @@ def get_adres_lookup() -> dict[str, dict]:
 def _build_adres_lookup() -> dict[str, dict]:
     """Return {instellingscode: {provincie, arbeidsmarktregio, plaatsnaam}} from DUO address data."""
     lookup: dict[str, dict] = {}
-
-    try:
-        df = duo.load("adressen_ho", 1)
-        for _, row in df.iterrows():
-            code = str(row.get("INSTELLINGSCODE") or "").strip()
-            if code:
-                lookup[code] = {
-                    "provincie": str(row.get("PROVINCIE") or "").strip() or None,
-                    "arbeidsmarktregio": str(row.get("RPA-GEBIED NAAM") or "").strip() or None,
-                    "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
-                }
-    except Exception:
-        logger.warning("adres-lookup: adressen_ho niet beschikbaar", exc_info=True)
-
-    try:
-        df = duo.load("adressen_mbo", 1)
+    for resource in ("adressen_ho", "adressen_mbo"):  # HO eerst: een code in beide houdt het HO-adres
+        try:
+            df = duo.load(resource, 1)
+        except Exception:
+            logger.warning("adres-lookup: %s niet beschikbaar", resource, exc_info=True)
+            continue
         for _, row in df.iterrows():
             code = str(row.get("INSTELLINGSCODE") or "").strip()
             if code and code not in lookup:
-                lookup[code] = {
-                    "provincie": str(row.get("PROVINCIE") or "").strip() or None,
-                    "arbeidsmarktregio": str(row.get("RPA-GEBIED NAAM") or "").strip() or None,
-                    "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
-                }
-    except Exception:
-        logger.warning("adres-lookup: adressen_mbo niet beschikbaar", exc_info=True)
-
+                lookup[code] = _adres(row)
     return lookup
+
+
+def _adres(row) -> dict:
+    return {
+        "provincie": str(row.get("PROVINCIE") or "").strip() or None,
+        "arbeidsmarktregio": arbeidsmarktregio.van_gemeente(row.get("GEMEENTENUMMER")),
+        "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
+    }
 
 
 def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:
@@ -324,7 +318,8 @@ def instellingsprofiel(naam: str) -> dict | None:
 
     De regio is die van het instellingsadres in DUO ("Adressen van instellingen": één adres
     per instelling, geen vestigingen). Een instelling met vestigingen in meer provincies
-    (Fontys, Inholland, NHL Stenden) krijgt de provincie en het RPA-gebied van dat adres.
+    (Fontys, Inholland, NHL Stenden) krijgt de provincie en de arbeidsmarktregio van dat adres;
+    de arbeidsmarktregio volgt uit de gemeente, in de namen van UWV en ROA (#454).
     Zonder adres blijven provincie en arbeidsmarktregio None.
     """
     canoniek = _get_alias_lookup().get(naam.strip().lower())

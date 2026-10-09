@@ -64,7 +64,7 @@ Zodra alle dimensies vastliggen, open elke analyse met:
 > **Onderzoeksvraag:** [één zin met alle vastgelegde dimensies]
 
 ## Databronnen
-- **CBS** (117 datasets, mbo/hbo/wo): statistieken over het Nederlandse onderwijs via de CBS OData API
+- **CBS** (119 datasets, mbo/hbo/wo): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (9 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
 - **DUO** (14 datasets, mbo/hbo/wo): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
