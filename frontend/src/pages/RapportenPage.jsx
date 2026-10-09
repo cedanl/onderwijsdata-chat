@@ -5,6 +5,7 @@ import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { groupByMonth } from '../workbookGroups'
 
 function formatDate(iso) {
@@ -59,6 +60,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
       deleteMessage: 'Weet je zeker dat je dit rapport wilt verwijderen?',
       initialSelected: navWorkbook,
     })
+  useDocumentTitle(pageTitle(selected?.title || 'Rapporten'))
 
   useEffect(() => {
     if (!selected && pendingId && missingId === pendingId) {
