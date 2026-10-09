@@ -53,6 +53,9 @@ de laatste tag is 1.8.6.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
 
 ### Betrouwbaarheid van antwoorden
+- Een antwoord op data met DIPLOMAJAAR (ho-gediplomeerden) zegt onder Telling dat DUO niet vastlegt of dat
+  een kalender- of studiejaar is: diplomajaar 2023 is niet aantoonbaar studiejaar 2023/24. De kolomuitleg
+  zegt hetzelfde. De app zet een diplomajaar niet om naar een schooljaar.
 - Staat hetzelfde getal in twee zinnen ("Instelling B had 10.000 … Instelling A had 10.000"), dan krijgt
   elke vermelding een eigen citatie en de ondergrens van haar eigen selectie. Eerder erfde de tweede de
   bron van de eerste.
