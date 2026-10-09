@@ -71,10 +71,15 @@ def herlaad(key: str, recept: dict, recept_van: Receptbron = lambda _key: None) 
     return _herlaad(key, recept, recept_van, 0)
 
 
+def markeer(key: str) -> None:
+    """`key` staat (weer) in de store met data die na het eerdere antwoord bij de bron is opgehaald."""
+    store.markeer_herladen(key, f"{date.today():%d-%m-%Y}")
+
+
 def notitie(key: str) -> str | None:
     """Wat bij herladen data hoort: de cijfers kunnen afwijken van het eerdere antwoord. None als ze dat niet is.
 
-    Uit de KeyMeta, dus ook bij een latere download en bij een selectie op herladen data.
+    Uit de KeyMeta, dus ook bij een latere download van wat een recept terugzette.
     """
     known = store.meta(key)
     if known is None or not known.herladen_op:
@@ -117,7 +122,7 @@ def _laad(key: str, laad: object) -> Herlaadresultaat:
         return Herlaadresultaat(
             key, gelukt=False, bronfout=True, melding=f"{bron} gaf de data voor key {key} niet opnieuw: {reden}"
         )
-    store.markeer_herladen(key, f"{date.today():%d-%m-%Y}")
+    markeer(key)
     return _terug(key)
 
 
@@ -143,7 +148,8 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
         stap = recept.get("stap") or "selectie"
         reden = _reden(uitkomst) or "geen data."
         return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
-    # De selectie erft de markering van haar ouder, ook als die door een eerder verzoek werd herladen.
+    # Ook op een ouder die live werd geladen: die is van ná het antwoord waar deze selectie onder stond.
+    markeer(key)
     return _terug(key)
 
 

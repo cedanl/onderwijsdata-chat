@@ -17,6 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import recepten
+from agent.dashboard import herstel_data
 from agent.session_data import herstel_data_keys, record_data_key
 from routes import chat
 from tools import herlaad, store
@@ -228,6 +229,69 @@ def test_elke_selectie_op_een_herladen_bron_draagt_de_melding(client):
         assert resp.text.lstrip("\ufeff").startswith(_NOTITIE)
 
 
+def test_een_selectie_op_een_bron_die_een_ander_live_laadde_draagt_de_melding(client):
+    """Na de herstart laadt bob de bron live, zonder markering; alice' selectie wordt erop herbouwd."""
+    with _bronnen():
+        alice = {"username": "alice"}
+        bron = _stap(alice, *_ROOTS["duo"])
+        b = _stap(alice, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2024}})
+        _opslaan("alice", "c1", b)
+        _herstart()
+        _stap({"username": "bob"}, *_ROOTS["duo"])
+        assert store.get(b) is None and herlaad.notitie(bron) is None
+        resp = _csv(client, b)
+
+    assert resp.status_code == 200
+    assert "de bron kan intussen zijn gewijzigd" in resp.headers["X-Data-Herladen"]
+    assert resp.text.lstrip("\ufeff").startswith(_NOTITIE)
+
+
+def test_een_tabel_die_een_ander_live_opnieuw_maakte_draagt_de_melding(client):
+    """Alice' tabel staat er al, maar bob maakte haar ná de herstart: niet de data van haar antwoord."""
+    with _bronnen():
+        alice = {"username": "alice"}
+        bron = _stap(alice, *_ROOTS["duo"])
+        b = _stap(alice, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2024}})
+        _opslaan("alice", "c1", b)
+        _herstart()
+        bob = {"username": "bob"}
+        _stap(bob, TOOL_QUERY_DATA, {"data_key": _stap(bob, *_ROOTS["duo"]), "filters": {"STUDIEJAAR": 2024}})
+        assert store.get(b) is not None and herlaad.notitie(b) is None
+        resp = _csv(client, b)
+
+    assert resp.status_code == 200
+    assert "de bron kan intussen zijn gewijzigd" in resp.headers["X-Data-Herladen"]
+    assert resp.text.lstrip("\ufeff").startswith(_NOTITIE)
+
+
+def test_een_live_antwoord_op_herladen_data_draagt_geen_melding(client):
+    """Bob vraagt live op een bron die alice' recept net terugzette: zijn antwoord rust op precies die data."""
+    with _bronnen():
+        alice = {"username": "alice"}
+        bron = _stap(alice, *_ROOTS["duo"])
+        a = _stap(alice, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        _opslaan("alice", "c1", a)
+        _herstart()
+        assert "X-Data-Herladen" in _csv(client, a).headers
+        assert herlaad.notitie(bron) is not None, "de bron is herladen"
+
+        bob = {"username": "bob"}
+        assert _stap(bob, *_ROOTS["duo"]) == bron, "uit de cache, zonder nieuwe put"
+        c = _stap(bob, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"OPLEIDINGSVORM": "VT"}})
+        bob_c, bob_bron = _csv(client, c, "bob"), _csv(client, bron, "bob")
+        bob["data_keys"] = [bron, c]
+        bob_rapport = herstel_data_keys(bob, "bob")
+        alice_a, alice_bron = _csv(client, a), _csv(client, bron)
+
+    for resp in (bob_c, bob_bron):
+        assert resp.status_code == 200
+        assert "X-Data-Herladen" not in resp.headers and _NOTITIE not in resp.text
+    assert bob_rapport.notitie is None
+    # Voor alice blijft het herladen data, ook de bron die bob intussen live gebruikte.
+    for resp in (alice_a, alice_bron):
+        assert "de bron kan intussen zijn gewijzigd" in resp.headers["X-Data-Herladen"]
+
+
 def test_een_nieuwe_laadstap_haalt_de_markering_weg(client):
     """Laadt een vraag de data daarna zelf opnieuw, dan is het weer data van een antwoord."""
     with _bronnen():
@@ -410,6 +474,59 @@ def test_een_heropend_gesprek_kent_zijn_data_weer_en_herlaadt_haar_voor_een_rapp
     assert not herstel.onherstelbaar
     assert store.get(selectie) is not None and store.get(bron) is not None
     assert herstel.notitie is not None and "de bron kan intussen zijn gewijzigd" in herstel.notitie
+
+
+def _rapport(session: dict) -> list[dict]:
+    """De stap vóór een rapport (agent.report): de data terug, met de melding als toast."""
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    asyncio.run(herstel_data(session, emit))
+    return events
+
+
+@pytest.mark.parametrize("wie_eerst", ["alice", "bob"])
+def test_het_rapport_meldt_ook_data_die_een_eerder_verzoek_al_herlaadde(client, wie_eerst):
+    """Een download (van alice zelf of van bob) zette de key al terug; alice' rapport zegt het toch."""
+    with _bronnen():
+        for gebruiker in ("alice", "bob"):
+            key = _stap({"username": gebruiker}, *_ROOTS["cbs"])
+            _opslaan(gebruiker, "c1", key)
+        _herstart()
+        assert _csv(client, key, wie_eerst).status_code == 200
+        heropend, _ = _heropen("alice", "c1")
+        assert heropend["data_keys"] == [key] and store.get(key) is not None
+
+        herstel = herstel_data_keys(heropend, "alice")
+        events = _rapport(heropend)
+
+    assert herstel.onherstelbaar == {}
+    assert herstel.notitie is not None and "de bron kan intussen zijn gewijzigd" in herstel.notitie
+    [toast] = events
+    assert toast["type"] == "toast" and toast["message"] == herstel.notitie
+
+
+def test_het_rapport_meldt_data_die_een_ander_live_laadde(database):
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        _herstart()
+        _stap({"username": "bob"}, *_ROOTS["rio"])
+        heropend, _ = _heropen("alice", "c1")
+        events = _rapport(heropend)
+
+    [toast] = events
+    assert "opnieuw opgehaald op" in toast["message"] and "de bron kan intussen zijn gewijzigd" in toast["message"]
+
+
+def test_het_rapport_van_een_live_gesprek_meldt_niets(database):
+    with _bronnen():
+        session = {"username": "alice"}
+        key = _stap(session, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        assert _rapport(session) == []
 
 
 def test_een_heropend_gesprek_neemt_geen_data_van_een_ander(database):

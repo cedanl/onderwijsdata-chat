@@ -69,9 +69,26 @@ def vergeet(username: str, keys) -> None:
 
 def terughalen(username: str | None, key: str) -> herlaad.Herlaadresultaat | None:
     """Zet `key` terug in de store als hij weg is; None als hij er is of geen recept heeft."""
-    if store.get(key) is not None or (recept := voor(username, key)) is None:
+    if store.get(key) is not None:
+        markeer_na_herstart(username, key)
+        return None
+    if (recept := voor(username, key)) is None:
         return None
     return herlaad.herlaad(key, recept, lambda ouder: voor(username, ouder))
+
+
+def markeer_na_herstart(username: str | None, key: str) -> None:
+    """Markeer `key` als herladen als deze gebruiker hem vóór de laatste herstart maakte.
+
+    Dan staat zijn recept alleen in de database, niet meer in het geheugen. Wat de store nu onder
+    die key heeft, haalde dit proces op: een recept, of de live vraag van een ander. Het eerdere
+    antwoord van deze gebruiker rust niet op die data.
+    """
+    known = store.meta(key)
+    if not username or known is None or known.herladen_op or (username, key) in _wachtend:
+        return
+    if db.recipe_for_key(username, key) is not None:
+        herlaad.markeer(key)
 
 
 def wis() -> None:
