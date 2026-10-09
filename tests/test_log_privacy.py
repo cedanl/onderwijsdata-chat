@@ -13,9 +13,11 @@ import logging
 import re
 from unittest.mock import patch
 
+import pytest
+
 from agent import dashboard, report
-from agent.loop import ToolCall
-from agent.probleem import INGEHOUDEN
+from agent.loop import LoopResult, ToolCall
+from agent.probleem import INGEHOUDEN, Probleem, hard
 from agent.stream import StreamResult
 from core.logging_util import tekst_kenmerk
 
@@ -26,7 +28,10 @@ MARKER = "ZQXMARKER7"
 _ROWS = json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 5943}]})
 _ZOEK = {"id": "z", "name": "search_catalog", "arguments": json.dumps({"query": f"{MARKER} hbo", "source": "duo"})}
 _QUERY = {"id": "q", "name": "query_data", "arguments": '{"data_key": "duo:p02"}'}
-_DUO = [{"leverancier": "DUO", "bron": f"{MARKER} ingeschrevenen hbo", "tags": ["hbo"]}]
+_DUO = [{"leverancier": "DUO", "bron": f"{MARKER} ingeschrevenen hbo", "tags": ["hbo"], "_ckan_id": "duo-a"}]
+# A load from the top three (CATALOGUS_GELADEN, INFO) and one outside it (CATALOGUS_AFWIJKING, WARNING).
+_LAAD_TOP = {"id": "l1", "name": "get_duo_data", "arguments": '{"dataset_id": "duo-a"}'}
+_LAAD_ANDERS = {"id": "l2", "name": "get_duo_data", "arguments": '{"dataset_id": "duo-anders"}'}
 
 
 def _run(monkeypatch, steps: list[StreamResult], vraag: str) -> str:
@@ -106,13 +111,23 @@ def test_volledige_run_logt_geen_vraag_of_antwoord_op_info(monkeypatch, caplog):
 
     tekst = _run(
         monkeypatch,
-        [StreamResult(text="", tool_calls=[_ZOEK]), StreamResult(text=antwoord, tool_calls=[])],
+        [
+            StreamResult(text="", tool_calls=[_ZOEK]),
+            StreamResult(text="", tool_calls=[_LAAD_TOP]),
+            StreamResult(text="", tool_calls=[_LAAD_ANDERS]),
+            StreamResult(text=antwoord, tool_calls=[]),
+        ],
         f"Zoek {MARKER} hbo",
     )
 
     assert MARKER in tekst
     berichten = [r.getMessage() for r in caplog.records]
-    assert any(b.startswith("search_catalog ") for b in berichten)
+    zoekterm = tekst_kenmerk(f"{MARKER} hbo", "query_")
+    [zoek] = [b for b in berichten if b.startswith("search_catalog ")]
+    [geladen] = [b for b in berichten if b.startswith("CATALOGUS_GELADEN geladen=duo-a")]
+    [afwijking] = [b for b in berichten if b.startswith("CATALOGUS_AFWIJKING geladen=duo-anders")]
+    # The same hash on the search and the load lines, so an operator can still join them (#18).
+    assert zoekterm in zoek and zoekterm in geladen and zoekterm in afwijking
     [finale] = [b for b in berichten if "FINALE ANTWOORD" in b]
     assert re.fullmatch(r"FINALE ANTWOORD  len=\d+ hash=[0-9a-f]{8}", finale)
     [zelf] = [b for b in berichten if "ZELFCORRECTIE" in b]
@@ -192,6 +207,48 @@ def test_rapport_tool_logt_geen_argumenten_of_melding_op_info(caplog):
     assert "RAPPORT TOOL search_catalog" in regel
     assert "argumenten=query" in regel
     assert re.search(r"melding_len=\d+ melding_hash=[0-9a-f]{8}", regel)
+    _zonder_marker(caplog)
+
+
+def _rapport_met(monkeypatch, problemen: list[str]) -> None:
+    async def loop(*args, **kwargs):
+        return LoopResult(text='{"title": "T", "conclusie": "C"}', problems=problemen)
+
+    monkeypatch.setattr(report, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
+    monkeypatch.setattr(report, "_build_system_prompt", lambda context: "")
+    monkeypatch.setattr(report, "tool_loop", loop)
+
+    async def emit(event):
+        pass
+
+    asyncio.run(report.generate({}, emit, stop_event=asyncio.Event()))
+
+
+def _probleem(melding: str, controle: str) -> Probleem:
+    probleem = Probleem(melding)
+    probleem.controle = controle
+    return probleem
+
+
+def test_geweigerd_rapport_logt_controlenamen_en_geen_meldingen(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="agent.report")
+    [streng] = hard([_probleem(f"{MARKER}: 6.340 staat niet in de opgehaalde data.", "ongedekte_getallen")])
+
+    with pytest.raises(ValueError):
+        _rapport_met(monkeypatch, [streng])
+
+    [regel] = [r.getMessage() for r in caplog.records if "RAPPORT GEWEIGERD" in r.getMessage()]
+    assert "ongedekte_getallen" in regel and "6.340" not in regel
+    _zonder_marker(caplog)
+
+
+def test_rapport_met_waarschuwing_logt_controlenamen_en_geen_meldingen(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="agent.report")
+
+    _rapport_met(monkeypatch, [_probleem(f"De tekst noemt '{MARKER}'.", "verkeerde_dimensielabels")])
+
+    [regel] = [r.getMessage() for r in caplog.records if "RAPPORT MET WAARSCHUWING" in r.getMessage()]
+    assert "verkeerde_dimensielabels" in regel
     _zonder_marker(caplog)
 
 
