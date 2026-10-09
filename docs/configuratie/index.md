@@ -29,6 +29,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `MAX_MESSAGE_CHARS` | `4000` | Maximum aantal tekens per nieuw chatbericht (na het weghalen van witruimte aan begin en eind). Langere berichten weigert de server met een foutmelding; de invoerbalk telt mee vanaf 80%. Het invoerveld in de browser houdt altijd 4000 aan, ook als je deze waarde wijzigt |
 | `RUN_SLOW_S` | `20` | Seconden tot de melding "dit duurt langer dan normaal" |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |

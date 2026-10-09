@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
-import { chatSocket } from '../auth'
+import { chatSocket, checkSession } from '../auth'
 import { finishStep } from '../toolSteps'
 import { getToken, sessionEndedSince } from '../auth'
 
@@ -126,8 +126,10 @@ export default function useDashboardChat() {
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
+      let opened = false
 
       ws.onopen = () => {
+        opened = true
         setConnected(true)
         retryCountRef.current = 0
         if (pendingSettingsRef.current) {
@@ -149,6 +151,8 @@ export default function useDashboardChat() {
         }
 
         if (manualCloseRef.current) return
+        // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
+        if (!opened) checkSession()
 
         if (retryCountRef.current < MAX_RETRIES) {
           const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]

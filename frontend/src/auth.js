@@ -7,6 +7,26 @@ export const clearToken = () => {
   localStorage.removeItem(STORAGE_USERINFO)
 }
 
+const sessionEndedListeners = new Set()
+
+// The server no longer accepts the token (expired or tampered): drop it and let the app
+// show the login screen (#480). Logout clears the token itself; it needs no notice.
+export function endSession() {
+  clearToken()
+  sessionEndedListeners.forEach(cb => cb())
+}
+
+export function onSessionEnded(cb) {
+  sessionEndedListeners.add(cb)
+  return () => { sessionEndedListeners.delete(cb) }
+}
+
+// A 401 for an older token (a parallel request, or one from before a new login) has no
+// session left to end.
+export function endSessionIfCurrent(token) {
+  if (token && token === getToken()) endSession()
+}
+
 // True when there was a session at some earlier point and it has since been
 // cleared (logout or expiry). With auth off there is never a token: false.
 export const sessionEndedSince = (tokenThen) => tokenThen !== null && getToken() === null
@@ -34,11 +54,12 @@ export async function fetchAuthStatus() {
 export async function fetchUserInfo(token) {
   try {
     const res = await fetch('/api/auth/user', { headers: { Authorization: `Bearer ${token}` } })
-    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
-    if (!res.ok) {
-      if (res.status === 401) return null
-      throw new Error(`User info fetch failed: ${res.status}`)
+    if (res.status === 401) {
+      endSessionIfCurrent(token)
+      return null
     }
+    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
+    if (!res.ok) throw new Error(`User info fetch failed: ${res.status}`)
     return res.json()
   } catch (err) {
     console.warn('fetchUserInfo failed (expected on GitHub/basic-auth version):', err)
@@ -55,11 +76,12 @@ export async function refreshAuthToken(token) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
     })
-    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
-    if (!res.ok) {
-      if (res.status === 401) return null
-      throw new Error(`Token refresh failed: ${res.status}`)
+    if (res.status === 401) {
+      endSessionIfCurrent(token)
+      return null
     }
+    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
+    if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`)
     const { token: newToken, user } = await res.json()
     setToken(newToken)
     if (user) setUserInfo(user)
@@ -67,6 +89,19 @@ export async function refreshAuthToken(token) {
   } catch (err) {
     console.warn('refreshAuthToken failed (expected on GitHub/basic-auth version):', err)
     return null
+  }
+}
+
+// A refused WebSocket handshake reaches the browser as a bare close 1006, the same as a
+// network outage. Ask the server: only an explicit 401 ends the session (#480).
+export async function checkSession() {
+  const token = getToken()
+  if (!token) return
+  try {
+    const res = await fetch('/api/auth/user', { headers: { Authorization: `Bearer ${token}` } })
+    if (res.status === 401) endSessionIfCurrent(token)
+  } catch {
+    // Offline: the socket keeps retrying, the token stays.
   }
 }
 
