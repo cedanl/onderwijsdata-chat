@@ -55,8 +55,15 @@ _CBS_MBO = {
     "bron": "Mbo; studenten, niveau, leerweg, studierichting, regiokenmerken",
     "onderwijstype": ["MBO"],
 }
-# De tabel uit de Assen-replay (CH-03): alle onderwijssoorten, ook po en vo.
+# Alle onderwijssoorten, ook po en vo, zonder sectorselectie in de code: blijft erbuiten.
 _CBS_ALLEN = {
+    "leverancier": "CBS",
+    "_cbs_id": "37220",
+    "bron": "Leerlingen en studenten; onderwijssoort, vanaf 1900",
+    "onderwijstype": ["Allen"],
+}
+# De tabel uit de Assen-replay (CH-03): alle onderwijssoorten, maar de code selecteert mbo/hbo/wo (#473).
+_CBS_WOONREGIO = {
     "leverancier": "CBS",
     "_cbs_id": "85701NED",
     "bron": "Leerlingen en studenten; onderwijssoort, woonregio",
@@ -100,6 +107,7 @@ _INSPECTIE_MBO = {
         (_RIO_ZONDER_SECTOR, False),
         (_CBS_MBO, True),
         (_CBS_ALLEN, False),  # gemengde CBS-tabel: dezelfde regel als DUO (CH-03)
+        (_CBS_WOONREGIO, True),  # gemengd, maar alleen met de sectorselectie uit CBS_SECTORFILTER (#473)
         (_CBS_VO, False),
         (_VO, False),
         (_GEMENGD, False),  # gemengd zonder veilige sectorselectie
@@ -119,7 +127,7 @@ _CACHES = (_cbs_alles, _cbs, _rio_duo_alles, _rio_duo)
 def catalogus():
     rio_duo = [_HO, _MBO_ALLEN, _VO, _GEMENGD, _ONBESLIST, _RIO, _RIO_SECTORFILTER, _RIO_ZONDER_SECTOR]
     with (
-        patch("tools.catalog._cbs_catalog", return_value=[_CBS_MBO, _CBS_ALLEN, _CBS_VO, _CBS_VSV]),
+        patch("tools.catalog._cbs_catalog", return_value=[_CBS_MBO, _CBS_ALLEN, _CBS_VO, _CBS_VSV, _CBS_WOONREGIO]),
         patch("tools.catalog._rio_catalog", return_value=rio_duo),
     ):
         for c in _CACHES:
@@ -138,7 +146,7 @@ def test_een_vo_bestand_is_geen_kandidaat_bij_een_mbo_vraag(catalogus):
 
 
 def test_de_telling_volgt_de_grens(catalogus):
-    assert dataset_counts() == {"CBS": 2, "DUO": 2, "RIO": 1}
+    assert dataset_counts() == {"CBS": 3, "DUO": 2, "RIO": 1}
 
 
 def test_details_van_een_dataset_buiten_de_grens_zeggen_waarom(catalogus):
@@ -189,19 +197,19 @@ def test_een_rio_resource_buiten_de_grens_wordt_niet_opgehaald(catalogus):
 
 
 def test_een_gemengde_cbs_tabel_is_geen_zoektreffer(catalogus):
-    result = search_catalog("leerlingen en studenten onderwijssoort woonregio", source="cbs")
+    result = search_catalog("leerlingen en studenten onderwijssoort vanaf 1900", source="cbs")
 
-    assert "85701NED" not in result
+    assert "37220" not in result
 
 
 def test_details_van_een_gemengde_cbs_tabel_zeggen_waarom(catalogus):
-    details = json.loads(dataset_details("85701NED"))
+    details = json.loads(dataset_details("37220"))
 
     assert details["buiten_scope"] is True
     assert "mbo, hbo en wo" in details["melding"]
 
 
-@pytest.mark.parametrize("dataset_id", ["85701NED", "80040ned"])
+@pytest.mark.parametrize("dataset_id", ["37220", "80040ned"])
 def test_een_cbs_tabel_buiten_de_grens_wordt_niet_geladen(catalogus, dataset_id):
     with patch("tools.cbs.data") as data:
         result = json.loads(get_cbs_data(dataset_id, {"$filter": "startswith(Regiokenmerken,'GM0106')"}))
@@ -212,23 +220,38 @@ def test_een_cbs_tabel_buiten_de_grens_wordt_niet_geladen(catalogus, dataset_id)
 
 def test_ook_de_dimensies_van_een_cbs_tabel_buiten_de_grens_niet(catalogus):
     with patch("tools.cbs._dimension_rows") as rijen:
-        result = json.loads(get_cbs_dimension("85701NED", "Onderwijssoort"))
+        result = json.loads(get_cbs_dimension("37220", "Onderwijssoort"))
 
     rijen.assert_not_called()
     assert result["buiten_scope"] is True
 
 
-def test_assen_replay_wordt_geweigerd_voor_de_brede_call(catalogus):
+# Codes uit 85701NED (live 09-10): basisonderwijs, totaal vo, hbo, totaal mbo (excl. extranei).
+_WOONREGIO_RIJEN = [
+    {"Onderwijssoort": "A025280", "Regiokenmerken": "GM0106", "Perioden": "2024SJ00", "LeerlingenStudenten_1": 7000},
+    {"Onderwijssoort": "T001345", "Regiokenmerken": "GM0106", "Perioden": "2024SJ00", "LeerlingenStudenten_1": 4000},
+    {"Onderwijssoort": "A025294", "Regiokenmerken": "GM0106", "Perioden": "2024SJ00", "LeerlingenStudenten_1": 1500},
+    {"Onderwijssoort": "A041867", "Regiokenmerken": "GM0106", "Perioden": "2024SJ00", "LeerlingenStudenten_1": 2000},
+]
+
+
+def test_assen_replay_laadt_alleen_mbo_hbo_en_wo(catalogus):
     """Live (CH-03): twee exacte filters gaven 0 rijen, de herstelpoging laadde 85701NED met
     startswith(Regiokenmerken,'GM0106') = 1.080 rijen incl. po/vo. Een fallback mag de
-    sectorbinding niet afzwakken."""
-    with patch("tools.cbs.data", return_value=[]) as data, patch("tools.cbs.definitions", return_value={}):
+    sectorbinding niet afzwakken: de tabel komt alleen binnen met de mbo/hbo/wo-selectie (#473)."""
+    from tools import store
+
+    with (
+        patch("tools.cbs.data", side_effect=[[], [], _WOONREGIO_RIJEN]) as data,
+        patch("tools.cbs.definitions", return_value={}),
+    ):
         get_cbs_data("85353NED", {"$filter": "RegioS eq 'GM0106'"})
         get_cbs_data("85353NED", {"$filter": "RegioS eq 'GM0106  '"})
         herstel = json.loads(get_cbs_data("85701NED", {"$filter": "startswith(Regiokenmerken,'GM0106')"}))
 
-    assert [c.args[0] for c in data.call_args_list] == ["85353NED", "85353NED"]
-    assert herstel["buiten_scope"] is True
+    filter_herstel = data.call_args_list[-1].kwargs["$filter"]
+    assert filter_herstel.startswith("(Onderwijssoort eq ") and "A025280" not in filter_herstel
+    assert sorted(store.get(herstel["data_key"])["Onderwijssoort"]) == ["A025294", "A041867"]
 
 
 def test_een_mbo_tabel_van_cbs_laadt_gewoon(catalogus):
@@ -373,6 +396,62 @@ def test_de_bronregel_van_een_mbo_tabel_is_de_catalogustitel(catalogus):
     assert bron_naam("onbekend-id") == "onbekend-id"
 
 
+# ── CBS: woonregio over alle onderwijssoorten, de chat laadt mbo/hbo/wo (#473) ──
+
+
+def test_een_woonregiotabel_geeft_alleen_mbo_hbo_en_wo(catalogus):
+    """85701NED is de enige open bron voor hbo/wo-studenten naar woonregio (#452). Hij staat
+    ook vol po/vo; die rijen gaan niet de aanroep in en komen niet door de controle erna."""
+    from tools import store
+
+    with (
+        patch("tools.cbs.data", return_value=_WOONREGIO_RIJEN) as data,
+        patch("tools.cbs.definitions", return_value={}),
+    ):
+        result = json.loads(get_cbs_data("85701NED", {"$filter": "Regiokenmerken eq 'GM0106'"}))
+
+    aanroep = data.call_args.kwargs["$filter"]
+    assert aanroep.startswith("(Onderwijssoort eq ") and aanroep.endswith(") and (Regiokenmerken eq 'GM0106')")
+    assert "A025280" not in aanroep and "T001345" not in aanroep
+    assert sorted(store.get(result["data_key"])["Onderwijssoort"]) == ["A025294", "A041867"]
+
+
+@pytest.mark.parametrize("code", ["T001345", "A025280", "A025300"])  # vo, basisonderwijs, vavo
+def test_een_po_of_vo_code_in_een_woonregiotabel_wordt_niet_opgehaald(catalogus, code):
+    with patch("tools.cbs.data") as data:
+        result = get_cbs_data("85701NED", {"$filter": f"Onderwijssoort eq '{code}'"})
+
+    data.assert_not_called()
+    assert "mbo, hbo en wo" in result
+    assert "A025294" in result and "A025297" in result  # de codes om mee te filteren
+
+
+def test_een_volle_pagina_zonder_rijen_in_het_profiel_noemt_het_deel(catalogus):
+    with patch("tools.cbs.data", return_value=_WOONREGIO_RIJEN[:2]), patch("tools.cbs.definitions", return_value={}):
+        result = get_cbs_data("85701NED", {"$top": 2})
+
+    assert "onvolledig" in result.lower()
+    assert "mbo, hbo en wo" in result and "mbo-rijen" not in result
+
+
+def test_de_bronregel_van_een_woonregiotabel_noemt_het_geladen_deel(catalogus):
+    from tools.catalog import bron_naam
+
+    assert bron_naam("85701NED") == f"85701NED ({_CBS_WOONREGIO['bron']}, alleen mbo, hbo en wo)"
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "hbo", "vo"), [("85701NED", "A025294", "T001345"), ("85702NED", "A043049", "A025285")]
+)
+def test_de_snippet_van_een_woonregiotabel_selecteert_dezelfde_rijen(dataset_id, hbo, vo):
+    from tools.snippet import _cbs_laadregels
+
+    regels = _cbs_laadregels({"dataset_id": dataset_id, "filters": {}})
+
+    assert hbo in regels[-1] and vo not in regels[-1]
+    assert regels[-1].endswith("# alleen mbo, hbo en wo")
+
+
 # ── RIO: registers over alle sectoren alleen met een sectorfilter (CH-03) ────────
 
 
@@ -455,10 +534,11 @@ def test_in_de_echte_catalogus_valt_geen_gemengde_of_po_vo_cbs_tabel_binnen_de_g
     toegelaten = {scopeprofiel.dataset_id(e): e for e in _echt().values() if scopeprofiel.in_scope(e)}
     cbs = {i: e for i, e in toegelaten.items() if e.get("leverancier") == "CBS" or e.get("_cbs_id")}
 
-    # Een tabel over mbo én vo alleen als de code de mbo-rijen selecteert (CBS_SECTORFILTER).
-    po_vo = [i for i, e in cbs.items() if {"PO", "SO", "VO"} & set(e.get("onderwijstype") or [])]
-    assert set(po_vo) <= set(scopeprofiel.CBS_SECTORFILTER)
-    assert "85701NED" not in cbs  # Assen-replay
+    # Een tabel die ook over po/vo of alle onderwijssoorten gaat, alleen als de code de rijen
+    # voor mbo/hbo/wo selecteert (CBS_SECTORFILTER), of met een besluit dat hij alleen over ho gaat.
+    gemengd = {i for i, e in cbs.items() if not set(e.get("onderwijstype") or []) <= scopeprofiel.SECTOREN}
+    assert gemengd <= set(scopeprofiel.CBS_SECTORFILTER) | {"71229ned"}
+    assert {"85701NED", "85702NED"} <= gemengd  # Assen-replay: toegelaten, met de sectorselectie (#473)
     assert {"85353NED", "85422NED", "85423NED"} <= set(cbs)  # tabellen die de code zelf noemt
 
 

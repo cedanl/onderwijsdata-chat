@@ -37,6 +37,10 @@ GOED = [
     ("Hoeveel eerstejaars heeft deze instelling?", "p02ho1ejrs", 6),
     ("Mbo-studentprognose in 2035", "studentprognoses-mbo-per-instelling", 1),
     ("cohorten mbo status open", "aangeboden-opleiding-cohorten", 2),
+    # Woonregio (#473), gemeten op 9 oktober 2026: toegelaten met de selectie op mbo, hbo en wo.
+    ("leerlingen en studenten onderwijssoort woonregio", "85701NED", 1),
+    ("studenten hoger onderwijs per woongemeente", "85701NED", 1),
+    ("woonplaats studenten hoger onderwijs", "85701NED", 2),
 ]
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
@@ -104,8 +108,9 @@ BUITEN_PROFIEL = [
     ("mbo studenten per instelling DUO", "voprognoses"),  # de proef uit de testaudit van 6 okt
     # Register zonder sectorfilter: een pagina bevat ook po/vo-locaties (CH-03).
     ("onderwijslocaties van een instelling", "onderwijslocaties"),
-    # CBS-tabel over alle onderwijssoorten, uit de Assen-replay (CH-03).
-    ("leerlingen en studenten onderwijssoort woonregio", "85701NED"),
+    # CBS-tabel over alle onderwijssoorten zonder sectorselectie (CH-03); 85701NED uit de
+    # Assen-replay heeft die sinds #473 wel en staat in GOED.
+    ("leerlingen en studenten onderwijssoort vanaf 1900", "37220"),
 ]
 
 
