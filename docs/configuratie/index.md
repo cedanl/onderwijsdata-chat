@@ -84,6 +84,10 @@ Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` i
 |-----------|-----------|--------------|
 | `CHAT_SECRET` | *(per herstart gegenereerd)* | HMAC-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
 | `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
+| `SESSION_TTL_HOURS` | `8` | Geldigheid van een token in uren (decimaal mag, bv. `0.5`). Bij wachtwoord-login (geen verversing) moet de gebruiker na deze tijd opnieuw inloggen. |
+| `SESSION_MAX_HOURS` | `24` | Maximale sessieduur in uren vanaf het inloggen: verversen (SRAM) geeft nooit een token dat later verloopt. |
+
+Een ongeldige of niet-positieve waarde voor `SESSION_TTL_HOURS` of `SESSION_MAX_HOURS` laat de app niet starten. Uitloggen trekt het token ook server-side in (tabel `revoked_tokens`).
 
 ### SURF SRAM-login (OIDC)
 

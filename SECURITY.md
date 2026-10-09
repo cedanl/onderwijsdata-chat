@@ -17,7 +17,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ❌ Open (configuratie) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9 |
-| S10 | Sessie-timeout 24 uur | Laag | ℹ️ Instelbaar via env |
+| S10 | Sessieduur en intrekking bij uitloggen | Laag | ✅ Geïmplementeerd (8 u TTL, max. 24 u, denylist) |
 | S11 | Tool-enumeratie via LLM | Laag | ℹ️ By design |
 | S12 | Dependency-kwetsbaarheden | Variabel | ✅ Scanning in CI |
 
@@ -124,14 +124,21 @@ Voor lokale dev: `CORS_ORIGINS=http://localhost:5173`
 
 ---
 
-### S10 — Sessie-timeout 24 uur ℹ️ Instelbaar
+### S10 — Sessieduur en intrekking bij uitloggen ✅ Geïmplementeerd
 
-**Locatie:** `auth.py` — `_TOKEN_TTL = 24 * 3600`  
+**Locatie:** `core/auth.py`, `POST /api/auth/logout`, tabel `revoked_tokens` (`persistence/db.py`)  
+**Was:** een token gold 24 uur, uitloggen wiste het alleen in de browser en `/api/auth/refresh` verlengde het onbeperkt.  
+**Nu (#479):**
+- Een token geldt `SESSION_TTL_HOURS` (standaard 8). Verversen houdt het inlogmoment vast en geeft nooit een token voorbij `SESSION_MAX_HOURS` (standaard 24) na inloggen; daarna moet de gebruiker opnieuw inloggen.
+- Uitloggen zet `sha256(token)` tot de vervaltijd op een denylist in de database (gedeeld door alle replica's). REST, WebSocket-connect, dashboard-refresh en `/api/auth/refresh` weigeren zo'n token. De database bewaart alleen de hash, nooit het token; de logs bevatten geen van beide.
+- Een databasestoring bij de controle geeft 500, geen 401.
+
 **Instellen via env var:**
 ```
 SESSION_TTL_HOURS=8
+SESSION_MAX_HOURS=24
 ```
-24u is redelijk voor een intern professioneel tool. Verkort naar 8u (werkdag) bij strengere beveiligingseisen.
+**Restrisico:** een al open WebSocket blijft na uitloggen open tot de browser hem sluit (auth gebeurt bij connect). Verversen roteert het oude token niet; dat verloopt binnen de TTL.
 
 ---
 

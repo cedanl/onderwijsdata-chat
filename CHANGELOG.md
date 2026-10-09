@@ -234,3 +234,7 @@ de laatste tag is 1.8.6.
 - `/ready` geeft bij een falende check (database of LLM-sleutels) HTTP 503 met een JSON-object, in plaats
   van 200 met een JSON-array. De readiness-probe van de chart gebruikt `/health` en merkt hier niets van.
 - Een onbekend pad onder `/api` geeft een JSON-404 (`{"detail": "Not Found"}`) in plaats van de SPA met 200.
+- Uitloggen trekt het token ook op de server in (`POST /api/auth/logout`, tabel `revoked_tokens`): REST, de
+  chat-WebSocket, dashboard-refresh en verversen weigeren het daarna. Een token geldt nu 8 uur in plaats van
+  24 (`SESSION_TTL_HOURS`) en verversen kan tot 24 uur na inloggen (`SESSION_MAX_HOURS`), niet meer onbeperkt.
+  Wie met `CHAT_USERS` inlogt, moet na 8 uur opnieuw inloggen. Bestaande tokens blijven geldig tot hun vervaltijd.

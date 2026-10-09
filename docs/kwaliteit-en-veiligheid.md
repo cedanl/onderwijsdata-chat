@@ -78,7 +78,8 @@ Procesisolatie of getypeerde operaties in plaats van vrije scripts staat open in
 ### Authenticatie
 
 - Optionele wachtwoordauthenticatie via `CHAT_USERS`
-- HMAC-ondertekende tokens (gebruikersnaam en vervaltijd, ondertekend met `CHAT_SECRET`) met 24-uur TTL
+- HMAC-ondertekende tokens (gebruikersnaam, inlogmoment en vervaltijd, ondertekend met `CHAT_SECRET`) met 8-uur TTL (`SESSION_TTL_HOURS`) en een maximale sessieduur van 24 uur (`SESSION_MAX_HOURS`)
+- Uitloggen trekt het token server-side in (denylist in de database)
 - Timing-safe wachtwoordvergelijking (`hmac.compare_digest`)
 
 ---
