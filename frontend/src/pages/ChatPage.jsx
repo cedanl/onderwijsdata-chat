@@ -195,10 +195,7 @@ function MessageContent({ msg }) {
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
   useDocumentTitle(pageTitle('Chat'))
-  const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
-    onUnauthorized: handleUnauthorized,
-  })
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [input, setInput] = useState('')
   const [sendNotice, setSendNotice] = useState(null)
 

@@ -1,13 +1,16 @@
-import { getToken } from './auth'
+import { getToken, endSessionIfCurrent } from './auth'
 import { saveFile } from './saveFile'
 
-function authHeaders() {
-  const token = getToken()
+function authHeaders(token) {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-async function throwIfFailed(res) {
-  if (res.status === 401) throw Object.assign(new Error('Unauthorized'), { status: 401 })
+// A 401 for the token that was sent means the server no longer accepts it: the session ends (#480).
+async function throwIfFailed(res, sentToken) {
+  if (res.status === 401) {
+    endSessionIfCurrent(sentToken)
+    throw Object.assign(new Error('Unauthorized'), { status: 401 })
+  }
   if (res.ok) return
   let detail = `API ${res.status}`
   try {
@@ -20,11 +23,12 @@ async function throwIfFailed(res) {
 }
 
 async function apiFetch(path, options = {}) {
+  const token = getToken()
   const res = await fetch(path, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(token), ...options.headers },
   })
-  await throwIfFailed(res)
+  await throwIfFailed(res, token)
   return res.json()
 }
 
@@ -32,8 +36,9 @@ async function apiFetch(path, options = {}) {
 // so the CSV is fetched and handed to the browser as a blob. Returns the server's notice
 // when the data was fetched again after a restart (#472), else null.
 export async function downloadDataCsv(key) {
-  const res = await fetch(`/api/data/csv?${new URLSearchParams({ key })}`, { headers: authHeaders() })
-  await throwIfFailed(res)
+  const token = getToken()
+  const res = await fetch(`/api/data/csv?${new URLSearchParams({ key })}`, { headers: authHeaders(token) })
+  await throwIfFailed(res, token)
   const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'data.csv'
   saveFile(await res.blob(), filename)
   return res.headers.get('X-Data-Herladen')
