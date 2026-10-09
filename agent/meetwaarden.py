@@ -43,7 +43,12 @@ class Meetwaarde:
 
 def _getal(waarde) -> frozenset[str] | None:
     """De gehele cijfers van een getal zoals een tekst ze schrijft: afgekapt of afgerond, zonder teken."""
-    if isinstance(waarde, bool) or not isinstance(waarde, int | float) or not math.isfinite(waarde):
+    if isinstance(waarde, bool) or not isinstance(waarde, int | float):
+        return None
+    try:
+        if not math.isfinite(waarde):
+            return None
+    except OverflowError:  # een int van 309+ cijfers past niet in een float: geen meetwaarde, geen crash
         return None
     n = abs(waarde)
     return frozenset({str(math.trunc(n)), str(round(n))})
@@ -200,12 +205,24 @@ def _codecijfers(waarde) -> str | None:
     return str(abs(waarde)) if isinstance(waarde, int) and not isinstance(waarde, bool) else None
 
 
-def _identificatiecellen(parsed: dict) -> Iterator[tuple[str, object]]:
-    """(kolom, waarde) uit de rijen en uit het kolomschema (waardenlijst en voorbeelden) van een laadstap."""
-    for naam in _RIJEN:
-        rijen = parsed.get(naam)
-        for rij in rijen if isinstance(rijen, list) else ():
-            yield from rij.items() if isinstance(rij, dict) else ()
+def _sleutelwaarden(parsed) -> Iterator[tuple[str, object]]:
+    """(sleutel, waarde) op elke diepte; een lijst geeft elk element onder haar eigen sleutel.
+
+    RIO zet een bestuurscode in bevoegd_gezag.code en kandidaten[].code, niet in een rij.
+    Met een stapel, niet recursief: een diep genest analyseresultaat haalt de stacklimiet niet."""
+    stapel: list[tuple[str | None, object]] = [(None, parsed)]
+    while stapel:
+        sleutel, waarde = stapel.pop()
+        if isinstance(waarde, dict):
+            stapel.extend(waarde.items())
+        elif isinstance(waarde, list):
+            stapel.extend((sleutel, w) for w in waarde)
+        elif sleutel is not None:
+            yield sleutel, waarde
+
+
+def _schemacellen(parsed: dict) -> Iterator[tuple[str, object]]:
+    """(kolom, waarde) uit het kolomschema van een laadstap: de waardenlijst en de voorbeelden."""
     kolommen = parsed.get("kolommen")
     for k in kolommen if isinstance(kolommen, list) else ():
         if isinstance(k, dict) and isinstance(kolom := k.get("kolom"), str):
@@ -215,7 +232,7 @@ def _identificatiecellen(parsed: dict) -> Iterator[tuple[str, object]]:
 
 
 def identificaties(result: str) -> set[str]:
-    """De cijfers in een identificatiekolom van één toolresultaat: OPLEIDINGSCODE 50800 is een code.
+    """De cijfers onder een identificatiesleutel, waar ook in één toolresultaat: OPLEIDINGSCODE 50800 is een code.
 
     CBS' kolom ID telt niet mee: dat is een rijnummer, geen code die een tekst noemt."""
     try:
@@ -226,7 +243,7 @@ def identificaties(result: str) -> set[str]:
         return set()
     return {
         cijfers
-        for kolom, waarde in _identificatiecellen(parsed)
+        for kolom, waarde in (*_sleutelwaarden(parsed), *_schemacellen(parsed))
         if kolom.upper() != "ID" and _IDENTIFICATIE.search(kolom) and (cijfers := _codecijfers(waarde))
     }
 
