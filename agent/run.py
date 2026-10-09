@@ -16,6 +16,7 @@ from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
+from .getalnotatie import nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
@@ -347,7 +348,7 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
     text_content = weigering(
         antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(zonder_citaatkop(zonder_toolnamen(antwoord)), result.tool_results)
+    ) or met_telling(nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord))), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])
