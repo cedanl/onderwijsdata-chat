@@ -14,7 +14,7 @@ load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
 from config import Config, ConfigError
-from core.catalogusversie import catalogusversie
+from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
@@ -118,7 +118,8 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 @app.get("/version", tags=["info"])
 @app.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
-    """Versie uit pyproject.toml, de commit waaruit het image is gebouwd (#231) en de catalogus (#361)."""
+    """Versie uit pyproject.toml, de commit waaruit het image is gebouwd (#231), de catalogus (#361)
+    en de dataversie van UWV en ROA (CH-46)."""
 
     def _read() -> str:
         with open(_PYPROJECT, "rb") as f:
@@ -129,6 +130,8 @@ async def version() -> dict:
         "commit": Config.GIT_COMMIT or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361).
         "catalogus": catalogusversie(),
+        # Periode uit de statische riodata-records, zonder download (CH-46).
+        "arbeidsmarkt": arbeidsmarktversie(),
     }
 
 

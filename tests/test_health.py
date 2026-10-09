@@ -76,3 +76,77 @@ def test_catalogusversie_zonder_package_geeft_geen_fout():
     from core.catalogusversie import _pakket
 
     assert _pakket("bestaat-niet-xyz") == {"pakket": "bestaat-niet-xyz", "versie": None, "commit": None}
+
+
+def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
+    # CH-46 (#471): CBS, DUO en RIO stonden via de catalogus in /version, UWV en ROA niet.
+    resp = client.get("/version")
+    arbeidsmarkt = resp.json()["arbeidsmarkt"]
+    assert [(b["bron"], b["dataset"]) for b in arbeidsmarkt] == [("UWV", "uwv-open-match-data"), ("ROA", "ais2030")]
+    uwv, roa = arbeidsmarkt
+    assert "2023-05-16" in uwv["periode"]  # einde van de bevroren snapshotreeks
+    assert roa["periode"] == "Editie 2025"
+    assert client.get("/api/version").json()["arbeidsmarkt"] == arbeidsmarkt
+
+
+def test_version_laat_versie_commit_en_catalogus_ongemoeid(client):
+    data = client.get("/version").json()
+    assert set(data) == {"version", "commit", "catalogus", "arbeidsmarkt"}
+    assert [p["pakket"] for p in data["catalogus"]] == ["onderwijsdata", "riodata"]
+
+
+def test_version_downloadt_geen_arbeidsmarktdata(client, monkeypatch):
+    # De app laadt UWV en ROA pas bij het eerste gebruik; een probe op /version mag dat niet starten.
+    import httpx
+
+    from core.catalogusversie import arbeidsmarktversie
+    from data import arbeidsmarkt
+
+    def geen_download(*args, **kwargs):
+        raise AssertionError("/version mag geen data downloaden")
+
+    monkeypatch.setattr(arbeidsmarkt, "_uwv", geen_download)
+    monkeypatch.setattr(arbeidsmarkt, "_roa", geen_download)
+    monkeypatch.setattr(httpx, "get", geen_download)
+    arbeidsmarktversie.cache_clear()
+    try:
+        resp = client.get("/version")
+    finally:
+        arbeidsmarktversie.cache_clear()
+    assert resp.status_code == 200
+    assert [b["bron"] for b in resp.json()["arbeidsmarkt"]] == ["UWV", "ROA"]
+    assert all(b["periode"] for b in resp.json()["arbeidsmarkt"])
+
+
+def test_arbeidsmarktbron_zonder_record_geeft_geen_periode():
+    from core.catalogusversie import _arbeidsmarktbron
+
+    records = [{"_roa_id": "ais2028", "periode": "Editie 2024"}]
+    assert _arbeidsmarktbron("ROA", "ais2030", records, "_roa_id") == {
+        "bron": "ROA",
+        "dataset": "ais2030",
+        "periode": None,
+    }
+    assert _arbeidsmarktbron("UWV", "uwv-open-match-data", [], "_ckan_id")["periode"] is None
+
+
+def test_arbeidsmarktbron_neemt_de_periode_letterlijk_over():
+    from core.catalogusversie import _arbeidsmarktbron
+
+    records = [{"_roa_id": "ais2028", "periode": "Editie 2024"}, {"_roa_id": "ais2030", "periode": "Editie 2025"}]
+    assert _arbeidsmarktbron("ROA", "ais2030", records, "_roa_id")["periode"] == "Editie 2025"
+
+
+def test_version_zonder_arbeidsmarktrecord_geeft_200(client, monkeypatch):
+    from riodata import roa
+
+    from core.catalogusversie import arbeidsmarktversie
+
+    monkeypatch.setattr(roa, "catalog", list)
+    arbeidsmarktversie.cache_clear()
+    try:
+        resp = client.get("/version")
+    finally:
+        arbeidsmarktversie.cache_clear()
+    assert resp.status_code == 200
+    assert resp.json()["arbeidsmarkt"][1] == {"bron": "ROA", "dataset": "ais2030", "periode": None}

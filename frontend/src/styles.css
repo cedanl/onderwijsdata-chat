@@ -657,8 +657,12 @@ input, textarea { font: inherit; }
   background: var(--white); color: var(--gray-700, inherit); border: 1px solid var(--gray-200);
   border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); overflow-wrap: anywhere;
 }
-.citatie-stap, .citatie-key { color: var(--gray-500); }
-.citatie-key { font-size: .7rem; }
+.citatie-stap, .citatie-key, .citatie-details summary { color: var(--gray-500); }
+.citatie-key, .citatie-details summary { font-size: .7rem; }
+.citatie-details { margin-top: 2px; }
+.citatie-details summary { cursor: pointer; width: fit-content; }
+.citatie-details summary:hover { color: var(--accent-text); }
+.citatie-details summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 .reasoning-snippets { margin-top: 8px; }
 .reasoning-snippet-block { margin-bottom: 8px; }
 .reasoning-snippet-label {

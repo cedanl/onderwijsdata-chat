@@ -142,7 +142,7 @@ de laatste tag is 1.8.6.
 - Citaties bij getallen wijzen een meetwaarde aan (maatkolom, KPI-uitkomst of analyseresultaat), nooit een
   code, rijtelling of stuk van een key. Elk gecontroleerd getal in een dataantwoord krijgt er een, zodat
   hetzelfde antwoord altijd evenveel citaties heeft; zonder binding staat er "Herkomst niet vastgesteld".
-  De uitleg begint met bron en selectie in woorden, met maat, eenheid en stap; de `data_key` staat eronder.
+  De uitleg begint met bron en selectie in woorden, met maat, eenheid en stap.
 - Grootste daling of stijging komt uit code (`compute_kpi`: `max_drop`, `max_rise`) en niet uit het model.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.
@@ -205,6 +205,7 @@ de laatste tag is 1.8.6.
 - Een vraag tijdens een lopend antwoord krijgt een melding, de getypte tekst blijft staan.
 - Een onbekend pad toont een 404-pagina; een uitgeschakelde dashboardroute meldt dat hij nog niet beschikbaar is.
 - Hernoem- en verwijderknoppen hebben een `aria-label`.
+- De technische key van een citatie (`data_key`) staat dichtgeklapt onder "Technische details", onderaan de uitleg.
 - Stuit een antwoord na alle pogingen op de rate limit, dan blijven de al opgehaalde stappen in het
   gesprek; een nieuwe poging bouwt erop voort.
 
@@ -216,6 +217,8 @@ de laatste tag is 1.8.6.
 - De `pytest`-job draait ook `ruff check`; de pipeline blokkeert op falende tests.
 - Evaluatie-uitvoer staat niet meer in git.
 - riodata is gepind op 0.3.1 (rio-onderwijsdata `c0b4bce`); `/version` noemt de meegebouwde catalogusrevisies.
+- `/version` noemt onder `arbeidsmarkt` ook de dataversie van UWV (snapshots t/m 2023-05-16) en ROA (AIS 2030,
+  editie 2025), uit de statische catalogus van riodata en zonder download.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
 - Productie-manifest geauditeerd: de allowlist-middleware waar de ingress naar verwijst wordt meegeleverd,
   dashboards staan uit zoals op test, en productie draait één pod zolang data en limiters in het geheugen leven.

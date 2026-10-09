@@ -46,6 +46,8 @@ De controles zijn code, geen begrip. Ze vangen een bepaalde klasse fouten en lat
 
 Een controle die iets mist is dus mogelijk. Daarom is elk antwoord herleidbaar: de redeneerkaart toont per stap de tool en de code, en elke analyse is als Python-snippet te exporteren (zie [Reproduceerbare analyses](reproducibility.md)).
 
+Ook een los getal is herleidbaar: een gecontroleerd getal in een dataantwoord opent een citatie met bron, selectie, maat en stap in woorden. De `data_key` (bijv. `duo:p01hoinges:3:a31654ba`) staat daaronder, dichtgeklapt achter "Technische details" (CH-30r, #471). Hij blijft erin omdat hij het enige spoor is van het getal naar zijn toolstap en de data in de store, voor support, audit en reproduceerbaarheid. In de gewone leesregel is hij jargon; weglaten zou dat spoor kosten zonder iets op te leveren.
+
 ## Tests
 
 - `tests/test_grounding.py`, `tests/test_selectie.py`, `tests/test_labels.py`, `tests/test_binding.py`: de controles per module.
