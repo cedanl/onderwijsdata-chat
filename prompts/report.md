@@ -29,7 +29,7 @@ Het rapport heeft ALTIJD deze structuur:
 - Gebruik `query_data` met de `data_key` van de beschikbare dataset
 - Sorteer logisch: chronologisch voor tijdreeksen, op waarde voor vergelijkingen
 - Maximaal 8 groepen bij `color_by`; horizontale staafgrafiek bij meer dan 5 categorieën
-- Geef elke grafiek een korte Nederlandse titel
+- Geef elke grafiek een korte Nederlandse titel; noemt de onderzoeksvraag een periode, zet die periode dan in jaren in de titel (bijv. "Instroom 2020/21–2024/25")
 - Beperk je tot maximaal 2 visualisaties — het aantal figuren dat je aanmaakt bepaalt het aantal dat in het rapport verschijnt
 
 ## JSON-samenvatting (VERPLICHT)
@@ -38,7 +38,6 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 ```json
 {
-  "title": "Concrete, beschrijvende rapporttitel",
   "onderzoeksvraag": "De onderzoeksvraag van de gebruiker, (bijna) letterlijk",
   "beantwoordt": ["wat dit rapport wel beantwoordt"],
   "beantwoordt_niet": ["wat dit rapport niet beantwoordt (buiten de scope)"],
@@ -56,12 +55,7 @@ Na alle tool-calls MOET je afsluiten met precies één JSON-blok. Geen tekst erv
 
 ## Bronvermeldingen
 
-De bronnen (catalogustitel en dataset-ID van elke gebruikte dataset) voegt de code toe. Schrijf ze niet zelf.
-
-## Title-regels
-
-- Concreet en beschrijvend, geen generieke titels ("Rapport", "Overzicht")
-- Noem de instelling als die beschikbaar is (bijv. "Instroom ROC van Flevoland 2018–2024")
+De bronnen (catalogustitel en dataset-ID van elke gebruikte dataset) en de rapporttitel (de onderzoeksvraag van de gebruiker) voegt de code toe. Schrijf ze niet zelf.
 
 ## Toon
 

@@ -77,10 +77,9 @@ def _run_generate_async():
     ), events
 
 
-def _final(conclusie: str, title: str = "T") -> StreamResult:
+def _final(conclusie: str) -> StreamResult:
     """Een volledig rapport (#189): reikwijdte, conclusie en een getal."""
     report = {
-        "title": title,
         "onderzoeksvraag": "Instroom",
         "beantwoordt": ["Instroom per jaar"],
         "conclusie": conclusie,
@@ -97,7 +96,7 @@ def test_generate_recovers_from_invalid_tool_call_arguments(monkeypatch):
                 {"id": "t1", "name": "query_data", "arguments": bad_args},
             ],
         ),
-        _final("In 2021 waren het er 10.", title="Testrapport"),
+        _final("In 2021 waren het er 10."),
     ]
     _make_generate(monkeypatch, steps)
 
@@ -105,7 +104,7 @@ def test_generate_recovers_from_invalid_tool_call_arguments(monkeypatch):
     spec = asyncio.run(generate)
 
     assert isinstance(spec, ReportSpec)
-    assert spec.title == "Testrapport"
+    assert spec.conclusie == "In 2021 waren het er 10."
     types = [e["type"] for e in events]
     assert "report_error" not in types
     assert "error" not in types
@@ -122,7 +121,7 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
                 {"id": "t1", "name": "query_data", "arguments": bad_args},
             ],
         ),
-        _final("In 2021 waren het er 10.", title="Testrapport"),
+        _final("In 2021 waren het er 10."),
     ]
     _make_generate(monkeypatch, steps)
 
@@ -130,7 +129,7 @@ def test_generate_surfaces_http_error_message_as_useful_error(monkeypatch):
     spec = asyncio.run(generate)
 
     assert isinstance(spec, ReportSpec)
-    assert spec.title == "Testrapport"
+    assert spec.conclusie == "In 2021 waren het er 10."
 
 
 def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplog):

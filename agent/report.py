@@ -30,6 +30,7 @@ from agent.probleem import harde, meldingen
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
+from agent.report_titel import rapporttitel
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
@@ -255,7 +256,8 @@ def _parse_spec_from_response(
     bronnen = _sources_from_recipe(recipe)
 
     onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
-    title = (spec_data.get("title") or "").strip() or onderzoeksvraag[:60] or "Rapport"
+    # De vraag van de gebruiker, niet een titel van het model: elke run gaf een andere (#416).
+    title = rapporttitel(topic, context.get("instelling"))
 
     vis_meta = spec_data.get("visualisaties") or []
     visualisaties: list[dict] = []
