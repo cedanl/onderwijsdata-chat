@@ -65,6 +65,13 @@ describe('composer message limit', () => {
     expect(container.querySelector('textarea.chat-input').maxLength).toBe(MAX_MESSAGE_CHARS)
   })
 
+  it('describes the textarea with the counter', async () => {
+    await renderWithDraft(null)
+    const id = container.querySelector('textarea.chat-input').getAttribute('aria-describedby')
+    expect(id).toBeTruthy()
+    expect(document.getElementById(id).classList.contains('message-counter')).toBe(true)
+  })
+
   it('does not send a restored draft over the limit, and says it is too long', async () => {
     await renderWithDraft('x'.repeat(MAX_MESSAGE_CHARS + 1))
     expect(container.querySelector('.send-btn').getAttribute('aria-disabled')).toBe('true')

@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
 import { MAX_MESSAGE_CHARS } from '../constants'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -58,7 +59,8 @@ describe('ChatInputFooter tab-volgorde', () => {
       onSend: vi.fn(),
       canSend: true,
     })
-    expect(childOrder(container)).toEqual(['ws-reconnecting', 'send-btn', 'model-picker'])
+    // The counter's live region (#481) is always mounted, empty below 80%; it is not focusable.
+    expect(childOrder(container)).toEqual(['ws-reconnecting', 'message-counter', 'send-btn', 'model-picker'])
     act(() => root.unmount())
   })
 
@@ -92,9 +94,13 @@ describe('ChatInputFooter tekenteller (#481)', () => {
   })
   const counter = container => container.querySelector('.message-counter')
 
-  it('blijft verborgen onder 80% van het maximum', () => {
+  it('blijft leeg onder 80% van het maximum, maar de live region staat al klaar', () => {
     const { container, root } = renderFooter(props('x'.repeat(Math.ceil(MAX_MESSAGE_CHARS * 0.8) - 1)))
-    expect(counter(container)).toBeNull()
+    const el = counter(container)
+    expect(el.textContent).toBe('')
+    expect(el.getAttribute('role')).toBe('status')
+    expect(el.getAttribute('aria-live')).toBe('polite')
+    expect(el.id).toBe(MESSAGE_COUNTER_ID)
     act(() => root.unmount())
   })
 

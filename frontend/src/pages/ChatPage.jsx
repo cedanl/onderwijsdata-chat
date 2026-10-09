@@ -50,6 +50,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
@@ -624,6 +625,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
                 maxLength={MAX_MESSAGE_CHARS}
+                aria-describedby={MESSAGE_COUNTER_ID}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
               />
