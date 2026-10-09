@@ -3,7 +3,8 @@
 Het model kreeg alleen de instellingsnaam en koos zelf een provincie. De rijen hieronder
 zijn de echte DUO-rijen van de drie testinstellingen (gecontroleerd tegen p01hoinges,
 mbo-studenten-per-instelling, adressen_ho en adressen_mbo op 2026-10-08); de tests laden
-ze zonder netwerk.
+ze zonder netwerk. De arbeidsmarktregio komt uit de gemeente van het adres, niet uit het
+RPA-gebied van DUO: die namen kent ROA niet (#454).
 """
 
 import pandas as pd
@@ -14,7 +15,7 @@ from agent.models import build_system
 from data.instellingen import instellingsprofiel
 from prompts import build_persona_block
 
-_ADRES_KOLOMMEN = ["INSTELLINGSCODE", "INSTELLINGSNAAM", "PLAATSNAAM", "PROVINCIE", "RPA-GEBIED NAAM"]
+_ADRES_KOLOMMEN = ["INSTELLINGSCODE", "INSTELLINGSNAAM", "PLAATSNAAM", "PROVINCIE", "GEMEENTENUMMER", "RPA-GEBIED NAAM"]
 
 _DUO = {
     ("p01hoinges", 0): pd.DataFrame(
@@ -28,13 +29,13 @@ _DUO = {
     ),
     ("adressen_ho", 1): pd.DataFrame(
         [
-            ["25DW", "Hogeschool Utrecht", "UTRECHT", "Utrecht", "Utrecht-Midden"],
-            ["21PC", "Rijksuniversiteit Groningen", "GRONINGEN", "Groningen", "Centraal-Groningen"],
+            ["25DW", "Hogeschool Utrecht", "UTRECHT", "Utrecht", 344, "Utrecht-Midden"],
+            ["21PC", "Rijksuniversiteit Groningen", "GRONINGEN", "Groningen", 14, "Centraal-Groningen"],
         ],
         columns=_ADRES_KOLOMMEN,
     ),
     ("adressen_mbo", 1): pd.DataFrame(
-        [["25LH", "Stichting ROC Midden Nederland", "UTRECHT", "Utrecht", "Utrecht-Midden"]],
+        [["25LH", "Stichting ROC Midden Nederland", "UTRECHT", "Utrecht", 344, "Utrecht-Midden"]],
         columns=_ADRES_KOLOMMEN,
     ),
 }
@@ -57,9 +58,9 @@ def duo_zonder_netwerk(monkeypatch):
 @pytest.mark.parametrize(
     ("naam", "sector", "provincie", "arbeidsmarktregio", "code"),
     [
-        ("ROC Midden Nederland", "mbo", "Utrecht", "Utrecht-Midden", "25LH"),
-        ("Hogeschool Utrecht", "hbo", "Utrecht", "Utrecht-Midden", "25DW"),
-        ("Rijksuniversiteit Groningen", "wo", "Groningen", "Centraal-Groningen", "21PC"),
+        ("ROC Midden Nederland", "mbo", "Utrecht", "Midden-Utrecht", "25LH"),
+        ("Hogeschool Utrecht", "hbo", "Utrecht", "Midden-Utrecht", "25DW"),
+        ("Rijksuniversiteit Groningen", "wo", "Groningen", "Groningen", "21PC"),
     ],
 )
 def test_sector_provincie_en_arbeidsmarktregio(naam, sector, provincie, arbeidsmarktregio, code):
@@ -104,14 +105,14 @@ def test_prompt_noemt_sector_en_regio_naast_de_instelling():
     assert "sector **hbo**" in blok
     assert "instellingscode 25DW" in blok
     assert "provincie **Utrecht**" in blok
-    assert "arbeidsmarktregio **Utrecht-Midden**" in blok
+    assert "arbeidsmarktregio **Midden-Utrecht**" in blok
     assert "'mijn regio'" in blok
     assert "noem dat niveau" in blok
 
 
 def test_systeembericht_draagt_de_regio_via_een_alias():
     (system,) = build_system({"instelling": "HU"})
-    assert "arbeidsmarktregio **Utrecht-Midden**" in system["content"][0]["text"]
+    assert "arbeidsmarktregio **Midden-Utrecht**" in system["content"][0]["text"]
 
 
 @pytest.mark.parametrize(("instelling", "ho"), [("Hogeschool Utrecht", True), ("RUG", True), ("ROC MN", False)])

@@ -10,7 +10,7 @@ de laatste tag is 1.8.6.
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `voprognoses`,
   `02voins-v1`) zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
   vraag. De DUO-telling gaat daardoor van 56 naar 14 datasets. Een record zonder scopebesluit valt erbuiten.
-- Dezelfde grens geldt nu voor CBS: tabellen over alle onderwijssoorten (zoals `85701NED`) of over po/vo
+- Dezelfde grens geldt nu voor CBS: tabellen over alle onderwijssoorten (zoals `37220`) of over po/vo
   zijn niet te vinden, op te vragen of te laden, ook niet als herstelpoging na een lege selectie. De
   CBS-telling gaat van 266 naar 117 tabellen. Bij de VSV-tabellen over mbo én vo laadt de chat alleen de
   mbo-rijen; dat selecteert de code, niet het filter van het model (de CBS-feed negeert een EN-clausule).
@@ -18,6 +18,11 @@ de laatste tag is 1.8.6.
   rapportbronnen en de CSV- en grafiekexport. De mbo-selectie zit nu ook in de aanroep zelf, vooraan in
   `$filter` (de feed gebruikt bij twee clausules op dezelfde dimensie alleen de eerste); een vo-code gaat niet
   meer de deur uit. Een volle pagina zonder mbo-rijen heet onvolledig, niet leeg.
+- De woonregiotabellen van CBS over alle onderwijssoorten, `85701NED` (leerlingen en studenten) en
+  `85702NED` (gediplomeerden), zijn weer op te vragen, maar alleen de rijen voor mbo, hbo en wo: dezelfde
+  selectie in de code als bij de VSV-tabellen, in de aanroep en op de rijen, en de bronvermelding zegt
+  "…, alleen mbo, hbo en wo". Het is de enige open bron voor hbo/wo-studenten naar woongemeente, COROP,
+  provincie of landsdeel (zonder instelling). De CBS-telling gaat van 117 naar 119 tabellen.
 - RIO-registers over alle sectoren (aangeboden opleidingen, opleidingen, opleidingserkenningen,
   onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
@@ -46,8 +51,15 @@ de laatste tag is 1.8.6.
   Mbo2 techniek en ict: "matig", landelijk "slecht"). De schoolverlatersinformatie heeft ROA alleen landelijk; het
   resultaat noemt per onderdeel de regio waar de cijfers vandaan komen. Een onbekende regio geeft de geldige namen.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
+- De arbeidsmarktregio in het instellingsprofiel heet nu zoals UWV en ROA hem kennen: hij volgt uit de gemeente
+  van het instellingsadres en de CBS-gebiedsindeling (Gebieden in Nederland 2026), niet meer uit het RPA-gebied
+  van DUO. Daar kende ROA 16 van de 27 namen niet (Utrecht-Midden tegenover Midden-Utrecht), zodat
+  `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een antwoord op data met DIPLOMAJAAR (ho-gediplomeerden) zegt onder Telling dat DUO niet vastlegt of dat
+  een kalender- of studiejaar is: diplomajaar 2023 is niet aantoonbaar studiejaar 2023/24. De kolomuitleg
+  zegt hetzelfde. De app zet een diplomajaar niet om naar een schooljaar.
 - Staat hetzelfde getal in twee zinnen ("Instelling B had 10.000 … Instelling A had 10.000"), dan krijgt
   elke vermelding een eigen citatie en de ondergrens van haar eigen selectie. Eerder erfde de tweede de
   bron van de eerste.

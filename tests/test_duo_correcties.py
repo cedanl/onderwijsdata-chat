@@ -34,6 +34,14 @@ def test_diplomajaar_is_het_jaar_van_het_ho_diploma():
     assert "hoger-onderwijsdiploma" in definitie
 
 
+def test_diplomajaar_zegt_dat_het_soort_jaar_niet_vaststaat():
+    """CH-41 (#464): DIPLOMAJAAR 2023 werd live opnieuw als studiejaar 2023/24 gelezen."""
+    definitie = _definitie("p04hogdipl", "DIPLOMAJAAR")
+
+    assert "kalenderjaar of een studiejaar" in definitie
+    assert "diplomajaar 2023" in definitie
+
+
 def test_soort_diploma_is_het_behaalde_ho_diploma():
     definitie = _definitie("p04hogdipl", "SOORT_DIPLOMA")
 

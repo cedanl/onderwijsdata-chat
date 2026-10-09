@@ -261,23 +261,21 @@ _CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS w
 
 
 def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pagina: bool) -> str:
-    """Waarom er niets te laden is: de bron gaf niets, de pagina is vol, of de mbo-selectie is leeg (CH-03)."""
+    """Waarom er niets te laden is: de bron gaf niets, de pagina is vol, of de sectorselectie is leeg (CH-03)."""
     if not opgehaald:
         return (
             f"Geen rijen gevonden in dataset '{dataset_id}' met filters {filters or {}}. "
             "Controleer de filtercodes via get_cbs_dimension — CBS gebruikt interne codes, geen leesbare labels."
         )
+    # Rijen opgehaald en geen over: alleen de sectorselectie van CBS_SECTORFILTER filtert zo.
+    sectorfilter = scopeprofiel.CBS_SECTORFILTER[dataset_id]
     if volle_pagina:
         return (
-            f"De eerste {len(opgehaald)} rijen van dataset '{dataset_id}' bevatten geen mbo-rijen. De selectie is "
-            "onvolledig: de bron kan er verder nog hebben. Verfijn $filter of verhoog $top."
+            f"De eerste {len(opgehaald)} rijen van dataset '{dataset_id}' bevatten geen rijen voor "
+            f"{sectorfilter.deel}. De selectie is onvolledig: de bron kan er verder nog hebben. "
+            "Verfijn $filter of verhoog $top."
         )
-    # Rijen opgehaald en geen over: alleen de mbo-selectie van een tabel over mbo én vo filtert zo.
-    dimensie, codes = scopeprofiel.CBS_SECTORFILTER[dataset_id]
-    return (
-        f"Dataset '{dataset_id}' gaat over mbo en vo; de chat laadt alleen de mbo-rijen, en deze "
-        f"selectie bevat er geen. Filter in $filter op {dimensie} met een mbo-code: {sorted(codes)}."
-    )
+    return sectorfilter.geen_rijen(dataset_id)
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
@@ -291,7 +289,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         if fout := _onbekende_select(params["$select"], col_defs):
             return fout
         params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
-    # Bij een tabel over mbo én vo ligt de scopegrens vóór de aanroep, en nog eens op de rijen (CH-03).
+    # Bij een tabel over meer onderwijssoorten ligt de scopegrens vóór de aanroep, en nog eens op de rijen (CH-03).
     selectie = scopeprofiel.cbs_sectorselectie(dataset_id, params)
     if isinstance(selectie, str):
         return selectie

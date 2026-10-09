@@ -17,6 +17,21 @@ _JAARBEREIK = re.compile(r"(?<![\d/'])(20\d{2})\s*(tot(?:\s+en\s+met)?|t/m|[-–
 _CBS_SCHOOLJAAR = re.compile(r"^(\d{4})SJ\d{2}$")
 _DUO_PERIODEKOLOMMEN = ("STUDIEJAAR", "JAAR")
 
+# Jaarkolommen die geen schooljaar zijn en waarvan de bron niet zegt welk soort jaar het is
+# (CH-41). Bewust geen omzetting: diplomajaar 2023 blijft diplomajaar 2023, tenzij een
+# officiële bron onderbouwt welk studiejaar dat is.
+GEEN_SCHOOLJAAR = {
+    "DIPLOMAJAAR": (
+        "DIPLOMAJAAR is het jaar van het diploma; DUO legt niet vast of dat een kalenderjaar of een "
+        "studiejaar is. Diplomajaar 2023 is dus niet aantoonbaar studiejaar 2023/24."
+    ),
+}
+
+
+def jaarnoten(kolommen) -> list[str]:
+    """Wat een antwoord moet zeggen over de jaarkolommen van deze data die geen schooljaar zijn."""
+    return [noot for kolom, noot in GEEN_SCHOOLJAAR.items() if kolom in kolommen]
+
 
 def gevraagde_schooljaren(tekst: str) -> set[int]:
     """Startjaren van de schooljaren die de tekst eenduidig noemt."""
