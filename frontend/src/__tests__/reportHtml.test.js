@@ -24,6 +24,14 @@ const fullSpec = {
 }
 
 describe('buildReportHtml', () => {
+  // CH-34: the export's own 48 px top margin put a title note over the plot.
+  it('keeps the top margin of a chart with a note under its title', () => {
+    const layout = { title: { text: 'HO', subtitle: { text: 'Afgerond op 10-tallen' } }, margin: { t: 100 } }
+    const spec = { ...fullSpec, visualisaties: [{ titel: 'HO', figure_json: JSON.stringify({ data: [], layout }) }] }
+    expect(buildReportHtml(spec)).toContain('margin:{t:100,')
+    expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
+  })
+
   it('returns valid HTML with doctype and title', () => {
     const html = buildReportHtml(fullSpec)
     expect(html).toContain('<!DOCTYPE html>')

@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pytest
 
-from tools import store
+from tools import cbs_afronding, store
 from tools.plot import create_plot
 
 _ROWS = [
@@ -322,3 +322,40 @@ def test_grafiek_buiten_prognoses_houdt_decimalen():
     _, fig = create_plot(data_key="duo:x:0", chart_type="line", x="JAAR", y="PCT")
     assert fig is not None
     assert [r["PCT"] for r in fig.layout.meta["data"]] == [12.5, 13.25]
+
+
+def _afgeronde_cbs_key() -> str:
+    key = "cbs:85423NED:0"
+    store.put(
+        key,
+        pd.DataFrame([{"Perioden": "2021", "N": 344630}, {"Perioden": "2025", "N": 335930}]),
+        store.KeyMeta(bron="cbs", dataset="85423NED", afronding=10),
+    )
+    return key
+
+
+def test_afrondingsnoot_krijgt_ruimte_boven_de_grafiek():
+    """CH-34: de noot onder de titel lag over het plotvlak en het bovenste waardelabel."""
+    _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
+    assert fig is not None
+    assert "10-tallen" in fig.layout.title.subtitle.text
+    assert fig.layout.margin.t >= 100
+    titel = fig.layout.title
+    assert (titel.yref, titel.yanchor) == ("container", "top")
+    assert titel.y < 1
+
+
+def test_afrondingsnoot_breekt_af_zodat_ze_in_de_grafiek_past():
+    _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
+    assert fig is not None
+    regels = fig.layout.title.subtitle.text.split("<br>")
+    assert len(regels) > 1
+    assert all(len(r) <= 60 for r in regels)
+    assert " ".join(regels) == cbs_afronding.van_key("cbs:85423NED:0")
+
+
+def test_zonder_noot_blijft_de_bovenmarge_gewoon():
+    _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    assert fig is not None
+    assert fig.layout.margin.t == 60
+    assert fig.layout.title.subtitle.text is None
