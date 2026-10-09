@@ -235,3 +235,9 @@ def test_leeg_antwoord_heeft_lege_bronnen(monkeypatch):
 
     assert einde["content"] == run_module.LEEG_ANTWOORD
     assert einde["bronnen"] == []
+
+
+def test_vast_antwoord_over_min_een_heeft_lege_bronnen(monkeypatch):
+    einde = _slot(monkeypatch, [], vraag="Wat betekent -1 in DUO-data?")
+
+    assert einde["bronnen"] == []

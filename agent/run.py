@@ -292,8 +292,8 @@ async def _vroeg_einde(
         return await _handle_clarify_scope(result.halted_on, result.text, nieuw, messages, session, emit)
     if result.exhausted:
         text_content = zonder_antwoord(result.steps)
-        # partial: the frontend offers 'Opnieuw met <ander model>' (#405).
-        await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
+        # partial: the frontend offers 'Opnieuw met <ander model>' (#405). No data answer, so no sources (#416).
+        await emit({"type": "message_end", "content": text_content, "actions": [], "bronnen": [], "partial": True})
         return text_content
     return None
 
@@ -364,7 +364,7 @@ async def run(
 
     if vast := sentinelvraag(last_user_msg):
         await emit({"type": "message_start"})
-        await emit({"type": "message_end", "content": vast, "actions": []})
+        await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": []})
         return vast
 
     history, was_trimmed = trim(list(messages))
