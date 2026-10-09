@@ -85,6 +85,43 @@ describe('dashboard chat after the session-data wipe', () => {
   })
 })
 
+// The guard above must not stop the normal saves: with a live token, after a token refresh
+// and with auth off (no token at all).
+describe('dashboard chat saves while the session lasts', () => {
+  // Under act, message_end does not mark the answer done; a clarification does.
+  async function streamAnswer({ tokenAfterMount } = {}) {
+    localStorage.removeItem(STORAGE_DC_MESSAGES)
+    localStorage.removeItem(STORAGE_DC_FIGURES)
+    const ws = await openChat()
+    if (tokenAfterMount) localStorage.setItem(STORAGE_TOKEN, tokenAfterMount)
+    await act(async () => { ws.emit({ type: 'figure', figure_json: { data: [], layout: {} } }) })
+    await act(async () => { ws.emit({ type: 'clarification', vraag: 'hallo', opties: [] }) })
+    await closeChat()
+  }
+
+  function expectSaved() {
+    const messages = JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES))
+    expect(messages.map(m => m.content)).toEqual(['hallo'])
+    expect(JSON.parse(localStorage.getItem(STORAGE_DC_FIGURES))).toHaveLength(1)
+  }
+
+  it('with a live token', async () => {
+    await streamAnswer()
+    expectSaved()
+  })
+
+  it('after a token refresh', async () => {
+    await streamAnswer({ tokenAfterMount: 'vernieuwd' })
+    expectSaved()
+  })
+
+  it('with auth off', async () => {
+    localStorage.removeItem(STORAGE_TOKEN)
+    await streamAnswer()
+    expectSaved()
+  })
+})
+
 // Without act, as in a browser: React commits a render and runs its passive effects (the two
 // saves) later. A logout click can land in between; the save that then runs must be skipped.
 describe('a save still pending when the session ends', () => {
