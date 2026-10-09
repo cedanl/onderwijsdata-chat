@@ -217,12 +217,14 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     def ongedekt(n: str) -> Probleem:
+        # In de notatie van het antwoord dat de gebruiker ziet (CH-11r).
+        getal = nl_notatie(n)
         if unverified(n, [], said_by_user):
-            (verzonnen,) = hard([Probleem(f"{n} staat niet in de opgehaalde data.")])
+            (verzonnen,) = hard([Probleem(f"{getal} staat niet in de opgehaalde data.")])
             return verzonnen
         # Zacht: een correcte weerlegging citeert het getal van de gebruiker ook (#207, #214).
         return Probleem(
-            f"{n} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
+            f"{getal} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
         )
 
