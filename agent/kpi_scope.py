@@ -16,34 +16,20 @@ import json
 from tools import store
 from tools.kpi import compute_kpi
 
-from .kpi_bron import bereik
-from .kpi_periode import noemt
+from .kpi_bron import Kpi, kpis, noemt
 from .probleem import Probleem
 from .selectie import data_keys, laadkey, selectie_in_woorden
 
 
-def _kpis(tool_results: list[str]) -> list[dict]:
-    kpis = []
-    for result in tool_results:
-        try:
-            data = json.loads(result)
-        except (TypeError, ValueError):
-            continue
-        if isinstance(data, dict) and "value" in data and isinstance(data.get("bron"), dict):
-            kpis.append(data)
-    return kpis
-
-
-def _zelfde_op_filter(kpi: dict, filters: list[str]) -> bool:
+def _zelfde_op_filter(kpi: Kpi, filters: list[str]) -> bool:
     """Geeft de KPI, over dezelfde kolom, maat en periode, op een van de filters hetzelfde getal?"""
-    bron = kpi["bron"]
-    jaren = bereik(kpi) if "periode" in kpi else None
-    van, tot = jaren or (None, None)
+    bron = kpi.bron or {}
+    van, tot = kpi.bereik or (None, None)
     for key in filters:
         opnieuw = json.loads(
             compute_kpi(key, bron.get("kolom", ""), bron.get("metric", ""), bron.get("sort_column"), van=van, tot=tot)
         )
-        if opnieuw.get("value") == kpi["value"]:
+        if opnieuw.get("value") == kpi.waarde:
             return True
     return False
 
@@ -54,19 +40,21 @@ def kpi_naast_filter(tekst: str, tool_results: list[str]) -> list[str]:
         if (known := store.meta(key)) and known.afgeleid_van:
             filters.setdefault(laadkey(key), []).append(key)
     problemen = []
-    for kpi in _kpis(tool_results):
-        key = kpi["bron"].get("data_key")
-        if not key or key not in filters or not noemt(tekst, kpi["value"]):
+    for kpi in kpis(tool_results):
+        if kpi.bron is None:
+            continue
+        key = kpi.bron.get("data_key")
+        if not key or key not in filters or not noemt(tekst, kpi):
             continue
         if _zelfde_op_filter(kpi, filters[key]):
             continue
-        n = kpi["bron"].get("aantal_waarden")
+        n = kpi.bron.get("aantal_waarden")
         # De gebruiker leest bron en periode in woorden, het model de keys (CH-30).
         selectie = selectie_in_woorden(key) or "de opgehaalde data"
         aantal = f", {n} waarden" if n is not None else ""
         problemen.append(
             Probleem(
-                f"{kpi['value']} rekent over de hele selectie ({selectie}{aantal}), "
+                f"{kpi.waarde} rekent over de hele selectie ({selectie}{aantal}), "
                 "niet over het filter dat het antwoord daarop maakte.",
                 f"Hele selectie: {key}; filter: {', '.join(sorted(set(filters[key])))}. "
                 "Reken de KPI over de gefilterde data_key, of zeg dat het getal over de hele selectie gaat.",
