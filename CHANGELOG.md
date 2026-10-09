@@ -143,6 +143,13 @@ de laatste tag is 1.8.6.
 - Is de data van een gesprek na een herstart van de server weg, dan zegt een mislukte CSV-download dat en biedt
   "Vraag opnieuw stellen" aan. Een rapport of dashboard op zo'n gesprek wordt niet meer op de overgebleven data
   gemaakt: de melding zegt dat de vraag opnieuw moet (was: "Rapport kon niet worden gemaakt").
+- Data overleeft een herstart: bij het opslaan van een gesprek bewaart de server per tabel hoe die ontstond
+  (de laadaanroep naar CBS, DUO of RIO en de selecties daarop, nooit een script). Een CSV-download onder een
+  eerder antwoord haalt ontbrekende data dan opnieuw op bij de bron, met de header `X-Data-Herladen`: "opnieuw
+  opgehaald op <datum>; de bron kan intussen zijn gewijzigd". Rapport en dashboard proberen hetzelfde voordat ze
+  melden dat data weg is, en zeggen het met een melding als ze herladen. Een eigen berekening (`run_analysis`)
+  komt nog niet terug; de foutmelding noemt dan die stap en de key. Een heropend gesprek moet voor een rapport
+  nog steeds opnieuw gevraagd worden. Nieuwe tabel `data_recipes`, aangemaakt bij de start.
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
 - Code-snippets geven dezelfde uitkomst als de app: filters met dezelfde semantiek, DUO-cellen met -1
   uitgesloten, en ook een KPI-snippet laadt zijn eigen data.

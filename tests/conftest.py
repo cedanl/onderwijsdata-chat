@@ -2,14 +2,17 @@ from unittest.mock import patch
 
 import pytest
 
+from agent import recepten
 from tools import cbs, store
 
 
 @pytest.fixture(autouse=True)
 def clear_store():
     store.clear()
+    recepten.wis()
     yield
     store.clear()
+    recepten.wis()
 
 
 @pytest.fixture(autouse=True)

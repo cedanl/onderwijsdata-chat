@@ -1,8 +1,11 @@
+import asyncio
 import json
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
+from agent import recepten
 from agent.dashboard import (
     DashboardSpec,
     _build_recipe,
@@ -10,7 +13,9 @@ from agent.dashboard import (
     _extract_json_object,
     _validate_kpis,
     build_dataset_context,
+    herstel_data,
 )
+from agent.session_data import DATA_WEG
 from tools import store
 
 
@@ -90,6 +95,75 @@ class TestBuildDatasetContext:
 
 def _datasets(*keys, herkomst=None):
     return [{"data_key": k, **({"herkomst": herkomst[k]} if herkomst and k in herkomst else {})} for k in keys]
+
+
+class TestHerstelData:
+    """Vóór rapport en dashboard: wat een herstart uit de store wiste, komt terug uit zijn recept (#472)."""
+
+    @pytest.fixture(autouse=True)
+    def _db(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+        from persistence import db
+
+        db.init_db()
+        return db
+
+    @staticmethod
+    def _herstel(session: dict) -> list[dict]:
+        events: list[dict] = []
+
+        async def emit(ev):
+            events.append(ev)
+
+        asyncio.run(herstel_data(session, emit))
+        return events
+
+    def test_zonder_recept_de_melding_van_voor_de_recepten(self):
+        session = {"username": "alice", "data_keys": ["duo:weg:0"], "chat_settings": {}}
+
+        with pytest.raises(ValueError) as fout:
+            self._herstel(session)
+        assert str(fout.value) == DATA_WEG
+
+    def test_haalt_terug_uit_de_database_en_meldt_het(self, _db):
+        _db.save_recipes("alice", "c1", {"rio:erkenningen": {"laad": ["get_rio_data", {"resource": "erkenningen"}]}})
+        session = {"username": "alice", "data_keys": ["rio:erkenningen"], "chat_settings": {}}
+
+        with (
+            patch("tools.rio.scope_blokkade", return_value=None),
+            patch("tools.rio.scopeprofiel.sectorfilter_ontbreekt", return_value=None),
+            patch("tools.rio.fetch", return_value=[{"code": "30TX"}]),
+        ):
+            events = self._herstel(session)
+
+        [toast] = events
+        assert toast["type"] == "toast"
+        assert "opnieuw opgehaald op" in toast["message"]
+        assert "de bron kan intussen zijn gewijzigd" in toast["message"]
+        assert [d["data_key"] for d in build_dataset_context(session)["datasets"]] == ["rio:erkenningen"]
+
+    def test_alles_nog_in_het_geheugen_geeft_geen_melding(self):
+        store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
+        assert self._herstel({"username": "alice", "data_keys": ["cbs:85423NED"]}) == []
+
+    def test_een_eigen_berekening_noemt_de_stap_en_de_key(self):
+        recept = {"afgeleid_van": "duo:x:0", "stap": "eigen berekening (run_analysis)", "herlaadbaar": False}
+        recepten.onthoud("alice", "analysis:abc", recept)
+        session = {"username": "alice", "data_keys": ["analysis:abc"], "chat_settings": {}}
+
+        with pytest.raises(ValueError) as fout:
+            self._herstel(session)
+        assert "eigen berekening (run_analysis)" in str(fout.value)
+        assert "analysis:abc" in str(fout.value)
+        assert "Stel je vraag opnieuw" in str(fout.value)
+
+    def test_het_recept_van_een_ander_telt_niet(self, _db):
+        _db.save_recipes("bob", "c1", {"rio:erkenningen": {"laad": ["get_rio_data", {"resource": "erkenningen"}]}})
+        session = {"username": "alice", "data_keys": ["rio:erkenningen"], "chat_settings": {}}
+
+        with pytest.raises(ValueError, match="niet meer beschikbaar"):
+            self._herstel(session)
+        assert store.get("rio:erkenningen") is None
 
 
 class TestBuildRecipe:
