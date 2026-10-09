@@ -350,7 +350,7 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
     text_content = weigering(
         antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord))), result.tool_results)
+    ) or met_telling(nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord)), result.steps), result.tool_results)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])

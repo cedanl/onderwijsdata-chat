@@ -191,6 +191,46 @@ def meetwaarden(result: str, tool: str | None = None) -> list[Meetwaarde]:
     return [w for w in _uit(parsed, tool == TOOL_RUN_ANALYSIS) if w.cijfers not in eigen]
 
 
+def _codecijfers(waarde) -> str | None:
+    """Een code zoals een tekst haar schrijft: 50800, ook als JSON-tekst of als 50800.0 van pandas."""
+    if isinstance(waarde, str):
+        return waarde if waarde.isascii() and waarde.isdigit() else None
+    if isinstance(waarde, float) and waarde.is_integer():
+        waarde = int(waarde)
+    return str(abs(waarde)) if isinstance(waarde, int) and not isinstance(waarde, bool) else None
+
+
+def _identificatiecellen(parsed: dict) -> Iterator[tuple[str, object]]:
+    """(kolom, waarde) uit de rijen en uit het kolomschema (waardenlijst en voorbeelden) van een laadstap."""
+    for naam in _RIJEN:
+        rijen = parsed.get(naam)
+        for rij in rijen if isinstance(rijen, list) else ():
+            yield from rij.items() if isinstance(rij, dict) else ()
+    kolommen = parsed.get("kolommen")
+    for k in kolommen if isinstance(kolommen, list) else ():
+        if isinstance(k, dict) and isinstance(kolom := k.get("kolom"), str):
+            for soort in ("waarden", "voorbeelden"):
+                waarden = k.get(soort)
+                yield from ((kolom, w) for w in (waarden if isinstance(waarden, list) else ()))
+
+
+def identificaties(result: str) -> set[str]:
+    """De cijfers in een identificatiekolom van één toolresultaat: OPLEIDINGSCODE 50800 is een code.
+
+    CBS' kolom ID telt niet mee: dat is een rijnummer, geen code die een tekst noemt."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return set()
+    if not isinstance(parsed, dict):
+        return set()
+    return {
+        cijfers
+        for kolom, waarde in _identificatiecellen(parsed)
+        if kolom.upper() != "ID" and _IDENTIFICATIE.search(kolom) and (cijfers := _codecijfers(waarde))
+    }
+
+
 def eenheden(result: str) -> dict[str, str]:
     """Kolom → eenheid uit het schema van een laadstap (CBS geeft die per meetkolom)."""
     try:

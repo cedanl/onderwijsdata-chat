@@ -3,11 +3,13 @@
 import asyncio
 import importlib
 import json
+import time
 
 import pytest
 
 from agent.getalnotatie import nl_notatie
 from agent.grounding import getallen_met_positie, unverified
+from agent.meetwaarden import identificaties
 from agent.stream import StreamResult
 
 run_module = importlib.import_module("agent.run")
@@ -51,10 +53,23 @@ def test_duizendtallen_krijgen_een_punt_in_de_tekst(tekst, verwacht):
         # Engelse decimale punt: dubbelzinnig, dus ongemoeid.
         "Een gemiddelde van 1234.5 punten.",
         "Key duo:p01hoinges:1234 en cbs:85423NED:0.",
+        # Een postcode, ook zonder het woord ervoor.
+        "Heidelberglaan 8, 3584 CS Utrecht en 3584CS.",
+        # Een getal met een los groepje erachter: met een punt las de controle er één getal in (3303456).
+        "Er waren 3303 456 gevallen, en 1234 567,5.",
+        # Een percentage: met een punt herkent de controle het niet meer als percentage.
+        "Een stijging van 12345% of 1234,5 procent.",
+        # Boven de 15 cijfers: geen aantal meer, en de omzetting via float veranderde cijfers.
+        "Een id van 12345678901234567 en 12345678901234567890.",
+        "1" * 400,
     ],
 )
 def test_jaren_codes_en_al_genoteerde_getallen_blijven_staan(tekst):
     assert nl_notatie(tekst) == tekst
+
+
+def test_vijftien_cijfers_krijgen_nog_exact_de_notatie():
+    assert nl_notatie("Samen 123456789012345 euro.") == "Samen 123.456.789.012.345 euro."
 
 
 def test_codeblok_inline_code_en_links_blijven_staan():
@@ -65,6 +80,20 @@ def test_codeblok_inline_code_en_links_blijven_staan():
     )
     verwacht = tekst.replace("Daarna 12345", "Daarna 12.345")
     assert nl_notatie(tekst) == verwacht
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Zie www.duo.nl/data?n=12345 voor meer.",
+        "[1]: /pad?n=12345",
+        '   [bron]: https://x.nl/a "Tabel 12345"',
+        "Zie ``df[df.AANTAL > 12345]`` hier.",
+        "Zie ``a ` 12345`` hier.",
+    ],
+)
+def test_links_zonder_schema_referenties_en_dubbele_backticks_blijven_staan(tekst):
+    assert nl_notatie(tekst) == tekst
 
 
 def test_tabelcellen_krijgen_de_notatie_behalve_codekolommen():
@@ -100,6 +129,78 @@ def test_codekolom_geldt_alleen_binnen_haar_tabel():
     )
 
 
+_OPLEIDINGEN = [
+    (
+        "query_data",
+        json.dumps(
+            {
+                "data_key": "duo:x:0",
+                "rijen": [
+                    {"OPLEIDINGSCODE": 50800, "OPLEIDINGSNAAM": "B Rechten", "AANTAL": 3303},
+                    {"OPLEIDINGSCODE": "56551", "OPLEIDINGSNAAM": "B Geneeskunde", "AANTAL": 4210},
+                ],
+            }
+        ),
+    )
+]
+
+
+@pytest.mark.parametrize(
+    ("tekst", "verwacht"),
+    [
+        ("Opleiding 50800 Rechten had 3303 studenten.", "Opleiding 50800 Rechten had 3.303 studenten."),
+        ("Rechten (50800) had 3303 studenten.", "Rechten (50800) had 3.303 studenten."),
+        (
+            "| Opleiding | Aantal |\n|---|---|\n| B Rechten (50800) | 3303 |\n| B Geneeskunde (56551) | 4210 |",
+            "| Opleiding | Aantal |\n|---|---|\n| B Rechten (50800) | 3.303 |\n| B Geneeskunde (56551) | 4.210 |",
+        ),
+    ],
+)
+def test_een_code_uit_de_data_blijft_een_code(tekst, verwacht):
+    """Een opleidingscode zonder codewoord ervoor las als een aantal: 'Rechten (50.800)' (#445)."""
+    assert nl_notatie(tekst, _OPLEIDINGEN) == verwacht
+
+
+def test_een_getal_dat_de_data_ook_als_meetwaarde_geeft_krijgt_de_notatie():
+    stappen = [("query_data", json.dumps({"rijen": [{"CROHO_CODE": 4210, "AANTAL": 3303}, {"AANTAL": 4210}]}))]
+    assert nl_notatie("Opleiding 4210 had 4210 studenten, 3303 in totaal.", stappen) == (
+        "Opleiding 4.210 had 4.210 studenten, 3.303 in totaal."
+    )
+
+
+def test_identificaties_uit_rijen_en_kolomschema():
+    resultaat = json.dumps(
+        {
+            "rijen": [{"ID": 3303, "BRIN_NUMMER": "30RD", "OPLEIDINGSCODE": 50800.0, "AANTAL": 9999}],
+            "preview": [{"crebo_code": "25180", "JAAR": 2023}],
+            "kolommen": [{"kolom": "OPLEIDINGSCODE", "waarden": ["34479", "B Rechten"]}],
+        }
+    )
+    # ID is CBS' rijnummer, geen code die een tekst noemt; 30RD heeft letters.
+    assert identificaties(resultaat) == {"50800", "25180", "34479"}
+    assert identificaties("geen json") == set()
+
+
+# Modeluitvoer die de oude patronen kwadratisch liet zoeken (12 s bij 50.000 tekens, #445).
+_VIJANDIG = {
+    "tabelscheiding": "| a |\n|" + "-" * 50_000 + "x",
+    "linkdoel": "](" * 25_000,
+    "dubbele backticks": "``" + " `" * 25_000,
+    "html": "<" * 50_000,
+    "duizendtallen met spaties": "1" + " 234" * 12_500 + "x",
+    "getallen met een los groepje": "1234 567 " * 5_500,
+    "codewoorden": "code 1, " * 6_000 + "12345",
+}
+
+
+@pytest.mark.parametrize("tekst", list(_VIJANDIG.values()), ids=list(_VIJANDIG))
+def test_vijandige_invoer_blijft_snel(tekst):
+    """nl_notatie draait synchroon in run(): traag zoeken bevriest elke sessie op de worker."""
+    start = time.perf_counter()
+    nl_notatie(tekst)
+    assert time.perf_counter() - start < 0.5
+
+
 _DATA = json.dumps({"rijen": [{"Perioden": "2024SJ00", "N": 378490}, {"Perioden": "2025SJ00", "N": 3303}]})
 
 
@@ -110,6 +211,8 @@ _DATA = json.dumps({"rijen": [{"Perioden": "2024SJ00", "N": 378490}, {"Perioden"
         "Het aantal daalde van 336800 naar 331200.",
         "| Jaar | Aantal |\n|---|---|\n| 2024 | 378490 |\n| 2025 | 9999 |",
         "Gemiddeld 1234,5 per jaar, 12,5% minder, code 85423NED.",
+        "Er waren 3303 456 gevallen.",
+        "Een stijging van 12345%.",
     ],
 )
 def test_grondingscontrole_en_citaties_lezen_dezelfde_getallen(tekst):
