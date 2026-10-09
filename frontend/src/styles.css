@@ -757,7 +757,15 @@ input, textarea { font: inherit; }
    DOM-volgorde (tab-volgorde) is ws-status → verzenden → modelpicker. */
 .chat-input-footer .ws-reconnecting { order: 1; }
 .chat-input-footer .model-picker { order: 2; }
-.chat-input-footer .send-btn { order: 3; }
+.chat-input-footer .message-counter { order: 3; margin-left: auto; }
+.chat-input-footer .send-btn { order: 4; }
+/* Tekenteller vanaf 80% van MAX_MESSAGE_CHARS (#481); op de grens een waarschuwing. */
+.message-counter { font-size: .75rem; color: var(--muted-text); font-variant-numeric: tabular-nums; }
+.message-counter--limit { color: #B91C1C; font-weight: 600; }
+html.dark .message-counter--limit { color: #FCA5A5; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .message-counter--limit { color: #FCA5A5; }
+}
 .send-btn {
   width: 38px; height: 38px; border-radius: var(--radius);
   background: linear-gradient(135deg, var(--blue-600), var(--teal-500));
