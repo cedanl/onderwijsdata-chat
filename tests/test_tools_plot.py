@@ -354,6 +354,19 @@ def test_afrondingsnoot_breekt_af_zodat_ze_in_de_grafiek_past():
     assert " ".join(regels) == cbs_afronding.van_key("cbs:85423NED:0")
 
 
+def test_titel_en_afgebroken_noot_passen_in_de_bovenmarge():
+    """Het plotvlak begint onder de laatste regel van de noot, ook als de noot langer afbreekt.
+
+    Plotly zet een regel op ongeveer 1,3 keer de lettergrootte; de titel staat (1 - y) van de
+    figuurhoogte onder de bovenrand. 450 px is Plotly's standaardhoogte, hoger dan chat en export."""
+    _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
+    assert fig is not None
+    titel = fig.layout.title
+    regels = titel.subtitle.text.split("<br>")
+    hoogte = (1 - titel.y) * 450 + 1.3 * titel.font.size + 1.3 * titel.subtitle.font.size * len(regels)
+    assert hoogte < fig.layout.margin.t
+
+
 def test_zonder_noot_blijft_de_bovenmarge_gewoon():
     _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
     assert fig is not None

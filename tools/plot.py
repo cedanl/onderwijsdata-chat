@@ -38,7 +38,7 @@ _LAYOUT_BASE = {
     "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1},
 }
 
-# Titel plus een noot van twee regels eronder, boven het plotvlak en de waardelabels (CH-34).
+# Titel plus de afgebroken noot eronder (drie regels), boven het plotvlak en de waardelabels (CH-34).
 _MARGE_MET_NOOT = 100
 _NOOT_BREEDTE = 55  # tekens: past ook in een smalle grafiek op mobiel
 
