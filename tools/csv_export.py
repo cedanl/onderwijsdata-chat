@@ -4,7 +4,8 @@ De export is de tabel die query_data of run_analysis in de store legde, niet de
 tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
-zoals bij de grafiekexport (#118).
+zoals bij de grafiekexport (#118). Data die na een herstart opnieuw bij de bron
+is opgehaald zegt dat bovenaan: de cijfers kunnen afwijken van het antwoord (#472).
 """
 
 import csv
@@ -13,7 +14,7 @@ import json
 
 import pandas as pd
 
-from . import duo, store
+from . import duo, herlaad, store
 from .schemas import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
 _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS}
@@ -46,7 +47,8 @@ def _cel(v, afronden: bool) -> str:
 
 
 def _noten(key: str, afronden: bool) -> list[str]:
-    noten = list(store.herkomst(key))
+    noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(key)) else []
+    noten += store.herkomst(key)
     known = store.meta(key)
     if known is not None and not known.volledig:
         noten.append(store.ONVOLLEDIG)

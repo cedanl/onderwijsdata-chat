@@ -98,7 +98,7 @@ def _datasets(*keys, herkomst=None):
 
 
 class TestHerstelData:
-    """Vóór rapport en dashboard: wat een herstart uit de store wiste, komt terug uit zijn recept (#472)."""
+    """Vóór een rapport: wat een herstart uit de store wiste, komt terug uit zijn recept (#472)."""
 
     @pytest.fixture(autouse=True)
     def _db(self, tmp_path, monkeypatch):

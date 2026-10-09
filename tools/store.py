@@ -56,6 +56,9 @@ class KeyMeta:
     # Getallen in deze data die een eigen berekening zelf maakte, niet uit de bron: ze blijven
     # afgekeurd in elke volgende stap op deze key of zijn afleidingen (CH-27, #456).
     scriptconstanten: tuple[int | float, ...] = field(default=(), compare=False)
+    # De dag (dd-mm-jjjj) waarop deze data na een herstart opnieuw bij de bron is opgehaald (#472): haar cijfers
+    # kunnen afwijken van het eerdere antwoord. Een afleiding erft het, zoals de rest. Herkomst, geen identiteit.
+    herladen_op: str | None = field(default=None, compare=False)
 
 
 def put(key: str, value, meta: KeyMeta | None = None) -> None:
@@ -87,6 +90,12 @@ def derive(parent: str, key: str, value, **changes) -> None:
         if parent_meta
         else None,
     )
+
+
+def markeer_herladen(key: str, op: str) -> None:
+    """Leg vast dat `key` opnieuw bij de bron is opgehaald; de data zelf blijft zoals ze is (#472)."""
+    if (known := _meta.get(key)) is not None:
+        _meta[key] = replace(known, herladen_op=op)
 
 
 def get(key: str):

@@ -99,8 +99,9 @@ class Herstel:
         """De melding bij herladen data, of None als alles nog in het geheugen stond."""
         if not self.herladen:
             return None
-        updates = [r for r in self.herladen if r.laatste_update]
-        return f"De data van dit gesprek is {herlaad.notitie(updates[0] if updates else self.herladen[0])}."
+        teksten = [tekst for r in self.herladen if (tekst := herlaad.notitie(r.key))]
+        # De langste noemt ook wanneer een CBS-tabel laatst wijzigde; de dag is voor alle dezelfde.
+        return f"De data van dit gesprek is {max(teksten, key=len)}." if teksten else None
 
 
 def herstel_data_keys(session: dict, username: str | None) -> Herstel:
@@ -112,6 +113,8 @@ def herstel_data_keys(session: dict, username: str | None) -> Herstel:
     herladen: list[herlaad.Herlaadresultaat] = []
     onherstelbaar: dict[str, str] = {}
     for key in ontbrekende_data_keys(session):
+        if store.get(key) is not None:
+            continue  # al terug als ouder van een eerdere key
         uitkomst = recepten.terughalen(username, key)
         if uitkomst is None:
             onherstelbaar[key] = ""

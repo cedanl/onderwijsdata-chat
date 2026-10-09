@@ -31,8 +31,8 @@ async def data_csv(key: str, username: str = Depends(get_current_user)) -> Respo
     known = store.meta(key)
     naam = re.sub(r"[^A-Za-z0-9_-]", "_", known.dataset if known else "data")
     headers = {"Content-Disposition": f'attachment; filename="{naam}.csv"'}
-    if herladen is not None and herladen.herladen:
-        # De cijfers kunnen afwijken van het eerdere antwoord: de bron kan zijn gewijzigd.
-        headers["X-Data-Herladen"] = herlaad.notitie(herladen)
+    if notitie := herlaad.notitie(key):
+        # De cijfers kunnen afwijken van het eerdere antwoord: de bron kan zijn gewijzigd. Ook in de CSV zelf.
+        headers["X-Data-Herladen"] = notitie
     # Met BOM, anders leest Excel é als Ã©.
     return Response("﻿" + csv, media_type="text/csv; charset=utf-8", headers=headers)

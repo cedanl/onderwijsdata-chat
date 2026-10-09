@@ -12,7 +12,7 @@ stap wordt geen script bewaard.
 import json
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 
 from . import store
@@ -45,8 +45,7 @@ class Herlaadresultaat:
     gelukt: bool
     melding: str = ""  # waarom niet: de stap of de bron, met de key
     bronfout: bool = False  # de bron faalde, niet het recept
-    herladen: bool = False  # opnieuw opgehaald bij de bron, niet uit het geheugen
-    laatste_update: str | None = None  # CBS: wanneer de tabel volgens de catalogus laatst wijzigde
+    herladen: bool = False  # de data komt van een nieuwe ophaalslag bij de bron, niet van het eerste antwoord
 
 
 def recept(key: str, call: dict) -> dict | None:
@@ -72,17 +71,23 @@ def herlaad(key: str, recept: dict, recept_van: Receptbron = lambda _key: None) 
     return _herlaad(key, recept, recept_van, 0)
 
 
-def notitie(resultaat: Herlaadresultaat) -> str:
-    """Wat bij herladen data hoort: de cijfers kunnen afwijken van het eerdere antwoord."""
-    tekst = f"opnieuw opgehaald op {date.today():%d-%m-%Y}; de bron kan intussen zijn gewijzigd"
-    if resultaat.laatste_update:
-        tekst += f" (CBS-tabel laatst bijgewerkt op {resultaat.laatste_update})"
+def notitie(key: str) -> str | None:
+    """Wat bij herladen data hoort: de cijfers kunnen afwijken van het eerdere antwoord. None als ze dat niet is.
+
+    Uit de KeyMeta, dus ook bij een latere download en bij een selectie op herladen data.
+    """
+    known = store.meta(key)
+    if known is None or not known.herladen_op:
+        return None
+    tekst = f"opnieuw opgehaald op {known.herladen_op}; de bron kan intussen zijn gewijzigd"
+    if known.bron == "cbs" and (update := catalogus_laatste_update(known.dataset)):
+        tekst += f" (CBS-tabel laatst bijgewerkt op {update})"
     return tekst
 
 
 def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> Herlaadresultaat:
     if store.get(key) is not None:
-        return Herlaadresultaat(key, gelukt=True)
+        return _terug(key)
     if stappen > _MAX_STAPPEN or not isinstance(recept, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
     if "laad" in recept:
@@ -112,16 +117,14 @@ def _laad(key: str, laad: object) -> Herlaadresultaat:
         return Herlaadresultaat(
             key, gelukt=False, bronfout=True, melding=f"{bron} gaf de data voor key {key} niet opnieuw: {reden}"
         )
-    known = store.meta(key)
-    update = catalogus_laatste_update(known.dataset) if known and known.bron == "cbs" else None
-    return Herlaadresultaat(key, gelukt=True, herladen=True, laatste_update=update)
+    store.markeer_herladen(key, f"{date.today():%d-%m-%Y}")
+    return _terug(key)
 
 
 def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> Herlaadresultaat:
     ouder, args = recept.get("afgeleid_van"), recept.get("args")
     if not isinstance(ouder, str) or not isinstance(args, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
-    eerst = Herlaadresultaat(ouder, gelukt=True)
     if store.get(ouder) is None:
         ouder_recept = recept_van(ouder)
         if ouder_recept is None:
@@ -130,17 +133,23 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
             )
         eerst = _herlaad(ouder, ouder_recept, recept_van, stappen + 1)
         if not eerst.gelukt:
-            return replace(eerst, key=key)
+            return Herlaadresultaat(key, gelukt=False, melding=eerst.melding, bronfout=eerst.bronfout)
     try:
         uitkomst = query_data(**{**args, "data_key": ouder})
-    except TypeError as e:
+    except Exception as e:  # argumenten die query_data op de herladen bron niet (meer) aanneemt
         logger.warning("herladen %s via query_data mislukt: %r", key, e)
         uitkomst = ""
     if store.get(key) is None:
         stap = recept.get("stap") or "selectie"
         reden = _reden(uitkomst) or "geen data"
         return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
-    return replace(eerst, key=key)
+    # De selectie erft de markering van haar ouder, ook als die door een eerder verzoek werd herladen.
+    return _terug(key)
+
+
+def _terug(key: str) -> Herlaadresultaat:
+    known = store.meta(key)
+    return Herlaadresultaat(key, gelukt=True, herladen=bool(known and known.herladen_op))
 
 
 def _reden(uitkomst: str) -> str:

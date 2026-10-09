@@ -129,8 +129,9 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
 async def herstel_data(session: dict, emit: Emit) -> None:
     """Haal terug wat een herstart uit de store wiste, vóór build_dataset_context (#472).
 
-    Herladen gaat naar de bron: in een thread, niet op de event loop. Herladen data krijgt
-    een melding, want de bron kan intussen zijn gewijzigd.
+    Alleen een heropend gesprek kan keys hebben die de store kwijt is: de keys komen uit de
+    recepten die bij het gesprek zijn bewaard. Herladen gaat naar de bron: in een thread, niet
+    op de event loop. Herladen data krijgt een melding, want de bron kan intussen zijn gewijzigd.
     """
     herstel = await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
     if herstel.onherstelbaar:
@@ -213,7 +214,6 @@ async def generate(
     stop_event: asyncio.Event | None = None,
 ) -> DashboardSpec:
     """Generate a dashboard from the loaded session data."""
-    await herstel_data(session, emit)
     context = build_dataset_context(session)
 
     if not context["datasets"]:

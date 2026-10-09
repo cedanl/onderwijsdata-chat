@@ -4,7 +4,7 @@ De store leeft in het geheugen. store.clear() plus recepten.wis() is hier de her
 is alles wat het proces wist, over blijft wat de database bewaarde.
 """
 
-import importlib
+import asyncio
 import json
 import os
 import sqlite3
@@ -17,7 +17,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import recepten
-from agent.session_data import record_data_key
+from agent.session_data import herstel_data_keys, record_data_key
+from routes import chat
 from tools import herlaad, store
 from tools.analysis import run_analysis
 from tools.cbs import get_cbs_data
@@ -95,27 +96,41 @@ def _herstart() -> None:
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def database(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "alice:pw,bob:pw")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
+    from persistence import db
+
+    db.init_db()
+    return db
+
+
+@pytest.fixture
+def client(database, monkeypatch):
+    """De app met inloggen aan, zonder modules te herladen: niets blijft achter voor de volgende test."""
     from core import auth
 
-    importlib.reload(auth)
+    monkeypatch.setattr(auth, "AUTH_ENABLED", True)
     import server
 
-    importlib.reload(server)
     return TestClient(server.app)
 
 
-def _als(client, username: str) -> dict:
+def _als(username: str) -> dict:
     from core import auth
 
     return {"Authorization": f"Bearer {auth.make_token(username)}"}
 
 
 def _csv(client, key: str, username: str = "alice"):
-    return client.get("/api/data/csv", params={"key": key}, headers=_als(client, username))
+    return client.get("/api/data/csv", params={"key": key}, headers=_als(username))
+
+
+_NOTITIE = "# let op: opnieuw opgehaald op "
+
+
+def _zonder_notitie(csv: str) -> str:
+    """De CSV zonder BOM en zonder de regel die zegt dat de data opnieuw is opgehaald."""
+    return "".join(r for r in csv.lstrip("\ufeff").splitlines(keepends=True) if not r.startswith(_NOTITIE))
 
 
 # ── Root-keys per bron ──────────────────────────────────────────────────────
@@ -132,17 +147,15 @@ def test_root_key_geeft_na_een_herstart_dezelfde_csv(client, bron):
         daarna = _csv(client, key)
 
     assert eerst.status_code == 200 and daarna.status_code == 200
-    assert daarna.text == eerst.text
-    assert "X-Data-Herladen" not in eerst.headers
+    assert _zonder_notitie(daarna.text) == _zonder_notitie(eerst.text)
+    assert "X-Data-Herladen" not in eerst.headers and _NOTITIE not in eerst.text
     assert "de bron kan intussen zijn gewijzigd" in daarna.headers["X-Data-Herladen"]
+    # De CSV zelf zegt het ook, bovenaan: wie het bestand opent, ziet het.
+    assert daarna.text.lstrip("\ufeff").startswith(_NOTITIE)
 
 
 @pytest.mark.parametrize("bron", ["cbs", "duo", "rio"])
-def test_herladen_meta_is_gelijk_aan_het_origineel(tmp_path, monkeypatch, bron):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    from persistence import db
-
-    db.init_db()
+def test_herladen_meta_is_gelijk_aan_het_origineel(database, bron):
     with _bronnen():
         key = _stap({"username": "alice"}, *_ROOTS[bron])
         origineel = store.meta(key)
@@ -193,9 +206,41 @@ def test_een_selectie_met_query_data_komt_terug_na_haar_bron(client):
 
     assert selectie != bron
     assert daarna.status_code == 200
-    assert daarna.text == eerst.text
+    assert _zonder_notitie(daarna.text) == _zonder_notitie(eerst.text)
     assert store.get(bron) is not None, "de bron komt eerst terug"
     assert "X-Data-Herladen" in daarna.headers
+
+
+def test_elke_selectie_op_een_herladen_bron_draagt_de_melding(client):
+    """Twee tabellen op één DUO-load: ook de tweede download zegt dat de bron opnieuw is opgehaald."""
+    session = {"username": "alice"}
+    with _bronnen():
+        bron = _stap(session, *_ROOTS["duo"])
+        a = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        b = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2024}})
+        _opslaan("alice", "c1", a, b)
+        _herstart()
+        eerst_a, dan_b, nog_eens_a = _csv(client, a), _csv(client, b), _csv(client, a)
+
+    for resp in (eerst_a, dan_b, nog_eens_a):
+        assert resp.status_code == 200
+        assert "de bron kan intussen zijn gewijzigd" in resp.headers["X-Data-Herladen"]
+        assert resp.text.lstrip("\ufeff").startswith(_NOTITIE)
+
+
+def test_een_nieuwe_laadstap_haalt_de_markering_weg(client):
+    """Laadt een vraag de data daarna zelf opnieuw, dan is het weer data van een antwoord."""
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        _herstart()
+        assert "X-Data-Herladen" in _csv(client, key).headers
+        store.clear()
+        _stap({"username": "alice"}, *_ROOTS["rio"])
+        resp = _csv(client, key)
+
+    assert resp.status_code == 200
+    assert "X-Data-Herladen" not in resp.headers and _NOTITIE not in resp.text
 
 
 def test_een_eigen_berekening_noemt_de_stap_en_de_key(client):
@@ -300,6 +345,16 @@ def test_een_dataset_buiten_de_scope_wordt_niet_herladen(client):
     tellen.assert_not_called()
 
 
+def test_een_selectie_die_query_data_niet_meer_aanneemt_is_een_melding_geen_500():
+    store.put("rio:t", pd.DataFrame({"a": [1]}), store.KeyMeta(bron="rio", dataset="t"))
+    recept = {"afgeleid_van": "rio:t", "tool": TOOL_QUERY_DATA, "args": {"filters": "onzin"}, "stap": "s"}
+
+    uitkomst = herlaad.herlaad("rio:t:zz", recept)
+
+    assert not uitkomst.gelukt
+    assert "Stap 's' gaf key rio:t:zz niet opnieuw" in uitkomst.melding
+
+
 def test_alleen_tools_uit_de_lijst_worden_aangeroepen():
     uitkomst = herlaad.herlaad("x:1", {"laad": ["run_analysis", {"code": "import os"}]})
     assert not uitkomst.gelukt
@@ -315,3 +370,72 @@ def test_een_key_die_er_nog_is_wordt_niet_opnieuw_opgehaald():
 def test_tools_die_geen_data_maken_leveren_geen_recept():
     store.put("rio:erkenningen", pd.DataFrame({"a": [1]}), store.KeyMeta(bron="rio", dataset="erkenningen"))
     assert herlaad.recept("rio:erkenningen", {"name": "compute_kpi", "arguments": {}}) is None
+
+
+# ── Een heropend gesprek ────────────────────────────────────────────────────
+
+
+def _heropen(username: str, conv_id: str | None) -> tuple[dict, list[dict]]:
+    """Wat de frontend doet bij het openen van een opgeslagen gesprek: history met het gesprek-id."""
+    session = chat._new_session(username)
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    msg = {"action": "history", "messages": [{"role": "user", "content": "Hoeveel?"}], "conv_id": conv_id}
+
+    async def openen():
+        await chat.ACTIES["history"](msg, session, emit, None)
+
+    asyncio.run(openen())
+    return session, events
+
+
+def test_een_heropend_gesprek_kent_zijn_data_weer_en_herlaadt_haar_voor_een_rapport(database):
+    with _bronnen():
+        session = {"username": "alice"}
+        bron = _stap(session, *_ROOTS["duo"])
+        selectie = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        _opslaan("alice", "c1", selectie)
+        _herstart()
+
+        heropend, events = _heropen("alice", "c1")
+        assert heropend["data_keys"] == [bron, selectie], "ouders eerst"
+        assert events == [{"type": "history_data", "data_keys": 2}]
+        assert store.get(selectie) is None, "lui: nog niets opgehaald"
+
+        herstel = herstel_data_keys(heropend, "alice")
+
+    assert not herstel.onherstelbaar
+    assert store.get(selectie) is not None and store.get(bron) is not None
+    assert herstel.notitie is not None and "de bron kan intussen zijn gewijzigd" in herstel.notitie
+
+
+def test_een_heropend_gesprek_neemt_geen_data_van_een_ander(database):
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+
+    heropend, events = _heropen("bob", "c1")
+
+    assert heropend["data_keys"] == []
+    assert events == [{"type": "history_data", "data_keys": 0}]
+
+
+def test_history_zonder_gesprek_id_blijft_zoals_het_was(database):
+    heropend, events = _heropen("alice", None)
+    assert heropend["data_keys"] == [] and events == []
+
+
+def test_een_ouder_die_al_terug_is_als_bron_van_een_selectie_telt_niet_als_weg(database):
+    with _bronnen():
+        session = {"username": "alice"}
+        bron = _stap(session, *_ROOTS["duo"])
+        selectie = _stap(session, TOOL_QUERY_DATA, {"data_key": bron, "filters": {"STUDIEJAAR": 2025}})
+        _opslaan("alice", "c1", selectie)
+        _herstart()
+        herstel = herstel_data_keys({"username": "alice", "data_keys": [selectie, bron]}, "alice")
+
+    assert herstel.onherstelbaar == {}
+    assert store.get(bron) is not None and store.get(selectie) is not None

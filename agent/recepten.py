@@ -42,6 +42,25 @@ def bewaar(username: str, conv_id: str, messages: list) -> None:
     db.save_recipes(username, conv_id, recepten)
 
 
+def keys_van_gesprek(username: str, conv_id: object) -> list[str]:
+    """De data-keys van een eigen, opgeslagen gesprek met een recept, ouders eerst.
+
+    Een heropend gesprek kent zo zijn data weer; wat de store kwijt is, komt pas terug als een
+    rapport erom vraagt (herstel_data_keys). Alleen de recepten van deze gebruiker.
+    """
+    if not isinstance(conv_id, str) or not conv_id:
+        return []
+    bewaard = db.recipes_for(username, conv_id)
+
+    def diepte(key: str) -> int:
+        stappen, ouder = 0, bewaard[key].get("afgeleid_van")
+        while isinstance(ouder, str) and ouder in bewaard and stappen < len(bewaard):
+            stappen, ouder = stappen + 1, bewaard[ouder].get("afgeleid_van")
+        return stappen
+
+    return sorted(bewaard, key=diepte)
+
+
 def vergeet(username: str, keys) -> None:
     """Een verwijderd gesprek laat ook in het geheugen geen recept achter."""
     for key in keys:
