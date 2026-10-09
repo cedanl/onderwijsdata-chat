@@ -579,6 +579,11 @@ def test_dashboard_arbeidsmarktmatch():
     vpc = result["vacatures_per_cluster"]
     assert isinstance(vpc, dict)
 
+    # vacatures_per_sector: {onderdeel: int}, gedeelde clusters naar rato (#455)
+    vps = result["vacatures_per_sector"]
+    assert set(vps) <= set(gps)
+    assert all(isinstance(v, int) for v in vps.values())
+
     # roa_per_niveau: {niveau: {werkloosheid, vast_dienstverband, buiten_vakrichting}}
     assert "roa_per_niveau" in result
 

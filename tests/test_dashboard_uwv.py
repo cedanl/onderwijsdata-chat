@@ -34,6 +34,90 @@ def test_sector_zonder_clustermatch_geeft_geen_clusters():
     assert _met_clusters(("ONBEKEND",)) == {}
 
 
+# --- #455: het dashboard telt een gedeeld cluster naar rato, net als de chat ---
+
+_GEDEELD = {"Chauffeurs": 2000, "Programmeurs": 500, "Accountants": 300}
+_DEELKAART = {"TECHNIEK": ["Chauffeurs", "Programmeurs"], "ECONOMIE": ["Chauffeurs", "Accountants"]}
+_GPS = {"TECHNIEK": 50, "ECONOMIE": 50}
+
+
+@pytest.fixture
+def gedeelde_clusters():
+    with (
+        patch.object(arbeidsmarkt, "uwv_stand", return_value=arbeidsmarkt.UwvStand(2800, "2023-05-16", _GEDEELD)),
+        patch.dict(arbeidsmarkt.SECTOR_CLUSTER_MAP, _DEELKAART, clear=True),
+        patch.dict(arbeidsmarkt.SECTOR_INDELING, {"TECHNIEK": "hbo/wo", "ECONOMIE": "hbo/wo"}, clear=True),
+    ):
+        yield
+
+
+def test_vacatures_per_sector_telt_een_gedeeld_cluster_naar_rato(gedeelde_clusters):
+    per_sector = arbeidsmarkt.vacatures_per_sector("Utrecht", ("TECHNIEK", "ECONOMIE"))
+
+    # Chauffeurs (2000) horen bij beide: elk de helft. Ongewogen was het 2500 en 2300 van 2800.
+    assert per_sector == {"TECHNIEK": 1500, "ECONOMIE": 1300}
+    assert sum(per_sector.values()) <= 2800
+
+
+def test_vacatures_per_sector_zonder_uwv_rijen_is_leeg(gedeelde_clusters):
+    with patch.object(arbeidsmarkt, "uwv_stand", return_value=None):
+        assert arbeidsmarkt.vacatures_per_sector("Atlantis", ("TECHNIEK",)) == {}
+
+
+def test_dashboard_vacatures_per_sector_zonder_uwv_is_leeg(gedeelde_clusters):
+    with patch.object(arbeidsmarkt, "uwv_stand", side_effect=RuntimeError("UWV onbereikbaar")):
+        assert dashboard._uwv_vacatures_per_sector("Utrecht", ("TECHNIEK",)) == {}
+
+
+def test_match_scores_met_gewogen_vacatures():
+    # Met de ongewogen 2500 en 2300 van 2800 kregen beide sectoren "schaarste".
+    scores = dashboard._match_scores(_GPS, {"TECHNIEK": 1500, "ECONOMIE": 1300}, _DEELKAART)
+
+    assert scores == {"TECHNIEK": "evenwicht", "ECONOMIE": "evenwicht"}
+
+
+def test_match_scores_schaarste_en_overaanbod():
+    scores = dashboard._match_scores({"TECHNIEK": 80, "ECONOMIE": 20}, {"TECHNIEK": 200, "ECONOMIE": 800}, _DEELKAART)
+
+    assert scores == {"TECHNIEK": "overaanbod", "ECONOMIE": "schaarste"}
+    assert dashboard._MATCH_DREMPEL == 1.2
+
+
+def test_match_scores_sector_zonder_clusters_is_none():
+    scm = {"TECHNIEK": ["Programmeurs"], "ONDERWIJS": []}
+
+    scores = dashboard._match_scores({"TECHNIEK": 50, "ONDERWIJS": 50}, {"TECHNIEK": 500, "ONDERWIJS": 0}, scm)
+
+    assert scores == {"TECHNIEK": "schaarste", "ONDERWIJS": None}
+
+
+@pytest.mark.parametrize("vacatures", [{}, {"TECHNIEK": 0, "ECONOMIE": 0}])
+def test_match_scores_zonder_vacatures_is_alles_none(vacatures):
+    assert dashboard._match_scores(_GPS, vacatures, _DEELKAART) == {"TECHNIEK": None, "ECONOMIE": None}
+
+
+def test_arbeidsmarktmatch_geeft_de_gewogen_telling_per_sector(gedeelde_clusters):
+    gevonden = {
+        "type": "ho",
+        "provincie": "Utrecht",
+        "arbeidsmarktregio": "Midden-Utrecht",
+        "laatste_jaar": 2024,
+        "gediplomeerden_per_sector": _GPS,
+    }
+    with (
+        patch.object(dashboard, "resolve_alias", side_effect=lambda naam: naam),
+        patch.object(dashboard, "_arbeidsmarktmatch_ho", return_value=gevonden),
+        patch.object(dashboard, "_roa_schoolverlaters", return_value={}),
+    ):
+        uit = dashboard.load_dashboard_arbeidsmarktmatch("Hogeschool Utrecht")
+
+    assert uit["vacatures_per_sector"] == {"TECHNIEK": 1500, "ECONOMIE": 1300}
+    assert uit["match_score"] == {"TECHNIEK": "evenwicht", "ECONOMIE": "evenwicht"}
+    # Additief: de ongewogen clusters en de mapping blijven in het antwoord.
+    assert uit["vacatures_per_cluster"] == _GEDEELD
+    assert uit["sector_cluster_mapping"] == _DEELKAART
+
+
 # --- #228: het dashboard telt DUO -1 niet als getal mee, net als de chat ---
 
 
