@@ -1,6 +1,4 @@
-import { STORAGE_TOKEN } from './constants'
-
-const STORAGE_USERINFO = 'userInfo'
+import { STORAGE_TOKEN, STORAGE_USERINFO } from './constants'
 
 export const getToken = () => localStorage.getItem(STORAGE_TOKEN)
 const setToken = (t) => localStorage.setItem(STORAGE_TOKEN, t)
