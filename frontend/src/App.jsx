@@ -5,7 +5,7 @@ import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
-import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
+import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 import { applyMode } from './theme'
@@ -165,6 +165,7 @@ function AppShell() {
   }
 
   const handleLogout = () => {
+    logout(getToken())
     clearToken()
     if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
     clearLocalSessionData()
