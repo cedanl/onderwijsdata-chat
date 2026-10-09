@@ -10,6 +10,7 @@ import json
 import pytest
 
 from agent.kpi_bron import kpis, noemt
+from agent.kpi_periode import verkeerde_kpi_periodes
 
 _SCHOOLJAREN = {"van": "2019/20", "tot": "2025/26"}
 
@@ -137,8 +138,24 @@ def test_kalenderjaren_zijn_geen_schooljaarbereik():
         ("Het wo groeide met 29040.", "+29.040", False),
         # Zoals vóór #420: direct gevolgd door een komma telt niet, ook als leesteken.
         ("Het wo groeide met 29.040, vooral in de randstad.", "+29.040", False),
+        # Markdown-nadruk met liggende streepjes is gewone tekst: de waarde staat er.
+        ("Het wo groeide met _29.040_.", "+29.040", True),
+        ("Het wo groeide met __29.040__.", "+29.040", True),
+        ("Het steeg met _+9,5%_.", "+9,5%", True),
+        # Zoals vóór #420: drie cijfers na een getal en een spatie zijn een duizendtal, ook na een jaartal.
+        ("In 2024 463 studenten minder.", "-463", False),
         ("Het aantal steeg.", "+463", False),
     ],
 )
 def test_noemt(segment, waarde, genoemd):
     assert _noemt(segment, waarde) is genoemd
+
+
+# --- noemt in de periodecontrole ---
+
+
+def test_de_periodecontrole_ziet_een_kpi_met_markdown_nadruk():
+    kpi = json.dumps({"value": "+29.040", "periode": {"van": "2019/20", "tot": "2024/25"}})
+    tekst = "Van 2018/19 tot 2024/25 groeide het wo met _+29.040_ studenten."
+    [probleem] = verkeerde_kpi_periodes(tekst, [kpi])
+    assert "2019/20" in probleem

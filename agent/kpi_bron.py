@@ -2,16 +2,18 @@
 
 Een KPI is een afgeleide waarde (verschil, som, gemiddelde) met een eigen bron:
 de jaren in `periode` en de selectie in `bron`. De periode-, scope- en
-bindingscontrole lezen KPI's alleen hier, en zoeken een KPI-waarde in de tekst
-met dezelfde getalherkenning als de getalcontrole.
+bindingscontrole lezen KPI's alleen hier; de periode- en scopecontrole zoeken
+een KPI-waarde in de tekst met `noemt`.
 """
 
 import json
+import re
 from dataclasses import dataclass
 
 from tools import periode
 
-from .grounding import getallen_in
+# Duizendtallen met (harde of smalle) spatie, zoals gpt-oss ze schrijft (#236).
+_SPATIE_DUIZENDTAL = re.compile(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?!\d))")
 
 
 @dataclass(frozen=True)
@@ -63,24 +65,7 @@ def _bereik(jaren: dict | None) -> tuple[int, int] | None:
 
 
 def noemt(segment: str, kpi: Kpi) -> bool:
-    """Staat de KPI-waarde (zonder teken of %) als los getal in het segment?
-
-    Geschreven zoals de waarde, met een punt of een (harde of smalle) spatie als duizendtalscheiding
-    (#236): 2024 is geen KPI van 2.024. Volgt er een punt met een cijfer (12.5), dan is het een ander
-    getal. Volgt er een komma, dan telt het ook niet; zo was het vóór #420, ook bij een komma als leesteken.
-    """
+    """Staat de KPI-waarde (zonder teken of %) als los getal in het segment?"""
     kaal = _kaal(kpi.waarde)
-    return any(
-        _met_punten(geschreven) == kaal and _los(segment[positie + len(geschreven) :])
-        for geschreven, _, positie in getallen_in(segment)
-    )
-
-
-def _met_punten(geschreven: str) -> str:
-    """Het getal met een punt als duizendtalscheiding, ook waar het een spatie had: 29 040 → 29.040."""
-    return "".join(teken if teken.isdigit() or teken == "," else "." for teken in geschreven)
-
-
-def _los(rest: str) -> bool:
-    """Houdt het getal op voor `rest`: geen komma, en geen punt met een cijfer (12.5 is geen 12)."""
-    return not rest.startswith(",") and not (rest[:1] == "." and rest[1:2].isdigit())
+    segment = _SPATIE_DUIZENDTAL.sub(".", segment)
+    return re.search(rf"(?<![\d.,]){re.escape(kaal)}(?![\d,]|\.\d)", segment) is not None
