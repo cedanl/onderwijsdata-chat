@@ -2,11 +2,12 @@
 // #498: a dashboard chat that was open at logout must not write the previous user's
 // messages and figures back after the wipe.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createElement, act } from 'react'
+import { createElement, act, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { clearLocalSessionData } from '../sessionData'
-import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
+import { clearToken } from '../auth'
+import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES, STORAGE_TOKEN } from '../constants'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -45,6 +46,7 @@ const dcKeys = () => [STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES].filter(key => loc
 beforeEach(() => {
   localStorage.clear()
   globalThis.WebSocket = FakeWebSocket
+  localStorage.setItem(STORAGE_TOKEN, 'tok')
   localStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify([{ id: 1, role: 'user', content: 'vorige gebruiker', done: true }]))
   localStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify([{ data: [], layout: {} }]))
 })
@@ -68,16 +70,59 @@ describe('dashboard chat after the session-data wipe', () => {
     expect(dcKeys()).toEqual([])
   })
 
-  // Documents why the wipe must go with unmounting the chat, as logout and session end do:
-  // a chat that stays mounted persists its in-memory messages again on its next change.
-  it('is written again by a chat that stays mounted and gets a message', async () => {
+  // Logout and session end clear the token before the wipe; the chat checks it before each save.
+  it('stays wiped by a chat that stays mounted and gets a message after the session ended', async () => {
     const ws = await openChat()
 
+    clearToken()
     clearLocalSessionData()
-    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'figure', figure_json: { data: [], layout: {} } })
+    })
 
-    expect(JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES))).toEqual([
-      { id: 1, role: 'user', content: 'vorige gebruiker', done: true },
-    ])
+    expect(dcKeys()).toEqual([])
+  })
+})
+
+// Without act, as in a browser: React commits a render and runs its passive effects (the two
+// saves) later. A logout click can land in between; the save that then runs must be skipped.
+describe('a save still pending when the session ends', () => {
+  const settle = () => new Promise(resolve => setTimeout(resolve, 20))
+  let logOutOnCommit = false
+
+  // The layout effect runs in the commit, before React runs that commit's passive effects:
+  // it plays the logout click (clearToken, then the wipe) that lands in that gap.
+  function LoggingOutHarness() {
+    const { messages, figures } = useDashboardChat()
+    useLayoutEffect(() => {
+      if (!logOutOnCommit) return
+      logOutOnCommit = false
+      clearToken()
+      clearLocalSessionData()
+    }, [messages, figures])
+    return null
+  }
+
+  beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = false })
+  afterEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
+
+  it('does not write the previous user\'s chat back', async () => {
+    const pending = createRoot(document.createElement('div'))
+    pending.render(createElement(LoggingOutHarness))
+    await settle()
+    const ws = FakeWebSocket.last
+
+    logOutOnCommit = true
+    ws.emit({ type: 'message_start' })
+    ws.emit({ type: 'text_delta', content: 'antwoord voor de vorige gebruiker' })
+    ws.emit({ type: 'figure', figure_json: { data: [], layout: {} } })
+    ws.emit({ type: 'message_end' })
+    await settle()
+    pending.unmount()
+    await settle()
+
+    expect(logOutOnCommit).toBe(false)
+    expect(dcKeys()).toEqual([])
   })
 })

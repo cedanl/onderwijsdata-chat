@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 import { chatSocket } from '../auth'
 import { finishStep } from '../toolSteps'
+import { getToken, sessionEndedSince } from '../auth'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -28,14 +29,20 @@ export default function useDashboardChat() {
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef(null)
   const nextId = () => ++idRef.current
+  // Logout and session end clear the token before they wipe this chat from storage. A save
+  // React runs after that (still pending from the last streamed token) must not write the
+  // previous user's chat back (#498).
+  const [tokenAtMount] = useState(getToken)
 
   useEffect(() => {
+    if (sessionEndedSince(tokenAtMount)) return
     try { localStorage.setItem(STORAGE_DC_MESSAGES, JSON.stringify(messages.filter(m => m.done))) } catch { /* noop */ }
-  }, [messages])
+  }, [messages, tokenAtMount])
 
   useEffect(() => {
+    if (sessionEndedSince(tokenAtMount)) return
     try { localStorage.setItem(STORAGE_DC_FIGURES, JSON.stringify(figures)) } catch { /* noop */ }
-  }, [figures])
+  }, [figures, tokenAtMount])
 
   useEffect(() => {
     manualCloseRef.current = false
