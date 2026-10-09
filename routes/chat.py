@@ -316,12 +316,19 @@ async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.
         await emit({"type": "history_data", "data_keys": len(data_keys)})
 
 
+def _invoer(msg: dict, sleutel: str) -> str:
+    """New user input from a frame, stripped; anything that is not a string counts as empty (#481)."""
+    waarde = msg.get(sleutel, "")
+    return waarde.strip() if isinstance(waarde, str) else ""
+
+
 def _te_lang(content: str) -> str | None:
     """The refusal text for new input over MAX_MESSAGE_CHARS (#481), or None when it fits.
 
-    Counted after strip(), like the message itself. The text names only the lengths, never the content.
+    Expects the stripped input from _invoer, so what is measured is what goes on to the agent.
+    The text names only the lengths, never the content.
     """
-    lengte = len(content.strip())
+    lengte = len(content)
     if lengte <= MAX_MESSAGE_CHARS:
         return None
     return (
@@ -343,7 +350,7 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
-    content = msg.get("content", "").strip()
+    content = _invoer(msg, "content")
     if not content or await _weiger_te_lang(content, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
@@ -364,8 +371,8 @@ async def _handle_clarification(
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
-    choice = msg.get("choice", "")
-    if await _weiger_te_lang(choice, emit):
+    choice = _invoer(msg, "choice")
+    if not choice or await _weiger_te_lang(choice, emit):
         return current_task
     model = session.get("current_model")
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1

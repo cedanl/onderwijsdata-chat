@@ -217,6 +217,52 @@ def test_een_gewone_verduidelijkingskeuze_werkt_nog(monkeypatch):
     assert gevraagd == ["2024/2025"] and events == []
 
 
+def test_een_opgevulde_verduidelijkingskeuze_gaat_gestript_door(monkeypatch):
+    """Witruimte telt niet mee en gaat ook niet mee naar de agent: gemeten is wat verstuurd wordt."""
+    gevraagd = _zonder_agent(monkeypatch)
+    session = chat._new_session()
+
+    terug, events = _run_tot_einde("clarification_choice", {"choice": " \n\t" * 1000 + "2024" + "  "}, session)
+
+    assert isinstance(terug, asyncio.Task) and events == []
+    assert gevraagd == ["2024"]
+    assert session["clarify_keuzes"] == ["2024"]
+
+
+def test_een_opgevulde_te_lange_verduidelijkingskeuze_wordt_geweigerd(monkeypatch):
+    gevraagd = _zonder_agent(monkeypatch)
+    session = chat._new_session()
+
+    terug, events = _run("clarification_choice", {"choice": "  " + "y" * 11 + " \n" * 500}, session)
+
+    assert terug is None and gevraagd == []
+    assert session.get("clarify_keuzes", []) == []
+    assert len(events) == 1 and events[0]["type"] == "error"
+    assert "11 tekens" in events[0]["message"]
+
+
+def test_een_lege_verduidelijkingskeuze_blijft_stil(monkeypatch):
+    gevraagd = _zonder_agent(monkeypatch)
+    session = chat._new_session()
+
+    terug, events = _run("clarification_choice", {"choice": "  \n"}, session)
+
+    assert terug is None and events == [] and gevraagd == []
+    assert session.get("clarify_keuzes", []) == []
+
+
+def test_invoer_die_geen_tekst_is_telt_als_leeg(monkeypatch):
+    """Een zelfgebouwde client met een getal of null verbreekt de verbinding niet."""
+    gevraagd = _zonder_agent(monkeypatch)
+    vorige = _KlaarTaak()
+
+    for action, sleutel in (("message", "content"), ("clarification_choice", "choice")):
+        for waarde in (123, None, ["x" * 50], {"a": 1}):
+            terug, events = _run(action, {sleutel: waarde}, chat._new_session(), vorige)
+            assert terug is vorige and events == []
+    assert gevraagd == []
+
+
 def test_de_geschiedenis_kent_geen_lengtegrens_per_bericht(monkeypatch):
     """Oude gesprekken heropenen breekt nooit: de grens geldt alleen voor nieuwe invoer."""
     monkeypatch.setattr(chat, "MAX_MESSAGE_CHARS", 10)
