@@ -85,12 +85,20 @@ def _tool_integers(tool_results: list[str]) -> set[str]:
     return {n for result in tool_results for n in bewijs_getallen(result)}
 
 
+def getallen_in(tekst: str) -> list[tuple[str, str, int]]:
+    """Elk getal in Nederlandse notatie: (zoals geschreven, zonder duizendtalscheiding, positie in de tekst).
+
+    378.490 en 378 490 worden 378490; de decimale komma blijft (9,6). Codes zoals 85423NED zijn geen getal (#48).
+    """
+    return [(m.group(0), _digits(m.group(0)), m.start()) for m in _TEXT_NUMBER.finditer(tekst)]
+
+
 def getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
     """Elk voorkomen van een gecontroleerd getal: (zoals geschreven, cijfers, positie in de tekst)."""
     return [
-        (m.group(0), digits, m.start())
-        for m in _TEXT_NUMBER.finditer(text)
-        if "," not in m.group(0) and checked(digits := _digits(m.group(1)))
+        (geschreven, getal, positie)
+        for geschreven, getal, positie in getallen_in(text)
+        if "," not in getal and checked(getal)
     ]
 
 
