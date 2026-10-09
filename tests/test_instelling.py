@@ -54,3 +54,23 @@ def test_naam_die_in_een_langere_naam_zit_telt_niet_dubbel():
 
 def test_geen_instelling_in_de_vraag():
     assert instelling.genoemde("Hoeveel hbo-studenten landelijk?", _NAMEN) == set()
+
+
+def test_genoemde_namen_geeft_naam_en_afkortingen(monkeypatch):
+    monkeypatch.setattr(
+        instelling,
+        "get_all",
+        lambda: [{"naam": "Hogeschool Utrecht", "aliassen": ["HU", "hu"]}, {"naam": "Aeres Hogeschool"}],
+    )
+    assert instelling.genoemde_namen("studenten HU") == {"Hogeschool Utrecht", "HU", "hu"}
+    assert instelling.noemt_instelling("studenten HU")
+    assert instelling.genoemde_namen("studenten hbo") == set()
+
+
+def test_genoemde_namen_zonder_register_is_leeg(monkeypatch):
+    def offline():
+        raise OSError("geen DUO-download")
+
+    monkeypatch.setattr(instelling, "get_all", offline)
+    assert instelling.genoemde_namen("Hogeschool Utrecht") == set()
+    assert not instelling.noemt_instelling("Hogeschool Utrecht")

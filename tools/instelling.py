@@ -69,10 +69,16 @@ def genoemde(vraag: str, bekende: dict[str, str]) -> set[str]:
     return gevonden
 
 
+def genoemde_namen(vraag: str) -> set[str]:
+    """Namen en afkortingen van de registerinstellingen die de vraag noemt; leeg zonder register (offline)."""
+    try:
+        aliassen = {i["naam"]: i.get("aliassen", []) for i in get_all()}
+    except Exception:  # register bouwt uit DUO-downloads; een zoekopdracht mag daar niet op stuklopen
+        return set()
+    namen = genoemde(vraag, {naam: naam for naam in aliassen})
+    return namen | {alias for naam in namen for alias in aliassen[naam]}
+
+
 def noemt_instelling(vraag: str) -> bool:
     """Noemt de vraag een instelling uit het register? Zonder register (offline) geldt: nee."""
-    try:
-        bekende = {i["naam"]: i["naam"] for i in get_all()}
-    except Exception:  # register bouwt uit DUO-downloads; een zoekopdracht mag daar niet op stuklopen
-        return False
-    return bool(genoemde(vraag, bekende))
+    return bool(genoemde_namen(vraag))
