@@ -27,13 +27,14 @@ from agent.dashboard import (
     herstel_data,
 )
 from agent.loop import ToolCall, tool_loop
-from agent.probleem import harde, meldingen
+from agent.probleem import controlenamen, harde, meldingen
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
+from core.logging_util import tekst_kenmerk
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
@@ -213,10 +214,12 @@ async def generate(
         )
     # Alleen een hard probleem houdt het rapport tegen; een zacht wordt een waarschuwing (#207).
     if fout := harde(result.problems):
-        logger.error("RAPPORT GEWEIGERD: %s", result.problems)
+        logger.error("RAPPORT GEWEIGERD: controles=%s", controlenamen(result.problems))
+        logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         raise ValueError(f"Rapport niet consistent met de data: {meldingen(fout)[0]} Probeer het opnieuw.")
     if result.problems:
-        logger.warning("RAPPORT MET WAARSCHUWING: %s", result.problems)
+        logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
+        logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
     return _parse_spec_from_response(result.text, figures, context, author)
 
@@ -230,14 +233,21 @@ def _correction(problems: list[str]) -> str:
     )
 
 
-def _log_tool_call(name: str, args: dict, result: str) -> None:
-    """Log what the report fetched: a misfilter must be traceable afterwards (#174)."""
+def _log_tool_call(name: str, args: dict | None, result: str) -> None:
+    """Log what the report fetched: a misfilter must be traceable afterwards (#174).
+
+    Argument values and tool messages carry text from the question, so INFO gets only the argument
+    names, lengths and hashes; the arguments themselves go to DEBUG (#475).
+    """
     try:
         parsed = json.loads(result)
         outcome = f"totaal_rijen={parsed.get('totaal_rijen')}" if isinstance(parsed, dict) else "ok"
     except (TypeError, ValueError):
-        outcome = f"melding={result[:200]!r}"
-    logger.info("RAPPORT TOOL %s args=%s %s", name, json.dumps(args, ensure_ascii=False), outcome)
+        outcome = tekst_kenmerk(result, "melding_")
+    argumenten = json.dumps(args, ensure_ascii=False)
+    namen = ",".join(sorted(args or {}))
+    logger.info("RAPPORT TOOL %s argumenten=%s %s %s", name, namen, tekst_kenmerk(argumenten, "args_"), outcome)
+    logger.debug("RAPPORT TOOL %s args=%s", name, argumenten)
 
 
 def _parse_spec_from_response(
