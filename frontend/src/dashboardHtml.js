@@ -2,9 +2,8 @@
 // A report already is one; a generated dashboard is built here from its spec, with
 // Plotly from the CDN as in the report, so the file needs no server of ours.
 import { escapeHtml, PLOTLY_CDN_VERSION } from './reportHtml'
+import { scriptSafe } from './scriptSafe'
 
-// Figure JSON goes inside a <script>: a '<' in a label must not close it.
-const scriptSafe = json => json.replace(/</g, '\\u003c')
 const asJson = fig => (typeof fig === 'string' ? fig : JSON.stringify(fig))
 
 function kpiHtml(kpi) {
