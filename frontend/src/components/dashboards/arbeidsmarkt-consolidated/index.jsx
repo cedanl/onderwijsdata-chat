@@ -5,7 +5,7 @@ import {
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard,
-  DashboardSources, BRONNEN_ARBEIDSMARKT,
+  DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData,
 } from '../shared/index'
 
 const MATCH_COLORS = { schaarste: '#DC2626', overaanbod: '#2563EB', evenwicht: '#16A34A' }
@@ -32,24 +32,11 @@ function MatchScoreSection({ matchScore }) {
   )
 }
 
-function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, sectorClusterMapping, dark }) {
-  const chartData = useMemo(() => {
-    if (!gediplomeerdenPerSector || !vacaturesPerCluster || !sectorClusterMapping) return null
-    const sectors = Object.keys(gediplomeerdenPerSector)
-    if (!sectors.length) return null
-    const diplData = sectors.map(s => gediplomeerdenPerSector[s] || 0)
-    const vacData = sectors.map(s => {
-      const clusters = sectorClusterMapping[s] || []
-      return clusters.reduce((sum, cl) => sum + (vacaturesPerCluster[cl] || 0), 0)
-    })
-    return {
-      labels: sectors.map(s => SECTOR_LABELS[s] || s),
-      datasets: [
-        { label: 'Gediplomeerden', data: diplData, backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
-        { label: 'Vacatures (gerelateerd)', data: vacData, backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
-      ],
-    }
-  }, [gediplomeerdenPerSector, vacaturesPerCluster, sectorClusterMapping])
+function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }) {
+  const chartData = useMemo(
+    () => buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSector),
+    [gediplomeerdenPerSector, vacaturesPerSector],
+  )
 
   if (!chartData) return null
   const { label } = darkColors(dark)
@@ -57,7 +44,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerCluster, secto
   return (
     <ChartCard
       title="Gediplomeerden vs. vacatures per sector"
-      subtitle="Gemiddeld aantal gediplomeerden (3 jaar) vs. gerelateerde vacatures (UWV)"
+      subtitle="Gemiddeld aantal gediplomeerden (3 jaar) vs. gerelateerde vacatures (UWV). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee."
     >
       <div style={{ height: Math.max(200, chartData.labels.length * 50) }}>
         <Bar data={chartData} options={{
@@ -126,8 +113,7 @@ export function InlineDashboardArbeidsmarkt({ instelling }) {
         <SectionHeader title="Aanbod vs. vraag" subtitle="Gediplomeerden tegenover gerelateerde vacatures" />
         <SupplyDemandChart
           gediplomeerdenPerSector={matchData?.gediplomeerden_per_sector}
-          vacaturesPerCluster={matchData?.vacatures_per_cluster}
-          sectorClusterMapping={matchData?.sector_cluster_mapping}
+          vacaturesPerSector={matchData?.vacatures_per_sector}
           dark={dark}
         />
 

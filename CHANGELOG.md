@@ -47,6 +47,10 @@ de laatste tag is 1.8.6.
   naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal (TECHNIEK en ECONOMIE in Utrecht
   kwamen samen op 21.027 van de 25.225). Het resultaat zegt dat UWV geen opleidingsniveau kent, en de vacatures zijn
   ook per gemeente op te vragen.
+- Het arbeidsmarktdashboard telt zo'n gedeeld beroepencluster ook naar rato, net als de chat: de match score en de
+  grafiek gediplomeerden tegenover vacatures gebruiken dezelfde gewogen telling per sector (`vacatures_per_sector`).
+  Daarvoor konden de sectoren samen boven het provincietotaal uitkomen. `scripts/refresh_sector_mapping.py` kent nu
+  alle sectoren van beide indelingen (10 hbo/wo, 17 mbo); opnieuw draaien wist geen sectoren of `_indelingen` meer.
 - `get_uwv_vacatures` met een sector houdt drie lagen apart: de ongewogen UWV-aantallen (`uwv_broncijfer`), de
   toewijzing van clusters aan de sector (`lokale_classificatie`, een LLM-classificatie van deze app, met versie en
   model van de mapping) en het gewogen sectorgetal (`gewogen_aandeel`). Eerder stond alles naast elkaar onder de
