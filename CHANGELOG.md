@@ -57,6 +57,11 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een uitsplitsing per groep (bijv. per geslacht) zegt per groep of er cellen met -1 in vallen: alleen dat
+  totaal is een ondergrens. Eerder meldde `query_data` dat "totalen" een ondergrens waren, en noemde het
+  antwoord ook de groep zonder onderdrukte cel er een. Onder Telling staat de ondergrens nu alleen als een
+  genoemd groepstotaal er een is. Bij cellen in meer kolommen noemt de tool cellen en rijen apart ("305
+  onderdrukte cellen in 268 rijen"); die werden als rijen geteld.
 - Een antwoord op data met DIPLOMAJAAR (ho-gediplomeerden) zegt onder Telling dat DUO niet vastlegt of dat
   een kalender- of studiejaar is: diplomajaar 2023 is niet aantoonbaar studiejaar 2023/24. De kolomuitleg
   zegt hetzelfde. De app zet een diplomajaar niet om naar een schooljaar.

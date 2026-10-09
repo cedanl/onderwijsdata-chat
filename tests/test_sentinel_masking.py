@@ -375,4 +375,5 @@ class TestMeldingPerSelectie:
 
         result = json.loads(query_data("duo:codes", group_by=["CODE"], aggregate={"AANTAL": "sum"}))
 
-        assert sorted(result["databewerking"]) == sentinel_notes({"AANTAL": 1, "CODE": 1})
+        # Plus de groepsnoot: de groep met de onderdrukte AANTAL-cel zegt dat in haar rij (CH-07).
+        assert set(sentinel_notes({"AANTAL": 1, "CODE": 1})) <= set(result["databewerking"])

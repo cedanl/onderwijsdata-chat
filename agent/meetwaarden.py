@@ -11,7 +11,7 @@ import json
 import math
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from tools import TOOL_RUN_ANALYSIS
 from tools.analysis import SCRIPTCONSTANTEN
@@ -39,6 +39,7 @@ class Meetwaarde:
     data_key: str | None = None
     eenheid: str | None = None
     bron: str | None = None  # zonder data_key: de bron in woorden (UWV, ROA)
+    rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
 
 
 def _getal(waarde) -> frozenset[str] | None:
@@ -71,12 +72,12 @@ def _selectie(rij: dict, maat: str) -> tuple[str, ...]:
 
 
 def _uit_rijen(rijen, data_key: str | None) -> Iterator[Meetwaarde]:
-    for rij in rijen if isinstance(rijen, list) else ():
+    for positie, rij in enumerate(rijen if isinstance(rijen, list) else ()):
         if not isinstance(rij, dict):
             continue
         for kolom, waarde in rij.items():
             if _meetkolom(kolom, waarde) and (cijfers := _getal(waarde)):
-                yield Meetwaarde(cijfers, kolom, _selectie(rij, kolom), data_key)
+                yield Meetwaarde(cijfers, kolom, _selectie(rij, kolom), data_key, rij=positie)
 
 
 def _uit_kpi(kpi: dict) -> Iterator[Meetwaarde]:
@@ -101,10 +102,11 @@ def _uit_analyse(resultaat, data_key: str | None) -> Iterator[Meetwaarde]:
     """Wat een analyse teruggaf: een los getal, een dict met uitkomsten of rijen."""
     if (cijfers := _getal(resultaat)) is not None:
         yield Meetwaarde(cijfers, "resultaat", (), data_key)
+    # De rijen van een analyse zijn niet die van de tabel achter data_key: geen positie.
     elif isinstance(resultaat, list):
-        yield from _uit_rijen(resultaat, data_key)
+        yield from (replace(w, rij=None) for w in _uit_rijen(resultaat, data_key))
     elif isinstance(resultaat, dict):
-        yield from _uit_rijen([resultaat], data_key)
+        yield from (replace(w, rij=None) for w in _uit_rijen([resultaat], data_key))
 
 
 def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:

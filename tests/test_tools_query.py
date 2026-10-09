@@ -443,3 +443,72 @@ def test_onderdrukte_cellen_per_jaar_van_de_selectie(aanroep):
     [noot] = [n for n in result["databewerking"] if "per jaar" in n]
     assert "2024/25: 1" in noot and "2025/26: 2" in noot
     assert "2025/26: 5" not in noot  # de cellen van 'Elders' tellen niet mee
+
+
+# --- CH-07 (#461): onderdrukte cellen per groep, en cellen zijn geen rijen ---
+
+
+def _geslacht_bron():
+    """HU-geslacht uit audit 17: één onderdrukte MAN-cel en één ONBEKEND-cel, geen VROUW-cel."""
+    df = pd.DataFrame(
+        {
+            "GESLACHT": ["MAN", "MAN", "VROUW", "VROUW", "ONBEKEND", "ONBEKEND"],
+            "AANTAL": [12000, -1, 9000, 5000, 3, -1],
+        }
+    )
+    store.put("duo:test:geslacht", df, store.KeyMeta(bron="duo", dataset="test:geslacht"))
+
+
+def test_een_groep_met_onderdrukte_cellen_zegt_dat_in_haar_eigen_rij():
+    """Audit 17: het antwoord noemde ook het vrouwentotaal een ondergrens; de tool zei 'totalen'."""
+    _geslacht_bron()
+
+    result = json.loads(query_data("duo:test:geslacht", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"}))
+
+    rijen = {rij["GESLACHT"]: rij for rij in result["rijen"]}
+    assert rijen["MAN"]["AANTAL (onderdrukte cellen)"] == 1
+    assert rijen["ONBEKEND"]["AANTAL (onderdrukte cellen)"] == 1
+    assert "AANTAL (onderdrukte cellen)" not in rijen["VROUW"]
+    assert any("alleen dat totaal" in noot for noot in result["databewerking"])
+    assert not any("totalen zijn hierdoor" in noot for noot in result["databewerking"])
+
+
+def test_de_markering_staat_niet_in_de_store():
+    """De store houdt de tabel van de bron: een export of vervolgstap telt de markering niet als data."""
+    _geslacht_bron()
+
+    key = json.loads(query_data("duo:test:geslacht", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"}))["data_key"]
+
+    assert list(store.get(key).columns) == ["GESLACHT", "AANTAL"]
+
+
+@pytest.mark.parametrize(
+    "aanroep",
+    [
+        {"filters": {"INSTELLINGSNAAM": "ROC Mondriaan"}},
+        {"group_by": ["INSTELLINGSNAAM"], "aggregate": {"DIPMAN2023": "sum", "DIPVROUW2023": "sum"}},
+    ],
+)
+def test_cellen_in_meer_kolommen_zijn_geen_rijen(aanroep):
+    """ROC Mondriaan: 305 onderdrukte cellen werden '305 rijen' (werkelijk 268). De tool noemt beide."""
+    df = pd.DataFrame(
+        {
+            "INSTELLINGSNAAM": ["ROC Mondriaan"] * 3,
+            "OPLEIDING": ["a", "b", "c"],
+            "DIPMAN2023": [-1, -1, 40],
+            "DIPVROUW2023": [-1, 30, 50],
+        }
+    )
+    store.put("duo:test:breed", df, store.KeyMeta(bron="duo", dataset="test:breed"))
+
+    result = json.loads(query_data("duo:test:breed", **aanroep))
+
+    assert any("3 onderdrukte cellen in 2 rijen" in noot for noot in result["databewerking"])
+
+
+def test_evenveel_cellen_als_rijen_geeft_geen_extra_noot():
+    _geslacht_bron()
+
+    result = json.loads(query_data("duo:test:geslacht", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"}))
+
+    assert not any("cellen in" in noot and "rijen" in noot for noot in result["databewerking"])

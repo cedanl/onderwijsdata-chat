@@ -62,6 +62,9 @@ def column_definitions(columns: list[str], dataset_id: str) -> dict[str, str]:
 # niet meer uit de data af te leiden: de -1'en zijn dan weg. Het maskeren zelf staat
 # in core.sentinels en gebeurt in store.put() voor elke `duo:`-key.
 _sentinel_cells: dict[str, pd.DataFrame] = {}
+# Keys waarvan elke rij een groepstotaal is (query_data met group_by/aggregate): daar zijn de
+# cellen per rij de onderdrukte broncellen van die groep (CH-07).
+_groepen: set[str] = set()
 
 
 def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
@@ -71,13 +74,34 @@ def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
     return {col: int(n) for col, n in cells.sum().items() if n}
 
 
-def record_sentinel_cells(key: str, cells: pd.DataFrame) -> None:
+def record_sentinel_cells(key: str, cells: pd.DataFrame, groepen: bool = False) -> None:
     """Leg vast welke cellen er voor deze key gemaskeerd zijn.
 
     Wordt door store.put() aangeroepen, zodat de telling er is ongeacht via welke route
-    de data binnenkwam — niet alleen bij get_duo_data.
+    de data binnenkwam — niet alleen bij get_duo_data. `groepen`: elke rij van de key is
+    een groepstotaal, en haar cellen zijn die van de groep.
     """
     _sentinel_cells[key] = cells
+    if groepen:
+        _groepen.add(key)
+    else:
+        _groepen.discard(key)
+
+
+def onderdrukt_in_groep(key: str, rij: int, kolom: str) -> int | None:
+    """Onderdrukte broncellen achter het totaal in rij `rij` en kolom `kolom` (CH-07).
+
+    None als de rijen van de key geen groepstotalen zijn: daar kan een getal dat de tekst
+    noemt ook een eigen som zijn, en hoort de grens bij de hele selectie.
+    """
+    df = store.get(key)
+    if key not in _groepen or df is None or not 0 <= rij < len(df):
+        return None
+    cells = _sentinel_cells.get(key)
+    index = df.index[rij]
+    if cells is None or index not in cells.index or kolom not in cells.columns:
+        return 0
+    return int(cells.at[index, kolom])
 
 
 def sentinel_cells(key: str) -> pd.DataFrame | None:
@@ -105,6 +129,7 @@ def onderdrukt(key: str, _gezien: frozenset[str] = frozenset()) -> dict[str, int
 def clear_sentinel_cells() -> None:
     """Hoort bij store.clear(): zonder dit blijven tellingen achter voor keys die weg zijn."""
     _sentinel_cells.clear()
+    _groepen.clear()
 
 
 def select_cells(cells: pd.DataFrame | None, df: pd.DataFrame) -> pd.DataFrame:
@@ -153,9 +178,21 @@ def periode_noot(per_periode: dict[str, int], kolom: str) -> list[str]:
 def sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
     return [
-        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten ({BETEKENIS}) — totalen zijn hierdoor een ondergrens"
+        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten ({BETEKENIS}) — een totaal waarin zo'n cel valt, "
+        "is daardoor een ondergrens"
         for col, n in counts.items()
     ]
+
+
+def cellen_noot(cells: pd.DataFrame | None) -> list[str]:
+    """Cellen en rijen apart, als ze verschillen: 305 onderdrukte cellen waren geen 305 rijen (CH-07)."""
+    if cells is None or cells.empty:
+        return []
+    per_rij = cells.sum(axis=1)
+    n_cellen, n_rijen = int(per_rij.sum()), int((per_rij > 0).sum())
+    if n_cellen == n_rijen:
+        return []
+    return [f"Samen {n_cellen} onderdrukte cellen in {n_rijen} rijen: een cel is één waarde in één kolom, geen rij."]
 
 
 PROGNOSE_NOOT = (
