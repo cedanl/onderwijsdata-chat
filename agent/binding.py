@@ -37,8 +37,7 @@ from tools import instelling, periode, store
 from tools.store import KeyMeta
 
 from .grounding import checked_numbers
-from .kpi_bron import bereik as kpi_bereik
-from .kpi_bron import met_periode
+from .kpi_bron import Kpi, kpis
 from .probleem import Probleem, hard
 from .selectie import data_keys
 
@@ -65,7 +64,7 @@ class _Data:
     index: _Index = field(default_factory=lambda: defaultdict(set))
     reeksen: _Reeksen = field(default_factory=lambda: defaultdict(lambda: defaultdict(set)))
     namen: dict[str, str] = field(default_factory=dict)
-    kpis: list[tuple[str, set[int]]] = field(default_factory=list)  # (cijfers, startjaren van de periode)
+    kpis: list[Kpi] = field(default_factory=list)
 
 
 def segmenten(tekst: str) -> list[str]:
@@ -119,16 +118,6 @@ def _index(key: str, df: pd.DataFrame, jaren: pd.Series | None, codes: pd.Series
                     data.reeksen[(f"{key}:{kolom}", code)][jaar].add(int(v))
 
 
-def _kpis(tool_results: list[str]) -> list[tuple[str, set[int]]]:
-    """De gehele compute_kpi-waarden (cijfers) met de startjaren waarover ze rekenen."""
-    kpis = []
-    for kpi in met_periode(tool_results):
-        waarde = str(kpi["value"]).lstrip("+-−").rstrip("%")
-        if "," not in waarde and (jaren := kpi_bereik(kpi)):
-            kpis.append((waarde.replace(".", ""), set(jaren)))
-    return kpis
-
-
 def _past(rij: _Rij, genoemd: tuple[set, set]) -> bool:
     """Past de rij bij wat de zin noemt? Een as die de zin niet noemt of de selectie mist, telt niet mee."""
     return all(not noemt or waarde is None or waarde in noemt for waarde, noemt in zip(rij, genoemd, strict=True))
@@ -169,7 +158,7 @@ def _verschil(getal: str, genoemd: tuple[set, set], reeksen: _Reeksen) -> bool:
 
 def _afgeleid(getal: str, genoemd: tuple[set, set], data: _Data) -> bool:
     """Komt het getal uit de genoemde jaren zelf: hun verschil, of een KPI over precies die periode?"""
-    kpi = any(cijfers == getal and jaren <= genoemd[0] for cijfers, jaren in data.kpis)
+    kpi = any(k.cijfers == getal and k.bereik is not None and set(k.bereik) <= genoemd[0] for k in data.kpis)
     return kpi or _verschil(getal, genoemd, data.reeksen)
 
 
@@ -227,7 +216,7 @@ def verkeerd_gebonden(tekst: str, tool_results: list[str]) -> list[Probleem]:
 
     Een zeker verkeerde binding is hard; een vermoedelijk afgeleide waarde zacht (#409).
     """
-    data = _Data(kpis=_kpis(tool_results))
+    data = _Data(kpis=kpis(tool_results))
     for key in data_keys(tool_results):
         known, df = store.meta(key), store.get(key)
         if known is None or df is None:

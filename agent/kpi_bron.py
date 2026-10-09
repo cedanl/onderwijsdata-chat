@@ -84,21 +84,3 @@ def _met_punten(geschreven: str) -> str:
 def _los(rest: str) -> bool:
     """Houdt het getal op voor `rest`: geen komma, en geen punt met een cijfer (12.5 is geen 12)."""
     return not rest.startswith(",") and not (rest[:1] == "." and rest[1:2].isdigit())
-
-
-def bereik(kpi: dict) -> tuple[int, int] | None:
-    """Startjaren van de eerste en laatste periode van de KPI; None als die geen schooljaren zijn."""
-    return periode.schooljaarbereik(kpi["periode"]["van"], kpi["periode"]["tot"])
-
-
-def met_periode(tool_results: list[str]) -> list[dict]:
-    """De compute_kpi-resultaten die een `periode` meegeven."""
-    kpis = []
-    for result in tool_results:
-        try:
-            data = json.loads(result)
-        except (TypeError, ValueError):
-            continue
-        if isinstance(data, dict) and "periode" in data and "value" in data:
-            kpis.append(data)
-    return kpis
