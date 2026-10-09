@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py.",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt.",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -14,6 +14,7 @@
         "max_search_catalog": 3,
         "data_points": {
           "description": "Voltijd ingeschrevenen HU, ca. 29.000-31.000 per jaar",
+          "entity": "Hogeschool Utrecht",
           "expected_range": [25000, 35000],
           "expected_years": ["2020", "2021", "2022", "2023", "2024"],
           "reference_values": {
@@ -83,8 +84,16 @@
           "note": "CBS 85776NED bevat uitstromers HO naar arbeidsmarktpositie, maar niet per instelling - het model moet dit eerlijk melden"
         },
         "acceptable_outcomes": [
-          "Analyse op landelijk HBO-niveau (niet per instelling beschikbaar)",
-          "Eerlijk melden dat per-instelling data niet beschikbaar is"
+          {
+            "id": "landelijk-niveau",
+            "beschrijving": "Analyse op landelijk HBO-niveau (niet per instelling beschikbaar)",
+            "markers": ["arbeidsmarkt", "niet per instelling|per instelling niet", "landelijk"]
+          },
+          {
+            "id": "per-instelling-niet-beschikbaar",
+            "beschrijving": "Eerlijk melden dat per-instelling data niet beschikbaar is",
+            "markers": ["arbeidsmarkt", "afgestudeerden", "niet per instelling|per instelling niet|geen .{0,40}per instelling"]
+          }
         ],
         "must_have_plot": false,
         "must_mention": ["arbeidsmarkt", "afgestudeerden"]
@@ -107,8 +116,11 @@
           "note": "CBS 85859NED bevat VSV naar arbeidsmarktpositie maar mogelijk niet per regio - eerlijk melden is ook correct"
         },
         "acceptable_outcomes": [
-          "Percentage VSV met werk in Utrecht berekend",
-          "Eerlijk melden dat combinatie VSV + arbeidsmarkt + regio niet in één dataset zit"
+          {
+            "id": "combinatie-niet-in-een-dataset",
+            "beschrijving": "Eerlijk melden dat combinatie VSV + arbeidsmarkt + regio niet in één dataset zit",
+            "markers": ["voortijdig|vsv", "werk|arbeidsmarkt", "regio|utrecht", "niet (in één|in een|per regio|beschikbaar)|ontbreekt"]
+          }
         ],
         "must_have_plot": false,
         "must_mention": ["voortijdig", "schoolverlat"]
@@ -161,7 +173,13 @@
         "must_contain_tools": ["search_catalog"],
         "max_search_catalog": 3,
         "must_mention": ["ingeschrevenen|unieke", "inschrijvingen"],
-        "acceptable_outcomes": ["Een student met meerdere inschrijvingen telt eenmaal als ingeschrevene en vaker als inschrijving"]
+        "acceptable_outcomes": [
+          {
+            "id": "student-telt-eenmaal",
+            "beschrijving": "Een student met meerdere inschrijvingen telt eenmaal als ingeschrevene en vaker als inschrijving",
+            "markers": ["ingeschrevenen|unieke", "inschrijvingen", "meerdere inschrijvingen|meer dan één inschrijving|meer dan een inschrijving"]
+          }
+        ]
       }
     },
     {
@@ -175,7 +193,13 @@
         "must_contain_tools": ["search_catalog"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "eerstejaars"],
-        "acceptable_outcomes": ["Het antwoord noemt of het gaat om eerstejaars aan de instelling of eerstejaars in het hoger onderwijs"]
+        "acceptable_outcomes": [
+          {
+            "id": "instelling-of-hoger-onderwijs",
+            "beschrijving": "Het antwoord noemt of het gaat om eerstejaars aan de instelling of eerstejaars in het hoger onderwijs",
+            "markers": ["Hogeschool Utrecht", "eerstejaars", "instelling", "hoger onderwijs"]
+          }
+        ]
       }
     },
     {
@@ -188,7 +212,13 @@
         "datasets": ["duo:p01hoinges"],
         "max_search_catalog": 3,
         "must_mention": ["exact|echte 4"],
-        "acceptable_outcomes": ["Een 4 in een hbo-bestand is exact omdat kleine aantallen daar als -1 onderdrukt staan"]
+        "acceptable_outcomes": [
+          {
+            "id": "vier-is-exact",
+            "beschrijving": "Een 4 in een hbo-bestand is exact omdat kleine aantallen daar als -1 onderdrukt staan",
+            "markers": ["exact", "-1", "onderdruk|afgeschermd"]
+          }
+        ]
       }
     },
     {
@@ -201,7 +231,13 @@
         "datasets": ["cbs:85423NED"],
         "max_search_catalog": 3,
         "must_mention": ["afrond"],
-        "acceptable_outcomes": ["CBS rondt af en sommige categorieën overlappen of vallen buiten de indeling"]
+        "acceptable_outcomes": [
+          {
+            "id": "afronding-en-indeling",
+            "beschrijving": "CBS rondt af en sommige categorieën overlappen of vallen buiten de indeling",
+            "markers": ["CBS", "afrond", "overlap|buiten de indeling|dubbel"]
+          }
+        ]
       }
     },
     {
@@ -227,7 +263,13 @@
         "datasets": ["rio:aangeboden-opleiding-cohorten"],
         "max_search_catalog": 3,
         "must_mention": ["status"],
-        "acceptable_outcomes": ["Cohorten met status open, los van de vraag of de aanmeldperiode nu loopt"]
+        "acceptable_outcomes": [
+          {
+            "id": "status-open",
+            "beschrijving": "Cohorten met status open, los van de vraag of de aanmeldperiode nu loopt",
+            "markers": ["cohort", "status", "open", "aanmeld"]
+          }
+        ]
       }
     },
     {
