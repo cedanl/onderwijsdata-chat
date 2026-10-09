@@ -8,6 +8,7 @@ import plotly.io as pio
 
 from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
 from core.errors import log_interne_fout
+from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -31,7 +32,7 @@ from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleiding
 from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
-from .probleem import INGEHOUDEN, Probleem, hard, harde, meldingen, uitkomsten, veilig
+from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
 from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
@@ -257,7 +258,7 @@ def _antwoordcontrole(
 
 async def _intrekken(emit: Emit, problems: list[str]) -> None:
     # Welke controle afging, voor de afvuurfrequentie: elke herschrijving kost een modelronde (CH-01).
-    logger.info("HERKANSING  controles=%s", sorted({str(getattr(p, "controle", None)) for p in problems}))
+    logger.info("HERKANSING  controles=%s", controlenamen(problems))
     # De reden in gewone taal gaat mee, zodat de ingetrokken versie haar kan tonen.
     await emit({"type": "message_cancel", "reden": meldingen(problems)})
     await emit(
@@ -313,15 +314,22 @@ def _eindtekst(
     ) or _antwoordtekst(result, antwoord, earlier, bronnen)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
-    logger.info("FINALE ANTWOORD  %r", text_content[:500])
+    # Geen antwoordtekst op INFO: het log valt buiten "gesprek verwijderen" (#475).
+    logger.info("FINALE ANTWOORD  %s", tekst_kenmerk(text_content))
+    logger.debug("FINALE ANTWOORD TEKST  %r", text_content[:500])
     if not text_content.strip():
         # Vaak een contentfilter van de provider: opnieuw sturen geeft weer niets (CH-32).
         logger.warning("LEEG ANTWOORD  model=%s  finish_reason=%s", model, result.finish_reason)
         text_content = LEEG_ANTWOORD
     if result.problems:
-        logger.warning("CONTROLE niet in orde of niet gecontroleerd  model=%s  %s", model, result.problems)
+        logger.warning(
+            "CONTROLE niet in orde of niet gecontroleerd  model=%s  controles=%s",
+            model,
+            controlenamen(result.problems),
+        )
+        logger.debug("CONTROLE MELDINGEN  %s", result.problems)
     if harde(result.problems):
-        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %r", model, text_content[:500])
+        logger.warning("ANTWOORD INGEHOUDEN  model=%s  %s", model, tekst_kenmerk(text_content))
         text_content = INGEHOUDEN
     return text_content
 
@@ -361,7 +369,8 @@ async def run(
     chosen_model = model or MODEL
 
     last_user_msg = _laatste_vraag(messages)
-    logger.info("RUN START  model=%s  vraag=%r", chosen_model, last_user_msg[:200])
+    logger.info("RUN START  model=%s  %s", chosen_model, tekst_kenmerk(last_user_msg, "vraag_"))
+    logger.debug("RUN VRAAG  %r", last_user_msg[:200])
 
     if vast := sentinelvraag(last_user_msg):
         await emit({"type": "message_start"})
@@ -426,7 +435,8 @@ async def run(
     # Wat het model onderweg herzag, gaat naar de redeneerkaart; het antwoord zelf herziet niets (#412).
     antwoord, herzien = zonder_zelfcorrectie(result.text)
     if herzien:
-        logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
+        logger.info("ZELFCORRECTIE naar redeneerkaart  herzien=%d", len(herzien))
+        logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
     bronnen = _veilige_bronnen(result.steps)
     text_content = _eindtekst(result, antwoord, earlier, session, chosen_model, bronnen)
     session["_last_turn_tool_calls"] = result.tool_calls

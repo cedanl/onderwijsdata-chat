@@ -1,4 +1,6 @@
 import ModelPicker from './ModelPicker'
+import MessageCounter from './MessageCounter'
+import { messageLengthState } from '../messageLength'
 
 export default function ChatInputFooter({
   connected,
@@ -9,7 +11,9 @@ export default function ChatInputFooter({
   onStop,
   onSend,
   canSend,
+  text = '',
 }) {
+  const length = messageLengthState(text)
   return (
     <div className="chat-input-footer">
       {!connected && (
@@ -18,6 +22,7 @@ export default function ChatInputFooter({
           Verbinding herstellen...
         </span>
       )}
+      <MessageCounter {...length} />
       {busy ? (
         <button type="button" className="send-btn" onClick={onStop} title="Stop genereren">
           <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>

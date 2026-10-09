@@ -47,6 +47,10 @@ de laatste tag is 1.8.6.
   naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal (TECHNIEK en ECONOMIE in Utrecht
   kwamen samen op 21.027 van de 25.225). Het resultaat zegt dat UWV geen opleidingsniveau kent, en de vacatures zijn
   ook per gemeente op te vragen.
+- Het arbeidsmarktdashboard telt zo'n gedeeld beroepencluster ook naar rato, net als de chat: de match score en de
+  grafiek gediplomeerden tegenover vacatures gebruiken dezelfde gewogen telling per sector (`vacatures_per_sector`).
+  Daarvoor konden de sectoren samen boven het provincietotaal uitkomen. `scripts/refresh_sector_mapping.py` kent nu
+  alle sectoren van beide indelingen (10 hbo/wo, 17 mbo); opnieuw draaien wist geen sectoren of `_indelingen` meer.
 - `get_uwv_vacatures` met een sector houdt drie lagen apart: de ongewogen UWV-aantallen (`uwv_broncijfer`), de
   toewijzing van clusters aan de sector (`lokale_classificatie`, een LLM-classificatie van deze app, met versie en
   model van de mapping) en het gewogen sectorgetal (`gewogen_aandeel`). Eerder stond alles naast elkaar onder de
@@ -142,7 +146,7 @@ de laatste tag is 1.8.6.
 - Citaties bij getallen wijzen een meetwaarde aan (maatkolom, KPI-uitkomst of analyseresultaat), nooit een
   code, rijtelling of stuk van een key. Elk gecontroleerd getal in een dataantwoord krijgt er een, zodat
   hetzelfde antwoord altijd evenveel citaties heeft; zonder binding staat er "Herkomst niet vastgesteld".
-  De uitleg begint met bron en selectie in woorden, met maat, eenheid en stap; de `data_key` staat eronder.
+  De uitleg begint met bron en selectie in woorden, met maat, eenheid en stap.
 - Grootste daling of stijging komt uit code (`compute_kpi`: `max_drop`, `max_rise`) en niet uit het model.
 - DUO-studiejaren hebben een `STUDIEJAAR_LABEL` (2021 = 2021/2022), zodat jaren niet een jaar verschuiven.
 - Hoogstens één scopevraag per vraag; daarna redelijke aannames, die het antwoord noemt.
@@ -173,6 +177,14 @@ de laatste tag is 1.8.6.
 - Is de data van een gesprek na een herstart van de server weg, dan zegt een mislukte CSV-download dat en biedt
   "Vraag opnieuw stellen" aan. Een rapport of dashboard op zo'n gesprek wordt niet meer op de overgebleven data
   gemaakt: de melding zegt dat de vraag opnieuw moet (was: "Rapport kon niet worden gemaakt").
+- Data overleeft een herstart: bij het opslaan van een gesprek bewaart de server per tabel hoe die ontstond
+  (de laadaanroep naar CBS, DUO of RIO en de selecties daarop, nooit een script). Een CSV-download onder een
+  eerder antwoord haalt ontbrekende data dan opnieuw op bij de bron. Zulke data zegt dat bij elke download: in
+  de header `X-Data-Herladen`, als eerste `#`-regel van de CSV en onder de downloadknop ("opnieuw opgehaald op
+  <datum>; de bron kan intussen zijn gewijzigd"). Een heropend gesprek kent de tabellen met zo'n recept weer:
+  de rapportknop staat dan direct aan, en het rapport haalt ontbrekende data eerst opnieuw op, met een melding.
+  Een eigen berekening (`run_analysis`) komt nog niet terug; de foutmelding noemt dan die stap en de key.
+  Nieuwe tabel `data_recipes`, aangemaakt bij de start.
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
 - Code-snippets geven dezelfde uitkomst als de app: filters met dezelfde semantiek, DUO-cellen met -1
   uitgesloten, en ook een KPI-snippet laadt zijn eigen data.
@@ -203,10 +215,16 @@ de laatste tag is 1.8.6.
 - Een vraag tijdens een lopend antwoord krijgt een melding, de getypte tekst blijft staan.
 - Een onbekend pad toont een 404-pagina; een uitgeschakelde dashboardroute meldt dat hij nog niet beschikbaar is.
 - Hernoem- en verwijderknoppen hebben een `aria-label`.
+- De technische key van een citatie (`data_key`) staat dichtgeklapt onder "Technische details", onderaan de uitleg.
 - Stuit een antwoord na alle pogingen op de rate limit, dan blijven de al opgehaalde stappen in het
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Het log bevat op INFO en hoger geen vraag- of antwoordtekst meer: `RUN START`, `FINALE ANTWOORD`,
+  `ANTWOORD INGEHOUDEN`, `ZELFCORRECTIE`, de controle-, zoek-, `CATALOGUS_GELADEN`/`CATALOGUS_AFWIJKING`-, rapport-,
+  KPI- en `REPRODUCEER`-regels noemen model, lengte, een korte SHA-256-hash of de namen van de controles. De
+  tekst zelf staat alleen op DEBUG. Het log valt buiten "gesprek verwijderen", dus wat de gebruiker typte bleef
+  daar staan.
 - `run_analysis` draait in een eigen proces zonder omgevingsvariabelen, netwerk, schrijfrechten of
   toegang tot bestanden buiten Python, met een harde time-out en geheugenlimiet. Een AST-controle
   (imports, dunders zoals `__globals__`, frame-attributen) vervangt de regex-lijst. `store_get` vraagt
@@ -214,6 +232,11 @@ de laatste tag is 1.8.6.
 - De `pytest`-job draait ook `ruff check`; de pipeline blokkeert op falende tests.
 - Evaluatie-uitvoer staat niet meer in git.
 - riodata is gepind op 0.3.1 (rio-onderwijsdata `c0b4bce`); `/version` noemt de meegebouwde catalogusrevisies.
+- `/version` noemt onder `arbeidsmarkt` ook de dataversie van UWV (snapshots t/m 2023-05-16) en ROA (AIS 2030,
+  editie 2025), uit de statische catalogus van riodata en zonder download.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
 - Productie-manifest geauditeerd: de allowlist-middleware waar de ingress naar verwijst wordt meegeleverd,
   dashboards staan uit zoals op test, en productie draait één pod zolang data en limiters in het geheugen leven.
+- `/ready` geeft bij een falende check (database of LLM-sleutels) HTTP 503 met een JSON-object, in plaats
+  van 200 met een JSON-array. De readiness-probe van de chart gebruikt `/health` en merkt hier niets van.
+- Een onbekend pad onder `/api` geeft een JSON-404 (`{"detail": "Not Found"}`) in plaats van de SPA met 200.

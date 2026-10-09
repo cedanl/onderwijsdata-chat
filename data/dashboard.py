@@ -516,7 +516,7 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     """Top-N vacatures per provincie, optioneel gefilterd op instellingssectoren.
 
     Bedoeld voor weergave-overzichten (UwvSection). Gebruik
-    arbeidsmarkt.clusters_voor_sectoren voor supply-demand berekeningen.
+    arbeidsmarkt.vacatures_per_sector voor supply-demand berekeningen.
     """
     try:
         stand = arbeidsmarkt.uwv_stand(provincie)
@@ -551,6 +551,14 @@ def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> di
         return arbeidsmarkt.clusters_voor_sectoren(provincie, sectoren)
     except Exception:
         logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
+        return {}
+
+
+def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
+    try:
+        return arbeidsmarkt.vacatures_per_sector(provincie, sectoren)
+    except Exception:
+        logger.warning("uwv: vacatures per sector voor %s niet beschikbaar", provincie, exc_info=True)
         return {}
 
 
@@ -1426,8 +1434,10 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     provincie = detect["provincie"]
     sectoren_tuple = tuple(sorted(detect["gediplomeerden_per_sector"].keys()))
 
-    # vacatures_per_cluster: alle matching clusters zonder cap (nodig voor per-sector berekening)
+    # vacatures_per_cluster: alle matching clusters zonder cap, ongewogen
     result["vacatures_per_cluster"] = _uwv_clusters_voor_sectoren(provincie, sectoren_tuple) if provincie else {}
+    # vacatures_per_sector: gedeelde clusters naar rato, zoals de chat (#455)
+    result["vacatures_per_sector"] = _uwv_vacatures_per_sector(provincie, sectoren_tuple) if provincie else {}
 
     # roa_per_niveau
     roa_raw = _roa_schoolverlaters(onderwijs_type)
@@ -1444,31 +1454,33 @@ def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     gps_final = result.get("gediplomeerden_per_sector", {})
     result["sector_cluster_mapping"] = {s: arbeidsmarkt.SECTOR_CLUSTER_MAP.get(s, []) for s in gps_final}
 
-    # match_score: schaarste if vac-aandeel > dipl-aandeel * 1.2
-    vpc = result["vacatures_per_cluster"]
-    scm = result["sector_cluster_mapping"]
-    totaal_dipl = sum(gps_final.values())
-    totaal_vac = sum(vpc.values())
-
-    if not totaal_dipl or not totaal_vac:
-        result["match_score"] = dict.fromkeys(gps_final)
-        return result
-
-    match_score: dict[str, str | None] = {}
-    for sector, dipl_count in gps_final.items():
-        dipl_aandeel = dipl_count / totaal_dipl
-        clusters = scm.get(sector, [])
-        if clusters:
-            vac_count = sum(vpc.get(cl, 0) for cl in clusters)
-            vac_aandeel = vac_count / totaal_vac
-            if vac_aandeel > dipl_aandeel * _MATCH_DREMPEL:
-                match_score[sector] = "schaarste"
-            elif dipl_aandeel > vac_aandeel * _MATCH_DREMPEL:
-                match_score[sector] = "overaanbod"
-            else:
-                match_score[sector] = "evenwicht"
-        else:
-            match_score[sector] = None
-    result["match_score"] = match_score
-
+    result["match_score"] = _match_scores(gps_final, result["vacatures_per_sector"], result["sector_cluster_mapping"])
     return result
+
+
+def _match_label(dipl_aandeel: float, vac_aandeel: float) -> str:
+    if vac_aandeel > dipl_aandeel * _MATCH_DREMPEL:
+        return "schaarste"
+    if dipl_aandeel > vac_aandeel * _MATCH_DREMPEL:
+        return "overaanbod"
+    return "evenwicht"
+
+
+def _match_scores(
+    gps: dict[str, int], vacatures_per_sector: dict[str, int], scm: dict[str, list[str]]
+) -> dict[str, str | None]:
+    """Per sector het diploma-aandeel tegenover het vacature-aandeel.
+
+    De vacatures per sector zijn gewogen (#455), dus hun som is het totaal en tellen beide aandelen
+    op tot 1. Een sector zonder clusters in de mapping krijgt None, net als elke sector zonder vacatures.
+    """
+    totaal_dipl = sum(gps.values())
+    totaal_vac = sum(vacatures_per_sector.values())
+    if not totaal_dipl or not totaal_vac:
+        return dict.fromkeys(gps)
+    return {
+        sector: _match_label(n / totaal_dipl, vacatures_per_sector.get(sector, 0) / totaal_vac)
+        if scm.get(sector)
+        else None
+        for sector, n in gps.items()
+    }

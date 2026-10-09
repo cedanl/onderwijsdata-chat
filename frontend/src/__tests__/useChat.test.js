@@ -702,3 +702,31 @@ describe('useChat question model', () => {
     expect(questions.map(m => m.model)).toEqual(['anthropic/claude-opus', 'openai/gpt-oss-120b'])
   })
 })
+
+// #472: a reopened conversation gets its data keys back from the recipes the server saved.
+describe('useChat heropend gesprek', () => {
+  const restored = [
+    { role: 'user', content: 'Hoeveel?' },
+    { role: 'assistant', content: 'Zoveel.', tools: [{ name: 'query_data', exportKey: 'duo:x:0:ab' }] },
+  ]
+
+  it('stuurt het gesprek-id mee, zodat de server de data-keys van dit gesprek vindt', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.sendHistory(restored, 'conv-a') })
+    const [history] = ws.sent.filter(m => m.action === 'history')
+    expect(history).toEqual({
+      action: 'history',
+      messages: [{ role: 'user', content: 'Hoeveel?' }, { role: 'assistant', content: 'Zoveel.' }],
+      conv_id: 'conv-a',
+    })
+  })
+
+  it('onthoudt hoeveel data-keys de server terugzette, tot het volgende gesprek', async () => {
+    const ws = FakeWebSocket.last
+    expect(chat.historyDataKeys).toBe(0)
+    await act(async () => { ws.emit({ type: 'history_data', data_keys: 2 }) })
+    expect(chat.historyDataKeys).toBe(2)
+    await act(async () => { chat.startNewConversation() })
+    expect(chat.historyDataKeys).toBe(0)
+  })
+})

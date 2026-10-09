@@ -4,16 +4,18 @@ De export is de tabel die query_data of run_analysis in de store legde, niet de
 tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
-zoals bij de grafiekexport (#118).
+zoals bij de grafiekexport (#118). Data die na een herstart opnieuw bij de bron
+is opgehaald zegt dat bovenaan: de cijfers kunnen afwijken van het antwoord (#472).
 """
 
 import csv
 import io
 import json
+import re
 
 import pandas as pd
 
-from . import duo, store
+from . import duo, herlaad, store
 from .schemas import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
 _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS}
@@ -34,6 +36,20 @@ def export_key(name: str, result: str) -> str | None:
     return key if isinstance(key, str) else None
 
 
+# Excel voert tekst die met = + - of @ begint uit als formule (#483). Zulke tekst
+# krijgt een ' ervoor, dus de CSV wijkt daar bewust af van de tabel in de store;
+# getallen en getaltekst als '-1' of '-0,5' blijven zoals ze zijn.
+# Dezelfde regel als safeText in frontend/src/figureCsv.js.
+_FORMULE = re.compile(r"[=+\-@]")
+_GETAL = re.compile(r"[+-]?\d+([.,]\d+)*")
+
+
+def _veilig(tekst: str) -> str:
+    if _FORMULE.match(tekst) and not _GETAL.fullmatch(tekst):
+        return "'" + tekst
+    return tekst
+
+
 def _cel(v, afronden: bool) -> str:
     v = duo.json_waarde(v, afronden)
     if v is None or v is pd.NaT:
@@ -42,11 +58,12 @@ def _cel(v, afronden: bool) -> str:
         return repr(v).replace(".", ",")
     if isinstance(v, pd.Timestamp):
         return v.strftime("%d-%m-%Y")
-    return str(v)
+    return _veilig(str(v))
 
 
 def _noten(key: str, afronden: bool) -> list[str]:
-    noten = list(store.herkomst(key))
+    noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(key)) else []
+    noten += store.herkomst(key)
     known = store.meta(key)
     if known is not None and not known.volledig:
         noten.append(store.ONVOLLEDIG)
@@ -66,7 +83,7 @@ def naar_csv(key: str) -> str | None:
     for noot in _noten(key, afronden):
         uit.write(f"# {noot}\n")
     writer = csv.writer(uit, delimiter=";", lineterminator="\n")
-    writer.writerow(df.columns)
+    writer.writerow(_veilig(kolom) if isinstance(kolom, str) else kolom for kolom in df.columns)
     for rij in df.itertuples(index=False):
         writer.writerow(_cel(v, afronden) for v in rij)
     return uit.getvalue()

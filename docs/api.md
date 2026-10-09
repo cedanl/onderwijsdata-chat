@@ -11,7 +11,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `GET` | `/health` | Gezondheidscontrole — retourneert `{"status": "ok"}` |
 | `GET` | `/ready` | Readiness-check (o.a. database); gebruikt door Kubernetes |
 | `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
-| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image en per catalogus-package (`onderwijsdata`, `riodata`) de meegebouwde versie en commit |
+| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download |
 | `GET` | `/info` | Naam, of OIDC aan staat, databasetype (PostgreSQL/SQLite) en omgeving |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |

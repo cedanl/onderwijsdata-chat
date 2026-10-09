@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, StringConstraints
 
+from agent import recepten
 from core.auth import get_current_user
 from persistence import db as persistence_db
 
@@ -40,6 +41,8 @@ async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(
         body["timestamp"],
         body["messages"],
     )
+    # De recepten achter de tabellen van dit gesprek: zo overleven ze een herstart (#472).
+    recepten.bewaar(username, conv_id, body["messages"])
     return {"ok": True}
 
 
@@ -56,6 +59,7 @@ async def rename_conversation(
 
 @router.delete("/api/conversations/{conv_id}")
 async def delete_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
+    recepten.vergeet(username, persistence_db.recipes_for(username, conv_id))
     persistence_db.delete_conversation(username, conv_id)
     return {"ok": True}
 

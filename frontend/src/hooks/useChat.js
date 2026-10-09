@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { chatSocket, clearToken } from '../auth'
+import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
@@ -26,7 +26,7 @@ export function buildHistory(messages) {
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
 
-export function useChat({ onUnauthorized } = {}) {
+export function useChat() {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [thinking, setThinking] = useState(false)
@@ -38,6 +38,8 @@ export function useChat({ onUnauthorized } = {}) {
   const [reportProgress, setReportProgress] = useState(NO_REPORT_PROGRESS)
   const [resetting, setResetting] = useState(false)
   const [rejectedDraft, setRejectedDraft] = useState(null)
+  // How many data keys the server restored for a reopened conversation (#472): its report can be made then.
+  const [historyDataKeys, setHistoryDataKeys] = useState(0)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
@@ -134,6 +136,9 @@ export function useChat({ onUnauthorized } = {}) {
       },
       toast(ev) {
         addToast(ev.message, ev.level || 'info')
+      },
+      history_data(ev) {
+        setHistoryDataKeys(ev.data_keys || 0)
       },
       // The server refused a question because a run is still going (#145): say so,
       // take the question back out of the transcript and give it back to the input.
@@ -287,8 +292,10 @@ export function useChat({ onUnauthorized } = {}) {
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
+      let opened = false
 
       ws.onopen = () => {
+        opened = true
         setConnected(true)
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
@@ -298,8 +305,10 @@ export function useChat({ onUnauthorized } = {}) {
         reportAbandonedRef.current = false
         setReportBusy(false)
         setReportSpec(null)
-        if (pendingHistoryRef.current?.length > 0) {
-          ws.send(JSON.stringify({ action: 'history', messages: pendingHistoryRef.current }))
+        // A new server session knows no data keys until the history below names them again.
+        setHistoryDataKeys(0)
+        if (pendingHistoryRef.current) {
+          ws.send(JSON.stringify(pendingHistoryRef.current))
           pendingHistoryRef.current = null
         }
         if (pendingSettingsRef.current) {
@@ -316,12 +325,13 @@ export function useChat({ onUnauthorized } = {}) {
         }
 
         if (e.code === 4001) {
-          clearToken()
-          onUnauthorized?.()
+          endSession()
           return
         }
 
         if (manualCloseRef.current) return
+        // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
+        if (!opened) checkSession()
 
         if (retryCountRef.current < MAX_RETRIES) {
           const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
@@ -358,7 +368,7 @@ export function useChat({ onUnauthorized } = {}) {
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }
-  }, [addToast, closeCurrentMsg, endReport, failReport, onUnauthorized])
+  }, [addToast, closeCurrentMsg, endReport, failReport])
 
   // A question can go out: connected, no run, no reset and no report going (#417).
   const canSend = useCallback(() =>
@@ -397,13 +407,15 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [])
 
-  const sendHistory = useCallback((msgs) => {
+  // The conversation id lets the server find the data keys this conversation saved (#472).
+  const sendHistory = useCallback((msgs, convId = null) => {
     const history = buildHistory(msgs)
     if (!history.length) return
+    const msg = { action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ action: 'history', messages: history }))
+      wsRef.current.send(JSON.stringify(msg))
     } else {
-      pendingHistoryRef.current = history
+      pendingHistoryRef.current = msg
     }
   }, [])
 
@@ -446,6 +458,7 @@ export function useChat({ onUnauthorized } = {}) {
     busyRef.current = false
     setBusy(false)
     setThinking(false)
+    setHistoryDataKeys(0)
     currentMsgRef.current = null
     lastSentRef.current = null
   }, [])
@@ -462,5 +475,5 @@ export function useChat({ onUnauthorized } = {}) {
     }
   }, [clear])
 
-  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }

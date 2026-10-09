@@ -20,6 +20,9 @@ CBS_ROW_LIMIT = int(os.getenv("CBS_ROW_LIMIT", "5000"))
 RIO_PAGE_SIZE = int(os.getenv("RIO_PAGE_SIZE", "50"))
 DUO_ROW_LIMIT = int(os.getenv("DUO_ROW_LIMIT", "500"))
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
+# Maximale lengte van een nieuw chatbericht in tekens, na strip() (#481, SECURITY.md S7).
+# De composer gebruikt dezelfde standaard als constante: frontend/src/constants.js MAX_MESSAGE_CHARS.
+MAX_MESSAGE_CHARS = int(os.getenv("MAX_MESSAGE_CHARS", "4000"))
 # Tijdsgrens per run (#90): na RUN_SLOW_S een melding, na RUN_TIMEOUT_S stopt de run.
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))

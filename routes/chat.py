@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
+from agent import recepten
 from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
@@ -15,7 +16,7 @@ from agent.replay import replay_dashboard_figures, replay_data_calls
 from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
-from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MODEL
+from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
 from core.errors import error_event, friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
@@ -55,14 +56,16 @@ def _reset_session(session: dict) -> None:
     session.update(fresh)
 
 
-def _open_conversation(session: dict, messages: list) -> None:
-    """Continue a stored conversation: a fresh session that knows only its text.
+def _open_conversation(session: dict, messages: list, data_keys: list[str] | None = None) -> None:
+    """Continue a stored conversation: a fresh session that knows its text and its own data keys.
 
     Nothing of the previously open conversation may leak into it — not its turns,
-    and not its loaded data, which a report would otherwise pick up.
+    and not its loaded data, which a report would otherwise pick up. `data_keys` are the
+    keys this user saved a recipe for with this conversation (#472).
     """
     _reset_session(session)
     session["messages"] = _parse_history(messages)
+    session["data_keys"] = list(data_keys or [])
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -305,15 +308,50 @@ async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio
 
 async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> None:
     await _stop_task_and_wait(session, current_task)
-    _open_conversation(session, msg.get("messages") or [])
+    conv_id = msg.get("conv_id")
+    data_keys = await asyncio.to_thread(recepten.keys_van_gesprek, session["username"], conv_id)
+    _open_conversation(session, msg.get("messages") or [], data_keys)
+    if conv_id is not None:
+        # Of een rapport op de data van dit gesprek kan, zonder eerst een vraag opnieuw te stellen (#472).
+        await emit({"type": "history_data", "data_keys": len(data_keys)})
+
+
+def _invoer(msg: dict, sleutel: str) -> str:
+    """New user input from a frame, stripped; anything that is not a string counts as empty (#481)."""
+    waarde = msg.get(sleutel, "")
+    return waarde.strip() if isinstance(waarde, str) else ""
+
+
+def _te_lang(content: str) -> str | None:
+    """The refusal text for new input over MAX_MESSAGE_CHARS (#481), or None when it fits.
+
+    Expects the stripped input from _invoer, so what is measured is what goes on to the agent.
+    The text names only the lengths, never the content.
+    """
+    lengte = len(content)
+    if lengte <= MAX_MESSAGE_CHARS:
+        return None
+    return (
+        f"Je bericht is te lang ({lengte} tekens). Het maximum is {MAX_MESSAGE_CHARS} tekens. "
+        "Kort het in en probeer opnieuw."
+    )
+
+
+async def _weiger_te_lang(content: str, emit) -> bool:
+    """Refuse input over the limit out loud; True when it was refused."""
+    melding = _te_lang(content)
+    if melding is None:
+        return False
+    await emit({"type": "error", "message": melding, "modelafhankelijk": False})
+    return True
 
 
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
-    content = msg.get("content", "").strip()
-    if not content:
+    content = _invoer(msg, "content")
+    if not content or await _weiger_te_lang(content, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
     session["current_model"] = model
@@ -333,7 +371,9 @@ async def _handle_clarification(
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
-    choice = msg.get("choice", "")
+    choice = _invoer(msg, "choice")
+    if not choice or await _weiger_te_lang(choice, emit):
+        return current_task
     model = session.get("current_model")
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
     # Afbakening voor de controle na het antwoord, niet alleen tekst in het gesprek (#246).

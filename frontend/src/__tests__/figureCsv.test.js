@@ -198,3 +198,33 @@ describe('figureToCsv', () => {
     })
   })
 })
+
+// #483: Excel runs a text cell that starts with = + - or @ as a formula.
+describe('figureToCsv formula injection', () => {
+  const rowsFigure = rows => ({ data: [{ x: [1], y: [1] }], layout: { meta: { data: rows } } })
+
+  it.each(['=SUM(A1)', '+1+2', '-cmd', '@SUM(A1)'])('prefixes %s with an apostrophe in a data cell', text => {
+    expect(lines(figureToCsv(rowsFigure([{ NAAM: text }])))).toEqual(['NAAM', `'${text}`])
+  })
+
+  it.each(['=SUM(A1)', '+1+2', '-cmd', '@SUM(A1)'])('prefixes %s in a column name and a series name', text => {
+    expect(lines(figureToCsv(rowsFigure([{ [text]: 1 }])))[0]).toBe(`'${text}`)
+    const series = { data: [{ name: text, x: [2021], y: [10] }], layout: { meta: { x: 'JAAR', y: 'AANTAL' } } }
+    expect(lines(figureToCsv(series))[0]).toBe(`JAAR;'${text}`)
+  })
+
+  it('leaves numbers and numeric strings byte-identical', () => {
+    const values = [-1, -0.5, 1.234, '-1', '-0,5', '1.234', '+3']
+    const figure = rowsFigure([Object.fromEntries(values.map((v, i) => [`K${i}`, v]))])
+    expect(lines(figureToCsv(figure))[1]).toBe('-1;-0.5;1.234;-1;-0,5;1.234;+3')
+  })
+
+  it('prefixes first, then quotes a cell with a separator or a quote', () => {
+    const figure = rowsFigure([{ A: '=a;b', B: '=a"b' }])
+    expect(lines(figureToCsv(figure))[1]).toBe(`"'=a;b";"'=a""b"`)
+  })
+
+  it('keeps empty cells empty', () => {
+    expect(lines(figureToCsv(rowsFigure([{ A: null, B: '', C: undefined }])))[1]).toBe(';;')
+  })
+})

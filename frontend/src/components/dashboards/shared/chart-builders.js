@@ -23,6 +23,21 @@ export function buildSectorChartData(sectoren, { type = 'doughnut' } = {}) {
   }
 }
 
+// Diplomas vs. vacancies per sector. The backend counts a UWV cluster shared by several sectors
+// pro rata (#455), so the vacancy series is its per-sector count, not a sum over clusters.
+export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSector) {
+  if (!gediplomeerdenPerSector || !vacaturesPerSector) return null
+  const sectors = Object.keys(gediplomeerdenPerSector)
+  if (!sectors.length) return null
+  return {
+    labels: sectors.map(s => SECTOR_LABELS[s] || s),
+    datasets: [
+      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s] || 0), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] || 0), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
+    ],
+  }
+}
+
 export function sortedEntries(dict) {
   if (!dict) return []
   return Object.entries(dict).sort((a, b) => a[0] - b[0])

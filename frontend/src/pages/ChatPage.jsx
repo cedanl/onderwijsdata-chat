@@ -19,10 +19,12 @@ SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
+import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
+import { messageLengthState } from '../messageLength'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
@@ -44,12 +46,14 @@ import IngetrokkenVersies from '../components/IngetrokkenVersies'
 import { exportKeys, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
+import CopyButton from '../components/CopyButton'
 import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
@@ -62,29 +66,6 @@ import { answerBlocks, metBronnen } from '../answerBlocks'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
-}
-
-function CopyButton({ text, className }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-  return (
-    <button type="button" className={`copy-btn ${className || ''}`} onClick={handleCopy} title="Kopieer" aria-label="Kopieer">
-      {copied ? (
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      )}
-    </button>
-  )
 }
 
 function CodeBlock({ className, children }) {
@@ -207,10 +188,8 @@ function MessageContent({ msg, blocks = null }) {
 }
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
-  const handleUnauthorized = useCallback(() => window.location.reload(), [])
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
-    onUnauthorized: handleUnauthorized,
-  })
+  useDocumentTitle(pageTitle('Chat'))
+  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [input, setInput] = useState('')
   const [sendNotice, setSendNotice] = useState(null)
 
@@ -251,8 +230,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useEffect(() => {
     if (!connected || initialHistorySentRef.current || !restoredMessages.length) return
     initialHistorySentRef.current = true
-    sendHistory(restoredMessages)
-  }, [connected, restoredMessages, sendHistory])
+    sendHistory(restoredMessages, conversationId)
+  }, [connected, restoredMessages, sendHistory, conversationId])
 
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
@@ -327,7 +306,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
-    sendHistory(restored)
+    sendHistory(restored, String(conv.id))
   }, [clear, saveConversation, sendHistory, models])
 
   // Older conversations stay on the server until asked for (#123).
@@ -415,7 +394,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   const handleSend = () => {
     const q = input.trim()
-    if (!q || atContextLimit) return
+    // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
+    if (!q || atContextLimit || messageLengthState(q).over) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
       setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
@@ -602,7 +582,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               </div>
             )}
             {hasMessages && !busy && <ConversationExport messages={displayMessages} />}
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'ready' && (
+            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
@@ -621,7 +601,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages) === 'needs_reload' && (
+            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'needs_reload' && (
               <p className="report-reload-hint">
                 Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
               </p>
@@ -637,6 +617,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 rows={1}
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
+                maxLength={MAX_MESSAGE_CHARS}
+                aria-describedby={MESSAGE_COUNTER_ID}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
               />
@@ -648,7 +630,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 onModelChange={handleModelChange}
                 onStop={stop}
                 onSend={handleSend}
-                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit}
+                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input).over}
+                text={input}
               />
             </div>
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>

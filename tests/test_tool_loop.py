@@ -11,6 +11,7 @@ import pytest
 
 from agent import loop as loop_module
 from agent.stream import StreamResult
+from core.logging_util import tekst_kenmerk
 
 
 def _call(name: str, arguments: str = "{}", call_id: str = "t1") -> dict:
@@ -494,8 +495,11 @@ def test_load_outside_the_top_three_is_a_separate_metric(monkeypatch, caplog):
         _run()
 
     [record] = [r for r in caplog.records if "CATALOGUS_AFWIJKING" in r.message]
-    assert "ver-weg" in record.message and "ingeschrevenen" in record.message
+    assert "ver-weg" in record.message
     assert "85423NED" in record.message  # the top three it was measured against
+    # The query comes from the user's question: only its length and hash, the same as on the search line (#475).
+    assert tekst_kenmerk("ingeschrevenen", "query_") in record.message
+    assert "ingeschrevenen" not in record.message
 
 
 def test_rio_load_is_matched_on_its_resource_argument(monkeypatch, caplog):

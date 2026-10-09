@@ -19,9 +19,10 @@ import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
-from agent.session_data import DATA_WEG, data_lineage, ontbrekende_data_keys, session_data_keys
+from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
+from core.logging_util import tekst_kenmerk
 from tools import LABELS, store
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
@@ -126,11 +127,26 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
     }
 
 
+async def herstel_data(session: dict, emit: Emit) -> None:
+    """Haal terug wat een herstart uit de store wiste, vóór build_dataset_context (#472).
+
+    Alleen een heropend gesprek kan keys hebben die de store kwijt is: de keys komen uit de
+    recepten die bij het gesprek zijn bewaard. Herladen gaat naar de bron: in een thread, niet
+    op de event loop. Herladen data krijgt een melding, want de bron kan intussen zijn gewijzigd.
+    """
+    herstel = await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
+    if herstel.onherstelbaar:
+        raise ValueError(herstel.melding)
+    if herstel.notitie:
+        await emit({"type": "toast", "message": herstel.notitie, "level": "info"})
+
+
 def build_dataset_context(session: dict) -> dict:
     """Build a context dict describing the available datasets for the LLM.
 
     Fail-closed when data this conversation loaded is gone: a report on the rest, or a
     generic 'try again', would not tell the user that the question has to be asked again (CH-44).
+    Reloading it is herstel_data's job, before this (#472).
     """
     if ontbrekende_data_keys(session):
         raise ValueError(DATA_WEG)
@@ -321,7 +337,7 @@ def _collect_kpi(computed: dict[str, dict], result: str) -> None:
             elif "value" in payload:
                 computed[_normaliseer_waarde(payload["value"])] = payload
     except json.JSONDecodeError:
-        logger.warning("compute_kpi returned invalid JSON: %r", result[:100])
+        logger.warning("compute_kpi returned invalid JSON: %s", tekst_kenmerk(result))
 
 
 def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None:
@@ -347,7 +363,12 @@ def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
     for kpi in kpis:
         bron = computed.get(_normaliseer_waarde(kpi.get("value", "")))
         if bron is None:
-            logger.warning("KPI geweigerd, waarde komt niet uit compute_kpi: %r", kpi)
+            # Label en waarde zijn modeltekst: op WARNING alleen de lengte en hash (#475).
+            logger.warning(
+                "KPI geweigerd, waarde komt niet uit compute_kpi: %s",
+                tekst_kenmerk(json.dumps(kpi, ensure_ascii=False, default=str), "kpi_"),
+            )
+            logger.debug("KPI geweigerd  %r", kpi)
             continue
         gevalideerd.append(
             {

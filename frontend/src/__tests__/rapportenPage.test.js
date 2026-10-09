@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { createElement, act } from 'react'
+import { createElement, act, Fragment } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -13,7 +13,10 @@ vi.mock('../workbooks', () => ({
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),
 }))
 vi.mock('../components/WorkbookViewer', () => ({
-  default: ({ workbook }) => createElement('div', { 'data-testid': 'viewer' }, workbook.title),
+  default: ({ workbook, onBack }) => createElement(Fragment, null,
+    createElement('div', { 'data-testid': 'viewer' }, workbook.title),
+    createElement('button', { type: 'button', 'data-testid': 'back', onClick: onBack }, 'Rapporten'),
+  ),
 }))
 vi.mock('../components/WorkbookPreviews', () => ({ default: () => null }))
 
@@ -25,6 +28,7 @@ let root
 let container
 
 async function render(url = '/rapporten') {
+  document.title = 'openEDUdata+'
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -99,5 +103,36 @@ describe('RapportenPage opened via a report link', () => {
     expect(container.querySelector('[data-testid="viewer"]')).toBeNull()
     expect(container.textContent).toContain('Instroom hbo')
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('niet gevonden')
+  })
+})
+
+// #491: the tab names the page, and an open report by its own title.
+describe('RapportenPage tab title', () => {
+  it('names the list, also while it loads', async () => {
+    await render()
+    expect(document.title).toBe('Rapporten — openEDUdata+')
+    await act(async () => { server.resolve([]) })
+    expect(document.title).toBe('Rapporten — openEDUdata+')
+  })
+
+  it('names the list while a linked report is being fetched', async () => {
+    await render('/rapporten?id=wb-9')
+    expect(document.title).toBe('Rapporten — openEDUdata+')
+  })
+
+  it('uses the title of a report opened via a link, and goes back to the list title', async () => {
+    await render('/rapporten?id=wb-9')
+    await act(async () => {
+      server.resolve([{ id: 'wb-9', type: 'report', title: 'Uitval mbo', createdAt: '2026-10-01T00:00:00Z' }])
+    })
+    expect(document.title).toBe('Uitval mbo — openEDUdata+')
+    await act(async () => { container.querySelector('[data-testid="back"]').click() })
+    expect(document.title).toBe('Rapporten — openEDUdata+')
+  })
+
+  it('uses the title of a report passed in from the chat', async () => {
+    const pendingWorkbook = { id: 'wb-3', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z' }
+    await render({ pathname: '/rapporten', state: { pendingWorkbook } })
+    expect(document.title).toBe('Instroom hbo — openEDUdata+')
   })
 })

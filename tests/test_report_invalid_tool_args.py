@@ -143,13 +143,17 @@ def test_generate_logs_each_tool_call_with_arguments_and_rows(monkeypatch, caplo
         ],
     )
 
-    with caplog.at_level("INFO", logger="agent.report"):
+    with caplog.at_level("DEBUG", logger="agent.report"):
         _run_generate()
 
-    [record] = [r for r in caplog.records if "RAPPORT TOOL" in r.message]
-    assert "query_data" in record.message
-    assert '"JAAR": 2021' in record.message
-    assert "totaal_rijen=1" in record.message
+    # INFO: tool, argumentnamen, hash en rijen; de waarden zelf alleen op DEBUG (#475).
+    [info] = [r for r in caplog.records if "RAPPORT TOOL" in r.message and r.levelname == "INFO"]
+    assert "query_data" in info.message
+    assert "argumenten=data_key,filters" in info.message
+    assert "totaal_rijen=1" in info.message
+    assert "2021" not in info.message
+    [debug] = [r for r in caplog.records if "RAPPORT TOOL" in r.message and r.levelname == "DEBUG"]
+    assert '"JAAR": 2021' in debug.message
 
 
 def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its_data(monkeypatch):

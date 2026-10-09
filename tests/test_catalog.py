@@ -550,6 +550,9 @@ def test_search_catalog_logs_hit(caplog):
         search_catalog("instroom", source="cbs")
     assert any("search_catalog" in r.message and "results=1" in r.message for r in caplog.records)
     assert any("elapsed_ms=" in r.message for r in caplog.records)
+    # De zoekterm komt uit de vraag: alleen lengte en hash in het log (#475).
+    assert any("query_len=8 query_hash=" in r.message for r in caplog.records)
+    assert not any("instroom" in r.message for r in caplog.records)
 
 
 def test_search_catalog_logs_miss(caplog):
@@ -561,6 +564,8 @@ def test_search_catalog_logs_miss(caplog):
         result = search_catalog("xyznonexistent", source="cbs")
     assert "Geen resultaten" in result
     assert any("miss" in r.message and "search_catalog" in r.message for r in caplog.records)
+    assert any("query_len=14 query_hash=" in r.message for r in caplog.records)
+    assert not any("xyznonexistent" in r.message for r in caplog.records)
 
 
 def test_search_catalog_logs_top_ids(caplog):
@@ -587,6 +592,8 @@ def test_search_catalog_logs_geo_miss(caplog):
         result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
     assert "Geen datasets gevonden" in result
     assert any("geo filter" in r.message for r in caplog.records)
+    assert any("query_hash=" in r.message for r in caplog.records)
+    assert not any("instroom" in r.message for r in caplog.records)
 
 
 def test_dataset_details_logs_hit(caplog):

@@ -80,6 +80,7 @@ Optionele instellingen:
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `MAX_HISTORY` | `40` | Maximum berichten in chat-geschiedenis |
+| `MAX_MESSAGE_CHARS` | `4000` | Maximum tekens per nieuw chatbericht; langere berichten weigert de server |
 | `RUN_SLOW_S` | `20` | Seconden tot de melding "dit duurt langer dan normaal" |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 

@@ -175,13 +175,23 @@ def sector_vacatures(alle_clusters: dict[str, int], sector: str) -> SectorVacatu
 
 
 def clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
-    """Alle vacatureclusters voor de gegeven sectoren, zonder top-N cap.
+    """Alle vacatureclusters voor de gegeven sectoren, ongewogen en zonder top-N cap.
 
     Geen match is geen reden om alle clusters te nemen: dan kreeg elke sector
-    vacature-aandeel 0 en dus "overaanbod" (#229). Leeg geeft match_score None.
+    vacature-aandeel 0 en dus "overaanbod" (#229). Tel per sector met vacatures_per_sector.
     """
     stand = uwv_stand(provincie)
     return relevante_clusters(stand.clusters, sectoren) if stand else {}
+
+
+def vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
+    """Vacatures per sector in een provincie, gewogen zoals sector_vacatures; leeg zonder UWV-rijen.
+
+    Het dashboard telde de clusters per sector ongewogen op, zodat de sectoren samen boven het
+    provincietotaal konden uitkomen (#455). Nu telt het zoals de chat.
+    """
+    stand = uwv_stand(provincie)
+    return {s: sector_vacatures(stand.clusters, s).totaal for s in sectoren} if stand else {}
 
 
 @functools.cache

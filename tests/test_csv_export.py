@@ -89,6 +89,28 @@ def test_onderdrukte_cellen_staan_erbij():
     assert any(r.startswith("# 1 cellen met DUO-sentinel -1 in 'AANTAL'") for r in regels)
 
 
+_FORMULES = ["=SUM(A1)", "+1+2", "-cmd", "@SUM(A1)"]
+
+
+@pytest.mark.parametrize("tekst", _FORMULES)
+def test_formule_in_cel_en_kolomnaam_krijgt_een_apostrof(tekst):
+    """Excel voert tekst die met = + - of @ begint uit als formule (#483)."""
+    _bron(df=pd.DataFrame({tekst: [tekst]}))
+    assert _regels(naar_csv("duo:p01hoinges:0"))[-2:] == [f"'{tekst}", f"'{tekst}"]
+
+
+def test_getallen_en_getaltekst_blijven_zoals_ze_zijn():
+    # Een CBS-key: onder een DUO-key maskeert store.put de int -1 al als sentinel.
+    df = pd.DataFrame({"A": [-1], "B": [-0.5], "C": [1234.5], "D": ["-1"], "E": ["-0,5"], "F": ["1.234"]})
+    store.put("cbs:85525NED:0", df, KeyMeta(bron="cbs", dataset="85525NED"))
+    assert _regels(naar_csv("cbs:85525NED:0"))[-1] == "-1;-0,5;1234,5;-1;-0,5;1.234"
+
+
+def test_formule_met_puntkomma_krijgt_eerst_de_apostrof_dan_quotes():
+    _bron(df=pd.DataFrame({"A": ["=a;b"], "B": ['=a"b'], "C": [None]}))
+    assert _regels(naar_csv("duo:p01hoinges:0"))[-1] == '"\'=a;b";"\'=a""b";'
+
+
 def test_onbekende_key_heeft_geen_csv():
     assert naar_csv("duo:bestaat:niet") is None
 
@@ -179,3 +201,19 @@ def test_endpoint_meldt_verdwenen_data(client):
 def test_endpoint_vraagt_inlog(client):
     _bron()
     assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 401
+
+
+def test_endpoint_zonder_recept_houdt_de_melding_van_voor_de_recepten(client):
+    """Een key zonder bewaard recept komt na een herstart niet terug, met dezelfde melding als vóór #472."""
+    from core import auth
+
+    client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
+    _bron()
+    assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 200
+    store.clear()
+
+    resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
+    assert "X-Data-Herladen" not in resp.headers
