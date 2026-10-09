@@ -26,6 +26,9 @@ export const DEFAULT_INSTELLING = 'Hogeschool Utrecht'
 // MAX_HISTORY must match backend core/config.py MAX_HISTORY (default 40 = 20 turns)
 export const MAX_HISTORY = 40
 export const MAX_CHAT_TURNS = 20
+// Characters per new chat message (#481). Must equal the backend default of core/config.py
+// MAX_MESSAGE_CHARS; the server stays the authority if an operator changes it.
+export const MAX_MESSAGE_CHARS = 4000
 export const WARN_CHAT_TURNS = 16
 
 // ─── Suggested questions ──────────────────────────────────────────────────────

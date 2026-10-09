@@ -32,6 +32,10 @@ describe('LoginPage', () => {
     expect(login).not.toHaveBeenCalled()
   })
 
+  it('names the page in the tab title (#491)', () => {
+    expect(document.title).toBe('Inloggen — openEDUdata+')
+  })
+
   it('offers password managers the right fields', () => {
     expect(container.querySelector('#login-username').getAttribute('autocomplete')).toBe('username')
     expect(container.querySelector('#login-password').getAttribute('autocomplete')).toBe('current-password')

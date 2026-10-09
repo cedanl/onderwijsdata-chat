@@ -19,10 +19,12 @@ SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS } from '../constants'
+import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
+import { messageLengthState } from '../messageLength'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
@@ -49,6 +51,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import ChatInputFooter from '../components/ChatInputFooter'
+import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
@@ -191,6 +194,7 @@ function MessageContent({ msg }) {
 }
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
+  useDocumentTitle(pageTitle('Chat'))
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
@@ -399,7 +403,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   const handleSend = () => {
     const q = input.trim()
-    if (!q || atContextLimit) return
+    // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
+    if (!q || atContextLimit || messageLengthState(q).over) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
       setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
@@ -621,6 +626,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 rows={1}
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
+                maxLength={MAX_MESSAGE_CHARS}
+                aria-describedby={MESSAGE_COUNTER_ID}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
               />
@@ -632,7 +639,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 onModelChange={handleModelChange}
                 onStop={stop}
                 onSend={handleSend}
-                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit}
+                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input).over}
+                text={input}
               />
             </div>
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>

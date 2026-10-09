@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
+import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
 
 export default function HomePage({ dashboardsEnabled = true }) {
+  useDocumentTitle(APP_NAME)
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
   const [counts, setCounts] = useState({})
