@@ -26,7 +26,20 @@ _OPLEIDINGSNIVEAU = (
 _TELLING_SECTOR = (
     "Een cluster dat {sector} deelt met andere sectoren van dezelfde indeling (hbo/wo of mbo) telt naar rato "
     "mee, bij twee sectoren voor de helft, naar beneden afgerond. Zo tellen de sectoren samen nooit op tot meer "
-    "dan het totaal; de clustergetallen zelf zijn ongewogen."
+    "dan het totaal; de clustergetallen zelf zijn ongewogen. Lokale weging, geen UWV-cijfer."
+)
+_TELLING_ONGEDEELD = (
+    "De som van de clusters die de lokale classificatie aan {sector} toewijst; geen van die clusters hoort ook "
+    "bij een andere sector van dezelfde indeling. Lokale telling, geen UWV-cijfer."
+)
+# #460: zonder aparte lagen schreef het model de sectortoewijzing en de weging aan UWV toe.
+_BRONCIJFER = (
+    "Ongewogen aantallen vacatures, zoals UWV ze publiceert: totaal_vacatures over alle beroepenclusters en "
+    "het aantal per cluster."
+)
+_TOEWIJZING = (
+    "Welke beroepenclusters bij een onderwijssector horen, is een indeling van deze app, gemaakt met een "
+    "taalmodel; niet van UWV."
 )
 
 
@@ -34,23 +47,29 @@ def _json(result: dict) -> str:
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
 
 
-def _grootste_clusters(clusters: dict[str, int]) -> dict:
+def _grootste_clusters(clusters: dict[str, int], soort: str = "beroepenclusters") -> dict:
     """De grootste clusters (de invoer is aflopend), met een melding als er meer zijn."""
     uit: dict = {"clusters": dict(list(clusters.items())[:_MAX_CLUSTERS])}
     if len(clusters) > _MAX_CLUSTERS:
-        uit["clusters_getoond"] = f"de {_MAX_CLUSTERS} grootste van {len(clusters)} beroepenclusters"
+        uit["clusters_getoond"] = f"de {_MAX_CLUSTERS} grootste van {len(clusters)} {soort}"
     return uit
 
 
-def _sectordeel(clusters: dict[str, int], sector: str) -> dict:
+def _sectordeel(clusters: dict[str, int], totaal: int, sector: str) -> dict:
+    """De sector in drie lagen (#460): de UWV-aantallen, onze clustertoewijzing en onze weging."""
     deel = arbeidsmarkt.sector_vacatures(clusters, sector)
-    getoond = _grootste_clusters(deel.clusters)
-    uit: dict = {"sector": sector, "vacatures_sector": deel.totaal} | getoond
-    if deel.gedeeld:
-        uit["telling_sector"] = _TELLING_SECTOR.format(sector=sector)
+    # Het aantal clusters is onze selectie voor de sector, geen UWV-telling.
+    getoond = _grootste_clusters(deel.clusters, f"beroepenclusters die de lokale classificatie aan {sector} toewijst")
+    telling = _TELLING_SECTOR if deel.gedeeld else _TELLING_ONGEDEELD
+    gewogen: dict = {"vacatures_sector": deel.totaal, "telling_sector": telling.format(sector=sector)}
     if gedeeld := {c: deel.gedeeld[c] for c in getoond["clusters"] if c in deel.gedeeld}:
-        uit["gedeelde_clusters"] = gedeeld
-    return uit
+        gewogen["gedeelde_clusters"] = gedeeld
+    classificatie = {"sector": sector, "clusters": list(getoond["clusters"]), "toewijzing": _TOEWIJZING}
+    return {
+        "uwv_broncijfer": {"toelichting": _BRONCIJFER, "totaal_vacatures": totaal} | getoond,
+        "lokale_classificatie": classificatie | arbeidsmarkt.SECTOR_MANIFEST,
+        "gewogen_aandeel": gewogen,
+    }
 
 
 def _geen_vacatures(provincie: str, gemeente: str | None) -> str:
@@ -81,7 +100,7 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str |
         "totaal_vacatures": stand.totaal,
         "opleidingsniveau": _OPLEIDINGSNIVEAU,
     }
-    result |= _sectordeel(stand.clusters, sector) if sector else _grootste_clusters(stand.clusters)
+    result |= _sectordeel(stand.clusters, stand.totaal, sector) if sector else _grootste_clusters(stand.clusters)
     return _json(result)
 
 

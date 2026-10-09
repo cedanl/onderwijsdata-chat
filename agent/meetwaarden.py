@@ -109,24 +109,37 @@ def _uit_analyse(resultaat, data_key: str | None) -> Iterator[Meetwaarde]:
         yield from (replace(w, rij=None) for w in _uit_rijen([resultaat], data_key))
 
 
+# Het sectorgetal telt clusters die deze app aan de sector toewees, naar rato (#449, #460): geen UWV-cijfer.
+_UWV_GEWOGEN = "Vacatures in de sector, lokaal gewogen"
+
+
+def _blok(parsed: dict, naam: str) -> dict:
+    blok = parsed.get(naam)
+    return blok if isinstance(blok, dict) else {}
+
+
 def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
-    """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum."""
+    """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum.
+
+    Met een sector staan de clusters in `uwv_broncijfer` en het sectorgetal in `gewogen_aandeel`
+    (#460); dat getal is onze weging over onze clustertoewijzing, en de maat zegt dat."""
     bron = f"{parsed.get('bron')}, {parsed.get('peildatum')}"  # de toolbron noemt UWV al
     plaats = tuple(
         f"{label}: {parsed[k]}" for k, label in (("provincie", "Provincie"), ("gemeente", "Gemeente")) if parsed.get(k)
     )
-    sector = (f"Sector: {parsed['sector']}",) if parsed.get("sector") else ()
-    for veld, maat, selectie in (
-        ("totaal_vacatures", "Vacatures", plaats),
-        ("vacatures_sector", "Vacatures in de sector", plaats + sector),
+    naam_sector = _blok(parsed, "lokale_classificatie").get("sector")
+    sector = (f"Sector: {naam_sector}",) if naam_sector else ()
+    gewogen = _blok(parsed, "gewogen_aandeel").get("vacatures_sector")
+    for waarde, maat, selectie in (
+        (parsed.get("totaal_vacatures"), "Vacatures", plaats),
+        (gewogen, _UWV_GEWOGEN, plaats + sector),
     ):
-        if (cijfers := _getal(parsed.get(veld))) is not None:
+        if (cijfers := _getal(waarde)) is not None:
             yield Meetwaarde(cijfers, maat, selectie, bron=bron)
-    for veld, maat in (("clusters", "Vacatures"), ("gedeelde_clusters", "Vacatures naar rato in de sector")):
-        clusters = parsed.get(veld)
-        for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
-            if (cijfers := _getal(aantal)) is not None:
-                yield Meetwaarde(cijfers, maat, (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
+    clusters = (_blok(parsed, "uwv_broncijfer") or parsed).get("clusters")
+    for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
+        if (cijfers := _getal(aantal)) is not None:
+            yield Meetwaarde(cijfers, "Vacatures", (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
 
 
 _ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
