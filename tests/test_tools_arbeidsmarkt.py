@@ -320,6 +320,7 @@ def test_uwv_sector_scheidt_broncijfer_classificatie_en_weging(gedeelde_clusters
     uit = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
 
     assert uit["uwv_broncijfer"]["clusters"] == {"Chauffeurs": 2000, "Programmeurs": 500}
+    assert uit["uwv_broncijfer"]["totaal_vacatures"] == uit["totaal_vacatures"] == 2900
     assert "ongewogen" in uit["uwv_broncijfer"]["toelichting"].lower()
     assert uit["lokale_classificatie"] == {
         "sector": "TECHNIEK",
@@ -375,7 +376,9 @@ def test_uwv_sector_toont_de_grootste_clusters_in_beide_lagen(bronnen):
         uit = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
 
     assert uit["lokale_classificatie"]["clusters"] == list(uit["uwv_broncijfer"]["clusters"]) == clusters[:15]
-    assert "15 grootste van 20" in uit["uwv_broncijfer"]["clusters_getoond"]
+    assert uit["uwv_broncijfer"]["clusters_getoond"] == (
+        "de 15 grootste van 20 beroepenclusters die de lokale classificatie aan TECHNIEK toewijst"
+    )
     assert uit["gewogen_aandeel"]["vacatures_sector"] == sum(range(81, 101))
 
 
