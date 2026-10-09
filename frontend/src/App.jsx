@@ -7,7 +7,8 @@ import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS, MAX_MESSAGE_CHARS } from './constants'
+import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
@@ -65,6 +66,7 @@ function AppShell() {
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
+  const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -124,6 +126,7 @@ function AppShell() {
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled !== false)
         setFeedbackEnabled(config.feedback_enabled === true)
+        setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
       }).catch(() => {
         setDashboardsEnabled(true)
       }),
@@ -196,7 +199,7 @@ function AppShell() {
           <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
             <Routes>
               <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} />} />
+              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
               <Route path="*" element={<NotFoundPage />} />
