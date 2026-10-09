@@ -19,6 +19,7 @@ SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
+import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
@@ -191,6 +192,7 @@ function MessageContent({ msg }) {
 }
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
+  useDocumentTitle(pageTitle('Chat'))
   const handleUnauthorized = useCallback(() => window.location.reload(), [])
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat({
     onUnauthorized: handleUnauthorized,
