@@ -120,6 +120,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
         console.log(`Dataset-match: ${scores.dataset_match} (${scores.datasets_found.join(', ') || 'geen'})`)
         console.log(`Content-match: ${JSON.stringify(scores.mentions)}`)
         if (scores.reference_checks) console.log(`Referentiewaarden: ${JSON.stringify(scores.reference_checks)}`)
+        if (scores.bron_gevonden) console.log(`Bron gevonden: ${JSON.stringify(scores.bron_gevonden)}`)
+        console.log(`Uitkomst: ${scores.uitkomst}${scores.uitkomst_id ? ` (${scores.uitkomst_id})` : ''}`)
         if (scores.has_percentage !== undefined) console.log(`Percentage: ${scores.has_percentage}`)
         if (scores.has_plot !== undefined) console.log(`Plot: ${scores.has_plot}`)
         console.log(`Hallucinatie-risico: ${scores.hallucination_risk}`)

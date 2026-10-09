@@ -4,10 +4,14 @@
  *
  * Eerst de poorten uit chatstream.js (geldig einde, tekst, geen fout, geen timeout): faalt er
  * één, dan is de score 0. Daarna valt elke eis apart te benoemen in `fouten`: verplichte tool,
- * dataset, term, referentiewaarde, grafiek, percentage. Vóór CH-28 haalde een leeg antwoord met
+ * dataset, term, referentiewaarde, bron, grafiek, percentage. Vóór CH-28 haalde een leeg antwoord met
  * 'Authentication rejected' 40 of 60 punten bij een grens van 30.
+ *
+ * Een referentiewaarde telt alleen als het eindantwoord haar bij haar jaar (en instelling, maat)
+ * noemt; dat de tooluitvoer haar bevat, is een aparte uitkomst (#463, antwoord.js).
  */
 import { poorten } from './chatstream.js'
+import { tegenspreekt, waardeInAntwoord, waardeInBron } from './antwoord.js'
 
 export function scoreResult(r, ev) {
   const scores = { poorten: poorten(r) }
@@ -49,21 +53,20 @@ export function scoreResult(r, ev) {
     scores.has_plot = r.toolCalls.includes('create_plot')
   }
 
-  // 6. Data-referentiewaarden controleren
-  if (ex.data_points?.reference_values) {
-    const tolerance = (ex.data_points.tolerance_pct || 10) / 100
+  // 6. Referentiewaarden: het eindantwoord bewijst de waarde (antwoordcorrectheid), de
+  //    tooluitvoer los daarvan dat de bron haar gaf (bronophaalcorrectheid).
+  const dp = ex.data_points
+  if (dp?.reference_values) {
+    const tolerantie = (dp.tolerance_pct ?? 10) / 100
+    const sleutels = Object.keys(dp.reference_values)
+    const toolOutputs = r.toolResults.map(t => t.output)
     scores.reference_checks = {}
-    for (const [key, expected] of Object.entries(ex.data_points.reference_values)) {
-      const numPattern = new RegExp(`${expected.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1[. ]?')}`, 'g')
-      const found = numPattern.test(r.content) || numPattern.test(allText)
-      if (!found) {
-        // probeer met tolerantie: zoek getallen in de buurt
-        const nums = (r.content.match(/[\d.]+/g) || []).map(n => parseFloat(n.replace(/\./g, '')))
-        const close = nums.some(n => Math.abs(n - expected) / expected <= tolerance)
-        scores.reference_checks[key] = close ? 'close' : 'missing'
-      } else {
-        scores.reference_checks[key] = 'exact'
-      }
+    scores.bron_gevonden = {}
+    for (const [sleutel, verwacht] of Object.entries(dp.reference_values)) {
+      const anderen = sleutels.filter(s => s !== sleutel).map(s => dp.reference_values[s])
+      const context = { sleutel, sleutels, verwacht, anderen, entiteit: dp.entity, maat: dp.maat, tolerantie }
+      scores.reference_checks[sleutel] = waardeInAntwoord(r.content, context)
+      scores.bron_gevonden[sleutel] = waardeInBron(toolOutputs, verwacht)
     }
   }
 
@@ -80,16 +83,13 @@ export function scoreResult(r, ev) {
   // 9. Timeout
   scores.timeout = !!r.timeout
 
-  // 10. Acceptable outcomes (als gedefinieerd)
-  if (ex.acceptable_outcomes) {
-    scores.acceptable_outcome = ex.acceptable_outcomes.some(outcome => {
-      const keywords = outcome.toLowerCase().split(/\s+/).filter(w => w.length > 4)
-      const matchCount = keywords.filter(k => r.content.toLowerCase().includes(k)).length
-      return matchCount >= Math.ceil(keywords.length * 0.3)
-    })
-  }
+  // 10. Uitkomst: 'data' als elke data-eis gehaald is, 'beperking' als het antwoord een vooraf
+  //     vastgelegde andere uitkomst geeft, anders 'geen'.
+  const dataFouten = dataEisFouten(scores, allDatasets.length > 0)
+  scores.uitkomst_id = dataFouten.length ? aanvaardeUitkomst(r.content, ex) : null
+  scores.uitkomst = !dataFouten.length ? 'data' : scores.uitkomst_id ? 'beperking' : 'geen'
 
-  // Totaalscore (0-100)
+  // Totaalscore (0-100): de behaalde punten naar rato van de te behalen punten
   let total = 0, maxPoints = 0
 
   // Zoek-efficiëntie (20 punten)
@@ -127,26 +127,56 @@ export function scoreResult(r, ev) {
   maxPoints += 10
   if (!scores.timeout) total += 10
 
-  scores.fouten = fouten(scores, allDatasets.length > 0)
+  // Antwoordcorrectheid (20 punten): elke referentiewaarde exact in het eindantwoord
+  const checks = Object.values(scores.reference_checks || {})
+  if (checks.length) {
+    maxPoints += 20
+    total += Math.round(20 * checks.filter(c => c === 'exact').length / checks.length)
+  }
+
+  scores.fouten = fouten(scores, dataFouten)
   // Een leeg, mislukt of afgebroken resultaat scoort niets, hoe zuinig het ook zocht.
-  scores.total = Object.values(scores.poorten).every(Boolean) ? total : 0
-  scores.max = maxPoints
+  scores.total = Object.values(scores.poorten).every(Boolean) ? Math.round(100 * total / maxPoints) : 0
+  scores.max = 100
 
   return scores
 }
 
 /** Elke eis die faalt, apart benoemd; een zachte totaalscore mag er geen verbergen. */
-function fouten(scores, datasetsVerwacht) {
+function fouten(scores, dataFouten) {
   const uit = Object.entries(scores.poorten).filter(([, ok]) => !ok).map(([naam]) => `poort: ${naam}`)
   if (uit.length) return uit
   if (scores.hallucination_risk) uit.push('getallen zonder datatool')
-  // Een vooraf aanvaarde andere uitkomst ("niet per instelling beschikbaar") vervangt de data-eisen.
-  if (scores.acceptable_outcome) return uit
+  // Een vooraf vastgelegde andere uitkomst ("niet per instelling beschikbaar") vervangt de data-eisen.
+  if (scores.uitkomst === 'beperking') return uit
+  return [...uit, ...dataFouten]
+}
+
+/** De data-eisen die falen. 'close' is geen bewijs: alleen 'exact' haalt een referentiewaarde. */
+function dataEisFouten(scores, datasetsVerwacht) {
+  const uit = []
   for (const [tool, ok] of Object.entries(scores.required_tools)) if (!ok) uit.push(`tool ontbreekt: ${tool}`)
   if (datasetsVerwacht && !scores.dataset_match) uit.push('verwachte dataset niet gebruikt')
   for (const [term, ok] of Object.entries(scores.mentions)) if (!ok) uit.push(`term ontbreekt: ${term}`)
-  for (const [k, v] of Object.entries(scores.reference_checks || {})) if (v === 'missing') uit.push(`referentiewaarde ontbreekt: ${k}`)
+  for (const [k, v] of Object.entries(scores.reference_checks || {})) {
+    if (v !== 'exact') uit.push(`referentiewaarde ontbreekt: ${k}`)
+  }
+  for (const [k, ok] of Object.entries(scores.bron_gevonden || {})) {
+    if (!ok) uit.push(`bron: waarde niet in tooluitvoer: ${k}`)
+  }
   if (scores.has_plot === false) uit.push('grafiek ontbreekt')
   if (scores.has_percentage === false) uit.push('percentage ontbreekt')
   return uit
+}
+
+/**
+ * De id van de vastgelegde andere uitkomst die het antwoord geeft, of null. Elke marker moet
+ * erin staan (hoofdletterongevoelige regex, zoals must_mention), en het antwoord mag bij geen
+ * referentiewaarde een ander getal noemen.
+ */
+function aanvaardeUitkomst(content, ex) {
+  if (tegenspreekt(content, ex.data_points)) return null
+  const passend = (ex.acceptable_outcomes || []).find(u =>
+    u.markers?.length && u.markers.every(m => new RegExp(m, 'i').test(content)))
+  return passend?.id ?? null
 }
