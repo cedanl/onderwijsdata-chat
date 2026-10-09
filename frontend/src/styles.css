@@ -1517,7 +1517,9 @@ html.dark .suggested-btn:hover {
 .report-progress-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .report-progress-note { margin: 0; color: var(--muted-text); font-size: .78rem; }
 .report-progress .run-progress { margin: 0; }
+/* 44px tap target on every screen, not only in the mobile block (CH-36). */
 .report-cancel-btn {
+  display: inline-flex; align-items: center; min-height: 44px;
   padding: 3px 12px; border-radius: 999px; border: 1px solid var(--gray-200);
   background: transparent; color: var(--muted-text); font-size: .78rem; cursor: pointer;
 }
