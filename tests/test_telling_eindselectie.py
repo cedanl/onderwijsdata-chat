@@ -16,6 +16,7 @@ from tools import duo, store
 from tools.analysis import run_analysis
 from tools.csv_export import naar_csv
 from tools.kpi import compute_kpi
+from tools.query import query_data
 from tools.store import KeyMeta
 
 _BRON = "duo:p01mboinschr:0"
@@ -170,3 +171,43 @@ def test_een_zin_over_de_exacte_selectie_geeft_geen_ondergrens():
     b = _instelling("Hogeschool B", [10000])
 
     assert "Ondergrens" not in telling_blok([a, b], "Hogeschool B had 10.000 studenten.")
+
+
+# --- CH-07 (#461): de ondergrens hoort bij het groepstotaal van de claim ---
+
+
+def _per_geslacht() -> str:
+    """Audit 17, HU per geslacht: één onderdrukte MAN-cel, geen VROUW-cel."""
+    df = pd.DataFrame({"GESLACHT": ["MAN", "MAN", "VROUW", "VROUW"], "AANTAL": [12000, -1, 9000, 5000]})
+    store.put("duo:p01hoinges:1", df, KeyMeta(bron="duo", dataset="p01hoinges"))
+    return query_data("duo:p01hoinges:1", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"})
+
+
+def test_een_groepstotaal_zonder_onderdrukte_cellen_is_exact():
+    """Het antwoord noemde beide totalen een ondergrens; de vrouwengroep heeft geen -1."""
+    blok = telling_blok([_per_geslacht()], "Er stonden 14.000 vrouwen ingeschreven.")
+
+    assert "Ondergrens" not in blok
+
+
+def test_een_groepstotaal_met_onderdrukte_cellen_is_een_ondergrens():
+    blok = telling_blok([_per_geslacht()], "Er stonden 12.000 mannen ingeschreven.")
+
+    assert "Ondergrens" in blok and "p01hoinges" in blok
+
+
+def test_een_groepstotaal_met_onderdrukte_cellen_naast_een_zonder_geeft_de_ondergrens():
+    blok = telling_blok([_per_geslacht()], "Er stonden 12.000 mannen en 14.000 vrouwen ingeschreven.")
+
+    assert "Ondergrens" in blok
+
+
+def test_een_selectie_zonder_groepering_houdt_de_ondergrens_van_de_selectie():
+    """Een som die het model zelf schrijft kan gelijk zijn aan één cel: bij losse rijen blijft de grens."""
+    df = pd.DataFrame({"INSTELLINGSNAAM": ["A", "B"], "JAAR": [2023, 2023], "AANTAL": [5000, -1]})
+    store.put("duo:p01hoinges:2", df, KeyMeta(bron="duo", dataset="p01hoinges"))
+    rijen = query_data("duo:p01hoinges:2", filters={"JAAR": 2023})
+
+    blok = telling_blok([rijen], "Samen hadden ze 5.000 studenten.")
+
+    assert "Ondergrens" in blok

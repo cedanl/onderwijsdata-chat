@@ -1,6 +1,7 @@
 """Dashboardlaag: geen stille terugval op alle clusters (#229), geen DUO -1 als getal (#228)."""
 
 import inspect
+import json
 from unittest.mock import patch
 
 import pandas as pd
@@ -103,6 +104,57 @@ def test_manifest_is_geen_sector(tmp_path):
     bestand = tmp_path / "sector_cluster_mapping.json"
     bestand.write_text('{"_manifest": {"bijgewerkt": "2026-08-17"}, "TECHNIEK": ["ICT"]}')
     assert arbeidsmarkt.load_sector_cluster_map(bestand) == {"TECHNIEK": ["ICT"]}
+
+
+# --- #460: de mapping zegt dat ze van een taalmodel komt, niet van UWV ---
+
+
+def test_mapping_bestand_zegt_dat_de_indeling_niet_van_uwv_is():
+    ruw = json.loads(arbeidsmarkt.SECTOR_CLUSTER_PATH.read_text())
+
+    assert ruw["_manifest"]["herkomst"] == arbeidsmarkt.MAPPING_HERKOMST
+    assert "LLM" in arbeidsmarkt.MAPPING_HERKOMST and "niet van UWV" in arbeidsmarkt.MAPPING_HERKOMST
+    assert ruw["_manifest"]["model"]
+
+
+def test_sector_mapping_manifest_geeft_herkomst_versie_en_model(tmp_path):
+    bestand = tmp_path / "sector_cluster_mapping.json"
+    manifest = {"bijgewerkt": "2026-08-17", "herkomst": "LLM-classificatie, niet van UWV", "model": "claude-x"}
+    bestand.write_text(json.dumps({"_manifest": manifest, "TECHNIEK": ["ICT"]}))
+
+    assert arbeidsmarkt.sector_mapping_manifest(bestand) == {
+        "herkomst": "LLM-classificatie, niet van UWV",
+        "mapping_versie": "2026-08-17",
+        "model": "claude-x",
+    }
+
+
+def test_refresh_script_schrijft_herkomst_en_model_in_het_manifest(tmp_path):
+    from core.config import MODEL
+    from scripts.refresh_sector_mapping import manifest
+
+    geschreven = manifest()
+    bestand = tmp_path / "sector_cluster_mapping.json"
+    bestand.write_text(json.dumps({"_manifest": geschreven, "TECHNIEK": ["ICT"]}))
+
+    assert arbeidsmarkt.sector_mapping_manifest(bestand) == {
+        "herkomst": arbeidsmarkt.MAPPING_HERKOMST,
+        "mapping_versie": geschreven["bijgewerkt"],
+        "model": MODEL,
+    }
+
+
+@pytest.mark.parametrize("inhoud", ['{"TECHNIEK": ["ICT"]}', '{"_manifest": {}}', '{"_manifest": "kapot"}', "{kapot"])
+def test_sector_mapping_manifest_zonder_velden_is_onbekend(tmp_path, inhoud):
+    """Een ontbrekend veld is geen exceptie; de herkomst blijft dan wat het refresh-script schrijft."""
+    bestand = tmp_path / "sector_cluster_mapping.json"
+    bestand.write_text(inhoud)
+
+    assert arbeidsmarkt.sector_mapping_manifest(bestand) == {
+        "herkomst": arbeidsmarkt.MAPPING_HERKOMST,
+        "mapping_versie": "onbekend",
+        "model": "onbekend",
+    }
 
 
 def test_roa_prognose_in_het_dashboard_is_landelijk():

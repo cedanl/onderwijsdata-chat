@@ -183,6 +183,30 @@ def _empty_melding(data_key: str, complete: bool) -> str:
     return melding
 
 
+_ONDERDRUKT = " (onderdrukte cellen)"
+_GROEPSNOOT = (
+    f"Een rij met '<kolom>{_ONDERDRUKT}' bevat in die groep cellen met -1: alleen dat totaal is een ondergrens, "
+    "de andere totalen zijn exact. Noem niet elke groep een ondergrens."
+)
+
+
+def _met_onderdrukte_cellen(rows: list[dict], df: pd.DataFrame, cells: pd.DataFrame) -> bool:
+    """Zet bij elk groepstotaal met onderdrukte cellen het aantal ernaast (CH-07); True als er een was.
+
+    Zonder dit zei de melding 'totalen' en noemde het antwoord elke groep een ondergrens.
+    Alleen in de tool-output: de store houdt de tabel van de bron.
+    """
+    gemarkeerd = False
+    for row, index in zip(rows, df.index, strict=True):
+        if index not in cells.index:
+            continue
+        for kolom, n in cells.loc[index].items():
+            if n:
+                row[f"{kolom}{_ONDERDRUKT}"] = int(n)
+                gemarkeerd = True
+    return gemarkeerd
+
+
 def _met_ondergrens(rows: list[dict], df: pd.DataFrame, vier: pd.DataFrame) -> None:
     """Zet bij een som met als-4-cellen de ondergrens ernaast: het werkelijke totaal ligt ertussen (#406)."""
     for row, index in zip(rows, df.index, strict=True):
@@ -266,6 +290,7 @@ def query_data(
         df = df[columns]
 
     cells = duo.select_cells(duo.sentinel_cells(data_key), df)
+    cellen_noot = duo.cellen_noot(cells)
     vier = kleine_aantallen.vier_cellen(df) if known and known.vier_regel else None
     vier_totaal = int(vier.to_numpy().sum()) if vier is not None else None
     notes = []
@@ -286,7 +311,7 @@ def query_data(
             vier = duo.aggregate_cells(vier, df, group_by or [], agg)
         df = agg
 
-    notes += duo.periode_noot(per_jaar, kolom or "")
+    notes += cellen_noot + duo.periode_noot(per_jaar, kolom or "")
 
     transformed = filters or columns or group_by
     if transformed:
@@ -303,7 +328,7 @@ def query_data(
         )
         # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
         # van de selectie reizen wel mee: het totaal blijft een ondergrens.
-        duo.record_sentinel_cells(result_key, cells)
+        duo.record_sentinel_cells(result_key, cells, groepen=bool(group_by or aggregate))
     else:
         result_key = data_key
 
@@ -319,6 +344,8 @@ def query_data(
     ]
     if vier is not None and vier_totaal and (group_by or aggregate):
         _met_ondergrens(rows, df.head(adaptive_max), vier)
+    if (group_by or aggregate) and _met_onderdrukte_cellen(rows, df.head(adaptive_max), cells):
+        notes.append(_GROEPSNOOT)
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
     if known and known.scriptconstanten:
         # Een eigen berekening maakte deze getallen; ook hier zijn ze geen bron (CH-27, #456).

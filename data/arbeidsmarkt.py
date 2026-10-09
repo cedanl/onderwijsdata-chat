@@ -29,6 +29,9 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
+# Wie de clusters aan sectoren toewees: een taalmodel via scripts/refresh_sector_mapping.py, niet UWV (#460).
+MAPPING_HERKOMST = "LLM-classificatie, niet van UWV"
+_ONBEKEND = "onbekend"
 
 # Niveaus binnen het chatprofiel; ROA kent ook basisonderwijs, vmbo en havo/vwo.
 ROA_NIVEAUS: dict[str, tuple[str, ...]] = {"mbo": ("Mbo2", "Mbo3", "Mbo4"), "ho": ("Bachelor", "Master, doctor")}
@@ -67,8 +70,21 @@ def load_sector_indeling(path: Path = SECTOR_CLUSTER_PATH) -> dict[str, str]:
     return {s: indeling for indeling, sectoren in _lees_mapping(path).get("_indelingen", {}).items() for s in sectoren}
 
 
+def sector_mapping_manifest(path: Path = SECTOR_CLUSTER_PATH) -> dict[str, str]:
+    """Herkomst, versie (`bijgewerkt`) en model van de mapping uit `_manifest` (#460); ontbreekt een veld,
+    dan 'onbekend'. De herkomst is altijd een LLM-classificatie: zo maakt het refresh-script de mapping."""
+    manifest = _lees_mapping(path).get("_manifest")
+    velden = manifest if isinstance(manifest, dict) else {}
+    return {
+        "herkomst": str(velden.get("herkomst") or MAPPING_HERKOMST),
+        "mapping_versie": str(velden.get("bijgewerkt") or _ONBEKEND),
+        "model": str(velden.get("model") or _ONBEKEND),
+    }
+
+
 SECTOR_CLUSTER_MAP: dict[str, list[str]] = load_sector_cluster_map()
 SECTOR_INDELING: dict[str, str] = load_sector_indeling()
+SECTOR_MANIFEST: dict[str, str] = sector_mapping_manifest()
 
 
 @dataclass(frozen=True)

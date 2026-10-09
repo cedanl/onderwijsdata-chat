@@ -239,6 +239,32 @@ def test_uwv_vacatures_krijgen_een_citatie_met_provincie_en_cluster():
     assert zorg["vastgesteld"] is True and "Zorg en welzijn" in zorg["selectie"]
 
 
+_UWV_SECTOR = json.dumps(
+    {
+        "bron": "UWV Open Match",
+        "dataset": "uwv-open-match-data",
+        "peildatum": "mei 2023",
+        "provincie": "Utrecht",
+        "totaal_vacatures": 25225,
+        "uwv_broncijfer": {"toelichting": "Ongewogen", "clusters": {"Chauffeurs": 2104, "Programmeurs": 1530}},
+        "lokale_classificatie": {"sector": "TECHNIEK", "clusters": ["Chauffeurs", "Programmeurs"]},
+        "gewogen_aandeel": {"vacatures_sector": 2582, "gedeelde_clusters": {"Chauffeurs": ["ECONOMIE"]}},
+    }
+)
+
+
+def test_uwv_met_sector_houdt_citaties_en_noemt_het_sectorgetal_lokaal_gewogen():
+    """#460: de lagen staan genest; het cluster blijft een UWV-cijfer, het sectorgetal heet lokaal gewogen."""
+    [sector, cluster] = citaties(
+        "In Utrecht telt TECHNIEK 2.582 vacatures, waarvan 2.104 bij Chauffeurs.",
+        [("get_uwv_vacatures", _UWV_SECTOR)],
+    )
+    assert sector["vastgesteld"] is True and "lokaal gewogen" in sector["maat"]
+    assert "TECHNIEK" in sector["selectie"]
+    assert cluster["vastgesteld"] is True and cluster["maat"] == "Vacatures"
+    assert "Chauffeurs" in cluster["selectie"] and "TECHNIEK" in cluster["selectie"]
+
+
 def test_een_roa_prognose_krijgt_een_citatie_met_regio_uit_de_herkomst():
     [citatie] = citaties("Tot 2030 verwacht ROA 435.600 baanopeningen voor bachelors.", [("get_roa_benchmark", _ROA)])
     assert citatie["vastgesteld"] is True

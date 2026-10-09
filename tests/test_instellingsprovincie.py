@@ -23,8 +23,8 @@ _DIPLOMA = "gediplomeerde-mbo-studenten"
 
 # Als data/instellingen.get_adres_lookup: code → adres, uit adressen_ho en adressen_mbo.
 _ADRESSEN = {
-    "25LH": {"provincie": "Utrecht", "arbeidsmarktregio": "Utrecht-Midden", "plaatsnaam": "UTRECHT"},
-    "01OE": {"provincie": "Utrecht", "arbeidsmarktregio": "Utrecht-Midden", "plaatsnaam": "UTRECHT"},
+    "25LH": {"provincie": "Utrecht", "arbeidsmarktregio": "Midden-Utrecht", "plaatsnaam": "UTRECHT"},
+    "01OE": {"provincie": "Utrecht", "arbeidsmarktregio": "Midden-Utrecht", "plaatsnaam": "UTRECHT"},
     "00GT": {"provincie": "Zuid-Holland", "arbeidsmarktregio": "Rijnmond", "plaatsnaam": "ROTTERDAM"},
     "99ZZ": {"provincie": None, "arbeidsmarktregio": None, "plaatsnaam": None},
 }

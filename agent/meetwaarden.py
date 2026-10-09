@@ -11,7 +11,7 @@ import json
 import math
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from tools import TOOL_RUN_ANALYSIS
 from tools.analysis import SCRIPTCONSTANTEN
@@ -39,11 +39,17 @@ class Meetwaarde:
     data_key: str | None = None
     eenheid: str | None = None
     bron: str | None = None  # zonder data_key: de bron in woorden (UWV, ROA)
+    rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
 
 
 def _getal(waarde) -> frozenset[str] | None:
     """De gehele cijfers van een getal zoals een tekst ze schrijft: afgekapt of afgerond, zonder teken."""
-    if isinstance(waarde, bool) or not isinstance(waarde, int | float) or not math.isfinite(waarde):
+    if isinstance(waarde, bool) or not isinstance(waarde, int | float):
+        return None
+    try:
+        if not math.isfinite(waarde):
+            return None
+    except OverflowError:  # een int van 309+ cijfers past niet in een float: geen meetwaarde, geen crash
         return None
     n = abs(waarde)
     return frozenset({str(math.trunc(n)), str(round(n))})
@@ -71,12 +77,12 @@ def _selectie(rij: dict, maat: str) -> tuple[str, ...]:
 
 
 def _uit_rijen(rijen, data_key: str | None) -> Iterator[Meetwaarde]:
-    for rij in rijen if isinstance(rijen, list) else ():
+    for positie, rij in enumerate(rijen if isinstance(rijen, list) else ()):
         if not isinstance(rij, dict):
             continue
         for kolom, waarde in rij.items():
             if _meetkolom(kolom, waarde) and (cijfers := _getal(waarde)):
-                yield Meetwaarde(cijfers, kolom, _selectie(rij, kolom), data_key)
+                yield Meetwaarde(cijfers, kolom, _selectie(rij, kolom), data_key, rij=positie)
 
 
 def _uit_kpi(kpi: dict) -> Iterator[Meetwaarde]:
@@ -101,30 +107,44 @@ def _uit_analyse(resultaat, data_key: str | None) -> Iterator[Meetwaarde]:
     """Wat een analyse teruggaf: een los getal, een dict met uitkomsten of rijen."""
     if (cijfers := _getal(resultaat)) is not None:
         yield Meetwaarde(cijfers, "resultaat", (), data_key)
+    # De rijen van een analyse zijn niet die van de tabel achter data_key: geen positie.
     elif isinstance(resultaat, list):
-        yield from _uit_rijen(resultaat, data_key)
+        yield from (replace(w, rij=None) for w in _uit_rijen(resultaat, data_key))
     elif isinstance(resultaat, dict):
-        yield from _uit_rijen([resultaat], data_key)
+        yield from (replace(w, rij=None) for w in _uit_rijen([resultaat], data_key))
+
+
+# Het sectorgetal telt clusters die deze app aan de sector toewees, naar rato (#449, #460): geen UWV-cijfer.
+_UWV_GEWOGEN = "Vacatures in de sector, lokaal gewogen"
+
+
+def _blok(parsed: dict, naam: str) -> dict:
+    blok = parsed.get(naam)
+    return blok if isinstance(blok, dict) else {}
 
 
 def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
-    """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum."""
+    """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum.
+
+    Met een sector staan de clusters in `uwv_broncijfer` en het sectorgetal in `gewogen_aandeel`
+    (#460); dat getal is onze weging over onze clustertoewijzing, en de maat zegt dat."""
     bron = f"{parsed.get('bron')}, {parsed.get('peildatum')}"  # de toolbron noemt UWV al
     plaats = tuple(
         f"{label}: {parsed[k]}" for k, label in (("provincie", "Provincie"), ("gemeente", "Gemeente")) if parsed.get(k)
     )
-    sector = (f"Sector: {parsed['sector']}",) if parsed.get("sector") else ()
-    for veld, maat, selectie in (
-        ("totaal_vacatures", "Vacatures", plaats),
-        ("vacatures_sector", "Vacatures in de sector", plaats + sector),
+    naam_sector = _blok(parsed, "lokale_classificatie").get("sector")
+    sector = (f"Sector: {naam_sector}",) if naam_sector else ()
+    gewogen = _blok(parsed, "gewogen_aandeel").get("vacatures_sector")
+    for waarde, maat, selectie in (
+        (parsed.get("totaal_vacatures"), "Vacatures", plaats),
+        (gewogen, _UWV_GEWOGEN, plaats + sector),
     ):
-        if (cijfers := _getal(parsed.get(veld))) is not None:
+        if (cijfers := _getal(waarde)) is not None:
             yield Meetwaarde(cijfers, maat, selectie, bron=bron)
-    for veld, maat in (("clusters", "Vacatures"), ("gedeelde_clusters", "Vacatures naar rato in de sector")):
-        clusters = parsed.get(veld)
-        for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
-            if (cijfers := _getal(aantal)) is not None:
-                yield Meetwaarde(cijfers, maat, (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
+    clusters = (_blok(parsed, "uwv_broncijfer") or parsed).get("clusters")
+    for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
+        if (cijfers := _getal(aantal)) is not None:
+            yield Meetwaarde(cijfers, "Vacatures", (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
 
 
 _ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
@@ -189,6 +209,58 @@ def meetwaarden(result: str, tool: str | None = None) -> list[Meetwaarde]:
         return []
     eigen = _onafhankelijk(parsed)
     return [w for w in _uit(parsed, tool == TOOL_RUN_ANALYSIS) if w.cijfers not in eigen]
+
+
+def _codecijfers(waarde) -> str | None:
+    """Een code zoals een tekst haar schrijft: 50800, ook als JSON-tekst of als 50800.0 van pandas."""
+    if isinstance(waarde, str):
+        return waarde if waarde.isascii() and waarde.isdigit() else None
+    if isinstance(waarde, float) and waarde.is_integer():
+        waarde = int(waarde)
+    return str(abs(waarde)) if isinstance(waarde, int) and not isinstance(waarde, bool) else None
+
+
+def _sleutelwaarden(parsed) -> Iterator[tuple[str, object]]:
+    """(sleutel, waarde) op elke diepte; een lijst geeft elk element onder haar eigen sleutel.
+
+    RIO zet een bestuurscode in bevoegd_gezag.code en kandidaten[].code, niet in een rij.
+    Met een stapel, niet recursief: een diep genest analyseresultaat haalt de stacklimiet niet."""
+    stapel: list[tuple[str | None, object]] = [(None, parsed)]
+    while stapel:
+        sleutel, waarde = stapel.pop()
+        if isinstance(waarde, dict):
+            stapel.extend(waarde.items())
+        elif isinstance(waarde, list):
+            stapel.extend((sleutel, w) for w in waarde)
+        elif sleutel is not None:
+            yield sleutel, waarde
+
+
+def _schemacellen(parsed: dict) -> Iterator[tuple[str, object]]:
+    """(kolom, waarde) uit het kolomschema van een laadstap: de waardenlijst en de voorbeelden."""
+    kolommen = parsed.get("kolommen")
+    for k in kolommen if isinstance(kolommen, list) else ():
+        if isinstance(k, dict) and isinstance(kolom := k.get("kolom"), str):
+            for soort in ("waarden", "voorbeelden"):
+                waarden = k.get(soort)
+                yield from ((kolom, w) for w in (waarden if isinstance(waarden, list) else ()))
+
+
+def identificaties(result: str) -> set[str]:
+    """De cijfers onder een identificatiesleutel, waar ook in één toolresultaat: OPLEIDINGSCODE 50800 is een code.
+
+    CBS' kolom ID telt niet mee: dat is een rijnummer, geen code die een tekst noemt."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return set()
+    if not isinstance(parsed, dict):
+        return set()
+    return {
+        cijfers
+        for kolom, waarde in (*_sleutelwaarden(parsed), *_schemacellen(parsed))
+        if kolom.upper() != "ID" and _IDENTIFICATIE.search(kolom) and (cijfers := _codecijfers(waarde))
+    }
 
 
 def eenheden(result: str) -> dict[str, str]:

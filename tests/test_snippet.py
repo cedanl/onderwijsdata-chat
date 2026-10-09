@@ -431,7 +431,9 @@ def _records(df: pd.DataFrame) -> list[dict]:
 def test_query_data_snippet_geeft_wat_de_app_geeft(duo_in_app_en_snippet, args):
     app = json.loads(query_data(_DUO_KEY, **args))
     namespace = _run(generate("query_data", {"data_key": _DUO_KEY, **args}))
-    assert _records(namespace["df"]) == _records(pd.DataFrame(app["rijen"]))
+    # De datakolommen: een groepsrij noemt haar onderdrukte cellen erbij (CH-07), dat is geen data.
+    kolommen = list(store.get(app["data_key"]).columns)
+    assert _records(namespace["df"]) == _records(pd.DataFrame(app["rijen"])[kolommen])
 
 
 def test_snippet_sluit_duo_minus_een_uit_net_als_de_app(duo_in_app_en_snippet):

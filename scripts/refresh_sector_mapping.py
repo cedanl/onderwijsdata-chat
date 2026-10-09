@@ -8,7 +8,8 @@ Gebruik:
 Het script:
   1. Laadt alle unieke BEROEPENCLUSTER-namen uit de UWV Open Match dataset
   2. Vraagt de LLM (via litellm) welke clusters bij welke DUO-sector passen
-  3. Schrijft het resultaat naar data/sector_cluster_mapping.json
+  3. Schrijft het resultaat naar data/sector_cluster_mapping.json, met in `_manifest` de datum,
+     de herkomst (een LLM-classificatie, niet van UWV) en het model (#460)
 
 Draai dit opnieuw als UWV een nieuw snapshot publiceert.
 """
@@ -28,6 +29,7 @@ import litellm
 from riodata import uwv
 
 from core.config import MODEL
+from data.arbeidsmarkt import MAPPING_HERKOMST
 
 OUTPUT = ROOT / "data" / "sector_cluster_mapping.json"
 
@@ -85,6 +87,17 @@ Antwoord uitsluitend met het JSON-object, geen uitleg."""
     return json.loads(raw)
 
 
+def manifest() -> dict[str, str]:
+    """Wanneer, waarvan en door welk model de mapping gemaakt is; de tool toont herkomst, versie en model."""
+    return {
+        "bijgewerkt": date.today().isoformat(),
+        "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
+        "script": "scripts/refresh_sector_mapping.py",
+        "herkomst": MAPPING_HERKOMST,
+        "model": MODEL,
+    }
+
+
 def main() -> None:
     clusters = laad_clusters()
     mapping = classificeer_via_llm(clusters)
@@ -96,12 +109,7 @@ def main() -> None:
         for k in onbekend:
             del mapping[k]
 
-    manifest = {
-        "bijgewerkt": date.today().isoformat(),
-        "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
-        "script": "scripts/refresh_sector_mapping.py",
-    }
-    OUTPUT.write_text(json.dumps({"_manifest": manifest, **mapping}, indent=2, ensure_ascii=False))
+    OUTPUT.write_text(json.dumps({"_manifest": manifest(), **mapping}, indent=2, ensure_ascii=False))
     print(f"\nGeschreven naar {OUTPUT}", flush=True)
     for sector, items in sorted(mapping.items()):
         print(f"  {sector}: {len(items)} clusters", flush=True)

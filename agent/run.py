@@ -16,6 +16,7 @@ from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
+from .getalnotatie import nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
@@ -216,12 +217,14 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     def ongedekt(n: str) -> Probleem:
+        # In de notatie van het antwoord dat de gebruiker ziet (CH-11r).
+        getal = nl_notatie(n)
         if unverified(n, [], said_by_user):
-            (verzonnen,) = hard([Probleem(f"{n} staat niet in de opgehaalde data.")])
+            (verzonnen,) = hard([Probleem(f"{getal} staat niet in de opgehaalde data.")])
             return verzonnen
         # Zacht: een correcte weerlegging citeert het getal van de gebruiker ook (#207, #214).
         return Probleem(
-            f"{n} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
+            f"{getal} staat alleen in een eerder bericht van de gebruiker, niet in de opgehaalde data.",
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
         )
 
@@ -347,7 +350,9 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  %r", herzien)
     text_content = weigering(
         antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(zonder_citaatkop(zonder_toolnamen(antwoord)), result.tool_results)
+    ) or met_telling(
+        nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord)), result.steps, earlier), result.tool_results
+    )
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     logger.info("FINALE ANTWOORD  %r", text_content[:500])

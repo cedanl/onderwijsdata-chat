@@ -8,7 +8,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**117 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over alle onderwijssoorten of po/vo laadt de chat niet; bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen.
+**119 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -93,7 +93,7 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ## UWV — Uitvoeringsinstituut Werknemersverzekeringen
 
-**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector; ook ingezet in het arbeidsmarktdashboard. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
+**UWV-vacaturedata** geeft inzicht in de vraag naar arbeid per sector. In de chat via `get_uwv_vacatures` per provincie of gemeente en onderwijssector; ook ingezet in het arbeidsmarktdashboard. Welke beroepenclusters bij een sector horen, is een indeling van deze app, gemaakt met een taalmodel (`data/sector_cluster_mapping.json`); UWV deelt vacatures niet in onderwijssectoren in. Het resultaat houdt de UWV-aantallen, die indeling (met versie en model) en het gewogen sectorgetal apart. Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal. UWV legt bij vacatures geen opleidingsniveau vast.
 
 | Eigenschap | Details |
 |------------|---------|

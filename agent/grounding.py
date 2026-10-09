@@ -38,7 +38,8 @@ def _digits(written: str) -> str:
     return _THOUSANDS.sub("", written)
 
 
-def _checked(number: str) -> bool:
+def checked(number: str) -> bool:
+    """Telt de controle dit getal (cijfers) mee: vier of meer cijfers en geen jaartal."""
     return len(number) >= _MIN_DIGITS and int(number) not in _YEARS
 
 
@@ -89,7 +90,7 @@ def getallen_met_positie(text: str) -> list[tuple[str, str, int]]:
     return [
         (m.group(0), digits, m.start())
         for m in _TEXT_NUMBER.finditer(text)
-        if "," not in m.group(0) and _checked(digits := _digits(m.group(1)))
+        if "," not in m.group(0) and checked(digits := _digits(m.group(1)))
     ]
 
 
@@ -110,7 +111,7 @@ def afgeleide_verschillen(text: str, tool_results: list[str]) -> set[str]:
 def unsourced_numbers(text: str, tool_results: list[str]) -> set[str]:
     """Getallen (≥ 4 cijfers, geen jaartal) uit `text` die in geen enkel toolresultaat staan."""
     in_text = {_digits(m.group(1)) for m in _TEXT_NUMBER.finditer(text)}
-    return {n for n in in_text if _checked(n)} - _tool_integers(tool_results)
+    return {n for n in in_text if checked(n)} - _tool_integers(tool_results)
 
 
 def _percentage_sourced(percentage: Decimal, tool_decimals: set[Decimal]) -> bool:
@@ -151,7 +152,7 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
         if any(start <= m.start() < end for start, end in percent_spans):
             continue
         number = _digits(m.group(1))
-        if _checked(number) and number not in integers:
+        if checked(number) and number not in integers:
             found.append((m.start(), m.group(0)))
 
     return list(dict.fromkeys(shown for _, shown in sorted(found)))

@@ -10,15 +10,15 @@ import json
 import re
 
 from core.sentinels import BETEKENIS
-from tools import cbs_afronding, duo, store
+from tools import cbs_afronding, duo, periode, store
 from tools.catalog import bron_naam
 
 from .binding import zin_op
 from .claimbinding import betekenis, kenmerken, kies
 from .dimensielabels import selectie_regels
 from .grounding import bewijs_getallen, getallen_met_positie
-from .meetwaarden import meetwaarden
-from .selectie import data_keys
+from .meetwaarden import Meetwaarde, meetwaarden
+from .selectie import data_keys, laadkey
 
 _KOP = "**Telling**"
 # De eigen Definities-paragraaf van het model, tot de volgende vetgedrukte kop of het einde.
@@ -29,6 +29,18 @@ def _ondergrens(key: str) -> bool:
     """Valt er een onderdrukte cel in de selectie achter deze key? Een hele resource is geen selectie (#179)."""
     known = store.meta(key)
     return bool(known and known.afgeleid_van and duo.onderdrukt(key))
+
+
+def _groepstotaal_exact(waarde: Meetwaarde | None) -> bool:
+    """Is dit getal een groepstotaal zonder onderdrukte cel (CH-07)?
+
+    De selectie per geslacht heeft een -1 bij MAN; het totaal voor VROUW is dan toch exact.
+    Alleen bij groepstotalen van query_data: bij losse rijen kan een getal in de tekst ook
+    een eigen som zijn die toevallig gelijk is aan één cel, en dan geldt de selectie.
+    """
+    if waarde is None or waarde.rij is None or waarde.data_key is None:
+        return False
+    return duo.onderdrukt_in_groep(waarde.data_key, waarde.rij, waarde.maat) == 0
 
 
 def _bovengrens(key: str) -> bool:
@@ -96,7 +108,7 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
         )
         if gekozen:
             o, b = _grenzen(list(gekozen[0]))
-            onder |= o
+            onder |= set() if _groepstotaal_exact(gekozen[1]) else o
             boven |= b
             continue
         dragers = [_grenzen(list(keys)) for keys in dict.fromkeys(k for k, _ in kandidaten)]
@@ -105,6 +117,19 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
         if all(b for _, b in dragers):
             boven.update(*(b for _, b in dragers))
     return (onder, boven) if gedragen else None
+
+
+def _jaarnoten(tool_results: list[str]) -> dict[str, list[str]]:
+    """Per dataset de jaarkolommen die geen schooljaar zijn, uit de geladen data (CH-41).
+
+    Uit de laadkey: een selectie die de jaarkolom wegliet, gaat nog steeds over die jaren."""
+    noten: dict[str, list[str]] = {}
+    for key in data_keys(tool_results):
+        bron = laadkey(key)
+        known, df = store.meta(bron), store.get(bron)
+        if known is not None and df is not None and (gevonden := periode.jaarnoten(df.columns)):
+            noten.setdefault(known.dataset, gevonden)
+    return noten
 
 
 def _teldefinities(tool_results: list[str]) -> dict[str, str]:
@@ -117,7 +142,8 @@ def _teldefinities(tool_results: list[str]) -> dict[str, str]:
 
 
 def telling_blok(tool_results: list[str], tekst: str = "") -> str:
-    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding of CBS-selectie raakte.
+    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding, CBS-selectie
+    of jaarkolom zonder schooljaar raakte.
 
     Onder- en bovengrens horen bij de selecties waarop de getallen in `tekst` rusten, niet
     bij elke verkenning van de beurt (#414). Rust er geen getal op een selectie, dan gelden
@@ -135,6 +161,9 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     ondergrens, bovengrens = (sorted(g) for g in grenzen)
     regels = [f"- {bron_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
+    regels += [
+        f"- {bron_naam(dataset)}: {noot}" for dataset, noten in _jaarnoten(tool_results).items() for noot in noten
+    ]
     regels += selectie_regels(tool_results)
     if ondergrens:
         regels.append(
