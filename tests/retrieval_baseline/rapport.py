@@ -122,7 +122,10 @@ def _met_interval(waarde: float | None, interval: tuple[float, float]) -> str:
 
 def _verschil(nu: float | None, oud: dict | None, naam: str, sleutel: str) -> str:
     vorig = ((oud or {}).get("metingen", {}).get(naam) or {}).get(sleutel)
-    return "" if nu is None or vorig is None else f"{nu - vorig:+.2f}"
+    if nu is None or vorig is None:
+        return ""
+    # Vergelijk zoals baseline.json afrondt; `or 0.0` maakt van -0.0 een gewone 0.
+    return f"{round(round(nu, 4) - vorig, 2) or 0.0:+.2f}"
 
 
 def _breuk(geslaagd: tuple[int, int]) -> str:
