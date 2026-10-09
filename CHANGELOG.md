@@ -46,6 +46,10 @@ de laatste tag is 1.8.6.
   Mbo2 techniek en ict: "matig", landelijk "slecht"). De schoolverlatersinformatie heeft ROA alleen landelijk; het
   resultaat noemt per onderdeel de regio waar de cijfers vandaan komen. Een onbekende regio geeft de geldige namen.
   De mastersectoren ('Master - techniek en ict') heetten onbekend; ze zijn nu op te vragen.
+- De arbeidsmarktregio in het instellingsprofiel heet nu zoals UWV en ROA hem kennen: hij volgt uit de gemeente
+  van het instellingsadres en de CBS-gebiedsindeling (Gebieden in Nederland 2026), niet meer uit het RPA-gebied
+  van DUO. Daar kende ROA 16 van de 27 namen niet (Utrecht-Midden tegenover Midden-Utrecht), zodat
+  `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
 - Staat hetzelfde getal in twee zinnen ("Instelling B had 10.000 … Instelling A had 10.000"), dan krijgt
