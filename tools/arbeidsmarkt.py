@@ -26,7 +26,20 @@ _OPLEIDINGSNIVEAU = (
 _TELLING_SECTOR = (
     "Een cluster dat {sector} deelt met andere sectoren van dezelfde indeling (hbo/wo of mbo) telt naar rato "
     "mee, bij twee sectoren voor de helft, naar beneden afgerond. Zo tellen de sectoren samen nooit op tot meer "
-    "dan het totaal; de clustergetallen zelf zijn ongewogen."
+    "dan het totaal; de clustergetallen zelf zijn ongewogen. Lokale weging, geen UWV-cijfer."
+)
+_TELLING_ONGEDEELD = (
+    "De som van de clusters die de lokale classificatie aan {sector} toewijst; geen van die clusters hoort ook "
+    "bij een andere sector van dezelfde indeling. Lokale telling, geen UWV-cijfer."
+)
+# #460: zonder aparte lagen schreef het model de sectortoewijzing en de weging aan UWV toe.
+_BRONCIJFER = (
+    "Ongewogen aantallen vacatures per beroepencluster, zoals UWV ze publiceert; het totaal van alle clusters "
+    "staat in totaal_vacatures."
+)
+_TOEWIJZING = (
+    "Welke beroepenclusters bij een onderwijssector horen, is een indeling van deze app, gemaakt met een "
+    "taalmodel; niet van UWV."
 )
 
 
@@ -43,14 +56,19 @@ def _grootste_clusters(clusters: dict[str, int]) -> dict:
 
 
 def _sectordeel(clusters: dict[str, int], sector: str) -> dict:
+    """De sector in drie lagen (#460): de UWV-aantallen, onze clustertoewijzing en onze weging."""
     deel = arbeidsmarkt.sector_vacatures(clusters, sector)
     getoond = _grootste_clusters(deel.clusters)
-    uit: dict = {"sector": sector, "vacatures_sector": deel.totaal} | getoond
-    if deel.gedeeld:
-        uit["telling_sector"] = _TELLING_SECTOR.format(sector=sector)
+    telling = _TELLING_SECTOR if deel.gedeeld else _TELLING_ONGEDEELD
+    gewogen: dict = {"vacatures_sector": deel.totaal, "telling_sector": telling.format(sector=sector)}
     if gedeeld := {c: deel.gedeeld[c] for c in getoond["clusters"] if c in deel.gedeeld}:
-        uit["gedeelde_clusters"] = gedeeld
-    return uit
+        gewogen["gedeelde_clusters"] = gedeeld
+    classificatie = {"sector": sector, "clusters": list(getoond["clusters"]), "toewijzing": _TOEWIJZING}
+    return {
+        "uwv_broncijfer": {"toelichting": _BRONCIJFER} | getoond,
+        "lokale_classificatie": classificatie | arbeidsmarkt.SECTOR_MANIFEST,
+        "gewogen_aandeel": gewogen,
+    }
 
 
 def _geen_vacatures(provincie: str, gemeente: str | None) -> str:

@@ -4,11 +4,13 @@ CH-37: get_roa_benchmark gaf vaste, in de code geschreven waarden ("~80%") als R
 en beide tools liepen buiten de scopepoort. CH-23: ze haalden private functies uit
 data/dashboard.py, terwijl dashboards overal uit staan. #449: get_uwv_vacatures telde clusters
 die bij twee sectoren horen dubbel en zei niet dat UWV geen opleidingsniveau kent. #450:
-get_roa_benchmark gooide de regionale prognoses weg en kende de mastersectoren niet.
+get_roa_benchmark gooide de regionale prognoses weg en kende de mastersectoren niet. #460: met
+een sector las het model onze clustertoewijzing en weging als werk van UWV.
 """
 
 import ast
 import json
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -168,7 +170,8 @@ def test_uwv_sector_filtert_via_de_mapping(bronnen):
         uit = json.loads(get_uwv_vacatures("Utrecht", "GEZONDHEIDSZORG"))
         onbekend = get_uwv_vacatures("Utrecht", "Zorg")
 
-    assert uit["vacatures_sector"] == 900 and uit["clusters"] == {"Zorg en welzijn": 900}
+    assert uit["gewogen_aandeel"]["vacatures_sector"] == 900
+    assert uit["uwv_broncijfer"]["clusters"] == {"Zorg en welzijn": 900}
     assert "GEZONDHEIDSZORG" in onbekend
 
 
@@ -207,25 +210,27 @@ def gedeelde_clusters():
 
 
 def test_uwv_cluster_in_twee_sectoren_telt_niet_dubbel(gedeelde_clusters):
-    techniek = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
-    economie = json.loads(get_uwv_vacatures("Utrecht", "ECONOMIE"))
+    uit = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
+    techniek = uit["gewogen_aandeel"]
+    economie = json.loads(get_uwv_vacatures("Utrecht", "ECONOMIE"))["gewogen_aandeel"]
 
     # Chauffeurs (2000) horen bij TECHNIEK én ECONOMIE: elk de helft, niet elk 2000.
     assert techniek["vacatures_sector"] == 1000 + 500
     assert economie["vacatures_sector"] == 1000 + 300
-    assert techniek["vacatures_sector"] + economie["vacatures_sector"] <= techniek["totaal_vacatures"]
+    assert techniek["vacatures_sector"] + economie["vacatures_sector"] <= uit["totaal_vacatures"]
     # De ruwe clustergetallen blijven staan; het resultaat zegt met wie een cluster gedeeld is en hoe er geteld is.
-    assert techniek["clusters"] == {"Chauffeurs": 2000, "Programmeurs": 500}
+    assert uit["uwv_broncijfer"]["clusters"] == {"Chauffeurs": 2000, "Programmeurs": 500}
     assert techniek["gedeelde_clusters"] == {"Chauffeurs": ["ECONOMIE"]}
     assert "naar rato" in techniek["telling_sector"]
 
 
 def test_uwv_mbo_en_hbo_wo_zijn_aparte_indelingen(gedeelde_clusters):
     """Mbo- en hbo/wo-sectoren delen elk dezelfde vacatures in; daartussen wordt niet gewogen."""
-    uit = json.loads(get_uwv_vacatures("Utrecht", "Transport en logistiek"))
+    uit = json.loads(get_uwv_vacatures("Utrecht", "Transport en logistiek"))["gewogen_aandeel"]
 
     assert uit["vacatures_sector"] == 2000
     assert "gedeelde_clusters" not in uit
+    assert "naar rato" not in uit["telling_sector"]
 
 
 def test_uwv_sectoren_van_een_indeling_tellen_nooit_op_tot_meer_dan_het_totaal():
@@ -249,7 +254,11 @@ def test_uwv_sectoren_van_een_indeling_tellen_nooit_op_tot_meer_dan_het_totaal()
 
     totaal = int(uwv["AANTAL"].sum())
     for indeling in set(arbeidsmarkt.SECTOR_INDELING.values()):
-        som = sum(u["vacatures_sector"] for s, u in per_sector.items() if arbeidsmarkt.SECTOR_INDELING[s] == indeling)
+        som = sum(
+            u["gewogen_aandeel"]["vacatures_sector"]
+            for s, u in per_sector.items()
+            if arbeidsmarkt.SECTOR_INDELING[s] == indeling
+        )
         assert som <= totaal, indeling
 
 
@@ -284,6 +293,111 @@ def test_uwv_onbekende_gemeente_noemt_de_gemeenten_van_de_provincie(bronnen, gem
 
     assert "Amersfoort" in uit and "Utrecht" in uit
     assert "Arnhem" not in uit.replace(f"'{gemeente}'", "")
+
+
+# --- #460: UWV-cijfer, onze clustertoewijzing en onze weging staan apart ---
+
+_MANIFEST = {"herkomst": "LLM-classificatie, niet van UWV", "mapping_versie": "2026-08-17", "model": "claude-x"}
+# Een ontkenning mag UWV noemen; elke andere vermelding schrijft de toewijzing of weging aan UWV toe.
+_ONTKENNING = re.compile(r"niet van UWV|geen UWV-cijfer")
+
+
+def _strings(blok) -> list[str]:
+    if isinstance(blok, dict):
+        return [s for k, v in blok.items() for s in (k, *_strings(v))]
+    if isinstance(blok, list):
+        return [s for v in blok for s in _strings(v)]
+    return [blok] if isinstance(blok, str) else []
+
+
+@pytest.fixture
+def manifest():
+    with patch.dict(arbeidsmarkt.SECTOR_MANIFEST, _MANIFEST, clear=True):
+        yield
+
+
+def test_uwv_sector_scheidt_broncijfer_classificatie_en_weging(gedeelde_clusters, manifest):
+    uit = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
+
+    assert uit["uwv_broncijfer"]["clusters"] == {"Chauffeurs": 2000, "Programmeurs": 500}
+    assert "ongewogen" in uit["uwv_broncijfer"]["toelichting"].lower()
+    assert uit["lokale_classificatie"] == {
+        "sector": "TECHNIEK",
+        "clusters": ["Chauffeurs", "Programmeurs"],
+        "toewijzing": uit["lokale_classificatie"]["toewijzing"],
+        **_MANIFEST,
+    }
+    assert uit["gewogen_aandeel"]["vacatures_sector"] == 1500
+    assert uit["gewogen_aandeel"]["gedeelde_clusters"] == {"Chauffeurs": ["ECONOMIE"]}
+    assert "geen UWV-cijfer" in uit["gewogen_aandeel"]["telling_sector"]
+    # Geen gewogen getal en geen sector meer op het hoogste niveau, naast de UWV-bron.
+    assert not {"vacatures_sector", "sector", "clusters", "telling_sector", "gedeelde_clusters"} & set(uit)
+    assert uit["totaal_vacatures"] == 2900
+
+
+@pytest.mark.parametrize("sector", ["TECHNIEK", "Transport en logistiek"])
+def test_uwv_sector_schrijft_toewijzing_en_weging_niet_aan_uwv_toe(gedeelde_clusters, sector):
+    """'UWV deelt clusters toe' (#460): UWV staat alleen bij de ruwe aantallen, of in een ontkenning."""
+    uit = json.loads(get_uwv_vacatures("Utrecht", sector))
+    lokaal = _strings(uit["lokale_classificatie"]) + _strings(uit["gewogen_aandeel"])
+
+    assert [s for s in lokaal if "UWV" in _ONTKENNING.sub("", s)] == []
+    assert "LLM" in uit["lokale_classificatie"]["herkomst"]
+    assert "niet van UWV" in uit["lokale_classificatie"]["herkomst"]
+    assert "UWV" in uit["uwv_broncijfer"]["toelichting"]
+
+
+def test_uwv_sector_zonder_manifest_noemt_versie_en_model_onbekend(gedeelde_clusters, tmp_path):
+    bestand = tmp_path / "sector_cluster_mapping.json"
+    bestand.write_text('{"TECHNIEK": ["Chauffeurs"]}')
+    with patch.dict(arbeidsmarkt.SECTOR_MANIFEST, arbeidsmarkt.sector_mapping_manifest(bestand), clear=True):
+        classificatie = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))["lokale_classificatie"]
+
+    assert classificatie["mapping_versie"] == classificatie["model"] == "onbekend"
+    assert "niet van UWV" in classificatie["herkomst"]
+
+
+def test_uwv_sector_toont_de_grootste_clusters_in_beide_lagen(bronnen):
+    clusters = [f"Cluster {i:02}" for i in range(20)]
+    uwv = pd.DataFrame(
+        {
+            "PEILDATUM": "16-05-2023",
+            "PROVINCIE": "Utrecht",
+            "GEMEENTE": "Utrecht",
+            "BEROEPENCLUSTER": clusters,
+            "AANTAL": [100 - i for i in range(20)],
+        }
+    )
+    with (
+        patch.object(arbeidsmarkt, "_uwv", return_value=uwv),
+        patch.dict(arbeidsmarkt.SECTOR_CLUSTER_MAP, {"TECHNIEK": clusters}, clear=True),
+    ):
+        uit = json.loads(get_uwv_vacatures("Utrecht", "TECHNIEK"))
+
+    assert uit["lokale_classificatie"]["clusters"] == list(uit["uwv_broncijfer"]["clusters"]) == clusters[:15]
+    assert "15 grootste van 20" in uit["uwv_broncijfer"]["clusters_getoond"]
+    assert uit["gewogen_aandeel"]["vacatures_sector"] == sum(range(81, 101))
+
+
+def test_uwv_sectorresultaat_houdt_zijn_meetwaarden(gedeelde_clusters):
+    """De citaties lezen de geneste lagen: totaal, sectorgetal en clusters blijven meetwaarden."""
+    from agent.meetwaarden import meetwaarden
+
+    waarden = {(w.maat, max(w.cijfers)) for w in meetwaarden(get_uwv_vacatures("Utrecht", "TECHNIEK"))}
+
+    assert waarden == {
+        ("Vacatures", "2900"),
+        ("Vacatures in de sector, lokaal gewogen", "1500"),
+        ("Vacatures", "2000"),
+        ("Vacatures", "500"),
+    }
+
+
+def test_uwv_zonder_sector_heeft_geen_classificatielagen(bronnen):
+    uit = json.loads(get_uwv_vacatures("Utrecht"))
+
+    assert uit["clusters"] == {"Zorg en welzijn": 900, "ICT": 300}
+    assert not {"uwv_broncijfer", "lokale_classificatie", "gewogen_aandeel", "vacatures_sector"} & set(uit)
 
 
 @pytest.mark.parametrize(
