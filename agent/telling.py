@@ -10,7 +10,7 @@ import json
 import re
 
 from core.sentinels import BETEKENIS
-from tools import cbs_afronding, duo, periode, store
+from tools import cbs_afronding, duo, duo_bestandskeuze, periode, store
 from tools.catalog import bron_naam
 
 from .binding import zin_op
@@ -62,21 +62,25 @@ def _stapkeys(result: str) -> list[str]:
     return [k for k in kandidaten if isinstance(k, str)]
 
 
-def _grenzen(keys: list[str]) -> tuple[set[str], set[str]]:
-    """De datasets waarvan de selectie hier een ondergrens, en die waarvan ze een bovengrens geeft."""
+# (dataset, resource): het bestand bepaalt welke cellen onderdrukt zijn (#325).
+_Bestand = tuple[str, str | int | None]
+
+
+def _grenzen(keys: list[str]) -> tuple[set[_Bestand], set[_Bestand]]:
+    """De bestanden waarvan de selectie hier een ondergrens, en die waarvan ze een bovengrens geeft."""
     onder, boven = set(), set()
     for key in keys:
         known = store.meta(key)
         if known is None or known.bron != "duo":
             continue
         if _ondergrens(key):
-            onder.add(known.dataset)
+            onder.add((known.dataset, known.resource))
         if _bovengrens(key):
-            boven.add(known.dataset)
+            boven.add((known.dataset, known.resource))
     return onder, boven
 
 
-def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set[str]] | None:
+def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[_Bestand], set[_Bestand]] | None:
     """De grenzen van de selecties waarop de getallen in `tekst` rusten (#414).
 
     Een getal rust op de toolstappen waarin het staat, net als bij de citaties (#365).
@@ -87,8 +91,8 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[str], set
     None als geen getal in de tekst op een selectie rust.
     """
     stappen = [(keys, bewijs_getallen(r), meetwaarden(r)) for r in tool_results if (keys := _stapkeys(r))]
-    onder: set[str] = set()
-    boven: set[str] = set()
+    onder: set[_Bestand] = set()
+    boven: set[_Bestand] = set()
     gedragen = False
     for _, cijfers, positie in getallen_met_positie(tekst):
         kandidaten = [
@@ -132,6 +136,25 @@ def _jaarnoten(tool_results: list[str]) -> dict[str, list[str]]:
     return noten
 
 
+def _historienoten(tool_results: list[str]) -> dict[str, str]:
+    """Per prognosebestand de noot over Historie-jaren, als een selectie ze bevat (#325, #442)."""
+    noten: dict[str, str] = {}
+    for key in data_keys(tool_results):
+        known, df = store.meta(key), store.get(key)
+        if (
+            known
+            and known.afgeleid_van
+            and df is not None
+            and (noot := duo_bestandskeuze.historienoot(known.dataset, df))
+        ):
+            noten.setdefault(known.dataset, noot)
+    return noten
+
+
+def _datasets(bestanden: set[_Bestand]) -> str:
+    return ", ".join(sorted({dataset for dataset, _ in bestanden}))
+
+
 def _teldefinities(tool_results: list[str]) -> dict[str, str]:
     definities: dict[str, str] = {}
     for key in data_keys(tool_results):
@@ -142,8 +165,8 @@ def _teldefinities(tool_results: list[str]) -> dict[str, str]:
 
 
 def telling_blok(tool_results: list[str], tekst: str = "") -> str:
-    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding, CBS-selectie
-    of jaarkolom zonder schooljaar raakte.
+    """Het blok onder het antwoord; leeg als de beurt geen teldefinitie, ondergrens, afronding, CBS-selectie,
+    jaarkolom zonder schooljaar of Historie-jaren uit een prognosebestand raakte.
 
     Onder- en bovengrens horen bij de selecties waarop de getallen in `tekst` rusten, niet
     bij elke verkenning van de beurt (#414). Rust er geen getal op een selectie, dan gelden
@@ -158,21 +181,28 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     grenzen = _antwoordgrenzen(tool_results, tekst)
     if grenzen is None:
         grenzen = _grenzen([k for r in tool_results for k in _stapkeys(r)])
-    ondergrens, bovengrens = (sorted(g) for g in grenzen)
+    ondergrens, bovengrens = grenzen
     regels = [f"- {bron_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]
     regels += [
         f"- {bron_naam(dataset)}: {noot}" for dataset, noten in _jaarnoten(tool_results).items() for noot in noten
     ]
+    regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in _historienoten(tool_results).items()]
     regels += selectie_regels(tool_results)
     if ondergrens:
         regels.append(
-            f"- Ondergrens: in de gekozen selectie van {', '.join(ondergrens)} zijn cellen met -1 uitgesloten "
+            f"- Ondergrens: in de gekozen selectie van {_datasets(ondergrens)} zijn cellen met -1 uitgesloten "
             f"({BETEKENIS}); de totalen zijn daardoor een ondergrens."
         )
+        # Een ander bestand van dezelfde dataset onderdrukt andere cellen en telt anders (#325).
+        regels += [
+            f"- {bron_naam(dataset)}: {noot}"
+            for dataset, resource in sorted(ondergrens, key=str)
+            if (noot := duo_bestandskeuze.noot(dataset, resource))
+        ]
     if bovengrens:
         regels.append(
-            f"- Bovengrens: in de gekozen selectie van {', '.join(bovengrens)} zijn kleine aantallen (1 t/m 4) als 4 "
+            f"- Bovengrens: in de gekozen selectie van {_datasets(bovengrens)} zijn kleine aantallen (1 t/m 4) als 4 "
             "gepubliceerd; de totalen zijn daardoor een bovengrens."
         )
     return f"{_KOP}\n" + "\n".join(regels) if regels else ""

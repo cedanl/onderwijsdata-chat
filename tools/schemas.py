@@ -186,7 +186,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "resource": {
                         "type": ["integer", "string"],
-                        "description": "Index (0, 1, ...) uit _resources van dataset_details, of de exacte bestandsnaam (default: 0). Een naamdeel dat op meerdere bestanden past laadt niets en noemt de opties.",
+                        "description": "Index (0, 1, ...) uit _resources van dataset_details, of de exacte bestandsnaam. Zonder resource: het bestand met leidend_voor_totalen, anders 0. Een naamdeel dat op meerdere bestanden past laadt niets en noemt de opties.",
                     },
                 },
                 "required": ["dataset_id"],

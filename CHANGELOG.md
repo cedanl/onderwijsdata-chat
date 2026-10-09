@@ -61,6 +61,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Eén DUO-bestand is leidend voor een totaal per instelling. De ho-datasets (p01–p04) hebben per sector drie
+  bestanden met dezelfde telling en een andere uitsplitsing, en elk onderdrukt andere cellen: Hanze kwam uit op
+  26.362, 26.373 of 26.379, afhankelijk van het bestand. Zonder bestandskeuze laadt `get_duo_data` nu het
+  leidende bestand, het bestand dat het minst tekortkomt (gemeten met `scripts/meet_duo_bestandskeuze.py`),
+  en niet meer index 0, het geslacht-bestand met de meeste onderdrukte cellen. `dataset_details` markeert
+  het leidende bestand, en een ander bestand zegt bij het laden welk bestand leidend is. Bij mbo is dat het
+  bestand per instelling en leerweg. Onder Telling staat bij een ondergrens uit welk bestand de totalen
+  komen en dat de andere bestanden afwijken. Komen jaren uit de terugblik (Type 'Historie') van de
+  mbo-studentprognose, dan zegt Telling dat ze licht afwijken van `mbo-studenten-per-instelling`.
 - Een uitsplitsing per groep (bijv. per geslacht) zegt per groep of er cellen met -1 in vallen: alleen dat
   totaal is een ondergrens. Eerder meldde `query_data` dat "totalen" een ondergrens waren, en noemde het
   antwoord ook de groep zonder onderdrukte cel er een. Onder Telling staat de ondergrens nu alleen als een
