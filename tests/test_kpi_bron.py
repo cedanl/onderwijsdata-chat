@@ -9,8 +9,7 @@ import json
 
 import pytest
 
-from agent import binding, kpi_bron, kpi_scope
-from agent.kpi_periode import noemt as _oud_noemt
+from agent.kpi_bron import kpis, noemt
 
 _SCHOOLJAREN = {"van": "2019/20", "tot": "2025/26"}
 
@@ -20,26 +19,30 @@ _SCHOOLJAREN = {"van": "2019/20", "tot": "2025/26"}
 
 def _met_periode(results: list[str]) -> list[str]:
     """De waarden die de periodelezers zien (kpi_periode, binding)."""
-    return [kpi["value"] for kpi in kpi_bron.met_periode(results)]
+    return [kpi.waarde for kpi in kpis(results) if kpi.periode is not None]
 
 
 def _met_bron(results: list[str]) -> list[str]:
     """De waarden die de scopelezer ziet (kpi_scope)."""
-    return [kpi["value"] for kpi in kpi_scope._kpis(results)]
+    return [kpi.waarde for kpi in kpis(results) if kpi.bron is not None]
+
+
+def _kpi(waarde: str, periode: dict | None = None):
+    [kpi] = kpis([json.dumps({"value": waarde, "periode": periode or _SCHOOLJAREN})])
+    return kpi
 
 
 def _cijfers(waarde: str) -> str | None:
     """De cijfers waarmee binding een KPI-waarde vergelijkt; None als die geen geheel getal is."""
-    gelezen = binding._kpis([json.dumps({"value": waarde, "periode": _SCHOOLJAREN})])
-    return gelezen[0][0] if gelezen else None
+    return _kpi(waarde).cijfers
 
 
 def _bereik(periode: dict) -> tuple[int, int] | None:
-    return kpi_bron.bereik({"value": "1", "periode": periode})
+    return _kpi("1", periode).bereik
 
 
 def _noemt(segment: str, waarde: str) -> bool:
-    return _oud_noemt(segment, waarde)
+    return noemt(segment, _kpi(waarde))
 
 
 # --- welke toolresultaten een KPI zijn ---
