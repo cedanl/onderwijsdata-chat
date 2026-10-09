@@ -419,6 +419,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
   }
 
+  // De vraag achter het antwoord op index i opnieuw: na een herstart haalt alleen dat de data terug (CH-44).
+  const herhaalVoor = i => {
+    const vraag = questionBefore(displayMessages, i)?.content
+    return vraag ? () => handleRetry(vraag) : null
+  }
+
   const handleKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -537,6 +543,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
+                herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
                 retry={offersRetry(msg) ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
@@ -724,7 +731,7 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, modelLabel = null, clarification = null, feedback = null }) {
+export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -775,7 +782,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
-            <DataExport tools={msg.tools} settled={settled} />
+            <DataExport tools={msg.tools} settled={settled} onHerhaal={herhaal || null} busy={busy} />
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}

@@ -19,7 +19,7 @@ import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
-from agent.session_data import data_lineage, session_data_keys
+from agent.session_data import DATA_WEG, data_lineage, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
 from tools import LABELS, store
@@ -127,7 +127,13 @@ def _column_summary(df, col: str, max_examples: int = 5) -> dict:
 
 
 def build_dataset_context(session: dict) -> dict:
-    """Build a context dict describing the available datasets for the LLM."""
+    """Build a context dict describing the available datasets for the LLM.
+
+    Fail-closed when data this conversation loaded is gone: a report on the rest, or a
+    generic 'try again', would not tell the user that the question has to be asked again (CH-44).
+    """
+    if ontbrekende_data_keys(session):
+        raise ValueError(DATA_WEG)
     datasets: list[dict] = []
     for key in session_data_keys(session):
         df = store.get(key)
