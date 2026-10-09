@@ -42,6 +42,10 @@ de laatste tag is 1.8.6.
   naar rato mee, zodat de sectoren samen nooit meer vacatures hebben dan het totaal (TECHNIEK en ECONOMIE in Utrecht
   kwamen samen op 21.027 van de 25.225). Het resultaat zegt dat UWV geen opleidingsniveau kent, en de vacatures zijn
   ook per gemeente op te vragen.
+- `get_uwv_vacatures` met een sector houdt drie lagen apart: de ongewogen UWV-aantallen (`uwv_broncijfer`), de
+  toewijzing van clusters aan de sector (`lokale_classificatie`, een LLM-classificatie van deze app, met versie en
+  model van de mapping) en het gewogen sectorgetal (`gewogen_aandeel`). Eerder stond alles naast elkaar onder de
+  UWV-bron en schreef het model de toewijzing aan UWV toe. `vacatures_sector` staat niet meer op het hoogste niveau.
 - `get_roa_benchmark` geeft de ROA-prognose tot 2030 ook per arbeidsmarktregio of provincie (bijv. Midden-Utrecht,
   Mbo2 techniek en ict: "matig", landelijk "slecht"). De schoolverlatersinformatie heeft ROA alleen landelijk; het
   resultaat noemt per onderdeel de regio waar de cijfers vandaan komen. Een onbekende regio geeft de geldige namen.
