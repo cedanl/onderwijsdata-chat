@@ -14,7 +14,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ⚠️ Gedeeltelijk — zie S4 |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ❌ Open |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ❌ Open |
-| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS`) |
+| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ❌ Open (configuratie) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9 |
 | S10 | Sessie-timeout 24 uur | Laag | ℹ️ Instelbaar via env |
@@ -95,11 +95,11 @@ return "❌ Er is een onverwachte fout opgetreden."
 
 ---
 
-### S7 — Geen maximale inputlengte op chatberichten ✅ Opgelost
+### S7 — Geen maximale inputlengte op chatberichten ✅ Opgelost voor nieuwe invoer
 
 **Locatie:** `routes/chat.py` — de WebSocket-acties `message` en `clarification_choice`  
 **Probleem:** Een gebruiker kon een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
-**Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk heeft `maxLength`, toont vanaf 80% een teller en verstuurt niets boven de grens. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is.
+**Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk heeft `maxLength`, toont vanaf 80% een teller en verstuurt niets boven de grens. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is. Let op: daardoor neemt de actie `history` nog steeds tot `MAX_HISTORY` (40) door de client aangeleverde beurten van willekeurige lengte aan, die bij de volgende vraag naar het model gaan; een aangepaste client kan zo de grens omzeilen. Dat hoort bij de rate limiting van S5 (#444).
 
 ---
 
