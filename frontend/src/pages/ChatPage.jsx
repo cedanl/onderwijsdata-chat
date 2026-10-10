@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { memo, useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,12 +19,12 @@ SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
+import { useDarkMode } from '../hooks/useDarkMode'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { MAX_TEXTAREA_HEIGHT, MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
-import { messageLengthState } from '../messageLength'
+import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport } from '../reportEligibility'
@@ -52,8 +52,7 @@ import DataSourcesModal from '../components/DataSourcesModal'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
-import ChatInputFooter from '../components/ChatInputFooter'
-import { MESSAGE_COUNTER_ID } from '../components/MessageCounter'
+import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
@@ -148,7 +147,8 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
   )
 }
 
-function Markdown({ text, citaties }) {
+// Parsing markdown is the costly part of a message; props are stable while a message is unchanged.
+const Markdown = memo(function Markdown({ text, citaties }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -158,7 +158,7 @@ function Markdown({ text, citaties }) {
       {text}
     </ReactMarkdown>
   )
-}
+})
 
 // Het Telling-blok van de backend: de eerste zin, de rest uitklapbaar (#402). Onder de vaste
 // bouwstenen (#416) staat het label er al naast; dan zonder eigen kop.
@@ -190,15 +190,7 @@ function MessageContent({ msg, blocks = null }) {
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
-  const [input, setInput] = useState('')
   const [sendNotice, setSendNotice] = useState(null)
-
-  // The server refused the question because a run was going: the typed text comes back (#145).
-  useEffect(() => {
-    if (rejectedDraft === null) return
-    setInput(current => current || rejectedDraft)
-    clearRejectedDraft()
-  }, [rejectedDraft, clearRejectedDraft])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
@@ -219,7 +211,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
-  const textareaRef = useRef(null)
   const openChatRef = useRef(initialChat)
   const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
@@ -392,18 +383,16 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // Verandert de toestand die het versturen blokkeerde, dan is de melding achterhaald.
   useEffect(() => { setSendNotice(null) }, [busy, connected, resetting])
 
-  const handleSend = () => {
-    const q = input.trim()
-    // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
-    if (!q || atContextLimit || messageLengthState(q, maxMessageChars).over) return
+  // The composer holds the draft and clears it when this returns true.
+  const submitQuestion = (q) => {
+    if (atContextLimit) return false
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
       setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
-      return
+      return false
     }
     setSendNotice(null)
-    setInput('')
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    return true
   }
 
   // Opnieuw na een foutmelding (#333). Met een ander model gaan de instellingen eerst:
@@ -420,18 +409,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const herhaalVoor = i => {
     const vraag = questionBefore(displayMessages, i)?.content
     return vraag ? () => handleRetry(vraag) : null
-  }
-
-  const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
-  const autoResize = (e) => {
-    e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
   }
 
   const handleMakeRapport = useCallback(() => {
@@ -609,32 +586,20 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             {sendNotice && (
               <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{sendNotice}</p>
             )}
-            <div className="chat-input-wrap">
-              <textarea
-                ref={textareaRef}
-                className="chat-input"
-                aria-label="Chatbericht"
-                rows={1}
-                placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
-                value={input}
-                maxLength={2 * maxMessageChars}
-                aria-describedby={MESSAGE_COUNTER_ID}
-                onChange={e => { setInput(e.target.value); autoResize(e) }}
-                onKeyDown={handleKey}
-              />
-              <ChatInputFooter
-                connected={connected}
-                busy={busy}
-                models={models}
-                selectedModel={selectedModel}
-                onModelChange={handleModelChange}
-                onStop={stop}
-                onSend={handleSend}
-                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input, maxMessageChars).over}
-                text={input}
-                max={maxMessageChars}
-              />
-            </div>
+            <Composer
+              hasMessages={hasMessages}
+              connected={connected}
+              busy={busy}
+              ready={connected && !busy && !resetting && !atContextLimit}
+              models={models}
+              selectedModel={selectedModel}
+              onModelChange={handleModelChange}
+              onStop={stop}
+              onSubmit={submitQuestion}
+              max={maxMessageChars}
+              rejectedDraft={rejectedDraft}
+              clearRejectedDraft={clearRejectedDraft}
+            />
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
           </div>
         </div>
@@ -825,20 +790,21 @@ function downloadCsv(csv, filename) {
   saveFile(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename)
 }
 
-function PlotlyFigure({ figureJson, label }) {
-  let figure
+function parseFigure(figureJson) {
   try {
-    figure = typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
+    return typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
   } catch {
     return null
   }
+}
+
+function figureLayout(figure, dark) {
   const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
-  const dark = document.documentElement.classList.contains('dark')
   const bg = dark ? '#1E293B' : '#fff'
   const fontColor = dark ? '#E2E8F0' : '#374151'
   const legendBg = dark ? 'rgba(30,41,59,0.9)' : 'rgba(255,255,255,0.8)'
   const legendBorder = dark ? '#475569' : '#ddd'
-  const layout = {
+  return {
     ...figure.layout,
     paper_bgcolor: bg,
     plot_bgcolor: bg,
@@ -852,8 +818,21 @@ function PlotlyFigure({ figureJson, label }) {
     },
     autosize: true,
   }
-  const csv = figureToCsv(figure)
-  const csvProblem = figureCsvProblem(figure)
+}
+
+const NO_TRACES = []
+const PLOT_CONFIG = { responsive: true, displayModeBar: false }
+
+// react-plotly redraws when data, layout or config change by reference, and a redraw is costly. So
+// everything handed to <Plot> is derived once per figure and theme, not once per render.
+const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
+  const dark = useDarkMode()
+  const figure = useMemo(() => parseFigure(figureJson), [figureJson])
+  const layout = useMemo(() => figure && figureLayout(figure, dark), [figure, dark])
+  const csv = useMemo(() => figure && figureToCsv(figure), [figure])
+  const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
+  if (!figure) return null
+  const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
   return (
     <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
@@ -875,15 +854,15 @@ function PlotlyFigure({ figureJson, label }) {
         </button>
       )}
       <Plot
-        data={figure.data || []}
+        data={figure.data || NO_TRACES}
         layout={layout}
-        config={{ responsive: true, displayModeBar: false }}
+        config={PLOT_CONFIG}
         useResizeHandler
         style={{ width: '100%', height: isMap ? 480 : 340 }}
       />
     </div>
   )
-}
+})
 
 export function ConversationHistory({ history, hasMore = false, loadingMore = false, onLoadMore, onLoad, onDelete, onRename, search = null }) {
   const [editingId, setEditingId] = useState(null)

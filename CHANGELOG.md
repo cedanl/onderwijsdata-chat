@@ -193,6 +193,10 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Een vervolgvraag typen na het eerste antwoord liep traag, vooral met grafieken in het gesprek: elke toetsaanslag
+  parseerde alle antwoorden opnieuw en tekende alle grafieken opnieuw. Het invoerveld bewaart nu zelf wat je typt,
+  en een antwoord of grafiek wordt alleen opnieuw getekend als het zelf verandert. In een testgesprek met drie
+  grafieken ging de scripttijd per toetsaanslag van 53 naar 2 ms (productiebouw, normale processorsnelheid).
 - Zonder instelling in het profiel tonen de suggesties alleen algemene vragen over de open data, één of twee
   per categorie; een vraag over "onze instelling" eindigde daar in een scope-weigering. Met een profiel staat elke
   vraag er één keer, met de tekst voor de eigen sector. De uitvalvraag voor hbo en wo gaat over het
