@@ -66,6 +66,103 @@ describe('AnswerFeedback', () => {
     await mount(createElement(AnswerFeedback, { value: null, onSubmit }))
     await act(async () => knop('Goed antwoord').click())
     expect(container.querySelector('[role="alert"]').textContent).toBe('Feedback opslaan lukt niet: Antwoord niet gevonden')
+    expect(container.querySelector('[role="status"]').textContent).toBe('')
+  })
+})
+
+// #492: a visible confirmation, announced through a live region that is always there.
+describe('AnswerFeedback confirmation', () => {
+  const BEDANKT = 'Bedankt voor je feedback!'
+  const status = () => container.querySelector('[role="status"]')
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  async function typeAndSend(tekst) {
+    const veld = container.querySelector('textarea')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(veld, tekst)
+      veld.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => tekstknop('Verstuur').click())
+  }
+
+  it('thanks after a thumbs-up in the live region that was already there', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    const region = status()
+    expect(region.textContent).toBe('')
+    await act(async () => knop('Goed antwoord').click())
+    expect(status()).toBe(region)
+    expect(region.textContent).toBe(BEDANKT)
+    expect(region.className).toBe('answer-feedback-confirm')
+  })
+
+  it('thanks after a thumbs-down and Verstuur, and closes the form', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    const region = status()
+    await act(async () => knop('Fout antwoord').click())
+    await typeAndSend('klopt niet')
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(status()).toBe(region)
+    expect(region.textContent).toBe(BEDANKT)
+  })
+
+  it('disappears after 4 seconds and shows again on a new submit', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Goed antwoord').click())
+    await act(async () => { vi.advanceTimersByTime(3999) })
+    expect(status().textContent).toBe(BEDANKT)
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(status().textContent).toBe('')
+
+    await act(async () => knop('Goed antwoord').click())
+    expect(status().textContent).toBe(BEDANKT)
+  })
+
+  it('restarts the timeout on a new submit', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Goed antwoord').click())
+    await act(async () => { vi.advanceTimersByTime(3000) })
+    await act(async () => knop('Goed antwoord').click())
+    await act(async () => { vi.advanceTimersByTime(3000) })
+    expect(status().textContent).toBe(BEDANKT)
+  })
+
+  it('hides on the next interaction and stays hidden after Annuleer', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Goed antwoord').click())
+    await act(async () => knop('Fout antwoord').click())
+    expect(status().textContent).toBe('')
+    await act(async () => tekstknop('Annuleer').click())
+    expect(status().textContent).toBe('')
+  })
+
+  it('shows no confirmation when saving fails', async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error('Serverfout'))
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit }))
+    await act(async () => knop('Fout antwoord').click())
+    await typeAndSend('klopt niet')
+    expect(container.querySelector('[role="alert"]').textContent).toBe('Feedback opslaan lukt niet: Serverfout')
+    expect(status().textContent).toBe('')
+  })
+
+  it('drops an earlier confirmation when the next submit fails', async () => {
+    const onSubmit = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Serverfout'))
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit }))
+    await act(async () => knop('Goed antwoord').click())
+    expect(status().textContent).toBe(BEDANKT)
+    await act(async () => knop('Goed antwoord').click())
+    expect(container.querySelector('[role="alert"]')).not.toBeNull()
+    expect(status().textContent).toBe('')
+  })
+
+  it('clears its timeout on unmount', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Goed antwoord').click())
+    expect(vi.getTimerCount()).toBe(1)
+    act(() => root.unmount())
+    expect(vi.getTimerCount()).toBe(0)
+    root = { unmount() {} }
   })
 })
 
