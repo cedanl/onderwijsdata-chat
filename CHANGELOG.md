@@ -205,6 +205,12 @@ de laatste tag is 1.8.6.
   mbo, want alleen de mbo-bestanden kennen de woonplaats van studenten. Een universiteit wordt vergeleken met
   het wo als geheel in plaats van met haar provincie, waar ze meestal de enige is. Zonder bekende instelling
   staan alleen de vragen die voor elke sector te beantwoorden zijn.
+- Onder elk dataantwoord staan vaste bouwstenen in een vaste volgorde: Citaties (hoeveel getallen, en hoeveel
+  zonder vastgestelde herkomst), Telling, Export (de CSV-knoppen) en Bronnen, elk gevuld of met "n.v.t.". De
+  bronnenlijst komt uit de stappen van het antwoord (titel, periode en dataset-ID per geladen dataset); de eigen
+  Bronnen-sectie van het model vervalt. Kopiëren en de gespreksexport nemen de lijst mee.
+- De titel van een rapport is de vraag van de gebruiker, met de instelling erachter; het model schrijft hem
+  niet meer, dus vijf keer hetzelfde rapport heeft één titel.
 - Eén redeneerkaart per antwoord in plaats van een kaart per stap.
 - Een vraag tijdens een lopend antwoord krijgt een melding, de getypte tekst blijft staan.
 - Een onbekend pad toont een 404-pagina; een uitgeschakelde dashboardroute meldt dat hij nog niet beschikbaar is.

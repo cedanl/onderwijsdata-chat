@@ -640,6 +640,19 @@ input, textarea { font: inherit; }
 .telling { margin-top: 12px; font-size: .85rem; color: var(--gray-600); }
 .telling summary { cursor: pointer; }
 .telling[open] summary { margin-bottom: 4px; }
+/* The fixed building blocks under a data answer (#416): label left, content or "n.v.t." right. */
+.answer-blocks { margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--gray-200); font-size: .8rem; color: var(--gray-600); }
+.answer-block { display: flex; gap: 12px; align-items: baseline; padding: 3px 0; }
+.answer-block dt { flex: 0 0 64px; font-weight: 600; color: var(--gray-700); }
+.answer-block dd { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.answer-block-nvt { color: var(--muted-text); }
+.answer-block .telling, .answer-block .data-export { margin-top: 0; font-size: inherit; }
+.answer-bronnen { margin: 0; padding-left: 16px; }
+/* Narrow screens: label above its content, so the CSV buttons and sources get the full bubble width. */
+@media (max-width: 480px) {
+  .answer-block { flex-direction: column; align-items: stretch; gap: 2px; }
+  .answer-block dt, .answer-block dd { flex: none; }
+}
 .reasoning-tussentekst { margin: 6px 0 0; font-size: .75rem; font-style: italic; color: var(--gray-500); white-space: pre-wrap; }
 
 

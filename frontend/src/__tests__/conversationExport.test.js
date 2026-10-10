@@ -102,3 +102,16 @@ describe('conversationMarkdown na een correctie (#398)', () => {
     expect(stappen).toEqual(['1. Catalogus doorzocht', '2. Data opgehaald', '3. KPI berekend (na de correctie)'])
   })
 })
+
+describe('conversationMarkdown met bronnen van de server (#416)', () => {
+  it('zet de bronnenlijst onder het antwoord', () => {
+    const bron = 'DUO · Ingeschrevenen hoger onderwijs, 2024/25 (p01hoinges)'
+    const gesprek = [
+      { role: 'user', content: 'Hoeveel studenten heeft de HU?' },
+      { role: 'assistant', content: 'De HU had **38.000** studenten.', done: true, bronnen: [bron] },
+    ]
+    expect(conversationMarkdown(gesprek, { datum: '9 oktober 2026' })).toContain(
+      `### Antwoord\n\nDe HU had **38.000** studenten.\n\n**Bronnen**\n- ${bron}`,
+    )
+  })
+})

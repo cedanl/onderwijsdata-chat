@@ -15,6 +15,7 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
+from .bronvermelding import bronnen_van, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
@@ -38,7 +39,7 @@ from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
-from .vaste_antwoorden import sentinelvraag, weigering
+from .vaste_antwoorden import WEIGER_ANTWOORD, sentinelvraag, weigering
 from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
@@ -169,6 +170,15 @@ def _veilige_citaties(text: str, steps: list[tuple[str, str]]) -> list[dict]:
         return []
 
 
+def _veilige_bronnen(steps: list[tuple[str, str]]) -> list[str]:
+    """Net als de citaties: lukt het niet, dan blijft de eigen Bronnen-sectie van het model staan (#416)."""
+    try:
+        return bronnen_van(steps)
+    except Exception as exc:
+        log_interne_fout(exc, "bronnen")
+        return []
+
+
 _MAX_CLARIFY_RONDES = 1
 
 
@@ -283,19 +293,25 @@ async def _vroeg_einde(
         return await _handle_clarify_scope(result.halted_on, result.text, nieuw, messages, session, emit)
     if result.exhausted:
         text_content = zonder_antwoord(result.steps)
-        # partial: the frontend offers 'Opnieuw met <ander model>' (#405).
-        await emit({"type": "message_end", "content": text_content, "actions": [], "partial": True})
+        # partial: the frontend offers 'Opnieuw met <ander model>' (#405). No data answer, so no sources (#416).
+        await emit({"type": "message_end", "content": text_content, "actions": [], "bronnen": [], "partial": True})
         return text_content
     return None
 
 
-def _eindtekst(result: LoopResult, antwoord: str, earlier: list[str], session: dict, model: str) -> str:
+def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
+    """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling."""
+    tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
+    return met_telling(nl_notatie(tekst, result.steps, earlier), result.tool_results)
+
+
+def _eindtekst(
+    result: LoopResult, antwoord: str, earlier: list[str], session: dict, model: str, bronnen: list[str]
+) -> str:
     """Het antwoord zoals de gebruiker het ziet: weigering of antwoord met Telling, of ingehouden."""
     text_content = weigering(
         antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or met_telling(
-        nl_notatie(zonder_citaatkop(zonder_toolnamen(antwoord)), result.steps, earlier), result.tool_results
-    )
+    ) or _antwoordtekst(result, antwoord, earlier, bronnen)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     # Geen antwoordtekst op INFO: het log valt buiten "gesprek verwijderen" (#475).
@@ -318,12 +334,22 @@ def _eindtekst(result: LoopResult, antwoord: str, earlier: list[str], session: d
     return text_content
 
 
-def _slotbericht(text_content: str, result: LoopResult, herzien: list[str], truncated: bool) -> dict:
-    """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn."""
+# Vaste antwoorden uit code: ze rusten niet op de data van de beurt, dus ook geen bronnen eronder.
+# Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
+_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, WEIGER_ANTWOORD})
+
+
+def _slotbericht(
+    text_content: str, result: LoopResult, herzien: list[str], truncated: bool, bronnen: list[str]
+) -> dict:
+    """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
+
+    `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416)."""
     return {
         "type": "message_end",
         "content": text_content,
         "actions": [],
+        "bronnen": [] if text_content in _ZONDER_BRONNEN else bronnen,
         **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
@@ -348,7 +374,7 @@ async def run(
 
     if vast := sentinelvraag(last_user_msg):
         await emit({"type": "message_start"})
-        await emit({"type": "message_end", "content": vast, "actions": []})
+        await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": []})
         return vast
 
     history, was_trimmed = trim(list(messages))
@@ -411,10 +437,11 @@ async def run(
     if herzien:
         logger.info("ZELFCORRECTIE naar redeneerkaart  herzien=%d", len(herzien))
         logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
-    text_content = _eindtekst(result, antwoord, earlier, session, chosen_model)
+    bronnen = _veilige_bronnen(result.steps)
+    text_content = _eindtekst(result, antwoord, earlier, session, chosen_model, bronnen)
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
-    await emit(_slotbericht(text_content, result, herzien, truncated))
+    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen))
     return text_content

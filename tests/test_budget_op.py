@@ -115,6 +115,7 @@ def test_zonder_afronding_zegt_code_wat_er_is(monkeypatch):
     assert end["type"] == "message_end"
     assert end["content"] == text
     assert end["partial"] is True
+    assert end["bronnen"] == []  # geen dataantwoord: geen vaste bouwstenen (#416)
     assert "DUO, dataset p01hoinges" in text
     assert not any(e["type"] == "error" for e in events)
 

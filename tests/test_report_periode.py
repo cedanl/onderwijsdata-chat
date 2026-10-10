@@ -64,13 +64,12 @@ def test_onleesbare_figuur_blijft_ongemoeid():
     assert bijgesneden("fig1", (2020, 2024)) == "fig1"
 
 
-def test_rapport_snijdt_de_grafiek_bij_tot_de_periode_in_de_titel():
+def test_rapport_snijdt_de_grafiek_bij_tot_de_periode_in_de_grafiektitel():
     spec = _parse_spec_from_response(
         json.dumps(
             {
-                "title": "Aantal mbo-studenten 2020/21-2024/25",
                 "onderzoeksvraag": "Hoeveel mbo-studenten de laatste vijf jaar?",
-                "visualisaties": [{"titel": "Studenten per schooljaar"}],
+                "visualisaties": [{"titel": "Aantal mbo-studenten 2020/21-2024/25"}],
                 "conclusie": "In de vijf voorgaande schooljaren ...",
             }
         ),
@@ -79,6 +78,28 @@ def test_rapport_snijdt_de_grafiek_bij_tot_de_periode_in_de_titel():
     )
 
     assert _x(spec.visualisaties[0]["figure_json"]) == [2020, 2021, 2022, 2023, 2024]
+
+
+def test_rapport_snijdt_de_grafiek_bij_tot_de_periode_in_de_vraag():
+    """De rapporttitel is de vraag van de gebruiker (#416); noemt die een periode, dan geldt die."""
+    spec = _parse_spec_from_response(
+        json.dumps({"visualisaties": [{"titel": "Studenten per schooljaar"}], "conclusie": "..."}),
+        figures_json=[_figuur(ELF_JAAR)],
+        context={"topic": "Hoeveel mbo-studenten van 2020/21 tot en met 2024/25?"},
+    )
+
+    assert _x(spec.visualisaties[0]["figure_json"]) == [2020, 2021, 2022, 2023, 2024]
+
+
+def test_een_periode_in_de_titel_van_het_model_telt_niet():
+    """Het model schrijft geen titel meer; schrijft het er toch een, dan snijdt die niets bij (#416)."""
+    spec = _parse_spec_from_response(
+        json.dumps({"title": "Aantal mbo-studenten 2020/21-2024/25", "visualisaties": [{"titel": "Per jaar"}]}),
+        figures_json=[_figuur(ELF_JAAR)],
+        context={"topic": "Hoeveel mbo-studenten?"},
+    )
+
+    assert len(_x(spec.visualisaties[0]["figure_json"])) == 11
 
 
 def test_de_titel_van_de_visualisatie_gaat_voor():
