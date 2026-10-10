@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from core.config import DASHBOARDS_ENABLED, FEEDBACK_ENABLED
+from core.config import DASHBOARDS_ENABLED, FEEDBACK_ENABLED, MAX_MESSAGE_CHARS
 from tools.catalog import dataset_counts
 
 router = APIRouter(tags=["config"])
@@ -12,6 +12,7 @@ async def get_config():
     return {
         "dashboards_enabled": DASHBOARDS_ENABLED,
         "feedback_enabled": FEEDBACK_ENABLED,
+        "max_message_chars": MAX_MESSAGE_CHARS,
     }
 
 

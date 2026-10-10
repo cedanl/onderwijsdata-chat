@@ -3,6 +3,7 @@
 // also say where each number came from. Failed steps and error messages are out by
 // default: an audit file is about the answer, not about the retries on the way.
 import { conversationTitle } from './conversationTitle'
+import { metBronnen } from './answerBlocks'
 
 const failed = step => step.status === 'error' || step.status === 'empty'
 
@@ -23,7 +24,8 @@ function answerBlocks(msg, options) {
   for (const { tekst } of msg.vervangen || []) {
     blocks.push(['**Ingetrokken na controle:**', ...tekst.split('\n')].map(r => `> ${r}`).join('\n'))
   }
-  if (msg.content) blocks.push('### Antwoord', msg.content)
+  // The sources come from the server, no longer from the model's text (#416).
+  if (msg.content) blocks.push('### Antwoord', metBronnen(msg.content, msg.bronnen))
   for (const zin of msg.controle || []) blocks.push(`> Let op: ${zin}`)
   for (const fig of msg.figures || []) blocks.push(`_Grafiek: ${fig.label || 'zonder titel'}_`)
   const steps = stepLines(msg.tools, options, msg.vervangen?.[0]?.naStap)

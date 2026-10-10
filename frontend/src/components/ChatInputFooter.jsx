@@ -12,8 +12,9 @@ export default function ChatInputFooter({
   onSend,
   canSend,
   text = '',
+  max,
 }) {
-  const length = messageLengthState(text)
+  const length = messageLengthState(text, max)
   return (
     <div className="chat-input-footer">
       {!connected && (

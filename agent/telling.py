@@ -6,7 +6,6 @@ het antwoord. Het model formuleerde ze eerder zelf en kreeg er vals alarm van ee
 regex achteraf (#239): elke parafrase van de DUO-tekst gold als een fout.
 """
 
-import json
 import re
 
 from core.sentinels import BETEKENIS
@@ -18,7 +17,7 @@ from .claimbinding import betekenis, kenmerken, kies
 from .dimensielabels import selectie_regels
 from .grounding import bewijs_getallen, getallen_met_positie
 from .meetwaarden import Meetwaarde, meetwaarden
-from .selectie import data_keys, laadkey
+from .selectie import data_keys, laadkey, stapkeys
 
 _KOP = "**Telling**"
 # De eigen Definities-paragraaf van het model, tot de volgende vetgedrukte kop of het einde.
@@ -46,20 +45,6 @@ def _groepstotaal_exact(waarde: Meetwaarde | None) -> bool:
 def _bovengrens(key: str) -> bool:
     known = store.meta(key)
     return bool(known and known.afgeleid_van and known.vier_cellen)
-
-
-def _stapkeys(result: str) -> list[str]:
-    """De keys waarop één toolstap rust: zijn data_key, wat run_analysis las, of de bron van een KPI."""
-    try:
-        parsed = json.loads(result)
-    except (TypeError, ValueError):
-        return []
-    if not isinstance(parsed, dict):
-        return []
-    kandidaten = [parsed.get("data_key"), *(parsed.get("gelezen") or [])]
-    if isinstance(bron := parsed.get("bron"), dict):
-        kandidaten.append(bron.get("data_key"))
-    return [k for k in kandidaten if isinstance(k, str)]
 
 
 # (dataset, resource): het bestand bepaalt welke cellen onderdrukt zijn (#325).
@@ -90,7 +75,7 @@ def _antwoordgrenzen(tool_results: list[str], tekst: str) -> tuple[set[_Bestand]
     exact: een bredere verkenning met onderdrukte cellen maakt het geen ondergrens.
     None als geen getal in de tekst op een selectie rust.
     """
-    stappen = [(keys, bewijs_getallen(r), meetwaarden(r)) for r in tool_results if (keys := _stapkeys(r))]
+    stappen = [(keys, bewijs_getallen(r), meetwaarden(r)) for r in tool_results if (keys := stapkeys(r))]
     onder: set[_Bestand] = set()
     boven: set[_Bestand] = set()
     gedragen = False
@@ -180,7 +165,7 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
             afgerond.setdefault(known.dataset, noot)
     grenzen = _antwoordgrenzen(tool_results, tekst)
     if grenzen is None:
-        grenzen = _grenzen([k for r in tool_results for k in _stapkeys(r)])
+        grenzen = _grenzen([k for r in tool_results for k in stapkeys(r)])
     ondergrens, bovengrens = grenzen
     regels = [f"- {bron_naam(dataset)}: {definitie}" for dataset, definitie in definities.items()]
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in afgerond.items()]

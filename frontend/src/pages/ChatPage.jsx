@@ -41,6 +41,7 @@ import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
+import AnswerBlocks from '../components/AnswerBlocks'
 import IngetrokkenVersies from '../components/IngetrokkenVersies'
 import { exportKeys, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
@@ -61,6 +62,7 @@ import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
+import { answerBlocks, metBronnen } from '../answerBlocks'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -146,32 +148,46 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
   )
 }
 
-function MessageContent({ msg }) {
-  if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
-  if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
-  const { antwoord, telling, samenvatting } = splitsTelling(msg.content)
-  const markdown = text => (
+function Markdown({ text, citaties }) {
+  return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeCitaties(msg.citaties)]}
+      rehypePlugins={[rehypeCitaties(citaties)]}
       components={MARKDOWN_COMPONENTS}
     >
       {text}
     </ReactMarkdown>
   )
-  if (!telling) return markdown(msg.content)
+}
+
+// Het Telling-blok van de backend: de eerste zin, de rest uitklapbaar (#402). Onder de vaste
+// bouwstenen (#416) staat het label er al naast; dan zonder eigen kop.
+function TellingDetails({ msg, kop = true }) {
+  const { telling, samenvatting } = splitsTelling(msg.content)
+  if (!telling) return null
+  return (
+    <details className="telling">
+      <summary>{kop ? <><strong>Telling</strong> {samenvatting}</> : samenvatting || 'Toon de telling'}</summary>
+      <Markdown text={telling} citaties={msg.citaties} />
+    </details>
+  )
+}
+
+function MessageContent({ msg, blocks = null }) {
+  if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
+  if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
+  const { antwoord, telling } = splitsTelling(msg.content)
+  if (!telling) return <Markdown text={msg.content} citaties={msg.citaties} />
   return (
     <>
-      {markdown(antwoord)}
-      <details className="telling">
-        <summary><strong>Telling</strong> {samenvatting}</summary>
-        {markdown(telling)}
-      </details>
+      <Markdown text={antwoord} citaties={msg.citaties} />
+      {/* Met de vaste bouwstenen staat de Telling daar, op een vaste plek (#416). */}
+      {!blocks && <TellingDetails msg={msg} />}
     </>
   )
 }
 
-export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [input, setInput] = useState('')
@@ -379,7 +395,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const handleSend = () => {
     const q = input.trim()
     // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
-    if (!q || atContextLimit || messageLengthState(q).over) return
+    if (!q || atContextLimit || messageLengthState(q, maxMessageChars).over) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
       setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
@@ -601,7 +617,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 rows={1}
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
-                maxLength={MAX_MESSAGE_CHARS}
+                maxLength={2 * maxMessageChars}
                 aria-describedby={MESSAGE_COUNTER_ID}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
@@ -614,8 +630,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 onModelChange={handleModelChange}
                 onStop={stop}
                 onSend={handleSend}
-                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input).over}
+                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input, maxMessageChars).over}
                 text={input}
+                max={maxMessageChars}
               />
             </div>
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
@@ -744,6 +761,9 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
   const awaiting = isAwaitingFirstToken(msg)
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && exportKeys(msg.tools).length > 0
+  // A data answer gets its fixed building blocks; any other message renders as before (#416).
+  const blocks = answerBlocks(msg, { settled })
+  const dataExport = <DataExport tools={msg.tools} settled={settled} onHerhaal={herhaal || null} busy={busy} />
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
 
   return (
@@ -758,15 +778,17 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
         <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
         {(awaiting || exportable || hasAssistantContent(msg)) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
-            {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
-            <MessageContent msg={msg} />
+            {msg.content && <CopyButton text={metBronnen(msg.content, msg.bronnen)} className="copy-btn-message" />}
+            <MessageContent msg={msg} blocks={blocks} />
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
             {msg.figures?.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
-            <DataExport tools={msg.tools} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+            {blocks
+              ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
+              : dataExport}
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}

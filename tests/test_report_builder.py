@@ -40,7 +40,8 @@ class TestParseSpecFromResponse:
             author="jansen",
         )
 
-        assert spec.title == "Instroom ROC van Flevoland 2018-2024"
+        # De titel is de vraag met de instelling, niet de titel van het model (#416).
+        assert spec.title == "Hoe ontwikkelt de eerstejaars instroom zich – ROC van Flevoland"
         assert spec.auteur == "jansen"
         assert spec.datum == _nl_datum()
         # Definities komen uit de bron, niet uit het model (#422); hier geen datasets.

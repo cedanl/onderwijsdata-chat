@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { messageLengthState } from '../messageLength'
+import { messageLengthState, resolveMaxMessageChars } from '../messageLength'
 import { MAX_MESSAGE_CHARS } from '../constants'
 
 // #481: the composer keeps new input within the server's MAX_MESSAGE_CHARS.
@@ -34,7 +34,20 @@ describe('messageLengthState', () => {
   })
 })
 
-describe('MAX_MESSAGE_CHARS', () => {
+describe('resolveMaxMessageChars', () => {
+  it('neemt een positief geheel getal van de server over (#501)', () => {
+    expect(resolveMaxMessageChars(50)).toBe(50)
+    expect(resolveMaxMessageChars(1234)).toBe(1234)
+  })
+
+  it.each([undefined, null, 0, -1, 1.5, 'abc', '50', NaN, Infinity])('valt bij %s terug op MAX_MESSAGE_CHARS', value => {
+    expect(resolveMaxMessageChars(value)).toBe(MAX_MESSAGE_CHARS)
+  })
+})
+
+// The server publishes the real limit via /api/config (#501); the constant is only the fallback
+// when that fails, so it must match the server's default.
+describe('MAX_MESSAGE_CHARS als terugvalwaarde', () => {
   it('is gelijk aan de standaard in core/config.py', () => {
     const config = readFileSync(join(__dirname, '..', '..', '..', 'core', 'config.py'), 'utf8')
     const match = config.match(/MAX_MESSAGE_CHARS = int\(os\.getenv\("MAX_MESSAGE_CHARS", "(\d+)"\)\)/)

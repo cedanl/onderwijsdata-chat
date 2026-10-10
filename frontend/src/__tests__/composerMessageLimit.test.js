@@ -37,14 +37,17 @@ window.matchMedia ??= q => ({ matches: false, media: q, addEventListener() {}, r
 let root
 let container
 
-async function renderWithDraft(draft) {
+async function renderWithDraft(draft, props = {}) {
   chat.rejectedDraft = draft
   chat.send = vi.fn(() => true)
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
-  await act(async () => { root.render(createElement(ChatPage, { settings: {}, user: 'gast' })) })
+  await act(async () => { root.render(createElement(ChatPage, { settings: {}, user: 'gast', ...props })) })
 }
+
+const counterText = () => container.querySelector('.message-counter').textContent
+const sendDisabled = () => container.querySelector('.send-btn').getAttribute('aria-disabled')
 
 async function pressEnter() {
   const textarea = container.querySelector('textarea.chat-input')
@@ -60,9 +63,11 @@ afterEach(() => {
 
 // #481: the composer never sends more than the server accepts.
 describe('composer message limit', () => {
-  it('caps typing with maxLength', async () => {
+  // #501: maxLength counts raw text while the limit counts trimmed text, and it cut typing off silently.
+  // The textarea only guards against absurd pastes; the counter judges the length.
+  it('only guards pastes with maxLength at twice the limit', async () => {
     await renderWithDraft(null)
-    expect(container.querySelector('textarea.chat-input').maxLength).toBe(MAX_MESSAGE_CHARS)
+    expect(container.querySelector('textarea.chat-input').maxLength).toBe(2 * MAX_MESSAGE_CHARS)
   })
 
   it('describes the textarea with the counter', async () => {
@@ -88,5 +93,43 @@ describe('composer message limit', () => {
 
     await pressEnter()
     expect(chat.send).toHaveBeenCalledWith('x'.repeat(MAX_MESSAGE_CHARS))
+  })
+
+  it('counts a draft without its trailing spaces, like the server', async () => {
+    await renderWithDraft('x'.repeat(MAX_MESSAGE_CHARS - 10) + ' '.repeat(10))
+    expect(counterText()).toContain(`${MAX_MESSAGE_CHARS - 10} / ${MAX_MESSAGE_CHARS}`)
+    expect(container.querySelector('.message-counter--over')).toBeNull()
+    expect(sendDisabled()).toBe('false')
+  })
+})
+
+// #501: the server publishes MAX_MESSAGE_CHARS via /api/config; App passes it in as a prop.
+describe('composer message limit from the server', () => {
+  it('counts against the limit it is given', async () => {
+    await renderWithDraft('x'.repeat(50), { maxMessageChars: 50 })
+    expect(counterText()).toContain('50 / 50')
+    expect(container.querySelector('textarea.chat-input').maxLength).toBe(100)
+  })
+
+  it('does not send a trimmed draft one over the given limit', async () => {
+    await renderWithDraft(' ' + 'x'.repeat(51) + ' ', { maxMessageChars: 50 })
+    expect(container.querySelector('.message-counter--over')).not.toBeNull()
+    expect(sendDisabled()).toBe('true')
+
+    await pressEnter()
+    expect(chat.send).not.toHaveBeenCalled()
+  })
+
+  it('sends a draft of exactly the given limit', async () => {
+    await renderWithDraft('x'.repeat(50), { maxMessageChars: 50 })
+    expect(sendDisabled()).toBe('false')
+
+    await pressEnter()
+    expect(chat.send).toHaveBeenCalledWith('x'.repeat(50))
+  })
+
+  it('uses MAX_MESSAGE_CHARS without the prop', async () => {
+    await renderWithDraft('x'.repeat(MAX_MESSAGE_CHARS))
+    expect(counterText()).toContain(`${MAX_MESSAGE_CHARS} / ${MAX_MESSAGE_CHARS}`)
   })
 })
