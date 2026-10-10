@@ -17,11 +17,11 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 en S15 (#500) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, origin `*` geweigerd, #421) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
-| S10 | Sessieduur 24 uur, niet instelbaar | Laag | ❌ Open (#479) |
+| S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
 | S11 | Tool-enumeratie via LLM | Laag | ℹ️ By design — `run_analysis` voert afgeschermd modelcode uit (#443) |
 | S12 | Dependency-kwetsbaarheden | Variabel | ⚠️ Te verifiëren (#506) |
 | S13 | CSP staat `'unsafe-inline'`, twee CDN-hosts en WebSocket naar elke host toe | Laag–Gemiddeld | ❌ Open (#486; `connect-src` in #506) |
-| S14 | Token blijft na uitloggen geldig | Gemiddeld | ❌ Open (#479) |
+| S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
 | S15 | `history`-actie omzeilt de invoerlimiet | Laag | ❌ Open (#500) |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ❌ Open (#477); browseropslag na uitloggen (#507) |
 | S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ❌ Open (#505) |
@@ -118,11 +118,18 @@ Test: `tests/test_config_cors.py`.
 
 ---
 
-### S10 — Sessieduur 24 uur ❌ Open
+### S10 — Sessieduur 24 uur ✅ Opgelost
 
-**Locatie:** `core/auth.py` — `_TOKEN_TTL = 24 * 3600`  
-**Probleem:** de geldigheid van een token staat vast op 24 uur en is niet via een environment variable in te stellen. Met OIDC geeft `POST /api/auth/refresh` (`routes/auth.py`) voor een geldig token een nieuw token van 24 uur.  
-**Vervolg:** #479.
+**Locatie:** `core/auth.py` (`SESSION_TTL`, `SESSION_MAX`, `make_token`), `routes/auth.py` (`POST /api/auth/refresh`)  
+**Probleem:** de geldigheid van een token stond vast op 24 uur (`_TOKEN_TTL`) en was niet via een environment variable in te stellen. Met OIDC gaf `POST /api/auth/refresh` voor een geldig token een nieuw token van 24 uur, zonder grens aan de totale sessieduur.  
+**Fix (#479):** een token geldt `SESSION_TTL_HOURS` (standaard 8). Het token bevat het inlogmoment; verversen houdt dat vast en geeft nooit een token voorbij `SESSION_MAX_HOURS` (standaard 24) na inloggen. Daarna geeft `/api/auth/refresh` 401 en moet de gebruiker opnieuw inloggen. Een ongeldige of niet-positieve waarde laat de server niet starten.
+
+**Instellen via env var:**
+```
+SESSION_TTL_HOURS=8
+SESSION_MAX_HOURS=24
+```
+Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uitloggen: zie S14.
 
 ---
 
@@ -164,11 +171,22 @@ Die audit hook is geen kernelgrens (#443). De tools zijn ook zonder het model aa
 
 ---
 
-### S14 — Token blijft na uitloggen geldig ❌ Open
+### S14 — Token blijft na uitloggen geldig ✅ Opgelost
 
-**Locatie:** `core/auth.py` (`make_token`, `verify_token`), `routes/auth.py`  
-**Probleem:** het token is een ondertekende tekst met gebruikersnaam en verloopmoment. De backend kent geen intrekking: na uitloggen blijft een token geldig. Zonder OIDC duurt dat tot het verloopt (S10). Met OIDC geeft `POST /api/auth/refresh` voor elk nog geldig token een nieuw token van 24 uur, dus is een token zonder grens te blijven verlengen, ook een buitgemaakt token.  
-**Vervolg:** #479.
+**Locatie:** `core/auth.py` (`verify_token`, `revoke_token`), `routes/auth.py` (`POST /api/auth/logout`), tabel `revoked_tokens` (`persistence/db.py`)  
+**Probleem:** het token is een ondertekende tekst met gebruikersnaam en verloopmoment. De backend kende geen intrekking: na uitloggen bleef een token geldig tot het verliep, en met OIDC was het via `POST /api/auth/refresh` zonder grens te verlengen (S10), ook een buitgemaakt token.  
+**Fix (#479):**
+- Uitloggen (`handleLogout` in `frontend/src/App.jsx` roept `POST /api/auth/logout` aan) zet `sha256(token)` tot de vervaltijd van het token op een denylist in de database. Die denylist is gedeeld door alle replica's. Verlopen rijen worden bij elke intrekking en bij het opstarten opgeruimd.
+- REST-routes, de WebSocket-connect (`/api/chat`), `POST /api/dashboard/refresh` en `POST /api/auth/refresh` weigeren een ingetrokken token.
+- De database bewaart alleen de hash, nooit het token. De logs bevatten geen van beide.
+- Een databasestoring bij de controle geeft 500, geen 401, zodat een storing niet als "sessie voorbij" geldt.
+
+**Restrisico:**
+- Een al open WebSocket blijft na uitloggen open tot de browser (of een andere client) hem sluit, ook voorbij de vervaltijd van het token. De server controleert het token alleen bij het verbinden.
+- Uitloggen trekt alleen het meegestuurde token in. Andere tokens uit dezelfde sessie, zoals eerdere resultaten van `/api/auth/refresh`, blijven geldig en zijn te verversen tot `SESSION_MAX_HOURS` na inloggen. Wie zo'n token heeft buitgemaakt, houdt dus tot dat moment toegang.
+- De frontend wacht niet op het antwoord van `POST /api/auth/logout`. Komt het verzoek niet aan, dan blijft het token geldig tot het verloopt.
+
+Test: `tests/test_token_intrekking.py`.
 
 ---
 
@@ -203,11 +221,10 @@ Die audit hook is geen kernelgrens (#443). De tools zijn ook zonder het model aa
 ## Aanbevelingen voor volgende stap
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); nagaan welk adres de login-limiter achter de ingress als sleutel ziet en de limiter per echte client laten tellen (#504)
-2. **S10/S14** — kortere of instelbare sessieduur en intrekking bij uitloggen (#479)
-3. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
-4. **S15** — `history`-actie begrenzen (#500)
-5. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
-6. **S4** — geen ruwe exceptietekst meer naar de browser, ook niet bij dashboard, rapport, dashboard-refresh en model-/API-fouten (#503)
-7. **S17** — dashboard-refresh alleen door de server vastgelegde of toegestane tool-aanroepen laten herhalen (#505)
-8. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
-9. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
+3. **S15** — `history`-actie begrenzen (#500)
+4. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
+5. **S4** — geen ruwe exceptietekst meer naar de browser, ook niet bij dashboard, rapport, dashboard-refresh en model-/API-fouten (#503)
+6. **S17** — dashboard-refresh alleen door de server vastgelegde of toegestane tool-aanroepen laten herhalen (#505)
+7. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
+8. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

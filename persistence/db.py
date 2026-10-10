@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sqlite3
+import time
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -218,6 +219,17 @@ _DATA_RECIPES_TABLE = """
 _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipes(username, data_key, created_at DESC)"
 
 
+# Bij uitloggen ingetrokken tokens (#479): alleen sha256(token), nooit het token, tot zijn exp.
+# Daarna faalt het token toch al op zijn vervaltijd en kan de rij weg.
+_REVOKED_TOKENS_TABLE = """
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+        token_hash TEXT    PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+    )
+"""
+_REVOKED_TOKENS_INDEX = "CREATE INDEX IF NOT EXISTS idx_revoked_expires ON revoked_tokens(expires_at)"
+
+
 def init_db() -> None:
     conn = _connect()
     cursor = conn.cursor()
@@ -254,6 +266,8 @@ def init_db() -> None:
         cursor.execute(_ANSWER_FEEDBACK_TABLE)
         cursor.execute(_DATA_RECIPES_TABLE)
         cursor.execute(_DATA_RECIPES_INDEX)
+        cursor.execute(_REVOKED_TOKENS_TABLE)
+        cursor.execute(_REVOKED_TOKENS_INDEX)
         cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
         conn.commit()
         cursor.close()
@@ -290,9 +304,38 @@ def init_db() -> None:
         conn.execute(_ANSWER_FEEDBACK_TABLE)
         conn.execute(_DATA_RECIPES_TABLE)
         conn.execute(_DATA_RECIPES_INDEX)
+        conn.execute(_REVOKED_TOKENS_TABLE)
+        conn.execute(_REVOKED_TOKENS_INDEX)
 
     _migrate(conn)
+    purge_expired_revocations(conn)
+    conn.commit()
     conn.close()
+
+
+def purge_expired_revocations(conn: Any) -> None:
+    """Drop denylist rows whose token has expired: verification rejects such a token on its own."""
+    _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (int(time.time()),))
+
+
+def revoke_token_hash(token_hash: str, expires_at: int) -> None:
+    """Put a token hash on the denylist until expires_at; revoking twice is a no-op."""
+    conn = _connect()
+    _execute(
+        conn,
+        "INSERT INTO revoked_tokens (token_hash, expires_at) VALUES (?, ?) ON CONFLICT (token_hash) DO NOTHING",
+        (token_hash, expires_at),
+    )
+    purge_expired_revocations(conn)
+    conn.commit()
+    conn.close()
+
+
+def is_token_revoked(token_hash: str) -> bool:
+    conn = _connect()
+    row = _execute(conn, "SELECT 1 FROM revoked_tokens WHERE token_hash = ?", (token_hash,)).fetchone()
+    conn.close()
+    return row is not None
 
 
 def list_conversations(

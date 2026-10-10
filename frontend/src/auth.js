@@ -125,7 +125,13 @@ export async function login(username, password) {
   return data
 }
 
-// Tokens are `base64url("<username>|<expiry seconds>").<signature>`; returns the expiry in ms.
+// Revoke the token server-side (#479). Fire-and-forget: logging out locally never waits for it or fails on it.
+export function logout(token) {
+  if (!token) return
+  fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+}
+
+// Tokens are `base64url("<username>|<session start>|<expiry seconds>").<signature>` (older: no start); returns the expiry in ms.
 export function tokenExpiresAt(token) {
   try {
     const decoded = atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))
