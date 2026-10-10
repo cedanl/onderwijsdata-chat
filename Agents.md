@@ -71,19 +71,42 @@ Clean commits mean cherry-picking to GitHub is trivial.
 | `git tag X.Y.Z` (bare, no `v`) | geen | publiceert alleen de chart + GitHub-spiegel |
 | MR `chore/promote-playground` | playground | wijzigt de pin in `manifests/playground/helmrelease.yaml`; Flux installeert die versie |
 
+**Een release in vier stappen** (elke stap is een eigen beslissing; een tag deployt niets):
+
+1. **Test bekijken.** Merge naar `main`, wacht tot de pipeline van die commit groen is en kijk op test. Ontwikkel hier vrij; playground beweegt niet mee.
+2. **Taggen** op precies die groene `main`-commit, kaal `X.Y.Z` (zonder `v`; SDP matcht `^[0-9]+\.`). Een volgende merge annuleert de vorige main-pipeline (auto_cancel), dus tag de commit die `origin/main` ná het wachten is. Zonder groene pipeline publiceert `version:promote` geen chart en faalt de promotie.
+3. **Promoveren** via MR `chore/promote-playground` (auto-merge aan). Na de merge installeert Flux de pin binnen ~1 minuut.
+4. **Vastleggen en verifiëren**: `mark` (marker start geen pipeline), `/version` en Flux-status controleren, daarna de GitHub-release maken.
+
 ```bash
-git tag 2.0.0 && git push origin 2.0.0                 # release (main moet groen zijn)
-uv run python scripts/promotie.py promote              # branch chore/promote-playground, MR
+git tag 2.2.0 <main-sha> && git push origin 2.2.0     # tag-pipeline publiceert chart; sync:github spiegelt de tag
+uv run python scripts/promotie.py promote --version 2.2.0   # op branch chore/promote-playground; commit, MR
 uv run python scripts/promotie.py mark                 # na merge: env/playground/<versie>
+git push origin env/playground/2.2.0
+gh release create 2.2.0 --verify-tag --latest --title "Release 2.2.0 — …" --notes-file notes.md   # release notes in het Nederlands
 ```
+
+Verifiëren na de merge (`/version` is de bron van waarheid; `version` komt uit de chartversie = de tag, `commit` is de gebouwde commit):
+
+```bash
+kubectl --context playground get helmrelease onderwijsdata-chat -n services-onderwijsdata-chat \
+  -o jsonpath='{.spec.chart.spec.version} -> {.status.history[0].chartVersion}'   # 2.2.0 -> 2.2.0
+curl https://onderwijsdata-chat.playground.sdp.surf.nl/version
+```
+
+Let op:
+- Playground nooit terug op een range zetten en nooit pinnen op `2.0.0` (die tag heeft geen chart).
+- Alle tags zijn protected in GitLab (`*`): een verkeerde tag is niet te verwijderen zonder de bescherming op te heffen. Controleer de naam vóór het pushen.
+- Release-notes beschrijven alles sinds de laatste GitHub-release; sla je een tag over (zoals 2.1.0), neem die wijzigingen dan mee.
+- `promotie.py` heeft alleen PyYAML nodig; zonder Python 3.14 lokaal: `uv run --no-project --python python3 --with pyyaml python scripts/promotie.py …`.
 
 Procedure: `docs/promoten.md`. CI-poort `env:promotion-ladder` bewaakt de pin.
 
 See `manifests/README.md` and `docs/test-environment.md` for details.
 
 **When you're done:**
-- For bugfixes/features: Push to `main` → CI auto-deploys dev/test
-- For release: tag `X.Y.Z`, see test, then promote playground via MR (`docs/promoten.md`)
+- For bugfixes/features: Push to `main` → test volgt vanzelf; playground blijft staan tot een promotie
+- For release: see test, tag `X.Y.Z` on the green `main` commit, promote playground via MR, `mark`, verify `/version`, GitHub release (`docs/promoten.md`)
 
 ## Git commands
 
