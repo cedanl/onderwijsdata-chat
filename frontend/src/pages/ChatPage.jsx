@@ -187,7 +187,7 @@ function MessageContent({ msg, blocks = null }) {
   )
 }
 
-export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [input, setInput] = useState('')
@@ -395,7 +395,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const handleSend = () => {
     const q = input.trim()
     // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
-    if (!q || atContextLimit || messageLengthState(q).over) return
+    if (!q || atContextLimit || messageLengthState(q, maxMessageChars).over) return
     // send() refuses while busy, resetting or reconnecting; the typed question then stays.
     if (!send(q)) {
       setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
@@ -617,7 +617,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 rows={1}
                 placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
                 value={input}
-                maxLength={MAX_MESSAGE_CHARS}
+                maxLength={2 * maxMessageChars}
                 aria-describedby={MESSAGE_COUNTER_ID}
                 onChange={e => { setInput(e.target.value); autoResize(e) }}
                 onKeyDown={handleKey}
@@ -630,8 +630,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 onModelChange={handleModelChange}
                 onStop={stop}
                 onSend={handleSend}
-                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input).over}
+                canSend={Boolean(input.trim()) && connected && !busy && !resetting && !atContextLimit && !messageLengthState(input, maxMessageChars).over}
                 text={input}
+                max={maxMessageChars}
               />
             </div>
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>

@@ -132,6 +132,14 @@ describe('ChatInputFooter tekenteller (#481)', () => {
     act(() => root.unmount())
   })
 
+  it('telt tegen het maximum dat het meekrijgt (#501)', () => {
+    const { container, root } = renderFooter({ ...props('x'.repeat(51)), max: 50 })
+    const el = counter(container)
+    expect(el.textContent).toContain('51 / 50')
+    expect(el.classList.contains('message-counter--over')).toBe(true)
+    act(() => root.unmount())
+  })
+
   it('houdt de verzendknop vóór de modelpicker in de tab-volgorde', () => {
     const { container, root } = renderFooter(props('x'.repeat(MAX_MESSAGE_CHARS)))
     expect(focusableOrder(container)).toEqual(['Verstuur bericht', 'Model'])
