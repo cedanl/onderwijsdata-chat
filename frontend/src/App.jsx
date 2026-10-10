@@ -7,7 +7,8 @@ import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS, MAX_MESSAGE_CHARS } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
+import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
 
@@ -29,15 +30,6 @@ export default function App() {
 }
 
 let _tokenRefreshTimer = null
-
-// Conversations and workbooks cached by whoever used this browser before. The pages that
-// sync them to the server cannot tell leftovers from unsynced data, and would attribute
-// them to the account that logs in next.
-function clearLocalSessionData() {
-  localStorage.removeItem(STORAGE_CONVERSATIONS)
-  localStorage.removeItem(STORAGE_CURRENT_CHAT)
-  localStorage.removeItem(STORAGE_WORKBOOKS)
-}
 
 function startTokenRefreshTimer(token) {
   const expiresAt = tokenExpiresAt(token)
