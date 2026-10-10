@@ -16,7 +16,7 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 
 **→ Zie `Agents.md`** voor:
 - Feature development (TDD, modularity, narrative commits)
-- Git workflow (cherry-pick to GitHub, remote management)
+- Git workflow (GitLab canoniek, GitHub automatische spiegel, remote management)
 - **Ladder test → playground:** test volgt main; playground pint een release en gaat via promotie-MR (`docs/promoten.md`)
 - Secrets management (SOPS encryption, LLM boundaries)
 - CI/CD pipeline (stages, environments)
