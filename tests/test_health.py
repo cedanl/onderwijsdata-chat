@@ -49,6 +49,22 @@ def test_version_returns_version_string(client):
     assert len(data["version"].split(".")) >= 2
 
 
+def test_version_volgt_de_release_uit_het_chart(client, monkeypatch):
+    # Het image wordt op main gebouwd, dus pyproject.toml wist niet welke release er draait.
+    from config import Config
+
+    monkeypatch.setattr(Config, "APP_VERSION", "2.1.0")
+    assert client.get("/version").json()["version"] == "2.1.0"
+    assert client.get("/api/version").json()["version"] == "2.1.0"
+
+
+def test_version_valt_zonder_chart_terug_op_pyproject(client, monkeypatch):
+    from config import Config
+
+    monkeypatch.setattr(Config, "APP_VERSION", None)
+    assert client.get("/version").json()["version"].count(".") == 2
+
+
 def test_version_noemt_de_commit_uit_het_image(client, monkeypatch):
     # #231: zonder commit was niet vast te stellen welke code een omgeving draait.
     from config import Config

@@ -29,6 +29,10 @@ class Config:
     # Commit van het image, meegegeven als build-arg in CI (#231)
     GIT_COMMIT: str | None = os.getenv("GIT_COMMIT")
 
+    # Release waarop de omgeving draait: het chart zet hem uit de chartversie (de release-tag).
+    # Het image wordt op main gebouwd en bij een tag alleen gepromoveerd, dus de tag is er pas bij deploy.
+    APP_VERSION: str | None = os.getenv("APP_VERSION")
+
     # Optional database settings
     POSTGRES_URI: str | None = os.getenv("POSTGRES_URI")
 
