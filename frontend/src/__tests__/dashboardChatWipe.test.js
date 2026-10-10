@@ -99,10 +99,11 @@ describe('dashboard chat saves while the session lasts', () => {
     await closeChat()
   }
 
+  // A skipped save leaves the key absent (null), so the assertion names it rather than throwing.
   function expectSaved() {
-    const messages = JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES))
-    expect(messages.map(m => m.content)).toEqual(['hallo'])
-    expect(JSON.parse(localStorage.getItem(STORAGE_DC_FIGURES))).toHaveLength(1)
+    const saved = key => JSON.parse(localStorage.getItem(key))
+    expect(saved(STORAGE_DC_MESSAGES)?.map(m => m.content), STORAGE_DC_MESSAGES).toEqual(['hallo'])
+    expect(saved(STORAGE_DC_FIGURES), STORAGE_DC_FIGURES).toEqual([{ data: [], layout: {} }])
   }
 
   it('with a live token', async () => {
