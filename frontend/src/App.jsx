@@ -1,11 +1,11 @@
-import { Component, Suspense, lazy, useState, useEffect } from 'react'
+import { Component, Suspense, lazy, useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
-import { fetchAuthStatus, getToken, clearToken, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
+import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
 import { applyMode } from './theme'
@@ -68,6 +68,21 @@ function AppShell() {
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
+  // Logout and a session the server ended (#480) leave the same state behind.
+  const resetSession = useCallback(() => {
+    if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
+    clearLocalSessionData()
+    // The profile belongs to whoever logged out; on a shared device the next person starts fresh.
+    localStorage.removeItem(STORAGE_SETTINGS)
+    localStorage.removeItem(STORAGE_ONBOARDED)
+    setSettings({})
+    setUser(null)
+    setUserInfo(null)
+    setShowSettings(false)
+  }, [])
+
+  useEffect(() => onSessionEnded(resetSession), [resetSession])
+
   useEffect(() => {
     // A token in the URL means we just landed here via the SRAM callback
     // redirect — a fresh login, same as the password form's handleLogin.
@@ -92,13 +107,14 @@ function AppShell() {
         // GitHub version (basic auth) will skip this and use localStorage
         try {
           const userInfo = await fetchUserInfo(token)
+          if (!getToken()) return  // The server refused the token: the session has ended
           if (userInfo) {
             setUserInfo(userInfo)
             setUser(userInfo.name || userInfo.username)
             // Start token refresh timer (refresh 5 min before expiration)
             startTokenRefreshTimer(token)
           } else {
-            // Endpoint doesn't exist (GitHub version) or token is invalid
+            // Endpoint doesn't exist (GitHub version) or the server failed
             // Fallback to localStorage if available
             const stored = getStoredUserInfo()
             if (stored) {
@@ -167,15 +183,7 @@ function AppShell() {
   const handleLogout = () => {
     logout(getToken())
     clearToken()
-    if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
-    clearLocalSessionData()
-    // The profile belongs to whoever logged out; on a shared device the next person starts fresh.
-    localStorage.removeItem(STORAGE_SETTINGS)
-    localStorage.removeItem(STORAGE_ONBOARDED)
-    setSettings({})
-    setUser(null)
-    setUserInfo(null)
-    setShowSettings(false)
+    resetSession()
   }
 
   // Only use the SRAM identity as instelling when it matches a known
