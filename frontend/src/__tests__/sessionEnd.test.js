@@ -266,12 +266,14 @@ describe('App', () => {
   let container
 
   function serve({ required, user }) {
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
+    const fetch = vi.fn(async (url) => {
       if (url === '/api/auth/status') return response(200, { required, oidc_enabled: false })
       if (url === '/api/auth/user') return user
       if (url === '/api/instellingen') return response(200, [])
       return response(200, {})
-    }))
+    })
+    vi.stubGlobal('fetch', fetch)
+    return fetch
   }
 
   async function render() {
@@ -293,6 +295,8 @@ describe('App', () => {
   })
 
   const loginForm = () => container.querySelector('#login-username')
+  const logoutButton = () => [...container.querySelectorAll('button')].find(b => b.textContent.trim() === 'Uitloggen')
+  const logoutCalls = (fetch) => fetch.mock.calls.filter(([url]) => url === '/api/auth/logout')
 
   it('shows the login page when the stored token is refused', async () => {
     logIn('tampered')
@@ -315,12 +319,27 @@ describe('App', () => {
 
   it('goes to the login page when the session ends while using the app', async () => {
     logIn()
-    serve({ required: true, user: response(200, { name: 'Anna' }) })
+    const fetch = serve({ required: true, user: response(200, { name: 'Anna' }) })
     await render()
     expect(container.textContent).toContain('Anna')
     await act(async () => { endSession() })
     expect(loginForm()).not.toBeNull()
     expect(container.textContent).not.toContain('Anna')
+    // The server already refused the token; ending the session sends no logout (#479).
+    expect(fetch).not.toHaveBeenCalledWith('/api/auth/logout', expect.anything())
+  })
+
+  // #479: the token is read before it is cleared, otherwise nothing gets revoked.
+  it('revokes the stored token on the server when the user logs out', async () => {
+    logIn('tok')
+    const fetch = serve({ required: true, user: response(200, { name: 'Anna' }) })
+    await render()
+    await act(async () => { logoutButton().click() })
+    expect(logoutCalls(fetch)).toEqual([
+      ['/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer tok' } }],
+    ])
+    expect(loginForm()).not.toBeNull()
+    expect(loggedOut()).toBe(true)
   })
 
   it('shows the guest without login when no login is required', async () => {
