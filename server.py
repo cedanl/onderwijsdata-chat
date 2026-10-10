@@ -119,7 +119,7 @@ _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 @app.get("/version", tags=["info"])
 @app.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
-    """Versie uit pyproject.toml, de commit waaruit het image is gebouwd (#231), de catalogus (#361)
+    """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
     en de dataversie van UWV en ROA (CH-46)."""
 
     def _read() -> str:
@@ -127,7 +127,7 @@ async def version() -> dict:
             return tomllib.load(f)["project"]["version"]
 
     return {
-        "version": await asyncio.to_thread(_read),
+        "version": Config.APP_VERSION or await asyncio.to_thread(_read),
         "commit": Config.GIT_COMMIT or "onbekend",
         # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361).
         "catalogus": catalogusversie(),

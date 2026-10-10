@@ -220,6 +220,9 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- `/version` toont de release waarop de omgeving draait (de chartversie, dus de tag `X.Y.Z`) in plaats van de
+  vaste waarde uit `pyproject.toml`. Het chart geeft die mee als `APP_VERSION`; op test is dat de prerelease van de
+  main-build, lokaal valt het terug op `pyproject.toml`.
 - Het log bevat op INFO en hoger geen vraag- of antwoordtekst meer: `RUN START`, `FINALE ANTWOORD`,
   `ANTWOORD INGEHOUDEN`, `ZELFCORRECTIE`, de controle-, zoek-, `CATALOGUS_GELADEN`/`CATALOGUS_AFWIJKING`-, rapport-,
   KPI- en `REPRODUCEER`-regels noemen model, lengte, een korte SHA-256-hash of de namen van de controles. De

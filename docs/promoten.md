@@ -45,7 +45,7 @@ Controleer daarna of het cluster echt is verplaatst:
 kubectl --context playground get helmrelease onderwijsdata-chat \
   -n services-onderwijsdata-chat \
   -o jsonpath='{.spec.chart.spec.version} -> {.status.history[0].chartVersion}'
-curl https://<playground-url>/version
+curl https://<playground-url>/version   # "version" = release-tag, "commit" = gebouwde commit
 ```
 
 Leg het vast met een marker; die start geen pipeline:

@@ -43,7 +43,10 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.env }}
           env:
+            # Chartversie = release-tag (helm:package zet die); /version toont hem (zie server.py).
+            - name: APP_VERSION
+              value: {{ .Chart.Version | quote }}
+            {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
