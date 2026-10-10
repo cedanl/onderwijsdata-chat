@@ -43,3 +43,10 @@ describe('SettingsModal logout', () => {
     expect(logoutButton()).toBeUndefined()
   })
 })
+
+describe('SettingsModal tap targets', () => {
+  it('carries the class the 44px touch rule for its buttons hangs on (#490)', async () => {
+    await render({})
+    expect(container.querySelector('[role="dialog"]').classList.contains('settings-modal')).toBe(true)
+  })
+})

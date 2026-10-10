@@ -50,6 +50,9 @@
   --shadow:    0 4px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
   --shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.05);
   --font: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  /* Tap targets (#490): 24x24 everywhere (WCAG 2.2 AA 2.5.8), 44x44 on touch screens (2.5.5). */
+  --tap-min-aa: 24px;
+  --tap-min: 44px;
 }
 
 /* ─── Dark mode ───────────────────────────────────────────── */
@@ -99,6 +102,9 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 #root { display: flex; flex-direction: column; min-height: 100vh; }
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; border: none; background: none; font: inherit; }
+/* Every control is at least 24x24 (#490). Zero specificity, so a component's own size wins. A number
+   in a sentence keeps its line (inline exception); min-* does not apply to inline links in text either. */
+:where(button:not(.citatie-getal), a[href], [role=button]) { min-width: var(--tap-min-aa); min-height: var(--tap-min-aa); }
 input, textarea { font: inherit; }
 
 /* ─── Typography ──────────────────────────────────────────── */
@@ -365,7 +371,7 @@ input, textarea { font: inherit; }
 .modal-table tr:last-child td { border-bottom: none; }
 .modal-table .source-name { font-weight: 700; color: var(--gray-900); }
 .modal-table .source-desc { color: var(--gray-500); line-height: 1.5; font-size: .85rem; }
-.modal-table a { color: var(--accent-text); font-family: monospace; font-size: .8rem; }
+.modal-table a { color: var(--accent-text); font-family: monospace; font-size: .8rem; display: inline-flex; align-items: center; }
 .modal-table a:hover { text-decoration: underline; }
 
 /* ─── CHAT PAGE ───────────────────────────────────────────── */
@@ -419,6 +425,8 @@ input, textarea { font: inherit; }
   border: 1.5px solid var(--blue-200); background: var(--blue-50);
   color: var(--blue-700); font-size: .8rem; font-weight: 600;
   cursor: pointer; transition: all .15s;
+  /* The sidebar scrolls: without this the 24px minimum (#490) lets the button shrink below its text. */
+  flex-shrink: 0;
 }
 .new-chat-btn:hover { background: var(--blue-100); border-color: var(--blue-400); }
 
@@ -480,14 +488,6 @@ input, textarea { font: inherit; }
 .history-action-icon svg { width: 13px; height: 13px; }
 .history-action-icon:hover { color: var(--gray-700); background: var(--gray-100); }
 .history-action-icon-delete:hover { color: #DC2626; background: #FEF2F2; }
-/* Touch screens: icon buttons get a 44x44 tap target (#388), the icon itself stays small. */
-@media (pointer: coarse), (max-width: 1024px) {
-  .history-action-icon, .wb-delete-btn, .hamburger-btn { min-width: 44px; min-height: 44px; }
-  .new-chat-btn, .suggested-category-btn, .navbar-cta, .navbar-profile-btn { min-height: 44px; }
-  .navbar-profile-btn { min-width: 44px; }
-  .wb-back-btn, .wb-download-btn, .wb-feedback-btn, .history-more-btn, .sources-link, .export-conversation-btn { min-height: 44px; }
-  .history-item-row .history-btn { padding-right: 96px; }
-}
 /* Inline title editing (history, workbook viewer). The underline is always there, so focus needs its own ring. */
 .title-edit-input {
   width: 100%; border: none; border-bottom: 2px solid var(--blue-600);
@@ -541,6 +541,7 @@ input, textarea { font: inherit; }
 .resend-btn {
   opacity: 0; transition: opacity .15s; background: none; border: none; cursor: pointer;
   color: var(--muted-text); padding: 4px; border-radius: 4px; align-self: center; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
 .resend-btn:hover { color: var(--accent-text); background: var(--gray-100); }
 .message.user:hover .resend-btn { opacity: 1; }
@@ -812,9 +813,11 @@ html.dark .message-counter--limit { color: #FCA5A5; }
   background: none; border: none; padding: 0; font: inherit;
   color: var(--accent-text); text-decoration: underline; cursor: pointer;
 }
-/* A link in a line of small text: the padding makes the tap target 44px, the negative margin keeps the line as is (#425). */
-@media (pointer: coarse), (max-width: 1024px) {
-  .disclaimer-link { padding: 16px 0; margin: -16px 0; }
+/* Text buttons in a line of text (#425, #490): the box is a full tap target, the negative margin
+   gives the line its own height back, so the text around them does not move. */
+.disclaimer-link, .message-continue, .instelling-clear-filter {
+  display: inline-flex; align-items: center; min-height: var(--tap-min-aa);
+  margin-block: min(0px, (1lh - var(--tap-min-aa)) / 2);
 }
 
 /* ─── Context limit banners ──────────────────────────────── */
@@ -854,7 +857,7 @@ html.dark .context-limit-banner--full {
   background: var(--white); border: 1px solid var(--gray-200);
   color: var(--gray-500); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow); z-index: 10;
+  box-shadow: var(--shadow); z-index: 10; flex-shrink: 0;
   transition: color .15s, border-color .15s, box-shadow .15s, transform .15s;
   animation: fadeInUp .2s ease;
 }
@@ -1559,3 +1562,40 @@ html.dark .suggested-btn:hover {
   background: transparent; color: var(--muted-text); font-size: .78rem; cursor: pointer;
 }
 .report-cancel-btn:hover { border-color: var(--gray-400); color: inherit; }
+
+/* ─── Tap targets on touch screens (#388, #490) ──────────────── */
+/* Touch screens and narrow windows: 44x44 (WCAG 2.5.5), the icons themselves stay small.
+   Last in the file, so no rule above lowers them again. */
+@media (pointer: coarse), (max-width: 1024px) {
+  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .hamburger-btn, .wb-delete-btn,
+  .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
+  .scroll-to-bottom-btn, .message-continue, .data-export-btn {
+    min-width: var(--tap-min); min-height: var(--tap-min);
+  }
+  .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
+  .sources-link, .export-conversation-btn, .model-picker select { min-height: var(--tap-min); }
+
+  .disclaimer-link, .message-continue, .instelling-clear-filter {
+    min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
+  }
+  /* The hit box grows on both sides; the negative margin keeps the old 22px footprint next to the bubble. */
+  .resend-btn { margin-inline: calc((22px - var(--tap-min)) / 2); }
+  /* The copy button keeps its 28px frame, drawn on ::before; the box around it is the tap target.
+     Moved up and right by the growth, so the frame stays where it was. */
+  .copy-btn, .copy-btn:hover { border-color: transparent; background: transparent; }
+  .copy-btn::before {
+    content: ''; position: absolute; inset: calc((var(--tap-min) - 28px) / 2 - 1px);
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white);
+    transition: border-color .15s, background .15s;
+  }
+  .copy-btn:hover::before { border-color: var(--gray-300); background: var(--gray-50); }
+  /* Every child (icon, "Gekopieerd" from #492) paints above the frame. */
+  .copy-btn > * { position: relative; }
+  /* Copied pill: keep the desktop 8px between frame and label. */
+  .copy-btn[data-copied] { padding-inline: calc(8px + (var(--tap-min) - 28px) / 2 - 1px); }
+  .copy-btn-message { top: 0; right: 0; }
+  .copy-btn-code { top: 8px; right: 0; }
+  /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
+  .history-item-row { align-items: center; }
+  .history-item-actions { position: static; transform: none; }
+}
