@@ -1576,7 +1576,10 @@ html.dark .suggested-btn:hover {
     transition: border-color .15s, background .15s;
   }
   .copy-btn:hover::before { border-color: var(--gray-300); background: var(--gray-50); }
-  .copy-btn svg { position: relative; }
+  /* Every child (icon, "Gekopieerd" from #492) paints above the frame. */
+  .copy-btn > * { position: relative; }
+  /* Copied pill: keep the desktop 8px between frame and label. */
+  .copy-btn[data-copied] { padding-inline: calc(8px + (var(--tap-min) - 28px) / 2 - 1px); }
   .copy-btn-message { top: 0; right: 0; }
   .copy-btn-code { top: 8px; right: 0; }
   /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
