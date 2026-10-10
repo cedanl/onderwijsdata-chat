@@ -59,10 +59,10 @@ def _claims(spec: ReportSpec) -> list[str]:
 
 
 def _all_text(spec: ReportSpec) -> str:
-    """Alle modeltekst behalve de onderzoeksvraag (die komt van de gebruiker) en de bronnen (#48)."""
+    """Alle modeltekst behalve de titel en de onderzoeksvraag (die komen van de gebruiker, #416) en de bronnen (#48)."""
     definities = (f"{d.get('begrip', '')} {d.get('definitie', '')}" for d in spec.definities)
     titels = (v.get("titel", "") for v in spec.visualisaties)
-    return "\n".join([spec.title, *definities, *spec.beantwoordt_niet, *titels, *_claims(spec)])
+    return "\n".join([*definities, *spec.beantwoordt_niet, *titels, *_claims(spec)])
 
 
 def _has_values(figure_json: str) -> bool:

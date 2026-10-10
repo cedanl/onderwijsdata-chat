@@ -417,6 +417,23 @@ describe('useChat stop', () => {
     expect(assistantMessages()[0].controle).toEqual(['6.340 staat niet in de opgehaalde data.'])
   })
 
+  // #416: the server derives the sources from the steps; an empty list still marks a new answer.
+  it('keeps the sources of the answer, also an empty list, and nothing else', async () => {
+    const ws = FakeWebSocket.last
+    const bron = 'DUO · Ingeschrevenen hoger onderwijs, 2024/25 (p01hoinges)'
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Het zijn er 36.201.', bronnen: [bron] })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Dit antwoord is ingehouden.', bronnen: [] })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Oud antwoord.' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Kapot.', bronnen: 'DUO' })
+    })
+    expect(assistantMessages().map(m => m.bronnen)).toEqual([[bron], [], undefined, undefined])
+  })
+
   it('drops the unchecked answer when the server withdraws it for a correction', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {

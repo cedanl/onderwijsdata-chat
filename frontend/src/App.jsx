@@ -7,7 +7,9 @@ import LoginPage from './pages/LoginPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_WORKBOOKS } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
+import { clearLocalSessionData } from './sessionData'
+import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
@@ -28,15 +30,6 @@ export default function App() {
 }
 
 let _tokenRefreshTimer = null
-
-// Conversations and workbooks cached by whoever used this browser before. The pages that
-// sync them to the server cannot tell leftovers from unsynced data, and would attribute
-// them to the account that logs in next.
-function clearLocalSessionData() {
-  localStorage.removeItem(STORAGE_CONVERSATIONS)
-  localStorage.removeItem(STORAGE_CURRENT_CHAT)
-  localStorage.removeItem(STORAGE_WORKBOOKS)
-}
 
 function startTokenRefreshTimer(token) {
   const expiresAt = tokenExpiresAt(token)
@@ -65,6 +58,7 @@ function AppShell() {
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
+  const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -140,6 +134,7 @@ function AppShell() {
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled !== false)
         setFeedbackEnabled(config.feedback_enabled === true)
+        setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
       }).catch(() => {
         setDashboardsEnabled(true)
       }),
@@ -205,7 +200,7 @@ function AppShell() {
           <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
             <Routes>
               <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
-              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} />} />
+              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
               <Route path="*" element={<NotFoundPage />} />
