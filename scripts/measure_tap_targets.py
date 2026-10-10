@@ -19,7 +19,13 @@ on /chat, in the sidebar, in the data-sources dialog and in the settings dialog,
   the classes in NAMED and every button in the sidebar and the settings dialog;
 - at widths up to 1024: targets whose boxes intersect within one layer (a scroll area or a popover;
   the floating scroll button aside). On wider screens the history actions show on hover, on top of the row;
-- icons that grew (resend and copy 14px, history actions 13px) and horizontal overflow on /chat.
+- icons that grew (resend and copy 14px, history actions 13px) and horizontal overflow on /chat;
+- the copied state of the copy button (#492): its "Gekopieerd" label must not be hidden under the
+  touch frame, and the widened button keeps the minimum size.
+
+A named class that is not on the page counts as a problem too, unless it is passed with
+`--allow-absent` (for example `--allow-absent .scroll-to-bottom-btn` on a viewport so tall that
+the answer fits without scrolling).
 
 Exit code 1 if anything is reported. No browser yet:
 `uv run --no-project --python 3 --with playwright==1.63.0 playwright install chromium`.
@@ -30,6 +36,7 @@ import json
 import re
 import sys
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # ty: ignore[unresolved-import]
 from playwright.sync_api import sync_playwright  # ty: ignore[unresolved-import]
 
 AA_MIN = 24
@@ -105,6 +112,20 @@ ICON_SIZES = """(icons) => Object.entries(icons).flatMap(([sel, size]) =>
     .filter(r => r.width && (Math.round(r.width) !== size || Math.round(r.height) !== size))
     .map(r => `${sel} is ${Math.round(r.width)}x${Math.round(r.height)}, expected ${size}x${size}`))"""
 
+# After a copy (#492) the label must be the topmost element at its own centre: on touch the
+# button's frame is a positioned ::before, which paints over children that are not positioned.
+COPIED_LABEL = """() => {
+  const button = document.querySelector('.copy-btn[data-copied]');
+  const label = button && button.querySelector(':scope > span');
+  if (!label) return { hidden: 'no "Gekopieerd" label in the copied button' };
+  const r = label.getBoundingClientRect(), b = button.getBoundingClientRect();
+  const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  return {
+    hidden: label.contains(hit) ? null : `"Gekopieerd" is hidden under ${hit ? hit.tagName.toLowerCase() : 'nothing'}`,
+    w: Math.round(b.width * 10) / 10, h: Math.round(b.height * 10) / 10,
+  };
+}"""
+
 
 def mock_chat(ws):
     """One answer with text, a code block, a data step, a figure and a cut-off end; then an error."""
@@ -150,9 +171,45 @@ def measure(page, label, scope, skip, all_named, overlaps):
     return result["overlaps"], [dict(t, where=label) for t in result["targets"]]
 
 
-def run_viewport(browser, base, width, height):
+def show_scroll_button(page, attempts=5):
+    """Scroll the message list to the end and back to the top until the scroll-to-bottom button shows.
+
+    The button follows an IntersectionObserver on the end of the list, which reports changes only.
+    At 390px the list can stay at the top after the answer, so `scrollTop = 0` alone changes nothing:
+    go to the end first. Both steps are asynchronous and a late re-render can pin the list to the
+    bottom again, so scroll and wait, a few times.
+    """
+    for _ in range(attempts):
+        page.evaluate("document.querySelector('.chat-messages').scrollTop = 1e6")
+        page.wait_for_timeout(200)
+        page.evaluate("document.querySelector('.chat-messages').scrollTop = 0")
+        try:
+            page.wait_for_selector(".scroll-to-bottom-btn", state="visible", timeout=2000)
+            return
+        except PlaywrightTimeoutError:
+            continue
+
+
+def check_copied_state(page, narrow):
+    """Copy the user message; the copied button keeps its tap target and shows its label."""
+    page.locator(".message.user .copy-btn-message").click()
+    try:
+        page.wait_for_selector(".copy-btn[data-copied]", timeout=3000)
+    except PlaywrightTimeoutError:
+        return ["copy button: no copied state after the click"]
+    copied = page.evaluate(COPIED_LABEL)
+    minimum = TOUCH_MIN if narrow else AA_MIN
+    problems = [f"copy button: {copied['hidden']}"] if copied["hidden"] else []
+    if copied.get("w", 0) < minimum or copied.get("h", 0) < minimum:
+        problems.append(f"copy button: copied state is {copied.get('w')}x{copied.get('h')}, under {minimum}")
+    return problems
+
+
+def run_viewport(browser, base, width, height, allow_absent=()):
     """All findings for one viewport, plus every target measured."""
-    context = browser.new_context(viewport={"width": width, "height": height})
+    context = browser.new_context(
+        viewport={"width": width, "height": height}, permissions=["clipboard-read", "clipboard-write"]
+    )
     page = context.new_page()
     page.add_init_script("localStorage.setItem('openEDUdata_onboarded', '1')")
     mock_api(page)
@@ -162,8 +219,7 @@ def run_viewport(browser, base, width, height):
     page.wait_for_selector(".answer-feedback-btn")
     page.wait_for_selector(".message-retry .message-continue")
     page.wait_for_timeout(800)  # plotly and the code highlighter render late
-    page.evaluate("document.querySelector('.chat-messages').scrollTop = 0")
-    page.wait_for_timeout(300)  # the scroll-to-bottom button shows once the end is out of view
+    show_scroll_button(page)
 
     problems, targets = [], []
     narrow = width <= TOUCH_MAX_WIDTH
@@ -178,6 +234,7 @@ def run_viewport(browser, base, width, height):
     overflow = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
     if overflow[0] > overflow[1]:
         problems.append(f"horizontal overflow on /chat: scrollWidth {overflow[0]} > {overflow[1]}")
+    problems.extend(check_copied_state(page, narrow))
 
     page.locator(".disclaimer-link").click()
     collect("data sources dialog", '[role="dialog"][aria-label="Databronnen"]')
@@ -205,6 +262,8 @@ def run_viewport(browser, base, width, height):
             problems.append(f"under {AA_MIN}x{AA_MIN} ({t['where']}): {t['target']} {t['w']}x{t['h']}")
         elif narrow and t["named"] and (t["w"] < TOUCH_MIN or t["h"] < TOUCH_MIN):
             problems.append(f"under {TOUCH_MIN}x{TOUCH_MIN} ({t['where']}): {t['target']} {t['w']}x{t['h']}")
+    absent = [c for c in NAMED.split(", ") if c not in allow_absent and not any(c in t["target"] for t in targets)]
+    problems.extend(f"not on the page, so not measured: {c}" for c in absent)
     context.close()
     return problems, targets
 
@@ -214,6 +273,9 @@ def main():
     parser.add_argument("base_url", help="for example http://127.0.0.1:5410")
     parser.add_argument("--viewport", action="append", help="WIDTHxHEIGHT; default 390x844 and 1440x900")
     parser.add_argument("--verbose", action="store_true", help="also list every target with its size")
+    parser.add_argument(
+        "--allow-absent", action="append", default=[], metavar="CLASS", help="a named class that may be missing"
+    )
     args = parser.parse_args()
     viewports = [tuple(map(int, v.split("x"))) for v in args.viewport or ["390x844", "1440x900"]]
 
@@ -221,13 +283,10 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         for width, height in viewports:
-            problems, targets = run_viewport(browser, args.base_url.rstrip("/"), width, height)
+            problems, targets = run_viewport(browser, args.base_url.rstrip("/"), width, height, args.allow_absent)
             print(f"{width}x{height}: {len(targets)} targets measured, {len(problems)} problems")
             for problem in problems:
                 print(f"  {problem}")
-            absent = [c for c in NAMED.split(", ") if not any(c in t["target"] for t in targets)]
-            if absent:
-                print(f"  not on the page, so not measured: {', '.join(absent)}")
             if args.verbose:
                 for t in targets:
                     print(f"  {t['where']}: {t['target']} {t['w']}x{t['h']}{' (named)' if t['named'] else ''}")
