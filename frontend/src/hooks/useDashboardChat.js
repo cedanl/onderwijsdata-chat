@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 import { chatSocket, checkSession, getToken, sessionEndedSince } from '../auth'
 import { finishStep } from '../toolSteps'
+import { createHeartbeat, watchNetwork } from '../socketHealth'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -122,6 +123,10 @@ export default function useDashboardChat() {
       },
     }
 
+    // Same gap as the chat (#489): a silently dead connection fires onclose only
+    // after the TCP timeout, so the melding never came.
+    const heartbeat = createHeartbeat(() => wsRef.current)
+
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
@@ -130,6 +135,7 @@ export default function useDashboardChat() {
       ws.onopen = () => {
         opened = true
         setConnected(true)
+        heartbeat.start()
         retryCountRef.current = 0
         if (pendingSettingsRef.current) {
           ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
@@ -138,6 +144,7 @@ export default function useDashboardChat() {
       }
 
       ws.onclose = () => {
+        heartbeat.stop()
         setConnected(false)
         setBusy(false)
         if (currentIdRef.current) {
@@ -163,6 +170,7 @@ export default function useDashboardChat() {
       }
 
       ws.onmessage = (e) => {
+        heartbeat.alive()
         const ev = JSON.parse(e.data)
         const handler = messageHandlers[ev.type]
         if (handler) handler(ev)
@@ -171,8 +179,23 @@ export default function useDashboardChat() {
 
     connect()
 
+    const detachNetwork = watchNetwork(
+      () => {
+        setConnected(false)
+        wsRef.current?.close()
+      },
+      () => {
+        clearTimeout(retryTimeoutRef.current)
+        retryCountRef.current = 0
+        const state = wsRef.current?.readyState
+        if (state !== WebSocket.OPEN && state !== WebSocket.CONNECTING) connect()
+      },
+    )
+
     return () => {
       manualCloseRef.current = true
+      detachNetwork()
+      heartbeat.stop()
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }

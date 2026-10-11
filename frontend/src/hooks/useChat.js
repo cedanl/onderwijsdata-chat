@@ -3,6 +3,7 @@ import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
+import { createHeartbeat, watchNetwork } from '../socketHealth'
 
 const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
@@ -289,6 +290,10 @@ export function useChat() {
     ])
     const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
 
+    // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
+    // until then the user saw a counting pill and no melding (#489).
+    const heartbeat = createHeartbeat(() => wsRef.current)
+
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
@@ -297,6 +302,7 @@ export function useChat() {
       ws.onopen = () => {
         opened = true
         setConnected(true)
+        heartbeat.start()
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
         setResetting(false)
@@ -318,6 +324,7 @@ export function useChat() {
       }
 
       ws.onclose = (e) => {
+        heartbeat.stop()
         setConnected(false)
         endInterruptedTurn()
         if (reportingRef.current) {
@@ -343,6 +350,7 @@ export function useChat() {
       }
 
       ws.onmessage = (e) => {
+        heartbeat.alive()
         const event = JSON.parse(e.data)
         if (reportAbandonedRef.current) {
           if (reportEndEvents.has(event.type)) reportAbandonedRef.current = false
@@ -363,8 +371,25 @@ export function useChat() {
 
     connect()
 
+    const detachNetwork = watchNetwork(
+      () => {
+        // Offline: the melding may not wait for a socket error. Closing ends the
+        // interrupted turn with uitleg and starts the reconnect loop.
+        setConnected(false)
+        wsRef.current?.close()
+      },
+      () => {
+        clearTimeout(retryTimeoutRef.current)
+        retryCountRef.current = 0
+        const state = wsRef.current?.readyState
+        if (state !== WebSocket.OPEN && state !== WebSocket.CONNECTING) connect()
+      },
+    )
+
     return () => {
       manualCloseRef.current = true
+      detachNetwork()
+      heartbeat.stop()
       clearTimeout(retryTimeoutRef.current)
       wsRef.current?.close()
     }

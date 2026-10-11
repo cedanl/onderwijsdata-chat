@@ -18,7 +18,7 @@ export default function ChatInputFooter({
   return (
     <div className="chat-input-footer">
       {!connected && (
-        <span className="ws-reconnecting">
+        <span className="ws-reconnecting" role="status" aria-live="polite">
           <span className="ws-dot" />
           Verbinding herstellen...
         </span>
