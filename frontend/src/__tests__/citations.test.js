@@ -159,3 +159,39 @@ describe('zichtbare citaties (#365)', () => {
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 })
+
+describe('herkenbaar klikbaar zonder hover (#495, UX F08)', () => {
+  let root
+  let container
+
+  function toon(tekst, citaties = CITATIES) {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => root.render(
+      createElement(ReactMarkdown, { rehypePlugins: [rehypeCitaties(citaties)], components: { span: CitedNumber } }, tekst)
+    ))
+  }
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  it('toont bij het getal een zichtbaar info-icoon, decoratief voor schermlezers', () => {
+    toon('Er waren 378.490 studenten.')
+    const icoon = container.querySelector('.citatie-getal .citatie-icoon')
+    expect(icoon).not.toBeNull()
+    expect(icoon.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('houdt de toegankelijke naam "herkomst tonen" op de knop', () => {
+    toon('Er waren 378.490 studenten.')
+    expect(container.querySelector('button').getAttribute('aria-label')).toBe('378.490, herkomst tonen')
+  })
+
+  it('markeert ook een onbepaald getal met het icoon', () => {
+    toon('Er waren 36.201 studenten.', [{ getal: '36.201', vastgesteld: false }])
+    expect(container.querySelector('.citatie-onbepaald .citatie-icoon')).not.toBeNull()
+  })
+})
