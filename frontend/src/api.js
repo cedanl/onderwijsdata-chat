@@ -81,7 +81,9 @@ export async function fetchSettingsConfig() {
   return apiFetch('/api/settings/config')
 }
 
-export async function refreshDashboard(spec, settings = {}) {
+// mode: 'ververs' haalt de data opnieuw op bij de bron en meldt wat er veranderde;
+// 'reproduceer' rendert opnieuw uit de opgeslagen data, zonder netwerk (#346).
+export async function refreshDashboard(spec, settings = {}, mode = 'ververs') {
   return apiFetch('/api/dashboard/refresh', {
     method: 'POST',
     body: JSON.stringify({
@@ -89,6 +91,7 @@ export async function refreshDashboard(spec, settings = {}) {
       figure_recipes: spec.figure_recipes,
       spec,
       settings,
+      mode,
     }),
   })
 }

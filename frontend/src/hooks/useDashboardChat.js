@@ -205,13 +205,14 @@ export default function useDashboardChat() {
     wsRef.current.send(JSON.stringify({ action: 'generate_dashboard' }))
   }, [])
 
-  const refreshDashboard = useCallback((spec) => {
+  const refreshDashboard = useCallback((spec, mode = 'ververs') => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
     wsRef.current.send(JSON.stringify({
       action: 'refresh_dashboard',
       recipe: spec.recipe,
       figure_recipes: spec.figure_recipes,
       spec,
+      mode,
     }))
   }, [])
 
