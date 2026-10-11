@@ -22,7 +22,9 @@ export default function ScrollToBottom({ sentinelRef, scrollContainerRef }) {
   }, [sentinelRef, scrollContainerRef])
 
   const handleClick = () => {
-    sentinelRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // A5 (#517): wie het systeem op minder beweging zet, krijgt geen glijdende scroll.
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    sentinelRef.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' })
   }
 
   if (!visible) return null

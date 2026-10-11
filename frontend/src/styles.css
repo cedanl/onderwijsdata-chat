@@ -42,6 +42,8 @@
      --blue-600 do not (2.5:1 and 3.2:1), so they are for borders, icons and fills only. */
   --muted-text: var(--gray-500);
   --accent-text: #2563EB;
+  /* A4 (#517): focusring, gemeten 5,2:1 op wit; donker 7,1:1 op --gray-50. */
+  --focus-ring: var(--accent-text);
   --radius-sm: 6px;
   --radius:    10px;
   --radius-lg: 16px;
@@ -106,6 +108,9 @@ button { cursor: pointer; border: none; background: none; font: inherit; }
    in a sentence keeps its line (inline exception); min-* does not apply to inline links in text either. */
 :where(button:not(.citatie-getal), a[href], [role=button]) { min-width: var(--tap-min-aa); min-height: var(--tap-min-aa); }
 input, textarea { font: inherit; }
+/* A4 (#517): eigen focusring met gemeten contrast (>= 3:1, WCAG 2.4.11/1.4.11). De ring
+   ligt met offset buiten het element, dus ook op blauwe knoppen telt de paginakleur. */
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ─── Typography ──────────────────────────────────────────── */
 .text-xs   { font-size: .75rem; line-height: 1rem; }
@@ -663,6 +668,13 @@ input, textarea { font: inherit; }
 .citatie-getal {
   font: inherit; color: var(--accent-text); background: none; border: 0; padding: 0; cursor: pointer;
   border-bottom: 1px dotted var(--accent-text);
+  position: relative;
+}
+/* A2 (#517): 24×24 px tikdoel (WCAG 2.5.8) zonder de tabelregel hoger te maken:
+   een onzichtbaar klikvlak rond het getal, gecentreerd op de regel. */
+.citatie-getal::before {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%); width: max(100%, 24px); height: 24px;
 }
 .citatie-getal:hover, .citatie-getal[aria-expanded="true"] { border-bottom-style: solid; }
 .citatie-icoon { width: .8em; height: .8em; margin-left: 2px; vertical-align: super; font-size: .8em; }
@@ -1184,7 +1196,6 @@ html.dark .context-limit-banner--full {
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 
 
 /* ─── DASHBOARD PAGE ──────────────────────────────────────── */
@@ -1602,4 +1613,15 @@ html.dark .suggested-btn:hover {
   /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
   .history-item-row { align-items: center; }
   .history-item-actions { position: static; transform: none; }
+}
+
+/* A5 (#517): geen overgangen of animaties voor wie het systeem op minder beweging zet
+   (WCAG 2.3.3). De spinner en typindicator blijven zichtbaar, maar staan stil. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  html { scroll-behavior: auto !important; }
 }
