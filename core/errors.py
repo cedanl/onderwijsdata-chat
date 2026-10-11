@@ -22,6 +22,7 @@ class Gebruikersfout(Exception):
     krijgt een vaste melding met fout-ID en de details gaan naar het log.
     """
 
+
 _FRIENDLY_ERRORS: list[tuple[type, str | None]] = [
     (litellm.AuthenticationError, "API key ontbreekt of is ongeldig. Controleer je `.env` bestand."),
     (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),

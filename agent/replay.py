@@ -34,7 +34,14 @@ def replay_data_calls(calls: list[dict]) -> list[dict]:
         name = tc.get("name")
         if name not in REPLAYABLE_TOOLS:
             logger.warning("Replay geweigerd: tool %r staat niet in het recept-allowlist", name)
-            results.append({"name": name, "arguments": tc.get("arguments"), "success": False, "error": "tool niet toegestaan bij verversen"})
+            results.append(
+                {
+                    "name": name,
+                    "arguments": tc.get("arguments"),
+                    "success": False,
+                    "error": "tool niet toegestaan bij verversen",
+                }
+            )
             continue
         try:
             args = json.loads(tc.get("arguments") or "{}")
@@ -42,7 +49,9 @@ def replay_data_calls(calls: list[dict]) -> list[dict]:
             results.append({"name": name, "arguments": tc.get("arguments"), "success": True, "output": output})
         except Exception:
             logger.warning("Herladen van %s mislukt", name, exc_info=True)
-            results.append({"name": name, "arguments": tc.get("arguments"), "success": False, "error": "herladen mislukt"})
+            results.append(
+                {"name": name, "arguments": tc.get("arguments"), "success": False, "error": "herladen mislukt"}
+            )
     return results
 
 
