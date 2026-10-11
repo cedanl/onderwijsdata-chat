@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS } from '../constants'
 import {
   appendPage, conversationRecord, historyPage, loadConversationHistory, loadCurrentChat, nextPageQuery,
@@ -144,5 +144,38 @@ describe('restorableMessages', () => {
   it('applies to the chat that was open before the reload', () => {
     persistCurrentChat('conv-a', messages)
     expect(loadCurrentChat().messages).toEqual(restored)
+  })
+})
+
+// #511: een vol quotum bewaarde niets en zei niets.
+describe('persistCurrentChat bij een volle opslag', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('valt terug op het gesprek zonder figuren', () => {
+    let eersteGooit = true
+    const echt = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (eersteGooit) { eersteGooit = false; throw new DOMException('vol', 'QuotaExceededError') }
+      return echt.call(this, key, value)
+    })
+
+    const uitkomst = persistCurrentChat('c1', [
+      { id: 1, role: 'user', content: 'vraag', done: true },
+      { id: 2, role: 'assistant', content: '', figures: [{ json: 'x'.repeat(100) }], done: true },
+    ])
+
+    expect(uitkomst).toBe('zonder_figuren')
+    const bewaard = JSON.parse(localStorage.getItem('openEDUdata_current_chat'))
+    expect(bewaard.messages).toHaveLength(1)
+    expect(bewaard.messages[0].content).toBe('vraag')
+  })
+
+  it('zegt het wanneer ook de terugval niet past', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
+    expect(persistCurrentChat('c1', [{ id: 1, role: 'user', content: 'vraag', done: true }])).toBe('mislukt')
+  })
+
+  it('geeft ok terug wanneer het past', () => {
+    expect(persistCurrentChat('c1', [{ id: 1, role: 'user', content: 'vraag', done: true }])).toBe('ok')
   })
 })

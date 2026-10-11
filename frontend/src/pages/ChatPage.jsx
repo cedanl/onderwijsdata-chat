@@ -255,12 +255,43 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     openChatRef.current = { id: conversationId, messages: [...restoredMessages, ...messages] }
   }, [conversationId, restoredMessages, messages])
 
-  // Persist full visible chat so it survives browser refresh / tab close
+  // Een vol quotum faalde stil (#511): meld het één keer; bij de terugval zonder
+  // figuren blijft de tekst behouden en weet de gebruiker wat er na verversen mist.
+  const quotaGemeldRef = useRef(false)
+  const persistMetMelding = useCallback((id, all) => {
+    const uitkomst = persistCurrentChat(id, all)
+    if (uitkomst === 'ok' || quotaGemeldRef.current) return
+    quotaGemeldRef.current = true
+    addToast(uitkomst === 'zonder_figuren'
+      ? 'De lokale opslag is bijna vol: grafieken van dit gesprek komen na verversen niet terug.'
+      : 'De lokale opslag is vol: dit gesprek wordt niet lokaal bewaard.', 'warning')
+  }, [addToast])
+
+  // Persist full visible chat so it survives browser refresh / tab close.
+  // Niet per tekstfragment (#511): tijdens het streamen verandert messages honderden
+  // keren en elke keer het hele gesprek serialiseren groeit mee met de gesprekslengte.
+  // Opslaan gebeurt bij elk afgerond antwoord (busy false) en bij pagehide hieronder.
   useEffect(() => {
-    if (sessionEndedSince(tokenAtMount)) return
+    if (busy || sessionEndedSince(tokenAtMount)) return
     const all = [...restoredMessages, ...messages]
-    if (all.length) persistCurrentChat(conversationId, all)
-  }, [conversationId, messages, restoredMessages, tokenAtMount])
+    if (all.length) persistMetMelding(conversationId, all)
+  }, [busy, conversationId, messages, restoredMessages, tokenAtMount, persistMetMelding])
+
+  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren.
+  useEffect(() => {
+    const opslaan = () => {
+      if (sessionEndedSince(tokenAtMount)) return
+      if (document.visibilityState !== 'hidden') return
+      const { id, messages: all } = openChatRef.current
+      if (all.length) persistMetMelding(id, all)
+    }
+    window.addEventListener('pagehide', opslaan)
+    document.addEventListener('visibilitychange', opslaan)
+    return () => {
+      window.removeEventListener('pagehide', opslaan)
+      document.removeEventListener('visibilitychange', opslaan)
+    }
+  }, [tokenAtMount, persistMetMelding])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Returns the save in flight, so a caller can wait until the server has the conversation.

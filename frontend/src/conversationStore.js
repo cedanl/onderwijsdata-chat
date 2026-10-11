@@ -34,8 +34,20 @@ export function loadCurrentChat() {
   return { id: newConversationId(), messages: [] }
 }
 
+// localStorage is ~5 MB; een vol quotum gooide hier en de catch slikte dat stil (#511).
+// Figuur-JSON is veruit het grootst, dus de terugval bewaart het gesprek zonder figuren.
+// De uitkomst zegt wat er is gelukt, zodat de pagina het één keer kan melden.
 export function persistCurrentChat(id, messages) {
-  try { localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages })) } catch { /* noop */ }
+  try {
+    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages }))
+    return 'ok'
+  } catch { /* vol: probeer zonder figuren */ }
+  try {
+    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages: messages.filter(m => !m.figures) }))
+    return 'zonder_figuren'
+  } catch {
+    return 'mislukt'
+  }
 }
 
 export function clearCurrentChat() {
