@@ -15,6 +15,7 @@ import pytest
 
 from agent import report
 from agent.stream import StreamResult
+from core.errors import Gebruikersfout
 from tools import store
 from tools.store import KeyMeta
 
@@ -70,7 +71,7 @@ def test_weigering_herstelvraag_rapport(monkeypatch):
     zin = "De HU had 36.201 inschrijvingen."
 
     _model(monkeypatch, [_rapport(zin), _rapport(zin)])
-    with pytest.raises(ValueError, match=r"36\.201"):
+    with pytest.raises(Gebruikersfout, match=r"36\.201"):
         _genereer(session)
 
     _model(monkeypatch, [StreamResult(text="", tool_calls=[_KPI]), StreamResult(text=zin, tool_calls=[])])
@@ -95,5 +96,5 @@ def test_na_de_herstelvraag_blijft_een_ander_getal_geweigerd(monkeypatch):
     asyncio.run(run_module.run([{"role": "user", "content": "Totaal?"}], session, _stil, asyncio.Event()))
 
     _model(monkeypatch, [_rapport("De HU had 36.210 inschrijvingen.")] * 2)
-    with pytest.raises(ValueError, match=r"36\.210"):
+    with pytest.raises(Gebruikersfout, match=r"36\.210"):
         _genereer(session)

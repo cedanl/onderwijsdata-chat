@@ -19,6 +19,7 @@ from agent import dashboard, report
 from agent.loop import LoopResult, ToolCall
 from agent.probleem import INGEHOUDEN, Probleem, hard
 from agent.stream import StreamResult
+from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
 
 run_module = importlib.import_module("agent.run")
@@ -234,7 +235,7 @@ def test_geweigerd_rapport_logt_controlenamen_en_geen_meldingen(monkeypatch, cap
     caplog.set_level(logging.INFO, logger="agent.report")
     [streng] = hard([_probleem(f"{MARKER}: 6.340 staat niet in de opgehaalde data.", "ongedekte_getallen")])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Gebruikersfout):
         _rapport_met(monkeypatch, [streng])
 
     [regel] = [r.getMessage() for r in caplog.records if "RAPPORT GEWEIGERD" in r.getMessage()]

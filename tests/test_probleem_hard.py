@@ -9,6 +9,7 @@ from agent.loop import LoopResult
 from agent.probleem import Probleem, controlenamen, hard, harde, meldingen, niet_gecontroleerd, uitkomsten, veilig
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
+from core.errors import Gebruikersfout
 
 
 def test_hard_behoudt_tekst_en_melding():
@@ -93,7 +94,7 @@ def test_rapport_met_alleen_een_zacht_probleem_komt_er_met_waarschuwing(monkeypa
 
 
 def test_rapport_met_een_hard_probleem_wordt_geweigerd(monkeypatch):
-    with pytest.raises(ValueError, match=r"6\.340"):
+    with pytest.raises(Gebruikersfout, match=r"6\.340"):
         _rapport(monkeypatch, [*hard(["6.340 staat niet in de opgehaalde data."]), "zacht"])
 
 
