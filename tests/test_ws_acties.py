@@ -271,3 +271,33 @@ def test_de_geschiedenis_kent_geen_lengtegrens_per_bericht(monkeypatch):
     berichten = chat._parse_history([{"role": "user", "content": lang}, {"role": "assistant", "content": lang}])
 
     assert berichten == [{"role": "user", "content": lang}, {"role": "assistant", "content": lang}]
+
+
+def test_de_geschiedenis_heeft_een_totale_tekencap(monkeypatch):
+    """#500 (S15): 40 beurten van willekeurige grootte bereiken het model niet meer.
+
+    Boven HISTORY_MAX_CHARS vallen de oudste beurten af, zoals bij MAX_HISTORY.
+    """
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 100)
+    beurten = [{"role": "user", "content": f"vraag {i} " + "x" * 40} for i in range(40)]
+
+    berichten = chat._parse_history(beurten)
+
+    assert sum(len(m["content"]) for m in berichten) <= 100
+    # De jongste beurten blijven staan, de oudste vallen af.
+    assert berichten[-1]["content"].startswith("vraag 39")
+
+
+def test_een_enkel_bericht_groter_dan_de_cap_wordt_afgekapt(monkeypatch):
+    """Zelfs één monsterbeurt (1 miljoen tekens) opent nog, afgekapt in plaats van geweigerd."""
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 100)
+
+    berichten = chat._parse_history([{"role": "assistant", "content": "y" * 1_000_000}])
+
+    assert len(berichten) == 1
+    assert len(berichten[0]["content"]) == 100
+
+
+def test_een_gewoon_gesprek_blijft_volledig_openen():
+    beurten = [{"role": r, "content": f"beurt {i}"} for i, r in enumerate(["user", "assistant"] * 10)]
+    assert chat._parse_history(beurten) == beurten

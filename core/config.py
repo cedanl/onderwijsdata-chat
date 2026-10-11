@@ -24,6 +24,11 @@ MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
 # De composer krijgt de echte waarde via /api/config (#501); frontend/src/constants.js MAX_MESSAGE_CHARS
 # is alleen de terugvalwaarde en gelijk aan deze standaard.
 MAX_MESSAGE_CHARS = int(os.getenv("MAX_MESSAGE_CHARS", "4000"))
+# Tekencap op de hele aangeleverde historie (#500, SECURITY.md S15): zonder cap kon een
+# handgemaakte client via de history-actie tot MAX_HISTORY beurten van willekeurige grootte
+# naar het model sturen. 40 × 4000 is ruim voor echte gesprekken; daarboven vallen de
+# oudste beurten af, zodat bestaande lange gesprekken blijven openen.
+HISTORY_MAX_CHARS = int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * MAX_MESSAGE_CHARS)))
 # Tijdsgrens per run (#90): na RUN_SLOW_S een melding, na RUN_TIMEOUT_S stopt de run.
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))

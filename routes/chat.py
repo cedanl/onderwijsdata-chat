@@ -16,7 +16,7 @@ from agent.replay import replay_dashboard_figures, replay_data_calls
 from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
-from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
+from core.config import DASHBOARDS_ENABLED, HISTORY_MAX_CHARS, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
 from core.errors import Gebruikersfout, error_event, friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
@@ -232,7 +232,13 @@ async def refresh_dashboard_endpoint(request: Request):
 
 
 def _parse_history(raw: list) -> list[dict]:
-    """Convert frontend message objects to bare {role, content} dicts, capped at MAX_HISTORY."""
+    """Convert frontend message objects to bare {role, content} dicts.
+
+    Capped at MAX_HISTORY beurten en HISTORY_MAX_CHARS tekens in totaal (#500, S15):
+    de historie komt van de client en ging zonder tekencap integraal naar het model.
+    Boven de cap vallen de oudste beurten af — dezelfde strategie als MAX_HISTORY —
+    zodat een bestaand lang gesprek blijft openen.
+    """
     valid_roles = {"user", "assistant"}
     result = [
         {"role": m["role"], "content": m["content"]}
@@ -242,7 +248,20 @@ def _parse_history(raw: list) -> list[dict]:
         and isinstance(m.get("content"), str)
         and m["content"].strip()
     ]
-    return result[-MAX_HISTORY:]
+    kept: list[dict] = []
+    totaal = 0
+    for m in reversed(result[-MAX_HISTORY:]):
+        content = m["content"]
+        if not kept and len(content) > HISTORY_MAX_CHARS:
+            # Zelfs de jongste beurt is groter dan de hele cap: afkappen, niet weigeren.
+            m = {**m, "content": content[:HISTORY_MAX_CHARS]}
+            content = m["content"]
+        if totaal + len(content) > HISTORY_MAX_CHARS:
+            break
+        totaal += len(content)
+        kept.append(m)
+    kept.reverse()
+    return kept
 
 
 def _task_busy(current_task: asyncio.Task | None) -> bool:
