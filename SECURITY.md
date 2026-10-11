@@ -25,6 +25,8 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S15 | `history`-actie omzeilt de invoerlimiet | Laag | ❌ Open (#500) |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ❌ Open (#477); browseropslag na uitloggen (#507) |
 | S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools |
+| S18 | `/info` gaf zonder inloggen databasetype en omgeving prijs | Laag | ✅ Opgelost (#518) |
+| S19 | `LOG_LEVEL=DEBUG` zet gesprekstekst in het log | Laag | ℹ️ Gedocumenteerd (#516) — waarschuwing bij opstarten en in de docs |
 
 ---
 
@@ -211,6 +213,22 @@ Test: `tests/test_token_intrekking.py`.
 **Locatie:** `routes/chat.py` (`POST /api/dashboard/refresh` en de WebSocket-actie `refresh_dashboard`), `agent/replay.py` (`replay_data_calls()`)  
 **Probleem:** de client stuurt het recept van het dashboard mee: toolnamen en argumenten. `replay_data_calls()` gaf elke naam en elk argument direct aan `tools.dispatch()`. Een client die de API mag gebruiken, kon zo elke tool aanroepen, ook `run_analysis` met eigen code, zonder dat het model eraan te pas komt.  
 **Fix (#505):** `replay_data_calls()` herhaalt alleen tools uit `REPLAYABLE_TOOLS` — de drie load-tools (`get_duo_data`, `get_cbs_data`, `get_rio_data`) waaruit de server zelf recepten bouwt (`_build_recipe`). Elke andere toolnaam wordt geweigerd en gelogd; `run_analysis` is via refresh niet aan te roepen. De scopecontrole (#355) zit in de tools zelf en geldt daarmee ook voor dit pad.
+
+---
+
+### S18 — `/info` gaf zonder inloggen databasetype en omgeving prijs ✅ Opgelost
+
+**Locatie:** `server.py` (`GET /info`)  
+**Probleem:** het eindpunt is zonder token bereikbaar en gaf naast de naam en of OIDC aan staat ook het databasetype (`PostgreSQL`/`SQLite`) en een omgevingslabel terug. Geen secret, maar details die een aanvaller helpen. De frontend gebruikt het eindpunt niet.  
+**Fix (#518):** `/info` geeft alleen nog de naam en of OIDC aan staat. `/version` blijft bewust commit en catalogusrevisies publiceren (transparantie en controle van de deployment).
+
+---
+
+### S19 — `LOG_LEVEL=DEBUG` zet gesprekstekst in het log ℹ️ Gedocumenteerd
+
+**Locatie:** `agent/run.py` (DEBUG-logregels), `server.py` (opstartcontrole), `docs/configuratie/index.md`  
+**Situatie:** sinds #475 staan vraag en antwoord op INFO alleen als lengte en hash; de letterlijke tekst staat op DEBUG. Wie `LOG_LEVEL=DEBUG` zet, krijgt gesprekstekst — en dus eventuele persoonsgegevens — in de logaggregatie, met de bewaartermijn daarvan.  
+**Maatregel (#516):** de server logt bij het opstarten een WARNING als het niveau DEBUG is, en de configuratiedocumentatie waarschuwt het niveau niet te gebruiken op test of productie met echte gebruikers. Vervolg van de logging-restpunten in #502.
 
 ---
 

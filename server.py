@@ -138,12 +138,12 @@ async def version() -> dict:
 
 @app.get("/info", tags=["info"])
 async def info() -> dict:
-    """Get application info and configuration."""
+    """Naam en of OIDC aan staat. Databasetype en omgevingslabel stonden hier ook,
+    maar het eindpunt is zonder token bereikbaar en die details helpen vooral een
+    aanvaller (#518)."""
     return {
         "name": "Onderwijsdata Chat",
         "oidc_enabled": is_oidc_configured(),
-        "database_type": "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
-        "environment": "production" if Config.is_production() else "development",
     }
 
 
@@ -154,6 +154,10 @@ async def info() -> dict:
 async def on_startup() -> None:
     """Initialize application and record startup time."""
     health.record_startup()
+    if Config.LOG_LEVEL == "DEBUG":
+        # Op DEBUG staat vraag- en antwoordtekst in het log (#475), en dus eventuele
+        # persoonsgegevens in de logaggregatie. Niet stil laten gebeuren (#516).
+        logger.warning("LOG_LEVEL=DEBUG: vraag- en antwoordtekst komt in het log; niet gebruiken met echte gebruikers")
     logger.info(
         "Application startup completed",
         extra={
