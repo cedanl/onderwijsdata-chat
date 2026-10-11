@@ -69,10 +69,11 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 ### S5 — Rate limiting op login en chat ⚠️ Gedeeltelijk
 
-**Login (beperkt):** `POST /api/auth/login` in `routes/auth.py` gebruikt `_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)`: maximaal 5 pogingen per minuut per `request.client.host`. Daarboven volgt `429` met een `Retry-After`-header. `RateLimiter` (`core/rate_limit.py`) houdt de pogingen in het geheugen bij, per proces.  
+**Login (beperkt):** `POST /api/auth/login` in `routes/auth.py` gebruikt `_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)`: maximaal 5 pogingen per minuut per gebruikersnaam + `request.client.host` (#504). Daarboven volgt `429` met een `Retry-After`-header, ook voor een poging met het juiste wachtwoord — de limiter verraadt niet welke poging goed was. `RateLimiter` (`core/rate_limit.py`) houdt de pogingen in het geheugen bij, per proces.  
 **Feedback:** `routes/feedback.py` heeft een eigen limiter (3 per 600 seconden).  
 **Chat (open):** de WebSocket `/api/chat` heeft geen limiet op het aantal berichten per verbinding of per gebruiker (LLM-kosten). Vervolg in #444. De maximale berichtlengte staat los daarvan, zie S7.  
-**Te verifiëren (#504):** de sleutel is `request.client.host`. De `Dockerfile` start uvicorn zonder `--forwarded-allow-ips` en de manifests zetten `FORWARDED_ALLOW_IPS` niet. Uvicorn neemt het adres uit `X-Forwarded-For` dan alleen over als de verbinding van `127.0.0.1` of `::1` komt; lokaal kreeg zo elke andere `X-Forwarded-For`-waarde een eigen budget van 5 pogingen. Achter de ingress ziet de limiter daardoor waarschijnlijk het adres van de ingress, niet dat van de gebruiker. Dan delen alle gebruikers van wachtwoord-login één budget per pod, en kan wachtwoord-login voor iedereen tijdelijk geblokkeerd raken. Welk adres de limiter in het cluster ziet, is nog niet nagegaan.
+**Blokkade voor iedereen opgelost (#504):** uvicorn draait zonder `--forwarded-allow-ips` en de manifests zetten `FORWARDED_ALLOW_IPS` niet, dus achter de ingress ziet de limiter waarschijnlijk voor iedereen hetzelfde adres. Met alleen het IP als sleutel deelden alle wachtwoordgebruikers dan één budget van 5 pogingen per pod, en kon iemand zonder inloggegevens wachtwoord-login voor iedereen blokkeren. De sleutel is nu gebruikersnaam + adres: een vol budget raakt alleen die ene combinatie.  
+**Restrisico:** wie de gebruikersnaam van een ander kent, kan vanaf hetzelfde (ingress-)adres die naam een minuut blokkeren. Per echte client tellen vergt dat uvicorn `X-Forwarded-For` van de ingress vertrouwt: `FORWARDED_ALLOW_IPS` op het ingress-subnet zetten zodra dat subnet is vastgesteld (uvicorn leest die env var zelf; geen Dockerfile-wijziging nodig). Welk adres de limiter in het cluster ziet, is nog niet nagegaan.
 
 ---
 
@@ -216,7 +217,7 @@ Test: `tests/test_token_intrekking.py`.
 
 ## Aanbevelingen voor volgende stap
 
-1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); nagaan welk adres de login-limiter achter de ingress als sleutel ziet en de limiter per echte client laten tellen (#504)
+1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
 2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
 3. **S15** — `history`-actie begrenzen (#500)
 4. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)

@@ -141,16 +141,21 @@ def logout(authorization: Annotated[str | None, Header()] = None) -> None:
 
 @router.post("/login")
 async def login(body: dict, request: Request) -> dict:
+    username = body.get("username", "").strip()
+    password = body.get("password", "")
     client_ip = request.client.host if request.client else "unknown"
-    if not _login_limiter.is_allowed(client_ip):
-        retry = _login_limiter.retry_after(client_ip)
+    # Achter de ingress ziet uvicorn vaak voor iedereen hetzelfde adres (#504, S5):
+    # tellen op IP alleen zette dan alle wachtwoordgebruikers in één bucket, en één
+    # aanvaller kon de login voor iedereen blokkeren. De gebruikersnaam erbij beperkt
+    # een vol budget tot die ene combinatie.
+    limiter_key = f"{username.lower() or 'gast'}|{client_ip}"
+    if not _login_limiter.is_allowed(limiter_key):
+        retry = _login_limiter.retry_after(limiter_key)
         raise HTTPException(
             status_code=429,
             detail=f"Te veel inlogpogingen. Probeer het over {retry} seconden opnieuw.",
             headers={"Retry-After": str(retry)},
         )
-    username = body.get("username", "").strip()
-    password = body.get("password", "")
     if AUTH_ENABLED and not check_credentials(username, password, USERS):
         raise HTTPException(status_code=401, detail="Ongeldige inloggegevens")
     token = make_token(username or "gast")
