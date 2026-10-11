@@ -13,12 +13,11 @@ import json
 import pandas as pd
 import pytest
 
-from core.errors import Gebruikersfout
-
 from agent import loop as loop_module
 from agent import report as report_module
 from agent.report import ReportSpec
 from agent.stream import StreamResult
+from core.errors import Gebruikersfout
 from tools import store
 
 _DATASET = "cbs:85423NED"

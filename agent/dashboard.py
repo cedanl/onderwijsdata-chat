@@ -18,8 +18,8 @@ from pathlib import Path
 import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
-from agent.replay import REPLAYABLE_TOOLS
 from agent.loop import ToolCall, tool_loop
+from agent.replay import REPLAYABLE_TOOLS
 from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL

@@ -5,8 +5,6 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from core.errors import Gebruikersfout
-
 from agent import recepten
 from agent.dashboard import (
     DashboardSpec,
@@ -18,6 +16,7 @@ from agent.dashboard import (
     herstel_data,
 )
 from agent.session_data import DATA_WEG
+from core.errors import Gebruikersfout
 from tools import store
 
 
