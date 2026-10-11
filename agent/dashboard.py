@@ -18,10 +18,12 @@ from pathlib import Path
 import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
+from agent.replay import REPLAYABLE_TOOLS
 from agent.loop import ToolCall, tool_loop
 from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
+from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, store
 from tools.catalog import bron_titel, resource_titel
@@ -76,7 +78,8 @@ class DashboardSpec:
         )
 
 
-_LOAD_TOOLS = (TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA)
+# Dezelfde set als de replay-allowlist (#505): wat het recept in gaat, mag ook herhaald worden.
+_LOAD_TOOLS = REPLAYABLE_TOOLS
 
 
 def _build_recipe(datasets: list[dict]) -> list[dict]:
@@ -136,7 +139,7 @@ async def herstel_data(session: dict, emit: Emit) -> None:
     """
     herstel = await asyncio.to_thread(herstel_data_keys, session, session.get("username"))
     if herstel.onherstelbaar:
-        raise ValueError(herstel.melding)
+        raise Gebruikersfout(herstel.melding)
     if herstel.notitie:
         await emit({"type": "toast", "message": herstel.notitie, "level": "info"})
 
@@ -149,7 +152,7 @@ def build_dataset_context(session: dict) -> dict:
     Reloading it is herstel_data's job, before this (#472).
     """
     if ontbrekende_data_keys(session):
-        raise ValueError(DATA_WEG)
+        raise Gebruikersfout(DATA_WEG)
     datasets: list[dict] = []
     for key in session_data_keys(session):
         df = store.get(key)
@@ -218,7 +221,7 @@ async def generate(
     context = build_dataset_context(session)
 
     if not context["datasets"]:
-        raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
+        raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
     messages: list[dict] = [
         {"role": "system", "content": _build_system_prompt(context)},

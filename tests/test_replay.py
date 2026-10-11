@@ -21,12 +21,35 @@ class TestReplayDataCalls:
         calls = [{"name": "get_duo_data", "arguments": '{"dataset_id": "nonexistent"}'}]
 
         with patch("agent.replay.dispatch") as mock_dispatch:
-            mock_dispatch.side_effect = Exception("Dataset not found")
+            mock_dispatch.side_effect = Exception("Dataset not found in /app/data/cache/x.parquet")
             results = replay_data_calls(calls)
 
         assert len(results) == 1
         assert results[0]["success"] is False
-        assert "Dataset not found" in results[0]["error"]
+        # De ruwe uitzondering (met paden) blijft uit het resultaat: die gaat naar het log (#503).
+        assert "parquet" not in results[0]["error"]
+        assert results[0]["error"] == "herladen mislukt"
+
+    def test_weigert_tools_buiten_de_allowlist(self):
+        """#505: het recept komt van de client; alleen de load-tools mogen herhaald worden."""
+        calls = [
+            {"name": "run_analysis", "arguments": '{"code": "import os"}'},
+            {"name": "onzin_tool", "arguments": "{}"},
+        ]
+
+        with patch("agent.replay.dispatch") as mock_dispatch:
+            results = replay_data_calls(calls)
+
+        mock_dispatch.assert_not_called()
+        assert all(r["success"] is False for r in results)
+        assert all(r["error"] == "tool niet toegestaan bij verversen" for r in results)
+
+    def test_load_tools_blijven_toegestaan(self):
+        for name in ("get_duo_data", "get_cbs_data", "get_rio_data"):
+            with patch("agent.replay.dispatch") as mock_dispatch:
+                mock_dispatch.return_value = ("{}", None)
+                results = replay_data_calls([{"name": name, "arguments": "{}"}])
+            assert results[0]["success"] is True
 
     def test_partial_success(self):
         calls = [

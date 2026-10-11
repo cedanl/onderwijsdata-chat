@@ -17,7 +17,7 @@ from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
-from core.errors import error_event, friendly_error
+from core.errors import Gebruikersfout, error_event, friendly_error
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -111,7 +111,9 @@ async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
     try:
         spec = await generate_dashboard_spec(session, emit, model=model)
         await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
-    except ValueError as e:
+    except Gebruikersfout as e:
+        # Alleen tekst die voor de gebruiker is geschreven; elke andere fout
+        # krijgt via error_event een vaste melding met fout-ID (#503).
         await emit({"type": "error", "message": str(e)})
     except Exception as e:
         await emit(error_event(e))
@@ -138,19 +140,10 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         with contextlib.suppress(Exception):
             await emit({"type": "report_cancelled"})
         raise
-    except json.JSONDecodeError as e:
-        # LLM produced invalid structured output; the raw parser error is not
-        # actionable for the user, so fall back to the generic guidance.
-        # JSONDecodeError is a ValueError subclass, so this must precede it.
-        logger.warning("Report parser error (raw message kept out of UI): %s", e)
-        await emit(
-            {
-                "type": "report_error",
-                "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw.",
-            }
-        )
-    except ValueError as e:
+    except Gebruikersfout as e:
         # Raised on purpose with guidance for the user (e.g. no datasets loaded).
+        # Any other exception — a parser error included — falls through to the
+        # generic melding below, so no raw exception text reaches the browser (#503).
         await emit({"type": "report_error", "message": str(e)})
     except Exception:
         logger.exception("Report generation failed")
@@ -188,8 +181,9 @@ async def _do_refresh(
     elif recipe:
         results = await asyncio.to_thread(replay_data_calls, recipe)
         if all(not r["success"] for r in results):
-            errors = "; ".join(r.get("error", "?") for r in results)
-            raise RefreshError(f"Geen van de datasets kon herladen worden: {errors}")
+            # De redenen per call staan in het log (replay_data_calls); de melding
+            # naar de browser blijft vrij van paden en uitzonderingstekst (#503).
+            raise RefreshError("Geen van de datasets kon herladen worden. Probeer het later opnieuw.")
         info = "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards."
 
     return spec, info

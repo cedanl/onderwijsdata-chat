@@ -5,6 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from core.errors import Gebruikersfout
+
 from agent import recepten
 from agent.dashboard import (
     DashboardSpec,
@@ -38,7 +40,7 @@ class TestBuildDatasetContext:
         store.put("cbs:85423NED", pd.DataFrame({"a": [1]}))
         session = {"data_keys": ["cbs:85423NED", "duo:weg:0"], "chat_settings": {}}
 
-        with pytest.raises(ValueError, match="niet meer beschikbaar") as fout:
+        with pytest.raises(Gebruikersfout, match="niet meer beschikbaar") as fout:
             build_dataset_context(session)
         assert "Stel je vraag opnieuw" in str(fout.value)
 
@@ -121,7 +123,7 @@ class TestHerstelData:
     def test_zonder_recept_de_melding_van_voor_de_recepten(self):
         session = {"username": "alice", "data_keys": ["duo:weg:0"], "chat_settings": {}}
 
-        with pytest.raises(ValueError) as fout:
+        with pytest.raises(Gebruikersfout) as fout:
             self._herstel(session)
         assert str(fout.value) == DATA_WEG
 
@@ -151,7 +153,7 @@ class TestHerstelData:
         recepten.onthoud("alice", "analysis:abc", recept)
         session = {"username": "alice", "data_keys": ["analysis:abc"], "chat_settings": {}}
 
-        with pytest.raises(ValueError) as fout:
+        with pytest.raises(Gebruikersfout) as fout:
             self._herstel(session)
         assert "eigen berekening (run_analysis)" in str(fout.value)
         assert "analysis:abc" in str(fout.value)
@@ -161,7 +163,7 @@ class TestHerstelData:
         _db.save_recipes("bob", "c1", {"rio:erkenningen": {"laad": ["get_rio_data", {"resource": "erkenningen"}]}})
         session = {"username": "alice", "data_keys": ["rio:erkenningen"], "chat_settings": {}}
 
-        with pytest.raises(ValueError, match="niet meer beschikbaar"):
+        with pytest.raises(Gebruikersfout, match="niet meer beschikbaar"):
             self._herstel(session)
         assert store.get("rio:erkenningen") is None
 

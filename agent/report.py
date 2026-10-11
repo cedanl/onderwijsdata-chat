@@ -35,6 +35,7 @@ from agent.report_titel import rapporttitel
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
+from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
 from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
@@ -169,7 +170,7 @@ async def generate(
     context = build_dataset_context(session)
 
     if not context["datasets"]:
-        raise ValueError("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
+        raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
@@ -217,7 +218,7 @@ async def generate(
     if fout := harde(result.problems):
         logger.error("RAPPORT GEWEIGERD: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
-        raise ValueError(f"Rapport niet consistent met de data: {meldingen(fout)[0]} Probeer het opnieuw.")
+        raise Gebruikersfout(f"Rapport niet consistent met de data: {meldingen(fout)[0]} Probeer het opnieuw.")
     if result.problems:
         logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)

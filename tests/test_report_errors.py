@@ -1,6 +1,7 @@
 import asyncio
 import json
 
+from core.errors import Gebruikersfout
 from routes import chat
 
 
@@ -26,8 +27,10 @@ def test_unexpected_report_error_hides_exception_text(monkeypatch):
 
 
 def test_expected_report_error_keeps_its_guidance(monkeypatch):
+    # Alleen een Gebruikersfout draagt tekst die voor de gebruiker is geschreven (#503);
+    # een kale ValueError valt sindsdien onder de generieke melding.
     msg = "Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald."
-    events = _run_report(monkeypatch, ValueError(msg))
+    events = _run_report(monkeypatch, Gebruikersfout(msg))
     [error] = [e for e in events if e["type"] == "report_error"]
     assert error["message"] == msg
 

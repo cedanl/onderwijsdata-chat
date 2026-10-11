@@ -11,7 +11,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S1 | HTML-injectie in geëxporteerde rapporten | Hoog | ✅ Opgelost (escaping in de frontend); ongebruikte dependency `nh3` opruimen (#506) |
 | S2 | Lodash kwetsbare versie op loginpagina | Hoog | ✅ Opgelost (Chainlit verwijderd) |
 | S3 | Ontbrekende HTTP security headers | Gemiddeld | ✅ Opgelost (middleware); CSP-restpunten in S13 (#486, #506) |
-| S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ⚠️ Gedeeltelijk — chat-antwoord opgelost (#404); dashboard, rapport, dashboard-refresh en model-/API-fouten tonen nog exceptietekst (#503) |
+| S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt, werking achter de ingress te verifiëren (#504); chat niet (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
 | S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 en S15 (#500) |
@@ -24,7 +24,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
 | S15 | `history`-actie omzeilt de invoerlimiet | Laag | ❌ Open (#500) |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ❌ Open (#477); browseropslag na uitloggen (#507) |
-| S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ❌ Open (#505) |
+| S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools |
 
 ---
 
@@ -60,14 +60,10 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 ---
 
-### S4 — Foutmeldingen lekken interne tekst ⚠️ Gedeeltelijk
+### S4 — Foutmeldingen lekken interne tekst ✅ Opgelost
 
-**Locatie:** `core/errors.py` (`friendly_error()`), `routes/chat.py`, `agent/replay.py`  
-**Opgelost (#404), alleen waar de fout via `friendly_error()` loopt (onder meer het chat-antwoord, via `error_event()`):** een interne fout (een fout in de eigen code) komt daar niet meer als exceptietekst bij de gebruiker. `log_interne_fout()` logt de exceptie onder een kort fout-ID; de gebruiker ziet een vaste melding met dat ID.  
-**Restpunten (#503):** ruwe exceptietekst bereikt de browser nog via deze paden:
-- **Dashboard-refresh:** `replay_data_calls()` in `agent/replay.py` bewaart `str(e)` van elke mislukte tool-aanroep. `routes/chat.py` zet die tekst in een `RefreshError`, die via de WebSocket en als HTTP 400 van `POST /api/dashboard/refresh` naar de client gaat. Een JSON-parserfout (`Expecting value: …`) komt zo letterlijk in de melding.
-- **Dashboard en rapport:** `_generate_dashboard()` en `_generate_report()` in `routes/chat.py` sturen bij elke `ValueError` `str(e)` door, ook bij een niet-bedoelde. Het rapportpad vangt `json.JSONDecodeError` apart af met een vaste tekst; het dashboardpad niet.
-- **Model- en API-fouten:** een fout waarvoor `modelafhankelijk()` geldt (`openai.OpenAIError` en subklassen, `litellm.BudgetExceededError`, `TimeoutError`) en waarvoor geen vaste tekst in `_FRIENDLY_ERRORS` staat, gaat in `friendly_error()` nog als `f"❌ {exc}"` naar de browser. Dat geldt ook voor `litellm.BadRequestError`. De inhoud van zo'n tekst bepaalt de app niet zelf; hij kan details over provider of model bevatten.
+**Locatie:** `core/errors.py` (`friendly_error()`, `Gebruikersfout`), `routes/chat.py`, `agent/replay.py`  
+**Fix (#404, #503):** alleen een `Gebruikersfout` — een fout waarvan de tekst voor de gebruiker is geschreven, zoals "Geen datasets geladen" — bereikt de browser letterlijk. Elke andere fout krijgt een vaste melding met een kort fout-ID; `log_interne_fout()` logt de exceptie onder dat ID. Dat geldt voor alle paden: het chat-antwoord, dashboard en rapport (`_generate_dashboard()`/`_generate_report()` vangen `Gebruikersfout` apart, al het andere gaat generiek), dashboard-refresh (`replay_data_calls()` bewaart per mislukte call een vaste tekst, de details staan in het log) en model-/API-fouten zonder vaste tekst in `_FRIENDLY_ERRORS` (vaste melding met fout-ID, `modelafhankelijk` blijft gelden).
 
 ---
 
@@ -143,7 +139,7 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 - een apart proces (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`) met een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en een time-out;
 - in dat proces resourcelimieten (CPU, geheugen, geen bestanden schrijven, geen nieuwe processen) en een audit hook die onder meer netwerk, subprocessen en schrijven weigert.
 
-Die audit hook is geen kernelgrens (#443). De tools zijn ook zonder het model aan te roepen, via dashboard-refresh (S17, #505).
+Die audit hook is geen kernelgrens (#443). De tools waren ook zonder het model aan te roepen, via dashboard-refresh; sinds #505 herhaalt refresh alleen nog de drie load-tools (S17).
 
 ---
 
@@ -210,11 +206,11 @@ Test: `tests/test_token_intrekking.py`.
 
 ---
 
-### S17 — Dashboard-refresh voert tool-aanroepen van de client uit ❌ Open
+### S17 — Dashboard-refresh voert tool-aanroepen van de client uit ✅ Opgelost
 
 **Locatie:** `routes/chat.py` (`POST /api/dashboard/refresh` en de WebSocket-actie `refresh_dashboard`), `agent/replay.py` (`replay_data_calls()`)  
-**Probleem:** de client stuurt het recept van het dashboard mee: toolnamen en argumenten. `replay_data_calls()` geeft elke naam en elk argument direct aan `tools.dispatch()`. Een client die de API mag gebruiken, kan zo elke tool aanroepen, ook `run_analysis` met eigen code, zonder dat het model eraan te pas komt. De afscherming van `run_analysis` (S11) blijft gelden.  
-**Vervolg:** #505.
+**Probleem:** de client stuurt het recept van het dashboard mee: toolnamen en argumenten. `replay_data_calls()` gaf elke naam en elk argument direct aan `tools.dispatch()`. Een client die de API mag gebruiken, kon zo elke tool aanroepen, ook `run_analysis` met eigen code, zonder dat het model eraan te pas komt.  
+**Fix (#505):** `replay_data_calls()` herhaalt alleen tools uit `REPLAYABLE_TOOLS` — de drie load-tools (`get_duo_data`, `get_cbs_data`, `get_rio_data`) waaruit de server zelf recepten bouwt (`_build_recipe`). Elke andere toolnaam wordt geweigerd en gelogd; `run_analysis` is via refresh niet aan te roepen. De scopecontrole (#355) zit in de tools zelf en geldt daarmee ook voor dit pad.
 
 ---
 
@@ -224,7 +220,5 @@ Test: `tests/test_token_intrekking.py`.
 2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
 3. **S15** — `history`-actie begrenzen (#500)
 4. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
-5. **S4** — geen ruwe exceptietekst meer naar de browser, ook niet bij dashboard, rapport, dashboard-refresh en model-/API-fouten (#503)
-6. **S17** — dashboard-refresh alleen door de server vastgelegde of toegestane tool-aanroepen laten herhalen (#505)
-7. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
-8. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+5. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
+6. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

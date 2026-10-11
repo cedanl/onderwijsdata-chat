@@ -14,6 +14,14 @@ import openai
 
 logger = logging.getLogger(__name__)
 
+
+class Gebruikersfout(Exception):
+    """Een fout waarvan de tekst voor de gebruiker is geschreven (#503).
+
+    Alleen deze tekst mag letterlijk naar de browser; elke andere uitzondering
+    krijgt een vaste melding met fout-ID en de details gaan naar het log.
+    """
+
 _FRIENDLY_ERRORS: list[tuple[type, str | None]] = [
     (litellm.AuthenticationError, "API key ontbreekt of is ongeldig. Controleer je `.env` bestand."),
     (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),
@@ -39,13 +47,17 @@ def log_interne_fout(exc: Exception, waar: str) -> str:
 
 
 def friendly_error(exc: Exception) -> str:
+    if isinstance(exc, Gebruikersfout):
+        return f"❌ {exc}"
     for exc_type, msg in _FRIENDLY_ERRORS:
         if isinstance(exc, exc_type):
             if msg is None:
                 break
             return f"❌ {msg}"
     if modelafhankelijk(exc):
-        return f"❌ {exc}"
+        # Ook een API-fout kan interne details bevatten (#503): vaste tekst, details in het log.
+        fout_id = log_interne_fout(exc, "model/API")
+        return f"❌ Fout bij het model of de API (fout-ID {fout_id}). Probeer het opnieuw of kies een ander model."
     fout_id = log_interne_fout(exc, "verwerking")
     return f"❌ Er ging intern iets mis (fout-ID {fout_id}). Probeer het opnieuw; blijft het misgaan, geef dit ID dan door."
 
