@@ -1,4 +1,4 @@
-import Plot from 'react-plotly.js'
+import Plot from './LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from './KolomKop'

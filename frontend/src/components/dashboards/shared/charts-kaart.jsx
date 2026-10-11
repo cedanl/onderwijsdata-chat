@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../../LazyPlot'
 import { SectionHeader } from './shell'
 
 // ─── Kaart ───────────────────────────────────────────────────────────────────
