@@ -730,3 +730,42 @@ describe('useChat heropend gesprek', () => {
     expect(chat.historyDataKeys).toBe(0)
   })
 })
+
+// #510: honderden fragmenten per seconde werden evenzoveel renders; react-markdown
+// parset dan telkens het hele groeiende antwoord.
+describe('deltas per animation frame', () => {
+  it('bundelt een reeks deltas tot één update en verliest niets', async () => {
+    const ws = FakeWebSocket.last
+    let frame
+    const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(cb => { frame = cb; return 1 })
+
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      for (let i = 0; i < 50; i++) ws.emit({ type: 'text_delta', content: `d${i} ` })
+    })
+    // Nog geen flush: geen render per fragment.
+    expect(assistantMessages()[0].content).toBe('')
+
+    await act(async () => { frame() })
+    expect(assistantMessages()[0].content).toContain('d0 ')
+    expect(assistantMessages()[0].content).toContain('d49 ')
+    expect(raf).toHaveBeenCalledTimes(1)
+    raf.mockRestore()
+  })
+
+  it('loopt leeg vóór een tool_start, zodat de volgorde klopt', async () => {
+    const ws = FakeWebSocket.last
+    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(() => 1)
+
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'eerst de tekst' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data gefilterd' })
+    })
+
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('eerst de tekst')
+    expect(msg.tools).toHaveLength(1)
+    vi.mocked(globalThis.requestAnimationFrame).mockRestore()
+  })
+})
