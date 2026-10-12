@@ -226,6 +226,23 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const savingRef = useRef(Promise.resolve())
   const initialHistorySentRef = useRef(false)
 
+  // Ook de gesprekslijst kan op een vol quotum stuiten (#521). Eén melding per pagina, los
+  // van die over het open gesprek; de lijst in het geheugen blijft staan, de server heeft alles.
+  const lijstGemeldRef = useRef(false)
+  const persistHistoryMetMelding = useCallback((list) => {
+    if (persistConversationHistory(list) === 'ok' || lijstGemeldRef.current) return
+    lijstGemeldRef.current = true
+    addToast('De lokale opslag is vol: de gesprekslijst kan na verversen korter zijn.', 'warning')
+  }, [addToast])
+
+  // Een herstel zonder grafieken leek compleet (#521): zeg het één keer bij het openen.
+  const onvolledigGemeldRef = useRef(false)
+  useEffect(() => {
+    if (!initialChat.onvolledig || onvolledigGemeldRef.current) return
+    onvolledigGemeldRef.current = true
+    addToast('Dit gesprek is niet volledig bewaard: grafieken ontbreken na verversen.', 'warning')
+  }, [initialChat, addToast])
+
   // Seed backend with restored history on first connection
   useEffect(() => {
     if (!connected || initialHistorySentRef.current || !restoredMessages.length) return
@@ -240,7 +257,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       if (sessionEndedSince(tokenAtMount)) return
       if (rows.length > 0) {
         const { items, hasMore } = historyPage(rows)
-        persistConversationHistory(items)
+        persistHistoryMetMelding(items)
         setConversationHistory(items)
         setHasMoreHistory(hasMore)
       } else {
@@ -253,7 +270,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         }
       }
     }).catch(() => {})
-  }, [tokenAtMount])
+  }, [tokenAtMount, persistHistoryMetMelding])
 
   // The unmount save runs after the last render, so it reads the open conversation from a ref.
   useEffect(() => {
@@ -305,20 +322,28 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [tokenAtMount, persistMetMelding, withBufferedText])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
-  // Returns the save in flight, so a caller can wait until the server has the conversation.
-  const saveConversation = useCallback(() => {
-    if (sessionEndedSince(tokenAtMount)) return savingRef.current
+  // Sends the open conversation to the server and returns the updated history list, or null when
+  // there is nothing new. It touches no state, so the unmount save can use it too (#521).
+  const putOpenConversation = useCallback(() => {
+    if (sessionEndedSince(tokenAtMount)) return null
     const { id, messages: all } = openChatRef.current
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
-    if (!record || json === savedJsonRef.current) return savingRef.current
+    if (!record || json === savedJsonRef.current) return null
     savedJsonRef.current = json
-    const updated = upsertConversation(loadConversationHistory(), record)
-    persistConversationHistory(updated)
-    setConversationHistory(updated)
     savingRef.current = putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
-    return savingRef.current
+    return upsertConversation(loadConversationHistory(), record)
   }, [tokenAtMount])
+
+  // Returns the save in flight, so a caller can wait until the server has the conversation.
+  const saveConversation = useCallback(() => {
+    const updated = putOpenConversation()
+    if (updated) {
+      persistHistoryMetMelding(updated)
+      setConversationHistory(updated)
+    }
+    return savingRef.current
+  }, [putOpenConversation, persistHistoryMetMelding])
   const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
   // Save every finished answer, so closing the tab loses nothing.
@@ -387,36 +412,39 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
     const updated = conversationHistory.filter(c => c.id !== pendingDelete)
-    persistConversationHistory(updated)
+    persistHistoryMetMelding(updated)
     setConversationHistory(updated)
     deleteConversationApi(String(pendingDelete)).catch(() => {})
     // Deleting the open conversation must not bring it back on the next save; only a new question does.
     if (String(pendingDelete) === conversationId) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
     setPendingDelete(null)
-  }, [pendingDelete, conversationHistory, conversationId])
+  }, [pendingDelete, conversationHistory, conversationId, persistHistoryMetMelding])
 
   const handleRenameConversation = useCallback((id, newTitle) => {
     const trimmed = newTitle.trim()
     if (!trimmed) return
     const previous = conversationHistory
     const updated = previous.map(c => c.id === id ? { ...c, title: trimmed } : c)
-    persistConversationHistory(updated)
+    persistHistoryMetMelding(updated)
     setConversationHistory(updated)
     renameConversationApi(String(id), trimmed).catch(() => {
-      persistConversationHistory(previous)
+      persistHistoryMetMelding(previous)
       setConversationHistory(previous)
       addToast('Hernoemen is mislukt. Probeer het opnieuw.', 'error')
     })
-  }, [conversationHistory, addToast])
+  }, [conversationHistory, addToast, persistHistoryMetMelding])
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
   useEffect(() => () => {
     // Logging out unmounts this page after App cleared the stored history;
     // saving here would write the conversation straight back.
     if (sessionEndedSince(tokenAtMount)) return
-    saveConversation()
+    // No toast or state here: both live in the page that is going away. A full storage
+    // was already reported by the save after each finished answer (#521).
+    const updated = putOpenConversation()
+    if (updated) persistConversationHistory(updated)
     clearCurrentChat()
-  }, [saveConversation, tokenAtMount])
+  }, [putOpenConversation, tokenAtMount])
 
   const handleModelChange = useCallback((id) => {
     setSelectedModel(id)

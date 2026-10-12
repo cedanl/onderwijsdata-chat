@@ -37,7 +37,7 @@ vi.mock('../hooks/useChat', () => ({
 }))
 
 import ChatPage from '../pages/ChatPage'
-import { STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
+import { STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -166,6 +166,142 @@ describe('opslaan per afgerond antwoord (#511)', () => {
     chatState.messages = [...chatState.messages, { id: 3, role: 'assistant', content: 'nog een', done: true }]
     await render()
 
-    expect(meldingen.filter(m => m.includes('opslag is vol'))).toHaveLength(1)
+    expect(meldingen).toEqual(['De lokale opslag is vol: dit gesprek wordt niet lokaal bewaard.'])
+  })
+
+  it('meldt op paginaniveau dat grafieken na verversen ontbreken (#521)', async () => {
+    const meldingen = []
+    chatState.addToast = (msg, level) => meldingen.push([msg, level])
+    const echt = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === STORAGE_CURRENT_CHAT && value.includes('"figures"')) throw new DOMException('vol', 'QuotaExceededError')
+      return echt.call(this, key, value)
+    })
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'kijk', figures: ['{}'], done: true }]
+    await mountChat()
+
+    expect(meldingen).toEqual([[GRAFIEKEN_MELDING, 'warning']])
+    expect(JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT)).onvolledig).toBe(true)
+  })
+})
+
+// #521: de gesprekslijst in localStorage faalde stil, en een herstel zonder grafieken leek compleet.
+const LIJST_MELDING = 'De lokale opslag is vol: de gesprekslijst kan na verversen korter zijn.'
+const GRAFIEKEN_MELDING = 'De lokale opslag is bijna vol: grafieken van dit gesprek komen na verversen niet terug.'
+const ONVOLLEDIG_MELDING = 'Dit gesprek is niet volledig bewaard: grafieken ontbreken na verversen.'
+
+function lijstVol() {
+  const echt = Storage.prototype.setItem
+  return vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    if (key === STORAGE_CONVERSATIONS) throw new DOMException('vol', 'QuotaExceededError')
+    return echt.call(this, key, value)
+  })
+}
+
+describe('volle opslag van de gesprekslijst (#521)', () => {
+  let meldingen
+  beforeEach(() => {
+    meldingen = []
+    chatState.addToast = (msg, level) => meldingen.push([msg, level])
+  })
+
+  it('meldt het wanneer de lijst niet past', async () => {
+    lijstVol()
+    await mountChat()
+    expect(meldingen).toEqual([[LIJST_MELDING, 'warning']])
+  })
+
+  it('meldt het ook bij de lijst die de server bij het openen stuurt', async () => {
+    chatState.messages = []
+    api.fetchConversations.mockResolvedValueOnce([{ id: 's1', title: 'Van de server', timestamp: 1 }])
+    lijstVol()
+    await mountChat()
+    expect(meldingen).toEqual([[LIJST_MELDING, 'warning']])
+  })
+
+  it('meldt twee mislukte schrijfacties één keer', async () => {
+    lijstVol()
+    await mountChat()
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'antwoord', done: true }]
+    await render()
+    expect(meldingen.filter(([m]) => m === LIJST_MELDING)).toHaveLength(1)
+  })
+
+  it('meldt de lijst los van het open gesprek', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
+    await mountChat()
+    expect(meldingen.map(([m]) => m).sort()).toEqual(
+      [LIJST_MELDING, 'De lokale opslag is vol: dit gesprek wordt niet lokaal bewaard.'].sort())
+  })
+})
+
+describe('herstel na verversen (#521)', () => {
+  let meldingen
+  beforeEach(() => {
+    meldingen = []
+    chatState.addToast = (msg, level) => meldingen.push([msg, level])
+    chatState.messages = []
+  })
+
+  it('zegt het wanneer het herstelde gesprek zonder grafieken is bewaard', async () => {
+    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({
+      id: 'c1', messages: [{ id: 1, role: 'user', content: 'vraag', done: true }], onvolledig: true,
+    }))
+    await mountChat()
+    await render()
+    expect(meldingen).toEqual([[ONVOLLEDIG_MELDING, 'warning']])
+  })
+
+  it('zegt niets bij een volledig bewaard gesprek', async () => {
+    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({
+      id: 'c1', messages: [{ id: 1, role: 'user', content: 'vraag', done: true }],
+    }))
+    await mountChat()
+    expect(meldingen).toEqual([])
+  })
+})
+
+describe('opslaan bij unmount (#521)', () => {
+  let meldingen
+  beforeEach(() => {
+    meldingen = []
+    chatState.addToast = (msg, level) => meldingen.push([msg, level])
+  })
+
+  async function nieuwAntwoordNietOpgeslagen() {
+    await mountChat()
+    // Tijdens het streamen wordt niet opgeslagen; pas de unmount bewaart dit antwoord.
+    chatState.busy = true
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'laatste woord', done: false }]
+    await render()
+  }
+
+  it('schrijft de lijst, wist het open gesprek en meldt niets', async () => {
+    await nieuwAntwoordNietOpgeslagen()
+    const fout = vi.spyOn(console, 'error')
+
+    await act(async () => root.unmount())
+    root = null
+
+    expect(JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS))).toHaveLength(1)
+    expect(api.putConversation).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
+      messages: expect.arrayContaining([expect.objectContaining({ content: 'laatste woord' })]),
+    }))
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+    expect(meldingen).toEqual([])
+    expect(fout).not.toHaveBeenCalled()
+  })
+
+  it('meldt ook bij een volle opslag niets meer na unmount', async () => {
+    await nieuwAntwoordNietOpgeslagen()
+    lijstVol()
+    const fout = vi.spyOn(console, 'error')
+
+    await act(async () => root.unmount())
+    root = null
+
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+    expect(meldingen).toEqual([])
+    expect(fout).not.toHaveBeenCalled()
   })
 })
