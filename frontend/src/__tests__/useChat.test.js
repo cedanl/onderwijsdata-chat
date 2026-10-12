@@ -730,3 +730,114 @@ describe('useChat heropend gesprek', () => {
     expect(chat.historyDataKeys).toBe(0)
   })
 })
+
+// #510: honderden fragmenten per seconde werden evenzoveel renders; react-markdown
+// parset dan telkens het hele groeiende antwoord.
+describe('deltas per animation frame', () => {
+  let raf
+  let cancel
+  let frame
+
+  // De spy-restore staat in afterEach, zodat een mislukte assertion hem niet laat lekken.
+  beforeEach(() => {
+    frame = undefined
+    raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(cb => { frame = cb; return 7 })
+    cancel = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {})
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('bundelt een reeks deltas tot één update en verliest niets', async () => {
+    const ws = FakeWebSocket.last
+
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      for (let i = 0; i < 50; i++) ws.emit({ type: 'text_delta', content: `d${i} ` })
+    })
+    // Nog geen flush: geen render per fragment.
+    expect(assistantMessages()[0].content).toBe('')
+
+    await act(async () => { frame() })
+    expect(assistantMessages()[0].content).toContain('d0 ')
+    expect(assistantMessages()[0].content).toContain('d49 ')
+    expect(raf).toHaveBeenCalledTimes(1)
+  })
+
+  it('loopt leeg vóór een tool_start, zodat de volgorde klopt', async () => {
+    const ws = FakeWebSocket.last
+
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'eerst de tekst' })
+      ws.emit({ type: 'tool_start', name: 'query_data', label: 'Data gefilterd' })
+    })
+
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('eerst de tekst')
+    expect(msg.tools).toHaveLength(1)
+  })
+
+  it('clear() gooit de buffer weg en annuleert het geplande frame', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'hoort bij het oude gesprek' })
+    })
+    expect(raf).toHaveBeenCalledTimes(1)
+
+    await act(async () => { chat.clear() })
+    expect(cancel).toHaveBeenCalledWith(7)
+
+    // Een laat frame brengt niets terug in het lege gesprek.
+    await act(async () => { frame() })
+    expect(chat.messages).toEqual([])
+  })
+
+  it('annuleert het geplande frame bij unmount', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'half' })
+    })
+
+    await act(async () => { root.unmount() })
+    expect(cancel).toHaveBeenCalledWith(7)
+
+    // De afterEach van dit bestand unmount de root nog eens: geef hem een verse.
+    root = createRoot(container)
+    await act(async () => { root.render(createElement(Harness)) })
+  })
+
+  it('zet de gebufferde tekst in het bericht als de verbinding wegvalt', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      chat.send('Vraag')
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'halve zin' })
+    })
+    expect(assistantMessages()[0].content).toBe('')
+
+    await act(async () => {
+      ws.readyState = 3
+      ws.onclose({ code: 1006 })
+    })
+
+    expect(assistantMessages()[0].content).toBe('halve zin')
+    expect(assistantMessages()[0].interrupted).toBe(true)
+  })
+
+  it('houdt de volgorde bij een message_end met tekst na gebufferde deltas', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'DU' })
+      ws.emit({ type: 'message_end', content: 'DUO-cijfers' })
+    })
+
+    const [msg] = assistantMessages()
+    expect(msg.content).toBe('DUO-cijfers')
+    expect(msg.done).toBe(true)
+    // De buffer is leeg: een laat frame voegt niets achter de definitieve tekst toe.
+    await act(async () => { frame?.() })
+    expect(assistantMessages()[0].content).toBe('DUO-cijfers')
+  })
+})

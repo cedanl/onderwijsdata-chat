@@ -57,6 +57,17 @@ export function useChat() {
   const currentHasTextRef = useRef(false)
   const resettingRef = useRef(false)
   const reportTimeoutRef = useRef(null)
+  // text_delta's per animation frame bundelen (#510): 100+ fragmenten per seconde werden
+  // 100+ renders, en react-markdown parset dan elke keer het hele groeiende antwoord.
+  const deltaBufferRef = useRef('')
+  const deltaFrameRef = useRef(null)
+  // Een geplande flush annuleren én de ref leegmaken: `??=` plant anders nooit meer een frame
+  // (na een StrictMode/HMR-remount of een clear() zou de tekst dan niet meer binnenkomen).
+  const cancelDeltaFrame = useCallback(() => {
+    if (deltaFrameRef.current === null) return
+    cancelAnimationFrame(deltaFrameRef.current)
+    deltaFrameRef.current = null
+  }, [])
   // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
   const reportAbandonedRef = useRef(false)
   const nextId = () => ++idRef.current
@@ -114,6 +125,15 @@ export function useChat() {
       currentMsgRef.current = null
       busyRef.current = false
       setBusy(false)
+    }
+
+    // Gebufferde deltas als één state-update toepassen. Loopt vóór elk ander event leeg,
+    // zodat message_end, message_cancel en de toolstappen hun vaste volgorde houden (#510).
+    function flushDeltas() {
+      cancelDeltaFrame()
+      const tekst = deltaBufferRef.current
+      deltaBufferRef.current = ''
+      if (tekst) updateCurrentMsg(m => ({ ...m, content: m.content + tekst }))
     }
 
     // The server session is gone with its socket, and so is the answer it was writing.
@@ -181,7 +201,8 @@ export function useChat() {
       text_delta(ev) {
         currentHasTextRef.current = true
         setThinking(false)
-        updateCurrentMsg(m => ({ ...m, content: m.content + ev.content }))
+        deltaBufferRef.current += ev.content
+        deltaFrameRef.current ??= requestAnimationFrame(flushDeltas)
       },
       tool_start(ev) {
         setThinking(false)
@@ -325,6 +346,7 @@ export function useChat() {
 
       ws.onclose = (e) => {
         heartbeat.stop()
+        flushDeltas()
         setConnected(false)
         endInterruptedTurn()
         if (reportingRef.current) {
@@ -352,6 +374,8 @@ export function useChat() {
       ws.onmessage = (e) => {
         heartbeat.alive()
         const event = JSON.parse(e.data)
+        // Alles wat geen delta is, ziet eerst de tekst die al binnen was (#510).
+        if (event.type !== 'text_delta') flushDeltas()
         if (reportAbandonedRef.current) {
           if (reportEndEvents.has(event.type)) reportAbandonedRef.current = false
           if (reportEndEvents.has(event.type) || chatStreamEvents.has(event.type)) return
@@ -391,9 +415,10 @@ export function useChat() {
       detachNetwork()
       heartbeat.stop()
       clearTimeout(retryTimeoutRef.current)
+      cancelDeltaFrame()
       wsRef.current?.close()
     }
-  }, [addToast, closeCurrentMsg, endReport, failReport])
+  }, [addToast, cancelDeltaFrame, closeCurrentMsg, endReport, failReport])
 
   // A question can go out: connected, no run, no reset and no report going (#417).
   const canSend = useCallback(() =>
@@ -479,6 +504,9 @@ export function useChat() {
 
   const clear = useCallback(() => {
     setMessages([])
+    // Nog gebufferde deltas horen bij het gesprek dat nu sluit (#510): buffer weg, frame ook.
+    deltaBufferRef.current = ''
+    cancelDeltaFrame()
     // The ref too: send() checks it, and a stale true refused every next question (#337).
     busyRef.current = false
     setBusy(false)
@@ -486,7 +514,7 @@ export function useChat() {
     setHistoryDataKeys(0)
     currentMsgRef.current = null
     lastSentRef.current = null
-  }, [])
+  }, [cancelDeltaFrame])
 
   // "Nieuw gesprek": the server must forget the previous conversation too,
   // otherwise the next question is answered with its context (#70).
