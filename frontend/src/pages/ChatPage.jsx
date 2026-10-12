@@ -479,6 +479,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
   const atContextLimit = userTurnCount >= MAX_CHAT_TURNS
   const nearContextLimit = userTurnCount >= WARN_CHAT_TURNS
+  const reportState = canGenerateReport(messages, restoredMessages, historyDataKeys)
 
   return (
     <>
@@ -559,6 +560,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
                   modelafhankelijk: msg.modelafhankelijk !== false,
+                  // Een geweigerd rapport opnieuw (#515), alleen als er nu een rapport kan komen.
+                  herstel: msg.herstel, onRapport: reportState === 'ready' ? handleMakeRapport : null,
+                  reportBusy,
                 } : null}
                 feedback={feedbackEnabled && !busy && canJudge(msg) ? {
                   value: answerFeedback.oordelen[i] ?? null,
@@ -596,7 +600,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               </div>
             )}
             {hasMessages && !busy && <ConversationExport messages={displayMessages} />}
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
+            {hasMessages && !busy && reportState === 'ready' && (
               <div>
                 <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
@@ -615,7 +619,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
-            {hasMessages && !busy && canGenerateReport(messages, restoredMessages, historyDataKeys) === 'needs_reload' && (
+            {hasMessages && !busy && reportState === 'needs_reload' && (
               <p className="report-reload-hint">
                 Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
               </p>
@@ -810,8 +814,10 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
                 failedModel={retry.question?.model || retry.selectedModel}
                 models={retry.models}
                 modelafhankelijk={retry.modelafhankelijk}
-                busy={busy}
+                busy={busy || !!retry.reportBusy}
                 onRetry={retry.onRetry}
+                herstel={retry.herstel}
+                onRapport={retry.onRapport}
               />
             )}
           </div>

@@ -93,6 +93,20 @@ describe('useChat report errors', () => {
     expect(msg.isError).toBe(true)
     expect(chat.toasts).toEqual([])
     expect(chat.reportBusy).toBe(false)
+    expect(msg).not.toHaveProperty('herstel')
+  })
+
+  // #515: a refused report can be made again from its message.
+  it('keeps the herstel of a refused report on its message', async () => {
+    const ws = FakeWebSocket.last
+    const tekst = 'De cijfers in het rapport klopten niet met de laatste analyse, daarom heb ik het niet getoond.'
+    await act(async () => {
+      ws.emit({ type: 'report_generating' })
+      ws.emit({ type: 'report_error', message: tekst, herstel: 'rapport' })
+    })
+    const [msg] = assistantMessages()
+    expect(msg).toMatchObject({ content: tekst, isError: true, herstel: 'rapport' })
+    expect(chat.reportBusy).toBe(false)
   })
 
   // #219: report_ready never came, and the button kept saying "wordt gegenereerd" for good.
