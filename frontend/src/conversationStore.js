@@ -11,10 +11,14 @@ export const conversationSummary = ({ id, title, timestamp }) => ({ id, title, t
 // Only the first page is cached; older pages come from the server again (#123). Without
 // messages: the cache stays small whatever the conversations hold, and figure JSON
 // does not compete with the open chat for the ~5 MB of localStorage (#511).
+// Returns 'ok' or 'mislukt', so the page can report a full storage (#521).
 export function persistConversationHistory(list) {
   try {
     localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list.slice(0, MAX_CONVERSATIONS).map(conversationSummary)))
-  } catch { /* noop */ }
+    return 'ok'
+  } catch {
+    return 'mislukt'
+  }
 }
 
 export const newConversationId = () => crypto.randomUUID()
@@ -30,12 +34,14 @@ export function restorableMessages(messages) {
 }
 
 // The open conversation survives a reload as {id, messages}; older builds stored only the messages.
+// A snapshot saved without its figures says so with onvolledig (#521).
 export function loadCurrentChat() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT) || 'null')
     if (Array.isArray(stored)) return { id: newConversationId(), messages: restorableMessages(stored) }
     if (typeof stored?.id === 'string' && Array.isArray(stored.messages)) {
-      return { id: stored.id, messages: restorableMessages(stored.messages) }
+      const chat = { id: stored.id, messages: restorableMessages(stored.messages) }
+      return stored.onvolledig === true ? { ...chat, onvolledig: true } : chat
     }
   } catch { /* unreadable: start fresh */ }
   return { id: newConversationId(), messages: [] }
@@ -44,15 +50,19 @@ export function loadCurrentChat() {
 // localStorage is ~5 MB; een vol quotum gooide hier en de catch slikte dat stil (#511).
 // Figuur-JSON is veruit het grootst, dus de terugval bewaart het gesprek zonder figuren.
 // De uitkomst zegt wat er is gelukt, zodat de pagina het één keer kan melden.
+// De terugval draagt onvolledig, zodat het herstel na verversen het kan zeggen; past
+// ook die niet, dan gaat de oude momentopname weg in plaats van als actueel terug te komen (#521).
 export function persistCurrentChat(id, messages) {
   try {
     localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages }))
     return 'ok'
   } catch { /* vol: probeer zonder figuren */ }
   try {
-    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages: messages.filter(m => !m.figures) }))
+    const zonderFiguren = messages.filter(m => !m.figures)
+    localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id, messages: zonderFiguren, onvolledig: true }))
     return 'zonder_figuren'
   } catch {
+    clearCurrentChat()
     return 'mislukt'
   }
 }
