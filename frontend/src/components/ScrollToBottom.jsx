@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { scrollGedrag } from '../hooks/useMediaQuery'
 
 /**
  * Floating scroll-to-bottom button.
@@ -23,8 +24,7 @@ export default function ScrollToBottom({ sentinelRef, scrollContainerRef }) {
 
   const handleClick = () => {
     // A5 (#517): wie het systeem op minder beweging zet, krijgt geen glijdende scroll.
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    sentinelRef.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' })
+    sentinelRef.current?.scrollIntoView({ behavior: scrollGedrag() })
   }
 
   if (!visible) return null

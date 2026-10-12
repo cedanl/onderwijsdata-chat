@@ -20,6 +20,15 @@ describe('a11y-restpunten (#517)', () => {
     expect(css).toContain('--focus-ring:')
   })
 
+  it('A4: geen focusregel gebruikt de te lichte --blue-400 (2,5:1 op wit)', () => {
+    const regels = [...css.matchAll(/([^{}]+){([^{}]*)}/g)]
+    const focusRegels = regels.filter(([, kiezer]) => kiezer.includes(':focus'))
+    expect(focusRegels.length).toBeGreaterThan(5)
+    for (const [, kiezer, body] of focusRegels) {
+      expect(body, kiezer.trim()).not.toContain('--blue-400')
+    }
+  })
+
   it('A5: reduced motion zet transities en animaties uit', () => {
     const blok = css.match(/@media \(prefers-reduced-motion: reduce\)\s*{[\s\S]*?\n}/)?.[0]
     expect(blok).toBeDefined()
@@ -27,7 +36,14 @@ describe('a11y-restpunten (#517)', () => {
     expect(blok).toContain('animation-duration: .01ms !important')
   })
 
-  it('A5: er blijft geen aparte spinner-uitzondering achter', () => {
-    expect(css).not.toContain('.spinner { animation-duration: 2.4s; }')
+  it('A5: laad- en activiteitsindicatoren blijven rustig doorlopen bij reduced motion', () => {
+    const blok = css.match(/@media \(prefers-reduced-motion: reduce\)\s*{[\s\S]*?\n}/)?.[0]
+    const regel = blok.match(/\n  \.spinner,[^{]*{[^}]*}/)?.[0]
+    expect(regel).toBeDefined()
+    for (const kiezer of ['.spinner', '.ai-typing span', '.ws-dot', '.tool-step-dot:not(.done)']) {
+      expect(regel).toContain(kiezer)
+    }
+    expect(regel).toContain('animation-duration: 2.4s !important')
+    expect(regel).toContain('animation-iteration-count: infinite !important')
   })
 })
