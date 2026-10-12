@@ -15,6 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
+from core.logging_util import foutkenmerk
+
 from . import store
 from .catalog import catalogus_laatste_update
 from .cbs import get_cbs_data
@@ -115,7 +117,8 @@ def _laad(key: str, laad: object) -> Herlaadresultaat:
     try:
         uitkomst = functie(**args)
     except Exception as e:  # een recept met argumenten die de tool niet (meer) kent
-        logger.warning("herladen %s via %s mislukt: %r", key, tool, e)
+        logger.warning("herladen %s via %s mislukt: %s", key, tool, foutkenmerk(e))
+        logger.debug("herladen %s via %s mislukt: %r", key, tool, e)
         uitkomst = ""
     if store.get(key) is None:
         reden = _reden(uitkomst) or "geen data."
@@ -142,7 +145,8 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
     try:
         uitkomst = query_data(**{**args, "data_key": ouder})
     except Exception as e:  # argumenten die query_data op de herladen bron niet (meer) aanneemt
-        logger.warning("herladen %s via query_data mislukt: %r", key, e)
+        logger.warning("herladen %s via query_data mislukt: %s", key, foutkenmerk(e))
+        logger.debug("herladen %s via query_data mislukt: %r", key, e)
         uitkomst = ""
     if store.get(key) is None:
         stap = recept.get("stap") or "selectie"

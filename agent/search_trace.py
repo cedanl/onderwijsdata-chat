@@ -17,7 +17,7 @@ import logging
 from dataclasses import dataclass, field
 
 from core.logging_util import tekst_kenmerk
-from tools.catalog import catalogus_digest
+from tools.catalog import catalogus_digest, leverancier
 from tools.schemas import TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA, TOOL_SEARCH_CATALOG
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,7 @@ _LOAD_ARGUMENT = {TOOL_GET_CBS_DATA: "dataset_id", TOOL_GET_DUO_DATA: "dataset_i
 class SearchTrace:
     query: str | None = None
     top: list[str] | None = None
+    hits: list[str] = field(default_factory=list)  # alle ID's uit de laatste zoekactie: die mogen letterlijk in het log
     loaded: list[str] = field(default_factory=list)
     catalogus_digest: str | None = None
 
@@ -49,13 +50,17 @@ class SearchTrace:
             return
         ids = [next((h[f] for f in _ID_FIELDS if h.get(f)), None) for h in hits if "melding" not in h]
         self.query = args.get("query")
-        self.top = [i for i in ids if i][:_TOP]
+        self.hits = [i for i in ids if i]
+        self.top = self.hits[:_TOP]
         self.catalogus_digest = catalogus_digest()
 
     def _note_load(self, dataset_id: str) -> None:
         if not dataset_id:
             return
         self.loaded.append(dataset_id)
+        # Het ID komt van het model: alleen een ID uit de zoekresultaten of de catalogus staat letterlijk in het log (#502).
+        if dataset_id not in self.hits and leverancier(dataset_id) is None:
+            dataset_id = f"onbekend {tekst_kenmerk(dataset_id, 'id_')}"
         if self.top is None:
             logger.info("CATALOGUS_GELADEN geladen=%s zonder voorafgaande zoekactie", dataset_id)
             return

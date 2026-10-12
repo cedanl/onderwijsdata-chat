@@ -39,6 +39,8 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from core.logging_util import tekst_kenmerk
+
 from . import sandbox
 
 logger = logging.getLogger(__name__)
@@ -167,7 +169,9 @@ def toets(
     with ThreadPoolExecutor(max_workers=2) as pool:
         herhalingen = list(pool.map(lambda v: _verstoord(code, df, tabellen, v), (_waarden, _rijen)))
     if fout := next((h.fout for h in herhalingen if h.fout), None):
-        logger.info("afhankelijkheid niet vast te stellen: %s", fout[:200])
+        # De sandboxfout citeert het script van het model: op INFO een kenmerk, de tekst op DEBUG (#502).
+        logger.info("afhankelijkheid niet vast te stellen: %s", tekst_kenmerk(fout, "fout_"))
+        logger.debug("afhankelijkheid niet vast te stellen: %s", fout[:200])
         return Toets(ONBEPAALD, tuple(sorted(_getal(g) for g in eigen - invoer)))
     vast = set(eigen)
     for herhaling in herhalingen:

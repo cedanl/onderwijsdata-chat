@@ -30,6 +30,7 @@ from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, HISTORY_MAX_CHARS, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
 from core.errors import Gebruikersfout, error_event, friendly_error
+from core.logging_context import nieuwe_verbinding
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -618,6 +619,8 @@ async def chat_websocket(ws: WebSocket) -> None:
 
     # Het subprotocol bevestigen, anders sluit de browser de verbinding (#103).
     await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
+    # Elke logregel van deze verbinding, ook uit taken en threads, draagt dit ID (#502).
+    logger.info("VERBINDING open verbinding=%s", nieuwe_verbinding())
     session = _new_session(username=username)
 
     async def emit(event: dict) -> None:

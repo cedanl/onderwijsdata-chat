@@ -297,6 +297,12 @@ de laatste tag is 1.8.6.
   rapporten met de CDN-URL worden bij het tonen herschreven, en de download haalt diezelfde Plotly op en zet
   haar inline zoals al gebeurde. De CSP noemt geen CDN-hosts meer (`cdn.plot.ly`, `cdn.jsdelivr.net`); een
   test houdt dat zo.
+- Log-hardening, vervolg op #475 (#502): foutregels van tools, het herladen, de sandboxcontrole, het dashboard
+  en de provider-timeout noemen op WARNING en ERROR alleen het type en een kenmerk (`fout_len=… fout_hash=…`),
+  de tekst staat op DEBUG; een dataset-ID dat het model opgeeft staat alleen letterlijk in het log als de
+  catalogus het kent; elke logregel van een chatverbinding draagt een kort verbindings-ID (`verbinding=…`,
+  in JSON als eigen veld), zodat de regels van één verbinding te koppelen zijn zonder gebruikersnaam of
+  gespreks-ID; met `LOG_HASH_SECRET` is de hash in logregels een HMAC in plaats van een kale SHA-256.
 - Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
   readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
   zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden

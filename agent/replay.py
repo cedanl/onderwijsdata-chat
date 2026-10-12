@@ -17,6 +17,7 @@ from enum import StrEnum
 
 import plotly.io as pio
 
+from core.logging_util import foutkenmerk
 from tools import dispatch, store
 from tools.catalog import catalogus_laatste_update
 from tools.schemas import (
@@ -73,8 +74,9 @@ def replay_data_calls(calls: list[dict]) -> list[dict]:
             args = json.loads(tc.get("arguments") or "{}")
             output, _ = dispatch(name, args)
             results.append({"name": name, "arguments": tc.get("arguments"), "success": True, "output": output})
-        except Exception:
-            logger.warning("Herladen van %s mislukt", name, exc_info=True)
+        except Exception as e:
+            logger.warning("Herladen van %s mislukt: %s", name, foutkenmerk(e))
+            logger.debug("Herladen van %s mislukt", name, exc_info=True)
             results.append(
                 {"name": name, "arguments": tc.get("arguments"), "success": False, "error": "herladen mislukt"}
             )
