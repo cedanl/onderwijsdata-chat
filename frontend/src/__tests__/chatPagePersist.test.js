@@ -19,12 +19,16 @@ vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }
 vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
-const chatState = vi.hoisted(() => ({ messages: [], busy: false, addToast: null }))
+const chatState = vi.hoisted(() => ({ messages: [], busy: false, addToast: null, buffered: '' }))
 // Stabiele identiteit, zoals de echte addToast uit useChat (useCallback).
 const stableToast = vi.hoisted(() => (...a) => chatState.addToast?.(...a))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
-    messages: chatState.messages, busy: chatState.busy, rejectedDraft: null, clearRejectedDraft: () => {},
+    messages: chatState.messages, busy: chatState.busy,
+    // Zoals de echte: het lopende (laatste) antwoord plus wat nog in de deltabuffer zit (#520).
+    withBufferedText: all => chatState.buffered
+      ? all.with(-1, { ...all.at(-1), content: all.at(-1).content + chatState.buffered })
+      : all, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false,
     reportProgress: null, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
@@ -48,6 +52,7 @@ beforeEach(() => {
   chatState.messages = [{ id: 1, role: 'user', content: 'Hoeveel studenten?', done: true }]
   chatState.busy = false
   chatState.addToast = null
+  chatState.buffered = ''
 })
 
 afterEach(async () => {
@@ -105,6 +110,47 @@ describe('opslaan per afgerond antwoord (#511)', () => {
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
 
     expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toContain('half antw')
+  })
+
+  it('bewaart bij het verbergen ook wat nog in de deltabuffer zit (#520)', async () => {
+    await mountChat()
+    chatState.busy = true
+    chatState.messages = [chatState.messages[0], { id: 2, role: 'assistant', content: 'half', tools: [], done: false }]
+    chatState.buffered = ' antwoord in de buffer'
+    await render()
+    localStorage.removeItem(STORAGE_CURRENT_CHAT)
+
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toContain('half antwoord in de buffer')
+  })
+
+  it('bewaart bij pagehide ook als de tab nog zichtbaar heet (Safari/iOS)', async () => {
+    await mountChat()
+    chatState.busy = true
+    chatState.messages = [chatState.messages[0], { id: 2, role: 'assistant', content: 'half', tools: [], done: false }]
+    chatState.buffered = ' en de rest'
+    await render()
+    localStorage.removeItem(STORAGE_CURRENT_CHAT)
+
+    expect(document.visibilityState).toBe('visible')
+    await act(async () => { window.dispatchEvent(new Event('pagehide')) })
+
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toContain('half en de rest')
+  })
+
+  it('bewaart niet bij visibilitychange naar zichtbaar', async () => {
+    await mountChat()
+    chatState.busy = true
+    chatState.messages = [chatState.messages[0], { id: 2, role: 'assistant', content: 'half', tools: [], done: false }]
+    await render()
+    localStorage.removeItem(STORAGE_CURRENT_CHAT)
+
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
   })
 
   it('meldt een volle opslag één keer in plaats van stil te falen', async () => {

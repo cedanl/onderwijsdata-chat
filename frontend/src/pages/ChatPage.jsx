@@ -189,7 +189,7 @@ function MessageContent({ msg, blocks = null }) {
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
+  const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [sendNotice, setSendNotice] = useState(null)
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -276,21 +276,27 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     if (all.length) persistMetMelding(conversationId, all)
   }, [busy, conversationId, messages, restoredMessages, tokenAtMount, persistMetMelding])
 
-  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren.
+  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren (#520).
+  // Bij pagehide is de zichtbaarheid vaak nog 'visible' (Safari/iOS), dus die check hoort
+  // alleen bij visibilitychange. De deltabuffer wordt meegelezen: een verborgen tab pauzeert
+  // het frame dat hem leegt.
   useEffect(() => {
     const opslaan = () => {
       if (sessionEndedSince(tokenAtMount)) return
-      if (document.visibilityState !== 'hidden') return
-      const { id, messages: all } = openChatRef.current
+      const { id, messages: open } = openChatRef.current
+      const all = withBufferedText(open)
       if (all.length) persistMetMelding(id, all)
     }
+    const bijZichtbaarheid = () => {
+      if (document.visibilityState === 'hidden') opslaan()
+    }
     window.addEventListener('pagehide', opslaan)
-    document.addEventListener('visibilitychange', opslaan)
+    document.addEventListener('visibilitychange', bijZichtbaarheid)
     return () => {
       window.removeEventListener('pagehide', opslaan)
-      document.removeEventListener('visibilitychange', opslaan)
+      document.removeEventListener('visibilitychange', bijZichtbaarheid)
     }
-  }, [tokenAtMount, persistMetMelding])
+  }, [tokenAtMount, persistMetMelding, withBufferedText])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Returns the save in flight, so a caller can wait until the server has the conversation.
