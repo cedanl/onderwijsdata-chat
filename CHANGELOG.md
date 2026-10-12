@@ -197,6 +197,12 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- Elk antwoord en elk rapport draagt een manifest (#345): model (en de providerversie die de
+  stream terugmeldde), of seed en temperature het model echt bereikten (een provider zonder
+  seed-ondersteuning staat er als "niet toegepast" in), prompt- en catalogusversie, appversie en
+  per dataset de dataversie (CBS-bijwerkdatum, Periodestatus van de geladen rijen, herlaaddatum).
+  Het rapport en de export tonen het compact als "Verantwoording" onderaan; het manifest bevat
+  alleen herkomst, geen vraag- of antwoordtekst.
 - Is de data van een gesprek na een herstart van de server weg, dan zegt een mislukte CSV-download dat en biedt
   "Vraag opnieuw stellen" aan. Een rapport of dashboard op zo'n gesprek wordt niet meer op de overgebleven data
   gemaakt: de melding zegt dat de vraag opnieuw moet (was: "Rapport kon niet worden gemaakt").
@@ -216,6 +222,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Het invoergebied op een telefoon is flink lager (#527): "Exporteer gesprek" en "Genereer rapport"
+  staan op één compacte rij in plaats van gestapeld, de paddings van invoerkader en footer zijn op
+  mobiel terug, de tabbalk is iets lager (tap targets blijven ≥44px) en verdwijnt zolang het
+  invoerveld focus heeft (toetsenbord open) — die hoogte gaat naar de berichten. Samen scheelt dat
+  ruwweg 100px; met het toetsenbord open nog eens de hele tabbalk.
 - Antwoorden staan niet meer in een bubbel (#525): de tekst van de assistent staat als lopende tekst op
   de paginagrond, alleen het bericht van de gebruiker houdt de blauwe bubbel. Op een telefoon verdwijnen
   ook de avatars en wordt de zijruimte kleiner, zodat een antwoord de volle schermbreedte krijgt; een

@@ -204,7 +204,7 @@ Test: `tests/test_token_intrekking.py`.
 - In de browser: gesprekken en het lopende gesprek in localStorage (`frontend/src/conversationStore.js`).
 
 **Probleem:** de app (`frontend/src`), `README.md` en `docs/` bevatten geen privacy-informatie: privacy, AVG of persoonsgegevens worden nergens genoemd. De gebruiker leest dus niet wat er wordt bewaard.  
-**Na uitloggen:** `handleLogout` in `frontend/src/App.jsx` wist het token en via `clearLocalSessionData()` de gesprekken en werkboeken uit localStorage. Het effect in `frontend/src/pages/ChatPage.jsx` dat het lopende gesprek bewaart (`persistCurrentChat`), controleert niet of de sessie intussen is beëindigd, en lopende fetches kunnen ook nog terugschrijven. Zo kunnen gegevens van de vorige gebruiker na het wissen weer in de browser staan (#507).  
+**Na uitloggen:** `handleLogout` in `frontend/src/App.jsx` wist het token en via `clearLocalSessionData()` de gesprekken (incl. het lopende gesprek), de werkboeken en de dashboard-chat (berichten en figuren: `STORAGE_DC_MESSAGES`, `STORAGE_DC_FIGURES`) uit localStorage; de lijst staat in `SESSION_DATA_KEYS` (`frontend/src/constants.js`). Het effect in `frontend/src/pages/ChatPage.jsx` dat het lopende gesprek bewaart (`persistCurrentChat`), controleert niet of de sessie intussen is beëindigd, en lopende fetches kunnen ook nog terugschrijven. Zo kunnen gegevens van de vorige gebruiker na het wissen weer in de browser staan (#507).  
 **Vervolg:** #477 (privacy-informatie), #507 (browseropslag na uitloggen).
 
 ---
