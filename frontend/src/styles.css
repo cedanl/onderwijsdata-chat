@@ -484,7 +484,8 @@ input, textarea { font: inherit; }
 }
 .history-item-row:hover .history-item-actions,
 .history-item-row:focus-within .history-item-actions { opacity: 1; pointer-events: auto; }
-@media (hover: none) {
+/* Ook in een smal venster, ook met muis: de iconen mogen niet alleen bij hover bestaan (#496 F12). */
+@media (hover: none), (max-width: 768px) {
   .history-item-actions { opacity: 1; pointer-events: auto; }
 }
 .history-action-icon {
