@@ -30,6 +30,15 @@ MODE_VERVERS = "ververs"
 MODE_REPRODUCEER = "reproduceer"
 MODES = frozenset({MODE_VERVERS, MODE_REPRODUCEER})
 
+
+def geldige_modus(mode: object) -> bool:
+    """Of een ruwe clientwaarde een bekende modus is; een lijst of dict is dat nooit.
+
+    `in MODES` hasht de waarde en gooit bij een onhashbare waarde een TypeError.
+    """
+    return isinstance(mode, str) and mode in MODES
+
+
 # De enige tools die een recept mag herhalen: de load-tools waaruit _build_recipe het
 # samenstelt. Het recept komt van de client, en zonder deze grens kon een ingelogde
 # client er elke tool mee aanroepen, run_analysis inbegrepen (#505). De scopecontrole

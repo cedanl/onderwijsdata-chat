@@ -16,6 +16,7 @@ from tools.getal import nl_getal
 logger = logging.getLogger(__name__)
 
 MAX_MELDINGEN = 8
+_DECIMALEN = 1  # de precisie van nl_getal voor niet-gehele waarden
 
 
 def figuur_verschillen(oud: list[str], nieuw: list[str]) -> list[str]:
@@ -53,9 +54,7 @@ def _figuur_diff(index: int, oud_json: str, nieuw_json: str) -> list[str]:
     meldingen: list[str] = []
     for oud_trace, nieuw_trace in zip(oud_fig.data, nieuw_fig.data, strict=False):
         meldingen.extend(_reeks_diff(titel, oud_trace, nieuw_trace))
-    if not meldingen:
-        # Wel andere bytes (bv. opmaak), geen andere waarden: dat is geen datawijziging.
-        return []
+    # Zonder meldingen zijn alleen de bytes anders (bv. opmaak), geen waarden: geen datawijziging.
     return meldingen
 
 
@@ -101,8 +100,12 @@ def _lijst(reeks) -> list:
 
 
 def _gelijk(a, b) -> bool:
+    """Gelijk zoals de gebruiker het ziet: getallen op de ene decimaal die nl_getal toont.
+
+    Een exacte float-vergelijking meldde 0,3 → 0,3 bij ruis als 0.30000000000000004.
+    """
     try:
-        return float(a) == float(b)
+        return round(float(a), _DECIMALEN) == round(float(b), _DECIMALEN)
     except (TypeError, ValueError):
         return str(a) == str(b)
 

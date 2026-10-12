@@ -16,9 +16,9 @@ from agent.figuurverschil import figuur_verschillen
 from agent.replay import (
     MODE_REPRODUCEER,
     MODE_VERVERS,
-    MODES,
     anker_verschillen,
     ankers_van_recipe,
+    geldige_modus,
     replay_dashboard_figures,
     replay_data_calls,
     reproduceer_figures,
@@ -278,7 +278,7 @@ async def refresh_dashboard_endpoint(request: Request):
     figure_recipes = body.get("figure_recipes") or []
     current_spec = body.get("spec") or {}
     mode = body.get("mode") or MODE_VERVERS
-    if mode not in MODES:
+    if not geldige_modus(mode):
         return JSONResponse({"error": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."}, status_code=400)
 
     try:
@@ -479,7 +479,7 @@ async def _handle_refresh_dashboard(
     figure_recipes = msg.get("figure_recipes") or []
     current_spec = msg.get("spec") or {}
     mode = msg.get("mode") or MODE_VERVERS
-    if mode not in MODES:
+    if not geldige_modus(mode):
         await emit({"type": "error", "message": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."})
         return current_task
     model = session["chat_settings"].get("model") or None

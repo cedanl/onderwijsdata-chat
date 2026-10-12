@@ -78,3 +78,26 @@ def test_alleen_opmaak_gewijzigd_geeft_geen_datamelding():
     oud = json.dumps({"data": [{"type": "bar", "x": ["2023"], "y": [1]}], "layout": {"title": {"text": "A"}}})
     nieuw = json.dumps({"data": [{"type": "bar", "x": ["2023"], "y": [1]}], "layout": {"title": {"text": "B"}}})
     assert figuur_verschillen([oud], [nieuw]) == []
+
+
+def test_float_ruis_geeft_geen_x_naar_x_melding():
+    # nl_getal toont beide als "0,3": een melding "0,3 → 0,3" zou de gebruiker misleiden.
+    assert figuur_verschillen([_figuur([0.3, 1])], [_figuur([0.30000000000000004, 1])]) == []
+
+
+def test_verschil_onder_de_getoonde_precisie_wordt_bewust_niet_gemeld():
+    # 0,123 en 0,124 tonen beide als "0,1": gelijkheid volgt wat de gebruiker ziet (één decimaal).
+    assert figuur_verschillen([_figuur([0.123, 1])], [_figuur([0.124, 1])]) == []
+
+
+def test_verschil_op_de_getoonde_precisie_wordt_wel_gemeld():
+    [melding] = figuur_verschillen([_figuur([0.14, 1])], [_figuur([0.16, 1])])
+    assert "0,1 → 0,2" in melding
+
+
+def test_geheel_getal_en_bijna_gelijke_float_zijn_gelijk():
+    assert figuur_verschillen([_figuur([2, 1])], [_figuur([2.04, 1])]) == []
+
+
+def test_min_nul_en_nul_zijn_gelijk():
+    assert figuur_verschillen([_figuur([-0.04, 1])], [_figuur([0, 1])]) == []
