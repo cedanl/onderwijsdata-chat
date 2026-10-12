@@ -112,7 +112,7 @@ Test: `tests/test_config_cors.py`.
 **Locatie:** `frontend/src/auth.js`  
 **Probleem:** localStorage is toegankelijk via JavaScript (XSS-vector). Alternatieven zoals `httpOnly` cookies zijn robuuster.  
 **Waarom geaccepteerd:** Een `httpOnly` cookie-oplossing vereist significante refactor en introduceert CSRF-risico's. Acceptabel risico voor de huidige doelgroep (interne gebruikers).  
-**Voorbehoud:** de CSP beperkt XSS maar ten dele: `script-src` staat `'unsafe-inline'` en twee CDN-hosts toe (zie S13, #486).  
+**Voorbehoud:** de CSP beperkt XSS maar ten dele: `script-src` staat `'unsafe-inline'` toe (zie S13).  
 **Heroverwegen bij:** publieke toegang of gevoeliger data.
 
 ---
@@ -157,16 +157,15 @@ Die audit hook is geen kernelgrens (#443). De tools waren ook zonder het model a
 
 ---
 
-### S13 — CSP staat `'unsafe-inline'`, CDN-hosts en WebSocket naar elke host toe ❌ Open
+### S13 — CSP staat `'unsafe-inline'` en WebSocket naar elke host toe ⚠️ Deels opgelost
 
 **Locatie:** `server.py` — middleware `security_headers`  
-**Probleem:** `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.plot.ly` en `connect-src 'self' wss: ws:`.
-- `cdn.jsdelivr.net` wordt door de app niet gebruikt (geen verwijzing in `frontend/src` of `frontend/index.html`; alleen `mkdocs.yml` van de docs-site laadt er een script van).
-- `cdn.plot.ly` levert Plotly voor de HTML van rapporten en dashboards (`frontend/src/reportHtml.js`, `frontend/src/dashboardHtml.js`).
+**Probleem:** `script-src 'self' 'unsafe-inline'` en `connect-src 'self' wss: ws:`.
+- De CDN-hosts zijn weg (#486): Plotly voor de HTML van rapporten en dashboards komt van de eigen server (`frontend/src/plotlyBron.js`, als asset onder `/assets`), oude opgeslagen HTML met `cdn.plot.ly` wordt bij het tonen herschreven, en de download krijgt Plotly inline. `cdn.jsdelivr.net` werd door de app niet gebruikt. Een test (`tests/test_security_headers.py`) houdt `script-src` zonder derde partij.
 - `'unsafe-inline'` laat inline scripts toe, waardoor de CSP XSS maar ten dele afvangt.
 - `wss:` en `ws:` in `connect-src` staan WebSocket-verbindingen naar elke host toe. Een script dat toch draait, kan zo gegevens uit de browser, zoals het token in localStorage (S9), naar buiten sturen.
 
-**Vervolg:** #486 voor `script-src` (Plotly self-hosten, CDN-hosts uit de CSP; `'unsafe-inline'` apart beoordelen) en #506 voor `connect-src`.
+**Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"`) en #506 voor `connect-src`.
 
 ---
 

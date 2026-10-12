@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { buildDashboardHtml, workbookHtml, workbookFilename } from '../dashboardHtml'
+import { PLOTLY_URL } from '../plotlyBron'
 
 const FIGUUR = { data: [{ type: 'bar', x: ['2023'], y: [5], name: '</script><script>alert(1)</script>' }], layout: { title: { text: 'Instroom' } } }
 
@@ -23,8 +24,10 @@ describe('buildDashboardHtml (#254)', () => {
     expect(html).toContain('<table><tr><td>1</td></tr></table>')
   })
 
-  it('laadt Plotly één keer en tekent elke grafiek', () => {
-    expect(html.match(/cdn\.plot\.ly/g)).toHaveLength(1)
+  it('laadt Plotly één keer, van de eigen server, en tekent elke grafiek', () => {
+    expect(html.match(/<script src=/g)).toHaveLength(1)
+    expect(html).toContain(`<script src="${PLOTLY_URL}"></script>`)
+    expect(html).not.toContain('cdn.plot.ly')
     expect(html).toContain("Plotly.newPlot('fig0'")
   })
 

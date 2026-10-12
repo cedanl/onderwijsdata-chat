@@ -291,6 +291,12 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Rapporten en dashboards laden Plotly van de eigen server in plaats van `cdn.plot.ly` (#486, privacy M3/L1):
+  een kijker stuurt geen IP, user-agent of referrer meer naar een Amerikaanse CDN. De gebundelde plotly.js
+  wordt als asset uitgeleverd, nieuwe rapport-HTML verwijst daarnaar (één keer, in de head), al opgeslagen
+  rapporten met de CDN-URL worden bij het tonen herschreven, en de download haalt diezelfde Plotly op en zet
+  haar inline zoals al gebeurde. De CSP noemt geen CDN-hosts meer (`cdn.plot.ly`, `cdn.jsdelivr.net`); een
+  test houdt dat zo.
 - Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
   readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
   zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden

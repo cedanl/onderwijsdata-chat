@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { metEigenPlotly } from '../plotlyBron'
 import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../api'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
@@ -194,7 +195,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
                   Rapport wordt geladen…
                 </div>
               )}
-              <iframe className="wb-iframe" srcDoc={workbook.htmlContent} title={workbook.title} sandbox="allow-scripts"
+              <iframe className="wb-iframe" srcDoc={metEigenPlotly(workbook.htmlContent)} title={workbook.title} sandbox="allow-scripts"
                 onLoad={() => setFrameLoadedFor(workbook.id)} />
             </>
           )

@@ -70,7 +70,7 @@ Procesisolatie of getypeerde operaties in plaats van vrije scripts staat open in
 
 ### HTTP beveiligingsheaders
 
-- `Content-Security-Policy` — beperkte bronnen voor scripts/styles
+- `Content-Security-Policy` — alleen de eigen origin voor scripts en styles; Plotly voor rapporten en dashboards komt van de eigen server en niet van een CDN (#486)
 - `X-Frame-Options: DENY` — geen iframe embed
 - `Strict-Transport-Security` — HTTPS forceren
 - `X-Content-Type-Options: nosniff` — MIME-type sniffing voorkomen

@@ -1,5 +1,6 @@
 import { topMarginOfJson } from './figureMargin'
 import { scriptSafe } from './scriptSafe'
+import { plotlyScript } from './plotlyBron'
 
 export function escapeHtml(str) {
   return String(str)
@@ -24,13 +25,9 @@ function bullets(items) {
   return items.map(item => `<li>${escapeHtml(item)}</li>`).join('')
 }
 
-// Moet meelopen met de plotly.js-versie in package.json: de figure-JSON wordt
-// door de gebundelde versie gegenereerd en door deze CDN-versie gerenderd.
-export const PLOTLY_CDN_VERSION = '4.1.0'
-
+// Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek.
 function plotlyHtml(figureJson, id) {
-  return `<script src="https://cdn.plot.ly/plotly-${PLOTLY_CDN_VERSION}.min.js"></script>
-    <div class="card"><div id="${id}" style="height:360px"></div></div>
+  return `<div class="card"><div id="${id}" style="height:360px"></div></div>
     <script>(function(){var f=${scriptSafe(figureJson)},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('${id}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
 }
 
@@ -100,6 +97,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   return `<!DOCTYPE html><html lang="nl"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(s.title || 'Rapport')}</title>
+${(s.visualisaties || []).length ? plotlyScript() : ''}
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:#111827;background:#F3F4F6;min-height:100vh}

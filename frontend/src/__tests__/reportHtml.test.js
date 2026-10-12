@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { buildReportHtml } from '../reportHtml.js'
 import { buildDashboardHtml } from '../dashboardHtml.js'
+import { PLOTLY_URL } from '../plotlyBron'
 
 const fullSpec = {
   title: 'Instroom ROC van Flevoland 2018–2024',
@@ -67,6 +68,15 @@ describe('buildReportHtml', () => {
     expect(html).toContain('De instroom stijgt gestaag')
     expect(html).toContain('plotly')
     expect(html).toContain('rp0')
+  })
+
+  // #486: geen verzoek naar een derde partij bij het openen van een rapport.
+  it('laadt Plotly één keer in de head, van de eigen server, en alleen met een grafiek', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(html).not.toContain('cdn.plot.ly')
+    expect(html.match(/<script src=/g)).toHaveLength(1)
+    expect(html.indexOf(`<script src="${PLOTLY_URL}"></script>`)).toBeLessThan(html.indexOf('<style>'))
+    expect(buildReportHtml({ ...fullSpec, visualisaties: [] })).not.toContain('<script src=')
   })
 
   it('renders a Conclusie heading with markdown', () => {
