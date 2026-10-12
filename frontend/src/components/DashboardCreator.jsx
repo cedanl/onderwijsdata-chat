@@ -5,6 +5,7 @@ import KolomKop from './KolomKop'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { saveWorkbookWithSync } from '../workbooks'
 import { fetchSettingsConfig } from '../api'
+import { scrollGedrag } from '../hooks/useMediaQuery'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
 import ConfirmModal from './ConfirmModal'
@@ -93,7 +94,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
   }, [selectedModel, sendSettings])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    bottomRef.current?.scrollIntoView({ behavior: scrollGedrag() })
   }, [messages])
 
   // Show save when not streaming and there's any substantial assistant answer

@@ -23,6 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  delete window.matchMedia
 })
 
 // Helper: render a Wrapper that provides refs to ScrollToBottom
@@ -100,6 +101,48 @@ describe('ScrollToBottom', () => {
 
     const btn = container.querySelector('.scroll-to-bottom-btn')
     await act(() => btn.click())
+
+    expect(refs.sentinelRef.current.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
+
+    root.unmount()
+    document.body.removeChild(container)
+  })
+
+  it('scrolls without animation when the system asks for reduced motion (#517)', async () => {
+    window.matchMedia = vi.fn(query => ({ matches: query === '(prefers-reduced-motion: reduce)' }))
+    const { default: ScrollToBottom } = await import('../components/ScrollToBottom.jsx')
+    const { Wrapper, refs } = createWrapper(ScrollToBottom)
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(() => root.render(createElement(Wrapper)))
+    await act(() => observeCallback([{ isIntersecting: false }]))
+
+    refs.sentinelRef.current.scrollIntoView = vi.fn()
+    await act(() => container.querySelector('.scroll-to-bottom-btn').click())
+
+    expect(refs.sentinelRef.current.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto' })
+
+    root.unmount()
+    document.body.removeChild(container)
+  })
+
+  it('keeps the smooth scroll when matchMedia reports no reduced-motion preference', async () => {
+    window.matchMedia = vi.fn(() => ({ matches: false }))
+    const { default: ScrollToBottom } = await import('../components/ScrollToBottom.jsx')
+    const { Wrapper, refs } = createWrapper(ScrollToBottom)
+
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(() => root.render(createElement(Wrapper)))
+    await act(() => observeCallback([{ isIntersecting: false }]))
+
+    refs.sentinelRef.current.scrollIntoView = vi.fn()
+    await act(() => container.querySelector('.scroll-to-bottom-btn').click())
 
     expect(refs.sentinelRef.current.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
 
