@@ -281,7 +281,9 @@ async def generate(
 
     sourcing_error = _check_number_sourcing(result.text, result.tool_results)
     if sourcing_error:
-        logger.error("Number sourcing guard rejected response: %s", sourcing_error)
+        # De melding noemt de getallen uit de modeltekst: op ERROR een kenmerk, de tekst op DEBUG (#502).
+        logger.error("Number sourcing guard rejected response: %s", tekst_kenmerk(sourcing_error, "melding_"))
+        logger.debug("Number sourcing guard rejected response: %s", sourcing_error)
         spec.narrative = f"**Fout in dashboard:** {sourcing_error}"
         spec.kpis = []
 
@@ -341,7 +343,8 @@ def _collect_kpi(computed: dict[str, kpi_bron.Kpi], result: str) -> None:
         logger.warning("compute_kpi returned invalid JSON: %s", tekst_kenmerk(result))
         return
     if isinstance(payload, dict) and "fout" in payload:
-        logger.warning("compute_kpi error: %s", payload["fout"])
+        logger.warning("compute_kpi error: %s", tekst_kenmerk(str(payload["fout"]), "fout_"))
+        logger.debug("compute_kpi error: %s", payload["fout"])
     elif (kpi := kpi_bron.kpi(payload)) is not None:
         computed[kpi_bron.sleutel(kpi.waarde)] = kpi
 
