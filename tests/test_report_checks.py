@@ -2,6 +2,7 @@
 en is geen lege schil (#189)."""
 
 import json
+from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -19,7 +20,7 @@ _HU_RESULT = json.dumps(
 _HU_FIGURE = pio.to_json(go.Figure(go.Scatter(x=[2021, 2022, 2023, 2024, 2025], y=[28355, 27904, 27441, 27135, 26370])))
 
 
-_VOLLEDIG = {
+_VOLLEDIG: dict[str, Any] = {
     "title": "Instroom HU",
     "onderzoeksvraag": "Hoeveel voltijdstudenten heeft de HU?",
     "beantwoordt": ["Voltijdstudenten HU per studiejaar"],

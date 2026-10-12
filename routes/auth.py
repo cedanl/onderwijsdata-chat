@@ -134,8 +134,9 @@ if is_oidc_configured():
 def logout(authorization: Annotated[str | None, Header()] = None) -> None:
     """Trekt het token server-side in (#479).
 
-    Altijd 204, ook zonder, met een ongeldig of met een al ingetrokken token: uitloggen
-    mag de client nooit in een 401-lus brengen. Zonder login raakt het de database niet.
+    204 ook zonder, met een ongeldig of met een al ingetrokken token: uitloggen mag de
+    client nooit in een 401-lus brengen. Zonder login raakt het de database niet.
+    Een databasestoring geeft wel 500: het token is dan mogelijk niet ingetrokken.
     """
     revoke_token(bearer_token(authorization))
 

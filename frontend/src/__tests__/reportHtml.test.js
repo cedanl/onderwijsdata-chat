@@ -174,3 +174,35 @@ describe('figure JSON in an inline script (#474)', () => {
     expect(seen.plots[0][2].title).toBe(TITLE)
   })
 })
+
+describe('manifest (#345)', () => {
+  const manifest = {
+    model: 'anthropic/claude-sonnet-4-6',
+    model_versie: 'claude-sonnet-4-6-20250929',
+    sampling: { seed: 42, seed_toegepast: false, temperature: 0, temperature_toegepast: true },
+    prompt_hash: 'abc123def456',
+    catalogus: 'bd4942907ddd',
+    app: '2.2.0',
+    data_as_of: [
+      { bron: 'cbs', dataset: '85423NED', laatste_update: '2026-09-15', periodestatus: ['Voorlopig'] },
+      { bron: 'duo', dataset: 'p01hoinges', herladen_op: '11-10-2026' },
+    ],
+    gemaakt_op: '12-10-2026',
+  }
+
+  it('toont de verantwoording compact in rapport en export', () => {
+    const html = buildReportHtml({ ...fullSpec, manifest })
+    expect(html).toContain('Verantwoording:')
+    expect(html).toContain('anthropic/claude-sonnet-4-6 (claude-sonnet-4-6-20250929)')
+    expect(html).toContain('seed niet toegepast')
+    expect(html).toContain('prompt abc123def456')
+    expect(html).toContain('catalogus bd4942907ddd')
+    expect(html).toContain('CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig)')
+    expect(html).toContain('DUO p01hoinges (herladen 11-10-2026)')
+  })
+
+  it('zonder manifest geen verantwoordingsblok', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(html).not.toContain('Verantwoording:')
+  })
+})
