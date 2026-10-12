@@ -12,7 +12,17 @@ from agent import recepten
 from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
-from agent.replay import replay_dashboard_figures, replay_data_calls
+from agent.figuurverschil import figuur_verschillen
+from agent.replay import (
+    MODE_REPRODUCEER,
+    MODE_VERVERS,
+    MODES,
+    anker_verschillen,
+    ankers_van_recipe,
+    replay_dashboard_figures,
+    replay_data_calls,
+    reproduceer_figures,
+)
 from agent.report import RapportGeannuleerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
@@ -160,9 +170,13 @@ class RefreshError(Exception):
 
 
 async def _do_refresh(
-    recipe: list[dict], figure_recipes: list[dict], current_spec: dict
-) -> tuple[DashboardSpec, str | None]:
-    """Shared refresh logic. Returns (updated_spec, info_message_or_None).
+    recipe: list[dict], figure_recipes: list[dict], current_spec: dict, mode: str = MODE_VERVERS
+) -> tuple[DashboardSpec, str | None, list[str]]:
+    """De twee herhaalmodi van #346. Returns (updated_spec, info_message_or_None, veranderingen).
+
+    - ververs: opnieuw ophalen bij de bron; `veranderingen` benoemt wat er
+      verschilt met het bewaarde dashboard (waarden, bron-ankers).
+    - reproduceer: opnieuw renderen uit de data in de store, zonder netwerk.
 
     Raises RefreshError if refresh fails entirely.
     """
@@ -170,12 +184,27 @@ async def _do_refresh(
         raise RefreshError("Dit dashboard kan niet ververst worden.")
 
     spec = DashboardSpec.from_dict(current_spec)
+
+    if mode == MODE_REPRODUCEER:
+        return await _reproduceer(spec, figure_recipes)
+
     info: str | None = None
+    veranderingen: list[str] = []
 
     if figure_recipes:
+        oude_figures, oude_ankers = list(spec.figures_json), dict(spec.ankers)
         fresh_figures = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
         if fresh_figures:
             spec.figures_json = fresh_figures
+            spec.ankers = ankers_van_recipe(recipe)
+            veranderingen = anker_verschillen(oude_ankers, spec.ankers) + figuur_verschillen(
+                oude_figures, fresh_figures
+            )
+            info = (
+                f"Data ververst: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
+                if veranderingen
+                else "Data ververst; geen wijzigingen ten opzichte van het bewaarde dashboard."
+            )
         else:
             info = "Grafieken konden niet bijgewerkt worden, bestaande data behouden."
     elif recipe:
@@ -186,18 +215,46 @@ async def _do_refresh(
             raise RefreshError("Geen van de datasets kon herladen worden. Probeer het later opnieuw.")
         info = "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards."
 
-    return spec, info
+    return spec, info, veranderingen
+
+
+async def _reproduceer(spec: DashboardSpec, figure_recipes: list[dict]) -> tuple[DashboardSpec, str, list[str]]:
+    """Reproduceer de figuren uit de opgeslagen data, zonder netwerk (#346)."""
+    if not figure_recipes:
+        raise RefreshError("Dit dashboard heeft geen reproduceerbaar recept; alleen verversen is mogelijk.")
+    repro = await asyncio.to_thread(reproduceer_figures, figure_recipes)
+    if repro.ontbrekend:
+        raise RefreshError(
+            "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
+            "server. Ververs haalt haar opnieuw op bij de bron."
+        )
+    identiek = repro.figures_json == spec.figures_json
+    spec.figures_json = repro.figures_json
+    info = (
+        "Gereproduceerd uit de opgeslagen data; identiek aan het bewaarde dashboard."
+        if identiek
+        else "Gereproduceerd uit de opgeslagen data; de weergave wijkt af van de bewaarde grafieken."
+    )
+    return spec, info, []
 
 
 async def _refresh_dashboard(
-    recipe: list[dict], figure_recipes: list[dict], current_spec: dict, session: dict, emit, model: str | None
+    recipe: list[dict],
+    figure_recipes: list[dict],
+    current_spec: dict,
+    session: dict,
+    emit,
+    model: str | None,
+    mode: str = MODE_VERVERS,
 ) -> None:
     await emit({"type": "dashboard_generating"})
     try:
-        spec, info = await _do_refresh(recipe, figure_recipes, current_spec)
+        spec, info, veranderingen = await _do_refresh(recipe, figure_recipes, current_spec, mode)
         if info:
             level = "warning" if "niet" in info else "info"
             await emit({"type": "toast", "message": info, "level": level})
+        for verandering in veranderingen[:3]:
+            await emit({"type": "toast", "message": verandering, "level": "info"})
         await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
     except RefreshError as e:
         await emit({"type": "error", "message": str(e)})
@@ -220,10 +277,13 @@ async def refresh_dashboard_endpoint(request: Request):
     recipe = body.get("recipe") or []
     figure_recipes = body.get("figure_recipes") or []
     current_spec = body.get("spec") or {}
+    mode = body.get("mode") or MODE_VERVERS
+    if mode not in MODES:
+        return JSONResponse({"error": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."}, status_code=400)
 
     try:
-        spec, _ = await _do_refresh(recipe, figure_recipes, current_spec)
-        return {"spec": spec.to_dict()}
+        spec, info, veranderingen = await _do_refresh(recipe, figure_recipes, current_spec, mode)
+        return {"spec": spec.to_dict(), "mode": mode, "melding": info, "veranderingen": veranderingen}
     except RefreshError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -418,8 +478,12 @@ async def _handle_refresh_dashboard(
     recipe = msg.get("recipe") or []
     figure_recipes = msg.get("figure_recipes") or []
     current_spec = msg.get("spec") or {}
+    mode = msg.get("mode") or MODE_VERVERS
+    if mode not in MODES:
+        await emit({"type": "error", "message": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."})
+        return current_task
     model = session["chat_settings"].get("model") or None
-    return asyncio.create_task(_refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model))
+    return asyncio.create_task(_refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model, mode))
 
 
 Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]

@@ -13,8 +13,9 @@ const BUILTIN_COMPONENTS = {
 }
 
 export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false }) {
-  const [refreshing, setRefreshing] = useState(false)
+  const [refreshing, setRefreshing] = useState(false) // false of de lopende modus: 'ververs' | 'reproduceer'
   const [refreshError, setRefreshError] = useState(null)
+  const [refreshResult, setRefreshResult] = useState(null) // { melding, veranderingen } van de laatste herhaling
   const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -40,16 +41,21 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
     return () => clearTimeout(timer)
   }, [feedbackThanks])
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(async (mode = 'ververs') => {
     const spec = workbook?.dashboardSpec
     if (refreshing || (!spec?.figure_recipes?.length && !spec?.recipe?.length)) return
-    setRefreshing(true)
+    setRefreshing(mode)
     setRefreshError(null)
+    setRefreshResult(null)
     try {
-      const { spec: freshSpec } = await refreshDashboardApi(spec, { instelling })
-      onUpdate(await updateWorkbook(workbook, { dashboardSpec: freshSpec }))
+      const { spec: freshSpec, melding, veranderingen } = await refreshDashboardApi(spec, { instelling }, mode)
+      setRefreshResult({ melding, veranderingen: veranderingen || [] })
+      if (mode === 'ververs') {
+        // Reproduceren verandert de data niet; alleen een verversing is het bewaren waard.
+        onUpdate(await updateWorkbook(workbook, { dashboardSpec: freshSpec }))
+      }
     } catch (err) {
-      setRefreshError(err.message || 'Verversen mislukt')
+      setRefreshError(err.message || 'Herhalen mislukt')
     } finally {
       setRefreshing(false)
     }
@@ -166,7 +172,17 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
                 refreshing={refreshing}
               />
               {refreshError && (
-                <div style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
+                <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
+              )}
+              {refreshResult && (
+                <div role="status" style={{ padding: '8px 24px', fontSize: '.85rem' }}>
+                  <div>{refreshResult.melding}</div>
+                  {refreshResult.veranderingen.length > 0 && (
+                    <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                      {refreshResult.veranderingen.map((v) => <li key={v}>{v}</li>)}
+                    </ul>
+                  )}
+                </div>
               )}
             </>
           )

@@ -19,7 +19,7 @@ import plotly.io as pio
 
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
-from agent.replay import REPLAYABLE_TOOLS
+from agent.replay import REPLAYABLE_TOOLS, ankers_van_recipe
 from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
 from core.config import MODEL
@@ -60,6 +60,9 @@ class DashboardSpec:
     sources: list[str] = field(default_factory=list)
     recipe: list[dict] = field(default_factory=list)
     figure_recipes: list[dict] = field(default_factory=list)
+    # Per CBS-dataset de laatste-update-datum bij het maken: het anker waarmee
+    # ververs vertelt dat de bron zelf is bijgewerkt (#346).
+    ankers: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -75,6 +78,7 @@ class DashboardSpec:
             sources=data.get("sources") or [],
             recipe=data.get("recipe") or [],
             figure_recipes=data.get("figure_recipes") or [],
+            ankers=data.get("ankers") or {},
         )
 
 
@@ -412,6 +416,7 @@ def _parse_spec_from_response(
         sources=sources,
         recipe=recipe,
         figure_recipes=figure_recipes,
+        ankers=ankers_van_recipe(recipe),
     )
 
 
