@@ -278,6 +278,13 @@ Haalt metagegevens van een specifieke dataset op (kolommen, dimensies, beschrijv
 
 **Gebruik:** Verken beschikbare dimensies/filters voordat je data ophaalt.
 
+Voor een CBS-tabel komen de velden uit het contract van de CBS-package (`tools/cbs_meta.py`, #383, #370):
+`populatie` (bronpassages), `sectoren` (mbo/hbo/wo in het profiel), `teldefinitie`, `methodiek` (afronding,
+additiviteit, definitiebreuken, publicatiestatus), `perioden` (frequentie, eerste en laatste periode, en per
+periodecode de titel met de CBS-status zolang die niet definitief is) en `geografie` (niveaus, dekking). Wat het
+contract niet vastlegt, staat er niet in. Het contract-ID `cbs:85423NED`, `cbs_85423ned` en `85423NED` wijzen in
+`dataset_details`, `get_cbs_data` en `get_cbs_dimension` naar dezelfde tabel (`tools/catalog.py::cbs_bron_id`: zonder voorvoegsel, in de spelling van de catalogus).
+
 ---
 
 ## dataset_counts

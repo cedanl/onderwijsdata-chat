@@ -27,9 +27,35 @@ def _pakket(naam: str) -> dict:
     return {"pakket": naam, "versie": dist.version, "commit": vcs.get("commit_id")}
 
 
+def _cbs_manifest() -> dict | None:
+    """Welke CBS-catalogus de package werkelijk levert (#370): revisie, consistentie en versheid.
+
+    Uit `catalog_manifest()` van de package, volledig offline. None bij een package zonder
+    manifest of een artefact dat niet te lezen is: /version blijft dan werken.
+    """
+    try:
+        from onderwijsdata import catalog_manifest  # hier en niet bovenaan: zie arbeidsmarktversie
+
+        manifest = catalog_manifest()
+    except Exception:
+        return None
+    bouw = manifest.get("bouw") or {}
+    return {
+        "catalogusrevisie": manifest.get("catalogusrevisie"),
+        "consistent": manifest.get("consistent"),
+        "aantal": manifest.get("aantal"),
+        "laatste_succesvolle_controle": bouw.get("laatste_succesvolle_controle"),
+        "versheid": bouw.get("versheid"),
+    }
+
+
 @cache
 def catalogusversie() -> list[dict]:
-    return [_pakket(naam) for naam in PAKKETTEN]
+    pakketten = [_pakket(naam) for naam in PAKKETTEN]
+    for pakket in pakketten:
+        if pakket["pakket"] == "onderwijsdata":
+            pakket["manifest"] = _cbs_manifest()
+    return pakketten
 
 
 def _arbeidsmarktbron(bron: str, dataset: str, records: list[dict], sleutel: str) -> dict:

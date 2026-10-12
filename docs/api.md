@@ -11,7 +11,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `GET` | `/health` | Gezondheidscontrole — retourneert `{"status": "ok"}` |
 | `GET` | `/ready` | Readiness-check (o.a. database); gebruikt door Kubernetes |
 | `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
-| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download |
+| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`; bij `onderwijsdata` onder `manifest` ook de meegebouwde CBS-catalogus: `catalogusrevisie`, `consistent`, `aantal`, `laatste_succesvolle_controle` en `versheid`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download |
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` en `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk) |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
