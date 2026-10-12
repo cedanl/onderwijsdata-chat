@@ -3,10 +3,8 @@ import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
-import { createHeartbeat, watchNetwork } from '../socketHealth'
+import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
 
-const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
-const MAX_RETRIES = 4
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
@@ -49,8 +47,6 @@ export function useChat() {
   const modelRef = useRef(null)
   const idRef = useRef(0)
   const manualCloseRef = useRef(false)
-  const retryCountRef = useRef(0)
-  const retryTimeoutRef = useRef(null)
   const pendingHistoryRef = useRef(null)
   const busyRef = useRef(false)
   const lastSentRef = useRef(null)
@@ -111,7 +107,6 @@ export function useChat() {
 
   useEffect(() => {
     manualCloseRef.current = false
-    retryCountRef.current = 0
 
     // Resolve the target id now: React runs the state updater later, by which
     // time message_end may already have cleared currentMsgRef.
@@ -313,21 +308,55 @@ export function useChat() {
 
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
     // until then the user saw a counting pill and no melding (#489).
-    const heartbeat = createHeartbeat(() => wsRef.current)
+    const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
+    const retry = createRetry(connect)
+
+    // One live socket at a time (#522). A real close() is asynchronous, so the onclose of a
+    // socket that was already replaced can come after its successor opened. Only the socket
+    // in wsRef counts, and only until its loss has been handled.
+    let opened = false
+    let ended = false
+    const isCurrent = (ws) => wsRef.current === ws && !ended
+
+    // Offline, heartbeat death or onclose, whichever comes first: the server session is gone
+    // with its socket, and so is the answer it was writing.
+    function connectionLost(ws, code) {
+      if (!isCurrent(ws)) return
+      ended = true
+      heartbeat.stop()
+      flushDeltas()
+      setConnected(false)
+      endInterruptedTurn()
+      if (reportingRef.current) {
+        failReport('De verbinding viel weg tijdens het maken van het rapport. Probeer het opnieuw.')
+      }
+
+      if (code === 4001) {
+        endSession()
+        return
+      }
+
+      if (manualCloseRef.current) return
+      // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
+      if (!opened) checkSession()
+      retry.schedule()
+    }
 
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
-      let opened = false
+      opened = false
+      ended = false
 
       ws.onopen = () => {
+        if (!isCurrent(ws)) return
         opened = true
         setConnected(true)
         heartbeat.start()
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
         setResetting(false)
-        retryCountRef.current = 0
+        retry.reset()
         reportingRef.current = false
         reportAbandonedRef.current = false
         setReportBusy(false)
@@ -344,34 +373,10 @@ export function useChat() {
         }
       }
 
-      ws.onclose = (e) => {
-        heartbeat.stop()
-        flushDeltas()
-        setConnected(false)
-        endInterruptedTurn()
-        if (reportingRef.current) {
-          failReport('De verbinding viel weg tijdens het maken van het rapport. Probeer het opnieuw.')
-        }
-
-        if (e.code === 4001) {
-          endSession()
-          return
-        }
-
-        if (manualCloseRef.current) return
-        // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
-        if (!opened) checkSession()
-
-        if (retryCountRef.current < MAX_RETRIES) {
-          const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
-          retryCountRef.current += 1
-          retryTimeoutRef.current = setTimeout(() => {
-            if (!manualCloseRef.current) connect()
-          }, delay)
-        }
-      }
+      ws.onclose = (e) => connectionLost(ws, e.code)
 
       ws.onmessage = (e) => {
+        if (!isCurrent(ws)) return
         heartbeat.alive()
         const event = JSON.parse(e.data)
         // Alles wat geen delta is, ziet eerst de tekst die al binnen was (#510).
@@ -395,26 +400,14 @@ export function useChat() {
 
     connect()
 
-    const detachNetwork = watchNetwork(
-      () => {
-        // Offline: the melding may not wait for a socket error. Closing ends the
-        // interrupted turn with uitleg and starts the reconnect loop.
-        setConnected(false)
-        wsRef.current?.close()
-      },
-      () => {
-        clearTimeout(retryTimeoutRef.current)
-        retryCountRef.current = 0
-        const state = wsRef.current?.readyState
-        if (state !== WebSocket.OPEN && state !== WebSocket.CONNECTING) connect()
-      },
-    )
+    // Offline: the melding may not wait for a socket error (#489).
+    const detachNetwork = watchNetwork({ getWs: () => wsRef.current, lost: connectionLost, retry, connect })
 
     return () => {
       manualCloseRef.current = true
       detachNetwork()
       heartbeat.stop()
-      clearTimeout(retryTimeoutRef.current)
+      retry.reset()
       cancelDeltaFrame()
       wsRef.current?.close()
     }

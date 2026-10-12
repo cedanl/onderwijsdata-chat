@@ -2,10 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 import { chatSocket, checkSession, getToken, sessionEndedSince } from '../auth'
 import { finishStep } from '../toolSteps'
-import { createHeartbeat, watchNetwork } from '../socketHealth'
-
-const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
-const MAX_RETRIES = 4
+import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
 
 function loadSessionMessages() {
   try { return JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES) || '[]') } catch { return [] }
@@ -26,8 +23,6 @@ export default function useDashboardChat() {
   const pendingSettingsRef = useRef(null)
   const idRef = useRef(0)
   const manualCloseRef = useRef(false)
-  const retryCountRef = useRef(0)
-  const retryTimeoutRef = useRef(null)
   const nextId = () => ++idRef.current
   // Logout and session end clear the token before they wipe this chat from storage. A save
   // React runs after that (still pending from the last streamed token) must not write the
@@ -46,7 +41,6 @@ export default function useDashboardChat() {
 
   useEffect(() => {
     manualCloseRef.current = false
-    retryCountRef.current = 0
 
     function updateCurrentMsg(updater) {
       setMessages(prev => prev.map(m =>
@@ -125,51 +119,63 @@ export default function useDashboardChat() {
 
     // Same gap as the chat (#489): a silently dead connection fires onclose only
     // after the TCP timeout, so the melding never came.
-    const heartbeat = createHeartbeat(() => wsRef.current)
+    const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
+    const retry = createRetry(connect)
+
+    // One live socket at a time, as in the chat (#522): a replaced socket is inert, and the
+    // loss of the current one is handled once, whichever signal comes first.
+    let opened = false
+    let ended = false
+    const isCurrent = (ws) => wsRef.current === ws && !ended
+
+    // The open answer ends where it was: its running steps count as done.
+    function endOpenMessage() {
+      const id = currentIdRef.current
+      if (!id) return
+      setMessages(prev => prev.map(m =>
+        m.id === id
+          ? { ...m, done: true, tools: (m.tools || []).map(t => t.done ? t : { ...t, done: true }) }
+          : m
+      ))
+      currentIdRef.current = null
+    }
+
+    function connectionLost(ws) {
+      if (!isCurrent(ws)) return
+      ended = true
+      heartbeat.stop()
+      setConnected(false)
+      setBusy(false)
+      endOpenMessage()
+
+      if (manualCloseRef.current) return
+      // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
+      if (!opened) checkSession()
+      retry.schedule()
+    }
 
     function connect() {
       const ws = chatSocket()
       wsRef.current = ws
-      let opened = false
+      opened = false
+      ended = false
 
       ws.onopen = () => {
+        if (!isCurrent(ws)) return
         opened = true
         setConnected(true)
         heartbeat.start()
-        retryCountRef.current = 0
+        retry.reset()
         if (pendingSettingsRef.current) {
           ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
           pendingSettingsRef.current = null
         }
       }
 
-      ws.onclose = () => {
-        heartbeat.stop()
-        setConnected(false)
-        setBusy(false)
-        if (currentIdRef.current) {
-          setMessages(prev => prev.map(m =>
-            m.id === currentIdRef.current
-              ? { ...m, done: true, tools: (m.tools || []).map(t => t.done ? t : { ...t, done: true }) }
-              : m
-          ))
-          currentIdRef.current = null
-        }
-
-        if (manualCloseRef.current) return
-        // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
-        if (!opened) checkSession()
-
-        if (retryCountRef.current < MAX_RETRIES) {
-          const delay = BACKOFF_DELAYS[retryCountRef.current] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
-          retryCountRef.current += 1
-          retryTimeoutRef.current = setTimeout(() => {
-            if (!manualCloseRef.current) connect()
-          }, delay)
-        }
-      }
+      ws.onclose = () => connectionLost(ws)
 
       ws.onmessage = (e) => {
+        if (!isCurrent(ws)) return
         heartbeat.alive()
         const ev = JSON.parse(e.data)
         const handler = messageHandlers[ev.type]
@@ -179,24 +185,13 @@ export default function useDashboardChat() {
 
     connect()
 
-    const detachNetwork = watchNetwork(
-      () => {
-        setConnected(false)
-        wsRef.current?.close()
-      },
-      () => {
-        clearTimeout(retryTimeoutRef.current)
-        retryCountRef.current = 0
-        const state = wsRef.current?.readyState
-        if (state !== WebSocket.OPEN && state !== WebSocket.CONNECTING) connect()
-      },
-    )
+    const detachNetwork = watchNetwork({ getWs: () => wsRef.current, lost: connectionLost, retry, connect })
 
     return () => {
       manualCloseRef.current = true
       detachNetwork()
       heartbeat.stop()
-      clearTimeout(retryTimeoutRef.current)
+      retry.reset()
       wsRef.current?.close()
     }
   }, [])
