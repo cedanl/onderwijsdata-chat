@@ -33,15 +33,33 @@ def jaarnoten(kolommen) -> list[str]:
     return [noot for kolom, noot in GEEN_SCHOOLJAAR.items() if kolom in kolommen]
 
 
+def _startjaar_uit_paar(start: str, eind: str) -> int | None:
+    """Startjaar als `start` en `eind` samen één schooljaar vormen (2024 + 25, 2024 + 2025)."""
+    begin = int(start)
+    volgend = begin + 1 if len(eind) == 4 else (begin + 1) % 100
+    return begin if int(eind) == volgend else None
+
+
 def gevraagde_schooljaren(tekst: str) -> set[int]:
     """Startjaren van de schooljaren die de tekst eenduidig noemt."""
     jaren: set[int] = set()
     for start, eind in _SCHOOLJAAR.findall(tekst):
-        begin = int(start)
-        volgend = begin + 1 if len(eind) == 4 else (begin + 1) % 100
-        if int(eind) == volgend:
-            jaren.add(begin)
+        if (jaar := _startjaar_uit_paar(start, eind)) is not None:
+            jaren.add(jaar)
     return jaren
+
+
+def startjaar_van_spelling(waarde) -> int | None:
+    """Startjaar als `waarde` in zijn geheel één schooljaar spelt (2024/25, 2024/'25, 2024-2025, 2024SJ00).
+
+    None voor al het andere, ook een kaal jaartal: dat kan net zo goed een kalenderjaar zijn.
+    """
+    tekst = str(waarde).strip()
+    if match := _CBS_SCHOOLJAAR.match(tekst):
+        return int(match.group(1))
+    if match := _SCHOOLJAAR.fullmatch(tekst):
+        return _startjaar_uit_paar(match.group(1), match.group(2))
+    return None
 
 
 def jaarbereiken(tekst: str) -> set[int]:

@@ -512,3 +512,55 @@ def test_evenveel_cellen_als_rijen_geeft_geen_extra_noot():
     result = json.loads(query_data("duo:test:geslacht", group_by=["GESLACHT"], aggregate={"AANTAL": "sum"}))
 
     assert not any("cellen in" in noot and "rijen" in noot for noot in result["databewerking"])
+
+
+# --- canonieke selectie (#342) -------------------------------------------------
+
+
+def test_spellingsvarianten_geven_een_data_key():
+    """Dezelfde selectie in een andere spelling is dezelfde afgeleide key: één load, één snippet."""
+    _put("test:df", [{"GESLACHT": "Man", "AANTAL": "1"}, {"GESLACHT": "Vrouw", "AANTAL": "2"}])
+
+    r1 = json.loads(query_data("test:df", filters={"GESLACHT": "man"}))
+    r2 = json.loads(query_data("test:df", filters={"GESLACHT__in": ["Man"]}))
+
+    assert r1["data_key"] == r2["data_key"]
+    assert r1["rijen"] == r2["rijen"]
+
+
+def test_periodespelling_wordt_gerepareerd_en_deelt_de_key():
+    """2023/24 en 2023 zijn hetzelfde studiejaar: één selectie, één key (#342)."""
+    _put("duo:test:jaren", [{"STUDIEJAAR": 2022, "AANTAL": 10}, {"STUDIEJAAR": 2023, "AANTAL": 20}])
+
+    r1 = json.loads(query_data("duo:test:jaren", filters={"STUDIEJAAR": 2023}))
+    r2 = json.loads(query_data("duo:test:jaren", filters={"STUDIEJAAR__in": ["2023/24"]}))
+
+    assert r1["rijen"] == r2["rijen"]
+    assert r1["data_key"] == r2["data_key"]
+    assert r1["rijen"][0]["AANTAL"] == 20
+
+
+def test_periode_buiten_vocabulaire_geweigerd_met_toegestane_waarden():
+    """Een schooljaar dat niet in een volledige selectie staat, is niet te repareren: weigeren
+    met de waarden die er wél staan (#342)."""
+    _put("duo:test:jaren", [{"STUDIEJAAR": 2022, "AANTAL": 10}, {"STUDIEJAAR": 2023, "AANTAL": 20}])
+
+    result = query_data("duo:test:jaren", filters={"STUDIEJAAR": "2020/21"})
+
+    assert "2020/21" in result
+    assert "2022" in result and "2023" in result
+    assert "rijen" not in result
+
+
+def test_legacy_selectie_key_blijft_als_alias_werken():
+    """Bewaarde recepten en dashboards verwijzen naar keys van vóór #342; die blijven dezelfde data geven."""
+    import hashlib
+
+    _put("test:df", [{"A": "1"}, {"A": "2"}])
+
+    r = json.loads(query_data("test:df", filters={"A": "1"}))
+
+    sig = json.dumps({"f": {"A": "1"}, "c": None, "g": None, "a": None}, sort_keys=True, default=str)
+    legacy = f"test:df:{hashlib.md5(sig.encode()).hexdigest()[:8]}"
+    assert store.get(legacy) is store.get(r["data_key"])
+    assert store.meta(legacy) is store.meta(r["data_key"])

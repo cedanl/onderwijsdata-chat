@@ -1,5 +1,4 @@
 import difflib
-import hashlib
 import json
 import logging
 from functools import lru_cache
@@ -12,7 +11,7 @@ from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import cbs_afronding, fouten, periode, scopeprofiel, store
+from . import canoniek, cbs_afronding, fouten, periode, scopeprofiel, store
 from .catalog import bron_titel, catalogus_laatste_update, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
@@ -308,8 +307,10 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
     loaded_defs = _load_definitions(dataset_id)
     col_defs = loaded_defs or {}
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
-    filter_hash = hashlib.md5(json.dumps(filters or {}, sort_keys=True).encode()).hexdigest()[:8]
-    key = f"cbs:{dataset_id}:{filter_hash}" if filters else f"cbs:{dataset_id}"
+    # De key is de digest van de canonieke filters (#342): dezelfde selectie in een andere
+    # spelling (spatiëring, $top op de default) krijgt dezelfde key.
+    filter_digest = canoniek.cbs_digest(filters)
+    key = f"cbs:{dataset_id}:{filter_digest}" if filter_digest else f"cbs:{dataset_id}"
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
     eenheid, afronding_bekend = _afronding(dataset_id)
@@ -327,6 +328,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             kolomtitels=kolomtitels(col_defs, schooljaren),
         ),
     )
+    store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen

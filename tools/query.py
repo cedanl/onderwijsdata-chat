@@ -7,7 +7,6 @@ sentinelcellen die met de selectie meereizen (#171).
 """
 
 import difflib
-import hashlib
 import json
 from dataclasses import dataclass, field
 
@@ -15,7 +14,19 @@ import pandas as pd
 
 from core.config import DUO_ROW_LIMIT
 
-from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, instelling, kleine_aantallen, periode, store
+from . import (
+    afhankelijkheid,
+    canoniek,
+    cbs_afronding,
+    dekking,
+    duo,
+    fouten,
+    instelling,
+    kleine_aantallen,
+    periode,
+    store,
+)
+from .canoniek import parse_filter_key
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
@@ -50,14 +61,6 @@ def _stap(filters, columns, group_by, aggregate) -> str:
     )
 
 
-def _parse_filter_key(key: str) -> tuple[str, str]:
-    if "__" in key:
-        col, op = key.rsplit("__", 1)
-    else:
-        col, op = key, "eq"
-    return col, op
-
-
 def _resource_hint(known, col: str) -> str:
     """Wijs bij een kolom die in deze DUO-resource ontbreekt naar de resource die hem wel noemt (#173)."""
     if not known or known.bron != "duo":
@@ -76,7 +79,7 @@ def _resource_hint(known, col: str) -> str:
 
 def _apply_filters(df, filters: dict, known=None):
     for key, val in filters.items():
-        col, op = _parse_filter_key(key)
+        col, op = parse_filter_key(key)
 
         if col not in df.columns:
             return (
@@ -153,7 +156,7 @@ def _filter_suggesties(origineel, filters: dict) -> dict:
     """
     hints: dict = {}
     for key, val in filters.items():
-        col, op = _parse_filter_key(key)
+        col, op = parse_filter_key(key)
         if col not in origineel.columns:
             continue
         kolom = origineel[col]
@@ -303,11 +306,15 @@ def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggreg
 
 
 def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate, gedekt: dict) -> str:
-    """De afgeleide key van een selectie; de key zelf als er niets gekozen is."""
+    """De afgeleide key van een selectie; de key zelf als er niets gekozen is.
+
+    De key is de digest van het canonieke plan (#342): dezelfde selectie in een andere
+    spelling krijgt dezelfde key. De oude md5-key blijft als alias werken voor bewaarde
+    recepten en dashboards.
+    """
     if not (filters or columns or group_by):
         return data_key
-    sig = json.dumps({"f": filters, "c": columns, "g": group_by, "a": aggregate}, sort_keys=True, default=str)
-    result_key = f"{data_key}:{hashlib.md5(sig.encode()).hexdigest()[:8]}"
+    result_key = f"{data_key}:{canoniek.selectie_digest(filters, columns, group_by, aggregate)}"
     store.derive(
         data_key,
         result_key,
@@ -319,6 +326,7 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
     # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
     # van de selectie reizen wel mee: het totaal blijft een ondergrens.
     duo.record_sentinel_cells(result_key, sel.cells, groepen=bool(group_by or aggregate))
+    store.alias(canoniek.legacy_selectie_key(data_key, filters, columns, group_by, aggregate), result_key)
     return result_key
 
 
@@ -376,12 +384,17 @@ def query_data(
     if df is None:
         return fouten.onbekende_key(data_key)
 
+    known = store.meta(data_key)
     complete = store.volledig(data_key)
     if not complete and (group_by or aggregate):
         return store.ONVOLLEDIG
 
     if filters:
-        gefilterd, err = _apply_filters(df, filters, store.meta(data_key))
+        # Schooljaarspelling eerst naar de spelling van de data; buiten het vocabulaire weigeren (#342).
+        filters, fout = canoniek.herstel_perioden(filters, df, known.periodekolom if known else None, complete)
+        if fout:
+            return fout
+        gefilterd, err = _apply_filters(df, filters, known)
         if err:
             return err
         if len(gefilterd) == 0:
@@ -389,7 +402,6 @@ def query_data(
         df = gefilterd
 
     # Wat de selectie bevat, vóór kolomkeuze en aggregatie (#187, #143).
-    known = store.meta(data_key)
     gedekt = dekking.van(df, known)
     labels = _instellingslabels(df, known, gedekt)
     if err := _kolomfout(data_key, df, columns, group_by, aggregate):

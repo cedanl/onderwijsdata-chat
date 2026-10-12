@@ -509,3 +509,53 @@ def test_rio_load_is_matched_on_its_resource_argument(monkeypatch, caplog):
         _run()
 
     assert any("afwijking=nee" in r.message for r in caplog.records)
+
+
+def test_dezelfde_selectie_in_andere_spelling_draait_een_keer(monkeypatch):
+    """#342: de identiteit van een aanroep is het canonieke plan, niet de letterlijke modeljson."""
+    a = '{"data_key": "duo:x:1", "filters": {"GESLACHT": "man"}}'
+    b = '{"filters": {"GESLACHT__in": ["Man"]}, "data_key": "DUO:x:1"}'
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data", a, "a"), _call("query_data", b, "b")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
+    executed: list[str] = []
+    _fake_tools(monkeypatch, {"query_data": "rijen"}, executed)
+
+    result, _ = _run()
+
+    assert executed == ["query_data"]
+    assert result.tool_results == ["rijen", "rijen"]
+
+
+def test_spellingsvarianten_delen_een_load_en_een_snippet(monkeypatch):
+    """Twee spellingen van dezelfde selectie: één tool_start/tool_end (dus één snippet), één data_key."""
+    import json as _json
+
+    import pandas as pd
+
+    from tools import store
+
+    store.put(
+        "duo:x:1",
+        pd.DataFrame({"GESLACHT": ["Man", "Vrouw"], "AANTAL": [1, 2]}),
+        store.KeyMeta(bron="duo", dataset="x", resource=1),
+    )
+    a = '{"data_key": "duo:x:1", "filters": {"GESLACHT": "man"}}'
+    b = '{"filters": {"GESLACHT__in": ["Man"]}, "data_key": "DUO:x:1"}'
+    _steps(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_call("query_data", a, "a"), _call("query_data", b, "b")]),
+            StreamResult(text="Klaar.", tool_calls=[]),
+        ],
+    )
+
+    result, events = _run()
+
+    assert len([e for e in events if e["type"] == "tool_end"]) == 1
+    keys = {_json.loads(r)["data_key"] for r in result.tool_results}
+    assert len(keys) == 1
