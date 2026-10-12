@@ -80,6 +80,34 @@ def test_get_conversations_limit_is_capped(client):
     assert client.get("/api/conversations", params={"limit": 1000}).status_code == 422
 
 
+# ── One conversation (#509): the list is small, the messages come when a conversation is opened ──
+
+
+def test_list_carries_no_messages(client):
+    body = {"title": "Test", "timestamp": 1000, "messages": [{"role": "user", "content": "hi"}]}
+    client.put("/api/conversations/c1", json=body)
+    assert client.get("/api/conversations").json() == [{"id": "c1", "title": "Test", "timestamp": 1000}]
+
+
+def test_get_one_conversation_with_messages(client):
+    messages = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hoi", "figures": ["{}"]}]
+    client.put("/api/conversations/c1", json={"title": "Test", "timestamp": 1000, "messages": messages})
+    resp = client.get("/api/conversations/c1")
+    assert resp.status_code == 200
+    assert resp.json() == {"id": "c1", "title": "Test", "timestamp": 1000, "messages": messages}
+
+
+def test_get_unknown_conversation_returns_404(client):
+    assert client.get("/api/conversations/bestaat-niet").status_code == 404
+
+
+def test_get_conversation_of_another_user_returns_404(authed_client):
+    from persistence import db
+
+    db.upsert_conversation("iemand-anders", "c1", "Geheim", 1000, [{"role": "user", "content": "pii"}])
+    assert authed_client.get("/api/conversations/c1").status_code == 404
+
+
 def test_delete_conversation(client):
     client.put("/api/conversations/c1", json={"title": "X", "timestamp": 1, "messages": []})
     resp = client.delete("/api/conversations/c1")
@@ -97,7 +125,7 @@ def test_patch_conversation_title_only(client):
     [conv] = client.get("/api/conversations").json()
     assert conv["title"] == "Nieuw"
     assert conv["timestamp"] == 1000
-    assert "hi" in conv["messages"]
+    assert client.get("/api/conversations/c1").json()["messages"] == body["messages"]
 
 
 def test_patch_conversation_strips_title(client):

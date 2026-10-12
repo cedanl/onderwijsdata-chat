@@ -1,3 +1,9 @@
+"""👍/👎 op een antwoord (#248).
+
+Gewone functies, geen coroutines: de databaselaag is synchroon en hoort in de threadpool van
+FastAPI, niet op de event loop (#508, zie routes/persistence.py).
+"""
+
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,12 +31,12 @@ def _require_enabled() -> None:
 
 
 @router.get("/api/answer-feedback", dependencies=[Depends(_require_enabled)])
-async def get_answer_feedback(conversation_id: str, username: str = Depends(get_current_user)) -> dict[int, str]:
+def get_answer_feedback(conversation_id: str, username: str = Depends(get_current_user)) -> dict[int, str]:
     return persistence_db.answer_feedback_for(username, conversation_id)
 
 
 @router.post("/api/answer-feedback", dependencies=[Depends(_require_enabled)])
-async def post_answer_feedback(body: AnswerFeedbackIn, username: str = Depends(get_current_user)) -> dict:
+def post_answer_feedback(body: AnswerFeedbackIn, username: str = Depends(get_current_user)) -> dict:
     """👍/👎 op een antwoord (#248); de trace komt uit het eigen opgeslagen gesprek."""
     messages = persistence_db.conversation_messages(username, body.conversation_id)
     trace = antwoord_trace(messages, body.message_index) if messages is not None else None

@@ -72,6 +72,13 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- `dataset_details` noemt voor een CBS-tabel nu ook de populatie, de sectoren in het profiel, de
+  periodecodes met hun CBS-status ("2025/'26 (voorlopig)"), het bereik en de geografische dekking uit het
+  contract van de CBS-package (#370), naast de teldefinitie en afronding van #383. Het model kiest zo een
+  periode zonder dimensiecall en citeert de bron in plaats van zelf een populatie te raden.
+- `cbs:85423NED`, `cbs_85423ned` en `85423NED` zijn in `dataset_details`, `get_cbs_data` en
+  `get_cbs_dimension` dezelfde tabel: het contract-ID van de package en de spelling van een model of een
+  bewaard recept komen op één plek terug op het bron-ID (#370).
 - Het model schrijft geen OData meer voor CBS (#343, ADR-006). `get_cbs_data` krijgt een gesloten
   `selectie` — per dimensie een code uit `get_cbs_dimension` of `"*"` om uit te splitsen, de periode
   als lijst of bereik (schooljaarspelling wordt in code vertaald), onderwerpen als kolomsleutels — en
@@ -224,9 +231,21 @@ de laatste tag is 1.8.6.
 ### Gebruikersinterface
 - Na een verlopen of ongeldige sessie staat op het inlogscherm nu "Je sessie is verlopen. Log opnieuw in." (#499), en
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
+- Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat
+  en dat je geen persoonsgegevens invoert. Lijkt een concept een BSN (elfproef), e-mailadres of telefoonnummer te
+  bevatten, dan zegt een waarschuwing dat voor het versturen; versturen blijft mogelijk. Zo'n vraag krijgt als
+  gesprekstitel "Gesprek (persoonsgegevens weggelaten)", en dus ook die exportbestandsnaam; de terugvaltitel van
+  een rapport doet hetzelfde. De systeemprompt heeft één regel over persoonsgegevens en kleine aantallen.
+- Een tab sluiten of verbergen tijdens een lopend antwoord bewaart nu de tekst tot het laatst ontvangen fragment (#520):
+  de bewaarstap leest ook de nog niet getoonde tekst mee, en sluiten op Safari/iOS (`pagehide`) bewaart ook als de
+  tab nog als zichtbaar geldt.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
+- De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
+  figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
+  (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie
+  van de lijst bevat geen berichten meer, zodat ze niet met het open gesprek om de localStorage-ruimte strijdt.
 - Wifi uit en weer aan tijdens een vraag laat in de chat en de dashboardchat één verbinding over (#522): de
   melding "Verbinding herstellen..." verdwijnt zodra die open is, en het late sluiten van de oude verbinding
   breekt een nieuwe vraag niet meer af. Een stil weggevallen verbinding wordt na de hartslag meteen gemeld; een
@@ -274,6 +293,14 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
+  readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
+  zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden
+  hergebruikt via een pool (`POSTGRES_POOL_SIZE`, standaard 8) in plaats van per aanroep geopend;
+  SQLite houdt een verbinding per aanroep.
+- `/version` noemt bij de package `onderwijsdata` onder `manifest` de meegebouwde CBS-catalogus (#370):
+  `catalogusrevisie`, `consistent` (horen de geleverde bestanden bij dat manifest), `aantal`,
+  `laatste_succesvolle_controle` en `versheid` (oudste controle, verouderde perioden en afleidingen).
 - `/version` toont de release waarop de omgeving draait (de chartversie, dus de tag `X.Y.Z`) in plaats van de
   vaste waarde uit `pyproject.toml`. Het chart geeft die mee als `APP_VERSION`; op test is dat de prerelease van de
   main-build, lokaal valt het terug op `pyproject.toml`.

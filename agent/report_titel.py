@@ -4,9 +4,14 @@ Vijf keer hetzelfde rapport gaf vijf titels ("Instroom HU", "Eerstejaars Hogesch
 2024/25", ...). De vraag staat vast; de titel volgt haar, met de ingestelde instelling erachter.
 """
 
+from core import persoonsgegevens
+
 _MAX_TEKENS = 80
 _AFKAPPING = "…"
 _SLOTTEKENS = "?!.: \t\n"
+# De titel staat in het werkboek, de export, de browsertab en de geschiedenis: nooit met een BSN,
+# e-mailadres of telefoonnummer uit de vraag erin (#478).
+TITEL_ZONDER_PERSOONSGEGEVENS = "Rapport (persoonsgegevens weggelaten)"
 
 
 def _ingekort(tekst: str) -> str:
@@ -24,7 +29,7 @@ def rapporttitel(vraag: str, instelling: str | None) -> str:
     tekst = " ".join((vraag or "").split()).rstrip(_SLOTTEKENS)
     if not tekst:
         return "Rapport"
-    tekst = _ingekort(tekst[0].upper() + tekst[1:])
+    tekst = TITEL_ZONDER_PERSOONSGEGEVENS if persoonsgegevens.bevat(tekst) else _ingekort(tekst[0].upper() + tekst[1:])
     instelling = " ".join((instelling or "").split())
     if instelling and instelling.casefold() not in tekst.casefold():
         return f"{tekst} – {instelling}"

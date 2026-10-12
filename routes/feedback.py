@@ -1,3 +1,9 @@
+"""Feedback op een rapport.
+
+Gewone functies, geen coroutines: de databaselaag is synchroon en hoort in de threadpool van
+FastAPI, niet op de event loop (#508, zie routes/persistence.py).
+"""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -32,12 +38,12 @@ def _require_enabled() -> None:
 
 
 @router.get("/api/feedback/questions", dependencies=[Depends(_require_enabled)])
-async def get_questions() -> list[dict]:
+def get_questions() -> list[dict]:
     return list(QUESTIONS)
 
 
 @router.get("/api/feedback/given", dependencies=[Depends(_require_enabled)])
-async def get_given(username: str = Depends(get_current_user)) -> list[str]:
+def get_given(username: str = Depends(get_current_user)) -> list[str]:
     # Gasten delen één naam; dan zou feedback van de één bij iedereen als gegeven tonen.
     if username == FALLBACK_USER:
         return []
@@ -45,7 +51,7 @@ async def get_given(username: str = Depends(get_current_user)) -> list[str]:
 
 
 @router.post("/api/feedback", dependencies=[Depends(_require_enabled)])
-async def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -> dict:
+def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -> dict:
     try:
         answers = validate_answers(body.answers)
     except ValueError as exc:

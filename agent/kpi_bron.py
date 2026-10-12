@@ -2,8 +2,9 @@
 
 Een KPI is een afgeleide waarde (verschil, som, gemiddelde) met een eigen bron:
 de jaren in `periode` en de selectie in `bron`. De periode-, scope- en
-bindingscontrole lezen KPI's alleen hier; de periode- en scopecontrole zoeken
-een KPI-waarde in de tekst met `noemt`.
+bindingscontrole, de citaties (meetwaarden) en de dashboardvalidatie lezen KPI's
+alleen hier; de periode- en scopecontrole zoeken een KPI-waarde in de tekst met
+`noemt`, het dashboard vergelijkt een modelwaarde met `sleutel`.
 """
 
 import json
@@ -25,6 +26,17 @@ class Kpi:
     bereik: tuple[int, int] | None  # startjaren van de eerste en laatste periode; None zonder schooljaren
     periode: dict | None  # {"van": "2019/20", "tot": "2025/26"}; None zonder periode
     bron: dict | None  # data_key, kolom, metric, …; None zonder bron
+    raw: int | float | None = None  # het getal zelf, zoals compute_kpi het berekende; None als het ontbreekt
+    label: str | None = None  # het label dat het model meegaf
+    trend: str | None = None  # de trend die de tool berekende, bijv. +5%
+    richting: str | None = None  # trendDirection: up, down of None
+
+
+def kpi(data) -> Kpi | None:
+    """Eén geparset toolresultaat als KPI; None als het geen object met een `value` is."""
+    if not isinstance(data, dict) or "value" not in data:
+        return None
+    return _kpi(data)
 
 
 def kpis(tool_results: list[str]) -> list[Kpi]:
@@ -35,16 +47,36 @@ def kpis(tool_results: list[str]) -> list[Kpi]:
             data = json.loads(result)
         except (TypeError, ValueError):
             continue
-        if isinstance(data, dict) and "value" in data:
-            gelezen.append(_kpi(data))
+        if (gelezen_kpi := kpi(data)) is not None:
+            gelezen.append(gelezen_kpi)
     return gelezen
+
+
+def _tekst(waarde) -> str | None:
+    return waarde if isinstance(waarde, str) else None
 
 
 def _kpi(data: dict) -> Kpi:
     waarde = str(data["value"])
     jaren = data["periode"] if isinstance(data.get("periode"), dict) else None
     bron = data["bron"] if isinstance(data.get("bron"), dict) else None
-    return Kpi(waarde, _cijfers(waarde), _bereik(jaren), jaren, bron)
+    raw = data.get("raw")
+    return Kpi(
+        waarde,
+        _cijfers(waarde),
+        _bereik(jaren),
+        jaren,
+        bron,
+        raw=raw if isinstance(raw, int | float) and not isinstance(raw, bool) else None,
+        label=_tekst(data.get("label")),
+        trend=_tekst(data.get("trend")),
+        richting=_tekst(data.get("trendDirection")),
+    )
+
+
+def sleutel(waarde) -> str:
+    """Vergelijkbare vorm van een getal: '30.083', '30 083' en '30083' zijn hetzelfde getal."""
+    return str(waarde).replace(".", "").replace(" ", "").replace("\u00a0", "").strip().lower()
 
 
 def _kaal(waarde: str) -> str:

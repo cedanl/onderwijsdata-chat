@@ -10,7 +10,7 @@ import json
 import pytest
 
 from agent.binding import verkeerd_gebonden
-from agent.kpi_bron import kpis, noemt
+from agent.kpi_bron import kpi, kpis, noemt, sleutel
 from agent.kpi_periode import verkeerde_kpi_periodes
 from agent.kpi_scope import kpi_naast_filter
 
@@ -213,3 +213,48 @@ def test_de_controles_lopen_niet_vast_op_misvormde_kpis():
 def test_een_waarde_die_geen_tekst_is_wordt_tekst():
     [kpi] = kpis([json.dumps({"value": 463, "periode": _SCHOOLJAREN})])
     assert (kpi.waarde, kpi.cijfers) == ("463", "463")
+
+
+# --- de lezer voor citaties en dashboard (#420): raw, label, trend en richting ---
+
+
+def test_kpi_leest_ook_het_getal_het_label_en_de_trend():
+    [gelezen] = kpis(
+        [
+            json.dumps(
+                {
+                    "label": "Groei",
+                    "value": "+5.000",
+                    "raw": 5000,
+                    "trend": "+5%",
+                    "trendDirection": "up",
+                    "bron": {"data_key": "duo:2", "kolom": "AANTAL", "metric": "delta"},
+                }
+            )
+        ]
+    )
+    assert (gelezen.raw, gelezen.label, gelezen.trend, gelezen.richting) == (5000, "Groei", "+5%", "up")
+    assert gelezen.bron is not None and gelezen.bron["data_key"] == "duo:2"
+
+
+def test_kpi_zonder_getal_of_tekstvelden_blijft_leesbaar():
+    gelezen = kpi({"value": "9,6", "raw": True, "label": 3, "trend": None})
+    assert gelezen is not None
+    assert (gelezen.raw, gelezen.label, gelezen.trend, gelezen.richting) == (None, None, None, None)
+
+
+def test_alleen_een_object_met_een_value_is_een_kpi():
+    assert kpi({"rijen": []}) is None
+    assert kpi("30.083") is None
+    assert kpi(None) is None
+
+
+@pytest.mark.parametrize(
+    ("a", "b"), [("30.083", "30083"), ("30 083", "30083"), ("30\u00a0083", "30083"), ("+9,5%", "+9,5%")]
+)
+def test_sleutel_maakt_notaties_van_hetzelfde_getal_gelijk(a, b):
+    assert sleutel(a) == sleutel(b)
+
+
+def test_sleutel_houdt_verschillende_getallen_uit_elkaar():
+    assert sleutel("30.083") != sleutel("30.084")

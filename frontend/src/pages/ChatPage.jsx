@@ -30,13 +30,16 @@ import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '
 import { canGenerateReport } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
+import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import {
-  appendPage, clearCurrentChat, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory,
-  loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, restorableMessages,
-  upsertConversation,
+  appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage,
+  loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory,
+  persistCurrentChat, upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
-import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
+import {
+  fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig,
+} from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { saveFile } from '../saveFile'
@@ -189,7 +192,7 @@ function MessageContent({ msg, blocks = null }) {
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
+  const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [sendNotice, setSendNotice] = useState(null)
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -211,6 +214,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const historySearch = useConversationSearch()
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false)
+  // The conversation being fetched to open it (#509); one at a time.
+  const [openingId, setOpeningId] = useState(null)
   const [saveError, setSaveError] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
@@ -239,7 +244,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         setConversationHistory(items)
         setHasMoreHistory(hasMore)
       } else {
-        const local = loadConversationHistory()
+        // Conversations from before the server copy; a cached list without messages has nothing to migrate (#509).
+        const local = loadConversationHistory().filter(c => Array.isArray(c.messages))
         if (local.length > 0) {
           Promise.allSettled(local.map(c =>
             putConversation(String(c.id), { title: c.title, timestamp: c.timestamp, messages: c.messages })
@@ -276,21 +282,27 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     if (all.length) persistMetMelding(conversationId, all)
   }, [busy, conversationId, messages, restoredMessages, tokenAtMount, persistMetMelding])
 
-  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren.
+  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren (#520).
+  // Bij pagehide is de zichtbaarheid vaak nog 'visible' (Safari/iOS), dus die check hoort
+  // alleen bij visibilitychange. De deltabuffer wordt meegelezen: een verborgen tab pauzeert
+  // het frame dat hem leegt.
   useEffect(() => {
     const opslaan = () => {
       if (sessionEndedSince(tokenAtMount)) return
-      if (document.visibilityState !== 'hidden') return
-      const { id, messages: all } = openChatRef.current
+      const { id, messages: open } = openChatRef.current
+      const all = withBufferedText(open)
       if (all.length) persistMetMelding(id, all)
     }
+    const bijZichtbaarheid = () => {
+      if (document.visibilityState === 'hidden') opslaan()
+    }
     window.addEventListener('pagehide', opslaan)
-    document.addEventListener('visibilitychange', opslaan)
+    document.addEventListener('visibilitychange', bijZichtbaarheid)
     return () => {
       window.removeEventListener('pagehide', opslaan)
-      document.removeEventListener('visibilitychange', opslaan)
+      document.removeEventListener('visibilitychange', bijZichtbaarheid)
     }
-  }, [tokenAtMount, persistMetMelding])
+  }, [tokenAtMount, persistMetMelding, withBufferedText])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Returns the save in flight, so a caller can wait until the server has the conversation.
@@ -326,18 +338,32 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     startNewConversation()
   }, [startNewConversation, saveConversation, models, defaultModel])
 
-  const handleLoad = useCallback((conv) => {
-    saveConversation()
+  const openConversation = useCallback((conv) => {
     clear()
     setSidebarOpen(false)
     setConversationId(String(conv.id))
-    const restored = restorableMessages(conv.messages)
+    const restored = conversationMessages(conv)
     savedJsonRef.current = JSON.stringify(restored)
     setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
     sendHistory(restored, String(conv.id))
-  }, [clear, saveConversation, sendHistory, models])
+  }, [clear, sendHistory, models])
+
+  // The list holds no messages (#509): opening a conversation fetches it. The open conversation is
+  // saved first and that save awaited, so reopening what was just asked never races its own PUT.
+  const handleLoad = useCallback((conv) => {
+    if (openingId) return
+    setOpeningId(conv.id)
+    Promise.resolve(saveConversation())
+      .then(() => fetchConversation(String(conv.id)))
+      .then(full => {
+        if (sessionEndedSince(tokenAtMount)) return
+        openConversation(full)
+      })
+      .catch(() => addToast('Gesprek openen is mislukt. Probeer het opnieuw.', 'error'))
+      .finally(() => setOpeningId(null))
+  }, [openingId, saveConversation, openConversation, addToast, tokenAtMount])
 
   // Older conversations stay on the server until asked for (#123).
   const handleLoadMoreHistory = useCallback(() => {
@@ -508,6 +534,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             history={conversationHistory}
             hasMore={hasMoreHistory}
             loadingMore={loadingMoreHistory}
+            openingId={openingId}
             onLoadMore={handleLoadMoreHistory}
             onLoad={handleLoad}
             onDelete={handleDeleteConversation}
@@ -644,7 +671,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               rejectedDraft={rejectedDraft}
               clearRejectedDraft={clearRejectedDraft}
             />
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING}</p>
           </div>
         </div>
       </div>
@@ -910,7 +937,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   )
 })
 
-export function ConversationHistory({ history, hasMore = false, loadingMore = false, onLoadMore, onLoad, onDelete, onRename, search = null }) {
+export function ConversationHistory({ history, hasMore = false, loadingMore = false, openingId = null, onLoadMore, onLoad, onDelete, onRename, search = null }) {
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState('')
   const titleInputRef = useRef(null)
@@ -973,6 +1000,8 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
               <button type="button"
                 className="history-btn"
                 onClick={() => onLoad(conv)}
+                disabled={openingId !== null}
+                aria-busy={openingId === conv.id}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -994,7 +1023,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
                   ) : (
                     <span className="history-btn-title" title={conv.title}>{conv.title}</span>
                   )}
-                  <span className="history-btn-date">{relativeDate(conv.timestamp)}</span>
+                  <span className="history-btn-date">{openingId === conv.id ? 'Openen…' : relativeDate(conv.timestamp)}</span>
                 </div>
               </button>
               <div className="history-item-actions">

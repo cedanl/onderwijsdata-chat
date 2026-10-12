@@ -30,11 +30,26 @@ def test_upsert_and_list_conversation(db):
     msgs = [{"role": "user", "content": "hoi"}]
     db.upsert_conversation("alice", "c1", "Eerste gesprek", 1000, msgs)
     result = db.list_conversations("alice")
-    assert len(result) == 1
-    assert result[0]["id"] == "c1"
-    assert result[0]["title"] == "Eerste gesprek"
-    assert result[0]["timestamp"] == 1000
-    assert json.loads(result[0]["messages"]) == msgs
+    assert result == [{"id": "c1", "title": "Eerste gesprek", "timestamp": 1000}]
+
+
+def test_list_carries_no_messages_but_get_conversation_does(db):
+    """De zijbalk heeft alleen id, titel en tijdstip nodig; de berichten komen per gesprek (#509)."""
+    msgs = [{"role": "user", "content": "hoi"}, {"role": "assistant", "content": "hallo", "figures": ["{}"]}]
+    db.upsert_conversation("alice", "c1", "Eerste gesprek", 1000, msgs)
+    assert "messages" not in db.list_conversations("alice")[0]
+    assert db.get_conversation("alice", "c1") == {
+        "id": "c1",
+        "title": "Eerste gesprek",
+        "timestamp": 1000,
+        "messages": msgs,
+    }
+
+
+def test_get_conversation_is_scoped_to_user(db):
+    db.upsert_conversation("alice", "c1", "Alice", 1000, [{"role": "user", "content": "geheim"}])
+    assert db.get_conversation("bob", "c1") is None
+    assert db.get_conversation("alice", "bestaat-niet") is None
 
 
 def test_upsert_conversation_is_idempotent(db):
@@ -47,7 +62,7 @@ def test_upsert_conversation_is_idempotent(db):
     result = db.list_conversations("alice")
     assert len(result) == 1
     assert result[0]["title"] == "Titel update"
-    assert json.loads(result[0]["messages"]) == msgs2
+    assert db.get_conversation("alice", "c1")["messages"] == msgs2
 
 
 def test_conversations_scoped_to_user(db):

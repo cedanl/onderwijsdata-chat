@@ -2,8 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS } from '../constants'
 import {
-  appendPage, conversationRecord, historyPage, loadConversationHistory, loadCurrentChat, nextPageQuery,
-  persistConversationHistory, persistCurrentChat, restorableMessages, upsertConversation,
+  appendPage, conversationMessages, conversationRecord, historyPage, loadConversationHistory, loadCurrentChat,
+  nextPageQuery, persistConversationHistory, persistCurrentChat, restorableMessages, upsertConversation,
 } from '../conversationStore'
 import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
 import herstelClarify from './fixtures/herstelClarify.json'
@@ -14,6 +14,11 @@ const answer = { role: 'assistant', content: '26.370', figures: ['{"data":[]}'] 
 beforeEach(() => localStorage.clear())
 
 describe('upsertConversation', () => {
+  it('puts the summary in the list, never the messages (#509)', () => {
+    const record = conversationRecord('c1', [question, answer])
+    expect(upsertConversation([], record)).toEqual([{ id: 'c1', title: record.title, timestamp: record.timestamp }])
+  })
+
   it('replaces an earlier save of the same conversation instead of adding a copy', () => {
     let list = []
     for (let i = 0; i < 11; i++) {
@@ -54,8 +59,21 @@ describe('history pages (#123)', () => {
     expect(historyPage(rows(MAX_CONVERSATIONS)).hasMore).toBe(false)
   })
 
-  it('parses the stored messages', () => {
-    expect(historyPage([row('c0', 1)]).items[0].messages).toEqual([question])
+  // #509: the list is id, title and timestamp; the messages come when a conversation is opened.
+  it('keeps only the summary of each conversation', () => {
+    expect(historyPage([row('c0', 1)]).items).toEqual([{ id: 'c0', title: 'c0', timestamp: 1 }])
+  })
+
+  it('stores no messages in localStorage, also when a record still holds them', () => {
+    persistConversationHistory([{ id: 'c0', title: 'c0', timestamp: 1, messages: [question, answer] }])
+    expect(loadConversationHistory()).toEqual([{ id: 'c0', title: 'c0', timestamp: 1 }])
+  })
+
+  it('reads the messages of a fetched conversation, parsed or as an older JSON string', () => {
+    const parsed = { id: 'c0', messages: [question, { role: 'assistant', content: '' }] }
+    expect(conversationMessages(parsed)).toEqual([question])
+    expect(conversationMessages(row('c0', 1))).toEqual([question])
+    expect(conversationMessages({ id: 'c0' })).toEqual([])
   })
 
   it('asks for the page after the last conversation shown', () => {

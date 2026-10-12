@@ -11,7 +11,7 @@ from riodata import catalog as _rio_catalog
 
 from core.logging_util import tekst_kenmerk
 
-from . import cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, instelling, scopeprofiel
+from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
@@ -180,6 +180,22 @@ def _rio_duo() -> list:
 def _ruw_record(dataset_id: str) -> dict | None:
     """Het record uit de volledige CBS- en riodata-inventaris, ook als het buiten het profiel valt."""
     return next((e for e in [*_cbs_alles(), *_rio_duo_alles()] if scopeprofiel.dataset_id(e) == dataset_id), None)
+
+
+def cbs_bron_id(dataset_id: str) -> str:
+    """Het bron-ID van een CBS-tabel in de spelling van de catalogus (#370).
+
+    Het contract van de CBS-package noemt een tabel `cbs:85423NED`; een model of een bewaard
+    recept spelt ook `cbs_85423ned` of `85423ned`. Zonder voorvoegsel en, als de volledige
+    inventaris het ID hoofdletterongevoelig kent, in de spelling van de catalogus (`85423NED`
+    naast `80040ned`). Een ander ID (DUO, RIO) of een onbekend ID blijft zoals het is.
+    """
+    kaal = canoniek.zonder_cbs_prefix(dataset_id)
+    gezocht = kaal.lower()
+    for entry in _cbs_alles():
+        if isinstance(cbs_id := entry.get("_cbs_id"), str) and cbs_id.lower() == gezocht:
+            return cbs_id
+    return kaal
 
 
 def scope_blokkade(dataset_id: str) -> str | None:
@@ -594,6 +610,10 @@ def search_catalog(
 _DETAILS_EXTRA = frozenset(
     {
         "_resources",
+        "populatie",
+        "perioden",
+        "geografie",
+        "sectoren",
         "teldefinitie",
         "teldefinitie_niet_gebruikt",
         "publicatieregels",
@@ -799,11 +819,12 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
 
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
+    cbs_id = cbs_bron_id(dataset_id)  # cbs:85423NED en 85423ned zijn dezelfde tabel (#370)
     for entry in _cbs():
-        if entry.get("_cbs_id") == dataset_id:
-            logger.info("dataset_details id=%s bron=CBS", dataset_id)
-            # Afronding en dubbeltelling vóór het model optelt of verklaart (#383).
-            return _build_details({"bron": "CBS", **entry, **cbs_meta.metadata(dataset_id)}, dataset_id)
+        if entry.get("_cbs_id") == cbs_id:
+            logger.info("dataset_details id=%s bron=CBS", cbs_id)
+            # Populatie, periodecodes, afronding en dubbeltelling vóór het model kiest, optelt of verklaart (#383, #370).
+            return _build_details({"bron": "CBS", **entry, **cbs_meta.metadata(cbs_id)}, cbs_id)
 
     for entry in _rio_duo():
         eid = entry.get("_ckan_id") or entry.get("_rio_resource")
@@ -825,7 +846,7 @@ def dataset_details(dataset_id: str) -> str:
                 return _duo_details(entry, dataset_id)
             return _build_details(entry, dataset_id)
 
-    if buiten := _ruw_record(dataset_id):
+    if buiten := _ruw_record(cbs_id) or _ruw_record(dataset_id):
         # Bekend maar buiten het profiel: zeg waarom, anders leest het model 'bestaat niet' (#355, #396).
         return json.dumps(scopeprofiel.buiten_scope_voor(buiten), ensure_ascii=False)
     logger.warning("dataset_details miss id=%s", dataset_id)

@@ -81,6 +81,37 @@ describe('useChat streaming', () => {
   })
 })
 
+describe('useChat deltabuffer bij bewaren (#520)', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('leest de gebufferde tekst mee wanneer het frame nog niet draaide (verborgen tab)', async () => {
+    vi.stubGlobal('requestAnimationFrame', () => 1)
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Half ' })
+      ws.emit({ type: 'text_delta', content: 'antwoord' })
+    })
+    expect(assistantMessages()[0].content).toBe('')
+
+    const bewaard = chat.withBufferedText(chat.messages)
+
+    expect(bewaard.at(-1).content).toBe('Half antwoord')
+    expect(assistantMessages()[0].content).toBe('')
+  })
+
+  it('geeft de berichten ongewijzigd terug zonder lopend antwoord of buffer', async () => {
+    const ws = FakeWebSocket.last
+    expect(chat.withBufferedText(chat.messages)).toBe(chat.messages)
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Klaar' })
+      ws.emit({ type: 'message_end', content: 'Klaar' })
+    })
+    expect(chat.withBufferedText(chat.messages)).toBe(chat.messages)
+  })
+})
+
 describe('useChat report errors', () => {
   it('shows a report error as a lasting chat message, not a toast', async () => {
     const ws = FakeWebSocket.last

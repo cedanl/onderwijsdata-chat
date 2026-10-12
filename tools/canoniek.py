@@ -51,6 +51,18 @@ def sleutel(key: str) -> str:
     return _PREFIX.sub(lambda m: f"{m.group(1).lower()}:", key.strip()).lower()
 
 
+_CBS_PREFIX = re.compile(r"^cbs[_/:]", re.IGNORECASE)
+
+
+def zonder_cbs_prefix(dataset_id: str) -> str:
+    """Het ID zonder het contract-voorvoegsel van de CBS-package: `cbs:85423NED` → `85423NED` (#370).
+
+    Alleen het voorvoegsel; de spelling van het ID zelf kent de catalogus (`catalog.cbs_bron_id`):
+    CBS schrijft `85423NED` naast `80040ned`, dus hoofdletters zijn niet te raden.
+    """
+    return _CBS_PREFIX.sub("", str(dataset_id).strip())
+
+
 def _startjaar(kolom: str, waarde) -> int | None:
     """Het startjaar dat `waarde` op deze periodekolom spelt; None als dat er niet uit volgt.
 
