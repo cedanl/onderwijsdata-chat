@@ -21,6 +21,7 @@ from agent.replay import (
     anker_verschillen,
     ankers_van_recipe,
     geldige_modus,
+    recept_ids,
     replay_dashboard_figures,
     replay_data_calls,
     reproduceer_figures,
@@ -196,11 +197,26 @@ async def _do_refresh(
         return await _ververs_figuren(spec, recipe, figure_recipes)
 
     results = await asyncio.to_thread(replay_data_calls, recipe)
-    if all(not r["success"] for r in results):
-        # De redenen per call staan in het log (replay_data_calls); de melding
-        # naar de browser blijft vrij van paden en uitzonderingstekst (#503).
-        raise RefreshError("Geen van de datasets kon herladen worden. Probeer het later opnieuw.")
+    if melding := _herlaad_mislukt(results):
+        raise RefreshError(melding)
     return spec, "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards.", []
+
+
+def _herlaad_mislukt(results: list[dict]) -> str | None:
+    """De weigering als een dataoproep niet herlaadde; None als alles herlaadde (#524).
+
+    Ververs meldt alleen "ververst" als de data echt opnieuw is opgehaald: één mislukte
+    call breekt het geheel af, anders mengen verse en oude figuren onder dat label. De
+    redenen per call staan in het log (replay_data_calls); de melding naar de browser
+    blijft vrij van paden en uitzonderingstekst (#503).
+    """
+    mislukt = sum(1 for r in results if not r["success"])
+    if not mislukt:
+        return None
+    return (
+        f"De data kon niet opnieuw opgehaald worden: {mislukt} van de {len(results)} dataset(s) niet geladen. "
+        "Het bewaarde dashboard is niet gewijzigd. Probeer het later opnieuw."
+    )
 
 
 # _refresh_dashboard kiest het toastniveau op het woord "niet" in de melding: elke
@@ -221,7 +237,10 @@ async def _ververs_figuren(
     De bewaarde figuren horen via hun index bij de recepten. Past dat niet (een ouder
     dashboard), dan wordt niet per figuur vergeleken en alleen vervangen als elk recept slaagt.
     """
-    uitkomsten = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
+    verversing = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
+    if melding := _herlaad_mislukt(verversing.calls):
+        raise RefreshError(melding)
+    uitkomsten = verversing.uitkomsten
     mislukt = [u for u in uitkomsten if u.figuur_json is None]
     if len(mislukt) == len(uitkomsten):
         return spec, "Grafieken konden niet bijgewerkt worden, bestaande data behouden.", []
@@ -231,7 +250,7 @@ async def _ververs_figuren(
         return spec, f"{_PAST_NIET} {weigering}", []
 
     oude_ankers = dict(spec.ankers)
-    spec.ankers = ankers_van_recipe(recipe)
+    spec.ankers = await asyncio.to_thread(ankers_van_recipe, recipe, oude_ankers)
     veranderingen = anker_verschillen(oude_ankers, spec.ankers)
     if passend:
         veranderingen += _figuurverschil(spec.figures_json, uitkomsten)
@@ -297,14 +316,38 @@ async def _reproduceer(spec: DashboardSpec, figure_recipes: list[dict]) -> tuple
     if repro.ontbrekend or repro.mislukt:
         # Geen gedeeltelijke reproductie: het bewaarde dashboard blijft zoals het is.
         raise RefreshError(_reproduceer_weigering(repro))
-    identiek = repro.figures_json == spec.figures_json
+    bewaard = spec.figures_json
+    passend = len(bewaard) == len(repro.figures_json)
+    afwijkingen = _reproductieverschil(bewaard, repro.figures_json, figure_recipes) if passend else []
+    # De spec gaat terug zoals altijd, maar de client bewaart een reproductie niet.
     spec.figures_json = repro.figures_json
-    info = (
-        "Gereproduceerd uit de opgeslagen data; identiek aan het bewaarde dashboard."
-        if identiek
-        else "Gereproduceerd uit de opgeslagen data; de weergave wijkt af van de bewaarde grafieken."
+    return spec, _reproduceer_melding(bewaard == repro.figures_json, passend, afwijkingen), afwijkingen
+
+
+def _reproductieverschil(bewaard: list[str], gereproduceerd: list[str], figure_recipes: list[dict]) -> list[str]:
+    """Bewaard tegen gereproduceerd, per recept-id; een reproductie slaagt alleen als elk recept slaagt."""
+    ids = recept_ids(figure_recipes)
+    return figuur_verschillen(dict(zip(ids, bewaard, strict=True)), dict(zip(ids, gereproduceerd, strict=True)), ids)
+
+
+def _reproduceer_melding(identiek: bool, passend: bool, afwijkingen: list[str]) -> str:
+    """De uitkomst van reproduceren; het bewaarde dashboard blijft altijd staan (#524)."""
+    if identiek:
+        return "Gereproduceerd uit de opgeslagen data; identiek aan het bewaarde dashboard."
+    if not passend:
+        return (
+            f"Gereproduceerd uit de opgeslagen data, maar niet per grafiek te vergelijken. {_PAST_NIET} "
+            "Het bewaarde dashboard is niet aangepast."
+        )
+    if afwijkingen:
+        return (
+            "De reproductie uit de opgeslagen data wijkt af van het bewaarde dashboard; "
+            "het bewaarde dashboard is niet aangepast."
+        )
+    return (
+        "De reproductie uit de opgeslagen data wijkt alleen in de opmaak af, niet in de waarden; "
+        "het bewaarde dashboard is niet aangepast."
     )
-    return spec, info, []
 
 
 async def _refresh_dashboard(

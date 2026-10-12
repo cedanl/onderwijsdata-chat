@@ -1,6 +1,7 @@
 import difflib
 import json
 import logging
+import re
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 5
+_ISO_DATUM = re.compile(r"\d{4}-\d{2}-\d{2}")
 _MAX_GENOEMDE_WAARDEN = 5
 
 # Naast elke dimensiecode zet get_cbs_data haar label, en naast de periode haar
@@ -184,6 +186,26 @@ def _tabelbeschrijving(dataset_id: str) -> str:
     """TableInfos.Description: daar zet CBS publicatieregels zoals de afronding (#352)."""
     rows = get(dataset_id, "TableInfos")
     return (rows[0].get("Description") or "") if rows else ""
+
+
+def bron_laatste_update(dataset_id: str) -> str | None:
+    """De datum waarop CBS de tabel het laatst bijwerkte (TableInfos.Modified), per aanroep gevraagd (#524).
+
+    De catalogus is een momentopname: onderwijsdata.catalog() leest een JSON uit de
+    package, waar `_laatste_update` dezelfde TableInfos.Modified van het buildmoment is.
+    Een tabel die CBS daarna bijwerkt, ziet alleen deze functie. Alleen voor tabellen in
+    de catalogus (binnen het profiel), zodat een recept van de client geen willekeurig
+    pad bij CBS opvraagt. None als CBS niet of zonder geldige datum antwoordt.
+    """
+    if catalogus_laatste_update(dataset_id) is None:
+        return None
+    try:
+        rows = get(dataset_id, "TableInfos")
+        gewijzigd = rows[0].get("Modified") if rows else None
+    except Exception as e:
+        logger.warning("CBS TableInfos ophalen mislukt voor %s: %s", dataset_id, type(e).__name__)
+        return None
+    return gewijzigd[:10] if isinstance(gewijzigd, str) and _ISO_DATUM.match(gewijzigd) else None
 
 
 def _afronding(dataset_id: str) -> tuple[int | None, bool]:

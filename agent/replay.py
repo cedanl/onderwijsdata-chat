@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -19,6 +20,7 @@ import plotly.io as pio
 
 from tools import dispatch, store
 from tools.catalog import catalogus_laatste_update
+from tools.cbs import bron_laatste_update
 from tools.schemas import (
     TOOL_CREATE_PLOT,
     TOOL_GET_CBS_DATA,
@@ -145,14 +147,30 @@ def _recept_naam(fr: object, index: int) -> str:
     return f"'{titel}'" if isinstance(titel, str) and titel.strip() else f"Grafiek {index + 1}"
 
 
-def replay_dashboard_figures(recipe: list[dict], figure_recipes: list[dict]) -> list[Figuuruitkomst]:
+@dataclass(frozen=True)
+class Verversing:
+    """Ververs: per dataoproep de status van replay_data_calls, en de figuren als alles herlaadde (#524)."""
+
+    calls: list[dict]
+    uitkomsten: list[Figuuruitkomst] = field(default_factory=list)
+
+    @property
+    def mislukte_calls(self) -> int:
+        return sum(1 for c in self.calls if not c["success"])
+
+
+def replay_dashboard_figures(recipe: list[dict], figure_recipes: list[dict]) -> Verversing:
     """Ververs: herlaad de data bij de bron en maak per figuurrecept de figuur opnieuw.
 
     1. Replay data-load calls (populates store with fresh data)
-    2. Per figuurrecept een uitkomst: de figuur-JSON, of de reden waarom niet
+    2. Alleen als elke call slaagde: per figuurrecept een uitkomst, de figuur-JSON of
+       de reden waarom niet. Uit half herladen data komen geen figuren: die zouden
+       verse en oude data mengen onder het label "ververst" (#524).
     """
-    replay_data_calls(recipe)
-    return figuur_uitkomsten(figure_recipes)
+    verversing = Verversing(replay_data_calls(recipe))
+    if verversing.mislukte_calls:
+        return verversing
+    return Verversing(verversing.calls, figuur_uitkomsten(figure_recipes))
 
 
 @dataclass(frozen=True)
@@ -220,12 +238,17 @@ def _rijen(query: dict) -> list | Reden:
     return rijen or Reden.GEEN_RIJEN
 
 
-def ankers_van_recipe(recipe: list[dict]) -> dict[str, str]:
-    """Per CBS-dataset in het recept de laatste-update-datum uit de catalogus (#346).
+def ankers_van_recipe(recipe: list[dict], vorige: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Per CBS-dataset in het recept de laatste-update-datum zoals CBS hem nu meldt (#346, #524).
 
     Het anker van een dashboard: bij ververs vertelt het verschil met het bewaarde
     anker dat de bron zelf is bijgewerkt, los van wat er in de figuren verschuift.
+    De datum komt per aanroep bij CBS vandaan (bron_laatste_update): de catalogus is
+    een momentopname uit de package. Antwoordt CBS niet, dan blijft het vorige anker
+    staan (`vorige`, het bewaarde) en anders geldt de catalogusdatum. Doet netwerk-I/O:
+    roep dit niet aan op de event loop.
     """
+    vorige = vorige or {}
     ankers: dict[str, str] = {}
     for call in recipe:
         if call.get("name") != TOOL_GET_CBS_DATA:
@@ -235,7 +258,9 @@ def ankers_van_recipe(recipe: list[dict]) -> dict[str, str]:
         except (json.JSONDecodeError, TypeError):
             continue
         dataset = args.get("dataset_id")
-        if isinstance(dataset, str) and dataset and (update := catalogus_laatste_update(dataset)):
+        if not isinstance(dataset, str) or not dataset:
+            continue
+        if update := (bron_laatste_update(dataset) or vorige.get(dataset) or catalogus_laatste_update(dataset)):
             ankers[dataset] = update
     return ankers
 

@@ -86,4 +86,4 @@ def test_refreshfout_lekt_geen_herlaadfouten(monkeypatch):
         asyncio.run(chat._do_refresh([{"name": "get_duo_data", "arguments": "{}"}], [], {}))
 
     assert "herladen mislukt" not in str(exc_info.value)
-    assert "Geen van de datasets kon herladen worden" in str(exc_info.value)
+    assert "De data kon niet opnieuw opgehaald worden: 1 van de 1 dataset(s)" in str(exc_info.value)
