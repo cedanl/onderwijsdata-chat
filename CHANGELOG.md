@@ -249,6 +249,10 @@ de laatste tag is 1.8.6.
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
   titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
   en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
+- Een ververs van een dashboard zonder datarecept meldt niet meer "Data ververst" maar "Bij de bron is niets
+  opgehaald: dit dashboard heeft geen datarecept; de grafieken zijn opnieuw getekend uit de data in het
+  geheugen", als waarschuwing (#528, vervolg op #524). "Data ververst" staat er alleen als er bij de bron iets
+  is opgehaald.
 - Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat
   en dat je geen persoonsgegevens invoert. Lijkt een concept een BSN (elfproef), e-mailadres of telefoonnummer te
   bevatten, dan zegt een waarschuwing dat voor het versturen; versturen blijft mogelijk. Zo'n vraag krijgt als
