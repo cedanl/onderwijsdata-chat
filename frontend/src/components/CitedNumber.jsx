@@ -42,6 +42,12 @@ export default function CitedNumber({ node, children, ...props }) {
         onClick={() => setOpen(o => !o)}
       >
         {children}
+        {/* Zonder zichtbaar teken leek het getal vette tekst en vond niemand de bron (#495). */}
+        <svg className="citatie-icoon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="8" cy="8" r="6.5" />
+          <path d="M8 7.2v3.6" strokeLinecap="round" />
+          <circle cx="8" cy="5" r="0.5" fill="currentColor" stroke="none" />
+        </svg>
       </button>
       {open && (
         <span id={id} role="note" className="citatie-uitleg">
