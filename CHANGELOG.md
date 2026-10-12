@@ -233,7 +233,6 @@ de laatste tag is 1.8.6.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
-||||||| parent of 8efef29 (perf(persistence): databaseaanroepen uit de event loop, een Postgres-pool en een lijst zonder berichten)
 - De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
   figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
   (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie
