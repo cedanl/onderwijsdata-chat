@@ -147,6 +147,12 @@ class TestEndpoint:
         assert resp.status_code == 400
         assert "modus" in resp.json()["error"].lower()
 
+    @pytest.mark.parametrize("mode", [["ververs"], {"a": 1}, 5])
+    def test_onhashbare_of_niet_tekst_modus_geeft_400_in_plaats_van_500(self, mode):
+        resp = TestClient(server.app).post("/api/dashboard/refresh", json={"mode": mode})
+        assert resp.status_code == 400
+        assert "modus" in resp.json()["error"].lower()
+
     def test_ververs_respons_bevat_melding_en_veranderingen(self):
         _laad([475460, 478660])
         oud = replay_dashboard_figures([], [RECEPT])
@@ -162,3 +168,22 @@ class TestEndpoint:
         assert body["mode"] == "ververs"
         assert "melding" in body and "veranderingen" in body
         assert body["spec"]["figures_json"] == oud
+
+
+class TestWebSocketModus:
+    @pytest.mark.parametrize("mode", ["replay", ["ververs"], {"a": 1}, 5])
+    def test_ongeldige_modus_geeft_een_foutmelding_en_start_niets(self, mode):
+        events: list[dict] = []
+
+        async def emit(event):
+            events.append(event)
+
+        async def scenario():
+            msg = {"action": "refresh_dashboard", "mode": mode}
+            return await chat.ACTIES["refresh_dashboard"](msg, chat._new_session(), emit, None)
+
+        taak = asyncio.run(scenario())
+
+        assert taak is None
+        assert [e["type"] for e in events] == ["error"]
+        assert "modus" in events[0]["message"].lower()
