@@ -65,6 +65,14 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Het model schrijft geen OData meer voor CBS (#343, ADR-006). `get_cbs_data` krijgt een gesloten
+  `selectie` — per dimensie een code uit `get_cbs_dimension` of `"*"` om uit te splitsen, de periode
+  als lijst of bereik (schooljaarspelling wordt in code vertaald), onderwerpen als kolomsleutels — en
+  de server compileert daaruit de bronfilter. Een selectie waarin een dimensie noch gepind noch bewust
+  uitgesplitst is, wordt geweigerd vóór de datacall, met de ontbrekende dimensie(s) erbij; de rijlimiet
+  is een beleidsregel van de server, geen modelparameter. Bewaarde recepten en het herladen/verversen
+  van oudere gesprekken blijven werken via het interne `filters`-pad; nieuwe recepten bewaren de
+  gecompileerde filter en blijven letterlijk reproduceerbaar.
 - Dezelfde selectie in een andere spelling is nu dezelfde selectie (#342). De identiteit van een
   toolaanroep en van een data_key is de digest van het canonieke plan, niet meer de letterlijke
   modeljson: sleutelvolgorde, `__in` met één waarde, hoofd- en kleine letters, `2024/'25` naast

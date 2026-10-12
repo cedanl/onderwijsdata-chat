@@ -11,7 +11,7 @@ from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
 
-from . import canoniek, cbs_afronding, fouten, periode, scopeprofiel, store
+from . import canoniek, cbs_afronding, cbs_selectie, fouten, periode, scopeprofiel, store
 from .catalog import bron_titel, catalogus_laatste_update, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
@@ -272,14 +272,21 @@ def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pa
         return (
             f"De eerste {len(opgehaald)} rijen van dataset '{dataset_id}' bevatten geen rijen voor "
             f"{sectorfilter.deel}. De selectie is onvolledig: de bron kan er verder nog hebben. "
-            "Verfijn $filter of verhoog $top."
+            "Verfijn de selectie (pin meer dimensies of kies minder periodes)."
         )
     return sectorfilter.geen_rijen(dataset_id)
 
 
-def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
+def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    if selectie is not None:
+        # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
+        # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
+        uitkomst = cbs_selectie.compileer(dataset_id, selectie, _load_definitions(dataset_id))
+        if isinstance(uitkomst, str):
+            return uitkomst
+        filters = uitkomst or None
     params = dict(filters or {})
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
@@ -289,16 +296,16 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
             return fout
         params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
     # Bij een tabel over meer onderwijssoorten ligt de scopegrens vóór de aanroep, en nog eens op de rijen (CH-03).
-    selectie = scopeprofiel.cbs_sectorselectie(dataset_id, params)
-    if isinstance(selectie, str):
-        return selectie
-    if selectie:
-        params = selectie.params
+    sectorselectie = scopeprofiel.cbs_sectorselectie(dataset_id, params)
+    if isinstance(sectorselectie, str):
+        return sectorselectie
+    if sectorselectie:
+        params = sectorselectie.params
     try:
         opgehaald = data(dataset_id, **params)
     except Exception as e:
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
-    rows = selectie.rijen(opgehaald) if selectie else opgehaald
+    rows = sectorselectie.rijen(opgehaald) if sectorselectie else opgehaald
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
     truncated = len(opgehaald) >= _page_size(params["$top"])
     if not rows:
@@ -373,7 +380,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None) -> str:
         result["afronding_onbekend"] = cbs_afronding.ONBEKEND
 
     if truncated:
-        result["waarschuwing"] = f"Afgekapt op {len(df)} rijen. Verfijn $filter of $select voor volledigere data."
+        result["waarschuwing"] = (
+            f"Afgekapt op {len(df)} rijen. Verfijn de selectie (pin meer dimensies, kies minder periodes of onderwerpen)."
+        )
 
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
 

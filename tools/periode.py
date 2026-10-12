@@ -15,6 +15,8 @@ _SCHOOLJAAR = re.compile(r"(?<!\d)(20\d{2})\s*[/\-–]\s*'?(\d{4}|\d{2})(?!\d)")
 # Twee opeenvolgende jaren met een streepje (2024-2025) zijn een schooljaar, geen bereik.
 _JAARBEREIK = re.compile(r"(?<![\d/'])(20\d{2})\s*(tot(?:\s+en\s+met)?|t/m|[-–→]|naar)\s*(20\d{2})(?![\d/])")
 _CBS_SCHOOLJAAR = re.compile(r"^(\d{4})SJ\d{2}$")
+# Elke CBS-periodecode: schooljaar (SJ), kalenderjaar (JJ), kwartaal (KW), maand (MM), ….
+_CBS_PERIODECODE = re.compile(r"^\d{4}[A-Z]{2}\d{2}$")
 _DUO_PERIODEKOLOMMEN = ("STUDIEJAAR", "JAAR")
 
 # Jaarkolommen die geen schooljaar zijn en waarvan de bron niet zegt welk soort jaar het is
@@ -131,6 +133,11 @@ def startjaar(bron: str, waarde) -> int | None:
         return int(float(waarde))
     except (TypeError, ValueError):
         return None
+
+
+def is_periodecode(waarde) -> bool:
+    """Of `waarde` een CBS-periodecode is (2024SJ00, 2024JJ00, 2024KW01, 2024MM01)."""
+    return bool(_CBS_PERIODECODE.match(str(waarde).strip()))
 
 
 def duo_periodekolom(kolommen) -> str | None:

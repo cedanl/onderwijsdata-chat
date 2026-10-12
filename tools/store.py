@@ -18,7 +18,7 @@ _DUO_PREFIX = "duo:"
 # What a tool answers when a count, sum or total would rest on truncated data (#186).
 ONVOLLEDIG = (
     "De data is afgekapt: één pagina van de bron, niet de hele bron. Daarop geen telling, "
-    "som of ander totaal. Verfijn met een serverfilter bij het laden (bij CBS $filter of $select); "
+    "som of ander totaal. Verfijn met een serverfilter bij het laden (bij CBS een nauwere selectie); "
     "voor aantallen uit RIO: gebruik DUO of CBS."
 )
 
