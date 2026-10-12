@@ -1,13 +1,17 @@
-"""Wat er veranderde tussen twee reeksen Plotly-figuren, in gewone taal (#346).
+"""Wat er veranderde tussen bewaarde en verse Plotly-figuren, in gewone taal (#346).
 
 Ververs haalt de data opnieuw op bij de bron; hier wordt de bewaarde grafiek
 vergeleken met de verse en worden de gewijzigde waarden benoemd (een CBS-
-herziening, een DUO-mutatie). De vergelijking leest beide kanten via plotly
-(pio.from_json), zodat ook binair gecodeerde reeksen (bdata) gewoon waarden
-zijn. De meldingen zijn voor de gebruiker geschreven: data, geen instructies.
+herziening, een DUO-mutatie). Oud en nieuw horen bij elkaar via hun recept-id,
+niet via hun positie in een lijst (#523). De vergelijking leest beide kanten via
+plotly (pio.from_json); die laat binair gecodeerde reeksen (bdata) als dict staan,
+maar de figuren van create_plot en de sandbox dragen gewone lijsten. De meldingen
+zijn voor de gebruiker geschreven: data, geen instructies.
 """
 
 import logging
+from collections import Counter
+from collections.abc import Mapping, Sequence
 
 import plotly.io as pio
 
@@ -19,24 +23,45 @@ MAX_MELDINGEN = 8
 _DECIMALEN = 1  # de precisie van nl_getal voor niet-gehele waarden
 
 
-def figuur_verschillen(oud: list[str], nieuw: list[str]) -> list[str]:
-    """De gewijzigde waarden tussen twee reeksen figuur-JSON, als meldingen.
+def figuur_verschillen(oud: Mapping[str, str], nieuw: Mapping[str, str], volgorde: Sequence[str] = ()) -> list[str]:
+    """De gewijzigde waarden tussen bewaarde en verse figuur-JSON, als meldingen.
 
-    Leeg betekent: geen zichtbaar verschil. De lijst is begrensd op
-    MAX_MELDINGEN; de rest wordt samengevat in een slotregel.
+    `oud` en `nieuw` gaan van recept-id naar figuur-JSON. Een id aan één kant geeft
+    een eigen regel ("niet meer in het dashboard" / "nieuw"), nooit een vergelijking
+    met een andere figuur. `volgorde` (alle recept-ids, in receptvolgorde) bepaalt de
+    volgorde van de meldingen en de N van "Grafiek N"; zonder telt oud, dan nieuw.
+    Leeg betekent: geen zichtbaar verschil. De lijst is begrensd op MAX_MELDINGEN;
+    de rest wordt samengevat in een slotregel.
     """
-    if oud == nieuw:
+    if dict(oud) == dict(nieuw):
         return []
     meldingen: list[str] = []
-    for i, (o, n) in enumerate(zip(oud, nieuw, strict=False)):
-        if o != n:
-            meldingen.extend(_figuur_diff(i, o, n))
-    if len(oud) != len(nieuw):
-        meldingen.append(f"Het aantal grafieken veranderde van {len(oud)} naar {len(nieuw)}.")
+    for index, sleutel in enumerate(dict.fromkeys([*volgorde, *oud, *nieuw])):
+        meldingen.extend(_sleutel_diff(index, oud.get(sleutel), nieuw.get(sleutel)))
     if len(meldingen) > MAX_MELDINGEN:
         rest = len(meldingen) - MAX_MELDINGEN
         meldingen = [*meldingen[:MAX_MELDINGEN], f"… en nog {rest} andere wijzigingen."]
     return meldingen
+
+
+def _sleutel_diff(index: int, oud_json: str | None, nieuw_json: str | None) -> list[str]:
+    if oud_json == nieuw_json:
+        return []
+    if oud_json is None:
+        return [f"{_titel(nieuw_json, index)} is nieuw in het dashboard."]
+    if nieuw_json is None:
+        return [f"{_titel(oud_json, index)} staat niet meer in het dashboard."]
+    return _figuur_diff(index, oud_json, nieuw_json)
+
+
+def _titel(figuur_json: str | None, index: int) -> str:
+    """De naam van een figuur die maar aan één kant staat: zijn titel, anders "Grafiek N"."""
+    if figuur_json is None:
+        return _naam(None, index)
+    try:
+        return _naam(pio.from_json(figuur_json, skip_invalid=True), index)
+    except Exception:
+        return _naam(None, index)
 
 
 def _figuur_diff(index: int, oud_json: str, nieuw_json: str) -> list[str]:
@@ -64,7 +89,7 @@ def _naam(fig, index: int) -> str:
 
 
 def _reeks_diff(titel: str, oud_trace, nieuw_trace) -> list[str]:
-    """Per categorie (x-waarde of taartlabel) de gewijzigde waarde benoemen."""
+    """Per categorie (x-waarde, taartlabel of heatmapcel) de gewijzigde waarde benoemen."""
     reeks = f", reeks '{nieuw_trace.name}'" if getattr(nieuw_trace, "name", None) else ""
     oud = _waarden(oud_trace)
     nieuw = _waarden(nieuw_trace)
@@ -84,15 +109,62 @@ def _reeks_diff(titel: str, oud_trace, nieuw_trace) -> list[str]:
 
 
 def _waarden(trace) -> dict[str, object]:
-    """Categorie → waarde van een reeks: x/y voor staaf en lijn, labels/values voor taart."""
+    """Categorie → waarde van een reeks: x/y voor staaf en lijn, labels/values voor taart, z voor een heatmap.
+
+    Een categorie die vaker voorkomt, krijgt een volgnummer ("2024 (2e)") in plaats
+    van de eerdere te overschrijven.
+    """
+    raster = _raster(getattr(trace, "z", None))
+    return _uniek(_cellen(trace, raster) if raster is not None else _punten(trace))
+
+
+def _punten(trace) -> list[tuple[str, object]]:
     categorieen = getattr(trace, "labels", None)
     waarden = getattr(trace, "values", None)
     if categorieen is None or waarden is None:
         categorieen = getattr(trace, "x", None)
         waarden = getattr(trace, "y", None)
     if categorieen is None or waarden is None:
-        return {}
-    return {str(c): w for c, w in zip(_lijst(categorieen), _lijst(waarden), strict=False)}
+        return []
+    return [(str(c), w) for c, w in zip(_lijst(categorieen), _lijst(waarden), strict=False)]
+
+
+def _raster(z) -> list[list] | None:
+    """De rijen van een tweedimensionale z (heatmap); None zonder z of als z geen raster is."""
+    if z is None:
+        return None
+    rijen = _lijst(z)
+    if not all(isinstance(rij, (list, tuple)) for rij in rijen):
+        return None
+    return [list(rij) for rij in rijen]
+
+
+def _cellen(trace, raster: list[list]) -> list[tuple[str, object]]:
+    """Per heatmapcel "rij …, kolom …" en de waarde: labels uit y en x, zonder labels de positie."""
+    rijen = _labels(getattr(trace, "y", None))
+    kolommen = _labels(getattr(trace, "x", None))
+    return [
+        (f"rij {_label(rijen, i)}, kolom {_label(kolommen, j)}", waarde)
+        for i, rij in enumerate(raster)
+        for j, waarde in enumerate(rij)
+    ]
+
+
+def _labels(as_) -> list:
+    return _lijst(as_) if as_ is not None else []
+
+
+def _label(labels: list, index: int) -> str:
+    return str(labels[index]) if index < len(labels) else str(index + 1)
+
+
+def _uniek(paren: list[tuple[str, object]]) -> dict[str, object]:
+    gezien: Counter[str] = Counter()
+    waarden: dict[str, object] = {}
+    for categorie, waarde in paren:
+        gezien[categorie] += 1
+        waarden[categorie if gezien[categorie] == 1 else f"{categorie} ({gezien[categorie]}e)"] = waarde
+    return waarden
 
 
 def _lijst(reeks) -> list:

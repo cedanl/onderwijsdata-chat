@@ -8,9 +8,12 @@
   figuren terug.
 """
 
+import hashlib
 import json
 import logging
+from collections import Counter
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 import plotly.io as pio
 
@@ -78,17 +81,78 @@ def replay_data_calls(calls: list[dict]) -> list[dict]:
     return results
 
 
-def replay_dashboard_figures(
-    recipe: list[dict],
-    figure_recipes: list[dict],
-) -> list[str]:
-    """Reload data and re-create figures. Returns updated figures_json.
+class Reden(StrEnum):
+    """Waarom een figuurrecept geen figuur gaf (#523): een vaste zin, nooit de ruwe fout (#503)."""
+
+    DATA_ONTBREEKT = "data ontbreekt"  # de key staat niet (meer) in de store
+    GEEN_DATABRON = "geen databron"  # het recept noemt geen data_key
+    QUERY_MISLUKT = "query mislukt"  # fouttekst, geen JSON of een uitzondering
+    GEEN_RIJEN = "geen rijen"
+    GEEN_GRAFIEK = "grafiek niet gemaakt"  # create_plot gaf geen figuur, bv. bij één datapunt
+
+
+@dataclass(frozen=True)
+class Figuuruitkomst:
+    """Eén figuurrecept na uitvoeren: de figuur-JSON, of de reden waarom die er niet is."""
+
+    recept_id: str
+    naam: str  # zoals de grafiek in een melding heet: 'titel', anders "Grafiek N"
+    figuur_json: str | None = None
+    reden: Reden | None = None
+
+
+def recept_ids(figure_recipes: list[dict]) -> list[str]:
+    """Per figuurrecept een stabiele sleutel: een digest van de canonieke JSON van query en plot (#523).
+
+    Afgeleid, niet opgeslagen: ook oude dashboards hebben er zo een. Identieke
+    dubbelen krijgen een volgnummer, zodat elke sleutel bij precies één recept hoort.
+    """
+    gezien: Counter[str] = Counter()
+    ids: list[str] = []
+    for fr in figure_recipes:
+        digest = _recept_digest(fr)
+        gezien[digest] += 1
+        ids.append(digest if gezien[digest] == 1 else f"{digest}-{gezien[digest]}")
+    return ids
+
+
+def _recept_digest(fr: object) -> str:
+    deel = {k: fr.get(k) for k in ("query", "plot")} if isinstance(fr, dict) else {"recept": fr}
+    canoniek = json.dumps(deel, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
+    return hashlib.sha256(canoniek.encode()).hexdigest()[:16]
+
+
+def figuur_uitkomsten(figure_recipes: list[dict]) -> list[Figuuruitkomst]:
+    """Voer elk figuurrecept uit tegen de store; één uitkomst per recept, in receptvolgorde (#523).
+
+    Een mislukt recept valt dus niet weg: wie bewaarde en nieuwe figuren vergelijkt,
+    koppelt ze via het recept, niet via de positie in een lijst van geslaagde figuren.
+    """
+    uitkomsten: list[Figuuruitkomst] = []
+    for index, (recept_id, fr) in enumerate(zip(recept_ids(figure_recipes), figure_recipes, strict=True)):
+        uitkomst = _figuur(fr)
+        naam = _recept_naam(fr, index)
+        if isinstance(uitkomst, Reden):  # eerst: een Reden is ook een str
+            uitkomsten.append(Figuuruitkomst(recept_id, naam, reden=uitkomst))
+        else:
+            uitkomsten.append(Figuuruitkomst(recept_id, naam, figuur_json=uitkomst))
+    return uitkomsten
+
+
+def _recept_naam(fr: object, index: int) -> str:
+    plot = fr.get("plot") if isinstance(fr, dict) else None
+    titel = plot.get("title") if isinstance(plot, dict) else None
+    return f"'{titel}'" if isinstance(titel, str) and titel.strip() else f"Grafiek {index + 1}"
+
+
+def replay_dashboard_figures(recipe: list[dict], figure_recipes: list[dict]) -> list[Figuuruitkomst]:
+    """Ververs: herlaad de data bij de bron en maak per figuurrecept de figuur opnieuw.
 
     1. Replay data-load calls (populates store with fresh data)
-    2. For each figure recipe: re-query data, re-create plot
+    2. Per figuurrecept een uitkomst: de figuur-JSON, of de reden waarom niet
     """
     replay_data_calls(recipe)
-    return [figuur for fr in figure_recipes if (figuur := _figuur(fr)) is not None]
+    return figuur_uitkomsten(figure_recipes)
 
 
 @dataclass(frozen=True)
@@ -97,6 +161,7 @@ class Reproductie:
 
     figures_json: list[str] = field(default_factory=list)
     ontbrekend: list[str] = field(default_factory=list)  # data-keys die niet meer in de store staan
+    mislukt: list[Figuuruitkomst] = field(default_factory=list)  # elke andere reden (#523)
 
 
 def reproduceer_figures(figure_recipes: list[dict]) -> Reproductie:
@@ -104,41 +169,55 @@ def reproduceer_figures(figure_recipes: list[dict]) -> Reproductie:
 
     Een key die de store kwijt is (herstart), komt in `ontbrekend`: reproduceren
     belooft identieke uitkomsten en haalt dus niets opnieuw op. Dat is aan ververs.
+    Elke andere mislukking komt met haar reden in `mislukt`; ververs helpt daar niet.
     """
-    figures_json: list[str] = []
-    ontbrekend: list[str] = []
-    for fr in figure_recipes:
-        key = (fr.get("query") or {}).get("data_key")
-        if not isinstance(key, str) or not key:
-            continue
-        if store.get(store.canoniek(key)) is None:
-            ontbrekend.append(key)
-            continue
-        if (figuur := _figuur(fr)) is not None:
-            figures_json.append(figuur)
-        else:
-            ontbrekend.append(key)
-    return Reproductie(figures_json, ontbrekend)
+    uitkomsten = figuur_uitkomsten(figure_recipes)
+    return Reproductie(
+        figures_json=[u.figuur_json for u in uitkomsten if u.figuur_json is not None],
+        ontbrekend=[
+            key
+            for fr, u in zip(figure_recipes, uitkomsten, strict=True)
+            if u.reden is Reden.DATA_ONTBREEKT and (key := _data_key(fr))
+        ],
+        mislukt=[u for u in uitkomsten if u.reden not in (None, Reden.DATA_ONTBREEKT)],
+    )
 
 
-def _figuur(fr: dict) -> str | None:
-    """Eén figuurrecept uitvoeren tegen de store: query de data, maak de plot."""
-    query = fr.get("query")
+def _data_key(fr: object) -> str | None:
+    query = fr.get("query") if isinstance(fr, dict) else None
+    key = query.get("data_key") if isinstance(query, dict) else None
+    return key if isinstance(key, str) and key else None
+
+
+def _figuur(fr: dict) -> str | Reden:
+    """Eén figuurrecept uitvoeren tegen de store: de figuur-JSON, of de reden waarom niet."""
+    if (key := _data_key(fr)) is None:
+        return Reden.GEEN_DATABRON
+    if store.get(store.canoniek(key)) is None:
+        return Reden.DATA_ONTBREEKT
+    rijen = _rijen(fr["query"])
+    if isinstance(rijen, Reden):
+        return rijen
     plot = fr.get("plot") or {}
-    if not query or not query.get("data_key"):
-        return None
     try:
-        result_str, _ = dispatch(TOOL_QUERY_DATA, query)
-        rows = json.loads(result_str).get("rijen", [])
-        if not rows:
-            return None
-        _, figure = dispatch(TOOL_CREATE_PLOT, {**plot, "data": rows})
-        if figure is None:
-            return None
-        return pio.to_json(figure)
+        _, figure = dispatch(TOOL_CREATE_PLOT, {**plot, "data": rijen})
+        return Reden.GEEN_GRAFIEK if figure is None else pio.to_json(figure)
     except Exception:
-        logger.debug("Figure replay mislukt, overgeslagen", exc_info=True)
-        return None
+        logger.debug("Figuur herhalen mislukt bij de plot", exc_info=True)
+        return Reden.GEEN_GRAFIEK
+
+
+def _rijen(query: dict) -> list | Reden:
+    """De rijen van de query van een figuurrecept; een fouttekst of uitzondering is QUERY_MISLUKT."""
+    try:
+        resultaat = json.loads(dispatch(TOOL_QUERY_DATA, query)[0])
+    except Exception:
+        logger.debug("Figuur herhalen mislukt bij de query", exc_info=True)
+        return Reden.QUERY_MISLUKT
+    rijen = resultaat.get("rijen") if isinstance(resultaat, dict) else None
+    if not isinstance(rijen, list):
+        return Reden.QUERY_MISLUKT
+    return rijen or Reden.GEEN_RIJEN
 
 
 def ankers_van_recipe(recipe: list[dict]) -> dict[str, str]:
