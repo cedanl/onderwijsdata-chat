@@ -8,21 +8,50 @@ import plotly.io as pio
 from tools import dispatch
 from tools.schemas import (
     TOOL_CREATE_PLOT,
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_RIO_DATA,
     TOOL_QUERY_DATA,
 )
 
+logger = logging.getLogger(__name__)
+
+# De enige tools die een recept mag herhalen: de load-tools waaruit _build_recipe het
+# samenstelt. Het recept komt van de client, en zonder deze grens kon een ingelogde
+# client er elke tool mee aanroepen, run_analysis inbegrepen (#505). De scopecontrole
+# (#355) zit in de tools zelf en geldt zo ook voor dit pad.
+REPLAYABLE_TOOLS = frozenset({TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA})
+
 
 def replay_data_calls(calls: list[dict]) -> list[dict]:
-    """Re-execute data-fetching calls. Returns per-call status."""
+    """Re-execute data-fetching calls. Returns per-call status.
+
+    De fouttekst per mislukte call is een vaste, veilige melding: de ruwe uitzondering
+    (met paden of parser-details) gaat alleen naar het log (#503).
+    """
     results: list[dict] = []
     for tc in calls:
-        name = tc["name"]
+        name = tc.get("name")
+        if name not in REPLAYABLE_TOOLS:
+            logger.warning("Replay geweigerd: tool %r staat niet in het recept-allowlist", name)
+            results.append(
+                {
+                    "name": name,
+                    "arguments": tc.get("arguments"),
+                    "success": False,
+                    "error": "tool niet toegestaan bij verversen",
+                }
+            )
+            continue
         try:
             args = json.loads(tc.get("arguments") or "{}")
             output, _ = dispatch(name, args)
             results.append({"name": name, "arguments": tc.get("arguments"), "success": True, "output": output})
-        except Exception as e:
-            results.append({"name": name, "arguments": tc.get("arguments"), "success": False, "error": str(e)})
+        except Exception:
+            logger.warning("Herladen van %s mislukt", name, exc_info=True)
+            results.append(
+                {"name": name, "arguments": tc.get("arguments"), "success": False, "error": "herladen mislukt"}
+            )
     return results
 
 
@@ -53,7 +82,7 @@ def replay_dashboard_figures(
             if figure is not None:
                 figures_json.append(pio.to_json(figure))
         except Exception:
-            logging.getLogger(__name__).debug("Figure replay mislukt, overgeslagen", exc_info=True)
+            logger.debug("Figure replay mislukt, overgeslagen", exc_info=True)
             continue
 
     return figures_json

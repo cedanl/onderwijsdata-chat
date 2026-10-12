@@ -17,6 +17,7 @@ from agent import loop as loop_module
 from agent import report as report_module
 from agent.report import ReportSpec
 from agent.stream import StreamResult
+from core.errors import Gebruikersfout
 from tools import store
 
 _DATASET = "cbs:85423NED"
@@ -177,7 +178,7 @@ def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its
 def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
     _make_generate(monkeypatch, [_final("Het waren er 12.345."), _final("Het waren er 54.321.")])
 
-    with pytest.raises(ValueError, match="niet consistent"):
+    with pytest.raises(Gebruikersfout, match="niet consistent"):
         _run_generate()
 
 
@@ -199,5 +200,5 @@ def test_generate_refuses_an_empty_shell(monkeypatch):
     shell = StreamResult(text="Hier is het rapport.", tool_calls=[])
     _make_generate(monkeypatch, [shell, StreamResult(text='{"title": "T"}', tool_calls=[])])
 
-    with pytest.raises(ValueError, match="conclusie"):
+    with pytest.raises(Gebruikersfout, match="conclusie"):
         _run_generate()
