@@ -52,6 +52,18 @@ describe('createHeartbeat', () => {
     expect(onDead).not.toHaveBeenCalled()
   })
 
+  // A ping behind a reset or history is answered only after the server stopped the
+  // running task, which can take up to _STOP_TIMEOUT_S (5 s, routes/chat.py).
+  it('keeps the socket open for a pong that comes 6 s after the ping', () => {
+    heartbeat.start()
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS)
+    vi.advanceTimersByTime(6000)
+    heartbeat.alive()
+    vi.advanceTimersByTime(PONG_TIMEOUT_MS)
+    expect(ws.readyState).toBe(FakeWebSocket.OPEN)
+    expect(onDead).not.toHaveBeenCalled()
+  })
+
   it('does not ping a socket that is no longer open', () => {
     ws.readyState = FakeWebSocket.CLOSED
     heartbeat.start()

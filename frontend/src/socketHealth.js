@@ -4,7 +4,10 @@
 // app-level ping the server answers with pong.
 
 export const HEARTBEAT_INTERVAL_MS = 15000
-export const PONG_TIMEOUT_MS = 5000
+// A ping that arrives behind a `reset` or `history` is answered only after the server has
+// stopped the running task, which can take up to _STOP_TIMEOUT_S (5 s, routes/chat.py). Twice
+// that wait, and still under the interval, so a healthy connection is never dropped (#522).
+export const PONG_TIMEOUT_MS = 10000
 
 export const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
 const MAX_RETRIES = 4
