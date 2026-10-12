@@ -237,7 +237,8 @@ def _parse_history(raw: list) -> list[dict]:
     Capped at MAX_HISTORY beurten en HISTORY_MAX_CHARS tekens in totaal (#500, S15):
     de historie komt van de client en ging zonder tekencap integraal naar het model.
     Boven de cap vallen de oudste beurten af — dezelfde strategie als MAX_HISTORY —
-    zodat een bestaand lang gesprek blijft openen.
+    zodat een bestaand lang gesprek blijft openen. De historie begint na het afvallen altijd
+    met een gebruikersbeurt en bevat nooit een beurt zonder tekst.
     """
     valid_roles = {"user", "assistant"}
     result = [
@@ -254,13 +255,19 @@ def _parse_history(raw: list) -> list[dict]:
         content = m["content"]
         if not kept and len(content) > HISTORY_MAX_CHARS:
             # Zelfs de jongste beurt is groter dan de hele cap: afkappen, niet weigeren.
-            m = {**m, "content": content[:HISTORY_MAX_CHARS]}
-            content = m["content"]
-        if totaal + len(content) > HISTORY_MAX_CHARS:
+            content = content[:HISTORY_MAX_CHARS]
+            m = {**m, "content": content}
+        # Een beurt die na afkappen leeg is (cap van 0 tekens) geeft providers een 400.
+        if not content.strip() or totaal + len(content) > HISTORY_MAX_CHARS:
             break
         totaal += len(content)
         kept.append(m)
     kept.reverse()
+    if len(kept) < len(result):
+        # Providers eisen dat de historie met een gebruikersbeurt begint (anders 400): na het
+        # afvallen van de oudste beurten kan een antwoord zonder bijbehorende vraag vooraan staan.
+        while kept and kept[0]["role"] == "assistant":
+            kept.pop(0)
     return kept
 
 

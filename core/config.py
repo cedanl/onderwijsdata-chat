@@ -27,8 +27,9 @@ MAX_MESSAGE_CHARS = int(os.getenv("MAX_MESSAGE_CHARS", "4000"))
 # Tekencap op de hele aangeleverde historie (#500, SECURITY.md S15): zonder cap kon een
 # handgemaakte client via de history-actie tot MAX_HISTORY beurten van willekeurige grootte
 # naar het model sturen. 40 × 4000 is ruim voor echte gesprekken; daarboven vallen de
-# oudste beurten af, zodat bestaande lange gesprekken blijven openen.
-HISTORY_MAX_CHARS = int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * MAX_MESSAGE_CHARS)))
+# oudste beurten af, zodat bestaande lange gesprekken blijven openen. Minimaal 1: een cap van
+# 0 (of een negatieve waarde, of MAX_HISTORY=0 in de standaard) zou beurten tot lege tekst afkappen.
+HISTORY_MAX_CHARS = max(1, int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * MAX_MESSAGE_CHARS))))
 # Tijdsgrens per run (#90): na RUN_SLOW_S een melding, na RUN_TIMEOUT_S stopt de run.
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))
