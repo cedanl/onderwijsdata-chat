@@ -201,6 +201,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // welcome block carries the suggestions instead, so they are never in the page twice (#341).
   const narrowScreen = useMediaQuery(NARROW_SCREEN)
   const [initialChat] = useState(loadCurrentChat)
+  // Uitloggen en sessie-einde wissen de opslag vóór deze pagina unmount. Een save of
+  // fetch-resultaat dat React daarna nog uitvoert, mag het gesprek van de vorige
+  // gebruiker niet terugschrijven (#507, zelfde race als useDashboardChat bij #498).
+  const [tokenAtMount] = useState(getToken)
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
@@ -227,6 +231,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
     fetchConversations({ limit: HISTORY_FETCH_LIMIT }).then(rows => {
+      // Het antwoord kan na uitloggen binnenkomen; dan niets meer opslaan (#507).
+      if (sessionEndedSince(tokenAtMount)) return
       if (rows.length > 0) {
         const { items, hasMore } = historyPage(rows)
         persistConversationHistory(items)
@@ -241,6 +247,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         }
       }
     }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- alleen bij mount laden
   }, [])
 
   // The unmount save runs after the last render, so it reads the open conversation from a ref.
@@ -248,15 +255,48 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     openChatRef.current = { id: conversationId, messages: [...restoredMessages, ...messages] }
   }, [conversationId, restoredMessages, messages])
 
-  // Persist full visible chat so it survives browser refresh / tab close
+  // Een vol quotum faalde stil (#511): meld het één keer; bij de terugval zonder
+  // figuren blijft de tekst behouden en weet de gebruiker wat er na verversen mist.
+  const quotaGemeldRef = useRef(false)
+  const persistMetMelding = useCallback((id, all) => {
+    const uitkomst = persistCurrentChat(id, all)
+    if (uitkomst === 'ok' || quotaGemeldRef.current) return
+    quotaGemeldRef.current = true
+    addToast(uitkomst === 'zonder_figuren'
+      ? 'De lokale opslag is bijna vol: grafieken van dit gesprek komen na verversen niet terug.'
+      : 'De lokale opslag is vol: dit gesprek wordt niet lokaal bewaard.', 'warning')
+  }, [addToast])
+
+  // Persist full visible chat so it survives browser refresh / tab close.
+  // Niet per tekstfragment (#511): tijdens het streamen verandert messages honderden
+  // keren en elke keer het hele gesprek serialiseren groeit mee met de gesprekslengte.
+  // Opslaan gebeurt bij elk afgerond antwoord (busy false) en bij pagehide hieronder.
   useEffect(() => {
+    if (busy || sessionEndedSince(tokenAtMount)) return
     const all = [...restoredMessages, ...messages]
-    if (all.length) persistCurrentChat(conversationId, all)
-  }, [conversationId, messages, restoredMessages])
+    if (all.length) persistMetMelding(conversationId, all)
+  }, [busy, conversationId, messages, restoredMessages, tokenAtMount, persistMetMelding])
+
+  // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren.
+  useEffect(() => {
+    const opslaan = () => {
+      if (sessionEndedSince(tokenAtMount)) return
+      if (document.visibilityState !== 'hidden') return
+      const { id, messages: all } = openChatRef.current
+      if (all.length) persistMetMelding(id, all)
+    }
+    window.addEventListener('pagehide', opslaan)
+    document.addEventListener('visibilitychange', opslaan)
+    return () => {
+      window.removeEventListener('pagehide', opslaan)
+      document.removeEventListener('visibilitychange', opslaan)
+    }
+  }, [tokenAtMount, persistMetMelding])
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Returns the save in flight, so a caller can wait until the server has the conversation.
   const saveConversation = useCallback(() => {
+    if (sessionEndedSince(tokenAtMount)) return savingRef.current
     const { id, messages: all } = openChatRef.current
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
@@ -267,7 +307,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setConversationHistory(updated)
     savingRef.current = putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
     return savingRef.current
-  }, [])
+  }, [tokenAtMount])
   const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
   // Save every finished answer, so closing the tab loses nothing.
@@ -306,13 +346,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setLoadingMoreHistory(true)
     fetchConversations({ limit: HISTORY_FETCH_LIMIT, ...nextPageQuery(conversationHistory) })
       .then(rows => {
+        if (sessionEndedSince(tokenAtMount)) return
         const { items, hasMore } = historyPage(rows)
         setConversationHistory(current => appendPage(current, items))
         setHasMoreHistory(hasMore)
       })
       .catch(() => addToast('Oudere gesprekken laden is mislukt. Probeer het opnieuw.', 'error'))
       .finally(() => setLoadingMoreHistory(false))
-  }, [conversationHistory, addToast])
+  }, [conversationHistory, addToast, tokenAtMount])
 
   const handleDeleteConversation = useCallback((id) => {
     setPendingDelete(id)
@@ -344,16 +385,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [conversationHistory, addToast])
 
   // Save conversation on unmount (navigation away); clear current-chat key since it's now in history
-  useEffect(() => {
-    const tokenAtMount = getToken()
-    return () => {
-      // Logging out unmounts this page after App cleared the stored history;
-      // saving here would write the conversation straight back.
-      if (sessionEndedSince(tokenAtMount)) return
-      saveConversation()
-      clearCurrentChat()
-    }
-  }, [saveConversation])
+  useEffect(() => () => {
+    // Logging out unmounts this page after App cleared the stored history;
+    // saving here would write the conversation straight back.
+    if (sessionEndedSince(tokenAtMount)) return
+    saveConversation()
+    clearCurrentChat()
+  }, [saveConversation, tokenAtMount])
 
   const handleModelChange = useCallback((id) => {
     setSelectedModel(id)
@@ -418,7 +456,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   // Save the generated report as a workbook when the spec arrives
   useEffect(() => {
-    if (!reportSpec) return
+    if (!reportSpec || sessionEndedSince(tokenAtMount)) return
     const htmlContent = buildReportHtml(reportSpec, { instelling: settings?.instelling })
     const description = `Rapport door ${reportSpec.auteur || 'onbekend'} · gegenereerd op ${reportSpec.datum || ''}`
     saveWorkbookWithSync({
@@ -434,7 +472,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       }
       clearReport()
     })
-  }, [reportSpec, settings?.instelling, openRapport, clearReport])
+  }, [reportSpec, settings?.instelling, openRapport, clearReport, tokenAtMount])
 
   const displayMessages = [...restoredMessages, ...messages]
   const modelLabels = answerModels(displayMessages, models)
