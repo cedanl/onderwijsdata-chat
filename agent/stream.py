@@ -18,6 +18,8 @@ class StreamResult:
     tool_calls: list[dict]
     # "length" means the output limit cut the answer off.
     finish_reason: str | None = None
+    # Wat de provider terugmeldt als model (vaak een gedateerde versie), voor het manifest (#345).
+    model_versie: str | None = None
 
 
 async def accumulate_stream(
@@ -42,11 +44,13 @@ async def accumulate_stream(
     text_parts: list[str] = []
     raw_tcs: dict[int, dict] = {}
     finish_reason: str | None = None
+    model_versie: str | None = None
 
     async for chunk in stream:
         if stop_event and stop_event.is_set():
             break
 
+        model_versie = getattr(chunk, "model", None) or model_versie
         choice = chunk.choices[0]
         finish_reason = getattr(choice, "finish_reason", None) or finish_reason
         delta = choice.delta
@@ -75,4 +79,5 @@ async def accumulate_stream(
         text="".join(text_parts),
         tool_calls=[raw_tcs[i] for i in sorted(raw_tcs)],
         finish_reason=finish_reason,
+        model_versie=model_versie,
     )
