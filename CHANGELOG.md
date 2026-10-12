@@ -197,6 +197,12 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- Elk antwoord en elk rapport draagt een manifest (#345): model (en de providerversie die de
+  stream terugmeldde), of seed en temperature het model echt bereikten (een provider zonder
+  seed-ondersteuning staat er als "niet toegepast" in), prompt- en catalogusversie, appversie en
+  per dataset de dataversie (CBS-bijwerkdatum, Periodestatus van de geladen rijen, herlaaddatum).
+  Het rapport en de export tonen het compact als "Verantwoording" onderaan; het manifest bevat
+  alleen herkomst, geen vraag- of antwoordtekst.
 - Is de data van een gesprek na een herstart van de server weg, dan zegt een mislukte CSV-download dat en biedt
   "Vraag opnieuw stellen" aan. Een rapport of dashboard op zo'n gesprek wordt niet meer op de overgebleven data
   gemaakt: de melding zegt dat de vraag opnieuw moet (was: "Rapport kon niet worden gemaakt").

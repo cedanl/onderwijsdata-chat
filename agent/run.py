@@ -12,6 +12,7 @@ from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
+from . import manifest
 from .aanspreekvorm import je_vorm
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
@@ -33,7 +34,7 @@ from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
-from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
+from .selectie import data_keys, ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
 from .tekens import zonder_citaatkop
@@ -340,7 +341,12 @@ _ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, WEIGER_ANTWOORD})
 
 
 def _slotbericht(
-    text_content: str, result: LoopResult, herzien: list[str], truncated: bool, bronnen: list[str]
+    text_content: str,
+    result: LoopResult,
+    herzien: list[str],
+    truncated: bool,
+    bronnen: list[str],
+    manifest: dict | None = None,
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
@@ -350,6 +356,7 @@ def _slotbericht(
         "content": text_content,
         "actions": [],
         "bronnen": [] if text_content in _ZONDER_BRONNEN else bronnen,
+        **({"manifest": manifest} if manifest else {}),
         **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
@@ -443,5 +450,7 @@ async def run(
     truncated = result.finish_reason == "length"
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
-    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen))
+    # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
+    mani = manifest.bouw(chosen_model, data_keys(result.tool_results), model_versie=result.model_versie)
+    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani))
     return text_content

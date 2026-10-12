@@ -19,6 +19,7 @@ from pathlib import Path
 
 import plotly.io as pio
 
+from agent import manifest
 from agent.dashboard import (
     _build_recipe,
     _extract_json_object,
@@ -86,6 +87,9 @@ class ReportSpec:
     bronnen: list[str] = field(default_factory=list)
     auteur: str = ""
     datum: str = ""
+    # Herkomst van het rapport: model, prompt-, catalogus- en dataversie (#345). Reist mee
+    # in het workbook en de export; geen inhoud, geen persoonsgegevens.
+    manifest: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -223,7 +227,13 @@ async def generate(
         logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
-    return _parse_spec_from_response(result.text, figures, context, author)
+    spec = _parse_spec_from_response(result.text, figures, context, author)
+    spec.manifest = manifest.bouw(
+        model or MODEL,
+        [ds["data_key"] for ds in context["datasets"] if ds.get("data_key")],
+        model_versie=getattr(result, "model_versie", None),
+    )
+    return spec
 
 
 def _correction(problems: list[str]) -> str:
