@@ -29,6 +29,13 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- Determinisme is een CI-eigenschap (#347, `tests/determinisme/`): per vast geval worden 40
+  gelijkwaardige spellingen gegenereerd die op één plan-digest moeten uitkomen, zonder netwerk en
+  zonder model. De golden stand (plan-digests, het compilaat van een gesloten selectie en
+  uitkomst-digests) wijzigt alleen via `scripts/meet_determinisme.py --schrijf-golden`, met een
+  verantwoording in de MR; de scorekaart draagt prompt-hash, model en schema-digest. De
+  periodeherstelroute (#342) logt per antwoord `PERIODE_HERSTEL`/`PERIODE_WEIGERING`, zodat de
+  reparatiegraad over echte runs te volgen is.
 - De productievragen-eval (`tests/e2e/real-questions.spec.js`) keurt een leeg, mislukt of afgebroken
   resultaat niet meer goed: een geldig einde, tekst, geen fout en geen timeout zijn harde poorten, en elke
   eis (tool, dataset, term, referentiewaarde, grafiek) faalt apart in plaats van in één totaalscore. De

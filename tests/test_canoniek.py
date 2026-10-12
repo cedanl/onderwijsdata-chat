@@ -163,3 +163,30 @@ def test_vrije_kolommen_blijven_ongemoeid():
     hersteld, fout = canoniek.herstel_perioden({"OPLEIDING": "2024/2025"}, df, None, volledig=True)
     assert fout is None
     assert hersteld == {"OPLEIDING": "2024/2025"}
+
+
+# --- gesloten selectie (#343) in het plan ---------------------------------------
+
+
+def test_selectie_spellingen_delen_een_digest():
+    a = {"dataset_id": "x", "selectie": {"dimensies": {"Geslacht": "T001038"}, "periode": ["2024/25"]}}
+    b = {"selectie": {"periode": ["2024SJ00"], "dimensies": {"Geslacht": ["T001038"]}}, "dataset_id": "x"}
+    assert _d(a, "get_cbs_data") == _d(b, "get_cbs_data")
+
+
+def test_selectie_bereik_is_volgorde_ongevoelig():
+    a = {"dataset_id": "x", "selectie": {"dimensies": {}, "periode": {"van": "2020/21", "tot": "2022/23"}}}
+    b = {"dataset_id": "x", "selectie": {"dimensies": {}, "periode": {"van": "2022/23", "tot": "2020/21"}}}
+    assert _d(a, "get_cbs_data") == _d(b, "get_cbs_data")
+
+
+def test_selectie_codelijst_volgorde_telt_niet():
+    a = {"dataset_id": "x", "selectie": {"dimensies": {"RegioS": ["PV20", "PV21"]}, "periode": "*"}}
+    b = {"dataset_id": "x", "selectie": {"dimensies": {"RegioS": ["PV21", "PV20", "PV20"]}, "periode": "*"}}
+    assert _d(a, "get_cbs_data") == _d(b, "get_cbs_data")
+
+
+def test_andere_selectie_geeft_andere_digest():
+    a = {"dataset_id": "x", "selectie": {"dimensies": {"Geslacht": "T001038"}, "periode": "*"}}
+    b = {"dataset_id": "x", "selectie": {"dimensies": {"Geslacht": "3000"}, "periode": "*"}}
+    assert _d(a, "get_cbs_data") != _d(b, "get_cbs_data")

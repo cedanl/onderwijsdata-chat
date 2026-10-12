@@ -1,0 +1,80 @@
+{
+  "gemeten_op": "2026-10-12",
+  "prompt_hash": "7942c2073cdb",
+  "model": "anthropic/claude-sonnet-4-6",
+  "schema_digest": "86f805e8fe08",
+  "varianten_per_geval": 40,
+  "gevallen": [
+    {
+      "id": "duo-filter-geslacht",
+      "toelichting": "eq/__in-vormen, waardenkast en sleutelvolgorde op een DUO-selectie",
+      "tool": "query_data",
+      "plan_digest": "0b501148",
+      "unieke_digests": 1,
+      "uitkomst_digest": "96203b2216d9"
+    },
+    {
+      "id": "duo-periode-studiejaar",
+      "toelichting": "schooljaarspelling op STUDIEJAAR (2023, 2023/24, 2023-2024, 2023SJ00)",
+      "tool": "query_data",
+      "plan_digest": "c621ef17",
+      "unieke_digests": 1,
+      "uitkomst_digest": "4e893aaa2b8f"
+    },
+    {
+      "id": "duo-groepering",
+      "toelichting": "groepering met aggregatie; max_rows op de default is dezelfde aanroep",
+      "tool": "query_data",
+      "plan_digest": "2eda2ad4",
+      "unieke_digests": 1,
+      "uitkomst_digest": "4ca646d0c730"
+    },
+    {
+      "id": "cbs-rauwe-filter",
+      "toelichting": "OData-spatiëring buiten literals en de default $top (interne filters-route)",
+      "tool": "get_cbs_data",
+      "plan_digest": "75c46a9e",
+      "unieke_digests": 1
+    },
+    {
+      "id": "cbs-selectie",
+      "toelichting": "gesloten selectie (#343): dimensievolgorde, codelijsten en periodespelling",
+      "tool": "get_cbs_data",
+      "plan_digest": "a6bc4ae6",
+      "unieke_digests": 1,
+      "compilaat": {
+        "$filter": "Geslacht eq 'T001038' and Perioden eq '2024SJ00'"
+      }
+    },
+    {
+      "id": "cbs-selectie-bereik",
+      "toelichting": "periodebereik: van/tot is volgorde-ongevoelig en spelling-ongevoelig",
+      "tool": "get_cbs_data",
+      "plan_digest": "4345f40d",
+      "unieke_digests": 1,
+      "compilaat": {
+        "$filter": "(Perioden eq '2020SJ00' or Perioden eq '2021SJ00' or Perioden eq '2022SJ00')"
+      }
+    },
+    {
+      "id": "kpi-op-selectie",
+      "toelichting": "compute_kpi: data_key-spelling en argumentvolgorde",
+      "tool": "compute_kpi",
+      "plan_digest": "c24992c3",
+      "unieke_digests": 1
+    }
+  ],
+  "herstel": {
+    "sample": 5,
+    "herstel": 3,
+    "weigering": 1,
+    "geen": 1,
+    "per_geval": {
+      "herstel-studiejaar-label": "herstel",
+      "herstel-cbs-label": "herstel",
+      "herstel-cbs-code-uit-label": "herstel",
+      "exacte-spelling-blijft": "geen",
+      "weigering-buiten-vocabulaire": "weigering"
+    }
+  }
+}
