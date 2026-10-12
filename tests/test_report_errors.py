@@ -1,6 +1,10 @@
 import asyncio
 import json
 
+import pytest
+
+from agent.report import RAPPORT_GEWEIGERD, RapportGeweigerd
+from agent.session_data import DATA_WEG
 from core.errors import Gebruikersfout
 from routes import chat
 
@@ -44,3 +48,25 @@ def test_json_decode_error_hides_parser_error(monkeypatch):
     [error] = [e for e in events if e["type"] == "report_error"]
     assert "Invalid control character" not in error["message"]
     assert "Rapport kon niet worden gemaakt" in error["message"]
+
+
+def test_refused_report_offers_a_report_retry(monkeypatch):
+    # #515: a report stopped by the consistency check can be made again from the chat message.
+    events = _run_report(monkeypatch, RapportGeweigerd())
+    [error] = [e for e in events if e["type"] == "report_error"]
+    assert error == {"type": "report_error", "message": RAPPORT_GEWEIGERD, "herstel": "rapport"}
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald."),
+        # Data gone after a restart: a report retry can only fail again.
+        Gebruikersfout(DATA_WEG),
+        TypeError("unhashable type: 'dict'"),
+    ],
+)
+def test_other_report_errors_offer_no_report_retry(monkeypatch, exc):
+    events = _run_report(monkeypatch, exc)
+    [error] = [e for e in events if e["type"] == "report_error"]
+    assert "herstel" not in error

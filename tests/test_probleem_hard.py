@@ -7,7 +7,7 @@ import pytest
 from agent import report
 from agent.loop import LoopResult
 from agent.probleem import Probleem, controlenamen, hard, harde, meldingen, niet_gecontroleerd, uitkomsten, veilig
-from agent.report import ReportSpec
+from agent.report import RAPPORT_GEWEIGERD, RapportGeweigerd, ReportSpec
 from agent.report_checks import report_problems
 from core.errors import Gebruikersfout
 
@@ -94,8 +94,28 @@ def test_rapport_met_alleen_een_zacht_probleem_komt_er_met_waarschuwing(monkeypa
 
 
 def test_rapport_met_een_hard_probleem_wordt_geweigerd(monkeypatch):
-    with pytest.raises(Gebruikersfout, match=r"6\.340"):
+    with pytest.raises(RapportGeweigerd) as exc_info:
         _rapport(monkeypatch, [*hard(["6.340 staat niet in de opgehaalde data."]), "zacht"])
+    assert isinstance(exc_info.value, Gebruikersfout)
+    assert str(exc_info.value) == RAPPORT_GEWEIGERD
+    assert "6.340" not in str(exc_info.value)
+
+
+def ongedekte_getallen():
+    return ["6.340 hoort bij 2020/'21, niet bij 2022/'23."]
+
+
+def test_geweigerd_rapport_noemt_geen_getal_en_geen_controle(monkeypatch):
+    """#515: de gebruiker ziet een vaste zin, niet wat de controle vond of hoe ze heet."""
+    problemen: list[str] = [*hard(veilig(ongedekte_getallen)), *hard(veilig(verkeerde_kpi_periodes))]
+    assert controlenamen(problemen) == ["ongedekte_getallen", "verkeerde_kpi_periodes"]
+
+    with pytest.raises(RapportGeweigerd) as exc_info:
+        _rapport(monkeypatch, problemen)
+
+    tekst = str(exc_info.value)
+    assert not any(teken.isdigit() for teken in tekst)
+    assert not any(naam in tekst for naam in controlenamen(problemen))
 
 
 def test_report_checks_markeren_een_ongedekt_getal_als_hard():

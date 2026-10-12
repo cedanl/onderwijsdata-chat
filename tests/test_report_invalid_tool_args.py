@@ -9,15 +9,16 @@ model and continue, so a later well-formed step can still produce a report.
 
 import asyncio
 import json
+import logging
+import re
 
 import pandas as pd
 import pytest
 
 from agent import loop as loop_module
 from agent import report as report_module
-from agent.report import ReportSpec
+from agent.report import RAPPORT_GEWEIGERD, RapportGeweigerd, ReportSpec
 from agent.stream import StreamResult
-from core.errors import Gebruikersfout
 from tools import store
 
 _DATASET = "cbs:85423NED"
@@ -178,7 +179,7 @@ def test_generate_retries_once_with_a_correction_when_the_report_contradicts_its
 def test_generate_refuses_a_report_that_stays_inconsistent(monkeypatch):
     _make_generate(monkeypatch, [_final("Het waren er 12.345."), _final("Het waren er 54.321.")])
 
-    with pytest.raises(Gebruikersfout, match="niet consistent"):
+    with pytest.raises(RapportGeweigerd, match=f"^{re.escape(RAPPORT_GEWEIGERD)}$"):
         _run_generate()
 
 
@@ -195,10 +196,13 @@ def test_generate_reads_a_report_with_a_raw_newline_in_a_string(monkeypatch):
     assert spec.conclusie == "Het waren er 20.\nTweede regel."
 
 
-def test_generate_refuses_an_empty_shell(monkeypatch):
+def test_generate_refuses_an_empty_shell(monkeypatch, caplog):
     # #189: ongeldige of lege modeluitvoer gaf een rapport met alleen vraag en bron.
+    # De gebruiker ziet de vaste tekst (#515); waarom het geweigerd is, staat alleen in het log.
+    caplog.set_level(logging.DEBUG, logger="agent.report")
     shell = StreamResult(text="Hier is het rapport.", tool_calls=[])
     _make_generate(monkeypatch, [shell, StreamResult(text='{"title": "T"}', tool_calls=[])])
 
-    with pytest.raises(Gebruikersfout, match="conclusie"):
+    with pytest.raises(RapportGeweigerd):
         _run_generate()
+    assert any("RAPPORT MELDINGEN" in r.getMessage() and "conclusie" in r.getMessage() for r in caplog.records)

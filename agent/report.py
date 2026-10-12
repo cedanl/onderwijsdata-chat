@@ -75,6 +75,20 @@ class RapportGeannuleerd(Exception):
     """De gebruiker stopte de rapportgeneratie: er komt geen (half) rapport (#339)."""
 
 
+# Vaste tekst bij een geweigerd rapport (#515): geen getallen of controlenamen, wel een vervolgstap.
+RAPPORT_GEWEIGERD = (
+    "De cijfers in het rapport klopten niet met de laatste analyse, daarom heb ik het niet getoond. "
+    "Probeer het opnieuw, of stel je vraag opnieuw."
+)
+
+
+class RapportGeweigerd(Gebruikersfout):
+    """De controle hield het rapport tegen (#207); wat ze vond, staat alleen in het log (#515)."""
+
+    def __init__(self) -> None:
+        super().__init__(RAPPORT_GEWEIGERD)
+
+
 @dataclass
 class ReportSpec:
     title: str = ""
@@ -219,10 +233,10 @@ async def generate(
             }
         )
     # Alleen een hard probleem houdt het rapport tegen; een zacht wordt een waarschuwing (#207).
-    if fout := harde(result.problems):
+    if harde(result.problems):
         logger.error("RAPPORT GEWEIGERD: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
-        raise Gebruikersfout(f"Rapport niet consistent met de data: {meldingen(fout)[0]} Probeer het opnieuw.")
+        raise RapportGeweigerd
     if result.problems:
         logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)

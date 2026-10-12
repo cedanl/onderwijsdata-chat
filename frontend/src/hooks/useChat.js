@@ -85,10 +85,13 @@ export function useChat() {
     setReportSpec(null)
   }, [endReport])
 
-  const failReport = useCallback((message) => {
+  // `herstel` names the way back the server offers (#515): 'rapport' means the report can be made again.
+  const failReport = useCallback((message, herstel) => {
     endReport()
     setReportSpec(null)
-    setMessages(prev => [...prev, { id: ++idRef.current, role: 'assistant', content: message, done: true, isError: true }])
+    setMessages(prev => [...prev, {
+      id: ++idRef.current, role: 'assistant', content: message, done: true, isError: true, ...(herstel && { herstel }),
+    }])
   }, [endReport])
 
   const addToast = useCallback((message, level = 'info') => {
@@ -286,7 +289,7 @@ export function useChat() {
       },
       report_error(ev) {
         if (!reportingRef.current) return
-        failReport(ev.message)
+        failReport(ev.message, ev.herstel)
       },
       error(ev) {
         setThinking(false)

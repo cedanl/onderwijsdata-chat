@@ -235,6 +235,9 @@ de laatste tag is 1.8.6.
   de paginagrond, alleen het bericht van de gebruiker houdt de blauwe bubbel. Op een telefoon verdwijnen
   ook de avatars en wordt de zijruimte kleiner, zodat een antwoord de volle schermbreedte krijgt; een
   foutmelding houdt haar eigen gekleurde kader.
+- Houdt de controle een rapport tegen, dan staat er een vaste zin in gewone taal in plaats van de technische
+  controlemelding met getallen (#515). Eronder staan twee knoppen: "Opnieuw proberen" maakt het rapport opnieuw,
+  "Vraag opnieuw stellen" stelt de laatste vraag nog eens. Wat de controle vond, staat alleen in het log.
 - Een vervolgvraag typen na het eerste antwoord liep traag, vooral met grafieken in het gesprek: elke toetsaanslag
   parseerde alle antwoorden opnieuw en tekende alle grafieken opnieuw. Het invoerveld bewaart nu zelf wat je typt,
   en een antwoord of grafiek wordt alleen opnieuw getekend als het zelf verandert. In een testgesprek met drie
