@@ -216,6 +216,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Het invoergebied op een telefoon is flink lager (#527): "Exporteer gesprek" en "Genereer rapport"
+  staan op één compacte rij in plaats van gestapeld, de paddings van invoerkader en footer zijn op
+  mobiel terug, de tabbalk is iets lager (tap targets blijven ≥44px) en verdwijnt zolang het
+  invoerveld focus heeft (toetsenbord open) — die hoogte gaat naar de berichten. Samen scheelt dat
+  ruwweg 100px; met het toetsenbord open nog eens de hele tabbalk.
 - Antwoorden staan niet meer in een bubbel (#525): de tekst van de assistent staat als lopende tekst op
   de paginagrond, alleen het bericht van de gebruiker houdt de blauwe bubbel. Op een telefoon verdwijnen
   ook de avatars en wordt de zijruimte kleiner, zodat een antwoord de volle schermbreedte krijgt; een
