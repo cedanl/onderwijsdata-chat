@@ -81,6 +81,7 @@ class TestReproduceer:
         nieuw, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="reproduceer"))
 
         assert nieuw.figures_json == figures
+        assert info is not None
         assert "identiek" in info
         assert veranderingen == []
 
@@ -96,6 +97,7 @@ class TestVervers:
         nieuw, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="ververs"))
 
         assert nieuw.figures_json != oud
+        assert info is not None
         assert "wijziging" in info
         assert any("2024" in v and "475.460" in v and "478.660" in v for v in veranderingen)
 
@@ -107,6 +109,7 @@ class TestVervers:
         _, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="ververs"))
 
         assert veranderingen == []
+        assert info is not None
         assert "geen wijzigingen" in info
 
     def test_ververs_is_de_standaardmodus(self):
@@ -116,6 +119,7 @@ class TestVervers:
 
         _, info, _ = asyncio.run(chat._do_refresh([], [RECEPT], spec))
 
+        assert info is not None
         assert "ververst" in info.lower()
 
 
