@@ -9,13 +9,14 @@ Alleen het model is nagespeeld; toolloop, tool, sessiebewijs en controles zijn e
 import asyncio
 import importlib
 import json
+import logging
 
 import pandas as pd
 import pytest
 
 from agent import report
+from agent.report import RapportGeweigerd
 from agent.stream import StreamResult
-from core.errors import Gebruikersfout
 from tools import store
 from tools.store import KeyMeta
 
@@ -66,13 +67,20 @@ def _genereer(session: dict):
     return asyncio.run(report.generate(session, _stil, model="openai/gpt-4o"))
 
 
-def test_weigering_herstelvraag_rapport(monkeypatch):
+def _geweigerd_om(getal: str, session: dict, caplog) -> None:
+    """Het rapport wordt om dat getal geweigerd: de gebruiker ziet het niet (#515), het log op DEBUG wel."""
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG, logger="agent.report"), pytest.raises(RapportGeweigerd):
+        _genereer(session)
+    assert any("RAPPORT MELDINGEN" in r.getMessage() and getal in r.getMessage() for r in caplog.records)
+
+
+def test_weigering_herstelvraag_rapport(monkeypatch, caplog):
     session: dict = {"data_keys": [_KEY]}
     zin = "De HU had 36.201 inschrijvingen."
 
     _model(monkeypatch, [_rapport(zin), _rapport(zin)])
-    with pytest.raises(Gebruikersfout, match=r"36\.201"):
-        _genereer(session)
+    _geweigerd_om("36.201", session, caplog)
 
     _model(monkeypatch, [StreamResult(text="", tool_calls=[_KPI]), StreamResult(text=zin, tool_calls=[])])
     antwoord = asyncio.run(
@@ -90,11 +98,10 @@ def test_weigering_herstelvraag_rapport(monkeypatch):
     assert _genereer(session).conclusie == zin
 
 
-def test_na_de_herstelvraag_blijft_een_ander_getal_geweigerd(monkeypatch):
+def test_na_de_herstelvraag_blijft_een_ander_getal_geweigerd(monkeypatch, caplog):
     session: dict = {"data_keys": [_KEY]}
     _model(monkeypatch, [StreamResult(text="", tool_calls=[_KPI]), StreamResult(text="Totaal 36.201.", tool_calls=[])])
     asyncio.run(run_module.run([{"role": "user", "content": "Totaal?"}], session, _stil, asyncio.Event()))
 
     _model(monkeypatch, [_rapport("De HU had 36.210 inschrijvingen.")] * 2)
-    with pytest.raises(Gebruikersfout, match=r"36\.210"):
-        _genereer(session)
+    _geweigerd_om("36.210", session, caplog)
