@@ -8,6 +8,7 @@ sentinelcellen die met de selectie meereizen (#171).
 
 import difflib
 import json
+import logging
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -30,6 +31,8 @@ from .canoniek import parse_filter_key
 from .catalog import resources_met_kolom
 from .cbs import check_dimensions_known, check_dimensions_pinned
 from .rio import rio_filters
+
+logger = logging.getLogger(__name__)
 
 _SUPPORTED_OPS = frozenset({"eq", "gte", "lte", "in"})
 _ALLOWED_AGG = {"sum", "mean", "count", "nunique", "size", "min", "max"}
@@ -391,9 +394,16 @@ def query_data(
 
     if filters:
         # Schooljaarspelling eerst naar de spelling van de data; buiten het vocabulaire weigeren (#342).
-        filters, fout = canoniek.herstel_perioden(filters, df, known.periodekolom if known else None, complete)
+        # De tellogregels voeden de reparatie-/weigeringsgraad van #347; periodewaarden zijn
+        # jaartallen of codes, geen vraagtekst (#475).
+        hersteld, fout = canoniek.herstel_perioden(filters, df, known.periodekolom if known else None, complete)
         if fout:
+            logger.info("PERIODE_WEIGERING key=%s", data_key)
             return fout
+        if hersteld != filters:
+            anders = [naam for naam in filters if hersteld.get(naam) != filters[naam]]
+            logger.info("PERIODE_HERSTEL key=%s kolommen=%s", data_key, anders)
+        filters = hersteld
         gefilterd, err = _apply_filters(df, filters, known)
         if err:
             return err

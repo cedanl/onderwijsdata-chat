@@ -125,6 +125,40 @@ def _odata_params(filters: dict) -> dict:
     return canon
 
 
+def _selectiewaarde(waarde) -> str:
+    """Eén waarde uit een gesloten selectie (#343), zoals de compiler hem leest."""
+    tekst = str(waarde).strip()
+    if (jaar := periode.startjaar_van_spelling(tekst)) is not None:
+        return f"sj:{jaar}"
+    return tekst
+
+
+def _canonieke_selectie(selectie: dict) -> dict:
+    """De gesloten selectie van get_cbs_data (#343) zonder spellingsverschil.
+
+    Alleen equivalenties die de compiler (tools/cbs_selectie.py) zelf ook maakt:
+    codelijsten gesorteerd en ontdubbeld, periodespelling als startjaar, een
+    van/tot-bereik volgorde-ongevoelig. Wat niet te normaliseren valt, blijft letterlijk.
+    """
+    canon: dict = {}
+    for naam, waarde in selectie.items():
+        if naam == "dimensies" and isinstance(waarde, dict):
+            canon[naam] = {
+                dim: keus
+                if keus == "*"  # bewust uitsplitsen (cbs_selectie.ALLES)
+                else sorted({_selectiewaarde(w) for w in (keus if isinstance(keus, list) else [keus])})
+                for dim, keus in waarde.items()
+            }
+        elif naam == "periode" and isinstance(waarde, dict) and set(waarde) == {"van", "tot"}:
+            grenzen = sorted(_selectiewaarde(waarde[grens]) for grens in ("van", "tot"))
+            canon[naam] = {"van": grenzen[0], "tot": grenzen[1]}
+        elif naam == "periode" and isinstance(waarde, list | str | int) and waarde != "*":
+            canon[naam] = sorted({_selectiewaarde(w) for w in (waarde if isinstance(waarde, list) else [waarde])})
+        else:
+            canon[naam] = waarde
+    return canon
+
+
 def _leeg(waarde) -> bool:
     return waarde is None or (isinstance(waarde, dict | list | str) and len(waarde) == 0)
 
@@ -144,6 +178,8 @@ def plan(name: str, args: dict) -> dict:
         elif naam == "filters" and isinstance(waarde, dict) and name == "get_cbs_data":
             if genormaliseerd := _odata_params(waarde):
                 canon[naam] = genormaliseerd
+        elif naam == "selectie" and isinstance(waarde, dict) and name == "get_cbs_data":
+            canon[naam] = _canonieke_selectie(waarde)
         elif naam == "max_rows" and name == "query_data" and waarde == DUO_ROW_LIMIT:
             continue
         else:
