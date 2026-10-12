@@ -16,6 +16,8 @@ from agent.figuurverschil import figuur_verschillen
 from agent.replay import (
     MODE_REPRODUCEER,
     MODE_VERVERS,
+    Figuuruitkomst,
+    Reproductie,
     anker_verschillen,
     ankers_van_recipe,
     geldige_modus,
@@ -190,35 +192,101 @@ async def _do_refresh(
 
     if mode == MODE_REPRODUCEER:
         return await _reproduceer(spec, figure_recipes)
-
-    info: str | None = None
-    veranderingen: list[str] = []
-
     if figure_recipes:
-        oude_figures, oude_ankers = list(spec.figures_json), dict(spec.ankers)
-        fresh_figures = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
-        if fresh_figures:
-            spec.figures_json = fresh_figures
-            spec.ankers = ankers_van_recipe(recipe)
-            veranderingen = anker_verschillen(oude_ankers, spec.ankers) + figuur_verschillen(
-                oude_figures, fresh_figures
-            )
-            info = (
-                f"Data ververst: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
-                if veranderingen
-                else "Data ververst; geen wijzigingen ten opzichte van het bewaarde dashboard."
-            )
-        else:
-            info = "Grafieken konden niet bijgewerkt worden, bestaande data behouden."
-    elif recipe:
-        results = await asyncio.to_thread(replay_data_calls, recipe)
-        if all(not r["success"] for r in results):
-            # De redenen per call staan in het log (replay_data_calls); de melding
-            # naar de browser blijft vrij van paden en uitzonderingstekst (#503).
-            raise RefreshError("Geen van de datasets kon herladen worden. Probeer het later opnieuw.")
-        info = "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards."
+        return await _ververs_figuren(spec, recipe, figure_recipes)
 
-    return spec, info, veranderingen
+    results = await asyncio.to_thread(replay_data_calls, recipe)
+    if all(not r["success"] for r in results):
+        # De redenen per call staan in het log (replay_data_calls); de melding
+        # naar de browser blijft vrij van paden en uitzonderingstekst (#503).
+        raise RefreshError("Geen van de datasets kon herladen worden. Probeer het later opnieuw.")
+    return spec, "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards.", []
+
+
+# _refresh_dashboard kiest het toastniveau op het woord "niet" in de melding: elke
+# ververs-melding over een mislukte of niet vervangen grafiek bevat het (warning).
+_MAX_NAMEN = 3
+_PAST_NIET = "Het bewaarde dashboard past niet bij zijn recept (het aantal grafieken verschilt)."
+_GEHEUGEN = (
+    "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
+    "server. Ververs haalt haar opnieuw op bij de bron."
+)
+
+
+async def _ververs_figuren(
+    spec: DashboardSpec, recipe: list[dict], figure_recipes: list[dict]
+) -> tuple[DashboardSpec, str, list[str]]:
+    """Ververs per figuurrecept (#523): een mislukt recept houdt zijn bewaarde figuur en wordt apart gemeld.
+
+    De bewaarde figuren horen via hun index bij de recepten. Past dat niet (een ouder
+    dashboard), dan wordt niet per figuur vergeleken en alleen vervangen als elk recept slaagt.
+    """
+    uitkomsten = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
+    mislukt = [u for u in uitkomsten if u.figuur_json is None]
+    if len(mislukt) == len(uitkomsten):
+        return spec, "Grafieken konden niet bijgewerkt worden, bestaande data behouden.", []
+    passend = len(spec.figures_json) == len(uitkomsten)
+    if not passend and mislukt:
+        weigering = f"Er is niets vervangen, want niet elke grafiek kon bijgewerkt worden: {_opsomming(mislukt)}."
+        return spec, f"{_PAST_NIET} {weigering}", []
+
+    oude_ankers = dict(spec.ankers)
+    spec.ankers = ankers_van_recipe(recipe)
+    veranderingen = anker_verschillen(oude_ankers, spec.ankers)
+    if passend:
+        veranderingen += _figuurverschil(spec.figures_json, uitkomsten)
+        spec.figures_json = [u.figuur_json or oud for u, oud in zip(uitkomsten, spec.figures_json, strict=True)]
+    else:
+        spec.figures_json = [u.figuur_json for u in uitkomsten if u.figuur_json is not None]
+    return spec, _ververs_melding(veranderingen, mislukt, passend), veranderingen
+
+
+def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> list[str]:
+    """Bewaard tegen vers, per recept-id; een mislukt recept blijft aan beide kanten weg."""
+    paren = [
+        (u.recept_id, oud, vers)
+        for u, oud in zip(uitkomsten, bewaard, strict=True)
+        if (vers := u.figuur_json) is not None
+    ]
+    return figuur_verschillen(
+        {rid: oud for rid, oud, _ in paren},
+        {rid: vers for rid, _, vers in paren},
+        [u.recept_id for u in uitkomsten],
+    )
+
+
+def _ververs_melding(veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool) -> str:
+    if not passend:
+        return (
+            "Data ververst. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
+            "de grafieken zijn vervangen zonder ze per stuk te vergelijken."
+        )
+    if veranderingen:
+        melding = f"Data ververst: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
+    elif mislukt:
+        melding = "Data ververst; geen wijzigingen in de grafieken die bijgewerkt zijn."
+    else:
+        melding = "Data ververst; geen wijzigingen ten opzichte van het bewaarde dashboard."
+    return f"{melding} {_niet_bijgewerkt(mislukt)}" if mislukt else melding
+
+
+def _niet_bijgewerkt(mislukt: list[Figuuruitkomst]) -> str:
+    return f"{len(mislukt)} grafiek(en) niet bijgewerkt; de bewaarde versie blijft staan: {_opsomming(mislukt)}."
+
+
+def _opsomming(mislukt: list[Figuuruitkomst]) -> str:
+    """De mislukte grafieken met hun reden, hoogstens _MAX_NAMEN bij naam; de rest geteld."""
+    namen = ", ".join(f"{u.naam} ({u.reden})" for u in mislukt[:_MAX_NAMEN])
+    rest = len(mislukt) - _MAX_NAMEN
+    return f"{namen} en nog {rest} andere" if rest > 0 else namen
+
+
+def _reproduceer_weigering(repro: Reproductie) -> str:
+    """Ontbrekende data verwijst naar ververs; elke andere reden niet, want daar helpt ververs niet (#523)."""
+    if not repro.mislukt:
+        return _GEHEUGEN
+    mislukt = f"{len(repro.mislukt)} grafiek(en) niet te maken uit de opgeslagen data: {_opsomming(repro.mislukt)}."
+    return f"{_GEHEUGEN} Daarnaast {mislukt}" if repro.ontbrekend else f"Reproduceren kan niet. {mislukt}"
 
 
 async def _reproduceer(spec: DashboardSpec, figure_recipes: list[dict]) -> tuple[DashboardSpec, str, list[str]]:
@@ -226,11 +294,9 @@ async def _reproduceer(spec: DashboardSpec, figure_recipes: list[dict]) -> tuple
     if not figure_recipes:
         raise RefreshError("Dit dashboard heeft geen reproduceerbaar recept; alleen verversen is mogelijk.")
     repro = await asyncio.to_thread(reproduceer_figures, figure_recipes)
-    if repro.ontbrekend:
-        raise RefreshError(
-            "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
-            "server. Ververs haalt haar opnieuw op bij de bron."
-        )
+    if repro.ontbrekend or repro.mislukt:
+        # Geen gedeeltelijke reproductie: het bewaarde dashboard blijft zoals het is.
+        raise RefreshError(_reproduceer_weigering(repro))
     identiek = repro.figures_json == spec.figures_json
     spec.figures_json = repro.figures_json
     info = (
