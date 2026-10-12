@@ -107,7 +107,7 @@ def ongedekte_getallen():
 
 def test_geweigerd_rapport_noemt_geen_getal_en_geen_controle(monkeypatch):
     """#515: de gebruiker ziet een vaste zin, niet wat de controle vond of hoe ze heet."""
-    problemen = [*hard(veilig(ongedekte_getallen)), *hard(veilig(verkeerde_kpi_periodes))]
+    problemen: list[str] = [*hard(veilig(ongedekte_getallen)), *hard(veilig(verkeerde_kpi_periodes))]
     assert controlenamen(problemen) == ["ongedekte_getallen", "verkeerde_kpi_periodes"]
 
     with pytest.raises(RapportGeweigerd) as exc_info:
