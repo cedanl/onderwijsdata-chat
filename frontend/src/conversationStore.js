@@ -5,9 +5,16 @@ export function loadConversationHistory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
 }
 
-// Only the first page is cached; older pages come from the server again (#123).
+// What the sidebar needs of a conversation: id, title and timestamp, never the messages (#509).
+export const conversationSummary = ({ id, title, timestamp }) => ({ id, title, timestamp })
+
+// Only the first page is cached; older pages come from the server again (#123). Without
+// messages: the cache stays small whatever the conversations hold, and figure JSON
+// does not compete with the open chat for the ~5 MB of localStorage (#511).
 export function persistConversationHistory(list) {
-  try { localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list.slice(0, MAX_CONVERSATIONS))) } catch { /* noop */ }
+  try {
+    localStorage.setItem(STORAGE_CONVERSATIONS, JSON.stringify(list.slice(0, MAX_CONVERSATIONS).map(conversationSummary)))
+  } catch { /* noop */ }
 }
 
 export const newConversationId = () => crypto.randomUUID()
@@ -62,19 +69,24 @@ export function conversationRecord(id, messages) {
 }
 
 // Saving a conversation again replaces its earlier version instead of adding a copy.
+// The list keeps only the summary: the record's messages go to the server, not to the sidebar.
 export function upsertConversation(list, record) {
-  return [record, ...list.filter(c => String(c.id) !== String(record.id))]
+  return [conversationSummary(record), ...list.filter(c => String(c.id) !== String(record.id))]
 }
 
 // The server is asked for one more than a page, so a full last page is not mistaken for "more" (#123).
 export const HISTORY_FETCH_LIMIT = MAX_CONVERSATIONS + 1
 
 export function historyPage(rows) {
-  const items = rows.slice(0, MAX_CONVERSATIONS).map(c => ({
-    ...c,
-    messages: typeof c.messages === 'string' ? JSON.parse(c.messages) : c.messages,
-  }))
+  const items = rows.slice(0, MAX_CONVERSATIONS).map(conversationSummary)
   return { items, hasMore: rows.length > MAX_CONVERSATIONS }
+}
+
+// A stored conversation as the chat shows it; the server sends the messages parsed (#509),
+// an older localStorage copy may still hold them as a JSON string.
+export function conversationMessages(conv) {
+  const messages = typeof conv.messages === 'string' ? JSON.parse(conv.messages) : conv.messages
+  return restorableMessages(Array.isArray(messages) ? messages : [])
 }
 
 // The next page starts after the last conversation shown; the server orders by (timestamp, id).

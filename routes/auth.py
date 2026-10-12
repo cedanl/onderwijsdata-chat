@@ -107,11 +107,12 @@ if is_oidc_configured():
         return user_info
 
     @router.post("/refresh")
-    async def refresh_token(body: dict) -> dict:
+    def refresh_token(body: dict) -> dict:
         """
         Refresh auth token before expiration.
         Only available with OIDC.
         The new token keeps the session start: after SESSION_MAX_HOURS the user logs in again (#479).
+        A plain function: verify_token reads the denylist, and that belongs in the threadpool (#508).
         """
         old_token = body.get("token", "").strip()
         if not old_token:

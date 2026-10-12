@@ -36,6 +36,8 @@ POSTGRES_URI=postgresql://gebruiker:wachtwoord@host:5432/onderwijsdata_chat
 
 Zonder `POSTGRES_URI` valt de app terug op SQLite (`DATABASE_PATH`, standaard `app.db`).
 
+Postgres-verbindingen worden hergebruikt: het proces houdt er hoogstens `POSTGRES_POOL_SIZE` (standaard 8) tegelijk open en een aanroep daarboven wacht op een vrije. Houd dat onder `max_connections` van de server, maal het aantal pods.
+
 De app maakt de tabellen automatisch aan bij de start (`CREATE TABLE IF NOT EXISTS` in `persistence/db.py`). Alleen de database en de databasegebruiker moeten al bestaan; op een eigen Postgres-server kun je die aanmaken met `scripts/db-init.sql`. Op SURF SDP levert het platform de database en de URI al — zie [Deployment](deployment.md).
 
 !!! warning "Nooit `app.db` committen"

@@ -1,3 +1,10 @@
+"""Gesprekken en werkboeken van de ingelogde gebruiker.
+
+De handlers zijn gewone functies, geen coroutines: FastAPI draait ze dan in zijn threadpool. De
+databaselaag is synchroon (sqlite3, psycopg2); in een `async def` zet elke aanroep de event loop
+stil, en daarmee elke lopende chat-stream van alle gebruikers (#508).
+"""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,7 +22,7 @@ class ConversationTitle(BaseModel):
 
 
 @router.get("/api/conversations")
-async def list_conversations(
+def list_conversations(
     username: str = Depends(get_current_user),
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
     before_ts: int | None = None,
@@ -25,6 +32,7 @@ async def list_conversations(
     """Newest first; pass the timestamp and id of the last one shown for the next page (#123).
 
     With `q`, only the conversations whose title or text contains it, in one page (#124).
+    Each row is id, title and timestamp; the messages come from GET /api/conversations/{id} (#509).
     """
     if q.strip():
         return persistence_db.search_conversations(username, q.strip(), limit=limit)
@@ -32,8 +40,17 @@ async def list_conversations(
     return persistence_db.list_conversations(username, before=before, limit=limit)
 
 
+@router.get("/api/conversations/{conv_id}")
+def get_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
+    """One own conversation with its messages, for opening it from the list (#509)."""
+    conversation = persistence_db.get_conversation(username, conv_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
 @router.put("/api/conversations/{conv_id}")
-async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
     persistence_db.upsert_conversation(
         username,
         conv_id,
@@ -47,7 +64,7 @@ async def upsert_conversation(conv_id: str, body: dict, username: str = Depends(
 
 
 @router.patch("/api/conversations/{conv_id}")
-async def rename_conversation(
+def rename_conversation(
     conv_id: str,
     body: ConversationTitle,
     username: str = Depends(get_current_user),
@@ -58,19 +75,19 @@ async def rename_conversation(
 
 
 @router.delete("/api/conversations/{conv_id}")
-async def delete_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
+def delete_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
     recepten.vergeet(username, persistence_db.recipes_for(username, conv_id))
     persistence_db.delete_conversation(username, conv_id)
     return {"ok": True}
 
 
 @router.get("/api/workbooks")
-async def list_workbooks(username: str = Depends(get_current_user)) -> list[dict]:
+def list_workbooks(username: str = Depends(get_current_user)) -> list[dict]:
     return persistence_db.list_workbooks(username)
 
 
 @router.put("/api/workbooks/{wb_id}")
-async def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
     persistence_db.upsert_workbook(
         username,
         wb_id,
@@ -87,6 +104,6 @@ async def upsert_workbook(wb_id: str, body: dict, username: str = Depends(get_cu
 
 
 @router.delete("/api/workbooks/{wb_id}")
-async def delete_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
+def delete_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
     persistence_db.delete_workbook(username, wb_id)
     return {"ok": True}
