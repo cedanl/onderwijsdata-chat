@@ -4,6 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const api = vi.hoisted(() => ({
   fetchWorkbooks: vi.fn().mockResolvedValue([]),
@@ -19,7 +21,7 @@ vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }
 vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
-const chatState = vi.hoisted(() => ({ messages: [], busy: false, addToast: null, buffered: '' }))
+const chatState = vi.hoisted(() => ({ messages: [], busy: false, addToast: null, buffered: '', toasts: [] }))
 // Stabiele identiteit, zoals de echte addToast uit useChat (useCallback).
 const stableToast = vi.hoisted(() => (...a) => chatState.addToast?.(...a))
 vi.mock('../hooks/useChat', () => ({
@@ -29,7 +31,7 @@ vi.mock('../hooks/useChat', () => ({
     withBufferedText: all => chatState.buffered
       ? all.with(-1, { ...all.at(-1), content: all.at(-1).content + chatState.buffered })
       : all, rejectedDraft: null, clearRejectedDraft: () => {},
-    thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false,
+    thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: chatState.toasts, reportBusy: false,
     reportProgress: null, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
     clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), addToast: stableToast,
@@ -53,6 +55,7 @@ beforeEach(() => {
   chatState.busy = false
   chatState.addToast = null
   chatState.buffered = ''
+  chatState.toasts = []
 })
 
 afterEach(async () => {
@@ -322,5 +325,29 @@ describe('opslaan bij unmount (#521)', () => {
     expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
     expect(meldingen).toEqual([])
     expect(fout).not.toHaveBeenCalled()
+  })
+})
+
+describe('meldingen tegelijk (#521)', () => {
+  it('legt meerdere meldingen samen in één stapel, zodat ze elkaar niet bedekken', async () => {
+    chatState.toasts = [
+      { id: 1, message: ONVOLLEDIG_MELDING, level: 'warning' },
+      { id: 2, message: LIJST_MELDING, level: 'warning' },
+    ]
+    await mountChat()
+
+    const meldingen = [...container.querySelectorAll('.toast')]
+    expect(meldingen.map(t => t.textContent)).toEqual([ONVOLLEDIG_MELDING, LIJST_MELDING])
+    const stapels = new Set(meldingen.map(t => t.parentElement))
+    expect(stapels.size).toBe(1)
+    expect([...stapels][0].classList.contains('toast-stack')).toBe(true)
+  })
+
+  it('laat de stapel de plek bepalen, niet elke melding apart', () => {
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+    const regel = (selector) => css.match(new RegExp(`(?:^|\\n)${selector.replaceAll('.', '\\.')}\\s*\\{([^}]*)\\}`))?.[1]
+    expect(regel('.toast-stack')).toMatch(/position:\s*fixed/)
+    expect(regel('.toast-stack')).toMatch(/flex-direction:\s*column/)
+    expect(regel('.toast-stack .toast')).toMatch(/position:\s*static/)
   })
 })

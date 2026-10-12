@@ -537,9 +537,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   return (
     <>
-      {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.level}`} role="status">{t.message}</div>
-      ))}
+      <div className="toast-stack">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.level}`} role="status">{t.message}</div>
+        ))}
+      </div>
       <div className="chat-layout">
         {/* Sidebar overlay (mobile) */}
         {sidebarOpen && (
