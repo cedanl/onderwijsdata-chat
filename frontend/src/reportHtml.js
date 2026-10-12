@@ -83,6 +83,8 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
       </div>`
     : ''
 
+  const verantwoording = manifestHtml(s.manifest)
+
   const bronnen = (s.bronnen || [])
   const bronnenHtml = bronnen.length
     ? `<div class="card">
@@ -138,6 +140,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   .prose p{margin:.5em 0}
   .bronnen{margin-left:20px}
   .bronnen li{color:#4B5563;font-size:.88rem;line-height:1.6;margin:.3em 0}
+  .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
   @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.def{flex-direction:column;gap:4px}}
   @media(prefers-color-scheme:dark){
@@ -155,7 +158,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
     .scope-col li{border-bottom-color:#374151}
     .def{border-bottom-color:#374151}
     .vis-note{background:#111827;border-left-color:#1D4ED8}
-    .footer{border-top-color:#374151}
+    .manifest,.footer{border-top-color:#374151}
   }
 </style>
 </head><body>
@@ -183,6 +186,34 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
   ${conclusieHtml}
   ${bronnenHtml}
 </div>
+${verantwoording}
 <div class="footer">Gegenereerd door openEDUdata+ · Gebaseerd op open onderwijsdata</div>
 </body></html>`
+}
+
+// Herkomst van het rapport (#345), compact onder de bronnen: model, prompt-, catalogus-,
+// app- en dataversie, en of seed/temperature het model echt bereikten.
+function manifestHtml(manifest) {
+  if (!manifest || !manifest.model) return ''
+  const m = manifest
+  const toegepast = v => (v === true ? 'toegepast' : v === false ? 'niet toegepast' : 'onbekend')
+  const delen = [
+    `model ${m.model}${m.model_versie ? ` (${m.model_versie})` : ''}`,
+    m.sampling ? `seed ${toegepast(m.sampling.seed_toegepast)}` : '',
+    m.prompt_hash ? `prompt ${m.prompt_hash}` : '',
+    m.catalogus ? `catalogus ${m.catalogus}` : '',
+    m.app ? `app ${m.app}` : '',
+  ].filter(Boolean)
+  const data = (m.data_as_of || []).map(d => {
+    const extra = [
+      d.laatste_update ? `bijgewerkt ${d.laatste_update}` : '',
+      d.periodestatus?.length ? `status ${d.periodestatus.join('/')}` : '',
+      d.herladen_op ? `herladen ${d.herladen_op}` : '',
+    ].filter(Boolean).join(', ')
+    return `${d.bron.toUpperCase()} ${d.dataset}${extra ? ` (${extra})` : ''}`
+  })
+  return `<div class="manifest">
+    <div>Verantwoording: ${escapeHtml(delen.join(' · '))}</div>
+    ${data.length ? `<div>Dataversie: ${escapeHtml(data.join(' · '))}</div>` : ''}
+  </div>`
 }

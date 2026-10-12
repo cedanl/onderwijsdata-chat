@@ -83,6 +83,7 @@ class LoopResult:
     wrapped_up: bool = False  # the answer came from the wrap-up round: a partial answer
     problems: list[str] = field(default_factory=list)  # check problems left after the correction
     partial_error: str | None = None  # model call failed; kept what was collected
+    model_versie: str | None = None  # wat de provider terugmeldde als model, voor het manifest (#345)
 
     @property
     def tool_results(self) -> list[str]:
@@ -199,6 +200,7 @@ class _Loop:
             emit=self.emit if self.stream_text else None,
         )
         self.result.text, self.result.finish_reason = sr.text, sr.finish_reason
+        self.result.model_versie = sr.model_versie or self.result.model_versie
         if self._stopped():
             self.result.aborted = "stream"
             return None

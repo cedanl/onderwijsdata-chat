@@ -295,17 +295,21 @@ describe('App', () => {
   })
 
   const loginForm = () => container.querySelector('#login-username')
-  const logoutButton = () => [...container.querySelectorAll('button')].find(b => b.textContent.trim() === 'Uitloggen')
+  const logoutButton = (within = container) =>
+    [...within.querySelectorAll('button')].find(b => b.textContent.trim() === 'Uitloggen')
   const logoutCalls = (fetch) => fetch.mock.calls.filter(([url]) => url === '/api/auth/logout')
 
   it('shows the login page when the stored token is refused', async () => {
     logIn('tampered')
-    serve({ required: true, user: response(401) })
+    const fetch = serve({ required: true, user: response(401) })
     await render()
+    expect(fetch).toHaveBeenCalledWith('/api/auth/user', { headers: { Authorization: 'Bearer tampered' } })
     expect(loginForm()).not.toBeNull()
     expect(container.querySelector('nav')).toBeNull()
     expect(container.textContent).not.toContain('Uitloggen')
     expect(loggedOut()).toBe(true)
+    // The server refused the token, so there is nothing left to revoke: no logout (#479).
+    expect(logoutCalls(fetch)).toEqual([])
   })
 
   it('keeps the stored-user fallback when the user endpoint does not exist', async () => {
@@ -335,6 +339,21 @@ describe('App', () => {
     const fetch = serve({ required: true, user: response(200, { name: 'Anna' }) })
     await render()
     await act(async () => { logoutButton().click() })
+    expect(logoutCalls(fetch)).toEqual([
+      ['/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer tok' } }],
+    ])
+    expect(loginForm()).not.toBeNull()
+    expect(loggedOut()).toBe(true)
+  })
+
+  // The dialog has its own logout button (the navbar hides one up to 1024px); it must revoke too.
+  it('revokes the stored token once when the user logs out from the settings dialog', async () => {
+    logIn('tok')
+    const fetch = serve({ required: true, user: response(200, { name: 'Anna' }) })
+    await render()
+    await act(async () => { container.querySelector('button[title="Instellingen"]').click() })
+    const dialog = container.querySelector('[role="dialog"]')
+    await act(async () => { logoutButton(dialog).click() })
     expect(logoutCalls(fetch)).toEqual([
       ['/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer tok' } }],
     ])
