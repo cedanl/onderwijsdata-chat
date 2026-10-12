@@ -65,6 +65,14 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Dezelfde selectie in een andere spelling is nu dezelfde selectie (#342). De identiteit van een
+  toolaanroep en van een data_key is de digest van het canonieke plan, niet meer de letterlijke
+  modeljson: sleutelvolgorde, `__in` met één waarde, hoofd- en kleine letters, `2024/'25` naast
+  `2024SJ00` of `2024-2025`, en varianten als `cbs_85353NED` delen één uitvoering, één data_key en
+  één snippet, in plaats van vier loads en vier keys voor dezelfde dataset in één gesprek. Een
+  schooljaarspelling in een filter wordt vóór het filteren herschreven naar de spelling die de data
+  gebruikt; een schooljaar dat niet in een volledige selectie staat, wordt geweigerd met de waarden
+  die er wél staan. Keys uit eerdere gesprekken blijven bij verversen en herladen als alias werken.
 - Eén DUO-bestand is leidend voor een totaal per instelling. De ho-datasets (p01–p04) hebben per sector drie
   bestanden met dezelfde telling en een andere uitsplitsing, en elk onderdrukt andere cellen: Hanze kwam uit op
   26.362, 26.373 of 26.379, afhankelijk van het bestand. Zonder bestandskeuze laadt `get_duo_data` nu het

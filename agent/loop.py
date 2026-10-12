@@ -20,6 +20,7 @@ from typing import Any
 from core.config import MAX_TOKENS
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, dispatch, fouten, outcome
+from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
 from tools.snippet import generate as _generate_snippet
 
@@ -46,7 +47,14 @@ class ToolCall:
 
     @property
     def key(self) -> str:
-        return f"{self.name}:{self.arguments}"
+        """De identiteit van de aanroep: het canonieke plan, niet de letterlijke modeljson (#342).
+
+        Dezelfde selectie in een andere spelling (sleutelvolgorde, `__in` met één waarde,
+        een andere periodenotatie) deelt zo één uitvoering, één snippet en één figuur.
+        """
+        if self.args is None:
+            return f"{self.name}:{self.arguments}"
+        return _canonieke_aanroep(self.name, self.args)
 
 
 def _figure_identity(figure: Any) -> str:

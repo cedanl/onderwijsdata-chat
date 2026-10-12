@@ -15,10 +15,11 @@ from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
 from . import instellingsprovincie, scopeprofiel, store
+from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
 from .plot import resolve_chart_type
-from .query import NUMERIEKE_AGG, _parse_filter_key
+from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
@@ -165,7 +166,7 @@ def _filterregel(key: str, val) -> str:
     Gelijkheid zonder hoofdletters op de tekstvorm, zodat "2025" ook een int-kolom
     raakt; een bereik numeriek als de grens een getal is, anders op tekst.
     """
-    col, op = _parse_filter_key(key)
+    col, op = parse_filter_key(key)
     if op in ("eq", "in"):
         vals = [str(v).lower() for v in (val if isinstance(val, list) else [val])]
         return f"df = df[df[{col!r}].astype(str).str.lower().isin({vals!r})]"
@@ -209,7 +210,7 @@ def _aggregatieregels(group_by: list[str], aggregate: dict) -> list[str]:
 def _query_data_snippet(args: dict) -> str:
     lines = _laadregels(args.get("data_key", ""))
     for key, val in (args.get("filters") or {}).items():
-        if _parse_filter_key(key)[1] in ("eq", "in", *_VERGELIJKING):
+        if parse_filter_key(key)[1] in ("eq", "in", *_VERGELIJKING):
             lines.append(_filterregel(key, val))
 
     columns = args.get("columns")

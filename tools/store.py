@@ -1,9 +1,9 @@
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
 from core.sentinels import mask_sentinels
 
+from .canoniek import sleutel as _canonieke_sleutel
 from .scopeprofiel import cbs_sectordeel
 
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
@@ -154,12 +154,27 @@ def canoniek(key: str) -> str:
     """De key in de store waar een variant als `cbs_85353NED` of `CBS:85353ned` op doelt (#331).
 
     Alleen een eenduidige treffer; anders blijft de key zoals hij was en meldt de tool hem onbekend.
+    De spelling zelf normaliseert tools/canoniek.py (#342): hier alleen de opzoekstap.
     """
     if key in _cache:
         return key
-    gezocht = re.sub(r"^(cbs|duo|rio)[_/]", r"\1:", key, flags=re.IGNORECASE).lower()
+    gezocht = _canonieke_sleutel(key)
     treffers = [k for k in _cache if k.lower() == gezocht]
     return treffers[0] if len(treffers) == 1 else key
+
+
+def alias(oud: str | None, key: str) -> None:
+    """Zet dezelfde data ook onder haar key van vóór de canonieke digest (#342).
+
+    Bewaarde recepten, dashboards en exports verwijzen nog naar die oude keys; een
+    herlaad- of ververs-slag die de data opnieuw afleidt, houdt ze zo werkend. Alleen
+    de cache en de meta: sentinelcellen hangen aan de canonieke key.
+    """
+    if not oud or oud == key or oud in _cache or key not in _cache:
+        return
+    _cache[oud] = _cache[key]
+    if key in _meta:
+        _meta[oud] = _meta[key]
 
 
 def list_keys() -> list[str]:
