@@ -1,7 +1,8 @@
 // A workbook as one standalone HTML file, to share with someone without an account (#254).
 // A report already is one; a generated dashboard is built here from its spec, with
-// Plotly from the CDN as in the report, so the file needs no server of ours.
-import { escapeHtml, PLOTLY_CDN_VERSION } from './reportHtml'
+// Plotly from our own server as in the report (#486); the download inlines it (offlineHtml.js).
+import { escapeHtml } from './reportHtml'
+import { plotlyScript } from './plotlyBron'
 import { scriptSafe } from './scriptSafe'
 
 const asJson = fig => (typeof fig === 'string' ? fig : JSON.stringify(fig))
@@ -56,7 +57,7 @@ export function buildDashboardHtml(spec, { title, instelling = '', narrativeHtml
     .prose th,.prose td{border-color:#374151}
   }
 </style>
-${figures.length ? `<script src="https://cdn.plot.ly/plotly-${PLOTLY_CDN_VERSION}.min.js"></script>` : ''}
+${figures.length ? plotlyScript() : ''}
 </head><body>
 <header>
   <h1>${escapeHtml(title || 'Dashboard')}</h1>

@@ -15,6 +15,11 @@ describe('inlinePlotly (#405, UX N11)', () => {
     expect(html).toBe('<script>P</script><div id="a"></div><div id="b"></div>')
   })
 
+  it('neemt ook het script van de eigen server op (#486)', async () => {
+    const eigen = '<head><script src="/assets/plotly.min-abc123.js"></script></head>'
+    expect(await inlinePlotly(eigen, async () => 'P')).toBe('<head><script>P</script></head>')
+  })
+
   it('laadt Plotly niet voor een bestand zonder grafiek', async () => {
     const load = vi.fn()
     expect(await inlinePlotly('<p>alleen tekst</p>', load)).toBe('<p>alleen tekst</p>')
