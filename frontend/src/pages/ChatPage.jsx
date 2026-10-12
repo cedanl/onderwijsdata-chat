@@ -38,7 +38,7 @@ import {
 import { getToken, sessionEndedSince } from '../auth'
 import { fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
-import { figureToCsv, figureCsvProblem } from '../figureCsv'
+import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
@@ -891,7 +891,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
         <button type="button"
           className="csv-download-btn"
           title="Download als CSV"
-          onClick={() => downloadCsv(csv, (label || 'data').replace(/[^a-zA-Z0-9]/g, '_') + '.csv')}
+          onClick={() => downloadCsv(csv, figureCsvFilename(figure, label || 'data'))}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />

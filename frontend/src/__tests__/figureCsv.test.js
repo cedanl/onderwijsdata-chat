@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { figureToCsv, figureCsvProblem } from '../figureCsv'
+import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 
 const lines = csv => csv.split('\n')
 
@@ -226,5 +226,24 @@ describe('figureToCsv formula injection', () => {
 
   it('keeps empty cells empty', () => {
     expect(lines(figureToCsv(rowsFigure([{ A: null, B: '', C: undefined }])))[1]).toBe(';;')
+  })
+})
+
+describe('figureCsvFilename (#496 F11)', () => {
+  it('gebruikt de titel van de grafiek, veilig voor bestandsnamen', () => {
+    expect(figureCsvFilename({ layout: { title: { text: 'Instroom Hogeschool Rotterdam, 2024/25' } } }))
+      .toBe('Instroom_Hogeschool_Rotterdam_2024_25.csv')
+    expect(figureCsvFilename({ layout: { title: 'Één café: aantal' } })).toBe('Een_cafe_aantal.csv')
+  })
+
+  it('valt terug op de opgegeven naam zonder bruikbare titel', () => {
+    expect(figureCsvFilename({ layout: {} }, 'Grafiek aangemaakt')).toBe('Grafiek_aangemaakt.csv')
+    expect(figureCsvFilename({ layout: { title: { text: '///' } } })).toBe('data.csv')
+  })
+
+  it('kapt een lange titel af zonder losse underscore aan het eind', () => {
+    const naam = figureCsvFilename({ layout: { title: 'a '.repeat(100) } })
+    expect(naam.length).toBeLessThanOrEqual(84)
+    expect(naam).not.toMatch(/_\.csv$/)
   })
 })
