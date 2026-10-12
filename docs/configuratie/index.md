@@ -29,6 +29,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
+| `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
 | `MAX_MESSAGE_CHARS` | `4000` | Maximum aantal tekens per nieuw chatbericht (na het weghalen van witruimte aan begin en eind). Langere berichten weigert de server met een foutmelding; de invoerbalk telt mee vanaf 80%. De invoerbalk krijgt deze waarde via `/api/config` en volgt dus een gewijzigde instelling |
 | `HISTORY_MAX_CHARS` | `MAX_HISTORY × MAX_MESSAGE_CHARS` (160000) | Maximum aantal tekens van de hele aangeleverde gespreksgeschiedenis samen. Daarboven vallen de oudste beurten af, zodat lange gesprekken blijven openen; de historie begint daarna altijd met een gebruikersbeurt. Minimaal 1: een lagere waarde wordt 1 |
 | `RUN_SLOW_S` | `20` | Seconden tot de melding "dit duurt langer dan normaal" |

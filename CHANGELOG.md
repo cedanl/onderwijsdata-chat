@@ -304,6 +304,10 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- De chat heeft een berichtlimiet (#444, SECURITY.md S5): `CHAT_RATE_LIMIT` verzoeken die het model kosten
+  (vraag, verduidelijking, dashboard, rapport) per `CHAT_RATE_WINDOW_S` seconden, standaard 30 per 10 minuten,
+  per gebruiker en zonder login per verbinding. Daarboven ziet de gebruiker "Te veel verzoeken in korte tijd.
+  Probeer het over N seconden opnieuw." en start er geen modelaanroep; voorbeeldvragen tellen niet mee.
 - Rapporten en dashboards laden Plotly van de eigen server in plaats van `cdn.plot.ly` (#486, privacy M3/L1):
   een kijker stuurt geen IP, user-agent of referrer meer naar een Amerikaanse CDN. De gebundelde plotly.js
   wordt als asset uitgeleverd, nieuwe rapport-HTML verwijst daarnaar (één keer, in de head), al opgeslagen
