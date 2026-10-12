@@ -138,6 +138,54 @@ LLM sessions have full visibility to stdout, logging, variable inspection. Secre
 
 ---
 
+## ADR-006: Gesloten selectieschema voor brondata — het model kiest codes, de server bouwt de filter
+
+**Date:** 2026-10-12  
+**Status:** Decided  
+**Issue:** #343 (bouwt op #342; past in epic #191)
+
+### Problem
+`get_cbs_data(filters={"$filter": "…"})` liet het model OData schrijven: de filtertaal van de
+bron zat in de modelinterface. Het model koos ook `$top`, en daarmee of een selectie volledig
+was. De volledigheidscontrole (`check_dimensions_pinned`) deed het goede werk, maar pas ná het
+ophalen van 5.000 rijen, en een stilzwijgend opengelaten dimensie telde later dubbel (#162).
+
+### Decision
+- De modelinterface van `get_cbs_data` is een **`selectie`**: per dimensie een enum-code uit
+  `get_cbs_dimension` (of `"*"` om bewust uit te splitsen), `periode` als lijst of bereik
+  (schooljaarspelling wordt in code vertaald via `tools/periode.py`), `onderwerpen` als
+  kolomsleutels. De server compileert hieruit `$filter`/`$select` (`tools/cbs_selectie.py`).
+- De **volledigheidspoort** zit vóór het laden: een dimensie die noch gepind noch `"*"` is,
+  of een onbenoemde periode, weigert de aanroep vóór de datacall en noemt wat ontbreekt.
+- De **rijlimiet is beleid** (`CBS_ROW_LIMIT`), geen modelparameter.
+- **DUO en RIO** volgen hetzelfde principe met een gemotiveerde eigen vorm: DUO laadt een
+  volledig gepubliceerd bestand (`dataset_id`, `resource` — geen filtertaal; selectie gebeurt
+  in `query_data`); RIO accepteert alleen exacte `key=value`-serverfilters uit een vaste
+  allowlist (`rio_filters`). Geen van drieën biedt het model een vrije expressietaal.
+- De parameter `filters` (ruwe OData) blijft **intern** bestaan: bewaarde recepten en het
+  herladen/verversen van oudere gesprekken voeren hun laadstap letterlijk opnieuw uit, en de
+  gecompileerde selectie wordt zelf als `filters` in het recept bewaard (reproduceerbaar,
+  zie `docs/reproducibility.md`). De modelinterface biedt hem niet meer aan.
+
+### Rationale
+- **LLM kiest, code selecteert** (epic #191): de bron-filtertaal is een implementatiedetail;
+  codes en compilatie horen in code, waar ze deterministisch en testbaar zijn.
+- **Fail-closed op volledigheid**: dubbeltellen door totaalrijen wordt onmogelijk gemaakt
+  vóór het laden, in plaats van gerepareerd erna.
+- **Canoniek by construction** (#342): de compiler sorteert codes en dimensies, dus dezelfde
+  selectie in een andere spelling geeft dezelfde `$filter`, dezelfde `data_key` en één load.
+
+### Trade-off(s)
+- Eén metadatacall (DataProperties, lru-gecachet) vóór elke selectie-load; bij bronuitval op
+  metadata compileert de server zonder poort (bronuitval is geen onvolledige selectie) en
+  meldt `get_cbs_data` de ontbrekende metadata zoals voorheen.
+- Dimensiecodes worden niet vooraf per code gevalideerd (dat zou per dimensie een extra call
+  kosten); een verkeerde code geeft zoals voorheen de 0-rijenmelding met herstelhint.
+- Het model moet élke dimensie benoemen, ook waar het vroeger impliciet alles laadde; dat is
+  een bewuste keuze: de poort maakt de keuze zichtbaar in plaats van stilzwijgend.
+
+---
+
 ## How to add a new ADR
 
 1. Increment the number (ADR-006, etc.)

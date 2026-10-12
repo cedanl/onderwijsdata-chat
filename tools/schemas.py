@@ -85,14 +85,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": TOOL_GET_CBS_DATA,
-            "description": "Haal een CBS dataset op. Retourneert kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen op te halen. De kolom Periodestatus geeft per rij de officiële CBS-status (Definitief/Voorlopig/...); noem de status alleen op basis daarvan.",
+            "description": (
+                "Haal een CBS dataset op via een selectie: jij kiest per dimensie een code, de server bouwt "
+                "de bronfilter. Elke dimensie van de tabel moet gekozen zijn (een code, of '*' om uit te "
+                "splitsen) en de periode benoemd; een onvolledige selectie wordt geweigerd. Retourneert "
+                "kolomschema, voorbeeldwaarden en data_key — gebruik daarna query_data om gefilterde rijen "
+                "op te halen. De kolom Periodestatus geeft per rij de officiële CBS-status "
+                "(Definitief/Voorlopig/...); noem de status alleen op basis daarvan."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "dataset_id": {"type": "string", "description": "CBS dataset ID, bijv. '85423NED'"},
-                    "filters": {
+                    "selectie": {
                         "type": "object",
-                        "description": 'OData parameters, bijv. {"$filter": "Geslacht eq \'T001038\'"}',
+                        "description": (
+                            "De selectie. 'dimensies': per dimensie een code uit get_cbs_dimension, een lijst "
+                            "codes, of '*' om uit te splitsen. 'periode': lijst van schooljaren of "
+                            "periodecodes, {'van': …, 'tot': …} als bereik, of '*'. 'onderwerpen': optioneel, "
+                            "alleen deze kolomsleutels. Bijv. "
+                            '{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, '
+                            '"periode": ["2024/25"]}'
+                        ),
                     },
                 },
                 "required": ["dataset_id"],

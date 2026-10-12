@@ -292,12 +292,22 @@ De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopep
 
 ## get_cbs_data
 
-Haalt rijen op uit een CBS-dataset via de OData API.
+Haalt rijen op uit een CBS-dataset via de OData API. Het model stuurt een gesloten
+`selectie`; de server compileert daaruit de OData-parameters (#343, ADR-006). Een selectie
+waarin een dimensie noch gepind noch bewust uitgesplitst is, wordt geweigerd vóór de
+datacall, met de ontbrekende dimensie(s) erbij.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `dataset_id` | string | CBS dataset-ID, bijv. `"85423NED"` |
-| `filters` | object | OData-parameters, bijv. `{"$filter": "Geslacht eq 'T001038'"}` |
+| `selectie` | object | `dimensies`: per dimensie een code uit `get_cbs_dimension`, een lijst codes of `"*"` (uitsplitsen); `periode`: lijst van schooljaren/periodecodes, `{"van", "tot"}` of `"*"`; `onderwerpen`: optioneel, kolomsleutels |
+
+Voorbeeld: `{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, "periode": ["2024/25"]}`.
+Schooljaarspelling (`2024/25`) wordt in code vertaald naar de CBS-periodecode (`2024SJ00`).
+De rijlimiet is een beleidsregel van de server, geen modelparameter.
+
+De parameter `filters` (ruwe OData, `{"$filter": …}`) bestaat nog voor bewaarde recepten
+en het herladen/verversen van oudere gesprekken, maar zit niet meer in de modelinterface.
 
 ---
 
