@@ -59,6 +59,8 @@ function AppShell() {
   const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
+  // The server ended the session (#499): the login screen says why. Logout needs no notice.
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -75,7 +77,10 @@ function AppShell() {
     setShowSettings(false)
   }, [])
 
-  useEffect(() => onSessionEnded(resetSession), [resetSession])
+  useEffect(() => onSessionEnded(() => {
+    resetSession()
+    setSessionExpired(true)
+  }), [resetSession])
 
   useEffect(() => {
     // A token in the URL means we just landed here via the SRAM callback
@@ -146,6 +151,7 @@ function AppShell() {
 
   const handleLogin = (u) => {
     clearLocalSessionData()
+    setSessionExpired(false)
     setUser(u)
     if (!localStorage.getItem(STORAGE_ONBOARDED)) {
       setIsOnboarding(true)
@@ -172,7 +178,7 @@ function AppShell() {
   if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 
   if (authRequired && !user) {
-    return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} />
+    return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} />
   }
 
   const handleLogout = () => {

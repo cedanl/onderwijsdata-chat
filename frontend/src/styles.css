@@ -177,6 +177,7 @@ input, textarea { font: inherit; }
   width: 100%; padding: 10px 14px;
   border: 1.5px solid var(--gray-200); border-radius: var(--radius);
   font-size: .9rem; outline: none; transition: border-color .15s, box-shadow .15s;
+  background: var(--white); color: var(--gray-900);
 }
 .login-input:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 .instelling-search {
