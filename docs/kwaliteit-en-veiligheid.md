@@ -34,15 +34,15 @@ Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepas
 
 ### Analyse-sandbox
 
-De `run_analysis`-tool voert door het model geschreven Python uit in het serverproces. Dat is **geen vertrouwensgrens** (#62):
+De `run_analysis`-tool voert door het model geschreven Python uit, in een apart proces (#410, #62). Het model kan daarmee willekeurige Python laten uitvoeren; de afscherming beperkt de schade, maar is **geen beveiligingsgrens** (#443):
 
-- **Geblokkeerde patronen:** een regex-lijst (`import`, `exec`, `eval`, `os.`, `sys.`, `subprocess`, `open`, `breakpoint`). Een tekstpatroon, geen semantische controle: via objectattributen is het te omzeilen.
-- **Beperkte builtins:** alleen `len`, `range`, `sorted`, `sum`, `round` en vergelijkbare functies.
-- **Beschikbare bibliotheken:** pandas, numpy, math, plotly.express, plotly.graph_objects. De bestandsfuncties daarvan (`pd.read_csv`, `df.to_csv`, `np.load`) zijn niet geblokkeerd: een script kan bestanden lezen en schrijven waar het serverproces bij kan.
-- **Timeout:** 10 seconden in een daemon-thread, best effort: code die in I/O blokkeert, wordt niet altijd gestopt.
-- **AST-controle:** weigert een script dat geen data leest of zelf een reeks getallen intypt. Dat bewaakt de herkomst van getallen, niet de toegang.
+- **AST-controle vooraf** (`tools/scriptcontrole.py`): weigert imports, namen en attributen met `__` (ook in een string), frame-attributen en functies als `exec`, `eval`, `open` en `getattr`. `store_get` vraagt een letterlijke key. Dezelfde controle weigert een script dat geen data leest of zelf een reeks getallen intypt; dat bewaakt de herkomst van getallen.
+- **Apart proces** (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`): een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en alleen de tabellen die het script opvraagt.
+- **Limieten in dat proces:** CPU-tijd, geheugen, geen bestanden schrijven, geen nieuwe processen. Na 10 seconden stopt de server het proces.
+- **Audit hook:** weigert onder meer netwerk, subprocessen, schrijven en het lezen van bestanden buiten de Python-installatie.
+- **Beperkte namen:** alleen een handvol builtins (`len`, `range`, `sorted`, `sum`, `round` en vergelijkbare) en `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`.
 
-Procesisolatie of getypeerde operaties in plaats van vrije scripts staat open in #62.
+De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens zoals seccomp, een container of een aparte gebruiker. Dat restrisico is geaccepteerd en wordt gevolgd in #443; zie ook S11 in `SECURITY.md`.
 
 ### Hard tool limits
 
@@ -130,7 +130,7 @@ Transparantie over wat nog niet getest is:
 
 - Negatieve gevragen (model moet "nee" zeggen bij niet-bestaande instellingen of toekomstige jaren)
 - Multi-turn gesprekken
-- `run_analysis` is niet geïsoleerd: bestands-I/O via pandas/numpy werkt en de patroonlijst is te omzeilen (#62)
+- De sandbox van `run_analysis` is geen kernelgrens: een ontsnapping uit Python draait als dezelfde gebruiker als de server (#443)
 - Reference values kunnen verouderen na dataverversing
 - Geen max-lengte op chat-berichten
 

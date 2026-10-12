@@ -323,6 +323,9 @@ de laatste tag is 1.8.6.
 - `/version` noemt onder `arbeidsmarkt` ook de dataversie van UWV (snapshots t/m 2023-05-16) en ROA (AIS 2030,
   editie 2025), uit de statische catalogus van riodata en zonder download.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
+- `CORS_ORIGINS` weigert bij het opstarten ook een origin met een `*` erin, zoals `https://*.nl`: origins worden
+  letterlijk vergeleken, dus zo'n patroon werkte nooit en faalde stil. De melding noemt de foute origin.
+- De ongebruikte dependency `nh3` is verwijderd.
 - Productie-manifest geauditeerd: de allowlist-middleware waar de ingress naar verwijst wordt meegeleverd,
   dashboards staan uit zoals op test, en productie draait één pod zolang data en limiters in het geheugen leven.
 - `/ready` geeft bij een falende check (database of LLM-sleutels) HTTP 503 met een JSON-object, in plaats

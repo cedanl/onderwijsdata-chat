@@ -30,7 +30,7 @@ More orchestration, and the checks reduce the risk; they do not eliminate it. Kn
 - Numbers under four digits and years are not checked; percentages are matched as value or fraction.
 - Binding only works when a sentence names exactly one year and one institution.
 - Numbers from earlier messages in the conversation count as sourced, including numbers the user gave.
-- `run_analysis` executes model-written Python; a sandbox with file I/O blocked is still open work.
+- `run_analysis` executes model-written Python in a separate process (AST check, resource limits, audit hook blocking network, writes and subprocesses; #62). That sandbox limits damage but is not a kernel-level security boundary (#443).
 - Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision.
 
 ---

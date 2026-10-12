@@ -404,14 +404,14 @@ Berekent één KPI-waarde deterministisch in code over data die al in de store s
 
 ## run_analysis
 
-Voert pandas/numpy-code uit op eerder opgehaalde data, in het serverproces.
+Voert pandas/numpy-code uit op eerder opgehaalde data, in een apart, afgeschermd proces.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `code` | string | Python-code (pandas, numpy, plotly express beschikbaar) |
 | `data_key` | string | Optionele data_key — het bijbehorende DataFrame is beschikbaar als `df` |
 
-Een regex-lijst blokkeert imports, `exec`, `eval`, `os`, `sys` en `open`. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`. Dit is geen sandbox: de bestandsfuncties van pandas en numpy werken, en de lijst is te omzeilen. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox) en #62.
+Een AST-controle weigert vooraf onder meer imports, namen met `__` en `exec`, `eval` en `open`. Het script draait daarna in een eigen proces zonder geheimen, netwerk of schrijfrechten, met limieten op CPU-tijd en geheugen en een time-out van 10 seconden. Beschikbare namen: `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`. De afscherming is geen beveiligingsgrens: het model kan willekeurige Python laten uitvoeren binnen de sandbox. Zie [Kwaliteit en veiligheid](kwaliteit-en-veiligheid.md#analyse-sandbox), #62 en #443.
 
 ---
 
