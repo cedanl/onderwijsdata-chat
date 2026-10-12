@@ -1,5 +1,5 @@
 import { memo, useMemo, useRef, useEffect, useState, useCallback } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
