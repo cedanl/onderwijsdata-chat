@@ -1,7 +1,11 @@
 import json
 from unittest.mock import patch
 
-from agent.replay import replay_dashboard_figures, replay_data_calls
+import pandas as pd
+import plotly.graph_objects as go
+
+from agent.replay import Reden, figuur_uitkomsten, recept_ids, replay_dashboard_figures, replay_data_calls
+from tools import store
 
 
 class TestReplayDataCalls:
@@ -72,47 +76,131 @@ class TestReplayDataCalls:
         assert results == []
 
 
+KEY = "duo:p01hoinges:0"
+PLOT = {"chart_type": "bar", "x": "JAAR", "y": "AANTAL", "title": "Test"}
+QUERY_RESULT = json.dumps({"totaal_rijen": 1, "rijen": [{"JAAR": "2023", "AANTAL": 100}]})
+
+
+def _recept(key: str | None = KEY, titel: str = "Test") -> dict:
+    query = {"data_key": key, "columns": ["JAAR", "AANTAL"]} if key else {}
+    return {"query": query, "plot": {**PLOT, "title": titel}}
+
+
+def _in_store(key: str = KEY) -> None:
+    store.put(key, pd.DataFrame({"JAAR": ["2023"], "AANTAL": [100]}))
+
+
 class TestReplayDashboardFigures:
     def test_replays_query_and_plot(self):
+        _in_store()  # wat de herlaadcall bij de bron ophaalt
         recipe = [{"name": "get_duo_data", "arguments": '{"dataset_id": "p01hoinges", "resource": 0}'}]
-        figure_recipes = [
-            {
-                "query": {"data_key": "duo:p01hoinges:0", "filters": {"JAAR": "2023"}, "columns": ["JAAR", "AANTAL"]},
-                "plot": {"chart_type": "bar", "x": "JAAR", "y": "AANTAL", "title": "Test"},
-            }
-        ]
-        query_result = json.dumps({"totaal_rijen": 1, "rijen": [{"JAAR": "2023", "AANTAL": 100}]})
-        import plotly.graph_objects as go
-
         fig = go.Figure(go.Bar(x=["2023"], y=[100]))
 
         with patch("agent.replay.dispatch") as mock_dispatch:
             mock_dispatch.side_effect = [
-                (json.dumps({"data_key": "duo:p01hoinges:0"}), None),  # data load
-                (query_result, None),  # query_data
+                (json.dumps({"data_key": KEY}), None),  # data load
+                (QUERY_RESULT, None),  # query_data
                 ("Grafiek aangemaakt", fig),  # create_plot
             ]
-            result = replay_dashboard_figures(recipe, figure_recipes)
+            [uitkomst] = replay_dashboard_figures(recipe, [_recept()])
 
-        assert len(result) == 1
+        assert uitkomst.figuur_json is not None and uitkomst.reden is None
+        assert uitkomst.naam == "'Test'"
         assert mock_dispatch.call_count == 3
 
     def test_empty_figure_recipes(self):
-        result = replay_dashboard_figures([], [])
-        assert result == []
+        assert replay_dashboard_figures([], []) == []
 
-    def test_skips_failed_query(self):
-        figure_recipes = [
-            {"query": {"data_key": "duo:missing:0"}, "plot": {"chart_type": "bar", "x": "a", "y": "b", "title": "t"}},
-        ]
+    def test_een_uitkomst_per_recept_ook_als_het_mislukt(self):
+        """#523: een mislukt recept valt niet weg; de lijst schuift dus niet."""
+        _in_store()
+        fig = go.Figure(go.Bar(x=["2023"], y=[100]))
+
         with patch("agent.replay.dispatch") as mock_dispatch:
-            mock_dispatch.side_effect = Exception("Not found")
-            result = replay_dashboard_figures([], figure_recipes)
-        assert result == []
+            mock_dispatch.side_effect = [Exception("kapot"), (QUERY_RESULT, None), ("ok", fig)]
+            uitkomsten = replay_dashboard_figures([], [_recept(titel="A"), _recept(titel="B")])
 
-    def test_skips_recipe_without_query(self):
-        figure_recipes = [
-            {"query": None, "plot": {"chart_type": "bar", "x": "a", "y": "b", "title": "t"}},
-        ]
-        result = replay_dashboard_figures([], figure_recipes)
-        assert result == []
+        assert [u.reden for u in uitkomsten] == [Reden.QUERY_MISLUKT, None]
+        assert uitkomsten[0].figuur_json is None and uitkomsten[1].figuur_json is not None
+
+
+class TestReden:
+    """#523: per recept de echte reden, niet altijd "ontbrekend"."""
+
+    def test_ontbrekende_key_is_data_ontbreekt(self):
+        with patch("agent.replay.dispatch") as mock_dispatch:
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.DATA_ONTBREEKT
+        mock_dispatch.assert_not_called()
+
+    def test_recept_zonder_data_key_is_geen_databron(self):
+        [zonder_key, zonder_query] = figuur_uitkomsten([_recept(key=None), {"query": None, "plot": PLOT}])
+        assert zonder_key.reden is Reden.GEEN_DATABRON
+        assert zonder_query.reden is Reden.GEEN_DATABRON
+
+    def test_onleesbaar_recept_is_geen_databron(self):
+        [uitkomst] = figuur_uitkomsten(["geen recept"])
+        assert uitkomst.reden is Reden.GEEN_DATABRON
+
+    def test_query_met_uitzondering_is_query_mislukt(self):
+        _in_store()
+        with patch("agent.replay.dispatch", side_effect=Exception("/app/data/cache/x.parquet")):
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.QUERY_MISLUKT
+
+    def test_query_met_fouttekst_is_query_mislukt(self):
+        _in_store()
+        with patch("agent.replay.dispatch", return_value=("Kolommen niet gevonden: ['X'].", None)):
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.QUERY_MISLUKT
+
+    def test_query_zonder_rijenveld_is_query_mislukt(self):
+        _in_store()
+        with patch("agent.replay.dispatch", return_value=(json.dumps({"fout": "x"}), None)):
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.QUERY_MISLUKT
+
+    def test_lege_selectie_is_geen_rijen(self):
+        _in_store()
+        with patch("agent.replay.dispatch", return_value=(json.dumps({"rijen": [], "melding": "leeg"}), None)):
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.GEEN_RIJEN
+
+    def test_plot_zonder_figuur_is_grafiek_niet_gemaakt(self):
+        _in_store()
+        with patch("agent.replay.dispatch") as mock_dispatch:
+            mock_dispatch.side_effect = [(QUERY_RESULT, None), ("Geen grafiek gemaakt: één datapunt.", None)]
+            [uitkomst] = figuur_uitkomsten([_recept()])
+        assert uitkomst.reden is Reden.GEEN_GRAFIEK
+
+    def test_naam_is_de_titel_of_de_positie(self):
+        zonder_titel = {"query": {"data_key": KEY}, "plot": {**PLOT, "title": ""}}
+        uitkomsten = figuur_uitkomsten([_recept(titel="Instroom"), zonder_titel])
+        assert [u.naam for u in uitkomsten] == ["'Instroom'", "Grafiek 2"]
+
+
+class TestReceptIds:
+    def test_hetzelfde_recept_geeft_dezelfde_sleutel(self):
+        assert recept_ids([_recept()]) == recept_ids([json.loads(json.dumps(_recept()))])
+
+    def test_sleutel_hangt_niet_af_van_de_positie(self):
+        a, b = _recept(titel="A"), _recept(titel="B")
+        assert recept_ids([a, b]) == list(reversed(recept_ids([b, a])))
+
+    def test_sleutel_hangt_niet_af_van_de_volgorde_van_de_velden(self):
+        recept = _recept()
+        omgekeerd = {"plot": dict(reversed(list(recept["plot"].items()))), "query": recept["query"]}
+        assert recept_ids([recept]) == recept_ids([omgekeerd])
+
+    def test_ander_recept_geeft_een_andere_sleutel(self):
+        [a, b] = recept_ids([_recept(titel="A"), _recept(titel="B")])
+        assert a != b
+
+    def test_identieke_dubbelen_krijgen_een_volgnummer(self):
+        ids = recept_ids([_recept(), _recept(), _recept()])
+        assert len(set(ids)) == 3
+        assert ids[1].startswith(ids[0]) and ids[2].startswith(ids[0])
+
+    def test_uitkomst_draagt_de_sleutel_van_zijn_recept(self):
+        recepten = [_recept(titel="A"), _recept(titel="B")]
+        assert [u.recept_id for u in figuur_uitkomsten(recepten)] == recept_ids(recepten)
