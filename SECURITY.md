@@ -8,17 +8,17 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 | # | Bevinding | Ernst | Status |
 |---|---|---|---|
-| S1 | HTML-injectie in geëxporteerde rapporten | Hoog | ✅ Opgelost (escaping in de frontend); ongebruikte dependency `nh3` opruimen (#506) |
+| S1 | HTML-injectie in geëxporteerde rapporten | Hoog | ✅ Opgelost (escaping in de frontend) |
 | S2 | Lodash kwetsbare versie op loginpagina | Hoog | ✅ Opgelost (Chainlit verwijderd) |
 | S3 | Ontbrekende HTTP security headers | Gemiddeld | ✅ Opgelost (middleware); CSP-restpunten in S13 (#486, #506) |
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat niet (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
 | S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15) |
-| S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, origin `*` geweigerd, #421) |
+| S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, #421; elke origin met een `*`, ook een patroon als `https://*.nl`, geweigerd bij het opstarten, #506) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
 | S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
-| S11 | Tool-enumeratie via LLM | Laag | ℹ️ By design — `run_analysis` voert afgeschermd modelcode uit (#443) |
+| S11 | Tool-enumeratie via LLM; `run_analysis` voert modelcode uit | Laag | ℹ️ Geaccepteerd — het model kan via `run_analysis` willekeurige Python laten uitvoeren; de sandbox beperkt de schade maar is geen beveiligingsgrens (#443) |
 | S12 | Dependency-kwetsbaarheden | Variabel | ⚠️ Te verifiëren (#506) |
 | S13 | CSP staat `'unsafe-inline'`, twee CDN-hosts en WebSocket naar elke host toe | Laag–Gemiddeld | ❌ Open (#486; `connect-src` in #506) |
 | S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
@@ -37,7 +37,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 **Aangetroffen in:** quickscan A1  
 **Was:** `md.markdown(llm_output)` injecteerde raw `<script>` tags in geëxporteerde HTML-bestanden.  
 **Nu:** de server-side export (`export/`) bestaat niet meer. Rapporten en dashboards worden in de frontend opgebouwd door `buildReportHtml` (`frontend/src/reportHtml.js`) en `buildDashboardHtml` (`frontend/src/dashboardHtml.js`). Tekst uit het model gaat door `escapeHtml`; de figure-JSON in het inline script gaat door `scriptSafe` (#474); de dashboard-toelichting wordt met `react-markdown` gerenderd. Tests: `frontend/src/__tests__/reportHtml.test.js` en `frontend/src/__tests__/dashboardHtml.test.js`.  
-**Restpunt:** `nh3` staat nog als dependency in `pyproject.toml`, maar wordt nergens geïmporteerd. Opruimen: #506.
+**Opgeruimd (#506):** de ongebruikte dependency `nh3`, een overblijfsel van de server-side export, staat niet meer in `pyproject.toml` en `uv.lock`.
 
 ---
 
@@ -99,7 +99,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 **Was:** de CORS-origins vielen terug op `*` als `CORS_ORIGINS` niet was ingesteld.  
 **Fix (#421):**
 - `config.py`: `CORS_ORIGINS` heeft als standaard `""`, dus zonder instelling staat geen enkele cross-origin toe.
-- `Config.validate()` gooit een `ConfigError` als een van de origins in `CORS_ORIGINS` precies `*` is; de server start dan niet. Een patroon als `https://*.nl` wordt niet geweigerd, maar werkt ook niet als wildcard: de `CORSMiddleware` krijgt alleen `allow_origins` en vergelijkt een origin letterlijk. Validatie of documentatie hiervan aanscherpen: #506.
+- `Config.validate()` gooit een `ConfigError` als een origin in `CORS_ORIGINS` ergens een `*` bevat, dus ook bij `*` zelf en bij een patroon als `https://*.nl` of `*.example.nl`; de melding noemt die origins en de server start niet (#506). Een patroon zou nooit werken: de `CORSMiddleware` krijgt alleen `allow_origins` en vergelijkt een origin letterlijk, dus zo'n instelling faalde eerder stil. Wildcard-matching ondersteunen we bewust niet, omdat `allow_credentials` aan staat.
 - `server.py` geeft `Config.get_parsed_cors_origins()` aan de `CORSMiddleware`.
 - `manifests/{development,test,playground,production}/values.yaml` noemen elk één expliciete `https://`-origin voor de eigen omgeving.
 
@@ -132,17 +132,18 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 
 ---
 
-### S11 — Tool-enumeratie via LLM ℹ️ By design
+### S11 — Tool-enumeratie en modelcode in `run_analysis` ℹ️ Geaccepteerd
 
 **Aangetroffen in:** quickscan A3  
 **Bevinding:** Het LLM beantwoordt vragen als "welke tools heb je?" met een accurate lijst van beschikbare functies.  
 **Beoordeling:** De toolnamen en beschrijvingen zijn niet geheim; ze staan ook in de open source repository. Geaccepteerd.  
-**Kanttekening bij de tools:** het LLM roept alleen de aangeboden tools aan, maar één daarvan, `run_analysis`, voert door het model geschreven Python uit (#410, #62). De afscherming:
-- een AST-controle vooraf (`tools/scriptcontrole.py`) die onder meer imports en namen met `__` weigert;
-- een apart proces (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`) met een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en een time-out;
-- in dat proces resourcelimieten (CPU, geheugen, geen bestanden schrijven, geen nieuwe processen) en een audit hook die onder meer netwerk, subprocessen en schrijven weigert.
+**Modelcode:** het LLM roept alleen de aangeboden tools aan, maar één daarvan, `run_analysis`, voert door het model geschreven Python uit (#410, #62). Het model kan dus willekeurige Python laten uitvoeren; wat die code doet, bepaalt het model, en daarmee ook wie het model via een vraag of via opgehaalde data stuurt. De afscherming beperkt wat die code kan:
+- een AST-controle vooraf (`tools/scriptcontrole.py`) die onder meer imports, namen en attributen met `__`, frame-attributen en functies als `exec`, `eval`, `open` en `getattr` weigert;
+- een apart proces (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`) met een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en een time-out van 10 seconden waarna het proces wordt gestopt;
+- in dat proces resourcelimieten (CPU-tijd, geheugen, geen bestanden schrijven, geen nieuwe processen), alleen een handvol builtins, en een audit hook die onder meer netwerk, subprocessen, schrijven en lezen buiten de Python-installatie weigert.
 
-Die audit hook is geen kernelgrens (#443). De tools waren ook zonder het model aan te roepen, via dashboard-refresh; sinds #505 herhaalt refresh alleen nog de drie load-tools (S17).
+**Restrisico:** die lagen beperken de schade, maar zijn geen beveiligingsgrens. De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens zoals seccomp, een container of een aparte gebruiker (#443). Een ontsnapping, bijvoorbeeld via een fout in de interpreter of in pandas of numpy, draait als dezelfde gebruiker als de server.  
+**Waarom geaccepteerd, ernst Laag:** misbruik vraagt eerst een ontsnapping uit de sandbox; de audit achter #443 vond er geen, maar sluit er ook geen uit. Het risico is geaccepteerd en wordt gevolgd in #443 (sterkere isolatie zodra onvertrouwde gebruikers toegang krijgen). Dashboard-refresh kan `run_analysis` sinds #505 niet meer aanroepen (S17).
 
 ---
 
@@ -238,5 +239,5 @@ Test: `tests/test_token_intrekking.py`.
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
 2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
 3. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
-4. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
+4. **S12** — vaststellen welke dependency-scan in CI draait (#506); `nh3` opruimen (S1) en de CORS-validatie aanscherpen (S8) zijn gedaan
 5. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
