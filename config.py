@@ -60,9 +60,11 @@ class Config:
         if not cls.MODEL or "/" not in cls.MODEL:
             errors.append(f"MODEL must be in format 'provider/model-name', got: {cls.MODEL}")
 
-        # Met allow_credentials laat "*" elke site namens een ingelogde gebruiker de API aanroepen.
-        if "*" in cls.get_parsed_cors_origins():
-            errors.append("CORS_ORIGINS mag geen '*' bevatten; noem de origins expliciet")
+        if ongeldig := cls._ongeldige_cors_origins():
+            errors.append(
+                f"CORS_ORIGINS mag geen '*' bevatten, ook niet als patroon ({', '.join(ongeldig)}); "
+                "origins worden letterlijk vergeleken, noem ze expliciet"
+            )
 
         if errors:
             for error in errors:
@@ -77,6 +79,16 @@ class Config:
     def get_parsed_cors_origins(cls) -> list[str]:
         """Parse CORS_ORIGINS into a list."""
         return [o.strip() for o in cls.CORS_ORIGINS.split(",") if o.strip()]
+
+    @classmethod
+    def _ongeldige_cors_origins(cls) -> list[str]:
+        """Origins met een '*' (#506).
+
+        Met allow_credentials laat "*" elke site namens een ingelogde gebruiker de API aanroepen.
+        Een patroon als https://*.nl matcht nooit, want de CORSMiddleware vergelijkt letterlijk;
+        zo'n instelling zou stil falen.
+        """
+        return [o for o in cls.get_parsed_cors_origins() if "*" in o]
 
     @classmethod
     def is_production(cls) -> bool:
