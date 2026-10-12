@@ -3,6 +3,7 @@ import ChatInputFooter from './ChatInputFooter'
 import { MESSAGE_COUNTER_ID } from './MessageCounter'
 import { messageLengthState } from '../messageLength'
 import { MAX_TEXTAREA_HEIGHT } from '../constants'
+import { persoonsgegevensMelding } from '../persoonsgegevens'
 
 // The draft lives here, not in ChatPage: a keystroke re-renders only the composer, not every message
 // (and with it every markdown block and chart) above it.
@@ -29,6 +30,8 @@ export default function Composer({
   }
 
   const over = messageLengthState(input, max).over
+  // Waarschuwt, blokkeert niet (#478): een 9-cijferige code kan de elfproef toevallig doorstaan.
+  const persoonsgegevens = persoonsgegevensMelding(input)
 
   const handleSend = () => {
     const q = input.trim()
@@ -49,6 +52,9 @@ export default function Composer({
 
   return (
     <div className="chat-input-wrap">
+      {persoonsgegevens && (
+        <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{persoonsgegevens}</p>
+      )}
       <textarea
         ref={textareaRef}
         className="chat-input"
