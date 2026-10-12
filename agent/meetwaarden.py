@@ -18,6 +18,8 @@ from tools.analysis import SCRIPTCONSTANTEN
 from tools.arbeidsmarkt import ROA_ID, UWV_ID
 from tools.kolomlabel import kolomlabel
 
+from . import kpi_bron
+
 # Een kolom die iets aanwijst in plaats van meet: OPLEIDINGSCODE, BRIN_NUMMER, CBS' ID.
 _IDENTIFICATIE = re.compile(r"code|nummer|brin|(?:^|[_\s])(?:id|nr|key)(?:$|[_\s])", re.IGNORECASE)
 # Een jaartal in een periodekolom (STUDIEJAAR 2023) zegt welke rij het is, niet hoeveel.
@@ -85,18 +87,19 @@ def _uit_rijen(rijen, data_key: str | None) -> Iterator[Meetwaarde]:
                 yield Meetwaarde(cijfers, kolom, _selectie(rij, kolom), data_key, rij=positie)
 
 
-def _uit_kpi(kpi: dict) -> Iterator[Meetwaarde]:
-    bron = kpi["bron"]
-    cijfers = _getal(kpi.get("raw"))
+def _uit_kpi(kpi: kpi_bron.Kpi) -> Iterator[Meetwaarde]:
+    """Een KPI is één meetwaarde: het getal zelf, en de cijfers zoals de tool het schreef (#420)."""
+    bron = kpi.bron or {}
+    cijfers = _getal(kpi.raw)
     if cijfers is None:
         return
-    geschreven = re.sub(r"[^\d,]", "", str(kpi.get("value", ""))).split(",")[0]
+    geschreven = re.sub(r"[^\d,]", "", kpi.waarde).split(",")[0]
     selectie = [f"Berekening: {bron.get('metric')} van {kolomlabel(str(bron.get('kolom')))}"]
-    if isinstance(periode := kpi.get("periode"), dict):
-        selectie.append(f"Periode: {periode.get('van')} – {periode.get('tot')}")
+    if kpi.periode is not None:
+        selectie.append(f"Periode: {kpi.periode.get('van')} – {kpi.periode.get('tot')}")
     yield Meetwaarde(
         cijfers | ({geschreven} if geschreven else set()),
-        str(kpi.get("label") or bron.get("kolom")),
+        str(kpi.label or bron.get("kolom")),
         tuple(selectie),
         bron.get("data_key") if isinstance(bron.get("data_key"), str) else None,
         "%" if bron.get("metric") == "pct_change" else None,
@@ -184,7 +187,8 @@ def _uit(parsed, analyse: bool) -> Iterator[Meetwaarde]:
         return
     data_key = parsed.get("data_key") if isinstance(parsed.get("data_key"), str) else None
     if isinstance(parsed.get("bron"), dict) and "raw" in parsed:
-        yield from _uit_kpi(parsed)
+        if (kpi := kpi_bron.kpi(parsed)) is not None:
+            yield from _uit_kpi(kpi)
         return
     for naam in _RIJEN:
         yield from _uit_rijen(parsed.get(naam), data_key)

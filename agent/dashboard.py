@@ -17,6 +17,7 @@ from pathlib import Path
 
 import plotly.io as pio
 
+from agent import kpi_bron
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
 from agent.replay import REPLAYABLE_TOOLS, ankers_van_recipe
@@ -233,7 +234,7 @@ async def generate(
     ]
     figures: list[str] = []
     figure_recipes: list[dict] = []
-    computed_kpis: dict[str, dict] = {}
+    computed_kpis: dict[str, kpi_bron.Kpi] = {}
     last_query_args: dict | None = None
 
     async def collect(call: ToolCall, result: str, figure) -> None:
@@ -329,22 +330,17 @@ def _extract_json_object(text: str) -> dict:
     return {}
 
 
-def _normaliseer_waarde(value: object) -> str:
-    """Vergelijkbare vorm van een getal: '30.083' en '30083' zijn hetzelfde getal."""
-    return str(value).replace(".", "").replace(" ", "").replace("\u00a0", "").strip().lower()
-
-
-def _collect_kpi(computed: dict[str, dict], result: str) -> None:
-    """Bewaar een compute_kpi-uitkomst, geïndexeerd op de genormaliseerde waarde."""
+def _collect_kpi(computed: dict[str, kpi_bron.Kpi], result: str) -> None:
+    """Bewaar een compute_kpi-uitkomst, geïndexeerd op de vergelijkbare vorm van zijn waarde (#420)."""
     try:
         payload = json.loads(result)
-        if isinstance(payload, dict):
-            if "fout" in payload:
-                logger.warning("compute_kpi error: %s", payload["fout"])
-            elif "value" in payload:
-                computed[_normaliseer_waarde(payload["value"])] = payload
     except json.JSONDecodeError:
         logger.warning("compute_kpi returned invalid JSON: %s", tekst_kenmerk(result))
+        return
+    if isinstance(payload, dict) and "fout" in payload:
+        logger.warning("compute_kpi error: %s", payload["fout"])
+    elif (kpi := kpi_bron.kpi(payload)) is not None:
+        computed[kpi_bron.sleutel(kpi.waarde)] = kpi
 
 
 def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None:
@@ -358,7 +354,7 @@ def _check_number_sourcing(response: str, tool_results: list[str]) -> str | None
     return None
 
 
-def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
+def _validate_kpis(kpis: list[dict], computed: dict[str, kpi_bron.Kpi]) -> list[dict]:
     """Laat alleen KPI's door waarvan de waarde uit compute_kpi komt.
 
     Het label blijft van het model — dat is tekst. De waarde, de trend en de
@@ -368,7 +364,7 @@ def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
     """
     gevalideerd: list[dict] = []
     for kpi in kpis:
-        bron = computed.get(_normaliseer_waarde(kpi.get("value", "")))
+        bron = computed.get(kpi_bron.sleutel(kpi.get("value", "")))
         if bron is None:
             # Label en waarde zijn modeltekst: op WARNING alleen de lengte en hash (#475).
             logger.warning(
@@ -378,13 +374,7 @@ def _validate_kpis(kpis: list[dict], computed: dict[str, dict]) -> list[dict]:
             logger.debug("KPI geweigerd  %r", kpi)
             continue
         gevalideerd.append(
-            {
-                **kpi,
-                "value": bron["value"],
-                "trend": bron.get("trend"),
-                "trendDirection": bron.get("trendDirection"),
-                "bron": bron.get("bron"),
-            }
+            {**kpi, "value": bron.waarde, "trend": bron.trend, "trendDirection": bron.richting, "bron": bron.bron}
         )
     return gevalideerd
 
@@ -395,7 +385,7 @@ def _parse_spec_from_response(
     figure_recipes: list[dict],
     context: dict,
     session: dict,
-    computed_kpis: dict[str, dict] | None = None,
+    computed_kpis: dict[str, kpi_bron.Kpi] | None = None,
 ) -> DashboardSpec:
     """Parse the LLM response into a DashboardSpec."""
     spec_data: dict = {}
