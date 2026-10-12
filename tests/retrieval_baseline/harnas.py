@@ -8,7 +8,7 @@ import logging
 import socket
 import time
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,7 +37,7 @@ def _blokkade(naam: str, pogingen: list[str]):
 
 
 @contextmanager
-def zonder_netwerk() -> Iterator[list[str]]:
+def zonder_netwerk() -> Generator[list[str]]:
     """Laat elke socketverbinding en DNS-opvraging falen en houdt de pogingen bij.
 
     Code die de fout zelf afvangt (genoemde_namen doet dat bewust) verbergt een poging zo niet.
@@ -53,7 +53,7 @@ def zonder_netwerk() -> Iterator[list[str]]:
 
 
 @contextmanager
-def zonder_instellingsregister() -> Iterator[None]:
+def zonder_instellingsregister() -> Generator[None]:
     """Het register bouwt uit DUO-downloads, ook in _drempel; instellingsroutering (#334) valt erbuiten."""
     with (
         patch.object(instelling, "noemt_instelling", lambda vraag: False),
@@ -63,7 +63,7 @@ def zonder_instellingsregister() -> Iterator[None]:
 
 
 @contextmanager
-def _zonder_logregels() -> Iterator[None]:
+def _zonder_logregels() -> Generator[None]:
     logging.disable(logging.CRITICAL)
     try:
         yield

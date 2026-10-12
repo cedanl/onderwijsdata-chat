@@ -3,7 +3,6 @@ agent/grounding.py: error[invalid-parameter-default] Default value of type `tupl
 agent/grounding.py: warning[invalid-argument-type] Argument to bound method `Decimal.scaleb` is incorrect: Expected `Decimal | int`, found `int | Literal["n", "N", "F"]`
 agent/loop.py: warning[invalid-argument-type] Argument to function `generate` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
 agent/loop.py: warning[invalid-argument-type] Argument to function `to_thread` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
-agent/report.py: warning[invalid-argument-type] Argument to function `_log_tool_call` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`
 agent/selectie.py: warning[invalid-argument-type] Argument to `set.__init__` is incorrect: Expected `Iterable[int]`, found `tuple[int, ...] | None`
 agent/selectie.py: warning[invalid-argument-type] Argument to function `namen` is incorrect: Expected `str`, found `str | None`
 auth/oidc.py: error[unresolved-attribute] Attribute `rstrip` is not defined on `None` in union `str | None`
@@ -14,7 +13,6 @@ logging_config.py: error[no-matching-overload] No overload of bound method `Muta
 logging_config.py: warning[deprecated] The function `utcnow` is deprecated: Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)
 routes/chat.py: error[unresolved-attribute] Attribute `cancel` is not defined on `None` in union `Task[Unknown] | None`
 scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `choices` is not defined on `CustomStreamWrapper`, `Coroutine[object, object, ModelResponse | CustomStreamWrapper]` in union `ModelResponse | CustomStreamWrapper | Coroutine[object, object, ModelResponse | CustomStreamWrapper]`
-scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `strip` is not defined on `None` in union `str | None`
 server.py: warning[deprecated] The function `on_event` is deprecated: 
 server.py: warning[deprecated] The function `on_event` is deprecated: 
 tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None) -> CoroutineType[Any, Any, None]`
@@ -42,8 +40,6 @@ tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `data` o
 tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `duo` on type `ModuleType`
 tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `fetch` on type `ModuleType`
 tests/test_snippet.py: error[unresolved-attribute] Unresolved attribute `load` on type `ModuleType`
-tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["NB:"]` and `str | None`
-tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["duo.load(\"p01hoinges\", 3)"]` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `Literal["print(df.round())"]` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
 tests/test_snippet.py: error[unsupported-operator] Operator `in` is not supported between objects of type `str` and `str | None`
@@ -95,6 +91,3 @@ tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not 
 tests/test_tools_plot.py: error[unresolved-attribute] Attribute `layout` is not defined on `None` in union `Figure | None`
 tools/duo.py: error[invalid-return-type] Return type does not match returned value: expected `dict[str, int]`, found `dict[str | Hashable, int]`
 tools/periode.py: warning[invalid-argument-type] Argument to function `sorted` is incorrect: Argument type `int | None` does not satisfy upper bound `SupportsDunderLT[Any] | SupportsDunderGT[Any]` of type variable `SupportsRichComparisonT`
-tools/query.py: warning[invalid-argument-type] Argument to function `aggregate_cells` is incorrect: Expected `list[str]`, found `list[str] | None`
-tools/query.py: warning[invalid-argument-type] Argument to function `check_dimensions_pinned` is incorrect: Expected `list[str]`, found `list[str] | None`
-tools/query.py: warning[invalid-argument-type] Argument to function `namen` is incorrect: Expected `str`, found `str | None`

@@ -332,6 +332,7 @@ def test_big_derived_result_loads_the_source_with_a_note(clean_packages):
 
     snippet = generate("query_data", {"data_key": "analysis:2"})
 
+    assert snippet is not None
     assert 'duo.load("p01hoinges", 3)' in snippet
     assert "NB:" in snippet
 
