@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 _login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
+_LIMITER_NAAM_MAX = 64
 _OIDC_STATE_COOKIE = "oidc_state"
 
 
@@ -139,6 +140,12 @@ def logout(authorization: Annotated[str | None, Header()] = None) -> None:
     revoke_token(bearer_token(authorization))
 
 
+def _limiter_key(username: str, client_ip: str) -> str:
+    """Sleutel van de login-limiter. De gebruikersnaam komt ongeauthenticeerd binnen en
+    is dus onbegrensd lang: afkappen houdt de sleutel (en het geheugen) klein."""
+    return f"{username.lower()[:_LIMITER_NAAM_MAX] or 'gast'}|{client_ip}"
+
+
 @router.post("/login")
 async def login(body: dict, request: Request) -> dict:
     username = body.get("username", "").strip()
@@ -148,7 +155,7 @@ async def login(body: dict, request: Request) -> dict:
     # tellen op IP alleen zette dan alle wachtwoordgebruikers in één bucket, en één
     # aanvaller kon de login voor iedereen blokkeren. De gebruikersnaam erbij beperkt
     # een vol budget tot die ene combinatie.
-    limiter_key = f"{username.lower() or 'gast'}|{client_ip}"
+    limiter_key = _limiter_key(username, client_ip)
     if not _login_limiter.is_allowed(limiter_key):
         retry = _login_limiter.retry_after(limiter_key)
         raise HTTPException(

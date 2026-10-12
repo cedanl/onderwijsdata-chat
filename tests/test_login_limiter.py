@@ -32,6 +32,14 @@ def _login(client, user, pw):
     return client.post("/api/auth/login", json={"username": user, "password": pw})
 
 
+def _login_vanaf(adres, user, pw):
+    """Login vanaf een ander client-adres dan de standaard testclient."""
+    import server
+
+    with TestClient(server.app, client=(adres, 1)) as andere_client:
+        return _login(andere_client, user, pw)
+
+
 def test_vijf_mislukte_pogingen_blokkeren_die_gebruikersnaam(client):
     for _ in range(5):
         assert _login(client, "anna", "fout").status_code == 401
@@ -61,3 +69,26 @@ def test_gebruikersnaam_zonder_waarde_telt_als_gast(client):
         _login(client, "", "x")
     assert _login(client, "", "x").status_code == 429
     assert _login(client, "anna", "pw1").status_code == 200
+
+
+def test_zelfde_gebruikersnaam_vanaf_ander_adres_heeft_eigen_budget(client):
+    """Het adres hoort bij de sleutel: een vol budget vanaf het ene adres blokkeert
+    dezelfde naam vanaf een ander adres niet."""
+    for _ in range(6):
+        _login_vanaf("1.2.3.4", "anna", "fout")
+    assert _login_vanaf("1.2.3.4", "anna", "fout").status_code == 429
+    assert _login_vanaf("5.6.7.8", "anna", "pw1").status_code == 200
+
+
+def test_limiter_sleutel_kapt_lange_gebruikersnaam_af():
+    from routes.auth import _LIMITER_NAAM_MAX, _limiter_key
+
+    sleutel = _limiter_key("A" * 100_000, "1.2.3.4")
+    assert sleutel == "a" * _LIMITER_NAAM_MAX + "|1.2.3.4"
+
+
+def test_limiter_sleutel_negeert_hoofdletters_en_valt_terug_op_gast():
+    from routes.auth import _limiter_key
+
+    assert _limiter_key("Anna", "1.2.3.4") == _limiter_key("anna", "1.2.3.4")
+    assert _limiter_key("", "1.2.3.4") == "gast|1.2.3.4"

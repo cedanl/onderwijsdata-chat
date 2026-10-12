@@ -12,7 +12,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S2 | Lodash kwetsbare versie op loginpagina | Hoog | ✅ Opgelost (Chainlit verwijderd) |
 | S3 | Ontbrekende HTTP security headers | Gemiddeld | ✅ Opgelost (middleware); CSP-restpunten in S13 (#486, #506) |
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
-| S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt, werking achter de ingress te verifiëren (#504); chat niet (#444) |
+| S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat niet (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
 | S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 en S15 (#500) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, origin `*` geweigerd, #421) |
@@ -73,7 +73,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 **Feedback:** `routes/feedback.py` heeft een eigen limiter (3 per 600 seconden).  
 **Chat (open):** de WebSocket `/api/chat` heeft geen limiet op het aantal berichten per verbinding of per gebruiker (LLM-kosten). Vervolg in #444. De maximale berichtlengte staat los daarvan, zie S7.  
 **Blokkade voor iedereen opgelost (#504):** uvicorn draait zonder `--forwarded-allow-ips` en de manifests zetten `FORWARDED_ALLOW_IPS` niet, dus achter de ingress ziet de limiter waarschijnlijk voor iedereen hetzelfde adres. Met alleen het IP als sleutel deelden alle wachtwoordgebruikers dan één budget van 5 pogingen per pod, en kon iemand zonder inloggegevens wachtwoord-login voor iedereen blokkeren. De sleutel is nu gebruikersnaam + adres: een vol budget raakt alleen die ene combinatie.  
-**Restrisico:** wie de gebruikersnaam van een ander kent, kan vanaf hetzelfde (ingress-)adres die naam een minuut blokkeren. Per echte client tellen vergt dat uvicorn `X-Forwarded-For` van de ingress vertrouwt: `FORWARDED_ALLOW_IPS` op het ingress-subnet zetten zodra dat subnet is vastgesteld (uvicorn leest die env var zelf; geen Dockerfile-wijziging nodig). Welk adres de limiter in het cluster ziet, is nog niet nagegaan.
+**Restrisico:** de limiter ziet waarschijnlijk alleen het adres van de ingress. Daardoor kan iedereen die een gebruikersnaam kent die account blijvend buitensluiten door elke minuut 5 pogingen te doen, en kan één client met 5 pogingen per minuut per gebruikersnaam één wachtwoord over veel gebruikersnamen spuiten. Per echte client tellen vergt dat uvicorn `X-Forwarded-For` van de ingress vertrouwt (`FORWARDED_ALLOW_IPS` op het ingress-subnet; uvicorn leest die env var zelf). Het subnet is nog niet vastgesteld en welk adres de limiter in het cluster ziet is nog niet nagegaan.
 
 ---
 
