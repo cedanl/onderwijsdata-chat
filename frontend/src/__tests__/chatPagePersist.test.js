@@ -220,11 +220,30 @@ describe('volle opslag van de gesprekslijst (#521)', () => {
   })
 
   it('meldt twee mislukte schrijfacties één keer', async () => {
-    lijstVol()
+    const spy = lijstVol()
     await mountChat()
-    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'antwoord', done: true }]
+    // Een tweede afgerond antwoord: de opslag na elk antwoord loopt pas weer als busy terugvalt.
+    chatState.busy = true
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'antwoord', done: false }]
     await render()
+    chatState.busy = false
+    chatState.messages = chatState.messages.with(-1, { ...chatState.messages.at(-1), done: true })
+    await render()
+
+    expect(spy.mock.calls.filter(([key]) => key === STORAGE_CONVERSATIONS).length).toBeGreaterThanOrEqual(2)
     expect(meldingen.filter(([m]) => m === LIJST_MELDING)).toHaveLength(1)
+  })
+
+  it('meldt het ook bij het verwijderen van een gesprek', async () => {
+    chatState.messages = []
+    api.fetchConversations.mockResolvedValueOnce([{ id: 's1', title: 'Weg ermee', timestamp: 1 }])
+    await mountChat()
+    lijstVol()
+
+    await act(async () => { container.querySelector('[aria-label="Verwijder gesprek Weg ermee"]').click() })
+    await act(async () => { document.querySelector('.confirm-destructive').click() })
+
+    expect(meldingen).toEqual([[LIJST_MELDING, 'warning']])
   })
 
   it('meldt de lijst los van het open gesprek', async () => {
