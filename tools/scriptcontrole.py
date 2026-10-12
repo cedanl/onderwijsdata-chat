@@ -5,6 +5,9 @@ De controle werkt op de AST, niet op tekst:
 
 - geen import, geen dunder (`__globals__`, `__class__`, ...) en geen frame-attributen,
   ook niet in een string (`df.query('x.__class__')`, `'{0.__class__}'.format`);
+- geen stdlib-module als attribuut van een bibliotheekobject (`pd.io.common.os`,
+  `pd.compat.sys`, #443): het kindproces heeft geen omgeving, netwerk of schrijfrechten,
+  maar `os.getpid()`, `os.getcwd()` en `os.environ` waren zo nog bereikbaar;
 - `store_get` alleen met een letterlijke key: de sandbox krijgt precies die tabellen mee;
 - geen overgetypte data, en het script leest data (`df` of `store_get`).
 
@@ -52,6 +55,42 @@ _VERBODEN_ATTRIBUTEN = frozenset(
         "tb_next",
     }
 )
+# Modules die via een attribuut van pandas of numpy te bereiken zijn (`pd.io.common.os`) en bij het
+# besturingssysteem, het proces, bestanden of het netwerk komen (#443). Geen importnaam: `import` is al weg.
+_VERBODEN_MODULES = frozenset(
+    {
+        "os",
+        "posix",
+        "sys",
+        "subprocess",
+        "multiprocessing",
+        "threading",
+        "builtins",
+        "importlib",
+        "pkgutil",
+        "runpy",
+        "code",
+        "socket",
+        "ssl",
+        "http",
+        "urllib",
+        "ctypes",
+        "signal",
+        "resource",
+        "shutil",
+        "pathlib",
+        "tempfile",
+        "glob",
+        "io",
+        "pickle",
+        "marshal",
+        "pty",
+        "fcntl",
+        "select",
+        "platform",
+        "webbrowser",
+    }
+)
 _HARDCODED_MIN = 6
 
 
@@ -75,6 +114,8 @@ def _verboden(node: ast.AST) -> str | None:
         return node.id
     if isinstance(node, ast.Attribute) and (node.attr in _VERBODEN_ATTRIBUTEN or node.attr.startswith("__")):
         return node.attr
+    if isinstance(node, ast.Attribute) and node.attr in _VERBODEN_MODULES:
+        return f"{node.attr} (een module via een bibliotheekobject)"
     if isinstance(node, ast.Constant) and isinstance(node.value, str) and "__" in node.value:
         return node.value
     return None
