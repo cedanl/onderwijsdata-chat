@@ -53,8 +53,12 @@ def test_een_dataset_buiten_het_contract_krijgt_niets():
 
 
 def test_methodiek_blijft_compact():
-    """Tokenbudget: geen URL's, extractiedetails of dubbele aanwijzingen."""
+    """Tokenbudget: geen URL's, extractiedetails of dubbele aanwijzingen.
+
+    Sinds #370 staan ook de populatie, de sectoren, de periodecodes (één regel per periode)
+    en de geografie erin; samen blijft het onder drieduizend tekens voor een tabel met vijftien perioden.
+    """
     tekst = json.dumps(cbs_meta.metadata("85423NED"), ensure_ascii=False)
-    assert len(tekst) < 2000
+    assert len(tekst) < 3000
     assert "http" not in tekst
     assert "extractie" not in tekst

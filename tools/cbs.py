@@ -12,7 +12,7 @@ from onderwijsdata.client import get
 from core.config import CBS_ROW_LIMIT
 
 from . import canoniek, cbs_afronding, cbs_selectie, fouten, periode, scopeprofiel, store
-from .catalog import bron_titel, catalogus_laatste_update, scope_blokkade
+from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
@@ -278,6 +278,7 @@ def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pa
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
+    dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
     if selectie is not None:
@@ -389,6 +390,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
 
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
+    dataset_id = cbs_bron_id(dataset_id)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
     try:
