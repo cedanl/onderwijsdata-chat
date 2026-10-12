@@ -216,6 +216,10 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Antwoorden staan niet meer in een bubbel (#525): de tekst van de assistent staat als lopende tekst op
+  de paginagrond, alleen het bericht van de gebruiker houdt de blauwe bubbel. Op een telefoon verdwijnen
+  ook de avatars en wordt de zijruimte kleiner, zodat een antwoord de volle schermbreedte krijgt; een
+  foutmelding houdt haar eigen gekleurde kader.
 - Een vervolgvraag typen na het eerste antwoord liep traag, vooral met grafieken in het gesprek: elke toetsaanslag
   parseerde alle antwoorden opnieuw en tekende alle grafieken opnieuw. Het invoerveld bewaart nu zelf wat je typt,
   en een antwoord of grafiek wordt alleen opnieuw getekend als het zelf verandert. In een testgesprek met drie
