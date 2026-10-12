@@ -139,7 +139,7 @@ class TestReden:
         assert zonder_query.reden is Reden.GEEN_DATABRON
 
     def test_onleesbaar_recept_is_geen_databron(self):
-        [uitkomst] = figuur_uitkomsten(["geen recept"])
+        [uitkomst] = figuur_uitkomsten(["geen recept"])  # ty: ignore[invalid-argument-type]
         assert uitkomst.reden is Reden.GEEN_DATABRON
 
     def test_query_met_uitzondering_is_query_mislukt(self):
