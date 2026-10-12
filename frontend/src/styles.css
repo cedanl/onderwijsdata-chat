@@ -716,9 +716,17 @@ input, textarea { font: inherit; }
 }
 .copy-btn:hover { color: var(--gray-700); border-color: var(--gray-300); background: var(--gray-50); }
 
-/* Message-level copy button */
-.message-bubble-assistant { position: relative; }
+/* Antwoord zonder bubbel (#525): het antwoord staat als lopende tekst op de paginagrond,
+   alleen het bericht van de gebruiker houdt een bubbel. Op een telefoon scheelt dat per
+   antwoord tweemaal rand plus padding; fouten houden hun eigen kader (.message-bubble-error). */
+.message-bubble-assistant {
+  position: relative;
+  background: transparent; border: none; box-shadow: none;
+  padding: 0; border-radius: 0;
+}
 .copy-btn-message { top: 8px; right: 8px; }
+/* Zonder bubbelpadding (#525) hangt de kopieerknop op de rand van de tekstkolom. */
+.message-bubble-assistant .copy-btn-message { top: 0; right: 0; }
 .message-bubble-assistant:hover .copy-btn-message { opacity: 1; }
 
 /* User message copy button */
@@ -1398,10 +1406,12 @@ html.dark .dc-msg-error {
   background: rgba(127, 29, 29, 0.25);
   color: #fca5a5;
 }
-/* chat page error bubble */
+/* chat page error bubble: zonder de assistentbubbel (#525) draagt hij zijn eigen kader */
 .message-bubble-error {
-  border-color: #FECACA !important;
+  border: 1px solid #FECACA !important;
   background: #FFF5F5 !important;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
 }
 html.dark .message-bubble-error {
   border-color: #7f1d1d !important;
@@ -1527,6 +1537,15 @@ html.dark .suggested-btn:hover {
   /* Clarification buttons: allow wrapping on narrow screens */
   .clarification-btns { flex-direction: row; flex-wrap: wrap; }
   .clarification-btn { flex: 1 1 auto; min-width: 140px; font-size: .8rem; padding: 8px 10px; }
+}
+
+/* Telefoons (#525): avatars kosten 48px breedte per bericht en de lijst zelf nog eens
+   zijruimte; zonder bubbel om het antwoord krijgt de tekst de volle schermbreedte. */
+@media (max-width: 640px) {
+  .message-avatar { display: none; }
+  .message { gap: 8px; }
+  .chat-messages { padding: 12px 10px; gap: 16px; }
+  .message.user .message-bubble { max-width: 88%; padding: 10px 14px; }
 }
 
 /* Report toolbar on phones (#400): back button, title and actions each on their own row,

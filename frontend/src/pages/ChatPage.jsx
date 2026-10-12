@@ -570,7 +570,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               <div className="message assistant">
                 <div className="message-avatar">AI</div>
                 <div className="message-body">
-                  <div className="message-bubble" style={{ background: 'transparent', boxShadow: 'none' }}>
+                  <div className="message-bubble message-bubble-assistant">
                     <div className="ai-thinking">
                       <div className="ai-thinking-dots"><span /><span /><span /></div>
                       <span className="ai-thinking-label">AI denkt na...</span>
