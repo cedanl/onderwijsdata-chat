@@ -206,3 +206,37 @@ def test_ready_geeft_200_als_alles_werkt(client, monkeypatch):
     assert isinstance(data, dict)
     assert data["status"] == "ready"
     assert data["checks"] == {"database": True, "llm": True}
+
+
+def test_info_onthult_geen_databasetype_of_omgeving(client):
+    """#518 (S18): /info is zonder token bereikbaar; databasetype en omgevingslabel
+    helpen een aanvaller en horen er niet in."""
+    data = client.get("/info").json()
+    assert "database_type" not in data
+    assert "environment" not in data
+    assert data["name"] == "Onderwijsdata Chat"
+
+
+def test_debug_logniveau_geeft_een_waarschuwing_bij_opstarten(monkeypatch, caplog):
+    """#516 (S19): op DEBUG komt gesprekstekst in het log; dat mag niet stil gebeuren."""
+    import server
+    from config import Config
+
+    monkeypatch.setattr(Config, "LOG_LEVEL", "DEBUG")
+    with caplog.at_level("WARNING"):
+        import asyncio
+
+        asyncio.run(server.on_startup())
+    assert "LOG_LEVEL=DEBUG" in caplog.text
+
+
+def test_info_logniveau_geeft_geen_waarschuwing(monkeypatch, caplog):
+    import server
+    from config import Config
+
+    monkeypatch.setattr(Config, "LOG_LEVEL", "INFO")
+    with caplog.at_level("WARNING"):
+        import asyncio
+
+        asyncio.run(server.on_startup())
+    assert "LOG_LEVEL=DEBUG" not in caplog.text

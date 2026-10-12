@@ -5,6 +5,7 @@
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
 - Python 3.11 of hoger (wordt automatisch beheerd door uv)
 - Een API key voor een ondersteund taalmodel — zie [Providers & modellen](configuratie/providers.md)
+- Node.js **24 of hoger** (zie `.nvmrc`) — alleen nodig voor frontend-ontwikkeling en de frontendtests; op Node 20 falen de tests met een cryptische `undici`-importfout
 
 ### uv installeren
 
