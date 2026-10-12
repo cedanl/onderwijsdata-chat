@@ -72,6 +72,11 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een vage vraag, een kort thema zonder maat zoals "studentenwelzijn", krijgt een zichtbare interpretatie (#514):
+  komt er geen verduidelijkingskaart, dan opent het antwoord met "Ik ga uit van de lezing «…»" met de titels van
+  de datasets waarop het rust, uit de catalogus, en de uitnodiging om de maat of bron te noemen als iets anders
+  bedoeld was. De app zet die zin er in code voor als het model zijn lezing niet zelf benoemde; de systeemprompt
+  vraagt het model eerst om een verduidelijkingsvraag of die zin.
 - `dataset_details` noemt voor een CBS-tabel nu ook de populatie, de sectoren in het profiel, de
   periodecodes met hun CBS-status ("2025/'26 (voorlopig)"), het bereik en de geografische dekking uit het
   contract van de CBS-package (#370), naast de teldefinitie en afronding van #383. Het model kiest zo een

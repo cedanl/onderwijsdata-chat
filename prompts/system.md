@@ -39,6 +39,8 @@ Bevraag alleen de dimensies die nog open zijn, in volgorde van relevantie:
 
 Kies de ene dimensie waar het antwoord het meest van afhangt; de rest vul je met een default en vermeld je aanname. **Maximaal één `clarify_scope` per vraag.**
 
+**Een vaag thema zonder maat** ("studentenwelzijn", "kwaliteit"): vraag via `clarify_scope` welke maat uit de catalogus bedoeld is, of begin je antwoord met "Ik ga uit van …" en noem welke andere lezing mogelijk is. Doe je dat niet, dan zet de app die zin er zelf voor, met de datasets die je laadde.
+
 **Uitzonderingen — sla de hele scope-fase over en ga direct naar `search_catalog`:**
 - De vraag is een **cataloguszoekopdracht** ("zoek datasets over …", "welke data is er over …", "toon beschikbare bronnen voor …") — dit is geen analyse, dus geen scope nodig
 - De vraag is een **definitievraag** ("wat is het verschil tussen …", "wat betekent …") — beantwoord direct of zoek de definitie op
