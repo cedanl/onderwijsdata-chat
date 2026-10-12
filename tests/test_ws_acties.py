@@ -24,6 +24,7 @@ def _run(action: str, msg: dict, session: dict, task=None):
 def test_elke_actie_van_de_frontend_heeft_een_handler():
     assert set(chat.ACTIES) == {
         "stop",
+        "ping",
         "reset",
         "settings",
         "history",
@@ -44,6 +45,17 @@ def test_stop_zet_het_stopsignaal_en_laat_de_taak_lopen():
 
     assert session["stop_event"].is_set()
     assert terug is taak and events == []
+
+
+def test_ping_antwoordt_pong_en_laat_de_taak_lopen():
+    """#489: de hartslag van de frontend; het antwoord bewijst dat de lijn leeft."""
+    session = chat._new_session()
+    taak = object()
+
+    terug, events = _run("ping", {}, session, taak)
+
+    assert terug is taak
+    assert events == [{"type": "pong"}]
 
 
 def test_reset_begint_een_nieuw_gesprek_en_meldt_dat():

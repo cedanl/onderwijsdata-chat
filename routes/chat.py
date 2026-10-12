@@ -295,6 +295,13 @@ async def _handle_reset(msg: dict, session: dict, emit, current_task: asyncio.Ta
     await emit({"type": "reset_done"})
 
 
+async def _handle_ping(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    # Hartslag van de frontend (#489): een stil weggevallen verbinding merkt de browser
+    # anders pas na de TCP-timeout. Het antwoord bewijst dat de lijn nog leeft.
+    await emit({"type": "pong"})
+    return current_task
+
+
 async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     session["chat_settings"] = msg.get("settings", {})
     return current_task
@@ -420,6 +427,7 @@ Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asynci
 # Per actie van de frontend een handler: (bericht, sessie, emit, lopende taak) -> lopende taak (#206).
 ACTIES: dict[str, Handler] = {
     "stop": _handle_stop,
+    "ping": _handle_ping,
     "reset": _handle_reset,
     "settings": _handle_settings,
     "history": _handle_history,
