@@ -7,6 +7,8 @@
 
 import asyncio
 import json
+import socket
+import threading
 
 import pandas as pd
 import pytest
@@ -23,7 +25,7 @@ from agent.replay import (
     reproduceer_figures,
 )
 from routes import chat
-from tools import store
+from tools import cbs, store
 from tools.store import KeyMeta
 
 KEY = "cbs:85423NED"
@@ -52,9 +54,42 @@ def _laad(waarden: list[int]) -> None:
     store.put(KEY, df, KeyMeta(bron="cbs", dataset="85423NED"))
 
 
+CBS_CALL = {"name": "get_cbs_data", "arguments": json.dumps({"dataset_id": "85423NED"})}
+DUO_CALL = {"name": "get_duo_data", "arguments": json.dumps({"dataset_id": "p01hoinges", "resource": 0})}
+
+
+class GeenNetwerk(AssertionError):
+    pass
+
+
+@pytest.fixture
+def geen_netwerk(monkeypatch):
+    """Elke netwerkverbinding faalt: wie toch de bron raadpleegt, laat de test vallen (#524)."""
+
+    def weiger(*args, **kwargs):
+        raise GeenNetwerk("netwerkverbinding geopend")
+
+    monkeypatch.setattr(socket.socket, "connect", weiger)
+    monkeypatch.setattr(socket.socket, "connect_ex", weiger)
+    monkeypatch.setattr(socket, "create_connection", weiger)
+
+
+def _laad_bij_bron(monkeypatch, waarden: list[int]) -> None:
+    """De load-tools geven `waarden` terug zoals de bron dat zou doen; query en plot blijven echt."""
+    echte = replay.dispatch
+
+    def dispatch(name, args):
+        if name in replay.REPLAYABLE_TOOLS:
+            _laad(waarden)
+            return json.dumps({"data_key": KEY}), None
+        return echte(name, args)
+
+    monkeypatch.setattr(replay, "dispatch", dispatch)
+
+
 def _figuren(figure_recipes: list[dict]) -> list[str]:
     """De figuren die ververs nu uit de store maakt, zoals een bewaard dashboard ze heeft."""
-    figuren = [u.figuur_json for u in replay_dashboard_figures([], figure_recipes)]
+    figuren = [u.figuur_json for u in replay_dashboard_figures([], figure_recipes).uitkomsten]
     assert all(figuren)
     return [f for f in figuren if f is not None]
 
@@ -71,7 +106,24 @@ class TestReproduceer:
         # En identiek aan wat de ververs-route uit dezelfde data maakt.
         assert eerste.figures_json == _figuren([RECEPT])
 
-    def test_reproduceer_raakt_de_bron_niet(self, monkeypatch):
+    def test_reproduceer_na_ververs_met_cbs_recept_is_byte_identiek(self, monkeypatch, geen_netwerk):
+        """#524: ook met een get_cbs_data-call in het recept (gemockte load) en een data_key per figuur."""
+        _laad_bij_bron(monkeypatch, [475460, 478660])
+        _laad([475460, 478660])
+        bewaard = {"figures_json": _figuren([RECEPT]), "recipe": [CBS_CALL], "figure_recipes": [RECEPT]}
+
+        vers, _, _ = asyncio.run(chat._do_refresh([CBS_CALL], [RECEPT], bewaard, mode="ververs"))
+        opgeslagen = vers.to_dict()
+        eerste, info, veranderingen = asyncio.run(
+            chat._do_refresh([CBS_CALL], [RECEPT], opgeslagen, mode="reproduceer")
+        )
+        tweede, _, _ = asyncio.run(chat._do_refresh([CBS_CALL], [RECEPT], opgeslagen, mode="reproduceer"))
+
+        assert eerste.figures_json == tweede.figures_json == opgeslagen["figures_json"]
+        assert veranderingen == []
+        assert info is not None and "identiek" in info
+
+    def test_reproduceer_raakt_de_bron_niet(self, monkeypatch, geen_netwerk):
         _laad([475460, 478660])
         aangeroepen: list[str] = []
         echte = replay.dispatch
@@ -85,6 +137,13 @@ class TestReproduceer:
 
         assert repro.figures_json
         assert not set(aangeroepen) & replay.REPLAYABLE_TOOLS
+
+    def test_netwerkwacht_vangt_een_verbinding(self, geen_netwerk):
+        """De wacht van de test hierboven werkt: een verbinding faalt."""
+        with pytest.raises(GeenNetwerk):
+            socket.create_connection(("127.0.0.1", 9))
+        with pytest.raises(GeenNetwerk):
+            socket.socket().connect(("127.0.0.1", 9))
 
     def test_ontbrekende_key_komt_in_ontbrekend(self):
         repro = reproduceer_figures([RECEPT])
@@ -107,6 +166,86 @@ class TestReproduceer:
         assert info is not None
         assert "identiek" in info
         assert veranderingen == []
+
+
+class TestReproduceerAfwijking:
+    """#524: reproduceer toont wat afwijkt, per figuur, naast de melding."""
+
+    def test_afwijkende_reproductie_noemt_de_waarden(self):
+        _laad([475460, 475460])
+        bewaard = _figuren([RECEPT])
+        _laad([475460, 478660])  # de opgeslagen data wijkt af van wat het dashboard toont
+        spec = {"figures_json": bewaard, "figure_recipes": [RECEPT]}
+
+        nieuw, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="reproduceer"))
+
+        [regel] = veranderingen
+        assert regel.startswith("'Instroom'") and "2024" in regel and "475.460 → 478.660" in regel
+        assert info is not None and "wijkt af" in info and "niet aangepast" in info
+        assert "identiek" not in info
+        assert nieuw.figures_json != bewaard
+
+    def test_afwijking_per_recept_ook_bij_twee_figuren(self):
+        _laad([475460, 475460])
+        lijn = {**RECEPT, "plot": {**RECEPT["plot"], "chart_type": "line", "title": "Lijn"}}
+        bewaard = _figuren([RECEPT, lijn])
+        _laad([475460, 478660])
+        spec = {"figures_json": bewaard, "figure_recipes": [RECEPT, lijn]}
+
+        _, _, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT, lijn], spec, mode="reproduceer"))
+
+        assert [v.split(",")[0] for v in veranderingen] == ["'Instroom'", "'Lijn'"]
+
+    def test_niet_passend_bewaard_dashboard_geeft_geen_regels(self):
+        _laad([475460, 478660])
+        lijn = {**RECEPT, "plot": {**RECEPT["plot"], "chart_type": "line", "title": "Lijn"}}
+        spec = {"figures_json": [BEWAARD_FOUT], "figure_recipes": [RECEPT, lijn]}
+
+        _, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT, lijn], spec, mode="reproduceer"))
+
+        assert veranderingen == []
+        assert info is not None and "niet per grafiek te vergelijken" in info and "niet aangepast" in info
+
+    def test_alleen_opmaak_anders_zegt_dat_de_waarden_gelijk_zijn(self):
+        _laad([475460, 478660])
+        [vers] = _figuren([RECEPT])
+        opmaak = json.loads(vers)
+        opmaak["layout"]["height"] = 999
+        spec = {"figures_json": [json.dumps(opmaak)], "figure_recipes": [RECEPT]}
+
+        _, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="reproduceer"))
+
+        assert veranderingen == []
+        assert info is not None and "opmaak" in info and "identiek" not in info
+
+    def test_melding_biedt_de_reproductie_niet_aan(self):
+        """De reproductie wordt niet bewaard; de melding wekt die indruk ook niet."""
+        _laad([475460, 475460])
+        bewaard = _figuren([RECEPT])
+        _laad([475460, 478660])
+        spec = {"figures_json": bewaard, "figure_recipes": [RECEPT]}
+
+        _, info, _ = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="reproduceer"))
+
+        assert info is not None
+        for woord in ("bekijk", "bewaar de", "opslaan", "vervang"):
+            assert woord not in info.lower()
+
+    def test_endpoint_geeft_de_afwijkingen_terug(self):
+        _laad([475460, 475460])
+        bewaard = _figuren([RECEPT])
+        _laad([475460, 478660])
+        spec = {"figures_json": bewaard, "figure_recipes": [RECEPT]}
+
+        resp = TestClient(server.app).post(
+            "/api/dashboard/refresh", json={"mode": "reproduceer", "figure_recipes": [RECEPT], "spec": spec}
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["mode"] == "reproduceer"
+        assert any("475.460 → 478.660" in v for v in body["veranderingen"])
+        assert "wijkt af" in body["melding"]
 
 
 class TestVervers:
@@ -146,6 +285,148 @@ class TestVervers:
         assert "ververst" in info.lower()
 
 
+MISLUKTE_CALLS = ["niet toegestaan", "uitzondering", "cbs onbereikbaar"]
+
+
+class TestHerladenMislukt:
+    """#524: ververs meldt alleen "ververst" als elke dataoproep echt herlaadde."""
+
+    @staticmethod
+    def _recipe_met_falende_call(monkeypatch, soort: str) -> list[dict]:
+        echte = replay.dispatch
+
+        def dispatch(name, args):
+            if name == "get_duo_data":
+                if soort == "uitzondering":
+                    raise ValueError("/app/data/cache/geheim.parquet: Expecting value")
+                if soort == "cbs onbereikbaar":
+                    raise ConnectionError("opendata.cbs.nl: Name or service not known")
+            if name in replay.REPLAYABLE_TOOLS:
+                _laad([475460, 478660])
+                return json.dumps({"data_key": KEY}), None
+            return echte(name, args)
+
+        monkeypatch.setattr(replay, "dispatch", dispatch)
+        falend = {"name": "run_analysis", "arguments": "{}"} if soort == "niet toegestaan" else DUO_CALL
+        return [CBS_CALL, falend]
+
+    @pytest.mark.parametrize("soort", MISLUKTE_CALLS)
+    @pytest.mark.parametrize("met_figuurrecepten", [True, False])
+    def test_do_refresh_weigert_bij_een_mislukte_call(self, monkeypatch, soort, met_figuurrecepten):
+        _laad([475460, 478660])
+        recipe = self._recipe_met_falende_call(monkeypatch, soort)
+        figure_recipes = [RECEPT] if met_figuurrecepten else []
+        spec = {"figures_json": _figuren([RECEPT]), "recipe": recipe, "figure_recipes": figure_recipes}
+
+        with pytest.raises(chat.RefreshError) as exc_info:
+            asyncio.run(chat._do_refresh(recipe, figure_recipes, spec))
+
+        melding = str(exc_info.value)
+        assert "niet opnieuw opgehaald" in melding and "1 van de 2" in melding
+        assert "ververst" not in melding.lower() and "herladen." not in melding.lower()
+        for ruw in ("parquet", "Expecting value", "cbs.nl", "ValueError", "ConnectionError", "run_analysis"):
+            assert ruw not in melding
+
+    @pytest.mark.parametrize("soort", MISLUKTE_CALLS)
+    def test_endpoint_geeft_400_zonder_spec(self, monkeypatch, soort):
+        _laad([475460, 478660])
+        recipe = self._recipe_met_falende_call(monkeypatch, soort)
+        spec = {"figures_json": _figuren([RECEPT]), "recipe": recipe, "figure_recipes": [RECEPT]}
+
+        resp = TestClient(server.app).post(
+            "/api/dashboard/refresh",
+            json={"mode": "ververs", "recipe": recipe, "figure_recipes": [RECEPT], "spec": spec},
+        )
+
+        assert resp.status_code == 400
+        body = resp.json()
+        assert "spec" not in body
+        assert "1 van de 2" in body["error"] and "Data ververst" not in body["error"]
+        assert "parquet" not in body["error"] and "cbs.nl" not in body["error"]
+
+    @pytest.mark.parametrize("met_figuurrecepten", [True, False])
+    def test_websocket_geeft_een_fout_en_geen_dashboard(self, monkeypatch, met_figuurrecepten):
+        _laad([475460, 478660])
+        recipe = self._recipe_met_falende_call(monkeypatch, "uitzondering")
+        figure_recipes = [RECEPT] if met_figuurrecepten else []
+        spec = {"figures_json": _figuren([RECEPT]), "recipe": recipe, "figure_recipes": figure_recipes}
+        events: list[dict] = []
+
+        async def emit(event):
+            events.append(event)
+
+        asyncio.run(chat._refresh_dashboard(recipe, figure_recipes, spec, chat._new_session(), emit, None))
+
+        assert [e["type"] for e in events] == ["dashboard_generating", "error"]
+        assert "1 van de 2" in events[-1]["message"]
+
+    def test_alle_calls_geslaagd_ververst_als_voorheen(self, monkeypatch):
+        _laad([475460, 475460])
+        bewaard = _figuren([RECEPT])
+        _laad_bij_bron(monkeypatch, [475460, 478660])
+        spec = {"figures_json": bewaard, "recipe": [CBS_CALL, DUO_CALL], "figure_recipes": [RECEPT]}
+
+        _, info, veranderingen = asyncio.run(chat._do_refresh([CBS_CALL, DUO_CALL], [RECEPT], spec))
+
+        assert info is not None and info.startswith("Data ververst")
+        assert any("475.460 → 478.660" in v for v in veranderingen)
+
+    def test_legacy_pad_zonder_mislukking_meldt_herladen(self, monkeypatch):
+        _laad_bij_bron(monkeypatch, [475460, 478660])
+
+        _, info, _ = asyncio.run(chat._do_refresh([CBS_CALL], [], {"recipe": [CBS_CALL]}))
+
+        assert info is not None and info.startswith("Data herladen")
+
+
+class TestNietOpDeEventLoop:
+    """#524: de ankers (netwerk) en het herladen draaien in een thread, niet op de event loop."""
+
+    def test_ververs_figuren_vraagt_ankers_buiten_de_loop(self, monkeypatch):
+        _laad([475460, 478660])
+        threads: dict[str, int] = {}
+
+        def ankers(recipe, vorige=None):
+            threads["ankers"] = threading.get_ident()
+            return {}
+
+        echte_replay = chat.replay_dashboard_figures
+
+        def replay_dashboard_figures(recipe, figure_recipes):
+            threads["replay"] = threading.get_ident()
+            return echte_replay(recipe, figure_recipes)
+
+        monkeypatch.setattr(chat, "ankers_van_recipe", ankers)
+        monkeypatch.setattr(chat, "replay_dashboard_figures", replay_dashboard_figures)
+        spec = {"figures_json": _figuren([RECEPT]), "figure_recipes": [RECEPT]}
+
+        async def scenario():
+            threads["loop"] = threading.get_ident()
+            await chat._do_refresh([], [RECEPT], spec)
+
+        asyncio.run(scenario())
+
+        assert threads["ankers"] != threads["loop"]
+        assert threads["replay"] != threads["loop"]
+
+    def test_legacy_pad_herlaadt_buiten_de_loop(self, monkeypatch):
+        threads: dict[str, int] = {}
+
+        def replay_data_calls(recipe):
+            threads["replay"] = threading.get_ident()
+            return [{"name": "get_cbs_data", "arguments": "{}", "success": True, "output": "{}"}]
+
+        monkeypatch.setattr(chat, "replay_data_calls", replay_data_calls)
+
+        async def scenario():
+            threads["loop"] = threading.get_ident()
+            await chat._do_refresh([CBS_CALL], [], {})
+
+        asyncio.run(scenario())
+
+        assert threads["replay"] != threads["loop"]
+
+
 class TestAnkers:
     def test_ankers_van_recipe_alleen_cbs(self, monkeypatch):
         monkeypatch.setattr(replay, "catalogus_laatste_update", lambda ds: {"85423NED": "2026-01-15"}.get(ds))
@@ -155,6 +436,72 @@ class TestAnkers:
             {"name": "get_cbs_data", "arguments": "geen json"},
         ]
         assert ankers_van_recipe(recipe) == {"85423NED": "2026-01-15"}
+
+    def test_ankers_zien_een_bijgewerkte_tabel_zonder_herstart(self, monkeypatch):
+        """#524: de catalogus is een momentopname; het anker vraagt CBS per aanroep."""
+        bron = {"Modified": "2026-04-10T02:00:00"}
+        gevraagd: list[tuple[str, str]] = []
+
+        def get(dataset_id, endpoint, **params):
+            gevraagd.append((dataset_id, endpoint))
+            return [dict(bron)]
+
+        monkeypatch.setattr(cbs, "get", get)
+
+        assert ankers_van_recipe([CBS_CALL]) == {"85423NED": "2026-04-10"}
+        bron["Modified"] = "2026-10-01T02:00:00"  # CBS werkt de tabel bij terwijl de server draait
+        assert ankers_van_recipe([CBS_CALL]) == {"85423NED": "2026-10-01"}
+        assert gevraagd == [("85423NED", "TableInfos")] * 2
+
+    def test_ververs_meldt_een_bij_de_bron_bijgewerkte_tabel(self, monkeypatch):
+        _laad_bij_bron(monkeypatch, [475460, 478660])
+        _laad([475460, 478660])
+        monkeypatch.setattr(cbs, "get", lambda dataset_id, endpoint, **params: [{"Modified": "2026-10-01T02:00:00"}])
+        spec = {"figures_json": _figuren([RECEPT]), "figure_recipes": [RECEPT], "ankers": {"85423NED": "2026-04-10"}}
+
+        nieuw, _, veranderingen = asyncio.run(chat._do_refresh([CBS_CALL], [RECEPT], spec))
+
+        assert nieuw.ankers == {"85423NED": "2026-10-01"}
+        assert "CBS-tabel 85423NED is bij de bron bijgewerkt op 2026-10-01 (was 2026-04-10)." in veranderingen
+
+    def test_cbs_onbereikbaar_houdt_het_bewaarde_anker(self, monkeypatch):
+        def onbereikbaar(dataset_id, endpoint, **params):
+            raise ConnectionError("opendata.cbs.nl onbereikbaar")
+
+        monkeypatch.setattr(cbs, "get", onbereikbaar)
+
+        assert ankers_van_recipe([CBS_CALL], {"85423NED": "2026-09-01"}) == {"85423NED": "2026-09-01"}
+        # Zonder bewaard anker blijft de catalogusdatum over.
+        assert ankers_van_recipe([CBS_CALL]) == {"85423NED": "2026-04-10"}
+
+    def test_ververs_faalt_niet_op_een_onbereikbaar_anker(self, monkeypatch):
+        _laad_bij_bron(monkeypatch, [475460, 478660])
+        _laad([475460, 478660])
+
+        def onbereikbaar(dataset_id, endpoint, **params):
+            raise ConnectionError("opendata.cbs.nl onbereikbaar")
+
+        monkeypatch.setattr(cbs, "get", onbereikbaar)
+        spec = {"figures_json": _figuren([RECEPT]), "figure_recipes": [RECEPT], "ankers": {"85423NED": "2026-09-01"}}
+
+        nieuw, info, veranderingen = asyncio.run(chat._do_refresh([CBS_CALL], [RECEPT], spec))
+
+        assert nieuw.ankers == {"85423NED": "2026-09-01"}
+        assert veranderingen == []
+        assert info is not None and info.startswith("Data ververst")
+
+    @pytest.mark.parametrize("dataset", ["onbekend", "../../ODataCatalog/Tables", "p01hoinges"])
+    def test_bron_wordt_alleen_voor_cbs_tabellen_uit_de_catalogus_gevraagd(self, monkeypatch, dataset):
+        gevraagd: list[str] = []
+        monkeypatch.setattr(cbs, "get", lambda dataset_id, endpoint, **params: gevraagd.append(dataset_id) or [])
+
+        assert cbs.bron_laatste_update(dataset) is None
+        assert gevraagd == []
+
+    @pytest.mark.parametrize("antwoord", [[], [{}], [{"Modified": None}], [{"Modified": "gisteren"}], ["geen dict"]])
+    def test_onbruikbaar_antwoord_is_geen_datum(self, monkeypatch, antwoord):
+        monkeypatch.setattr(cbs, "get", lambda dataset_id, endpoint, **params: antwoord)
+        assert cbs.bron_laatste_update("85423NED") is None
 
     def test_anker_verschillen_meldt_bijgewerkte_bron(self):
         meldingen = anker_verschillen({"85423NED": "2025-04-14"}, {"85423NED": "2026-01-15"})

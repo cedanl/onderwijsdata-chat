@@ -221,6 +221,12 @@ de laatste tag is 1.8.6.
   de rapportknop staat dan direct aan, en het rapport haalt ontbrekende data eerst opnieuw op, met een melding.
   Een eigen berekening (`run_analysis`) komt nog niet terug; de foutmelding noemt dan die stap en de key.
   Nieuwe tabel `data_recipes`, aangemaakt bij de start.
+- Een dashboard verversen meldt alleen "Data ververst" als elke dataset echt opnieuw is opgehaald. Laadt er
+  één niet (bron onbereikbaar, geweigerde tool), dan zegt de melding hoeveel datasets niet laadden en blijft het
+  bewaarde dashboard ongewijzigd; eerder ging dat stil door met de oude data. Reproduceren noemt per grafiek de
+  waarden die afwijken van het bewaarde dashboard en bewaart de reproductie niet. De bijwerkdatum van een
+  CBS-tabel (het anker) komt bij verversen en bij het maken van een dashboard rechtstreeks van CBS, niet meer uit
+  de meegeleverde catalogus, en een bijwerking van CBS is zo zonder herstart zichtbaar (#524).
 - Code-snippets draaien zelfstandig: ze beginnen met de laadstap van de bron, met bron-ID en filters.
 - Code-snippets geven dezelfde uitkomst als de app: filters met dezelfde semantiek, DUO-cellen met -1
   uitgesloten, en ook een KPI-snippet laadt zijn eigen data.

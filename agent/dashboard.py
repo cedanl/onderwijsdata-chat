@@ -274,7 +274,10 @@ async def generate(
             }
         )
 
-    spec = _parse_spec_from_response(result.text, figures, figure_recipes, context, session, computed_kpis)
+    # In een thread: de ankers vragen CBS per tabel om de laatste-update-datum (#524).
+    spec = await asyncio.to_thread(
+        _parse_spec_from_response, result.text, figures, figure_recipes, context, session, computed_kpis
+    )
 
     sourcing_error = _check_number_sourcing(result.text, result.tool_results)
     if sourcing_error:

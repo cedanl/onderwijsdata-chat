@@ -102,14 +102,30 @@ class TestReplayDashboardFigures:
                 (QUERY_RESULT, None),  # query_data
                 ("Grafiek aangemaakt", fig),  # create_plot
             ]
-            [uitkomst] = replay_dashboard_figures(recipe, [_recept()])
+            [uitkomst] = replay_dashboard_figures(recipe, [_recept()]).uitkomsten
 
         assert uitkomst.figuur_json is not None and uitkomst.reden is None
         assert uitkomst.naam == "'Test'"
         assert mock_dispatch.call_count == 3
 
+    def test_mislukte_call_maakt_geen_figuren(self):
+        """#524: uit half herladen data komen geen figuren; de aanroeper weigert het geheel."""
+        _in_store()
+        recipe = [
+            {"name": "get_duo_data", "arguments": '{"dataset_id": "p01hoinges", "resource": 0}'},
+            {"name": "run_analysis", "arguments": "{}"},
+        ]
+
+        with patch("agent.replay.dispatch") as mock_dispatch:
+            mock_dispatch.return_value = (json.dumps({"data_key": KEY}), None)
+            verversing = replay_dashboard_figures(recipe, [_recept()])
+
+        assert verversing.mislukte_calls == 1
+        assert verversing.uitkomsten == []
+        assert mock_dispatch.call_count == 1  # alleen de load; geen query_data of create_plot
+
     def test_empty_figure_recipes(self):
-        assert replay_dashboard_figures([], []) == []
+        assert replay_dashboard_figures([], []).uitkomsten == []
 
     def test_een_uitkomst_per_recept_ook_als_het_mislukt(self):
         """#523: een mislukt recept valt niet weg; de lijst schuift dus niet."""
@@ -118,7 +134,7 @@ class TestReplayDashboardFigures:
 
         with patch("agent.replay.dispatch") as mock_dispatch:
             mock_dispatch.side_effect = [Exception("kapot"), (QUERY_RESULT, None), ("ok", fig)]
-            uitkomsten = replay_dashboard_figures([], [_recept(titel="A"), _recept(titel="B")])
+            uitkomsten = replay_dashboard_figures([], [_recept(titel="A"), _recept(titel="B")]).uitkomsten
 
         assert [u.reden for u in uitkomsten] == [Reden.QUERY_MISLUKT, None]
         assert uitkomsten[0].figuur_json is None and uitkomsten[1].figuur_json is not None

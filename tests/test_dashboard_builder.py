@@ -362,3 +362,41 @@ def test_generate_links_each_figure_to_the_query_before_it(monkeypatch):
         }
     ]
     assert [e["type"] for e in events].count("figure") == 1
+
+
+def test_generate_vraagt_de_ankers_buiten_de_event_loop(monkeypatch):
+    """De ankers vragen CBS om de laatste-update-datum; dat netwerk blokkeert de loop niet (#524)."""
+    import threading
+
+    from agent import dashboard as dashboard_module
+    from agent import loop as loop_module
+    from agent.stream import StreamResult
+
+    store.put("cbs:85423NED", pd.DataFrame({"JAAR": ["2021"], "AANTAL": [10]}))
+    threads: dict[str, int] = {}
+
+    def ankers(recipe):
+        threads["ankers"] = threading.get_ident()
+        return {}
+
+    async def fake_completion(*args, **kwargs):
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return StreamResult(text='{"title": "Dashboard"}', tool_calls=[])
+
+    async def emit(event):
+        pass
+
+    monkeypatch.setattr(dashboard_module, "ankers_van_recipe", ankers)
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+
+    async def scenario():
+        threads["loop"] = threading.get_ident()
+        return await dashboard_module.generate({"data_keys": ["cbs:85423NED"]}, emit, model="openai/gpt-4o")
+
+    spec = asyncio.run(scenario())
+
+    assert spec.title == "Dashboard"
+    assert threads["ankers"] != threads["loop"]
