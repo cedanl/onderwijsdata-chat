@@ -3,8 +3,12 @@
 import contextlib
 import importlib
 import json
+import re
+from pathlib import Path
 
 import pytest
+
+SOCKET_HEALTH_JS = Path(__file__).resolve().parent.parent / "frontend" / "src" / "socketHealth.js"
 
 
 @pytest.fixture
@@ -156,3 +160,25 @@ def test_reset_without_a_run_does_not_wait():
     from routes.chat import _stop_task_and_wait
 
     asyncio.run(_stop_task_and_wait({}, None))
+
+
+def _js_constant(source: str, name: str) -> int:
+    match = re.search(rf"^export const {name} = (\d+)$", source, re.MULTILINE)
+    assert match is not None, f"{name} not found in socketHealth.js"
+    return int(match.group(1))
+
+
+def test_pong_timeout_outlasts_the_stop_wait_of_reset_and_history():
+    """The frontend must not drop a healthy connection while the server stops a run (#522).
+
+    A ping that arrives behind a reset or history is answered only after _stop_task_and_wait,
+    which can block the receive loop for _STOP_TIMEOUT_S. The pong timeout must outlast that,
+    and stay under the ping interval so one ping is settled before the next goes out.
+    """
+    from routes.chat import _STOP_TIMEOUT_S
+
+    source = SOCKET_HEALTH_JS.read_text(encoding="utf-8")
+    pong_timeout_ms = _js_constant(source, "PONG_TIMEOUT_MS")
+
+    assert pong_timeout_ms > _STOP_TIMEOUT_S * 1000
+    assert pong_timeout_ms < _js_constant(source, "HEARTBEAT_INTERVAL_MS")

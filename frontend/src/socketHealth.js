@@ -4,12 +4,18 @@
 // app-level ping the server answers with pong.
 
 export const HEARTBEAT_INTERVAL_MS = 15000
-export const PONG_TIMEOUT_MS = 5000
+// A ping that arrives behind a `reset` or `history` is answered only after the server has
+// stopped the running task, which can take up to _STOP_TIMEOUT_S (5 s, routes/chat.py). Twice
+// that wait, and still under the interval, so a healthy connection is never dropped (#522).
+export const PONG_TIMEOUT_MS = 10000
 
-// The heartbeat pings over the open socket and closes it when nothing comes back in
-// time; any incoming message counts as proof of life. Closing hands the dead
-// connection to the hook's own onclose path: melding, interrupted turn, reconnect.
-export function createHeartbeat(getWs) {
+export const BACKOFF_DELAYS = [1000, 2000, 4000, 8000, 16000]
+const MAX_RETRIES = 4
+
+// The heartbeat pings over the open socket; any incoming message counts as proof of life.
+// When nothing comes back in time it closes the socket and calls onDead(ws) at once: a
+// real close() is asynchronous, and its onclose only follows after the closing handshake.
+export function createHeartbeat(getWs, onDead) {
   let interval = null
   let pongTimeout = null
 
@@ -24,6 +30,12 @@ export function createHeartbeat(getWs) {
     alive()
   }
 
+  const die = (ws) => {
+    stop()
+    ws.close()
+    onDead(ws)
+  }
+
   const start = () => {
     stop()
     interval = setInterval(() => {
@@ -31,7 +43,7 @@ export function createHeartbeat(getWs) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return
       ws.send(JSON.stringify({ action: 'ping' }))
       if (pongTimeout === null) {
-        pongTimeout = setTimeout(() => getWs()?.close(), PONG_TIMEOUT_MS)
+        pongTimeout = setTimeout(() => die(ws), PONG_TIMEOUT_MS)
       }
     }, HEARTBEAT_INTERVAL_MS)
   }
@@ -39,8 +51,51 @@ export function createHeartbeat(getWs) {
   return { start, alive, stop }
 }
 
-// offline/online from the browser arrive seconds before any socket error does.
-export function watchNetwork(onOffline, onOnline) {
+// Reconnect attempts after a lost connection: a growing pause, MAX_RETRIES in a row at most.
+// reset() cancels a pending attempt and starts the count over (a socket opened, the network
+// came back, or the hook unmounts).
+export function createRetry(connect) {
+  let count = 0
+  let timeout = null
+
+  const reset = () => {
+    clearTimeout(timeout)
+    timeout = null
+    count = 0
+  }
+
+  const schedule = () => {
+    if (count >= MAX_RETRIES) return
+    const delay = BACKOFF_DELAYS[count] ?? BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1]
+    count += 1
+    timeout = setTimeout(connect, delay)
+  }
+
+  return { schedule, reset }
+}
+
+const isLive = (ws) => ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING
+
+// offline/online from the browser arrive seconds before any socket error does. Offline closes
+// the socket and hands it to the hook's lost path at once. Online reconnects without waiting
+// for the backoff, unless a socket is already open or opening; a socket that is still closing
+// gets its lost path first, so its turn has ended before a new socket takes over.
+export function watchNetwork({ getWs, lost, retry, connect }) {
+  const onOffline = () => {
+    const ws = getWs()
+    if (!ws) return
+    ws.close()
+    lost(ws)
+  }
+
+  const onOnline = () => {
+    const ws = getWs()
+    const live = isLive(ws)
+    if (ws && !live) lost(ws)
+    retry.reset()
+    if (!live) connect()
+  }
+
   window.addEventListener('offline', onOffline)
   window.addEventListener('online', onOnline)
   return () => {

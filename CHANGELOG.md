@@ -222,6 +222,10 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Wifi uit en weer aan tijdens een vraag laat in de chat en de dashboardchat één verbinding over (#522): de
+  melding "Verbinding herstellen..." verdwijnt zodra die open is, en het late sluiten van de oude verbinding
+  breekt een nieuwe vraag niet meer af. Een stil weggevallen verbinding wordt na de hartslag meteen gemeld; een
+  gezonde verbinding blijft staan als de server tot 5 s nodig heeft om een lopend antwoord te stoppen.
 - Het invoergebied op een telefoon is flink lager (#527): "Exporteer gesprek" en "Genereer rapport"
   staan op één compacte rij in plaats van gestapeld, de paddings van invoerkader en footer zijn op
   mobiel terug, de tabbalk is iets lager (tap targets blijven ≥44px) en verdwijnt zolang het

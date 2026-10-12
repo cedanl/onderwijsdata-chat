@@ -1,28 +1,21 @@
 // #489: a silently dead connection fires onclose only after the TCP timeout. The
-// heartbeat pings the server and closes the socket itself when nothing comes back.
+// heartbeat pings the server, closes the socket itself when nothing comes back and
+// reports it dead at once (#522), without waiting for the closing handshake.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { createHeartbeat, HEARTBEAT_INTERVAL_MS, PONG_TIMEOUT_MS } from '../socketHealth'
-
-class FakeWebSocket {
-  static CONNECTING = 0
-  static OPEN = 1
-  static CLOSED = 3
-  constructor() {
-    this.readyState = FakeWebSocket.OPEN
-    this.sent = []
-  }
-  send(data) { this.sent.push(JSON.parse(data)) }
-  close() { this.readyState = FakeWebSocket.CLOSED }
-}
+import { BACKOFF_DELAYS, createHeartbeat, createRetry, HEARTBEAT_INTERVAL_MS, PONG_TIMEOUT_MS } from '../socketHealth'
+import { FakeWebSocket } from './fakeWebSocket'
 
 let ws
 let heartbeat
+let onDead
 
 beforeEach(() => {
   vi.useFakeTimers()
   globalThis.WebSocket = FakeWebSocket
   ws = new FakeWebSocket()
-  heartbeat = createHeartbeat(() => ws)
+  ws.open()
+  onDead = vi.fn()
+  heartbeat = createHeartbeat(() => ws, onDead)
 })
 
 afterEach(() => {
@@ -37,10 +30,17 @@ describe('createHeartbeat', () => {
     expect(ws.sent).toEqual([{ action: 'ping' }])
   })
 
-  it('closes the socket when nothing comes back in time', () => {
+  it('closes the socket and reports it dead when nothing comes back in time', () => {
     heartbeat.start()
     vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS + PONG_TIMEOUT_MS)
-    expect(ws.readyState).toBe(FakeWebSocket.CLOSED)
+    expect(ws.readyState).toBe(FakeWebSocket.CLOSING)
+    expect(onDead).toHaveBeenCalledExactlyOnceWith(ws)
+  })
+
+  it('reports a dead socket only once', () => {
+    heartbeat.start()
+    vi.advanceTimersByTime((HEARTBEAT_INTERVAL_MS + PONG_TIMEOUT_MS) * 3)
+    expect(onDead).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the socket open while messages keep arriving', () => {
@@ -49,6 +49,19 @@ describe('createHeartbeat', () => {
     heartbeat.alive() // the pong, or any other server message
     vi.advanceTimersByTime(PONG_TIMEOUT_MS)
     expect(ws.readyState).toBe(FakeWebSocket.OPEN)
+    expect(onDead).not.toHaveBeenCalled()
+  })
+
+  // A ping behind a reset or history is answered only after the server stopped the
+  // running task, which can take up to _STOP_TIMEOUT_S (5 s, routes/chat.py).
+  it('keeps the socket open for a pong that comes 6 s after the ping', () => {
+    heartbeat.start()
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS)
+    vi.advanceTimersByTime(6000)
+    heartbeat.alive()
+    vi.advanceTimersByTime(PONG_TIMEOUT_MS)
+    expect(ws.readyState).toBe(FakeWebSocket.OPEN)
+    expect(onDead).not.toHaveBeenCalled()
   })
 
   it('does not ping a socket that is no longer open', () => {
@@ -63,5 +76,50 @@ describe('createHeartbeat', () => {
     heartbeat.stop()
     vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS * 2)
     expect(ws.sent).toEqual([])
+  })
+
+  it('reports nothing once stopped while a ping is unanswered', () => {
+    heartbeat.start()
+    vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS)
+    heartbeat.stop()
+    vi.advanceTimersByTime(PONG_TIMEOUT_MS)
+    expect(ws.readyState).toBe(FakeWebSocket.OPEN)
+    expect(onDead).not.toHaveBeenCalled()
+  })
+})
+
+describe('createRetry', () => {
+  let connect
+  let retry
+
+  beforeEach(() => {
+    connect = vi.fn()
+    retry = createRetry(connect)
+  })
+
+  it('tries again after 1, 2, 4 and 8 s, then stops', () => {
+    for (const [i, pause] of [1000, 2000, 4000, 8000].entries()) {
+      retry.schedule()
+      vi.advanceTimersByTime(pause - 1)
+      expect(connect).toHaveBeenCalledTimes(i)
+      vi.advanceTimersByTime(1)
+      expect(connect).toHaveBeenCalledTimes(i + 1)
+    }
+    retry.schedule()
+    vi.advanceTimersByTime(Math.max(...BACKOFF_DELAYS) * 2)
+    expect(connect).toHaveBeenCalledTimes(4)
+  })
+
+  it('reset cancels the pending attempt and starts at the first pause again', () => {
+    retry.schedule()
+    vi.advanceTimersByTime(BACKOFF_DELAYS[0])
+    retry.schedule()
+    retry.reset()
+    vi.advanceTimersByTime(Math.max(...BACKOFF_DELAYS))
+    expect(connect).toHaveBeenCalledTimes(1)
+
+    retry.schedule()
+    vi.advanceTimersByTime(BACKOFF_DELAYS[0])
+    expect(connect).toHaveBeenCalledTimes(2)
   })
 })
