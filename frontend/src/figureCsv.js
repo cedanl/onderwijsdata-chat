@@ -123,3 +123,15 @@ function withProvenance(csv, figure) {
 export function figureToCsv(figure) {
   return withProvenance(hasToolRows(figure) ? rowsToCsv(toolRows(figure)) : tracesToCsv(figure), figure)
 }
+
+// Bestandsnaam van de CSV bij een grafiek (#496 F11): de titel van de grafiek, veilig gemaakt voor
+// bestandsnamen; zonder titel `fallback`. Accenten vallen weg (é → e), de rest wordt een underscore.
+export function figureCsvFilename(figure, fallback = 'data') {
+  const title = figure?.layout?.title
+  const tekst = typeof title === 'string' ? title : title?.text
+  const veilig = String(tekst ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    .slice(0, 80).replace(/_+$/, '')
+  return `${veilig || fallback.replace(/[^a-zA-Z0-9]+/g, '_')}.csv`
+}

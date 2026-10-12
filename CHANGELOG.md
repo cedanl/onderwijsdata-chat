@@ -225,6 +225,9 @@ de laatste tag is 1.8.6.
 - Een tab sluiten of verbergen tijdens een lopend antwoord bewaart nu de tekst tot het laatst ontvangen fragment (#520):
   de bewaarstap leest ook de nog niet getoonde tekst mee, en sluiten op Safari/iOS (`pagehide`) bewaart ook als de
   tab nog als zichtbaar geldt.
+- Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
+  plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
+  venster altijd zichtbaar, ook met een muis.
 - Wifi uit en weer aan tijdens een vraag laat in de chat en de dashboardchat één verbinding over (#522): de
   melding "Verbinding herstellen..." verdwijnt zodra die open is, en het late sluiten van de oude verbinding
   breekt een nieuwe vraag niet meer af. Een stil weggevallen verbinding wordt na de hartslag meteen gemeld; een
