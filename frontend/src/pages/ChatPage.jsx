@@ -247,8 +247,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         }
       }
     }).catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- alleen bij mount laden
-  }, [])
+  }, [tokenAtMount])
 
   // The unmount save runs after the last render, so it reads the open conversation from a ref.
   useEffect(() => {

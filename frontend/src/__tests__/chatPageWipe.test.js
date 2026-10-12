@@ -24,12 +24,13 @@ vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 const chatState = vi.hoisted(() => ({
   messages: [],
   busy: false,
+  reportSpec: null,
 }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
     messages: chatState.messages, busy: chatState.busy, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false,
-    reportProgress: null, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
+    reportProgress: null, reportSpec: chatState.reportSpec, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
     clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), addToast: vi.fn(),
   }),
@@ -38,7 +39,7 @@ vi.mock('../hooks/useChat', () => ({
 import ChatPage from '../pages/ChatPage'
 import { clearLocalSessionData } from '../sessionData'
 import { clearToken } from '../auth'
-import { STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
+import { STORAGE_CURRENT_CHAT, STORAGE_TOKEN, STORAGE_WORKBOOKS, MAX_CONVERSATIONS } from '../constants'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -51,7 +52,9 @@ beforeEach(() => {
   localStorage.clear()
   localStorage.setItem(STORAGE_TOKEN, 'tok')
   chatState.messages = [{ id: 1, role: 'user', content: 'vraag van de vorige gebruiker', done: true }]
+  chatState.reportSpec = null
   api.putConversation.mockClear()
+  api.putWorkbook.mockClear()
 })
 
 afterEach(async () => {
@@ -90,8 +93,11 @@ describe('ChatPage na de sessie-wipe (#507)', () => {
     act(() => logout())
     // De save bij mount (vóór uitloggen) is legitiem; daarna mag er geen volgen.
     api.putConversation.mockClear()
+    // Het antwoord komt pas na het uitloggen binnen: zonder guard wijkt het gesprek dan af
+    // van savedJsonRef en wordt het wél weggeschreven.
     chatState.busy = true
     await act(async () => { root.render(createElement(ChatPage, { user: 'vorige' })) })
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'laat antwoord', done: true }]
     chatState.busy = false
     await act(async () => { root.render(createElement(ChatPage, { user: 'vorige' })) })
 
@@ -109,5 +115,30 @@ describe('ChatPage na de sessie-wipe (#507)', () => {
     })
 
     expect(localStorage.getItem('openEDUdata_conversations')).toBeNull()
+  })
+
+  it('toont een laat "meer laden"-resultaat van de vorige gebruiker niet', async () => {
+    const rij = n => ({ id: n, title: `gesprek ${n}`, timestamp: 1000 - n, messages: [{ role: 'user', content: 'vraag' }] })
+    // Een volle pagina plus één extra rij: er is meer te laden.
+    api.fetchConversations.mockResolvedValueOnce(Array.from({ length: MAX_CONVERSATIONS + 1 }, (_, n) => rij(n + 1)))
+    let geefRows
+    api.fetchConversations.mockReturnValueOnce(new Promise(r => { geefRows = r }))
+    await mountChat()
+
+    await act(async () => { container.querySelector('.history-more-btn').click() })
+    act(() => logout())
+    await act(async () => { geefRows([rij(99)]) })
+
+    expect(container.textContent).not.toContain('gesprek 99')
+  })
+
+  it('slaat na uitloggen geen rapport op wanneer de spec nog binnenkomt', async () => {
+    await mountChat()
+    act(() => logout())
+    chatState.reportSpec = { title: 'Rapport van de vorige gebruiker', auteur: 'vorige' }
+    await act(async () => { root.render(createElement(ChatPage, { user: 'vorige' })) })
+
+    expect(api.putWorkbook).not.toHaveBeenCalled()
+    expect(localStorage.getItem(STORAGE_WORKBOOKS)).toBeNull()
   })
 })
