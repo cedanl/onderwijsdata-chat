@@ -6,8 +6,6 @@ export const SEARCH_DELAY_MS = 300
 // One page of hits; the server searches all of the user's conversations (#124).
 const SEARCH_LIMIT = 50
 
-const parsed = c => ({ ...c, messages: typeof c.messages === 'string' ? JSON.parse(c.messages) : c.messages })
-
 // Search in the conversation history (#124). Lives in the page, not in the sidebar, so the
 // query and its results survive closing and opening the mobile drawer.
 export function useConversationSearch() {
@@ -32,7 +30,7 @@ export function useConversationSearch() {
       fetchConversations({ q: term, limit: SEARCH_LIMIT })
         .then(rows => {
           if (latestRef.current !== term) return
-          setResults(rows.map(parsed))
+          setResults(rows)
         })
         .catch(() => {
           if (latestRef.current !== term) return

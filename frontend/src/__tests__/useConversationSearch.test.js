@@ -35,7 +35,8 @@ afterEach(() => {
 // #124: zoeken in de gespreksgeschiedenis, server-side op titel en inhoud.
 describe('useConversationSearch', () => {
   it('asks the server once the user stops typing', async () => {
-    fetchConversations.mockResolvedValue([{ id: 'c1', title: 'Uitval hbo', timestamp: 1, messages: '[{"role":"user","content":"x"}]' }])
+    // The hits are summaries: the server matched on the text, the list carries none of it (#509).
+    fetchConversations.mockResolvedValue([{ id: 'c1', title: 'Uitval hbo', timestamp: 1 }])
     await act(async () => { search.setQuery('uit') })
     await act(async () => { search.setQuery('uitval') })
     expect(search.searching).toBe(true)
@@ -44,7 +45,7 @@ describe('useConversationSearch', () => {
     expect(fetchConversations).toHaveBeenCalledOnce()
     expect(fetchConversations).toHaveBeenCalledWith(expect.objectContaining({ q: 'uitval' }))
     expect(search.searching).toBe(false)
-    expect(search.results).toEqual([{ id: 'c1', title: 'Uitval hbo', timestamp: 1, messages: [{ role: 'user', content: 'x' }] }])
+    expect(search.results).toEqual([{ id: 'c1', title: 'Uitval hbo', timestamp: 1 }])
   })
 
   it('has no results without a query, and does not ask the server', async () => {
@@ -58,12 +59,12 @@ describe('useConversationSearch', () => {
     let answerFirst
     fetchConversations
       .mockImplementationOnce(() => new Promise(resolve => { answerFirst = resolve }))
-      .mockResolvedValueOnce([{ id: 'c2', title: 'Tweede', timestamp: 2, messages: [] }])
+      .mockResolvedValueOnce([{ id: 'c2', title: 'Tweede', timestamp: 2 }])
     await act(async () => { search.setQuery('eerste') })
     await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
     await act(async () => { search.setQuery('tweede') })
     await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
-    await act(async () => { answerFirst([{ id: 'c1', title: 'Eerste', timestamp: 1, messages: [] }]) })
+    await act(async () => { answerFirst([{ id: 'c1', title: 'Eerste', timestamp: 1 }]) })
 
     expect(search.results.map(c => c.id)).toEqual(['c2'])
   })

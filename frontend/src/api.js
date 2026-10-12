@@ -49,6 +49,11 @@ export async function fetchConversations(params = {}) {
   return apiFetch(query ? `/api/conversations?${query}` : '/api/conversations')
 }
 
+// The list carries no messages (#509); opening a conversation fetches them.
+export async function fetchConversation(id) {
+  return apiFetch(`/api/conversations/${id}`)
+}
+
 export async function putConversation(id, data) {
   return apiFetch(`/api/conversations/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
