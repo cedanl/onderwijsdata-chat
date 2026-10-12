@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { suggereerInstellingen } from '../instellingenMatch'
 
 const NIVEAUS = [
   { id: 'wo',  label: 'WO' },
@@ -44,6 +45,11 @@ export default function InstellingPicker({ inputId, value, onChange }) {
     if (inst.naam.toLowerCase().includes(q)) return true
     return inst.aliassen.some(a => a.toLowerCase().includes(q))
   })
+
+  // Niets gevonden: de dichtstbijzijnde namen aanbieden, binnen hetzelfde niveaufilter.
+  const suggesties = filtered.length === 0 && query.trim()
+    ? suggereerInstellingen(query, allInstellingen.filter(i => niveauFilter.size === 0 || niveauFilter.has(i.type)))
+    : []
 
   const toggleNiveau = (id) => {
     setNiveauFilter(prev => {
@@ -163,6 +169,21 @@ export default function InstellingPicker({ inputId, value, onChange }) {
                 Filter wissen
               </button>
             </>
+          )}
+          {suggesties.length > 0 && (
+            <div className="instelling-suggesties" style={{ marginTop: 6 }}>
+              Bedoel je{' '}
+              {suggesties.map((inst, i) => (
+                <span key={inst.naam}>
+                  {i > 0 && (i === suggesties.length - 1 ? ' of ' : ', ')}
+                  <button type="button" onClick={() => select(inst)}
+                    style={{ border: 'none', background: 'none', padding: 0, color: 'var(--blue-700)', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>
+                    {inst.naam}
+                  </button>
+                </span>
+              ))}
+              ?
+            </div>
           )}
         </div>
       )}

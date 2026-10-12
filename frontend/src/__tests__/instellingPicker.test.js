@@ -66,6 +66,38 @@ describe('InstellingPicker empty state', () => {
   })
 })
 
+describe('InstellingPicker suggesties (#496 F04)', () => {
+  it('biedt bij een typefout de dichtstbijzijnde naam aan en kiest die met een klik', async () => {
+    const onChange = vi.fn()
+    await render({ onChange })
+    await type('Hogescool Utrecht')
+    expect(options()).toHaveLength(0)
+    expect(emptyState().textContent).toContain('Bedoel je Hogeschool Utrecht?')
+
+    await act(async () => { emptyState().querySelector('.instelling-suggesties button').click() })
+    expect(onChange).toHaveBeenLastCalledWith('Hogeschool Utrecht')
+    expect(emptyState()).toBeNull()
+  })
+
+  it('houdt een enkel woord tegen elk woord van de naam', async () => {
+    await render()
+    await type('Univerciteit')
+    expect(emptyState().textContent).toMatch(/Bedoel je .*Universiteit (Leiden|Utrecht)/)
+  })
+
+  it('noemt hoogstens drie namen', async () => {
+    await render()
+    await type('Univerciteit')
+    expect(emptyState().querySelectorAll('.instelling-suggesties button').length).toBeLessThanOrEqual(3)
+  })
+
+  it('zegt niets als niets in de buurt komt', async () => {
+    await render()
+    await type('Sorbonne')
+    expect(emptyState().textContent).not.toContain('Bedoel je')
+  })
+})
+
 describe('InstellingPicker closing', () => {
   it('closes the list when the input loses focus to the rest of the form', async () => {
     await render()
