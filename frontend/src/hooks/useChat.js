@@ -64,6 +64,17 @@ export function useChat() {
     cancelAnimationFrame(deltaFrameRef.current)
     deltaFrameRef.current = null
   }, [])
+  // Het lopende antwoord mét de tekst die nog in de deltabuffer zit (#520): een verborgen tab
+  // pauzeert requestAnimationFrame, dus `messages` loopt dan achter op wat al binnen is. Puur:
+  // wie bewaart, leest de buffer mee zonder state-update af te wachten. Het lopende antwoord is
+  // altijd het laatste bericht.
+  const withBufferedText = useCallback((all) => {
+    const tekst = deltaBufferRef.current
+    const id = currentMsgRef.current
+    if (!tekst || id === null) return all
+    const i = all.findLastIndex(m => m.id === id)
+    return i < 0 ? all : all.with(i, { ...all[i], content: all[i].content + tekst })
+  }, [])
   // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
   const reportAbandonedRef = useRef(false)
   const nextId = () => ++idRef.current
@@ -524,5 +535,5 @@ export function useChat() {
     }
   }, [clear])
 
-  return { messages, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }
