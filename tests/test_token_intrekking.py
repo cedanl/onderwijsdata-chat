@@ -470,3 +470,17 @@ def test_databasestoring_geeft_500_en_geen_401(client, monkeypatch):
     client = TestClient(client.app, raise_server_exceptions=False)
 
     assert client.get("/api/conversations", headers=_bearer(_token())).status_code == 500
+
+
+@pytest.mark.parametrize("functie", ["is_token_revoked", "revoke_token_hash"])
+def test_logout_bij_databasestoring_geeft_500(client, monkeypatch, functie):
+    """Een mislukte intrekking mag niet als geslaagde logout (204) terugkomen."""
+    from persistence import db
+
+    def storing(*args):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(db, functie, storing)
+    client = TestClient(client.app, raise_server_exceptions=False)
+
+    assert client.post("/api/auth/logout", headers=_bearer(_token())).status_code == 500
