@@ -333,6 +333,44 @@ describe('App', () => {
     expect(fetch).not.toHaveBeenCalledWith('/api/auth/logout', expect.anything())
   })
 
+  // #499: the login screen says why the app asked to log in again.
+  const sessionNotice = () => container.querySelector('[role="status"]')?.textContent
+
+  it('explains on the login page that the session expired when the server refused the token (#499)', async () => {
+    logIn('tampered')
+    serve({ required: true, user: response(401) })
+    await render()
+    expect(sessionNotice()).toBe('Je sessie is verlopen. Log opnieuw in.')
+  })
+
+  it('explains it as well when the session ends while using the app (#499)', async () => {
+    logIn()
+    serve({ required: true, user: response(200, { name: 'Anna' }) })
+    await render()
+    expect(container.textContent).not.toContain('sessie is verlopen')
+    await act(async () => { endSession() })
+    expect(sessionNotice()).toBe('Je sessie is verlopen. Log opnieuw in.')
+  })
+
+  it('shows no expiry notice after an explicit logout (#499)', async () => {
+    logIn('tok')
+    serve({ required: true, user: response(200, { name: 'Anna' }) })
+    await render()
+    await act(async () => { logoutButton().click() })
+    expect(loginForm()).not.toBeNull()
+    expect(container.textContent).not.toContain('sessie is verlopen')
+  })
+
+  it('closes the settings dialog when the session ends (#499)', async () => {
+    logIn()
+    serve({ required: true, user: response(200, { name: 'Anna' }) })
+    await render()
+    await act(async () => { container.querySelector('button[title="Instellingen"]').click() })
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull()
+    await act(async () => { endSession() })
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+  })
+
   // #479: the token is read before it is cleared, otherwise nothing gets revoked.
   it('revokes the stored token on the server when the user logs out', async () => {
     logIn('tok')

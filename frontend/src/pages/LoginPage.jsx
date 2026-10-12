@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { login } from '../auth'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
-export default function LoginPage({ onLogin, oidcEnabled }) {
+export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false }) {
   useDocumentTitle(pageTitle('Inloggen'))
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -54,6 +54,15 @@ export default function LoginPage({ onLogin, oidcEnabled }) {
         <p style={{ fontSize: '.9rem', color: 'var(--gray-500)', marginBottom: 28 }}>
           Log in om verder te gaan met openEDUdata+.
         </p>
+
+        {sessionExpired && (
+          <div role="status" style={{
+            background: 'var(--blue-50)', color: 'var(--blue-700)', borderRadius: 'var(--radius-sm)',
+            padding: '10px 14px', fontSize: '.85rem', fontWeight: 500, marginBottom: 20,
+          }}>
+            Je sessie is verlopen. Log opnieuw in.
+          </div>
+        )}
 
         {oidcEnabled && (
           <>
