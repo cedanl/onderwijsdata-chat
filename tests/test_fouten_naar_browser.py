@@ -8,6 +8,7 @@ import asyncio
 
 import pytest
 
+from agent.report import RAPPORT_GEWEIGERD, RapportGeweigerd
 from core.errors import Gebruikersfout
 from routes import chat
 
@@ -64,14 +65,14 @@ def test_rapportfout_lekt_geen_exceptietekst(monkeypatch, caplog):
 
 def test_rapport_gebruikersfout_bereikt_de_gebruiker(monkeypatch):
     async def geweigerd(session, emit, model=None, stop_event=None, author=None):
-        raise Gebruikersfout("Rapport niet consistent met de data: X. Probeer het opnieuw.")
+        raise RapportGeweigerd
 
     monkeypatch.setattr(chat, "generate_report_spec", geweigerd)
     events, emit = _emit_verzamelaar()
     asyncio.run(chat._generate_report({"chat_settings": {}}, emit, None))
 
     fout = next(e for e in events if e["type"] == "report_error")
-    assert "Rapport niet consistent met de data" in fout["message"]
+    assert fout == {"type": "report_error", "message": RAPPORT_GEWEIGERD, "herstel": "rapport"}
 
 
 def test_refreshfout_lekt_geen_herlaadfouten(monkeypatch):

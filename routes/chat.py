@@ -23,7 +23,7 @@ from agent.replay import (
     replay_data_calls,
     reproduceer_figures,
 )
-from agent.report import RapportGeannuleerd
+from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import DASHBOARDS_ENABLED, HISTORY_MAX_CHARS, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
@@ -150,6 +150,9 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         with contextlib.suppress(Exception):
             await emit({"type": "report_cancelled"})
         raise
+    except RapportGeweigerd as e:
+        # Vaste tekst; `herstel` laat de frontend het rapport opnieuw aanbieden (#515).
+        await emit({"type": "report_error", "message": str(e), "herstel": "rapport"})
     except Gebruikersfout as e:
         # Raised on purpose with guidance for the user (e.g. no datasets loaded).
         # Any other exception — a parser error included — falls through to the
