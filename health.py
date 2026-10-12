@@ -2,6 +2,7 @@
 Health check endpoints for Kubernetes liveness and readiness probes.
 """
 
+import asyncio
 import logging
 import time
 
@@ -19,17 +20,14 @@ def record_startup() -> None:
 
 
 async def check_database_connection() -> bool:
-    """Test database connection. Returns True if healthy."""
+    """Test database connection. Returns True if healthy.
+
+    In a thread: the probe runs every few seconds, and a slow database must not stall the chat streams (#508).
+    """
     try:
         from persistence import db
 
-        conn = db._connect()
-        # Simple query to verify connection
-        cursor = conn.cursor() if hasattr(conn, "cursor") else conn
-        if hasattr(cursor, "execute"):
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-        conn.close()
+        await asyncio.to_thread(db.ping)
         return True
     except Exception as e:
         logger.warning(f"Database connection check failed: {e}")

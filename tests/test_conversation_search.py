@@ -61,3 +61,9 @@ def test_lege_zoekterm_geeft_de_gewone_lijst(client):
 
 def test_resultaat_houdt_de_volgorde_en_het_limiet(client):
     assert _ids(client, q="o", limit=2) == ["c3", "c2"]
+
+
+def test_hits_carry_no_messages(client):
+    """Zoeken leest de berichten server-side; de treffers dragen ze niet mee (#509)."""
+    [hit] = client.get("/api/conversations", params={"q": "Tilburg"}).json()
+    assert hit == {"id": "c1", "title": "Instroom mbo", "timestamp": 1000}

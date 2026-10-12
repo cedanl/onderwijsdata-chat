@@ -67,7 +67,8 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `GET` | `/api/conversations` | Conversaties van de ingelogde gebruiker, nieuwste eerst, per pagina: `limit` (1–50, standaard 15); volgende pagina met `before_ts` en `before_id` van de laatste uit de vorige |
+| `GET` | `/api/conversations` | Conversaties van de ingelogde gebruiker, nieuwste eerst, per pagina: `limit` (1–50, standaard 15); volgende pagina met `before_ts` en `before_id` van de laatste uit de vorige. Per rij alleen `id`, `title` en `timestamp`; met `q` alleen de treffers op titel of tekst |
+| `GET` | `/api/conversations/{id}` | Eén conversatie met haar `messages`; 404 bij onbekend ID of een conversatie van een ander |
 | `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`) |
 | `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`); 404 bij onbekend ID, 422 bij lege titel |
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |

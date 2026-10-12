@@ -225,6 +225,11 @@ de laatste tag is 1.8.6.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
+||||||| parent of 8efef29 (perf(persistence): databaseaanroepen uit de event loop, een Postgres-pool en een lijst zonder berichten)
+- De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
+  figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
+  (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie
+  van de lijst bevat geen berichten meer, zodat ze niet met het open gesprek om de localStorage-ruimte strijdt.
 - Wifi uit en weer aan tijdens een vraag laat in de chat en de dashboardchat één verbinding over (#522): de
   melding "Verbinding herstellen..." verdwijnt zodra die open is, en het late sluiten van de oude verbinding
   breekt een nieuwe vraag niet meer af. Een stil weggevallen verbinding wordt na de hartslag meteen gemeld; een
@@ -272,6 +277,11 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
+  readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
+  zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden
+  hergebruikt via een pool (`POSTGRES_POOL_SIZE`, standaard 8) in plaats van per aanroep geopend;
+  SQLite houdt een verbinding per aanroep.
 - `/version` toont de release waarop de omgeving draait (de chartversie, dus de tag `X.Y.Z`) in plaats van de
   vaste waarde uit `pyproject.toml`. Het chart geeft die mee als `APP_VERSION`; op test is dat de prerelease van de
   main-build, lokaal valt het terug op `pyproject.toml`.
