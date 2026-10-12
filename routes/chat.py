@@ -3,6 +3,7 @@ import contextlib
 import json
 import logging
 import os
+import uuid
 from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
@@ -29,9 +30,18 @@ from agent.replay import (
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
-from core.config import DASHBOARDS_ENABLED, HISTORY_MAX_CHARS, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
+from core.config import (
+    CHAT_RATE_LIMIT,
+    CHAT_RATE_WINDOW_S,
+    DASHBOARDS_ENABLED,
+    HISTORY_MAX_CHARS,
+    MAX_HISTORY,
+    MAX_MESSAGE_CHARS,
+    MODEL,
+)
 from core.errors import Gebruikersfout, error_event, friendly_error
 from core.logging_context import nieuwe_verbinding
+from core.rate_limit import RateLimiter
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -40,7 +50,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
-def _new_session(username: str | None = None) -> dict:
+# Per gebruiker, niet per IP: achter de ingress delen alle bezoekers één adres (zie routes/feedback.py).
+# Zonder login heet iedereen "gast": dan per verbinding, zodat een zaal vol gasten elkaar niet blokkeert.
+_berichtlimiter = RateLimiter(max_attempts=CHAT_RATE_LIMIT, window_seconds=CHAT_RATE_WINDOW_S)
+_LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} seconden opnieuw."
+
+
+def _new_session(username: str | None = None, verbinding: str | None = None) -> dict:
     return {
         "messages": [],
         "figures": [],
@@ -55,6 +71,8 @@ def _new_session(username: str | None = None) -> dict:
         # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
         # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.
         "username": username or FALLBACK_USER,
+        # Eén ID per WebSocket-verbinding; blijft bij een reset, anders ontloopt een gast de berichtlimiet (#444).
+        "verbinding": verbinding or uuid.uuid4().hex[:8],
     }
 
 
@@ -64,7 +82,7 @@ def _reset_session(session: dict) -> None:
     Everything the agent could remember goes — messages, turns, figures, clarify,
     tool state and loaded data. Only who is chatting and their settings carry over.
     """
-    fresh = _new_session(username=session["username"])
+    fresh = _new_session(username=session["username"], verbinding=session.get("verbinding"))
     fresh["chat_settings"] = session.get("chat_settings") or {}
     session.clear()
     session.update(fresh)
@@ -546,6 +564,23 @@ async def _weiger_te_lang(content: str, emit) -> bool:
     return True
 
 
+def _limietsleutel(session: dict) -> str:
+    username = session.get("username") or FALLBACK_USER
+    return username if username != FALLBACK_USER else f"verbinding:{session.get('verbinding')}"
+
+
+async def _binnen_limiet(session: dict, emit) -> bool:
+    """Telt een verzoek dat het model kost mee; boven de limiet een melding met de wachttijd (#444, S5)."""
+    sleutel = _limietsleutel(session)
+    if _berichtlimiter.is_allowed(sleutel):
+        return True
+    wacht = _berichtlimiter.retry_after(sleutel) or CHAT_RATE_WINDOW_S
+    # Geen gebruikersnaam in het log; de verbinding is aan de regels van die verbinding te koppelen.
+    logger.warning("BERICHTLIMIET bereikt  limiet=%d/%ds  wacht=%ds", CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S, wacht)
+    await emit({"type": "error", "message": _LIMIET_MELDING.format(wacht=wacht), "modelafhankelijk": False})
+    return False
+
+
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
@@ -562,6 +597,8 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
         label = content.removeprefix("Verken ")
         await emit({"type": "starter_questions", "label": label, "questions": tag_voorbeeldvragen(tags)})
         return current_task
+    if not await _binnen_limiet(session, emit):
+        return current_task
     return asyncio.create_task(_process_message(content, session, emit, model))
 
 
@@ -573,6 +610,8 @@ async def _handle_clarification(
         return current_task
     choice = _invoer(msg, "choice")
     if not choice or await _weiger_te_lang(choice, emit):
+        return current_task
+    if not await _binnen_limiet(session, emit):
         return current_task
     model = session.get("current_model")
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
@@ -590,6 +629,8 @@ async def _handle_generate_dashboard(
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
+    if not await _binnen_limiet(session, emit):
+        return current_task
     model = session["chat_settings"].get("model") or None
     return asyncio.create_task(_generate_dashboard(session, emit, model))
 
@@ -599,6 +640,8 @@ async def _handle_generate_report(
 ) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
+        return current_task
+    if not await _binnen_limiet(session, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
     author = msg.get("author")

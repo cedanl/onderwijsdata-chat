@@ -58,6 +58,7 @@ De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens 
 | Endpoint | Limiet | Werking |
 |----------|--------|---------|
 | `/api/auth/login` | 5 pogingen/minuut per IP | HTTP 429 met `Retry-After` header |
+| WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking, dashboard en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
 | LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
 
 ### Input validatie
