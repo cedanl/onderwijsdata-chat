@@ -322,6 +322,10 @@ de laatste tag is 1.8.6.
   catalogus het kent; elke logregel van een chatverbinding draagt een kort verbindings-ID (`verbinding=…`,
   in JSON als eigen veld), zodat de regels van één verbinding te koppelen zijn zonder gebruikersnaam of
   gespreks-ID; met `LOG_HASH_SECRET` is de hash in logregels een HMAC in plaats van een kale SHA-256.
+- De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
+  langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
+  omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.
+  Openbare brondata blijft gedeeld tussen sessies; lezen maakt een tabel weer de jongste.
 - Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
   readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
   zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden
