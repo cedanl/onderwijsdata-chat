@@ -222,6 +222,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat
+  en dat je geen persoonsgegevens invoert. Lijkt een concept een BSN (elfproef), e-mailadres of telefoonnummer te
+  bevatten, dan zegt een waarschuwing dat voor het versturen; versturen blijft mogelijk. Zo'n vraag krijgt als
+  gesprekstitel "Gesprek (persoonsgegevens weggelaten)", en dus ook die exportbestandsnaam; de terugvaltitel van
+  een rapport doet hetzelfde. De systeemprompt heeft één regel over persoonsgegevens en kleine aantallen.
 - Een tab sluiten of verbergen tijdens een lopend antwoord bewaart nu de tekst tot het laatst ontvangen fragment (#520):
   de bewaarstap leest ook de nog niet getoonde tekst mee, en sluiten op Safari/iOS (`pagehide`) bewaart ook als de
   tab nog als zichtbaar geldt.

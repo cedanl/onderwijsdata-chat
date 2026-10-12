@@ -30,6 +30,7 @@ import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '
 import { canGenerateReport } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
+import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import {
   appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage,
   loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory,
@@ -670,7 +671,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               rejectedDraft={rejectedDraft}
               clearRejectedDraft={clearRejectedDraft}
             />
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen.</p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING}</p>
           </div>
         </div>
       </div>

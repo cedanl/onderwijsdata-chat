@@ -66,6 +66,7 @@ Procesisolatie of getypeerde operaties in plaats van vrije scripts staat open in
 - `search_catalog` filtert op geografisch niveau
 - `dataset_details` geeft "not found" voor onbekende dataset-ID's
 - Foutafhandeling: alle tool-exceptions worden gevangen en als vriendelijke foutmelding teruggegeven aan het LLM — nooit als raw stack trace naar de gebruiker
+- Persoonsgegevens in de invoer (#478): de app waarschuwt onder het invoerveld dat een vraag naar een externe AI-dienst gaat, herkent in code een BSN (elfproef), een e-mailadres en een Nederlands telefoonnummer (`frontend/src/persoonsgegevens.js`, `core/persoonsgegevens.py`), waarschuwt bij het typen en houdt zulke tekst uit de gesprekstitel, de exportbestandsnaam en de terugvaltitel van een rapport. De herkenning blokkeert niet: een naam is niet te herkennen en een 9-cijferige code kan de elfproef toevallig doorstaan. De systeemprompt heeft één regel over persoonsgegevens en kleine aantallen
 
 ### HTTP beveiligingsheaders
 
