@@ -14,7 +14,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat niet (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
-| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost voor nieuwe invoer (`MAX_MESSAGE_CHARS`); `history` valt erbuiten — zie S7 en S15 (#500) |
+| S7 | Geen maximale inputlengte op chatberichten | Laag | ✅ Opgelost (`MAX_MESSAGE_CHARS` voor nieuwe invoer; `HISTORY_MAX_CHARS` voor de historie, zie S15) |
 | S8 | CORS staat op `*` als env var ontbreekt | Gemiddeld | ✅ Opgelost (standaard dicht, origin `*` geweigerd, #421) |
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
 | S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
@@ -22,7 +22,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S12 | Dependency-kwetsbaarheden | Variabel | ⚠️ Te verifiëren (#506) |
 | S13 | CSP staat `'unsafe-inline'`, twee CDN-hosts en WebSocket naar elke host toe | Laag–Gemiddeld | ❌ Open (#486; `connect-src` in #506) |
 | S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
-| S15 | `history`-actie omzeilt de invoerlimiet | Laag | ❌ Open (#500) |
+| S15 | `history`-actie omzeilt de invoerlimiet | Laag | ✅ Opgelost (#500) — tekencap op de hele historie |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ❌ Open (#477); browseropslag na uitloggen (#507) |
 | S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools |
 | S18 | `/info` gaf zonder inloggen databasetype en omgeving prijs | Laag | ✅ Opgelost (#518) |
@@ -86,11 +86,11 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 ---
 
-### S7 — Geen maximale inputlengte op chatberichten ✅ Opgelost voor nieuwe invoer
+### S7 — Geen maximale inputlengte op chatberichten ✅ Opgelost
 
 **Locatie:** `routes/chat.py` — de WebSocket-acties `message` en `clarification_choice`  
 **Probleem:** Een gebruiker kon een bericht van willekeurige lengte sturen. Een extreem lang bericht (bijv. 500k tokens) leidt tot hoge LLM-kosten en trage respons.  
-**Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk krijgt het maximum via `/api/config` (#501), toont vanaf 80% een teller en verstuurt niets boven de grens; `maxLength` (twee keer het maximum) vangt alleen absurd grote plakacties af. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is. Let op: daardoor neemt de actie `history` nog steeds tot `MAX_HISTORY` (40) door de client aangeleverde beurten van willekeurige lengte aan, die bij de volgende vraag naar het model gaan; een aangepaste client kan zo de grens omzeilen. Rate limiting (#444) begrenst de grootte van die beurten niet; het vervolg staat in #500 (zie S15).
+**Fix (#481):** `MAX_MESSAGE_CHARS` (env, standaard 4000 tekens, geteld na `strip()`). De server weigert een langer bericht of een langere verduidelijkingskeuze met een foutmelding die het maximum en de verstuurde lengte noemt, zonder de inhoud te herhalen; er start geen LLM-aanroep. De invoerbalk krijgt het maximum via `/api/config` (#501), toont vanaf 80% een teller en verstuurt niets boven de grens; `maxLength` (twee keer het maximum) vangt alleen absurd grote plakacties af. Opgeslagen gesprekken (`history`) vallen buiten de grens, zodat een oud gesprek altijd te heropenen is. De historie zelf is sinds #500 begrensd op `HISTORY_MAX_CHARS` tekens in totaal (zie S15).
 
 ---
 
@@ -189,11 +189,11 @@ Test: `tests/test_token_intrekking.py`.
 
 ---
 
-### S15 — `history`-actie omzeilt de invoerlimiet ❌ Open
+### S15 — `history`-actie omzeilt de invoerlimiet ✅ Opgelost
 
-**Locatie:** `routes/chat.py` — WebSocket-actie `history`  
-**Probleem:** zie S7. De actie neemt tot `MAX_HISTORY` (40) door de client aangeleverde beurten van willekeurige lengte aan; die gaan bij de volgende vraag naar het model.  
-**Vervolg:** #500.
+**Locatie:** `routes/chat.py` (`_parse_history`), `core/config.py` (`HISTORY_MAX_CHARS`)  
+**Probleem:** zie S7. De actie nam tot `MAX_HISTORY` (40) door de client aangeleverde beurten van willekeurige lengte aan; die gingen bij de volgende vraag naar het model. Een handgemaakte client kon zo de kostenaanval uitvoeren die S7 moest sluiten.  
+**Fix (#500):** de hele aangeleverde historie is begrensd op `HISTORY_MAX_CHARS` tekens (standaard `MAX_HISTORY × MAX_MESSAGE_CHARS` = 160.000). Boven de cap vallen de oudste beurten af — dezelfde strategie als `MAX_HISTORY` — en een enkele beurt groter dan de cap wordt afgekapt in plaats van geweigerd, zodat bestaande gesprekken blijven openen.
 
 ---
 
@@ -237,7 +237,6 @@ Test: `tests/test_token_intrekking.py`.
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
 2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
-3. **S15** — `history`-actie begrenzen (#500)
-4. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
-5. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
-6. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+3. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
+4. **S1/S8/S12** — `nh3` uit `pyproject.toml` halen, CORS-validatie aanscherpen, vaststellen welke dependency-scan in CI draait (#506)
+5. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

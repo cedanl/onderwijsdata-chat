@@ -5,7 +5,11 @@ handtekening (msg, session, emit, lopende taak) -> lopende taak.
 """
 
 import asyncio
+import importlib
 
+import pytest
+
+from core import config
 from routes import chat
 
 
@@ -283,3 +287,106 @@ def test_de_geschiedenis_kent_geen_lengtegrens_per_bericht(monkeypatch):
     berichten = chat._parse_history([{"role": "user", "content": lang}, {"role": "assistant", "content": lang}])
 
     assert berichten == [{"role": "user", "content": lang}, {"role": "assistant", "content": lang}]
+
+
+def test_de_geschiedenis_heeft_een_totale_tekencap(monkeypatch):
+    """#500 (S15): 40 beurten van willekeurige grootte bereiken het model niet meer.
+
+    Boven HISTORY_MAX_CHARS vallen de oudste beurten af, zoals bij MAX_HISTORY.
+    """
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 100)
+    beurten = [{"role": "user", "content": f"vraag {i} " + "x" * 40} for i in range(40)]
+
+    berichten = chat._parse_history(beurten)
+
+    assert sum(len(m["content"]) for m in berichten) <= 100
+    # De jongste beurten blijven staan, de oudste vallen af.
+    assert berichten[-1]["content"].startswith("vraag 39")
+
+
+def test_een_enkel_bericht_groter_dan_de_cap_wordt_afgekapt(monkeypatch):
+    """Zelfs één monsterbeurt (1 miljoen tekens) opent nog, afgekapt in plaats van geweigerd."""
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 100)
+
+    berichten = chat._parse_history([{"role": "assistant", "content": "y" * 1_000_000}])
+
+    assert len(berichten) == 1
+    assert len(berichten[0]["content"]) == 100
+
+
+def test_een_gewoon_gesprek_blijft_volledig_openen():
+    beurten = [{"role": r, "content": f"beurt {i}"} for i, r in enumerate(["user", "assistant"] * 10)]
+    assert chat._parse_history(beurten) == beurten
+
+
+def test_na_het_afvallen_begint_de_geschiedenis_met_een_gebruikersbeurt(monkeypatch):
+    """Providers geven een 400 op een historie die met een assistent-beurt begint."""
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 30)
+    beurten = [
+        {"role": "user", "content": "u" * 10},
+        {"role": "assistant", "content": "a" * 10},
+        {"role": "user", "content": "v" * 10},
+        {"role": "assistant", "content": "b" * 10},
+    ]
+
+    berichten = chat._parse_history(beurten)
+
+    # De cap houdt a, v en b over; het antwoord a zonder bijbehorende vraag valt ook af.
+    assert berichten == beurten[2:]
+
+
+def test_zonder_gebruikersbeurt_binnen_de_cap_blijft_de_historie_leeg(monkeypatch):
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 10)
+    beurten = [{"role": "user", "content": "u" * 10}, {"role": "assistant", "content": "a" * 10}]
+
+    assert chat._parse_history(beurten) == []
+
+
+def test_een_historie_zonder_afgevallen_beurten_blijft_ongewijzigd_ook_met_assistent_eerst():
+    beurten = [{"role": "assistant", "content": "welkom"}, {"role": "user", "content": "hoi"}]
+
+    assert chat._parse_history(beurten) == beurten
+
+
+def test_een_cap_van_nul_geeft_geen_lege_beurt(monkeypatch):
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 0)
+
+    assert chat._parse_history([{"role": "user", "content": "hallo"}]) == []
+
+
+def test_afkappen_tot_alleen_witruimte_geeft_geen_lege_beurt(monkeypatch):
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 3)
+
+    assert chat._parse_history([{"role": "user", "content": "   hallo"}]) == []
+
+
+@pytest.mark.parametrize(
+    "omgeving",
+    [{"HISTORY_MAX_CHARS": "0"}, {"HISTORY_MAX_CHARS": "-5"}, {"MAX_HISTORY": "0"}],
+)
+def test_de_tekencap_in_de_config_is_minimaal_een(monkeypatch, omgeving):
+    for naam, waarde in omgeving.items():
+        monkeypatch.setenv(naam, waarde)
+    try:
+        importlib.reload(config)
+        assert config.HISTORY_MAX_CHARS >= 1
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
+
+
+def test_een_historie_precies_op_de_cap_blijft_volledig(monkeypatch):
+    """Grens: een som van precies HISTORY_MAX_CHARS tekens valt niet af."""
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 30)
+    beurten = [{"role": r, "content": "x" * 10} for r in ("user", "assistant", "user")]
+
+    assert chat._parse_history(beurten) == beurten
+
+
+def test_een_teken_boven_de_cap_laat_de_oudste_beurten_vallen(monkeypatch):
+    monkeypatch.setattr(chat, "HISTORY_MAX_CHARS", 30)
+    beurten = [{"role": r, "content": "x" * 10} for r in ("user", "assistant", "user", "assistant")]
+    beurten[-1]["content"] = "x" * 11
+
+    # 11 + 10 + 10 = 31 > 30: het antwoord op plek 1 past niet meer, de beurt ervoor ook niet.
+    assert chat._parse_history(beurten) == beurten[2:]
