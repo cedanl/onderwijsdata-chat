@@ -82,7 +82,8 @@ def toolfout(naam: str, e: Exception) -> str:
 
 
 def onbekende_key(data_key: str) -> str:
-    beschikbaar = store.list_keys()
+    # Alleen de keys van het eigen gesprek: de store is gedeeld, de hint verraadt niet wat een ander laadde (#13).
+    beschikbaar = store.eigen_keys()
     hint = f" Beschikbare datasets: {beschikbaar}." if beschikbaar else ""
     return melding(
         Fout.ONBEKENDE_DATA_KEY,

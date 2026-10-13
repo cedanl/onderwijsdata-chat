@@ -186,3 +186,41 @@ def test_slot_geldt_alleen_voor_die_tool(monkeypatch):
     executed, antwoorden = _loop(monkeypatch, steps, {"get_cbs_data": fout, "search_catalog": "[]"})
     assert executed[-1] == '{"q": "x"}'
     assert antwoorden[-1] == "[]"
+
+
+# ── Onbekende key: de hint noemt alleen de keys van dit gesprek ──────────────────
+
+
+def _zet(key: str) -> None:
+    store.put(key, pd.DataFrame({"N": [1]}), KeyMeta(bron="duo", dataset=key, volledig=True))
+
+
+def test_onbekende_key_noemt_alleen_de_keys_van_het_eigen_gesprek():
+    """De store is gedeeld over sessies; een foutmelding mag niet verraden wat een ander laadde (#13)."""
+    _zet("duo:eigen:0")
+    _zet("duo:van-een-ander:0")
+    gesprek = {"data_keys": ["duo:eigen:0", "duo:weg:0"]}
+    with store.gesprek(lambda: gesprek["data_keys"]):
+        melding = fouten.onbekende_key("duo:x:0")
+
+    assert "duo:eigen:0" in melding
+    assert "van-een-ander" not in melding
+    assert "duo:weg:0" not in melding  # niet meer in de store: geen key om te gebruiken
+
+
+def test_onbekende_key_buiten_een_gesprek_noemt_geen_keys():
+    _zet("duo:van-een-ander:0")
+    melding = fouten.onbekende_key("duo:x:0")
+    assert fouten.code(melding) == "onbekende_data_key"
+    assert "van-een-ander" not in melding and "Beschikbare" not in melding
+
+
+def test_het_gesprek_volgt_de_lijst_van_de_sessie_live():
+    """De sessie vervangt haar lijst bij het openen van een ander gesprek; de context leest steeds de actuele."""
+    _zet("duo:a:0")
+    _zet("duo:b:0")
+    sessie = {"data_keys": ["duo:a:0"]}
+    with store.gesprek(lambda: sessie.get("data_keys", [])):
+        sessie["data_keys"] = ["duo:b:0"]
+        assert store.eigen_keys() == ["duo:b:0"]
+    assert store.eigen_keys() == []

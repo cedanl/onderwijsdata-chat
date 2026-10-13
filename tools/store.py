@@ -1,8 +1,10 @@
+import contextlib
 import logging
 import sys
 import threading
 from collections import OrderedDict
-from collections.abc import Mapping
+from collections.abc import Callable, Generator, Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 
 from core.config import STORE_MAX_MB
@@ -29,6 +31,11 @@ _MAX_BYTES = STORE_MAX_MB * 1024 * 1024
 _slot = threading.RLock()
 
 _DUO_PREFIX = "duo:"
+
+# Welke keys het gesprek van deze context zelf maakte (#13): de store is gedeeld over alle sessies,
+# maar wat een tool over beschikbare data zegt, gaat alleen over het eigen gesprek. De chatroute zet
+# per verbinding een lezer van session["data_keys"]; taken en threads van die verbinding erven hem.
+_gesprek: ContextVar[Callable[[], list[str]] | None] = ContextVar("gesprek_keys", default=None)
 
 # What a tool answers when a count, sum or total would rest on truncated data (#186).
 ONVOLLEDIG = (
@@ -257,6 +264,28 @@ def alias(oud: str | None, key: str) -> None:
 def list_keys() -> list[str]:
     with _slot:
         return list(_cache.keys())
+
+
+@contextlib.contextmanager
+def gesprek(keys: Callable[[], list[str]]) -> Generator[None, None, None]:
+    """Binnen dit blok is `keys()` de lijst data-keys van het gesprek dat deze context bedient (#13).
+
+    Een lezer en geen lijst: de sessie vervangt haar lijst bij het openen van een ander gesprek.
+    """
+    token = _gesprek.set(keys)
+    try:
+        yield
+    finally:
+        _gesprek.reset(token)
+
+
+def eigen_keys() -> list[str]:
+    """De keys van het eigen gesprek die de store nog heeft; buiten een gesprek geen enkele (fail-closed)."""
+    lezer = _gesprek.get()
+    if lezer is None:
+        return []
+    with _slot:
+        return [key for key in lezer() if key in _cache]
 
 
 def clear() -> None:

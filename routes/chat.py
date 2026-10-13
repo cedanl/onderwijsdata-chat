@@ -42,6 +42,7 @@ from core.config import (
 from core.errors import Gebruikersfout, error_event, friendly_error
 from core.logging_context import nieuwe_verbinding
 from core.rate_limit import RateLimiter
+from tools import store
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -737,9 +738,11 @@ async def chat_websocket(ws: WebSocket) -> None:
     current_task: asyncio.Task | None = None
 
     try:
-        while True:
-            raw = await ws.receive_text()
-            msg = json.loads(raw)
-            current_task = await _dispatch(msg, session, emit, current_task)
+        # Elke tool van deze verbinding, ook in een taak of thread, kent de keys van het eigen gesprek (#13).
+        with store.gesprek(lambda: session.get("data_keys") or []):
+            while True:
+                raw = await ws.receive_text()
+                msg = json.loads(raw)
+                current_task = await _dispatch(msg, session, emit, current_task)
     except WebSocketDisconnect:
         _stop_task(session, current_task)
