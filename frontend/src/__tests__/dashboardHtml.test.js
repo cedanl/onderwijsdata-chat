@@ -24,6 +24,13 @@ describe('buildDashboardHtml (#254)', () => {
     expect(html).toContain('<table><tr><td>1</td></tr></table>')
   })
 
+  it('geeft een grafiek de hoogte die hij meebrengt, anders 320px', () => {
+    const hoog = { data: [], layout: { height: 526 } }
+    const metHoogte = buildDashboardHtml({ ...SPEC, figures_json: [JSON.stringify(hoog), JSON.stringify(FIGUUR)] }, { title: 't' })
+    expect(metHoogte).toContain('id="fig0" style="height:526px"')
+    expect(metHoogte).toContain('id="fig1" style="height:320px"')
+  })
+
   it('laadt Plotly één keer, van de eigen server, en tekent elke grafiek', () => {
     expect(html.match(/<script src=/g)).toHaveLength(1)
     expect(html).toContain(`<script src="${PLOTLY_URL}"></script>`)

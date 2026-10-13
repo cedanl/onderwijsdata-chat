@@ -397,7 +397,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     if schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(schooljaren)
 
-    # Include data actuality timestamp
+    # De dag waarop CBS de tabel het laatst bijwerkte (TableInfos.Modified uit de catalogus, een
+    # momentopname van de package), niet het einde van de cijfers: dat zijn de perioden (#496, F-03).
     laatste_update = catalogus_laatste_update(dataset_id)
     if laatste_update:
         result["laatste_update"] = laatste_update

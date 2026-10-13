@@ -534,3 +534,21 @@ def test_tool_end_snippet_draagt_de_databewerking(monkeypatch):
     asyncio.run(loop_module._execute_tool(call, emit))
     end = next(e for e in events if e["type"] == "tool_end")
     assert f"# {noot}" in end["snippet"]
+
+
+def test_create_plot_snippet_tekent_lange_namen_liggend_zoals_de_app():
+    namen = ["Universiteit van Amsterdam", "Vrije Universiteit Amsterdam", "Universiteit Utrecht"]
+    snippet = generate(
+        "create_plot",
+        {
+            "data": [{"INSTELLING": n, "AANTAL": i} for i, n in enumerate(namen)],
+            "chart_type": "bar",
+            "x": "INSTELLING",
+            "y": "AANTAL",
+            "title": "t",
+            "color_by": "INSTELLING",
+        },
+    )
+    assert snippet is not None
+    assert 'fig = px.bar(df, x="AANTAL", y="INSTELLING", orientation="h", title="t")' in snippet
+    assert 'autorange="reversed"' in snippet

@@ -30,12 +30,17 @@ _CHART_TYPE_LABELS = {
 
 _MARGE = {"t": 60, "b": 50, "l": 70, "r": 20}
 
+# De legenda horizontaal onder de x-as: rechts ernaast kostte hij een derde van de breedte en op
+# een telefoon bijna alles, boven botst hij met de titel. Onderaan de figuur (container) duwt hij
+# de ondermarge op in plaats van over de astitel te vallen.
+_LEGENDA_ONDER = {"orientation": "h", "x": 0, "xanchor": "left", "yref": "container", "y": 0, "yanchor": "bottom"}
+
 _LAYOUT_BASE = {
     "font": {"family": "Inter, Arial, sans-serif", "size": 13},
     "plot_bgcolor": "white",
     "paper_bgcolor": "white",
     "margin": _MARGE,
-    "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1},
+    "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1, **_LEGENDA_ONDER},
 }
 
 # Titel plus de afgebroken noot eronder (drie regels), boven het plotvlak en de waardelabels (CH-34).
@@ -46,6 +51,19 @@ _NOOT_BREEDTE = 55  # tekens: past ook in een smalle grafiek op mobiel
 _NL_SEPARATORS = ",."
 
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
+
+# Staande staven kantelen veel of lange namen onder de as tot ze onleesbaar zijn (90° in de
+# chat, achttien universiteiten op een plotvlak van 60px). Liggend staat elke naam als gewone
+# tekst naast zijn staaf.
+_MAX_STAANDE_CATEGORIEEN = 8
+_MAX_STAAND_LABEL = 12  # tekens: langer past op een telefoon niet meer naast elkaar
+
+# Liggend krijgt elke categorie een rij en groeit de figuur mee, in plaats van de staven te pletten.
+_STAAF_HOOGTE = 18  # px per staaf in een rij: het getal erin blijft 11-12px
+_RIJ_RUIMTE = 6  # px tussen de rijen
+_HOOGTE_RAND = 130  # titel, waardeas en astitel
+_MIN_HOOGTE = 340  # de standaardhoogte van een grafiek in de chat
+_MAX_HOOGTE = 1200
 
 _TIME_KEYWORDS = {
     "JAAR",
@@ -161,23 +179,70 @@ def _group_by_color(data: list[dict], x: str, y: str, color_by: str) -> dict[str
     return groups
 
 
+def _is_naam(waarde) -> bool:
+    """Tekst die geen getal is: een instelling of sector, geen leeftijd of cohort."""
+    if not isinstance(waarde, str):
+        return False
+    try:
+        float(waarde.replace(",", "."))
+    except ValueError:
+        return True
+    return False
+
+
+def _liggend(chart_type: str, x: str, categorieen: list) -> bool:
+    """Liggende staven voor veel of lange namen; een tijdas en getallen blijven staand."""
+    if chart_type != "bar" or _is_time_axis(x):
+        return False
+    namen = [c for c in dict.fromkeys(categorieen) if not _is_missing(c)]
+    if not namen or not all(_is_naam(c) for c in namen):
+        return False
+    return len(namen) > _MAX_STAANDE_CATEGORIEEN or max(len(c) for c in namen) > _MAX_STAAND_LABEL
+
+
+def is_liggend(rows: list[dict], chart_type: str, x: str, data_key: str | None = None) -> bool:
+    """Of create_plot deze staven liggend tekent; de snippet leest het hier ook, zodat ze niet uiteenlopen (#245)."""
+    known = store.meta(data_key) if data_key else None
+    labels = waardelabels(x, known.dataset if known else None)
+    return _liggend(chart_type, x, leesbaar([row.get(x) for row in rows], labels))
+
+
+def _hoogte(categorieen: int, staven_per_rij: int, marge_boven: int) -> int:
+    rij = _RIJ_RUIMTE + _STAAF_HOOGTE * staven_per_rij
+    hoogte = categorieen * rij + _HOOGTE_RAND + marge_boven - _MARGE["t"]
+    return max(_MIN_HOOGTE, min(_MAX_HOOGTE, hoogte))
+
+
+def _accentkleuren(ruw: list, labels: list, highlight: str) -> list[str]:
+    """Per staaf: de accentkleur voor de uitgelichte categorie (code of woord), grijs voor de rest."""
+    return [
+        _PALETTE[0] if highlight in (str(r), str(label)) else _HIGHLIGHT_GREY
+        for r, label in zip(ruw, labels, strict=True)
+    ]
+
+
 def _add_trace(
     fig: go.Figure,
     chart_type: str,
     x_vals: list,
     y_vals: list,
-    color: str,
+    color: str | list[str],
     name: str | None = None,
     text: list[str] | None = None,
+    liggend: bool = False,
 ) -> None:
     """Add a single trace to the figure based on *chart_type*."""
     common = {"name": name} if name else {}
     if chart_type == "bar":
-        fig.add_trace(
-            go.Bar(
-                x=x_vals, y=y_vals, marker_color=color, text=text, textposition="outside" if text else None, **common
-            )
+        # Liggend staat het getal in de staaf als het past, anders erachter: buiten de staaf viel
+        # het getal van de langste staaf op een smal scherm van de figuur af.
+        assen = (
+            {"x": y_vals, "y": x_vals, "orientation": "h", "cliponaxis": False, "insidetextanchor": "end"}
+            if liggend
+            else {"x": x_vals, "y": y_vals}
         )
+        plek = ("auto" if liggend else "outside") if text else None
+        fig.add_trace(go.Bar(**assen, marker_color=color, text=text, textposition=plek, **common))
     elif chart_type == "line":
         fig.add_trace(
             go.Scatter(
@@ -268,10 +333,16 @@ def create_plot(
 
     fig = go.Figure()
     show_labels = chart_type in ("bar", "line") and len(data) <= _MAX_LABELED_POINTS
+    x_ruw = [row.get(x) for row in data]
+    x_vals = leesbaar(x_ruw, x_labels)
+    liggend = _liggend(chart_type, x, x_vals)
+    # color_by op de x-kolom zelf (alleen om één staaf uit te lichten) gaf een reeks per staaf
+    # en een legenda die de as herhaalt: dat is één reeks met een kleur per staaf.
+    groepkolom = color_by if color_by != x else None
 
-    if color_by:
-        groups = _group_by_color(data, x, y, color_by)
-        groep_labels = waardelabels(color_by, dataset)
+    if groepkolom:
+        groups = _group_by_color(data, x, y, groepkolom)
+        groep_labels = waardelabels(groepkolom, dataset)
         for i, (name, vals) in enumerate(groups.items()):
             if highlight:
                 color = _PALETTE[0] if name == highlight else _HIGHLIGHT_GREY
@@ -285,6 +356,7 @@ def create_plot(
                 color,
                 name=groep_labels.get(name, name),
                 text=_value_labels(vals["y"], show_labels),
+                liggend=liggend,
             )
 
         if chart_type == "bar":
@@ -293,25 +365,40 @@ def create_plot(
             fig.update_layout(barmode="overlay")
 
     else:
-        x_vals = leesbaar([row.get(x) for row in data], x_labels)
         y_vals = [row.get(y) for row in data]
-        _add_trace(fig, chart_type, x_vals, y_vals, _PALETTE[0], text=_value_labels(y_vals, show_labels))
+        uitlichten = highlight and chart_type == "bar"
+        kleur = _accentkleuren(x_ruw, x_vals, highlight) if uitlichten else _PALETTE[0]
+        _add_trace(fig, chart_type, x_vals, y_vals, kleur, text=_value_labels(y_vals, show_labels), liggend=liggend)
 
     titel, marge = _titel(title, data_key)
     layout = {
         **_LAYOUT_BASE,
         "title": titel,
         "margin": marge,
-        "legend_title": kolomlabel(color_by, titels) if color_by else "",
+        "legend_title": kolomlabel(groepkolom, titels) if groepkolom else "",
         "separators": _NL_SEPARATORS,
     }
+    if not groepkolom:
+        layout["showlegend"] = False
 
     if chart_type != "pie":
-        layout["xaxis"] = {"title": kolomlabel(x, titels), **_AXIS_STYLE}
+        categorie_as = {"title": kolomlabel(x, titels), **_AXIS_STYLE}
         if _is_time_axis(x):
             # Jaartallen als categorie: geen 2.023,5-tussenticks met duizendtalpunt (#240).
-            layout["xaxis"].update(type="category", categoryorder="category ascending")
-        layout["yaxis"] = {"title": kolomlabel(y, titels), "tickformat": ",", **_AXIS_STYLE}
+            categorie_as.update(type="category", categoryorder="category ascending")
+        waarde_as = {"title": kolomlabel(y, titels), "tickformat": ",", **_AXIS_STYLE}
+        if liggend:
+            # De eerste rij bovenaan, zoals de agent de rijen sorteerde; de namen duwen de marge opzij.
+            # Zonder astitel: de namen spreken voor zich, en op een telefoon viel de titel eroverheen.
+            layout["yaxis"] = {**categorie_as, "title": {"text": ""}, "autorange": "reversed", "automargin": True}
+            if any(t.text is not None for t in fig.data):
+                # Elke staaf draagt zijn getal: een waardeas ernaast herhaalt dat, en kantelt op een telefoon.
+                waarde_as.update(showticklabels=False, showgrid=False)
+            layout["xaxis"] = waarde_as
+            layout["height"] = _hoogte(len(set(x_vals)), max(len(fig.data), 1), marge["t"])
+        else:
+            layout["xaxis"] = categorie_as
+            layout["yaxis"] = waarde_as
 
     fig.update_layout(**layout)
     fig.update_layout(
@@ -367,7 +454,8 @@ def with_export_rows(fig: go.Figure) -> go.Figure:
 
 def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:
     """Een eigen figuur (run_analysis) zoals create_plot hem tekent: titels uit de bron
-    in plaats van kolomnamen, en de Nederlandse getalnotatie (#418).
+    in plaats van kolomnamen, de Nederlandse getalnotatie (#418) en de legenda onder de
+    grafiek, tenzij de code hem zelf een plek gaf.
 
     Na with_export_rows: de exportrijen houden de bronnamen.
     """
@@ -377,6 +465,9 @@ def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:
             fig.layout[as_].title.text = kolomlabel(tekst, titels)
     if tekst := fig.layout.legend.title.text:
         fig.layout.legend.title.text = kolomlabel(tekst, titels)
+    legenda = fig.layout.legend
+    if legenda.x is None and legenda.y is None and legenda.orientation is None:
+        fig.update_layout(legend=_LEGENDA_ONDER)
     fig.update_layout(separators=_NL_SEPARATORS)
     return fig
 

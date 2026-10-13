@@ -233,3 +233,106 @@ def test_uitgeschakeld_zonder_endpoint(tmp_path, monkeypatch):
     client, _ = _client(tmp_path, monkeypatch, enabled="false")
     _als(client, "anna", "pw1")
     assert client.get("/api/answer-feedback", params={"conversation_id": "c1"}).status_code == 404
+
+
+# ── Gesprek verwijderen (#476, privacy M2) ───────────────────────────────────
+# Besluit: pseudonimiseren met tekst. De melding blijft voor het team (oordeel, toelichting,
+# trace), maar hangt na verwijderen niet meer aan de gebruiker of aan zijn gesprek.
+
+TWEE_ANTWOORDEN = [
+    *GESPREK[:2],
+    {"id": 3, "role": "user", "content": "En de HAN?"},
+    {"id": 4, "role": "assistant", "content": "De HAN had 35.000 studenten.", "done": True},
+]
+
+
+def _oordeel(client, conv_id, index, oordeel="down", toelichting=""):
+    resp = client.post(
+        "/api/answer-feedback",
+        json={"conversation_id": conv_id, "message_index": index, "oordeel": oordeel, "toelichting": toelichting},
+    )
+    assert resp.status_code == 200
+
+
+def test_gesprek_verwijderen_ontkoppelt_de_feedback_van_gebruiker_en_gesprek(app):
+    client, db = app
+    _als(client, "anna", "pw1")
+    _oordeel(client, "c1", 1, toelichting="HU had er 40.000")
+
+    assert client.delete("/api/conversations/c1").status_code == 200
+
+    [rij] = db.all_answer_feedback()
+    assert rij["username"] == "verwijderd"
+    assert rij["conversation_id"] != "c1"
+    assert "anna" not in json.dumps(rij)
+    # De melding zelf blijft bruikbaar voor het team.
+    assert (rij["oordeel"], rij["toelichting"]) == ("down", "HU had er 40.000")
+    assert json.loads(rij["trace"])["vraag"] == "Hoeveel studenten heeft de HU?"
+    assert client.get("/api/answer-feedback", params={"conversation_id": "c1"}).json() == {}
+
+
+def test_de_meldingen_van_een_verwijderd_gesprek_blijven_bij_elkaar(app):
+    client, db = app
+    db.upsert_conversation("anna", "c2", "HU en HAN", 1_700_000_001, TWEE_ANTWOORDEN)
+    _als(client, "anna", "pw1")
+    _oordeel(client, "c2", 1)
+    _oordeel(client, "c2", 3, "up")
+
+    client.delete("/api/conversations/c2")
+
+    rijen = db.all_answer_feedback()
+    assert len(rijen) == 2
+    assert len({r["conversation_id"] for r in rijen}) == 1
+    assert {r["message_index"] for r in rijen} == {1, 3}
+
+
+def test_andere_gesprekken_en_gebruikers_houden_hun_feedback(app):
+    client, db = app
+    db.upsert_conversation("anna", "c2", "HU en HAN", 1_700_000_001, TWEE_ANTWOORDEN)
+    db.upsert_conversation("bob", "c1", "Bob", 1_700_000_002, GESPREK)
+    _als(client, "anna", "pw1")
+    _oordeel(client, "c2", 1)
+    _als(client, "bob", "pw2")
+    _oordeel(client, "c1", 1, "up")
+    _als(client, "anna", "pw1")
+    _oordeel(client, "c1", 1)
+
+    client.delete("/api/conversations/c1")
+
+    eigenaren = sorted((r["username"], r["conversation_id"]) for r in db.all_answer_feedback())
+    assert ("anna", "c2") in eigenaren
+    assert ("bob", "c1") in eigenaren
+    assert ("anna", "c1") not in eigenaren
+
+
+def test_twee_verwijderde_gesprekken_met_hetzelfde_id_botsen_niet(app):
+    client, db = app
+    db.upsert_conversation("bob", "c1", "Bob", 1_700_000_002, GESPREK)
+    for user, pw in (("anna", "pw1"), ("bob", "pw2")):
+        _als(client, user, pw)
+        _oordeel(client, "c1", 1)
+        client.delete("/api/conversations/c1")
+
+    rijen = db.all_answer_feedback()
+    assert [r["username"] for r in rijen] == ["verwijderd", "verwijderd"]
+    assert len({r["conversation_id"] for r in rijen}) == 2
+
+
+def test_feedback_van_eerder_verwijderde_gesprekken_wordt_bij_de_start_ontkoppeld(app):
+    # Vóór #476 bleef de rij met naam en gesprek-id staan; een gesprek dat niet meer bestaat is verwijderd.
+    _, db = app
+    trace = antwoord_trace(GESPREK, 1)
+    assert trace is not None
+    db.upsert_answer_feedback("anna", "al-weg", 1, "down", "klopt niet", trace)
+    db.upsert_answer_feedback("anna", "c1", 1, "up", "", trace)
+    conn = db._connect()
+    conn.execute("DELETE FROM schema_migrations WHERE name = ?", (db.MIGRATIE_FEEDBACK_ZONDER_GESPREK,))
+    conn.commit()
+    conn.close()
+
+    db.init_db()
+
+    rijen = {r["oordeel"]: r for r in db.all_answer_feedback()}
+    assert (rijen["down"]["username"], rijen["down"]["toelichting"]) == ("verwijderd", "klopt niet")
+    assert rijen["down"]["conversation_id"] != "al-weg"
+    assert (rijen["up"]["username"], rijen["up"]["conversation_id"]) == ("anna", "c1")

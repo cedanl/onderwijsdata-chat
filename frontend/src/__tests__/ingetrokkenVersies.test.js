@@ -23,8 +23,28 @@ describe('IngetrokkenVersies (#398)', () => {
     const el = render([{ tekst: 'Het zijn er 99.', naStap: 2 }])
     const details = el.querySelector('details')
     expect(details.open).toBe(false)
-    expect(details.querySelector('summary').textContent).toBe('Eerdere versie ingetrokken na controle')
+    expect(details.querySelector('summary').textContent)
+      .toBe('Eerste versie van dit antwoord is aangepast na controle — bekijk wat er veranderde')
     expect(details.textContent).toContain('Het zijn er 99.')
+  })
+
+  // #496, F-01: "ingetrokken" las voor een niet-technische gebruiker als interne ruis.
+  it('noemt meer versies met hun aantal, ingeklapt', () => {
+    const el = render([{ tekst: 'Het zijn er 99.', naStap: 2 }, { tekst: 'Het zijn er 98.', naStap: 3 }])
+    const details = el.querySelector('details')
+    expect(details.open).toBe(false)
+    expect(details.querySelector('summary').textContent)
+      .toBe('2 eerdere versies van dit antwoord zijn aangepast na controle — bekijk wat er veranderde')
+    expect(details.textContent).toContain('Het zijn er 99.')
+    expect(details.textContent).toContain('Het zijn er 98.')
+  })
+
+  it.each([
+    [[{ tekst: 'Het zijn er 99.' }]],
+    [[{ tekst: 'Het zijn er 99.' }, { tekst: 'Het zijn er 98.' }]],
+  ])('zegt in de kopregel geen "ingetrokken" (%#)', versies => {
+    const summary = render(versies).querySelector('summary').textContent
+    expect(summary.toLowerCase()).not.toContain('ingetrokken')
   })
 
   it('toont niets zonder ingetrokken versies', () => {
@@ -43,6 +63,6 @@ describe('IngetrokkenVersies (#398)', () => {
 
   it('noemt de reden van de controle in gewone taal', () => {
     const el = render([{ tekst: 'Het zijn er 99.', naStap: 2, reden: ['99 staat niet in de opgehaalde data.'] }])
-    expect(el.textContent).toContain('99 staat niet in de opgehaalde data.')
+    expect(el.textContent).toContain('Reden: 99 staat niet in de opgehaalde data.')
   })
 })

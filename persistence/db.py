@@ -272,6 +272,7 @@ def _migrate(conn: Any) -> None:
             conn.commit()
 
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
+    _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
 
 
 # Eén rij per inzending; answers is JSON {vraag-id: antwoord} (zie core/feedback.py).
@@ -290,7 +291,8 @@ _FEEDBACK_TABLE = """
 
 # Eén oordeel per antwoord; een nieuw oordeel vervangt het oude (#248). trace is
 # JSON uit het opgeslagen gesprek (core/answer_feedback.py), zodat de melding
-# reproduceerbaar blijft als het gesprek later verandert of verdwijnt.
+# reproduceerbaar blijft als het gesprek later verandert of verdwijnt; verdwijnt het,
+# dan gaan gebruikersnaam en gesprek-id eruit (#476, zie delete_conversation).
 _ANSWER_FEEDBACK_TABLE = """
     CREATE TABLE IF NOT EXISTS answer_feedback (
         username        TEXT    NOT NULL,
@@ -540,6 +542,12 @@ def rename_conversation(username: str, conv_id: str, title: str) -> bool:
     return cursor.rowcount > 0
 
 
+# Feedback op een antwoord van een verwijderd gesprek blijft voor het team (oordeel, toelichting,
+# trace), maar hangt niet meer aan de gebruiker of zijn gesprek (#476, privacy M2). Een willekeurig
+# gesprek-id per verwijderd gesprek houdt de meldingen daarvan bij elkaar zonder dat ze te herleiden zijn.
+VERWIJDERDE_GEBRUIKER = "verwijderd"
+
+
 def delete_conversation(username: str, conv_id: str) -> None:
     with _connection() as conn:
         _execute(
@@ -548,7 +556,36 @@ def delete_conversation(username: str, conv_id: str) -> None:
             (conv_id, username),
         )
         _execute(conn, "DELETE FROM data_recipes WHERE conv_id = ? AND username = ?", (conv_id, username))
+        _ontkoppel_feedback(conn, username, conv_id)
         conn.commit()
+
+
+def _ontkoppel_feedback(conn: Any, username: str, conv_id: str) -> None:
+    _execute(
+        conn,
+        "UPDATE answer_feedback SET username = ?, conversation_id = ? WHERE username = ? AND conversation_id = ?",
+        (VERWIJDERDE_GEBRUIKER, str(uuid.uuid4()), username, conv_id),
+    )
+
+
+MIGRATIE_FEEDBACK_ZONDER_GESPREK = "476_ontkoppel_feedback_zonder_gesprek"
+
+
+def _ontkoppel_feedback_zonder_gesprek(conn: Any) -> None:
+    """Feedback van gesprekken die vóór #476 zijn verwijderd: dezelfde ontkoppeling als delete_conversation.
+
+    Feedback kan alleen bij een bestaand gesprek (routes/answer_feedback.py), dus een rij zonder
+    gesprek hoort bij een verwijderd gesprek.
+    """
+    paren = _execute(
+        conn,
+        "SELECT DISTINCT username, conversation_id FROM answer_feedback a WHERE username <> ? AND NOT EXISTS "
+        "(SELECT 1 FROM conversations c WHERE c.id = a.conversation_id AND c.username = a.username)",
+        (VERWIJDERDE_GEBRUIKER,),
+    ).fetchall()
+    for paar in paren:
+        _ontkoppel_feedback(conn, paar["username"], paar["conversation_id"])
+    logger.info("feedback van %d verwijderde gesprekken ontkoppeld", len(paren))
 
 
 def save_recipes(username: str, conv_id: str, recipes: dict[str, dict]) -> None:

@@ -209,3 +209,28 @@ class TestDubbeleCategorie:
 
         assert "2024:" in melding and "(2e)" not in melding
         assert "1 → 5" in melding
+
+
+def test_liggende_staven_vergelijken_de_categorie_op_de_y_as():
+    def liggend(x: list) -> str:
+        trace = {"type": "bar", "orientation": "h", "y": ["UvA", "VU"], "x": x}
+        return json.dumps({"data": [trace], "layout": {"title": {"text": "Gediplomeerden"}}})
+
+    [melding] = _verschil(liggend([14773, 10499]), liggend([14773, 10500]))
+    assert "VU: 10.499 → 10.500" in melding
+
+
+def test_staaf_per_reeks_in_de_oude_vorm_is_gelijk_aan_een_reeks():
+    # Tot de leesbare grafieken tekende een uitgelichte staaf een reeks per staaf; een bewaarde
+    # grafiek in die vorm is na verversen niet "anders" omdat het er nu één reeks is.
+    namen, waarden = ["UvA", "VU"], [14773, 10499]
+    oud = json.dumps(
+        {
+            "data": [{"type": "bar", "name": n, "x": [n], "y": [w]} for n, w in zip(namen, waarden, strict=True)],
+            "layout": {},
+        }
+    )
+    nieuw = json.dumps({"data": [{"type": "bar", "orientation": "h", "y": namen, "x": waarden}], "layout": {}})
+    assert _verschil(oud, nieuw) == []
+    [melding] = _verschil(oud, nieuw.replace("10499", "10500"))
+    assert "VU: 10.499 → 10.500" in melding
