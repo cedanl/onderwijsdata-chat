@@ -1,5 +1,6 @@
 import ModelPicker from './ModelPicker'
 import MessageCounter from './MessageCounter'
+import ConnectionStatus from './ConnectionStatus'
 import { messageLengthState } from '../messageLength'
 
 export default function ChatInputFooter({
@@ -17,12 +18,7 @@ export default function ChatInputFooter({
   const length = messageLengthState(text, max)
   return (
     <div className="chat-input-footer">
-      {!connected && (
-        <span className="ws-reconnecting" role="status" aria-live="polite">
-          <span className="ws-dot" />
-          Verbinding herstellen...
-        </span>
-      )}
+      <ConnectionStatus connected={connected} />
       <MessageCounter {...length} />
       {busy ? (
         <button type="button" className="send-btn" onClick={onStop} title="Stop genereren">

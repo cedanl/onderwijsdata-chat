@@ -366,6 +366,11 @@ de laatste tag is 1.8.6.
   melding "Verbinding herstellen..." verdwijnt zodra die open is, en het late sluiten van de oude verbinding
   breekt een nieuwe vraag niet meer af. Een stil weggevallen verbinding wordt na de hartslag meteen gemeld; een
   gezonde verbinding blijft staan als de server tot 5 s nodig heeft om een lopend antwoord te stoppen.
+- Wie offline gaat, ziet in de chat en de dashboardmaker meteen "Je bent offline. Verbinding herstelt zodra je
+  weer online bent.", ook als de verbinding dat zelf nog niet gemerkt heeft en ook midden in een vraag (#532).
+  Die melding en "Verbinding herstellen..." staan in een live region die altijd klaarstaat, zodat een
+  schermlezer ze aankondigt; in de dashboardmaker werden ze tot nu toe niet voorgelezen. Op een smal scherm
+  loopt de tekst door op een tweede regel.
 - Het invoergebied op een telefoon is flink lager (#527): "Exporteer gesprek" en "Genereer rapport"
   staan op één compacte rij in plaats van gestapeld, de paddings van invoerkader en footer zijn op
   mobiel terug, de tabbalk is iets lager (tap targets blijven ≥44px) en verdwijnt zolang het

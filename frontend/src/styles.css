@@ -874,7 +874,9 @@ html.dark .context-limit-banner--full {
     background: rgba(153, 27, 27, 0.15); border-color: rgba(254, 202, 202, 0.3); color: #FCA5A5;
   }
 }
-.ws-reconnecting { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--muted-text); }
+.ws-reconnecting { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: .72rem; color: var(--muted-text); }
+/* De live region blijft altijd gemount (#532); leeg is hij geen flex-item, dus geen ruimte en geen gap. */
+.ws-reconnecting:empty { position: absolute; }
 .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; animation: ws-pulse 1.4s ease-in-out infinite; }
 @keyframes ws-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 

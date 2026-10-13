@@ -8,6 +8,7 @@ import { fetchSettingsConfig } from '../api'
 import { scrollGedrag } from '../hooks/useMediaQuery'
 import { MIN_RESPONSE_LENGTH, MAX_TEXTAREA_HEIGHT } from '../constants'
 import ModelPicker from './ModelPicker'
+import ConnectionStatus from './ConnectionStatus'
 import ConfirmModal from './ConfirmModal'
 
 const MARKDOWN_COMPONENTS = { th: KolomKop }
@@ -285,12 +286,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
               disabled={busy}
             />
             <div className="dc-input-footer">
-              {!connected && (
-                <span className="ws-reconnecting">
-                  <span className="ws-dot" />
-                  Verbinding herstellen...
-                </span>
-              )}
+              <ConnectionStatus connected={connected} />
               {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
               <button type="button" className="send-btn" onClick={() => handleSend(input, true)} disabled={!input.trim() || busy || !connected}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -328,12 +324,7 @@ export default function DashboardCreator({ onSaved, instelling }) {
                 disabled={busy}
               />
               <div className="dc-input-footer">
-                {!connected && (
-                  <span className="ws-reconnecting">
-                    <span className="ws-dot" />
-                    Verbinding herstellen...
-                  </span>
-                )}
+                <ConnectionStatus connected={connected} />
                 {models.length > 0 && <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} />}
                 <button type="button" className="send-btn" onClick={() => handleSend(followUp)} disabled={!followUp.trim() || busy || !connected}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>

@@ -111,7 +111,7 @@ describe('ModelPicker provider caption (#496, F10)', () => {
       onModelChange: vi.fn(), onStop: vi.fn(), onSend: vi.fn(), canSend: true,
     }))
     const footer = container.querySelector('.chat-input-footer')
-    expect([...footer.children].map(c => c.className)).toEqual(['message-counter', 'send-btn', 'model-picker'])
+    expect([...footer.children].map(c => c.className)).toEqual(['ws-reconnecting', 'message-counter', 'send-btn', 'model-picker'])
     expect([...footer.querySelectorAll('button, select')].map(el => el.getAttribute('aria-label'))).toEqual(['Verstuur bericht', 'Model'])
     expect(caption(container).textContent).toBe(`Via ${FOUNDRY}`)
     act(() => root.unmount())
