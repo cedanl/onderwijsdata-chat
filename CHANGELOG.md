@@ -310,6 +310,11 @@ de laatste tag is 1.8.6.
   (vraag, verduidelijking, dashboard, rapport) per `CHAT_RATE_WINDOW_S` seconden, standaard 30 per 10 minuten,
   per gebruiker en zonder login per verbinding. Daarboven ziet de gebruiker "Te veel verzoeken in korte tijd.
   Probeer het over N seconden opnieuw." en start er geen modelaanroep; voorbeeldvragen tellen niet mee.
+- De AST-controle van `run_analysis` weigert ook een stdlib-module die als attribuut van pandas of numpy te
+  bereiken is (`pd.io.common.os`, `pd.compat.sys`, #443): `os.getpid()`, `os.getcwd()` en `os.environ` waren zo
+  nog bereikbaar, al draait het script in een eigen proces zonder omgeving, netwerk of schrijfrechten. De
+  beveiligingsdocumentatie beschrijft nu de twee lagen zoals ze zijn, inclusief wat de sandbox niet is (geen
+  seccomp of container) en wat de pod-limieten moeten dragen.
 - Rapporten en dashboards laden Plotly van de eigen server in plaats van `cdn.plot.ly` (#486, privacy M3/L1):
   een kijker stuurt geen IP, user-agent of referrer meer naar een Amerikaanse CDN. De gebundelde plotly.js
   wordt als asset uitgeleverd, nieuwe rapport-HTML verwijst daarnaar (één keer, in de head), al opgeslagen
