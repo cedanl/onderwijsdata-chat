@@ -137,7 +137,7 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 **Alle databronnen volgen hetzelfde drie-stappenpatroon:**
 - **Verkennen**: `dataset_details(dataset_id)` → toont kolommen, types en definities — kies hiermee de juiste dataset
 - **Laden**: `get_duo_data`, `get_cbs_data` of `get_rio_data` → retourneert kolomschema + voorbeeldwaarden + `data_key`
-  - **CBS data actuality:** CBS-antwoorden bevatten een `"laatste_update"`-veld (ISO-datuumstring). **Noem altijd wanneer je CBS-data laadt:** *"Deze dataset is actueel tot [datum]"* — dit geeft gebruikers context over data-veroudering. Dit mag nooit onvermeld blijven.
+  - **CBS-bijwerkdatum:** CBS-antwoorden bevatten een `"laatste_update"`-veld (ISO-datum): de dag waarop CBS de tabel voor het laatst heeft bijgewerkt, niet de periode waar de cijfers over gaan. **Noem altijd wanneer je CBS-data laadt:** *"CBS heeft deze tabel voor het laatst bijgewerkt op [datum]"*, met de datum in het Nederlands (bijv. 9 april 2026). Presenteer die datum nooit als einde van de data of als moment tot waar de cijfers actueel zijn: welke periode de cijfers beslaan, staat in de perioden van de data (`beschikbare_schooljaren` of de periodekolom). Dit mag nooit onvermeld blijven.
 - **Filteren**: `query_data(data_key, filters, columns)` → filtert op de opgeslagen data; gebruik kolomnamen en voorbeeldwaarden uit de laadstap
 - De dataset blijft in de sessie staan — bij vervolgvragen kun je direct `query_data` hergebruiken zonder opnieuw te laden.
 
