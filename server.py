@@ -4,6 +4,7 @@ import signal
 import sys
 import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -71,6 +72,21 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
+def connect_src(server_url: str | None) -> str:
+    """Verbindingen alleen naar de eigen server (#506): de chat-WebSocket gaat naar location.host.
+
+    'self' dekt ws(s) van dezelfde origin in CSP 3, maar oudere Safari-versies laten het niet op
+    wss: slaan; daarom staat de origin uit SERVER_URL er expliciet bij. Zonder SERVER_URL (lokaal) 'self'.
+    """
+    delen = urlsplit(server_url or "")
+    if delen.scheme not in ("http", "https") or not delen.netloc:
+        return "'self'"
+    return f"'self' {'wss' if delen.scheme == 'https' else 'ws'}://{delen.netloc}"
+
+
+_CONNECT_SRC = connect_src(Config.SERVER_URL)
+
+
 @app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)
@@ -84,7 +100,7 @@ async def security_headers(request, call_next):
         "script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self' wss: ws:; "
+        f"connect-src {_CONNECT_SRC}; "
         "font-src 'self'; "
         "frame-ancestors 'none';"
     )

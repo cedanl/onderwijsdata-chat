@@ -46,3 +46,31 @@ def test_overige_beveiligingsheaders_staan_op_elk_antwoord(client):
     assert headers["X-Frame-Options"] == "DENY"
     assert headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     assert "max-age=" in headers["Strict-Transport-Security"]
+
+
+# #506: `connect-src 'self' wss: ws:` liet WebSockets naar elke host toe. De chat praat alleen met
+# de eigen server (frontend/src/auth.js), dus alleen die: 'self' plus de expliciete wss-origin van
+# SERVER_URL, omdat oudere Safari-versies 'self' niet op wss: laten slaan.
+@pytest.mark.parametrize(
+    "server_url, verwacht",
+    [
+        ("https://onderwijsdata-chat.test.sdp.surf.nl", "'self' wss://onderwijsdata-chat.test.sdp.surf.nl"),
+        ("https://onderwijsdata-chat.test.sdp.surf.nl/", "'self' wss://onderwijsdata-chat.test.sdp.surf.nl"),
+        ("http://localhost:8000", "'self' ws://localhost:8000"),
+        (None, "'self'"),
+        ("", "'self'"),
+        ("geen-url", "'self'"),
+    ],
+)
+def test_connect_src_alleen_de_eigen_server(server_url, verwacht):
+    from server import connect_src
+
+    assert connect_src(server_url) == verwacht
+
+
+def test_csp_laat_geen_websocket_naar_een_andere_host_toe(client):
+    csp = _richtlijnen(client.get("/health").headers["Content-Security-Policy"])
+    bronnen = csp["connect-src"].split()
+    assert "wss:" not in bronnen
+    assert "ws:" not in bronnen
+    assert bronnen[0] == "'self'"
