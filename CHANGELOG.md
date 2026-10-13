@@ -82,6 +82,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een vraag met een open slot krijgt haar verduidelijkingskaart nu uit code, vóór het model (#348). Een
+  telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten
+  heeft Utrecht?") vraagt instelling of woonplaats, met de instellingen uit het register als opties (de
+  eigen sector uit het profiel voorop); een kort thema zonder maat ("arbeidsmarkt") vraagt de maat,
+  met de catalogusrecords die `search_catalog` bovenaan zet, mits elke term raakt. Dezelfde vraag geeft zo
+  altijd dezelfde eerste stap, waar het model de ene run negentien toolaanroepen deed en de andere een
+  verduidelijking stelde (audit 12). Geen kaart als de vraag een instelling noemt, het profiel haar bepaalt,
+  twee gebieden vergelijkt, of na een beantwoorde kaart. Een vraagvorm met "wanneer", "wie" of "waar"
+  telt niet meer als vaag thema. De vaste plannen voor de aanbevolen startvragen wachten op #349.
 - De melding bij een onbekende `data_key` noemt als beschikbare datasets alleen nog de keys van het eigen
   gesprek, niet alles wat de gedeelde store voor andere sessies vasthoudt; buiten een gesprek noemt ze geen keys.
   Elke tool van een verbinding, ook in een taak of thread, kent zo de keys van het eigen gesprek (#13).
