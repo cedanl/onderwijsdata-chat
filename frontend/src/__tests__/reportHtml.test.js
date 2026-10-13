@@ -35,6 +35,20 @@ describe('buildReportHtml', () => {
     expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
   })
 
+  // Horizontal bars bring their own height; the fixed 360 px squashed 18 universities.
+  it('gives a chart the height it brings, and 360 px otherwise', () => {
+    const spec = { ...fullSpec, visualisaties: [{ titel: 'WO', figure_json: JSON.stringify({ data: [], layout: { height: 526 } }) }] }
+    expect(buildReportHtml(spec)).toContain('style="height:526px"')
+    expect(buildReportHtml(fullSpec)).toContain('style="height:360px"')
+  })
+
+  // On a phone two nested card paddings left the chart 260 px; long names fell off the left.
+  it('gives a chart the full card width on a phone', () => {
+    const html = buildReportHtml(fullSpec)
+    const phone = html.slice(html.indexOf('@media(max-width:640px)'))
+    expect(phone.slice(0, phone.indexOf('}}') + 2)).toContain('.vis .card{padding:0}')
+  })
+
   it('returns valid HTML with doctype and title', () => {
     const html = buildReportHtml(fullSpec)
     expect(html).toContain('<!DOCTYPE html>')

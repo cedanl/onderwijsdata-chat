@@ -1,4 +1,5 @@
 import Plot from './LazyPlot'
+import { figureHeight, legendBelow, legendRepeatsAxis } from '../figureLayout'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from './KolomKop'
@@ -54,11 +55,12 @@ function ChartCard({ figureJson }) {
     margin: { t: 48, r: 24, b: 48, l: 60 },
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     legend: {
-      ...figure.layout?.legend,
+      ...legendBelow(figure.layout?.legend),
       bgcolor: legendBg,
       bordercolor: legendBorder,
       font: { color: fontColor },
     },
+    ...(legendRepeatsAxis(figure.data) && { showlegend: false }),
     autosize: true,
   }
 
@@ -69,7 +71,7 @@ function ChartCard({ figureJson }) {
         layout={layout}
         config={{ responsive: true, displayModeBar: false }}
         useResizeHandler
-        style={{ width: '100%', height: 300 }}
+        style={{ width: '100%', height: figureHeight(figure.layout, 300) }}
       />
     </div>
   )

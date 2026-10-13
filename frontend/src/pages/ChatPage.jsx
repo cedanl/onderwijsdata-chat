@@ -6,6 +6,7 @@ import KolomKop from '../components/KolomKop'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { topMargin } from '../figureMargin'
+import { figureHeight, legendBelow, legendRepeatsAxis } from '../figureLayout'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -937,11 +938,12 @@ function figureLayout(figure, dark) {
     margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: topMargin(figure.layout, 32), b: 40 },
     font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
     legend: {
-      ...figure.layout?.legend,
+      ...legendBelow(figure.layout?.legend),
       bgcolor: legendBg,
       bordercolor: legendBorder,
       font: { color: fontColor },
     },
+    ...(legendRepeatsAxis(figure.data) && { showlegend: false }),
     autosize: true,
   }
 }
@@ -984,7 +986,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
         layout={layout}
         config={PLOT_CONFIG}
         useResizeHandler
-        style={{ width: '100%', height: isMap ? 480 : 340 }}
+        style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
       />
     </div>
   )
