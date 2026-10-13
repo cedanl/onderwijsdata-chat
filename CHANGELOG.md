@@ -244,6 +244,11 @@ de laatste tag is 1.8.6.
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Een gesprek verwijderen is acht seconden ongedaan te maken (#493): na het bevestigen verdwijnt het gesprek
+  meteen uit de lijst en toont een toast "Gesprek verwijderd" met "Ongedaan maken"; de verwijdering op de server
+  gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
+  titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
+  en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
 - Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat
   en dat je geen persoonsgegevens invoert. Lijkt een concept een BSN (elfproef), e-mailadres of telefoonnummer te
   bevatten, dan zegt een waarschuwing dat voor het versturen; versturen blijft mogelijk. Zo'n vraag krijgt als
