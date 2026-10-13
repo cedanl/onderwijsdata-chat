@@ -80,6 +80,73 @@ describe('ChatInputFooter tab-volgorde', () => {
   })
 })
 
+describe('ChatInputFooter verbindingsstatus (#532)', () => {
+  const props = connected => ({
+    connected,
+    busy: false,
+    models,
+    selectedModel: 'openai/gpt-oss-120b',
+    onModelChange: vi.fn(),
+    onStop: vi.fn(),
+    onSend: vi.fn(),
+    canSend: true,
+  })
+  const status = container => container.querySelector('.chat-input-footer [role="status"][aria-live="polite"]')
+  const setOnline = value => Object.defineProperty(navigator, 'onLine', { configurable: true, value })
+  const fire = type => act(() => { window.dispatchEvent(new Event(type)) })
+
+  afterEach(() => {
+    delete navigator.onLine
+  })
+
+  it('houdt de live region leeg gemount zolang de verbinding er is', () => {
+    setOnline(true)
+    const { container, root } = renderFooter(props(true))
+    const el = status(container)
+    expect(el).not.toBeNull()
+    expect(el.textContent).toBe('')
+    expect(el.querySelector('.ws-dot')).toBeNull()
+    act(() => root.unmount())
+  })
+
+  it('meldt offline en weer online in hetzelfde element', () => {
+    setOnline(true)
+    const { container, root } = renderFooter(props(true))
+    const el = status(container)
+
+    setOnline(false)
+    fire('offline')
+    expect(status(container)).toBe(el)
+    expect(el.textContent).toBe('Je bent offline. Verbinding herstelt zodra je weer online bent.')
+    expect(el.querySelector('.ws-dot')).not.toBeNull()
+
+    setOnline(true)
+    fire('online')
+    expect(status(container)).toBe(el)
+    expect(el.textContent).toBe('')
+    act(() => root.unmount())
+  })
+
+  it('toont het herstel van de verbinding in hetzelfde element', () => {
+    setOnline(true)
+    const { container, root } = renderFooter(props(true))
+    const el = status(container)
+
+    act(() => root.render(createElement(ChatInputFooter, props(false))))
+
+    expect(status(container)).toBe(el)
+    expect(el.textContent).toBe('Verbinding herstellen...')
+    act(() => root.unmount())
+  })
+
+  it('blijft zichtbaar terwijl een vraag loopt', () => {
+    setOnline(false)
+    const { container, root } = renderFooter({ ...props(false), busy: true })
+    expect(status(container).textContent).toBe('Je bent offline. Verbinding herstelt zodra je weer online bent.')
+    act(() => root.unmount())
+  })
+})
+
 describe('ChatInputFooter tekenteller (#481)', () => {
   const props = text => ({
     connected: true,
