@@ -279,6 +279,9 @@ de laatste tag is 1.8.6.
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
   titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
   en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
+- Een verwijderd open gesprek komt na verversen niet meer terug (#530): het sluiten of verbergen van de tab en
+  een antwoord dat daarna nog afrondt schreven het opnieuw in de lokale opslag. Het blijft op het scherm staan
+  tot een nieuw gesprek; pas een nieuwe vraag daarin wordt weer bewaard. Ongedaan maken bewaart het meteen weer.
 - Een ververs van een dashboard zonder datarecept meldt niet meer "Data ververst" maar "Bij de bron is niets
   opgehaald: dit dashboard heeft geen datarecept; de grafieken zijn opnieuw getekend uit de data in het
   geheugen", als waarschuwing (#528, vervolg op #524). "Data ververst" staat er alleen als er bij de bron iets
