@@ -211,6 +211,13 @@ def _login(client):
     client.headers["Authorization"] = f"Bearer {token}"
 
 
+def _met_token(client):
+    """Ingelogd zonder /api/auth/login: de login-limiter telt over de hele testrun mee."""
+    from core import auth
+
+    client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
+
+
 def test_endpoint_geeft_de_csv_als_bijlage(client):
     _login(client)
     _bron()
@@ -227,7 +234,7 @@ def test_endpoint_geeft_de_csv_als_bijlage(client):
 
 
 def test_endpoint_noemt_een_onbekende_dataset_naar_het_id(client):
-    _login(client)
+    _met_token(client)
     _bron("duo:eigen-set:0")
     resp = client.get("/api/data/csv", params={"key": "duo:eigen-set:0"})
     assert resp.status_code == 200
@@ -235,7 +242,7 @@ def test_endpoint_noemt_een_onbekende_dataset_naar_het_id(client):
 
 
 def test_endpoint_maakt_een_titel_met_accenten_en_tekens_veilig(client, monkeypatch):
-    _login(client)
+    _met_token(client)
     monkeypatch.setattr(csv_export.catalog, "bron_titel", lambda _id: 'Mbo; "studenten" é\r\nX: y')
     _bron()
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
