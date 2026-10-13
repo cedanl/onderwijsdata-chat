@@ -35,6 +35,7 @@ from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
+from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys, ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
 from .stream import Emit
@@ -182,6 +183,20 @@ def _veilige_bronnen(steps: list[tuple[str, str]]) -> list[str]:
 
 
 _MAX_CLARIFY_RONDES = 1
+
+
+async def _vaste_verduidelijking(kaart: Kaart, messages: list[dict], session: dict, emit: Emit) -> str:
+    """De verduidelijkingskaart uit code (#348): dezelfde beurt als na clarify_scope, zonder modelronde.
+
+    De vraag komt als assistentbeurt in het gesprek, zodat de keuze van de gebruiker erna haar context
+    heeft; `_clarified` laat de chatroute de beurt niet als gewoon antwoord bewaren.
+    """
+    logger.info("SCOPEVRAAG  slot=%s  opties=%d", kaart.slot, len(kaart.opties))
+    messages.append({"role": "assistant", "content": kaart.vraag})
+    session["_clarified"] = True
+    session["_last_turn_tool_calls"] = []
+    await emit({"type": "clarification", "vraag": kaart.vraag, "opties": kaart.opties})
+    return ""
 
 
 def tools_for(session: dict) -> list[dict]:
@@ -384,6 +399,13 @@ async def run(
         await emit({"type": "message_start"})
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": []})
         return vast
+
+    # Een open slot (plaats of instelling, maat) krijgt een vaste kaart uit code, vóór het model (#348).
+    # Het register en de catalogus laden over het netwerk: niet op de event loop.
+    if session.get("clarify_rondes", 0) < _MAX_CLARIFY_RONDES:
+        kaart = await asyncio.to_thread(scopevraag, last_user_msg, settings)
+        if kaart is not None:
+            return await _vaste_verduidelijking(kaart, messages, session, emit)
 
     history, was_trimmed = trim(list(messages))
     initial_history_len = len(history)
