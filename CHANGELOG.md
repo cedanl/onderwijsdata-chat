@@ -29,6 +29,16 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- Bronwaarheid-evals met onafhankelijke ijkwaarden (#190): `scripts/ijkwaarden.py` haalt 21 referentiewaarden
+  rechtstreeks bij CBS (OData via httpx), DUO en RIO (`riodata`) op, buiten `tools/` om, en legt ze met bron,
+  selectie, eenheid, schooljaar, CBS-status en ophaaldag vast in `tests/e2e/ijkwaarden.json`; zonder `--schrijf`
+  toont het script elk verschil met de vastgelegde stand en faalt het, zodat drift van de bron zichtbaar is in
+  plaats van een eval die stil gaat falen. Negen nieuwe cases in `evaluations.json` stellen de ongehulpte vragen
+  uit audit 7a/7b/8 (hbo voltijd landelijk met status, HU voltijd 2021–2025 als personen, HU deeltijd 7.408 en
+  niet 7.418, eerstejaars met een onderdrukte cel, mbo vrouwen uit F-10, Aeres 30TX met vijf vestigingen, en
+  weigeringen voor een RIO-totaal, 2035/36 en code 99ZZ); hun referentiewaarden verwijzen naar de fixture en
+  zijn exact, zonder tolerantie. `TEST_REPEATS=3` laat elke vraag drie keer per model lopen (één fout telt) en
+  de runner schrijft het slagingspercentage per model en vraag naar `eval_results/slagingspercentage-<datum>.json`.
 - Determinisme is een CI-eigenschap (#347, `tests/determinisme/`): per vast geval worden 40
   gelijkwaardige spellingen gegenereerd die op één plan-digest moeten uitkomen, zonder netwerk en
   zonder model. De golden stand (plan-digests, het compilaat van een gesloten selectie en
