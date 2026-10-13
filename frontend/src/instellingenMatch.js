@@ -50,7 +50,8 @@ export function instellingType(naam, instellingen) {
   return inst?.type || null
 }
 
-function afstand(a, b) {
+// Levenshtein: de laatste rij geeft de afstand van `a` tot elk begin van `b` (index = lengte van dat begin).
+function afstandRij(a, b) {
   let vorige = Array.from({ length: b.length + 1 }, (_, j) => j)
   for (let i = 1; i <= a.length; i++) {
     const huidige = [i]
@@ -59,27 +60,67 @@ function afstand(a, b) {
     }
     vorige = huidige
   }
-  return vorige[b.length]
+  return vorige
+}
+
+const afstand = (a, b) => afstandRij(a, b)[b.length]
+
+// Vulwoorden mogen in een zoekterm staan zonder dat de naam ze heeft ("hogeschool van utrecht").
+const VULWOORDEN = new Set(['van', 'de', 'der', 'den', 'het', 'voor', 'en', 'of', 'the', 'in'])
+
+const woorden = tekst => tekst.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+
+// Hoe dicht een zoekwoord bij een woord van de naam komt, of null als geen woord binnen de drempel valt.
+// Het begin van een naamwoord telt ook, zodat een half getypt woord past ("amst", "vam" → "am…").
+// Woorden korter dan 3 tekens moeten exact passen.
+function woordAfstand(woord, naamwoorden) {
+  const drempel = woord.length < 3 ? 0 : Math.max(1, Math.floor(woord.length / 4))
+  const beste = Math.min(...naamwoorden.map(n => Math.min(...afstandRij(woord, n))))
+  return beste <= drempel ? beste : null
+}
+
+// Een zoekterm van meer woorden (#533): elk woord moet een woord van de naam raken, in welke volgorde
+// ook; een vulwoord mag missen. De score is de opgetelde afstand, null als de naam niet past.
+function woordenScore(zoekwoorden, naam) {
+  const naamwoorden = woorden(naam)
+  let som = 0
+  let geraakt = 0
+  for (const woord of zoekwoorden) {
+    const a = woordAfstand(woord, naamwoorden)
+    if (a === null && !VULWOORDEN.has(woord)) return null
+    if (a === null) continue
+    som += a
+    if (!VULWOORDEN.has(woord)) geraakt++
+  }
+  return geraakt > 0 ? som : null
+}
+
+// Hoe goed een instelling bij de zoekterm past, of null. `beste` is de kleinste afstand van de vormen hieronder;
+// `heel` (afstand tot de hele naam) breekt bij meer woorden een gelijkspel, zodat "universiteit utrect"
+// Universiteit Utrecht vóór Theologische Universiteit Utrecht zet. Bij één woord blijft het 0: volgorde als voorheen.
+function score(q, inst) {
+  const drempel = Math.max(1, Math.floor(q.length / 4))
+  const enkelWoord = !q.includes(' ')
+  const kandidaten = [inst.naam, ...(inst.aliassen || [])].map(normalize)
+  const vormen = kandidaten.flatMap(k => (enkelWoord ? [k, ...k.split(/\s+/)] : [k]))
+  const heel = vormen.map(v => afstand(q, v))
+  const scores = heel.filter(s => s <= drempel)
+  if (!enkelWoord) scores.push(...kandidaten.map(k => woordenScore(woorden(q), k)).filter(s => s !== null))
+  if (!scores.length) return null
+  return { beste: Math.min(...scores), heel: enkelWoord ? 0 : Math.min(...heel) }
 }
 
 // "Bedoel je …?" (#496 F04): de instellingen waarvan naam of afkorting op een typefout na lijkt op de
 // zoekterm, de dichtstbijzijnde eerst, hoogstens `max`. Een enkel woord wordt ook tegen elk woord van
-// de naam gehouden ("Hogescool" → Hogeschool Utrecht). De drempel schaalt mee met de lengte, zodat
-// een korte afkorting niet bij alles past.
+// de naam gehouden ("Hogescool" → Hogeschool Utrecht), meer woorden ook per woord (woordenScore, #533).
+// De drempel schaalt mee met de lengte, zodat een korte afkorting niet bij alles past.
 export function suggereerInstellingen(zoekterm, instellingen, max = 3) {
   const q = normalize(zoekterm)
   if (q.length < 3) return []
-  const drempel = Math.max(1, Math.floor(q.length / 4))
-  const enkelWoord = !q.includes(' ')
-  const gevonden = []
-  for (const inst of instellingen || []) {
-    const kandidaten = [inst.naam, ...(inst.aliassen || [])].map(normalize)
-    const vormen = kandidaten.flatMap(k => (enkelWoord ? [k, ...k.split(/\s+/)] : [k]))
-    const beste = Math.min(...vormen.map(v => afstand(q, v)))
-    if (beste <= drempel) gevonden.push({ inst, beste })
-  }
-  return gevonden
-    .sort((a, b) => a.beste - b.beste || a.inst.naam.localeCompare(b.inst.naam, 'nl'))
+  return (instellingen || [])
+    .map(inst => ({ inst, ...score(q, inst) }))
+    .filter(g => g.beste !== undefined)
+    .sort((a, b) => a.beste - b.beste || a.heel - b.heel || a.inst.naam.localeCompare(b.inst.naam, 'nl'))
     .slice(0, max)
     .map(g => g.inst)
 }

@@ -14,8 +14,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import loop as loop_module
-from tools import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, duo, store
-from tools.csv_export import export_key, naar_csv
+from tools import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, csv_export, duo, store
+from tools.csv_export import bestandsnaam, export_key, naar_csv
 from tools.query import query_data
 from tools.store import KeyMeta
 
@@ -115,6 +115,38 @@ def test_onbekende_key_heeft_geen_csv():
     assert naar_csv("duo:bestaat:niet") is None
 
 
+# ── Bestandsnaam: <titel>_<dataset-id>.csv, als de grafiek-CSV (#533) ─────────
+
+
+def test_bestandsnaam_is_catalogustitel_plus_dataset_id():
+    _bron()
+    assert bestandsnaam("duo:p01hoinges:0") == (
+        "Ingeschrevenen_hoger_onderwijs_in_het_domein_hoger_onderwijs_p01hoinges.csv"
+    )
+
+
+def test_bestandsnaam_zonder_catalogustitel_is_alleen_het_id():
+    _bron("duo:eigen-set:0")
+    assert bestandsnaam("duo:eigen-set:0") == "eigen_set.csv"
+
+
+def test_bestandsnaam_zonder_meta_valt_terug_op_data():
+    store.put("los", _DF)
+    assert bestandsnaam("los") == "data.csv"
+
+
+def test_bestandsnaam_maakt_titel_veilig_zoals_figure_csv_filename(monkeypatch):
+    """Accenten weg, de rest een underscore, titel hoogstens 80 tekens: geen quotes of CR/LF in de header."""
+    monkeypatch.setattr(csv_export.catalog, "bron_titel", lambda _id: 'Één "café";\r\nX-Kop: ja, 2024/25 ')
+    _bron()
+    assert bestandsnaam("duo:p01hoinges:0") == "Een_cafe_X_Kop_ja_2024_25_p01hoinges.csv"
+
+    monkeypatch.setattr(csv_export.catalog, "bron_titel", lambda _id: "a " * 100)
+    naam = bestandsnaam("duo:p01hoinges:0")
+    assert naam.endswith("a_p01hoinges.csv")
+    assert len(naam.removesuffix("_p01hoinges.csv")) <= 80
+
+
 # ── Welke stap een exporteerbare tabel opleverde ─────────────────────────────
 
 
@@ -179,16 +211,42 @@ def _login(client):
     client.headers["Authorization"] = f"Bearer {token}"
 
 
+def _met_token(client):
+    """Ingelogd zonder /api/auth/login: de login-limiter telt over de hele testrun mee."""
+    from core import auth
+
+    client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
+
+
 def test_endpoint_geeft_de_csv_als_bijlage(client):
     _login(client)
     _bron()
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
-    assert 'filename="p01hoinges.csv"' in resp.headers["content-disposition"]
+    assert (
+        'filename="Ingeschrevenen_hoger_onderwijs_in_het_domein_hoger_onderwijs_p01hoinges.csv"'
+        in resp.headers["content-disposition"]
+    )
     # Met BOM, anders leest Excel é als Ã©.
     assert resp.content.startswith("﻿".encode())
     assert "STUDIEJAAR;INSTELLINGSNAAM;AANDEEL" in resp.text
+
+
+def test_endpoint_noemt_een_onbekende_dataset_naar_het_id(client):
+    _met_token(client)
+    _bron("duo:eigen-set:0")
+    resp = client.get("/api/data/csv", params={"key": "duo:eigen-set:0"})
+    assert resp.status_code == 200
+    assert resp.headers["content-disposition"] == 'attachment; filename="eigen_set.csv"'
+
+
+def test_endpoint_maakt_een_titel_met_accenten_en_tekens_veilig(client, monkeypatch):
+    _met_token(client)
+    monkeypatch.setattr(csv_export.catalog, "bron_titel", lambda _id: 'Mbo; "studenten" é\r\nX: y')
+    _bron()
+    resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
+    assert resp.headers["content-disposition"] == 'attachment; filename="Mbo_studenten_e_X_y_p01hoinges.csv"'
 
 
 def test_endpoint_meldt_verdwenen_data(client):

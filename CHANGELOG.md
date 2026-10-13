@@ -279,6 +279,10 @@ de laatste tag is 1.8.6.
   de browser en plant geen volgende vernieuwing meer in (#499).
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Een zoekterm van meer woorden vindt die suggesties nu ook per woord, met een typefout per woord en in elke
+  volgorde (#533): "universiteit vam" geeft "Bedoel je Universiteit van Amsterdam, Vrije Universiteit Amsterdam?"
+  in plaats van alleen "Geen instellingen gevonden". Elk woord moet in de naam terugkomen; een vulwoord als "van"
+  mag ontbreken, en een half getypt woord telt als begin van een woord ("uni amst").
 - Boven een antwoord dat na controle is aangepast staat nu "Eerste versie van dit antwoord is aangepast na
   controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
   controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
@@ -312,6 +316,13 @@ de laatste tag is 1.8.6.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
+- Elke CSV-export heet nu `<titel>_<dataset-id>.csv` (#533): de globale CSV-knop en "Tabel N als CSV" naar de
+  catalogustitel van de dataset (`Mbo_studenten_naar_niveau_leerweg_herkomst_85354NED.csv` in plaats van
+  `85354NED.csv`), de CSV van een grafiek naar de grafiektitel met het dataset-id erachter. Kent de catalogus de
+  dataset niet, dan is het alleen het id; een grafiek zonder dataset houdt `<titel>.csv`.
+- De rapportviewer is nooit meer een leeg vlak (#533): zolang een rapport rendert, staat de inhoud als bezig
+  (`aria-busy`) naast de melding "Rapport wordt geladen…", en een rapport zonder inhoud zegt "Dit rapport heeft geen
+  inhoud." in plaats van een wit kader.
 - De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
   figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
   (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie

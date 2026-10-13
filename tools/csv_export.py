@@ -12,10 +12,11 @@ import csv
 import io
 import json
 import re
+import unicodedata
 
 import pandas as pd
 
-from . import duo, herlaad, store
+from . import catalog, duo, herlaad, store
 from .schemas import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
 _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS}
@@ -71,6 +72,30 @@ def _noten(key: str, afronden: bool) -> list[str]:
     if afronden:
         noten.append(duo.PROGNOSE_NOOT)
     return noten
+
+
+# Bestandsnaam van een export (#533): <titel>_<dataset-id>.csv, zonder titel alleen het id. Elk deel veilig
+# voor een bestandsnaam en de Content-Disposition-header: accenten weg (é → e), al het andere dan letters en
+# cijfers een underscore, de titel hoogstens 80 tekens. Dezelfde regel als figureCsvFilename in
+# frontend/src/figureCsv.js: de twee moeten gelijk opgaan.
+_TITEL_MAX = 80
+
+
+def _bestandsdeel(tekst: str) -> str:
+    zonder_accenten = "".join(c for c in unicodedata.normalize("NFD", tekst) if not "\u0300" <= c <= "\u036f")
+    return re.sub(r"[^A-Za-z0-9]+", "_", zonder_accenten).strip("_")
+
+
+def bestandsnaam(key: str) -> str:
+    """De naam van de CSV onder `key`: de catalogustitel van de dataset plus het dataset-id."""
+    known = store.meta(key)
+    if known is None:
+        return "data.csv"
+    titel = catalog.bron_titel(known.dataset)
+    # Kent de catalogus de dataset niet, dan is de titel het kale id: dat staat er niet twee keer in.
+    titeldeel = _bestandsdeel(titel)[:_TITEL_MAX].rstrip("_") if titel != known.dataset else ""
+    naam = "_".join(deel for deel in (titeldeel, _bestandsdeel(known.dataset)) if deel)
+    return f"{naam or 'data'}.csv"
 
 
 def naar_csv(key: str) -> str | None:

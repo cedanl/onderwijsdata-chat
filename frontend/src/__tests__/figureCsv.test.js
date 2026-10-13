@@ -241,9 +241,25 @@ describe('figureCsvFilename (#496 F11)', () => {
     expect(figureCsvFilename({ layout: { title: { text: '///' } } })).toBe('data.csv')
   })
 
+  // Dezelfde conventie als de tabel-CSV van de server, <titel>_<dataset-id>.csv (#533).
+  it('zet het dataset-id achter de titel als de grafiek het kent', () => {
+    expect(figureCsvFilename({ layout: { title: 'Instroom mbo', meta: { dataset: '85354NED' } } }))
+      .toBe('Instroom_mbo_85354NED.csv')
+    expect(figureCsvFilename({ layout: { meta: { dataset: 'p01-hoinges' } } }, 'Grafiek aangemaakt'))
+      .toBe('Grafiek_aangemaakt_p01_hoinges.csv')
+  })
+
+  it('laat het dataset-id weg zonder meta.dataset', () => {
+    expect(figureCsvFilename({ layout: { title: 'Instroom mbo', meta: { data: [] } } })).toBe('Instroom_mbo.csv')
+    expect(figureCsvFilename({ layout: { title: 'Instroom mbo', meta: { dataset: '///' } } })).toBe('Instroom_mbo.csv')
+  })
+
   it('kapt een lange titel af zonder losse underscore aan het eind', () => {
     const naam = figureCsvFilename({ layout: { title: 'a '.repeat(100) } })
     expect(naam.length).toBeLessThanOrEqual(84)
     expect(naam).not.toMatch(/_\.csv$/)
+    const metId = figureCsvFilename({ layout: { title: 'a '.repeat(100), meta: { dataset: '85354NED' } } })
+    expect(metId).toMatch(/a_85354NED\.csv$/)
+    expect(metId.length).toBeLessThanOrEqual(80 + '_85354NED.csv'.length)
   })
 })

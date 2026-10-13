@@ -197,6 +197,18 @@ def test_choropleth_data_key_reads_from_store():
     assert "2" in msg
 
 
+def test_choropleth_draagt_het_dataset_id_voor_de_csv_naam():
+    """Ook de kaart-CSV heet <titel>_<dataset-id>.csv (#533)."""
+    meta = store.KeyMeta(bron="cbs", dataset="85354NED")
+    store.put("cbs:85354NED:kaart", pd.DataFrame(_CHOROPLETH_ROWS), meta)
+    with patch("tools.plot._load_geojson", return_value=_FAKE_GEOJSON):
+        _, fig = create_choropleth_map(
+            data_key="cbs:85354NED:kaart", location_col="RegioS", value_col="Waarde", title="Kaart test"
+        )
+    assert fig is not None
+    assert fig.layout.meta["dataset"] == "85354NED"
+
+
 def test_choropleth_data_key_missing_returns_error():
     msg, fig = create_choropleth_map(data_key="nonexistent:key", location_col="R", value_col="V", title="T")
     assert "Geen data" in msg

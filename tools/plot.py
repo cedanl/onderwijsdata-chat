@@ -409,11 +409,18 @@ def create_plot(
             "chart_type": chart_type,
             "color_by": color_by,
             "herkomst": store.herkomst(data_key) if data_key else [],
+            **_dataset_meta(data_key),
         }
     )
 
     chart_label = _CHART_TYPE_LABELS.get(chart_type, "Grafiek")
     return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig
+
+
+def _dataset_meta(data_key: str | None) -> dict:
+    """Het dataset-id voor de CSV-naam van de grafiek, <titel>_<dataset-id>.csv (#533); leeg zonder bron."""
+    known = store.meta(data_key) if data_key else None
+    return {"dataset": known.dataset} if known else {}
 
 
 def _axis_name(fig: go.Figure, axis: str, default: str) -> str:
@@ -587,6 +594,7 @@ def create_choropleth_map(
             "location_col": location_col,
             "value_col": value_col,
             "data": cleaned,
+            **_dataset_meta(data_key),
         },
     )
 
