@@ -105,25 +105,46 @@ def get_all_api_key_env_vars() -> list[str]:
     return [k for k in _PROVIDER_API_KEYS.values() if k is not None]
 
 
-# Display names voor bekende modellen — voor onbekende modellen wordt het deel na '/' gebruikt.
-_KNOWN_NAMES: dict[str, tuple[str, str, str]] = {
-    "anthropic/claude-haiku-4-5-20251001": ("Haiku", "Snel en goedkoop", "zap"),
-    "anthropic/claude-sonnet-4-6": ("Sonnet", "Gebalanceerd", "sparkles"),
-    "anthropic/claude-opus-4-6": ("Opus 4.6", "Hoog kwaliteit", "brain"),
-    "anthropic/claude-opus-4-7": ("Opus 4.7", "Hoog kwaliteit", "brain"),
-    "anthropic/claude-opus-4-8": ("Opus 4.8", "Meest capabel", "brain"),
-    "azure_ai/claude-sonnet-4-6": ("Sonnet (Foundry)", "Azure AI Foundry", "sparkles"),
-    "azure_ai/claude-sonnet-5-5": ("Sonnet 5.5 (Foundry)", "Azure AI Foundry — gebalanceerd", "sparkles"),
-    "azure_ai/claude-opus-4-6": ("Opus 4.6 (Foundry)", "Azure AI Foundry — hoog kwaliteit", "brain"),
-    "azure_ai/claude-opus-5-5": ("Opus 5.5 (Foundry)", "Azure AI Foundry — hoog kwaliteit", "brain"),
-    "azure_ai/claude-haiku-4-5": ("Haiku (Foundry)", "Azure AI Foundry — snel", "zap"),
-    "openai/gpt-4o-mini": ("GPT-4o mini", "Snel", "zap"),
-    "openai/gpt-4o": ("GPT-4o", "Capabel", "sparkles"),
-    "openai/gpt-5": ("GPT-5", "Meest capabel", "brain"),
-    "openai/openai/gpt-oss-120b": ("GPT-OSS 120B", "SURF Willma — sterk in tool calling", "cpu"),
-    "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": ("Qwen 2.5 VL 32B", "SURF Willma — vision+taal", "cpu"),
-    "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": ("Qwen 2.5 Coder 32B", "SURF Willma — code", "cpu"),
+# Wie het model draait: de modelkiezer noemt die partij in een bijschrift "Via …" (#496, F10).
+_ANTHROPIC = "Anthropic"
+_FOUNDRY = "Microsoft Azure AI Foundry"
+_OPENAI = "OpenAI"
+_WILLMA = "SURF Willma"
+_PROVIDER_BY_PREFIX: dict[str, str] = {"anthropic": _ANTHROPIC, "azure_ai": _FOUNDRY, "openai": _OPENAI}
+
+# (naam, omschrijving, icoon, provider) voor bekende modellen. Naam en omschrijving zijn gewone taal
+# voor de gebruiker; de provider staat alleen in het vierde veld. Een onbekend model heet naar het deel
+# na de laatste '/'.
+_KNOWN_NAMES: dict[str, tuple[str, str, str, str]] = {
+    "anthropic/claude-haiku-4-5-20251001": ("Haiku", "snel", "zap", _ANTHROPIC),
+    "anthropic/claude-sonnet-4-6": ("Sonnet", "voor de meeste vragen", "sparkles", _ANTHROPIC),
+    "anthropic/claude-opus-4-6": ("Opus 4.6", "grondiger, wat trager", "brain", _ANTHROPIC),
+    "anthropic/claude-opus-4-7": ("Opus 4.7", "grondiger, wat trager", "brain", _ANTHROPIC),
+    "anthropic/claude-opus-4-8": ("Opus 4.8", "grondigst", "brain", _ANTHROPIC),
+    "azure_ai/claude-sonnet-4-6": ("Sonnet", "voor de meeste vragen", "sparkles", _FOUNDRY),
+    "azure_ai/claude-sonnet-5-5": ("Sonnet 5.5", "voor de meeste vragen", "sparkles", _FOUNDRY),
+    "azure_ai/claude-opus-4-6": ("Opus 4.6", "grondiger, wat trager", "brain", _FOUNDRY),
+    "azure_ai/claude-opus-5-5": ("Opus 5.5", "grondiger, wat trager", "brain", _FOUNDRY),
+    "azure_ai/claude-haiku-4-5": ("Haiku", "snel", "zap", _FOUNDRY),
+    "openai/gpt-4o-mini": ("GPT-4o mini", "snel", "zap", _OPENAI),
+    "openai/gpt-4o": ("GPT-4o", "voor de meeste vragen", "sparkles", _OPENAI),
+    "openai/gpt-5": ("GPT-5", "grondigst", "brain", _OPENAI),
+    "openai/openai/gpt-oss-120b": ("GPT-OSS 120B", "goed in het ophalen van data", "cpu", _WILLMA),
+    "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": ("Qwen 2.5 VL 32B", "ook voor afbeeldingen", "cpu", _WILLMA),
+    "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": ("Qwen 2.5 Coder 32B", "gericht op code", "cpu", _WILLMA),
 }
+
+
+def model_provider(model_id: str) -> str:
+    """Wie het model draait, zoals agent/models.py:litellm_kwargs de aanroep routeert; "" als dat onbekend is.
+
+    Met WILLMA_API_KEY gaat elk openai/-model naar Willma, ook een bekend OpenAI-model.
+    """
+    if WILLMA_API_KEY and model_id.startswith("openai/"):
+        return _WILLMA
+    if model_id in _KNOWN_NAMES:
+        return _KNOWN_NAMES[model_id][3]
+    return _PROVIDER_BY_PREFIX.get(model_id.split("/")[0].lower(), "")
 
 
 def _parse_user_models() -> dict[str, list[str]]:
@@ -144,19 +165,24 @@ def _parse_user_models() -> dict[str, list[str]]:
 _USER_MODELS: dict[str, list[str]] = _parse_user_models()
 
 
-def _models_from_ids(model_ids: list[str]) -> list[tuple[str, str, str, str]]:
-    return [(mid, *_KNOWN_NAMES.get(mid, (mid.split("/")[-1], "", "cpu"))) for mid in model_ids]
+def _model_entry(model_id: str) -> tuple[str, str, str, str, str]:
+    name, desc, icon, _provider = _KNOWN_NAMES.get(model_id, (model_id.split("/")[-1], "", "cpu", ""))
+    return model_id, name, desc, icon, model_provider(model_id)
 
 
-def get_available_models() -> list[tuple[str, str, str, str]] | None:
-    """Return list of (model_id, name, description, icon), or None if no picker."""
+def _models_from_ids(model_ids: list[str]) -> list[tuple[str, str, str, str, str]]:
+    return [_model_entry(mid) for mid in model_ids]
+
+
+def get_available_models() -> list[tuple[str, str, str, str, str]] | None:
+    """Return list of (model_id, name, description, icon, provider), or None if no picker."""
     if not _AVAILABLE_MODELS_RAW:
         return None
     result = _models_from_ids([m.strip() for m in _AVAILABLE_MODELS_RAW.split(",") if m.strip()])
     return result or None
 
 
-def get_available_models_for_user(username: str | None) -> list[tuple[str, str, str, str]] | None:
+def get_available_models_for_user(username: str | None) -> list[tuple[str, str, str, str, str]] | None:
     """Return per-user models if configured, else fall back to global AVAILABLE_MODELS."""
     if username and username in _USER_MODELS:
         return _models_from_ids(_USER_MODELS[username]) or None

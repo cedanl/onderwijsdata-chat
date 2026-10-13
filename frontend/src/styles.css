@@ -898,7 +898,11 @@ html.dark .context-limit-banner--full {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.model-picker { position: relative; min-width: 0; }
+/* The caption "Via <provider>" (#496, F10) sits next to the select when there is room, otherwise below it.
+   It is never hidden: the provider has to stay named. */
+.model-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
+.model-picker-control { position: relative; min-width: 0; max-width: 100%; }
+.model-picker-provider { font-size: .72rem; line-height: 1.3; color: var(--muted-text); min-width: 0; }
 .model-picker select {
   font-size: .8rem; padding: 6px 28px 6px 10px; max-width: 100%; text-overflow: ellipsis;
   border: 1px solid var(--gray-200); border-radius: var(--radius-sm);

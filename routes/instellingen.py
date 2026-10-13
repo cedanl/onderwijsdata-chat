@@ -55,7 +55,8 @@ async def get_settings_config(username: str | None = Depends(get_optional_user))
     available = get_available_models_for_user(username)
     return {
         "models": [
-            {"id": mid, "name": name, "description": desc, "icon": icon} for mid, name, desc, icon in (available or [])
+            {"id": mid, "name": name, "description": desc, "icon": icon, "provider": provider}
+            for mid, name, desc, icon, provider in (available or [])
         ],
         "default_model": MODEL,
     }
