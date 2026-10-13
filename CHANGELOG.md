@@ -310,6 +310,11 @@ de laatste tag is 1.8.6.
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
   titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
   en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
+- Een gesprek verwijderen vanuit de zoekresultaten in de zijbalk werkt nu net zo (#529): de treffer verdwijnt
+  meteen, de toast "Gesprek verwijderd." biedt "Ongedaan maken" en de server verwijdert pas na acht seconden.
+  Dat geldt ook voor een gesprek dat niet in de geladen lijst staat; daar gebeurde eerst niets. Ongedaan maken
+  zet de treffer op zijn plaats terug, een nieuwe zoekopdracht binnen de bedenktijd toont hem niet. Is het
+  gesprek nergens meer te vinden, dan meldt de app "Gesprek verwijderen is mislukt. Probeer het opnieuw."
 - Een verwijderd open gesprek komt na verversen niet meer terug (#530): het sluiten of verbergen van de tab en
   een antwoord dat daarna nog afrondt schreven het opnieuw in de lokale opslag. Het blijft op het scherm staan
   tot een nieuw gesprek; pas een nieuwe vraag daarin wordt weer bewaard. Ongedaan maken bewaart het meteen weer.

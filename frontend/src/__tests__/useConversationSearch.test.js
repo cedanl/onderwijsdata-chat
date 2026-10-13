@@ -77,3 +77,62 @@ describe('useConversationSearch', () => {
     expect(search.searching).toBe(false)
   })
 })
+
+// #529: a hit deleted from the results goes at once and comes back on undo, in its place.
+describe('useConversationSearch remove and restore', () => {
+  const hits = [
+    { id: 'c1', title: 'Uitval hbo', timestamp: 3 },
+    { id: 'c2', title: 'Uitval mbo', timestamp: 2 },
+    { id: 'c3', title: 'Uitval wo', timestamp: 1 },
+  ]
+
+  async function searchFor(query) {
+    await act(async () => { search.setQuery(query) })
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
+  }
+
+  it('removes a hit and puts it back at its index', async () => {
+    fetchConversations.mockResolvedValue(hits)
+    await searchFor('uitval')
+
+    await act(async () => { search.removeResult('c2') })
+    expect(search.results.map(c => c.id)).toEqual(['c1', 'c3'])
+
+    await act(async () => { search.restoreResult(hits[1], 1) })
+    expect(search.results.map(c => c.id)).toEqual(['c1', 'c2', 'c3'])
+  })
+
+  it('keeps a removed hit out of a later answer that still has it', async () => {
+    fetchConversations.mockResolvedValue(hits)
+    await searchFor('uitval')
+    await act(async () => { search.removeResult('c2') })
+
+    await searchFor('uitval hbo')
+    expect(search.results.map(c => c.id)).toEqual(['c1', 'c3'])
+  })
+
+  it('does not put a hit back into the results of another query', async () => {
+    fetchConversations.mockResolvedValueOnce(hits).mockResolvedValueOnce([hits[0]])
+    await searchFor('uitval')
+    await act(async () => { search.removeResult('c2') })
+    await searchFor('hbo')
+
+    await act(async () => { search.restoreResult(hits[1], 1) })
+    expect(search.results.map(c => c.id)).toEqual(['c1'])
+  })
+
+  it('leaves the results alone without a search', async () => {
+    await act(async () => { search.removeResult('c2') })
+    await act(async () => { search.restoreResult(hits[1], 1) })
+    expect(search.results).toBeNull()
+  })
+
+  it('only lifts the hiding when the hit was not in the results', async () => {
+    fetchConversations.mockResolvedValue(hits)
+    await act(async () => { search.removeResult('c2') })
+    await act(async () => { search.restoreResult(hits[1], -1) })
+
+    await searchFor('uitval')
+    expect(search.results.map(c => c.id)).toEqual(['c1', 'c2', 'c3'])
+  })
+})
