@@ -22,8 +22,12 @@ vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
 const chatState = vi.hoisted(() => ({ messages: [], busy: false, addToast: null, buffered: '', toasts: [] }))
-// Stabiele identiteit, zoals de echte addToast uit useChat (useCallback).
-const stableToast = vi.hoisted(() => (...a) => chatState.addToast?.(...a))
+// Stabiele identiteit, zoals de echte addToast uit useChat (useCallback); geeft net als
+// de echte een functie terug die de toast weghaalt (#493).
+const stableToast = vi.hoisted(() => (...a) => {
+  chatState.addToast?.(...a)
+  return () => {}
+})
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
     messages: chatState.messages, busy: chatState.busy,
@@ -246,7 +250,8 @@ describe('volle opslag van de gesprekslijst (#521)', () => {
     await act(async () => { container.querySelector('[aria-label="Verwijder gesprek Weg ermee"]').click() })
     await act(async () => { document.querySelector('.confirm-destructive').click() })
 
-    expect(meldingen).toEqual([[LIJST_MELDING, 'warning']])
+    // Naast de toast met "Ongedaan maken" (#493).
+    expect(meldingen).toEqual([[LIJST_MELDING, 'warning'], ['Gesprek verwijderd.', 'info']])
   })
 
   it('meldt de lijst los van het open gesprek', async () => {
