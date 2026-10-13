@@ -72,6 +72,10 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Bij CBS-data noemt het antwoord de datum nu als "CBS heeft deze tabel voor het laatst bijgewerkt op 9 april 2026"
+  in plaats van "Deze dataset is actueel tot 9 april 2026"; die zin vroeg de systeemprompt. De datum is de dag
+  waarop CBS de tabel het laatst bijwerkte, uit de meegeleverde catalogus (`_laatste_update`), niet het einde van
+  de cijfers: welke periode die beslaan, staat in de perioden van de data (#496, F-03).
 - Een vage vraag, een kort thema zonder maat zoals "studentenwelzijn", krijgt een zichtbare interpretatie (#514):
   komt er geen verduidelijkingskaart, dan opent het antwoord met "Ik ga uit van de lezing «…»" met de titels van
   de datasets waarop het rust, uit de catalogus, en de uitnodiging om de maat of bron te noemen als iets anders
@@ -244,6 +248,10 @@ de laatste tag is 1.8.6.
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Boven een antwoord dat na controle is aangepast staat nu "Eerste versie van dit antwoord is aangepast na
+  controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
+  controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
+  standaard dicht; de reden en de eerdere tekst staan er ongewijzigd in (#496, F-01).
 - Een gesprek verwijderen is acht seconden ongedaan te maken (#493): na het bevestigen verdwijnt het gesprek
   meteen uit de lijst en toont een toast "Gesprek verwijderd" met "Ongedaan maken"; de verwijdering op de server
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
