@@ -7,6 +7,7 @@ de data mee naar query, KPI, grafiek, export en het blok onder het antwoord.
 """
 
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -154,3 +155,16 @@ def test_grafiek_en_export_noemen_de_afronding():
 def test_antwoord_krijgt_de_afronding_eronder():
     blok = telling_blok([json.dumps({"data_key": _KEY})])
     assert "85423NED" in blok and "10-tallen" in blok
+
+
+def test_prompt_laat_het_afrondingsverschil_bij_het_totaal_noemen_zonder_som():
+    """#496 F-02: "exclusief extranei" 465.820 (een eigen CBS-cel) naast bol 328.610 + bbl 137.220
+    = 465.830 las als rekenfout. Het model noemt het verschil bij het totaal, maar schrijft de som
+    niet uit: die staat niet in de tooldata en zou de getalcontrole een intrekking laten geven.
+    Zonder `afronding`-noot schrijft het model een verschil niet aan afronding toe."""
+    prompt = (Path(__file__).resolve().parent.parent / "prompts" / "system.md").read_text(encoding="utf-8")
+    [regel] = [r for r in prompt.splitlines() if "**CBS-afronding:**" in r]
+    assert "gepubliceerde totaal" in regel
+    assert "zonder de som" in regel
+    assert "Staat er geen `afronding`-noot in de data" in regel
+    assert "niet aan afronding toe" in regel
