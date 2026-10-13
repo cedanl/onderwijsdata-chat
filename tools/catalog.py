@@ -532,6 +532,26 @@ def _no_match(query: str, zwak: list, geo_niveau: str | None) -> str:
     )
 
 
+def kandidaten(query: str, n: int = _MAX_SUGGESTIES) -> list[dict]:
+    """De records die search_catalog voor deze vraag bovenaan zet, zonder log en zonder model (#348).
+
+    Dezelfde weging als de tool, actieve records vóór het archief, geen geofilter, maar een strengere
+    drempel: elke term moet raken. De tool laat in een volzin één term volstaan (#351), omdat het model
+    de treffers nog weegt; een kaart uit code doet dat niet, dus "Wanneer speelt Ajax thuis?" mag op
+    "thuis" alleen geen maat-opties krijgen. Per record het dataset-ID, de titel (`bron`) en de samenvatting.
+    """
+    woorden = _woorden(query)
+    trefwoorden = _filter_stopwoorden(woorden)
+    termen, _nodig = _drempel(query, woorden, trefwoorden)
+    active, archive, _zwak = _verzamel(_expand_query(trefwoorden), "both", termen, len(termen))
+    hits, _onbekend = _gerangschikt(active or archive, None)
+    return [
+        {"id": _dataset_id(h), "titel": str(h.get("bron") or _dataset_id(h)), "samenvatting": h.get("samenvatting")}
+        for h in hits[:n]
+        if _dataset_id(h) != "?"
+    ]
+
+
 def search_catalog(
     query: str,
     source: str = "both",

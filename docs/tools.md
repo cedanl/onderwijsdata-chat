@@ -153,6 +153,14 @@ flowchart LR
 
 **Gebruik:** Vraag is ambigue, eerst verduidelijken dan analyseren.
 
+Twee open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scopevraag.py`, #348): een
+telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten
+heeft Utrecht?") krijgt een kaart met de instellingen uit het register en de woonplaats als opties; een
+kort thema zonder maat ("arbeidsmarkt") een kaart met de catalogusrecords die `search_catalog`
+bovenaan zet, mits elke term raakt. Dezelfde vraag geeft zo altijd dezelfde eerste stap; de opties zijn
+altijd geldig. Noemt de vraag een instelling, of bepaalt het profiel haar, dan komt er geen kaart. Na de
+keuze formuleert het model het antwoord; `clarify_scope` is dan weg (#75).
+
 **Ideale volgorde:**
 1. `clarify_scope` — Toon keuzes aan gebruiker
 2. (Wacht op keuze) — Gebruiker selecteert optie

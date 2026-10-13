@@ -1,8 +1,9 @@
 """Een vage vraag krijgt een zichtbare interpretatie (#514, UX F07b).
 
 "studentenwelzijn" leverde zonder navraag een grafiek over werkdruk bij gepromoveerden: het
-model koos stilzwijgend een lezing. Of het model eerst vraagt (clarify_scope) blijft aan het
-model (#348); hier staat de zichtbare kant in code. Rust het antwoord op een gekozen lezing
+model koos stilzwijgend een lezing. Een kort thema zonder maat krijgt sinds #348 eerst een
+maatkaart uit code (agent/scopevraag.py); komt die er niet (geen twee catalogusrecords), dan
+staat hier de zichtbare kant in code. Rust het antwoord op een gekozen lezing
 van een thema zonder maat, dan opent het met "Ik ga uit van …" en noemt het de datasets
 waarop het rust, met hun titel uit de catalogus. Geen modeltekst, geen getallen: de zin komt
 uit de toolstappen, net als de Bronnen eronder (#416).
@@ -20,7 +21,8 @@ _MAX_WOORDEN = 4
 _MAAT = re.compile(
     r"\b(hoeveel|aantal(len)?|instroom|uitstroom|uitval|diploma\w*|gediplomeerd\w*|inschrijving\w*|"
     r"ingeschreven\w*|rendement|doorstroom|vacature\w*|prognose\w*|percentage|procent|gemiddeld\w*|"
-    r"totaal|trend|groei|daling|vergelijk\w*|verschil|zoek\w*|welke|wat|waarom|hoe|toon|definitie|datasets?|bronnen?)\b",
+    r"totaal|trend|groei|daling|vergelijk\w*|verschil|zoek\w*|welke|wat|waarom|wanneer|wie|waar|hoe|toon|definitie|"
+    r"datasets?|bronnen?)\b",
     re.IGNORECASE,
 )
 # Het model benoemde zijn lezing al zelf, in de eerste regels.
