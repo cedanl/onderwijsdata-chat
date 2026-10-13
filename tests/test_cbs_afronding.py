@@ -168,3 +168,17 @@ def test_prompt_laat_het_afrondingsverschil_bij_het_totaal_noemen_zonder_som():
     assert "zonder de som" in regel
     assert "Staat er geen `afronding`-noot in de data" in regel
     assert "niet aan afronding toe" in regel
+
+
+@pytest.mark.usefixtures("_afgerond")
+def test_eigen_berekening_meldt_de_afronding():
+    """Een verschil of som in run_analysis op afgeronde data is niet exacter dan de bron (#531, F-10)."""
+    from tools.analysis import run_analysis
+
+    result = run_analysis(
+        "result = int(df['TotaalIngeschrevenen_1'].iloc[0] - df['TotaalIngeschrevenen_1'].iloc[1])", _KEY
+    )
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed["resultaat"] == 8700
+    assert parsed["afronding"] == cbs_afronding.noot(10)

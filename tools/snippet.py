@@ -14,7 +14,7 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import instellingsprovincie, scopeprofiel, store
+from . import cbs_selectie, instellingsprovincie, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
@@ -79,8 +79,19 @@ def _duo_sentinelregels() -> list[str]:
     ]
 
 
+def _cbs_filters(args: dict) -> dict:
+    """De OData-parameters van de aanroep: de bewaarde `filters`, of het compilaat van een
+    gesloten selectie (#343). Zonder poort: de snippet reproduceert de aanroep, hij keurt hem niet."""
+    if (filters := args.get("filters")) is not None:
+        return dict(filters)
+    if (selectie := args.get("selectie")) is None:
+        return {}
+    compilaat = cbs_selectie.compileer(args["dataset_id"], selectie, None)
+    return compilaat if isinstance(compilaat, dict) else {}
+
+
 def _cbs_laadregels(args: dict) -> list[str]:
-    filters = args.get("filters") or {}
+    filters = _cbs_filters(args)
     # Dezelfde sectorselectie als de app, in de aanroep en op de rijen (CH-03).
     selectie = scopeprofiel.cbs_sectorselectie(args["dataset_id"], filters)
     if isinstance(selectie, scopeprofiel.CbsSectorselectie):

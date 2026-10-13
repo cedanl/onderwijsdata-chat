@@ -552,3 +552,15 @@ def test_create_plot_snippet_tekent_lange_namen_liggend_zoals_de_app():
     assert snippet is not None
     assert 'fig = px.bar(df, x="AANTAL", y="INSTELLING", orientation="h", title="t")' in snippet
     assert 'autorange="reversed"' in snippet
+
+
+def test_get_cbs_data_snippet_toont_het_compilaat_van_een_gesloten_selectie():
+    """Het model stuurt een selectie, de server bouwt de filter (#343): de snippet laadt met die filter (#531)."""
+    snippet = generate(
+        "get_cbs_data",
+        {"dataset_id": "85353NED", "selectie": {"dimensies": {"Geslacht": "4000"}, "periode": ["2021/22"]}},
+    )
+    assert snippet is not None
+    assert 'data("85353NED"' in snippet
+    assert "trim(Geslacht) eq '4000'" in snippet and "trim(Perioden) eq '2021SJ00'" in snippet
+    assert "selectie" not in snippet

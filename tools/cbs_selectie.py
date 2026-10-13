@@ -11,6 +11,10 @@ De volledigheidspoort zit vóór het laden: een selectie waarin een dimensie noc
 gepind noch bewust uitgesplitst is, komt niet binnen; de weigering noemt wat
 ontbreekt. Periodespelling loopt via tools/periode.py (#342); kolomsleutels toetst
 get_cbs_data zelf al (geen tweede controle). Zie ADR-006.
+
+Elke vergelijking gaat als `trim(Dimensie) eq 'code'`: CBS vult de sleutels van een
+dimensie op tot één breedte ('4000   ' naast 'T001038') en de feed en get_cbs_dimension
+tonen ze gestript, zodat de kale code zonder trim niets matcht (#531).
 """
 
 from . import periode
@@ -40,6 +44,11 @@ def _code(waarde) -> str:
     return str(waarde).strip().replace("'", "''")
 
 
+def _gelijk(dimensie: str, code: str) -> str:
+    """Eén vergelijking, op de gestripte sleutel: zie de opgevulde sleutels in de moduledocstring."""
+    return f"trim({dimensie}) eq '{code}'"
+
+
 def _clausule(dimensie: str, waarde) -> str | None:
     """De filterclausule voor één dimensie; None bij `*` (bewust uitsplitsen), '' bij niets."""
     if waarde == ALLES:
@@ -49,8 +58,8 @@ def _clausule(dimensie: str, waarde) -> str | None:
     if not codes:
         return ""
     if len(codes) == 1:
-        return f"{dimensie} eq '{codes[0]}'"
-    return "(" + " or ".join(f"{dimensie} eq '{code}'" for code in codes) + ")"
+        return _gelijk(dimensie, codes[0])
+    return "(" + " or ".join(_gelijk(dimensie, code) for code in codes) + ")"
 
 
 def _periodecodes(opgave) -> list[str] | str:
@@ -146,9 +155,9 @@ def compileer(dataset_id: str, selectie, col_defs: dict | None) -> dict | str:
         if isinstance(codes, str):
             return codes
         if len(codes) == 1:
-            clausules.append(f"{tijd} eq '{codes[0]}'")
+            clausules.append(_gelijk(tijd, codes[0]))
         else:
-            clausules.append("(" + " or ".join(f"{tijd} eq '{code}'" for code in codes) + ")")
+            clausules.append("(" + " or ".join(_gelijk(tijd, code) for code in codes) + ")")
 
     params: dict = {}
     if clausules:
