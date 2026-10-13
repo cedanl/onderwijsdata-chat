@@ -406,3 +406,7 @@ de laatste tag is 1.8.6.
   chat-WebSocket, dashboard-refresh en verversen weigeren het daarna. Een token geldt nu 8 uur in plaats van
   24 (`SESSION_TTL_HOURS`) en verversen kan tot 24 uur na inloggen (`SESSION_MAX_HOURS`), niet meer onbeperkt.
   Wie met `CHAT_USERS` inlogt, moet na 8 uur opnieuw inloggen. Bestaande tokens blijven geldig tot hun vervaltijd.
+- CSP `connect-src` staat alleen nog de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`) in plaats
+  van WebSockets naar elke host (#506, SECURITY.md S13). Nieuwe CI-jobs `audit:python` (pip-audit op `uv.lock`) en
+  `audit:npm` (npm audit, high) scannen de dependencies op `main` en in elke MR; informatief, ze blokkeren niets
+  (SECURITY.md S12). De SDP-securitycomponent bleek alleen secret detection en SAST te draaien.

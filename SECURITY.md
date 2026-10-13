@@ -10,7 +10,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 |---|---|---|---|
 | S1 | HTML-injectie in geëxporteerde rapporten | Hoog | ✅ Opgelost (escaping in de frontend) |
 | S2 | Lodash kwetsbare versie op loginpagina | Hoog | ✅ Opgelost (Chainlit verwijderd) |
-| S3 | Ontbrekende HTTP security headers | Gemiddeld | ✅ Opgelost (middleware); CSP-restpunten in S13 (#486, #506) |
+| S3 | Ontbrekende HTTP security headers | Gemiddeld | ✅ Opgelost (middleware); `'unsafe-inline'` blijft een restpunt in S13 |
 | S4 | Foutmeldingen lekken interne exceptie-tekst | Gemiddeld | ✅ Opgelost (#404, #503) |
 | S5 | Geen rate limiting op login of chat | Gemiddeld | ⚠️ Gedeeltelijk — login beperkt per gebruikersnaam + adres (#504, restrisico hieronder); chat per gebruiker of verbinding (#444) |
 | S6 | JWT-token in query parameter (WebSocket) | Laag–Gemiddeld | ✅ Opgelost (`bearer`-subprotocol, #103) |
@@ -19,8 +19,8 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S9 | JWT opgeslagen in localStorage | Laag | ℹ️ Geaccepteerd — zie S9; CSP-voorbehoud in S13 (#486) |
 | S10 | Sessieduur 24 uur, niet instelbaar | Laag | ✅ Opgelost (8 u per token via `SESSION_TTL_HOURS`, max. 24 u na inloggen via `SESSION_MAX_HOURS`, #479) |
 | S11 | Tool-enumeratie via LLM; `run_analysis` voert modelcode uit | Laag | ℹ️ Geaccepteerd — het model kan via `run_analysis` willekeurige Python laten uitvoeren; de sandbox beperkt de schade maar is geen beveiligingsgrens (#443) |
-| S12 | Dependency-kwetsbaarheden | Variabel | ⚠️ Te verifiëren (#506) |
-| S13 | CSP staat `'unsafe-inline'`, twee CDN-hosts en WebSocket naar elke host toe | Laag–Gemiddeld | ❌ Open (#486; `connect-src` in #506) |
+| S12 | Dependency-kwetsbaarheden | Variabel | ✅ Gescand in CI, informatief (`audit:python`, `audit:npm`, #506) |
+| S13 | CSP staat `'unsafe-inline'` toe | Laag–Gemiddeld | ⚠️ Deels opgelost (CDN-hosts weg, #486; `connect-src` alleen de eigen server, #506) |
 | S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
 | S15 | `history`-actie omzeilt de invoerlimiet | Laag | ✅ Opgelost (#500) — tekencap op de hele historie |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ❌ Open (#477); browseropslag na uitloggen (#507) |
@@ -53,7 +53,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 **Aangetroffen in:** ZAP-scan (16 alerts waaronder CSP, X-Frame-Options, HSTS, X-Content-Type-Options)  
 **Fix:** middleware in `server.py` zet:
-- `Content-Security-Policy` — beperkt script-, style-, img- en font-bronnen. `connect-src 'self' wss: ws:` beperkt WebSocket-verbindingen niet tot de eigen host (restpunten: zie S13)
+- `Content-Security-Policy` — beperkt script-, style-, img- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506). Restpunt `'unsafe-inline'`: zie S13
 - `X-Frame-Options: DENY` en CSP `frame-ancestors 'none'` — voorkomt clickjacking
 - `Strict-Transport-Security` — dwingt HTTPS af
 - `X-Content-Type-Options: nosniff`
@@ -147,26 +147,27 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 
 ---
 
-### S12 — Dependency-kwetsbaarheden ⚠️ Te verifiëren
+### S12 — Dependency-kwetsbaarheden ✅ Gescand in CI (informatief)
 
-**Was beschreven als:** een GitHub Actions-workflow met `pip-audit` en `npm audit`. Die workflow bestaat niet meer: `.github/workflows/` bevat alleen `docs.yml`, en `.gitlab-ci.yml` roept `pip-audit` noch `npm audit` aan.  
-**Wel aanwezig:**
-- `.gitlab-ci.yml` neemt de CI-component `surf-internal/sdp/components/base/security` op. Wat die component scant, staat niet in deze repository en is niet nagegaan.
-- Renovate (`renovate.json`) stelt dependency-updates voor.
+**Was beschreven als:** een GitHub Actions-workflow met `pip-audit` en `npm audit` (beide met `|| true`). Die workflow verdween met de Azure-infrastructuur (`19f1af6`) en had geen opvolger in GitLab.  
+**Nagegaan (#506):** de CI-component `surf-internal/sdp/components/base/security@0.10.10` neemt alleen GitLab's Secret-Detection- en SAST-templates op (semgrep, kubesec), geen dependency-scan. Die jobs draaien op branchpipelines, niet in MR-pipelines, en blokkeren niets.  
+**Nu:** twee eigen jobs in `.gitlab-ci.yml`, op `main` en in elke MR:
+- `audit:python` — `pip-audit` op de gelockte versies uit `uv.lock` (`uv export`), zonder installatie. De git-dependencies `riodata` en `onderwijsdata` staan niet in de PyPI-advisorydatabase en vallen erbuiten.
+- `audit:npm` — `npm audit --audit-level=high` op `frontend/package-lock.json`.
 
-**Te doen:** vaststellen welke dependency-scan in CI draait en of een bevinding de pipeline blokkeert: #506.
+Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blokkeert geen MR die er niets mee te maken heeft. Renovate (`renovate.json`) stelt de update voor. Bij het invoeren (13-10-2026) vonden beide niets.
 
 ---
 
-### S13 — CSP staat `'unsafe-inline'` en WebSocket naar elke host toe ⚠️ Deels opgelost
+### S13 — CSP staat `'unsafe-inline'` toe ⚠️ Deels opgelost
 
 **Locatie:** `server.py` — middleware `security_headers`  
-**Probleem:** `script-src 'self' 'unsafe-inline'` en `connect-src 'self' wss: ws:`.
+**Probleem:** `script-src 'self' 'unsafe-inline'`.
 - De CDN-hosts zijn weg (#486): Plotly voor de HTML van rapporten en dashboards komt van de eigen server (`frontend/src/plotlyBron.js`, als asset onder `/assets`), oude opgeslagen HTML met `cdn.plot.ly` wordt bij het tonen herschreven, en de download krijgt Plotly inline. `cdn.jsdelivr.net` werd door de app niet gebruikt. Een test (`tests/test_security_headers.py`) houdt `script-src` zonder derde partij.
+- `connect-src` stond `wss:` en `ws:` toe, dus WebSocket-verbindingen naar elke host; een script dat toch draaide, kon zo gegevens uit de browser (zoals het token in localStorage, S9) naar buiten sturen. Nu alleen de eigen server (#506): `'self'` plus de `wss://`-origin uit `SERVER_URL` (`server.connect_src`). Die origin staat er expliciet bij omdat oudere Safari-versies `'self'` niet op `wss:` laten slaan; zonder `SERVER_URL` (lokaal) alleen `'self'`. De chat opent zijn WebSocket naar `location.host` (`frontend/src/auth.js`).
 - `'unsafe-inline'` laat inline scripts toe, waardoor de CSP XSS maar ten dele afvangt.
-- `wss:` en `ws:` in `connect-src` staan WebSocket-verbindingen naar elke host toe. Een script dat toch draait, kan zo gegevens uit de browser, zoals het token in localStorage (S9), naar buiten sturen.
 
-**Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"`) en #506 voor `connect-src`.
+**Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"`).
 
 ---
 
@@ -237,7 +238,7 @@ Test: `tests/test_token_intrekking.py`.
 ## Aanbevelingen voor volgende stap
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
-2. **S13** — Plotly self-hosten en CDN-hosts uit de CSP (#486); `connect-src` beperken (#506)
+2. **S13** — `'unsafe-inline'` vervangen door nonces of hashes; CDN-hosts (#486) en `connect-src` (#506) zijn gedaan
 3. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
-4. **S12** — vaststellen welke dependency-scan in CI draait (#506); `nh3` opruimen (S1) en de CORS-validatie aanscherpen (S8) zijn gedaan
+4. **S12** — de gele `audit:*`-jobs volgen; een dependency-scan in CI (#506), `nh3` opruimen (S1) en de CORS-validatie (S8) zijn gedaan
 5. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
