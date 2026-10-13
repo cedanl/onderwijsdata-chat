@@ -72,6 +72,9 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- De melding bij een onbekende `data_key` noemt als beschikbare datasets alleen nog de keys van het eigen
+  gesprek, niet alles wat de gedeelde store voor andere sessies vasthoudt; buiten een gesprek noemt ze geen keys.
+  Elke tool van een verbinding, ook in een taak of thread, kent zo de keys van het eigen gesprek (#13).
 - Een CBS-selectie op een korte code, zoals `Geslacht` = `4000` (Vrouwen) in de mbo-tabellen 85353NED en
   85354NED, geeft nu rijen. CBS vult de sleutels van een dimensie op tot één breedte (`4000   ` naast
   `T001038`) en toont ze gestript; de gecompileerde filter `Geslacht eq '4000'` matchte daardoor niets en de
@@ -227,6 +230,11 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- De CSV-export (`/api/data/csv?key=`) geeft alleen een tabel uit een eigen gesprek: een key waar deze gebruiker
+  een recept van heeft (in het geheugen of bij een opgeslagen gesprek). De datastore blijft gedeeld over alle
+  sessies (openbare brondata, met een bovengrens), maar een ingelogde gebruiker kon tot nu toe elke tabel via
+  haar key ophalen, ook die van een ander (audit 14 §5). Een vreemde key krijgt dezelfde melding als een
+  verdwenen key, zodat de export niet bevestigt dat ze bestaat (#13).
 - Elk antwoord en elk rapport draagt een manifest (#345): model (en de providerversie die de
   stream terugmeldde), of seed en temperature het model echt bereikten (een provider zonder
   seed-ondersteuning staat er als "niet toegepast" in), prompt- en catalogusversie, appversie en
