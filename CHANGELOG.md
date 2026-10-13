@@ -29,6 +29,16 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- Ketenbrede controle los van `/health` en `/ready` (#169). Elk gepubliceerd resultaat (antwoord, figuur, CSV-export,
+  rapport) schrijft één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
+  selectie), volledigheid, afronding en herlaaddatum, en de versies uit het manifest (model, prompt, catalogus, app);
+  het tijdstip is dat van de regel, de selectiestappen in woorden staan op DEBUG, geen vraag- of antwoordtekst. De
+  eval-runner draait nu ook tegen een draaiende omgeving: `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` in
+  plaats van `localhost` en `admin/admin`, met `playwright.eval.config.js` zonder webserver en browser. De nieuwe
+  CI-job `eval:bronwaarheid` (gepland of met de hand, informatief) draait de bronwaarheid-evals tegen de testomgeving
+  en bewaart `eval_results/` 90 dagen als artifact. De runner heeft nu een eigen `package.json` met vastgezette
+  versies van Playwright en `ws`. `docs/kwaliteit-en-veiligheid.md` zegt welke garanties code afdwingt en welke
+  regels de prompt alleen vraagt.
 - Bronwaarheid-evals met onafhankelijke ijkwaarden (#190): `scripts/ijkwaarden.py` haalt 21 referentiewaarden
   rechtstreeks bij CBS (OData via httpx), DUO en RIO (`riodata`) op, buiten `tools/` om, en legt ze met bron,
   selectie, eenheid, schooljaar, CBS-status en ophaaldag vast in `tests/e2e/ijkwaarden.json`; zonder `--schrijf`
