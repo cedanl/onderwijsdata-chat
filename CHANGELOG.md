@@ -72,6 +72,10 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Bij CBS-data noemt het antwoord de datum nu als "CBS heeft deze tabel voor het laatst bijgewerkt op 9 april 2026"
+  in plaats van "Deze dataset is actueel tot 9 april 2026"; die zin vroeg de systeemprompt. De datum is de dag
+  waarop CBS de tabel het laatst bijwerkte, uit de meegeleverde catalogus (`_laatste_update`), niet het einde van
+  de cijfers: welke periode die beslaan, staat in de perioden van de data (#496, F-03).
 - Een vage vraag, een kort thema zonder maat zoals "studentenwelzijn", krijgt een zichtbare interpretatie (#514):
   komt er geen verduidelijkingskaart, dan opent het antwoord met "Ik ga uit van de lezing «…»" met de titels van
   de datasets waarop het rust, uit de catalogus, en de uitnodiging om de maat of bron te noemen als iets anders
@@ -240,6 +244,9 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Wie een gesprek verwijdert, leest in de bevestiging dat een rapport van dat gesprek blijft bestaan en los te
+  verwijderen is via Rapporten (#513). Een rapport is een eigen kopie met de vraag als titel; het verdwijnt
+  bewust niet mee met het gesprek.
 - De modelkiezer onder het invoerveld gebruikt gewone taal (#496, F10): "Sonnet 5.5 — voor de meeste vragen" in
   plaats van "Sonnet 5.5 (Foundry) — Azure AI Foundry — gebalanceerd". Wie het model draait, staat er als rustig
   bijschrift naast of onder, altijd zichtbaar: "Via Microsoft Azure AI Foundry". `GET /api/settings/config` geeft
@@ -258,6 +265,10 @@ de laatste tag is 1.8.6.
   de browser en plant geen volgende vernieuwing meer in (#499).
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Boven een antwoord dat na controle is aangepast staat nu "Eerste versie van dit antwoord is aangepast na
+  controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
+  controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
+  standaard dicht; de reden en de eerdere tekst staan er ongewijzigd in (#496, F-01).
 - Een gesprek verwijderen is acht seconden ongedaan te maken (#493): na het bevestigen verdwijnt het gesprek
   meteen uit de lijst en toont een toast "Gesprek verwijderd" met "Ongedaan maken"; de verwijdering op de server
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
@@ -335,6 +346,12 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Feedback per antwoord (👍/👎) van een verwijderd gesprek hangt niet meer aan de gebruiker (#476, privacy M2):
+  gesprek verwijderen zet in `answer_feedback` de gebruikersnaam op `verwijderd` en het gesprek-id op een willekeurige
+  waarde (één per verwijderd gesprek). Oordeel, toelichting en trace blijven voor het team, ook in
+  `scripts/antwoordfeedback.py`; het oordeel komt niet meer terug bij het oude gesprek-id. De 👎-vorm zegt wat er
+  bewaard wordt. Feedback van gesprekken die al eerder zijn verwijderd, wordt bij de eerste start eenmalig op
+  dezelfde manier ontkoppeld (`476_ontkoppel_feedback_zonder_gesprek`).
 - De chat heeft een berichtlimiet (#444, SECURITY.md S5): `CHAT_RATE_LIMIT` verzoeken die het model kosten
   (vraag, verduidelijking, dashboard, rapport) per `CHAT_RATE_WINDOW_S` seconden, standaard 30 per 10 minuten,
   per gebruiker en zonder login per verbinding. Daarboven ziet de gebruiker "Te veel verzoeken in korte tijd.
