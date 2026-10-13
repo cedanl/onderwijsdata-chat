@@ -55,6 +55,17 @@ describe('AnswerFeedback', () => {
     expect(container.querySelector('textarea')).toBeNull()
   })
 
+  // #476: de 👎-vorm zegt wat er met de melding gebeurt, ook als je het gesprek verwijdert.
+  it('zegt bij een duim omlaag wat er voor het team wordt bewaard', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn() }))
+    await act(async () => knop('Fout antwoord').click())
+    const uitleg = container.querySelector('.answer-feedback-form .answer-feedback-bewaard').textContent
+    expect(uitleg).toContain('de vraag, het antwoord en de stappen')
+    expect(uitleg).toMatch(/verwijder je het gesprek.*zonder je naam/i)
+    const veld = container.querySelector('textarea')
+    expect(veld.getAttribute('aria-describedby')).toBe(container.querySelector('.answer-feedback-bewaard').id)
+  })
+
   it('toont het gegeven oordeel, ook na heropenen', async () => {
     await mount(createElement(AnswerFeedback, { value: 'down', onSubmit: vi.fn() }))
     expect(knop('Fout antwoord').getAttribute('aria-pressed')).toBe('true')

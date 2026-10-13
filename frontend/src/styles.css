@@ -1316,6 +1316,7 @@ html.dark .context-limit-banner--full {
 .answer-feedback-note { font-size: .75rem; color: var(--muted-text); margin-left: 4px; }
 .answer-feedback-confirm { font-size: .875rem; font-weight: 500; color: var(--gray-700); }
 .answer-feedback-confirm:not(:empty) { margin-left: 4px; }
+.answer-feedback-bewaard { font-size: .75rem; color: var(--muted-text); line-height: 1.4; }
 .answer-feedback-form { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-width: 480px; }
 .answer-feedback-form textarea {
   font: inherit; font-size: .85rem; padding: 6px 8px; resize: vertical;
