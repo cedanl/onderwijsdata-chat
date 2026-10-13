@@ -26,6 +26,7 @@ from litellm import get_supported_openai_params
 
 from config import Config
 from core.config import SEED, TEMPERATURE
+from core.logging_util import foutkenmerk
 from tools import store
 from tools.catalog import catalogus_digest, catalogus_laatste_update
 
@@ -58,7 +59,9 @@ def _sampling(model: str) -> dict:
     try:
         ondersteund = set(get_supported_openai_params(model=model) or [])
     except Exception as e:
-        logger.warning("Sampling-ondersteuning van %s niet vast te stellen: %s", model, e)
+        # Een providerfout kan de request citeren: op WARNING type en kenmerk, de tekst op DEBUG (#502).
+        logger.warning("Sampling-ondersteuning van %s niet vast te stellen: %s", model, foutkenmerk(e))
+        logger.debug("Sampling-ondersteuning van %s niet vast te stellen: %r", model, e)
         ondersteund = None
     return {
         "seed": SEED,

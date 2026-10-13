@@ -39,7 +39,7 @@ from core.config import (
     MAX_MESSAGE_CHARS,
     MODEL,
 )
-from core.errors import Gebruikersfout, error_event, friendly_error
+from core.errors import Gebruikersfout, error_event, friendly_error, log_interne_fout
 from core.logging_context import nieuwe_verbinding
 from core.rate_limit import RateLimiter
 from tools import store
@@ -181,8 +181,10 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
         # Any other exception — a parser error included — falls through to the
         # generic melding below, so no raw exception text reaches the browser (#503).
         await emit({"type": "report_error", "message": str(e)})
-    except Exception:
-        logger.exception("Report generation failed")
+    except Exception as e:
+        # De fouttekst kan modeluitvoer citeren (een JSONDecodeError op het antwoord): op ERROR
+        # alleen type en kenmerk, de traceback op DEBUG (#502).
+        log_interne_fout(e, "rapport")
         await emit(
             {
                 "type": "report_error",
