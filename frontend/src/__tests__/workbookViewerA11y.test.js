@@ -59,10 +59,34 @@ describe('report viewer loading state', () => {
         onBack: vi.fn(), onUpdate: vi.fn(),
       }))
     })
+    const region = container.querySelector('.wb-viewer-content')
     expect(container.querySelector('.wb-viewer-loading')?.textContent).toContain('Rapport wordt geladen')
+    // The frame's content is not in the page's DOM: the busy region is what tells assistive tech (#533).
+    expect(region.getAttribute('aria-busy')).toBe('true')
     hold = false
     document.removeEventListener('load', holdFrameLoad, true)
     await act(async () => { container.querySelector('iframe').dispatchEvent(new Event('load')) })
     expect(container.querySelector('.wb-viewer-loading')).toBeNull()
+    expect(region.getAttribute('aria-busy') ?? 'false').toBe('false')
+  })
+})
+
+// A report without content showed an empty white frame, which looks like a page that never loads (#533).
+describe('report viewer without content', () => {
+  it.each([[''], [undefined], ['   ']])('says the report is empty instead of a blank frame (htmlContent %j)', async htmlContent => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root.render(createElement(WorkbookViewer, {
+        workbook: { id: 'wb-2', type: 'report', title: 'Leeg rapport', htmlContent },
+        onBack: vi.fn(), onUpdate: vi.fn(),
+      }))
+    })
+    const region = container.querySelector('.wb-viewer-content')
+    expect(region.textContent).toContain('Dit rapport heeft geen inhoud.')
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(container.querySelector('.wb-viewer-loading')).toBeNull()
+    expect(region.getAttribute('aria-busy') ?? 'false').toBe('false')
   })
 })

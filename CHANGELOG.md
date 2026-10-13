@@ -308,6 +308,9 @@ de laatste tag is 1.8.6.
   catalogustitel van de dataset (`Mbo_studenten_naar_niveau_leerweg_herkomst_85354NED.csv` in plaats van
   `85354NED.csv`), de CSV van een grafiek naar de grafiektitel met het dataset-id erachter. Kent de catalogus de
   dataset niet, dan is het alleen het id; een grafiek zonder dataset houdt `<titel>.csv`.
+- De rapportviewer is nooit meer een leeg vlak (#533): zolang een rapport rendert, staat de inhoud als bezig
+  (`aria-busy`) naast de melding "Rapport wordt geladen…", en een rapport zonder inhoud zegt "Dit rapport heeft geen
+  inhoud." in plaats van een wit kader.
 - De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
   figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
   (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie
