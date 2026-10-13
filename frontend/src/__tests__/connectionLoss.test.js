@@ -10,6 +10,8 @@ import { useChat } from '../hooks/useChat'
 import useDashboardChat from '../hooks/useDashboardChat'
 import { BACKOFF_DELAYS, HEARTBEAT_INTERVAL_MS, PONG_TIMEOUT_MS } from '../socketHealth'
 import { FakeWebSocket } from './fakeWebSocket'
+import { connectionStatus } from '../connectionStatus'
+import { useOnline } from '../hooks/useOnline'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -17,11 +19,14 @@ const NA_LANGSTE_BACKOFF_MS = Math.max(...BACKOFF_DELAYS) + 1
 
 let root
 let hook
+// #532: de status die de footer toont, afgeleid uit navigator.onLine en de socket van de hook.
+let status
 
 // De heartbeat start bij onopen; tests met fake timers zetten die daarom vóór mount aan.
 async function mount(useHook, { open = true } = {}) {
   function Harness() {
     hook = useHook()
+    status = connectionStatus({ online: useOnline(), connected: hook.connected })
     return null
   }
   root = createRoot(document.createElement('div'))
@@ -30,8 +35,10 @@ async function mount(useHook, { open = true } = {}) {
   return FakeWebSocket.last
 }
 
-const offline = () => act(async () => { window.dispatchEvent(new Event('offline')) })
-const online = () => act(async () => { window.dispatchEvent(new Event('online')) })
+// Zoals een browser: navigator.onLine wisselt vóór het event.
+const setOnLine = value => Object.defineProperty(navigator, 'onLine', { configurable: true, value })
+const offline = () => act(async () => { setOnLine(false); window.dispatchEvent(new Event('offline')) })
+const online = () => act(async () => { setOnLine(true); window.dispatchEvent(new Event('online')) })
 const assistant = () => hook.messages.filter(m => m.role === 'assistant')
 
 async function startTurn(ws) {
@@ -60,6 +67,7 @@ beforeEach(() => {
 afterEach(() => {
   if (root) act(() => root.unmount())
   root = null
+  delete navigator.onLine
   vi.useRealTimers()
 })
 
@@ -225,6 +233,38 @@ describe.each([
     await act(async () => { vi.advanceTimersByTime(NA_LANGSTE_BACKOFF_MS) })
 
     expect(FakeWebSocket.instances).toEqual([ws])
+  })
+})
+
+describe.each([
+  ['useChat', useChat],
+  ['useDashboardChat', useDashboardChat],
+])('%s: verbindingsstatus voor de footer (#532)', (_, useHook) => {
+  it('is offline na het offline-event zonder lopende vraag, en ok zodra de nieuwe socket open is', async () => {
+    await mount(useHook)
+    expect(status).toBe('ok')
+
+    await offline()
+    expect(status).toBe('offline')
+
+    await online()
+    expect(status).toBe('reconnecting')
+    await act(async () => { FakeWebSocket.last.open() })
+    expect(status).toBe('ok')
+  })
+
+  it('is offline na het offline-event tijdens een lopende vraag, en ok zodra de nieuwe socket open is', async () => {
+    const ws = await mount(useHook)
+    await startTurn(ws)
+    expect(status).toBe('ok')
+
+    await offline()
+    expect(hook.busy).toBe(false)
+    expect(status).toBe('offline')
+
+    await online()
+    await act(async () => { FakeWebSocket.last.open() })
+    expect(status).toBe('ok')
   })
 })
 
