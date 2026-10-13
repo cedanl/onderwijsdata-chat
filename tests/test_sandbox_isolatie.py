@@ -55,13 +55,26 @@ def test_globals_probe_wordt_geweigerd(data):
         "result = df.query('N.__class__')",
         "result = '{0.__class__}'.format(df)",
         "result = len(store_get(df.columns[0]))",
+        # #443: een stdlib-module als attribuut van pandas of numpy komt bij het proces of het bestandssysteem.
+        "result = pd.io.common.os.getpid()",
+        "result = dict(pd.io.common.os.environ)",
+        "result = pd.compat.sys.version if len(df) else 0",
+        "result = np.lib.npyio.os.getcwd() if len(df) else 0",
     ],
 )
 def test_ast_laag_weigert_ontsnappingsroutes(data, code):
     assert "niet toegestaan" in run_analysis(code=code, data_key=data).lower()
 
 
+def test_ast_laag_laat_pandas_hulpfuncties_toe(data):
+    """De denylist raakt alleen modules van het systeem, niet de API van pandas (#443)."""
+    uitkomst = run_analysis(code="result = int(pd.api.types.is_numeric_dtype(df['N']))", data_key=data)
+    assert "niet toegestaan" not in uitkomst.lower()
+    assert '"resultaat":1' in uitkomst.replace(" ", "")
+
+
 def test_kindproces_draait_los_van_de_server():
+    # De tweede laag op zichzelf: zonder de AST-controle is `os` via pandas bereikbaar, maar in een ander proces (#443).
     uitkomst = _in_sandbox("result = pd.io.common.os.getpid()")
     assert uitkomst.fout is None
     assert uitkomst.result != os.getpid()

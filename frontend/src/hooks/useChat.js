@@ -105,10 +105,14 @@ export function useChat() {
     }])
   }, [endReport])
 
-  const addToast = useCallback((message, level = 'info') => {
+  // `opties.actie` ({ label, onClick }) zet een knop in de toast, `opties.duur` de tijd in ms (#493).
+  // Geeft een functie terug die de toast eerder weghaalt.
+  const addToast = useCallback((message, level = 'info', opties = {}) => {
     const id = nextId()
-    setToasts(t => [...t, { id, message, level }])
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
+    const weg = () => setToasts(t => t.filter(x => x.id !== id))
+    setToasts(t => [...t, { id, message, level, actie: opties.actie || null }])
+    setTimeout(weg, opties.duur || 4000)
+    return weg
   }, [])
 
   // The open card ends without an answer: its steps stay as the turn's trace (#398).

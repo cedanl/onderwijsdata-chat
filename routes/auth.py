@@ -3,6 +3,7 @@ import logging
 import secrets
 import time
 import urllib.parse
+from collections import OrderedDict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -72,17 +73,40 @@ async def auth_status() -> dict:
     return {"required": AUTH_ENABLED, "oidc_enabled": is_oidc_configured()}
 
 
-_oidc_user_cache = {}  # username -> user_info (cached from OIDC)
+# De SRAM-gebruikersinfo (naam, e-mail, organisatie, instelling) per gebruiker, zodat ze een herlaad van
+# de pagina overleeft. Begrensd (#487, privacy M4): een rij vervalt na SESSION_MAX (langer kan geen sessie
+# leven) en boven _OIDC_CACHE_MAX gebruikers gaat de langst niet gebruikte eruit. Eerder groeide dit tot een
+# herstart.
+_OIDC_CACHE_MAX = 1000
+_oidc_user_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()  # username -> (vervalt op, user_info)
+
+
+def _ruim_oidc_cache_op() -> None:
+    nu = time.monotonic()
+    for naam in [naam for naam, (vervalt, _) in _oidc_user_cache.items() if vervalt <= nu]:
+        del _oidc_user_cache[naam]
+    while len(_oidc_user_cache) > _OIDC_CACHE_MAX:
+        _oidc_user_cache.popitem(last=False)
 
 
 def _store_oidc_user(username: str, user_data: dict) -> None:
-    """Store SRAM user info server-side so it survives page reloads."""
-    _oidc_user_cache[username] = user_data
+    """Store SRAM user info server-side so it survives page reloads; bounded in size and time (#487)."""
+    _oidc_user_cache.pop(username, None)
+    _oidc_user_cache[username] = (time.monotonic() + SESSION_MAX, user_data)
+    _ruim_oidc_cache_op()
 
 
 def _get_oidc_user(username: str) -> dict | None:
-    """Retrieve cached SRAM user info."""
-    return _oidc_user_cache.get(username)
+    """Retrieve cached SRAM user info; None when unknown or expired. Reading keeps the row young."""
+    item = _oidc_user_cache.get(username)
+    if item is None:
+        return None
+    vervalt, user_data = item
+    if vervalt <= time.monotonic():
+        del _oidc_user_cache[username]
+        return None
+    _oidc_user_cache.move_to_end(username)
+    return user_data
 
 
 # Only add user info + refresh endpoints if OIDC is configured

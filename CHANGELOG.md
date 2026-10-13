@@ -244,6 +244,15 @@ de laatste tag is 1.8.6.
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Een gesprek verwijderen is acht seconden ongedaan te maken (#493): na het bevestigen verdwijnt het gesprek
+  meteen uit de lijst en toont een toast "Gesprek verwijderd" met "Ongedaan maken"; de verwijdering op de server
+  gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
+  titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
+  en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
+- Een ververs van een dashboard zonder datarecept meldt niet meer "Data ververst" maar "Bij de bron is niets
+  opgehaald: dit dashboard heeft geen datarecept; de grafieken zijn opnieuw getekend uit de data in het
+  geheugen", als waarschuwing (#528, vervolg op #524). "Data ververst" staat er alleen als er bij de bron iets
+  is opgehaald.
 - Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat
   en dat je geen persoonsgegevens invoert. Lijkt een concept een BSN (elfproef), e-mailadres of telefoonnummer te
   bevatten, dan zegt een waarschuwing dat voor het versturen; versturen blijft mogelijk. Zo'n vraag krijgt als
@@ -310,6 +319,15 @@ de laatste tag is 1.8.6.
   (vraag, verduidelijking, dashboard, rapport) per `CHAT_RATE_WINDOW_S` seconden, standaard 30 per 10 minuten,
   per gebruiker en zonder login per verbinding. Daarboven ziet de gebruiker "Te veel verzoeken in korte tijd.
   Probeer het over N seconden opnieuw." en start er geen modelaanroep; voorbeeldvragen tellen niet mee.
+- De AST-controle van `run_analysis` weigert ook een stdlib-module die als attribuut van pandas of numpy te
+  bereiken is (`pd.io.common.os`, `pd.compat.sys`, #443): `os.getpid()`, `os.getcwd()` en `os.environ` waren zo
+  nog bereikbaar, al draait het script in een eigen proces zonder omgeving, netwerk of schrijfrechten. De
+  beveiligingsdocumentatie beschrijft nu de twee lagen zoals ze zijn, inclusief wat de sandbox niet is (geen
+  seccomp of container) en wat de pod-limieten moeten dragen.
+- De SRAM-gebruikerscache (naam, e-mail, organisatie per ingelogde gebruiker, voor na een herlaad van de pagina)
+  is begrensd (#487, privacy M4): een rij vervalt na `SESSION_MAX_HOURS` en boven duizend gebruikers gaat de
+  langst niet gebruikte eruit. Eerder groeide ze tot een herstart. De keuze voor `sub` als sleutel en gehashte
+  wachtwoorden blijft een besluit in #487.
 - Rapporten en dashboards laden Plotly van de eigen server in plaats van `cdn.plot.ly` (#486, privacy M3/L1):
   een kijker stuurt geen IP, user-agent of referrer meer naar een Amerikaanse CDN. De gebundelde plotly.js
   wordt als asset uitgeleverd, nieuwe rapport-HTML verwijst daarnaar (één keer, in de head), al opgeslagen
@@ -328,6 +346,10 @@ de laatste tag is 1.8.6.
   mislukt" (DataProperties, TableInfos, dimensies) noemen het type en een kenmerk in plaats van de fouttekst
   met de request-URL, en de sandbox-regel bij een script zonder uitkomst noemt de returncode en een kenmerk
   van stderr (`stderr_len=… stderr_hash=…`); de tekst zelf staat op DEBUG.
+- De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
+  langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
+  omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.
+  Openbare brondata blijft gedeeld tussen sessies; lezen maakt een tabel weer de jongste.
 - Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
   readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
   zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden

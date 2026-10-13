@@ -282,7 +282,58 @@ class TestVervers:
         _, info, _ = asyncio.run(chat._do_refresh([], [RECEPT], spec))
 
         assert info is not None
-        assert "ververst" in info.lower()
+        assert "niets opgehaald" in info.lower()  # de ververs-route, niet reproduceer (#528: zonder datarecept)
+
+    # #528: "Data ververst" alleen als er bij de bron iets is opgehaald.
+    def test_ververs_zonder_datarecept_zegt_dat_de_bron_niet_geraakt_is(self):
+        _laad([475460, 475460])
+        oud = _figuren([RECEPT])
+        _laad([475460, 478660])
+        spec = {"figures_json": oud, "figure_recipes": [RECEPT]}
+
+        nieuw, info, veranderingen = asyncio.run(chat._do_refresh([], [RECEPT], spec, mode="ververs"))
+
+        assert info is not None
+        assert info.startswith("Bij de bron is niets opgehaald: dit dashboard heeft geen datarecept")
+        assert "Data ververst" not in info
+        assert "1 wijziging(en)" in info and nieuw.figures_json != oud and veranderingen
+
+    def test_ververs_met_datarecept_meldt_data_ververst(self, monkeypatch):
+        _laad([475460, 478660])
+        oud = _figuren([RECEPT])
+        spec = {"figures_json": oud, "figure_recipes": [RECEPT]}
+        opgehaald = []
+        echte = replay.dispatch
+
+        def dispatch(name, args):
+            if name != "get_cbs_data":
+                return echte(name, args)  # de figuurrecepten (query_data) lopen gewoon door
+            opgehaald.append(name)
+            _laad([475460, 478660])
+            return "ok", None
+
+        monkeypatch.setattr(replay, "dispatch", dispatch)
+        recipe = [{"name": "get_cbs_data", "arguments": json.dumps({"dataset_id": "85423NED"})}]
+
+        _, info, _ = asyncio.run(chat._do_refresh(recipe, [RECEPT], spec, mode="ververs"))
+
+        assert opgehaald == ["get_cbs_data"]
+        assert info is not None and info.startswith("Data ververst; geen wijzigingen")
+
+    def test_zonder_datarecept_komt_de_melding_als_waarschuwing_in_de_chat(self):
+        """Niets opgehaald is geen succes: de toast is een waarschuwing, geen 'info'."""
+        _laad([475460, 478660])
+        oud = _figuren([RECEPT])
+        spec = {"figures_json": oud, "figure_recipes": [RECEPT]}
+        events: list[dict] = []
+
+        async def emit(event):
+            events.append(event)
+
+        asyncio.run(chat._refresh_dashboard([], [RECEPT], spec, chat._new_session(), emit, None, "ververs"))
+
+        [toast] = [e for e in events if e.get("type") == "toast" and "niets opgehaald" in e.get("message", "")]
+        assert toast["level"] == "warning"
 
 
 MISLUKTE_CALLS = ["niet toegestaan", "uitzondering", "cbs onbereikbaar"]
