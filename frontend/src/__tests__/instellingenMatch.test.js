@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildInstellingenLookup, matchKnownInstelling, instellingType } from '../instellingenMatch'
+import { buildInstellingenLookup, matchKnownInstelling, instellingType, suggereerInstellingen } from '../instellingenMatch'
 
 const INSTELLINGEN = [
   { naam: 'Hogeschool Utrecht', aliassen: ['HU'], domeinen: ['hu.nl'] },
@@ -70,5 +70,61 @@ describe('instellingType', () => {
     expect(instellingType('Hogeschool', TYPED)).toBeNull()
     expect(instellingType('', TYPED)).toBeNull()
     expect(instellingType('Hogeschool Utrecht', [])).toBeNull()
+  })
+})
+
+// "Bedoel je …?" (#496 F04, #533): een zoekterm van meer woorden telt per woord, met typefouten.
+describe('suggereerInstellingen', () => {
+  const LIJST = [
+    { naam: 'Hogeschool Utrecht', aliassen: ['HU'] },
+    { naam: 'Hogeschool van Amsterdam', aliassen: ['HvA'] },
+    { naam: 'Universiteit van Amsterdam', aliassen: ['UvA'] },
+    { naam: 'Vrije Universiteit Amsterdam', aliassen: ['VU', 'Vrije Universiteit'] },
+    { naam: 'Universiteit Leiden', aliassen: [] },
+    { naam: 'Universiteit Utrecht', aliassen: ['UU'] },
+    { naam: 'Erasmus Universiteit Rotterdam', aliassen: ['EUR'] },
+  ]
+  const namen = (term, max) => suggereerInstellingen(term, LIJST, max).map(i => i.naam)
+
+  it('stelt bij "universiteit vam" de Amsterdamse universiteiten voor', () => {
+    expect(namen('universiteit vam')).toEqual(['Universiteit van Amsterdam', 'Vrije Universiteit Amsterdam'])
+  })
+
+  it('verdraagt een typefout per woord, in elke volgorde', () => {
+    expect(namen('universiteit amsterdm')).toEqual(['Universiteit van Amsterdam', 'Vrije Universiteit Amsterdam'])
+    expect(namen('amsterdm universiteit').sort()).toEqual(['Universiteit van Amsterdam', 'Vrije Universiteit Amsterdam'])
+    expect(namen('hogescool van utrect')).toEqual(['Hogeschool Utrecht'])
+  })
+
+  it('laat een vulwoord dat niet in de naam staat buiten beschouwing', () => {
+    expect(namen('universiteit van leidn')).toEqual(['Universiteit Leiden'])
+  })
+
+  it('vraagt dat elk ander woord een woord van de naam raakt', () => {
+    expect(namen('universiteit groningen')).toEqual([])
+    expect(namen('xyz qwerty')).toEqual([])
+    expect(namen('van de')).toEqual([])
+  })
+
+  it('noemt hoogstens max namen, de dichtstbijzijnde eerst', () => {
+    expect(namen('universiteit amsterdm', 1)).toEqual(['Universiteit van Amsterdam'])
+  })
+
+  it('houdt een enkel woord tegen de naam en elk woord ervan, zoals voorheen', () => {
+    expect(namen('Hogescool')).toEqual(['Hogeschool Utrecht', 'Hogeschool van Amsterdam'])
+    expect(namen('hogeschool utrecth')).toEqual(['Hogeschool Utrecht'])
+    expect(namen('Sorbonne')).toEqual([])
+    expect(namen('hu')).toEqual([])
+  })
+})
+
+describe('suggereerInstellingen bij een gelijkspel', () => {
+  it('zet de naam die als geheel het dichtst bij de zoekterm ligt voorop', () => {
+    const lijst = [
+      { naam: 'Theologische Universiteit Utrecht', aliassen: [] },
+      { naam: 'Universiteit Utrecht', aliassen: ['UU'] },
+    ]
+    expect(suggereerInstellingen('universiteit utrect', lijst).map(i => i.naam))
+      .toEqual(['Universiteit Utrecht', 'Theologische Universiteit Utrecht'])
   })
 })

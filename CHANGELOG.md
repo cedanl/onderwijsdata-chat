@@ -270,6 +270,10 @@ de laatste tag is 1.8.6.
   de browser en plant geen volgende vernieuwing meer in (#499).
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Een zoekterm van meer woorden vindt die suggesties nu ook per woord, met een typefout per woord en in elke
+  volgorde (#533): "universiteit vam" geeft "Bedoel je Universiteit van Amsterdam, Vrije Universiteit Amsterdam?"
+  in plaats van alleen "Geen instellingen gevonden". Elk woord moet in de naam terugkomen; een vulwoord als "van"
+  mag ontbreken, en een half getypt woord telt als begin van een woord ("uni amst").
 - Boven een antwoord dat na controle is aangepast staat nu "Eerste versie van dit antwoord is aangepast na
   controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
   controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
