@@ -6,7 +6,7 @@ import traceback
 import pandas as pd
 import plotly.graph_objects as go
 
-from . import afhankelijkheid, dekking, fouten, plot, sandbox, scriptcontrole, store
+from . import afhankelijkheid, cbs_afronding, dekking, fouten, plot, sandbox, scriptcontrole, store
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,9 @@ def run_analysis(code: str, data_key: str | None = None) -> str | tuple[str, go.
     elif not result_key:
         # Een los getal heeft geen eigen key; wat het las is zijn selectie, ook voor de onderdrukking (#414).
         text_obj = {"gelezen": bronnen, "resultaat": text_obj}
+    # Op afgeronde CBS-data is een eigen som of verschil niet exacter dan de bron, net als bij compute_kpi (#531).
+    if noot := next((n for k in bronnen if (n := cbs_afronding.van_key(k))), None):
+        text_obj["afronding"] = noot
     if controle and controle.constanten:
         text_obj[SCRIPTCONSTANTEN] = list(controle.constanten)
     if controle and controle.soort == afhankelijkheid.ONBEPAALD:

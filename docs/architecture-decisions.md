@@ -154,7 +154,10 @@ ophalen van 5.000 rijen, en een stilzwijgend opengelaten dimensie telde later du
 - De modelinterface van `get_cbs_data` is een **`selectie`**: per dimensie een enum-code uit
   `get_cbs_dimension` (of `"*"` om bewust uit te splitsen), `periode` als lijst of bereik
   (schooljaarspelling wordt in code vertaald via `tools/periode.py`), `onderwerpen` als
-  kolomsleutels. De server compileert hieruit `$filter`/`$select` (`tools/cbs_selectie.py`).
+  kolomsleutels. De server compileert hieruit `$filter`/`$select` (`tools/cbs_selectie.py`), elke
+  vergelijking als `trim(Dimensie) eq 'code'`: CBS vult de sleutels van een dimensie op tot één
+  breedte (`4000   ` naast `T001038`) en toont ze gestript, dus de kale code matcht zonder `trim`
+  niets (#531).
 - De **volledigheidspoort** zit vóór het laden: een dimensie die noch gepind noch `"*"` is,
   of een onbenoemde periode, weigert de aanroep vóór de datacall en noemt wat ontbreekt.
 - De **rijlimiet is beleid** (`CBS_ROW_LIMIT`), geen modelparameter.

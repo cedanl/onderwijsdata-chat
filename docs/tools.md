@@ -311,6 +311,8 @@ datacall, met de ontbrekende dimensie(s) erbij.
 
 Voorbeeld: `{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, "periode": ["2024/25"]}`.
 Schooljaarspelling (`2024/25`) wordt in code vertaald naar de CBS-periodecode (`2024SJ00`).
+Elke vergelijking in `$filter` gaat als `trim(Dimensie) eq 'code'`, omdat CBS de sleutels van een
+dimensie opvult tot één breedte (`4000   ` naast `T001038`) en gestript toont (#531).
 De rijlimiet is een beleidsregel van de server, geen modelparameter.
 
 De parameter `filters` (ruwe OData, `{"$filter": …}`) bestaat nog voor bewaarde recepten

@@ -1,8 +1,8 @@
 {
-  "gemeten_op": "2026-10-12",
-  "prompt_hash": "7942c2073cdb",
+  "gemeten_op": "2026-10-13",
+  "prompt_hash": "91918d4731de",
   "model": "anthropic/claude-sonnet-4-6",
-  "schema_digest": "86f805e8fe08",
+  "schema_digest": "c3c06e757003",
   "varianten_per_geval": 40,
   "gevallen": [
     {
@@ -43,7 +43,7 @@
       "plan_digest": "a6bc4ae6",
       "unieke_digests": 1,
       "compilaat": {
-        "$filter": "Geslacht eq 'T001038' and Perioden eq '2024SJ00'"
+        "$filter": "trim(Geslacht) eq 'T001038' and trim(Perioden) eq '2024SJ00'"
       }
     },
     {
@@ -53,7 +53,7 @@
       "plan_digest": "4345f40d",
       "unieke_digests": 1,
       "compilaat": {
-        "$filter": "(Perioden eq '2020SJ00' or Perioden eq '2021SJ00' or Perioden eq '2022SJ00')"
+        "$filter": "(trim(Perioden) eq '2020SJ00' or trim(Perioden) eq '2021SJ00' or trim(Perioden) eq '2022SJ00')"
       }
     },
     {
