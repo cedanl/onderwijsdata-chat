@@ -76,6 +76,11 @@ de laatste tag is 1.8.6.
   in plaats van "Deze dataset is actueel tot 9 april 2026"; die zin vroeg de systeemprompt. De datum is de dag
   waarop CBS de tabel het laatst bijwerkte, uit de meegeleverde catalogus (`_laatste_update`), niet het einde van
   de cijfers: welke periode die beslaan, staat in de perioden van de data (#496, F-03).
+- Bij een CBS-tabel die afrondt (bijvoorbeeld op 10-tallen) noemt het antwoord een verschil tussen het
+  gepubliceerde totaal en de som van de delen nu bij dat totaal, bijvoorbeeld "Exclusief extranei" 465.820 naast
+  bol 328.610 + bbl 137.220 in 85353NED/85354NED: het verschil komt van de afronding van CBS, geen rekenfout. De
+  systeemprompt vraagt dit; de som zelf schrijft het antwoord niet uit. Zonder afrondingsnoot in de data schrijft
+  het antwoord een verschil niet aan afronding toe (#496, F-02).
 - Een vage vraag, een kort thema zonder maat zoals "studentenwelzijn", krijgt een zichtbare interpretatie (#514):
   komt er geen verduidelijkingskaart, dan opent het antwoord met "Ik ga uit van de lezing «…»" met de titels van
   de datasets waarop het rust, uit de catalogus, en de uitnodiging om de maat of bron te noemen als iets anders
