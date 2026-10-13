@@ -240,6 +240,9 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Wie een gesprek verwijdert, leest in de bevestiging dat een rapport van dat gesprek blijft bestaan en los te
+  verwijderen is via Rapporten (#513). Een rapport is een eigen kopie met de vraag als titel; het verdwijnt
+  bewust niet mee met het gesprek.
 - Grafieken met veel of lange categorieën blijven leesbaar in chat, rapport en dashboard. Een staafgrafiek met meer
   dan acht categorieën of namen langer dan twaalf tekens (instellingen, sectoren) krijgt liggende staven: de naam staat
   als gewone tekst naast de staaf, het getal in de staaf als het past, en de grafiek groeit mee in hoogte in plaats van

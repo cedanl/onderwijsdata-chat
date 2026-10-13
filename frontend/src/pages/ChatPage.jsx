@@ -734,7 +734,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
       {pendingDelete && (
         <ConfirmModal
-          message="Weet je zeker dat je dit gesprek wilt verwijderen?"
+          message={GESPREK_VERWIJDEREN}
           onConfirm={confirmDeleteConversation}
           onCancel={() => setPendingDelete(null)}
         />
@@ -912,6 +912,11 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
     </div>
   )
 }
+
+// Een rapport is een eigen kopie van het gesprek en blijft staan als het gesprek weg is (#513, besluit:
+// informeren, niet meeverwijderen); wie dat niet wil, verwijdert het los op de rapportenpagina.
+const GESPREK_VERWIJDEREN = 'Weet je zeker dat je dit gesprek wilt verwijderen? Een rapport dat je van dit gesprek ' +
+  'hebt gemaakt, blijft bewaard; dat verwijder je los via Rapporten.'
 
 function downloadCsv(csv, filename) {
   saveFile(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename)
