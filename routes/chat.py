@@ -242,6 +242,13 @@ def _herlaad_mislukt(results: list[dict]) -> str | None:
 # ververs-melding over een mislukte of niet vervangen grafiek bevat het (warning).
 _MAX_NAMEN = 3
 _PAST_NIET = "Het bewaarde dashboard past niet bij zijn recept (het aantal grafieken verschilt)."
+# Een ververs zonder datarecept haalt niets bij de bron op: de grafieken komen uit de data in het
+# geheugen, en dat hoort de melding te zeggen in plaats van "Data ververst" (#528).
+# "niets" draagt het woord "niet": de toast wordt een waarschuwing, geen succesmelding.
+_GEEN_BRON = (
+    "Bij de bron is niets opgehaald: dit dashboard heeft geen datarecept; "
+    "de grafieken zijn opnieuw getekend uit de data in het geheugen"
+)
 _GEHEUGEN = (
     "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
     "server. Ververs haalt haar opnieuw op bij de bron."
@@ -276,7 +283,7 @@ async def _ververs_figuren(
         spec.figures_json = [u.figuur_json or oud for u, oud in zip(uitkomsten, spec.figures_json, strict=True)]
     else:
         spec.figures_json = [u.figuur_json for u in uitkomsten if u.figuur_json is not None]
-    return spec, _ververs_melding(veranderingen, mislukt, passend), veranderingen
+    return spec, _ververs_melding(veranderingen, mislukt, passend, bron_geraakt=bool(recipe)), veranderingen
 
 
 def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> list[str]:
@@ -293,18 +300,22 @@ def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> lis
     )
 
 
-def _ververs_melding(veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool) -> str:
+def _ververs_melding(
+    veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool, bron_geraakt: bool = True
+) -> str:
+    """ "Data ververst" alleen als er bij de bron iets is opgehaald; zonder datarecept zegt de kop dat (#528)."""
+    kop = "Data ververst" if bron_geraakt else _GEEN_BRON
     if not passend:
         return (
-            "Data ververst. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
+            f"{kop}. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
             "de grafieken zijn vervangen zonder ze per stuk te vergelijken."
         )
     if veranderingen:
-        melding = f"Data ververst: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
+        melding = f"{kop}: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
     elif mislukt:
-        melding = "Data ververst; geen wijzigingen in de grafieken die bijgewerkt zijn."
+        melding = f"{kop}; geen wijzigingen in de grafieken die bijgewerkt zijn."
     else:
-        melding = "Data ververst; geen wijzigingen ten opzichte van het bewaarde dashboard."
+        melding = f"{kop}; geen wijzigingen ten opzichte van het bewaarde dashboard."
     return f"{melding} {_niet_bijgewerkt(mislukt)}" if mislukt else melding
 
 
