@@ -303,6 +303,9 @@ de laatste tag is 1.8.6.
 - Een verwijderd open gesprek komt na verversen niet meer terug (#530): het sluiten of verbergen van de tab en
   een antwoord dat daarna nog afrondt schreven het opnieuw in de lokale opslag. Het blijft op het scherm staan
   tot een nieuw gesprek; pas een nieuwe vraag daarin wordt weer bewaard. Ongedaan maken bewaart het meteen weer.
+- Een antwoord dat na het verwijderen van het open gesprek nog afrondt, of het verlaten van de pagina, zet dat
+  gesprek ook niet meer terug op de server of in de gesprekslijst (#535). Een nieuwe vraag binnen de bedenktijd
+  blijft lokaal bewaard; voorheen wiste het verlopen van de bedenktijd die kopie toch.
 - Een ververs van een dashboard zonder datarecept meldt niet meer "Data ververst" maar "Bij de bron is niets
   opgehaald: dit dashboard heeft geen datarecept; de grafieken zijn opnieuw getekend uit de data in het
   geheugen", als waarschuwing (#528, vervolg op #524). "Data ververst" staat er alleen als er bij de bron iets
