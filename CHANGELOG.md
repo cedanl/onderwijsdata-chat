@@ -372,6 +372,12 @@ de laatste tag is 1.8.6.
   catalogus het kent; elke logregel van een chatverbinding draagt een kort verbindings-ID (`verbinding=…`,
   in JSON als eigen veld), zodat de regels van één verbinding te koppelen zijn zonder gebruikersnaam of
   gespreks-ID; met `LOG_HASH_SECRET` is de hash in logregels een HMAC in plaats van een kale SHA-256.
+- Log-hardening, restpunt van #502: de interne-foutregel (`log_interne_fout`) noemt op ERROR alleen het
+  fout-ID, waar het misging, het type en een kenmerk (`fout_len=… fout_hash=…`); de traceback staat onder
+  hetzelfde fout-ID op DEBUG. Het fout-ID dat de gebruiker ziet, blijft werken. De CBS-meldingen "… ophalen
+  mislukt" (DataProperties, TableInfos, dimensies) noemen het type en een kenmerk in plaats van de fouttekst
+  met de request-URL, en de sandbox-regel bij een script zonder uitkomst noemt de returncode en een kenmerk
+  van stderr (`stderr_len=… stderr_hash=…`); de tekst zelf staat op DEBUG.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.

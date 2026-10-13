@@ -20,6 +20,8 @@ from typing import Any
 
 import pandas as pd
 
+from core.logging_util import tekst_kenmerk
+
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 10
@@ -54,13 +56,23 @@ def voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Ui
     return _lees(proces)
 
 
+def _log_zonder_uitkomst(proces: subprocess.CompletedProcess) -> None:
+    """De stderr van een kindproces dat modelcode draaide, kan die code citeren (#502).
+
+    Op WARNING de returncode en een kenmerk, de staart van stderr alleen op DEBUG.
+    """
+    stderr = proces.stderr.decode("utf-8", errors="replace")
+    logger.warning("sandbox stopte zonder uitkomst (code %s): %s", proces.returncode, tekst_kenmerk(stderr, "stderr_"))
+    logger.debug("sandbox stopte zonder uitkomst (code %s), stderr: %s", proces.returncode, stderr[-500:])
+
+
 def _lees(proces: subprocess.CompletedProcess) -> Uitkomst:
     try:
         uit = json.loads(proces.stdout)
     except ValueError:
         uit = None
     if not isinstance(uit, dict):
-        logger.warning("sandbox stopte zonder uitkomst (code %s): %s", proces.returncode, proces.stderr[-500:])
+        _log_zonder_uitkomst(proces)
         return Uitkomst(fout="Script is afgebroken: het overschreed de geheugen- of tijdslimiet van de sandbox.")
     if uit.get("fout"):
         return Uitkomst(fout=str(uit["fout"]))

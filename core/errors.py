@@ -3,7 +3,8 @@
 Een fout van het model of de API (limiet, timeout, verbinding) hangt aan dat
 model: een ander model kan wél lukken. Een interne fout (een bug in de code,
 #392) faalt bij elk model gelijk. De gebruiker ziet dan een vaste melding met
-een fout-ID; de uitzondering zelf staat onder dat ID in de log.
+een fout-ID; het type en een kenmerk van de uitzondering staan onder dat ID in de
+log, de traceback op DEBUG (#502).
 """
 
 import logging
@@ -11,6 +12,8 @@ import uuid
 
 import litellm
 import openai
+
+from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,10 @@ def modelafhankelijk(exc: Exception) -> bool:
 def log_interne_fout(exc: Exception, waar: str) -> str:
     """Log de uitzondering onder een kort fout-ID en geef dat ID terug."""
     fout_id = uuid.uuid4().hex[:8]
-    logger.error("Interne fout %s in %s", fout_id, waar, exc_info=exc)
+    # Fouttekst en traceback kunnen vraag, antwoord of toolargumenten citeren (#502): op ERROR het type en
+    # een kenmerk, de traceback onder hetzelfde ID op DEBUG. Eerst DEBUG, zodat de ERROR-regel de laatste is.
+    logger.debug("Interne fout %s in %s", fout_id, waar, exc_info=exc)
+    logger.error("Interne fout %s in %s: %s", fout_id, waar, foutkenmerk(exc))
     return fout_id
 
 

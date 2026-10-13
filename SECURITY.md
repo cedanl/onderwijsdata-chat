@@ -65,7 +65,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 ### S4 — Foutmeldingen lekken interne tekst ✅ Opgelost
 
 **Locatie:** `core/errors.py` (`friendly_error()`, `Gebruikersfout`), `routes/chat.py`, `agent/replay.py`  
-**Fix (#404, #503):** alleen een `Gebruikersfout` — een fout waarvan de tekst voor de gebruiker is geschreven, zoals "Geen datasets geladen" — bereikt de browser letterlijk. Elke andere fout krijgt een vaste melding met een kort fout-ID; `log_interne_fout()` logt de exceptie onder dat ID. Dat geldt voor alle paden: het chat-antwoord, dashboard en rapport (`_generate_dashboard()`/`_generate_report()` vangen `Gebruikersfout` apart, al het andere gaat generiek), dashboard-refresh (`replay_data_calls()` bewaart per mislukte call een vaste tekst, de details staan in het log) en model-/API-fouten zonder vaste tekst in `_FRIENDLY_ERRORS` (vaste melding met fout-ID, `modelafhankelijk` blijft gelden).
+**Fix (#404, #503):** alleen een `Gebruikersfout` — een fout waarvan de tekst voor de gebruiker is geschreven, zoals "Geen datasets geladen" — bereikt de browser letterlijk. Elke andere fout krijgt een vaste melding met een kort fout-ID; `log_interne_fout()` logt onder dat ID het type en een kenmerk van de exceptie (`fout_len=… fout_hash=…`) op ERROR, de traceback staat alleen op DEBUG in het log (#502). Dat geldt voor alle paden: het chat-antwoord, dashboard en rapport (`_generate_dashboard()`/`_generate_report()` vangen `Gebruikersfout` apart, al het andere gaat generiek), dashboard-refresh (`replay_data_calls()` bewaart per mislukte call een vaste tekst, de details staan in het log) en model-/API-fouten zonder vaste tekst in `_FRIENDLY_ERRORS` (vaste melding met fout-ID, `modelafhankelijk` blijft gelden).
 
 ---
 

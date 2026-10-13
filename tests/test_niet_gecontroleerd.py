@@ -6,6 +6,7 @@ gecontroleerd is: een zacht probleem, zonder herkansing (het model kan het niet 
 
 import asyncio
 import importlib
+import logging
 
 from agent import loop as loop_module
 from agent.probleem import hard, harde, herstelbare, meldingen, veilig
@@ -25,11 +26,15 @@ def test_akkoord_is_leeg():
 
 
 def test_een_falende_controle_geeft_een_zichtbaar_niet_gecontroleerd_probleem(caplog):
-    with caplog.at_level("ERROR"):
+    with caplog.at_level("DEBUG"):
         [probleem] = veilig(_kapot, "tekst")
     assert probleem.niet_gecontroleerd
     assert "niet gecontroleerd" in probleem.melding
     assert "Interne fout" in caplog.text and "_kapot" in caplog.text
+    # De fouttekst staat alleen op DEBUG (#502).
+    assert "zip()" in caplog.text
+    boven_debug = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert boven_debug and all(r.exc_info is None and "zip()" not in r.getMessage() for r in boven_debug)
     # De gebruiker ziet het fout-ID uit de log, zodat het terug te vinden is.
     fout_id = caplog.records[-1].args[0]
     assert fout_id in probleem.melding

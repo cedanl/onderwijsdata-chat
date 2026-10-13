@@ -146,6 +146,13 @@ verschijnt, is het gecompromitteerd.
 Vraag, antwoord, toolargumenten en modeltekst komen op INFO en hoger alleen als lengte en hash in het log
 (`core.logging_util.tekst_kenmerk`), de tekst zelf alleen op DEBUG (#475): het log valt buiten "gesprek verwijderen".
 
+Hetzelfde geldt voor fouttekst en tracebacks, want die kunnen zulke tekst citeren (een httpx-fout citeert de
+request-URL, een traceback uit de sandbox de modelcode): op INFO en hoger het type en een kenmerk
+(`core.logging_util.foutkenmerk`, `fout_len=… fout_hash=…`), de tekst en de traceback alleen op DEBUG (#502). Geen
+`exc_info` en geen `%s` met de uitzondering zelf op INFO+. Een interne fout houdt haar fout-ID: `log_interne_fout()`
+zet ID, type en kenmerk op ERROR en de traceback onder hetzelfde ID op DEBUG. Nog niet overal zo: `routes/` en
+`data/` hebben restpunten (#502).
+
 ### Rollen
 
 | Rol | Doet WEL | Doet NIET |
