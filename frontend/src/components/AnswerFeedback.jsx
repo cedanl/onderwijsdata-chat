@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 // Same text and duration as the report feedback toast (WorkbookViewer).
 const THANKS = 'Bedankt voor je feedback!'
 const THANKS_MS = 4000
+// What a thumbs-down keeps (#476): the trace goes to the team and stays when the conversation is
+// deleted, without the user's name.
+const BEWAARD = 'Het team krijgt je oordeel met de vraag, het antwoord en de stappen erbij. ' +
+  'Verwijder je het gesprek, dan blijft dit bewaard, maar zonder je naam.'
 
 // 👍/👎 under an answer (#248). A thumbs-down asks what is wrong first: with the
 // trace the server adds, that makes it a reproducible bug report.
@@ -13,6 +17,7 @@ export default function AnswerFeedback({ value, onSubmit }) {
   // Counts successful submits, 0 = no confirmation; a new submit restarts the timeout.
   const [thanks, setThanks] = useState(0)
   const fieldRef = useRef(null)
+  const bewaardId = useId()
 
   useEffect(() => {
     if (explaining) fieldRef.current?.focus()
@@ -54,7 +59,8 @@ export default function AnswerFeedback({ value, onSubmit }) {
         <form className="answer-feedback-form" onSubmit={e => { e.preventDefault(); submit('down', toelichting) }}>
           <textarea ref={fieldRef} rows={2} maxLength={2000} value={toelichting}
             aria-label="Wat klopt er niet? (optioneel)" placeholder="Wat klopt er niet? (optioneel)"
-            onChange={e => setToelichting(e.target.value)} />
+            aria-describedby={bewaardId} onChange={e => setToelichting(e.target.value)} />
+          <p className="answer-feedback-bewaard" id={bewaardId}>{BEWAARD}</p>
           <div className="answer-feedback-actions">
             <button type="button" className="confirm-cancel" onClick={() => setExplaining(false)}>Annuleer</button>
             <button type="submit" className="confirm-primary">Verstuur</button>

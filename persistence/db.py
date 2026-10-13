@@ -290,7 +290,8 @@ _FEEDBACK_TABLE = """
 
 # Eén oordeel per antwoord; een nieuw oordeel vervangt het oude (#248). trace is
 # JSON uit het opgeslagen gesprek (core/answer_feedback.py), zodat de melding
-# reproduceerbaar blijft als het gesprek later verandert of verdwijnt.
+# reproduceerbaar blijft als het gesprek later verandert of verdwijnt; verdwijnt het,
+# dan gaan gebruikersnaam en gesprek-id eruit (#476, zie delete_conversation).
 _ANSWER_FEEDBACK_TABLE = """
     CREATE TABLE IF NOT EXISTS answer_feedback (
         username        TEXT    NOT NULL,
@@ -540,6 +541,12 @@ def rename_conversation(username: str, conv_id: str, title: str) -> bool:
     return cursor.rowcount > 0
 
 
+# Feedback op een antwoord van een verwijderd gesprek blijft voor het team (oordeel, toelichting,
+# trace), maar hangt niet meer aan de gebruiker of zijn gesprek (#476, privacy M2). Een willekeurig
+# gesprek-id per verwijderd gesprek houdt de meldingen daarvan bij elkaar zonder dat ze te herleiden zijn.
+VERWIJDERDE_GEBRUIKER = "verwijderd"
+
+
 def delete_conversation(username: str, conv_id: str) -> None:
     with _connection() as conn:
         _execute(
@@ -548,6 +555,11 @@ def delete_conversation(username: str, conv_id: str) -> None:
             (conv_id, username),
         )
         _execute(conn, "DELETE FROM data_recipes WHERE conv_id = ? AND username = ?", (conv_id, username))
+        _execute(
+            conn,
+            "UPDATE answer_feedback SET username = ?, conversation_id = ? WHERE username = ? AND conversation_id = ?",
+            (VERWIJDERDE_GEBRUIKER, str(uuid.uuid4()), username, conv_id),
+        )
         conn.commit()
 
 

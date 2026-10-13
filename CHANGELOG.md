@@ -330,6 +330,11 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- Feedback per antwoord (👍/👎) van een verwijderd gesprek hangt niet meer aan de gebruiker (#476, privacy M2):
+  gesprek verwijderen zet in `answer_feedback` de gebruikersnaam op `verwijderd` en het gesprek-id op een willekeurige
+  waarde (één per verwijderd gesprek). Oordeel, toelichting en trace blijven voor het team, ook in
+  `scripts/antwoordfeedback.py`; het oordeel komt niet meer terug bij het oude gesprek-id. De 👎-vorm zegt wat er
+  bewaard wordt.
 - De chat heeft een berichtlimiet (#444, SECURITY.md S5): `CHAT_RATE_LIMIT` verzoeken die het model kosten
   (vraag, verduidelijking, dashboard, rapport) per `CHAT_RATE_WINDOW_S` seconden, standaard 30 per 10 minuten,
   per gebruiker en zonder login per verbinding. Daarboven ziet de gebruiker "Te veel verzoeken in korte tijd.
