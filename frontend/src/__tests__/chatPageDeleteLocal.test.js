@@ -40,7 +40,7 @@ vi.mock('../hooks/useChat', () => ({
 }))
 
 import ChatPage from '../pages/ChatPage'
-import { STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
+import { STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
 import { UITSTEL_MS } from '../verwijderenMetUitstel'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -230,5 +230,138 @@ describe('verwijderd open gesprek blijft uit localStorage (#530)', () => {
     await pagehide()
 
     expect(JSON.parse(opgeslagen())).toMatchObject({ id: 'c1', messages: [vraag, antwoord] })
+  })
+})
+
+// #535: ook de server (PUT) en de gesprekslijst kregen het verwijderde open gesprek terug zodra het
+// antwoord afrondde, en voerUit wiste de lokale sleutel ook na een nieuwe vraag binnen de bedenktijd.
+describe('verwijderd open gesprek komt niet terug op de server of in de lijst (#535)', () => {
+  const lijstIds = () => JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]').map(c => String(c.id))
+  const lijstTitels = () => [...container.querySelectorAll('.history-btn')].map(b => b.textContent)
+  const putVoor = id => api.putConversation.mock.calls.filter(([cid]) => cid === id)
+
+  async function mountStreamend() {
+    chatState.busy = true
+    chatState.messages = [{ id: 3, role: 'assistant', content: 'half', done: false }]
+    await mount()
+    api.putConversation.mockClear()
+  }
+
+  async function antwoordRondAf() {
+    chatState.busy = false
+    chatState.messages = [{ id: 3, role: 'assistant', content: 'half en heel', done: true }]
+    await render()
+    await render()
+  }
+
+  function verwachtNietTerug() {
+    expect(putVoor('c1')).toEqual([])
+    expect(lijstIds()).not.toContain('c1')
+    expect(lijstTitels().join(' ')).not.toMatch(/Open gesprek|Mijn BSN/)
+  }
+
+  it('stuurt een antwoord dat na de bedenktijd afrondt niet naar de server en niet terug in de lijst', async () => {
+    await mountStreamend()
+    await verwijder('Open gesprek')
+    await bedenktijdVoorbij()
+
+    await antwoordRondAf()
+
+    verwachtNietTerug()
+  })
+
+  it('stuurt een antwoord dat binnen de bedenktijd afrondt niet naar de server en niet terug in de lijst', async () => {
+    await mountStreamend()
+    await verwijder('Open gesprek')
+
+    await antwoordRondAf()
+
+    verwachtNietTerug()
+  })
+
+  it('bewaart het na ongedaan maken weer op de server, ook als een save eerder werd overgeslagen', async () => {
+    await mountStreamend()
+    await verwijder('Open gesprek')
+    await antwoordRondAf()
+    expect(putVoor('c1')).toEqual([])
+
+    await act(async () => { chatState.ongedaan() })
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS * 2) })
+
+    expect(api.deleteConversationApi).not.toHaveBeenCalled()
+    expect(lijstIds()).toContain('c1')
+    await act(async () => root.unmount())
+    root = null
+    expect(putVoor('c1')).toHaveLength(1)
+    expect(putVoor('c1')[0][1].messages.at(-1).content).toBe('half en heel')
+  })
+
+  it('bewaart een antwoord dat na ongedaan maken afrondt op de server en in de lijst', async () => {
+    await mountStreamend()
+    await verwijder('Open gesprek')
+    await act(async () => { chatState.ongedaan() })
+
+    await antwoordRondAf()
+
+    expect(putVoor('c1')).toHaveLength(1)
+    expect(lijstIds()).toContain('c1')
+  })
+
+  it('stuurt een nieuwe vraag na het verwijderen weer naar de server en de lijst', async () => {
+    await mount()
+    await verwijder('Open gesprek')
+    await bedenktijdVoorbij()
+    api.putConversation.mockClear()
+
+    const nieuweVraag = { id: 3, role: 'user', content: 'Nieuwe vraag', done: true }
+    chatState.busy = true
+    chatState.messages = [nieuweVraag, { id: 4, role: 'assistant', content: 'half', done: false }]
+    await render()
+    chatState.busy = false
+    chatState.messages = [nieuweVraag, { id: 4, role: 'assistant', content: 'heel', done: true }]
+    await render()
+
+    expect(putVoor('c1')).toHaveLength(1)
+    expect(putVoor('c1')[0][1].messages.at(-1).content).toBe('heel')
+    expect(lijstIds()).toContain('c1')
+  })
+
+  it('stuurt bij unmount geen PUT voor het verwijderde open gesprek en zet het niet terug in de lijst', async () => {
+    await mountStreamend()
+    await verwijder('Open gesprek')
+    await bedenktijdVoorbij()
+    // Het antwoord groeit nog, maar is niet af als de pagina weggaat.
+    chatState.messages = [{ id: 3, role: 'assistant', content: 'half en meer', done: false }]
+    await render()
+
+    await act(async () => root.unmount())
+    root = null
+
+    expect(putVoor('c1')).toEqual([])
+    expect(lijstIds()).not.toContain('c1')
+  })
+
+  it('laat de lokale sleutel staan als binnen de bedenktijd een nieuwe vraag kwam', async () => {
+    await mount()
+    await verwijder('Open gesprek')
+    chatState.messages = [{ id: 3, role: 'user', content: 'Nieuwe vraag', done: true }]
+    await render()
+    expect(opgeslagen()).toContain('Nieuwe vraag')
+
+    await bedenktijdVoorbij()
+
+    expect(api.deleteConversationApi).toHaveBeenCalledWith('c1', { keepalive: true })
+    expect(opgeslagen()).toContain('Nieuwe vraag')
+  })
+
+  it('bewaart het open gesprek gewoon als een ander gesprek wordt verwijderd', async () => {
+    await mountStreamend()
+    await verwijder('Ander gesprek')
+    await bedenktijdVoorbij()
+
+    await antwoordRondAf()
+
+    expect(putVoor('c1')).toHaveLength(1)
+    expect(lijstIds()).toEqual(['c1'])
   })
 })

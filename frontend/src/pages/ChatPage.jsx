@@ -330,9 +330,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Sends the open conversation to the server and returns the updated history list, or null when
   // there is nothing new. It touches no state, so the unmount save can use it too (#521).
+  // A deleted open conversation also returns null until a new question (#535); savedJsonRef stays
+  // as it is then, so after an undo (which resets it) the next save writes the conversation again.
   const putOpenConversation = useCallback(() => {
     if (sessionEndedSince(tokenAtMount)) return null
     const { id, messages: all } = openChatRef.current
+    if (isVerwijderd(verwijderdRef.current, id, all)) return null
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
     if (!record || json === savedJsonRef.current) return null
@@ -429,7 +432,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         sluitUndoToastRef.current = null
         deleteConversationApi(String(conv.id), { keepalive: true }).catch(() => {})
         // Het open gesprek: de lokale kopie gaat nu pas weg; wat op het scherm staat blijft tot een nieuw gesprek.
-        if (String(conv.id) === conversationIdRef.current) clearCurrentChat()
+        // Kwam er binnen de bedenktijd een nieuwe vraag, dan is het weer een gesprek dat bewaard blijft (#535).
+        const open = String(conv.id) === conversationIdRef.current
+        if (open && isVerwijderd(verwijderdRef.current, conv.id, openChatRef.current.messages)) clearCurrentChat()
       },
     })
   }
