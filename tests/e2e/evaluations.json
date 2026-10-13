@@ -1,5 +1,5 @@
 {
-  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt.",
+  "_doc": "Ground truth voor LLM-evaluatie. Per vraag: verwachte datasets, tool-flow, en datapunten. Gebruikt door real-questions.spec.js om modellen te scoren tegen bekende correcte antwoorden. Vragen met expected.must_refuse hebben geen correct getal: het model moet weigeren en mag geen getal noemen dat niet uit een tool komt (#36, gescoord door refusal.js). De audit-cases (#360) noemen expected.foutcategorie: de schakel die faalt als de case rood wordt (metadata, retrieval, resourcekeuze, toolcall, aggregatie of cijferduiding), en expected.bron_versie: de riodata-pin waartegen de verwachting is vastgesteld. Hun retrievaldeel zonder LLM staat in tests/test_catalog_gouden_set.py. Referentiewaarden (data_points.reference_values) tellen alleen als het eindantwoord ze bij hun jaar noemt, en bij data_points.entity of maat als die gegeven zijn; tooluitvoer telt apart als bron (#463). expected.acceptable_outcomes zijn vooraf vastgelegde andere uitkomsten die de data-eisen vervangen: { id, beschrijving, markers }, waarbij elke marker (hoofdletterongevoelige regex) in het antwoord moet staan en het antwoord geen getal mag noemen dat een referentiewaarde tegenspreekt. Bronwaarheid-cases (#190) verwijzen per sleutel naar een ijkwaarde in ijkwaarden.json (data_points.ijkwaarden, exact, geen tolerantie), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; eenheid, schooljaar en status toetsen ze met must_mention.",
   "evaluations": [
     {
       "label": "trend-analyse",
@@ -293,6 +293,145 @@
         "datasets": ["duo:p02ho1ejrs"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "vooropleiding"]
+      }
+    },
+    {
+      "label": "ijk-hbo-voltijd-landelijk",
+      "message": "Hoeveel voltijdstudenten telde het hbo landelijk in 2024/25 en 2025/26, en wat is de status van die cijfers?",
+      "description": "Bronwaarheid (#190, audit 7a/8): CBS 85423NED hbo voltijd met status per jaar; 378.490 definitief, 367.960 voorlopig",
+      "expected": {
+        "datasets": ["cbs:85423NED"],
+        "must_contain_tools": ["get_cbs_data"],
+        "max_search_catalog": 3,
+        "must_mention": ["hbo", "voltijd", "definitief", "voorlopig"],
+        "data_points": {
+          "description": "hbo voltijd landelijk, CBS afgerond op 10-tallen",
+          "maat": "voltijd",
+          "ijkwaarden": {
+            "2024": "cbs-hbo-voltijd-2024",
+            "2025": "cbs-hbo-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "ijk-hu-voltijd-reeks",
+      "message": "Hoeveel voltijdstudenten had Hogeschool Utrecht in de studiejaren 2021/22 tot en met 2025/26?",
+      "description": "Bronwaarheid (#190, audit 7a): DUO p01hoinges, personen en niet inschrijvingen; 28.355 … 26.370",
+      "expected": {
+        "datasets": ["duo:p01hoinges"],
+        "must_contain_tools": ["get_duo_data"],
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht", "voltijd", "personen"],
+        "data_points": {
+          "description": "HU voltijd personen (hoofdinschrijvingen) per studiejaar",
+          "entity": "Hogeschool Utrecht",
+          "maat": "voltijd",
+          "ijkwaarden": {
+            "2021": "duo-hu-voltijd-2021",
+            "2022": "duo-hu-voltijd-2022",
+            "2023": "duo-hu-voltijd-2023",
+            "2024": "duo-hu-voltijd-2024",
+            "2025": "duo-hu-voltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "ijk-hu-deeltijd",
+      "message": "Hoeveel deeltijdstudenten had Hogeschool Utrecht in 2025/26?",
+      "description": "Bronwaarheid (#190, audit 7a): 7.408 en niet 7.418 (dat is 2024/25); een tolerantie zou het verschil wegpoetsen",
+      "expected": {
+        "datasets": ["duo:p01hoinges"],
+        "must_contain_tools": ["get_duo_data"],
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht", "deeltijd"],
+        "data_points": {
+          "description": "HU deeltijd personen 2025/26",
+          "entity": "Hogeschool Utrecht",
+          "maat": "deeltijd",
+          "ijkwaarden": {
+            "2025": "duo-hu-deeltijd-2025"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "ijk-hu-eerstejaars-onderdrukte-cel",
+      "message": "Hoeveel voltijd eerstejaars had Hogeschool Utrecht in 2021/22?",
+      "description": "Bronwaarheid (#190, audit 8): 5.943 over 14 rijen met één onderdrukte cel (-1): het antwoord noemt de ondergrens",
+      "expected": {
+        "datasets": ["duo:p02ho1ejrs"],
+        "must_contain_tools": ["get_duo_data"],
+        "max_search_catalog": 3,
+        "must_mention": ["Hogeschool Utrecht", "eerstejaars", "ondergrens|onderdrukt|niet gepubliceerd|ten minste|minimaal"],
+        "data_points": {
+          "description": "HU voltijd eerstejaars 2021/22, som zonder de onderdrukte cel",
+          "entity": "Hogeschool Utrecht",
+          "maat": "eerstejaars",
+          "ijkwaarden": {
+            "2021": "duo-hu-eerstejaars-voltijd-2021"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "ijk-mbo-vrouwen",
+      "message": "Hoeveel vrouwelijke mbo-studenten waren er landelijk in 2021/22 en in 2024/25?",
+      "description": "Bronwaarheid (#190, F-10 #531): een directe CBS-selectie op code 4000, niet totaal min mannen uit afgeronde delen",
+      "expected": {
+        "datasets": ["cbs:85353NED"],
+        "datasets_alt": ["cbs:85354NED"],
+        "must_contain_tools": ["get_cbs_data"],
+        "max_search_catalog": 3,
+        "must_mention": ["mbo", "vrouw"],
+        "data_points": {
+          "description": "mbo vrouwen landelijk, CBS afgerond op 10-tallen",
+          "maat": "vrouw",
+          "ijkwaarden": {
+            "2021": "cbs-mbo-vrouwen-2021",
+            "2024": "cbs-mbo-vrouwen-2024"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
+      "label": "ijk-aeres-code-vestigingen",
+      "message": "Wat is de instellingscode van Aeres Hogeschool en in welke plaatsen heeft zij vestigingen?",
+      "description": "Bronwaarheid (#190, audit 7b/8): RIO 30TX met vijf vestigingen; audit 7a koos 30TX ten onrechte als HU",
+      "expected": {
+        "must_contain_tools": ["get_rio_instelling"],
+        "max_search_catalog": 3,
+        "must_mention": ["30TX", "Ede", "Dronten", "Almere", "Wageningen", "Nijmegen"]
+      }
+    },
+    {
+      "label": "weigering-rio-landelijk-totaal",
+      "message": "Hoeveel erkenningen staan er landelijk in RIO?",
+      "description": "Bronwaarheid (#190, #195): een afgekapte pagina is geen totaal; het model weigert een landelijk aantal",
+      "expected": {
+        "must_refuse": true
+      }
+    },
+    {
+      "label": "weigering-hu-2035",
+      "message": "Hoeveel studenten heeft Hogeschool Utrecht in 2035/36?",
+      "description": "Bronwaarheid (#190, audit 7a): een studiejaar buiten de reeks zonder prognose per instelling",
+      "expected": {
+        "must_refuse": true
+      }
+    },
+    {
+      "label": "weigering-instelling-99ZZ",
+      "message": "Hoeveel studenten heeft de instelling met code 99ZZ?",
+      "description": "Bronwaarheid (#190, audit 7a): een niet-bestaande instellingscode, geen gok",
+      "expected": {
+        "must_refuse": true
       }
     }
   ]

@@ -1,0 +1,394 @@
+{
+  "_doc": "Vastgelegde ijkwaarden voor de bronwaarheid-evals (#190), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; niet met de hand bewerken. evaluations.json verwijst per referentiewaarde naar een id hier (data_points.ijkwaarden). `python scripts/ijkwaarden.py` toont elk verschil met de bron; `--schrijf` legt de nieuwe stand vast.",
+  "opgehaald_op": "2026-10-13",
+  "waarden": {
+    "cbs-hbo-totaal-2024": {
+      "bron": "cbs",
+      "omschrijving": "hbo alle opleidingsvormen landelijk 2024/25",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85423NED",
+        "dimensies": {
+          "Onderwijssoort": "A025294",
+          "Opleidingsvorm": "T001228",
+          "Opleidingsfase": "A045745",
+          "Geslacht": "T001038"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "TotaalIngeschrevenen_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 449930,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-10",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Onderwijssoort%29+eq+%27A025294%27+and+trim%28Opleidingsfase%29+eq+%27A045745%27+and+trim%28Opleidingsvorm%29+eq+%27T001228%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=TotaalIngeschrevenen_1"
+    },
+    "cbs-hbo-voltijd-2024": {
+      "bron": "cbs",
+      "omschrijving": "hbo voltijd landelijk 2024/25",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85423NED",
+        "dimensies": {
+          "Onderwijssoort": "A025294",
+          "Opleidingsvorm": "A028666",
+          "Opleidingsfase": "A045745",
+          "Geslacht": "T001038"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "TotaalIngeschrevenen_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 378490,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-10",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Onderwijssoort%29+eq+%27A025294%27+and+trim%28Opleidingsfase%29+eq+%27A045745%27+and+trim%28Opleidingsvorm%29+eq+%27A028666%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=TotaalIngeschrevenen_1"
+    },
+    "cbs-hbo-voltijd-2025": {
+      "bron": "cbs",
+      "omschrijving": "hbo voltijd landelijk 2025/26",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85423NED",
+        "dimensies": {
+          "Onderwijssoort": "A025294",
+          "Opleidingsvorm": "A028666",
+          "Opleidingsfase": "A045745",
+          "Geslacht": "T001038"
+        },
+        "periode": "2025SJ00",
+        "onderwerp": "TotaalIngeschrevenen_1"
+      },
+      "schooljaar": "2025/26",
+      "waarde": 367960,
+      "status": "Voorlopig",
+      "bron_gewijzigd": "2026-04-10",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Onderwijssoort%29+eq+%27A025294%27+and+trim%28Opleidingsfase%29+eq+%27A045745%27+and+trim%28Opleidingsvorm%29+eq+%27A028666%27+and+trim%28Perioden%29+eq+%272025SJ00%27&%24select=TotaalIngeschrevenen_1"
+    },
+    "cbs-mbo-vrouwen-2021": {
+      "bron": "cbs",
+      "omschrijving": "mbo vrouwen landelijk 2021/22 (F-10, #531)",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85353NED",
+        "dimensies": {
+          "Niveau": "T001336",
+          "Leerweg": "A025290",
+          "Studierichting": "T001072",
+          "Regio": "NL01",
+          "Geslacht": "4000"
+        },
+        "periode": "2021SJ00",
+        "onderwerp": "MboStudenten_1"
+      },
+      "schooljaar": "2021/22",
+      "waarde": 248930,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-09",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85353NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%274000%27+and+trim%28Leerweg%29+eq+%27A025290%27+and+trim%28Niveau%29+eq+%27T001336%27+and+trim%28Regio%29+eq+%27NL01%27+and+trim%28Studierichting%29+eq+%27T001072%27+and+trim%28Perioden%29+eq+%272021SJ00%27&%24select=MboStudenten_1"
+    },
+    "cbs-mbo-vrouwen-2024": {
+      "bron": "cbs",
+      "omschrijving": "mbo vrouwen landelijk 2024/25 (F-10, #531)",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85353NED",
+        "dimensies": {
+          "Niveau": "T001336",
+          "Leerweg": "A025290",
+          "Studierichting": "T001072",
+          "Regio": "NL01",
+          "Geslacht": "4000"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "MboStudenten_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 230450,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-09",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85353NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%274000%27+and+trim%28Leerweg%29+eq+%27A025290%27+and+trim%28Niveau%29+eq+%27T001336%27+and+trim%28Regio%29+eq+%27NL01%27+and+trim%28Studierichting%29+eq+%27T001072%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=MboStudenten_1"
+    },
+    "cbs-wo-totaal-2024": {
+      "bron": "cbs",
+      "omschrijving": "wo alle opleidingsvormen landelijk 2024/25",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85423NED",
+        "dimensies": {
+          "Onderwijssoort": "A025297",
+          "Opleidingsvorm": "T001228",
+          "Opleidingsfase": "A045745",
+          "Geslacht": "T001038"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "TotaalIngeschrevenen_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 341720,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-10",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Onderwijssoort%29+eq+%27A025297%27+and+trim%28Opleidingsfase%29+eq+%27A045745%27+and+trim%28Opleidingsvorm%29+eq+%27T001228%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=TotaalIngeschrevenen_1"
+    },
+    "duo-hu-deeltijd-2024": {
+      "bron": "duo",
+      "omschrijving": "HU deeltijd 2024/25",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "DT",
+        "studiejaar": 2024,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 7418,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-deeltijd-2025": {
+      "bron": "duo",
+      "omschrijving": "HU deeltijd 2025/26",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "DT",
+        "studiejaar": 2025,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2025/26",
+      "waarde": 7408,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-eerstejaars-voltijd-2021": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd eerstejaars 2021/22",
+      "eenheid": "eerstejaars personen (p02ho1ejrs)",
+      "selectie": {
+        "dataset": "p02ho1ejrs",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2021,
+        "kolom": "AANTAL_EERSTEJAARS_INGESCHREVENEN"
+      },
+      "schooljaar": "2021/22",
+      "waarde": 5943,
+      "onderdrukte_cellen": 1,
+      "url": "https://onderwijsdata.duo.nl/dataset/p02ho1ejrs"
+    },
+    "duo-hu-eerstejaars-voltijd-2025": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd eerstejaars 2025/26",
+      "eenheid": "eerstejaars personen (p02ho1ejrs)",
+      "selectie": {
+        "dataset": "p02ho1ejrs",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2025,
+        "kolom": "AANTAL_EERSTEJAARS_INGESCHREVENEN"
+      },
+      "schooljaar": "2025/26",
+      "waarde": 5408,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p02ho1ejrs"
+    },
+    "duo-hu-inschrijvingen-voltijd-2021": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd inschrijvingen 2021/22",
+      "eenheid": "inschrijvingen (p03hoinschr)",
+      "selectie": {
+        "dataset": "p03hoinschr",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2021,
+        "kolom": "AANTAL_INSCHRIJVINGEN"
+      },
+      "schooljaar": "2021/22",
+      "waarde": 30284,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p03hoinschr"
+    },
+    "duo-hu-inschrijvingen-voltijd-2022": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd inschrijvingen 2022/23",
+      "eenheid": "inschrijvingen (p03hoinschr)",
+      "selectie": {
+        "dataset": "p03hoinschr",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2022,
+        "kolom": "AANTAL_INSCHRIJVINGEN"
+      },
+      "schooljaar": "2022/23",
+      "waarde": 30280,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p03hoinschr"
+    },
+    "duo-hu-inschrijvingen-voltijd-2023": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd inschrijvingen 2023/24",
+      "eenheid": "inschrijvingen (p03hoinschr)",
+      "selectie": {
+        "dataset": "p03hoinschr",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2023,
+        "kolom": "AANTAL_INSCHRIJVINGEN"
+      },
+      "schooljaar": "2023/24",
+      "waarde": 29941,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p03hoinschr"
+    },
+    "duo-hu-inschrijvingen-voltijd-2024": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd inschrijvingen 2024/25",
+      "eenheid": "inschrijvingen (p03hoinschr)",
+      "selectie": {
+        "dataset": "p03hoinschr",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2024,
+        "kolom": "AANTAL_INSCHRIJVINGEN"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 29620,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p03hoinschr"
+    },
+    "duo-hu-inschrijvingen-voltijd-2025": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd inschrijvingen 2025/26",
+      "eenheid": "inschrijvingen (p03hoinschr)",
+      "selectie": {
+        "dataset": "p03hoinschr",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2025,
+        "kolom": "AANTAL_INSCHRIJVINGEN"
+      },
+      "schooljaar": "2025/26",
+      "waarde": 28889,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p03hoinschr"
+    },
+    "duo-hu-voltijd-2021": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd 2021/22",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2021,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2021/22",
+      "waarde": 28355,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-voltijd-2022": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd 2022/23",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2022,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2022/23",
+      "waarde": 27904,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-voltijd-2023": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd 2023/24",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2023,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2023/24",
+      "waarde": 27441,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-voltijd-2024": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd 2024/25",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2024,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 27135,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "duo-hu-voltijd-2025": {
+      "bron": "duo",
+      "omschrijving": "HU voltijd 2025/26",
+      "eenheid": "personen (hoofdinschrijvingen, p01hoinges)",
+      "selectie": {
+        "dataset": "p01hoinges",
+        "resource": 3,
+        "instelling": "25DW",
+        "opleidingsvorm": "VT",
+        "studiejaar": 2025,
+        "kolom": "AANTAL_INGESCHREVENEN"
+      },
+      "schooljaar": "2025/26",
+      "waarde": 26370,
+      "onderdrukte_cellen": 0,
+      "url": "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    },
+    "rio-aeres-hogeschool": {
+      "bron": "rio",
+      "omschrijving": "Aeres Hogeschool: instellingscode en vestigingen",
+      "eenheid": "code en vestigingsplaatsen",
+      "selectie": {
+        "resource": "erkenningen",
+        "volledigeNaam": "Aeres Hogeschool",
+        "erkenningtype": "ERKENDE_ONDERWIJSINSTELLING"
+      },
+      "schooljaar": null,
+      "waarde": {
+        "code": "30TX",
+        "vestigingen": {
+          "30TX00": "Ede",
+          "30TX01": "Dronten",
+          "30TX02": "Almere",
+          "30TX03": "Wageningen",
+          "30TX04": "Nijmegen"
+        }
+      },
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen/30TX"
+    }
+  }
+}

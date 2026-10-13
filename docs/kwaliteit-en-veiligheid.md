@@ -107,6 +107,18 @@ Elke vraag definieert:
 - Referentiewaarden met tolerantiepercentages
 - Verplichte termen die in het antwoord moeten voorkomen
 
+### IJkwaarden rechtstreeks uit de bron (#190)
+
+De bronwaarheid-cases (`ijk-*` en de bijbehorende `weigering-*` in `evaluations.json`) stellen ongehulpte,
+natuurlijke vragen en toetsen het antwoord tegen waarden die `scripts/ijkwaarden.py` rechtstreeks bij CBS
+(OData), DUO en RIO (`riodata`) ophaalt, buiten `tools/` om: een fout in de tools verandert de ijkwaarde niet
+mee. De vastgelegde stand staat in `tests/e2e/ijkwaarden.json`, per waarde met bron, selectie, eenheid,
+schooljaar, CBS-status en ophaaldag; een eval verwijst ernaar (`data_points.ijkwaarden`) en is exact, zonder
+tolerantie. Zonder `--schrijf` toont het script elk verschil met de bron en faalt het; een nieuwe stand is een
+bewuste stap in een MR. Definities: `tests/ijkwaarden/README.md`. Met `TEST_REPEATS=3` loopt elke vraag drie
+keer per model en schrijft de runner het slagingspercentage per model en vraag naar
+`eval_results/slagingspercentage-<datum>.json`; één fout in drie beurten telt.
+
 ### Scoring (per vraag, max 100 punten)
 
 | Criterium | Punten | Wat het meet |
@@ -132,7 +144,7 @@ Transparantie over wat nog niet getest is:
 - Negatieve gevragen (model moet "nee" zeggen bij niet-bestaande instellingen of toekomstige jaren)
 - Multi-turn gesprekken
 - De sandbox van `run_analysis` is geen kernelgrens: een ontsnapping uit Python draait als dezelfde gebruiker als de server (#443)
-- Reference values kunnen verouderen na dataverversing
+- Reference values kunnen verouderen na dataverversing; voor de ijkwaarden maakt `scripts/ijkwaarden.py` dat zichtbaar
 - Geen max-lengte op chat-berichten
 
 ---

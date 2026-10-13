@@ -274,3 +274,66 @@ test('waardeInAntwoord en waardeInBron toetsen los van elkaar', () => {
   assert.equal(waardeInBron(['{"aantal": 130280}'], 30280), false)
   assert.equal(waardeInBron([], 0), false)
 })
+
+// --- ijkwaarden (#190): de referentiewaarde staat alleen in ijkwaarden.json ------------------
+import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
+import { nieuweMatrix, rapport, slagingspercentages, voegToe } from './matrix.js'
+
+const IJK = laadIjkwaarden()
+const IJK_EVALS = EVALS.filter(ev => ev.expected.data_points?.ijkwaarden)
+
+test('elke ijkverwijzing in evaluations.json bestaat en wordt een exacte referentiewaarde', () => {
+  assert.ok(IJK_EVALS.length >= 5)
+  for (const ev of IJK_EVALS) {
+    const dp = metIjkwaarden(ev, IJK).expected.data_points
+    assert.equal(dp.tolerance_pct, 0, ev.label)
+    for (const [sleutel, id] of Object.entries(ev.expected.data_points.ijkwaarden)) {
+      assert.equal(dp.reference_values[sleutel], IJK[id].waarde, `${ev.label}: ${sleutel}`)
+    }
+  }
+})
+
+test('een onbekende ijkwaarde is een fout, geen stille 0', () => {
+  const ev = { label: 'x', expected: { data_points: { ijkwaarden: { 2024: 'bestaat-niet' } } } }
+  assert.throws(() => metIjkwaarden(ev, IJK), /bestaat-niet/)
+  assert.equal(metIjkwaarden({ label: 'y', expected: {} }, IJK).expected.data_points, undefined)
+})
+
+const DEELTIJD = metIjkwaarden(EVALS.find(ev => ev.label === 'ijk-hu-deeltijd'), IJK)
+
+function deeltijd(content) {
+  return {
+    ...antwoord([
+      { type: 'tool_start', name: 'search_catalog' },
+      { type: 'tool_start', name: 'get_duo_data' },
+      { type: 'tool_end', name: 'get_duo_data', output: '{"data_key":"duo:p01hoinges:3"}' },
+      { type: 'tool_end', name: 'query_data', output: '[{"STUDIEJAAR":2025,"AANTAL":7408},{"STUDIEJAAR":2024,"AANTAL":7418}]' },
+      { type: 'message_end', content },
+    ]),
+  }
+}
+
+test('7.408 is het verschil tussen goed en fout: 7.418 (het jaar ervoor) haalt de ijkwaarde niet', () => {
+  const goed = scoreResult(deeltijd('Hogeschool Utrecht had in 2025/26 7.408 deeltijdstudenten.'), DEELTIJD)
+  assert.deepEqual(goed.reference_checks, { 2025: 'exact' })
+  assert.deepEqual(goed.fouten, [])
+  const fout = scoreResult(deeltijd('Hogeschool Utrecht had in 2025/26 7.418 deeltijdstudenten.'), DEELTIJD)
+  assert.deepEqual(fout.reference_checks, { 2025: 'missing' })
+  assert.ok(fout.fouten.some(f => f.includes('2025')), fout.fouten.join('; '))
+})
+
+test('de matrix telt beurten per model en vraag en rekent het slagingspercentage uit', () => {
+  const m = nieuweMatrix()
+  voegToe(m, 'a/x', 'v1', true)
+  voegToe(m, 'a/x', 'v1', false)
+  voegToe(m, 'a/x', 'v2', true)
+  voegToe(m, 'b/y', 'v1', false)
+  const p = slagingspercentages(m)
+  assert.deepEqual(p['a/x'].vragen.v1, { beurten: 2, geslaagd: 1, percentage: 50 })
+  assert.equal(p['a/x'].percentage, 67)
+  assert.equal(p['b/y'].percentage, 0)
+  const r = rapport(m, { gemeten_op: '2026-10-13', herhalingen: 2 })
+  assert.equal(r.gemeten_op, '2026-10-13')
+  assert.equal(r.herhalingen, 2)
+  assert.deepEqual(Object.keys(r.modellen), ['a/x', 'b/y'])
+})

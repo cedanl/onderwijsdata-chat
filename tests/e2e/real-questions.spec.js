@@ -7,21 +7,30 @@
  * en elke eis faalt apart (CH-28). Het token gaat als WS-subprotocol mee (chatstream.js).
  *
  * Run: TEST_MODELS=azure_ai/claude-haiku-4-5,openai/gpt-oss-120b npx playwright test real-questions
+ * Herhaling: TEST_REPEATS=3 laat elke vraag drie keer per model lopen; één fout telt (#190). Het
+ * slagingspercentage per model en vraag gaat als JSON naar eval_results/slagingspercentage-<datum>.json.
  */
 import { test, expect } from 'playwright/test'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
 import { scoreRefusal } from './refusal.js'
 import { scoreResult } from './score.js'
+import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
+import { nieuweMatrix, rapport, voegToe } from './matrix.js'
 import { WebSocket } from 'ws'
 import { WS_URL, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations
+// De referentiewaarden van een bronwaarheid-case komen uit ijkwaarden.json, niet uit de eval zelf (#190).
+const IJK = laadIjkwaarden()
+const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations.map(ev => metIjkwaarden(ev, IJK))
 
 const API = 'http://localhost:8000'
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
+const REPEATS = Math.max(1, Number(process.env.TEST_REPEATS) || 1)
+const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
+const MATRIX = nieuweMatrix()
 
 // Na een message_end kan nog een verduidelijkingsvraag volgen (agent/run.py sluit eerst de
 // lopende tekst af); pas als die uitblijft, is het antwoord af.
@@ -89,20 +98,33 @@ async function getToken() {
   return (await resp.json()).token
 }
 
+function geslaagd(ev, scores) {
+  const poortenOk = Object.values(scores.poorten).every(Boolean)
+  if (ev.expected.must_refuse) return poortenOk && scores.refused && scores.fabricated.length === 0
+  return poortenOk && scores.fouten.length === 0
+}
+
 test.describe('Productie-vragen (evaluatie)', () => {
   let token
   test.beforeAll(async () => { token = await getToken() })
+  test.afterAll(() => {
+    // Slagingspercentage per model en vraag over alle beurten (#190): naast de losse logs.
+    mkdirSync(RESULTATEN, { recursive: true })
+    const verslag = rapport(MATRIX, { herhalingen: REPEATS })
+    writeFileSync(resolve(RESULTATEN, `slagingspercentage-${verslag.gemeten_op}.json`), JSON.stringify(verslag, null, 2) + '\n')
+  })
 
   for (const ev of EVALS) {
     test(`${ev.label}: ${ev.description}`, async () => {
-      test.setTimeout(300_000)
+      test.setTimeout(300_000 * MODELS.length * REPEATS)
       const allScores = {}
 
-      for (const model of MODELS) {
-        const short = model.split('/').pop()
+      for (const model of MODELS) for (let beurt = 1; beurt <= REPEATS; beurt++) {
+        const short = REPEATS > 1 ? `${model.split('/').pop()}#${beurt}` : model.split('/').pop()
         const r = await chat(token, ev.message, model)
         const scores = ev.expected.must_refuse ? { ...scoreRefusal(r), poorten: poorten(r) } : scoreResult(r, ev)
         allScores[short] = scores
+        voegToe(MATRIX, model, ev.label, geslaagd(ev, scores))
 
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)
