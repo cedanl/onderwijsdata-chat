@@ -272,6 +272,7 @@ def _migrate(conn: Any) -> None:
             conn.commit()
 
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
+    _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
 
 
 # Eén rij per inzending; answers is JSON {vraag-id: antwoord} (zie core/feedback.py).
@@ -555,12 +556,36 @@ def delete_conversation(username: str, conv_id: str) -> None:
             (conv_id, username),
         )
         _execute(conn, "DELETE FROM data_recipes WHERE conv_id = ? AND username = ?", (conv_id, username))
-        _execute(
-            conn,
-            "UPDATE answer_feedback SET username = ?, conversation_id = ? WHERE username = ? AND conversation_id = ?",
-            (VERWIJDERDE_GEBRUIKER, str(uuid.uuid4()), username, conv_id),
-        )
+        _ontkoppel_feedback(conn, username, conv_id)
         conn.commit()
+
+
+def _ontkoppel_feedback(conn: Any, username: str, conv_id: str) -> None:
+    _execute(
+        conn,
+        "UPDATE answer_feedback SET username = ?, conversation_id = ? WHERE username = ? AND conversation_id = ?",
+        (VERWIJDERDE_GEBRUIKER, str(uuid.uuid4()), username, conv_id),
+    )
+
+
+MIGRATIE_FEEDBACK_ZONDER_GESPREK = "476_ontkoppel_feedback_zonder_gesprek"
+
+
+def _ontkoppel_feedback_zonder_gesprek(conn: Any) -> None:
+    """Feedback van gesprekken die vóór #476 zijn verwijderd: dezelfde ontkoppeling als delete_conversation.
+
+    Feedback kan alleen bij een bestaand gesprek (routes/answer_feedback.py), dus een rij zonder
+    gesprek hoort bij een verwijderd gesprek.
+    """
+    paren = _execute(
+        conn,
+        "SELECT DISTINCT username, conversation_id FROM answer_feedback a WHERE username <> ? AND NOT EXISTS "
+        "(SELECT 1 FROM conversations c WHERE c.id = a.conversation_id AND c.username = a.username)",
+        (VERWIJDERDE_GEBRUIKER,),
+    ).fetchall()
+    for paar in paren:
+        _ontkoppel_feedback(conn, paar["username"], paar["conversation_id"])
+    logger.info("feedback van %d verwijderde gesprekken ontkoppeld", len(paren))
 
 
 def save_recipes(username: str, conv_id: str, recipes: dict[str, dict]) -> None:

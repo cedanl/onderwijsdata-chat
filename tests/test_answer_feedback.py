@@ -316,3 +316,23 @@ def test_twee_verwijderde_gesprekken_met_hetzelfde_id_botsen_niet(app):
     rijen = db.all_answer_feedback()
     assert [r["username"] for r in rijen] == ["verwijderd", "verwijderd"]
     assert len({r["conversation_id"] for r in rijen}) == 2
+
+
+def test_feedback_van_eerder_verwijderde_gesprekken_wordt_bij_de_start_ontkoppeld(app):
+    # Vóór #476 bleef de rij met naam en gesprek-id staan; een gesprek dat niet meer bestaat is verwijderd.
+    _, db = app
+    trace = antwoord_trace(GESPREK, 1)
+    assert trace is not None
+    db.upsert_answer_feedback("anna", "al-weg", 1, "down", "klopt niet", trace)
+    db.upsert_answer_feedback("anna", "c1", 1, "up", "", trace)
+    conn = db._connect()
+    conn.execute("DELETE FROM schema_migrations WHERE name = ?", (db.MIGRATIE_FEEDBACK_ZONDER_GESPREK,))
+    conn.commit()
+    conn.close()
+
+    db.init_db()
+
+    rijen = {r["oordeel"]: r for r in db.all_answer_feedback()}
+    assert (rijen["down"]["username"], rijen["down"]["toelichting"]) == ("verwijderd", "klopt niet")
+    assert rijen["down"]["conversation_id"] != "al-weg"
+    assert (rijen["up"]["username"], rijen["up"]["conversation_id"]) == ("anna", "c1")
