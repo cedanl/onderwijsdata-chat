@@ -79,3 +79,21 @@ def test_de_grafiek_draagt_de_herkomst_voor_de_export():
 
     meta = json.loads(pio.to_json(fig))["layout"]["meta"]
     assert meta["herkomst"] == store.herkomst(key)
+
+
+def test_de_grafiek_draagt_het_dataset_id_voor_de_csv_naam():
+    """De grafiek-CSV heet <titel>_<dataset-id>.csv, net als de tabel-CSV (#533)."""
+    _bron()
+    key = json.loads(query_data("duo:p01hoinges:0", filters={"INSTELLINGSNAAM": "HU"}))["data_key"]
+
+    _, fig = create_plot(chart_type="bar", x="STUDIEJAAR", y="AANTAL", title="HU", data_key=key)
+
+    assert json.loads(pio.to_json(fig))["layout"]["meta"]["dataset"] == "p01hoinges"
+
+
+def test_een_grafiek_zonder_data_key_heeft_geen_dataset_id():
+    rows = [{"STUDIEJAAR": 2022, "AANTAL": 1}, {"STUDIEJAAR": 2023, "AANTAL": 2}]
+
+    _, fig = create_plot(rows, "bar", "STUDIEJAAR", "AANTAL", "HU")
+
+    assert "dataset" not in json.loads(pio.to_json(fig))["layout"]["meta"]

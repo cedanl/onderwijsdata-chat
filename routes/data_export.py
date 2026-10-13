@@ -1,13 +1,12 @@
 import asyncio
-import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from agent import recepten
 from core.auth import get_current_user
-from tools import herlaad, store
-from tools.csv_export import naar_csv
+from tools import herlaad
+from tools.csv_export import bestandsnaam, naar_csv
 
 router = APIRouter(tags=["data"])
 
@@ -28,9 +27,7 @@ async def data_csv(key: str, username: str = Depends(get_current_user)) -> Respo
     csv = naar_csv(key)
     if csv is None:
         raise HTTPException(404, f"{_WEG} {_OPNIEUW}")
-    known = store.meta(key)
-    naam = re.sub(r"[^A-Za-z0-9_-]", "_", known.dataset if known else "data")
-    headers = {"Content-Disposition": f'attachment; filename="{naam}.csv"'}
+    headers = {"Content-Disposition": f'attachment; filename="{bestandsnaam(key)}"'}
     if notitie := herlaad.notitie(key):
         # De cijfers kunnen afwijken van het eerdere antwoord: de bron kan zijn gewijzigd. Ook in de CSV zelf.
         headers["X-Data-Herladen"] = notitie
