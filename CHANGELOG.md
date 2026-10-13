@@ -240,6 +240,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De modelkiezer onder het invoerveld gebruikt gewone taal (#496, F10): "Sonnet 5.5 — voor de meeste vragen" in
+  plaats van "Sonnet 5.5 (Foundry) — Azure AI Foundry — gebalanceerd". Wie het model draait, staat er als rustig
+  bijschrift naast of onder, altijd zichtbaar: "Via Microsoft Azure AI Foundry". `GET /api/settings/config` geeft
+  daarvoor per model een veld `provider`. Twee modellen die hetzelfde zouden heten (hetzelfde model via twee
+  providers) krijgen hun provider tussen haakjes. Dezelfde kiezer staat in het dashboardvenster.
 - Grafieken met veel of lange categorieën blijven leesbaar in chat, rapport en dashboard. Een staafgrafiek met meer
   dan acht categorieën of namen langer dan twaalf tekens (instellingen, sectoren) krijgt liggende staven: de naam staat
   als gewone tekst naast de staaf, het getal in de staaf als het past, en de grafiek groeit mee in hoogte in plaats van
