@@ -126,3 +126,17 @@ describe('gesprek verwijderen ongedaan maken (#493)', () => {
     expect(api.deleteConversationApi).toHaveBeenCalledWith('c3', { keepalive: true })
   })
 })
+
+// #513: een rapport is een eigen kopie van het gesprek en blijft staan; de bevestiging zegt dat vooraf.
+describe('rapporten bij gesprek verwijderen (#513)', () => {
+  it('zegt in de bevestiging dat een rapport van het gesprek blijft en waar je het verwijdert', async () => {
+    await mount()
+    const knop = container.querySelector('[aria-label="Verwijder gesprek Tweede gesprek"]')
+    await act(async () => { knop.click() })
+
+    const melding = container.querySelector('.confirm-message').textContent
+    expect(melding).toContain('Weet je zeker dat je dit gesprek wilt verwijderen?')
+    expect(melding).toMatch(/rapport .*blijft bewaard/i)
+    expect(melding).toContain('Rapporten')
+  })
+})
