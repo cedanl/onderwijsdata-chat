@@ -205,6 +205,7 @@ def test_choropleth_draagt_het_dataset_id_voor_de_csv_naam():
         _, fig = create_choropleth_map(
             data_key="cbs:85354NED:kaart", location_col="RegioS", value_col="Waarde", title="Kaart test"
         )
+    assert fig is not None
     assert fig.layout.meta["dataset"] == "85354NED"
 
 
