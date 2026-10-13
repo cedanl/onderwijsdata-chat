@@ -451,6 +451,11 @@ de laatste tag is 1.8.6.
   mislukt" (DataProperties, TableInfos, dimensies) noemen het type en een kenmerk in plaats van de fouttekst
   met de request-URL, en de sandbox-regel bij een script zonder uitkomst noemt de returncode en een kenmerk
   van stderr (`stderr_len=… stderr_hash=…`); de tekst zelf staat op DEBUG.
+- Log-hardening, rapportregels van #502: een mislukt rapport logt op ERROR het fout-ID, het type en een kenmerk
+  (`fout_len=… fout_hash=…`) in plaats van een traceback met de fouttekst, die modeluitvoer kan citeren; de
+  traceback staat onder hetzelfde fout-ID op DEBUG. De melding "Sampling-ondersteuning … niet vast te stellen"
+  noemt het type en een kenmerk in plaats van de providerfout. Tests houden elke INFO+-regel van het rapportpad
+  vrij van vraag, antwoord, toolargumenten en fouttekst.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.
