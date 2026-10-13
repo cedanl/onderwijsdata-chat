@@ -240,6 +240,13 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Grafieken met veel of lange categorieën blijven leesbaar in chat, rapport en dashboard. Een staafgrafiek met meer
+  dan acht categorieën of namen langer dan twaalf tekens (instellingen, sectoren) krijgt liggende staven: de naam staat
+  als gewone tekst naast de staaf, het getal in de staaf als het past, en de grafiek groeit mee in hoogte in plaats van
+  achttien namen 90° gedraaid onder een plotvlak van 60px te zetten. Eén staaf uitlichten kan zonder `color_by` en
+  geeft geen legenda meer die de as herhaalt. De legenda staat horizontaal onder de grafiek in plaats van ernaast,
+  waar hij een derde van de breedte kostte en op een telefoon bijna alles; ook opgeslagen gesprekken tonen hem daar.
+  In een rapport op een telefoon staat de grafiek zonder dubbele kaartmarge.
 - Na een verlopen of ongeldige sessie staat op het inlogscherm nu "Je sessie is verlopen. Log opnieuw in." (#499), en
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie

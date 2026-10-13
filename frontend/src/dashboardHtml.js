@@ -4,6 +4,7 @@
 import { escapeHtml } from './reportHtml'
 import { plotlyScript } from './plotlyBron'
 import { scriptSafe } from './scriptSafe'
+import { figureHeightOfJson } from './figureLayout'
 
 const asJson = fig => (typeof fig === 'string' ? fig : JSON.stringify(fig))
 
@@ -18,7 +19,7 @@ function kpiHtml(kpi) {
 }
 
 function figureHtml(fig, i) {
-  return `<div class="card"><div id="fig${i}" style="height:320px"></div></div>
+  return `<div class="card"><div id="fig${i}" style="height:${figureHeightOfJson(asJson(fig), 320)}px"></div></div>
 <script>(function(){var f=${scriptSafe(asJson(fig))},d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('fig${i}',f.data||[],Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{t:48,r:24,b:48,l:60},font:{color:d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
 }
 

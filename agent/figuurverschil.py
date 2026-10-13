@@ -73,12 +73,14 @@ def _figuur_diff(index: int, oud_json: str, nieuw_json: str) -> list[str]:
         return [f"{_naam(None, index)} is gewijzigd."]
 
     titel = _naam(nieuw_fig, index)
-    if len(oud_fig.data) != len(nieuw_fig.data):
-        return [f"{titel}: het aantal reeksen veranderde van {len(oud_fig.data)} naar {len(nieuw_fig.data)}."]
+    oud_reeksen = _reeksen(oud_fig)
+    nieuw_reeksen = _reeksen(nieuw_fig)
+    if len(oud_reeksen) != len(nieuw_reeksen):
+        return [f"{titel}: het aantal reeksen veranderde van {len(oud_reeksen)} naar {len(nieuw_reeksen)}."]
 
     meldingen: list[str] = []
-    for oud_trace, nieuw_trace in zip(oud_fig.data, nieuw_fig.data, strict=False):
-        meldingen.extend(_reeks_diff(titel, oud_trace, nieuw_trace))
+    for (_, oud), (naam, nieuw) in zip(oud_reeksen, nieuw_reeksen, strict=False):
+        meldingen.extend(_reeks_diff(titel, naam, oud, nieuw))
     # Zonder meldingen zijn alleen de bytes anders (bv. opmaak), geen waarden: geen datawijziging.
     return meldingen
 
@@ -88,11 +90,22 @@ def _naam(fig, index: int) -> str:
     return f"'{tekst}'" if tekst else f"Grafiek {index + 1}"
 
 
-def _reeks_diff(titel: str, oud_trace, nieuw_trace) -> list[str]:
+def _reeksen(fig) -> list[tuple[str | None, dict[str, object]]]:
+    """Per reeks de naam en de waarden per categorie.
+
+    Een staaf per reeks, elk genoemd naar zijn eigen categorie, is één reeks: zo tekende
+    create_plot een uitgelichte staaf tot de grafieken één reeks met een kleur per staaf
+    kregen. Een bewaarde grafiek in de oude vorm is na verversen niet "anders".
+    """
+    reeksen = [(getattr(trace, "name", None), _waarden(trace)) for trace in fig.data]
+    if len(reeksen) > 1 and all(list(waarden) == [naam] for naam, waarden in reeksen):
+        return [(None, {categorie: waarde for _, waarden in reeksen for categorie, waarde in waarden.items()})]
+    return reeksen
+
+
+def _reeks_diff(titel: str, naam: str | None, oud: dict[str, object], nieuw: dict[str, object]) -> list[str]:
     """Per categorie (x-waarde, taartlabel of heatmapcel) de gewijzigde waarde benoemen."""
-    reeks = f", reeks '{nieuw_trace.name}'" if getattr(nieuw_trace, "name", None) else ""
-    oud = _waarden(oud_trace)
-    nieuw = _waarden(nieuw_trace)
+    reeks = f", reeks '{naam}'" if naam else ""
 
     meldingen = [
         f"{titel}{reeks}, {cat}: {_getal(oud[cat])} → {_getal(nieuw[cat])}"
@@ -122,8 +135,10 @@ def _punten(trace) -> list[tuple[str, object]]:
     categorieen = getattr(trace, "labels", None)
     waarden = getattr(trace, "values", None)
     if categorieen is None or waarden is None:
-        categorieen = getattr(trace, "x", None)
-        waarden = getattr(trace, "y", None)
+        # Liggende staven hebben de categorie op de y-as en de waarde op de x-as.
+        liggend = getattr(trace, "orientation", None) == "h"
+        categorieen = getattr(trace, "y" if liggend else "x", None)
+        waarden = getattr(trace, "x" if liggend else "y", None)
     if categorieen is None or waarden is None:
         return []
     return [(str(c), w) for c, w in zip(_lijst(categorieen), _lijst(waarden), strict=False)]

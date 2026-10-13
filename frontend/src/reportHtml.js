@@ -1,4 +1,5 @@
 import { topMarginOfJson } from './figureMargin'
+import { figureHeightOfJson } from './figureLayout'
 import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 
@@ -27,7 +28,7 @@ function bullets(items) {
 
 // Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek.
 function plotlyHtml(figureJson, id) {
-  return `<div class="card"><div id="${id}" style="height:360px"></div></div>
+  return `<div class="card"><div id="${id}" style="height:${figureHeightOfJson(figureJson, 360)}px"></div></div>
     <script>(function(){var f=${scriptSafe(figureJson)},_d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('${id}',f.data,Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
 }
 
@@ -140,7 +141,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .bronnen li{color:#4B5563;font-size:.88rem;line-height:1.6;margin:.3em 0}
   .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
-  @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.def{flex-direction:column;gap:4px}}
+  @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0}}
   @media(prefers-color-scheme:dark){
     body{color:#F9FAFB;background:#111827}
     .header{background:#1F2937;border-bottom-color:#374151}
