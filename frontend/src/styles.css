@@ -1279,6 +1279,14 @@ html.dark .context-limit-banner--full {
   box-shadow: var(--shadow-lg); z-index: 999;
   animation: slideUp .3s ease;
 }
+/* Meerdere meldingen tegelijk (#521) liggen onder elkaar in plaats van op dezelfde plek, en
+   blijven op een smal scherm binnen beeld en boven de vaste tabbalk. */
+.toast-stack {
+  position: fixed; right: 24px; bottom: calc(24px + var(--mobile-tabs-h, 0px));
+  max-width: calc(100vw - 48px); z-index: 999;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.toast-stack .toast { position: static; }
 .toast.info { background: var(--gray-900); color: var(--white); }
 .toast.warning { background: #92400E; color: var(--on-color); }
 .toast.error { background: #991B1B; color: var(--on-color); }

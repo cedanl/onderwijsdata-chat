@@ -125,11 +125,23 @@ describe('current chat', () => {
 })
 
 describe('conversation history', () => {
+  afterEach(() => vi.restoreAllMocks())
+
   it('round-trips through storage and survives corrupt data', () => {
     persistConversationHistory([{ id: 'a', title: 'T' }])
     expect(loadConversationHistory()).toEqual([{ id: 'a', title: 'T' }])
     localStorage.setItem('openEDUdata_conversations', 'x')
     expect(loadConversationHistory()).toEqual([])
+  })
+
+  it('says ok when the list was written', () => {
+    expect(persistConversationHistory([{ id: 'a', title: 'T' }])).toBe('ok')
+  })
+
+  // #521: a full storage was swallowed here without a word.
+  it('says mislukt when storage is full', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
+    expect(persistConversationHistory([{ id: 'a', title: 'T' }])).toBe('mislukt')
   })
 })
 
@@ -188,9 +200,38 @@ describe('persistCurrentChat bij een volle opslag', () => {
     expect(bewaard.messages[0].content).toBe('vraag')
   })
 
+  // #521: zonder vlag kwam een gesprek zonder grafieken terug alsof het compleet was.
+  it('markeert de terugval als onvolledig en leest dat terug', () => {
+    let eersteGooit = true
+    const echt = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (eersteGooit) { eersteGooit = false; throw new DOMException('vol', 'QuotaExceededError') }
+      return echt.call(this, key, value)
+    })
+
+    persistCurrentChat('c1', [question, answer])
+
+    expect(loadCurrentChat()).toEqual({ id: 'c1', messages: [question], onvolledig: true })
+  })
+
   it('zegt het wanneer ook de terugval niet past', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
     expect(persistCurrentChat('c1', [{ id: 1, role: 'user', content: 'vraag', done: true }])).toBe('mislukt')
+  })
+
+  // #521: een oudere momentopname kwam na verversen terug alsof die actueel was.
+  it('laat bij mislukt geen oudere momentopname achter', () => {
+    persistCurrentChat('oud', [question])
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
+
+    expect(persistCurrentChat('c1', [question, answer])).toBe('mislukt')
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+  })
+
+  it('gooit niet wanneer ook het wissen faalt', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('kapot') })
+    expect(persistCurrentChat('c1', [question])).toBe('mislukt')
   })
 
   it('geeft ok terug wanneer het past', () => {
