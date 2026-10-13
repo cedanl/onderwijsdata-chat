@@ -86,6 +86,12 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
 
   const spec = workbook.dashboardSpec
   const canRefresh = spec && (spec.figure_recipes?.length || spec.recipe?.length)
+  const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
+  // A report renders in a sandboxed frame whose content is not in this DOM: until it has loaded the region is
+  // busy, and a report without content says so instead of showing a blank frame (#387, #533).
+  const isReport = !BuiltinDash && !spec
+  const reportEmpty = isReport && !String(workbook.htmlContent ?? '').trim()
+  const reportLoading = isReport && !reportEmpty && frameLoadedFor !== workbook.id
 
   return (
     <div className="wb-viewer">
@@ -160,9 +166,9 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
       )}
       {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-      <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label="Rapportinhoud">
+      <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label="Rapportinhoud"
+        aria-busy={reportLoading || undefined}>
         {(() => {
-          const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
           if (BuiltinDash) return <BuiltinDash instelling={instelling} />
           if (spec) return (
             <>
@@ -187,9 +193,10 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
               )}
             </>
           )
+          if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>
-              {frameLoadedFor !== workbook.id && (
+              {reportLoading && (
                 <div className="wb-viewer-loading" role="status" aria-busy="true">
                   <span className="spinner" aria-hidden="true" />
                   Rapport wordt geladen…

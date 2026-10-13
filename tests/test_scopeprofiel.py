@@ -545,3 +545,32 @@ def test_in_de_echte_catalogus_valt_geen_gemengde_of_po_vo_cbs_tabel_binnen_de_g
 def test_elk_besluit_in_de_tabel_hoort_bij_een_bestaand_record():
     """Een besluit voor een verdwenen of hernoemd record is dode code."""
     assert set(scopeprofiel.TOEGELATEN) <= set(_echt())
+
+
+_VSV_DEFS = {
+    "Onderwijssoort": {"type": "Dimension", "title": "Onderwijssoort"},
+    "Perioden": {"type": "TimeDimension", "title": "Perioden"},
+    "VoortijdigSchoolverlaters_1": {"type": "Topic", "title": "Voortijdig schoolverlaters"},
+}
+
+
+def test_een_gesloten_selectie_op_de_sectordimensie_versmalt_de_selectie(catalogus):
+    """De compiler schrijft `trim(Onderwijssoort) eq 'A041868'` (#531); de sectorgrens leest die vorm ook."""
+    from tools import store
+
+    rijen = [*_VSV_RIJEN, {"Onderwijssoort": "A041868", "Perioden": "2023SJ00", "VoortijdigSchoolverlaters_1": 3000}]
+    with patch("tools.cbs.data", return_value=rijen) as data, patch("tools.cbs.definitions", return_value=_VSV_DEFS):
+        result = json.loads(
+            get_cbs_data("85368NED", selectie={"dimensies": {"Onderwijssoort": "A041868"}, "periode": ["2023/24"]})
+        )
+
+    assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A041868') and (")
+    assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A041868"]
+
+
+def test_een_gesloten_selectie_met_een_vo_code_wordt_niet_opgehaald(catalogus):
+    with patch("tools.cbs.data") as data, patch("tools.cbs.definitions", return_value=_VSV_DEFS):
+        result = get_cbs_data("85368NED", selectie={"dimensies": {"Onderwijssoort": "A042781"}, "periode": ["2023/24"]})
+
+    data.assert_not_called()
+    assert "data_key" not in result and "A025290" in result

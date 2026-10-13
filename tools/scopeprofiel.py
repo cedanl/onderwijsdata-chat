@@ -272,7 +272,8 @@ def cbs_sectorselectie(dataset_id: str, params: dict) -> CbsSectorselectie | str
     filter_ = CBS_SECTORFILTER[dataset_id]
     dimensie = filter_.dimensie
     eigen = str(params.get("$filter") or "").strip()
-    genoemd = re.findall(rf"\b{dimensie}\s+eq\s+'([^']*)'", eigen)
+    # `Dim eq 'code'` uit een bewaard recept, of `trim(Dim) eq 'code'` zoals de compiler schrijft (#531).
+    genoemd = re.findall(rf"(?:\btrim\({dimensie}\)|\b{dimensie})\s+eq\s+'([^']*)'", eigen)
     if len(re.findall(rf"\b{dimensie}\b", eigen)) != len(genoemd):
         return (
             f"Filter in $filter op {dimensie} alleen met '{dimensie} eq <code>' en een code voor "

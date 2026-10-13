@@ -72,6 +72,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een CBS-selectie op een korte code, zoals `Geslacht` = `4000` (Vrouwen) in de mbo-tabellen 85353NED en
+  85354NED, geeft nu rijen. CBS vult de sleutels van een dimensie op tot één breedte (`4000   ` naast
+  `T001038`) en toont ze gestript; de gecompileerde filter `Geslacht eq '4000'` matchte daardoor niets en de
+  tool meldde "Geen rijen gevonden", waarna het antwoord vrouwen afleidde als totaal min mannen (248.940 in
+  plaats van de gepubliceerde 248.930). De server compileert elke vergelijking nu als
+  `trim(Dimensie) eq 'code'`, zoals het CBS-package in `prepare_query` ook doet; de sectorgrens van de
+  VSV- en woonregiotabellen leest die vorm ook. Een eigen berekening (`run_analysis`) op afgeronde CBS-data
+  draagt nu dezelfde afrondingsnoot als `compute_kpi` en `query_data`, en de reproduceer-snippet van een
+  gesloten selectie toont de gecompileerde filter in plaats van een aanroep zonder filter (#531, F-10).
 - Bij CBS-data noemt het antwoord de datum nu als "CBS heeft deze tabel voor het laatst bijgewerkt op 9 april 2026"
   in plaats van "Deze dataset is actueel tot 9 april 2026"; die zin vroeg de systeemprompt. De datum is de dag
   waarop CBS de tabel het laatst bijwerkte, uit de meegeleverde catalogus (`_laatste_update`), niet het einde van
@@ -270,6 +279,10 @@ de laatste tag is 1.8.6.
   de browser en plant geen volgende vernieuwing meer in (#499).
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
+- Een zoekterm van meer woorden vindt die suggesties nu ook per woord, met een typefout per woord en in elke
+  volgorde (#533): "universiteit vam" geeft "Bedoel je Universiteit van Amsterdam, Vrije Universiteit Amsterdam?"
+  in plaats van alleen "Geen instellingen gevonden". Elk woord moet in de naam terugkomen; een vulwoord als "van"
+  mag ontbreken, en een half getypt woord telt als begin van een woord ("uni amst").
 - Boven een antwoord dat na controle is aangepast staat nu "Eerste versie van dit antwoord is aangepast na
   controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
   controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
@@ -284,6 +297,9 @@ de laatste tag is 1.8.6.
   Dat geldt ook voor een gesprek dat niet in de geladen lijst staat; daar gebeurde eerst niets. Ongedaan maken
   zet de treffer op zijn plaats terug, een nieuwe zoekopdracht binnen de bedenktijd toont hem niet. Is het
   gesprek nergens meer te vinden, dan meldt de app "Gesprek verwijderen is mislukt. Probeer het opnieuw."
+- Een verwijderd open gesprek komt na verversen niet meer terug (#530): het sluiten of verbergen van de tab en
+  een antwoord dat daarna nog afrondt schreven het opnieuw in de lokale opslag. Het blijft op het scherm staan
+  tot een nieuw gesprek; pas een nieuwe vraag daarin wordt weer bewaard. Ongedaan maken bewaart het meteen weer.
 - Een ververs van een dashboard zonder datarecept meldt niet meer "Data ververst" maar "Bij de bron is niets
   opgehaald: dit dashboard heeft geen datarecept; de grafieken zijn opnieuw getekend uit de data in het
   geheugen", als waarschuwing (#528, vervolg op #524). "Data ververst" staat er alleen als er bij de bron iets
@@ -305,6 +321,13 @@ de laatste tag is 1.8.6.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
+- Elke CSV-export heet nu `<titel>_<dataset-id>.csv` (#533): de globale CSV-knop en "Tabel N als CSV" naar de
+  catalogustitel van de dataset (`Mbo_studenten_naar_niveau_leerweg_herkomst_85354NED.csv` in plaats van
+  `85354NED.csv`), de CSV van een grafiek naar de grafiektitel met het dataset-id erachter. Kent de catalogus de
+  dataset niet, dan is het alleen het id; een grafiek zonder dataset houdt `<titel>.csv`.
+- De rapportviewer is nooit meer een leeg vlak (#533): zolang een rapport rendert, staat de inhoud als bezig
+  (`aria-busy`) naast de melding "Rapport wordt geladen…", en een rapport zonder inhoud zegt "Dit rapport heeft geen
+  inhoud." in plaats van een wit kader.
 - De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
   figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
   (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie

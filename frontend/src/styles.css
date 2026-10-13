@@ -1202,6 +1202,7 @@ html.dark .context-limit-banner--full {
   padding: 64px 24px; color: var(--muted-text); font-size: .9rem;
 }
 .wb-viewer-loading { position: absolute; inset: 0; align-items: flex-start; background: var(--white); }
+.wb-viewer-empty { margin: 0; padding: 64px 24px; text-align: center; color: var(--muted-text); font-size: .9rem; }
 .wb-gallery-notice {
   margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-sm);
   border: 1px solid rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .12); color: var(--gray-700); font-size: .85rem;
