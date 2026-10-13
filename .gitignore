@@ -18,8 +18,6 @@ frontend/dist/
 
 # Root-level Node (Playwright)
 node_modules/
-package.json
-package-lock.json
 
 # SQLite
 *.db

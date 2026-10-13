@@ -36,6 +36,7 @@ from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
+from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys, ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
@@ -331,6 +332,9 @@ async def _intrekken(emit: Emit, problems: list[str]) -> None:
 async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, figure) -> None:
     record_data_key(session, result, {"name": call.name, "arguments": call.args})
     record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
+    if figure is not None:
+        # De figuur gaat met haar rijen naar de client (export, #183): herkomst in het log (#169).
+        log_publicatie(FIGUUR, [k for k in ((call.args or {}).get("data_key"),) if isinstance(k, str)])
     await _handle_figure(call.name, figure, session, emit)
 
 
@@ -524,5 +528,7 @@ async def run(
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
     mani = manifest.bouw(chosen_model, data_keys(result.tool_results), model_versie=result.model_versie)
+    if text_content not in _ZONDER_BRONNEN:
+        log_publicatie(ANTWOORD, data_keys(result.tool_results), mani)
     await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani))
     return text_content

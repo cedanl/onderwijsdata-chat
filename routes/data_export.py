@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from agent import recepten
+from agent.publicatie import CSV, log_publicatie
 from core.auth import get_current_user
 from tools import herlaad
 from tools.csv_export import bestandsnaam, naar_csv
@@ -33,6 +34,7 @@ async def data_csv(key: str, username: str = Depends(get_current_user)) -> Respo
     csv = naar_csv(key)
     if csv is None:
         raise HTTPException(404, f"{_WEG} {_OPNIEUW}")
+    log_publicatie(CSV, [key])
     headers = {"Content-Disposition": f'attachment; filename="{bestandsnaam(key)}"'}
     if notitie := herlaad.notitie(key):
         # De cijfers kunnen afwijken van het eerdere antwoord: de bron kan zijn gewijzigd. Ook in de CSV zelf.

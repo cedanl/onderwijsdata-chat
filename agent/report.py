@@ -29,6 +29,7 @@ from agent.dashboard import (
 )
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
+from agent.publicatie import RAPPORT, log_publicatie
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
@@ -242,11 +243,9 @@ async def generate(
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
     spec = _parse_spec_from_response(result.text, figures, context, author)
-    spec.manifest = manifest.bouw(
-        model or MODEL,
-        [ds["data_key"] for ds in context["datasets"] if ds.get("data_key")],
-        model_versie=getattr(result, "model_versie", None),
-    )
+    keys = [ds["data_key"] for ds in context["datasets"] if ds.get("data_key")]
+    spec.manifest = manifest.bouw(model or MODEL, keys, model_versie=getattr(result, "model_versie", None))
+    log_publicatie(RAPPORT, keys, spec.manifest)
     return spec
 
 

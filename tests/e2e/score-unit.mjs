@@ -337,3 +337,16 @@ test('de matrix telt beurten per model en vraag en rekent het slagingspercentage
   assert.equal(r.herhalingen, 2)
   assert.deepEqual(Object.keys(r.modellen), ['a/x', 'b/y'])
 })
+
+// --- omgeving van de runner (#169): de testomgeving als synthetische controle --------------
+import { inloggegevens, wsUrl } from './chatstream.js'
+
+test('de WebSocket-URL volgt de basis-URL, https wordt wss, een slash achteraan valt weg', () => {
+  assert.equal(wsUrl('http://localhost:8000'), 'ws://localhost:8000/api/chat')
+  assert.equal(wsUrl('https://onderwijsdata-chat.test.sdp.surf.nl/'), 'wss://onderwijsdata-chat.test.sdp.surf.nl/api/chat')
+})
+
+test('inloggegevens komen uit de omgeving, met de lokale standaard als er niets staat', () => {
+  assert.deepEqual(inloggegevens({}), { username: 'admin', password: 'admin' })
+  assert.deepEqual(inloggegevens({ EVAL_USERNAME: 'tester', EVAL_PASSWORD: 'geheim' }), { username: 'tester', password: 'geheim' })
+})

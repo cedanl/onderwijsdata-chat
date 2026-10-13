@@ -7,8 +7,23 @@
  * - Het antwoord is de `content` van message_end. Losse text_delta's zijn alleen een tussenstand:
  *   na message_cancel (een ingetrokken versie) tellen ze niet meer mee.
  * - Een einde met `aborted` of `partial` is geen geldig einde.
+ * - De omgeving komt uit EVAL_BASE_URL (standaard de lokale app) en de inloggegevens uit
+ *   EVAL_USERNAME/EVAL_PASSWORD (standaard admin/admin): zo draait dezelfde runner tegen de
+ *   testomgeving als synthetische controle, los van de modelantwoordketen (#169).
  */
-export const WS_URL = 'ws://localhost:8000/api/chat'
+export const BASE_URL = (process.env.EVAL_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+
+/** De WebSocket-URL van /api/chat bij een http(s)-basis: https wordt wss. */
+export function wsUrl(base = BASE_URL) {
+  return base.replace(/^http/, 'ws').replace(/\/+$/, '') + '/api/chat'
+}
+
+export const WS_URL = wsUrl()
+
+/** Gebruikersnaam en wachtwoord voor /api/auth/login, uit de omgeving of de lokale standaard. */
+export function inloggegevens(env = process.env) {
+  return { username: env.EVAL_USERNAME || 'admin', password: env.EVAL_PASSWORD || 'admin' }
+}
 
 /** De subprotocollen voor `new WebSocket(WS_URL, protocollen(token))`, zoals de frontend ze stuurt. */
 export function protocollen(token) {
