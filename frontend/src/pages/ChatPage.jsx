@@ -39,6 +39,7 @@ import {
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
+import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
 import {
   fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig,
 } from '../api'
@@ -224,6 +225,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const messagesContainerRef = useRef(null)
   const openChatRef = useRef(initialChat)
   const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
+  // Het verwijderde open gesprek (#530): geen lokale save schrijft het terug tot er een nieuw gesprek begint.
+  const verwijderdRef = useRef(null)
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
   const savingRef = useRef(Promise.resolve())
   const initialHistorySentRef = useRef(false)
@@ -298,7 +301,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useEffect(() => {
     if (busy || sessionEndedSince(tokenAtMount)) return
     const all = [...restoredMessages, ...messages]
-    if (all.length) persistMetMelding(conversationId, all)
+    if (all.length && !isVerwijderd(verwijderdRef.current, conversationId, all)) persistMetMelding(conversationId, all)
   }, [busy, conversationId, messages, restoredMessages, tokenAtMount, persistMetMelding])
 
   // Sluit de tab tijdens het streamen, dan is dit het laatste moment om te bewaren (#520).
@@ -310,7 +313,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       if (sessionEndedSince(tokenAtMount)) return
       const { id, messages: open } = openChatRef.current
       const all = withBufferedText(open)
-      if (all.length) persistMetMelding(id, all)
+      if (all.length && !isVerwijderd(verwijderdRef.current, id, all)) persistMetMelding(id, all)
     }
     const bijZichtbaarheid = () => {
       if (document.visibilityState === 'hidden') opslaan()
@@ -360,6 +363,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     clearCurrentChat()
     setConversationId(newConversationId())
     savedJsonRef.current = '[]'
+    verwijderdRef.current = null
     // A new conversation starts on the user's own choice, not on the model of the one just open.
     setSelectedModel(pickModel(models, loadModelChoice(), defaultModel))
     startNewConversation()
@@ -371,6 +375,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setConversationId(String(conv.id))
     const restored = conversationMessages(conv)
     savedJsonRef.current = JSON.stringify(restored)
+    verwijderdRef.current = null
     setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
@@ -436,9 +441,15 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const updated = terugInLijst(loadConversationHistory(), hersteld.conv, hersteld.index)
     persistHistoryMetMelding(updated)
     setConversationHistory(updated)
-    // Was het het open gesprek, dan mag de volgende save het weer wegschrijven.
-    if (String(hersteld.conv.id) === conversationIdRef.current) savedJsonRef.current = ''
-  }, [persistHistoryMetMelding])
+    // Was het het open gesprek, dan mag de volgende save het weer wegschrijven; de lokale kopie meteen (#530).
+    if (String(hersteld.conv.id) !== conversationIdRef.current) return
+    savedJsonRef.current = ''
+    verwijderdRef.current = null
+    if (sessionEndedSince(tokenAtMount)) return
+    const { id, messages: open } = openChatRef.current
+    const all = withBufferedText(open)
+    if (all.length) persistMetMelding(id, all)
+  }, [persistHistoryMetMelding, persistMetMelding, withBufferedText, tokenAtMount])
 
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
@@ -448,9 +459,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     persistHistoryMetMelding(updated)
     setConversationHistory(updated)
     // Deleting the open conversation must not bring it back on the next save; only a new question does.
-    if (String(pendingDelete) === conversationId) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
+    const openVerwijderd = String(pendingDelete) === conversationId
+    if (openVerwijderd) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
     setPendingDelete(null)
     if (!conv) return
+    // Al bij het bevestigen, niet pas in voerUit: zo schrijft ook een pagehide binnen de bedenktijd
+    // het gesprek niet terug, in welke volgorde de listeners ook lopen (#530).
+    if (openVerwijderd) verwijderdRef.current = markeerVerwijderd(conversationId, openChatRef.current.messages)
     verwijderingRef.current.plan(conv, index)
     sluitUndoToastRef.current?.()
     sluitUndoToastRef.current = addToast('Gesprek verwijderd.', 'info', {
