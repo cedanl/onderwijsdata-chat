@@ -322,6 +322,12 @@ de laatste tag is 1.8.6.
   catalogus het kent; elke logregel van een chatverbinding draagt een kort verbindings-ID (`verbinding=…`,
   in JSON als eigen veld), zodat de regels van één verbinding te koppelen zijn zonder gebruikersnaam of
   gespreks-ID; met `LOG_HASH_SECRET` is de hash in logregels een HMAC in plaats van een kale SHA-256.
+- Log-hardening, restpunt van #502: de interne-foutregel (`log_interne_fout`) noemt op ERROR alleen het
+  fout-ID, waar het misging, het type en een kenmerk (`fout_len=… fout_hash=…`); de traceback staat onder
+  hetzelfde fout-ID op DEBUG. Het fout-ID dat de gebruiker ziet, blijft werken. De CBS-meldingen "… ophalen
+  mislukt" (DataProperties, TableInfos, dimensies) noemen het type en een kenmerk in plaats van de fouttekst
+  met de request-URL, en de sandbox-regel bij een script zonder uitkomst noemt de returncode en een kenmerk
+  van stderr (`stderr_len=… stderr_hash=…`); de tekst zelf staat op DEBUG.
 - Databaseaanroepen van de REST-handlers (gesprekken, werkboeken, feedback, token verversen) en de
   readiness-check draaien in de threadpool in plaats van op de event loop (#508): een trage database
   zette tot nu toe elke lopende chat-stream van alle gebruikers stil. Postgres-verbindingen worden
