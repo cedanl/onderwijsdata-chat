@@ -72,6 +72,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een CBS-selectie op een korte code, zoals `Geslacht` = `4000` (Vrouwen) in de mbo-tabellen 85353NED en
+  85354NED, geeft nu rijen. CBS vult de sleutels van een dimensie op tot één breedte (`4000   ` naast
+  `T001038`) en toont ze gestript; de gecompileerde filter `Geslacht eq '4000'` matchte daardoor niets en de
+  tool meldde "Geen rijen gevonden", waarna het antwoord vrouwen afleidde als totaal min mannen (248.940 in
+  plaats van de gepubliceerde 248.930). De server compileert elke vergelijking nu als
+  `trim(Dimensie) eq 'code'`, zoals het CBS-package in `prepare_query` ook doet; de sectorgrens van de
+  VSV- en woonregiotabellen leest die vorm ook. Een eigen berekening (`run_analysis`) op afgeronde CBS-data
+  draagt nu dezelfde afrondingsnoot als `compute_kpi` en `query_data`, en de reproduceer-snippet van een
+  gesloten selectie toont de gecompileerde filter in plaats van een aanroep zonder filter (#531, F-10).
 - Bij CBS-data noemt het antwoord de datum nu als "CBS heeft deze tabel voor het laatst bijgewerkt op 9 april 2026"
   in plaats van "Deze dataset is actueel tot 9 april 2026"; die zin vroeg de systeemprompt. De datum is de dag
   waarop CBS de tabel het laatst bijwerkte, uit de meegeleverde catalogus (`_laatste_update`), niet het einde van
