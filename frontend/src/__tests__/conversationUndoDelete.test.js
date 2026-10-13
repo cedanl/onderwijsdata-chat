@@ -40,6 +40,7 @@ vi.mock('../hooks/useChat', () => ({
 import ChatPage from '../pages/ChatPage'
 import { STORAGE_TOKEN, STORAGE_CONVERSATIONS } from '../constants'
 import { UITSTEL_MS } from '../verwijderenMetUitstel'
+import { SEARCH_DELAY_MS } from '../hooks/useConversationSearch'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -86,6 +87,15 @@ async function verwijder(titel) {
   const knop = container.querySelector(`[aria-label="Verwijder gesprek ${titel}"]`)
   await act(async () => { knop.click() })
   await act(async () => { container.querySelector('.confirm-destructive').click() })
+}
+
+async function zoek(tekst) {
+  const veld = container.querySelector('[aria-label="Zoek in gesprekken"]')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(veld, tekst)
+    veld.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
 }
 
 describe('gesprek verwijderen ongedaan maken (#493)', () => {
@@ -138,5 +148,107 @@ describe('rapporten bij gesprek verwijderen (#513)', () => {
     expect(melding).toContain('Weet je zeker dat je dit gesprek wilt verwijderen?')
     expect(melding).toMatch(/rapport .*blijft bewaard/i)
     expect(melding).toContain('Rapporten')
+  })
+})
+
+// #529: verwijderen vanuit de zoekresultaten gaat net als vanuit de lijst, ook voor een treffer die niet in de
+// geladen eerste pagina staat (hier 'c9').
+describe('gesprek verwijderen vanuit de zoekresultaten (#529)', () => {
+  const treffers = [
+    { id: 'c2', title: 'Tweede gesprek', timestamp: 2 },
+    { id: 'c9', title: 'Oud gesprek', timestamp: 0 },
+    { id: 'c3', title: 'Derde gesprek', timestamp: 1 },
+  ]
+  const opgeslagen = () => JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS)).map(c => c.id)
+
+  beforeEach(() => {
+    api.fetchConversations.mockImplementation(opties => Promise.resolve(opties?.q ? treffers : rijen))
+  })
+
+  it('haalt een treffer buiten de lijst meteen weg en stuurt de DELETE pas na de bedenktijd', async () => {
+    await mount()
+    await zoek('gesprek')
+    expect(titels()).toEqual(['Tweede gesprek', 'Oud gesprek', 'Derde gesprek'])
+
+    await verwijder('Oud gesprek')
+
+    expect(titels()).toEqual(['Tweede gesprek', 'Derde gesprek'])
+    expect(toast().textContent).toContain('Gesprek verwijderd.')
+    expect(toast().querySelector('.toast-actie').textContent).toBe('Ongedaan maken')
+    expect(opgeslagen()).toEqual(['c1', 'c2', 'c3'])
+
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS - 1) })
+    expect(api.deleteConversationApi).not.toHaveBeenCalled()
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(api.deleteConversationApi).toHaveBeenCalledOnce()
+    expect(api.deleteConversationApi).toHaveBeenCalledWith('c9', { keepalive: true })
+  })
+
+  it('voert de verwijdering van een treffer direct uit als de tab verborgen wordt', async () => {
+    await mount()
+    await zoek('gesprek')
+    await verwijder('Oud gesprek')
+    await act(async () => { window.dispatchEvent(new Event('pagehide')) })
+    expect(api.deleteConversationApi).toHaveBeenCalledWith('c9', { keepalive: true })
+  })
+
+  it('zet de treffer op zijn plaats terug en laat lijst en server met rust', async () => {
+    await mount()
+    await zoek('gesprek')
+    await verwijder('Oud gesprek')
+
+    await act(async () => { toast().querySelector('.toast-actie').click() })
+
+    expect(titels()).toEqual(['Tweede gesprek', 'Oud gesprek', 'Derde gesprek'])
+    expect(toast()).toBeNull()
+    expect(opgeslagen()).toEqual(['c1', 'c2', 'c3'])
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS * 2) })
+    expect(api.deleteConversationApi).not.toHaveBeenCalled()
+  })
+
+  it('haalt een treffer die ook in de lijst staat uit beide en zet hem in beide terug', async () => {
+    await mount()
+    await zoek('gesprek')
+    await verwijder('Tweede gesprek')
+
+    expect(titels()).toEqual(['Oud gesprek', 'Derde gesprek'])
+    expect(opgeslagen()).toEqual(['c1', 'c3'])
+
+    await act(async () => { toast().querySelector('.toast-actie').click() })
+    expect(titels()).toEqual(['Tweede gesprek', 'Oud gesprek', 'Derde gesprek'])
+    expect(opgeslagen()).toEqual(['c1', 'c2', 'c3'])
+
+    await zoek('')
+    expect(titels()).toEqual(['Eerste gesprek', 'Tweede gesprek', 'Derde gesprek'])
+  })
+
+  it('toont een treffer in zijn bedenktijd niet opnieuw als een nieuwe zoekopdracht hem nog vindt', async () => {
+    await mount()
+    await zoek('gesprek')
+    await verwijder('Oud gesprek')
+
+    await zoek('oud gesprek')
+
+    expect(titels()).toEqual(['Tweede gesprek', 'Derde gesprek'])
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS) })
+    expect(api.deleteConversationApi).toHaveBeenCalledOnce()
+    expect(api.deleteConversationApi).toHaveBeenCalledWith('c9', { keepalive: true })
+  })
+
+  it('meldt een fout als het gesprek nergens meer staat, en plant geen DELETE', async () => {
+    await mount()
+    await zoek('gesprek')
+    await act(async () => { container.querySelector('[aria-label="Verwijder gesprek Oud gesprek"]').click() })
+    // De zoekresultaten verversen terwijl de bevestiging openstaat; 'c9' zit er niet meer in.
+    api.fetchConversations.mockImplementation(() => Promise.resolve([treffers[0]]))
+    await zoek('tweede')
+
+    await act(async () => { container.querySelector('.confirm-destructive').click() })
+
+    expect(container.querySelector('.confirm-destructive')).toBeNull()
+    expect(toast().classList.contains('error')).toBe(true)
+    expect(toast().textContent).toBe('Gesprek verwijderen is mislukt. Probeer het opnieuw.')
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS * 2) })
+    expect(api.deleteConversationApi).not.toHaveBeenCalled()
   })
 })

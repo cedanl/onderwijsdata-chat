@@ -214,6 +214,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
   const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
   const historySearch = useConversationSearch()
+  const { results: zoekResultaten, removeResult, restoreResult } = historySearch
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false)
   // The conversation being fetched to open it (#509); one at a time.
@@ -433,31 +434,45 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     sluitUndoToastRef.current?.()
     sluitUndoToastRef.current = null
     if (!hersteld) return
-    const updated = terugInLijst(loadConversationHistory(), hersteld.conv, hersteld.index)
-    persistHistoryMetMelding(updated)
-    setConversationHistory(updated)
+    // Terug waar het stond: in de lijst en/of in de zoekresultaten (#529); een treffer buiten de lijst blijft eruit.
+    const { lijst, zoek } = hersteld.index
+    restoreResult(hersteld.conv, zoek)
+    if (lijst >= 0) {
+      const updated = terugInLijst(loadConversationHistory(), hersteld.conv, lijst)
+      persistHistoryMetMelding(updated)
+      setConversationHistory(updated)
+    }
     // Was het het open gesprek, dan mag de volgende save het weer wegschrijven.
     if (String(hersteld.conv.id) === conversationIdRef.current) savedJsonRef.current = ''
-  }, [persistHistoryMetMelding])
+  }, [persistHistoryMetMelding, restoreResult])
 
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
     const index = conversationHistory.findIndex(c => c.id === pendingDelete)
-    const conv = conversationHistory[index]
-    const updated = conversationHistory.filter(c => c.id !== pendingDelete)
-    persistHistoryMetMelding(updated)
-    setConversationHistory(updated)
+    // Een zoektreffer hoeft niet in de geladen lijst te staan (#529): dan komt het gesprek uit de zoekresultaten.
+    const zoekIndex = zoekResultaten?.findIndex(c => String(c.id) === String(pendingDelete)) ?? -1
+    const conv = conversationHistory[index] ?? zoekResultaten?.[zoekIndex]
+    if (index >= 0) {
+      const updated = conversationHistory.filter(c => c.id !== pendingDelete)
+      persistHistoryMetMelding(updated)
+      setConversationHistory(updated)
+    }
     // Deleting the open conversation must not bring it back on the next save; only a new question does.
     if (String(pendingDelete) === conversationId) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
     setPendingDelete(null)
-    if (!conv) return
-    verwijderingRef.current.plan(conv, index)
+    // Nergens meer te vinden (de zoekresultaten ververst?): nooit stil sluiten, de gebruiker denkt dat het weg is.
+    if (!conv) {
+      addToast('Gesprek verwijderen is mislukt. Probeer het opnieuw.', 'error')
+      return
+    }
+    removeResult(conv.id)
+    verwijderingRef.current.plan(conv, { lijst: index, zoek: zoekIndex })
     sluitUndoToastRef.current?.()
     sluitUndoToastRef.current = addToast('Gesprek verwijderd.', 'info', {
       duur: UITSTEL_MS,
       actie: { label: 'Ongedaan maken', onClick: ongedaanMaken },
     })
-  }, [pendingDelete, conversationHistory, conversationId, addToast, ongedaanMaken, persistHistoryMetMelding])
+  }, [pendingDelete, conversationHistory, zoekResultaten, removeResult, conversationId, addToast, ongedaanMaken, persistHistoryMetMelding])
 
   // Tab sluiten of weg van deze pagina: een lopende bedenktijd eindigt dan meteen in de DELETE.
   useEffect(() => {

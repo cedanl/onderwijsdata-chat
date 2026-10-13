@@ -18,7 +18,8 @@ export function uitgesteldeVerwijdering({ voerUit, wacht = UITSTEL_MS, timers = 
   }
 
   return {
-    // Plan de verwijdering van `conv` dat op `index` in de lijst stond; een eerdere wordt eerst uitgevoerd.
+    // Plan de verwijdering van `conv` dat op `index` stond (een getal, of de plaatsen in meer lijsten);
+    // ongedaan() geeft `index` ongewijzigd terug. Een eerdere verwijdering wordt eerst uitgevoerd.
     plan(conv, index) {
       afronden()
       const timer = timers.setTimeout(afronden, wacht)
