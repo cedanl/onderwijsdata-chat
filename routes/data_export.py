@@ -20,7 +20,13 @@ async def data_csv(key: str, username: str = Depends(get_current_user)) -> Respo
 
     De store leeft in het geheugen; na een herstart komt de tabel terug uit het recept
     van deze gebruiker (#472). Herladen gaat naar de bron, dus in een thread.
+
+    De store is gedeeld over alle gebruikers, de export niet: alleen een key waar een eigen gesprek een
+    recept van heeft (#13). Een vreemde key krijgt dezelfde melding als een verdwenen key, zodat de
+    export niet bevestigt dat ze bestaat.
     """
+    if await asyncio.to_thread(recepten.voor, username, key) is None:
+        raise HTTPException(404, f"{_WEG} {_OPNIEUW}")
     herladen = await asyncio.to_thread(recepten.terughalen, username, key)
     if herladen is not None and not herladen.gelukt:
         raise HTTPException(502 if herladen.bronfout else 404, f"{_WEG} {herladen.melding} {_OPNIEUW}")

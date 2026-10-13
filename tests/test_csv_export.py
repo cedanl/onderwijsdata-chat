@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import loop as loop_module
+from agent import recepten
 from tools import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, csv_export, duo, store
 from tools.csv_export import bestandsnaam, export_key, naar_csv
 from tools.query import query_data
@@ -218,9 +219,15 @@ def _met_token(client):
     client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
 
 
+def _eigen(key="duo:p01hoinges:0", username="testuser"):
+    """De tabel in de store én het recept dat zegt dat een gesprek van deze gebruiker haar maakte (#13)."""
+    _bron(key)
+    recepten.onthoud(username, key, {"laad": ["get_duo_data", {"dataset_id": "p01hoinges", "resource": 0}]})
+
+
 def test_endpoint_geeft_de_csv_als_bijlage(client):
     _login(client)
-    _bron()
+    _eigen()
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
@@ -235,7 +242,7 @@ def test_endpoint_geeft_de_csv_als_bijlage(client):
 
 def test_endpoint_noemt_een_onbekende_dataset_naar_het_id(client):
     _met_token(client)
-    _bron("duo:eigen-set:0")
+    _eigen("duo:eigen-set:0")
     resp = client.get("/api/data/csv", params={"key": "duo:eigen-set:0"})
     assert resp.status_code == 200
     assert resp.headers["content-disposition"] == 'attachment; filename="eigen_set.csv"'
@@ -244,7 +251,7 @@ def test_endpoint_noemt_een_onbekende_dataset_naar_het_id(client):
 def test_endpoint_maakt_een_titel_met_accenten_en_tekens_veilig(client, monkeypatch):
     _met_token(client)
     monkeypatch.setattr(csv_export.catalog, "bron_titel", lambda _id: 'Mbo; "studenten" é\r\nX: y')
-    _bron()
+    _eigen()
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
     assert resp.headers["content-disposition"] == 'attachment; filename="Mbo_studenten_e_X_y_p01hoinges.csv"'
 
@@ -257,7 +264,7 @@ def test_endpoint_meldt_verdwenen_data(client):
 
 
 def test_endpoint_vraagt_inlog(client):
-    _bron()
+    _eigen()
     assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 401
 
 
@@ -266,12 +273,25 @@ def test_endpoint_zonder_recept_houdt_de_melding_van_voor_de_recepten(client):
     from core import auth
 
     client.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
-    _bron()
+    _eigen()
     assert client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"}).status_code == 200
     store.clear()
+    recepten.wis()  # het recept stond alleen in het geheugen: na de herstart is er geen
 
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
 
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
     assert "X-Data-Herladen" not in resp.headers
+
+
+def test_endpoint_geeft_geen_tabel_van_een_ander(client):
+    """De store is gedeeld; de export niet: alleen een key uit een eigen gesprek (#13, audit 14 §5)."""
+    _met_token(client)
+    _eigen(username="iemand-anders")
+
+    resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
+
+    # Niet te onderscheiden van een key die er niet (meer) is: de melding bevestigt geen vreemde key.
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Deze data is niet meer beschikbaar. Stel de vraag opnieuw om haar op te halen."
