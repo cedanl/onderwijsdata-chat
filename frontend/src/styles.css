@@ -1290,6 +1290,13 @@ html.dark .context-limit-banner--full {
 .toast.info { background: var(--gray-900); color: var(--white); }
 .toast.warning { background: #92400E; color: var(--on-color); }
 .toast.error { background: #991B1B; color: var(--on-color); }
+/* Een knop in een toast, zoals "Ongedaan maken" na het verwijderen van een gesprek (#493). */
+.toast-actie {
+  margin-left: 14px; padding: 4px 10px; border-radius: var(--radius-sm);
+  border: 1px solid currentColor; background: transparent; color: inherit;
+  font: inherit; font-weight: 600; cursor: pointer; min-height: 32px;
+}
+.toast-actie:hover, .toast-actie:focus-visible { background: rgba(255,255,255,0.15); }
 @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* ─── Confirm Modal ───────────────────────────────────────── */

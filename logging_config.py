@@ -8,6 +8,8 @@ import logging
 import sys
 from datetime import datetime
 
+from core.logging_context import GEEN, VerbindingFilter
+
 
 class JSONFormatter(logging.Formatter):
     """
@@ -22,6 +24,10 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
+
+        # Het verbindings-ID van de chatverbinding die deze regel schreef (#502); REST-verzoeken hebben er geen.
+        if (verbinding := getattr(record, "verbinding", GEEN)) != GEEN:
+            log_obj["verbinding"] = verbinding
 
         # Add exception info if present
         if record.exc_info:
@@ -57,10 +63,11 @@ def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
         formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(
-            "%(asctime)s %(levelname)-8s %(name)s - %(message)s",
+            "%(asctime)s %(levelname)-8s %(name)s [%(verbinding)s] - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
+    console_handler.addFilter(VerbindingFilter())
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 

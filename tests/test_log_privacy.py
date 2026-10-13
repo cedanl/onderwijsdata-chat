@@ -126,7 +126,8 @@ def test_volledige_run_logt_geen_vraag_of_antwoord_op_info(monkeypatch, caplog):
     zoekterm = tekst_kenmerk(f"{MARKER} hbo", "query_")
     [zoek] = [b for b in berichten if b.startswith("search_catalog ")]
     [geladen] = [b for b in berichten if b.startswith("CATALOGUS_GELADEN geladen=duo-a")]
-    [afwijking] = [b for b in berichten if b.startswith("CATALOGUS_AFWIJKING geladen=duo-anders")]
+    # duo-anders staat niet in de catalogus: het ID van het model komt dan als kenmerk in het log (#502).
+    [afwijking] = [b for b in berichten if b.startswith("CATALOGUS_AFWIJKING geladen=onbekend id_len=10 id_hash=")]
     # The same hash on the search and the load lines, so an operator can still join them (#18).
     assert zoekterm in zoek and zoekterm in geladen and zoekterm in afwijking
     [finale] = [b for b in berichten if "FINALE ANTWOORD" in b]

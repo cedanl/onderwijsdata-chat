@@ -34,6 +34,15 @@ HISTORY_MAX_CHARS = max(1, int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * 
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))
 RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
+# Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen, dashboards en rapporten per
+# gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de
+# LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
+CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
+CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
+# Bovengrens van de datastore in het geheugen (tools/store.py, #13): daarboven gaan de langst niet
+# gebruikte tabellen eruit; een gesprek haalt ze zo nodig uit zijn recept terug (#472). De pod heeft
+# 2 GiB (playground) tot 4 GiB (productie); de catalogus en de modellen delen dat geheugen.
+STORE_MAX_MB = int(os.getenv("STORE_MAX_MB", "512"))
 # Zoekacties per vraag: de code dwingt dit af en de systeemprompt noemt het (#52).
 SEARCH_CATALOG_LIMIT = 3
 # Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234).

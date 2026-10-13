@@ -14,6 +14,8 @@ from enum import StrEnum
 
 import httpx
 
+from core.logging_util import foutkenmerk
+
 from . import store
 
 logger = logging.getLogger(__name__)
@@ -58,7 +60,8 @@ def bronfout(bron: str, e: Exception, uitleg: str = "") -> str:
     lokaal toetsen ("Geen resource met 'mbo'", de geldige resources): die tekst helpt
     het model verder en blijft staan.
     """
-    logger.warning("%s-fout: %r", bron, e)
+    logger.warning("%s-fout: %s", bron, foutkenmerk(e))
+    logger.debug("%s-fout: %r", bron, e)
     if isinstance(e, ValueError):
         return melding(Fout.BRON_WEIGERT, f"{bron}: {e}{uitleg}")
     if isinstance(e, httpx.HTTPStatusError):
@@ -72,7 +75,9 @@ def bronfout(bron: str, e: Exception, uitleg: str = "") -> str:
 
 
 def toolfout(naam: str, e: Exception) -> str:
-    logger.error("Tool %s faalde: %r", naam, e, exc_info=e)
+    # De fouttekst kan de argumenten van het model citeren: op ERROR het type en een kenmerk, de rest op DEBUG (#502).
+    logger.error("Tool %s faalde: %s", naam, foutkenmerk(e))
+    logger.debug("Tool %s faalde", naam, exc_info=e)
     return melding(Fout.TOOLFOUT, f"{naam} faalde ({type(e).__name__}). Controleer de argumenten.")
 
 

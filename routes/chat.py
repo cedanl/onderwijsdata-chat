@@ -3,6 +3,7 @@ import contextlib
 import json
 import logging
 import os
+import uuid
 from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
@@ -29,8 +30,18 @@ from agent.replay import (
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
-from core.config import DASHBOARDS_ENABLED, HISTORY_MAX_CHARS, MAX_HISTORY, MAX_MESSAGE_CHARS, MODEL
+from core.config import (
+    CHAT_RATE_LIMIT,
+    CHAT_RATE_WINDOW_S,
+    DASHBOARDS_ENABLED,
+    HISTORY_MAX_CHARS,
+    MAX_HISTORY,
+    MAX_MESSAGE_CHARS,
+    MODEL,
+)
 from core.errors import Gebruikersfout, error_event, friendly_error
+from core.logging_context import nieuwe_verbinding
+from core.rate_limit import RateLimiter
 
 from .instellingen import TAG_STARTERS, tag_voorbeeldvragen
 
@@ -39,7 +50,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
 
-def _new_session(username: str | None = None) -> dict:
+# Per gebruiker, niet per IP: achter de ingress delen alle bezoekers één adres (zie routes/feedback.py).
+# Zonder login heet iedereen "gast": dan per verbinding, zodat een zaal vol gasten elkaar niet blokkeert.
+_berichtlimiter = RateLimiter(max_attempts=CHAT_RATE_LIMIT, window_seconds=CHAT_RATE_WINDOW_S)
+_LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} seconden opnieuw."
+
+
+def _new_session(username: str | None = None, verbinding: str | None = None) -> dict:
     return {
         "messages": [],
         "figures": [],
@@ -54,6 +71,8 @@ def _new_session(username: str | None = None) -> dict:
         # Moet gelijk zijn aan wat core.auth teruggeeft als auth uit staat, anders
         # schrijft de websocket weg onder een naam waar /api/conversations niet op zoekt.
         "username": username or FALLBACK_USER,
+        # Eén ID per WebSocket-verbinding; blijft bij een reset, anders ontloopt een gast de berichtlimiet (#444).
+        "verbinding": verbinding or uuid.uuid4().hex[:8],
     }
 
 
@@ -63,7 +82,7 @@ def _reset_session(session: dict) -> None:
     Everything the agent could remember goes — messages, turns, figures, clarify,
     tool state and loaded data. Only who is chatting and their settings carry over.
     """
-    fresh = _new_session(username=session["username"])
+    fresh = _new_session(username=session["username"], verbinding=session.get("verbinding"))
     fresh["chat_settings"] = session.get("chat_settings") or {}
     session.clear()
     session.update(fresh)
@@ -223,6 +242,13 @@ def _herlaad_mislukt(results: list[dict]) -> str | None:
 # ververs-melding over een mislukte of niet vervangen grafiek bevat het (warning).
 _MAX_NAMEN = 3
 _PAST_NIET = "Het bewaarde dashboard past niet bij zijn recept (het aantal grafieken verschilt)."
+# Een ververs zonder datarecept haalt niets bij de bron op: de grafieken komen uit de data in het
+# geheugen, en dat hoort de melding te zeggen in plaats van "Data ververst" (#528).
+# "niets" draagt het woord "niet": de toast wordt een waarschuwing, geen succesmelding.
+_GEEN_BRON = (
+    "Bij de bron is niets opgehaald: dit dashboard heeft geen datarecept; "
+    "de grafieken zijn opnieuw getekend uit de data in het geheugen"
+)
 _GEHEUGEN = (
     "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
     "server. Ververs haalt haar opnieuw op bij de bron."
@@ -257,7 +283,7 @@ async def _ververs_figuren(
         spec.figures_json = [u.figuur_json or oud for u, oud in zip(uitkomsten, spec.figures_json, strict=True)]
     else:
         spec.figures_json = [u.figuur_json for u in uitkomsten if u.figuur_json is not None]
-    return spec, _ververs_melding(veranderingen, mislukt, passend), veranderingen
+    return spec, _ververs_melding(veranderingen, mislukt, passend, bron_geraakt=bool(recipe)), veranderingen
 
 
 def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> list[str]:
@@ -274,18 +300,22 @@ def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> lis
     )
 
 
-def _ververs_melding(veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool) -> str:
+def _ververs_melding(
+    veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool, bron_geraakt: bool = True
+) -> str:
+    """ "Data ververst" alleen als er bij de bron iets is opgehaald; zonder datarecept zegt de kop dat (#528)."""
+    kop = "Data ververst" if bron_geraakt else _GEEN_BRON
     if not passend:
         return (
-            "Data ververst. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
+            f"{kop}. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
             "de grafieken zijn vervangen zonder ze per stuk te vergelijken."
         )
     if veranderingen:
-        melding = f"Data ververst: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
+        melding = f"{kop}: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
     elif mislukt:
-        melding = "Data ververst; geen wijzigingen in de grafieken die bijgewerkt zijn."
+        melding = f"{kop}; geen wijzigingen in de grafieken die bijgewerkt zijn."
     else:
-        melding = "Data ververst; geen wijzigingen ten opzichte van het bewaarde dashboard."
+        melding = f"{kop}; geen wijzigingen ten opzichte van het bewaarde dashboard."
     return f"{melding} {_niet_bijgewerkt(mislukt)}" if mislukt else melding
 
 
@@ -545,6 +575,23 @@ async def _weiger_te_lang(content: str, emit) -> bool:
     return True
 
 
+def _limietsleutel(session: dict) -> str:
+    username = session.get("username") or FALLBACK_USER
+    return username if username != FALLBACK_USER else f"verbinding:{session.get('verbinding')}"
+
+
+async def _binnen_limiet(session: dict, emit) -> bool:
+    """Telt een verzoek dat het model kost mee; boven de limiet een melding met de wachttijd (#444, S5)."""
+    sleutel = _limietsleutel(session)
+    if _berichtlimiter.is_allowed(sleutel):
+        return True
+    wacht = _berichtlimiter.retry_after(sleutel) or CHAT_RATE_WINDOW_S
+    # Geen gebruikersnaam in het log; de verbinding is aan de regels van die verbinding te koppelen.
+    logger.warning("BERICHTLIMIET bereikt  limiet=%d/%ds  wacht=%ds", CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S, wacht)
+    await emit({"type": "error", "message": _LIMIET_MELDING.format(wacht=wacht), "modelafhankelijk": False})
+    return False
+
+
 async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
@@ -561,6 +608,8 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
         label = content.removeprefix("Verken ")
         await emit({"type": "starter_questions", "label": label, "questions": tag_voorbeeldvragen(tags)})
         return current_task
+    if not await _binnen_limiet(session, emit):
+        return current_task
     return asyncio.create_task(_process_message(content, session, emit, model))
 
 
@@ -572,6 +621,8 @@ async def _handle_clarification(
         return current_task
     choice = _invoer(msg, "choice")
     if not choice or await _weiger_te_lang(choice, emit):
+        return current_task
+    if not await _binnen_limiet(session, emit):
         return current_task
     model = session.get("current_model")
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
@@ -589,6 +640,8 @@ async def _handle_generate_dashboard(
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
+    if not await _binnen_limiet(session, emit):
+        return current_task
     model = session["chat_settings"].get("model") or None
     return asyncio.create_task(_generate_dashboard(session, emit, model))
 
@@ -598,6 +651,8 @@ async def _handle_generate_report(
 ) -> asyncio.Task | None:
     if _task_busy(current_task):
         await _reject_busy(emit)
+        return current_task
+    if not await _binnen_limiet(session, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
     author = msg.get("author")
@@ -661,6 +716,8 @@ async def chat_websocket(ws: WebSocket) -> None:
 
     # Het subprotocol bevestigen, anders sluit de browser de verbinding (#103).
     await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
+    # Elke logregel van deze verbinding, ook uit taken en threads, draagt dit ID (#502).
+    logger.info("VERBINDING open verbinding=%s", nieuwe_verbinding())
     session = _new_session(username=username)
 
     async def emit(event: dict) -> None:

@@ -29,6 +29,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
+| `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
 | `MAX_MESSAGE_CHARS` | `4000` | Maximum aantal tekens per nieuw chatbericht (na het weghalen van witruimte aan begin en eind). Langere berichten weigert de server met een foutmelding; de invoerbalk telt mee vanaf 80%. De invoerbalk krijgt deze waarde via `/api/config` en volgt dus een gewijzigde instelling |
 | `HISTORY_MAX_CHARS` | `MAX_HISTORY × MAX_MESSAGE_CHARS` (160000) | Maximum aantal tekens van de hele aangeleverde gespreksgeschiedenis samen. Daarboven vallen de oudste beurten af, zodat lange gesprekken blijven openen; de historie begint daarna altijd met een gebruikersbeurt. Minimaal 1: een lagere waarde wordt 1 |
 | `RUN_SLOW_S` | `20` | Seconden tot de melding "dit duurt langer dan normaal" |
@@ -37,11 +39,14 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait. Origins worden exact vergeleken, zonder patronen: een origin met ergens een `*`, ook `https://*.nl`, wordt bij het opstarten geweigerd |
+| `STORE_MAX_MB` | `512` | Bovengrens van de datastore in het geheugen (#13): daarboven gaan de langst niet gebruikte tabellen eruit; een gesprek haalt ze uit zijn recept terug. Houd dit onder het geheugen van de pod |
+| `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait; `*` wordt bij het opstarten geweigerd |
 | `DATABASE_PATH` | `app.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `true` | Zet op `false` om de dashboardfunctie (pagina en `/api/dashboard/*`) uit te schakelen |
 | `ENABLE_FEEDBACK` | `true` | Zet op `false` om de feedbackknop op rapporten en dashboards en de 👍/👎 per chatantwoord (en `/api/feedback*`, `/api/answer-feedback`) uit te schakelen. De vragen staan in `core/feedback.py`; antwoorden komen in de tabel `feedback`. Oordelen per antwoord komen met de tool-trace in `answer_feedback`; `python -m scripts.antwoordfeedback` zet ze als markdown op een rij |
 | `LOG_LEVEL` | `INFO` | Loggingniveau: `DEBUG`, `INFO`, `WARNING` of `ERROR`. **Let op:** op `DEBUG` komt de letterlijke vraag- en antwoordtekst — en dus eventuele persoonsgegevens — in het log en de logaggregatie terecht (op `INFO` alleen lengte en hash). Niet gebruiken op test of productie met echte gebruikers, en houd rekening met de bewaartermijn van de logaggregatie |
+| `LOG_HASH_SECRET` | *(niet ingesteld)* | Geheim voor de hash in logregels (`len=… hash=…`, #475): met geheim een HMAC, zodat wie het log heeft geen geraden vraag tegen de hash kan controleren (#502). Via SOPS/Flux, nooit in de repo; zonder geheim een kale SHA-256 |
 
 ---
 

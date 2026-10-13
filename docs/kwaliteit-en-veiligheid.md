@@ -36,13 +36,13 @@ Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepas
 
 De `run_analysis`-tool voert door het model geschreven Python uit, in een apart proces (#410, #62). Het model kan daarmee willekeurige Python laten uitvoeren; de afscherming beperkt de schade, maar is **geen beveiligingsgrens** (#443):
 
-- **AST-controle vooraf** (`tools/scriptcontrole.py`): weigert imports, namen en attributen met `__` (ook in een string), frame-attributen en functies als `exec`, `eval`, `open` en `getattr`. `store_get` vraagt een letterlijke key. Dezelfde controle weigert een script dat geen data leest of zelf een reeks getallen intypt; dat bewaakt de herkomst van getallen.
+- **AST-controle vooraf** (`tools/scriptcontrole.py`): weigert imports, namen en attributen met `__` (ook in een string), frame-attributen, functies als `exec`, `eval`, `open` en `getattr`, en een stdlib-module als attribuut van een bibliotheekobject (`pd.io.common.os`, `pd.compat.sys`; #443). `store_get` vraagt een letterlijke key. Dezelfde controle weigert een script dat geen data leest of zelf een reeks getallen intypt; dat bewaakt de herkomst van getallen.
 - **Apart proces** (`tools/sandbox.py` start `tools/sandbox_kind.py` met `python -I`): een eigen lege werkmap, een omgeving zonder geheimen (alleen `HOME`, `LANG` en thread-instellingen) en alleen de tabellen die het script opvraagt.
-- **Limieten in dat proces:** CPU-tijd, geheugen, geen bestanden schrijven, geen nieuwe processen. Na 10 seconden stopt de server het proces.
+- **Limieten in dat proces:** CPU-tijd (15 s), geheugen (1 GiB), geen bestanden schrijven, geen nieuwe processen. Na 10 seconden stopt de server het proces.
 - **Audit hook:** weigert onder meer netwerk, subprocessen, schrijven en het lezen van bestanden buiten de Python-installatie.
 - **Beperkte namen:** alleen een handvol builtins (`len`, `range`, `sorted`, `sum`, `round` en vergelijkbare) en `pd`, `np`, `math`, `px`, `go`, `df` en `store_get`.
 
-De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens zoals seccomp, een container of een aparte gebruiker. Dat restrisico is geaccepteerd en wordt gevolgd in #443; zie ook S11 in `SECURITY.md`.
+De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens zoals seccomp, een container of een aparte gebruiker. Wie de AST-controle omzeilt, kan in het kindproces `os.getpid()`, `os.getcwd()` of de (lege) `os.environ` lezen; `tests/test_sandbox_isolatie.py` legt precies dat vast. Dat restrisico is voor de demofase geaccepteerd en wordt gevolgd in #443; zie ook S11 in `SECURITY.md`. De limieten van het kindproces tellen bovenop het serverproces: de geheugenlimiet van de pod (`manifests/<omgeving>/values.yaml`, 2 tot 4 GiB) moet die 1 GiB plus de server en de datastore (`STORE_MAX_MB`) kunnen dragen.
 
 ### Hard tool limits
 
@@ -58,6 +58,7 @@ De AST-controle en de audit hook draaien in Python zelf; er is geen kernelgrens 
 | Endpoint | Limiet | Werking |
 |----------|--------|---------|
 | `/api/auth/login` | 5 pogingen/minuut per IP | HTTP 429 met `Retry-After` header |
+| WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking, dashboard en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
 | LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
 
 ### Input validatie

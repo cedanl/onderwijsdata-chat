@@ -62,8 +62,9 @@ export async function renameConversationApi(id, title) {
   return apiFetch(`/api/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) })
 }
 
-export async function deleteConversationApi(id) {
-  return apiFetch(`/api/conversations/${id}`, { method: 'DELETE' })
+// `keepalive`: the request may outlive the page (a deferred delete when the tab closes, #493).
+export async function deleteConversationApi(id, { keepalive = false } = {}) {
+  return apiFetch(`/api/conversations/${id}`, { method: 'DELETE', keepalive })
 }
 
 export async function fetchWorkbooks() {

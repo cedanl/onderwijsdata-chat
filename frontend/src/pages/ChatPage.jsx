@@ -37,6 +37,7 @@ import {
   persistCurrentChat, upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
+import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
 import {
   fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig,
 } from '../api'
@@ -409,16 +410,63 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setPendingDelete(id)
   }, [])
 
+  // De DELETE gaat pas na de bedenktijd (#493); de lijst zonder het gesprek staat al lokaal.
+  const conversationIdRef = useRef(conversationId)
+  conversationIdRef.current = conversationId
+  const sluitUndoToastRef = useRef(null)
+  const verwijderingRef = useRef(null)
+  if (!verwijderingRef.current) {
+    verwijderingRef.current = uitgesteldeVerwijdering({
+      voerUit: (conv) => {
+        sluitUndoToastRef.current?.()
+        sluitUndoToastRef.current = null
+        deleteConversationApi(String(conv.id), { keepalive: true }).catch(() => {})
+        // Het open gesprek: de lokale kopie gaat nu pas weg; wat op het scherm staat blijft tot een nieuw gesprek.
+        if (String(conv.id) === conversationIdRef.current) clearCurrentChat()
+      },
+    })
+  }
+
+  const ongedaanMaken = useCallback(() => {
+    const hersteld = verwijderingRef.current.ongedaan()
+    sluitUndoToastRef.current?.()
+    sluitUndoToastRef.current = null
+    if (!hersteld) return
+    const updated = terugInLijst(loadConversationHistory(), hersteld.conv, hersteld.index)
+    persistConversationHistory(updated)
+    setConversationHistory(updated)
+    // Was het het open gesprek, dan mag de volgende save het weer wegschrijven.
+    if (String(hersteld.conv.id) === conversationIdRef.current) savedJsonRef.current = ''
+  }, [])
+
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
+    const index = conversationHistory.findIndex(c => c.id === pendingDelete)
+    const conv = conversationHistory[index]
     const updated = conversationHistory.filter(c => c.id !== pendingDelete)
     persistHistoryMetMelding(updated)
     setConversationHistory(updated)
-    deleteConversationApi(String(pendingDelete)).catch(() => {})
     // Deleting the open conversation must not bring it back on the next save; only a new question does.
     if (String(pendingDelete) === conversationId) savedJsonRef.current = JSON.stringify(openChatRef.current.messages)
     setPendingDelete(null)
-  }, [pendingDelete, conversationHistory, conversationId, persistHistoryMetMelding])
+    if (!conv) return
+    verwijderingRef.current.plan(conv, index)
+    sluitUndoToastRef.current?.()
+    sluitUndoToastRef.current = addToast('Gesprek verwijderd.', 'info', {
+      duur: UITSTEL_MS,
+      actie: { label: 'Ongedaan maken', onClick: ongedaanMaken },
+    })
+  }, [pendingDelete, conversationHistory, conversationId, addToast, ongedaanMaken, persistHistoryMetMelding])
+
+  // Tab sluiten of weg van deze pagina: een lopende bedenktijd eindigt dan meteen in de DELETE.
+  useEffect(() => {
+    const nu = () => verwijderingRef.current.nu()
+    window.addEventListener('pagehide', nu)
+    return () => {
+      window.removeEventListener('pagehide', nu)
+      nu()
+    }
+  }, [])
 
   const handleRenameConversation = useCallback((id, newTitle) => {
     const trimmed = newTitle.trim()
@@ -539,7 +587,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     <>
       <div className="toast-stack">
         {toasts.map(t => (
-          <div key={t.id} className={`toast ${t.level}`} role="status">{t.message}</div>
+          <div key={t.id} className={`toast ${t.level}`} role="status">
+            {t.message}
+            {t.actie && (
+              <button type="button" className="toast-actie" onClick={t.actie.onClick}>{t.actie.label}</button>
+            )}
+          </div>
         ))}
       </div>
       <div className="chat-layout">

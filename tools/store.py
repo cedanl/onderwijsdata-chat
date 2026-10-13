@@ -1,17 +1,32 @@
+import logging
+import sys
+import threading
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 
+from core.config import STORE_MAX_MB
 from core.sentinels import mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
 from .scopeprofiel import cbs_sectordeel
 
+logger = logging.getLogger(__name__)
+
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
-# and datasets are read-only. Not suitable for per-user mutable state.
-_cache: dict = {}
+# and datasets are read-only (the model boundary reads a copy, #209). Not suitable for
+# per-user mutable state. Bounded (#13): the keys in use order, least recently used first;
+# above STORE_MAX_MB the oldest go, with their meta and sentinel cells. A conversation
+# whose key went gets it back from its recipe (#472), as after a restart.
+_cache: OrderedDict = OrderedDict()
 # What is known about the data behind a key. Describes the source, not a session,
 # so it is as shareable as the data itself.
 _meta: dict = {}
+# Bytes per key, measured once at put(); an alias counts 0 and goes with its original.
+_grootte: dict[str, int] = {}
+_MAX_BYTES = STORE_MAX_MB * 1024 * 1024
+# Tools run in worker threads; the LRU order and the eviction must not interleave.
+_slot = threading.RLock()
 
 _DUO_PREFIX = "duo:"
 
@@ -62,6 +77,56 @@ class KeyMeta:
     herladen_op: str | None = field(default=None, compare=False)
 
 
+def _bytes(value) -> int:
+    """Wat een waarde in het geheugen kost: een DataFrame diep gemeten, de rest naar schatting."""
+    try:
+        if hasattr(value, "memory_usage"):
+            return int(value.memory_usage(deep=True).sum())
+    except Exception:
+        pass
+    return sys.getsizeof(value)
+
+
+def _gebruik() -> int:
+    return sum(_grootte.values())
+
+
+def gebruik() -> dict:
+    """Hoeveel de store nu vasthoudt, voor logs en tests: keys, MB en de bovengrens."""
+    with _slot:
+        return {"keys": len(_cache), "mb": round(_gebruik() / 2**20, 1), "bovengrens_mb": _MAX_BYTES // 2**20}
+
+
+def _verwijder(key: str, reden: str) -> None:
+    """Haal `key` uit de store, met haar meta, sentinelcellen en elke alias op hetzelfde object."""
+    from . import duo  # lazy: zie put()
+
+    value = _cache.get(key)
+    keys = [k for k, v in _cache.items() if v is value] if value is not None else [key]
+    vrij = 0
+    for k in keys:
+        _cache.pop(k, None)
+        _meta.pop(k, None)
+        vrij += _grootte.pop(k, 0)
+        duo.vergeet_sentinel_cells(k)
+    logger.info(
+        "STORE verwijderd keys=%s mb=%.1f reden=%s gebruik_mb=%.1f", keys, vrij / 2**20, reden, _gebruik() / 2**20
+    )
+
+
+def _ruim_op(behoud: str) -> None:
+    """Boven de bovengrens gaan de langst niet gebruikte keys eruit; `behoud` (net gezet) blijft."""
+    while _gebruik() > _MAX_BYTES and any(k != behoud for k in _cache):
+        _verwijder(next(k for k in _cache if k != behoud), "bovengrens")
+    if _grootte.get(behoud, 0) > _MAX_BYTES:
+        logger.warning(
+            "STORE key=%s is alleen al %.1f MB, boven de bovengrens van %d MB (STORE_MAX_MB); hij blijft, de rest niet",
+            behoud,
+            _grootte[behoud] / 2**20,
+            _MAX_BYTES // 2**20,
+        )
+
+
 def put(key: str, value, meta: KeyMeta | None = None) -> None:
     # Sentinels hier maskeren en niet bij het laden: DUO-data komt ook binnen via
     # replay, tests en de afgeleide keys van query_data. Alleen op deze plek
@@ -71,11 +136,15 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
 
         value, cells = mask_sentinels(value)
         duo.record_sentinel_cells(key, cells)
-    _cache[key] = value
-    if meta is None:
-        _meta.pop(key, None)
-    else:
-        _meta[key] = meta
+    with _slot:
+        _cache[key] = value
+        _cache.move_to_end(key)
+        _grootte[key] = _bytes(value)
+        if meta is None:
+            _meta.pop(key, None)
+        else:
+            _meta[key] = meta
+        _ruim_op(key)
 
 
 def derive(parent: str, key: str, value, **changes) -> None:
@@ -95,12 +164,18 @@ def derive(parent: str, key: str, value, **changes) -> None:
 
 def markeer_herladen(key: str, op: str | None) -> None:
     """Leg vast dat `key` opnieuw bij de bron is opgehaald (None: niet meer); de data zelf blijft zoals ze is (#472)."""
-    if (known := _meta.get(key)) is not None:
-        _meta[key] = replace(known, herladen_op=op)
+    with _slot:
+        if (known := _meta.get(key)) is not None:
+            _meta[key] = replace(known, herladen_op=op)
 
 
 def get(key: str):
-    return _cache.get(key)
+    """De data achter `key`; lezen maakt de key weer de jongste, zodat wat in gebruik is niet als eerste verdwijnt."""
+    with _slot:
+        value = _cache.get(key)
+        if value is not None:
+            _cache.move_to_end(key)
+        return value
 
 
 def readonly(key: str):
@@ -109,7 +184,7 @@ def readonly(key: str):
     `run_analysis` executes model-written Python that may mutate whatever it reads. `get()`
     stays the fast internal route for our own, read-only code (#209).
     """
-    value = _cache.get(key)
+    value = get(key)
     return value.copy() if hasattr(value, "copy") else value
 
 
@@ -170,21 +245,26 @@ def alias(oud: str | None, key: str) -> None:
     herlaad- of ververs-slag die de data opnieuw afleidt, houdt ze zo werkend. Alleen
     de cache en de meta: sentinelcellen hangen aan de canonieke key.
     """
-    if not oud or oud == key or oud in _cache or key not in _cache:
-        return
-    _cache[oud] = _cache[key]
-    if key in _meta:
-        _meta[oud] = _meta[key]
+    with _slot:
+        if not oud or oud == key or oud in _cache or key not in _cache:
+            return
+        _cache[oud] = _cache[key]
+        _grootte[oud] = 0  # hetzelfde object: de bytes staan bij `key`, en de alias gaat met haar mee
+        if key in _meta:
+            _meta[oud] = _meta[key]
 
 
 def list_keys() -> list[str]:
-    return list(_cache.keys())
+    with _slot:
+        return list(_cache.keys())
 
 
 def clear() -> None:
-    _cache.clear()
-    _meta.clear()
     from . import cbs, duo  # lazy: zie put()
 
-    duo.clear_sentinel_cells()
-    cbs.clear_dimensions()
+    with _slot:
+        _cache.clear()
+        _meta.clear()
+        _grootte.clear()
+        duo.clear_sentinel_cells()
+        cbs.clear_dimensions()

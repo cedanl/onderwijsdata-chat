@@ -4,6 +4,8 @@ import os
 
 import litellm
 
+from core.logging_util import foutkenmerk
+
 from .stream import Emit
 
 logger = logging.getLogger(__name__)
@@ -76,7 +78,8 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
         except (TimeoutError, litellm.APIConnectionError) as exc:
             # Timeout of verbinding verloren: herprobeert met backoff
             if attempt == _MAX_RETRIES - 1:
-                logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, exc)
+                logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, foutkenmerk(exc))
+                logger.debug("Model timeout na %d pogingen: %r", _MAX_RETRIES, exc)
                 raise
             delay = min(_BASE_DELAY * (2**attempt), _MAX_DELAY)
             logger.warning(

@@ -133,6 +133,12 @@ def clear_sentinel_cells() -> None:
     _groepen.clear()
 
 
+def vergeet_sentinel_cells(key: str) -> None:
+    """Hoort bij het verwijderen van één key uit de store (#13): haar telling gaat mee."""
+    _sentinel_cells.pop(key, None)
+    _groepen.discard(key)
+
+
 def select_cells(cells: pd.DataFrame | None, df: pd.DataFrame) -> pd.DataFrame:
     """Beperk de cellen tot de rijen en kolommen die in de selectie `df` zitten."""
     if cells is None or cells.empty:
