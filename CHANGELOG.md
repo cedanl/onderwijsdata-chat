@@ -242,6 +242,8 @@ de laatste tag is 1.8.6.
 ### Gebruikersinterface
 - Na een verlopen of ongeldige sessie staat op het inlogscherm nu "Je sessie is verlopen. Log opnieuw in." (#499), en
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
+- Uitloggen of een verlopen sessie terwijl de app net het token vernieuwt, laat geen nieuw token meer achter in
+  de browser en plant geen volgende vernieuwing meer in (#499).
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
 - Persoonsgegevens in de invoer (#478): onder het invoerveld staat dat een vraag naar een externe AI-dienst gaat

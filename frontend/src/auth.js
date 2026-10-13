@@ -83,6 +83,9 @@ export async function refreshAuthToken(token) {
     if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
     if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`)
     const { token: newToken, user } = await res.json()
+    // The session ended (logout, a 401 elsewhere) while this refresh was under way: storing the
+    // new token would log the user back in, and returning it would arm the next refresh (#499).
+    if (token !== getToken()) return null
     setToken(newToken)
     if (user) setUserInfo(user)
     return { newToken, user }

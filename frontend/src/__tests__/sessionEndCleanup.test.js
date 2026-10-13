@@ -202,3 +202,41 @@ describe('session end closes the settings dialog', () => {
     expect(refreshCalls()).toHaveLength(1)
   })
 })
+
+describe('a refresh in flight when the session ends', () => {
+  it.each([loggedOutByUser, endedDirectly])('stores no new token and arms no new refresh when %s', async (_, end) => {
+    let answer
+    answers['/api/auth/refresh'] = () => new Promise(resolve => { answer = resolve })
+    await render()
+    await advance(PAST_REFRESH)
+    expect(refreshCalls()).toHaveLength(1)
+    await end()
+    await act(async () => {
+      answer(refreshed())
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(loggedOut()).toBe(true)
+    await advance(2 * HOUR)
+    expect(refreshCalls()).toHaveLength(1)
+    expect(loggedOut()).toBe(true)
+    expect(loginForm()).not.toBeNull()
+  })
+
+  // Control: the same answer while the session lasts is stored and arms the next refresh.
+  it('stores the new token and arms the next refresh while the session lasts', async () => {
+    let answer
+    answers['/api/auth/refresh'] = () => new Promise(resolve => { answer = resolve })
+    await render()
+    await advance(PAST_REFRESH)
+    const next = refreshed()
+    await act(async () => {
+      answer(next)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    const { token: newToken } = await next.json()
+    expect(localStorage.getItem(STORAGE_TOKEN)).toBe(newToken)
+    await advance(PAST_REFRESH)
+    expect(refreshCalls()).toHaveLength(2)
+    expect(refreshCalls()[1][1].body).toBe(JSON.stringify({ token: newToken }))
+  })
+})
