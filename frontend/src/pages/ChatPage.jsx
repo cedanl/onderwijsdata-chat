@@ -433,11 +433,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     sluitUndoToastRef.current = null
     if (!hersteld) return
     const updated = terugInLijst(loadConversationHistory(), hersteld.conv, hersteld.index)
-    persistConversationHistory(updated)
+    persistHistoryMetMelding(updated)
     setConversationHistory(updated)
     // Was het het open gesprek, dan mag de volgende save het weer wegschrijven.
     if (String(hersteld.conv.id) === conversationIdRef.current) savedJsonRef.current = ''
-  }, [])
+  }, [persistHistoryMetMelding])
 
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return

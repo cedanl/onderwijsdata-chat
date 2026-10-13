@@ -254,6 +254,25 @@ describe('volle opslag van de gesprekslijst (#521)', () => {
     expect(meldingen).toEqual([[LIJST_MELDING, 'warning'], ['Gesprek verwijderd.', 'info']])
   })
 
+  it('meldt het ook bij het ongedaan maken van een verwijdering (#493)', async () => {
+    let ongedaan
+    chatState.addToast = (msg, level, opties) => {
+      meldingen.push([msg, level])
+      if (opties?.actie) ongedaan = opties.actie.onClick
+    }
+    chatState.messages = []
+    api.fetchConversations.mockResolvedValueOnce([{ id: 's1', title: 'Toch houden', timestamp: 1 }])
+    await mountChat()
+    await act(async () => { container.querySelector('[aria-label="Verwijder gesprek Toch houden"]').click() })
+    await act(async () => { document.querySelector('.confirm-destructive').click() })
+    lijstVol()
+
+    await act(async () => { ongedaan() })
+
+    expect(meldingen).toEqual([['Gesprek verwijderd.', 'info'], [LIJST_MELDING, 'warning']])
+    expect(container.querySelector('[aria-label="Verwijder gesprek Toch houden"]')).not.toBeNull()
+  })
+
   it('meldt de lijst los van het open gesprek', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('vol', 'QuotaExceededError') })
     await mountChat()
