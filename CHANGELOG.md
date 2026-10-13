@@ -261,6 +261,12 @@ de laatste tag is 1.8.6.
 - Een tab sluiten of verbergen tijdens een lopend antwoord bewaart nu de tekst tot het laatst ontvangen fragment (#520):
   de bewaarstap leest ook de nog niet getoonde tekst mee, en sluiten op Safari/iOS (`pagehide`) bewaart ook als de
   tab nog als zichtbaar geldt.
+- Een volle lokale opslag meldt zich nu ook bij de gesprekslijst (#521, vervolg op #511): één waarschuwing "De lokale
+  opslag is vol: de gesprekslijst kan na verversen korter zijn.", los van die over het open gesprek. De lijst wordt
+  niet ingekort; de server bewaart alle gesprekken. Een gesprek dat zonder grafieken is bewaard, zegt dat na
+  verversen ("Dit gesprek is niet volledig bewaard: grafieken ontbreken na verversen."). Past ook dat niet, dan komt
+  een oudere momentopname niet meer terug alsof hij actueel is. Meldingen tegelijk staan onder elkaar in plaats van
+  over elkaar heen.
 - Kleine restpunten uit testronde 9 oktober (#496): de CSV van een grafiek heet naar de titel van die grafiek in
   plaats van altijd `Grafiek_aangemaakt.csv`, en de hernoem- en verwijdericoontjes in de zijbalk staan in een smal
   venster altijd zichtbaar, ook met een muis.
