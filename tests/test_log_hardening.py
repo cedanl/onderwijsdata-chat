@@ -1,7 +1,8 @@
 """Vervolg op de log-privacy van #475: gezouten hash, foutregels zonder vrije tekst, een verbindings-ID (#502).
 
-Foutteksten van tools, de sandbox, het herladen en de providers kunnen toolargumenten of
-modeltekst citeren; op INFO en hoger staat nu het type en een kenmerk, de tekst op DEBUG.
+Foutteksten van tools, de sandbox, het herladen, de providers, interne fouten en CBS-calls kunnen
+toolargumenten of modeltekst citeren; op INFO en hoger staat nu het type en een kenmerk, de tekst
+(en een traceback) op DEBUG.
 Elke logregel van een chatverbinding draagt een kort verbindings-ID, zodat regels van één
 verbinding te koppelen zijn zonder gebruikersnaam of gespreks-ID.
 """
@@ -13,6 +14,7 @@ import logging
 import re
 from unittest.mock import patch
 
+import litellm
 import pytest
 
 from core import logging_util
@@ -138,6 +140,186 @@ def test_een_onbekend_dataset_id_van_het_model_staat_niet_letterlijk_in_het_log(
     [regel] = [r.getMessage() for r in caplog.records if "CATALOGUS_GELADEN" in r.getMessage()]
     assert MARKER not in regel
     assert re.search(r"geladen=onbekend id_len=\d+ id_hash=[0-9a-f]{8}", regel)
+
+
+# --- interne fout, CBS-meldingen en de sandbox: type en kenmerk, tekst op DEBUG ---
+
+
+def _volledig(record: logging.LogRecord) -> str:
+    """Alles wat een handler van een record kan schrijven: bericht, traceback en exc_text."""
+    traceback = logging.Formatter().formatException(record.exc_info) if record.exc_info else ""
+    return f"{record.getMessage()}\n{traceback}\n{record.exc_text or ''}"
+
+
+def _lekt_op_warning(caplog) -> list[str]:
+    return [_volledig(r) for r in caplog.records if r.levelno >= logging.WARNING and MARKER in _volledig(r)]
+
+
+def _op_debug(caplog) -> list[str]:
+    return [_volledig(r) for r in caplog.records if r.levelno == logging.DEBUG]
+
+
+_KENMERK = r"fout_len=\d+ fout_hash=[0-9a-f]{8}"
+
+
+def test_een_interne_fout_logt_op_error_het_type_en_een_kenmerk(caplog):
+    from core.errors import log_interne_fout
+
+    caplog.set_level(logging.DEBUG)
+    exc = ValueError(f"x {MARKER}")
+    fout_id = log_interne_fout(exc, "waar")
+    assert re.fullmatch(r"[0-9a-f]{8}", fout_id)
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert re.fullmatch(rf"Interne fout {fout_id} in waar: ValueError {_KENMERK}", error.getMessage())
+    assert error.exc_info is None
+    assert not _lekt_op_warning(caplog)
+
+
+def test_een_interne_fout_houdt_de_traceback_onder_hetzelfde_id_op_debug(caplog):
+    from core.errors import log_interne_fout
+
+    caplog.set_level(logging.DEBUG)
+    try:
+        raise ValueError(f"x {MARKER}")
+    except ValueError as e:
+        fout_id = log_interne_fout(e, "waar")
+    [debug] = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    assert debug.exc_info is not None and fout_id in debug.getMessage()
+    assert MARKER in caplog.text and "Traceback" in caplog.text
+    # Eerst DEBUG: het laatste record is de ERROR-regel met het ID als eerste argument.
+    assert caplog.records[-1].levelno == logging.ERROR
+    assert caplog.records[-1].args[0] == fout_id
+
+
+def test_het_kenmerk_van_een_interne_fout_is_gezouten_met_het_loggeheim(caplog, monkeypatch):
+    from core.errors import log_interne_fout
+
+    exc = ValueError(f"x {MARKER}")
+    ongezouten = foutkenmerk(exc)
+    monkeypatch.setattr(logging_util, "_SECRET", b"geheim")
+    caplog.set_level(logging.DEBUG)
+    log_interne_fout(exc, "waar")
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert error.getMessage().endswith(f": {foutkenmerk(exc)}")
+    assert foutkenmerk(exc) != ongezouten
+
+
+@pytest.mark.parametrize(
+    ("exc", "waar"),
+    [
+        (ValueError(f"zip() {MARKER}"), "verwerking"),
+        (litellm.BadRequestError(f"detail {MARKER}", llm_provider="azure_ai", model="claude-sonnet-5-5"), "model/API"),
+    ],
+)
+def test_het_fout_id_voor_de_gebruiker_staat_in_de_error_en_de_debugregel(caplog, exc, waar):
+    from core.errors import error_event
+
+    caplog.set_level(logging.DEBUG)
+    melding = error_event(exc)["message"]
+    [fout_id] = re.findall(r"fout-ID ([0-9a-f]{8})", melding)
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert error.getMessage().startswith(f"Interne fout {fout_id} in {waar}: ")
+    assert any(fout_id in r for r in _op_debug(caplog))
+    assert MARKER not in melding and not _lekt_op_warning(caplog)
+
+
+def test_een_falende_controle_toont_het_gelogde_id_zonder_fouttekst_op_warning(caplog):
+    from agent.probleem import veilig
+
+    def controle_die_faalt(*_):
+        raise ValueError(f"kolom {MARKER} ontbreekt")
+
+    caplog.set_level(logging.DEBUG)
+    [probleem] = veilig(controle_die_faalt, "tekst")
+    fout_id = caplog.records[-1].args[0]
+    assert f"fout-ID {fout_id}" in probleem.melding
+    assert not _lekt_op_warning(caplog)
+    assert any(MARKER in r for r in _op_debug(caplog))
+
+
+def test_falende_citaties_en_bronnen_loggen_geen_fouttekst_op_warning(caplog, monkeypatch):
+    run = importlib.import_module("agent.run")  # `from agent import run` geeft de functie, niet de module
+
+    def kapot(*_):
+        raise ValueError(f"antwoord met {MARKER}")
+
+    monkeypatch.setattr(run, "citaties", kapot)
+    monkeypatch.setattr(run, "bronnen_van", kapot)
+    caplog.set_level(logging.DEBUG)
+    assert run._veilige_citaties("tekst", []) == []
+    assert run._veilige_bronnen([]) == []
+    assert len([r for r in caplog.records if r.levelno == logging.ERROR]) == 2
+    assert not _lekt_op_warning(caplog)
+
+
+def _cbs_fout(*_args, **_kwargs):
+    raise RuntimeError(f"GET https://x/{MARKER}")
+
+
+def _cbs_waarschuwingen_zijn_kenmerken(caplog) -> None:
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert warnings and all(re.search(rf"RuntimeError {_KENMERK}", w) for w in warnings)
+    assert not _lekt_op_warning(caplog)
+    assert any(MARKER in r for r in _op_debug(caplog))
+
+
+def test_cbs_dataproperties_mislukt_logt_type_en_kenmerk(caplog, monkeypatch):
+    from tools import cbs
+
+    monkeypatch.setattr(cbs, "definitions", _cbs_fout)
+    caplog.set_level(logging.DEBUG)
+    assert cbs._load_definitions("85423NED") is None
+    _cbs_waarschuwingen_zijn_kenmerken(caplog)
+
+
+def test_cbs_tableinfos_voor_de_bijwerkdatum_mislukt_logt_type_en_kenmerk(caplog, monkeypatch):
+    from tools import cbs
+
+    monkeypatch.setattr(cbs, "catalogus_laatste_update", lambda _id: "2026-01-01")
+    monkeypatch.setattr(cbs, "get", _cbs_fout)
+    caplog.set_level(logging.DEBUG)
+    assert cbs.bron_laatste_update("85423NED") is None
+    _cbs_waarschuwingen_zijn_kenmerken(caplog)
+
+
+def test_cbs_tableinfos_voor_de_afronding_mislukt_logt_type_en_kenmerk(caplog, monkeypatch):
+    from tools import cbs
+
+    monkeypatch.setattr(cbs, "get", _cbs_fout)
+    caplog.set_level(logging.DEBUG)
+    assert cbs._afronding("85423NED") == (None, False)
+    _cbs_waarschuwingen_zijn_kenmerken(caplog)
+
+
+def test_cbs_dimensie_mislukt_logt_type_en_kenmerk_en_zet_geen_label(caplog, monkeypatch):
+    import pandas as pd
+
+    from tools import cbs
+
+    monkeypatch.setattr(cbs, "_dimension_rows", _cbs_fout)
+    df = pd.DataFrame({"Geslacht": ["T001038"], "Waarde": [1]})
+    caplog.set_level(logging.DEBUG)
+    uit = cbs._add_dimension_context(df, "85423NED", {"Geslacht": {"type": "Dimension"}})
+    assert list(uit.columns) == ["Geslacht", "Waarde"]
+    _cbs_waarschuwingen_zijn_kenmerken(caplog)
+
+
+def test_een_gecrashte_sandbox_logt_code_en_kenmerk_van_stderr(caplog):
+    import subprocess
+
+    from tools import sandbox
+
+    stderr = f"Traceback (most recent call last):\n  ValueError: {MARKER}"
+    proces = subprocess.CompletedProcess(args=[], returncode=-9, stdout=b"", stderr=stderr.encode())
+    caplog.set_level(logging.DEBUG)
+    uitkomst = sandbox._lees(proces)
+    assert uitkomst == sandbox.Uitkomst(
+        fout="Script is afgebroken: het overschreed de geheugen- of tijdslimiet van de sandbox."
+    )
+    [warning] = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert re.search(rf"code -9\b.*stderr_len={len(stderr)} stderr_hash=[0-9a-f]{{8}}", warning)
+    assert not _lekt_op_warning(caplog)
+    assert any(MARKER in r for r in _op_debug(caplog))
 
 
 # --- verbindings-ID ---

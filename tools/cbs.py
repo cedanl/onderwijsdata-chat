@@ -11,6 +11,7 @@ from onderwijsdata import data, definitions
 from onderwijsdata.client import get
 
 from core.config import CBS_ROW_LIMIT
+from core.logging_util import foutkenmerk
 
 from . import canoniek, cbs_afronding, cbs_selectie, fouten, periode, scopeprofiel, store
 from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
@@ -111,12 +112,22 @@ def check_dimensions_known(data_key: str) -> str | None:
     )
 
 
+def _ophalen_mislukt(wat: str, dataset_id: str, e: Exception) -> None:
+    """Een mislukte CBS-call in het log.
+
+    De fouttekst van httpx citeert de request-URL, met de codes die het model koos (#502):
+    op WARNING het type en een kenmerk, de traceback op DEBUG.
+    """
+    logger.warning("%s ophalen mislukt voor %s: %s", wat, dataset_id, foutkenmerk(e))
+    logger.debug("%s ophalen mislukt voor %s", wat, dataset_id, exc_info=e)
+
+
 def _load_definitions(dataset_id: str) -> dict | None:
     """Kolomdefinities uit DataProperties; None als de call mislukt (#229)."""
     try:
         return definitions(dataset_id)
     except Exception as e:
-        logger.warning("CBS DataProperties ophalen mislukt voor %s: %s", dataset_id, e)
+        _ophalen_mislukt("CBS DataProperties", dataset_id, e)
         return None
 
 
@@ -203,7 +214,7 @@ def bron_laatste_update(dataset_id: str) -> str | None:
         rows = get(dataset_id, "TableInfos")
         gewijzigd = rows[0].get("Modified") if rows else None
     except Exception as e:
-        logger.warning("CBS TableInfos ophalen mislukt voor %s: %s", dataset_id, type(e).__name__)
+        _ophalen_mislukt("CBS TableInfos", dataset_id, e)
         return None
     return gewijzigd[:10] if isinstance(gewijzigd, str) and _ISO_DATUM.match(gewijzigd) else None
 
@@ -213,7 +224,7 @@ def _afronding(dataset_id: str) -> tuple[int | None, bool]:
     try:
         return cbs_afronding.uit_beschrijving(_tabelbeschrijving(dataset_id)), True
     except Exception as e:
-        logger.warning("CBS TableInfos ophalen mislukt voor %s: %s", dataset_id, e)
+        _ophalen_mislukt("CBS TableInfos", dataset_id, e)
         return None, False
 
 
@@ -231,7 +242,7 @@ def _add_dimension_context(df: pd.DataFrame, dataset_id: str, col_defs: dict) ->
         try:
             rows = _dimension_rows(dataset_id, dim)
         except Exception as e:
-            logger.warning("CBS-dimensie %s ophalen mislukt voor %s: %s", dim, dataset_id, e)
+            _ophalen_mislukt(f"CBS-dimensie {dim}", dataset_id, e)
             continue
         titles = {r["Key"]: r["Title"] for r in rows if r.get("Title")}
         if titles:
