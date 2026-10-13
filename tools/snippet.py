@@ -18,7 +18,7 @@ from . import instellingsprovincie, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
-from .plot import resolve_chart_type
+from .plot import is_liggend, resolve_chart_type
 from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -316,9 +316,13 @@ def _create_plot_snippet(args: dict) -> str:
     df = store.get(data_key) if data_key else None
     rows = df.to_dict(orient="records") if df is not None else args.get("data") or []
     chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
-    color_arg = f', color="{color_by}"' if color_by else ""
+    # Op de x-kolom zelf kleurt create_plot per staaf zonder legenda; px zou er een legenda van maken.
+    color_arg = f', color="{color_by}"' if color_by and color_by != x else ""
     if chart_type == "pie":
         lines.append(f'fig = px.pie(df, names="{x}", values="{y}", title="{title}")')
+    elif chart_type == "bar" and is_liggend(rows, chart_type, x, data_key):
+        lines.append(f'fig = px.bar(df, x="{y}", y="{x}", orientation="h", title="{title}"{color_arg})')
+        lines.append('fig.update_yaxes(autorange="reversed")')
     else:
         px_func = {"line": "px.line", "scatter": "px.scatter", "histogram": "px.histogram"}.get(chart_type, "px.bar")
         lines.append(f'fig = {px_func}(df, x="{x}", y="{y}", title="{title}"{color_arg})')

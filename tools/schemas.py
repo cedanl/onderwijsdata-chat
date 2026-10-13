@@ -367,7 +367,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "highlight": {
                         "type": "string",
-                        "description": "Werkt alleen samen met color_by: de groep met deze waarde krijgt de accentkleur, de rest wordt grijs. Gebruik dit als één categorie (bijv. één instelling in een benchmark) de aandacht moet krijgen.",
+                        "description": "De categorie met deze waarde krijgt de accentkleur, de rest wordt grijs. Gebruik dit als één categorie (bijv. één instelling in een benchmark) de aandacht moet krijgen. Zonder color_by is dat een waarde van x (één staaf); met color_by een groep. Zet color_by niet op de x-kolom om één staaf uit te lichten.",
                     },
                     "is_share": {
                         "type": "boolean",
