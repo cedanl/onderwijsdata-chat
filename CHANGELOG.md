@@ -513,6 +513,9 @@ de laatste tag is 1.8.6.
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
 
 ### Beheer
+- Afspraken voor de testomgeving (#488): een eigen account per tester en per auditspoor, geen persoonsgegevens in
+  een vraag, en opruimen na een ronde (`docs/test-environment.md`). Een test toetst dat gesprekken, werkboeken,
+  rapport- en antwoordfeedback en de CSV-export per account gescheiden zijn.
 - De DUO-domeinregels staan in één bestand, `data/domeinregels.toml` (#363): de −1-sentinel, de correcties op
   kolombeschrijvingen, de ho-bestanden waarvan de plaats de vestiging is en de OPLEIDINGSVORM-codes. Elke regel
   heeft een id, een bron en een controledatum. Een databeheerder wijzigt een regel met een MR op dat bestand,
