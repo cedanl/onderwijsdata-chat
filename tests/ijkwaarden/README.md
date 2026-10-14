@@ -44,3 +44,19 @@ Een eval verwijst per sleutel (jaar of 'totaal') naar een id: `"data_points": {"
 "cbs-hbo-voltijd-2024"}}`. De runner en `score-unit.mjs` vullen daaruit `reference_values`; een
 ijkwaarde is exact (`tolerance_pct` 0). Eenheid, schooljaar en status toetst de eval met `must_mention`
 ("personen", "voorlopig", "definitief") naast de waarde zelf.
+
+## Tegen de testomgeving (synthetische controle, #169)
+
+Dezelfde runner draait tegen een draaiende omgeving, als controle van buiten de antwoordketen:
+
+```bash
+npm ci --ignore-scripts                                   # Playwright en ws, vastgezet in package.json
+EVAL_BASE_URL=https://onderwijsdata-chat.test.sdp.surf.nl EVAL_USERNAME=… EVAL_PASSWORD=… \
+TEST_MODELS=azure_ai/claude-sonnet-5-5 TEST_REPEATS=3 \
+  npx playwright test real-questions --config=playwright.eval.config.js
+```
+
+`playwright.eval.config.js` start geen webserver en geen browser; de inloggegevens komen uit de omgeving,
+nooit uit de repo. De CI-job `eval:bronwaarheid` (`.gitlab-ci.yml`) doet hetzelfde, gepland of met de hand,
+met `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` als (masked) CI-variabelen, en bewaart
+`eval_results/` 90 dagen als artifact. Elke beurt kost een modelaanroep op die omgeving.

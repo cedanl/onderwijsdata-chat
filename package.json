@@ -1,0 +1,15 @@
+{
+  "name": "onderwijsdata-chat-evals",
+  "private": true,
+  "type": "module",
+  "description": "Runner voor de e2e-evals (tests/e2e): tegen de lokale app of, als synthetische controle, tegen de testomgeving (#169).",
+  "scripts": {
+    "eval": "playwright test real-questions",
+    "eval:unit": "node --test tests/e2e/score-unit.mjs tests/e2e/refusal-unit.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "playwright": "1.64.0",
+    "ws": "8.22.0"
+  }
+}

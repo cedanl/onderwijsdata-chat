@@ -6,6 +6,26 @@ De app heeft meerdere lagen van kwaliteitscontrole en beveiliging om betrouwbare
 
 ## Antwoordkwaliteit
 
+### Wat code afdwingt en wat de prompt alleen vraagt
+
+Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetbaar afgedwongen, in code, zijn:
+
+- **Elk getal uit een tool**: de controle na het antwoord (hieronder) houdt een antwoord in met een getal dat niet in de
+  opgehaalde data staat; wat die controle wel en niet dekt staat in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md).
+- **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, de redeneerkaart), elk antwoord en
+  rapport een manifest met model, prompt-, catalogus-, app- en dataversie (#345), en elk gepubliceerd resultaat (antwoord,
+  figuur, CSV-export, rapport) één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
+  selectie), volledigheid, afronding en herlaaddatum, plus die versies en het tijdstip (#169). Geen vraag- of antwoordtekst;
+  de selectiestappen in woorden staan op DEBUG.
+- **Bronwaarheid, van buiten**: de evals in `tests/e2e/` toetsen natuurlijke vragen tegen ijkwaarden die rechtstreeks bij
+  CBS, DUO en RIO zijn opgehaald (#190), en de CI-job `eval:bronwaarheid` draait ze gepland of met de hand tegen de
+  testomgeving (`EVAL_BASE_URL`, `EVAL_USERNAME`, `EVAL_PASSWORD`), los van `/health` en `/ready`: dat de server draait
+  zegt niets over de juistheid van een antwoord. Het slagingspercentage per model en vraag komt als artifact in
+  `eval_results/`.
+
+Niet afgedwongen, alleen gevraagd: toon, voorzichtigheid met causaliteit, en of het model de bron goed duidt. De
+regels hieronder zijn die verzoeken.
+
 De system prompt (`prompts/system.md`) schrijft strikte regels voor die het LLM moet volgen:
 
 | Regel | Uitleg |
@@ -154,4 +174,5 @@ Transparantie over wat nog niet getest is:
 - **Health check:** `GET /health` retourneert `{"status":"ok"}`
 - **Logging:** gestructureerde logging op INFO-niveau, tool-calls gelogd met argumenten en executietijden
 - **Reproduceerbaarheid:** bij elke tool-aanroep wordt een Python-snippet gelogd voor debugging
-- **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); bewaar langdurige resultaten als CI-artifact
+- **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
+- **Herkomstlog:** per gepubliceerd resultaat één regel `GEPUBLICEERD` (INFO) met soort, data-keys en versies; de selectiestappen op DEBUG (#169)
