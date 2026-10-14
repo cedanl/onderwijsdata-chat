@@ -184,6 +184,7 @@ def test_een_falende_rapportcontrole_noemt_ook_haar_naam(monkeypatch):
 
     [stuk] = report_problems(_spec(), [_HU_FIGURE], [_HU_RESULT])
 
+    assert isinstance(stuk, Probleem)
     assert stuk.niet_gecontroleerd and stuk.controle == "verkeerd_gebonden"
 
 
@@ -234,7 +235,7 @@ def test_rapportcontrole_heeft_een_vaste_naam_en_dezelfde_hardheid_en_tekst(veld
 
     assert controlenamen(problemen) == [naam]
     assert harde(problemen) == (problemen if streng else [])
-    assert [(str(p), p.melding) for p in problemen] == teksten
+    assert [(str(p), getattr(p, "melding", None)) for p in problemen] == teksten
 
 
 # ── Van toolloop tot log: de herkansing en de weigering noemen de controle (CH-01, #475) ──
