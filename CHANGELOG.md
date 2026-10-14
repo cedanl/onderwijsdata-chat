@@ -464,6 +464,15 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- De DUO-domeinregels staan in één bestand, `data/domeinregels.toml` (#363): de −1-sentinel, de correcties op
+  kolombeschrijvingen, de ho-bestanden waarvan de plaats de vestiging is en de OPLEIDINGSVORM-codes. Elke regel
+  heeft een id, een bron en een controledatum. Een databeheerder wijzigt een regel met een MR op dat bestand,
+  zonder Python; de tests lopen vanzelf over elke regel en tonen dat de dataset en kolom in de gepinde catalogus
+  staan en dat de regel in de tools zichtbaar is. Een nieuwe of gewijzigde kolomcorrectie of herkomstregel
+  verandert de catalogus, dus hoort er een nieuwe meting van de retrieval-baseline in dezelfde MR. Een ongeldig
+  bestand laadt niet, met een melding die de regel noemt, en de app start dan niet; zo weigert het laden ook een
+  regeleinde of onzichtbaar teken in een tekst die de tools doorgeven (alleen de bron mag over meer regels
+  lopen). Het gedrag van de chat verandert niet. Uitleg: `docs/domeinregels.md`.
 - Feedback per antwoord (👍/👎) van een verwijderd gesprek hangt niet meer aan de gebruiker (#476, privacy M2):
   gesprek verwijderen zet in `answer_feedback` de gebruikersnaam op `verwijderd` en het gesprek-id op een willekeurige
   waarde (één per verwijderd gesprek). Oordeel, toelichting en trace blijven voor het team, ook in

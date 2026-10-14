@@ -106,7 +106,8 @@ Vooraf vastgelegd op 9 oktober 2026, vóór de eerste meting.
 meetdatum. Daarnaast de metingen per sector × reeks en `kritiek_falend`.
 
 Wijkt de digest af, dan faalt `test_catalogus_is_de_gemeten_snapshot`. Dat gebeurt na een
-catalogusbump of een wijziging aan `tools/duo_correcties.py` of `tools/scopeprofiel.py`, en is zo
+catalogusbump, een wijziging aan `tools/duo_correcties.py` of `tools/scopeprofiel.py`, of een nieuwe of
+gewijzigde `[[kolomcorrectie]]` of `[[herkomst_is_vestiging]]` in `data/domeinregels.toml`, en is zo
 bedoeld: meet opnieuw, controleer of de labels nog kloppen (een vervallen ID laat de validatie van de
 vragenset falen) en verantwoord de verschillen in de MR.
 
