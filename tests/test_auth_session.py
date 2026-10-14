@@ -109,10 +109,15 @@ def test_zonder_login_geeft_204(monkeypatch, headers):
 
 
 def test_wachtwoordmodus_heeft_nog_steeds_geen_gebruikers_of_ververs_route(client):
-    token = _token()
+    # De geregistreerde routes, niet de statuscode van een POST: met een gebouwde frontend (frontend/dist) vangt
+    # de GET-catch-all /api/{rest} de POST op /refresh en geeft dan 405 in plaats van 404. Het OpenAPI-schema,
+    # omdat app.routes ingesloten routers niet uitvouwt; /session bewijst dat de auth-routes erin staan.
+    paden = client.app.openapi()["paths"]
 
-    assert client.get("/api/auth/user", headers=_bearer(token)).status_code == 404
-    assert client.post("/api/auth/refresh", json={"token": token}).status_code == 404
+    assert "/api/auth/session" in paden
+    assert "/api/auth/user" not in paden
+    assert "/api/auth/refresh" not in paden
+    assert client.get("/api/auth/user", headers=_bearer(_token())).status_code == 404
 
 
 # ── Een databasestoring is geen "sessie voorbij" ────────────────────────────
