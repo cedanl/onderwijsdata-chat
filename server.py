@@ -104,7 +104,6 @@ async def security_headers(request, call_next):
         "font-src 'self'; "
         "frame-ancestors 'none';"
     )
-    response.headers["Server"] = ""
     return response
 
 

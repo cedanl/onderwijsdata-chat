@@ -5,9 +5,13 @@ en dashboards komt nu van de eigen server, dus er hoort geen derde partij meer i
 """
 
 import importlib
+import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+DOCKERFILE = Path(__file__).parent.parent / "Dockerfile"
 
 
 @pytest.fixture
@@ -46,6 +50,24 @@ def test_overige_beveiligingsheaders_staan_op_elk_antwoord(client):
     assert headers["X-Frame-Options"] == "DENY"
     assert headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     assert "max-age=" in headers["Strict-Transport-Security"]
+
+
+# #534: de middleware zette een lege `Server`-header naast uvicorns eigen `Server: uvicorn`, zodat
+# het antwoord er twee had. Uvicorn start nu met `--no-server-header` en de middleware zet er geen meer.
+# TestClient gaat buiten uvicorn om, dus de vlag zelf staat in een aparte test op de Dockerfile.
+def test_antwoord_heeft_geen_server_header(client):
+    assert "server" not in client.get("/health").headers
+
+
+def _dockerfile_cmd() -> list[str]:
+    regels = [r for r in DOCKERFILE.read_text().splitlines() if r.startswith("CMD ")]
+    return json.loads(regels[-1].removeprefix("CMD "))
+
+
+def test_dockerfile_start_uvicorn_zonder_server_header():
+    cmd = _dockerfile_cmd()
+    assert cmd[:2] == [".venv/bin/uvicorn", "server:app"]
+    assert "--no-server-header" in cmd
 
 
 # #506: `connect-src 'self' wss: ws:` liet WebSockets naar elke host toe. De chat praat alleen met
