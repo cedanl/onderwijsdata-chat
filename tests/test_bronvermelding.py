@@ -66,6 +66,46 @@ _DUO = "DUO · Ingeschrevenen hoger onderwijs, 2019/20 t/m 2023/24 (p01hoinges)"
 _CBS = "CBS · Hoger onderwijs; ingeschrevenen (85423NED)"
 
 
+def test_een_dataset_met_meer_bestanden_noemt_het_bestand(monkeypatch):
+    """#540: drie hbo-bestanden van p01hoinges gaven 34.751, 34.754 en 34.755; de bron noemt het bestand."""
+    monkeypatch.setattr("agent.selectie.tabelbestanden", lambda _id: [(0, "geslacht"), (2, "niveau"), (3, "vorm")])
+    monkeypatch.setattr(
+        "agent.selectie.resource_titel", lambda _id, r: {3: "Ingeschrevenen hbo inclusief opleidingsvorm"}.get(r)
+    )
+    store.put(
+        "duo:p01hoinges:3",
+        pd.DataFrame({"STUDIEJAAR": [2023], "AANTAL": [34755]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=3, schooljaren=(2023,)),
+    )
+    assert bronnen_van([_stap("get_duo_data", data_key="duo:p01hoinges:3")]) == [
+        "DUO · Ingeschrevenen hoger onderwijs, bestand Ingeschrevenen hbo inclusief opleidingsvorm, 2023/24 (p01hoinges)"
+    ]
+
+
+def test_een_dataset_met_een_bestand_noemt_het_niet(monkeypatch):
+    monkeypatch.setattr("agent.selectie.tabelbestanden", lambda _id: [(0, "het enige bestand")])
+    store.put(
+        "duo:p01hoinges:0:enkel",
+        pd.DataFrame({"AANTAL": [1]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=0, schooljaren=(2023,)),
+    )
+    assert bronnen_van([_stap("get_duo_data", data_key="duo:p01hoinges:0:enkel")]) == [
+        "DUO · Ingeschrevenen hoger onderwijs, 2023/24 (p01hoinges)"
+    ]
+
+
+def test_het_bestand_komt_uit_de_echte_catalogus(monkeypatch):
+    monkeypatch.undo()  # de catalogustitel en de bestanden van p01hoinges zelf, zonder nep
+    store.put(
+        "duo:p01hoinges:3:echt",
+        pd.DataFrame({"AANTAL": [34755]}),
+        KeyMeta(bron="duo", dataset="p01hoinges", resource=3, schooljaren=(2023,)),
+    )
+    [bron] = bronnen_van([_stap("get_duo_data", data_key="duo:p01hoinges:3:echt")])
+    assert "bestand Ingeschrevenen hoger beroepsonderwijs inclusief opleidingsvorm" in bron
+    assert bron.endswith(", 2023/24 (p01hoinges)")
+
+
 def test_een_geladen_dataset_is_een_bron_met_periode_en_id():
     assert bronnen_van([_stap("get_duo_data", data_key="duo:p01hoinges:0")]) == [_DUO]
 

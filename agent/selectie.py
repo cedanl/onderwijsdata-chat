@@ -14,7 +14,7 @@ import re
 import pandas as pd
 
 from tools import instelling, periode, store
-from tools.catalog import bron_titel
+from tools.catalog import bron_titel, resource_titel, tabelbestanden
 from tools.store import KeyMeta
 
 from .probleem import Probleem
@@ -53,12 +53,27 @@ def bron_in_woorden(known: KeyMeta) -> str:
     return f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)}"
 
 
+def bestand_in_woorden(known: KeyMeta) -> str | None:
+    """De naam van het DUO-bestand achter een selectie, als de dataset er meer dan één heeft (#540).
+
+    Drie hbo-bestanden van p01hoinges gaven voor dezelfde instelling en hetzelfde studiejaar
+    34.751, 34.754 en 34.755, elk met andere onderdrukte cellen. Met alleen de datasettitel leken
+    twee antwoorden dezelfde bron te hebben; met het bestand erbij is het verschil te herleiden.
+    """
+    if known.bron != "duo" or known.resource is None or len(tabelbestanden(known.dataset)) < 2:
+        return None
+    return resource_titel(known.dataset, known.resource)
+
+
 def selectie_in_woorden(data_key: str) -> str | None:
-    """De selectie van een key in woorden, voor de gebruiker: DUO · <titel>, met de periode
-    als die bekend is. None als de key onbekend is; de key zelf hoort er niet in (CH-30)."""
+    """De selectie van een key in woorden, voor de gebruiker: DUO · <titel>, bij meer bestanden het
+    bestand, en de periode als die bekend is. None als de key onbekend is; de key zelf hoort er
+    niet in (CH-30)."""
     if not (known := store.meta(laadkey(data_key))):
         return None
     tekst = bron_in_woorden(known)
+    if bestand := bestand_in_woorden(known):
+        tekst += f", bestand {bestand}"
     if known.schooljaren:
         van, tot = min(known.schooljaren), max(known.schooljaren)
         tekst += f", {periode.label(van)}" + (f" t/m {periode.label(tot)}" if tot != van else "")
