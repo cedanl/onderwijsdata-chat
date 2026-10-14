@@ -143,6 +143,13 @@ de laatste tag is 1.8.6.
 - `cbs:85423NED`, `cbs_85423ned` en `85423NED` zijn in `dataset_details`, `get_cbs_data` en
   `get_cbs_dimension` dezelfde tabel: het contract-ID van de package en de spelling van een model of een
   bewaard recept komen op één plek terug op het bron-ID (#370).
+- Server-side preflight op het CBS-contract (#370): na de selectiepoort vraagt `get_cbs_data` aan
+  `validate_selection` van de CBS-package of de tabel de selectie kan leveren: bestaat elke code in haar
+  dimensie, komt de periode in de tabel voor, en past de code bij de sector waarvoor het model de tabel
+  bevraagt (nieuw, optioneel: `selectie.sector`, `mbo`/`hbo`/`wo`; `hbo` met de wo-code `A025297` is
+  tegenstrijdig). Alleen een `unsupported`-oordeel houdt de datacall tegen, met per controle de reden en wat
+  wél in de tabel staat (`2031/32` → de perioden die er zijn); bronuitval of een onbekende dimensie laat door.
+  Een tijddimensie naast `periode` werd al vóór het contract geweigerd.
 - Het model schrijft geen OData meer voor CBS (#343, ADR-006). `get_cbs_data` krijgt een gesloten
   `selectie` — per dimensie een code uit `get_cbs_dimension` of `"*"` om uit te splitsen, de periode
   als lijst of bereik (schooljaarspelling wordt in code vertaald), onderwerpen als kolomsleutels — en

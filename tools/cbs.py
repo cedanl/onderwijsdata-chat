@@ -13,7 +13,7 @@ from onderwijsdata.client import get
 from core.config import CBS_ROW_LIMIT
 from core.logging_util import foutkenmerk
 
-from . import canoniek, cbs_afronding, cbs_selectie, fouten, periode, scopeprofiel, store
+from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, fouten, periode, scopeprofiel, store
 from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
@@ -317,9 +317,13 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     if selectie is not None:
         # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
         # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
-        uitkomst = cbs_selectie.compileer(dataset_id, selectie, _load_definitions(dataset_id))
+        col_defs_vooraf = _load_definitions(dataset_id)
+        uitkomst = cbs_selectie.compileer(dataset_id, selectie, col_defs_vooraf)
         if isinstance(uitkomst, str):
             return uitkomst
+        # Kan de tabel deze codes, periode en sector leveren? Het contract van de package oordeelt vóór de datacall (#370).
+        if weigering := cbs_preflight.preflight(dataset_id, selectie, col_defs_vooraf):
+            return weigering
         filters = uitkomst or None
     params = dict(filters or {})
     if "$top" not in params:

@@ -103,7 +103,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                             "De selectie. 'dimensies': per dimensie een code uit get_cbs_dimension, een lijst "
                             "codes, of '*' om uit te splitsen. 'periode': lijst van schooljaren of "
                             "periodecodes, {'van': …, 'tot': …} als bereik, of '*'. 'onderwerpen': optioneel, "
-                            "alleen deze kolomsleutels. Bijv. "
+                            "alleen deze kolomsleutels. 'sector': optioneel, 'mbo', 'hbo' of 'wo', de sector waarvoor "
+                            "je de tabel bevraagt; een code van een andere sector wordt dan geweigerd. Bijv. "
                             '{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, '
                             '"periode": ["2024/25"]}'
                         ),
