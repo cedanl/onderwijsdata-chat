@@ -101,6 +101,12 @@ de laatste tag is 1.8.6.
   geen gok. "Studenten" is standaard personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met
   vermelding. De prompt zet `get_maat` vóór `search_catalog`; een key uit `get_maat` komt na een herstart terug
   door het recept opnieuw te draaien, en de snippet is het recept als script.
+- Eén bron-ID voor alle drie de bronnen (#356, sluit aan op #370): `duo:p01hoinges`, `DUO/P01HOINGES` en
+  `rio:erkenningen` wijzen in `dataset_details`, `get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde
+  record als het kale ID, zoals `cbs:85423NED` dat al deed; eerder gaf zo'n ID "niet gevonden in de catalogus".
+  Elke zoekhit en elk detailrecord draagt nu een `status`: `opvraagbaar`, `via_tool`, `alleen_documentatie` of
+  `alleen_catalogus` (vindbaar en package-leesbaar, zonder chat-adapter), op één plek beslist. De interne
+  bronfilter van het zoeken betekent wat hij zegt: `rio` geeft alleen RIO, `riodata` alles uit de package.
 - Nieuwe tool `dataset_profiel(data_key)` (#59, #61): het profiel van een geladen tabel zonder model. Per kolom het
   type, waar hij op lijkt (identificatie, jaar, schooljaar, geocode, categorie, getal, datum, tekst), lege en
   unieke cellen, bereik en kwartielen of de vaakste waarden; voor de tabel het aandeel dubbele rijen en de
