@@ -832,3 +832,49 @@ def test_genoemde_datasets_vindt_ids_uit_de_catalogus_in_een_vraag():
 
     vraag = "Hoeveel studenten volgens mbo-studenten-per-instelling en p01hoinges, niet p01hoxyz?"
     assert set(genoemde_datasets(vraag)) == {"mbo-studenten-per-instelling", "p01hoinges"}
+
+
+# --- Zoekkaart in de zoekhit (#358) ---
+
+_ZOEKKAART = {
+    "teleenheid": "personen",
+    "inschrijvingstype": "hoofdinschrijvingen",
+    "peildatum": "1 oktober",
+    "uitsluitingen": [],
+    "publicatieregels": ["1–4 gepubliceerd als 4"],
+}
+
+
+def _duo_hit(zoekkaart) -> dict:
+    duo = {
+        "title": "Ingeschrevenen hoger onderwijs",
+        "leverancier": "DUO",
+        "_ckan_id": "p01hoinges",
+        "_zoekkaart": zoekkaart,
+    }
+    with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[duo]):
+        return json.loads(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))[0]
+
+
+def test_zoekhit_draagt_de_duo_zoekkaart_zonder_lege_delen():
+    hit = _duo_hit(_ZOEKKAART)
+    assert hit["zoekkaart"] == {
+        "teleenheid": "personen",
+        "inschrijvingstype": "hoofdinschrijvingen",
+        "peildatum": "1 oktober",
+        "publicatieregels": ["1–4 gepubliceerd als 4"],
+    }
+    assert "_zoekkaart" not in hit
+
+
+@pytest.mark.parametrize("zoekkaart", [None, {"teleenheid": None, "uitsluitingen": [], "publicatieregels": []}])
+def test_zoekhit_zonder_gevulde_zoekkaart_heeft_er_geen(zoekkaart):
+    assert "zoekkaart" not in _duo_hit(zoekkaart)
+
+
+def test_echte_duo_hit_draagt_de_zoekkaart_van_riodata():
+    """p01hoinges heeft in riodata een gevulde zoekkaart: teleenheid personen, peildatum 1 oktober."""
+    hits = json.loads(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))
+    hit = next(h for h in hits if h.get("_ckan_id") == "p01hoinges")
+    assert hit["zoekkaart"]["teleenheid"] == "personen"
+    assert hit["zoekkaart"]["peildatum"] == "1 oktober"

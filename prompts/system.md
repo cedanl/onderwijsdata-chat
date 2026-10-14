@@ -88,6 +88,7 @@ Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en n
 - **`_geo_niveau`** — geografisch detailniveau, bijv. `["landelijk", "provincie", "gemeente"]` of `[]`
 - **`_perioden_formaat`** — periode-codering: `["SJ"]` = schooljaar (`2023SJ00`), `["JJ"]` = kalenderjaar (`2023JJ00`), `["KW"]` = kwartaal (`2023KW01`), `["MM"]` = maand
 - **`_periode_waarden`** — eerste en laatste periode, bijv. `["2011/'12", "2024/'25"]`
+- **`zoekkaart`** — bij DUO-datasets die er een hebben: `teleenheid` (personen of inschrijvingen), `inschrijvingstype`, `peildatum`, `uitsluitingen` en `publicatieregels` (bijv. "1–4 gepubliceerd als 4"). Kies hierop tussen kandidaten en neem de teleenheid en de afrondingsregel mee in het antwoord
 - **`status`** — wat de chat met de dataset kan: `opvraagbaar` (laden met `get_cbs_data`, `get_duo_data` of `get_rio_data`), `via_tool` (alleen met de genoemde eigen tool), `alleen_catalogus` of `alleen_documentatie` (noemen, geen cijfers geven, niet zeggen dat de bron niet bestaat). Een dataset-ID mag met of zonder bron-voorvoegsel (`cbs:85423NED`, `duo:p01hoinges`, `rio:erkenningen`).
 
 ### Velden via dataset_details (apart opvragen)

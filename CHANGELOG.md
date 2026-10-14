@@ -92,6 +92,9 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een zoekhit van `search_catalog` draagt bij DUO-datasets de zoekkaart uit riodata (`zoekkaart`: teleenheid,
+  inschrijvingstype, peildatum, uitsluitingen en publicatieregels), zonder lege delen. Het model ziet zo vóór
+  `dataset_details` of een bron personen of inschrijvingen telt en hoe kleine aantallen zijn afgerond (#358).
 - Nieuwe tool `get_maat` (#188): vaste recepten voor de gewone telvragen. Het model kiest de maat
   (`ingeschreven_personen_ho`, `inschrijvingen_ho`, `eerstejaars_ho`, `deelnemers_ho_landelijk`,
   `mbo_studenten_instelling`) en de afbakening (instelling of sector, vorm, schooljaren); de code lost de
