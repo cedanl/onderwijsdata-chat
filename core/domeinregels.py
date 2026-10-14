@@ -13,15 +13,20 @@ of standaardwaarden. Omdat core.sentinels bij import laadt, start de app dan nie
 """
 
 import tomllib
+import unicodedata
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import MISSING, dataclass, field, fields
 from datetime import date
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, TypeVar
+from typing import Annotated, Any, TypeVar
 
 PAD = Path(__file__).resolve().parent.parent / "data" / "domeinregels.toml"
+
+# Alleen de bron mag over meer regels lopen. Elke andere tekst geven de tools door, ook in gegenereerde
+# Python (snippet) en in CSV-notities, waar een regeleinde een opdracht of formulerij zou beginnen.
+Meerregelig = Annotated[str, "meerregelig"]
 
 
 class DomeinregelFout(ValueError):
@@ -31,7 +36,7 @@ class DomeinregelFout(ValueError):
 @dataclass(frozen=True)
 class Regel:
     id: str
-    bron: str
+    bron: Meerregelig
     gecontroleerd: date
 
 
@@ -109,6 +114,18 @@ def _tekst(waarde: object) -> str:
     return waarde
 
 
+# Regeleinden (ook U+2028/U+2029), tabs, stuur- en opmaaktekens zoals bidi-overrides: geen van alle
+# zichtbaar in een review van het bestand.
+_GEEN_REGELTEKST = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"})
+
+
+def _regeltekst(waarde: object) -> str:
+    tekst = _tekst(waarde)
+    if teken := next((t for t in tekst if unicodedata.category(t) in _GEEN_REGELTEKST), None):
+        raise _Ongeldig(f"moet op één regel staan, zonder regeleinde of onzichtbaar teken (U+{ord(teken):04X})")
+    return tekst
+
+
 def _geheel_getal(waarde: object) -> int:
     if type(waarde) is not int:  # ook geen bool
         raise _Ongeldig(f"moet een geheel getal zijn, niet {_typenaam(waarde)}")
@@ -144,14 +161,15 @@ def _teksttabel(waarde: object) -> Mapping[str, str]:
         raise _Ongeldig(f"moet een tabel zijn, niet {_typenaam(waarde)}")
     if not waarde:
         raise _Ongeldig("is een lege tabel")
-    return MappingProxyType({_tekst(k): _tekst(v) for k, v in waarde.items()})
+    return MappingProxyType({_regeltekst(k): _regeltekst(v) for k, v in waarde.items()})
 
 
 # Per veldtype in de regelklassen: hoe een waarde uit het bestand wordt gecontroleerd.
 _CONTROLE: dict[object, Callable[[object], object]] = {
-    str: _tekst,
+    str: _regeltekst,
+    Meerregelig: _tekst,
     date: _datum,
-    tuple[str, ...]: _lijst(_tekst),
+    tuple[str, ...]: _lijst(_regeltekst),
     tuple[int, ...]: _lijst(_geheel_getal),
     Mapping[str, str]: _teksttabel,
 }

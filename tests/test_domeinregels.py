@@ -11,7 +11,7 @@ import importlib
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 import pytest
@@ -136,11 +136,78 @@ def test_herschreven_voorbeeldvragen_zijn_optioneel(tmp_path):
             "[[kolomcorrectie]]", "[kolomcorrectie]", r"'kolomcorrectie' moet een lijst", id="lijst-als-tabel"
         ),
         pytest.param("[[kolomcorrectie]]", "[[kolomcorrectie", r"geen geldige TOML", id="toml"),
+        pytest.param(
+            'codes = { VT = "voltijd", DT = "deeltijd" }',
+            "codes = {}",
+            r"regel 'o'.*'codes' is een lege tabel",
+            id="lege-tabel",
+        ),
+        pytest.param(
+            'codes = { VT = "voltijd", DT = "deeltijd" }',
+            'codes = ["VT"]',
+            r"regel 'o'.*'codes' moet een tabel zijn, niet lijst",
+            id="geen-tabel",
+        ),
     ],
 )
 def test_validatie_weigert(tmp_path, oud, nieuw, melding):
     with pytest.raises(DomeinregelFout, match=melding):
         _laad(tmp_path, _gewijzigd(oud, nieuw))
+
+
+# Teksten die de tools doorgeven, komen ook in gegenereerde Python (snippet) en in CSV-notities: een
+# regeleinde zou daar een opdracht of formulerij beginnen. Alleen `bron` mag over meer regels lopen.
+@pytest.mark.parametrize(
+    ("oud", "nieuw", "melding"),
+    [
+        pytest.param(
+            'betekenis = "onderdrukte cel"',
+            'betekenis = "onderdrukte cel\\nprint(1)  #"',
+            r"regel 's'.*'betekenis' moet op één regel staan.*U\+000A",
+            id="regeleinde",
+        ),
+        pytest.param(
+            'definitie = "Jaar van het diploma."',
+            'definitie = """Jaar van\nhet diploma."""',
+            r"regel 'k'.*'definitie' moet op één regel staan.*U\+000A",
+            id="meerregelige-string",
+        ),
+        pytest.param(
+            'melding = "Niet geschikt voor herkomst."',
+            'melding = "Niet geschikt\\r=1+1 voor herkomst."',
+            r"regel 'h'.*'melding' moet op één regel staan.*U\+000D",
+            id="carriage-return",
+        ),
+        pytest.param(
+            'uitgezonderd_als_kolom_bevat = ["MUTATIE"]',
+            'uitgezonderd_als_kolom_bevat = ["MUTATIE\\t"]',
+            r"regel 's'.*'uitgezonderd_als_kolom_bevat' element 1 moet op één regel staan.*U\+0009",
+            id="stuurteken-in-lijst",
+        ),
+        pytest.param('id = "k"', 'id = "k\\u202e"', r"'id' moet op één regel staan.*U\+202E", id="bidi-override-in-id"),
+        pytest.param(
+            'DT = "deeltijd"',
+            'DT = "deel\\u2028tijd"',
+            r"regel 'o'.*'codes' moet op één regel staan.*U\+2028",
+            id="regelscheiding-in-tabel",
+        ),
+        pytest.param(
+            '"Waar wonen ze?" =',
+            '"Waar wonen\\u0000 ze?" =',
+            r"regel 'h'.*'voorbeeldvragen' moet op één regel staan.*U\+0000",
+            id="stuurteken-in-tabelsleutel",
+        ),
+    ],
+)
+def test_een_doorgegeven_tekst_staat_op_een_regel(tmp_path, oud, nieuw, melding):
+    with pytest.raises(DomeinregelFout, match=melding):
+        _laad(tmp_path, _gewijzigd(oud, nieuw))
+
+
+def test_alleen_bron_mag_over_meer_regels_lopen(tmp_path):
+    regels = _laad(tmp_path, _gewijzigd('bron = "bron van k"', 'bron = """\nPassage uit DUO.\nNagegaan in 2025.\n"""'))
+
+    assert regels.kolomcorrecties[0].bron == "Passage uit DUO.\nNagegaan in 2025.\n"
 
 
 def test_een_onmisbare_regelsoort_mag_niet_ontbreken(tmp_path):
@@ -160,9 +227,34 @@ def test_twee_correcties_op_dezelfde_kolom_worden_geweigerd(tmp_path):
         _laad(tmp_path, _GELDIG + tweede)
 
 
+def test_een_dataset_in_twee_herkomstregels_wordt_geweigerd(tmp_path):
+    """Anders bepaalt de volgorde in het bestand welke melding de catalogus toont."""
+    tweede = '\n[[herkomst_is_vestiging]]\nid = "h2"\nbron = "b"\ngecontroleerd = 2026-10-08\n'
+    tweede += 'datasets = ["p02ho1ejrs", "p01hoinges"]\nmelding = "Anders."\n'
+
+    with pytest.raises(DomeinregelFout, match=r"regel 'h2'.*dataset p01hoinges staat al in regel 'h'"):
+        _laad(tmp_path, _GELDIG + tweede)
+
+
+def test_een_regel_in_een_lijst_moet_een_tabel_zijn(tmp_path):
+    begin, eind = _GELDIG.index("[[kolomcorrectie]]"), _GELDIG.index("[[herkomst_is_vestiging]]")
+    tekst = 'kolomcorrectie = ["k"]\n' + _GELDIG[:begin] + _GELDIG[eind:]
+
+    with pytest.raises(DomeinregelFout, match=r"kolomcorrectie nr\. 1: moet een tabel zijn, niet tekst"):
+        _laad(tmp_path, tekst)
+
+
 def test_een_ontbrekend_bestand_laadt_niet(tmp_path):
     with pytest.raises(DomeinregelFout, match="niet te lezen"):
         domeinregels.laad(tmp_path / "bestaat-niet.toml")
+
+
+def test_een_bestand_dat_geen_utf8_is_laadt_niet(tmp_path):
+    pad = tmp_path / "domeinregels.toml"
+    pad.write_bytes(_GELDIG.replace("onderdrukte cel", "onderdr\xfckte cel").encode("latin-1"))
+
+    with pytest.raises(DomeinregelFout, match=r"niet te lezen \(UnicodeDecodeError\)"):
+        domeinregels.laad(pad)
 
 
 # --- fail-closed ---
@@ -307,7 +399,8 @@ def _controle(controles: dict, regel: Regel):
 @pytest.mark.parametrize("regel", _REGELS, ids=[r.id for r in _REGELS])
 def test_contract(regel):
     """De regel verwijst naar wat de gepinde catalogus kent, en is niet in de toekomst gecontroleerd."""
-    assert regel.gecontroleerd <= date.today()
+    # Eén dag speling: de beheerder schrijft zijn eigen datum, CI kan in UTC nog op gisteren staan.
+    assert regel.gecontroleerd <= date.today() + timedelta(days=1)
     _controle(_CONTRACT, regel)(regel)
 
 
