@@ -70,7 +70,7 @@ def _has_values(figure_json: str) -> bool:
     return any(len(t.get("y") or t.get("values") or []) > 0 for t in traces)
 
 
-def _missing(spec: ReportSpec) -> list[str]:
+def ontbrekende_onderdelen(spec: ReportSpec) -> list[str]:
     """Wat een rapport minimaal nodig heeft.
 
     Zonder geldige JSON van het model blijft er een schil over met alleen vraag en
@@ -87,39 +87,50 @@ def _missing(spec: ReportSpec) -> list[str]:
     return missing
 
 
-def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str]) -> list[str]:
-    """Wat ontbreekt en wat de tekst tegenspreekt aan de data; leeg als het klopt.
-
-    `sources` zijn de toolresultaten en de datasetcontext van deze rapportrun.
-    """
-    # Hard (#207): een leeg rapport, of een getal of feit dat niet bij de data hoort.
-    problems: list[str] = [*hard(_missing(spec))]
-    text = _all_text(spec)
-
+def ongedekte_getallen(text: str, sources: list[str]) -> list[str]:
+    """De grote getallen in de tekst die niet in de data van het rapport staan, in één melding."""
     unsourced = unsourced_numbers(text, sources)
-    if unsourced:
-        problems += hard(
-            [
-                f"Deze getallen staan niet in de opgehaalde data: {', '.join(nl_getal(int(n)) for n in sorted(unsourced, key=int))}."
-            ]
-        )
+    if not unsourced:
+        return []
+    getallen = ", ".join(nl_getal(int(n)) for n in sorted(unsourced, key=int))
+    return [f"Deze getallen staan niet in de opgehaalde data: {getallen}."]
 
-    if any(_has_values(f) for f in figures_json):
-        for claim in _claims(spec):
-            if match := _ABSENCE.search(claim or ""):
-                problems += hard(
-                    [f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden."]
-                )
-                break
 
+def afwezigheid_naast_grafiek(spec: ReportSpec, figures_json: list[str]) -> list[str]:
+    """Een bewering dat er geen data is, terwijl een grafiek van het rapport waarden heeft."""
+    if not any(_has_values(f) for f in figures_json):
+        return []
+    for claim in _claims(spec):
+        if match := _ABSENCE.search(claim or ""):
+            return [f"De tekst zegt '{match.group(0)}', maar de grafiek in het rapport bevat wel waarden."]
+    return []
+
+
+def resource_verwijzing(text: str) -> list[Probleem]:
+    """Een verwijzing als 'resource 3', die een lezer niets zegt (#329)."""
     if match := _RESOURCE_VERWIJZING.search(text):
-        problems.append(
+        return [
             Probleem(
                 f"De tekst verwijst naar '{match.group(0)}', dat een lezer niets zegt.",
                 "Noem het bestand bij zijn titel of laat de verwijzing weg.",
             )
-        )
+        ]
+    return []
 
+
+def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str]) -> list[str]:
+    """Wat ontbreekt en wat de tekst tegenspreekt aan de data; leeg als het klopt.
+
+    `sources` zijn de toolresultaten en de datasetcontext van deze rapportrun. Elke controle loopt
+    via `veilig`: die geeft haar naam mee voor het log (CH-01), en een controle die faalt, vervangt
+    het rapport niet (#392).
+    """
+    text = _all_text(spec)
+    # Hard (#207): een leeg rapport, of een getal of feit dat niet bij de data hoort.
+    problems: list[str] = [*hard(veilig(ontbrekende_onderdelen, spec))]
+    problems += hard(veilig(ongedekte_getallen, text, sources))
+    problems += hard(veilig(afwezigheid_naast_grafiek, spec, figures_json))
+    problems += veilig(resource_verwijzing, text)
     problems += veilig(verkeerde_opleidingsvormen, text, sources)
     problems += veilig(verkeerde_dimensielabels, text, sources)
     problems += veilig(onbekende_datasets, text)
