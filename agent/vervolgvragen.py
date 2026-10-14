@@ -1,8 +1,8 @@
 """Vervolgvragen onder een data-antwoord: uit de catalogus, niet van het model (#364).
 
-Het model beslist alleen dát er vervolgvragen komen: het roept suggest_follow_ups aan als laatste
-stap van zijn antwoord. Welke, beslist code: de voorbeeldvragen uit de catalogus van de datasets die
-de beurt laadde, alleen als de chat ze kan beantwoorden. Een voorbeeldvraag valt af als ze
+Het model beslist er niets over: de app biedt ze aan onder elk gewoon antwoord met data (#539). Welke,
+beslist code: de voorbeeldvragen uit de catalogus van de datasets die de beurt laadde, alleen als de
+chat ze kan beantwoorden. Een voorbeeldvraag valt af als ze
 
 - in de eerste persoon staat ("mijn regio", "onze instelling"): zonder profiel eindigde zo'n vraag
   in een scopeweigering (CH-42);

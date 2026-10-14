@@ -10,7 +10,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
-from tools.schemas import TOOL_CLARIFY_SCOPE, TOOL_SUGGEST_FOLLOW_UPS
+from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest, vervolgvragen
 from .aanspreekcontrole import overgebleven_u_vorm
@@ -56,11 +56,7 @@ LEEG_ANTWOORD = (
     "formuleer de vraag anders, of stel een vraag over de open onderwijsdata."
 )
 
-# suggest_follow_ups: twee keer zonder antwoordtekst is genoeg; een aanroep die het antwoord afsluit telt niet mee.
-_TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT, TOOL_SUGGEST_FOLLOW_UPS: 2}
-# Tools die een antwoord afsluiten (#364). De loop telt ze niet bij result.tool_calls: geen datastap, dus geen
-# grond voor een antwoord zonder data (de weigering) en geen stap in de bewaarde beurt.
-_AFSLUITEND = frozenset({TOOL_SUGGEST_FOLLOW_UPS})
+_TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
 _MAX_TOOL_RESULT_CHARS = 12000
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
@@ -443,23 +439,26 @@ def _slotbericht(
 
 
 async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, session: dict) -> list[str]:
-    """Vervolgvragen onder een gewoon antwoord met data, als het model erom vroeg (#364); anders geen.
+    """Vervolgvragen onder elk gewoon antwoord met data (#364): code biedt ze aan, geen keuze van het model (#539).
 
-    Een weigering, een ingehouden of leeg antwoord en een deelantwoord krijgen er geen. Wat dit gesprek
-    al aanbood, onthoudt de sessie: een nieuw gesprek begint met een lege sessie."""
-    if not result.afgesloten or result.wrapped_up or text_content in _ZONDER_BRONNEN:
+    Een weigering, een ingehouden of leeg antwoord, een deelantwoord en een afgekapt antwoord krijgen er geen.
+    Wat dit gesprek al aanbood, onthoudt de sessie: een nieuw gesprek begint met een lege sessie."""
+    if result.wrapped_up or result.finish_reason == "length" or text_content in _ZONDER_BRONNEN:
         return []
     getoond = session.setdefault("vervolgvragen_getoond", [])
+    datasets: list[str] = []
+    gekozen: list[str] = []
     try:
+        datasets = vervolgvragen.datasets_van(result.steps)
         # Een dataset die nog niet getoetst is, kost een paar zoekacties in de catalogus: niet op de event loop.
         gekozen = await asyncio.to_thread(vervolgvragen.kies, result.steps, vraag, getoond)
     except Exception as exc:
         # Vervolgvragen zijn een extra: lukt het niet, dan gaat het antwoord zonder (zoals bij citaties).
         log_interne_fout(exc, "vervolgvragen")
-        return []
     getoond.extend(gekozen)
-    # Alleen het aantal: de vragen zelf zijn catalogustekst, maar het log houdt het bij tellingen.
-    logger.info("VERVOLGVRAGEN  aangeboden=%d", len(gekozen))
+    # Bij elk gewoon antwoord, ook zonder aanbod: zo is te tellen hoe vaak er knoppen komen, en (met datasets=) hoe
+    # vaak een antwoord met data er geen kreeg. Alleen aantallen: het log houdt het bij tellingen, ook voor catalogustekst.
+    logger.info("VERVOLGVRAGEN  aangeboden=%d  datasets=%d", len(gekozen), len(datasets))
     return gekozen
 
 
@@ -522,7 +521,6 @@ async def run(
                     on_tool_result=partial(_bewaar_stap, session, emit),
                     tool_limits=_TOOL_LIMITS,
                     halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
-                    sluit_af=_AFSLUITEND,
                     max_iterations=MAX_TOOL_ITERATIONS,
                     max_result_chars=_MAX_TOOL_RESULT_CHARS,
                     check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
@@ -535,9 +533,8 @@ async def run(
             result = LoopResult(aborted="tools")
         except Exception:
             # Bijvoorbeeld een rate limit na alle pogingen: wat al opgehaald is, blijft in het
-            # gesprek, zodat een nieuwe poging erop voortbouwt (#431). Een afgesloten antwoord is geen
-            # opgehaalde stap: na een ingetrokken versie zou het anders als eerder gezegd gelden (#364).
-            messages.extend(afgeronde_stappen(history[initial_history_len:], uitsluiten=_AFSLUITEND))
+            # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
+            messages.extend(afgeronde_stappen(history[initial_history_len:]))
             raise
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
