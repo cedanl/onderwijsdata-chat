@@ -7,15 +7,23 @@ De controle werkt op de AST, niet op tekst:
   ook niet in een string (`df.query('x.__class__')`, `'{0.__class__}'.format`);
 - geen stdlib-module als attribuut van een bibliotheekobject (`pd.io.common.os`,
   `pd.compat.sys`, #443): het kindproces heeft geen omgeving, netwerk of schrijfrechten,
-  maar `os.getpid()`, `os.getcwd()` en `os.environ` waren zo nog bereikbaar;
+  maar `os.getpid()`, `os.getcwd()` en `os.environ` waren zo nog bereikbaar; ook niet in
+  een string, want pandas lost `@naam` in `df.query`/`df.eval` en elke naam in `pd.eval`
+  op in de variabelen van het script (`df.eval('@pd.io.common.os.getpid()')`);
 - `store_get` alleen met een letterlijke key: de sandbox krijgt precies die tabellen mee;
 - geen overgetypte data, en het script leest data (`df` of `store_get`).
 
 Welke getallen in de uitkomst niet van de data afhangen, meet `tools/afhankelijkheid.py`
 na de uitvoering (CH-27): een lijst van getypte constanten miste variabelen.
+
+De controle op strings is een heuristiek: wie een expressie uit stukken plakt, komt erlangs.
+Wat dan bereikbaar is, is het kindproces zelf, zonder omgeving, bestanden, netwerk of
+processen; `tests/test_sandbox_isolatie.py` legt dat restrisico vast.
 """
 
 import ast
+import io
+import tokenize
 from dataclasses import dataclass
 
 _VERBODEN_NAMEN = frozenset(
@@ -91,6 +99,10 @@ _VERBODEN_MODULES = frozenset(
         "webbrowser",
     }
 )
+# In een pandas-expressie geldt dezelfde regel als in de AST: geen module en geen frame achter een punt.
+_VERBODEN_ACHTER_PUNT = _VERBODEN_MODULES | _VERBODEN_ATTRIBUTEN
+# Tokens waar pandas overheen leest tussen een punt en de naam erna.
+_TUSSENRUIMTE = frozenset({tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, tokenize.INDENT, tokenize.DEDENT})
 _HARDCODED_MIN = 6
 
 
@@ -107,6 +119,32 @@ def _niet_toegestaan(wat: str) -> Geweigerd:
     return Geweigerd(f"Niet toegestaan in analyse-scripts: '{wat}'. Gebruik de beschikbare libraries (pd, np, px, go).")
 
 
+def _verboden_in_tekst(tekst: str) -> str | None:
+    """Wat een string niet mag bevatten: een dunder, of een verboden naam achter een punt.
+
+    Een string kan een pandas-expressie zijn (`df.query`, `df.eval`, `pd.eval`). pandas leest
+    die als Python-tokens en lost `@naam`, en zonder kolomresolvers elke naam, op in de
+    variabelen van het script: `@pd.io.common.os` komt zo bij `os` zonder import en zonder
+    attribuut in de AST. Dezelfde regel als voor de AST, op dezelfde tokens.
+    """
+    if "__" in tekst:
+        return tekst
+    if "." not in tekst:
+        return None
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(tekst).readline))
+    except (tokenize.TokenError, SyntaxError):
+        return None  # geen tekst die pandas als expressie kan lezen
+    na_punt = False
+    for tok in tokens:
+        if tok.type in _TUSSENRUIMTE:
+            continue
+        if na_punt and tok.type == tokenize.NAME and tok.string in _VERBODEN_ACHTER_PUNT:
+            return f"{tok.string} (een module via een bibliotheekobject, in een pandas-expressie)"
+        na_punt = tok.type == tokenize.OP and tok.string == "."
+    return None
+
+
 def _verboden(node: ast.AST) -> str | None:
     if isinstance(node, (ast.Import, ast.ImportFrom)):
         return "import"
@@ -116,8 +154,8 @@ def _verboden(node: ast.AST) -> str | None:
         return node.attr
     if isinstance(node, ast.Attribute) and node.attr in _VERBODEN_MODULES:
         return f"{node.attr} (een module via een bibliotheekobject)"
-    if isinstance(node, ast.Constant) and isinstance(node.value, str) and "__" in node.value:
-        return node.value
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return _verboden_in_tekst(node.value)
     return None
 
 
