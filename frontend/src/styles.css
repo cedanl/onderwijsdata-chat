@@ -841,13 +841,13 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 .message-retry { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .82rem; }
 .message-continue:disabled { color: var(--gray-500); cursor: default; text-decoration: none; }
 .chat-disclaimer { text-align: center; font-size: .72rem; color: var(--muted-text); margin-top: 8px; }
-.disclaimer-link {
+.disclaimer-link, .wb-viewer-fallback-link {
   background: none; border: none; padding: 0; font: inherit;
   color: var(--accent-text); text-decoration: underline; cursor: pointer;
 }
 /* Text buttons in a line of text (#425, #490): the box is a full tap target, the negative margin
    gives the line its own height back, so the text around them does not move. */
-.disclaimer-link, .message-continue, .instelling-clear-filter {
+.disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link {
   display: inline-flex; align-items: center; min-height: var(--tap-min-aa);
   margin-block: min(0px, (1lh - var(--tap-min-aa)) / 2);
 }
@@ -1209,10 +1209,14 @@ html.dark .context-limit-banner--full {
 }
 .wb-viewer-loading { position: absolute; inset: 0; align-items: flex-start; background: var(--white); }
 .wb-viewer-empty { margin: 0; padding: 64px 24px; text-align: center; color: var(--muted-text); font-size: .9rem; }
-.wb-gallery-notice {
+.wb-gallery-notice, .wb-viewer-fallback {
   margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-sm);
   border: 1px solid rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .12); color: var(--gray-700); font-size: .85rem;
 }
+/* A report frame that shows nothing (#541): the notice sits between the bar and the report, never over it. */
+.wb-viewer-fallback-status { flex-shrink: 0; }
+.wb-viewer-fallback { margin: 12px 24px; }
+.wb-viewer-fallback-error { margin: 0 24px 12px; }
 .spinner {
   width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
   border: 2px solid var(--gray-200); border-top-color: var(--blue-600, #2563EB);
@@ -1592,6 +1596,8 @@ html.dark .suggested-btn:hover {
   .wb-viewer-actions { flex-wrap: wrap; min-width: 0; }
   /* At 200% zoom a phone is ~180 CSS px wide: the button text wraps instead of overflowing. */
   .wb-viewer-actions > *, .wb-feedback-btn { max-width: 100%; flex-shrink: 1; }
+  .wb-viewer-fallback { margin: 8px 12px; }
+  .wb-viewer-fallback-error { margin: 0 12px 8px; }
 }
 
 @media (max-width: 600px) {
@@ -1645,7 +1651,7 @@ html.dark .suggested-btn:hover {
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
   .sources-link, .export-conversation-btn, .model-picker select { min-height: var(--tap-min); }
 
-  .disclaimer-link, .message-continue, .instelling-clear-filter {
+  .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
   }
   /* The hit box grows on both sides; the negative margin keeps the old 22px footprint next to the bubble. */

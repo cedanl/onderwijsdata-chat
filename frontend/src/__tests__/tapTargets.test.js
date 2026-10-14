@@ -112,6 +112,17 @@ describe('touch block', () => {
   })
 })
 
+// Text buttons inside a sentence (#425, #490, #541): the whole line height is the tap target.
+const INLINE = ['.disclaimer-link', '.message-continue', '.instelling-clear-filter', '.wb-viewer-fallback-link']
+
+describe('text buttons in a line of text', () => {
+  it.each(INLINE)('gives %s the AA height everywhere and the touch height on touch screens', selector => {
+    const own = rules.filter(r => r.selectors.includes(selector))
+    expect(own.some(r => !r.media && declares(r.body, 'min-height', 'var(--tap-min-aa)'))).toBe(true)
+    expect(own.some(r => r.media === TOUCH && declares(r.body, 'min-height', 'var(--tap-min)'))).toBe(true)
+  })
+})
+
 describe('size check helpers', () => {
   it.each(['1.5rem', '2em', '30px', '50%', 'calc(100% - 4px)', 'var(--tap-min-aa)'])('rejects %s', value => {
     expect(() => expectAtLeastTouch(value, '.x')).toThrow()
