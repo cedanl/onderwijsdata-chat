@@ -8,6 +8,7 @@ TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_DATASET_PROFIEL = "dataset_profiel"
+TOOL_RELATIE = "relatie"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -143,6 +144,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {"data_key": {"type": "string", "description": "data_key uit een laad- of filterstap"}},
+                "required": ["data_key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_RELATIE,
+            "description": (
+                "Wat hangt aan wat tussen CBS, DUO en RIO. Met één data_key: per sleutelkolom (instellingscode, "
+                "instellingsnaam, gemeente, provincie, schooljaar, opleidingscode) wat eraan hangt en hoeveel "
+                "waarden het register of de gebiedsindeling kent. Met andere_key: de kolommen die beide tabellen "
+                "als dezelfde sleutel dragen, hoe hun waarden vertalen (GM0344 is gemeente 344, 2021SJ00 is "
+                "schooljaar 2021), de kardinaliteit en de overlap. Koppelt zelf niets: gebruik de uitkomst in "
+                "query_data of run_analysis. Vraag dit vóór je twee bronnen combineert."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data_key": {"type": "string", "description": "data_key van de tabel"},
+                    "andere_key": {"type": "string", "description": "data_key van de tabel om mee te koppelen"},
+                },
                 "required": ["data_key"],
             },
         },
