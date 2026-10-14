@@ -14,7 +14,7 @@ import pandas as pd
 from agent.loop import _truncate
 from agent.run import _MAX_TOOL_RESULT_CHARS
 from tools import store
-from tools.catalog import _DETAILS_BUDGET, dataset_details
+from tools.catalog import _DETAILS_BUDGET, dataset_details, resources_met_kolom
 from tools.query import query_data
 from tools.store import KeyMeta
 
@@ -135,3 +135,24 @@ def test_bij_te_veel_tekst_worden_de_voorbeelden_verder_ingekort():
     waarden = _details(breed)["_kolommen"]["mbo_opleidingsaanbod"]["K0"]
 
     assert len(waarden) == 3
+
+
+def test_een_dubbele_bestandsnaam_krijgt_de_kolommen_van_zijn_eigen_bestand():
+    # riodata 0.5.0 zet bij het tweede bestand met dezelfde naam het id achter de sleutel (#390).
+    entry = {
+        **_ENTRY,
+        "_resources": [{"naam": "leerweg_instelling", "id": "id-1"}, {"naam": "leerweg_instelling", "id": "id-2"}],
+        "_kolommen": {"leerweg_instelling": {"LEERWEG": ["bbl"]}, "leerweg_instelling (id-2)": {"BRIN": ["00GT"]}},
+        "_kolomtypes": {"leerweg_instelling": {"LEERWEG": "tekst"}, "leerweg_instelling (id-2)": {"BRIN": "tekst"}},
+    }
+
+    assert [r["kolommen"] for r in _details(entry)["_resources"]] == [["LEERWEG"], ["BRIN"]]
+    with patch("tools.catalog._rio_duo", return_value=[entry]):
+        assert resources_met_kolom("mbo_opleidingsaanbod", "BRIN") == [(1, "leerweg_instelling")]
+
+
+def test_echte_studentprognoses_noemen_de_kolommen_van_elk_bestand():
+    # Twee bestanden heten daar mbo-studentenprognose_leerweg_instelling.
+    resources = json.loads(dataset_details("studentprognoses-mbo-per-instelling"))["_resources"]
+
+    assert all(r.get("kolommen") for r in resources)

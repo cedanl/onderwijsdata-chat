@@ -745,10 +745,20 @@ _DETAILS_BUDGET = 11_000
 _VOORBEELDEN = (10, 5, 3)
 
 
+def _bestandssleutels(resource: dict) -> tuple[str, str]:
+    """Waaronder een veld per resource dit bestand noemt: riodata zet bij een dubbele naam het id erachter."""
+    return f"{resource.get('naam')} ({resource.get('id')})", resource.get("naam", "")
+
+
+def _van_bestand(per_resource: dict, resource: dict):
+    """Het deel van een veld per resource dat bij dit bestand hoort; None als het er niet is."""
+    return next((per_resource[s] for s in _bestandssleutels(resource) if s in per_resource), None)
+
+
 def _per_resource(entry: dict, veld: str) -> dict[str, dict] | None:
     """Het veld per resourcenaam, als de catalogus het zo indeelt; anders None."""
     waarde = entry.get(veld)
-    namen = {r.get("naam") for r in entry.get("_resources") or []}
+    namen = {s for r in entry.get("_resources") or [] for s in _bestandssleutels(r)}
     per_naam = isinstance(waarde, dict) and waarde and set(waarde) <= namen
     return waarde if per_naam and all(isinstance(v, dict) for v in waarde.values()) else None
 
@@ -795,7 +805,7 @@ def _build_details(entry: dict, dataset_id: str) -> str:
                 "index": i,
                 **{k: v for k, v in r.items() if k != "url"},
                 **({"leidend_voor_totalen": True} if r.get("id") in leidend else {}),
-                **({"kolommen": kolommen[r["naam"]]} if r.get("naam") in kolommen else {}),
+                **({"kolommen": eigen} if (eigen := _van_bestand(kolommen, r)) is not None else {}),
             }
             for i, r in enumerate(details["_resources"])
         ]
@@ -943,7 +953,7 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
                 (i, r["naam"])
                 for i, r in enumerate(entry.get("_resources") or [])
                 if r.get("naam")
-                and (kolom.lower() in r["naam"].lower() or kolom.lower() in kolommen.get(r["naam"], set()))
+                and (kolom.lower() in r["naam"].lower() or kolom.lower() in (_van_bestand(kolommen, r) or set()))
             ]
     return []
 
