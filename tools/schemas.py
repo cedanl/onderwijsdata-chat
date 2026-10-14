@@ -7,6 +7,7 @@ from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 TOOL_SEARCH_CATALOG = "search_catalog"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
+TOOL_DATASET_PROFIEL = "dataset_profiel"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -126,6 +127,23 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dimension_name": {"type": "string", "description": "Naam van de dimensie, bijv. 'Geslacht'"},
                 },
                 "required": ["dataset_id", "dimension_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_DATASET_PROFIEL,
+            "description": (
+                "Profiel van een geladen tabel (data_key): per kolom type, waar hij op lijkt (identificatie, jaar, "
+                "schooljaar, geocode, categorie, getal), lege en unieke cellen, bereik en vaakste waarden, plus de "
+                "korrel: de kolomcombinatie die elke rij apart aanwijst. Gebruik dit vóór een som of telling over "
+                "een tabel waarvan je de korrel niet zeker weet: een som over een kolom buiten de korrel telt dubbel."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"data_key": {"type": "string", "description": "data_key uit een laad- of filterstap"}},
+                "required": ["data_key"],
             },
         },
     },

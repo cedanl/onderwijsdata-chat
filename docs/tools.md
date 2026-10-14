@@ -404,6 +404,25 @@ Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle datab
 
 ---
 
+## dataset_profiel
+
+Het profiel van een geladen tabel (#59, #61): per kolom het type, waar hij op lijkt (`identificatie`, `jaar`,
+`schooljaar`, `geocode`, `categorie`, `getal`, `datum`, `tekst`), lege en unieke cellen, bereik en kwartielen
+(meetkolommen) of de vaakste waarden, plus `dubbele_rijen_pct` en `kandidaat_sleutels`: de kleinste
+kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. `korrel` zegt het in woorden.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | Key uit een laad- of filterstap |
+
+Pure pandas (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key
+staat; op een afgekapte pagina (`volledig: false`) is het een profiel van de pagina, met waarschuwing.
+
+**Gebruik:** vóór een som of telling over een tabel waarvan het model de korrel niet zeker weet. Een som over
+een kolom buiten de korrel telt dubbel (totaalrijen naast onderdelen, meerdere resources in één bestand).
+
+---
+
 ## compute_kpi
 
 Berekent één KPI-waarde deterministisch in code over data die al in de store staat, zodat het model zelf geen verschillen of percentages hoeft uit te rekenen. Het model neemt de teruggegeven `value` en `trend` letterlijk over.
