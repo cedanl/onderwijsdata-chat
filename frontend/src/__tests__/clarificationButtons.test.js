@@ -49,3 +49,59 @@ describe('ClarificationButtons (#109)', () => {
     expect(onSelect).toHaveBeenCalledWith('Alle jaren')
   })
 })
+
+// #494: a way back to the question when the choice went the wrong way. The choice itself stays final.
+describe('ClarificationButtons: Anders formuleren (#494)', () => {
+  let root
+  let container
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  function render(props) {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => root.render(createElement(ClarificationButtons, { options: OPTIES, onSelect: () => {}, busy: false, ...props })))
+    return [...container.querySelectorAll('button')]
+  }
+
+  it('adds nothing without a callback', () => {
+    expect(render({}).map(k => k.textContent)).toEqual(['2023/24', 'Alle jaren — de hele reeks'])
+  })
+
+  it('comes after the options as a native button, named after its visible text', () => {
+    const knoppen = render({ onAndersFormuleren: vi.fn() })
+    const anders = knoppen.at(-1)
+    expect(knoppen).toHaveLength(3)
+    expect(anders.getAttribute('type')).toBe('button')
+    expect(anders.textContent).toBe('Anders formuleren')
+    expect(anders.getAttribute('aria-label')).toBe('Anders formuleren: zet je oorspronkelijke vraag terug in het invoerveld')
+    expect(container.querySelector('.clarification-btns').contains(anders)).toBe(false)
+  })
+
+  it.each([
+    ['open', { answer: { answered: false, choice: null } }, false],
+    ['answered', { answer: { answered: true, choice: '2023/24' } }, true],
+    ['busy', { busy: true, answer: { answered: false, choice: null } }, true],
+  ])('works on a card that is %s, without choosing anything', (_, props, optiesDicht) => {
+    const onSelect = vi.fn()
+    const onAndersFormuleren = vi.fn()
+    const knoppen = render({ ...props, onSelect, onAndersFormuleren })
+    const anders = knoppen.at(-1)
+    expect(anders.disabled).toBe(false)
+
+    act(() => anders.click())
+
+    expect(onAndersFormuleren).toHaveBeenCalledOnce()
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(knoppen.slice(0, -1).every(k => k.disabled === optiesDicht)).toBe(true)
+  })
+
+  it('renders nothing for a message without options, also with the callback', () => {
+    render({ options: null, onAndersFormuleren: vi.fn() })
+    expect(container.innerHTML).toBe('')
+  })
+})

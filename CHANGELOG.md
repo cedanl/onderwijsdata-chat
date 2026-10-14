@@ -353,6 +353,9 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Onder de opties van een verduidelijkingskaart staat "Anders formuleren": een klik zet je oorspronkelijke vraag
+  terug in het invoerveld, om aan te passen en opnieuw te stellen. Er gaat niets vanzelf weg en de gekozen optie
+  blijft staan; wie meteen een optie kiest, merkt er niets van (#494).
 - Wie een gesprek verwijdert, leest in de bevestiging dat een rapport van dat gesprek blijft bestaan en los te
   verwijderen is via Rapporten (#513). Een rapport is een eigen kopie met de vraag als titel; het verdwijnt
   bewust niet mee met het gesprek.
