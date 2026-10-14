@@ -976,7 +976,8 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
             {blocks
               ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
               : dataExport}
-            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren} />
+            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren}
+              vraag={typeof msg.content === 'string' ? msg.content : null} />
             <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
