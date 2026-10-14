@@ -397,14 +397,14 @@ de laatste tag is 1.8.6.
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn
   titel op zijn plaats terug. Verwijderen blijft echt verwijderen: de lijst zonder het gesprek staat al lokaal,
   en de lokale kopie van een open gesprek gaat weg zodra de tijd om is.
-- Onder een antwoord met data staan tot drie vervolgvragen als knoppen (#364). Een klik zet de vraag in het
-  invoerveld, waar je haar aanpast of verstuurt; er gaat niets vanzelf weg. Het model vraagt alleen óf er
-  vervolgvragen komen (de tool `suggest_follow_ups`, als laatste stap van zijn antwoord); welke, kiest de app uit de
-  voorbeeldvragen in de catalogus van de datasets die het antwoord laadde, en alleen vragen die de chat kan
-  beantwoorden: binnen mbo/hbo/wo, zonder "mijn" of "onze", zonder ruwe veldnamen, codes of dataset-ID's, zonder
-  verwijzing naar "dit" of "de data", zonder aantallen uit een RIO-register, en vindbaar met de catalogus. Geen vervolgvragen na een verduidelijkingsvraag, een weigering of een
-  ingehouden of afgebroken antwoord, en alleen onder het laatste antwoord. De "Verken …"-voorbeeldvragen sturen hun
-  vraag nog steeds meteen.
+- Onder elk gewoon antwoord met data staan tot drie vervolgvragen als knoppen (#364). Een klik zet de vraag in het
+  invoerveld, waar je haar aanpast of verstuurt; er gaat niets vanzelf weg. Of er vervolgvragen komen, hangt niet
+  af van een keuze van het model (#539): de app biedt ze zelf aan, uit de voorbeeldvragen in de catalogus van de
+  datasets die het antwoord laadde, en alleen vragen die de chat kan beantwoorden: binnen mbo/hbo/wo, zonder "mijn"
+  of "onze", zonder ruwe veldnamen, codes of dataset-ID's, zonder verwijzing naar "dit" of "de data", zonder
+  aantallen uit een RIO-register, en vindbaar met de catalogus. Geen vervolgvragen na een verduidelijkingsvraag, een
+  weigering, een ingehouden, leeg, afgekapt of afgebroken antwoord of een deelantwoord, en alleen onder het laatste
+  antwoord. De "Verken …"-voorbeeldvragen sturen hun vraag nog steeds meteen.
 - Een gesprek verwijderen vanuit de zoekresultaten in de zijbalk werkt nu net zo (#529): de treffer verdwijnt
   meteen, de toast "Gesprek verwijderd." biedt "Ongedaan maken" en de server verwijdert pas na acht seconden.
   Dat geldt ook voor een gesprek dat niet in de geladen lijst staat; daar gebeurde eerst niets. Ongedaan maken
