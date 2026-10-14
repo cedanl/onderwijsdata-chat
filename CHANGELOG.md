@@ -92,6 +92,10 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Het Bronnen-blok onder een antwoord noemt bij een DUO-dataset met meer dan één tabelbestand ook het bestand
+  (#540): de drie hbo-bestanden van `p01hoinges` gaven voor dezelfde instelling en hetzelfde studiejaar 34.751,
+  34.754 en 34.755, elk met andere onderdrukte cellen, terwijl de bron er hetzelfde uitzag. Een telvraag via
+  `get_maat` gebruikt altijd het leidende bestand; dit maakt een verschil op een ander pad herleidbaar.
 - Een zoekhit van `search_catalog` draagt bij DUO-datasets de zoekkaart uit riodata (`zoekkaart`: teleenheid,
   inschrijvingstype, peildatum, uitsluitingen en publicatieregels), zonder lege delen. Het model ziet zo vóór
   `dataset_details` of een bron personen of inschrijvingen telt en hoe kleine aantallen zijn afgerond (#358).
