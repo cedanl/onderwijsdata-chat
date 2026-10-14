@@ -6,7 +6,7 @@ import urllib.parse
 from collections import OrderedDict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
 from auth.oidc import build_authorization_url, exchange_code_for_user, is_oidc_configured
@@ -17,6 +17,7 @@ from core.auth import (
     bearer_token,
     check_credentials,
     get_current_user,
+    get_optional_user,
     make_token,
     revoke_token,
     session_start,
@@ -71,6 +72,18 @@ def _extract_domain_from_email(email):
 @router.get("/status")
 async def auth_status() -> dict:
     return {"required": AUTH_ENABLED, "oidc_enabled": is_oidc_configured()}
+
+
+@router.get("/session", status_code=204, responses={401: {"description": "Token ontbreekt of geldt niet meer"}})
+def session_check(username: Annotated[str | None, Depends(get_optional_user)]) -> Response:
+    """Geldt het token in Authorization nog? 204 ja, 401 nee; in beide modi, zonder body (#499).
+
+    De frontend vraagt het na een geweigerde chat-socket; /user bestaat alleen met OIDC. Dezelfde controle
+    als /user (handtekening, vervaltijd, denylist), dus een databasestoring geeft 500, geen 401. Ook de 401
+    blijft leeg. Een gewone functie: de denylist lezen hoort in de threadpool (#508). no-store: een bewaarde
+    204 verbergt geen verlopen sessie.
+    """
+    return Response(status_code=204 if username else 401, headers={"Cache-Control": "no-store"})
 
 
 # De SRAM-gebruikersinfo (naam, e-mail, organisatie, instelling) per gebruiker, zodat ze een herlaad van
