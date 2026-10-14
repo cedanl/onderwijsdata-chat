@@ -25,6 +25,13 @@ export function buildHistory(messages) {
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
 
+// The follow-up questions the server picked from the catalogue (#364): only text, at most three.
+const MAX_VERVOLGVRAGEN = 3
+function vervolgvragen(ev) {
+  if (!Array.isArray(ev.vervolgvragen)) return []
+  return ev.vervolgvragen.filter(q => typeof q === 'string' && q.trim()).slice(0, MAX_VERVOLGVRAGEN)
+}
+
 export function useChat() {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
@@ -241,6 +248,7 @@ export function useChat() {
         }])
       },
       message_end(ev) {
+        const vragen = vervolgvragen(ev)
         // The server sends the full text; it wins over the accumulated deltas.
         updateCurrentMsg(m => {
           const content = typeof ev.content === 'string' ? ev.content : m.content
@@ -260,6 +268,8 @@ export function useChat() {
             ...(ev.citaties?.length && { citaties: ev.citaties }),
             // The sources the server derived from the steps, also when empty: they mark a data answer (#416).
             ...(Array.isArray(ev.bronnen) && { bronnen: ev.bronnen }),
+            // Questions to ask next; a click puts one in the input box (#364).
+            ...(vragen.length && { vervolgvragen: vragen }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }

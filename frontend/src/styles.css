@@ -754,6 +754,9 @@ input, textarea { font: inherit; }
 .clarification-btn:hover:not(:disabled) { background: var(--blue-100); border-color: var(--blue-400); }
 .clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .clarification-btn.selected { background: var(--blue-600); color: var(--on-color); border-color: var(--blue-700); font-weight: 600; }
+/* Klikbare vragen onder een bericht: de starters en de vervolgvragen (#364). */
+.question-buttons { margin-top: 8px; }
+.question-buttons-kop { font-size: .75rem; font-weight: 600; color: var(--muted-text); }
 
 .ai-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
 .ai-typing span {

@@ -1,20 +1,30 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useState } from 'react'
 import ChatInputFooter from './ChatInputFooter'
 import { MESSAGE_COUNTER_ID } from './MessageCounter'
 import { messageLengthState } from '../messageLength'
 import { MAX_TEXTAREA_HEIGHT } from '../constants'
 import { persoonsgegevensMelding } from '../persoonsgegevens'
 
+const NO_PREFILL = () => {}
+
+function autoResize(el) {
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
+}
+
 // The draft lives here, not in ChatPage: a keystroke re-renders only the composer, not every message
 // (and with it every markdown block and chart) above it.
 //
 // onSubmit(question) returns whether the question went out; only then is the draft cleared.
 // ready: everything but the draft that lets a question go out (connected, idle, room left).
+// prefill ({ tekst }): a follow-up question the user picked (#364); it replaces the draft and is not sent.
 export default function Composer({
   hasMessages, connected, busy, ready, models, selectedModel, onModelChange, onStop, onSubmit,
-  max, rejectedDraft, clearRejectedDraft,
+  max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
 }) {
   const [input, setInput] = useState('')
+  // The prefill just applied: once the box holds its text, it gets the focus and its height.
+  const [applied, setApplied] = useState(null)
   const textareaRef = useRef(null)
 
   // The server refused the question because a run was going: the typed text comes back (#145).
@@ -24,10 +34,21 @@ export default function Composer({
     clearRejectedDraft()
   }, [rejectedDraft, clearRejectedDraft])
 
-  const autoResize = (el) => {
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
-  }
+  // A picked follow-up question goes into the box for the user to edit or send (#364).
+  useEffect(() => {
+    if (prefill === null) return
+    setInput(prefill.tekst)
+    setApplied(prefill)
+    clearPrefill()
+  }, [prefill, clearPrefill])
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!applied || !el) return
+    autoResize(el)
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }, [applied])
 
   const over = messageLengthState(input, max).over
   // Waarschuwt, blokkeert niet (#478): een 9-cijferige code kan de elfproef toevallig doorstaan.
