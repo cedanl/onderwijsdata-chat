@@ -9,7 +9,7 @@ import importlib
 import logging
 
 from agent import loop as loop_module
-from agent.probleem import hard, harde, herstelbare, meldingen, veilig
+from agent.probleem import hard, harde, herstelbare, meldingen, uitkomsten, veilig
 from agent.stream import StreamResult
 
 
@@ -45,6 +45,13 @@ def test_niet_gecontroleerd_blijft_zacht_ook_onder_hard():
     problemen = hard(veilig(_kapot, "tekst"))
     assert problemen and harde(problemen) == []
     assert problemen[0].niet_gecontroleerd
+
+
+def test_niet_gecontroleerd_noemt_de_controle_die_faalde():
+    """CH-01: het log telt per controle; een falende controle stond er als ok, met een los None ernaast."""
+    problemen = hard(veilig(_kapot, "tekst"))
+    assert [p.controle for p in problemen] == ["_kapot"]
+    assert uitkomsten(["_kapot", "_akkoord"], problemen) == {"_kapot": "niet gecontroleerd", "_akkoord": "ok"}
 
 
 def test_herstelbare_laat_niet_gecontroleerd_weg():

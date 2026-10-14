@@ -271,7 +271,10 @@ de laatste tag is 1.8.6.
 - Trekt een controle een antwoord in, dan zegt de melding niet meer dat het "niet klopte met de opgehaalde data"
   (dat gold ook voor stijlcontroles). De ingetrokken versie noemt de reden in gewone taal, en het uitklapblok
   verschijnt alleen als die versie tekst had en anders was dan het eindantwoord. Het log noemt per herschrijving
-  welke controle afging.
+  welke controle afging. Dat geldt nu ook voor de rapportcontroles op een leeg rapport, een getal zonder bron,
+  "geen data" naast een gevulde grafiek en een verwijzing als "resource 3": daar stond `None`. Een controle die
+  zelf niet kon draaien, staat in het log onder haar eigen naam als `niet gecontroleerd`, niet als `ok` met een
+  los `None` ernaast.
 - Minder valse intrekkingen. Het verschil van twee getallen die het antwoord zelf noemt en die uit de data komen
   ("van 478.660 naar 475.460, 3.200 minder") geldt niet meer als getal zonder bron. "Komt uit van … en komt uit
   op …", "begon … eindigde" en "verschil tussen" tellen als vergelijking, zodat het tweede getal niet aan het

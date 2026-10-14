@@ -79,7 +79,8 @@ def veilig(controle: Callable[..., Iterable[T]], *args) -> list[Probleem]:
     try:
         return [_van(p, naam) for p in controle(*args)]
     except Exception as exc:
-        return [niet_gecontroleerd(log_interne_fout(exc, f"controle {naam}"))]
+        # Ook met naam: anders telt het log de controle als ok, met een los None ernaast (CH-01).
+        return [_van(niet_gecontroleerd(log_interne_fout(exc, f"controle {naam}")), naam)]
 
 
 def herstelbare(problemen: Iterable[str]) -> list[str]:
