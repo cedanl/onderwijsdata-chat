@@ -8,7 +8,9 @@ import asyncio
 import importlib
 import json
 import logging
+from collections.abc import Callable
 
+import litellm
 import pandas as pd
 import pytest
 
@@ -367,6 +369,64 @@ def test_na_een_verduidelijkingsvraag_geen_vervolgvragen(monkeypatch):
 
     assert any(e["type"] == "clarification" for e in events)
     assert not any("vervolgvragen" in e for e in events)
+
+
+def _gesprek(monkeypatch, rondes: list) -> tuple[Callable[[str], str], list[dict], dict]:
+    """Beurten met de echte antwoordcontrole; een uitzondering in `rondes` is een modelaanroep die faalt."""
+    store.put("duo:p02ho1ejrs:0", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="duo", dataset="p02ho1ejrs"))
+
+    async def fake_completion(*a, **k):
+        if isinstance(rondes[0], Exception):
+            raise rondes.pop(0)
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return rondes.pop(0)
+
+    async def fake_execute(call, emit):
+        return _GELADEN, None
+
+    async def emit(event):
+        pass
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+    monkeypatch.setattr(vervolgvragen, "_beantwoordbaar", lambda dataset_id: _VETTED.get(dataset_id, ()))
+    messages: list[dict] = []
+    session: dict = {}
+
+    def beurt(vraag: str) -> str:
+        messages.append({"role": "user", "content": vraag})
+        return asyncio.run(run_module.run(messages, session, emit, asyncio.Event(), model="openai/gpt-4o"))
+
+    return beurt, messages, session
+
+
+def test_een_ingetrokken_afgesloten_antwoord_blijft_niet_achter_na_een_modelfout(monkeypatch):
+    # De controle trekt een afgesloten antwoord met een verzonnen getal in; dan faalt de correctieronde.
+    # De stappen die af zijn, blijven voor een nieuwe poging (#431), het ingetrokken antwoord niet: anders
+    # telt het daar als iets wat de assistent al zei en komt het getal ongetoetst door.
+    verzonnen = "Het hbo had 98765 eerstejaars."
+    beurt, messages, _ = _gesprek(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_LAAD]),
+            StreamResult(text=verzonnen, tool_calls=[_SUGGEST]),
+            litellm.RateLimitError("te veel", llm_provider="openai", model="m"),
+            # De nieuwe poging: het model herhaalt het getal zonder data, ook na de correctie.
+            StreamResult(text="Het waren er 98765.", tool_calls=[]),
+            StreamResult(text="Het waren er 98765.", tool_calls=[]),
+        ],
+    )
+
+    with pytest.raises(litellm.RateLimitError):
+        beurt("Hoeveel eerstejaars had het hbo?")
+    assert not [m for m in messages if m["role"] == "assistant" and "98765" in str(m.get("content"))]
+    assert [m["role"] for m in messages] == ["user", "assistant", "tool"]
+
+    assert "98765" not in beurt("Hoeveel waren het er precies?")
 
 
 def _afgesloten(**velden) -> LoopResult:

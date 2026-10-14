@@ -526,8 +526,9 @@ async def run(
             result = LoopResult(aborted="tools")
         except Exception:
             # Bijvoorbeeld een rate limit na alle pogingen: wat al opgehaald is, blijft in het
-            # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
-            messages.extend(afgeronde_stappen(history[initial_history_len:]))
+            # gesprek, zodat een nieuwe poging erop voortbouwt (#431). Een afgesloten antwoord is geen
+            # opgehaalde stap: na een ingetrokken versie zou het anders als eerder gezegd gelden (#364).
+            messages.extend(afgeronde_stappen(history[initial_history_len:], uitsluiten=_AFSLUITEND))
             raise
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
