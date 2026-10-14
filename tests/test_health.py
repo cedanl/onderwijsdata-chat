@@ -101,7 +101,10 @@ def test_version_noemt_de_dataversie_van_uwv_en_roa(client):
     assert [(b["bron"], b["dataset"]) for b in arbeidsmarkt] == [("UWV", "uwv-open-match-data"), ("ROA", "ais2030")]
     uwv, roa = arbeidsmarkt
     assert "2023-05-16" in uwv["periode"]  # einde van de bevroren snapshotreeks
-    assert roa["periode"] == "Editie 2025"
+    # Letterlijk uit het ROA-record van de gepinde riodata (0.5.0).
+    assert roa["periode"] == (
+        "Edities 2025 en 2026 (2026 is de nieuwste; DataverseNL-release 2026-09-18). Prognoses tot 2030."
+    )
     assert client.get("/api/version").json()["arbeidsmarkt"] == arbeidsmarkt
 
 
