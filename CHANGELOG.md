@@ -618,7 +618,12 @@ de laatste tag is 1.8.6.
   `duo.search()` pagineren over alle 56 DUO-datasets op CKAN (`search` gaf er hooguit 50), `duo.load` houdt de
   voorloopnul van codes als `GEMEENTENUMMER` (`0080`, niet 80), en de schema- en contractcorrecties uit de
   ketenaudit (A3-A6) zitten erin. ROA heet in `/version` nu "Edities 2025 en 2026 (2026 is de nieuwste;
-  DataverseNL-release 2026-09-18). Prognoses tot 2030." in plaats van "Editie 2025".
+  DataverseNL-release 2026-09-18). Prognoses tot 2030." in plaats van "Editie 2025". Een filter op zo'n code
+  in `query_data` vraagt nu de tekst met voorloopnul (`"0363"`); `363` geeft 0 rijen en die suggestie. Omdat
+  riodata nu elk bestand beschrijft, laat `dataset_details` bij zeven grote DUO-datasets (p01-p04,
+  `instromende-mbo-studenten`, `studentprognoses-mbo-per-instelling` en `mbo-studenten-per-instelling`) de
+  voorbeeldwaarden en zo nodig de kolomtypes weg, zodat het binnen het toolbudget van de chat blijft; de kolommen
+  per bestand, de teldefinitie en de publicatieregels blijven staan.
 - `CORS_ORIGINS` staat standaard dicht en weigert `*`; elke omgeving noemt alleen haar eigen host.
 - `CORS_ORIGINS` weigert bij het opstarten ook een origin met een `*` erin, zoals `https://*.nl`: origins worden
   letterlijk vergeleken, dus zo'n patroon werkte nooit en faalde stil. De melding noemt de foute origin.
