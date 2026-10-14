@@ -754,6 +754,14 @@ input, textarea { font: inherit; }
 .clarification-btn:hover:not(:disabled) { background: var(--blue-100); border-color: var(--blue-400); }
 .clarification-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .clarification-btn.selected { background: var(--blue-600); color: var(--on-color); border-color: var(--blue-700); font-weight: 600; }
+/* "Anders formuleren" onder de opties (#494): een tekstknop als .message-continue, rustiger dan de opties.
+   Een eigen regel onder de kaart, dus geen negatieve marge zoals bij een knop in een zin: het tikvlak
+   mag niet over de laatste optie heen vallen. */
+.clarification-reformulate {
+  display: flex; align-items: center; width: fit-content; min-height: var(--tap-min-aa); margin-top: 6px;
+  font: inherit; font-size: .82rem; font-weight: 500; color: var(--accent-text);
+  background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer;
+}
 /* Klikbare vragen onder een bericht: de starters en de vervolgvragen (#364). */
 .question-buttons { margin-top: 8px; }
 /* Een eigen rij, ook als de knoppen naast elkaar staan (max-width 1024px): anders staat de kop naast de eerste knop. */
@@ -1639,7 +1647,7 @@ html.dark .suggested-btn:hover {
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .hamburger-btn, .wb-delete-btn,
   .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
-  .scroll-to-bottom-btn, .message-continue, .data-export-btn {
+  .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,

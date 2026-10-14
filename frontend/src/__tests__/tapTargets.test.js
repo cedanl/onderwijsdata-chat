@@ -54,6 +54,8 @@ const NAMED = [
   '.resend-btn', '.copy-btn', '.modal-close', '.modal-overlay-close', '.answer-feedback-btn',
   '.scroll-to-bottom-btn', '.message-continue', '.data-export-btn',
   '.chat-sidebar button', '.settings-modal button',
+  // "Anders formuleren" on a clarification card (#494).
+  '.clarification-reformulate',
 ]
 
 describe('tap target tokens', () => {
