@@ -130,6 +130,20 @@ def _niet_afgesloten(name: str, text: str) -> str:
     )
 
 
+def _limiet(name: str, limit: int, *, afsluitend: bool) -> str:
+    """What a call over its limit gets instead of a result."""
+    if afsluitend:
+        # A sluit_af tool only counts calls without an answer: the model should write it, not look for data (#364).
+        return (
+            f"LIMIET: {name} is al {limit}x aangeroepen zonder antwoord. "
+            f"Schrijf je antwoord nu als tekst, zonder {name}."
+        )
+    return (
+        f"LIMIET: {name} is al {limit}x aangeroepen. Werk met de resultaten die je hebt "
+        "of geef aan dat de data niet beschikbaar is."
+    )
+
+
 def _is_hit(content: str) -> bool:
     try:
         hits = json.loads(content)
@@ -312,10 +326,7 @@ class _Loop:
             self.counts[c.name] = self.counts.get(c.name, 0) + 1
             limit = self.tool_limits.get(c.name)
             if limit and self.counts[c.name] > limit:
-                blocked[c.id] = (
-                    f"LIMIET: {c.name} is al {limit}x aangeroepen. Werk met de resultaten die je hebt "
-                    "of geef aan dat de data niet beschikbaar is."
-                )
+                blocked[c.id] = _limiet(c.name, limit, afsluitend=c.name in self.sluit_af)
                 logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", c.name, self.counts[c.name], limit)
 
         niet_uitvoeren = self.halt_on | self.sluit_af

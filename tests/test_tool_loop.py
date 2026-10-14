@@ -417,6 +417,8 @@ def test_a_model_that_keeps_closing_without_text_hits_the_limit(monkeypatch):
 
     contents = [m["content"] for m in messages if m["role"] == "tool"]
     assert ["LIMIET" in c for c in contents] == [False, False, True]
+    # The limit of a closing tool is about the missing answer, not about missing data.
+    assert "Schrijf je antwoord" in contents[-1] and "data" not in contents[-1]
     assert result.text == "Het antwoord."
 
 
