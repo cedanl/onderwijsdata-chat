@@ -315,13 +315,19 @@ datacall, met de ontbrekende dimensie(s) erbij.
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `dataset_id` | string | CBS dataset-ID, bijv. `"85423NED"` |
-| `selectie` | object | `dimensies`: per dimensie een code uit `get_cbs_dimension`, een lijst codes of `"*"` (uitsplitsen); `periode`: lijst van schooljaren/periodecodes, `{"van", "tot"}` of `"*"`; `onderwerpen`: optioneel, kolomsleutels |
+| `selectie` | object | `dimensies`: per dimensie een code uit `get_cbs_dimension`, een lijst codes of `"*"` (uitsplitsen); `periode`: lijst van schooljaren/periodecodes, `{"van", "tot"}` of `"*"`; `onderwerpen`: optioneel, kolomsleutels; `sector`: optioneel, `mbo`, `hbo` of `wo`, de sector waarvoor het model de tabel bevraagt |
 
 Voorbeeld: `{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, "periode": ["2024/25"]}`.
 Schooljaarspelling (`2024/25`) wordt in code vertaald naar de CBS-periodecode (`2024SJ00`).
 Elke vergelijking in `$filter` gaat als `trim(Dimensie) eq 'code'`, omdat CBS de sleutels van een
 dimensie opvult tot één breedte (`4000   ` naast `T001038`) en gestript toont (#531).
 De rijlimiet is een beleidsregel van de server, geen modelparameter.
+
+Na de selectiepoort vraagt `tools/cbs_preflight.py` het contract van de CBS-package (`validate_selection`,
+live en gecachet) of de tabel de selectie kan leveren (#370): bestaat elke code in haar dimensie, komt de
+periode in de tabel voor, en past de code bij de opgegeven `sector` (`hbo` met `Onderwijssoort=A025297`, wo,
+is tegenstrijdig). Alleen `unsupported` houdt de datacall tegen; de weigering noemt per controle de reden en
+wat wél in de tabel staat. `unknown` (bronuitval, een dimensie die het contract niet kent) laat door.
 
 De parameter `filters` (ruwe OData, `{"$filter": …}`) bestaat nog voor bewaarde recepten
 en het herladen/verversen van oudere gesprekken, maar zit niet meer in de modelinterface.

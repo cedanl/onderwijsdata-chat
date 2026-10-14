@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from agent import recepten
-from tools import cbs, store
+from tools import cbs, cbs_preflight, store
 
 
 @pytest.fixture(autouse=True)
@@ -21,6 +21,16 @@ def no_cbs_dimension_call(monkeypatch):
     monkeypatch.setattr(cbs, "get", lambda dataset_id, endpoint, **params: [])
     cbs._dimension_rows.cache_clear()
     cbs._tabelbeschrijving.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def geen_cbs_preflight(monkeypatch):
+    """Unittests vragen het CBS-contract niet live om een oordeel (#370); tests van de preflight patchen zelf."""
+    monkeypatch.setattr(
+        cbs_preflight,
+        "validate_selection",
+        lambda dataset_id, eis, live=False: {"dataset_id": dataset_id, "status": "unknown", "checks": []},
+    )
 
 
 @pytest.fixture(autouse=True)

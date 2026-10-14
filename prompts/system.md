@@ -149,7 +149,9 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 4. **Haal data op**: geef de codes uit stap 3 door in `selectie` — elke dimensie van de tabel gepind op
    een code (meestal de totaalcode) of `"*"` om uit te splitsen, en `periode` als lijst of bereik. De
-   server bouwt de bronfilter; een onvolledige selectie wordt geweigerd met wat er ontbreekt.
+   server bouwt de bronfilter; een onvolledige selectie wordt geweigerd met wat er ontbreekt. Geef `sector`
+   (`mbo`, `hbo` of `wo`) mee als de tabel meer sectoren dekt: een code van een andere sector, en een code of
+   periode die niet in de tabel voorkomt, wordt vóór de datacall geweigerd met wat wél kan.
    Haal aparte queries op voor vergelijkingsgroepen (bijv. mannen én vrouwen apart), of splits uit met `"*"`.
 
 5. **Aggregeer indien nodig**: als je totalen, gemiddelden of andere aggregaties nodig hebt, gebruik `query_data` met `group_by` en `aggregate`. Gebruik voor complexere berekeningen `run_analysis` met een kort pandas script. Het `query_data` resultaat bevat een `data_key` die je doorgeeft aan `create_plot`.
