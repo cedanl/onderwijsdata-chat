@@ -350,3 +350,12 @@ test('inloggegevens komen uit de omgeving, met de lokale standaard als er niets 
   assert.deepEqual(inloggegevens({}), { username: 'admin', password: 'admin' })
   assert.deepEqual(inloggegevens({ EVAL_USERNAME: 'tester', EVAL_PASSWORD: 'geheim' }), { username: 'tester', password: 'geheim' })
 })
+
+// --- verplichte tools met alternatieven (#188): de vaste maat vervangt de laadstap --------------
+test('een verplichte tool met | is gehaald als één van de alternatieven is aangeroepen', () => {
+  const ev = { expected: { must_contain_tools: ['get_duo_data|get_maat', 'create_plot'] } }
+  const met = { ...nieuwAntwoord(), content: 'x', toolCalls: ['get_maat', 'create_plot'], toolResults: [] }
+  const zonder = { ...nieuwAntwoord(), content: 'x', toolCalls: ['search_catalog', 'create_plot'], toolResults: [] }
+  assert.deepEqual(scoreResult(met, ev).required_tools, { 'get_duo_data|get_maat': true, create_plot: true })
+  assert.equal(scoreResult(zonder, ev).has_all_required, false)
+})

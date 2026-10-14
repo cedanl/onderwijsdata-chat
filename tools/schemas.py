@@ -5,6 +5,7 @@ from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
+TOOL_GET_MAAT = "get_maat"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
 TOOL_DATASET_PROFIEL = "dataset_profiel"
@@ -24,6 +25,57 @@ TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_MAAT,
+            "description": (
+                "Vaste maat uit een vast recept: jij kiest de maat en de afbakening, de code kiest dataset, bestand "
+                "en codes. Gebruik dit vóór search_catalog voor een telling van studenten, inschrijvingen of "
+                "eerstejaars per hbo/wo-instelling, mbo-studenten per instelling, of ingeschrevenen hbo/wo landelijk. "
+                "'Studenten' is ingeschreven_personen_ho (personen); inschrijvingen_ho alleen als de gebruiker om "
+                "inschrijvingen vraagt. Geeft een data_key met één rij per studiejaar, de teldefinitie en het recept; "
+                "query_data, compute_kpi en create_plot werken er gewoon mee. Een onbekende instelling of maat is "
+                "een fout, geen gok."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "maat": {
+                        "type": "string",
+                        "enum": [
+                            "ingeschreven_personen_ho",
+                            "inschrijvingen_ho",
+                            "eerstejaars_ho",
+                            "deelnemers_ho_landelijk",
+                            "mbo_studenten_instelling",
+                        ],
+                        "description": "De maat; zie de beschrijving van de tool.",
+                    },
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de instelling (hbo, wo of mbo); niet bij een landelijke maat.",
+                    },
+                    "sector": {
+                        "type": "string",
+                        "enum": ["hbo", "wo"],
+                        "description": "Alleen bij deelnemers_ho_landelijk: hbo of wo.",
+                    },
+                    "vorm": {
+                        "type": "string",
+                        "enum": ["alle", "voltijd", "deeltijd", "duaal", "bol", "bbl"],
+                        "description": "Opleidingsvorm (ho) of leerweg (mbo); standaard alle.",
+                    },
+                    "schooljaren": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Schooljaren als 2024/25 (of het startjaar 2024); weglaten voor alle beschikbare.",
+                    },
+                },
+                "required": ["maat"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {

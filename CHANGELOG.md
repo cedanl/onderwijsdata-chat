@@ -92,6 +92,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Nieuwe tool `get_maat` (#188): vaste recepten voor de gewone telvragen. Het model kiest de maat
+  (`ingeschreven_personen_ho`, `inschrijvingen_ho`, `eerstejaars_ho`, `deelnemers_ho_landelijk`,
+  `mbo_studenten_instelling`) en de afbakening (instelling of sector, vorm, schooljaren); de code lost de
+  instelling op in het register, kiest het DUO-bestand (het opleidingsvorm-bestand per sector) of de CBS-codes,
+  vertaalt vorm en schooljaar naar de spelling van de bron en laadt en selecteert met dezelfde tools als anders.
+  Eén rij per studiejaar, met teldefinitie en het recept erbij; een onbekende instelling, maat of vorm is een fout,
+  geen gok. "Studenten" is standaard personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met
+  vermelding. De prompt zet `get_maat` vóór `search_catalog`; een key uit `get_maat` komt na een herstart terug
+  door het recept opnieuw te draaien, en de snippet is het recept als script.
 - Nieuwe tool `dataset_profiel(data_key)` (#59, #61): het profiel van een geladen tabel zonder model. Per kolom het
   type, waar hij op lijkt (identificatie, jaar, schooljaar, geocode, categorie, getal, datum, tekst), lege en
   unieke cellen, bereik en kwartielen of de vaakste waarden; voor de tabel het aandeel dubbele rijen en de

@@ -14,7 +14,7 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import cbs_selectie, instellingsprovincie, scopeprofiel, store
+from . import cbs_selectie, instellingsprovincie, maten, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .periode import STUDIEJAAR_LABEL
@@ -26,6 +26,7 @@ from .schemas import (
     TOOL_CREATE_PLOT,
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
@@ -354,7 +355,38 @@ def _create_choropleth_snippet(args: dict) -> str:
     return "\n".join(lines)
 
 
+def _get_maat_snippet(args: dict) -> str:
+    """Het recept van een vaste maat als zelfstandig script (#188): laden, filteren, per studiejaar optellen."""
+    p = maten.plan(
+        args.get("maat"),
+        args.get("instelling"),
+        args.get("sector"),
+        args.get("vorm", maten.ALLE),
+        args.get("schooljaren"),
+    )
+    if isinstance(p, str):
+        return f"# {p}"
+    if isinstance(p.recept, maten.CbsRecept):
+        params = cbs_selectie.compileer(p.recept.dataset, maten.selectie(p), None)
+        return "\n".join(
+            [
+                *_cbs_laadregels(
+                    {"dataset_id": p.recept.dataset, "filters": params if isinstance(params, dict) else {}}
+                ),
+                "print(df)",
+            ]
+        )
+    lines = _duo_laadregels({"dataset_id": p.recept.dataset, "resource": p.bestand})
+    lines += [_filterregel(key, val) for key, val in maten.filters(p).items()]
+    lines += _aggregatieregels([p.recept.periodekolom], maten.aggregate(p))
+    if isinstance(p.recept, maten.DuoBreedRecept):
+        kolommen = list(p.recept.leerwegen[p.vorm])
+        lines.append(f'df["{maten.AANTAL}"] = df[{kolommen!r}].sum(axis=1, min_count=1)')
+    return "\n".join([*lines, "print(df)"])
+
+
 _GENERATORS = {
+    TOOL_GET_MAAT: _get_maat_snippet,
     TOOL_QUERY_DATA: _query_data_snippet,
     TOOL_RUN_ANALYSIS: _run_analysis_snippet,
     TOOL_COMPUTE_KPI: _compute_kpi_snippet,

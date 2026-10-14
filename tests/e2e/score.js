@@ -26,8 +26,9 @@ export function scoreResult(r, ev) {
 
   // 2. Verplichte tools aanwezig?
   scores.required_tools = {}
+  // 'get_duo_data|get_maat': één van de alternatieven is genoeg (#188: de vaste maat vervangt de laadstap).
   for (const tool of (ex.must_contain_tools || [])) {
-    scores.required_tools[tool] = r.toolCalls.includes(tool)
+    scores.required_tools[tool] = tool.split('|').some(t => r.toolCalls.includes(t))
   }
   scores.has_all_required = Object.values(scores.required_tools).every(Boolean)
 
