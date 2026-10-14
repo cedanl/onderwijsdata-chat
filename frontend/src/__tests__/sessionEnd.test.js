@@ -38,6 +38,9 @@ function logIn(token = 'tok') {
 
 const loggedOut = () => localStorage.getItem(STORAGE_TOKEN) === null && localStorage.getItem(USERINFO) === null
 
+// Password-only mode (CHAT_USERS, no OIDC): /api/auth/user is not registered, the session check is (#499).
+const passwordOnly = async (url) => response(url === '/api/auth/session' ? 401 : 404)
+
 describe('endSession', () => {
   it('clears token and user info and tells each subscriber once', () => {
     logIn()
@@ -112,12 +115,13 @@ describe('checkSession', () => {
     const fetch = vi.fn(async () => response(401))
     vi.stubGlobal('fetch', fetch)
     await checkSession()
-    expect(fetch).toHaveBeenCalledWith('/api/auth/user', { headers: { Authorization: 'Bearer tok' } })
+    expect(fetch).toHaveBeenCalledWith('/api/auth/session', { headers: { Authorization: 'Bearer tok' } })
     expect(loggedOut()).toBe(true)
     expect(ended).toHaveBeenCalledTimes(1)
   })
 
   it.each([
+    ['204', async () => response(204)],
     ['200', async () => response(200, { name: 'Anna' })],
     ['404', async () => response(404)],
     ['503', async () => response(503)],
@@ -135,6 +139,18 @@ describe('checkSession', () => {
     vi.stubGlobal('fetch', fetch)
     await checkSession()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('ends the session in password-only mode, where the user endpoint does not exist (#499)', async () => {
+    logIn()
+    const fetch = vi.fn(passwordOnly)
+    vi.stubGlobal('fetch', fetch)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    await checkSession()
+    expect(loggedOut()).toBe(true)
+    expect(ended).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalledWith('/api/auth/user', expect.anything())
+    expect(setItem).not.toHaveBeenCalledWith(USERINFO, expect.anything())
   })
 })
 
@@ -218,9 +234,19 @@ describe.each([
 
   it('asks the server when the socket closes without ever opening', async () => {
     await close(FakeWebSocket.last, 1006)
-    expect(fetch).toHaveBeenCalledWith('/api/auth/user', { headers: { Authorization: 'Bearer tok' } })
+    expect(fetch).toHaveBeenCalledWith('/api/auth/session', { headers: { Authorization: 'Bearer tok' } })
     expect(loggedOut()).toBe(true)
     expect(ended).toHaveBeenCalledTimes(1)
+  })
+
+  it('ends the session in password-only mode as well (#499)', async () => {
+    fetch.mockImplementation(passwordOnly)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    await close(FakeWebSocket.last, 1006)
+    expect(loggedOut()).toBe(true)
+    expect(ended).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalledWith('/api/auth/user', expect.anything())
+    expect(setItem).not.toHaveBeenCalledWith(USERINFO, expect.anything())
   })
 
   it('keeps the token and retries when the probe is no 401', async () => {

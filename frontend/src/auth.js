@@ -96,12 +96,13 @@ export async function refreshAuthToken(token) {
 }
 
 // A refused WebSocket handshake reaches the browser as a bare close 1006, the same as a
-// network outage. Ask the server: only an explicit 401 ends the session (#480).
+// network outage. Ask the server: only an explicit 401 ends the session (#480). The session
+// endpoint exists with and without OIDC and returns no user data (#499).
 export async function checkSession() {
   const token = getToken()
   if (!token) return
   try {
-    const res = await fetch('/api/auth/user', { headers: { Authorization: `Bearer ${token}` } })
+    const res = await fetch('/api/auth/session', { headers: { Authorization: `Bearer ${token}` } })
     if (res.status === 401) endSessionIfCurrent(token)
   } catch {
     // Offline: the socket keeps retrying, the token stays.
