@@ -730,6 +730,7 @@ _DETAILS_EXTRA = frozenset(
         "publicatieregels",
         "metadata_onbekend",
         "kolommen_steekproef",
+        "kolomdetail_weggelaten",
         "catalogus_bron_gewijzigd",
         "kolomprofiel",
         "methodiek",
@@ -740,9 +741,18 @@ _DETAILS_EXTRA = frozenset(
 
 # DUO-details blijven onder het toolbudget van de agent (agent/run.py): de hele steekproef
 # duwde de kolommen van latere bestanden erbuiten (#395). Voorbeeldwaarden per kolom worden
-# stapsgewijs minder, tot het past; drie laten de codering nog zien.
+# stapsgewijs minder, tot het past; drie laten de codering nog zien. Sinds riodata 0.5.0 elk
+# bestand beschrijft, past ook dat niet altijd (#390): dan vallen de voorbeelden weg, en zo
+# nodig ook de kolomtypes. De kolommen per bestand en de toelichting blijven altijd staan.
 _DETAILS_BUDGET = 11_000
 _VOORBEELDEN = (10, 5, 3)
+_ZONDER_KOLOMDETAIL = (
+    (("_kolommen", "kolommen_steekproef"), "de voorbeeldwaarden (_kolommen)"),
+    (
+        ("_kolommen", "kolommen_steekproef", "_kolomtypes"),
+        "de voorbeeldwaarden (_kolommen) en kolomtypes (_kolomtypes)",
+    ),
+)
 
 
 def _bestandssleutels(resource: dict) -> tuple[str, str]:
@@ -779,17 +789,34 @@ def _ingekort(kolommen, maximum: int):
     return kolommen
 
 
-def _duo_details(entry: dict, dataset_id: str) -> str:
-    """_build_details met zo veel voorbeeldwaarden als binnen _DETAILS_BUDGET past."""
+def _weggelaten(wat: str) -> str:
+    return (
+        f"Om binnen één toolantwoord te passen staan {wat} hier niet bij; de bestanden hebben ze wel. "
+        "Welke kolommen elk bestand heeft, staat bij _resources. get_duo_data met de index van een bestand "
+        "geeft per kolom het type, het bereik en de unieke waarden van dat bestand."
+    )
+
+
+def _kleiner(entry: dict):
+    """Steeds kleinere kolomdetails voor _build_details: (entry, velden die wegvallen)."""
     for maximum in _VOORBEELDEN:
-        tekst = _build_details({**entry, "_kolommen": _ingekort(entry.get("_kolommen"), maximum)}, dataset_id)
+        yield {**entry, "_kolommen": _ingekort(entry.get("_kolommen"), maximum)}, ()
+    for zonder, wat in _ZONDER_KOLOMDETAIL:
+        yield {**entry, "kolomdetail_weggelaten": _weggelaten(wat)}, zonder
+
+
+def _duo_details(entry: dict, dataset_id: str) -> str:
+    """_build_details met zo veel kolomdetail als binnen _DETAILS_BUDGET past."""
+    for kleiner, zonder in _kleiner(entry):
+        tekst = _build_details(kleiner, dataset_id, zonder=zonder)
         if len(tekst) <= _DETAILS_BUDGET:
             break
     return tekst
 
 
-def _build_details(entry: dict, dataset_id: str) -> str:
-    details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v}
+def _build_details(entry: dict, dataset_id: str, zonder: tuple[str, ...] = ()) -> str:
+    # Wat wegvalt, telt nog mee voor de kolommen per bestand bij _resources.
+    details = {k: v for k, v in entry.items() if k in (_DETAIL_FIELDS | _DETAILS_EXTRA) and v and k not in zonder}
     if defs := details.get("_kolomdefinities"):
         # Voorbeelden in de glossary zijn geen gesloten lijst (#430).
         details["_kolomdefinities"] = {k: met_voorbeeldstatus(v) for k, v in defs.items()}

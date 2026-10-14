@@ -13,7 +13,7 @@ import pandas as pd
 
 from agent.loop import _truncate
 from agent.run import _MAX_TOOL_RESULT_CHARS
-from tools import store
+from tools import catalog, store
 from tools.catalog import _DETAILS_BUDGET, dataset_details, resources_met_kolom
 from tools.query import query_data
 from tools.store import KeyMeta
@@ -137,6 +137,42 @@ def test_bij_te_veel_tekst_worden_de_voorbeelden_verder_ingekort():
     assert len(waarden) == 3
 
 
+_BESTANDEN = [r["naam"] for r in _ENTRY["_resources"]]
+_BREDE_KOLOMMEN = [f"KOLOM_{i:03d}" for i in range(60)]
+
+
+def _breed(kolomtype: str) -> dict:
+    """Twee bestanden met elk zestig kolommen: met drie voorbeelden per kolom nog te lang."""
+    return {
+        **_ENTRY,
+        "_kolommen": {naam: dict.fromkeys(_BREDE_KOLOMMEN, _VEEL) for naam in _BESTANDEN},
+        "_kolomtypes": {naam: dict.fromkeys(_BREDE_KOLOMMEN, kolomtype) for naam in _BESTANDEN},
+    }
+
+
+def test_past_het_met_drie_voorbeelden_niet_dan_vallen_de_voorbeelden_weg():
+    details = _details(_breed("tekst (12 waarden)"))
+
+    assert "_kolommen" not in details
+    assert details["_kolomtypes"]["mbo_opleidingsaanbod_cohorten"]["KOLOM_059"] == "tekst (12 waarden)"
+    assert [r["kolommen"] for r in details["_resources"]] == [_BREDE_KOLOMMEN, _BREDE_KOLOMMEN]
+    assert "voorbeeldwaarden (_kolommen)" in details["kolomdetail_weggelaten"]
+    assert "get_duo_data" in details["kolomdetail_weggelaten"]
+
+
+def test_past_het_zonder_voorbeelden_niet_dan_vallen_ook_de_kolomtypes_weg():
+    details = _details(_breed("tekst " + "y" * 120))
+
+    assert "_kolommen" not in details
+    assert "_kolomtypes" not in details
+    assert [r["kolommen"] for r in details["_resources"]] == [_BREDE_KOLOMMEN, _BREDE_KOLOMMEN]
+    assert "kolomtypes (_kolomtypes)" in details["kolomdetail_weggelaten"]
+
+
+def test_wat_past_krijgt_geen_melding_over_weggelaten_kolomdetail():
+    assert "kolomdetail_weggelaten" not in _details()
+
+
 def test_een_dubbele_bestandsnaam_krijgt_de_kolommen_van_zijn_eigen_bestand():
     # riodata 0.5.0 zet bij het tweede bestand met dezelfde naam het id achter de sleutel (#390).
     entry = {
@@ -149,6 +185,31 @@ def test_een_dubbele_bestandsnaam_krijgt_de_kolommen_van_zijn_eigen_bestand():
     assert [r["kolommen"] for r in _details(entry)["_resources"]] == [["LEERWEG"], ["BRIN"]]
     with patch("tools.catalog._rio_duo", return_value=[entry]):
         assert resources_met_kolom("mbo_opleidingsaanbod", "BRIN") == [(1, "leerweg_instelling")]
+
+
+def _echte_duo_datasets() -> list[str]:
+    return [e["_ckan_id"] for e in catalog._rio_duo() if e.get("leverancier") == "DUO"]
+
+
+def test_elke_echte_duo_dataset_past_binnen_het_detailsbudget():
+    # Sinds riodata 0.5.0 elk bestand beschrijft, gingen zeven van de veertien over het agentbudget,
+    # en kapte de agent de teldefinitie en publicatieregels af (#390).
+    te_lang = {i: n for i in _echte_duo_datasets() if (n := len(dataset_details(i))) > _DETAILS_BUDGET}
+
+    assert te_lang == {}
+
+
+def test_inkorten_laat_bij_een_echte_duo_dataset_alleen_voorbeelden_en_kolomtypes_weg():
+    kolomdetail = {"_kolommen", "_kolomtypes", "kolommen_steekproef", "kolomdetail_weggelaten"}
+    for dataset_id in _echte_duo_datasets():
+        kort = json.loads(dataset_details(dataset_id))
+        with patch("tools.catalog._DETAILS_BUDGET", 10**9):
+            vol = json.loads(dataset_details(dataset_id))
+
+        assert {k: v for k, v in kort.items() if k not in kolomdetail} == {
+            k: v for k, v in vol.items() if k not in kolomdetail
+        }, dataset_id
+        assert ("kolomdetail_weggelaten" in kort) == ("_kolommen" in vol and "_kolommen" not in kort), dataset_id
 
 
 def test_echte_studentprognoses_noemen_de_kolommen_van_elk_bestand():
