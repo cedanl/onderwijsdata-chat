@@ -26,6 +26,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `POST` | `/api/auth/login` | Inloggen met gebruikersnaam/wachtwoord. Retourneert een HMAC-ondertekend token. Rate-limited: 5 pogingen per minuut per IP. |
 | `GET` | `/api/auth/oidc/login` | Start SRAM-login: redirect naar de OIDC-provider |
 | `GET` | `/api/auth/oidc/callback` | Callback van de provider; stuurt terug naar de app met het token in het fragment (`/#token=…`), nooit in de query |
+| `GET` | `/api/auth/session` | Of het token in `Authorization: Bearer …` nog geldt: 204 ja, 401 nee (ontbreekt, ongeldig, verlopen of ingetrokken). Altijd zonder body en zonder gebruikersgegevens; met en zonder OIDC. Zonder authenticatie 204; bij een databasestoring 500 |
 | `GET` | `/api/auth/user` | Gebruikersinfo (naam, instelling) bij het token in `Authorization: Bearer …` — alleen als OIDC is ingesteld |
 | `POST` | `/api/auth/refresh` | Vernieuwt een token vóór het verloopt, nooit voorbij `SESSION_MAX_HOURS` na inloggen — alleen als OIDC is ingesteld |
 | `POST` | `/api/auth/logout` | Trekt het token in `Authorization: Bearer …` server-side in. Geeft 204, ook zonder of met een ongeldig token; bij een databasestoring 500 |

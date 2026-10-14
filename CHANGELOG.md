@@ -372,6 +372,10 @@ de laatste tag is 1.8.6.
   de invoervelden van het inlogscherm volgen het donkere thema in plaats van wit te blijven.
 - Uitloggen of een verlopen sessie terwijl de app net het token vernieuwt, laat geen nieuw token meer achter in
   de browser en plant geen volgende vernieuwing meer in (#499).
+- Met inloggen op wachtwoord (zonder SRAM) eindigt de sessie nu ook als alleen de chatverbinding het token
+  weigert, in de chat en in het dashboardvenster (#499); eerder gebeurde dat pas bij de volgende actie. De app
+  vraagt dat na bij het nieuwe `GET /api/auth/session` (204 of 401, zonder gebruikersgegevens), dat er met en
+  zonder SRAM is.
 - Instellingen zoeken met een typefout ("Hogescool Utrecht") zegt nu "Bedoel je Hogeschool Utrecht?" met tot drie
   dichtstbijzijnde namen om op te klikken, in plaats van alleen "Geen instellingen gevonden" (#496, F04).
 - Een zoekterm van meer woorden vindt die suggesties nu ook per woord, met een typefout per woord en in elke
