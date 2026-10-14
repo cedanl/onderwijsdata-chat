@@ -10,7 +10,7 @@
         "datasets_alt": ["cbs:71037ned"],
         "tool_flow": ["search_catalog", "dataset_details", "get_duo_data|get_cbs_data", "query_data", "create_plot"],
         "tool_flow_description": "Zoek → details → laad data → filter → grafiek",
-        "must_contain_tools": ["search_catalog", "create_plot"],
+        "must_contain_tools": ["search_catalog|get_maat", "create_plot"],
         "max_search_catalog": 3,
         "data_points": {
           "description": "Voltijd ingeschrevenen HU, ca. 29.000-31.000 per jaar",
@@ -190,7 +190,7 @@
         "foutcategorie": "cijferduiding",
         "bron_versie": "riodata@c0b4bce",
         "datasets": ["duo:p02ho1ejrs"],
-        "must_contain_tools": ["search_catalog"],
+        "must_contain_tools": ["search_catalog|get_maat"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "eerstejaars"],
         "acceptable_outcomes": [
@@ -301,7 +301,7 @@
       "description": "Bronwaarheid (#190, audit 7a/8): CBS 85423NED hbo voltijd met status per jaar; 378.490 definitief, 367.960 voorlopig",
       "expected": {
         "datasets": ["cbs:85423NED"],
-        "must_contain_tools": ["get_cbs_data"],
+        "must_contain_tools": ["get_cbs_data|get_maat"],
         "max_search_catalog": 3,
         "must_mention": ["hbo", "voltijd", "definitief", "voorlopig"],
         "data_points": {
@@ -321,7 +321,7 @@
       "description": "Bronwaarheid (#190, audit 7a): DUO p01hoinges, personen en niet inschrijvingen; 28.355 … 26.370",
       "expected": {
         "datasets": ["duo:p01hoinges"],
-        "must_contain_tools": ["get_duo_data"],
+        "must_contain_tools": ["get_duo_data|get_maat"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "voltijd", "personen"],
         "data_points": {
@@ -345,7 +345,7 @@
       "description": "Bronwaarheid (#190, audit 7a): 7.408 en niet 7.418 (dat is 2024/25); een tolerantie zou het verschil wegpoetsen",
       "expected": {
         "datasets": ["duo:p01hoinges"],
-        "must_contain_tools": ["get_duo_data"],
+        "must_contain_tools": ["get_duo_data|get_maat"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "deeltijd"],
         "data_points": {
@@ -365,7 +365,7 @@
       "description": "Bronwaarheid (#190, audit 8): 5.943 over 14 rijen met één onderdrukte cel (-1): het antwoord noemt de ondergrens",
       "expected": {
         "datasets": ["duo:p02ho1ejrs"],
-        "must_contain_tools": ["get_duo_data"],
+        "must_contain_tools": ["get_duo_data|get_maat"],
         "max_search_catalog": 3,
         "must_mention": ["Hogeschool Utrecht", "eerstejaars", "ondergrens|onderdrukt|niet gepubliceerd|ten minste|minimaal"],
         "data_points": {

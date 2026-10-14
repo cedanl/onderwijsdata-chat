@@ -130,6 +130,8 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 ## Werkwijze — volg dit altijd
 
+0. **Vaste maat eerst**: een telling van studenten, inschrijvingen of eerstejaars per hbo/wo-instelling, mbo-studenten per instelling, of ingeschrevenen hbo/wo landelijk haal je met `get_maat` (maat, instelling of sector, vorm, schooljaren); de code kiest dataset, bestand en codes en geeft één rij per studiejaar. "Studenten" is `ingeschreven_personen_ho` (personen); `inschrijvingen_ho` alleen als de gebruiker om inschrijvingen vraagt, en zeg dan dat het inschrijvingen zijn. Past geen maat, of weigert de tool (onbekende instelling), volg dan stap 1 tot 4.
+
 1. **Zoek de dataset**: gebruik `search_catalog` voor alle bronnen (CBS, RIO, DUO). DUO-datasets hebben leverancier='DUO' en een `_ckan_id` veld. De resultaten bevatten compacte metadata (naam, dimensies, geo-niveau, periode) — genoeg om 1-3 kandidaten te kiezen.
 
    **Zoeklimiet:** roep `search_catalog` maximaal **{ZOEKLIMIET} keer** aan per analysevraag. Varieer niet eindeloos op zoektermen — als na {ZOEKLIMIET} zoekacties geen geschikte dataset gevonden is, werk met de beste kandidaat of geef eerlijk aan dat de data niet beschikbaar is.

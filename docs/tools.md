@@ -260,6 +260,33 @@ Bij elke vraag bepaalt het LLM automatisch:
 
 Het LLM springt stappen over als ze niet nodig zijn. Dit heet **"lazy evaluation"** — efficiënter en sneller.
 
+## get_maat
+
+Vaste maat uit een vast recept (#188): het model kiest de maat en de afbakening, de code kiest dataset, bestand,
+kolommen en codes (`tools/maten.py`). Elke fout uit de audits die in de keten zoeken → details → bestand → codes
+zat (verkeerde instellingscode, T001228 als voltijd, het bestand zonder OPLEIDINGSVORM, personen of inschrijvingen
+per sessie anders, verkeerd schooljaar) is zo een beslissing van code.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling) |
+| `instelling` | string | Officiële naam of alias; het register (`data/instellingen.py`) geeft code en sector. Onbekend is een fout, geen gok |
+| `sector` | string | Alleen landelijk: `hbo` of `wo` |
+| `vorm` | string | `alle` (standaard), `voltijd`, `deeltijd`, `duaal` (ho) of `bol`, `bbl` (mbo) |
+| `schooljaren` | array | `2024/25` of `2024`; weglaten voor alle beschikbare |
+
+Per maat ligt vast: het DUO-bestand (het opleidingsvorm-bestand per sector, #325), de telkolom, de codes van de
+vorm (`VT`/`DT`/`DU`, bij CBS `A028666`…), de vaste CBS-totaalcodes (fase, geslacht) en de teldefinitie. De tool
+laadt en selecteert met `get_duo_data`/`get_cbs_data` en `query_data`, dus scopegrens, sentinelmaskering, afronding
+en KeyMeta gelden gewoon. Het resultaat: `data_key` met één rij per studiejaar, `teldefinitie`, `recept` (wat de
+code koos), `periodekolom`/`waardekolom`, en `ontbrekende_schooljaren` als de bron een gevraagd jaar niet heeft.
+Bij mbo is `AANTAL` de som van de leerwegkolommen van de vorm, als eigen key. Een key uit `get_maat` komt na een
+herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snippet is het recept als script.
+
+**Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
+
+---
+
 ## search_catalog
 
 Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
