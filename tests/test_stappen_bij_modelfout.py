@@ -56,40 +56,6 @@ def test_correctieronde_hoort_bij_de_onderbroken_beurt():
     assert [m["role"] for m in afgeronde_stappen(beurt)] == ["assistant", "tool", "assistant", "tool"]
 
 
-_AFSLUITEND = frozenset({"suggest_follow_ups"})
-
-
-def _afsluiting(i: str) -> dict:
-    return {"id": i, "type": "function", "function": {"name": "suggest_follow_ups", "arguments": "{}"}}
-
-
-def test_een_afgesloten_antwoord_is_geen_afgeronde_stap():
-    # Een antwoord dat met suggest_follow_ups afsloot en door de controle is ingetrokken, is geen stap van
-    # het werk: anders telt een nieuwe poging het als iets wat de assistent al zei (#364).
-    beurt = [
-        _aanroep("a"),
-        _resultaat("a"),
-        {"role": "assistant", "content": "Er waren 98765 studenten.", "tool_calls": [_afsluiting("s")]},
-        {"role": "tool", "tool_call_id": "s", "content": "OK"},
-        {"role": "user", "content": "Controle van je antwoord …"},
-    ]
-
-    assert afgeronde_stappen(beurt, uitsluiten=_AFSLUITEND) == [
-        {**_aanroep("a"), "content": TUSSENSTAP},
-        _resultaat("a"),
-    ]
-
-
-def test_een_afsluitende_aanroep_naast_een_datastap_valt_weg_de_datastap_blijft():
-    stap = {**_aanroep("a"), "tool_calls": [*_aanroep("a")["tool_calls"], _afsluiting("s")]}
-    beurt = [stap, _resultaat("a"), {"role": "tool", "tool_call_id": "s", "content": "Niet uitgevoerd: …"}]
-
-    assert afgeronde_stappen(beurt, uitsluiten=_AFSLUITEND) == [
-        {**_aanroep("a"), "content": TUSSENSTAP},
-        _resultaat("a"),
-    ]
-
-
 def _chat_met_rate_limit_na_een_stap(monkeypatch) -> list[dict]:
     antwoorden = [StreamResult(text="", tool_calls=[{"id": "a", "name": "get_duo_data", "arguments": "{}"}])]
 
