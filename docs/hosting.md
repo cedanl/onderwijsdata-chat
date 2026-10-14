@@ -67,7 +67,7 @@ COPY . .
 RUN pip install uv && uv sync --no-dev
 RUN cd frontend && npm ci && npm run build
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
 ```
 
 Geef omgevingsvariabelen mee via Docker of je platform — nooit in de image zelf:
