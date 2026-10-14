@@ -84,7 +84,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "instromende-mbo-studenten: 'Het aantal (nieuwe) instromende studenten', kolom INSTROOM MBO (tools/duo_correcties.py). 85569NED: instromers mbo met meetwaarde InstromersTotaal_1. 85574NED telt alleen instromers met een bedrijfstak een jaar eerder en is daarom niet geaccepteerd."
+      "toelichting": "instromende-mbo-studenten: 'Het aantal (nieuwe) instromende studenten', kolom INSTROOM MBO (data/domeinregels.toml). 85569NED: instromers mbo met meetwaarde InstromersTotaal_1. 85574NED telt alleen instromers met een bedrijfstak een jaar eerder en is daarom niet geaccepteerd."
     },
     {
       "id": "mbo-08",
@@ -385,7 +385,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "85424NED: gediplomeerden naar soort diploma (bachelor, master, ad). p04hogdipl: SOORT_DIPLOMA met hbo associate degree (tools/duo_correcties.py). 85425NED: gediplomeerden naar soort diploma."
+      "toelichting": "85424NED: gediplomeerden naar soort diploma (bachelor, master, ad). p04hogdipl: SOORT_DIPLOMA met hbo associate degree (data/domeinregels.toml). 85425NED: gediplomeerden naar soort diploma."
     },
     {
       "id": "hbo-07",
@@ -422,7 +422,7 @@
       "beantwoordbaar": true,
       "verboden": ["p01hoinges", "p03hoinschr", "p02ho1ejrs"],
       "kritiek": true,
-      "toelichting": "85701NED: studenten per onderwijssoort en woonregio, hbo-rijen via CBS_SECTORFILTER (#473: de enige open bron voor hbo en wo naar woonregio). Verboden: p01hoinges, p02ho1ejrs en p03hoinschr zijn volgens niet_geschikt_voor niet geschikt voor woonplaats; GEMEENTENAAM is de vestiging (tools/duo_correcties.py)."
+      "toelichting": "85701NED: studenten per onderwijssoort en woonregio, hbo-rijen via CBS_SECTORFILTER (#473: de enige open bron voor hbo en wo naar woonregio). Verboden: p01hoinges, p02ho1ejrs en p03hoinschr zijn volgens niet_geschikt_voor niet geschikt voor woonplaats; GEMEENTENAAM is de vestiging (data/domeinregels.toml)."
     },
     {
       "id": "hbo-10",
@@ -687,7 +687,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "85424NED en 85425NED: gediplomeerden naar soort diploma en onderwijssoort. p04hogdipl: SOORT_DIPLOMA met wo master in de wo-bestanden (tools/duo_correcties.py)."
+      "toelichting": "85424NED en 85425NED: gediplomeerden naar soort diploma en onderwijssoort. p04hogdipl: SOORT_DIPLOMA met wo master in de wo-bestanden (data/domeinregels.toml)."
     },
     {
       "id": "wo-08",

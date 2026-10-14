@@ -46,9 +46,10 @@ Daarnaast per soort:
 | | `melding` | tekst | Wat de catalogus als `niet_geschikt_voor` toont. |
 | | `voorbeeldvragen` | tabel, optioneel | `"vraag uit de catalogus" = "herschreven vraag"`. |
 
-Teksten die het model leest (`definitie`, `melding`, `betekenis`, vragen) staan op één regel tussen
-`"…"`: wat je ziet is wat het model krijgt. Een `bron` mag over meer regels lopen, tussen `"""…"""`.
-Commentaar begint met `#`.
+Alle teksten behalve `bron` staan op één regel tussen `"…"`: wat je ziet is wat het model krijgt. Het
+laden weigert daarin een regeleinde (ook `\n` of `"""…"""`), een tab en onzichtbare tekens. `betekenis`
+komt namelijk ook in de Python-code van een snippet en in de CSV-export, waar een tweede regel code of een
+formule zou worden. Een `bron` mag over meer regels lopen, tussen `"""…"""`. Commentaar begint met `#`.
 
 ## Een regel toevoegen
 
@@ -71,10 +72,24 @@ Commentaar begint met `#`.
 3. Draai de tests, of laat CI ze draaien:
 
     ```bash
-    uv run pytest tests/test_domeinregels.py tests/test_duo_correcties.py -q
+    uv run pytest tests/test_domeinregels.py tests/test_duo_correcties.py tests/retrieval_baseline -q
     ```
 
-4. Open een MR. Na de merge staat de regel op test met de gewone deploy van `main`; playground krijgt
+4. Een nieuwe of gewijzigde `[[kolomcorrectie]]` of `[[herkomst_is_vestiging]]` verandert de catalogus
+   waartegen de retrieval-baseline is gemeten. Dan faalt `test_catalogus_is_de_gemeten_snapshot` tot je
+   opnieuw meet (zonder netwerk of LLM):
+
+    ```bash
+    uv run python scripts/meet_retrieval.py --schrijf-baseline
+    ```
+
+    Controleer daarna de labels in `tests/retrieval_baseline/vragenset.json` en zet het bijgewerkte
+    `tests/retrieval_baseline/baseline.json` in dezelfde MR. Weigert het script omdat een kritieke vraag nu
+    faalt, dan verandert de regel de zoekresultaten: zie de release-eis in `tests/retrieval_baseline/README.md`.
+    `[sentinel]`, `[opleidingsvorm]` en een wijziging alleen in `bron` of `gecontroleerd` raken de catalogus
+    niet.
+
+5. Open een MR. Na de merge staat de regel op test met de gewone deploy van `main`; playground krijgt
    hem met de volgende promotie ([Promoten naar playground](promoten.md)). Het bestand zit in de image:
    er is geen manier om het in een draaiende omgeving te wijzigen.
 
@@ -112,6 +127,13 @@ Daarnaast controleert het laden zelf het schema; zie hieronder. `test_duo_correc
 de kolomcorrecties; `test_duo_kolomdefinities.py` en `test_sentinel_masking.py` testen het gedrag van de
 huidige regels.
 
+CI draait de hele map `tests/`. Twee onderdelen daarvan raken een regel zonder hem bij naam te noemen:
+
+- `tests/retrieval_baseline`: de catalogusdigest omvat de kolomcorrecties en de herkomstregels; zie stap 4
+  van [Een regel toevoegen](#een-regel-toevoegen).
+- `tests/test_catalog_gouden_set.py`: `search_catalog` zoekt ook in de voorbeeldvragen, dus een
+  herschreven vraag kan de volgorde van de treffers verschuiven.
+
 De tests tonen dat een regel toepasbaar is, niet dat hij klopt. Dat laatste is de bron en de review
 van de MR.
 
@@ -123,11 +145,13 @@ Het laden faalt dan, met een melding die de regel noemt:
 domeinregels.toml: regel 'p04-diplomajaar' (kolomcorrectie): 'bron' ontbreekt
 domeinregels.toml: regel 'p04-diplomajaar' (kolomcorrectie): onbekende sleutel 'kollom' (typefout?); toegestaan: …
 domeinregels.toml: regel 'p04-diplomajaar' (kolomcorrectie): 'gecontroleerd' moet een datum zijn zonder aanhalingstekens (2026-10-08), niet tekst
+domeinregels.toml: regel 'duo-onderdrukte-cel' (sentinel): 'betekenis' moet op één regel staan, zonder regeleinde of onzichtbaar teken (U+000A)
 domeinregels.toml: onbekende regelsoort 'kolomcorectie'; bekend: 'sentinel', 'opleidingsvorm', 'kolomcorrectie', 'herkomst_is_vestiging'
 ```
 
 Geweigerd worden: een ontbrekend of leeg veld (`bron` en `id` inbegrepen), een dubbel `id`, een
-onbekende sleutel, een verkeerd type, een lege lijst of tabel, een onbekende regelsoort, een ontbrekende
-`[sentinel]` of `[opleidingsvorm]`, twee correcties op dezelfde kolom van een dataset en een dataset in
-twee herkomstregels. Er is geen terugval op lege regels of standaardwaarden: de tests falen in CI, en
+onbekende sleutel, een verkeerd type, een lege lijst of tabel, een regeleinde, tab of onzichtbaar teken
+in een andere tekst dan `bron`, een onbekende regelsoort, een ontbrekende `[sentinel]` of
+`[opleidingsvorm]`, twee correcties op dezelfde kolom van een dataset en een dataset in twee
+herkomstregels. Er is geen terugval op lege regels of standaardwaarden: de tests falen in CI, en
 een image met zo'n bestand start niet.

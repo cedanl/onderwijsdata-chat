@@ -9,8 +9,11 @@
 #   bron           waar de regel vandaan komt: documentatie, URL of de passage uit de data
 #   gecontroleerd  de datum waarop de regel tegen die bron is nagegaan, zonder aanhalingstekens
 #
-# Teksten die de tools doorgeven (definitie, melding, betekenis, vragen) staan op één regel tussen
-# "…". Een bron mag over meer regels lopen, tussen """…""".
+# Alle teksten behalve bron staan op één regel tussen "…": het laden weigert een regeleinde, tab of
+# onzichtbaar teken. Een bron mag over meer regels lopen, tussen """…""".
+#
+# Een nieuwe of gewijzigde kolomcorrectie of herkomstregel verandert de catalogus: meet dan ook de
+# retrieval-baseline opnieuw (stap 4 in docs/domeinregels.md).
 #
 # Een ongeldig bestand laadt niet en de app start dan niet: er is geen stille terugval.
 
