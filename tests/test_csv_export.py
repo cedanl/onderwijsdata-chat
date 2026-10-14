@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent import loop as loop_module
 from agent import recepten
-from tools import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, csv_export, duo, store
+from tools import TOOL_GET_MAAT, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, csv_export, duo, store
 from tools.csv_export import bestandsnaam, export_key, naar_csv
 from tools.query import query_data
 from tools.store import KeyMeta
@@ -170,6 +170,13 @@ def test_run_analysis_zonder_bron_levert_niets():
     assert export_key(TOOL_RUN_ANALYSIS, result) is None
 
 
+def test_get_maat_met_rijen_levert_de_key():
+    """Een telvraag loopt sinds #188 via get_maat; zonder key geen CSV-knop (#538)."""
+    result = json.dumps({"data_key": "duo:p01hoinges:3:ab:cd", "rijen": [{"STUDIEJAAR": 2022, "AANTAL": 1}]})
+    assert export_key(TOOL_GET_MAAT, result) == "duo:p01hoinges:3:ab:cd"
+    assert export_key(TOOL_GET_MAAT, "Onbekende instelling: Hogeschool Nergens.") is None
+
+
 def test_andere_tools_leveren_niets():
     assert export_key("get_duo_data", json.dumps({"data_key": "duo:x:0", "rijen": [{"a": 1}]})) is None
 
@@ -254,6 +261,28 @@ def test_endpoint_maakt_een_titel_met_accenten_en_tekens_veilig(client, monkeypa
     _eigen()
     resp = client.get("/api/data/csv", params={"key": "duo:p01hoinges:0"})
     assert resp.headers["content-disposition"] == 'attachment; filename="Mbo_studenten_e_X_y_p01hoinges.csv"'
+
+
+def test_endpoint_exporteert_een_tabel_van_get_maat(client):
+    """De key van get_maat is een selectie met een eigen recept (herlaad.recept kent de tool), dus de route
+    kent haar net als een query_data-key (#538)."""
+    _met_token(client)
+    key = "duo:p01hoinges:3:ab12:cd34"
+    _bron(key)
+    recepten.onthoud(
+        "testuser",
+        key,
+        {
+            "afgeleid_van": "duo:p01hoinges:3",
+            "tool": "get_maat",
+            "args": {"maat": "ingeschreven_personen_ho", "instelling": "HU"},
+            "stap": "selectie",
+        },
+    )
+    resp = client.get("/api/data/csv", params={"key": key})
+    assert resp.status_code == 200
+    assert resp.headers["content-disposition"].endswith('_p01hoinges.csv"')
+    assert "STUDIEJAAR;INSTELLINGSNAAM;AANDEEL" in resp.text
 
 
 def test_endpoint_meldt_verdwenen_data(client):
