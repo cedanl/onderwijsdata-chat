@@ -198,6 +198,25 @@ _SEARCH_KEEP_FIELDS = frozenset(
 )
 
 
+def _zoekkaart(entry: dict) -> dict | None:
+    """De DUO-zoekkaart uit riodata (teleenheid, inschrijvingstype, peildatum, uitsluitingen,
+    publicatieregels), zonder lege delen; None als de bron er geen heeft (#358, #369)."""
+    kaart = entry.get("_zoekkaart")
+    if not isinstance(kaart, dict):
+        return None
+    return {k: v for k, v in kaart.items() if v} or None
+
+
+def _compacte_hit(entry: dict) -> dict:
+    """Een zoekhit: de publieke velden plus de interne velden waarop het model kiest. Bij DUO ook de
+    zoekkaart, zodat teleenheid (personen of inschrijvingen), peildatum en afrondingsregel vóór
+    dataset_details zichtbaar zijn."""
+    hit = {k: v for k, v in entry.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
+    if kaart := _zoekkaart(entry):
+        hit["zoekkaart"] = kaart
+    return hit
+
+
 @cache
 def _cbs_alles() -> list:
     return _cbs_catalog()
@@ -691,7 +710,7 @@ def search_catalog(
         elapsed_ms,
     )
 
-    lean = [{k: v for k, v in h.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS} for h in hits[:top_n]]
+    lean = [_compacte_hit(h) for h in hits[:top_n]]
     if hint:
         lean.append({"melding": hint})
     if geo_niveau and onbekend:
