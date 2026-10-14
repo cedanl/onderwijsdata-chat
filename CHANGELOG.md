@@ -320,6 +320,10 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- De knop "Download data als CSV" staat ook onder een antwoord dat via `get_maat` liep (#538): een telvraag
+  als "Hoeveel studenten zaten er in 2022 in het mbo?" kreeg sinds `get_maat` geen knop meer, omdat de export
+  alleen `query_data` en `run_analysis` als bron kende. De download heet `<titel>_<dataset-id>.csv`, zoals bij
+  een selectie via `query_data`; het recept van de maat zorgt dat de export een herstart overleeft.
 - De CSV-export (`/api/data/csv?key=`) geeft alleen een tabel uit een eigen gesprek: een key waar deze gebruiker
   een recept van heeft (in het geheugen of bij een opgeslagen gesprek). De datastore blijft gedeeld over alle
   sessies (openbare brondata, met een bovengrens), maar een ingelogde gebruiker kon tot nu toe elke tabel via

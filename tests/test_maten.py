@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 
 from tools import herlaad, maten, snippet, store
+from tools.csv_export import bestandsnaam, export_key
 from tools.maten import MATEN, get_maat, plan
 from tools.schemas import TOOL_GET_MAAT, TOOL_SCHEMAS
 
@@ -230,3 +231,25 @@ def test_de_snippet_is_het_recept_als_script():
     cbs_script = snippet.generate("get_maat", {"maat": "deelnemers_ho_landelijk", "sector": "hbo", "vorm": "voltijd"})
     assert cbs_script is not None and "85423NED" in cbs_script and "A028666" in cbs_script
     assert snippet.generate("get_maat", {"maat": "x"}) == "# Onbekende maat 'x'. Kies uit: " + ", ".join(MATEN) + "."
+
+
+# --- de tabel achter het antwoord is te downloaden (#538) -----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"maat": "ingeschreven_personen_ho", "instelling": "Hogeschool Utrecht", "vorm": "voltijd"},
+        {"maat": "mbo_studenten_instelling", "instelling": "ROC Mondriaan"},  # eigen key met het totaal
+    ],
+)
+def test_de_uitkomst_van_get_maat_is_exporteerbaar_met_recept(args):
+    """Zonder export_key geen CSV-knop; zonder recept geeft de route na een herstart 404."""
+    uit = _uit(get_maat(**args))
+    key = export_key(TOOL_GET_MAAT, json.dumps(uit))
+    assert key is not None
+    assert key == uit["data_key"]
+    dataset = uit["data_key"].split(":")[1]
+    assert bestandsnaam(key).endswith(f"_{dataset.replace('-', '_')}.csv")  # <titel>_<dataset-id>.csv (#533)
+    recept = herlaad.recept(key, {"name": TOOL_GET_MAAT, "arguments": args})
+    assert recept is not None and recept["tool"] == TOOL_GET_MAAT

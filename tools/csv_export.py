@@ -1,7 +1,7 @@
 """CSV van de tabel achter een antwoord, voor Excel (#269).
 
-De export is de tabel die query_data of run_analysis in de store legde, niet de
-tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
+De export is de tabel die query_data, run_analysis of get_maat in de store legde,
+niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
 zoals bij de grafiekexport (#118). Data die na een herstart opnieuw bij de bron
@@ -17,9 +17,12 @@ import unicodedata
 import pandas as pd
 
 from . import catalog, duo, herlaad, store
-from .schemas import TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
+from .schemas import TOOL_GET_MAAT, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
 
-_EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS}
+# De stappen die een selectie in de store leggen en `data_key` plus `rijen` teruggeven. get_maat selecteert zelf
+# (#188) en gaf daardoor geen CSV-knop (#538). De laders (get_cbs_data, get_duo_data, get_rio_data) blijven
+# erbuiten: de export is de tabel achter het antwoord, niet het hele bronbestand.
+_EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}
 
 
 def export_key(name: str, result: str) -> str | None:
