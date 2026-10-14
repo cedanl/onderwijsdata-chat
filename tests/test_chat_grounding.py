@@ -9,6 +9,7 @@ import importlib
 import json
 
 import pandas as pd
+import pytest
 
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
@@ -476,3 +477,126 @@ def test_toolnaam_in_de_bronnen_kost_geen_herschrijving(monkeypatch):
 
     assert not [e for e in events if e["type"] == "message_cancel"]
     assert text == "In totaal 5.943 eerstejaars.\n\n**Bronnen**\n- DUO"
+
+
+_ENGELSE_VRAAG = [{"role": "user", "content": "How many first-year students were there in 2023?"}]
+
+
+def test_engelse_vraag_met_nederlands_antwoord_krijgt_een_herkansing_in_het_engels(monkeypatch, caplog):
+    """Besluit #326: de taal van de vraag; een Nederlands antwoord op een Engelse vraag is een zacht probleem."""
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="In 2023 waren er in totaal 5.943 eerstejaars aan de instelling.", tool_calls=[]),
+                StreamResult(text="In 2023 there were 5,943 first-year students at the institution.", tool_calls=[]),
+            ],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    controles = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    assert "verkeerde_antwoordtaal=zacht" in controles[0] and "ongedekte_getallen=ok" in controles[0]
+    assert "verkeerde_antwoordtaal=ok" in controles[1]
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert "in het Engels gesteld" in cancel["reden"][0]
+    assert text == "In 2023 there were 5,943 first-year students at the institution."
+
+
+def test_schoon_engels_antwoord_op_een_engelse_vraag_blijft_zoals_het_is(monkeypatch, caplog):
+    """Geen codepad maakt van een Engels antwoord een Nederlands: geen herkansing, geen andere notatie."""
+    antwoord = "In 2023 there were 5,943 first-year students at the institution, a share of 100%."
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text=antwoord, tool_calls=[])],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    assert text == antwoord
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert events[-1]["content"] == antwoord and "controle" not in events[-1]
+    assert "verkeerde_antwoordtaal=ok" in caplog.text and "ongedekte_getallen=ok" in caplog.text
+
+
+def test_engels_getal_zonder_bron_valt_op(monkeypatch, caplog):
+    """12,345 las de controle als twaalf met decimalen; in een Engels antwoord is het twaalfduizend (#326)."""
+    with caplog.at_level("INFO", logger="agent.run"):
+        _, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="In 2023 there were 6,340 first-year students at the institution.", tool_calls=[]),
+                StreamResult(text="In 2023 there were 5,943 first-year students at the institution.", tool_calls=[]),
+            ],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    controles = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    assert "ongedekte_getallen=hard" in controles[0] and "ongedekte_getallen=ok" in controles[1]
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert "6.340" in cancel["reden"][0]
+
+
+def test_percentage_met_decimale_punt_wordt_gecontroleerd_zoals_het_getoond_wordt(monkeypatch):
+    """Getoond als 9,5%: dan toetst de controle het ook als percentage, niet als 9 en 5."""
+    _, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text="Er waren 5.943 eerstejaars, 9.5% meer dan het jaar ervoor.", tool_calls=[]),
+            StreamResult(text="Er waren 5.943 eerstejaars.", tool_calls=[]),
+        ],
+    )
+
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert "9,5%" in cancel["reden"][0]
+
+
+_EIGEN_BRONNEN = (
+    "\n\n**Bronnen:**\n- Aantal eerstejaars van de opleidingen in het hoger onderwijs naar opleiding en geslacht (DUO)"
+)
+
+
+@pytest.mark.parametrize(
+    "verzonnen",
+    [
+        # De eigen Bronnen van het model zijn Nederlands; de gebruiker leest een Engels antwoord.
+        "There were 12,345 first-year students at Avans in 2023." + _EIGEN_BRONNEN,
+        # Te kort voor een taal: 12,345 is dan twaalf met decimalen of twaalfduizend, en beide worden getoetst.
+        "Avans had 12,345 enrolments in 2023.",
+        "Total enrolment at Avans in 2023: 12,345.",
+    ],
+)
+def test_engels_getal_zonder_bron_valt_op_ook_als_de_taal_niet_duidelijk_is(monkeypatch, caplog, verzonnen):
+    """Controle en weergave beslissen de taal op dezelfde tekst; bij twijfel telt elke lezing (#326)."""
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text=verzonnen, tool_calls=[]),
+                StreamResult(text="In 2023 there were 5,943 first-year students at the institution.", tool_calls=[]),
+            ],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    controles = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    assert "ongedekte_getallen=hard" in controles[0] and "ongedekte_getallen=ok" in controles[1]
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert "12.345" in cancel["reden"][0]
+    assert text == "In 2023 there were 5,943 first-year students at the institution."
+
+
+def test_getal_uit_de_data_in_een_kort_antwoord_valt_niet_op(monkeypatch, caplog):
+    """Bij een onduidelijke taal toetst de controle beide lezingen, maar een getal uit de data blijft gedekt."""
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text="Avans: 5,943 in 2023.", tool_calls=[])],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    assert "ongedekte_getallen=ok" in caplog.text
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert text == "Avans: 5,943 in 2023."

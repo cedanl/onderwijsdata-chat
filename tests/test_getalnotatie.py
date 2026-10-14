@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from agent.getalnotatie import nl_notatie
+from agent.getalnotatie import engels_gelezen, nl_notatie
 from agent.grounding import getallen_met_positie, unverified
 from agent.loop import LoopResult
 from agent.meetwaarden import identificaties, meetwaarden
@@ -41,7 +41,7 @@ def test_duizendtallen_krijgen_een_punt_in_de_tekst(tekst, verwacht):
     "tekst",
     [
         "Er waren 3.303 studenten.",
-        "Een stijging van 2.5 en 2,5 procent.",
+        "Een stijging van 2,5 procent.",
         "Gemiddeld 1.234,5 per jaar.",
         "Dat is 12,5% van 999 studenten.",
         # Jaartallen en schooljaren.
@@ -52,8 +52,6 @@ def test_duizendtallen_krijgen_een_punt_in_de_tekst(tekst, verwacht):
         "CROHO 34479, crebo-code 25180, opleidingscode: 56965, BRIN 30RD.",
         "De opleidingscodes 34479, 34480 en 34481.",
         "Postcode 3584 CS in Utrecht.",
-        # Engelse decimale punt: dubbelzinnig, dus ongemoeid.
-        "Een gemiddelde van 1234.5 punten.",
         "Key duo:p01hoinges:1234 en cbs:85423NED:0.",
         # Een postcode, ook zonder het woord ervoor.
         "Heidelberglaan 8, 3584 CS Utrecht en 3584CS.",
@@ -68,6 +66,51 @@ def test_duizendtallen_krijgen_een_punt_in_de_tekst(tekst, verwacht):
 )
 def test_jaren_codes_en_al_genoteerde_getallen_blijven_staan(tekst):
     assert nl_notatie(tekst) == tekst
+
+
+def test_decimale_punt_wordt_een_komma():
+    """Besluit #326: een Nederlands antwoord schrijft 6,4, nooit 6.4 ("ratio ≈ 1.29", "share ≈ 56.4 %")."""
+    tekst = "Ratio 1.29, aandeel 56.4 %, 0.05 en 12.5% van 3303"
+    assert nl_notatie(tekst) == "Ratio 1,29, aandeel 56,4 %, 0,05 en 12,5% van 3.303"
+
+
+@pytest.mark.parametrize(
+    ("tekst", "verwacht"),
+    [
+        ("Een stijging van 2.5 en 2,5 procent.", "Een stijging van 2,5 en 2,5 procent."),
+        ("Een gemiddelde van 1234.5 punten.", "Een gemiddelde van 1.234,5 punten."),
+        ("Een daling van -0.8 en -12.75.", "Een daling van -0,8 en -12,75."),
+        ("Een fractie 0.123 en 12.3456.", "Een fractie 0,123 en 12,3456."),
+        ("Gemiddeld 6.4.", "Gemiddeld 6,4."),
+        ("(6.4)", "(6,4)"),
+        ("| Instelling | Ratio |\n|---|---|\n| HU | 1.29 |", "| Instelling | Ratio |\n|---|---|\n| HU | 1,29 |"),
+    ],
+)
+def test_decimale_punt_wordt_een_komma_ook_in_tabellen(tekst, verwacht):
+    assert nl_notatie(tekst) == verwacht
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        # Een groep van drie cijfers is een duizendtal, geen decimaal.
+        "Er waren 3.303 en 12.345 studenten, landelijk 1.234.567.",
+        # Datums, versies en codes met een punt.
+        "Peildatum 12.03.2024, Python 3.14.8, release v2.5 en code T0.1, bron 85423NED.",
+        "Zie artikel 7.13 WHW, paragraaf 2.1, versie 1.5 en tabel 3.2.",
+        # Code, links en HTML.
+        "Zie `ratio > 1.29` en [de tabel](https://example.nl/v1.29/tabel) of https://x.nl/a?r=6.4.",
+        "<span data-r='6.4'>",
+        "```\nratio = 1.29\n```",
+    ],
+)
+def test_decimale_punt_in_datums_versies_codes_en_code_blijft_staan(tekst):
+    assert nl_notatie(tekst) == tekst
+
+
+def test_codekolom_houdt_haar_punt():
+    tekst = "| Code | Ratio |\n|---|---|\n| 1.29 | 1.29 |"
+    assert nl_notatie(tekst) == "| Code | Ratio |\n|---|---|\n| 1.29 | 1,29 |"
 
 
 def test_vijftien_cijfers_krijgen_nog_exact_de_notatie():
@@ -268,6 +311,9 @@ _VIJANDIG = {
     "duizendtallen met spaties": "1" + " 234" * 12_500 + "x",
     "getallen met een los groepje": "1234 567 " * 5_500,
     "codewoorden": "code 1, " * 6_000 + "12345",
+    "decimale punten": "1.1" * 20_000,
+    "lange decimalen": "1." + "2" * 50_000 + "x",
+    "decimalen na codewoorden": "artikel 1.5 " * 5_000,
 }
 
 
@@ -355,3 +401,34 @@ def test_de_chat_houdt_een_code_uit_de_tooluitvoer_van_de_beurt(monkeypatch):
     asyncio.run(run_module.run(gesprek, {}, emit, asyncio.Event(), model="openai/gpt-4o"))
     einde = next(e for e in events if e["type"] == "message_end")
     assert einde["content"].startswith("Rechten (50800) had 3.303 studenten.")
+
+
+@pytest.mark.parametrize(
+    ("tekst", "gelezen"),
+    [
+        ("There were 12,345 students.", "There were 12.345 students."),
+        ("In total 1,234,567 and 1,234.5.", "In total 1.234.567 and 1.234,5."),
+        ("A share of 6.4% and a ratio of 1.29, 0.123.", "A share of 6,4% and a ratio of 1,29, 0,123."),
+        # Een dubbelzinnige punt blijft een duizendtal: zo telt de controle het getal mee.
+        ("There were 3.303 students.", "There were 3.303 students."),
+        ("In 2023, 2024 and 2021,2022.", "In 2023, 2024 and 2021,2022."),
+        ("Version 3.14.8, dated 12.03.2024, code 85423NED.", "Version 3.14.8, dated 12.03.2024, code 85423NED."),
+    ],
+)
+def test_engels_antwoord_wordt_voor_de_controle_in_nederlandse_notatie_gelezen(tekst, gelezen):
+    assert engels_gelezen(tekst) == gelezen
+
+
+def test_engels_getal_zonder_bron_valt_op_in_de_controle():
+    """Zonder de Engelse lezing las de controle 12,345 als twaalf met decimalen en vond niets (#326)."""
+    data = [json.dumps({"rijen": [{"AANTAL": 5943}]})]
+    assert unverified("There were 12,345 students.", data) == []
+    assert unverified(engels_gelezen("There were 12,345 students."), data) == ["12.345"]
+    assert unverified(engels_gelezen("There were 5,943 students."), data) == []
+
+
+@pytest.mark.parametrize("tekst", ["1,234" * 20_000, "1" + ",234" * 20_000 + "x", "1." + "2" * 50_000 + "x"])
+def test_engelse_lezing_blijft_snel(tekst):
+    start = time.perf_counter()
+    engels_gelezen(tekst)
+    assert time.perf_counter() - start < 0.5

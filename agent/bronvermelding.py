@@ -86,6 +86,11 @@ def bronnen_van(steps: list[tuple[str, str]]) -> list[str]:
     return list(dict.fromkeys(bron for tool, result in steps for bron in _stapbronnen(tool, result)))
 
 
+def zonder_bronnensectie(tekst: str) -> str:
+    """Het antwoord zonder de eigen Bronnen-sectie van het model."""
+    return _EIGEN_BRONNEN.sub(_zonder_sectie, tekst)
+
+
 def zonder_eigen_bronnen(tekst: str, bronnen: list[str]) -> str:
     """Het antwoord zonder de eigen Bronnen-sectie van het model, als de app de bronnen zelf geeft."""
-    return _EIGEN_BRONNEN.sub(_zonder_sectie, tekst) if bronnen else tekst
+    return zonder_bronnensectie(tekst) if bronnen else tekst
