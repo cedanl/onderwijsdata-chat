@@ -91,6 +91,17 @@ de laatste tag is 1.8.6.
   leest 12,345 daar als twaalfduizend, zodat zo'n getal zonder bron ook opvalt. Een percentage met een
   decimale punt (9.5%) toetst de controle nu als percentage, zoals het getoond wordt (9,5%). Vaste teksten
   uit de app (weigering, ingehouden antwoord, verduidelijkingskaart, meldingen) blijven Nederlands.
+- Het antwoord, het rapport en de meldingen spreken je aan met je, niet met u (#536, uitvoering van besluit
+  #326). In één gesprek stond "het getal dat u noemt" naast "je" (testronde 13 oktober); alleen de
+  verduidelijkingskaart werd omgezet. Nu zet de code ook het eindantwoord, de conclusie, reikwijdte en
+  grafiektekst van een rapport en de meldingen onder een antwoord per zin om: "dat u noemt" wordt "dat je
+  noemt", "U kunt" wordt "Je kunt", "jullie instelling" wordt "je instelling". Alleen werkwoorden uit een
+  vaste lijst gaan om; een zin met een u-vorm die niet zeker om te zetten is, blijft zoals hij was (liever u
+  dan kapot Nederlands). Code, links, HTML, de eigen bronnenlijst van het model en de onderzoeksvraag,
+  titel, definities en bronnen van een rapport blijven ongemoeid. Blijft er na de omzetting een u-vorm over,
+  dan krijgt het model één herkansing; blijft hij daarna, dan staat er "Let op" onder het antwoord, of krijgt
+  het rapport een waarschuwing. Een Engels antwoord blijft ongemoeid. Het besluit en de aanpak staan in
+  "Kwaliteit & veiligheid".
 - Een vraag met een open slot krijgt haar verduidelijkingskaart nu uit code, vóór het model (#348). Een
   telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten
   heeft Utrecht?") vraagt instelling of woonplaats, met de instellingen uit het register als opties (de
