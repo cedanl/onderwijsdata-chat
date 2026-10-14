@@ -2,7 +2,7 @@
 
 Een test per gecorrigeerde kolom, plus de naden: get_duo_data (column_definitions),
 dataset_details (`_kolomdefinities`) en search_catalog. De correcties zijn op 2026-10-08
-nagegaan tegen de data en de DUO-documentatie; het bewijs staat in tools/duo_correcties.py.
+nagegaan tegen de data en de DUO-documentatie; het bewijs staat in data/domeinregels.toml.
 """
 
 import json
@@ -12,12 +12,13 @@ import pandas as pd
 import pytest
 from riodata import duo as _duo
 
-from tools import duo_correcties
+from tools import duo_correcties, duo_meta
 from tools.catalog import _rio_duo, dataset_details, search_catalog
 from tools.duo import column_definitions, get_duo_data
 
 _HO = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
 _INSTROOM_MBO = "instromende-mbo-studenten"
+_KOLOMCORRECTIES = duo_meta.regels().kolomcorrecties
 
 
 def _definitie(dataset: str, kolom: str) -> str:
@@ -107,13 +108,13 @@ def test_alleen_kolommen_die_er_zijn():
     assert set(column_definitions(["DIPLOMAJAAR"], "p04hogdipl")) == {"DIPLOMAJAAR"}
 
 
-@pytest.mark.parametrize("dataset", sorted(duo_correcties.KOLOMCORRECTIES))
+@pytest.mark.parametrize("dataset", sorted({d for r in _KOLOMCORRECTIES for d in r.datasets}))
 def test_elke_correctie_hoort_bij_een_kolom_uit_de_catalogus(dataset):
     """Hernoemt DUO een kolom, dan valt een correctie stil weg; dit maakt dat zichtbaar."""
     record = next(e for e in _rio_duo() if e.get("_ckan_id") == dataset)
     kolommen = {k for per_bestand in record["_kolommen"].values() for k in per_bestand}
 
-    assert set(duo_correcties.KOLOMCORRECTIES[dataset]) <= kolommen
+    assert {r.kolom for r in _KOLOMCORRECTIES if dataset in r.datasets} <= kolommen
 
 
 def test_get_duo_data_geeft_de_correctie_door():

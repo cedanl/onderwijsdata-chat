@@ -25,11 +25,11 @@ from .definitie import met_voorbeeldstatus
 _SAMPLE_ROWS = 3
 
 
-# OPLEIDINGSVORM-codes, letterlijk uit de DUO-datasetbeschrijving: "VT voltijd onderwijs,
-# DT deeltijd onderwijs en DU duaal onderwijs". Ook de antwoordcontrole leest ze (#196).
-OPLEIDINGSVORMEN = {"VT": "voltijd", "DT": "deeltijd", "DU": "duaal"}
-# Alleen deze beschrijvingen noemen die codes; mbo_opleidingsaanbod gebruikt bijv. KLASSIKAAL (#371).
-OPLEIDINGSVORM_DATASETS = frozenset({"p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"})
+# OPLEIDINGSVORM-codes en de bestanden waarvan de DUO-beschrijving ze noemt: regel [opleidingsvorm]
+# in data/domeinregels.toml (#363). Ook de antwoordcontrole leest ze (#196); elders betekent
+# OPLEIDINGSVORM iets anders, mbo_opleidingsaanbod gebruikt bijv. KLASSIKAAL (#371).
+OPLEIDINGSVORMEN = dict(duo_meta.regels().opleidingsvorm.codes)
+OPLEIDINGSVORM_DATASETS = frozenset(duo_meta.regels().opleidingsvorm.datasets)
 
 # Definities die alleen de chat kent. Al het andere komt per dataset uit riodata (#371).
 _STUDIEJAAR_LABEL_DEFINITIE = (
