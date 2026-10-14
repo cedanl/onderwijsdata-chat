@@ -30,6 +30,7 @@ patroon dat terugzoekt over modeluitvoer bevriest elke sessie op de worker.
 import re
 from collections.abc import Iterable
 
+from .beschermd import BESCHERMD, lopende_regels
 from .grounding import checked
 from .meetwaarden import identificaties, meetwaarden
 
@@ -72,16 +73,6 @@ _NA_VERWIJZING = re.compile(
 )
 # Een Engels getal: 12,345 of 1,234,567 met een eventuele decimale punt, of een getal met een decimale punt.
 _ENGELS_GETAL = re.compile(r"(?<![\w.,/#])(?P<geheel>\d{1,3}(?:,\d{3})+|\d+)(?:\.(?P<decimalen>\d+))?(?!\w)(?![.,]\d)")
-
-# Ongemoeid: inline code (ook tussen dubbele backticks), links en hun doel, HTML-tags.
-# Lineair: geen alternatief zoekt vanaf elk volgend begin opnieuw tot het einde van de regel.
-# Een linkdoel mag één paar haakjes bevatten (wiki/Lijst_(12345)); elk teken past op één
-# manier, dus terugzoeken blijft binnen dat ene doel.
-_BESCHERMD = re.compile(
-    r"``[^\n]*?``|`[^`\n]*`|https?://[^\s<>()]+|www\.[^\s<>()]+|\]\((?:[^()\n]|\([^()\n]*\))*\)|<[^<>\n]+>"
-)
-_CODEBLOK = re.compile(r"^\s*(```|~~~)")
-_REFERENTIE = re.compile(r" {0,3}\[[^\]\n]*\]:")  # [1]: /pad?n=12345
 _TABELTEKENS = " \t\r|:-"
 
 
@@ -130,7 +121,7 @@ def _in_tekst(tekst: str, codes: frozenset[str]) -> str:
         return _GETAL.sub(lambda m: _hoeveelheid(m, codes), _DECIMALE_PUNT.sub(_decimale_komma, stuk))
 
     stukken, vorige = [], 0
-    for m in _BESCHERMD.finditer(tekst):
+    for m in BESCHERMD.finditer(tekst):
         stukken += [omzetten(tekst[vorige : m.start()]), m.group(0)]
         vorige = m.end()
     return "".join([*stukken, omzetten(tekst[vorige:])])
@@ -173,12 +164,9 @@ def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iter
     codes = _codes(stappen, eerder)
     regels = tekst.split("\n")
     uit: list[str] = []
-    in_codeblok = False
     codekolommen: set[int] | None = None  # None: niet in een tabel
-    for i, regel in enumerate(regels):
-        if hek := bool(_CODEBLOK.match(regel)):
-            in_codeblok = not in_codeblok
-        if in_codeblok or hek or _REFERENTIE.match(regel):
+    for i, (regel, lopend) in enumerate(lopende_regels(regels)):
+        if not lopend:
             uit.append(regel)
             continue
         if "|" not in regel:

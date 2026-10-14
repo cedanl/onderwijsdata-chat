@@ -8,8 +8,9 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+import pytest
 
-from agent.probleem import Probleem
+from agent.probleem import Probleem, controlenamen, harde
 from agent.report import ReportSpec
 from agent.report_checks import report_problems
 from tools import store
@@ -152,3 +153,34 @@ def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
     assert "zip()" in caplog.text
     boven_debug = [r for r in caplog.records if r.levelno >= logging.WARNING]
     assert boven_debug and all(r.exc_info is None and "zip()" not in r.getMessage() for r in boven_debug)
+
+
+@pytest.mark.parametrize(
+    "velden",
+    [
+        {"conclusie": "Zoals u ziet, daalde het aantal van 28.355 in 2021 naar 26.370 in 2025."},
+        {"beantwoordt": ["Voltijdstudenten HU per studiejaar", "Hoe u de daling verklaart"]},
+        {"beantwoordt_niet": ["Waarom u minder instroom ziet"]},
+        {"visualisaties": [{"titel": "Ziet u de daling?", "toelichting": "De lijn daalt.", "figure_json": _HU_FIGURE}]},
+        {
+            "visualisaties": [
+                {"titel": "Trend", "toelichting": "Jullie team ziet een daling.", "figure_json": _HU_FIGURE}
+            ]
+        },
+    ],
+)
+def test_overgebleven_u_vorm_in_de_modeltekst_is_een_waarschuwing(velden):
+    """Het rapport is al in de je-vorm gezet (_parse_spec_from_response); wat bleef, kon de code niet omzetten (#536)."""
+    problemen = report_problems(_spec(**velden), [_HU_FIGURE], [_HU_RESULT])
+    assert controlenamen(problemen) == ["overgebleven_u_vorm"] and len(problemen) == 1
+    assert not harde(problemen)
+
+
+def test_u_in_de_vraag_de_titel_en_de_definities_is_geen_probleem():
+    """De onderzoeksvraag en de titel citeren de gebruiker, de definities de bron: daar blijft 'u' staan."""
+    spec = _spec(
+        title="Hoeveel voltijdstudenten heeft uw instelling?",
+        onderzoeksvraag="Verlangt u de voltijdstudenten van de HU?",
+        definities=[{"begrip": "Ingeschrevene", "definitie": "Telt u mee als u ingeschreven staat?"}],
+    )
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []

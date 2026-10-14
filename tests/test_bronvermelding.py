@@ -13,7 +13,7 @@ import time
 import pandas as pd
 import pytest
 
-from agent.bronvermelding import bronnen_van, zonder_eigen_bronnen
+from agent.bronvermelding import bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
 from agent.loop import LoopResult
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
@@ -305,3 +305,19 @@ def test_vast_antwoord_over_min_een_heeft_lege_bronnen(monkeypatch):
     einde = _slot(monkeypatch, [], vraag="Wat betekent -1 in DUO-data?")
 
     assert einde["bronnen"] == []
+
+
+@pytest.mark.parametrize(
+    ("tekst", "verwacht"),
+    [
+        ("Wat u ziet.\n\n**Bronnen**\n- Wat u moet weten", "WAT U ZIET.\n\n**Bronnen**\n- Wat u moet weten"),
+        (
+            "Wat u ziet.\n\n**Bronnen:**\n- Wat u moet weten\n\nTot slot u.",
+            "WAT U ZIET.\n\n**Bronnen:**\n- Wat u moet weten\n\nTOT SLOT U.",
+        ),
+        ("Geen bronnen hier.", "GEEN BRONNEN HIER."),
+    ],
+)
+def test_buiten_de_bronnensectie_gaat_om_en_de_sectie_blijft_letterlijk(tekst, verwacht):
+    """Een brontitel is een citaat: de je-vorm (#536) zet alleen het antwoord zelf om."""
+    assert buiten_bronnensectie(tekst, str.upper) == verwacht

@@ -600,3 +600,89 @@ def test_getal_uit_de_data_in_een_kort_antwoord_valt_niet_op(monkeypatch, caplog
     assert "ongedekte_getallen=ok" in caplog.text
     assert not [e for e in events if e["type"] == "message_cancel"]
     assert text == "Avans: 5,943 in 2023."
+
+
+_JE_VORM_MELDING = "Een zin spreekt je aan met u of jullie in plaats van met je."
+
+
+def test_nederlands_antwoord_spreekt_je_aan_met_je(monkeypatch, caplog):
+    """Testronde 13 okt (F-11): "het getal dat u noemt" naast "je". De code zet het om, zonder herkansing (#536)."""
+    rijen = json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 3303}]})
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="Het getal dat u noemt, 3303, staat in de data.", tool_calls=[]),
+            ],
+            tool_result=rijen,
+        )
+
+    assert text == "Het getal dat je noemt, 3.303, staat in de data."
+    assert events[-1]["content"] == text and "controle" not in events[-1]
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert "overgebleven_u_vorm=ok" in caplog.text
+
+
+def test_u_vorm_die_de_code_niet_kan_omzetten_krijgt_een_herkansing(monkeypatch, caplog):
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_QUERY]),
+                StreamResult(text="Zoals u ziet, waren er in totaal 5.943 eerstejaars.", tool_calls=[]),
+                StreamResult(text="In totaal waren er 5.943 eerstejaars.", tool_calls=[]),
+            ],
+        )
+
+    controles = [r.getMessage() for r in caplog.records if r.getMessage().startswith("CONTROLES")]
+    assert "overgebleven_u_vorm=zacht" in controles[0] and "ongedekte_getallen=ok" in controles[0]
+    assert "overgebleven_u_vorm=ok" in controles[1]
+    [cancel] = [e for e in events if e["type"] == "message_cancel"]
+    assert cancel["reden"] == [_JE_VORM_MELDING]
+    assert text == "In totaal waren er 5.943 eerstejaars."
+    assert "controle" not in events[-1]
+
+
+def test_u_vorm_die_blijft_is_een_waarschuwing_nooit_hard(monkeypatch):
+    antwoord = "Zoals u ziet, waren er in totaal 5.943 eerstejaars."
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text=antwoord, tool_calls=[]),
+            StreamResult(text=antwoord, tool_calls=[]),
+        ],
+    )
+
+    assert text == antwoord != INGEHOUDEN
+    assert events[-1]["content"] == antwoord
+    assert events[-1]["controle"] == [_JE_VORM_MELDING]
+
+
+def test_u_vorm_in_de_eigen_bronnen_blijft_staan_en_kost_geen_herkansing(monkeypatch, caplog):
+    """Een brontitel is een citaat: de code zet hem niet om en de controle telt hem niet."""
+    antwoord = "In totaal 5.943 eerstejaars.\n\n**Bronnen**\n- DUO, Wat u moet weten over de instroom"
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text=antwoord, tool_calls=[])],
+        )
+
+    assert text == antwoord
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert "overgebleven_u_vorm=ok" in caplog.text
+
+
+def test_engels_antwoord_kent_geen_u_vorm(monkeypatch, caplog):
+    antwoord = "In 2023 there were 5,943 first-year students at the institution, as in the U.S. data."
+    with caplog.at_level("INFO", logger="agent.run"):
+        text, events = _chat(
+            monkeypatch,
+            [StreamResult(text="", tool_calls=[_QUERY]), StreamResult(text=antwoord, tool_calls=[])],
+            messages=_ENGELSE_VRAAG,
+        )
+
+    assert text == antwoord
+    assert not [e for e in events if e["type"] == "message_cancel"]
+    assert "overgebleven_u_vorm=ok" in caplog.text
