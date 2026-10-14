@@ -447,7 +447,12 @@ de laatste tag is 1.8.6.
   bereiken is (`pd.io.common.os`, `pd.compat.sys`, #443): `os.getpid()`, `os.getcwd()` en `os.environ` waren zo
   nog bereikbaar, al draait het script in een eigen proces zonder omgeving, netwerk of schrijfrechten. De
   beveiligingsdocumentatie beschrijft nu de twee lagen zoals ze zijn, inclusief wat de sandbox niet is (geen
-  seccomp of container) en wat de pod-limieten moeten dragen.
+  seccomp of container) en wat de pod-limieten moeten dragen. Dezelfde regel geldt nu ook in een string: pandas
+  lost `@naam` in `df.query`/`df.eval` en elke naam in `pd.eval` op in de variabelen van het script, en
+  `df.eval('@pd.io.common.os.getpid()')` gaf het pid, de werkmap en de (lege) omgeving van het kindproces terug.
+  Zo'n expressie wordt op dezelfde tokens geweigerd; een `@variabele` of een kolomnaam in backticks blijft gewoon
+  pandas. De testomgeving krijgt dezelfde pod-limieten als playground (2 GiB, 1 CPU): met de chartstandaard van
+  1 GiB zou een script dat de 1 GiB van het kindproces benut de hele server laten stoppen.
 - De SRAM-gebruikerscache (naam, e-mail, organisatie per ingelogde gebruiker, voor na een herlaad van de pagina)
   is begrensd (#487, privacy M4): een rij vervalt na `SESSION_MAX_HOURS` en boven duizend gebruikers gaat de
   langst niet gebruikte eruit. Eerder groeide ze tot een herstart. De keuze voor `sub` als sleutel en gehashte
