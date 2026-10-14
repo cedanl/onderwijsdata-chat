@@ -56,7 +56,8 @@ LEEG_ANTWOORD = (
 
 # suggest_follow_ups: twee keer zonder antwoordtekst is genoeg; een aanroep die het antwoord afsluit telt niet mee.
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT, TOOL_SUGGEST_FOLLOW_UPS: 2}
-# Tools die een antwoord afsluiten (#364): geen datastap, dus geen grond voor een antwoord zonder data.
+# Tools die een antwoord afsluiten (#364). De loop telt ze niet bij result.tool_calls: geen datastap, dus geen
+# grond voor een antwoord zonder data (de weigering) en geen stap in de bewaarde beurt.
 _AFSLUITEND = frozenset({TOOL_SUGGEST_FOLLOW_UPS})
 _MAX_TOOL_RESULT_CHARS = 12000
 
@@ -528,8 +529,6 @@ async def run(
             # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
             messages.extend(afgeronde_stappen(history[initial_history_len:]))
             raise
-    # De afsluitende aanroep is geen datastap: niet voor de weigering zonder data en niet in de beurt (#364).
-    result.tool_calls = [c for c in result.tool_calls if c["name"] not in _AFSLUITEND]
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
         await emit(box.melding())

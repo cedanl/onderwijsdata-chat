@@ -306,6 +306,7 @@ def test_closing_tool_alone_with_text_ends_the_turn_as_an_answer(monkeypatch):
     assert result.text == "Het zijn er 12.345."
     assert not result.halted_on and not result.exhausted and not result.aborted
     assert result.steps == [("query_data", "rijen")]
+    assert result.tool_calls == [{"name": "query_data", "arguments": "{}"}]  # closing is no step of the work
     assert messages[-1] == {"role": "tool", "tool_call_id": "s", "content": "OK"}
 
 

@@ -76,7 +76,8 @@ class LoopResult:
     text: str = ""
     finish_reason: str | None = None
     steps: list[tuple[str, str]] = field(default_factory=list)  # (tool, result in full), in order
-    tool_calls: list[dict] = field(default_factory=list)  # {"name", "arguments"} as sent
+    # {"name", "arguments"} as sent; a sluit_af call is no step of the work, so it is not here (#364)
+    tool_calls: list[dict] = field(default_factory=list)
     aborted: str | None = None  # "tools" or "stream": where a stop landed
     halted_on: ToolCall | None = None  # a halt_on tool ended the turn
     afgesloten: ToolCall | None = None  # a sluit_af tool closed the turn after its answer (#364)
@@ -261,7 +262,9 @@ class _Loop:
                     ],
                 }
             )
-            result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
+            result.tool_calls.extend(
+                {"name": c.name, "arguments": c.arguments} for c in calls if c.name not in self.sluit_af
+            )
             afsluiting = self._afsluiting(sr.text, calls)
             await self._run_tools(calls, afsluiting)
 
