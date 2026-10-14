@@ -1,15 +1,29 @@
 {
-  "catalogus_digest": "bd49429078c4",
+  "catalogus_digest": "3d738d27ff46",
   "catalogusversie": [
     {
       "pakket": "onderwijsdata",
       "versie": "0.2.0",
-      "commit": "ed09a10a2cdc472ed2f1a9bbbc5a023170cb20f5"
+      "commit": "ed09a10a2cdc472ed2f1a9bbbc5a023170cb20f5",
+      "manifest": {
+        "catalogusrevisie": "ca1b72082e9267ff",
+        "consistent": true,
+        "aantal": 266,
+        "laatste_succesvolle_controle": "2026-10-05",
+        "versheid": {
+          "oudste_controle": "2026-10-05",
+          "zonder_controle": 0,
+          "perioden_verouderd": 0,
+          "perioden_onbekend": 0,
+          "afleiding_onvolledig": 0,
+          "afleiding_verouderd": 0
+        }
+      }
     },
     {
       "pakket": "riodata",
-      "versie": "0.3.1",
-      "commit": "c0b4bceaea7c40f13a0fe386ce278db94c39e7f7"
+      "versie": "0.5.0",
+      "commit": "f93defe7763576ef32aa7860e14037791ca77319"
     }
   ],
   "dataset_counts": {
@@ -164,7 +178,7 @@
     "studentprognoses-mbo-per-instelling",
     "uwv-open-match-data"
   ],
-  "gemeten_op": "2026-10-09",
+  "gemeten_op": "2026-10-14",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 18,
@@ -180,7 +194,7 @@
         0.9375
       ],
       "recall_at_5_vraag": 0.75,
-      "mrr_vraag": 0.6823,
+      "mrr_vraag": 0.6792,
       "onbeantwoordbaar_geslaagd": [
         1,
         2
@@ -227,8 +241,8 @@
         0.4891,
         0.8929
       ],
-      "recall_at_5_vraag": 0.7857,
-      "mrr_vraag": 0.6294,
+      "recall_at_5_vraag": 0.8571,
+      "mrr_vraag": 0.6393,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -276,7 +290,7 @@
         1.0
       ],
       "recall_at_5_vraag": 0.8,
-      "mrr_vraag": 0.6611,
+      "mrr_vraag": 0.6278,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -323,8 +337,8 @@
         0.6845,
         0.8907
       ],
-      "recall_at_5_vraag": 0.7778,
-      "mrr_vraag": 0.6588,
+      "recall_at_5_vraag": 0.8,
+      "mrr_vraag": 0.6496,
       "onbeantwoordbaar_geslaagd": [
         1,
         6

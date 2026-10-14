@@ -2481,7 +2481,7 @@ requires-dist = [
     { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=c0b4bceaea7c40f13a0fe386ce278db94c39e7f7" },
+    { name = "riodata", extras = ["analyse"], git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=f93defe7763576ef32aa7860e14037791ca77319" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 provides-extras = ["postgres", "mcp"]
@@ -3546,8 +3546,8 @@ wheels = [
 
 [[package]]
 name = "riodata"
-version = "0.3.1"
-source = { git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=c0b4bceaea7c40f13a0fe386ce278db94c39e7f7#c0b4bceaea7c40f13a0fe386ce278db94c39e7f7" }
+version = "0.5.0"
+source = { git = "https://github.com/cedanl/rio-onderwijsdata.git?rev=f93defe7763576ef32aa7860e14037791ca77319#f93defe7763576ef32aa7860e14037791ca77319" }
 dependencies = [
     { name = "httpx" },
 ]

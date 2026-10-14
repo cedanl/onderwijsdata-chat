@@ -221,6 +221,23 @@ def test_de_beurt_stelt_de_kaart_zonder_het_model():
     assert messages[-1] == {"role": "assistant", "content": events[0]["vraag"]}
 
 
+def test_een_vaag_kort_thema_krijgt_de_maatkaart_zonder_het_model():
+    """De maatkaart in de beurt, op een vaste catalogus: niet afhankelijk van de gepinde riodata."""
+    session = {"chat_settings": {}, "clarify_rondes": 0}
+    a, b = _met_catalogus(_CATALOGUS)
+    with a, b:
+        tekst, events, messages = _beurt("welzijn van studenten", session)
+    assert tekst == ""
+    assert [e["type"] for e in events] == ["clarification"]
+    assert events[0]["vraag"] == "Welke maat bedoel je bij 'welzijn van studenten'?"
+    assert {o["label"] for o in events[0]["opties"]} == {
+        "Studenten; welzijn en studiedruk",
+        "Welzijn van studenten; regio",
+    }
+    assert session["_clarified"] is True
+    assert messages[-1] == {"role": "assistant", "content": events[0]["vraag"]}
+
+
 def test_na_een_beantwoorde_kaart_vraagt_code_niets_meer():
     session = {"chat_settings": {}, "clarify_rondes": 1}
     with (

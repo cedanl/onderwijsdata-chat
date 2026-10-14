@@ -3,6 +3,7 @@ import importlib
 import json
 
 import pandas as pd
+import pytest
 
 from agent.session_data import data_lineage, record_data_key, session_data_keys
 from agent.stream import StreamResult
@@ -33,6 +34,7 @@ def test_session_keys_skip_data_no_longer_in_store():
     assert session_data_keys(session) == ["cbs:85423NED"]
 
 
+@pytest.mark.usefixtures("zonder_scopekaart")
 def test_agent_run_records_keys_of_its_tool_calls(monkeypatch):
     steps = iter(
         [

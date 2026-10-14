@@ -4,6 +4,8 @@ import asyncio
 import importlib
 from types import SimpleNamespace
 
+import pytest
+
 from agent.stream import StreamResult, accumulate_stream
 
 run_module = importlib.import_module("agent.run")
@@ -50,9 +52,11 @@ def _final_message_end(monkeypatch, finish_reason):
     return next(e for e in events if e["type"] == "message_end")
 
 
+@pytest.mark.usefixtures("zonder_scopekaart")
 def test_answer_cut_off_at_the_limit_is_flagged(monkeypatch):
     assert _final_message_end(monkeypatch, "length").get("truncated") is True
 
 
+@pytest.mark.usefixtures("zonder_scopekaart")
 def test_finished_answer_is_not_flagged(monkeypatch):
     assert not _final_message_end(monkeypatch, "stop").get("truncated")
