@@ -6,6 +6,8 @@ Zonder die definitie verwisselt het model datasets met verschillende telling zon
 het te merken. De package parset die sectie en de publicatieregels (aantallen 1-4
 gepubliceerd als 4) bij het bouwen van de catalogus: geen CKAN-aanroep tijdens het
 gesprek, en de tekst hoort bij de gepinde catalogusversie.
+
+Ook het toegangspunt van de tools tot de domeinregels in data/domeinregels.toml (#363): regels().
 """
 
 import re
@@ -13,7 +15,17 @@ from functools import cache
 
 from riodata import catalog as _rio_catalog
 
+from core import domeinregels
+
 from . import kleine_aantallen
+
+
+def regels() -> domeinregels.Domeinregels:
+    """De domeinregels: dezelfde cache als core.sentinels, dus één keer gelezen en gecontroleerd.
+
+    Een ongeldig bestand geeft een DomeinregelFout, nooit lege regels.
+    """
+    return domeinregels.laad()
 
 
 @cache

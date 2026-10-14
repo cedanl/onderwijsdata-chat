@@ -3,16 +3,18 @@ from unittest.mock import patch
 import pytest
 
 from agent import recepten
-from tools import cbs, cbs_preflight, store
+from tools import cbs, cbs_preflight, profiel, store
 
 
 @pytest.fixture(autouse=True)
 def clear_store():
     store.clear()
     recepten.wis()
+    profiel.vergeet()
     yield
     store.clear()
     recepten.wis()
+    profiel.vergeet()
 
 
 @pytest.fixture(autouse=True)

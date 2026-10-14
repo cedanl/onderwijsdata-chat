@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from unittest.mock import patch
 
@@ -115,6 +116,42 @@ class TestParseSpecFromResponse:
             )
 
         assert spec.bronnen == ["CBS — 99999NED"]
+
+    def test_model_text_addresses_the_reader_with_je(self):
+        """Besluit #326, #536: je/jij. De vraag en de titel citeren de gebruiker, definities en bronnen de bron."""
+        antwoord = json.dumps(
+            {
+                "onderzoeksvraag": "Hoeveel studenten heeft uw instelling?",
+                "beantwoordt": ["Uw instelling per jaar", 42, {"tekst": "u"}],
+                "beantwoordt_niet": ["Wat u niet in de data vindt"],
+                "visualisaties": [{"titel": "Uw instroom", "toelichting": "U ziet dat de instroom daalt."}],
+                "conclusie": "Het getal dat u noemt, 3.303, klopt. Jullie instelling groeit.",
+            }
+        )
+        definitie = {"begrip": "Telling", "definitie": "Telt u mee als u ingeschreven staat?"}
+        with (
+            patch("agent.report.definities_uit_bron", return_value=[definitie]),
+            patch("agent.report._sources_from_recipe", return_value=["DUO — Wat u moet weten (p01hoinges)"]),
+        ):
+            spec = _parse_spec_from_response(
+                antwoord, figures_json=["fig"], context={"topic": "Hoeveel studenten heeft uw instelling?"}
+            )
+
+        assert spec.conclusie == "Het getal dat je noemt, 3.303, klopt. Je instelling groeit."
+        assert spec.beantwoordt == ["Je instelling per jaar", 42, {"tekst": "u"}]
+        assert spec.beantwoordt_niet == ["Wat je niet in de data vindt"]
+        assert spec.visualisaties[0]["titel"] == "Je instroom"
+        assert spec.visualisaties[0]["toelichting"] == "Je ziet dat de instroom daalt."
+        assert spec.onderzoeksvraag == "Hoeveel studenten heeft uw instelling?"
+        assert spec.title == "Hoeveel studenten heeft uw instelling"
+        assert spec.definities == [definitie]
+        assert spec.bronnen == ["DUO — Wat u moet weten (p01hoinges)"]
+
+    def test_a_list_field_that_is_not_a_list_is_left_alone(self):
+        spec = _parse_spec_from_response(
+            json.dumps({"beantwoordt": "Uw instelling", "conclusie": "c"}), figures_json=[], context={"topic": "V"}
+        )
+        assert spec.beantwoordt == "Uw instelling"
 
 
 class TestReportSpec:

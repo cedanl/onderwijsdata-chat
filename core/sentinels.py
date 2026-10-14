@@ -4,20 +4,24 @@ Eén plek voor de regel, omdat drie consumenten hem nodig hebben: de store
 (chat-tools), de dashboards en de code-snippets. Toen alleen de store maskeerde,
 toonde het dashboard -1 studenten en lagere totalen dan de chat (#228), en gaf
 de snippet andere getallen dan de app (#227).
+
+De waarden, hun betekenis en de uitgezonderde kolommen staan als regel [sentinel] in
+data/domeinregels.toml, met de DUO-passage als bron (#363). Hier staat hoe ze worden toegepast.
 """
 
 import pandas as pd
 
-SENTINELS = (-1,)
+from core import domeinregels
+
+_REGEL = domeinregels.laad().sentinel
+
+SENTINELS = _REGEL.waarden
 
 # Wat -1 betekent, in de woorden die tool-output en snippets delen (#244).
-BETEKENIS = "onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde"
+BETEKENIS = _REGEL.betekenis
 
 # Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel.
-# Niet beperken tot AANTAL*-kolommen: DUO kent pivot-datasets waarin de telling in de
-# kolomnaam zit (DIPMAN2023, JAAR_2022 — zie prompts/system.md), en die zouden dan
-# ongemaskeerd blijven.
-SIGNED_HINTS = ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")
+SIGNED_HINTS = _REGEL.uitgezonderd_als_kolom_bevat
 
 EMPTY_CELLS = pd.DataFrame()
 

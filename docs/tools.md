@@ -404,6 +404,47 @@ Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle datab
 
 ---
 
+## dataset_profiel
+
+Het profiel van een geladen tabel (#59, #61): per kolom het type, waar hij op lijkt (`identificatie`, `jaar`,
+`schooljaar`, `geocode`, `categorie`, `getal`, `datum`, `tekst`), lege en unieke cellen, bereik en kwartielen
+(meetkolommen) of de vaakste waarden, plus `dubbele_rijen_pct` en `kandidaat_sleutels`: de kleinste
+kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. `korrel` zegt het in woorden.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | Key uit een laad- of filterstap |
+
+Pure pandas (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key
+staat; op een afgekapte pagina (`volledig: false`) is het een profiel van de pagina, met waarschuwing.
+
+**Gebruik:** vóór een som of telling over een tabel waarvan het model de korrel niet zeker weet. Een som over
+een kolom buiten de korrel telt dubbel (totaalrijen naast onderdelen, meerdere resources in één bestand).
+
+---
+
+## relatie
+
+Relatielaag, stap 1 (#63): wat hangt aan wat tussen CBS, DUO en RIO, uit bestaande kennis en zonder model
+(`tools/relaties.py`). Sleutels die bronnen delen (connectoren): instellingscode (BRIN), instellingsnaam,
+gemeente, gemeentenaam, provincie, schooljaar, erkende opleiding, opleidingseenheid en aangeboden opleiding,
+elk met de kolomnamen waaronder hij voorkomt en een vaste vertaling van de waarden (`GM0344` ↔ `344`,
+`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). CBS `RegioS` wordt aan de waarden herkend.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | De tabel |
+| `andere_key` | string | Optioneel: de tabel om mee te koppelen |
+
+Met één key: per sleutelkolom `koppelt_aan` (register, gebiedsindeling, RIO), `basis` (`handmatig`),
+`confidence` (1.0 voor codes met vaste vertaling, 0.8 voor namen) en `dekking` (hoeveel waarden het
+instellingsregister, de arbeidsmarktregio-indeling of de provinciecodes kennen). Met twee keys ook
+`koppelingen`: de kolomparen met dezelfde sleutel, `type` (one_to_one … many_to_many) en `overlap` van de
+genormaliseerde waarden. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`,
+zonder waarden) en de koppeling zelf is een stap in `query_data` of `run_analysis`.
+
+---
+
 ## compute_kpi
 
 Berekent één KPI-waarde deterministisch in code over data die al in de store staat, zodat het model zelf geen verschillen of percentages hoeft uit te rekenen. Het model neemt de teruggegeven `value` en `trend` letterlijk over.

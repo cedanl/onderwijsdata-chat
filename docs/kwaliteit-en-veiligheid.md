@@ -44,9 +44,25 @@ Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, 
 | Soort | Voorbeelden | Chat | Rapport |
 |-------|-------------|------|---------|
 | **Hard** | getal dat niet in de data staat, telling op afgekapte data, verkeerd schooljaar of verkeerde instelling in de selectie, getal of kenmerk bij de verkeerde rij, KPI-periode | Het antwoord wordt ingehouden; de gebruiker ziet een vaste tekst met de meldingen eronder | Geweigerd |
-| **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook) | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
+| **Zacht** | label of opleidingsvorm, teleenheid, metatekst, verwijzing naar "resource 3", getal dat alleen de gebruiker noemde (een weerlegging citeert het ook), antwoord in de andere taal dan de vraag, u-vorm die de code niet kon omzetten | Het antwoord blijft, met "Let op: …" eronder | Gemaakt, met een waarschuwing |
 
 Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepast in `agent/run.py` en `agent/report_checks.py`.
+
+### Taal, decimale komma en aanspreekvorm (#326, #536)
+
+Besluit van de product owner (#326, 14 oktober 2026): het antwoord is in de taal van de vraag, een Nederlands antwoord schrijft decimalen met een komma, en de app spreekt de gebruiker aan met je/jij, nooit met u. De code dwingt dat af; de regels in `prompts/system.md` en `prompts/report.md` zijn een hulpmiddel, geen garantie.
+
+| Regel | Hoe de code het doet |
+|-------|----------------------|
+| **Taal van de vraag** | `agent/antwoordtaal.py` bepaalt de taal van de vraag met een woordenlijst (nl/en; bij een korte of gemengde vraag beslist de code niets) en zegt het model per beurt in welke taal het antwoordt. Een antwoord dat duidelijk in de andere taal is, krijgt één herkansing. |
+| **Decimale komma** | `agent/getalnotatie.py` zet in een antwoord dat niet Engels is 3303 om naar 3.303 en 56.4% naar 56,4%. Een Engels antwoord houdt de notatie van het model. De getalcontrole leest beide spellingen als hetzelfde getal. |
+| **Je/jij** | `agent/aanspreekvorm.py` zet in het eindantwoord, de modeltekst van het rapport, de verduidelijkingsvraag en de meldingen een u-vorm om ("het getal dat u noemt" wordt "het getal dat je noemt", "jullie instelling" wordt "je instelling"). `agent/aanspreekcontrole.py` meldt wat daarna nog over is. |
+
+**Liever u dan kapot Nederlands.** Na "u" verandert het werkwoord soms ("wilt u" wordt "wil je", "heeft u" wordt "heb je") en soms niet ("moet u" wordt "moet je"). Zonder woordenboek is dat niet te raden, dus zet de code alleen werkwoorden uit een vaste lijst om. Per zin geldt alles of niets: blijft er in een zin een u-vorm over die niet zeker om te zetten is ("Verlangt u een uitsplitsing?"), dan blijft die hele zin zoals het model hem schreef; de andere zinnen gaan wel om. "Jullie" wordt alleen "je" vóór instelling, opleiding(en) of school. Code, links, HTML, de eigen Bronnen-sectie van het model, en in een rapport de onderzoeksvraag, de titel, de definities en de bronnen blijven ongemoeid: dat zijn citaten van de gebruiker of de bron.
+
+**Zacht, met één herkansing.** Een antwoord in de verkeerde taal en een overgebleven u-vorm zijn zachte problemen: het model krijgt één herkansing, en blijft het probleem, dan staat er "Let op: …" onder het antwoord. Ze houden een antwoord nooit in: het gaat om de vorm, niet om de data. Een rapport krijgt bij een overgebleven u-vorm ook één herkansing en daarna een waarschuwing, nooit een weigering; de taal van een rapport is altijd Nederlands. Eén herkansing en niet meer, omdat elke modelronde tijd en geld kost (#409). Om dezelfde reden kijkt de controle op de aanspreekvorm naar de tekst ná de omzetting: alleen een u-vorm die de code niet kon herstellen kost een herkansing, en een zin die de code zelf omzet niet. In het log staan beide controles per antwoord in de regel `CONTROLES` (`verkeerde_antwoordtaal`, `overgebleven_u_vorm`).
+
+Buiten de je-vorm vallen de dashboards en de redeneerkaart (wat het model onderweg herzag). Vaste teksten uit de app zijn Nederlands, ook bij een Engelse vraag; vertalen is een vervolgstap.
 
 ---
 

@@ -60,6 +60,7 @@ De bronnen (catalogustitel en dataset-ID van elke gebruikte dataset) en de rappo
 ## Toon
 
 - Zakelijk en bondig
+- Spreek de lezer aan met je/jij, nooit met u, uw of jullie: "je instelling", niet "uw instelling" of "jullie instelling"
 - Geen conversatietekst ("Excellente!", "Ik ga nu...", "Laten we kijken...")
 - Geen aankondigingen van wat je gaat doen — doe het gewoon
 - Geef geen oorzaak of verklaring die de data niet aantoont: telreeksen tonen een verschil of samenhang, niet de reden ervan, ook niet als een tweede dataset ernaast staat; schrijf dan dat de oorzaak met deze gegevens niet vast te stellen is

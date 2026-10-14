@@ -13,11 +13,12 @@ from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest
-from .aanspreekvorm import je_vorm
+from .aanspreekcontrole import overgebleven_u_vorm
+from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
-from .bronvermelding import bronnen_van, zonder_bronnensectie, zonder_eigen_bronnen
+from .bronvermelding import bronnen_van, buiten_bronnensectie, zonder_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
@@ -280,6 +281,7 @@ def _antwoordcontrole(
         return list(dict.fromkeys(ongedekt(n) for n in gevonden))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
+        leestekst = _leestekst(text)
         # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
         # ingehouden (#207).
         controles = [
@@ -300,7 +302,9 @@ def _antwoordcontrole(
             (ongedekte_oorzaak, (text, tool_results), False),
             (ontbrekende_grafiek, (vraag, text, tool_results, session.get("data_keys", [])), False),
             (metatekst, (text,), False),
-            (verkeerde_antwoordtaal, (vraag, _leestekst(text)), False),
+            (verkeerde_antwoordtaal, (vraag, leestekst), False),
+            # Op de tekst na de omzetting naar de je-vorm, zoals in _antwoordtekst (#536).
+            (overgebleven_u_vorm, (leestekst, taal(leestekst)), False),
         ]
         problemen: list[str] = [
             p
@@ -364,11 +368,12 @@ async def _vroeg_einde(
 def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
     """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling.
 
-    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326); de taal komt van
-    `_antwoordtaal`, net als in de controle."""
+    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536);
+    de taal komt van `_antwoordtaal`, net als in de controle. Een eigen Bronnen-sectie die blijft, citeert
+    brontitels: daar blijft een u-vorm staan."""
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
     if _antwoordtaal(antwoord) != "en":
-        tekst = nl_notatie(tekst, result.steps, earlier)
+        tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier), in_je_vorm)
     return met_telling(tekst, result.tool_results)
 
 

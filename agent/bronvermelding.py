@@ -8,6 +8,7 @@ net als zijn Definities bij een teldefinitie uit de bron (agent/telling.py, #402
 
 import json
 import re
+from collections.abc import Callable
 
 from tools import store
 from tools.schemas import TOOL_GET_RIO_INSTELLING
@@ -94,3 +95,12 @@ def zonder_bronnensectie(tekst: str) -> str:
 def zonder_eigen_bronnen(tekst: str, bronnen: list[str]) -> str:
     """Het antwoord zonder de eigen Bronnen-sectie van het model, als de app de bronnen zelf geeft."""
     return zonder_bronnensectie(tekst) if bronnen else tekst
+
+
+def buiten_bronnensectie(tekst: str, omzetten: Callable[[str], str]) -> str:
+    """`omzetten` op het antwoord, niet op de eigen Bronnen-sectie van het model: een brontitel is een citaat."""
+    stukken, vorige = [], 0
+    for sectie in _EIGEN_BRONNEN.finditer(tekst):
+        stukken += [omzetten(tekst[vorige : sectie.start()]), sectie.group(0)]
+        vorige = sectie.end()
+    return "".join([*stukken, omzetten(tekst[vorige:])])

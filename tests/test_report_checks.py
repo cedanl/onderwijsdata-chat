@@ -286,3 +286,34 @@ def test_herkansing_en_weigering_van_een_rapport_noemen_de_controle_en_geen_geta
     assert mislukt == "CONTROLE MISLUKT, herkansing: controles=['ongedekte_getallen']"
     assert geweigerd == "RAPPORT GEWEIGERD: controles=['ongedekte_getallen']"
     assert not any("None" in regel or "336" in regel for regel in (mislukt, geweigerd))
+
+
+@pytest.mark.parametrize(
+    "velden",
+    [
+        {"conclusie": "Zoals u ziet, daalde het aantal van 28.355 in 2021 naar 26.370 in 2025."},
+        {"beantwoordt": ["Voltijdstudenten HU per studiejaar", "Hoe u de daling verklaart"]},
+        {"beantwoordt_niet": ["Waarom u minder instroom ziet"]},
+        {"visualisaties": [{"titel": "Ziet u de daling?", "toelichting": "De lijn daalt.", "figure_json": _HU_FIGURE}]},
+        {
+            "visualisaties": [
+                {"titel": "Trend", "toelichting": "Jullie team ziet een daling.", "figure_json": _HU_FIGURE}
+            ]
+        },
+    ],
+)
+def test_overgebleven_u_vorm_in_de_modeltekst_is_een_waarschuwing(velden):
+    """Het rapport is al in de je-vorm gezet (_parse_spec_from_response); wat bleef, kon de code niet omzetten (#536)."""
+    problemen = report_problems(_spec(**velden), [_HU_FIGURE], [_HU_RESULT])
+    assert controlenamen(problemen) == ["overgebleven_u_vorm"] and len(problemen) == 1
+    assert not harde(problemen)
+
+
+def test_u_in_de_vraag_de_titel_en_de_definities_is_geen_probleem():
+    """De onderzoeksvraag en de titel citeren de gebruiker, de definities de bron: daar blijft 'u' staan."""
+    spec = _spec(
+        title="Hoeveel voltijdstudenten heeft uw instelling?",
+        onderzoeksvraag="Verlangt u de voltijdstudenten van de HU?",
+        definities=[{"begrip": "Ingeschrevene", "definitie": "Telt u mee als u ingeschreven staat?"}],
+    )
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []
