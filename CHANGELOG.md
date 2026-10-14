@@ -92,6 +92,12 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Nieuwe tool `dataset_profiel(data_key)` (#59, #61): het profiel van een geladen tabel zonder model. Per kolom het
+  type, waar hij op lijkt (identificatie, jaar, schooljaar, geocode, categorie, getal, datum, tekst), lege en
+  unieke cellen, bereik en kwartielen of de vaakste waarden; voor de tabel het aandeel dubbele rijen en de
+  korrel: de kleinste kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. Pure pandas
+  (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key staat. De
+  prompt zet het in vóór een som of telling over een tabel waarvan de korrel niet zeker is.
 - Het antwoord is in de taal van de vraag en een Nederlands antwoord schrijft decimalen met een komma
   (#326). Een Engelse vraag kreeg soms een Nederlands antwoord (audit 12); nu zegt de code het model in welke
   taal het antwoordt, en een antwoord dat duidelijk in de andere taal is, krijgt één herkansing. Bij een

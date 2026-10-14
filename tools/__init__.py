@@ -9,6 +9,7 @@ from .duo import get_duo_data
 from .kpi import compute_kpi
 from .outcome import outcome  # noqa: F401
 from .plot import create_choropleth_map, create_plot
+from .profiel import dataset_profiel
 from .query import query_data
 from .rio import get_rio_data
 from .rio_instelling import get_rio_instelling
@@ -19,6 +20,7 @@ from .schemas import (
     TOOL_CREATE_PLOT,
     TOOL_DATASET_COUNTS,
     TOOL_DATASET_DETAILS,
+    TOOL_DATASET_PROFIEL,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_DUO_DATA,
@@ -36,6 +38,7 @@ LABELS = {
     TOOL_SEARCH_CATALOG: "Catalogus doorzocht",
     TOOL_DATASET_DETAILS: "Datasetdetails opgehaald",
     TOOL_DATASET_COUNTS: "Catalogus geteld",
+    TOOL_DATASET_PROFIEL: "Tabel geprofileerd",
     TOOL_CLARIFY_SCOPE: "Scope vastgesteld",
     TOOL_GET_CBS_DATA: "CBS data opgehaald",
     TOOL_GET_CBS_DIMENSION: "CBS dimensie opgehaald",
@@ -55,6 +58,7 @@ _HANDLERS = {
     TOOL_SEARCH_CATALOG: search_catalog,
     TOOL_DATASET_DETAILS: dataset_details,
     TOOL_DATASET_COUNTS: catalogus_telling,
+    TOOL_DATASET_PROFIEL: dataset_profiel,
     TOOL_GET_CBS_DATA: get_cbs_data,
     TOOL_GET_CBS_DIMENSION: get_cbs_dimension,
     TOOL_GET_RIO_DATA: get_rio_data,
