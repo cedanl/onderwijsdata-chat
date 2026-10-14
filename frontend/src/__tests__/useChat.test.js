@@ -886,3 +886,37 @@ describe('deltas per animation frame', () => {
     expect(assistantMessages()[0].content).toBe('DUO-cijfers')
   })
 })
+
+// #364: the server picks follow-up questions from the catalogue; the answer keeps them for its buttons.
+describe('useChat vervolgvragen', () => {
+  it('keeps the follow-up questions of message_end on the answer: only text, at most three', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({
+        type: 'message_end',
+        content: 'Het zijn er 36.201.',
+        vervolgvragen: ['Welke instellingen groeien?', '', '  ', 3, null, 'Hoe zit het met het mbo?', 'Per provincie?', 'Te veel?'],
+      })
+    })
+    expect(assistantMessages()[0].vervolgvragen).toEqual([
+      'Welke instellingen groeien?', 'Hoe zit het met het mbo?', 'Per provincie?',
+    ])
+  })
+
+  it('gives other messages none', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'figure', label: 'Instroom', figure_json: '{}' })
+      ws.emit({ type: 'message_end', content: 'Zonder vervolgvragen.' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Kapot.', vervolgvragen: 'Welke instellingen groeien?' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Leeg.', vervolgvragen: ['', 7] })
+      ws.emit({ type: 'clarification', vraag: 'Welk jaar?', opties: ['2023', '2024'] })
+    })
+    expect(assistantMessages()).toHaveLength(5)
+    expect(assistantMessages().map(m => m.vervolgvragen)).toEqual([undefined, undefined, undefined, undefined, undefined])
+  })
+})

@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useEffect, useState, useCallback } from 'react'
+import { memo, useId, useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import Plot from '../components/LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -68,6 +68,7 @@ import { clarificationAnswer, hasOpenClarification } from '../clarificationState
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
+import { vervolgvragenTekst } from '../vervolgvragen'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -96,6 +97,12 @@ const MARKDOWN_COMPONENTS = {
   code: CodeBlock,
   th: KolomKop,
   span: CitedNumber,
+}
+
+// The answer of the last turn, which carries its follow-up questions (#364). A chart arrives as a
+// message of its own after the answer, so it does not count.
+function lastAnswerIndex(messages) {
+  return messages.findLastIndex(m => m.role === 'assistant' && !m.figures?.length)
 }
 
 // Announced once an answer is complete; streaming deltas would flood a screen reader.
@@ -197,6 +204,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [sendNotice, setSendNotice] = useState(null)
+  // A follow-up question picked under the last answer, on its way into the input box (#364).
+  const [prefill, setPrefill] = useState(null)
+  const kiesVervolgvraag = useCallback(tekst => setPrefill({ tekst }), [])
+  const clearPrefill = useCallback(() => setPrefill(null), [])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
@@ -612,6 +623,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [reportSpec, settings?.instelling, openRapport, clearReport, tokenAtMount])
 
   const displayMessages = [...restoredMessages, ...messages]
+  const vervolgIndex = lastAnswerIndex(displayMessages)
   const modelLabels = answerModels(displayMessages, models)
   const hasMessages = displayMessages.length > 0
   const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
@@ -698,6 +710,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
+                onVervolgvraag={i === vervolgIndex && !atContextLimit ? kiesVervolgvraag : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
@@ -789,6 +802,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               max={maxMessageChars}
               rejectedDraft={rejectedDraft}
               clearRejectedDraft={clearRejectedDraft}
+              prefill={prefill}
+              clearPrefill={clearPrefill}
             />
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING}</p>
           </div>
@@ -841,12 +856,18 @@ function userInitials(settings) {
   return '?'
 }
 
-function StarterButtons({ questions, onSend, busy }) {
-  if (!questions) return null
+// Questions to click under a message. The "Verken …" starters send one at once (onPick = send); a
+// follow-up question goes into the input box (#364). `label` names the group; with `kop` it also
+// stands above the buttons.
+function QuestionButtons({ questions, onPick, busy, label, kop = false }) {
+  const kopId = useId()
+  if (!questions?.length) return null
+  const naam = kop ? { 'aria-labelledby': kopId } : { 'aria-label': label }
   return (
-    <div className="clarification-btns" style={{ marginTop: 8 }}>
-      {questions.map((q, _i) => (
-        <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onSend(q)}>{q}</button>
+    <div className="clarification-btns question-buttons" role="group" {...naam}>
+      {kop && <div id={kopId} className="question-buttons-kop">{label}</div>}
+      {questions.map(q => (
+        <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onPick(q)}>{q}</button>
       ))}
     </div>
   )
@@ -887,7 +908,8 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null }) {
+// onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
+export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -945,7 +967,10 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
               ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
               : dataExport}
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
-            <StarterButtons questions={msg.starterQuestions} onSend={onSend} busy={busy} />
+            <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
+            {onVervolgvraag && !busy && (
+              <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
+            )}
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
             {msg.truncated && (
               <div className="message-stopped">

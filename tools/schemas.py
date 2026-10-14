@@ -23,6 +23,7 @@ TOOL_RUN_ANALYSIS = "run_analysis"
 TOOL_COMPUTE_KPI = "compute_kpi"
 TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
+TOOL_SUGGEST_FOLLOW_UPS = "suggest_follow_ups"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -550,6 +551,19 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "required": ["vraag", "opties"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_SUGGEST_FOLLOW_UPS,
+            "description": (
+                "Toon de gebruiker vervolgvragen onder je antwoord. Alleen na een antwoord met opgehaalde data: "
+                "roep deze tool aan in hetzelfde bericht als je antwoord, als laatste stap en zonder andere tools "
+                "ernaast. Schrijf daarna geen tekst meer en zet zelf geen vervolgvragen in je antwoord: de app "
+                "kiest ze uit de catalogus. Niet na een verduidelijkingsvraag of een weigering."
+            ),
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {

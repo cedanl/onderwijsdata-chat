@@ -554,3 +554,34 @@ Stelt een verduidelijkingsvraag aan de gebruiker wanneer de oorspronkelijke vraa
 **Gebruik:** Wanneer ambiguïteit voorkomen kan worden. Onderbreekt de normal flow: je selecteert een optie, dan gaat het LLM een nieuwe vraag formuleren met jouw keuze.
 
 Deze tool wordt afgehandeld door de UI — de gebruiker ziet een keuzemenu en kan een optie selecteren.
+
+---
+
+## suggest_follow_ups
+
+Zet onder een antwoord met data tot drie klikbare vervolgvragen. Het model roept deze tool aan als laatste stap,
+in hetzelfde bericht als zijn antwoord en zonder andere tools ernaast; de tool heeft geen parameters.
+
+Het model beslist alleen dát er vervolgvragen komen. Welke, beslist de app (`agent/vervolgvragen.py`): voorbeeldvragen
+uit de catalogus van de datasets die de beurt laadde, om en om per dataset. Een voorbeeldvraag komt alleen in
+aanmerking als de chat haar kan beantwoorden:
+
+- de dataset valt binnen het profiel (mbo, hbo, wo) en de chat kan hem ophalen met `get_*_data`;
+- de vraag staat niet in de eerste persoon ("mijn regio", "onze instelling");
+- ze noemt geen ruwe veldnaam, codewaarde of technische term (`AANGEBODENBOOPLEIDING`, `eindeAanmeldperiode`,
+  code `C0001`, "sub-resource") en geen dataset bij zijn ID (`aangeboden-opleidingen`, `85423NED`);
+- ze staat op zichzelf: een sjabloonvraag als "Hoe verhoudt dit zich tot andere jaren?" of "… in de data?" valt af;
+- ze gaat niet over po, so of vo ("BO-opleidingen", vmbo, havo);
+- ze vraagt geen aantal uit een RIO-register: `get_rio_data` levert één pagina en geen totaal;
+- `search_catalog` vindt met de vraag haar eigen dataset terug.
+
+De vraag die de gebruiker net stelde en wat het gesprek al eerder aanbood, komen niet terug. Een klik zet de vraag in
+het invoerveld; de gebruiker past haar aan of verstuurt haar zelf.
+
+Geen vervolgvragen na een verduidelijkingsvraag, een weigering, een ingehouden, leeg of afgebroken antwoord, of een
+beurt zonder geladen dataset (zoals alleen UWV of ROA). De aanroep telt niet als datastap: een antwoord met een getal
+zonder opgehaalde data blijft de vaste weigering.
+
+Zonder antwoordtekst, of samen met andere tools, sluit de aanroep de beurt niet af: het model krijgt terug dat het
+eerst moet antwoorden of de tool alleen moet aanroepen. Na twee van zulke aanroepen geldt de toollimiet. Rapport en
+dashboard kennen de tool niet.

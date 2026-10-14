@@ -4,6 +4,9 @@ import logging
 import math
 import re
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import cache
 
 from onderwijsdata import catalog as _cbs_catalog
@@ -16,6 +19,29 @@ from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
 logger = logging.getLogger(__name__)
+
+# Code die search_catalog gebruikt om iets te toetsen, zoekt niet voor het model (#364): haar zoekregels
+# en misses zouden in het log lezen als zoekacties van een beurt. Per thread of taak, niet globaal.
+_STIL: ContextVar[bool] = ContextVar("catalogus_stil", default=False)
+
+
+class _AlleenZoekactiesVanHetModel(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not _STIL.get()
+
+
+logger.addFilter(_AlleenZoekactiesVanHetModel())
+
+
+@contextmanager
+def stil() -> Generator[None]:
+    """Zoeken en toetsen in de catalogus zonder logregels, voor code die niet voor het model zoekt."""
+    token = _STIL.set(True)
+    try:
+        yield
+    finally:
+        _STIL.reset(token)
+
 
 # Leveranciers waarvoor we search_catalog actief steunen.
 # "Inspectie van het Onderwijs" (2 datasets) en "SBB" (2 datasets) staan wel in de ruwe
@@ -770,6 +796,26 @@ def genoemde_datasets(tekst: str) -> list[str]:
     """Dataset-ID's uit de catalogus die letterlijk in de tekst staan, zoals in een vraag (#396)."""
     ids = {_dataset_id(e) for e in [*_cbs(), *_rio_duo()]} - {"?"}
     return [i for i in sorted(ids) if re.search(rf"(?<![\w-]){re.escape(i)}(?![\w-])", tekst, re.IGNORECASE)]
+
+
+def _opvraagbare_records() -> list[dict]:
+    """De records binnen het profiel waarvan de chat de data kan ophalen met get_*_data."""
+    return [e for e in [*_cbs(), *_rio_duo()] if _niet_opvraagbaar(e) is None]
+
+
+def opvraagbaar(dataset_id: str) -> bool:
+    """Kan de chat de data van deze dataset ophalen: binnen het profiel en met get_*_data (#364)."""
+    return any(scopeprofiel.dataset_id(e) == dataset_id for e in _opvraagbare_records())
+
+
+def voorbeeldvragen() -> dict[str, list[str]]:
+    """Per dataset die de chat kan ophalen de voorbeeldvragen uit de catalogus (#364); zonder vragen ontbreekt hij."""
+    return {
+        dataset_id: [v for v in vragen if isinstance(v, str)]
+        for entry in _opvraagbare_records()
+        if (dataset_id := scopeprofiel.dataset_id(entry)) and isinstance(vragen := entry.get("voorbeeldvragen"), list)
+        if vragen
+    }
 
 
 def leverancier(dataset_id: str) -> str | None:

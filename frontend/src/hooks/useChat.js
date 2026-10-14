@@ -4,6 +4,7 @@ import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
+import { vervolgvragenTekst } from '../vervolgvragen'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
@@ -241,6 +242,8 @@ export function useChat() {
         }])
       },
       message_end(ev) {
+        // The follow-up questions the server picked from the catalogue (#364).
+        const vragen = vervolgvragenTekst(ev.vervolgvragen)
         // The server sends the full text; it wins over the accumulated deltas.
         updateCurrentMsg(m => {
           const content = typeof ev.content === 'string' ? ev.content : m.content
@@ -260,6 +263,8 @@ export function useChat() {
             ...(ev.citaties?.length && { citaties: ev.citaties }),
             // The sources the server derived from the steps, also when empty: they mark a data answer (#416).
             ...(Array.isArray(ev.bronnen) && { bronnen: ev.bronnen }),
+            // Questions to ask next; a click puts one in the input box (#364).
+            ...(vragen.length && { vervolgvragen: vragen }),
             // A finished turn without text would otherwise render nothing at all.
             ...(!content.trim() && !ev.aborted && { empty: true }),
           }

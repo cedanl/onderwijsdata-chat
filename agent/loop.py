@@ -76,9 +76,11 @@ class LoopResult:
     text: str = ""
     finish_reason: str | None = None
     steps: list[tuple[str, str]] = field(default_factory=list)  # (tool, result in full), in order
-    tool_calls: list[dict] = field(default_factory=list)  # {"name", "arguments"} as sent
+    # {"name", "arguments"} as sent; a sluit_af call is no step of the work, so it is not here (#364)
+    tool_calls: list[dict] = field(default_factory=list)
     aborted: str | None = None  # "tools" or "stream": where a stop landed
     halted_on: ToolCall | None = None  # a halt_on tool ended the turn
+    afgesloten: ToolCall | None = None  # a sluit_af tool closed the turn after its answer (#364)
     exhausted: bool = False  # max_iterations without an answer, also after the wrap-up round
     wrapped_up: bool = False  # the answer came from the wrap-up round: a partial answer
     problems: list[str] = field(default_factory=list)  # check problems left after the correction
@@ -112,6 +114,33 @@ def _truncate(result: str, limit: int, *, tool: str) -> str:
     return result[:limit] + (
         f"\n... (afgekapt: {len(result) - limit} van {len(result)} tekens niet getoond. Wat hierna kwam heb je "
         "niet gezien; concludeer niet dat het ontbreekt. Gebruik filters of selecteer kolommen.)"
+    )
+
+
+def _niet_afgesloten(name: str, text: str) -> str:
+    """Why a sluit_af call did not close the turn: it closes an answer, so it comes alone and after the text."""
+    if not text.strip():
+        return (
+            f"Niet uitgevoerd: {name} sluit een antwoord af. Schrijf eerst je antwoord en roep {name} "
+            "in hetzelfde bericht aan, als laatste stap."
+        )
+    return (
+        f"Niet uitgevoerd: roep {name} alleen aan, zonder andere tools in hetzelfde bericht, als laatste stap "
+        "na je antwoord."
+    )
+
+
+def _limiet(name: str, limit: int, *, afsluitend: bool) -> str:
+    """What a call over its limit gets instead of a result."""
+    if afsluitend:
+        # A sluit_af tool only counts calls without an answer: the model should write it, not look for data (#364).
+        return (
+            f"LIMIET: {name} is al {limit}x aangeroepen zonder antwoord. "
+            f"Schrijf je antwoord nu als tekst, zonder {name}."
+        )
+    return (
+        f"LIMIET: {name} is al {limit}x aangeroepen. Werk met de resultaten die je hebt "
+        "of geef aan dat de data niet beschikbaar is."
     )
 
 
@@ -167,6 +196,7 @@ class _Loop:
     on_tool_result: ToolHook | None
     tool_limits: dict[str, int]
     halt_on: frozenset[str]
+    sluit_af: frozenset[str]
     wrap_up: str | None
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
@@ -206,9 +236,18 @@ class _Loop:
             return None
         return sr
 
+    def _afsluiting(self, text: str, calls: list[ToolCall]) -> ToolCall | None:
+        """The sluit_af call that closes this round's answer: alone in its round and with answer text."""
+        if len(calls) == 1 and calls[0].name in self.sluit_af and text.strip():
+            return calls[0]
+        return None
+
     async def rounds(self) -> None:
-        """Call the model until it answers, a tool halts the turn, or a stop lands."""
+        """Call the model until it answers (also: closes its answer with a sluit_af tool), a tool halts
+        the turn, or a stop lands."""
         result = self.result
+        # A correction runs the rounds again: only its own last round may close the turn.
+        result.afgesloten = None
         for iteration in range(self.max_iterations):
             if self._stopped():
                 result.aborted = "tools"
@@ -237,12 +276,18 @@ class _Loop:
                     ],
                 }
             )
-            result.tool_calls.extend({"name": c.name, "arguments": c.arguments} for c in calls)
-            await self._run_tools(calls)
+            result.tool_calls.extend(
+                {"name": c.name, "arguments": c.arguments} for c in calls if c.name not in self.sluit_af
+            )
+            afsluiting = self._afsluiting(sr.text, calls)
+            await self._run_tools(calls, afsluiting)
 
             halt = next((c for c in calls if c.name in self.halt_on), None)
             if halt:
                 result.halted_on = halt
+                return
+            if afsluiting:
+                result.afgesloten = afsluiting
                 return
         await self._wrap_up()
 
@@ -270,25 +315,25 @@ class _Loop:
             self.locked[name] = code
             logger.warning("TOOL OP SLOT  %s: %dx %s", name, n, code)
 
-    async def _run_tools(self, calls: list[ToolCall]) -> None:
+    async def _run_tools(self, calls: list[ToolCall], afsluiting: ToolCall | None = None) -> None:
         blocked: dict[str, str] = {}
         for c in calls:
+            if c is afsluiting:
+                continue  # closing an answer is never blocked; the limit is for closing without one
             if c.name in self.locked:
                 blocked[c.id] = fouten.op_slot(c.name, self.locked[c.name])
                 continue
             self.counts[c.name] = self.counts.get(c.name, 0) + 1
             limit = self.tool_limits.get(c.name)
             if limit and self.counts[c.name] > limit:
-                blocked[c.id] = (
-                    f"LIMIET: {c.name} is al {limit}x aangeroepen. Werk met de resultaten die je hebt "
-                    "of geef aan dat de data niet beschikbaar is."
-                )
+                blocked[c.id] = _limiet(c.name, limit, afsluitend=c.name in self.sluit_af)
                 logger.warning("TOOL LIMIET  %s aangeroepen %d/%d keer", c.name, self.counts[c.name], limit)
 
+        niet_uitvoeren = self.halt_on | self.sluit_af
         runnable = {
             c.key: c
             for c in calls
-            if c.id not in blocked and c.name not in self.halt_on and c.args is not None and c.key not in self.cache
+            if c.id not in blocked and c.name not in niet_uitvoeren and c.args is not None and c.key not in self.cache
         }
         outcomes = await asyncio.gather(*[_execute_tool(c, self.emit) for c in runnable.values()])
         self.cache.update(zip(runnable, outcomes, strict=True))
@@ -296,8 +341,10 @@ class _Loop:
         for c in calls:
             if c.id in blocked:
                 content = blocked[c.id]
-            elif c.name in self.halt_on:
+            elif c.name in self.halt_on or c is afsluiting:
                 content = "OK"
+            elif c.name in self.sluit_af:
+                content = _niet_afgesloten(c.name, self.result.text)
             elif c.args is None:
                 content = (
                     f"Fout: de argumenten voor `{c.name}` waren geen geldige JSON."
@@ -345,6 +392,7 @@ async def tool_loop(
     on_tool_result: ToolHook | None = None,
     tool_limits: dict[str, int] | None = None,
     halt_on: frozenset[str] = frozenset(),
+    sluit_af: frozenset[str] = frozenset(),
     check: Check | None = None,
     correction: Callable[[list[str]], str] | None = None,
     on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
@@ -364,6 +412,11 @@ async def tool_loop(
     returned in ``partial_error`` instead of raised. With ``wrap_up``, a spent
     budget gets one more call without tools with that message, instead of ending
     as ``exhausted`` right away.
+
+    A ``halt_on`` tool ends the turn instead of an answer (a clarification). A ``sluit_af``
+    tool closes the turn after one: called alone and with text in the same round, that
+    text is the answer (checked like any other) and the call lands in ``afgesloten``;
+    neither kind of tool runs a handler.
     """
     run = _Loop(
         messages=messages,
@@ -379,6 +432,7 @@ async def tool_loop(
         on_tool_result=on_tool_result,
         tool_limits=tool_limits or {},
         halt_on=halt_on,
+        sluit_af=sluit_af,
         wrap_up=wrap_up,
     )
     result = run.result
@@ -393,10 +447,11 @@ async def tool_loop(
                 logger.debug("CONTROLE MELDINGEN  %s", te_herstellen)
                 if on_correction:
                     await on_correction(te_herstellen)
-                messages += [
-                    {"role": "assistant", "content": result.text},
-                    {"role": "user", "content": correction(te_herstellen) if correction else "\n".join(te_herstellen)},
-                ]
+                if not result.afgesloten:  # a closed answer is already in the conversation, with its call
+                    messages.append({"role": "assistant", "content": result.text})
+                messages.append(
+                    {"role": "user", "content": correction(te_herstellen) if correction else "\n".join(te_herstellen)}
+                )
                 await run.rounds()
                 problems = check(result.text, result.tool_results) if _answered(result) else []
             result.problems = problems
