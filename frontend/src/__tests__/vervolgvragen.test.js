@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { MAX_MESSAGE_CHARS } from '../constants'
+import { MAX_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
 
 vi.mock('../api', async importOriginal => ({
   ...await importOriginal(),
@@ -165,6 +165,17 @@ describe('ChatPage: alleen onder het laatste antwoord', () => {
     const laatste = [...container.querySelectorAll('.message.assistant')].find(m => m.textContent.includes('Antwoord 4.'))
     expect(vervolgknoppen()).toHaveLength(VRAGEN.length)
     expect(vervolgknoppen().every(b => laatste.contains(b))).toBe(true)
+  })
+
+  it('toont geen vervolgvragen als de chat vol is: een ingevulde vraag kan dan niet meer weg', async () => {
+    chat.messages = Array.from({ length: MAX_CHAT_TURNS }, (_, i) => [
+      { id: 2 * i, role: 'user', content: `Vraag ${i}`, done: true },
+      antwoord(2 * i + 1),
+    ]).flat()
+    await render(createElement(ChatPage, { settings: {}, user: 'gast' }))
+
+    expect(container.textContent).toContain('Chat is vol')
+    expect(vervolgknoppen()).toEqual([])
   })
 
   it('toont geen vervolgvragen terwijl er een vraag loopt', async () => {
