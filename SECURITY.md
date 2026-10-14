@@ -58,7 +58,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 - `Strict-Transport-Security` — dwingt HTTPS af
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Server: ""` — verbergt serverversie
+- Geen `Server`-header — uvicorn start met `--no-server-header` (`Dockerfile`), dus antwoorden noemen de serversoftware niet. De middleware zet zelf geen lege `Server`-header meer: die kwam naast `Server: uvicorn` te staan in plaats van die te vervangen (#534)
 
 ---
 
