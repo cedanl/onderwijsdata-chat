@@ -7,7 +7,8 @@ grafieken, is met code te controleren, voor elk model gelijk:
 - de tekst claimt geen afwezigheid van data naast een gevulde grafiek;
 - opleidingsvorm en dataset-ID in de tekst kloppen met de bron (#196);
 - een getal staat bij het jaar en de instelling van zijn eigen rij (#197);
-- een oorzaak rust op een eigen bron of staat er als niet vast te stellen (#225).
+- een oorzaak rust op een eigen bron of staat er als niet vast te stellen (#225);
+- de modeltekst spreekt de lezer aan met je, niet met u (#536).
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import json
 import re
 from typing import TYPE_CHECKING
 
+from agent.aanspreekcontrole import overgebleven_u_vorm
 from agent.beweringen import ongedekte_oorzaak
 from agent.binding import verkeerd_gebonden
 from agent.dimensielabels import verkeerde_dimensielabels
@@ -58,11 +60,16 @@ def _claims(spec: ReportSpec) -> list[str]:
     ]
 
 
-def _all_text(spec: ReportSpec) -> str:
-    """Alle modeltekst behalve de titel en de onderzoeksvraag (die komen van de gebruiker, #416) en de bronnen (#48)."""
-    definities = (f"{d.get('begrip', '')} {d.get('definitie', '')}" for d in spec.definities)
+def _modeltekst(spec: ReportSpec) -> str:
+    """Wat het model schreef: reikwijdte, grafiektitels, toelichting en conclusie."""
     titels = (v.get("titel", "") for v in spec.visualisaties)
-    return "\n".join([*definities, *spec.beantwoordt_niet, *titels, *_claims(spec)])
+    return "\n".join([*spec.beantwoordt_niet, *titels, *_claims(spec)])
+
+
+def _all_text(spec: ReportSpec) -> str:
+    """Alle tekst behalve de titel en de onderzoeksvraag (die komen van de gebruiker, #416) en de bronnen (#48)."""
+    definities = (f"{d.get('begrip', '')} {d.get('definitie', '')}" for d in spec.definities)
+    return "\n".join([*definities, _modeltekst(spec)])
 
 
 def _has_values(figure_json: str) -> bool:
@@ -128,4 +135,6 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     problems += hard(veilig(verkeerde_kenmerken, text, sources))
     problems += hard(veilig(verkeerde_kpi_periodes, text, sources))
     problems += veilig(ongedekte_oorzaak, "\n\n".join(_claims(spec)), sources)
+    # Niet op de definities: die citeren de bron (#422).
+    problems += veilig(overgebleven_u_vorm, _modeltekst(spec))
     return problems

@@ -20,6 +20,7 @@ from pathlib import Path
 import plotly.io as pio
 
 from agent import manifest
+from agent.aanspreekvorm import in_je_vorm
 from agent.dashboard import (
     _build_recipe,
     _extract_json_object,
@@ -300,20 +301,21 @@ def _parse_spec_from_response(
     visualisaties: list[dict] = []
     for idx, figure_json in enumerate(figures_json):
         meta = vis_meta[idx] if idx < len(vis_meta) else {}
-        titel = (meta.get("titel") or "").strip()
+        titel = in_je_vorm((meta.get("titel") or "").strip())
         # De grafiek toont de periode die erboven staat, niet de volle dataset (#385).
         bereik = gevraagd_bereik(titel, title, onderzoeksvraag)
         visualisaties.append(
             {
                 "titel": titel or f"Visualisatie {idx + 1}",
-                "toelichting": (meta.get("toelichting") or "").strip(),
+                "toelichting": in_je_vorm((meta.get("toelichting") or "").strip()),
                 "figure_json": bijgesneden(figure_json, bereik) if bereik else figure_json,
             }
         )
 
-    beantwoordt = spec_data.get("beantwoordt") or []
-    beantwoordt_niet = spec_data.get("beantwoordt_niet") or []
-    conclusie = (spec_data.get("conclusie") or "").strip()
+    # De modeltekst in de je-vorm (#536); de onderzoeksvraag en de titel citeren de gebruiker en blijven.
+    beantwoordt = _lijst_in_je_vorm(spec_data.get("beantwoordt") or [])
+    beantwoordt_niet = _lijst_in_je_vorm(spec_data.get("beantwoordt_niet") or [])
+    conclusie = in_je_vorm((spec_data.get("conclusie") or "").strip())
     # Wat het rapport toont, om te bepalen welke brondefinities erbij horen (#422).
     rapporttekst = "\n".join(
         [
@@ -338,3 +340,10 @@ def _parse_spec_from_response(
         auteur=(author or "").strip(),
         datum=_nl_datum(),
     )
+
+
+def _lijst_in_je_vorm(items):
+    """Een lijst uit de JSON van het model met elke tekst in de je-vorm; wat geen tekst of lijst is, blijft."""
+    if not isinstance(items, list):
+        return items
+    return [in_je_vorm(item) if isinstance(item, str) else item for item in items]

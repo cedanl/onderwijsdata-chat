@@ -12,6 +12,7 @@ import re
 import pandas as pd
 import pytest
 
+from agent.aanspreekcontrole import overgebleven_u_vorm
 from agent.beweringen import ongedekte_oorzaak
 from agent.keuze import genegeerde_keuze
 from agent.labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleidingsvormen
@@ -75,6 +76,20 @@ def test_meldingen_neemt_een_kale_tekst_over_en_dubbelt_niet():
     assert meldingen([Probleem("A.", "Doe B."), "C.", Probleem("A.", "Doe D.")]) == ["A.", "C."]
 
 
+def test_een_melding_die_een_u_vorm_citeert_spreekt_je_aan_met_je():
+    """De reden bij een intrekking, de waarschuwing onder het antwoord en de rapporttoast citeren soms
+    modeltekst; ook daar staat de je-vorm (#536). Het model krijgt de tekst zoals hij was."""
+    citaat = Probleem(
+        "3.303 hoort bij Avans 2023, niet bij Avans 2024 ('Het getal dat u noemt, 3.303, geldt voor 2024').",
+        "Neem het getal uit de rij van Avans 2024.",
+    )
+    assert meldingen([citaat, "Wilt u de trend? Verlangt u een uitsplitsing?"]) == [
+        "3.303 hoort bij Avans 2023, niet bij Avans 2024 ('Het getal dat je noemt, 3.303, geldt voor 2024').",
+        "Wil je de trend? Verlangt u een uitsplitsing?",
+    ]
+    assert "dat u noemt" in citaat
+
+
 def _beurt_problemen() -> list[str]:
     sel_2024 = query_data("duo:p01hoinges:3", filters={"STUDIEJAAR": 2024, "INSTELLINGSCODE_ACTUEEL": "30TX"})
     beurt = [sel_2024]
@@ -87,6 +102,7 @@ def _beurt_problemen() -> list[str]:
         *genegeerde_keuze(["2023"], "In 2018 waren het er 900."),
         *ongedekte_oorzaak("Het verschil komt doordat studenten verhuizen.", beurt),
         *metatekst("Ik schreef eerder 3.400; compute_kpi bevestigt 900."),
+        *overgebleven_u_vorm("Zoals u ziet, waren het er 900."),
     ]
 
 
