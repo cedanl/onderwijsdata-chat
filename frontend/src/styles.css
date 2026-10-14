@@ -1709,3 +1709,13 @@ html.dark .suggested-btn:hover {
   body:has(.chat-input:focus) { --mobile-tabs-h: 0px; }
   body:has(.chat-input:focus) .mobile-tabs { display: none; }
 }
+
+/* ─── Privacy-informatie (#477) ─────────────────────────── */
+.privacy-page { max-width: 720px; margin: 0 auto; padding: 48px 24px 96px; line-height: 1.6; }
+.privacy-page--standalone { min-height: 100vh; background: var(--white); }
+.privacy-page h1 { font-size: 1.75rem; margin-bottom: 8px; }
+.privacy-page h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+.privacy-page p, .privacy-page li { color: var(--gray-700); font-size: .92rem; }
+.privacy-page-lead { color: var(--muted-text); }
+.privacy-page ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.privacy-page-footer { margin-top: 32px; }

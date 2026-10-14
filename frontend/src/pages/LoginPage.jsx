@@ -146,6 +146,11 @@ export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false
             {busy ? 'Bezig…' : 'Inloggen'}
           </button>
         </form>
+
+        <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', marginTop: 24, marginBottom: 0, lineHeight: 1.5 }}>
+          Je vragen gaan naar een externe AI-dienst en worden bewaard.{' '}
+          <a href="/privacy" style={{ color: 'var(--gray-600)', textDecoration: 'underline' }}>Privacy-informatie</a>
+        </p>
       </div>
     </main>
   )

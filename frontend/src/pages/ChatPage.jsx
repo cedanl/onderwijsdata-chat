@@ -814,7 +814,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               prefill={prefill}
               clearPrefill={clearPrefill}
             />
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING}</p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <a href="/privacy" className="disclaimer-link">Privacy-informatie</a></p>
           </div>
         </div>
       </div>

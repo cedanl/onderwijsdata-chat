@@ -126,9 +126,12 @@ export default function HomePage({ dashboardsEnabled = true }) {
               </div>
               <span className="navbar-name" style={{ fontSize: '1rem' }}>openEDU<span>data+</span></span>
             </div>
-            <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
-              Gebaseerd op open onderwijsdata
-            </button>
+            <span style={{ display: 'flex', gap: 16 }}>
+              <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
+                Gebaseerd op open onderwijsdata
+              </button>
+              <a href="/privacy" className="sources-link">Privacy</a>
+            </span>
           </div>
           <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
             Op deze tool is de{' '}

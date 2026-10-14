@@ -360,6 +360,12 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Privacy-informatie in de app (#477): de pagina `/privacy` zegt wat naar de externe AI-dienst gaat, wat de server
+  en de browser bewaren, wat in het log staat en wat je zelf kunt verwijderen of exporteren. Zij is vóór het
+  inloggen te lezen via een link op de loginpagina, en verder via de voettekst, de regel onder het invoerveld en
+  de instellingen (die nu ook zeggen dat instelling en functie alleen in de browser staan en als context naar de
+  AI-dienst gaan). Dezelfde tekst staat in `docs/privacy.md`. Verwerkingsverantwoordelijke, verwerkersovereenkomst,
+  regio en bewaartermijn staan als open punten op de pagina, niet als feit.
 - Onder de opties van een verduidelijkingskaart staat "Anders formuleren": een klik zet je oorspronkelijke vraag
   terug in het invoerveld, om aan te passen en opnieuw te stellen. Er gaat niets vanzelf weg en de gekozen optie
   blijft staan; wie meteen een optie kiest, merkt er niets van (#494).

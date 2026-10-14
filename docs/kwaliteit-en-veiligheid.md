@@ -68,6 +68,8 @@ Buiten de je-vorm vallen de dashboards en de redeneerkaart (wat het model onderw
 
 ## Beveiligingsmaatregelen
 
+Wat de app met gegevens van gebruikers doet (AI-dienst, opslag, browser, log) staat op [Privacy](privacy.md).
+
 ### Analyse-sandbox
 
 De `run_analysis`-tool voert door het model geschreven Python uit, in een apart proces (#410, #62). Het model kan daarmee willekeurige Python laten uitvoeren; de afscherming beperkt de schade, maar is **geen beveiligingsgrens** (#443):

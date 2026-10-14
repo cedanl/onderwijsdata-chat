@@ -88,10 +88,15 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: 6 }}>
           {isOnboarding ? 'Welkom' : 'Instellingen'}
         </h2>
-        <p style={{ fontSize: '.88rem', color: 'var(--gray-500)', marginBottom: 32 }}>
+        <p style={{ fontSize: '.88rem', color: 'var(--gray-500)', marginBottom: 8 }}>
           {isOnboarding
             ? 'Met je instelling en functie stemmen we de voorbeeldvragen op je af. Je kunt dit altijd later wijzigen via je gebruikersnaam.'
             : 'Pas je profiel en weergave aan.'}
+        </p>
+        <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', marginBottom: 32, lineHeight: 1.5 }}>
+          Je instelling en functie staan alleen in deze browser en gaan als context met je vragen mee naar de
+          externe AI-dienst; uitloggen wist ze.{' '}
+          <a href="/privacy" style={{ color: 'var(--gray-600)', textDecoration: 'underline' }}>Privacy-informatie</a>
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
