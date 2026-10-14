@@ -10,9 +10,9 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
-from tools.schemas import TOOL_CLARIFY_SCOPE
+from tools.schemas import TOOL_CLARIFY_SCOPE, TOOL_SUGGEST_FOLLOW_UPS
 
-from . import manifest
+from . import manifest, vervolgvragen
 from .aanspreekvorm import je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
@@ -54,7 +54,10 @@ LEEG_ANTWOORD = (
     "formuleer de vraag anders, of stel een vraag over de open onderwijsdata."
 )
 
-_TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
+# suggest_follow_ups: twee keer zonder antwoordtekst is genoeg; een aanroep die het antwoord afsluit telt niet mee.
+_TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT, TOOL_SUGGEST_FOLLOW_UPS: 2}
+# Tools die een antwoord afsluiten (#364): geen datastap, dus geen grond voor een antwoord zonder data.
+_AFSLUITEND = frozenset({TOOL_SUGGEST_FOLLOW_UPS})
 _MAX_TOOL_RESULT_CHARS = 12000
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
@@ -409,6 +412,7 @@ def _slotbericht(
     truncated: bool,
     bronnen: list[str],
     manifest: dict | None = None,
+    vervolgvragen: list[str] | None = None,
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
@@ -424,7 +428,29 @@ def _slotbericht(
         **({"truncated": True} if truncated else {}),
         **({"partial": True} if result.wrapped_up else {}),
         **({"controle": meldingen(result.problems)} if result.problems else {}),
+        **({"vervolgvragen": vervolgvragen} if vervolgvragen else {}),
     }
+
+
+async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, session: dict) -> list[str]:
+    """Vervolgvragen onder een gewoon antwoord met data, als het model erom vroeg (#364); anders geen.
+
+    Een weigering, een ingehouden of leeg antwoord en een deelantwoord krijgen er geen. Wat dit gesprek
+    al aanbood, onthoudt de sessie: een nieuw gesprek begint met een lege sessie."""
+    if not result.afgesloten or result.wrapped_up or text_content in _ZONDER_BRONNEN:
+        return []
+    getoond = session.setdefault("vervolgvragen_getoond", [])
+    try:
+        # Een dataset die nog niet getoetst is, kost een paar zoekacties in de catalogus: niet op de event loop.
+        gekozen = await asyncio.to_thread(vervolgvragen.kies, result.steps, vraag, getoond)
+    except Exception as exc:
+        # Vervolgvragen zijn een extra: lukt het niet, dan gaat het antwoord zonder (zoals bij citaties).
+        log_interne_fout(exc, "vervolgvragen")
+        return []
+    getoond.extend(gekozen)
+    # Alleen het aantal: de vragen zelf zijn catalogustekst, maar het log houdt het bij tellingen.
+    logger.info("VERVOLGVRAGEN  aangeboden=%d", len(gekozen))
+    return gekozen
 
 
 async def run(
@@ -486,6 +512,7 @@ async def run(
                     on_tool_result=partial(_bewaar_stap, session, emit),
                     tool_limits=_TOOL_LIMITS,
                     halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+                    sluit_af=_AFSLUITEND,
                     max_iterations=MAX_TOOL_ITERATIONS,
                     max_result_chars=_MAX_TOOL_RESULT_CHARS,
                     check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
@@ -501,6 +528,8 @@ async def run(
             # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
             messages.extend(afgeronde_stappen(history[initial_history_len:]))
             raise
+    # De afsluitende aanroep is geen datastap: niet voor de weigering zonder data en niet in de beurt (#364).
+    result.tool_calls = [c for c in result.tool_calls if c["name"] not in _AFSLUITEND]
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
         await emit(box.melding())
@@ -524,5 +553,6 @@ async def run(
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
     mani = manifest.bouw(chosen_model, data_keys(result.tool_results), model_versie=result.model_versie)
-    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani))
+    gekozen = await _vervolgvragen(result, text_content, last_user_msg, session)
+    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani, vervolgvragen=gekozen))
     return text_content
