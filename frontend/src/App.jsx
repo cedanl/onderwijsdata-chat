@@ -4,6 +4,7 @@ import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
+import PrivacyPage from './pages/PrivacyPage'
 import SettingsModal from './components/SettingsModal'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
@@ -178,6 +179,8 @@ function AppShell() {
   if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 
   if (authRequired && !user) {
+    // De privacy-informatie moet vóór het inloggen te lezen zijn (#477): de loginpagina linkt ernaar.
+    if (location.pathname === '/privacy') return <PrivacyPage standalone />
     return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} />
   }
 
@@ -209,6 +212,7 @@ function AppShell() {
               <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

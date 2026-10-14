@@ -75,6 +75,7 @@ nav:
   - Dashboards: dashboards.md
   - API: api.md
   - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
+  - Privacy: privacy.md
   - Architectuur & ontwerp:
     - Anti-hallucinatie: anti-hallucination-architecture.md
     - Architecture Decisions: architecture-decisions.md

@@ -198,7 +198,7 @@ Test: `tests/test_token_intrekking.py`.
 
 ---
 
-### S16 — Geen privacy-informatie bij opslag van gesprekken ❌ Open
+### S16 — Geen privacy-informatie bij opslag van gesprekken ⚠️ Deels opgelost
 
 **Wat wordt opgeslagen:**
 - Server-side, per gebruikersnaam (`persistence/db.py`): gesprekken (`conversations`), rapporten en dashboards (`workbooks`), feedback (`feedback`, `answer_feedback`) en data-recepten (`data_recipes`).
@@ -207,7 +207,8 @@ Test: `tests/test_token_intrekking.py`.
 
 **Probleem:** de app (`frontend/src`), `README.md` en `docs/` bevatten geen privacy-informatie: privacy, AVG of persoonsgegevens worden nergens genoemd. De gebruiker leest dus niet wat er wordt bewaard.  
 **Na uitloggen:** `handleLogout` in `frontend/src/App.jsx` wist het token en via `clearLocalSessionData()` de gesprekken (incl. het lopende gesprek), de werkboeken en de dashboard-chat (berichten en figuren: `STORAGE_DC_MESSAGES`, `STORAGE_DC_FIGURES`) uit localStorage; de lijst staat in `SESSION_DATA_KEYS` (`frontend/src/constants.js`). Het effect in `frontend/src/pages/ChatPage.jsx` dat het lopende gesprek bewaart (`persistCurrentChat`), controleert niet of de sessie intussen is beëindigd, en lopende fetches kunnen ook nog terugschrijven. Zo kunnen gegevens van de vorige gebruiker na het wissen weer in de browser staan (#507).  
-**Vervolg:** #477 (privacy-informatie), #507 (browseropslag na uitloggen).
+**Stand (14-10-2026, #477):** de app heeft een pagina `/privacy` (`frontend/src/pages/PrivacyPage.jsx`), ook zonder sessie bereikbaar, met links op de loginpagina, in de voettekst van de startpagina, onder het invoerveld en in de instellingen; dezelfde tekst staat in `docs/privacy.md`. Zij beschrijft wat naar de AI-dienst gaat, wat server en browser bewaren, het log en wat de gebruiker zelf kan doen. Nog open, en zo benoemd op de pagina: verwerkingsverantwoordelijke en contact, verwerkersovereenkomst en regio van de AI-aanbieder, bewaartermijn (#485) en DPIA.  
+**Vervolg:** #477 (open punten), #485 (bewaartermijn), #507 (browseropslag na uitloggen).
 
 ---
 
