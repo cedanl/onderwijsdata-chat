@@ -11,6 +11,16 @@ ingress:
         hosts:
           - onderwijsdata-chat.test.sdp.surf.nl
 
+# ResourceQuota on this tenant caps limits.cpu at 1 (1000m) -- exactly one
+# pod's worth. A RollingUpdate briefly surges to 2 pods even at
+# replicaCount: 1 (default maxSurge: 25% rounds up to 1 extra), which can
+# never fit and deadlocks the rollout (old pod holds the quota, new pod
+# can't get scheduled, old pod won't terminate until new pod is ready).
+# Recreate avoids ever needing 2x the resource footprint at once (#537).
+# Zelfde als playground.
+strategy:
+  type: Recreate
+
 # Het kindproces van run_analysis mag 1 GiB gebruiken (RLIMIT_AS in tools/sandbox_kind.py). De pod
 # moet dat naast de server (~300 MiB) en de datastore dragen, anders stopt een zwaar script de hele
 # server in plaats van alleen het kindproces (#443). Zelfde maat als playground; past in het quotum
