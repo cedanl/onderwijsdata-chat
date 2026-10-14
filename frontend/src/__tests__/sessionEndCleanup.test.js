@@ -108,7 +108,7 @@ const socketRefused = ['the chat socket closes with 4001', async () => {
 }]
 const handshakeRefused = ['the chat socket closes with 1006 before opening and the server refuses the token', async () => {
   const ws = await mountChat()
-  answers['/api/auth/user'] = () => response(401)
+  answers['/api/auth/session'] = () => response(401)
   await act(async () => {
     ws.finishClose(1006)
     await vi.advanceTimersByTimeAsync(0)
