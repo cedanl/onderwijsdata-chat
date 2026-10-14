@@ -1,3 +1,4 @@
+import importlib
 from unittest.mock import patch
 
 import pytest
@@ -57,3 +58,15 @@ def zonder_scopegrens():
         patch("tools.catalog._rio_duo", side_effect=_rio_duo_alles),
     ):
         yield
+
+
+@pytest.fixture
+def zonder_scopekaart(monkeypatch):
+    """Voor tests van de beurt met een nagebootst model: geen verduidelijkingskaart uit code vóór het model.
+
+    Of een korte testvraag als "vraag" een maatkaart krijgt (#348), hangt af van de gepinde catalogus;
+    zulke tests gaan over wat het model daarna doet. De kaart zelf staat in test_scopevraag.py.
+    """
+    # agent/__init__ exporteert run(), dat het module-attribuut agent.run overschaduwt.
+    run_module = importlib.import_module("agent.run")
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)

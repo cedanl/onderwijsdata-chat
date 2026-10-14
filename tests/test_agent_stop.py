@@ -3,6 +3,8 @@
 import asyncio
 import importlib
 
+import pytest
+
 from agent.stream import StreamResult
 
 # agent/__init__ re-exports run(), which shadows the module attribute
@@ -10,6 +12,7 @@ run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
 
 
+@pytest.mark.usefixtures("zonder_scopekaart")
 def test_stop_during_tool_step_ends_message_as_aborted(monkeypatch):
     stop_event = asyncio.Event()
 
