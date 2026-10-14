@@ -64,7 +64,7 @@ import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
-import { clarificationAnswer, hasOpenClarification } from '../clarificationState'
+import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
@@ -204,9 +204,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   const [sendNotice, setSendNotice] = useState(null)
-  // A follow-up question picked under the last answer, on its way into the input box (#364).
+  // A question on its way into the input box, not sent: a follow-up question picked under the last
+  // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
-  const kiesVervolgvraag = useCallback(tekst => setPrefill({ tekst }), [])
+  const prefillComposer = useCallback(tekst => setPrefill({ tekst }), [])
   const clearPrefill = useCallback(() => setPrefill(null), [])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
@@ -597,6 +598,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     return vraag ? () => handleRetry(vraag) : null
   }
 
+  // "Anders formuleren" op de kaart op index i (#494): de vraag gaat terug in de invoer, niet de deur uit.
+  // Zonder vraag ervoor (een gesprek dat met de kaart begint) is er geen knop.
+  const andersFormulerenVoor = i => {
+    const vraag = originalQuestion(displayMessages, i)
+    return vraag ? () => prefillComposer(vraag) : null
+  }
+
   const handleMakeRapport = useCallback(() => {
     setSaveError(null)
     generateReport(user)
@@ -710,8 +718,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               <Message
                 key={msg.id} msg={msg}
                 onClarification={sendClarification} onSend={send} busy={busy}
-                onVervolgvraag={i === vervolgIndex && !atContextLimit ? kiesVervolgvraag : null}
+                onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
+                onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
                 settings={settings} modelLabel={modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
@@ -909,7 +918,8 @@ function questionBefore(messages, i) {
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
 // onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
-export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null }) {
+// onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
+export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -966,7 +976,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
             {blocks
               ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
               : dataExport}
-            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
+            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren} />
             <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
