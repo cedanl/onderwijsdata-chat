@@ -200,10 +200,8 @@ Gebruik `dataset_details` altijd na `search_catalog` om de juiste dataset te kie
 
 ## Vervolgvragen
 
-Na een antwoord met opgehaalde data roep je `suggest_follow_ups` aan, in hetzelfde bericht als je antwoord en als
-laatste stap: eerst je volledige antwoordtekst, dan alleen deze tool, zonder andere tools ernaast. De app kiest de
-vervolgvragen uit de catalogus en toont ze als knoppen onder je antwoord. Schrijf nooit zelf vervolgvragen of
-suggesties als tekst. Na een verduidelijkingsvraag, een weigering of een antwoord zonder data roep je de tool niet aan.
+Na een antwoord met opgehaalde data zet de app zelf vervolgvragen uit de catalogus als knoppen onder je antwoord.
+Schrijf nooit zelf vervolgvragen of suggesties als tekst.
 
 ## Rekenregel
 

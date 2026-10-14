@@ -1,22 +1,22 @@
 """Vervolgvragen onder een data-antwoord komen uit de catalogus, getoetst in code (#364).
 
-Het model beslist alleen dát er vervolgvragen komen (suggest_follow_ups als laatste stap); welke,
-beslist code: voorbeeldvragen van de datasets die de beurt laadde, alleen als de chat ze kan beantwoorden.
+Code biedt ze aan onder elk gewoon antwoord met data, zonder keuze van het model (#539): voorbeeldvragen
+van de datasets die de beurt laadde, alleen als de chat ze kan beantwoorden.
 """
 
 import asyncio
 import importlib
 import json
 import logging
-from collections.abc import Callable
 
-import litellm
 import pandas as pd
 import pytest
 
 from agent import vervolgvragen
-from agent.loop import LoopResult, ToolCall
+from agent.budget import DEELANTWOORD
+from agent.loop import LoopResult
 from agent.probleem import INGEHOUDEN, Probleem, hard
+from agent.scopevraag import Kaart
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
 from tools import catalog, store
@@ -273,35 +273,63 @@ _VETTED = {
         "hoeveel eerstejaars had het  HBO in 2024?",  # de gestelde vraag, anders gespeld
         "Hoe verdelen eerstejaars zich over de provincies?",
         "Wat is de M/V-verhouding bij eerstejaars?",
-    )
+    ),
+    "85353NED": ("Hoeveel studenten volgen een wo-master?", "Hoe verdeelt het hbo zich over de studierichtingen?"),
+    "p01hoinges": ("Welke hogescholen hebben de meeste studenten?",),
 }
-_SUGGEST = {"id": "s", "name": "suggest_follow_ups", "arguments": "{}"}
 _LAAD = {"id": "l", "name": "get_duo_data", "arguments": '{"dataset_id": "p02ho1ejrs"}'}
-
+_QUERY = {"id": "q", "name": "query_data", "arguments": '{"data_key": "duo:p02ho1ejrs:0", "group_by": ["JAAR"]}'}
+_PLOT = {"id": "p", "name": "create_plot", "arguments": '{"data_key": "query:trend", "x": "JAAR", "y": "AANTAL"}'}
+_LAAD_CBS = {"id": "c", "name": "get_cbs_data", "arguments": '{"dataset_id": "85353NED"}'}
+_MAAT = {"id": "m", "name": "get_maat", "arguments": '{"maat": "ingeschreven_personen_ho"}'}
+_ZOEK = {"id": "z", "name": "search_catalog", "arguments": '{"query": "eerstejaars hbo"}'}
+_CLARIFY = {"id": "v", "name": "clarify_scope", "arguments": '{"vraag": "Welk jaar?", "opties": ["2023", "2024"]}'}
 
 _GELADEN = json.dumps({"data_key": "duo:p02ho1ejrs:0"})
+# Wat elke nagebootste tool teruggeeft; create_plot geeft tekst zonder data_key, zoals de echte.
+_RESULTATEN = {
+    "get_duo_data": _GELADEN,
+    "query_data": json.dumps({"data_key": "query:trend", "rijen": 5}),
+    "create_plot": "Lijngrafiek 'Eerstejaars hbo' aangemaakt (5 datapunten).",
+    "get_cbs_data": json.dumps({"data_key": "cbs:85353NED"}),
+    "get_maat": json.dumps({"data_key": "maat:p01hoinges", "rijen": 3, "recept": {"maat": "ingeschreven_personen_ho"}}),
+}
 
 
-def _beurt(monkeypatch, steps, *, session=None, problemen=(), toolresultaat=_GELADEN):
-    """Eén beurt met een nagebootst model; een tool geeft standaard een geladen DUO-key terug."""
-    store.put("duo:p02ho1ejrs:0", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="duo", dataset="p02ho1ejrs"))
+def _zet(key: str, dataset: str, bron: str = "duo", afgeleid_van: str | None = None) -> None:
+    store.put(key, pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron=bron, dataset=dataset, afgeleid_van=afgeleid_van))
+
+
+def _beurt(monkeypatch, steps, *, session=None, problemen=(), toolresultaat=None, kaart=None, max_iteraties=None):
+    """Eén beurt met een nagebootst model.
+
+    Een tool geeft `toolresultaat` terug als dat er is, anders zijn resultaat uit _RESULTATEN. Een stap
+    mag een functie zijn: die krijgt het stopsignaal en geeft de modelronde."""
+    _zet("duo:p02ho1ejrs:0", "p02ho1ejrs")
+    _zet("query:trend", "p02ho1ejrs", afgeleid_van="duo:p02ho1ejrs:0")
+    _zet("cbs:85353NED", "85353NED", "cbs")
+    _zet("duo:p01hoinges:0", "p01hoinges")
+    _zet("maat:p01hoinges", "p01hoinges", afgeleid_van="duo:p01hoinges:0")
     steps = list(steps)
 
     async def fake_completion(*a, **k):
         return object()
 
     async def fake_accumulate(stream, stop_event=None, emit=None):
-        return steps.pop(0)
+        stap = steps.pop(0)
+        return stap(stop_event) if callable(stap) else stap
 
     async def fake_execute(call, emit):
-        return toolresultaat, None
+        return (_RESULTATEN[call.name] if toolresultaat is None else toolresultaat), None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: kaart)
     monkeypatch.setattr(run_module, "_antwoordcontrole", lambda *a: lambda text, results: list(problemen))
     monkeypatch.setattr(vervolgvragen, "_beantwoordbaar", lambda dataset_id: _VETTED.get(dataset_id, ()))
+    if max_iteraties is not None:
+        monkeypatch.setattr(run_module, "MAX_TOOL_ITERATIONS", max_iteraties)
     session = {} if session is None else session
     events: list[dict] = []
 
@@ -318,174 +346,187 @@ def _slot(events) -> dict:
     return [e for e in events if e["type"] == "message_end"][-1]
 
 
-def _antwoord_met_afsluiting(tekst="Het hbo had veel eerstejaars."):
-    return [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=tekst, tool_calls=[_SUGGEST])]
+def _antwoord(*rondes: dict, tekst: str = "Het hbo had veel eerstejaars.") -> list[StreamResult]:
+    """Het model roept per ronde één tool aan en antwoordt daarna met gewone tekst, zonder tool."""
+    return [*(StreamResult(text="", tool_calls=[r]) for r in rondes), StreamResult(text=tekst, tool_calls=[])]
 
 
-def test_een_data_antwoord_met_afsluiting_krijgt_vervolgvragen(monkeypatch):
-    text, events, session = _beurt(monkeypatch, _antwoord_met_afsluiting())
+def _vorm(vraag: str) -> str:
+    return " ".join(vraag.split()).casefold()
+
+
+def _aanbod_uit_de_lijst(vragen: list[str], dataset_id: str) -> None:
+    """Eén tot drie getoetste vragen van de dataset, en niet de vraag die de gebruiker net stelde."""
+    assert 1 <= len(vragen) <= 3
+    assert set(vragen) <= set(_VETTED[dataset_id])
+    assert _vorm(_VRAAG) not in map(_vorm, vragen)
+
+
+@pytest.fixture
+def kies_aanroepen(monkeypatch) -> list[tuple]:
+    """Elke aanroep van kies. Een stub die een fout gooit bewijst niets: _vervolgvragen slikt fouten in."""
+    aanroepen: list[tuple] = []
+    echte_kies = vervolgvragen.kies
+
+    def kies(*args):
+        aanroepen.append(args)
+        return echte_kies(*args)
+
+    monkeypatch.setattr(vervolgvragen, "kies", kies)
+    return aanroepen
+
+
+def test_een_data_antwoord_krijgt_vervolgvragen_zonder_dat_het_model_een_tool_kiest(monkeypatch, kies_aanroepen):
+    # Het model laadt data en antwoordt met gewone tekst: code biedt de vervolgvragen aan (#539).
+    text, events, session = _beurt(monkeypatch, _antwoord(_LAAD))
 
     vragen = _slot(events)["vervolgvragen"]
     assert text.startswith("Het hbo had veel eerstejaars.")
-    assert 1 <= len(vragen) <= 3
-    assert set(vragen) <= set(_VETTED["p02ho1ejrs"])
-    assert all(" ".join(v.split()).casefold() != _VRAAG.casefold() for v in vragen)
+    assert len(kies_aanroepen) == 1
+    _aanbod_uit_de_lijst(vragen, "p02ho1ejrs")
     assert session["vervolgvragen_getoond"] == vragen
-    # De afsluitende aanroep is geen stap van de beurt.
     assert [c["name"] for c in session["_last_turn_tool_calls"]] == ["get_duo_data"]
+
+
+@pytest.mark.parametrize(
+    ("rondes", "dataset_id"),
+    [((_LAAD, _QUERY, _PLOT), "p02ho1ejrs"), ((_LAAD_CBS,), "85353NED"), ((_MAAT,), "p01hoinges")],
+    ids=["trend-en-grafiek", "cbs", "get_maat"],
+)
+def test_ook_na_een_grafiek_een_cbs_tabel_of_een_vaste_maat(monkeypatch, rondes, dataset_id):
+    _, events, _ = _beurt(monkeypatch, _antwoord(*rondes))
+
+    _aanbod_uit_de_lijst(_slot(events)["vervolgvragen"], dataset_id)
 
 
 def test_wat_dit_gesprek_al_aanbood_komt_niet_terug(monkeypatch):
     session = {"vervolgvragen_getoond": ["Welke instellingen trekken de meeste eerstejaars?"]}
 
-    _, events, _ = _beurt(monkeypatch, _antwoord_met_afsluiting(), session=session)
+    _, events, _ = _beurt(monkeypatch, _antwoord(_LAAD), session=session)
 
     assert _slot(events)["vervolgvragen"] == [
         "Hoe verdelen eerstejaars zich over de provincies?",
         "Wat is de M/V-verhouding bij eerstejaars?",
     ]
-    _, events, _ = _beurt(monkeypatch, _antwoord_met_afsluiting(), session=session)
+    _, events, _ = _beurt(monkeypatch, _antwoord(_LAAD), session=session)
     assert "vervolgvragen" not in _slot(events)
 
 
-def test_zonder_afsluiting_geen_vervolgvragen(monkeypatch):
-    steps = [
-        StreamResult(text="", tool_calls=[_LAAD]),
-        StreamResult(text="Het hbo had veel eerstejaars.", tool_calls=[]),
-    ]
-
-    _, events, _ = _beurt(monkeypatch, steps)
+@pytest.mark.parametrize(
+    ("aanroep", "resultaat"),
+    [
+        (_ZOEK, "no_match: Geen resultaten gevonden."),
+        (
+            {"id": "u", "name": "get_uwv_vacatures", "arguments": '{"provincie": "Utrecht"}'},
+            json.dumps({"bron": "UWV Open Match", "dataset": "uwv-open-match-data", "totaal_vacatures": 1200}),
+        ),
+        (
+            {"id": "r", "name": "get_roa_benchmark", "arguments": "{}"},
+            json.dumps({"bron": "ROA, AIS 2030", "dataset": "ais2030", "regio": "Nederland"}),
+        ),
+    ],
+    ids=["alleen-zoeken", "uwv", "roa"],
+)
+def test_zonder_geladen_dataset_geen_vervolgvragen(monkeypatch, aanroep, resultaat):
+    _, events, _ = _beurt(monkeypatch, _antwoord(aanroep, tekst="Dit laat de bron zien."), toolresultaat=resultaat)
 
     assert "vervolgvragen" not in _slot(events)
 
 
-def test_zonder_geladen_dataset_geen_vervolgvragen(monkeypatch):
-    zoek = {"id": "z", "name": "search_catalog", "arguments": '{"query": "eerstejaars hbo"}'}
-    steps = [StreamResult(text="", tool_calls=[zoek]), StreamResult(text="Daar vond ik niets.", tool_calls=[_SUGGEST])]
-
-    _, events, _ = _beurt(monkeypatch, steps, toolresultaat="no_match: Geen resultaten gevonden.")
-
-    assert "vervolgvragen" not in _slot(events)
+def _gestopt(stop_event: asyncio.Event) -> StreamResult:
+    """Een modelronde waarin de gebruiker op stop drukt."""
+    stop_event.set()
+    return StreamResult(text="Het hbo had", tool_calls=[])
 
 
-def test_een_getal_zonder_datatools_blijft_de_weigering(monkeypatch):
-    # De afsluitende aanroep telt niet als datastap: zonder data geen antwoord met een getal (#403).
-    steps = [StreamResult(text="Het hbo had 12.345 eerstejaars.", tool_calls=[_SUGGEST])]
-
-    text, events, session = _beurt(monkeypatch, steps)
-
-    assert text == WEIGER_ANTWOORD
-    assert "vervolgvragen" not in _slot(events)
-    assert session["_last_turn_tool_calls"] == []
+def _verduidelijkt(text: str, events: list[dict]) -> bool:
+    return any(e["type"] == "clarification" for e in events)
 
 
-def test_een_weigering_krijgt_geen_vervolgvragen(monkeypatch):
-    steps = [StreamResult(text="Ik kan geen antwoord geven.", tool_calls=[_SUGGEST])]
-
-    text, events, _ = _beurt(monkeypatch, steps)
-
-    assert text == WEIGER_ANTWOORD
-    assert "vervolgvragen" not in _slot(events)
+_KAART = Kaart(slot="scope", vraag="Over welke instelling gaat het?", opties=[{"label": "Alle"}, {"label": "Eén"}])
 
 
-def test_een_ingehouden_antwoord_krijgt_geen_vervolgvragen(monkeypatch):
-    steps = [*_antwoord_met_afsluiting("Fout."), StreamResult(text="Nog steeds fout.", tool_calls=[_SUGGEST])]
+@pytest.mark.parametrize(
+    ("steps", "opties", "einde"),
+    [
+        pytest.param(
+            [StreamResult(text="Ik kan geen antwoord geven.", tool_calls=[])],
+            {},
+            lambda text, events: text == WEIGER_ANTWOORD,
+            id="weigering",
+        ),
+        pytest.param(
+            [StreamResult(text="Het hbo had 12.345 eerstejaars.", tool_calls=[])],
+            {},
+            lambda text, events: text == WEIGER_ANTWOORD,
+            id="getal-zonder-data",
+        ),
+        pytest.param(
+            [*_antwoord(_LAAD, tekst="Fout."), StreamResult(text="Nog steeds fout.", tool_calls=[])],
+            {"problemen": hard([Probleem("12.345 staat niet in de data.")])},
+            lambda text, events: text == INGEHOUDEN,
+            id="ingehouden",
+        ),
+        pytest.param(
+            _antwoord(_LAAD, tekst=""),
+            {},
+            lambda text, events: text == run_module.LEEG_ANTWOORD,
+            id="leeg",
+        ),
+        pytest.param(
+            _antwoord(_LAAD),  # het antwoord komt uit de afrondronde
+            {"max_iteraties": 1},
+            lambda text, events: text.startswith(DEELANTWOORD) and _slot(events)["partial"],
+            id="deelantwoord",
+        ),
+        pytest.param(
+            [
+                StreamResult(text="", tool_calls=[_LAAD]),
+                StreamResult(text="Het hbo", tool_calls=[], finish_reason="length"),
+            ],
+            {},
+            lambda text, events: _slot(events)["truncated"],
+            id="afgekapt",
+        ),
+        pytest.param(
+            _antwoord(_LAAD, tekst=""),  # ook de afrondronde geeft geen antwoord
+            {"max_iteraties": 1},
+            lambda text, events: _slot(events)["partial"] and not text.startswith(DEELANTWOORD),
+            id="uitgeput",
+        ),
+        pytest.param(
+            [StreamResult(text="", tool_calls=[_LAAD]), _gestopt],
+            {},
+            lambda text, events: _slot(events)["aborted"],
+            id="afgebroken",
+        ),
+        pytest.param([StreamResult(text="", tool_calls=[_CLARIFY])], {}, _verduidelijkt, id="clarify_scope"),
+        pytest.param([], {"kaart": _KAART}, _verduidelijkt, id="verduidelijkingskaart"),
+    ],
+)
+def test_geen_vervolgvragen_na_een_beurt_zonder_gewoon_antwoord(monkeypatch, kies_aanroepen, steps, opties, einde):
+    text, events, session = _beurt(monkeypatch, steps, **opties)
 
-    text, events, _ = _beurt(monkeypatch, steps, problemen=hard([Probleem("12.345 staat niet in de data.")]))
-
-    assert text == INGEHOUDEN
-    assert "vervolgvragen" not in _slot(events)
-
-
-def test_na_een_verduidelijkingsvraag_geen_vervolgvragen(monkeypatch):
-    clarify = {"id": "c", "name": "clarify_scope", "arguments": '{"vraag": "Welk jaar?", "opties": ["2023", "2024"]}'}
-
-    _, events, _ = _beurt(monkeypatch, [StreamResult(text="", tool_calls=[clarify])])
-
-    assert any(e["type"] == "clarification" for e in events)
+    assert einde(text, events)  # de beurt eindigde echt zo
+    assert kies_aanroepen == []
     assert not any("vervolgvragen" in e for e in events)
-
-
-def _gesprek(monkeypatch, rondes: list) -> tuple[Callable[[str], str], list[dict], dict]:
-    """Beurten met de echte antwoordcontrole; een uitzondering in `rondes` is een modelaanroep die faalt."""
-    store.put("duo:p02ho1ejrs:0", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="duo", dataset="p02ho1ejrs"))
-
-    async def fake_completion(*a, **k):
-        if isinstance(rondes[0], Exception):
-            raise rondes.pop(0)
-        return object()
-
-    async def fake_accumulate(stream, stop_event=None, emit=None):
-        return rondes.pop(0)
-
-    async def fake_execute(call, emit):
-        return _GELADEN, None
-
-    async def emit(event):
-        pass
-
-    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
-    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
-    monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
-    monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
-    monkeypatch.setattr(vervolgvragen, "_beantwoordbaar", lambda dataset_id: _VETTED.get(dataset_id, ()))
-    messages: list[dict] = []
-    session: dict = {}
-
-    def beurt(vraag: str) -> str:
-        messages.append({"role": "user", "content": vraag})
-        return asyncio.run(run_module.run(messages, session, emit, asyncio.Event(), model="openai/gpt-4o"))
-
-    return beurt, messages, session
-
-
-def test_een_ingetrokken_afgesloten_antwoord_blijft_niet_achter_na_een_modelfout(monkeypatch):
-    # De controle trekt een afgesloten antwoord met een verzonnen getal in; dan faalt de correctieronde.
-    # De stappen die af zijn, blijven voor een nieuwe poging (#431), het ingetrokken antwoord niet: anders
-    # telt het daar als iets wat de assistent al zei en komt het getal ongetoetst door.
-    verzonnen = "Het hbo had 98765 eerstejaars."
-    beurt, messages, _ = _gesprek(
-        monkeypatch,
-        [
-            StreamResult(text="", tool_calls=[_LAAD]),
-            StreamResult(text=verzonnen, tool_calls=[_SUGGEST]),
-            litellm.RateLimitError("te veel", llm_provider="openai", model="m"),
-            # De nieuwe poging: het model herhaalt het getal zonder data, ook na de correctie.
-            StreamResult(text="Het waren er 98765.", tool_calls=[]),
-            StreamResult(text="Het waren er 98765.", tool_calls=[]),
-        ],
-    )
-
-    with pytest.raises(litellm.RateLimitError):
-        beurt("Hoeveel eerstejaars had het hbo?")
-    assert not [m for m in messages if m["role"] == "assistant" and "98765" in str(m.get("content"))]
-    assert [m["role"] for m in messages] == ["user", "assistant", "tool"]
-
-    assert "98765" not in beurt("Hoeveel waren het er precies?")
-
-
-def _afgesloten(**velden) -> LoopResult:
-    return LoopResult(afgesloten=ToolCall("s", "suggest_follow_ups", "{}", {}), **velden)
+    assert "vervolgvragen_getoond" not in session
 
 
 @pytest.mark.parametrize(
     ("result", "tekst"),
     [
-        (_afgesloten(), WEIGER_ANTWOORD),
-        (_afgesloten(), INGEHOUDEN),
-        (_afgesloten(), run_module.LEEG_ANTWOORD),
-        (_afgesloten(wrapped_up=True), "Deelantwoord."),
-        (LoopResult(), "Een antwoord zonder afsluiting."),
+        (LoopResult(), WEIGER_ANTWOORD),
+        (LoopResult(), INGEHOUDEN),
+        (LoopResult(), run_module.LEEG_ANTWOORD),
+        (LoopResult(wrapped_up=True), "Deelantwoord."),
+        (LoopResult(finish_reason="length"), "Een afgekapt antw"),
     ],
-    ids=["weigering", "ingehouden", "leeg", "deelantwoord", "zonder-afsluiting"],
+    ids=["weigering", "ingehouden", "leeg", "deelantwoord", "afgekapt"],
 )
-def test_geen_vervolgvragen_buiten_een_gewoon_afgesloten_antwoord(monkeypatch, result, tekst):
-    def niet_kiezen(*a):
-        raise AssertionError("kies() hoort hier niet te lopen")
-
-    monkeypatch.setattr(vervolgvragen, "kies", niet_kiezen)
-
+def test_geen_keuze_buiten_een_gewoon_antwoord(kies_aanroepen, result, tekst):
     assert asyncio.run(run_module._vervolgvragen(result, tekst, _VRAAG, {})) == []
+    assert kies_aanroepen == []
 
 
 def test_een_fout_bij_het_kiezen_kost_het_antwoord_niet(monkeypatch):
@@ -494,7 +535,17 @@ def test_een_fout_bij_het_kiezen_kost_het_antwoord_niet(monkeypatch):
 
     monkeypatch.setattr(vervolgvragen, "kies", kapot)
 
-    assert asyncio.run(run_module._vervolgvragen(_afgesloten(), "Een antwoord.", _VRAAG, {})) == []
+    assert asyncio.run(run_module._vervolgvragen(LoopResult(), "Een antwoord.", _VRAAG, {})) == []
+
+
+def test_elk_gewoon_antwoord_logt_het_aanbod_ook_zonder_vragen(monkeypatch, caplog):
+    # Zo is na een deploy uit het log te tellen hoe vaak er knoppen komen (#539): alleen aantallen, geen vraagtekst.
+    with caplog.at_level(logging.INFO, logger="agent.run"):
+        _beurt(monkeypatch, _antwoord(_LAAD))
+        _beurt(monkeypatch, _antwoord(_ZOEK, tekst="Daar vond ik niets."), toolresultaat="no_match: Geen resultaten.")
+
+    regels = [r.getMessage() for r in caplog.records if r.getMessage().startswith("VERVOLGVRAGEN")]
+    assert regels == ["VERVOLGVRAGEN  aangeboden=3  datasets=1", "VERVOLGVRAGEN  aangeboden=0  datasets=0"]
 
 
 # --- de echte catalogus ---
@@ -511,3 +562,18 @@ def test_elke_vervolgvraag_uit_de_catalogus_is_beantwoordbaar():
         for vraag in vragen:
             treffers = json.loads(catalog.search_catalog(vraag))
             assert dataset_id in [t.get("_cbs_id") or t.get("_ckan_id") or t.get("_rio_resource") for t in treffers]
+
+
+@pytest.mark.parametrize(
+    ("tool", "dataset_id", "bron"),
+    [("get_cbs_data", "85353NED", "cbs"), ("get_cbs_data", "85354NED", "cbs"), ("get_duo_data", "p01hoinges", "duo")],
+)
+def test_de_datasets_van_de_testronde_krijgen_vervolgvragen(tool, dataset_id, bron):
+    # Onder antwoorden op deze datasets ontbraken de knoppen in de testronde van 14 oktober (#539).
+    steps = [(tool, _laad(f"{bron}:{dataset_id}:0", dataset_id, bron))]
+
+    gekozen = vervolgvragen.kies(steps, "Hoeveel studenten telt het hoger onderwijs?", [])
+
+    assert 1 <= len(gekozen) <= 3
+    # Wat beantwoordbare_vragen() voor deze dataset geeft, zonder de hele catalogus te toetsen.
+    assert set(gekozen) <= set(vervolgvragen._beantwoordbaar(dataset_id))

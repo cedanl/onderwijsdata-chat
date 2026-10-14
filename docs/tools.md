@@ -557,14 +557,12 @@ Deze tool wordt afgehandeld door de UI — de gebruiker ziet een keuzemenu en ka
 
 ---
 
-## suggest_follow_ups
+## Vervolgvragen
 
-Zet onder een antwoord met data tot drie klikbare vervolgvragen. Het model roept deze tool aan als laatste stap,
-in hetzelfde bericht als zijn antwoord en zonder andere tools ernaast; de tool heeft geen parameters.
-
-Het model beslist alleen dát er vervolgvragen komen. Welke, beslist de app (`agent/vervolgvragen.py`): voorbeeldvragen
-uit de catalogus van de datasets die de beurt laadde, om en om per dataset. Een voorbeeldvraag komt alleen in
-aanmerking als de chat haar kan beantwoorden:
+Onder elk gewoon antwoord met data zet de app tot drie klikbare vervolgvragen. Dat is geen tool: het model beslist er
+niets over en schrijft zelf geen vervolgvragen (#539). De app (`agent/vervolgvragen.py`) neemt voorbeeldvragen uit de
+catalogus van de datasets die de beurt laadde, om en om per dataset. Een voorbeeldvraag komt alleen in aanmerking als
+de chat haar kan beantwoorden:
 
 - de dataset valt binnen het profiel (mbo, hbo, wo) en de chat kan hem ophalen met `get_*_data`;
 - de vraag staat niet in de eerste persoon ("mijn regio", "onze instelling");
@@ -578,10 +576,10 @@ aanmerking als de chat haar kan beantwoorden:
 De vraag die de gebruiker net stelde en wat het gesprek al eerder aanbood, komen niet terug. Een klik zet de vraag in
 het invoerveld; de gebruiker past haar aan of verstuurt haar zelf.
 
-Geen vervolgvragen na een verduidelijkingsvraag, een weigering, een ingehouden, leeg of afgebroken antwoord, of een
-beurt zonder geladen dataset (zoals alleen UWV of ROA). De aanroep telt niet als datastap: een antwoord met een getal
-zonder opgehaalde data blijft de vaste weigering.
+Geen vervolgvragen na een verduidelijkingsvraag, een weigering, een ingehouden, leeg, afgekapt of afgebroken
+antwoord, een deelantwoord (het stappenbudget was op), of een beurt zonder geladen dataset (zoals alleen UWV of ROA).
+Rapport en dashboard tonen geen vervolgvragen.
 
-Zonder antwoordtekst, of samen met andere tools, sluit de aanroep de beurt niet af: het model krijgt terug dat het
-eerst moet antwoorden of de tool alleen moet aanroepen. Na twee van zulke aanroepen geldt de toollimiet. Rapport en
-dashboard kennen de tool niet.
+Elk gewoon antwoord geeft in het log de regel `VERVOLGVRAGEN  aangeboden=N  datasets=M`, ook als N nul is: zo is te
+tellen hoe vaak er knoppen komen, en hoe vaak een antwoord met data (M > 0) er geen kreeg. De vragen zelf staan niet
+in het log.

@@ -16,13 +16,13 @@ import pytest
 
 from tools import _HANDLERS
 from tools.plot import _infer_chart_type
-from tools.schemas import TOOL_CLARIFY_SCOPE, TOOL_CREATE_PLOT, TOOL_SCHEMAS, TOOL_SUGGEST_FOLLOW_UPS
+from tools.schemas import TOOL_CLARIFY_SCOPE, TOOL_CREATE_PLOT, TOOL_SCHEMAS
 
 _PROMPT = Path(__file__).resolve().parent.parent / "prompts" / "system.md"
 
 # Tools die agent/run.py zelf afvangt vóór dispatch(): UI-interactie, geen data-tool.
 # Expliciet opgesomd, zodat een écht vergeten handler alsnog opvalt.
-_AGENT_AFGEVANGEN = {TOOL_CLARIFY_SCOPE, TOOL_SUGGEST_FOLLOW_UPS}
+_AGENT_AFGEVANGEN = {TOOL_CLARIFY_SCOPE}
 
 
 def _schema(naam: str) -> dict:
@@ -91,19 +91,16 @@ class TestChartTypeContract:
 
 
 class TestVervolgvragenContract:
-    """#364: de afsluitende tool van de chat; rapport en dashboard kennen hem niet."""
+    """#539: de vervolgvragen komen uit code; het model heeft er geen tool voor."""
 
-    def test_heeft_geen_verplichte_parameters(self):
-        assert not _params(TOOL_SUGGEST_FOLLOW_UPS).get("required")
-
-    def test_staat_in_de_toolset_van_de_chat(self):
+    def test_geen_tool_in_schema_of_toolset(self):
         from agent.run import tools_for
 
-        assert TOOL_SUGGEST_FOLLOW_UPS in {t["function"]["name"] for t in tools_for({})}
+        assert "suggest_follow_ups" not in {t["function"]["name"] for t in TOOL_SCHEMAS}
+        assert "suggest_follow_ups" not in {t["function"]["name"] for t in tools_for({})}
 
-    def test_staat_niet_in_de_toolsets_van_rapport_en_dashboard(self):
-        from agent.dashboard import _DASHBOARD_TOOLS
-        from agent.report import _REPORT_TOOLS
+    def test_de_prompt_verbiedt_vervolgvragen_als_tekst(self):
+        prompt = _PROMPT.read_text()
 
-        namen = {t["function"]["name"] for t in [*_REPORT_TOOLS, *_DASHBOARD_TOOLS]}
-        assert TOOL_SUGGEST_FOLLOW_UPS not in namen
+        assert "suggest_follow_ups" not in prompt
+        assert "Schrijf nooit zelf vervolgvragen of suggesties als tekst" in prompt

@@ -282,144 +282,21 @@ def test_halt_tool_ends_the_turn_without_running(monkeypatch):
     assert messages[-1] == {"role": "tool", "tool_call_id": "t1", "content": "OK"}
 
 
-# --- #364: a closing tool ends the turn after an answer ---
-
-_SLUIT_AF = frozenset({"suggest_follow_ups"})
-
-
-def test_closing_tool_alone_with_text_ends_the_turn_as_an_answer(monkeypatch):
+def test_a_call_to_an_unknown_tool_gets_an_error_and_the_model_goes_on(monkeypatch):
+    # suggest_follow_ups is gone (#539): a model that still calls it gets the reply for any unknown tool.
     _steps(
         monkeypatch,
         [
-            StreamResult(text="", tool_calls=[_call("query_data", call_id="q")]),
-            StreamResult(text="Het zijn er 12.345.", tool_calls=[_call("suggest_follow_ups", call_id="s")]),
-        ],
-    )
-    executed: list[str] = []
-    _fake_tools(monkeypatch, {"query_data": "rijen"}, executed)
-    messages = [{"role": "user", "content": "vraag"}]
-
-    result, _ = _run(messages, sluit_af=_SLUIT_AF)
-
-    assert executed == ["query_data"]
-    assert result.afgesloten.name == "suggest_follow_ups"
-    assert result.text == "Het zijn er 12.345."
-    assert not result.halted_on and not result.exhausted and not result.aborted
-    assert result.steps == [("query_data", "rijen")]
-    assert result.tool_calls == [{"name": "query_data", "arguments": "{}"}]  # closing is no step of the work
-    assert messages[-1] == {"role": "tool", "tool_call_id": "s", "content": "OK"}
-
-
-def test_the_text_of_a_closed_turn_is_checked_like_any_answer(monkeypatch):
-    seen: list = []
-    _steps(
-        monkeypatch,
-        [
-            StreamResult(text="Fout 12.345", tool_calls=[_call("suggest_follow_ups", call_id="s1")]),
-            StreamResult(text="Nog fout 12.345", tool_calls=[_call("suggest_follow_ups", call_id="s2")]),
-        ],
-        seen,
-    )
-    checked: list[str] = []
-
-    def check(text, tool_results):
-        checked.append(text)
-        return ["12.345 staat niet in de data"]
-
-    result, _ = _run(sluit_af=_SLUIT_AF, check=check, correction=lambda problems: "Herstel")
-
-    assert checked == ["Fout 12.345", "Nog fout 12.345"]
-    assert result.problems == ["12.345 staat niet in de data"]
-    assert result.afgesloten.id == "s2"
-    # The answer is already in the conversation with its closing call; the correction does not repeat it.
-    assert [m["role"] for m in seen[-1][-3:]] == ["assistant", "tool", "user"]
-    assert seen[-1][-1] == {"role": "user", "content": "Herstel"}
-
-
-def test_after_a_correction_the_closing_state_is_that_of_the_last_round(monkeypatch):
-    _steps(
-        monkeypatch,
-        [
-            StreamResult(text="Fout 12.345", tool_calls=[_call("suggest_follow_ups")]),
-            StreamResult(text="Goed 10", tool_calls=[]),
-        ],
-    )
-
-    result, _ = _run(
-        sluit_af=_SLUIT_AF,
-        check=lambda text, tool_results: ["12.345"] if "12.345" in text else [],
-        correction=lambda problems: "Herstel",
-    )
-
-    assert result.text == "Goed 10"
-    assert result.afgesloten is None
-    assert result.problems == []
-
-
-def test_closing_tool_without_text_asks_for_the_answer_first(monkeypatch):
-    _steps(
-        monkeypatch,
-        [
-            StreamResult(text="", tool_calls=[_call("suggest_follow_ups", call_id="s")]),
-            StreamResult(text="Het antwoord.", tool_calls=[]),
-        ],
-    )
-    executed: list[str] = []
-    _fake_tools(monkeypatch, {}, executed)
-    messages = [{"role": "user", "content": "vraag"}]
-
-    result, _ = _run(messages, sluit_af=_SLUIT_AF)
-
-    assert executed == []
-    assert result.text == "Het antwoord."
-    assert result.afgesloten is None
-    [tool_msg] = [m for m in messages if m["role"] == "tool"]
-    assert tool_msg["tool_call_id"] == "s"
-    assert "Schrijf eerst je antwoord" in tool_msg["content"]
-
-
-def test_closing_tool_next_to_other_tools_must_come_alone(monkeypatch):
-    _steps(
-        monkeypatch,
-        [
-            StreamResult(
-                text="Even kijken.",
-                tool_calls=[_call("query_data", call_id="q"), _call("suggest_follow_ups", call_id="s")],
-            ),
-            StreamResult(text="Het antwoord.", tool_calls=[]),
-        ],
-    )
-    executed: list[str] = []
-    _fake_tools(monkeypatch, {"query_data": "rijen"}, executed)
-    messages = [{"role": "user", "content": "vraag"}]
-
-    result, _ = _run(messages, sluit_af=_SLUIT_AF)
-
-    assert executed == ["query_data"]
-    assert result.text == "Het antwoord."
-    assert result.afgesloten is None
-    assert result.steps == [("query_data", "rijen")]
-    suggest_msg = next(m for m in messages if m.get("tool_call_id") == "s")
-    assert "alleen" in suggest_msg["content"]
-
-
-def test_a_model_that_keeps_closing_without_text_hits_the_limit(monkeypatch):
-    _steps(
-        monkeypatch,
-        [
-            *[StreamResult(text="", tool_calls=[_call("suggest_follow_ups", call_id=f"s{i}")]) for i in range(3)],
+            StreamResult(text="", tool_calls=[_call("suggest_follow_ups")]),
             StreamResult(text="Het antwoord.", tool_calls=[]),
         ],
     )
     messages = [{"role": "user", "content": "vraag"}]
 
-    result, _ = _run(messages, sluit_af=_SLUIT_AF, tool_limits={"suggest_follow_ups": 2})
+    result, _ = _run(messages)
 
-    contents = [m["content"] for m in messages if m["role"] == "tool"]
-    assert ["LIMIET" in c for c in contents] == [False, False, True]
-    # The limit of a closing tool is about the missing answer, not about missing data.
-    assert "Schrijf je antwoord" in contents[-1] and "data" not in contents[-1]
     assert result.text == "Het antwoord."
+    assert messages[2] == {"role": "tool", "tool_call_id": "t1", "content": "Onbekende tool: suggest_follow_ups"}
 
 
 def test_stop_while_tools_run_aborts_before_the_next_model_call(monkeypatch):
