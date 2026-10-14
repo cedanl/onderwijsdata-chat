@@ -98,6 +98,13 @@ de laatste tag is 1.8.6.
   korrel: de kleinste kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. Pure pandas
   (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key staat. De
   prompt zet het in vóór een som of telling over een tabel waarvan de korrel niet zeker is.
+- Nieuwe tool `relatie(data_key, andere_key)` (#63, relatielaag stap 1): wat hangt aan wat tussen CBS, DUO en
+  RIO, uit bestaande kennis en zonder model. Per sleutelkolom van een geladen tabel (instellingscode, naam,
+  gemeente, provincie, schooljaar, opleidingscode) wat eraan hangt (instellingsregister, CBS-gebiedsindeling,
+  RIO) en hoeveel waarden de naslag kent; met een tweede tabel de kolommen die dezelfde sleutel dragen, de
+  vertaling van de waarden (`GM0344` ↔ `344`, `2021SJ00` ↔ `2021`), de kardinaliteit en de overlap. Elke
+  uitkomst heeft `basis` en `confidence`. De tool koppelt niets; de prompt laat het model hem vragen vóór het
+  twee bronnen combineert, en zonder gedeelde sleutel per bron apart antwoorden.
 - Het antwoord is in de taal van de vraag en een Nederlands antwoord schrijft decimalen met een komma
   (#326). Een Engelse vraag kreeg soms een Nederlands antwoord (audit 12); nu zegt de code het model in welke
   taal het antwoordt, en een antwoord dat duidelijk in de andere taal is, krijgt één herkansing. Bij een

@@ -423,6 +423,28 @@ een kolom buiten de korrel telt dubbel (totaalrijen naast onderdelen, meerdere r
 
 ---
 
+## relatie
+
+Relatielaag, stap 1 (#63): wat hangt aan wat tussen CBS, DUO en RIO, uit bestaande kennis en zonder model
+(`tools/relaties.py`). Sleutels die bronnen delen (connectoren): instellingscode (BRIN), instellingsnaam,
+gemeente, gemeentenaam, provincie, schooljaar, erkende opleiding, opleidingseenheid en aangeboden opleiding,
+elk met de kolomnamen waaronder hij voorkomt en een vaste vertaling van de waarden (`GM0344` ↔ `344`,
+`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). CBS `RegioS` wordt aan de waarden herkend.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | De tabel |
+| `andere_key` | string | Optioneel: de tabel om mee te koppelen |
+
+Met één key: per sleutelkolom `koppelt_aan` (register, gebiedsindeling, RIO), `basis` (`handmatig`),
+`confidence` (1.0 voor codes met vaste vertaling, 0.8 voor namen) en `dekking` (hoeveel waarden het
+instellingsregister, de arbeidsmarktregio-indeling of de provinciecodes kennen). Met twee keys ook
+`koppelingen`: de kolomparen met dezelfde sleutel, `type` (one_to_one … many_to_many) en `overlap` van de
+genormaliseerde waarden. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`,
+zonder waarden) en de koppeling zelf is een stap in `query_data` of `run_analysis`.
+
+---
+
 ## compute_kpi
 
 Berekent één KPI-waarde deterministisch in code over data die al in de store staat, zodat het model zelf geen verschillen of percentages hoeft uit te rekenen. Het model neemt de teruggegeven `value` en `trend` letterlijk over.
