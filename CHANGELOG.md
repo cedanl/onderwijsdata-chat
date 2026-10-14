@@ -450,6 +450,9 @@ de laatste tag is 1.8.6.
 - De rapportviewer is nooit meer een leeg vlak (#533): zolang een rapport rendert, staat de inhoud als bezig
   (`aria-busy`) naast de melding "Rapport wordt geladen…", en een rapport zonder inhoud zegt "Dit rapport heeft geen
   inhoud." in plaats van een wit kader.
+- Blijft het kader van een rapport leeg, of geeft het na 15 seconden nog geen teken van leven, dan staat er tussen de
+  titelbalk en het rapport "Zie je dit rapport niet? Download het als HTML." (#541), met een knop die hetzelfde
+  bestand downloadt als "Download als HTML". Een rapport dat wel iets toont, krijgt de melding niet.
 - De gesprekslijst in de zijbalk haalt alleen id, titel en tijdstip op, niet meer de volledige berichten met
   figuur-JSON van elk gesprek (#509); een gesprek haalt zijn berichten pas op bij het openen
   (`GET /api/conversations/{id}`), met "Openen…" in de lijst en een melding als dat mislukt. De lokale kopie

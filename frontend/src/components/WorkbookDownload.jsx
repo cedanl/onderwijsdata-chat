@@ -4,9 +4,9 @@ import { inlinePlotly } from '../offlineHtml'
 import { saveFile } from '../saveFile'
 
 // A report or generated dashboard as one HTML file that opens without the app or a network (#254, #405).
-export default function WorkbookDownload({ workbook, instelling, save = saveFile }) {
+// Shared by the button in the viewer bar and the notice under a report that does not show (#541).
+export function useWorkbookDownload(workbook, instelling, save = saveFile) {
   const [error, setError] = useState(null)
-  if (workbook.builtin) return null
 
   async function download() {
     setError(null)
@@ -18,6 +18,13 @@ export default function WorkbookDownload({ workbook, instelling, save = saveFile
       setError(e.message)
     }
   }
+
+  return { download, error }
+}
+
+export default function WorkbookDownload({ workbook, instelling, save }) {
+  const { download, error } = useWorkbookDownload(workbook, instelling, save)
+  if (workbook.builtin) return null
 
   return (
     <>

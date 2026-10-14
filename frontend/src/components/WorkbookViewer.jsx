@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { metEigenPlotly } from '../plotlyBron'
 import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../api'
+import { useReportFrame } from '../hooks/useReportFrame'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import WorkbookDownload from './WorkbookDownload'
+import ReportFrameFallback from './ReportFrameFallback'
 
 const BUILTIN_COMPONENTS = {
   [BUILTIN_MIJN_INSTELLING.id]: InlineDashboardMijnInstelling,
@@ -13,7 +14,8 @@ const BUILTIN_COMPONENTS = {
   [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
 }
 
-export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false }) {
+// save: the download target, for tests (as in WorkbookDownload).
+export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save }) {
   const [refreshing, setRefreshing] = useState(false) // false of de lopende modus: 'ververs' | 'reproduceer'
   const [refreshError, setRefreshError] = useState(null)
   const [refreshResult, setRefreshResult] = useState(null) // { melding, veranderingen } van de laatste herhaling
@@ -24,7 +26,6 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackThanks, setFeedbackThanks] = useState(false)
   const [feedbackGiven, setFeedbackGiven] = useState(false)
-  const [frameLoadedFor, setFrameLoadedFor] = useState(null)
 
   useEffect(() => {
     setFeedbackGiven(false)
@@ -88,10 +89,11 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const canRefresh = spec && (spec.figure_recipes?.length || spec.recipe?.length)
   const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
   // A report renders in a sandboxed frame whose content is not in this DOM: until it has loaded the region is
-  // busy, and a report without content says so instead of showing a blank frame (#387, #533).
+  // busy, a report without content says so instead of showing a blank frame (#387, #533), and a frame that
+  // shows nothing gets a notice with the download outside it (#541).
   const isReport = !BuiltinDash && !spec
   const reportEmpty = isReport && !String(workbook.htmlContent ?? '').trim()
-  const reportLoading = isReport && !reportEmpty && frameLoadedFor !== workbook.id
+  const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null)
 
   return (
     <div className="wb-viewer">
@@ -133,7 +135,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           )}
         </h1>
         <div className="wb-viewer-actions">
-          <WorkbookDownload workbook={workbook} instelling={instelling} />
+          <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
           {feedbackEnabled && (
             feedbackGiven ? (
               <span className="wb-feedback-given" role="status">
@@ -164,10 +166,13 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
       {saveError && (
         <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{saveError}</div>
       )}
+      {reportFrame.srcDoc && (
+        <ReportFrameFallback probleem={reportFrame.probleem} workbook={workbook} instelling={instelling} save={save} />
+      )}
       {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
       <div className="wb-viewer-content" style={{ overflowY: 'auto' }} tabIndex={0} role="region" aria-label="Rapportinhoud"
-        aria-busy={reportLoading || undefined}>
+        aria-busy={reportFrame.loading || undefined}>
         {(() => {
           if (BuiltinDash) return <BuiltinDash instelling={instelling} />
           if (spec) return (
@@ -196,14 +201,14 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
           if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>
-              {reportLoading && (
+              {reportFrame.loading && (
                 <div className="wb-viewer-loading" role="status" aria-busy="true">
                   <span className="spinner" aria-hidden="true" />
                   Rapport wordt geladen…
                 </div>
               )}
-              <iframe className="wb-iframe" srcDoc={metEigenPlotly(workbook.htmlContent)} title={workbook.title} sandbox="allow-scripts"
-                onLoad={() => setFrameLoadedFor(workbook.id)} />
+              <iframe ref={reportFrame.frameRef} className="wb-iframe" srcDoc={reportFrame.srcDoc} title={workbook.title}
+                sandbox="allow-scripts" onLoad={reportFrame.onLoad} />
             </>
           )
         })()}
