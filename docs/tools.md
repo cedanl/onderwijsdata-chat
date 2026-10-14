@@ -301,6 +301,13 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Let op:** Deze tool is beperkt tot **5 aanroepen per vraag** om oneindige zoeklussen te voorkomen.
 
+Elke hit draagt een `status` (#356): `opvraagbaar` (een datatool laadt hem), `via_tool` (alleen met de genoemde eigen
+tool, zoals `get_uwv_vacatures`), `alleen_documentatie` (de bron heeft alleen een PDF of changelog) of
+`alleen_catalogus` (vindbaar en voor de package leesbaar, maar zonder chat-adapter). Zoekbaar, package-leesbaar en
+chat-opvraagbaar zijn zo drie verschillende dingen; `_niet_opvraagbaar` in `tools/catalog.py` is de enige plek die
+beslist, de package meldt alleen wat ze kan lezen. De interne bronfilter `source` betekent wat hij zegt: `cbs`,
+`rio` (alleen RIO), `duo` (alleen DUO), `riodata` (alles uit de riodata-package) of `both`.
+
 ---
 
 ## dataset_details
@@ -309,7 +316,7 @@ Haalt metagegevens van een specifieke dataset op (kolommen, dimensies, beschrijv
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `dataset_id` | string | Dataset-ID, bijv. `"85423NED"` (CBS) of `"studentprognoses-mbo-v1"` (DUO) |
+| `dataset_id` | string | Dataset-ID, bijv. `"85423NED"` (CBS) of `"studentprognoses-mbo-v1"` (DUO); met of zonder bron-voorvoegsel (`cbs:`, `duo:`, `rio:`), hoofdletterongevoelig |
 
 **Gebruik:** Verken beschikbare dimensies/filters voordat je data ophaalt.
 
@@ -319,6 +326,9 @@ additiviteit, definitiebreuken, publicatiestatus), `perioden` (frequentie, eerst
 periodecode de titel met de CBS-status zolang die niet definitief is) en `geografie` (niveaus, dekking). Wat het
 contract niet vastlegt, staat er niet in. Het contract-ID `cbs:85423NED`, `cbs_85423ned` en `85423NED` wijzen in
 `dataset_details`, `get_cbs_data` en `get_cbs_dimension` naar dezelfde tabel (`tools/catalog.py::cbs_bron_id`: zonder voorvoegsel, in de spelling van de catalogus).
+Hetzelfde geldt voor DUO en RIO (#356): `duo:p01hoinges`, `DUO/P01HOINGES` en `rio:erkenningen` wijzen in `dataset_details`,
+`get_duo_data`, `get_rio_data` en de scopegrens naar hetzelfde record (`tools/catalog.py::bron_id`); de evals en de packages
+spellen `<bron>:<id>`. Het detailrecord draagt dezelfde `status` als een zoekhit.
 
 ---
 

@@ -96,7 +96,7 @@ def test_leverancier_filter_supported_and_excluded():
         {"identifier": "inspectie-entry", "title": "inspectie data", "leverancier": "Inspectie"},
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=rio_entries):
-        result = search_catalog("data", source="rio")
+        result = search_catalog("data", source="riodata")
     data = json.loads(result)
     identifiers = {e.get("identifier") for e in data}
     assert "rio-entry" in identifiers
@@ -114,7 +114,7 @@ def test_leverancier_filter_case_insensitive():
         {"identifier": "roa-entry", "title": "roa data", "leverancier": "roa"},
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=rio_entries):
-        result = search_catalog("data", source="rio")
+        result = search_catalog("data", source="riodata")
     data = json.loads(result)
     identifiers = {e.get("identifier") for e in data}
     assert "rio-lower" in identifiers
@@ -707,7 +707,7 @@ _DUO = {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen 
 
 def test_catalogusbron_zonder_datatool_is_gemarkeerd_in_zoekresultaat():
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_ROA_OUD, _DUO]):
-        hits = {h["bron"]: h for h in json.loads(search_catalog("vacatures", source="rio"))}
+        hits = {h["bron"]: h for h in json.loads(search_catalog("vacatures", source="riodata"))}
     assert hits["AIS tot 2028"]["opvraagbaar"] is False
     assert "niet op te vragen" in hits["AIS tot 2028"]["melding"]
     assert "opvraagbaar" not in hits["Ingeschrevenen hbo"]
@@ -723,7 +723,7 @@ def test_dataset_details_van_catalogusbron_zonder_datatool_meldt_dat():
 def test_catalogusbron_met_eigen_tool_noemt_die_tool():
     """UWV en ROA AIS 2030 hebben een eigen tool (#441): 'niet op te vragen' zou dan onwaar zijn."""
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_UWV]):
-        hit = json.loads(search_catalog("vacatures", source="rio"))[0]
+        hit = json.loads(search_catalog("vacatures", source="riodata"))[0]
         details = json.loads(dataset_details("uwv-open-match-data"))
     for uit in (hit, details):
         assert uit["via_tool"] == "get_uwv_vacatures"

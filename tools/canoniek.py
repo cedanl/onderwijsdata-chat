@@ -52,6 +52,17 @@ def sleutel(key: str) -> str:
 
 
 _CBS_PREFIX = re.compile(r"^cbs[_/:]", re.IGNORECASE)
+# Een bron-voorvoegsel zoals de evals en de packages het schrijven: cbs:85423NED, duo:p01hoinges, rio:erkenningen (#356).
+_BRON_PREFIX = re.compile(r"^(?:cbs[_/:]|(?:duo|rio)[/:])\s*", re.IGNORECASE)
+
+
+def zonder_bronprefix(dataset_id: str) -> str:
+    """Het ID zonder bron-voorvoegsel: `duo:p01hoinges` → `p01hoinges`, `rio/erkenningen` → `erkenningen` (#356).
+
+    Alleen `cbs`, `duo` en `rio`; een ander voorvoegsel is deel van het ID. Bij `duo` en `rio` alleen `:` en `/`:
+    een DUO-slug kan zelf met `duo_` of `duo-` beginnen.
+    """
+    return _BRON_PREFIX.sub("", str(dataset_id).strip())
 
 
 def zonder_cbs_prefix(dataset_id: str) -> str:

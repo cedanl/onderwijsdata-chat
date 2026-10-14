@@ -6,7 +6,7 @@ from riodata import fetch, filtercontract, valideer_filters
 from core.config import RIO_PAGE_SIZE
 
 from . import fouten, scopeprofiel, store
-from .catalog import catalogus_titel, scope_blokkade
+from .catalog import bron_id, catalogus_titel, scope_blokkade
 from .columns import sample_values
 
 _SAMPLE_ROWS = 5
@@ -49,6 +49,7 @@ def _filterfout(resource: str, filters: dict) -> str | None:
 
 
 def get_rio_data(resource: str, filters: dict | None = None) -> str:
+    resource = bron_id(resource)  # rio:erkenningen is dezelfde resource als erkenningen (#356)
     # Eerst het filtercontract: dat noemt bij een tikfout de bedoelde resource.
     if fout := _filterfout(resource, filters or {}):
         return fout

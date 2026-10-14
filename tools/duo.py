@@ -19,7 +19,7 @@ from . import (
     periode,
     store,
 )
-from .catalog import catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
+from .catalog import bron_id, catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
 from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 3
@@ -305,6 +305,7 @@ def _andere_bestanden(dataset_id: str, bestanden: list[tuple[int, str]], behalve
 
 
 def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
+    dataset_id = bron_id(dataset_id)  # duo:p01hoinges en P01HOINGES zijn dezelfde dataset (#356)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
     if resource is None:

@@ -30,6 +30,13 @@ SUPPORTED_LEVERANCIERS = frozenset({"RIO", "DUO", "ROA", "UWV"})
 # een eigen tool (#441).
 CHAT_BRONNEN = ("CBS", "DUO", "RIO")
 _EIGEN_TOOL = {"uwv-open-match-data": TOOL_GET_UWV_VACATURES, "ais2030": TOOL_GET_ROA_BENCHMARK}
+
+# Vindbaar, package-leesbaar en chat-opvraagbaar zijn drie statussen (#356). Elke zoekhit en elk
+# detailrecord zegt welke; de chat beslist, de package meldt alleen wat ze kan lezen.
+STATUS_OPVRAAGBAAR = "opvraagbaar"  # get_cbs_data, get_duo_data of get_rio_data laadt hem
+STATUS_VIA_TOOL = "via_tool"  # een eigen tool (UWV-vacatures, ROA-benchmark), geen datatool
+STATUS_ALLEEN_DOCUMENTATIE = "alleen_documentatie"  # de bron heeft alleen een PDF of changelog
+STATUS_ALLEEN_CATALOGUS = "alleen_catalogus"  # vindbaar en voor de package leesbaar, maar zonder chat-adapter
 _NIET_OPVRAAGBAAR = {
     "opvraagbaar": False,
     "melding": (
@@ -63,18 +70,32 @@ def _tabelbestanden(entry: dict) -> list[tuple[int, str]]:
     return [(i, r.get("naam") or "") for i, r in enumerate(entry.get("_resources") or []) if _is_tabel(r)]
 
 
+def status(entry: dict) -> str:
+    """Wat de chat met deze catalogusregel kan: opvraagbaar, via een eigen tool, of alleen noemen (#356)."""
+    if entry.get("_cbs_id"):
+        return STATUS_OPVRAAGBAAR
+    if (scopeprofiel.dataset_id(entry) or "") in _EIGEN_TOOL:
+        return STATUS_VIA_TOOL
+    if not _via_chat(entry):
+        return STATUS_ALLEEN_CATALOGUS
+    if entry.get("_resources") and not _tabelbestanden(entry):
+        return STATUS_ALLEEN_DOCUMENTATIE
+    return STATUS_OPVRAAGBAAR
+
+
 def _niet_opvraagbaar(entry: dict) -> dict | None:
     """Waarom de chat geen data voor deze catalogusregel kan ophalen; None als het wel kan."""
-    if tool := _EIGEN_TOOL.get(scopeprofiel.dataset_id(entry) or ""):
+    soort = status(entry)
+    if soort == STATUS_OPVRAAGBAAR:
+        return None
+    if soort == STATUS_VIA_TOOL:
+        tool = _EIGEN_TOOL[scopeprofiel.dataset_id(entry) or ""]
         return {
+            "status": soort,
             "via_tool": tool,
             "melding": f"Op te vragen met {tool}; get_*_data, query_data en run_analysis werken hier niet op.",
         }
-    if not _via_chat(entry):
-        return _NIET_OPVRAAGBAAR
-    if entry.get("_resources") and not _tabelbestanden(entry):
-        return _ALLEEN_DOCUMENTATIE
-    return None
+    return {"status": soort, **(_ALLEEN_DOCUMENTATIE if soort == STATUS_ALLEEN_DOCUMENTATIE else _NIET_OPVRAAGBAAR)}
 
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
@@ -198,12 +219,29 @@ def cbs_bron_id(dataset_id: str) -> str:
     return kaal
 
 
+def bron_id(dataset_id: str) -> str:
+    """Het catalogus-ID achter een genamespaced of anders gespeld ID (#356, sluit aan op #370).
+
+    `duo:p01hoinges`, `rio/erkenningen`, `cbs_85423ned` en `P01HOINGES` wijzen naar het ID zoals de
+    catalogus het schrijft; de evals en de packages spellen `<bron>:<id>`, een model of een bewaard
+    recept van alles. Zonder voorvoegsel en, als de volledige inventaris het ID hoofdletterongevoelig
+    kent, in de spelling van de catalogus. Een onbekend ID blijft zoals het is, zonder voorvoegsel.
+    """
+    kaal = canoniek.zonder_bronprefix(dataset_id)
+    gezocht = kaal.lower()
+    for entry in (*_cbs_alles(), *_rio_duo_alles()):
+        if isinstance(eid := scopeprofiel.dataset_id(entry), str) and eid.lower() == gezocht:
+            return eid
+    return kaal
+
+
 def scope_blokkade(dataset_id: str) -> str | None:
     """Waarom een datatool `dataset_id` niet laadt; None als het binnen het profiel valt.
 
     Een directe ID uit de vraag of van het model omzeilt de grens niet (#355), ook niet
     bij een herstelpoging met een andere tabel (CH-03).
     """
+    dataset_id = bron_id(dataset_id)
     binnen = [*_cbs(), *_rio_duo()]
     if any(scopeprofiel.dataset_id(e) == dataset_id for e in binnen):
         return None
@@ -461,21 +499,29 @@ def geodekking(entry: dict, niveau: str) -> str:
 
 
 def _verzamel(words: list[tuple[str, float]], source: str, termen: list[str], nodig: int) -> tuple[list, list, list]:
-    """De scorende treffers uit `source`: actief, archief, en te zwak voor de drempel (#351)."""
+    """De scorende treffers uit `source`: actief, archief, en te zwak voor de drempel (#351).
+
+    `source` betekent wat de naam zegt (#356): `cbs`, `rio` (alleen leverancier RIO), `duo` (alleen DUO),
+    `riodata` (alles uit de riodata-package: RIO, DUO, ROA, UWV) of `both` (alles).
+    """
     treffers: list = []
 
     if source in ("cbs", "both"):
-        treffers += [(s, entry, {"bron": "CBS", **entry}) for entry in _cbs() if (s := _score(entry, words))]
+        treffers += [
+            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry})
+            for entry in _cbs()
+            if (s := _score(entry, words))
+        ]
 
-    if source in ("rio", "both", "duo"):
+    if source in ("riodata", "both", "rio", "duo"):
         for entry in _rio_duo():
-            if str(entry.get("leverancier", "")).upper() not in SUPPORTED_LEVERANCIERS:
+            leverancier_ = str(entry.get("leverancier", "")).upper()
+            if leverancier_ not in SUPPORTED_LEVERANCIERS:
                 continue
-            is_duo = str(entry.get("leverancier", "")).upper() == "DUO"
-            if source == "duo" and not is_duo:
+            if source in ("rio", "duo") and leverancier_ != source.upper():
                 continue
             if s := _score(entry, words):
-                treffers.append((s, entry, {**entry, **(_niet_opvraagbaar(entry) or {})}))
+                treffers.append((s, entry, {"status": status(entry), **entry, **(_niet_opvraagbaar(entry) or {})}))
 
     active: list = []
     archive: list = []
@@ -569,7 +615,7 @@ def search_catalog(
     # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
     # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.
     instellingsvraag = source in ("cbs", "both") and instelling.noemt_instelling(query)
-    active, archive, zwak = _verzamel(words, "rio" if instellingsvraag else source, termen, nodig)
+    active, archive, zwak = _verzamel(words, "riodata" if instellingsvraag else source, termen, nodig)
     if instellingsvraag and not (active or archive):
         active, archive, zwak = _verzamel(words, source, termen, nodig)
     historisch = bool(_HISTORISCH & set(query_words))
@@ -714,7 +760,7 @@ def _build_details(entry: dict, dataset_id: str) -> str:
             ensure_ascii=False,
         )
     return json.dumps(
-        {"bron": entry.get("bron", dataset_id), **details},
+        {"bron": entry.get("bron", dataset_id), "status": status(entry), **details},
         ensure_ascii=False,
         separators=(",", ":"),
     )
@@ -839,7 +885,8 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
 
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
-    cbs_id = cbs_bron_id(dataset_id)  # cbs:85423NED en 85423ned zijn dezelfde tabel (#370)
+    # cbs:85423NED, duo:p01hoinges en rio:erkenningen zijn dezelfde records als zonder voorvoegsel (#370, #356).
+    dataset_id = cbs_id = bron_id(dataset_id)
     for entry in _cbs():
         if entry.get("_cbs_id") == cbs_id:
             logger.info("dataset_details id=%s bron=CBS", cbs_id)
@@ -847,8 +894,8 @@ def dataset_details(dataset_id: str) -> str:
             return _build_details({"bron": "CBS", **entry, **cbs_meta.metadata(cbs_id)}, cbs_id)
 
     for entry in _rio_duo():
-        eid = entry.get("_ckan_id") or entry.get("_rio_resource")
-        if eid == dataset_id:
+        # Ook ROA en UWV (#356): die hebben een eigen ID-veld en vielen hier eerder door naar 'buiten het profiel'.
+        if scopeprofiel.dataset_id(entry) == dataset_id:
             logger.info("dataset_details id=%s bron=%s", dataset_id, entry.get("leverancier", "RIO"))
             if reden := _niet_opvraagbaar(entry):
                 return json.dumps({"bron": entry.get("bron", dataset_id), **reden}, ensure_ascii=False)
