@@ -4,6 +4,7 @@ import { MAX_HISTORY } from '../constants'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
+import { vervolgvragenTekst } from '../vervolgvragen'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
@@ -24,13 +25,6 @@ export function buildHistory(messages) {
 }
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
-
-// The follow-up questions the server picked from the catalogue (#364): only text, at most three.
-const MAX_VERVOLGVRAGEN = 3
-function vervolgvragen(ev) {
-  if (!Array.isArray(ev.vervolgvragen)) return []
-  return ev.vervolgvragen.filter(q => typeof q === 'string' && q.trim()).slice(0, MAX_VERVOLGVRAGEN)
-}
 
 export function useChat() {
   const [messages, setMessages] = useState([])
@@ -248,7 +242,8 @@ export function useChat() {
         }])
       },
       message_end(ev) {
-        const vragen = vervolgvragen(ev)
+        // The follow-up questions the server picked from the catalogue (#364).
+        const vragen = vervolgvragenTekst(ev.vervolgvragen)
         // The server sends the full text; it wins over the accumulated deltas.
         updateCurrentMsg(m => {
           const content = typeof ev.content === 'string' ? ev.content : m.content

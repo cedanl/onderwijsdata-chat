@@ -68,6 +68,7 @@ import { clarificationAnswer, hasOpenClarification } from '../clarificationState
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
+import { vervolgvragenTekst } from '../vervolgvragen'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -968,7 +969,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
             <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} />
             <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
             {onVervolgvraag && !busy && (
-              <QuestionButtons questions={msg.vervolgvragen} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
+              <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
             )}
             {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
             {msg.truncated && (

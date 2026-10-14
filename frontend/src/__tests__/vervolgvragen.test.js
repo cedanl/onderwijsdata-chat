@@ -96,6 +96,14 @@ describe('Message: vervolgvragen onder het antwoord', () => {
     await render(createElement(Message, { msg: antwoord(1), onSend: vi.fn(), onVervolgvraag: vi.fn(), busy: true }))
     expect(vervolgknoppen()).toEqual([])
   })
+
+  it('toont van een teruggezet bericht alleen tekst, hoogstens drie, en valt niet om over iets anders', async () => {
+    // localStorage en de gespreksopslag houden elk veld: daar kan iets anders dan tekst in staan.
+    const vervolgvragen = [{ x: 1 }, '', '  ', null, 3, ...VRAGEN, 'Derde?', 'Vierde?']
+    await render(createElement(Message, { msg: antwoord(1, { vervolgvragen }), onSend: vi.fn(), onVervolgvraag: vi.fn(), busy: false }))
+
+    expect(vervolgknoppen().map(b => b.textContent)).toEqual([...VRAGEN, 'Derde?'])
+  })
 })
 
 describe('Message: de "Verken …"-starters', () => {
