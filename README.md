@@ -106,3 +106,14 @@ make url   # print de juiste URL, bijv. http://172.17.0.2:8000
 ```
 
 Open die URL in je host-browser.
+
+## MCP-server
+
+De catalogus is ook te doorzoeken vanuit een MCP-client (Claude Desktop, Cursor, VS Code), zonder de chat-app te draaien:
+
+```bash
+uv sync --extra mcp
+uv run python mcp_server.py
+```
+
+Drie tools met dezelfde schema's als in de chat: `search_catalog`, `dataset_details` en `dataset_counts`. Geen API-sleutel nodig; de datatools blijven bij de chat. Zie [docs/mcp.md](docs/mcp.md) voor de clientconfiguratie.

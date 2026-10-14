@@ -74,6 +74,7 @@ nav:
   - Tools: tools.md
   - Dashboards: dashboards.md
   - API: api.md
+  - MCP-server: mcp.md
   - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
   - Architectuur & ontwerp:
     - Anti-hallucinatie: anti-hallucination-architecture.md
