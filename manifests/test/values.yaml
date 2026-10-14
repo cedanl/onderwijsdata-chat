@@ -11,6 +11,18 @@ ingress:
         hosts:
           - onderwijsdata-chat.test.sdp.surf.nl
 
+# Het kindproces van run_analysis mag 1 GiB gebruiken (RLIMIT_AS in tools/sandbox_kind.py). De pod
+# moet dat naast de server (~300 MiB) en de datastore dragen, anders stopt een zwaar script de hele
+# server in plaats van alleen het kindproces (#443). Zelfde maat als playground; past in het quotum
+# van de namespace (limits.memory 4Gi, limits.cpu 1, requests.memory 1Gi).
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
 env:
   # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to
   # set now; OIDC_CLIENT_ID/OIDC_CLIENT_SECRET (in secret_orig.yaml) are still
