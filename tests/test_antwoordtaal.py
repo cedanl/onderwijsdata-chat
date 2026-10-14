@@ -2,12 +2,14 @@
 
 import asyncio
 import importlib
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
 from agent.antwoordtaal import taal, taalinstructie, verkeerde_antwoordtaal
+from agent.grounding import unverified
 from agent.loop import LoopResult
 
 run_module = importlib.import_module("agent.run")  # agent.run is ook de naam van de functie
@@ -155,3 +157,32 @@ def test_engels_antwoord_houdt_de_notatie_van_het_model():
     assert _antwoordtekst("There were 12,345 students and 1,234.5 on average.") == (
         "There were 12,345 students and 1,234.5 on average."
     )
+
+
+def test_nederlands_antwoord_krijgt_de_je_vorm():
+    antwoord = "Het getal dat u noemt, 3303, staat in de data. Jullie instelling had 56.4% vrouwen."
+    assert _antwoordtekst(antwoord) == (
+        "Het getal dat je noemt, 3.303, staat in de data. Je instelling had 56,4% vrouwen."
+    )
+
+
+def test_engels_antwoord_houdt_zijn_tekst():
+    antwoord = "In the U.S. data there were 3303 first-year students, as you asked, in 2023."
+    assert _antwoordtekst(antwoord) == antwoord
+
+
+def test_grondingscontrole_slaagt_op_een_antwoord_met_u_vormen_ruw_en_na_de_omzetting():
+    """Je-vorm en notatie veranderen geen getal: de controle vindt ruw en getoond hetzelfde (#536)."""
+    data = [json.dumps({"rijen": [{"AANTAL": 3303, "AANDEEL_VROUW": 56.4}]})]
+    antwoord = (
+        "Het getal dat u noemt, 3303, staat in de data: uw instelling had 3.303 eerstejaars, "
+        "van wie 56.4% vrouw. Wilt u de trend zien?"
+    )
+    getoond = _antwoordtekst(antwoord)
+
+    assert getoond == (
+        "Het getal dat je noemt, 3.303, staat in de data: je instelling had 3.303 eerstejaars, "
+        "van wie 56,4% vrouw. Wil je de trend zien?"
+    )
+    assert unverified(antwoord, data) == []
+    assert unverified(getoond, data) == []

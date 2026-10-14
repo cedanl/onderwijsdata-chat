@@ -16,12 +16,17 @@ getal of feit dat niet bij de data hoort (getal zonder bron, afgekapte data,
 verkeerd jaar of verkeerde instelling). Blijft dat na de herkansing, dan houdt de
 app het antwoord in. Zacht (label, teleenheid, woordkeuze): het antwoord blijft,
 met een waarschuwing.
+
+Een melding citeert soms modeltekst ("het getal dat u noemt"); de gebruiker ziet ook
+die in de je-vorm (#536). Het model krijgt de tekst zoals hij was.
 """
 
 from collections.abc import Callable, Iterable
 from typing import TypeVar
 
 from core.errors import log_interne_fout
+
+from .aanspreekvorm import in_je_vorm
 
 T = TypeVar("T")
 
@@ -45,8 +50,8 @@ class Probleem(str):
 
 
 def meldingen(problemen: list[str]) -> list[str]:
-    """Wat de gebruiker van de problemen ziet, zonder dubbele."""
-    return list(dict.fromkeys(getattr(p, "melding", p) for p in problemen))
+    """Wat de gebruiker van de problemen ziet, in de je-vorm en zonder dubbele."""
+    return list(dict.fromkeys(in_je_vorm(getattr(p, "melding", p)) for p in problemen))
 
 
 def niet_gecontroleerd(fout_id: str) -> Probleem:

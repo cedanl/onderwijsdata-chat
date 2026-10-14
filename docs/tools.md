@@ -260,6 +260,33 @@ Bij elke vraag bepaalt het LLM automatisch:
 
 Het LLM springt stappen over als ze niet nodig zijn. Dit heet **"lazy evaluation"** — efficiënter en sneller.
 
+## get_maat
+
+Vaste maat uit een vast recept (#188): het model kiest de maat en de afbakening, de code kiest dataset, bestand,
+kolommen en codes (`tools/maten.py`). Elke fout uit de audits die in de keten zoeken → details → bestand → codes
+zat (verkeerde instellingscode, T001228 als voltijd, het bestand zonder OPLEIDINGSVORM, personen of inschrijvingen
+per sessie anders, verkeerd schooljaar) is zo een beslissing van code.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling) |
+| `instelling` | string | Officiële naam of alias; het register (`data/instellingen.py`) geeft code en sector. Onbekend is een fout, geen gok |
+| `sector` | string | Alleen landelijk: `hbo` of `wo` |
+| `vorm` | string | `alle` (standaard), `voltijd`, `deeltijd`, `duaal` (ho) of `bol`, `bbl` (mbo) |
+| `schooljaren` | array | `2024/25` of `2024`; weglaten voor alle beschikbare |
+
+Per maat ligt vast: het DUO-bestand (het opleidingsvorm-bestand per sector, #325), de telkolom, de codes van de
+vorm (`VT`/`DT`/`DU`, bij CBS `A028666`…), de vaste CBS-totaalcodes (fase, geslacht) en de teldefinitie. De tool
+laadt en selecteert met `get_duo_data`/`get_cbs_data` en `query_data`, dus scopegrens, sentinelmaskering, afronding
+en KeyMeta gelden gewoon. Het resultaat: `data_key` met één rij per studiejaar, `teldefinitie`, `recept` (wat de
+code koos), `periodekolom`/`waardekolom`, en `ontbrekende_schooljaren` als de bron een gevraagd jaar niet heeft.
+Bij mbo is `AANTAL` de som van de leerwegkolommen van de vorm, als eigen key. Een key uit `get_maat` komt na een
+herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snippet is het recept als script.
+
+**Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
+
+---
+
 ## search_catalog
 
 Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
@@ -315,13 +342,19 @@ datacall, met de ontbrekende dimensie(s) erbij.
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `dataset_id` | string | CBS dataset-ID, bijv. `"85423NED"` |
-| `selectie` | object | `dimensies`: per dimensie een code uit `get_cbs_dimension`, een lijst codes of `"*"` (uitsplitsen); `periode`: lijst van schooljaren/periodecodes, `{"van", "tot"}` of `"*"`; `onderwerpen`: optioneel, kolomsleutels |
+| `selectie` | object | `dimensies`: per dimensie een code uit `get_cbs_dimension`, een lijst codes of `"*"` (uitsplitsen); `periode`: lijst van schooljaren/periodecodes, `{"van", "tot"}` of `"*"`; `onderwerpen`: optioneel, kolomsleutels; `sector`: optioneel, `mbo`, `hbo` of `wo`, de sector waarvoor het model de tabel bevraagt |
 
 Voorbeeld: `{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, "periode": ["2024/25"]}`.
 Schooljaarspelling (`2024/25`) wordt in code vertaald naar de CBS-periodecode (`2024SJ00`).
 Elke vergelijking in `$filter` gaat als `trim(Dimensie) eq 'code'`, omdat CBS de sleutels van een
 dimensie opvult tot één breedte (`4000   ` naast `T001038`) en gestript toont (#531).
 De rijlimiet is een beleidsregel van de server, geen modelparameter.
+
+Na de selectiepoort vraagt `tools/cbs_preflight.py` het contract van de CBS-package (`validate_selection`,
+live en gecachet) of de tabel de selectie kan leveren (#370): bestaat elke code in haar dimensie, komt de
+periode in de tabel voor, en past de code bij de opgegeven `sector` (`hbo` met `Onderwijssoort=A025297`, wo,
+is tegenstrijdig). Alleen `unsupported` houdt de datacall tegen; de weigering noemt per controle de reden en
+wat wél in de tabel staat. `unknown` (bronuitval, een dimensie die het contract niet kent) laat door.
 
 De parameter `filters` (ruwe OData, `{"$filter": …}`) bestaat nog voor bewaarde recepten
 en het herladen/verversen van oudere gesprekken, maar zit niet meer in de modelinterface.
@@ -395,6 +428,47 @@ Filtert, groepeert en aggregeert rijen uit gecachede data. Werkt voor alle datab
 | `max_rows` | integer | Maximaal aantal rijen (standaard: 500) |
 | `group_by` | array | Groeperen op deze kolommen |
 | `aggregate` | object | Aggregatiefuncties per kolom, bijv. `{"Aantal": "sum"}` |
+
+---
+
+## dataset_profiel
+
+Het profiel van een geladen tabel (#59, #61): per kolom het type, waar hij op lijkt (`identificatie`, `jaar`,
+`schooljaar`, `geocode`, `categorie`, `getal`, `datum`, `tekst`), lege en unieke cellen, bereik en kwartielen
+(meetkolommen) of de vaakste waarden, plus `dubbele_rijen_pct` en `kandidaat_sleutels`: de kleinste
+kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. `korrel` zegt het in woorden.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | Key uit een laad- of filterstap |
+
+Pure pandas (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key
+staat; op een afgekapte pagina (`volledig: false`) is het een profiel van de pagina, met waarschuwing.
+
+**Gebruik:** vóór een som of telling over een tabel waarvan het model de korrel niet zeker weet. Een som over
+een kolom buiten de korrel telt dubbel (totaalrijen naast onderdelen, meerdere resources in één bestand).
+
+---
+
+## relatie
+
+Relatielaag, stap 1 (#63): wat hangt aan wat tussen CBS, DUO en RIO, uit bestaande kennis en zonder model
+(`tools/relaties.py`). Sleutels die bronnen delen (connectoren): instellingscode (BRIN), instellingsnaam,
+gemeente, gemeentenaam, provincie, schooljaar, erkende opleiding, opleidingseenheid en aangeboden opleiding,
+elk met de kolomnamen waaronder hij voorkomt en een vaste vertaling van de waarden (`GM0344` ↔ `344`,
+`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). CBS `RegioS` wordt aan de waarden herkend.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `data_key` | string | De tabel |
+| `andere_key` | string | Optioneel: de tabel om mee te koppelen |
+
+Met één key: per sleutelkolom `koppelt_aan` (register, gebiedsindeling, RIO), `basis` (`handmatig`),
+`confidence` (1.0 voor codes met vaste vertaling, 0.8 voor namen) en `dekking` (hoeveel waarden het
+instellingsregister, de arbeidsmarktregio-indeling of de provinciecodes kennen). Met twee keys ook
+`koppelingen`: de kolomparen met dezelfde sleutel, `type` (one_to_one … many_to_many) en `overlap` van de
+genormaliseerde waarden. De tool koppelt niets; de kandidaten staan in het log (`RELATIE kandidaten=…`,
+zonder waarden) en de koppeling zelf is een stap in `query_data` of `run_analysis`.
 
 ---
 

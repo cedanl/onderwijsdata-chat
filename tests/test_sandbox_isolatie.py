@@ -60,10 +60,34 @@ def test_globals_probe_wordt_geweigerd(data):
         "result = dict(pd.io.common.os.environ)",
         "result = pd.compat.sys.version if len(df) else 0",
         "result = np.lib.npyio.os.getcwd() if len(df) else 0",
+        # #443: pandas lost `@naam` in df.query/df.eval, en elke naam in pd.eval, op in de variabelen van het
+        # script: dezelfde modules, nu in een string. Audit 12 vond zo os.getpid().
+        "result = int(df.eval('@pd.io.common.os.getpid()'))",
+        "result = len(df.query('N > 0 and @pd.io.common.os.getpid() > 0'))",
+        "result = int(pd.eval('pd.io.common.os.getpid()')) + 0 * len(df)",
+        "result = str(df.eval('@pd.compat.sys.version'))",
+        "result = str(df.eval('@pd.io.common.os.environ[\"HOME\"]'))",
+        "result = str(df.eval('@np.lib.npyio.os.getcwd()'))",
+        "expressie = '@pd.io.common.os.getpid()'\nresult = int(df.eval(expressie))",
+        "result = len(df.eval('@pd . io . common . os . environ'))",
     ],
 )
 def test_ast_laag_weigert_ontsnappingsroutes(data, code):
     assert "niet toegestaan" in run_analysis(code=code, data_key=data).lower()
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "drempel = 1200\nresult = len(df.query('N > @drempel'))",
+        "result = len(df.query('`N` > 1200'))",
+        "result = {'contact': 'data@voorbeeld.nl', 'n': len(df)}",
+        "result = {'tekst': 'Instelling (zie os.html) telt', 'n': len(df)}",
+    ],
+)
+def test_ast_laag_laat_pandas_expressies_met_variabelen_en_gewone_tekst_toe(data, code):
+    """Een `@variabele` of een kolomnaam in backticks is gewoon pandas; een `@` of een punt in tekst ook (#443)."""
+    assert "niet toegestaan" not in run_analysis(code=code, data_key=data).lower()
 
 
 def test_ast_laag_laat_pandas_hulpfuncties_toe(data):

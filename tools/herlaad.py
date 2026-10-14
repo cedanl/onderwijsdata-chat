@@ -21,9 +21,17 @@ from . import store
 from .catalog import catalogus_laatste_update
 from .cbs import get_cbs_data
 from .duo import get_duo_data
+from .maten import get_maat
 from .query import query_data
 from .rio import get_rio_data
-from .schemas import TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
+from .schemas import (
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_MAAT,
+    TOOL_GET_RIO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +65,7 @@ def recept(key: str, call: dict) -> dict | None:
     if naam == TOOL_RUN_ANALYSIS:
         # Zonder script: modelcode wordt in deze stap niet bewaard (#472).
         return {"afgeleid_van": known.afgeleid_van if known else None, "stap": STAP_ANALYSE, "herlaadbaar": False}
-    if known is None or (naam not in _LADERS and naam != TOOL_QUERY_DATA):
+    if known is None or (naam not in _LADERS and naam not in (TOOL_QUERY_DATA, TOOL_GET_MAAT)):
         return None
     if known.laad:
         tool, args = known.laad
@@ -65,6 +73,14 @@ def recept(key: str, call: dict) -> dict | None:
     if naam == TOOL_QUERY_DATA and known.afgeleid_van:
         args = {k: v for k, v in (call.get("arguments") or {}).items() if k != "data_key"}
         return {"afgeleid_van": known.afgeleid_van, "tool": TOOL_QUERY_DATA, "args": args, "stap": known.stap}
+    if naam == TOOL_GET_MAAT and known.afgeleid_van:
+        # Het recept laadt en selecteert zelf (#188): de aanroep opnieuw doen geeft dezelfde key.
+        return {
+            "afgeleid_van": known.afgeleid_van,
+            "tool": TOOL_GET_MAAT,
+            "args": dict(call.get("arguments") or {}),
+            "stap": known.stap,
+        }
     return None
 
 
@@ -101,6 +117,8 @@ def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> He
         return _laad(key, recept["laad"])
     if recept.get("tool") == TOOL_QUERY_DATA and recept.get("herlaadbaar", True):
         return _selecteer(key, recept, recept_van, stappen)
+    if recept.get("tool") == TOOL_GET_MAAT:
+        return _hermaat(key, recept)
     return Herlaadresultaat(key, gelukt=False, melding=_onherhaalbaar(key, recept.get("stap")))
 
 
@@ -153,6 +171,26 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
         reden = _reden(uitkomst) or "geen data."
         return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
     # Ook op een ouder die live werd geladen: die is van ná het antwoord waar deze selectie onder stond.
+    markeer(key)
+    return _terug(key)
+
+
+def _hermaat(key: str, recept: dict) -> Herlaadresultaat:
+    """Een vaste maat (#188) opnieuw: get_maat laadt de bron en selecteert zelf, met dezelfde key als uitkomst."""
+    args = recept.get("args")
+    if not isinstance(args, dict):
+        return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
+    try:
+        uitkomst = get_maat(**args)
+    except Exception as e:  # argumenten die get_maat niet (meer) aanneemt
+        logger.warning("herladen %s via get_maat mislukt: %s", key, foutkenmerk(e))
+        logger.debug("herladen %s via get_maat mislukt: %r", key, e)
+        uitkomst = ""
+    if store.get(key) is None:
+        stap = recept.get("stap") or "vaste maat"
+        return Herlaadresultaat(
+            key, gelukt=False, bronfout=True, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {_reden(uitkomst)}"
+        )
     markeer(key)
     return _terug(key)
 

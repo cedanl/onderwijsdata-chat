@@ -13,11 +13,12 @@ from tools import LABELS, SCHEMAS
 from tools.schemas import TOOL_CLARIFY_SCOPE, TOOL_SUGGEST_FOLLOW_UPS
 
 from . import manifest, vervolgvragen
-from .aanspreekvorm import je_vorm
+from .aanspreekcontrole import overgebleven_u_vorm
+from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
-from .bronvermelding import bronnen_van, zonder_bronnensectie, zonder_eigen_bronnen
+from .bronvermelding import bronnen_van, buiten_bronnensectie, zonder_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
@@ -36,6 +37,7 @@ from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
+from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys, ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
@@ -283,6 +285,7 @@ def _antwoordcontrole(
         return list(dict.fromkeys(ongedekt(n) for n in gevonden))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
+        leestekst = _leestekst(text)
         # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
         # ingehouden (#207).
         controles = [
@@ -303,7 +306,9 @@ def _antwoordcontrole(
             (ongedekte_oorzaak, (text, tool_results), False),
             (ontbrekende_grafiek, (vraag, text, tool_results, session.get("data_keys", [])), False),
             (metatekst, (text,), False),
-            (verkeerde_antwoordtaal, (vraag, _leestekst(text)), False),
+            (verkeerde_antwoordtaal, (vraag, leestekst), False),
+            # Op de tekst na de omzetting naar de je-vorm, zoals in _antwoordtekst (#536).
+            (overgebleven_u_vorm, (leestekst, taal(leestekst)), False),
         ]
         problemen: list[str] = [
             p
@@ -335,6 +340,9 @@ async def _intrekken(emit: Emit, problems: list[str]) -> None:
 async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, figure) -> None:
     record_data_key(session, result, {"name": call.name, "arguments": call.args})
     record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
+    if figure is not None:
+        # De figuur gaat met haar rijen naar de client (export, #183): herkomst in het log (#169).
+        log_publicatie(FIGUUR, [k for k in ((call.args or {}).get("data_key"),) if isinstance(k, str)])
     await _handle_figure(call.name, figure, session, emit)
 
 
@@ -364,11 +372,12 @@ async def _vroeg_einde(
 def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
     """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling.
 
-    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326); de taal komt van
-    `_antwoordtaal`, net als in de controle."""
+    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536);
+    de taal komt van `_antwoordtaal`, net als in de controle. Een eigen Bronnen-sectie die blijft, citeert
+    brontitels: daar blijft een u-vorm staan."""
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
     if _antwoordtaal(antwoord) != "en":
-        tekst = nl_notatie(tekst, result.steps, earlier)
+        tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier), in_je_vorm)
     return met_telling(tekst, result.tool_results)
 
 
@@ -554,5 +563,7 @@ async def run(
     # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
     mani = manifest.bouw(chosen_model, data_keys(result.tool_results), model_versie=result.model_versie)
     gekozen = await _vervolgvragen(result, text_content, last_user_msg, session)
+    if text_content not in _ZONDER_BRONNEN:
+        log_publicatie(ANTWOORD, data_keys(result.tool_results), mani)
     await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani, vervolgvragen=gekozen))
     return text_content

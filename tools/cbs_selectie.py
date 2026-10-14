@@ -10,7 +10,8 @@ beleidsregel (`CBS_ROW_LIMIT`), geen modelparameter.
 De volledigheidspoort zit vóór het laden: een selectie waarin een dimensie noch
 gepind noch bewust uitgesplitst is, komt niet binnen; de weigering noemt wat
 ontbreekt. Periodespelling loopt via tools/periode.py (#342); kolomsleutels toetst
-get_cbs_data zelf al (geen tweede controle). Zie ADR-006.
+get_cbs_data zelf al (geen tweede controle). Of de tabel de codes, de periode en de
+sector ook kan leveren, vraagt `cbs_preflight` daarna aan het contract (#370). Zie ADR-006.
 
 Elke vergelijking gaat als `trim(Dimensie) eq 'code'`: CBS vult de sleutels van een
 dimensie op tot één breedte ('4000   ' naast 'T001038') en de feed en get_cbs_dimension
@@ -20,19 +21,22 @@ tonen ze gestript, zodat de kale code zonder trim niets matcht (#531).
 from . import periode
 
 ALLES = "*"
-_SLEUTELS = ("dimensies", "periode", "onderwerpen")
+_SLEUTELS = ("dimensies", "periode", "onderwerpen", "sector")
+# De sector waarvoor het model de tabel bevraagt; het contract houdt de codes ertegen (cbs_preflight, #370).
+SECTOREN = ("mbo", "hbo", "wo")
 # CBS noemt de tijddimensie vrijwel altijd Perioden; alleen als DataProperties uitvalt
 # (geen poort, wel compilatie) wordt op die naam teruggevallen.
-_TIJDDIMENSIE_FALLBACK = "Perioden"
+TIJDDIMENSIE_FALLBACK = "Perioden"
 
 _UITLEG = (
     "Geef een selectie met 'dimensies' (per dimensie een code uit get_cbs_dimension, een lijst codes, "
     f"of '{ALLES}' om uit te splitsen), 'periode' (lijst van schooljaren of periodecodes, "
-    f"{{'van': …, 'tot': …}}, of '{ALLES}') en optioneel 'onderwerpen' (kolomsleutels)."
+    f"{{'van': …, 'tot': …}}, of '{ALLES}'), optioneel 'onderwerpen' (kolomsleutels) en optioneel 'sector' "
+    "('mbo', 'hbo' of 'wo': de sector waarvoor je de tabel bevraagt)."
 )
 
 
-def _dimensienamen(col_defs: dict) -> tuple[list[str], str | None]:
+def dimensienamen(col_defs: dict) -> tuple[list[str], str | None]:
     """(gewone dimensies, tijddimensie) uit DataProperties."""
     tijd = next((kolom for kolom, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     dims = [kolom for kolom, d in col_defs.items() if d.get("type", "").endswith("Dimension") and kolom != tijd]
@@ -62,7 +66,7 @@ def _clausule(dimensie: str, waarde) -> str | None:
     return "(" + " or ".join(_gelijk(dimensie, code) for code in codes) + ")"
 
 
-def _periodecodes(opgave) -> list[str] | str:
+def periodecodes(opgave) -> list[str] | str:
     """De CBS-periodecodes van een periodeopgave; een foutmelding als er spelling buiten
     het vocabulaire in zit."""
     if isinstance(opgave, dict):
@@ -98,7 +102,7 @@ def _poort(dataset_id: str, dimensies: dict, heeft_periode: bool, col_defs: dict
     openblijft, telt later dubbel of maakt rijen ononderscheidbaar (#162). Daarom komt een
     onvolledige selectie niet binnen, vóór er een datacall de deur uitgaat.
     """
-    dims, tijd = _dimensienamen(col_defs)
+    dims, tijd = dimensienamen(col_defs)
     onbekend = [naam for naam in dimensies if naam not in dims and naam != tijd]
     if onbekend:
         return (
@@ -131,16 +135,18 @@ def compileer(dataset_id: str, selectie, col_defs: dict | None) -> dict | str:
         return f"De selectie voor {dataset_id} is geen object. {_UITLEG}"
     if onbekend := sorted(set(selectie) - set(_SLEUTELS)):
         return f"Onbekende sleutel(s) in de selectie: {', '.join(onbekend)}. {_UITLEG}"
+    if (sector := selectie.get("sector")) is not None and sector not in SECTOREN:
+        return f"'sector' is 'mbo', 'hbo' of 'wo', niet {sector!r}. {_UITLEG}"
     dimensies = selectie.get("dimensies") or {}
     if not isinstance(dimensies, dict):
         return f"'dimensies' moet een object zijn (dimensie → code, lijst of '{ALLES}'). {_UITLEG}"
     heeft_periode = "periode" in selectie
 
-    tijd = _TIJDDIMENSIE_FALLBACK
+    tijd = TIJDDIMENSIE_FALLBACK
     if col_defs:
         if fout := _poort(dataset_id, dimensies, heeft_periode, col_defs):
             return fout
-        _, tijd = _dimensienamen(col_defs)
+        _, tijd = dimensienamen(col_defs)
 
     clausules = []
     for naam in sorted(dimensies):
@@ -151,7 +157,7 @@ def compileer(dataset_id: str, selectie, col_defs: dict | None) -> dict | str:
             clausules.append(clausule)
 
     if heeft_periode and selectie["periode"] != ALLES and tijd:
-        codes = _periodecodes(selectie["periode"])
+        codes = periodecodes(selectie["periode"])
         if isinstance(codes, str):
             return codes
         if len(codes) == 1:

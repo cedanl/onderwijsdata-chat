@@ -19,14 +19,14 @@ import { scoreResult } from './score.js'
 import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
 import { nieuweMatrix, rapport, voegToe } from './matrix.js'
 import { WebSocket } from 'ws'
-import { WS_URL, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
+import { BASE_URL, WS_URL, inloggegevens, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // De referentiewaarden van een bronwaarheid-case komen uit ijkwaarden.json, niet uit de eval zelf (#190).
 const IJK = laadIjkwaarden()
 const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations.map(ev => metIjkwaarden(ev, IJK))
 
-const API = 'http://localhost:8000'
+const API = BASE_URL
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
 const REPEATS = Math.max(1, Number(process.env.TEST_REPEATS) || 1)
 const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
@@ -93,7 +93,7 @@ async function getToken() {
   const resp = await fetch(`${API}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'admin', password: 'admin' }),
+    body: JSON.stringify(inloggegevens()),
   })
   return (await resp.json()).token
 }

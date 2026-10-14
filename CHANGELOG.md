@@ -29,6 +29,16 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- Ketenbrede controle los van `/health` en `/ready` (#169). Elk gepubliceerd resultaat (antwoord, figuur, CSV-export,
+  rapport) schrijft één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
+  selectie), volledigheid, afronding en herlaaddatum, en de versies uit het manifest (model, prompt, catalogus, app);
+  het tijdstip is dat van de regel, de selectiestappen in woorden staan op DEBUG, geen vraag- of antwoordtekst. De
+  eval-runner draait nu ook tegen een draaiende omgeving: `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` in
+  plaats van `localhost` en `admin/admin`, met `playwright.eval.config.js` zonder webserver en browser. De nieuwe
+  CI-job `eval:bronwaarheid` (gepland of met de hand, informatief) draait de bronwaarheid-evals tegen de testomgeving
+  en bewaart `eval_results/` 90 dagen als artifact. De runner heeft nu een eigen `package.json` met vastgezette
+  versies van Playwright en `ws`. `docs/kwaliteit-en-veiligheid.md` zegt welke garanties code afdwingt en welke
+  regels de prompt alleen vraagt.
 - Bronwaarheid-evals met onafhankelijke ijkwaarden (#190): `scripts/ijkwaarden.py` haalt 21 referentiewaarden
   rechtstreeks bij CBS (OData via httpx), DUO en RIO (`riodata`) op, buiten `tools/` om, en legt ze met bron,
   selectie, eenheid, schooljaar, CBS-status en ophaaldag vast in `tests/e2e/ijkwaarden.json`; zonder `--schrijf`
@@ -82,6 +92,28 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Nieuwe tool `get_maat` (#188): vaste recepten voor de gewone telvragen. Het model kiest de maat
+  (`ingeschreven_personen_ho`, `inschrijvingen_ho`, `eerstejaars_ho`, `deelnemers_ho_landelijk`,
+  `mbo_studenten_instelling`) en de afbakening (instelling of sector, vorm, schooljaren); de code lost de
+  instelling op in het register, kiest het DUO-bestand (het opleidingsvorm-bestand per sector) of de CBS-codes,
+  vertaalt vorm en schooljaar naar de spelling van de bron en laadt en selecteert met dezelfde tools als anders.
+  Eén rij per studiejaar, met teldefinitie en het recept erbij; een onbekende instelling, maat of vorm is een fout,
+  geen gok. "Studenten" is standaard personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met
+  vermelding. De prompt zet `get_maat` vóór `search_catalog`; een key uit `get_maat` komt na een herstart terug
+  door het recept opnieuw te draaien, en de snippet is het recept als script.
+- Nieuwe tool `dataset_profiel(data_key)` (#59, #61): het profiel van een geladen tabel zonder model. Per kolom het
+  type, waar hij op lijkt (identificatie, jaar, schooljaar, geocode, categorie, getal, datum, tekst), lege en
+  unieke cellen, bereik en kwartielen of de vaakste waarden; voor de tabel het aandeel dubbele rijen en de
+  korrel: de kleinste kolomcombinaties (tot drie kolommen) die elke rij apart aanwijzen. Pure pandas
+  (`tools/profiel.py`), één keer per key berekend en onthouden zolang dezelfde data onder die key staat. De
+  prompt zet het in vóór een som of telling over een tabel waarvan de korrel niet zeker is.
+- Nieuwe tool `relatie(data_key, andere_key)` (#63, relatielaag stap 1): wat hangt aan wat tussen CBS, DUO en
+  RIO, uit bestaande kennis en zonder model. Per sleutelkolom van een geladen tabel (instellingscode, naam,
+  gemeente, provincie, schooljaar, opleidingscode) wat eraan hangt (instellingsregister, CBS-gebiedsindeling,
+  RIO) en hoeveel waarden de naslag kent; met een tweede tabel de kolommen die dezelfde sleutel dragen, de
+  vertaling van de waarden (`GM0344` ↔ `344`, `2021SJ00` ↔ `2021`), de kardinaliteit en de overlap. Elke
+  uitkomst heeft `basis` en `confidence`. De tool koppelt niets; de prompt laat het model hem vragen vóór het
+  twee bronnen combineert, en zonder gedeelde sleutel per bron apart antwoorden.
 - Het antwoord is in de taal van de vraag en een Nederlands antwoord schrijft decimalen met een komma
   (#326). Een Engelse vraag kreeg soms een Nederlands antwoord (audit 12); nu zegt de code het model in welke
   taal het antwoordt, en een antwoord dat duidelijk in de andere taal is, krijgt één herkansing. Bij een
@@ -91,6 +123,17 @@ de laatste tag is 1.8.6.
   leest 12,345 daar als twaalfduizend, zodat zo'n getal zonder bron ook opvalt. Een percentage met een
   decimale punt (9.5%) toetst de controle nu als percentage, zoals het getoond wordt (9,5%). Vaste teksten
   uit de app (weigering, ingehouden antwoord, verduidelijkingskaart, meldingen) blijven Nederlands.
+- Het antwoord, het rapport en de meldingen spreken je aan met je, niet met u (#536, uitvoering van besluit
+  #326). In één gesprek stond "het getal dat u noemt" naast "je" (testronde 13 oktober); alleen de
+  verduidelijkingskaart werd omgezet. Nu zet de code ook het eindantwoord, de conclusie, reikwijdte en
+  grafiektekst van een rapport en de meldingen onder een antwoord per zin om: "dat u noemt" wordt "dat je
+  noemt", "U kunt" wordt "Je kunt", "jullie instelling" wordt "je instelling". Alleen werkwoorden uit een
+  vaste lijst gaan om; een zin met een u-vorm die niet zeker om te zetten is, blijft zoals hij was (liever u
+  dan kapot Nederlands). Code, links, HTML, de eigen bronnenlijst van het model en de onderzoeksvraag,
+  titel, definities en bronnen van een rapport blijven ongemoeid. Blijft er na de omzetting een u-vorm over,
+  dan krijgt het model één herkansing; blijft hij daarna, dan staat er "Let op" onder het antwoord, of krijgt
+  het rapport een waarschuwing. Een Engels antwoord blijft ongemoeid. Het besluit en de aanpak staan in
+  "Kwaliteit & veiligheid".
 - Een vraag met een open slot krijgt haar verduidelijkingskaart nu uit code, vóór het model (#348). Een
   telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten
   heeft Utrecht?") vraagt instelling of woonplaats, met de instellingen uit het register als opties (de
@@ -133,6 +176,13 @@ de laatste tag is 1.8.6.
 - `cbs:85423NED`, `cbs_85423ned` en `85423NED` zijn in `dataset_details`, `get_cbs_data` en
   `get_cbs_dimension` dezelfde tabel: het contract-ID van de package en de spelling van een model of een
   bewaard recept komen op één plek terug op het bron-ID (#370).
+- Server-side preflight op het CBS-contract (#370): na de selectiepoort vraagt `get_cbs_data` aan
+  `validate_selection` van de CBS-package of de tabel de selectie kan leveren: bestaat elke code in haar
+  dimensie, komt de periode in de tabel voor, en past de code bij de sector waarvoor het model de tabel
+  bevraagt (nieuw, optioneel: `selectie.sector`, `mbo`/`hbo`/`wo`; `hbo` met de wo-code `A025297` is
+  tegenstrijdig). Alleen een `unsupported`-oordeel houdt de datacall tegen, met per controle de reden en wat
+  wél in de tabel staat (`2031/32` → de perioden die er zijn); bronuitval of een onbekende dimensie laat door.
+  Een tijddimensie naast `periode` werd al vóór het contract geweigerd.
 - Het model schrijft geen OData meer voor CBS (#343, ADR-006). `get_cbs_data` krijgt een gesloten
   `selectie` — per dimensie een code uit `get_cbs_dimension` of `"*"` om uit te splitsen, de periode
   als lijst of bereik (schooljaarspelling wordt in code vertaald), onderwerpen als kolomsleutels — en
@@ -431,6 +481,15 @@ de laatste tag is 1.8.6.
   gesprek; een nieuwe poging bouwt erop voort.
 
 ### Beheer
+- De DUO-domeinregels staan in één bestand, `data/domeinregels.toml` (#363): de −1-sentinel, de correcties op
+  kolombeschrijvingen, de ho-bestanden waarvan de plaats de vestiging is en de OPLEIDINGSVORM-codes. Elke regel
+  heeft een id, een bron en een controledatum. Een databeheerder wijzigt een regel met een MR op dat bestand,
+  zonder Python; de tests lopen vanzelf over elke regel en tonen dat de dataset en kolom in de gepinde catalogus
+  staan en dat de regel in de tools zichtbaar is. Een nieuwe of gewijzigde kolomcorrectie of herkomstregel
+  verandert de catalogus, dus hoort er een nieuwe meting van de retrieval-baseline in dezelfde MR. Een ongeldig
+  bestand laadt niet, met een melding die de regel noemt, en de app start dan niet; zo weigert het laden ook een
+  regeleinde of onzichtbaar teken in een tekst die de tools doorgeven (alleen de bron mag over meer regels
+  lopen). Het gedrag van de chat verandert niet. Uitleg: `docs/domeinregels.md`.
 - Feedback per antwoord (👍/👎) van een verwijderd gesprek hangt niet meer aan de gebruiker (#476, privacy M2):
   gesprek verwijderen zet in `answer_feedback` de gebruikersnaam op `verwijderd` en het gesprek-id op een willekeurige
   waarde (één per verwijderd gesprek). Oordeel, toelichting en trace blijven voor het team, ook in
@@ -445,7 +504,12 @@ de laatste tag is 1.8.6.
   bereiken is (`pd.io.common.os`, `pd.compat.sys`, #443): `os.getpid()`, `os.getcwd()` en `os.environ` waren zo
   nog bereikbaar, al draait het script in een eigen proces zonder omgeving, netwerk of schrijfrechten. De
   beveiligingsdocumentatie beschrijft nu de twee lagen zoals ze zijn, inclusief wat de sandbox niet is (geen
-  seccomp of container) en wat de pod-limieten moeten dragen.
+  seccomp of container) en wat de pod-limieten moeten dragen. Dezelfde regel geldt nu ook in een string: pandas
+  lost `@naam` in `df.query`/`df.eval` en elke naam in `pd.eval` op in de variabelen van het script, en
+  `df.eval('@pd.io.common.os.getpid()')` gaf het pid, de werkmap en de (lege) omgeving van het kindproces terug.
+  Zo'n expressie wordt op dezelfde tokens geweigerd; een `@variabele` of een kolomnaam in backticks blijft gewoon
+  pandas. De testomgeving krijgt dezelfde pod-limieten als playground (2 GiB, 1 CPU): met de chartstandaard van
+  1 GiB zou een script dat de 1 GiB van het kindproces benut de hele server laten stoppen.
 - De SRAM-gebruikerscache (naam, e-mail, organisatie per ingelogde gebruiker, voor na een herlaad van de pagina)
   is begrensd (#487, privacy M4): een rij vervalt na `SESSION_MAX_HOURS` en boven duizend gebruikers gaat de
   langst niet gebruikte eruit. Eerder groeide ze tot een herstart. De keuze voor `sub` als sleutel en gehashte

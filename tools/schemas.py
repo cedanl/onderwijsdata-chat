@@ -5,8 +5,11 @@ from data.arbeidsmarkt import SECTOR_CLUSTER_MAP
 
 # ── Tool name constants ──────────────────────────────────────────────
 TOOL_SEARCH_CATALOG = "search_catalog"
+TOOL_GET_MAAT = "get_maat"
 TOOL_DATASET_DETAILS = "dataset_details"
 TOOL_DATASET_COUNTS = "dataset_counts"
+TOOL_DATASET_PROFIEL = "dataset_profiel"
+TOOL_RELATIE = "relatie"
 TOOL_CLARIFY_SCOPE = "clarify_scope"
 TOOL_GET_CBS_DATA = "get_cbs_data"
 TOOL_GET_CBS_DIMENSION = "get_cbs_dimension"
@@ -23,6 +26,57 @@ TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_SUGGEST_FOLLOW_UPS = "suggest_follow_ups"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_MAAT,
+            "description": (
+                "Vaste maat uit een vast recept: jij kiest de maat en de afbakening, de code kiest dataset, bestand "
+                "en codes. Gebruik dit vóór search_catalog voor een telling van studenten, inschrijvingen of "
+                "eerstejaars per hbo/wo-instelling, mbo-studenten per instelling, of ingeschrevenen hbo/wo landelijk. "
+                "'Studenten' is ingeschreven_personen_ho (personen); inschrijvingen_ho alleen als de gebruiker om "
+                "inschrijvingen vraagt. Geeft een data_key met één rij per studiejaar, de teldefinitie en het recept; "
+                "query_data, compute_kpi en create_plot werken er gewoon mee. Een onbekende instelling of maat is "
+                "een fout, geen gok."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "maat": {
+                        "type": "string",
+                        "enum": [
+                            "ingeschreven_personen_ho",
+                            "inschrijvingen_ho",
+                            "eerstejaars_ho",
+                            "deelnemers_ho_landelijk",
+                            "mbo_studenten_instelling",
+                        ],
+                        "description": "De maat; zie de beschrijving van de tool.",
+                    },
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de instelling (hbo, wo of mbo); niet bij een landelijke maat.",
+                    },
+                    "sector": {
+                        "type": "string",
+                        "enum": ["hbo", "wo"],
+                        "description": "Alleen bij deelnemers_ho_landelijk: hbo of wo.",
+                    },
+                    "vorm": {
+                        "type": "string",
+                        "enum": ["alle", "voltijd", "deeltijd", "duaal", "bol", "bbl"],
+                        "description": "Opleidingsvorm (ho) of leerweg (mbo); standaard alle.",
+                    },
+                    "schooljaren": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Schooljaren als 2024/25 (of het startjaar 2024); weglaten voor alle beschikbare.",
+                    },
+                },
+                "required": ["maat"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -104,7 +158,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                             "De selectie. 'dimensies': per dimensie een code uit get_cbs_dimension, een lijst "
                             "codes, of '*' om uit te splitsen. 'periode': lijst van schooljaren of "
                             "periodecodes, {'van': …, 'tot': …} als bereik, of '*'. 'onderwerpen': optioneel, "
-                            "alleen deze kolomsleutels. Bijv. "
+                            "alleen deze kolomsleutels. 'sector': optioneel, 'mbo', 'hbo' of 'wo', de sector waarvoor "
+                            "je de tabel bevraagt; een code van een andere sector wordt dan geweigerd. Bijv. "
                             '{"dimensies": {"Geslacht": "T001038", "Opleidingsfase": "*"}, '
                             '"periode": ["2024/25"]}'
                         ),
@@ -126,6 +181,45 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dimension_name": {"type": "string", "description": "Naam van de dimensie, bijv. 'Geslacht'"},
                 },
                 "required": ["dataset_id", "dimension_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_DATASET_PROFIEL,
+            "description": (
+                "Profiel van een geladen tabel (data_key): per kolom type, waar hij op lijkt (identificatie, jaar, "
+                "schooljaar, geocode, categorie, getal), lege en unieke cellen, bereik en vaakste waarden, plus de "
+                "korrel: de kolomcombinatie die elke rij apart aanwijst. Gebruik dit vóór een som of telling over "
+                "een tabel waarvan je de korrel niet zeker weet: een som over een kolom buiten de korrel telt dubbel."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"data_key": {"type": "string", "description": "data_key uit een laad- of filterstap"}},
+                "required": ["data_key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_RELATIE,
+            "description": (
+                "Wat hangt aan wat tussen CBS, DUO en RIO. Met één data_key: per sleutelkolom (instellingscode, "
+                "instellingsnaam, gemeente, provincie, schooljaar, opleidingscode) wat eraan hangt en hoeveel "
+                "waarden het register of de gebiedsindeling kent. Met andere_key: de kolommen die beide tabellen "
+                "als dezelfde sleutel dragen, hoe hun waarden vertalen (GM0344 is gemeente 344, 2021SJ00 is "
+                "schooljaar 2021), de kardinaliteit en de overlap. Koppelt zelf niets: gebruik de uitkomst in "
+                "query_data of run_analysis. Vraag dit vóór je twee bronnen combineert."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data_key": {"type": "string", "description": "data_key van de tabel"},
+                    "andere_key": {"type": "string", "description": "data_key van de tabel om mee te koppelen"},
+                },
+                "required": ["data_key"],
             },
         },
     },

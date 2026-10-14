@@ -1,0 +1,186 @@
+# Domeinregels voor DUO-data (#363)
+#
+# Regels die de tools afdwingen, elk met zijn bron. Een regel toevoegen of wijzigen is een bewerking
+# van dit bestand, geen Python: core/domeinregels.py laadt en controleert het, en de tests in
+# tests/test_domeinregels.py lopen over elke regel. Uitleg per veld: docs/domeinregels.md.
+#
+# Elke regel heeft:
+#   id             uniek in dit bestand
+#   bron           waar de regel vandaan komt: documentatie, URL of de passage uit de data
+#   gecontroleerd  de datum waarop de regel tegen die bron is nagegaan, zonder aanhalingstekens
+#
+# Alle teksten behalve bron staan op één regel tussen "…": het laden weigert een regeleinde, tab of
+# onzichtbaar teken. Een bron mag over meer regels lopen, tussen """…""".
+#
+# Een nieuwe of gewijzigde kolomcorrectie of herkomstregel verandert de catalogus: meet dan ook de
+# retrieval-baseline opnieuw (stap 4 in docs/domeinregels.md).
+#
+# Een ongeldig bestand laadt niet en de app start dan niet: er is geen stille terugval.
+
+
+# --- Onderdrukte cellen ---------------------------------------------------------------------------
+
+[sentinel]
+id = "duo-onderdrukte-cel"
+# Celwaarden die geen telwaarde zijn maar een onderdrukte cel. De app maakt ze leeg en meldt ze.
+waarden = [-1]
+# Wat -1 betekent, in de woorden die tool-output en snippets delen (#244).
+betekenis = "onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde"
+# Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel: een kolom
+# waarvan de naam (in hoofdletters) een van deze delen bevat, blijft ongemaskeerd. Niet beperken tot
+# AANTAL*-kolommen: DUO kent pivot-datasets waarin de telling in de kolomnaam zit (DIPMAN2023,
+# JAAR_2022 — zie prompts/system.md), en die zouden dan ongemaskeerd blijven.
+uitgezonderd_als_kolom_bevat = ["MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA"]
+bron = """
+DUO-datasetbeschrijving van o.a. mbo-studenten-per-instelling, instromende-mbo-studenten en
+gediplomeerde-mbo-studenten (riodata-catalogus): "In het kader van statistische beveiliging zijn alle
+cellen met kleine aantallen (1, 2, 3, of 4) zijn vervangen door ‘-1’." Toen alleen de store maskeerde,
+toonde het dashboard -1 studenten (#228) en gaf de snippet andere getallen dan de app (#227).
+De uitgezonderde kolommen zijn een keuze van de chat, geen DUO-tekst: in een mutatie, saldo of groei
+kan -1 een echte waarde zijn.
+"""
+gecontroleerd = 2026-10-14
+
+
+# --- Opleidingsvorm in het hoger onderwijs --------------------------------------------------------
+
+[opleidingsvorm]
+id = "ho-opleidingsvorm-codes"
+# Alleen deze bestanden noemen de codes; elders betekent OPLEIDINGSVORM iets anders (#371).
+datasets = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
+codes = { VT = "voltijd", DT = "deeltijd", DU = "duaal" }
+bron = """
+DUO-datasetbeschrijving van p01hoinges, p02ho1ejrs, p03hoinschr en p04hogdipl (riodata-catalogus):
+"De betekenis van de waarden in het attribuut OPLEIDINGSVORM is VT voltijd onderwijs, DT deeltijd
+onderwijs en DU duaal onderwijs." mbo_opleidingsaanbod gebruikt bijv. KLASSIKAAL (#371). Zonder
+definitie raadde een model 'DT = duaal-tijd' (#172).
+"""
+gecontroleerd = 2026-10-14
+
+
+# --- Correcties op kolombeschrijvingen (#451) ------------------------------------------------------
+#
+# De riodata-glossary geeft een kolomnaam één betekenis voor alle bestanden, en DUO's eigen metadata
+# is op plekken leeg. Een correctie gaat voor op riodata, in get_duo_data én in dataset_details.
+
+[[kolomcorrectie]]
+id = "ho-provincienaam-is-vestiging"
+datasets = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
+kolom = "PROVINCIENAAM"
+definitie = "Provincie van de vestiging waar de instelling de opleiding geeft; niet de woonplaats of herkomst van de student."
+bron = """
+Nagegaan in de data van p01-p04: per instelling 1 tot 9 gemeenten (Hogeschool Utrecht: Utrecht,
+Amersfoort en drie kleine locaties), geen honderden woongemeenten: de plaats is de vestiging.
+riodata noemde PROVINCIENAAM "Naam van de provincie", waarna het model de vestiging las als woonplaats.
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "ho-gemeentenaam-is-vestiging"
+datasets = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
+kolom = "GEMEENTENAAM"
+definitie = "Gemeente van de vestiging waar de instelling de opleiding geeft; niet de woonplaats of herkomst van de student."
+bron = """
+Nagegaan in de data van p01-p04: per instelling 1 tot 9 gemeenten (Hogeschool Utrecht: Utrecht,
+Amersfoort en drie kleine locaties), geen honderden woongemeenten: de plaats is de vestiging.
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "ho-gemeentenummer-is-vestiging"
+datasets = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
+kolom = "GEMEENTENUMMER"
+definitie = "CBS-gemeentecode van de vestigingsgemeente (zie GEMEENTENAAM); niet de woonplaats of herkomst van de student."
+bron = """
+Nagegaan in de data van p01-p04: per instelling 1 tot 9 gemeenten (Hogeschool Utrecht: Utrecht,
+Amersfoort en drie kleine locaties), geen honderden woongemeenten: de plaats is de vestiging.
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "p04-diplomajaar"
+datasets = ["p04hogdipl"]
+kolom = "DIPLOMAJAAR"
+definitie = "Jaar waarin het hoger-onderwijsdiploma uit SOORT_DIPLOMA is behaald; DUO publiceert de laatste vijf diplomajaren. Niet het jaar van een vooropleidingsdiploma. DUO legt niet vast of het een kalenderjaar of een studiejaar is: noem het 'diplomajaar 2023', niet studiejaar 2023/24."
+bron = """
+Nagegaan in p04hogdipl: SOORT_DIPLOMA heeft alleen de waarden hbo associate degree/bachelor/master
+en wo bachelor/master/postmaster, en de DUO-selectie telt "hoofd-bachelor-diploma" enz.: het behaalde
+ho-diploma. DIPLOMAJAAR loopt 2020-2024, "de laatste vijf diplomajaren". riodata noemde DIPLOMAJAAR het
+jaar van het vooropleidingsdiploma. DUO legt niet vast of het een kalender- of studiejaar is; live werd
+diplomajaar 2023 als studiejaar 2023/24 gelezen (CH-41, #464).
+"""
+gecontroleerd = 2026-10-09
+
+[[kolomcorrectie]]
+id = "p04-soort-diploma"
+datasets = ["p04hogdipl"]
+kolom = "SOORT_DIPLOMA"
+definitie = "Het behaalde hoger-onderwijsdiploma: hbo associate degree, hbo bachelor of hbo master in de hbo-bestanden; wo bachelor, wo master of wo postmaster in de wo-bestanden. Niet de vooropleiding."
+bron = """
+Nagegaan in p04hogdipl: SOORT_DIPLOMA heeft alleen de waarden hbo associate degree/bachelor/master
+en wo bachelor/master/postmaster, en de DUO-selectie telt "hoofd-bachelor-diploma" enz.: het behaalde
+ho-diploma. riodata noemde het "Type vooropleidingsdiploma van de student".
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "mbo-instroom-totaal-mbo"
+datasets = ["instromende-mbo-studenten"]
+kolom = "TOTAAL MBO"
+definitie = "Aantal studenten dat in het studiejaar in het mbo ingeschreven is (peildatum 1 oktober), nieuw of niet: geen instroom. De instroom staat in INSTROOM MBO en INSTROOM OPLEIDING."
+bron = """
+DUO's "Uitleg kolomnamen" bij instromende studenten mbo (duo.nl; de catalogus verwijst naar
+https://duo.nl/open_onderwijsdata/middelbaar-beroepsonderwijs/aantal-studenten/instromende-studenten-mbo.jsp).
+Nagegaan in het bestand per hoofdgroep: in elke rij zonder -1 geldt
+INSTROOM MBO <= INSTROOM OPLEIDING <= TOTAAL MBO (2025: 155k, 208k, 473k).
+riodata geeft voor deze kolom geen definitie.
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "mbo-instroom-mbo"
+datasets = ["instromende-mbo-studenten"]
+kolom = "INSTROOM MBO"
+definitie = "Studenten die nieuw in het mbo zijn: een jaar eerder geen mbo-inschrijving. In de bestanden per hoofdgroep en vooropleiding een aantal studenten; in de bestanden 'met soorten instroom' een indicator J/N, met het aantal in AANTAL."
+bron = """
+DUO's "Uitleg kolomnamen" bij instromende studenten mbo (duo.nl; de catalogus verwijst naar
+https://duo.nl/open_onderwijsdata/middelbaar-beroepsonderwijs/aantal-studenten/instromende-studenten-mbo.jsp).
+Nagegaan in het bestand per hoofdgroep: in elke rij zonder -1 geldt
+INSTROOM MBO <= INSTROOM OPLEIDING <= TOTAAL MBO (2025: 155k, 208k, 473k).
+riodata geeft voor deze kolom geen definitie.
+"""
+gecontroleerd = 2026-10-08
+
+[[kolomcorrectie]]
+id = "mbo-instroom-opleiding"
+datasets = ["instromende-mbo-studenten"]
+kolom = "INSTROOM OPLEIDING"
+definitie = "Studenten die nieuw in de beroepsopleiding zijn: een jaar eerder niet in deze opleiding ingeschreven. Telt ook overstappers binnen het mbo, en dus iedereen uit INSTROOM MBO. In de bestanden per hoofdgroep en vooropleiding een aantal studenten; in de bestanden 'met soorten instroom' een indicator J/N, met het aantal in AANTAL."
+bron = """
+DUO's "Uitleg kolomnamen" bij instromende studenten mbo (duo.nl; de catalogus verwijst naar
+https://duo.nl/open_onderwijsdata/middelbaar-beroepsonderwijs/aantal-studenten/instromende-studenten-mbo.jsp).
+Nagegaan in het bestand per hoofdgroep: in elke rij zonder -1 geldt
+INSTROOM MBO <= INSTROOM OPLEIDING <= TOTAAL MBO (2025: 155k, 208k, 473k).
+riodata geeft voor deze kolom geen definitie.
+"""
+gecontroleerd = 2026-10-08
+
+
+# --- Plaats is de vestiging, niet de herkomst (#451) -----------------------------------------------
+
+[[herkomst_is_vestiging]]
+id = "ho-plaats-is-vestiging"
+# De catalogus krijgt bij deze bestanden de melding als 'niet_geschikt_voor'.
+datasets = ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"]
+melding = "Niet geschikt voor woonplaats of herkomst van studenten: PROVINCIENAAM en GEMEENTENAAM zijn de vestiging van de instelling, niet waar de student woont."
+bron = """
+Nagegaan in de data van p01-p04: per instelling 1 tot 9 gemeenten (Hogeschool Utrecht: Utrecht,
+Amersfoort en drie kleine locaties), geen honderden woongemeenten: de plaats is de vestiging.
+"""
+gecontroleerd = 2026-10-08
+
+# Catalogusvraag = herschreven vraag. Herschreven, niet weggelaten: de vraag draagt ook de treffer op
+# 'ingeschrevenen' (gouden set, tests/test_catalog_gouden_set.py).
+[herkomst_is_vestiging.voorbeeldvragen]
+"In welke provincie wonen de meeste ingeschrevenen?" = "In welke provincie liggen de vestigingen met de meeste ingeschrevenen?"
+"In welke provincie wonen de meeste eerstejaars ingeschrevenen?" = "In welke provincie liggen de vestigingen met de meeste eerstejaars ingeschrevenen?"

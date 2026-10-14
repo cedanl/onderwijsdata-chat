@@ -70,6 +70,7 @@ nav:
     - configuratie/index.md
     - Providers & modellen: configuratie/providers.md
   - Databronnen: databronnen.md
+  - Domeinregels: domeinregels.md
   - Tools: tools.md
   - Dashboards: dashboards.md
   - API: api.md
