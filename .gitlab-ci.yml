@@ -122,7 +122,8 @@ pytest:
     - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
   script:
-    - uv sync --frozen --extra postgres
+    # mcp: zonder de extra slaan de protocoltests van tests/test_mcp_server.py over (#41).
+    - uv sync --frozen --extra postgres --extra mcp
     # Lint vóór de tests: een dubbele dict-key verborg de NHL Stenden-bug (#202, #203).
     - uv run ruff check .
     - uv run ruff format --check .

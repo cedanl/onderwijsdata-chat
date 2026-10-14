@@ -499,6 +499,13 @@ de laatste tag is 1.8.6.
 - Stuit een antwoord na alle pogingen op de rate limit, dan blijven de al opgehaalde stappen in het
   gesprek; een nieuwe poging bouwt erop voort.
 
+### MCP-server
+- De catalogus is ook vanuit een MCP-client (Claude Desktop, Cursor, VS Code) te doorzoeken, zonder de
+  chat-app: `mcp_server.py` biedt `search_catalog`, `dataset_details` en `dataset_counts` via stdio, met
+  dezelfde schema's en dezelfde uitvoering als in de chat (scopegrens mbo/hbo/wo, bron-ID's, status per
+  record). Optionele extra `mcp` (`uv sync --extra mcp`), niet in het image; geen sleutel nodig. De
+  datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
+
 ### Beheer
 - De DUO-domeinregels staan in één bestand, `data/domeinregels.toml` (#363): de −1-sentinel, de correcties op
   kolombeschrijvingen, de ho-bestanden waarvan de plaats de vestiging is en de OPLEIDINGSVORM-codes. Elke regel

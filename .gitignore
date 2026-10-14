@@ -28,11 +28,10 @@ demo/narratie.wav
 demo/source_video.mp4
 demo/demo_met_narratie.mp4
 
-# Testplan, eval en MCP server (lokaal, niet in repo)
+# Testplan en eval (lokaal, niet in repo); mcp_server.py hoort sinds #41 bij de repo
 TESTPLAN.md
 eval.py
 eval_matrix.sh
-mcp_server.py
 test-results/
 
 # SOPS secrets (plaintext templates, encrypted files)
