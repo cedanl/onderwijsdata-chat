@@ -6,12 +6,22 @@ alleen is niet genoeg, dus zet de code elk geheel getal van vier of meer cijfers
 het antwoord om naar de Nederlandse notatie: punt voor duizendtallen, de decimale
 komma blijft staan.
 
+Een Nederlands antwoord schrijft decimalen met een komma (besluit #326): 6.4 wordt 6,4.
+Een punt is een decimale punt als er één of twee, of vier of meer cijfers na staan, of als
+er 0 voor staat (0.123). Drie cijfers na de punt zijn een duizendtal (3.303, 12.345) en
+blijven staan, net als een punt in een datum, versie of code (12.03.2024, 3.14.8, v2.5,
+T0.1) en na een verwijzing als "artikel 7.13".
+
 Wat geen hoeveelheid is, blijft zoals het staat: jaartallen (dezelfde grens als de
 grondingscontrole), codes (85423NED, een voorloopnul, een getal na "CROHO" of "code",
 een cel in een kolom met zo'n kop, een getal dat de tooluitvoer van de beurt alleen als
 code geeft of dat een eerder antwoord zonder punt schreef), een postcode, al genoteerde
-getallen, een Engelse decimale punt, code, links en HTML. De grondingscontrole leest 3303
-en 3.303 als hetzelfde getal, dus ze vindt na de omzetting hetzelfde.
+getallen, code, links en HTML. De grondingscontrole leest 3303 en 3.303 als hetzelfde
+getal, en 1234.5 en 1.234,5 ook, dus ze vindt na de omzetting hetzelfde.
+
+Een Engels antwoord houdt de notatie van het model (`nl_notatie` draait er niet op).
+`engels_gelezen` geeft de grondingscontrole zo'n antwoord met de getallen zoals zij ze
+leest: 12,345 is daar twaalfduizend, geen twaalf met decimalen.
 
 Alles loopt in lineaire tijd: de functie draait synchroon op het eindantwoord, en een
 patroon dat terugzoekt over modeluitvoer bevriest elke sessie op de worker.
@@ -52,6 +62,17 @@ _NA_CODEWOORD = re.compile(
 )
 _VENSTER = 80
 
+# Een getal met een decimale punt, niet aan een letter, punt, komma of code vast (v2.5, T0.1, CROHO-1.2)
+# en niet gevolgd door nog een punt met cijfers (12.03.2024, 3.14.8, 1.234.567).
+_DECIMALE_PUNT = re.compile(r"(?<![\w.,/#])(?<![^\W\d_]-)(?<!\w:)(?P<geheel>\d+)\.(?P<decimalen>\d+)(?!\w)(?![.,]\d)")
+# Een punt na zo'n woord nummert iets: artikel 7.13, paragraaf 2.1, versie 1.5.
+_NA_VERWIJZING = re.compile(
+    r"\b(?:artikel|art|hoofdstuk|paragraaf|par|sectie|bijlage|figuur|lid|stap|fase|versie|version)\.?\s*$",
+    re.IGNORECASE,
+)
+# Een Engels getal: 12,345 of 1,234,567 met een eventuele decimale punt, of een getal met een decimale punt.
+_ENGELS_GETAL = re.compile(r"(?<![\w.,/#])(?P<geheel>\d{1,3}(?:,\d{3})+|\d+)(?:\.(?P<decimalen>\d+))?(?!\w)(?![.,]\d)")
+
 # Ongemoeid: inline code (ook tussen dubbele backticks), links en hun doel, HTML-tags.
 # Lineair: geen alternatief zoekt vanaf elk volgend begin opnieuw tot het einde van de regel.
 # Een linkdoel mag één paar haakjes bevatten (wiki/Lijst_(12345)); elk teken past op één
@@ -88,11 +109,25 @@ def _hoeveelheid(m: re.Match, codes: frozenset[str]) -> str:
     return f"{int(cijfers):,}".replace(",", ".") + (m.group("decimalen") or "")
 
 
+def _decimaal(geheel: str, decimalen: str) -> bool:
+    """Is de punt tussen deze cijfers een decimale punt? Drie cijfers erna zijn een duizendtal, behalve na 0."""
+    return len(decimalen) != 3 or geheel == "0"
+
+
+def _decimale_komma(m: re.Match) -> str:
+    geheel, decimalen = m.group("geheel"), m.group("decimalen")
+    ervoor = m.string[max(0, m.start() - _VENSTER) : m.start()]
+    if not _decimaal(geheel, decimalen) or _NA_VERWIJZING.search(ervoor) or _NA_CODEWOORD.search(ervoor):
+        return m.group(0)
+    return f"{geheel},{decimalen}"
+
+
 def _in_tekst(tekst: str, codes: frozenset[str]) -> str:
     """De notatie in een stuk lopende tekst, buiten code, links en HTML."""
 
     def omzetten(stuk: str) -> str:
-        return _GETAL.sub(lambda m: _hoeveelheid(m, codes), stuk)
+        # Eerst de komma: 1234.5 wordt 1234,5 en daarna 1.234,5.
+        return _GETAL.sub(lambda m: _hoeveelheid(m, codes), _DECIMALE_PUNT.sub(_decimale_komma, stuk))
 
     stukken, vorige = [], 0
     for m in _BESCHERMD.finditer(tekst):
@@ -131,7 +166,7 @@ def _codes(stappen: Iterable[tuple[str, str]], eerder: Iterable[str]) -> frozens
 
 
 def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iterable[str] = ()) -> str:
-    """`tekst` met elk geheel getal van vier of meer cijfers, geen jaar of code, als 3.303.
+    """`tekst` met elk geheel getal van vier of meer cijfers, geen jaar of code, als 3.303, en decimalen als 6,4.
 
     `stappen`: (tool, resultaat) van de beurt; een getal dat daar alleen als code staat, blijft staan.
     `eerder`: de eerdere antwoorden; een getal dat daar zonder punt staat, blijft ook staan."""
@@ -152,3 +187,23 @@ def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iter
             codekolommen = _codekolommen(regel)
         uit.append(_tabelrij(regel, codekolommen, codes) if codekolommen is not None else _in_tekst(regel, codes))
     return "\n".join(uit)
+
+
+def _als_nl(m: re.Match) -> str:
+    geheel, decimalen = m.group("geheel"), m.group("decimalen")
+    duizendtallen = "," in geheel
+    geheel = geheel.replace(",", ".")
+    if decimalen is None:
+        return geheel
+    # Zonder komma's en met drie cijfers erna kan de punt een duizendtal zijn (3.303): dan telt de controle het mee.
+    if duizendtallen or _decimaal(m.group("geheel"), decimalen):
+        return f"{geheel},{decimalen}"
+    return f"{geheel}.{decimalen}"
+
+
+def engels_gelezen(tekst: str) -> str:
+    """Een Engels antwoord met de getallen in de notatie die de grondingscontrole leest: 12,345 als 12.345, 6.4 als 6,4.
+
+    Alleen voor de controle, niet voor weergave: zonder deze lezing telde 12,345 als twaalf met decimalen en
+    controleerde niets het. Een dubbelzinnige punt (3.303) blijft een duizendtal, zodat de controle het meetelt."""
+    return _ENGELS_GETAL.sub(_als_nl, tekst)

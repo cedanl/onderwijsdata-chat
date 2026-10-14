@@ -82,6 +82,15 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Het antwoord is in de taal van de vraag en een Nederlands antwoord schrijft decimalen met een komma
+  (#326). Een Engelse vraag kreeg soms een Nederlands antwoord (audit 12); nu zegt de code het model in welke
+  taal het antwoordt, en een antwoord dat duidelijk in de andere taal is, krijgt één herkansing. Bij een
+  korte of gemengde vraag beslist de code niets. In een Nederlands antwoord wordt 6.4 nu 6,4 en 1234.5 wordt
+  1.234,5; drie cijfers na de punt blijven een duizendtal (3.303), en datums, versies, codes en verwijzingen
+  als "artikel 7.13" houden hun punt. Een Engels antwoord houdt de notatie van het model; de getalcontrole
+  leest 12,345 daar als twaalfduizend, zodat zo'n getal zonder bron ook opvalt. Een percentage met een
+  decimale punt (9.5%) toetst de controle nu als percentage, zoals het getoond wordt (9,5%). Vaste teksten
+  uit de app (weigering, ingehouden antwoord, verduidelijkingskaart, meldingen) blijven Nederlands.
 - Een vraag met een open slot krijgt haar verduidelijkingskaart nu uit code, vóór het model (#348). Een
   telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten
   heeft Utrecht?") vraagt instelling of woonplaats, met de instellingen uit het register als opties (de

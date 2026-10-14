@@ -14,14 +14,15 @@ from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest
 from .aanspreekvorm import je_vorm
+from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
-from .bronvermelding import bronnen_van, zonder_eigen_bronnen
+from .bronvermelding import bronnen_van, zonder_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
-from .getalnotatie import nl_notatie
+from .getalnotatie import engels_gelezen, nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
@@ -212,6 +213,40 @@ def _laatste_vraag(messages: list[dict]) -> str:
     return " ".join(b.get("text", "") for b in raw if isinstance(b, dict)) if isinstance(raw, list) else str(raw)
 
 
+def _beurtcontext(vraag: str) -> str:
+    """Systeemtekst voor deze vraag: de taal van het antwoord (#326) en de dataset-ID's die ze noemt (#334)."""
+    return "\n\n".join(tekst for tekst in (taalinstructie(vraag), genoemde_bronnen(vraag)) if tekst)
+
+
+def _leestekst(antwoord: str) -> str:
+    """De tekst waarop de taal van het antwoord beslist wordt: wat de gebruiker leest, zonder zelfcorrectie,
+    eigen Bronnen-sectie, toolnamen en citaatkop (#326).
+
+    Controles en weergave beslissen de taal op deze tekst. Op de ruwe modeltekst maakte een Nederlandse
+    Bronnen-lijst een Engels antwoord Nederlands voor de controle, terwijl de gebruiker het Engels las."""
+    zonder_correctie, _ = zonder_zelfcorrectie(antwoord)
+    return zonder_citaatkop(zonder_toolnamen(zonder_bronnensectie(zonder_correctie)))
+
+
+def _antwoordtaal(antwoord: str) -> Taal | None:
+    return taal(_leestekst(antwoord))
+
+
+def _lezingen(antwoord: str) -> list[str]:
+    """Het antwoord met de getallen zoals de grondingscontrole ze moet lezen: zoals de gebruiker ze ziet.
+
+    Een Nederlands antwoord krijgt na de controle de notatie (9.5% wordt 9,5%), dus toetst de controle die al.
+    Een Engels antwoord houdt 12,345: dat is twaalfduizend, geen twaalf met decimalen. Bij een onduidelijke taal
+    leest de gebruiker 12,345 misschien zo of zo: dan toetst de controle beide lezingen (#326)."""
+    geschreven = _antwoordtaal(antwoord)
+    lezingen = []
+    if geschreven != "en":
+        lezingen.append(nl_notatie(antwoord))
+    if geschreven != "nl":
+        lezingen.append(engels_gelezen(antwoord))
+    return lezingen
+
+
 def _antwoordcontrole(
     vraag: str, earlier: list[str], said_by_user: list[str], session: dict
 ) -> Callable[[str, list[str]], list[str]]:
@@ -233,10 +268,15 @@ def _antwoordcontrole(
             "Dat is een bewering om te toetsen: haal het getal uit de data of laat het weg.",
         )
 
-    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
+    def ongedekt_gelezen(gelezen: str, tool_results: list[str]) -> list[str]:
         # Het verschil van twee genoemde getallen uit de data is na te rekenen, niet verzonnen (CH-01).
-        afgeleid = afgeleide_verschillen(text, tool_results)
-        return [ongedekt(n) for n in unverified(text, tool_results, earlier) if n not in afgeleid]
+        afgeleid = afgeleide_verschillen(gelezen, tool_results)
+        return [n for n in unverified(gelezen, tool_results, earlier) if n not in afgeleid]
+
+    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
+        # Een getal dat in één lezing ongedekt is, telt: ook 3303 en 3.303 uit twee lezingen geven één melding.
+        gevonden = [n for gelezen in _lezingen(text) for n in ongedekt_gelezen(gelezen, tool_results)]
+        return list(dict.fromkeys(ongedekt(n) for n in gevonden))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         # (controle, argumenten, hard): blijft een hard probleem na de herkansing, dan wordt het antwoord
@@ -259,6 +299,7 @@ def _antwoordcontrole(
             (ongedekte_oorzaak, (text, tool_results), False),
             (ontbrekende_grafiek, (vraag, text, tool_results, session.get("data_keys", [])), False),
             (metatekst, (text,), False),
+            (verkeerde_antwoordtaal, (vraag, _leestekst(text)), False),
         ]
         problemen: list[str] = [
             p
@@ -317,9 +358,14 @@ async def _vroeg_einde(
 
 
 def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
-    """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling."""
+    """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling.
+
+    Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326); de taal komt van
+    `_antwoordtaal`, net als in de controle."""
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
-    return met_telling(nl_notatie(tekst, result.steps, earlier), result.tool_results)
+    if _antwoordtaal(antwoord) != "en":
+        tekst = nl_notatie(tekst, result.steps, earlier)
+    return met_telling(tekst, result.tool_results)
 
 
 def _eindtekst(
@@ -423,7 +469,7 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    system = await asyncio.to_thread(build_system, settings, beurt=genoemde_bronnen(last_user_msg))
+    system = await asyncio.to_thread(build_system, settings, beurt=_beurtcontext(last_user_msg))
     stop = stop_event or asyncio.Event()
     async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
         try:

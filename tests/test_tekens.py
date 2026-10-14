@@ -4,6 +4,7 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+from agent.getalnotatie import nl_notatie
 from agent.grounding import unverified
 from agent.stream import accumulate_stream
 from agent.tekens import normaliseer, zonder_citaatkop
@@ -49,6 +50,28 @@ def test_grondingscontrole_herkent_het_getal_voor_en_na_normalisatie():
     ruw = "Avans had 6\u202f447 eerstejaars."
     assert unverified(ruw, data, []) == []
     assert unverified(normaliseer(ruw), data, []) == []
+
+
+def test_grondingscontrole_leest_een_decimale_punt_en_de_komma_die_ervan_komt_gelijk():
+    """Besluit #326: 6.4 wordt 6,4 en 1234.5 wordt 1.234,5; de controle vindt na de omzetting hetzelfde."""
+    data = [json.dumps({"rijen": [{"AANDEEL": 6.4, "GEMIDDELD": 6447.25, "AANTAL": 3303}]})]
+    ruw = "Een aandeel van 6.4% bij 3303 eerstejaars, gemiddeld 6\u202f447.25 punten."
+    getoond = nl_notatie(normaliseer(ruw))
+    assert getoond == "Een aandeel van 6,4% bij 3.303 eerstejaars, gemiddeld 6.447,25 punten."
+    assert unverified(ruw, data, []) == unverified(normaliseer(ruw), data, []) == unverified(getoond, data, []) == []
+
+
+def test_grondingscontrole_vindt_een_ongedekt_getal_met_decimale_punt_ook_na_de_omzetting():
+    data = [json.dumps({"rijen": [{"AANTAL": 3303}]})]
+    ruw = "Gemiddeld 6340.5 eerstejaars."
+    getoond = nl_notatie(normaliseer(ruw))
+    assert getoond == "Gemiddeld 6.340,5 eerstejaars."
+    assert [_geheel(n) for n in unverified(ruw, data, [])] == [_geheel(n) for n in unverified(getoond, data, [])]
+    assert unverified(getoond, data, []) == ["6.340,5"]
+
+
+def _geheel(getal: str) -> str:
+    return getal.split(",")[0].replace(".", "")
 
 
 def test_openingscitaat_met_onderzoeksvraag_wordt_een_alinea():
