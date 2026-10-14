@@ -173,6 +173,10 @@ input, textarea { font: inherit; }
 }
 .navbar-cta:hover { background: var(--blue-700); }
 
+/* De inlogkaart staat in het midden van wat je ziet (#499): 100vh telt op een telefoon de verborgen
+   adresbalk mee en duwt een gecentreerde kaart naar de onderrand; 100dvh volgt de zichtbare hoogte.
+   Een browser zonder dvh houdt de 100vh-regel ervoor. */
+.login-page { min-height: 100vh; min-height: 100dvh; padding: 16px; box-sizing: border-box; }
 .login-input {
   width: 100%; padding: 10px 14px;
   border: 1.5px solid var(--gray-200); border-radius: var(--radius);

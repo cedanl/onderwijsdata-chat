@@ -32,8 +32,8 @@ export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false
   }
 
   return (
-    <main style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    <main className="login-page" style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(160deg, var(--blue-900) 0%, var(--blue-700) 60%, var(--teal-600) 100%)',
     }}>
       <div style={{

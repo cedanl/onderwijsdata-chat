@@ -360,6 +360,8 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De inlogkaart staat op een telefoon in het midden van het zichtbare scherm (#499): de pagina volgt `100dvh`
+  (zichtbare hoogte) met `100vh` als terugval, zodat de verborgen adresbalk de kaart niet naar de onderrand duwt.
 - Privacy-informatie in de app (#477): de pagina `/privacy` zegt wat naar de externe AI-dienst gaat, wat de server
   en de browser bewaren, wat in het log staat en wat je zelf kunt verwijderen of exporteren. Zij is vóór het
   inloggen te lezen via een link op de loginpagina, en verder via de voettekst, de regel onder het invoerveld en

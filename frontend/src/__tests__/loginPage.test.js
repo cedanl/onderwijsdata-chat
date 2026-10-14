@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -34,6 +36,13 @@ describe('LoginPage', () => {
 
   it('names the page in the tab title (#491)', () => {
     expect(document.title).toBe('Inloggen — openEDUdata+')
+  })
+
+  it('fills the visible height on a phone: dvh with a vh fallback (#499)', () => {
+    expect(container.querySelector('main').className).toBe('login-page')
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+    const regel = css.match(/\.login-page\s*\{([^}]*)\}/)[1]
+    expect(regel).toMatch(/min-height:\s*100vh;\s*min-height:\s*100dvh/)
   })
 
   it('offers password managers the right fields', () => {
