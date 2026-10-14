@@ -6,7 +6,9 @@ de beurt laadde, alleen als de chat ze kan beantwoorden. Een voorbeeldvraag valt
 
 - in de eerste persoon staat ("mijn regio", "onze instelling"): zonder profiel eindigde zo'n vraag
   in een scopeweigering (CH-42);
-- een ruwe veldnaam of codewaarde noemt (AANGEBODENBOOPLEIDING, eindeAanmeldperiode);
+- een ruwe veldnaam, codewaarde of technische term noemt (AANGEBODENBOOPLEIDING, eindeAanmeldperiode,
+  code C0001, sub-resource), of een dataset bij zijn ID (aangeboden-opleidingen, 85423NED);
+- naar het antwoord ervoor wijst ("hoe verhoudt dit zich …", "de data"): als knop zegt ze dan niets;
 - over po, so of vo gaat ("BO-opleidingen", vmbo, havo): buiten de scope van de chat (#355);
 - om een aantal uit een RIO-register vraagt: get_rio_data levert één pagina en geen totalen (#170);
 - haar eigen dataset niet terugvindt met search_catalog: dan vindt het model hem ook niet.
@@ -27,8 +29,11 @@ from .selectie import laadkey, stapkeys
 MAX_VERVOLGVRAGEN = 3
 
 _EERSTE_PERSOON = re.compile(r"\b(?:mijn|ons|onze)\b", re.IGNORECASE)
-# Een veldnaam of codewaarde uit de bron: met een underscore, zes of meer hoofdletters, of camelCase.
-_VELDNAAM = re.compile(r"\b[A-Z0-9]+_[A-Z0-9_]+\b|\b[A-Z]{6,}\b|\b[a-z]+[A-Z]\w*")
+# Een veldnaam, codewaarde of technische term uit de bron: met een underscore, zes of meer hoofdletters,
+# camelCase, een code als C0001, of het woord resource.
+_VELDNAAM = re.compile(r"\w_\w|\b[A-Z]{6,}\b|\b[a-z]+[A-Z]\w*|\b[A-Z]+\d{3,}\b|\bresources?\b")
+# Een sjabloonvraag die naar het antwoord erboven wijst.
+_VERWIJZEND = re.compile(r"\b(?:dit|de data)\b", re.IGNORECASE)
 _PO_SO_VO = re.compile(
     r"\b(?:po|so|vo|vso|bo|sbo|vavo|vmbo|havo|vwo|basisonderwijs|basisschool|basisscholen|praktijkonderwijs"
     r"|primair\s+onderwijs|speciaal\s+onderwijs|voortgezet(?:\s+speciaal)?\s+onderwijs)\b",
@@ -37,9 +42,20 @@ _PO_SO_VO = re.compile(
 _AANTAL = re.compile(r"\b(?:hoeveel|aantal)\b", re.IGNORECASE)
 
 
+def _noemt_dataset_id(vraag: str) -> bool:
+    """Noemt de vraag een dataset bij zijn ID? Een ID dat een gewoon woord is ("opleidingen") telt niet."""
+    return any(not dataset_id.isalpha() for dataset_id in catalog.genoemde_datasets(vraag))
+
+
 def _leesbaar(vraag: str) -> bool:
-    """Een vraag die een gebruiker zo kan stellen en die binnen de scope van de chat valt."""
-    return not (_EERSTE_PERSOON.search(vraag) or _VELDNAAM.search(vraag) or _PO_SO_VO.search(vraag))
+    """Een vraag die een gebruiker zo kan stellen, die op zichzelf staat en binnen de scope van de chat valt."""
+    return not (
+        _EERSTE_PERSOON.search(vraag)
+        or _VELDNAAM.search(vraag)
+        or _VERWIJZEND.search(vraag)
+        or _PO_SO_VO.search(vraag)
+        or _noemt_dataset_id(vraag)
+    )
 
 
 def _vindt_eigen_dataset(vraag: str, dataset_id: str) -> bool:

@@ -332,8 +332,8 @@ de laatste tag is 1.8.6.
   invoerveld, waar je haar aanpast of verstuurt; er gaat niets vanzelf weg. Het model vraagt alleen óf er
   vervolgvragen komen (de tool `suggest_follow_ups`, als laatste stap van zijn antwoord); welke, kiest de app uit de
   voorbeeldvragen in de catalogus van de datasets die het antwoord laadde, en alleen vragen die de chat kan
-  beantwoorden: binnen mbo/hbo/wo, zonder "mijn" of "onze", zonder ruwe veldnamen, zonder aantallen uit een
-  RIO-register, en vindbaar met de catalogus. Geen vervolgvragen na een verduidelijkingsvraag, een weigering of een
+  beantwoorden: binnen mbo/hbo/wo, zonder "mijn" of "onze", zonder ruwe veldnamen, codes of dataset-ID's, zonder
+  verwijzing naar "dit" of "de data", zonder aantallen uit een RIO-register, en vindbaar met de catalogus. Geen vervolgvragen na een verduidelijkingsvraag, een weigering of een
   ingehouden of afgebroken antwoord, en alleen onder het laatste antwoord. De "Verken …"-voorbeeldvragen sturen hun
   vraag nog steeds meteen.
 - Een gesprek verwijderen vanuit de zoekresultaten in de zijbalk werkt nu net zo (#529): de treffer verdwijnt

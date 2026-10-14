@@ -143,6 +143,41 @@ def test_een_vraag_met_een_ruwe_veldnaam_valt_af(eigen_catalogus, vraag):
     assert vraag not in vervolgvragen.beantwoordbare_vragen()["90001NED"]
 
 
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Sinds wanneer is de opleiding met code C0001 erkend?",  # een code
+        "Welke gediplomeerden hebben geen studie_richting?",  # een veldnaam in kleine letters
+        "Hoe verhouden de opleidingsfasen zich tot de erkenningen via de sub-resource?",  # een API-term
+    ],
+)
+def test_een_vraag_met_een_code_of_technische_term_valt_af(vraag):
+    assert not vervolgvragen._leesbaar(vraag)
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    ["Hoe verhoudt dit zich tot andere jaren of regio's?", "Welke uitschieters zijn er te zien in de data?"],
+)
+def test_een_sjabloonvraag_die_naar_het_antwoord_wijst_valt_af(vraag):
+    # Als knop, los van het antwoord erboven, zegt "dit" of "de data" niets.
+    assert not vervolgvragen._leesbaar(vraag)
+
+
+def test_een_vraag_die_een_dataset_bij_zijn_id_noemt_valt_af(eigen_catalogus):
+    assert not vervolgvragen._leesbaar("Welke instellingen staan in aangeboden-opleidingen?")
+    assert not vervolgvragen._leesbaar("Welke cijfers staan in 90001NED?")
+    assert vervolgvragen._leesbaar("Welke instellingen bieden een opleiding verpleegkunde aan?")
+
+
+def test_een_dataset_id_dat_een_gewoon_woord_is_telt_niet():
+    # In de echte catalogus is "opleidingen" een RIO-register: dat woord mag in een vraag staan.
+    vraag = "Welke opleidingen zijn ooit opgeheven?"
+    assert "opleidingen" in catalog.genoemde_datasets(vraag)
+
+    assert vervolgvragen._leesbaar(vraag)
+
+
 def test_een_vraag_over_po_so_of_vo_valt_af(eigen_catalogus):
     vragen = vervolgvragen.beantwoordbare_vragen()
     assert "Hoeveel gediplomeerden hadden een havo-diploma?" not in vragen["90001NED"]

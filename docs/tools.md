@@ -484,7 +484,9 @@ aanmerking als de chat haar kan beantwoorden:
 
 - de dataset valt binnen het profiel (mbo, hbo, wo) en de chat kan hem ophalen met `get_*_data`;
 - de vraag staat niet in de eerste persoon ("mijn regio", "onze instelling");
-- ze noemt geen ruwe veldnaam of codewaarde (`AANGEBODENBOOPLEIDING`, `eindeAanmeldperiode`);
+- ze noemt geen ruwe veldnaam, codewaarde of technische term (`AANGEBODENBOOPLEIDING`, `eindeAanmeldperiode`,
+  code `C0001`, "sub-resource") en geen dataset bij zijn ID (`aangeboden-opleidingen`, `85423NED`);
+- ze staat op zichzelf: een sjabloonvraag als "Hoe verhoudt dit zich tot andere jaren?" of "… in de data?" valt af;
 - ze gaat niet over po, so of vo ("BO-opleidingen", vmbo, havo);
 - ze vraagt geen aantal uit een RIO-register: `get_rio_data` levert één pagina en geen totaal;
 - `search_catalog` vindt met de vraag haar eigen dataset terug.
