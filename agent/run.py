@@ -10,6 +10,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
+from tools.csv_export import export_key
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest, vervolgvragen
@@ -23,7 +24,7 @@ from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
-from .getalnotatie import engels_gelezen, nl_notatie
+from .getalnotatie import engels_gelezen, heeft_tabel, nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
@@ -438,6 +439,21 @@ def _slotbericht(
     }
 
 
+def _log_export(text_content: str, steps: list[tuple[str, str]]) -> None:
+    """Per antwoord: staat er een tabel in, en welke stap leverde een exporteerbare tabel (#544)?
+
+    De CSV-knop onder een tabelantwoord ontbrak wisselend. Alleen tellingen en toolnamen: zo is per beurt
+    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep."""
+    tabellen = [tool for tool, result in steps if export_key(tool, result)]
+    logger.info(
+        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s",
+        heeft_tabel(text_content),
+        len(tabellen),
+        tabellen[-1] if tabellen else "-",
+        ",".join(dict.fromkeys(tool for tool, _ in steps)) or "-",
+    )
+
+
 async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, session: dict) -> list[str]:
     """Vervolgvragen onder elk gewoon antwoord met data (#364): code biedt ze aan, geen keuze van het model (#539).
 
@@ -554,6 +570,7 @@ async def run(
         # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
         text_content = met_interpretatie(text_content, last_user_msg, result.steps, session)
     session["_last_turn_tool_calls"] = result.tool_calls
+    _log_export(text_content, result.steps)
     truncated = result.finish_reason == "length"
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)

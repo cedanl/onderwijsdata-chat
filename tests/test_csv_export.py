@@ -181,6 +181,95 @@ def test_andere_tools_leveren_niets():
     assert export_key("get_duo_data", json.dumps({"data_key": "duo:x:0", "rijen": [{"a": 1}]})) is None
 
 
+# Per tool die een tabel of getal oplevert: een tabel-key, of bewust niet en waarom (#544). De tools zonder
+# key hebben geen tabel in de store die "de tabel achter het antwoord" is; hun getallen krijgen hun CSV via de
+# citaties (frontend/src/citatieCsv.js), zodat de knop niet afhangt van welke tool het model koos.
+_RIJEN = [{"STUDIEJAAR": 2023, "AANTAL": 36206}]
+_PER_TOOL = [
+    pytest.param(
+        TOOL_QUERY_DATA, {"data_key": "duo:p:0:ab", "rijen": _RIJEN}, True, id="query_data: selectie in de store"
+    ),
+    pytest.param(TOOL_GET_MAAT, {"data_key": "duo:p:0:ab", "rijen": _RIJEN}, True, id="get_maat: selectie in de store"),
+    pytest.param(
+        TOOL_RUN_ANALYSIS, {"data_key": "analyse:1", "rijen": _RIJEN}, True, id="run_analysis: tabel uit de bron"
+    ),
+    pytest.param(
+        TOOL_RUN_ANALYSIS, {"gelezen": ["duo:p:0"], "resultaat": 36206}, False, id="run_analysis: één getal, geen tabel"
+    ),
+    pytest.param(
+        "get_duo_data", {"data_key": "duo:p:0", "preview": _RIJEN}, False, id="get_duo_data: het hele bronbestand"
+    ),
+    pytest.param(
+        "get_cbs_data",
+        {"data_key": "cbs:85423NED:x", "preview": _RIJEN},
+        False,
+        id="get_cbs_data: het hele bronbestand",
+    ),
+    pytest.param(
+        "get_rio_data", {"data_key": "rio:erk:0", "preview": _RIJEN}, False, id="get_rio_data: het hele bronbestand"
+    ),
+    pytest.param(
+        "compute_kpi",
+        {"label": "Studenten 2023/24", "value": "36.206", "raw": 36206, "bron": {"data_key": "duo:p:0"}},
+        False,
+        id="compute_kpi: één getal over het bronbestand",
+    ),
+    pytest.param(
+        "relatie", {"data_key": "duo:p:0", "sleutelkolommen": ["INSTELLINGSCODE"]}, False, id="relatie: geen tabel"
+    ),
+    pytest.param("dataset_profiel", {"data_key": "duo:p:0", "kolommen": []}, False, id="dataset_profiel: geen tabel"),
+    pytest.param(
+        "get_uwv_vacatures", {"regio": "Utrecht", "vacatures": 1200}, False, id="get_uwv_vacatures: niet in de store"
+    ),
+]
+
+
+@pytest.mark.parametrize(("tool", "result", "key"), _PER_TOOL)
+def test_per_tool_een_tabel_key_of_bewust_niet(tool, result, key):
+    assert (export_key(tool, json.dumps(result)) is not None) is key
+
+
+# ── Meting per antwoord (#544) ───────────────────────────────────────────────
+
+
+def test_elk_antwoord_logt_of_het_een_tabel_heeft_en_welke_stap_een_tabel_leverde(caplog):
+    """Van buiten was niet te zien of de app de knop wegliet of de beurt geen tabel opleverde; het log zegt het nu."""
+    import logging
+    from unittest.mock import patch
+
+    run_module = importlib.import_module("agent.run")
+    kpi = json.dumps({"label": "2023/24", "value": "36.206", "raw": 36206, "bron": {"data_key": "duo:p:0"}})
+    tabel = json.dumps({"data_key": "duo:p:0:ab", "rijen": [{"STUDIEJAAR": 2023, "AANTAL": 36206}]})
+    antwoord = "| Jaar | Aantal |\n|---|---|\n| 2023/24 | 36.206 |"
+
+    async def emit(_event):
+        pass
+
+    # Met toolaanroepen: zonder tools wordt een antwoord met een getal de vaste weigering, zonder tabel.
+    def uitkomst(stappen):
+        return loop_module.LoopResult(
+            text=antwoord, steps=stappen, tool_calls=[{"name": t, "arguments": "{}"} for t, _ in stappen]
+        )
+
+    async def nep_loop(history, **kwargs):
+        return uitkomst([("get_duo_data", "{}"), ("compute_kpi", kpi)])
+
+    vraag = [{"role": "user", "content": "Hoeveel studenten per jaar?"}]
+    with caplog.at_level(logging.INFO, logger="agent.run"), patch.object(run_module, "tool_loop", nep_loop):
+        asyncio.run(run_module.run(vraag, session={}, emit=emit))
+    assert "EXPORT  tabel_in_antwoord=True  tabellen=0  tabelstap=-  tools=get_duo_data,compute_kpi" in caplog.text
+
+    async def nep_loop_met_tabel(history, **kwargs):
+        return uitkomst([("get_duo_data", "{}"), (TOOL_QUERY_DATA, tabel)])
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="agent.run"), patch.object(run_module, "tool_loop", nep_loop_met_tabel):
+        asyncio.run(run_module.run(vraag, session={}, emit=emit))
+    assert (
+        "EXPORT  tabel_in_antwoord=True  tabellen=1  tabelstap=query_data  tools=get_duo_data,query_data" in caplog.text
+    )
+
+
 def test_tool_end_event_draagt_de_exportkey(monkeypatch):
     result = json.dumps({"data_key": "duo:x:0:ab12", "totaal_rijen": 1, "rijen": [{"N": 1}]})
     monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (result, None))

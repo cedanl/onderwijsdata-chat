@@ -31,8 +31,10 @@ describe('answerBlocks: vaste bouwstenen onder een dataantwoord', () => {
     `)
   })
 
-  it('kent elk blok als n.v.t.', () => {
-    expect(statussen(ALLEEN_CITATIES)).toBe('citaties: aanwezig, telling: n.v.t., export: n.v.t., bronnen: n.v.t.')
+  it('kent elk blok als n.v.t.; export is er zodra het antwoord een getal met herkomst citeert (#544)', () => {
+    expect(statussen(ALLEEN_CITATIES)).toBe('citaties: aanwezig, telling: n.v.t., export: aanwezig, bronnen: n.v.t.')
+    const zonder_herkomst = { ...ALLEEN_CITATIES, citaties: [{ getal: '7.912', vastgesteld: false }] }
+    expect(statussen(zonder_herkomst)).toBe('citaties: aanwezig, telling: n.v.t., export: n.v.t., bronnen: n.v.t.')
   })
 })
 

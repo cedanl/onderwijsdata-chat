@@ -81,6 +81,11 @@ def _tabelscheiding(regel: str) -> bool:
     return "|" in regel and "-" in regel and not regel.strip(_TABELTEKENS)
 
 
+def heeft_tabel(tekst: str) -> bool:
+    """Staat er een markdowntabel in de tekst (een kopregel met een scheidingsregel eronder)?"""
+    return any(_tabelscheiding(regel) for regel in tekst.split("\n"))
+
+
 def _geen_hoeveelheid(m: re.Match, cijfers: str, codes: frozenset[str]) -> bool:
     if len(cijfers) > _MAX_CIJFERS or cijfers.startswith("0") or not checked(cijfers) or cijfers in codes:
         return True
