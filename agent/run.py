@@ -27,7 +27,7 @@ from .getalnotatie import engels_gelezen, nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
-from .interpretatie import met_interpretatie
+from .interpretatie import is_vervolgvraag, met_interpretatie
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
@@ -552,7 +552,10 @@ async def run(
     text_content = _eindtekst(result, antwoord, earlier, session, chosen_model, bronnen)
     if bronnen and text_content not in _ZONDER_BRONNEN:
         # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
-        text_content = met_interpretatie(text_content, last_user_msg, result.steps, session)
+        # Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545).
+        text_content = met_interpretatie(
+            text_content, last_user_msg, result.steps, session, vervolg=is_vervolgvraag(messages)
+        )
     session["_last_turn_tool_calls"] = result.tool_calls
     truncated = result.finish_reason == "length"
     if truncated:
