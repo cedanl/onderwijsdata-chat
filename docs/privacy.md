@@ -3,7 +3,8 @@
 Hoe openEDUdata+ met je gegevens omgaat. Dit beschrijft de werking van de demoversie; de formele
 privacyverklaring volgt zodra de open punten onderaan zijn vastgesteld. Dezelfde tekst staat in de app op
 `/privacy`, bereikbaar vóór het inloggen (link op de loginpagina, in de voettekst, onder het invoerveld en in
-de instellingen). `frontend/src/__tests__/privacyPage.test.js` bewaakt dat de kopjes hier en in de app gelijk
+de instellingen). Op die plekken toont de app de tekst als popup; `/privacy` blijft de volledige pagina.
+`frontend/src/__tests__/privacyPage.test.js` bewaakt dat de kopjes hier en in de app gelijk
 blijven.
 
 ## Wat naar de AI-dienst gaat
