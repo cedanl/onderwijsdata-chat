@@ -23,6 +23,19 @@ def trim(history: list[dict]) -> tuple[list[dict], bool]:
 # model daarna herhaalt (#322).
 TUSSENSTAP = "Tussenstap: data opgehaald."
 
+# Een afgebroken beurt (stopknop, tijdsgrens, weggevallen verbinding, fout) laat geen open verzoek
+# achter. Het model zag anders een vraag zonder antwoord, gevolgd door een nieuwe vraag, en ging door
+# op de oude: twaalf keer "UWV vacatures opgehaald" bij een vraag over mbo (#548).
+AFGEBROKEN = (
+    "(Dit antwoord is afgebroken en niet afgemaakt. Ga er alleen mee verder als de gebruiker daar opnieuw om vraagt.)"
+)
+
+
+def afgebroken_beurt(tekst: str = "") -> dict:
+    """De assistentbeurt voor een afgebroken antwoord: wat er al stond, met de afbreekmarkering eronder."""
+    tekst = tekst.strip()
+    return {"role": "assistant", "content": f"{tekst}\n\n{AFGEBROKEN}" if tekst else AFGEBROKEN}
+
 
 def afgeronde_stappen(beurt: list[dict]) -> list[dict]:
     """De toolstappen van een onderbroken beurt die af zijn: elke aanroep met al zijn resultaten (#431).
