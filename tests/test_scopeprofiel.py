@@ -948,3 +948,22 @@ def test_elke_bronregel_van_een_geladen_vo_contextbestand_noemt_vo_context(catal
     load.assert_called_once()
     regels = _bronregels(result, "voprognoses", "DUO", "get_duo_data")
     assert all("vo-context voor ho" in regel for regel in regels), regels
+
+
+def _vragen_van(records) -> set[str]:
+    return {v for e in records for v in e.get("voorbeeldvragen", [])}
+
+
+@pytest.mark.parametrize("aantal", [4, 1000])  # 1000: elke vraag met een startertag, niet alleen de steekproef
+def test_geen_startervraag_komt_uit_een_vo_contextbron(aantal):
+    """De startpagina biedt geen pure vo-vraag aan (#557): een startervraag heeft geen ho-vraag achter zich,
+    dus de zoekpoort kan haar niet tegenhouden. Tegen de echte catalogus."""
+    from routes.instellingen import TAG_STARTERS, tag_voorbeeldvragen
+
+    echt = list(_echt().values())
+    context = _vragen_van(e for e in echt if scopeprofiel.is_ho_context(e))
+    alleen_context = context - _vragen_van(e for e in echt if not scopeprofiel.is_ho_context(e))
+    assert alleen_context, "de vo-contextbronnen hebben eigen voorbeeldvragen, anders toetst deze test niets"
+
+    for label, tags in TAG_STARTERS.items():
+        assert not alleen_context & set(tag_voorbeeldvragen(tags, n=aantal)), label
