@@ -61,6 +61,16 @@ WEIGER_ANTWOORD = (
     "- Welke hbo-opleidingen hebben de meeste deeltijdstudenten?"
 )
 
+# Een vraag over een vo-school (#549): de scope is mbo/hbo/wo (#355). Geen cijfers, en niet "de bron bestaat niet".
+VO_ANTWOORD = (
+    "Deze chat behandelt alleen het mbo, hbo en wo. Scholen voor primair, speciaal en voortgezet onderwijs, "
+    "zoals een gymnasium of lyceum, vallen daarbuiten: daarover geef ik geen cijfers.\n\n"
+    "Vragen die wel kunnen:\n"
+    "- Hoeveel eerstejaars had de Erasmus Universiteit Rotterdam vorig studiejaar?\n"
+    "- Hoeveel studenten heeft Hogeschool Rotterdam?\n"
+    "- Welke mbo-opleidingen hebben de meeste studenten?"
+)
+
 
 # De uitleg als de beurt op de scopegrens van de chat stuit (#355, BEV-12). Gewone taal: geen tool,
 # selectie of weigering, en niet dat de bron niet bestaat (zoals scopeprofiel.MELDING het model vraagt).
