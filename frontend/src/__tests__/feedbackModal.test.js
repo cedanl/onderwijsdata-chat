@@ -50,6 +50,16 @@ describe('FeedbackModal', () => {
     expect(submitButton().disabled).toBe(true)
   })
 
+  it('says what is kept and that deleting the conversation does not remove it (#552)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+    await render()
+    const intro = [...container.querySelectorAll('[role="dialog"] .feedback-intro')].map(p => p.textContent)
+    expect(intro[0]).toBe('Alle vragen zijn optioneel. Je antwoorden helpen ons de rapporten te verbeteren.')
+    expect(intro[1]).toBe(
+      'We bewaren je antwoorden en de titel van het rapport bij je account. Het gesprek verwijderen wist deze feedback niet.',
+    )
+  })
+
   it('posts the answers with the report context and reports success', async () => {
     const fetch = vi.fn()
       .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))

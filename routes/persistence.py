@@ -12,6 +12,7 @@ from pydantic import BaseModel, StringConstraints
 
 from agent import recepten
 from core.auth import get_current_user
+from core.persoonsgegevens import veilige_gesprekstitel
 from persistence import db as persistence_db
 
 router = APIRouter(tags=["persistence"])
@@ -51,10 +52,11 @@ def get_conversation(conv_id: str, username: str = Depends(get_current_user)) ->
 
 @router.put("/api/conversations/{conv_id}")
 def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
+    # Geen BSN, e-mailadres of telefoonnummer in de titel, ook niet van een andere client (#552).
     persistence_db.upsert_conversation(
         username,
         conv_id,
-        body["title"],
+        veilige_gesprekstitel(body["title"]),
         body["timestamp"],
         body["messages"],
     )
@@ -69,7 +71,7 @@ def rename_conversation(
     body: ConversationTitle,
     username: str = Depends(get_current_user),
 ) -> dict:
-    if not persistence_db.rename_conversation(username, conv_id, body.title):
+    if not persistence_db.rename_conversation(username, conv_id, veilige_gesprekstitel(body.title)):
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {"ok": True}
 
