@@ -46,6 +46,7 @@ from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
 from .vaste_antwoorden import WEIGER_ANTWOORD, sentinelvraag, weigering
+from .vo_school import vo_schoolvraag
 from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
@@ -476,7 +477,9 @@ async def run(
     logger.info("RUN START  model=%s  %s", chosen_model, tekst_kenmerk(last_user_msg, "vraag_"))
     logger.debug("RUN VRAAG  %r", last_user_msg[:200])
 
-    if vast := sentinelvraag(last_user_msg):
+    # Een vo-school valt buiten de scope (#355): de vaste uitleg uit code, vóór elke kaart (#549).
+    # Bij een schoolnaam laadt het register over het netwerk: niet op de event loop.
+    if vast := sentinelvraag(last_user_msg) or await asyncio.to_thread(vo_schoolvraag, last_user_msg):
         await emit({"type": "message_start"})
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": []})
         return vast
