@@ -8,9 +8,14 @@ Haganum", "Christelijk Lyceum Zeist"), en "college" alleen na een naam met hoofd
 College"). Een los typewoord ("van het vwo of gymnasium") is een vooropleiding, geen school: een
 ho-vraag met vo-context blijft bij het model (epic #554).
 
+Een naam heeft een hoofdletter, behalve bij wie nergens hoofdletters typt; de hoofdletter van het
+eerste woord van een zin telt alleen als het typewoord er zelf ook een heeft ("Aandeel gymnasium
+leerlingen" is geen school). Noemt de vraag een sector of studenten ("wo-studenten",
+"eerstejaars", "naar het mbo"), dan is het een ho-vraag met vo-context en beslist deze check niet.
+
 Mbo-instellingen dragen dezelfde typewoorden ("Grafisch Lyceum Rotterdam", "Deltion College"):
 noemt de vraag een registerinstelling, een registernaam met dat schooltype ("Grafisch Lyceum
-R'dam"), of een universiteit, hogeschool of ROC, dan beslist deze check niet. Zonder register
+R'dam"), of een universiteit, hogeschool of ROC, dan beslist deze check evenmin. Zonder register
 (offline) ook niet: dan is een mbo-naam niet uit te sluiten en gaat de vraag, zoals vroeger, naar
 model en scopepoort. Een vo-school zonder typewoord ("SG Lelystad") gaat die weg ook.
 """
@@ -27,7 +32,7 @@ from .vaste_antwoorden import VO_ANTWOORD
 _TYPEWOORDEN = frozenset({"gymnasium", "lyceum", "atheneum", "scholengemeenschap", "college"})
 _ALLEEN_NA_NAAM = "college"  # "College van Bestuur" is geen school
 _WOORD = re.compile(r"[^\W\d_]+")
-_AANSLUITEND = re.compile(r"\s*-?\s*")  # "Erasmus Gymnasium", "Erasmus-Gymnasium"
+_AANSLUITEND = re.compile(r"\s*(?:-\s*)?")  # "Erasmus Gymnasium", "Erasmus-Gymnasium"
 # Woorden naast een typewoord die geen schoolnaam zijn: lidwoorden, voorzetsels, werkwoorden uit
 # een telvraag en vo-context ("vooropleiding gymnasium", "het categoriaal gymnasium").
 _GEEN_NAAM = frozenset(
@@ -38,17 +43,31 @@ _GEEN_NAAM = frozenset(
         *("door", "over", "na", "tot", "en", "of", "dan", "als", "hoeveel", "aantal", "er", "is", "was"),
         *("heeft", "hebben", "had", "hadden", "telt", "tellen", "waren", "komen", "komt", "kwam", "kwamen"),
         *("gaan", "gaat", "ging", "gingen", "zit", "zitten", "zat", "zaten", "volgt", "volgen", "volgde"),
-        *("volgden", "vooropleiding", "vooropleidingen", "diploma", "opleiding", "leerlingen", "studenten"),
-        *("scholieren", "eerstejaars", "havo", "vwo", "vmbo", "vo", "po", "so", "mbo", "hbo", "wo"),
-        *("zelfstandig", "zelfstandige", "categoriaal", "categoriale", "regulier", "reguliere", "university"),
+        *("volgden", "vooropleiding", "vooropleidingen", "diploma", "opleiding", "leerlingen", "scholieren"),
+        *("havo", "vwo", "vmbo", "vo", "po", "so", "aandeel", "percentage", "deel"),
+        *("zelfstandig", "zelfstandige", "categoriaal", "categoriale", "regulier", "reguliere"),
     }
 )
-# Een mbo/hbo/wo-instelling in de vraag: "Erasmus Universiteit Rotterdam", "Hanzehogeschool", "ROC van Twente".
-_HO_MBO_NAAM = re.compile(r"\b(?:\w*universiteit\w*|\w*hogeschool\w*|university|roc)\b", re.IGNORECASE)
+# Een mbo/hbo/wo-instelling ("Erasmus Universiteit Rotterdam", "Hanzehogeschool", "ROC van Twente") of
+# ho-context ("wo-studenten", "eerstejaars", "naar het mbo") in de vraag: die blijft bij het model (epic #554).
+_HO_MBO_CONTEXT = re.compile(
+    r"\b(?:\w*universiteit\w*|\w*hogeschool\w*|university|roc|mbo|hbo|wo|ho|\w*student\w*|eerstejaars)\b",
+    re.IGNORECASE,
+)
 
 
 def _aansluitend(vraag: str, links: re.Match, rechts: re.Match) -> bool:
     return bool(_AANSLUITEND.fullmatch(vraag[links.end() : rechts.start()]))
+
+
+def _zinsbegin(vraag: str, woord: re.Match) -> bool:
+    """Staat het woord aan het begin van de vraag of van een zin erin?"""
+    for teken in reversed(vraag[: woord.start()]):
+        if teken in ".!?:":
+            return True
+        if teken.isalnum():
+            return False
+    return True
 
 
 def _is_naam(woord: str, zonder_hoofdletters: bool) -> bool:
@@ -64,7 +83,9 @@ def _naam_ervoor(vraag: str, voor: re.Match, woord: re.Match) -> bool:
     """
     if not _aansluitend(vraag, voor, woord):
         return False
-    zonder_hoofdletters = vraag[1:] == vraag[1:].lower() and woord.group().lower() != _ALLEEN_NA_NAAM
+    if voor.group()[0].isupper() and not woord.group()[0].isupper() and _zinsbegin(vraag, voor):
+        return False  # "Aandeel gymnasium leerlingen": de hoofdletter is die van de zin
+    zonder_hoofdletters = vraag == vraag.lower() and woord.group().lower() != _ALLEEN_NA_NAAM
     return _is_naam(voor.group(), zonder_hoofdletters)
 
 
@@ -116,7 +137,7 @@ def vo_schoolvraag(vraag: str) -> str | None:
     vanuit async code aan via `asyncio.to_thread`.
     """
     namen = _schoolnamen(vraag)
-    if not namen or _HO_MBO_NAAM.search(vraag):
+    if not namen or _HO_MBO_CONTEXT.search(vraag):
         return None
     registernamen = _registernamen()
     if not registernamen or instelling.noemt_instelling(vraag):

@@ -56,6 +56,7 @@ def register(monkeypatch):
         "Hoeveel leerlingen heeft de Openbare Scholengemeenschap Bijlmer?",
         "Hoeveel leerlingen heeft het Erasmus-Gymnasium?",
         "Hoeveel leerlingen heeft het Mendel College?",
+        "Erasmus Gymnasium: hoeveel leerlingen?",  # eerste woord, maar het typewoord heeft ook een hoofdletter
     ],
 )
 def test_een_vo_schoolnaam_krijgt_het_vaste_vo_antwoord(vraag):
@@ -85,6 +86,25 @@ def test_een_vo_schoolnaam_krijgt_het_vaste_vo_antwoord(vraag):
         "Hoeveel studenten heeft het University College Utrecht?",
         "Wat zegt het College van Bestuur?",
         "Hoeveel studenten heeft de HU?",
+        # Een ho-vraag met vo-context: een sector of studenten in de vraag (epic #554).
+        "Hoeveel wo-studenten deden eerder gymnasium?",
+        "Wat is de doorstroom gymnasium naar wo?",
+        "Welk deel van de eerstejaars wo deed gymnasium?",
+        "Hoeveel hbo-studenten komen rechtstreeks gymnasium?",
+        "hoeveel wo-studenten deden eerder gymnasium?",
+        "Hoeveel studenten met een Nederlands Gymnasium diploma?",
+        "Hoeveel studenten van Gymnasium Zuid komen bij de UvA?",
+        "Gymnasium Nederland studenten",
+        "Hoeveel leerlingen van het Erasmus Gymnasium gaan naar het mbo?",
+        # De hoofdletter is die van de zin, niet van een naam.
+        "Aandeel gymnasium leerlingen in het wo?",
+        "Aandeel gymnasium leerlingen per jaar?",
+        "Percentage gymnasium-leerlingen per regio?",
+        "Instroom gymnasium leerlingen per jaar?",
+        "Ik zoek cijfers. Instroom gymnasium leerlingen per jaar?",
+        # Alleen wie nergens hoofdletters typt, krijgt een kleine letter als naam.
+        "Hoeveel leerlingen deden eerder gymnasium?",
+        "aandeel gymnasium leerlingen per jaar",
     ],
 )
 def test_mbo_hbo_wo_vragen_krijgen_geen_vo_antwoord(vraag):
@@ -96,8 +116,23 @@ def test_de_registerspelling_van_een_mbo_naam_telt_ook():
     dan niet letterlijk, maar "Grafisch Lyceum" is een registernaam en geen vo-school."""
     register = [{"naam": "Grafisch Lyceum R'dam", "type": "mbo", "aliassen": ["GLR"]}]
     with patch.object(vo_school, "get_all", lambda: register), patch.object(instelling, "get_all", lambda: register):
-        assert vo_schoolvraag("Hoeveel studenten heeft Grafisch Lyceum Rotterdam?") is None
+        assert vo_schoolvraag("Hoeveel deelnemers heeft Grafisch Lyceum Rotterdam?") is None
         assert vo_schoolvraag("Hoeveel leerlingen heeft het Erasmus Gymnasium?") == VO_ANTWOORD
+
+
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        "Hoeveel deelnemers heeft Grafisch Lyceum Rotterdam?",
+        "Hoeveel deelnemers heeft Deltion College?",
+        "Hoeveel deelnemers heeft het Alfa College?",  # register: "Alfa-college"
+        "Hoeveel deelnemers heeft het Koning Willem I College?",
+    ],
+)
+def test_een_mbo_naam_uit_het_register_krijgt_geen_vo_antwoord(vraag):
+    """Zonder "studenten" in de vraag beslist het register, niet de ho-context."""
+    assert vo_school._schoolnamen(vraag)
+    assert vo_schoolvraag(vraag) is None
 
 
 def test_zonder_register_beslist_code_niet(monkeypatch):
