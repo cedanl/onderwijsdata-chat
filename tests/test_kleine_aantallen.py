@@ -102,7 +102,8 @@ def test_voprognoses_krijgt_geen_bovengrens(aantallen):
         query_data(geladen["data_key"], group_by=["ONDERWIJSNIVEAU"], aggregate={"PROGNOSEAANTALLEN": "sum"})
     )
 
-    assert not store.meta(geladen["data_key"]).vier_regel
+    meta = store.meta(geladen["data_key"])
+    assert meta is not None and not meta.vier_regel
     assert not any("bovengrens" in n for n in result.get("databewerking", []))
     assert "Bovengrens" not in telling_blok([json.dumps({"data_key": result["data_key"]})])
 
