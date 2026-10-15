@@ -85,6 +85,9 @@ export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
       >
         <h2 className="feedback-title" id={titleId}>Feedback geven</h2>
         <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de rapporten te verbeteren.</p>
+        <p className="feedback-intro">
+          We bewaren je antwoorden en de titel van het rapport bij je account. Het gesprek verwijderen wist deze feedback niet.
+        </p>
         {!questions && !error && <p role="status">Vragen worden geladen…</p>}
         {questions?.map(q => (
           <Question
