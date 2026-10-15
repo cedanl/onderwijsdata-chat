@@ -28,6 +28,7 @@ from .getalnotatie import engels_gelezen, heeft_tabel, nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
+from .instellingswissel import eerdere_instellingen, wisselcontext
 from .interpretatie import is_vervolgvraag, met_interpretatie
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
@@ -216,9 +217,15 @@ def _laatste_vraag(messages: list[dict]) -> str:
     return " ".join(b.get("text", "") for b in raw if isinstance(b, dict)) if isinstance(raw, list) else str(raw)
 
 
-def _beurtcontext(vraag: str) -> str:
-    """Systeemtekst voor deze vraag: de taal van het antwoord (#326) en de dataset-ID's die ze noemt (#334)."""
-    return "\n\n".join(tekst for tekst in (taalinstructie(vraag), genoemde_bronnen(vraag)) if tekst)
+def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
+    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334) en een
+    instellingswissel in dit gesprek (#543)."""
+    delen = (
+        taalinstructie(vraag),
+        genoemde_bronnen(vraag),
+        wisselcontext(settings.get("instelling"), eerdere_instellingen(turns)),
+    )
+    return "\n\n".join(tekst for tekst in delen if tekst)
 
 
 def _leestekst(antwoord: str) -> str:
@@ -520,7 +527,8 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    system = await asyncio.to_thread(build_system, settings, beurt=_beurtcontext(last_user_msg))
+    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
+    system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
         try:
