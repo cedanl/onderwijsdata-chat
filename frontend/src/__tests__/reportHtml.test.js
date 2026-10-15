@@ -202,6 +202,7 @@ describe('figure JSON in an inline script (#474)', () => {
 describe('manifest (#345)', () => {
   const manifest = {
     model: 'anthropic/claude-sonnet-4-6',
+    model_naam: 'Claude Sonnet',
     model_versie: 'claude-sonnet-4-6-20250929',
     sampling: { seed: 42, seed_toegepast: false, temperature: 0, temperature_toegepast: true },
     prompt_hash: 'abc123def456',
@@ -217,12 +218,20 @@ describe('manifest (#345)', () => {
   it('toont de verantwoording compact in rapport en export', () => {
     const html = buildReportHtml({ ...fullSpec, manifest })
     expect(html).toContain('Verantwoording:')
-    expect(html).toContain('anthropic/claude-sonnet-4-6 (claude-sonnet-4-6-20250929)')
+    expect(html).toContain('model Claude Sonnet (claude-sonnet-4-6-20250929)')
+    expect(html).not.toContain('anthropic/')
     expect(html).toContain('seed niet toegepast')
     expect(html).toContain('prompt abc123def456')
     expect(html).toContain('catalogus bd4942907ddd')
     expect(html).toContain('CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig)')
     expect(html).toContain('DUO p01hoinges (herladen 11-10-2026)')
+  })
+
+  it('een ouder manifest zonder model_naam toont het id zonder provider (BEV-10)', () => {
+    const { model_naam: _weg, ...ouder } = manifest
+    const html = buildReportHtml({ ...fullSpec, manifest: { ...ouder, model: 'azure_ai/claude-sonnet-5-5' } })
+    expect(html).toContain('model claude-sonnet-5-5 (claude-sonnet-4-6-20250929)')
+    expect(html).not.toContain('azure_ai/')
   })
 
   it('zonder manifest geen verantwoordingsblok', () => {

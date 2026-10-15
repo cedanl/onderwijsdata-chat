@@ -78,9 +78,21 @@ def test_prognose_op_hele_personen_met_noot():
     assert f"# {duo.PROGNOSE_NOOT}" in regels
 
 
-def test_afgekapte_data_zegt_dat_erbij():
+def test_afgekapte_data_zegt_in_gebruikerstaal_dat_het_bestand_onvolledig_is():
+    """De export zegt wat er afgekapt is en wat dat betekent, zonder de aanwijzing voor de tool (BEV-08)."""
     _bron(volledig=False)
-    assert f"# {store.ONVOLLEDIG}" in _regels(naar_csv("duo:p01hoinges:0"))
+    regels = _regels(naar_csv("duo:p01hoinges:0"))
+    assert f"# {csv_export.ONVOLLEDIG_EXPORT}" in regels
+    assert not any(store.ONVOLLEDIG in r for r in regels)
+    kop = "\n".join(r for r in regels if r.startswith("#")).lower()
+    assert "onvolledig" in kop and "eerste deel" in kop and "totalen" in kop
+    for intern in ("serverfilter", "bij het laden", "pagina", "query_data", "get_cbs_data", "get_duo_data", "tool"):
+        assert intern not in kop
+
+
+def test_complete_data_heeft_geen_onvolledig_regel():
+    _bron()
+    assert not any(csv_export.ONVOLLEDIG_EXPORT in r for r in _regels(naar_csv("duo:p01hoinges:0")))
 
 
 def test_onderdrukte_cellen_staan_erbij():

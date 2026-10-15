@@ -190,6 +190,11 @@ ${verantwoording}
 </body></html>`
 }
 
+// Het model zoals de gebruiker het kent (BEV-10): de naam uit het manifest, of bij een ouder
+// rapport zonder model_naam het id zonder provider (azure_ai/claude-sonnet-5-5 -> claude-sonnet-5-5).
+const zonderProvider = id => String(id).split('/').pop()
+const modelNaam = m => m.model_naam || zonderProvider(m.model)
+
 // Herkomst van het rapport (#345), compact onder de bronnen: model, prompt-, catalogus-,
 // app- en dataversie, en of seed/temperature het model echt bereikten.
 function manifestHtml(manifest) {
@@ -197,7 +202,7 @@ function manifestHtml(manifest) {
   const m = manifest
   const toegepast = v => (v === true ? 'toegepast' : v === false ? 'niet toegepast' : 'onbekend')
   const delen = [
-    `model ${m.model}${m.model_versie ? ` (${m.model_versie})` : ''}`,
+    `model ${modelNaam(m)}${m.model_versie ? ` (${zonderProvider(m.model_versie)})` : ''}`,
     m.sampling ? `seed ${toegepast(m.sampling.seed_toegepast)}` : '',
     m.prompt_hash ? `prompt ${m.prompt_hash}` : '',
     m.catalogus ? `catalogus ${m.catalogus}` : '',

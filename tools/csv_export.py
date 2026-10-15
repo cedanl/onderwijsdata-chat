@@ -65,12 +65,20 @@ def _cel(v, afronden: bool) -> str:
     return _veilig(str(v))
 
 
+# Wat de CSV zegt als de tabel afgekapt is (BEV-08): in de taal van wie het bestand opent, niet de
+# aanwijzing voor de tool (store.ONVOLLEDIG). Een compleet bestand krijgt geen regel: dat is het gewone geval.
+ONVOLLEDIG_EXPORT = (
+    "Onvolledig bestand: de bron levert deze data in delen en dit bestand bevat alleen het eerste deel. "
+    "Aantallen, sommen en totalen die je hieruit berekent, kloppen dus niet."
+)
+
+
 def _noten(key: str, afronden: bool) -> list[str]:
     noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(key)) else []
     noten += store.herkomst(key)
     known = store.meta(key)
     if known is not None and not known.volledig:
-        noten.append(store.ONVOLLEDIG)
+        noten.append(ONVOLLEDIG_EXPORT)
     noten += duo.sentinel_notes(duo.onderdrukt(key))
     if afronden:
         noten.append(duo.PROGNOSE_NOOT)
