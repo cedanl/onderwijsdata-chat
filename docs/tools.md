@@ -308,6 +308,15 @@ chat-opvraagbaar zijn zo drie verschillende dingen; `_niet_opvraagbaar` in `tool
 beslist, de package meldt alleen wat ze kan lezen. De interne bronfilter `source` betekent wat hij zegt: `cbs`,
 `rio` (alleen RIO), `duo` (alleen DUO), `riodata` (alles uit de riodata-package) of `both`.
 
+De vijf vo-bronnen in `HO_CONTEXT` (`tools/scopeprofiel.py`, epic #554) zitten achter een zoekpoort in code
+(`_zoekbaar` in `tools/catalog.py`, #557): ze komen alleen in de resultaten als `ho_markers.noemt_ho` waar is voor de
+zoekterm die het model meestuurt, niet voor de vraag van de gebruiker. Ho-woorden zijn hbo, wo, ho, hoger onderwijs,
+havo, vwo, hogeschool en universiteit (#556). Zo'n hit draagt het veld `context` met de waarde
+`vo-context voor ho: leerlingen in het voortgezet onderwijs, geen studenten`; de bronregel zegt "…, vo-context voor ho".
+De poort heeft grenzen: havo en vwo openen haar ook voor een zuivere vo-vraag, de maatkaart bij een vage vraag die ho noemt
+(`agent/scopevraag.maatvraag`) toont het label niet, en met een dataset-ID laadt de chat de data ook zonder ho-woord. Zie
+[Vo-context voor ho](databronnen.md#vo-context-voor-ho).
+
 ---
 
 ## dataset_details
@@ -338,7 +347,7 @@ Geeft het aantal datasets per bron (CBS, DUO, RIO) dat de chat kan opvragen, plu
 
 **Gebruik:** bij een vraag naar hoeveel datasets er zijn. Een telling van zoekresultaten is geen catalogustotaal (#168).
 
-De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopeprofiel.py`, #355). Een record valt erbinnen als `onderwijstype` alleen MBO, HBO, WO of HO noemt, of als het ID met een reden in `TOEGELATEN` staat. Al het andere valt erbuiten: po/so/vo, gemengde bestanden, records zonder besluit, en wat riodata als `buiten_scope` markeert (#375). Zoeken telt ze niet mee; `dataset_details`, `get_duo_data` en `get_rio_data` geven voor zo'n ID `opvraagbaar: false` en `buiten_scope: true` in plaats van data, ook als het ID rechtstreeks uit de vraag komt.
+De chat telt alleen RIO/DUO-records binnen het profiel mbo/hbo/wo (`tools/scopeprofiel.py`, #355). Een record valt erbinnen als `onderwijstype` alleen MBO, HBO, WO of HO noemt, of als het ID met een reden in `TOEGELATEN` staat. De enige vo-uitzondering zijn de vijf bronnen in `HO_CONTEXT`: ze vallen binnen het profiel en tellen mee, maar zoeken toont ze alleen bij een ho-vraag (zie [`search_catalog`](#search_catalog)). Al het andere valt erbuiten: po/so/vo, gemengde bestanden, records zonder besluit, en wat riodata als `buiten_scope` markeert (#375). Zoeken telt ze niet mee; `dataset_details`, `get_duo_data` en `get_rio_data` geven voor zo'n ID `opvraagbaar: false` en `buiten_scope: true` in plaats van data, ook als het ID rechtstreeks uit de vraag komt.
 
 ---
 
@@ -569,7 +578,8 @@ de chat haar kan beantwoorden:
 - ze noemt geen ruwe veldnaam, codewaarde of technische term (`AANGEBODENBOOPLEIDING`, `eindeAanmeldperiode`,
   code `C0001`, "sub-resource") en geen dataset bij zijn ID (`aangeboden-opleidingen`, `85423NED`);
 - ze staat op zichzelf: een sjabloonvraag als "Hoe verhoudt dit zich tot andere jaren?" of "… in de data?" valt af;
-- ze gaat niet over po, so of vo ("BO-opleidingen", vmbo, havo);
+- ze gaat niet over po, so of vo ("BO-opleidingen", vmbo, havo); bij een vo-bron uit `HO_CONTEXT` blijft een vraag
+  die ook het hoger onderwijs noemt (`noemt_ho`, dezelfde ho-woorden als de zoekpoort, dus ook havo en vwo);
 - ze vraagt geen aantal uit een RIO-register: `get_rio_data` levert één pagina en geen totaal;
 - `search_catalog` vindt met de vraag haar eigen dataset terug.
 

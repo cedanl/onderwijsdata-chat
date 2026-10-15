@@ -8,7 +8,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**123 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat. Vier vo-tabellen (`85566NED` doorstroom uit vo en vso, `85380NED` vo-leerlingen, `85381NED` en `85382NED` vo-gediplomeerden) zijn vo-context voor ho: de zoekfunctie toont ze alleen bij een vraag die ho noemt, en elke bronvermelding zegt "…, vo-context voor ho".
+**123 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat. Vier vo-tabellen (`85566NED` doorstroom uit vo en vso, `85380NED` vo-leerlingen, `85381NED` en `85382NED` vo-gediplomeerden) zijn [vo-context voor ho](#vo-context-voor-ho): de zoekfunctie toont ze alleen bij een vraag die ho noemt, en elke bronvermelding zegt "…, vo-context voor ho".
 
 | Eigenschap | Details |
 |------------|---------|
@@ -52,7 +52,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## DUO — Dienst Uitvoering Onderwijs
 
-**15 open datasets** gepubliceerd door DUO over mbo, hbo en wo, inclusief prognoses, diplomering, instroom en adressen. DUO publiceert ook po-, so- en vo-bestanden; die vallen buiten het profiel van de chat, behalve `voprognoses`: vo-context voor ho, net als de vier vo-tabellen van CBS.
+**15 open datasets** gepubliceerd door DUO over mbo, hbo en wo, inclusief prognoses, diplomering, instroom en adressen. DUO publiceert ook po-, so- en vo-bestanden; die vallen buiten het profiel van de chat, behalve `voprognoses`: [vo-context voor ho](#vo-context-voor-ho), net als de vier vo-tabellen van CBS.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -76,6 +76,31 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 **Voorbeeldvragen:**
 - *"Laad de dataset over studentprognoses MBO en maak een trendgrafiek."*
 - *"Vergelijk de diplomering in de sector techniek voor 2020-2023."*
+
+---
+
+## Vo-context voor ho
+
+De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daarop is één smalle uitzondering (epic #554): vier CBS-tabellen en één DUO-dataset over het vo geven een vraag over het hoger onderwijs context, zoals wie er vanuit het vo naar het ho kan instromen.
+
+| Dataset | Wat | Periode |
+|---------|-----|---------|
+| `85566NED` (CBS) | Doorstroom en uitstroom uit vo en vso | 2015/'16 naar 2016/'17 t/m 2022/'23 naar 2023/'24 |
+| `85380NED` (CBS) | Vo-leerlingen per onderwijssoort, leerjaar en woonregio | 2021/'22-2025/'26 |
+| `85381NED` (CBS) | Vo-gediplomeerden naar onderwijssoort en herkomst | 2011/'12-2024/'25 |
+| `85382NED` (CBS) | Vo-gediplomeerden naar woonregio | 2011/'12-2024/'25 |
+| `voprognoses` (DUO) | Leerlingenprognose vo per instelling | 2024-2030 |
+
+- **Alleen bij een ho-vraag.** De zoekfunctie toont deze vijf alleen als de zoekterm het hoger onderwijs noemt: hbo, wo, ho, hoger onderwijs, havo, vwo, hogeschool of universiteit. Zonder zo'n woord blijven ze weg. Code beslist dat, op de zoekterm die het model meegeeft (niet op de vraag van de gebruiker); zie [`search_catalog`](tools.md#search_catalog).
+- **Altijd met label.** Elke zoektreffer en elke bronvermelding noemt ze "vo-context voor ho": het gaat om leerlingen in het voortgezet onderwijs, niet om studenten.
+- **Verder geen po, so of vo.** Alle andere po-, so- en vo-bronnen blijven buiten het profiel, ook met een dataset-ID uit de vraag.
+
+**Grenzen.** De uitzondering is minder streng dan ze klinkt:
+
+- **havo en vwo openen de poort.** havo en vwo tellen als ho-woord (#556), dus een zuivere vo-vraag die havo of vwo noemt (zoals "Wat is het slagingspercentage op havo en vwo?") kan deze tabellen ook vinden en laden. Het label is dan de enige rem. Of dat zo blijft, is een open punt op epic #554.
+- **De keuzekaart toont het label niet.** Bij een vage vraag biedt de chat een keuzekaart met datasets als opties ("Welke maat bedoel je bij …?"). Noemt die vage vraag zelf het hoger onderwijs (ook havo of vwo), dan kan daar een vo-tabel staan met alleen haar titel ("Vo; …"), zonder "vo-context voor ho".
+- **Een dataset-ID laadt zonder ho-woord.** De poort zit alleen in het zoeken: met een van deze vijf ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook als niemand het hoger onderwijs noemt.
+- **Alle vo-rijen.** De vier CBS-tabellen krijgen geen sectorselectie zoals de VSV-tabellen: `85566NED`, `85380NED`, `85381NED` en `85382NED` laden al hun vo-rijen (bij `85566NED` ook vso). Alleen het label zegt dat het context is.
 
 ---
 

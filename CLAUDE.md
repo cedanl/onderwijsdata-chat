@@ -41,3 +41,4 @@ curl https://<environment-url>/version  # {"version":"x.y.z"}
 - **UWV Open Match**: Frozen snapshot May 2023 (no live vacancy data)
 - **DUO sector classification**: HO uses `ONDERDEEL`, MBO uses `HOOFDGROEP NAAM`
 - **CBS versioning**: Preliminary figures can be revised; check `_laatste_update`
+- **Scope**: mbo/hbo/wo only; po/so/vo fail closed, except the five `HO_CONTEXT` vo sources (4 CBS tables + DUO `voprognoses`), returned by `search_catalog` only when the model's search term names ho (incl. havo/vwo; not checked against the user's question, and a direct dataset ID loads without it) and labelled "vo-context voor ho" (epic #554; see `tools/scopeprofiel.py`, `docs/databronnen.md` for the known limits)
