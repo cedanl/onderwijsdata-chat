@@ -186,6 +186,13 @@ def test_put_masks_bsn_sent_as_json_number(client, titel):
     assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
 
 
+@pytest.mark.parametrize("titel", [["BSN 111222333"], [111222333], {"t": "BSN 111222333"}, True])
+def test_put_never_stores_a_title_that_is_neither_text_nor_number(client, titel):
+    """Postgres slaat een JSON-lijst als tekst op, BSN en al; de server bewaart dus alleen gecontroleerde tekst."""
+    assert _bewaar(client, titel).json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
 def test_put_and_patch_cut_a_long_title(client):
     """Een titel zonder grens zou de herkenning kwadratisch lang laten rekenen (#552)."""
     lang = "a" * 100_000

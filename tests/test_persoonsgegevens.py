@@ -72,8 +72,13 @@ def test_de_systeemprompt_heeft_een_regel_over_persoonsgegevens_en_kleine_aantal
 def test_veilige_gesprekstitel():
     assert persoonsgegevens.veilige_gesprekstitel("BSN 111222333") == GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
     assert persoonsgegevens.veilige_gesprekstitel("Nummer 123456789") == "Nummer 123456789"
-    assert persoonsgegevens.veilige_gesprekstitel(None) is None  # geen tekst: ongewijzigd, zoals voorheen
-    assert persoonsgegevens.veilige_gesprekstitel(["BSN 111222333"]) == ["BSN 111222333"]
+    assert persoonsgegevens.veilige_gesprekstitel(None) is None  # geen titel: de database weigert die, zoals voorheen
+
+
+@pytest.mark.parametrize("titel", [["BSN 111222333"], [111222333], {"t": "BSN 111222333"}, True, False])
+def test_een_gesprekstitel_die_tekst_noch_getal_is_wordt_nooit_bewaard(titel):
+    """Postgres maakt van een lijst tekst ({"BSN 111222333"}); alleen gecontroleerde tekst gaat erin (#552)."""
+    assert persoonsgegevens.veilige_gesprekstitel(titel) == GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
 
 
 @pytest.mark.parametrize("getal", [111222333, 111222333.0])

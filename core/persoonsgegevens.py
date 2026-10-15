@@ -9,7 +9,7 @@ rapport (hier) volgen beide deze herkenning.
 
 import re
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import overload
 
 # Negen losse cijfers: niet midden in een langer of gegroepeerd getal (een telefoonnummer, 1.234.567.890).
 _BSN = re.compile(r"(?<!\d)(?<!\d[.,-])\d{9}(?![.,-]?\d)")
@@ -21,8 +21,6 @@ _TELEFOON = re.compile(r"(?<![\d+])(?:\+31|0031|0)[\s-]?[1-9](?:[\s-]?\d){8}(?!\
 GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS = "Gesprek (persoonsgegevens weggelaten)"
 # Ruim boven de 80 tekens van de frontend (MAX_TITLE_LENGTH); houdt de herkenning op de server kort.
 MAX_GESPREKSTITEL = 200
-
-_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -52,22 +50,31 @@ def bevat(tekst: str) -> bool:
     return bool(vind(tekst))
 
 
-def veilige_gesprekstitel(titel: _T) -> _T | str:
+@overload
+def veilige_gesprekstitel(titel: None) -> None: ...
+@overload
+def veilige_gesprekstitel(titel: object) -> str: ...
+def veilige_gesprekstitel(titel: object) -> str | None:
     """De titel als tekst van hoogstens MAX_GESPREKSTITEL tekens, of de generieke titel als er een BSN,
     e-mailadres of telefoonnummer in staat (#552).
 
     Eerst inkorten, dan controleren: de herkenning rekent kwadratisch in de lengte, en bewaard wordt
-    precies de gecontroleerde tekst. Een titel die tekst noch getal is, gaat ongewijzigd door.
+    precies de gecontroleerde tekst. Alleen tekst en getallen gaan door; een lijst, object of boolean
+    wordt de generieke titel, want Postgres zou er tekst van maken zonder dat iemand die controleerde.
+    Geen titel (None) blijft None: de database weigert die, zoals voorheen.
     """
+    if titel is None:
+        return None
     tekst = _als_tekst(titel)
     if tekst is None:
-        return titel
+        return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
     tekst = tekst[:MAX_GESPREKSTITEL]
     return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS if bevat(tekst) else tekst
 
 
 def _als_tekst(titel: object) -> str | None:
-    """Een getal wordt tekst, zoals de database het opslaat: 111222333.0 als 111222333, zodat de elfproef het ziet."""
+    """Tekst blijft tekst; een getal wordt tekst zoals de database het opslaat (111222333.0 als 111222333,
+    zodat de elfproef het ziet); al het andere is None."""
     if isinstance(titel, str):
         return titel
     if isinstance(titel, bool) or not isinstance(titel, (int, float)):

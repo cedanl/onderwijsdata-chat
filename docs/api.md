@@ -70,7 +70,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 |---------|-----|--------------|
 | `GET` | `/api/conversations` | Conversaties van de ingelogde gebruiker, nieuwste eerst, per pagina: `limit` (1–50, standaard 15); volgende pagina met `before_ts` en `before_id` van de laatste uit de vorige. Per rij alleen `id`, `title` en `timestamp`; met `q` alleen de treffers op titel of tekst |
 | `GET` | `/api/conversations/{id}` | Eén conversatie met haar `messages`; 404 bij onbekend ID of een conversatie van een ander |
-| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`). De server kort `title` in tot 200 tekens en bewaart een titel met een BSN, e-mailadres of telefoonnummer als `Gesprek (persoonsgegevens weggelaten)` |
+| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`). De server kort `title` in tot 200 tekens en bewaart een titel met een BSN, e-mailadres of telefoonnummer als `Gesprek (persoonsgegevens weggelaten)`; een getal wordt tekst, een lijst, object of boolean wordt die generieke titel |
 | `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`), met dezelfde inkorting en maskering als bij `PUT`; 404 bij onbekend ID, 422 bij lege titel |
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |
 | `GET` | `/api/workbooks` | Lijst van alle workbooks van de ingelogde gebruiker |
