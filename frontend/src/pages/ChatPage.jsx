@@ -61,7 +61,7 @@ import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
-import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
@@ -751,7 +751,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 </div>
               </div>
             )}
-            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} />
+            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
@@ -991,7 +991,20 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
                 </button>
               </div>
             )}
-            {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
+            {msg.interrupted && (
+              <div className="message-stopped">
+                Verbinding verbroken — antwoord onvolledig
+                {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
+                {herhaal && (
+                  <>
+                    {' '}
+                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>
+                      Probeer opnieuw
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
             {retry && (
               <ErrorRetry

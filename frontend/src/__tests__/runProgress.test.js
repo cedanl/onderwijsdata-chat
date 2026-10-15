@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import RunProgress, { countRunSteps, currentRunStep, formatElapsed } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, formatElapsed, heavyRun, HEAVY_TOOLS } from '../components/RunProgress'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -39,6 +39,35 @@ describe('currentRunStep', () => {
   it('falls back to the last step taken, or nothing', () => {
     expect(currentRunStep([{ role: 'user' }, { role: 'assistant', tools: [{ label: 'Grafiek maken', done: true }] }])).toBe('Grafiek maken')
     expect(currentRunStep([{ role: 'user' }])).toBeNull()
+  })
+})
+
+// #547: a UWV or ROA question takes minutes; the run says so once such a tool has started.
+describe('heavyRun', () => {
+  const run = (...tools) => [{ role: 'user', content: 'vraag' }, { role: 'assistant', tools }]
+
+  it('holds the UWV vacancies and the ROA benchmark', () => {
+    expect([...HEAVY_TOOLS].sort()).toEqual(['get_roa_benchmark', 'get_uwv_vacatures'])
+  })
+
+  it('is true once a heavy tool has started in this run, running or done', () => {
+    expect(heavyRun(run({ name: 'search_catalog', done: true }, { name: 'get_uwv_vacatures', done: false }))).toBe(true)
+    expect(heavyRun(run({ name: 'get_roa_benchmark', done: true }, { name: 'create_plot', done: false }))).toBe(true)
+  })
+
+  it('is false for a run with only other tools, or none', () => {
+    expect(heavyRun(run({ name: 'search_catalog', done: true }, { name: 'get_cbs_data', done: false }))).toBe(false)
+    expect(heavyRun([{ role: 'user', content: 'vraag' }])).toBe(false)
+    expect(heavyRun([])).toBe(false)
+  })
+
+  it('ignores a heavy tool from an earlier turn', () => {
+    const messages = [
+      ...run({ name: 'get_uwv_vacatures', done: true }),
+      { role: 'user', content: 'tweede' },
+      { role: 'assistant', tools: [{ name: 'get_duo_data', done: false }] },
+    ]
+    expect(heavyRun(messages)).toBe(false)
   })
 })
 
@@ -84,6 +113,24 @@ describe('RunProgress', () => {
   it('names the current step', async () => {
     await render({ busy: true, steps: 2, stepLabel: 'DUO-data ophalen' })
     expect(container.querySelector('.run-progress-step').textContent).toBe('DUO-data ophalen')
+  })
+
+  it('says a heavy run takes minutes, outside the timer and without a live region', async () => {
+    await render({ busy: true, steps: 2, heavy: true })
+    const note = container.querySelector('.run-progress-note')
+    expect(note.textContent).toBe('Dit kan 2–3 minuten duren.')
+    expect(note.closest('[role="timer"]')).toBeNull()
+    expect(note.closest('[role="alert"], [role="status"], [aria-live]')).toBeNull()
+  })
+
+  it('says nothing about the wait for a light run', async () => {
+    await render({ busy: true, steps: 2 })
+    expect(container.textContent).not.toContain('minuten duren')
+  })
+
+  it('says nothing about the wait when no run is going', async () => {
+    await render({ busy: false, steps: 2, heavy: true })
+    expect(container.textContent).not.toContain('minuten duren')
   })
 
   it('disappears when the run ends', async () => {
