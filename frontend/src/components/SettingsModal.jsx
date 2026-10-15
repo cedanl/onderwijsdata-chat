@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
+import PrivacyLink from './PrivacyLink'
 import { useDialog } from '../hooks/useDialog'
 
 const FUNCTIES = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Anders']
@@ -96,7 +97,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
         <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', marginBottom: 32, lineHeight: 1.5 }}>
           Je instelling en functie staan alleen in deze browser en gaan als context met je vragen mee naar de
           externe AI-dienst; uitloggen wist ze.{' '}
-          <a href="/privacy" style={{ color: 'var(--gray-600)', textDecoration: 'underline' }}>Privacy-informatie</a>
+          <PrivacyLink />
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

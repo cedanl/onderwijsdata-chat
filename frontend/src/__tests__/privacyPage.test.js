@@ -30,6 +30,8 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+// The privacy information opens as a popup from these places (#572); privacyModal.test.js covers the popup.
+const privacyButtons = () => [...container.querySelectorAll('button')].filter(b => b.textContent === 'Privacy-informatie')
 const privacyLinks = () => [...container.querySelectorAll('a[href="/privacy"]')]
 
 describe('PrivacyPage', () => {
@@ -55,17 +57,19 @@ describe('PrivacyPage', () => {
   })
 })
 
-describe('links to the privacy page', () => {
-  it('the login page links to it below the form', async () => {
+describe('buttons for the privacy information', () => {
+  it('the login page offers it below the form', async () => {
     await render(createElement(LoginPage, { onLogin: vi.fn(), oidcEnabled: false }))
-    expect(privacyLinks()).toHaveLength(1)
+    expect(privacyButtons()).toHaveLength(1)
+    expect(privacyLinks()).toHaveLength(0)
     expect(container.textContent).toContain('externe AI-dienst')
   })
 
-  it('the settings dialog says where the profile lives and links to it', async () => {
+  it('the settings dialog says where the profile lives and offers it', async () => {
     await render(createElement(SettingsModal, { settings: {}, onSave: vi.fn(), onClose: vi.fn() }))
     expect(container.textContent).toContain('alleen in deze browser')
-    expect(privacyLinks()).toHaveLength(1)
+    expect(privacyButtons()).toHaveLength(1)
+    expect(privacyLinks()).toHaveLength(0)
   })
 })
 
