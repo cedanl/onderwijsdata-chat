@@ -47,7 +47,15 @@ from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
-from .vaste_antwoorden import SCOPE_UITLEG, WEIGER_ANTWOORD, scope_uitleg, sentinelvraag, weigering
+from .vaste_antwoorden import (
+    SCOPE_UITLEG,
+    SENTINEL_ANTWOORD,
+    VO_ANTWOORD,
+    WEIGER_ANTWOORD,
+    scope_uitleg,
+    sentinelvraag,
+    weigering,
+)
 from .vo_school import vo_schoolvraag
 from .zelfcorrectie import zonder_zelfcorrectie
 
@@ -429,6 +437,14 @@ def _eindtekst(
 # Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
 _VASTE_ANTWOORDEN = frozenset({WEIGER_ANTWOORD, SCOPE_UITLEG})
 _ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, *_VASTE_ANTWOORDEN})
+# Teksten die helemaal uit code komen, zonder model als schrijver: de frontend noemt er geen model onder (#565).
+# Code beslist op de eindtekst: een modelantwoord waar zo'n zin in staat, is niet gelijk en houdt het label.
+_UIT_CODE = frozenset({SENTINEL_ANTWOORD, VO_ANTWOORD, *_VASTE_ANTWOORDEN})
+
+
+def _vast(text_content: str) -> dict:
+    """`{"vast": True}` voor een message_end met een tekst die helemaal uit code komt; anders leeg."""
+    return {"vast": True} if text_content in _UIT_CODE else {}
 
 
 def _slotbericht(
@@ -460,6 +476,7 @@ def _slotbericht(
             else {}
         ),
         **({"vervolgvragen": vervolgvragen} if vervolgvragen else {}),
+        **_vast(text_content),
     }
 
 
@@ -520,7 +537,7 @@ async def run(
     # Bij een schoolnaam laadt het register over het netwerk: niet op de event loop.
     if vast := sentinelvraag(last_user_msg) or await asyncio.to_thread(vo_schoolvraag, last_user_msg):
         await emit({"type": "message_start"})
-        await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": []})
+        await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
 
     # Een open slot (plaats of instelling, maat) krijgt een vaste kaart uit code, vóór het model (#348).

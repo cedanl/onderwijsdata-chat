@@ -66,6 +66,20 @@ describe('useChat streaming', () => {
     expect(assistantMessages()[0].content).toBe('de registratie van studiekeuze en -financiering.')
   })
 
+  // #565: a fixed answer from code keeps that mark, so a restored chat names no model under it either.
+  it('marks a fixed answer from code as vast, and only that one', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'vaste uitleg', vast: true })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'modelantwoord' })
+    })
+    const [vast, gewoon] = assistantMessages()
+    expect(vast.vast).toBe(true)
+    expect(gewoon).not.toHaveProperty('vast')
+  })
+
   it('applies late updates to their own message when the next one has started', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {

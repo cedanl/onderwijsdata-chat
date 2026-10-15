@@ -128,6 +128,7 @@ def test_groep_8_krijgt_de_vaste_uitleg_in_de_chat(monkeypatch, tool_result):
     end = events[-1]
     assert end["type"] == "message_end" and end["content"] == SCOPE_UITLEG
     assert end["bronnen"] == [] and "vervolgvragen" not in end
+    assert end["vast"] is True  # geen "Antwoord van <model>" onder een tekst uit code (#565)
     for intern in ("de tool", "weigerde", "selectie"):
         assert intern not in end["content"].lower()
 
