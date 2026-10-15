@@ -991,7 +991,20 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
                 </button>
               </div>
             )}
-            {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
+            {msg.interrupted && (
+              <div className="message-stopped">
+                Verbinding verbroken — antwoord onvolledig
+                {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
+                {herhaal && (
+                  <>
+                    {' '}
+                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>
+                      Probeer opnieuw
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
             {retry && (
               <ErrorRetry
