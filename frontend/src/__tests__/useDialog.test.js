@@ -65,3 +65,48 @@ describe('dialog focus', () => {
     root = createRoot(host)
   })
 })
+
+describe('stacked dialogs (#572)', () => {
+  let upperHost
+  let upperRoot
+  let onUpperCancel
+
+  beforeEach(async () => {
+    upperHost = document.createElement('div')
+    document.body.appendChild(upperHost)
+    upperRoot = createRoot(upperHost)
+    onUpperCancel = vi.fn()
+    host.querySelector('button').focus()
+    await act(async () => {
+      upperRoot.render(createElement(ConfirmModal, { message: 'Bovenste?', onConfirm: vi.fn(), onCancel: onUpperCancel }))
+    })
+  })
+
+  afterEach(() => {
+    act(() => upperRoot.unmount())
+    upperHost.remove()
+  })
+
+  it('Escape closes only the topmost dialog', async () => {
+    await press('Escape')
+    expect(onUpperCancel).toHaveBeenCalledOnce()
+    expect(onCancel).not.toHaveBeenCalled()
+  })
+
+  it('Tab stays in the topmost dialog', async () => {
+    const [first, last] = [...upperHost.querySelectorAll('button')]
+    last.focus()
+    await press('Tab')
+    expect(document.activeElement).toBe(first)
+  })
+
+  it('the lower dialog handles keys again once the upper one is gone', async () => {
+    const lowerButton = host.querySelector('button')
+    act(() => upperRoot.unmount())
+    expect(document.activeElement).toBe(lowerButton)
+    upperRoot = createRoot(upperHost)
+    await press('Escape')
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onUpperCancel).not.toHaveBeenCalled()
+  })
+})

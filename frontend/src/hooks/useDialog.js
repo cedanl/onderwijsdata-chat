@@ -2,6 +2,15 @@ import { useEffect, useRef } from 'react'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+// Key handlers of the open dialogs, the topmost last. One document listener serves only the topmost,
+// so with a dialog opened from another (privacy from settings, #572) Escape closes just the upper one
+// and the Tab traps do not fight.
+const openDialogs = []
+
+function onDocumentKeyDown(e) {
+  openDialogs.at(-1)?.(e)
+}
+
 // Modal behaviour for the element the returned ref is attached to: focus moves in on open,
 // Tab stays inside, Escape closes, and focus returns to whatever opened it.
 export function useDialog(onClose) {
@@ -39,9 +48,11 @@ export function useDialog(onClose) {
       }
     }
 
-    document.addEventListener('keydown', onKeyDown)
+    if (!openDialogs.length) document.addEventListener('keydown', onDocumentKeyDown)
+    openDialogs.push(onKeyDown)
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
+      openDialogs.splice(openDialogs.indexOf(onKeyDown), 1)
+      if (!openDialogs.length) document.removeEventListener('keydown', onDocumentKeyDown)
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
     }
   }, [])
