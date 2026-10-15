@@ -1055,6 +1055,24 @@ html.dark .context-limit-banner--full {
 }
 .wb-gallery-title { font-size: 1.25rem; font-weight: 800; color: var(--gray-900); }
 .wb-gallery-sub { font-size: .8rem; color: var(--muted-text); margin-top: 2px; }
+/* Title search (#562): 44px high and 16px text (the root is 15px), so a phone neither misses the tap nor zooms in. */
+.wb-gallery-search { display: flex; flex-direction: column; gap: 6px; max-width: 28rem; margin: -12px 0 28px; }
+.wb-gallery-search-label { font-size: .8rem; font-weight: 600; color: var(--gray-700); }
+.wb-gallery-search-input {
+  width: 100%; box-sizing: border-box; min-height: var(--tap-min); padding: 8px 12px;
+  /* --gray-500: the field's edge keeps 3:1 against the page in both themes (WCAG 1.4.11). */
+  border: 1px solid var(--gray-500); border-radius: var(--radius-sm);
+  background: transparent; color: inherit; font: inherit; font-size: 16px;
+}
+.wb-gallery-search-input:focus { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.wb-gallery-no-hits { padding: 48px 24px; text-align: center; color: var(--muted-text); font-size: .95rem; overflow-wrap: anywhere; }
+.wb-gallery-no-hits p { margin: 0 0 16px; }
+.wb-gallery-clear-btn {
+  min-height: var(--tap-min); padding: 8px 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200); background: transparent; color: var(--accent-text);
+  font-size: .875rem; font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.wb-gallery-clear-btn:hover { background: var(--blue-50); }
 
 .wb-gallery-group + .wb-gallery-group { margin-top: 32px; }
 .wb-gallery-group-title { font-size: .95rem; font-weight: 700; color: var(--gray-900); margin: 0 0 12px; }
