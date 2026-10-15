@@ -61,7 +61,7 @@ import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
-import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
@@ -751,7 +751,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 </div>
               </div>
             )}
-            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} />
+            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
