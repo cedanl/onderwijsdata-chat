@@ -73,6 +73,34 @@ def test_veilige_gesprekstitel():
     assert persoonsgegevens.veilige_gesprekstitel("BSN 111222333") == GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
     assert persoonsgegevens.veilige_gesprekstitel("Nummer 123456789") == "Nummer 123456789"
     assert persoonsgegevens.veilige_gesprekstitel(None) is None  # geen tekst: ongewijzigd, zoals voorheen
+    assert persoonsgegevens.veilige_gesprekstitel(["BSN 111222333"]) == ["BSN 111222333"]
+
+
+@pytest.mark.parametrize("getal", [111222333, 111222333.0])
+def test_een_getal_als_gesprekstitel_wordt_als_tekst_gecontroleerd(getal):
+    """De database maakt van een getal tekst; een BSN als JSON-getal komt er dus ook niet in (#552)."""
+    assert persoonsgegevens.veilige_gesprekstitel(getal) == GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
+
+
+@pytest.mark.parametrize(("getal", "tekst"), [(123456789, "123456789"), (2.5, "2.5"), (2023.0, "2023")])
+def test_een_gewoon_getal_als_gesprekstitel_blijft_staan_als_tekst(getal, tekst):
+    assert persoonsgegevens.veilige_gesprekstitel(getal) == tekst
+
+
+def test_een_lange_gesprekstitel_wordt_ingekort_voor_de_controle(monkeypatch):
+    """De herkenning is kwadratisch in de lengte; een titel zonder grens zou de server stilleggen (#552)."""
+    gecontroleerd = []
+    echte_bevat = persoonsgegevens.bevat
+    monkeypatch.setattr(persoonsgegevens, "bevat", lambda tekst: gecontroleerd.append(tekst) or echte_bevat(tekst))
+    titel = persoonsgegevens.veilige_gesprekstitel("a" * 100_000)
+    assert titel == "a" * persoonsgegevens.MAX_GESPREKSTITEL
+    assert gecontroleerd == [titel]  # bewaard wordt wat gecontroleerd is
+
+
+def test_een_bsn_voorbij_de_grens_wordt_niet_bewaard():
+    titel = "a" * (persoonsgegevens.MAX_GESPREKSTITEL - 4) + " 111222333"
+    assert persoonsgegevens.veilige_gesprekstitel(titel) == titel[: persoonsgegevens.MAX_GESPREKSTITEL]
+    assert "111222333" not in persoonsgegevens.veilige_gesprekstitel(titel)
 
 
 def test_de_gesprekstitel_zonder_persoonsgegevens_is_die_van_de_frontend():

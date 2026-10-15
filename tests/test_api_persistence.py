@@ -3,7 +3,7 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
-from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
+from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS, MAX_GESPREKSTITEL
 
 
 @pytest.fixture
@@ -178,6 +178,21 @@ def test_patch_masks_personal_data_in_title(client, titel):
     _bewaar(client, "Oud")
     assert client.patch("/api/conversations/c1", json={"title": titel}).json() == {"ok": True}
     assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+@pytest.mark.parametrize("titel", [111222333, 111222333.0])
+def test_put_masks_bsn_sent_as_json_number(client, titel):
+    assert _bewaar(client, titel).json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+def test_put_and_patch_cut_a_long_title(client):
+    """Een titel zonder grens zou de herkenning kwadratisch lang laten rekenen (#552)."""
+    lang = "a" * 100_000
+    assert _bewaar(client, lang).json() == {"ok": True}
+    assert _titels(client) == ("a" * MAX_GESPREKSTITEL,) * 2
+    assert client.patch("/api/conversations/c1", json={"title": "b" * 100_000}).json() == {"ok": True}
+    assert _titels(client) == ("b" * MAX_GESPREKSTITEL,) * 2
 
 
 @pytest.mark.parametrize("titel", GEWONE_TITELS)

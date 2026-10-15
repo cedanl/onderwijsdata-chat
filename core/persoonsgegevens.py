@@ -19,6 +19,8 @@ _TELEFOON = re.compile(r"(?<![\d+])(?:\+31|0031|0)[\s-]?[1-9](?:[\s-]?\d){8}(?!\
 
 # Gelijk aan TITEL_ZONDER_PERSOONSGEGEVENS in frontend/src/conversationTitle.js; een test bewaakt dat.
 GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS = "Gesprek (persoonsgegevens weggelaten)"
+# Ruim boven de 80 tekens van de frontend (MAX_TITLE_LENGTH); houdt de herkenning op de server kort.
+MAX_GESPREKSTITEL = 200
 
 _T = TypeVar("_T")
 
@@ -51,8 +53,23 @@ def bevat(tekst: str) -> bool:
 
 
 def veilige_gesprekstitel(titel: _T) -> _T | str:
-    """De titel, of de generieke titel als er een BSN, e-mailadres of telefoonnummer in staat (#552).
+    """De titel als tekst van hoogstens MAX_GESPREKSTITEL tekens, of de generieke titel als er een BSN,
+    e-mailadres of telefoonnummer in staat (#552).
 
-    Een titel die geen tekst is, gaat ongewijzigd door: dat gedrag blijft zoals het was.
+    Eerst inkorten, dan controleren: de herkenning rekent kwadratisch in de lengte, en bewaard wordt
+    precies de gecontroleerde tekst. Een titel die tekst noch getal is, gaat ongewijzigd door.
     """
-    return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS if isinstance(titel, str) and bevat(titel) else titel
+    tekst = _als_tekst(titel)
+    if tekst is None:
+        return titel
+    tekst = tekst[:MAX_GESPREKSTITEL]
+    return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS if bevat(tekst) else tekst
+
+
+def _als_tekst(titel: object) -> str | None:
+    """Een getal wordt tekst, zoals de database het opslaat: 111222333.0 als 111222333, zodat de elfproef het ziet."""
+    if isinstance(titel, str):
+        return titel
+    if isinstance(titel, bool) or not isinstance(titel, (int, float)):
+        return None
+    return str(int(titel)) if isinstance(titel, float) and titel.is_integer() else str(titel)
