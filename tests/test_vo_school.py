@@ -196,7 +196,8 @@ def _beurt(vraag: str, events: list[dict] | None = None) -> tuple[str, list[dict
 def _vo_antwoord_zonder_model(tekst: str, events: list[dict]) -> None:
     assert tekst == VO_ANTWOORD
     assert [e["type"] for e in events] == ["message_start", "message_end"]
-    assert events[-1] == {"type": "message_end", "content": VO_ANTWOORD, "actions": [], "bronnen": []}
+    # vast: de tekst komt uit code, dus geen "Antwoord van <model>" eronder (#565).
+    assert events[-1] == {"type": "message_end", "content": VO_ANTWOORD, "actions": [], "bronnen": [], "vast": True}
 
 
 def test_de_vo_vraag_komt_voor_de_scopevraag_en_het_model():

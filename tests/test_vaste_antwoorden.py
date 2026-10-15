@@ -5,8 +5,10 @@ import importlib
 
 import pytest
 
+from agent.loop import LoopResult
+from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
-from agent.vaste_antwoorden import SENTINEL_ANTWOORD, WEIGER_ANTWOORD, sentinelvraag, weigering
+from agent.vaste_antwoorden import SCOPE_UITLEG, SENTINEL_ANTWOORD, WEIGER_ANTWOORD, sentinelvraag, weigering
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -97,6 +99,7 @@ def test_run_beantwoordt_de_sentinelvraag_zonder_model(monkeypatch):
     text, events = _run(monkeypatch, "Wat betekent −1 in DUO-data?", [])
     assert text == SENTINEL_ANTWOORD
     assert [e["type"] for e in events] == ["message_start", "message_end"]
+    assert events[-1]["content"] == SENTINEL_ANTWOORD and events[-1]["vast"] is True
 
 
 def test_run_vervangt_een_kale_weigering(monkeypatch):
@@ -105,6 +108,7 @@ def test_run_vervangt_een_kale_weigering(monkeypatch):
     )
     assert text == WEIGER_ANTWOORD
     assert events[-1]["content"] == WEIGER_ANTWOORD
+    assert events[-1]["vast"] is True
 
 
 def test_bewering_zonder_tools_en_zonder_data_wordt_de_weigering():
@@ -127,3 +131,34 @@ def test_run_vervangt_een_verzonnen_feit_zonder_tools(monkeypatch):
         [StreamResult(text="Ajax speelt thuis tegen PSV op 30 september 2023.", tool_calls=[])] * 3,
     )
     assert text == WEIGER_ANTWOORD
+
+
+# --- vast: geen model als afzender (#565) ---------------------------------------------------
+
+
+@pytest.mark.parametrize("vast", [WEIGER_ANTWOORD, SCOPE_UITLEG])
+def test_een_vast_antwoord_uit_code_heeft_vast_in_het_slotbericht(vast):
+    """De tekst komt uit code: de frontend zet er geen "Antwoord van <model>" onder."""
+    assert run_module._slotbericht(vast, LoopResult(), [], False, [])["vast"] is True
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Er waren 1.200 eerstejaars.",
+        INGEHOUDEN,
+        run_module.LEEG_ANTWOORD,
+        f"{SCOPE_UITLEG}\n\nWel kan ik iets zeggen over het mbo.",
+    ],
+)
+def test_een_antwoord_met_modeltekst_heeft_geen_vast(tekst):
+    """Alleen een tekst die gelijk is aan een vast antwoord; ook een modeltekst met de scope-uitleg erin niet."""
+    assert "vast" not in run_module._slotbericht(tekst, LoopResult(), [], False, [])
+
+
+def test_run_zet_geen_vast_onder_een_gewoon_antwoord(monkeypatch):
+    text, events = _run(
+        monkeypatch, "Hallo", [StreamResult(text="Hallo! Stel gerust een vraag over onderwijsdata.", tool_calls=[])]
+    )
+    assert events[-1]["type"] == "message_end" and events[-1]["content"] == text
+    assert "vast" not in events[-1]
