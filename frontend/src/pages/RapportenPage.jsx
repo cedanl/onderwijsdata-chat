@@ -147,8 +147,9 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
         <div className="wb-gallery-header">
           <div>
             <h1 className="wb-gallery-title">Rapporten</h1>
-            {/* A live region, so a screen reader hears the number of hits while the user types. */}
-            <div className="wb-gallery-sub" role="status">
+            {/* A live region only during a search: a screen reader hears the number of hits while the user
+                types, but not the total once when the list loads. */}
+            <div className="wb-gallery-sub" role={zoekt ? 'status' : undefined}>
               {loading && rapporten.length === 0 ? '' : aantalTekst(zichtbaar.length, rapporten.length, zoekt)}
             </div>
           </div>
