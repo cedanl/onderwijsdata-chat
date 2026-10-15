@@ -3,6 +3,8 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
+from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS, MAX_GESPREKSTITEL
+
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
@@ -145,6 +147,67 @@ def test_patch_conversation_rejects_empty_title(client, body):
 def test_patch_unknown_conversation_returns_404(client):
     resp = client.patch("/api/conversations/bestaat-niet", json={"title": "X"})
     assert resp.status_code == 404
+
+
+# ── Persoonsgegevens in de gesprekstitel (#552, F5) ──────────────────────────
+# De frontend maakt van zo'n titel al een generieke; de server doet het ook, voor een
+# aangepaste client of een directe API-aanroep. Maskeren, niet weigeren: autosave blijft werken.
+
+PERSOONSGEGEVENS_IN_TITEL = ["BSN 111222333", "Mail jan@example.nl", "Bel 06 12345678"]
+GEWONE_TITELS = ["Nummer 123456789", "Instroom hbo 2023", "Studenten HU 2024"]
+
+
+def _bewaar(client, titel):
+    return client.put("/api/conversations/c1", json={"title": titel, "timestamp": 1000, "messages": []})
+
+
+def _titels(client):
+    return client.get("/api/conversations").json()[0]["title"], client.get("/api/conversations/c1").json()["title"]
+
+
+@pytest.mark.parametrize("titel", PERSOONSGEGEVENS_IN_TITEL)
+def test_put_masks_personal_data_in_title(client, titel):
+    resp = _bewaar(client, titel)
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+@pytest.mark.parametrize("titel", PERSOONSGEGEVENS_IN_TITEL)
+def test_patch_masks_personal_data_in_title(client, titel):
+    _bewaar(client, "Oud")
+    assert client.patch("/api/conversations/c1", json={"title": titel}).json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+@pytest.mark.parametrize("titel", [111222333, 111222333.0])
+def test_put_masks_bsn_sent_as_json_number(client, titel):
+    assert _bewaar(client, titel).json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+@pytest.mark.parametrize("titel", [["BSN 111222333"], [111222333], {"t": "BSN 111222333"}, True])
+def test_put_never_stores_a_title_that_is_neither_text_nor_number(client, titel):
+    """Postgres slaat een JSON-lijst als tekst op, BSN en al; de server bewaart dus alleen gecontroleerde tekst."""
+    assert _bewaar(client, titel).json() == {"ok": True}
+    assert _titels(client) == (GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS,) * 2
+
+
+def test_put_and_patch_cut_a_long_title(client):
+    """Een titel zonder grens zou de herkenning kwadratisch lang laten rekenen (#552)."""
+    lang = "a" * 100_000
+    assert _bewaar(client, lang).json() == {"ok": True}
+    assert _titels(client) == ("a" * MAX_GESPREKSTITEL,) * 2
+    assert client.patch("/api/conversations/c1", json={"title": "b" * 100_000}).json() == {"ok": True}
+    assert _titels(client) == ("b" * MAX_GESPREKSTITEL,) * 2
+
+
+@pytest.mark.parametrize("titel", GEWONE_TITELS)
+def test_put_and_patch_keep_titles_without_personal_data(client, titel):
+    _bewaar(client, titel)
+    assert _titels(client) == (titel,) * 2
+    client.patch("/api/conversations/c1", json={"title": f"{titel} (2)"})
+    assert _titels(client) == (f"{titel} (2)",) * 2
 
 
 # ── Workbooks (no auth) ──────────────────────────────────────────────────────

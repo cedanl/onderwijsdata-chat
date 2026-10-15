@@ -18,8 +18,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
+from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, dispatch, fouten, outcome
+from tools import LABELS, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
 from tools.snippet import generate as _generate_snippet
@@ -29,6 +30,7 @@ from .models import litellm_kwargs
 from .probleem import controlenamen, herstelbare
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
+from .selectie import data_keys
 from .stream import Emit, StreamResult, accumulate_stream
 
 logger = logging.getLogger(__name__)
@@ -137,6 +139,11 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
     result, figure = await asyncio.to_thread(dispatch, call.name, call.args)
     result = str(result)
+    # Welke stap het geheugen opjaagt (#546): het proces en de datastore na elke tool, alleen getallen.
+    gebruik = store.gebruik()
+    logger.info(
+        "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
+    )
 
     snippet = _generate_snippet(call.name, call.args, result)
     if snippet:
@@ -153,6 +160,10 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
         end_event["snippet"] = snippet
     if key := export_key(call.name, result):
         end_event["export_key"] = key
+    # Ook de key van een lader of KPI-bron: zo bewaart het opgeslagen gesprek het recept van álle data
+    # waarop het rust, en kent een heropend gesprek zijn data weer zonder nieuwe vraag (#551).
+    if keys := data_keys([result]):
+        end_event["data_key"] = keys[0]
     await emit(end_event)
     logger.debug("TOOL RESULT %-29s → %s", call.name, result[:_EVENT_OUTPUT_CHARS])
     return result, figure

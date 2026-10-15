@@ -6,7 +6,8 @@ maatkaart uit code (agent/scopevraag.py); komt die er niet (geen twee catalogusr
 staat hier de zichtbare kant in code. Rust het antwoord op een gekozen lezing
 van een thema zonder maat, dan opent het met "Ik ga uit van …" en noemt het de datasets
 waarop het rust, met hun titel uit de catalogus. Geen modeltekst, geen getallen: de zin komt
-uit de toolstappen, net als de Bronnen eronder (#416).
+uit de toolstappen, net als de Bronnen eronder (#416). Alleen op de eerste gebruikersbeurt: bij een
+vervolgvraag ("Alleen vrouwen") lag de lezing al vast bij de eerste vraag (#545).
 """
 
 import re
@@ -40,6 +41,18 @@ def is_vaag(vraag: str) -> bool:
     return len(tekst.split()) <= _MAX_WOORDEN and not _MAAT.search(tekst)
 
 
+def _heeft_tekst(inhoud: object) -> bool:
+    """Of een berichtinhoud (tekst of blokkenlijst) iets zegt."""
+    if isinstance(inhoud, list):
+        return any(isinstance(b, dict) and str(b.get("text") or "").strip() for b in inhoud)
+    return bool(str(inhoud or "").strip())
+
+
+def is_vervolgvraag(messages: list[dict]) -> bool:
+    """Of het gesprek vóór de laatste gebruikersbeurt al een gebruikersbeurt met tekst had."""
+    return sum(1 for m in messages if m.get("role") == "user" and _heeft_tekst(m.get("content"))) > 1
+
+
 def _titels(steps: list[tuple[str, str]]) -> list[str]:
     """De catalogustitels van de datasets waarop de beurt rust, in volgorde; zonder cijfers (de citaties tellen getallen)."""
     titels: list[str] = []
@@ -66,13 +79,14 @@ def interpretatiezin(vraag: str, steps: list[tuple[str, str]]) -> str | None:
     )
 
 
-def met_interpretatie(tekst: str, vraag: str, steps: list[tuple[str, str]], session: dict) -> str:
+def met_interpretatie(tekst: str, vraag: str, steps: list[tuple[str, str]], session: dict, *, vervolg: bool) -> str:
     """Het antwoord met de interpretatiezin ervoor, als de vraag vaag was en het antwoord op data rust.
 
-    Niet na een verduidelijkingskaart (dan koos de gebruiker de lezing al), en niet als het
-    model zijn lezing zelf al benoemde.
+    Niet na een verduidelijkingskaart (dan koos de gebruiker de lezing al), niet bij een
+    vervolgvraag (de lezing lag al vast bij de eerste vraag), en niet als het model zijn lezing
+    zelf al benoemde.
     """
-    if session.get("clarify_rondes", 0) or not is_vaag(vraag) or _EIGEN_LEZING.search(tekst[:400]):
+    if vervolg or session.get("clarify_rondes", 0) or not is_vaag(vraag) or _EIGEN_LEZING.search(tekst[:400]):
         return tekst
     zin = interpretatiezin(vraag, steps)
     return f"{zin}\n\n{tekst}" if zin else tekst

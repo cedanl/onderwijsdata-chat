@@ -3,17 +3,24 @@
 Een BSN (negen cijfers die de elfproef doorstaan), een e-mailadres of een Nederlands
 telefoonnummer. Een naam is niet te herkennen; daarom staat de waarschuwing in de app er
 altijd. Dezelfde regels als frontend/src/persoonsgegevens.js: de titel van een gesprek
-(frontend) en de terugvaltitel van een rapport (hier) volgen beide deze herkenning.
+(frontend, en bij het opslaan nog eens op de server, #552) en de terugvaltitel van een
+rapport (hier) volgen beide deze herkenning.
 """
 
 import re
 from dataclasses import dataclass
+from typing import overload
 
 # Negen losse cijfers: niet midden in een langer of gegroepeerd getal (een telefoonnummer, 1.234.567.890).
 _BSN = re.compile(r"(?<!\d)(?<!\d[.,-])\d{9}(?![.,-]?\d)")
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 # 06 12345678, 030-1234567, +31 6 12345678: tien cijfers vanaf 0, of negen na +31/0031.
 _TELEFOON = re.compile(r"(?<![\d+])(?:\+31|0031|0)[\s-]?[1-9](?:[\s-]?\d){8}(?!\d)")
+
+# Gelijk aan TITEL_ZONDER_PERSOONSGEGEVENS in frontend/src/conversationTitle.js; een test bewaakt dat.
+GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS = "Gesprek (persoonsgegevens weggelaten)"
+# Ruim boven de 80 tekens van de frontend (MAX_TITLE_LENGTH); houdt de herkenning op de server kort.
+MAX_GESPREKSTITEL = 200
 
 
 @dataclass(frozen=True)
@@ -41,3 +48,35 @@ def vind(tekst: str) -> list[Persoonsgegeven]:
 
 def bevat(tekst: str) -> bool:
     return bool(vind(tekst))
+
+
+@overload
+def veilige_gesprekstitel(titel: None) -> None: ...
+@overload
+def veilige_gesprekstitel(titel: object) -> str: ...
+def veilige_gesprekstitel(titel: object) -> str | None:
+    """De titel als tekst van hoogstens MAX_GESPREKSTITEL tekens, of de generieke titel als er een BSN,
+    e-mailadres of telefoonnummer in staat (#552).
+
+    Eerst inkorten, dan controleren: de herkenning rekent kwadratisch in de lengte, en bewaard wordt
+    precies de gecontroleerde tekst. Alleen tekst en getallen gaan door; een lijst, object of boolean
+    wordt de generieke titel, want Postgres zou er tekst van maken zonder dat iemand die controleerde.
+    Geen titel (None) blijft None: de database weigert die, zoals voorheen.
+    """
+    if titel is None:
+        return None
+    tekst = _als_tekst(titel)
+    if tekst is None:
+        return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS
+    tekst = tekst[:MAX_GESPREKSTITEL]
+    return GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS if bevat(tekst) else tekst
+
+
+def _als_tekst(titel: object) -> str | None:
+    """Tekst blijft tekst; een getal wordt tekst zoals de database het opslaat (111222333.0 als 111222333,
+    zodat de elfproef het ziet); al het andere is None."""
+    if isinstance(titel, str):
+        return titel
+    if isinstance(titel, bool) or not isinstance(titel, (int, float)):
+        return None
+    return str(int(titel)) if isinstance(titel, float) and titel.is_integer() else str(titel)

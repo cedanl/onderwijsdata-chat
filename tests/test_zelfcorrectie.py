@@ -28,6 +28,9 @@ loop_module = importlib.import_module("agent.loop")
         "Bij nader inzien gaat het om drie instellingen.",
         "Eerder noemde ik zes vestigingen.",
         "Mijn excuses voor de verwarring.",
+        # Een getal met duizendtallenpunt tussen 'mijn vorige antwoord' en 'was onjuist' (#543).
+        "Mijn vorige antwoord met 36.206 studenten was onjuist.",
+        "Correctie op mijn vorige antwoord: het zijn er 30.",
     ],
 )
 def test_zelfcorrigerende_zin_gaat_uit_de_eindtekst(zin):
@@ -46,10 +49,24 @@ def test_zelfcorrigerende_zin_gaat_uit_de_eindtekst(zin):
         "De aanname dat alle vestigingen in Den Haag liggen, was onjuist: 3 liggen in Delft.",
         "Er zijn correcties op de voorlopige cijfers van het CBS.",
         "Ik noem de 30 vestigingen hieronder.",
+        # 'Dat was onjuist' zonder herziening ervóór is een bevinding over wat de gebruiker zei.
+        "Je noemde 40.000 studenten. Dat was onjuist: het zijn er 36.206.",
     ],
 )
 def test_gewone_zinnen_blijven_staan(tekst):
     assert zonder_zelfcorrectie(tekst) == (tekst, [])
+
+
+def test_valse_correctie_na_een_instellingswissel_gaat_uit_de_eindtekst():
+    """BEV-01 (#543): de herziening met een getal met punt, en de vervolgzin die haar verklaart."""
+    correctie = "Correctie op mijn vorige antwoord: ik noemde daar Hogeschool Utrecht met 36.206 studenten."
+    vervolg = "Dat was onjuist, want jouw instelling is de HAN."
+    tekst = f"{correctie} {vervolg} De HAN had in 2024/25 37.500 studenten."
+
+    schoon, weg = zonder_zelfcorrectie(tekst)
+
+    assert schoon == "De HAN had in 2024/25 37.500 studenten."
+    assert weg == [correctie, vervolg]
 
 
 def test_opmaak_blijft_heel_en_een_lege_regel_verdwijnt():

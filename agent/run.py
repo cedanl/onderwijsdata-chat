@@ -10,6 +10,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS
+from tools.csv_export import export_key
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest, vervolgvragen
@@ -23,11 +24,12 @@ from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
 from .genoemde_bronnen import genoemde_bronnen
-from .getalnotatie import engels_gelezen, nl_notatie
+from .getalnotatie import engels_gelezen, heeft_tabel, nl_notatie
 from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
-from .interpretatie import met_interpretatie
+from .instellingswissel import eerdere_instellingen, wisselcontext
+from .interpretatie import is_vervolgvraag, met_interpretatie
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
@@ -45,7 +47,7 @@ from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
-from .vaste_antwoorden import WEIGER_ANTWOORD, sentinelvraag, weigering
+from .vaste_antwoorden import SCOPE_UITLEG, WEIGER_ANTWOORD, scope_uitleg, sentinelvraag, weigering
 from .vo_school import vo_schoolvraag
 from .zelfcorrectie import zonder_zelfcorrectie
 
@@ -216,9 +218,15 @@ def _laatste_vraag(messages: list[dict]) -> str:
     return " ".join(b.get("text", "") for b in raw if isinstance(b, dict)) if isinstance(raw, list) else str(raw)
 
 
-def _beurtcontext(vraag: str) -> str:
-    """Systeemtekst voor deze vraag: de taal van het antwoord (#326) en de dataset-ID's die ze noemt (#334)."""
-    return "\n\n".join(tekst for tekst in (taalinstructie(vraag), genoemde_bronnen(vraag)) if tekst)
+def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
+    """Systeemtekst voor deze vraag: de taal van het antwoord (#326), de dataset-ID's die ze noemt (#334) en een
+    instellingswissel in dit gesprek (#543)."""
+    delen = (
+        taalinstructie(vraag),
+        genoemde_bronnen(vraag),
+        wisselcontext(settings.get("instelling"), eerdere_instellingen(turns)),
+    )
+    return "\n\n".join(tekst for tekst in delen if tekst)
 
 
 def _leestekst(antwoord: str) -> str:
@@ -378,13 +386,23 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     return met_telling(tekst, result.tool_results)
 
 
+def _vast_antwoord(result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict) -> str | None:
+    """Een vast antwoord uit code in plaats van de modeltekst: de weigering of de scope-uitleg (BEV-12)."""
+    return weigering(antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))) or (
+        scope_uitleg(antwoord, result.tool_results, vraag)
+    )
+
+
 def _eindtekst(
-    result: LoopResult, antwoord: str, earlier: list[str], session: dict, model: str, bronnen: list[str]
+    result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict, model: str, bronnen: list[str]
 ) -> str:
-    """Het antwoord zoals de gebruiker het ziet: weigering of antwoord met Telling, of ingehouden."""
-    text_content = weigering(
-        antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or _antwoordtekst(result, antwoord, earlier, bronnen)
+    """Het antwoord zoals de gebruiker het ziet: weigering, scope-uitleg of antwoord met Telling, of ingehouden.
+
+    Een vast antwoord rust niet op de modeltekst: wat de controle daarin vond, houdt het niet tegen."""
+    if vast := _vast_antwoord(result, antwoord, vraag, earlier, session):
+        logger.info("VAST ANTWOORD  %s  controles=%s", tekst_kenmerk(vast), controlenamen(result.problems))
+        return vast
+    text_content = _antwoordtekst(result, antwoord, earlier, bronnen)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     # Geen antwoordtekst op INFO: het log valt buiten "gesprek verwijderen" (#475).
@@ -409,7 +427,8 @@ def _eindtekst(
 
 # Vaste antwoorden uit code: ze rusten niet op de data van de beurt, dus ook geen bronnen eronder.
 # Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
-_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, WEIGER_ANTWOORD})
+_VASTE_ANTWOORDEN = frozenset({WEIGER_ANTWOORD, SCOPE_UITLEG})
+_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, *_VASTE_ANTWOORDEN})
 
 
 def _slotbericht(
@@ -434,9 +453,29 @@ def _slotbericht(
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
         **({"partial": True} if result.wrapped_up else {}),
-        **({"controle": meldingen(result.problems)} if result.problems else {}),
+        # Een vast antwoord rust niet op de modeltekst: de meldingen over die tekst horen er niet onder.
+        **(
+            {"controle": meldingen(result.problems)}
+            if result.problems and text_content not in _VASTE_ANTWOORDEN
+            else {}
+        ),
         **({"vervolgvragen": vervolgvragen} if vervolgvragen else {}),
     }
+
+
+def _log_export(text_content: str, steps: list[tuple[str, str]]) -> None:
+    """Per antwoord: staat er een tabel in, en welke stap leverde een exporteerbare tabel (#544)?
+
+    De CSV-knop onder een tabelantwoord ontbrak wisselend. Alleen tellingen en toolnamen: zo is per beurt
+    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep."""
+    tabellen = [tool for tool, result in steps if export_key(tool, result)]
+    logger.info(
+        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s",
+        heeft_tabel(text_content),
+        len(tabellen),
+        tabellen[-1] if tabellen else "-",
+        ",".join(dict.fromkeys(tool for tool, _ in steps)) or "-",
+    )
 
 
 async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, session: dict) -> list[str]:
@@ -507,7 +546,8 @@ async def run(
     said_by_user = [str(m.get("content") or "") for m in history if m.get("role") == "user"]
 
     # Het profiel kan de instellingenlijst laden (DUO, #448): niet op de event loop.
-    system = await asyncio.to_thread(build_system, settings, beurt=_beurtcontext(last_user_msg))
+    beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
+    system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
         try:
@@ -552,11 +592,15 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  herzien=%d", len(herzien))
         logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
     bronnen = _veilige_bronnen(result.steps)
-    text_content = _eindtekst(result, antwoord, earlier, session, chosen_model, bronnen)
+    text_content = _eindtekst(result, antwoord, last_user_msg, earlier, session, chosen_model, bronnen)
     if bronnen and text_content not in _ZONDER_BRONNEN:
         # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
-        text_content = met_interpretatie(text_content, last_user_msg, result.steps, session)
+        # Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545).
+        text_content = met_interpretatie(
+            text_content, last_user_msg, result.steps, session, vervolg=is_vervolgvraag(messages)
+        )
     session["_last_turn_tool_calls"] = result.tool_calls
+    _log_export(text_content, result.steps)
     truncated = result.finish_reason == "length"
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)

@@ -61,13 +61,19 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
   })
 
   it('geven elk blok een status, en n.v.t. letterlijk als het leeg is', () => {
+    // Met geciteerde getallen is er altijd een export (#544): de knop met de cijfers uit het antwoord.
     const el = render(ALLEEN_CITATIES)
     expect(blokken(el).map(b => [b.dataset.blok, b.dataset.status])).toEqual([
-      ['citaties', 'aanwezig'], ['telling', 'n.v.t.'], ['export', 'n.v.t.'], ['bronnen', 'n.v.t.'],
+      ['citaties', 'aanwezig'], ['telling', 'n.v.t.'], ['export', 'aanwezig'], ['bronnen', 'n.v.t.'],
     ])
-    for (const kind of ['telling', 'export', 'bronnen']) {
+    expect([...blok(el, 'export').querySelectorAll('.data-export-btn')].map(k => k.textContent)).toEqual([
+      'Download cijfers als CSV',
+    ])
+    for (const kind of ['telling', 'bronnen']) {
       expect(blok(el, kind).querySelector('dd').textContent).toBe('n.v.t.')
     }
+    const zonder = render({ ...ALLEEN_CITATIES, citaties: [{ getal: '7.912', vastgesteld: false }] })
+    expect(blok(zonder, 'export').querySelector('dd').textContent).toBe('n.v.t.')
   })
 
   it('tonen het aantal citaties en hoeveel daarvan geen vastgestelde herkomst hebben', () => {

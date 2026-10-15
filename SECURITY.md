@@ -27,6 +27,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools |
 | S18 | `/info` gaf zonder inloggen databasetype en omgeving prijs | Laag | ✅ Opgelost (#518) |
 | S19 | `LOG_LEVEL=DEBUG` zet gesprekstekst in het log | Laag | ℹ️ Gedocumenteerd (#516) — waarschuwing bij opstarten en in de docs |
+| S20 | `/version` zonder inloggen geeft versie en commit prijs | Laag | ℹ️ Geaccepteerd (#552) — blijft open voor de deploycontrole; restrisico hieronder |
 
 ---
 
@@ -233,6 +234,15 @@ Test: `tests/test_token_intrekking.py`.
 **Locatie:** `agent/run.py` (DEBUG-logregels), `server.py` (opstartcontrole), `docs/configuratie/index.md`  
 **Situatie:** sinds #475 staan vraag en antwoord op INFO alleen als lengte en hash; de letterlijke tekst staat op DEBUG. Wie `LOG_LEVEL=DEBUG` zet, krijgt gesprekstekst — en dus eventuele persoonsgegevens — in de logaggregatie, met de bewaartermijn daarvan.  
 **Maatregel (#516):** de server logt bij het opstarten een WARNING als het niveau DEBUG is, en de configuratiedocumentatie waarschuwt het niveau niet te gebruiken op test of productie met echte gebruikers. Vervolg van de logging-restpunten in #502.
+
+---
+
+### S20 — `/version` zonder inloggen geeft versie en commit prijs ℹ️ Geaccepteerd
+
+**Locatie:** `server.py` (`GET /version`, ook als `GET /api/version`)  
+**Situatie:** het eindpunt is zonder token bereikbaar. Het geeft de release, de commit waaruit het image is gebouwd, de meegebouwde versie en commit van de catalogus-packages (met de CBS-catalogusrevisie) en de dataversie van UWV en ROA. Geen persoonsgegevens en geen secrets.  
+**Besluit (#552):** open laten. Na elke deploy en promotie wordt met `curl …/version` gecontroleerd welke release en commit draaien (`CLAUDE.md`, `Agents.md`, `docs/promoten.md`), met een kale `curl` zonder token. Achter een token zetten vraagt dat al die controles er een meesturen.  
+**Restrisico:** fingerprinting: met de exacte versie en commit kan een aanvaller gericht zoeken naar bekende kwetsbaarheden in die versie. Beperkt doordat `/info` niets meer over database of omgeving zegt (S18) en de dependency-scan in CI nieuwe CVE's meldt (S12). Opnieuw bekijken als de app buiten de demofase breder bereikbaar wordt.
 
 ---
 

@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { hasReportableAnswer, canGenerateReport } from '../reportEligibility'
+import { hasReportableAnswer, canGenerateReport, lastDataQuestion } from '../reportEligibility'
+
+// #551: zonder recept is de laatste datavraag opnieuw stellen de enige weg naar een rapport.
+describe('lastDataQuestion', () => {
+  const data = { role: 'assistant', content: 'Zoveel.', tools: [{ name: 'query_data', snippet: 'x' }] }
+
+  it('is de vraag vóór het laatste antwoord met data', () => {
+    expect(lastDataQuestion([
+      { role: 'user', content: 'Hoeveel studenten?' },
+      data,
+      { role: 'user', content: ' En in 2024/25? ' },
+      { ...data, figures: [{}], tools: [] },
+      { role: 'user', content: 'Dank je.' },
+      { role: 'assistant', content: 'Graag gedaan.', tools: [] },
+    ])).toBe('En in 2024/25?')
+  })
+
+  it('is null zonder antwoord met data of zonder vraag ervoor', () => {
+    expect(lastDataQuestion([{ role: 'user', content: 'Hoi' }, { role: 'assistant', content: 'Hoi.', tools: [] }])).toBeNull()
+    expect(lastDataQuestion([data])).toBeNull()
+    expect(lastDataQuestion([])).toBeNull()
+  })
+})
 
 describe('hasReportableAnswer', () => {
   it('is false for a greeting or definition answer without data', () => {

@@ -11,7 +11,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `GET` | `/health` | Gezondheidscontrole — retourneert `{"status": "ok"}` |
 | `GET` | `/ready` | Readiness-check (o.a. database); gebruikt door Kubernetes |
 | `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
-| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`; bij `onderwijsdata` onder `manifest` ook de meegebouwde CBS-catalogus: `catalogusrevisie`, `consistent`, `aantal`, `laatste_succesvolle_controle` en `versheid`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download |
+| `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`; bij `onderwijsdata` onder `manifest` ook de meegebouwde CBS-catalogus: `catalogusrevisie`, `consistent`, `aantal`, `laatste_succesvolle_controle` en `versheid`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download. Bewust zonder inloggen bereikbaar, voor de controle na een deploy (`SECURITY.md`, S20) |
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` en `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk) |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
@@ -70,8 +70,8 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 |---------|-----|--------------|
 | `GET` | `/api/conversations` | Conversaties van de ingelogde gebruiker, nieuwste eerst, per pagina: `limit` (1–50, standaard 15); volgende pagina met `before_ts` en `before_id` van de laatste uit de vorige. Per rij alleen `id`, `title` en `timestamp`; met `q` alleen de treffers op titel of tekst |
 | `GET` | `/api/conversations/{id}` | Eén conversatie met haar `messages`; 404 bij onbekend ID of een conversatie van een ander |
-| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`) |
-| `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`); 404 bij onbekend ID, 422 bij lege titel |
+| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`). De server kort `title` in tot 200 tekens en bewaart een titel met een BSN, e-mailadres of telefoonnummer als `Gesprek (persoonsgegevens weggelaten)`; een getal wordt tekst, een lijst, object of boolean wordt die generieke titel |
+| `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`), met dezelfde inkorting en maskering als bij `PUT`; 404 bij onbekend ID, 422 bij lege titel |
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |
 | `GET` | `/api/workbooks` | Lijst van alle workbooks van de ingelogde gebruiker |
 | `PUT` | `/api/workbooks/{id}` | Maak of update een workbook |

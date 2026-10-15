@@ -26,7 +26,7 @@ describe('conversationMarkdown (#366)', () => {
   it('begint met de titel uit de eerste vraag en de exportdatum', () => {
     const [titel, , datum] = md().split('\n')
     expect(titel).toBe('# Hoeveel studenten heeft de HU?')
-    expect(datum).toBe('Geëxporteerd uit EDUdata op 5 oktober 2026.')
+    expect(datum).toBe('Geëxporteerd uit openEDUdata+ op 5 oktober 2026.')
   })
 
   it('zet vraag en antwoord onder elkaar, het antwoord als markdown', () => {

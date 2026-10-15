@@ -1638,7 +1638,9 @@ html.dark .suggested-btn:hover {
 }
 .run-progress-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 .run-progress-step { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 768px) { .run-progress { margin-left: 8px; } }
+/* What to expect while a heavy step runs (#547): plain text under the timer, not part of it. */
+.run-progress-note { margin: -4px 0 8px 44px; padding-inline: 11px; color: var(--muted-text); font-size: .78rem; }
+@media (max-width: 768px) { .run-progress, .run-progress-note { margin-left: 8px; } }
 .report-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; }
 .report-progress-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .report-progress-note { margin: 0; color: var(--muted-text); font-size: .78rem; }

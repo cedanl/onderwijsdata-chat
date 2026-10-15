@@ -3,7 +3,7 @@
 import pytest
 
 from core import config
-from core.config import _KNOWN_NAMES, _models_from_ids, get_required_api_key_env_var, model_provider
+from core.config import _KNOWN_NAMES, _models_from_ids, get_required_api_key_env_var, model_naam, model_provider
 
 SONNET_55 = "azure_ai/claude-sonnet-5-5"
 OPUS_55 = "azure_ai/claude-opus-5-5"
@@ -91,3 +91,20 @@ def test_willma_key_sends_every_openai_model_to_willma(mid, met_willma):
 def test_willma_key_leaves_other_providers_alone(met_willma):
     assert model_provider(SONNET_55) == "Microsoft Azure AI Foundry"
     assert model_provider("anthropic/claude-nieuw") == "Anthropic"
+
+
+@pytest.mark.parametrize(
+    ("mid", "naam"),
+    [
+        (SONNET_55, "Claude Sonnet 5.5"),
+        ("anthropic/claude-haiku-4-5-20251001", "Claude Haiku"),
+        ("openai/gpt-4o", "GPT-4o"),
+        ("openai/openai/gpt-oss-120b", "GPT-OSS 120B"),
+        ("azure_ai/claude-nieuw-9", "claude-nieuw-9"),
+        ("mistral/large-latest", "large-latest"),
+        ("zonder-prefix", "zonder-prefix"),
+    ],
+)
+def test_model_naam_voor_de_gebruiker_zonder_provider(mid, naam):
+    """De naam in de Verantwoording van een rapport (BEV-10): bekend met merk, onbekend het deel na de laatste '/'."""
+    assert model_naam(mid) == naam

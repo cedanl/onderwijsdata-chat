@@ -34,11 +34,6 @@ _EERSTE_PERSOON = re.compile(r"\b(?:mijn|ons|onze)\b", re.IGNORECASE)
 _VELDNAAM = re.compile(r"\w_\w|\b[A-Z]{6,}\b|\b[a-z]+[A-Z]\w*|\b[A-Z]+\d{3,}\b|\bresources?\b")
 # Een sjabloonvraag die naar het antwoord erboven wijst.
 _VERWIJZEND = re.compile(r"\b(?:dit|de data)\b", re.IGNORECASE)
-_PO_SO_VO = re.compile(
-    r"\b(?:po|so|vo|vso|bo|sbo|vavo|vmbo|havo|vwo|basisonderwijs|basisschool|basisscholen|praktijkonderwijs"
-    r"|primair\s+onderwijs|speciaal\s+onderwijs|voortgezet(?:\s+speciaal)?\s+onderwijs)\b",
-    re.IGNORECASE,
-)
 _AANTAL = re.compile(r"\b(?:hoeveel|aantal)\b", re.IGNORECASE)
 
 
@@ -53,7 +48,7 @@ def _leesbaar(vraag: str) -> bool:
         _EERSTE_PERSOON.search(vraag)
         or _VELDNAAM.search(vraag)
         or _VERWIJZEND.search(vraag)
-        or _PO_SO_VO.search(vraag)
+        or scopeprofiel.PO_SO_VO.search(vraag)
         or _noemt_dataset_id(vraag)
     )
 

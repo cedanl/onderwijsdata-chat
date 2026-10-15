@@ -22,13 +22,16 @@ strategy:
   type: Recreate
 
 # Het kindproces van run_analysis mag 1 GiB gebruiken (RLIMIT_AS in tools/sandbox_kind.py). De pod
-# moet dat naast de server (~300 MiB) en de datastore dragen, anders stopt een zwaar script de hele
-# server in plaats van alleen het kindproces (#443). Zelfde maat als playground; past in het quotum
-# van de namespace (limits.memory 4Gi, limits.cpu 1, requests.memory 1Gi).
+# moet dat naast de server (~500 MiB in rust) en de datastore (STORE_MAX_MB, 512 MiB) dragen, plus de
+# tijdelijke kopieën van pandas tijdens een tool, anders stopt een zwaar script de hele server in
+# plaats van alleen het kindproces (#443). Op 2 GiB werd de pod tijdens de testronde van 14-10-2026
+# vier keer OOMKilled, met "Verbinding verbroken" in elke open chat (#546); 3 GiB past nog in het
+# quotum van de namespace (limits.memory 4Gi, limits.cpu 1, requests.memory 1Gi) met één pod
+# (Recreate). Playground staat nog op 2 GiB.
 resources:
   limits:
     cpu: 1000m
-    memory: 2Gi
+    memory: 3Gi
   requests:
     cpu: 500m
     memory: 512Mi

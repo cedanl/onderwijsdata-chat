@@ -14,6 +14,7 @@ from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.figuurverschil import figuur_verschillen
+from agent.history import afgebroken_beurt
 from agent.replay import (
     MODE_REPRODUCEER,
     MODE_VERVERS,
@@ -104,6 +105,8 @@ def _open_conversation(session: dict, messages: list, data_keys: list[str] | Non
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
     messages: list = session["messages"]
     messages.append({"role": "user", "content": content})
+    # Waarop 'wij' in deze beurt slaat; wisselt het profiel later, dan hoort het model dat (#543).
+    instelling = (session.get("chat_settings") or {}).get("instelling") or ""
 
     stop_event = asyncio.Event()
     session["stop_event"] = stop_event
@@ -114,15 +117,17 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
         response_text = await agent_run(messages, session, emit, stop_event, model=model)
     except Exception as e:
         await emit(error_event(e))
-        # Keep the user message and add a placeholder so the conversation stays
-        # in alternating user/assistant order. This lets the user retry without
-        # the agent losing context of what was asked.
-        messages.append({"role": "assistant", "content": "[fout opgetreden]"})
+        # De vraag blijft staan, met een afbreekmarkering als antwoord: het gesprek blijft in beurten,
+        # een herhaling bouwt op de afgeronde stappen (#431) en een andere vraag gaat niet op deze door (#548).
+        messages.append(afgebroken_beurt())
         return
 
     clarified = session.pop("_clarified", False)
     aborted = stop_event.is_set()
-    if not clarified and not aborted:
+    if aborted:
+        # Stopknop of tijdsgrens: wat er al stond plus de markering, geen beurt voor rapport of dashboard.
+        messages.append(afgebroken_beurt(response_text))
+    elif not clarified:
         messages.append({"role": "assistant", "content": response_text})
         turn_tool_calls = session.get("_last_turn_tool_calls", [])
         session["_last_turn_tool_calls"] = []
@@ -133,6 +138,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
                 "answer": response_text,
                 "tool_calls": turn_tool_calls,
                 "figures": session.get("turn_figures", []),
+                "instelling": instelling,
             }
         )
         session["turns"] = turns
@@ -444,16 +450,20 @@ def _parse_history(raw: list) -> list[dict]:
     Boven de cap vallen de oudste beurten af — dezelfde strategie als MAX_HISTORY —
     zodat een bestaand lang gesprek blijft openen. De historie begint na het afvallen altijd
     met een gebruikersbeurt en bevat nooit een beurt zonder tekst.
+
+    Een antwoord dat de browser als afgebroken bewaarde (`afgebroken`) krijgt zijn markering terug,
+    ook als er geen tekst van was: anders stond de vraag ervóór weer open (#548).
     """
     valid_roles = {"user", "assistant"}
-    result = [
-        {"role": m["role"], "content": m["content"]}
-        for m in raw
-        if isinstance(m, dict)
-        and m.get("role") in valid_roles
-        and isinstance(m.get("content"), str)
-        and m["content"].strip()
-    ]
+    result = []
+    for m in raw:
+        if not isinstance(m, dict) or m.get("role") not in valid_roles or not isinstance(m.get("content"), str):
+            continue
+        content = m["content"]
+        if m["role"] == "assistant" and m.get("afgebroken") is True:
+            content = afgebroken_beurt(content)["content"]
+        if content.strip():
+            result.append({"role": m["role"], "content": content})
     kept: list[dict] = []
     totaal = 0
     for m in reversed(result[-MAX_HISTORY:]):

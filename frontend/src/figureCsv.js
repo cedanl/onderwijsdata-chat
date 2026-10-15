@@ -30,7 +30,8 @@ function cell(value) {
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-const toCsv = rows => rows.map(r => r.map(cell).join(';')).join('\n')
+// Also the row format of the cited-numbers export (citatieCsv.js).
+export const toCsv = rows => rows.map(r => r.map(cell).join(';')).join('\n')
 
 // A horizontal bar draws its categories on y and its values on x.
 const isHorizontal = trace => trace.orientation === 'h'

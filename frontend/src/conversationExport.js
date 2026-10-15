@@ -35,7 +35,7 @@ function answerBlocks(msg, options) {
 
 export function conversationMarkdown(messages, { snippets = true, fouten = false, datum }) {
   const firstQuestion = messages.find(m => m.role === 'user')
-  const blocks = [`# ${conversationTitle(firstQuestion?.content)}`, `Geëxporteerd uit EDUdata op ${datum}.`]
+  const blocks = [`# ${conversationTitle(firstQuestion?.content)}`, `Geëxporteerd uit openEDUdata+ op ${datum}.`]
   let vraag = 0
   for (const msg of messages) {
     if (msg.role === 'user') blocks.push(`## Vraag ${++vraag}`, msg.content)

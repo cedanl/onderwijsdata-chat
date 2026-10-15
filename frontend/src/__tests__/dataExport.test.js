@@ -17,6 +17,13 @@ describe('exportKeys (#269)', () => {
     expect(finishStep({ name: 'search_catalog', done: false }, {}).exportKey).toBeNull()
   })
 
+  // #551: ook de key van een lader gaat mee, zodat het opgeslagen gesprek het recept van al zijn data bewaart.
+  it('neemt de data-key van elke stap over, los van de exporteerbare tabel', () => {
+    const lader = finishStep({ name: 'get_duo_data', done: false }, { data_key: 'duo:x:0' })
+    expect(lader).toMatchObject({ dataKey: 'duo:x:0', exportKey: null })
+    expect(finishStep({ name: 'compute_kpi', done: false }, {}).dataKey).toBeNull()
+  })
+
   it('geeft elke tabel één keer, in volgorde', () => {
     expect(exportKeys([stap('a'), stap(null), stap('b'), stap('a')])).toEqual(['a', 'b'])
   })
@@ -69,6 +76,28 @@ describe('DataExport', () => {
 
   it('toont geen knop bij een antwoord zonder tabeldata', () => {
     expect(render({ tools: [{ name: 'search_catalog', done: true, exportKey: null }] })).toEqual([])
+  })
+
+  // #544: zonder tabel-key van de server zijn de geciteerde getallen de export, zodat de knop er is
+  // ongeacht via welke tool het model de tabel maakte.
+  const citatie = { getal: '36.206', vastgesteld: true, stap: 1, tool: 'compute_kpi', bron: 'DUO · X', maat: 'Aantal' }
+
+  it('biedt de geciteerde getallen aan als de server geen tabel noemde', () => {
+    const save = vi.fn()
+    const [knop] = render({ tools: [{ name: 'compute_kpi', done: true, exportKey: null }], citaties: [citatie], save })
+    expect(knop.textContent).toBe('Download cijfers als CSV')
+    act(() => knop.click())
+    expect(save).toHaveBeenCalledOnce()
+    expect(save.mock.calls[0][0]).toContain('36.206;Aantal;;;DUO · X;1')
+  })
+
+  it('biedt de geciteerde getallen niet ook nog aan naast een tabel van de server', () => {
+    const knoppen = render({ tools: [stap('a')], citaties: [citatie] })
+    expect(knoppen.map(k => k.textContent)).toEqual(['Download data als CSV'])
+  })
+
+  it('toont geen knop als geen geciteerd getal een vastgestelde herkomst heeft', () => {
+    expect(render({ tools: [], citaties: [{ getal: '1', vastgesteld: false }] })).toEqual([])
   })
 
   it('toont geen knop zolang het antwoord nog loopt', () => {

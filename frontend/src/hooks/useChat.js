@@ -11,16 +11,20 @@ import { vervolgvragenTekst } from '../vervolgvragen'
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
 
 // A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
+// An answer that was stopped or cut off by a dropped connection goes along marked `afgebroken`, even
+// without text: the server then closes that turn, so the next question does not continue it (#548).
+const afgebroken = m => !!(m.interrupted || m.stopped)
+
 export function buildHistory(messages) {
   return messages
     .filter(m =>
       (m.role === 'user' || m.role === 'assistant') &&
-      m.content &&
+      (m.content || afgebroken(m)) &&
       !m.isError &&
       !m.figures &&
       !m.starterQuestions
     )
-    .map(({ role, content }) => ({ role, content }))
+    .map(m => ({ role: m.role, content: m.content || '', ...(afgebroken(m) && { afgebroken: true }) }))
     .slice(-MAX_HISTORY)
 }
 

@@ -28,7 +28,7 @@ import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
-import { canGenerateReport } from '../reportEligibility'
+import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
@@ -49,7 +49,7 @@ import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
 import IngetrokkenVersies from '../components/IngetrokkenVersies'
-import { exportKeys, roundSettled } from '../dataExport'
+import { hasExport, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
 import CopyButton from '../components/CopyButton'
@@ -61,7 +61,7 @@ import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
 import { sendRefusalReason } from '../sendRefusal'
-import RunProgress, { countRunSteps, currentRunStep } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
@@ -751,7 +751,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 </div>
               </div>
             )}
-            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} />
+            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
@@ -790,9 +790,17 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
+            {/* Geen recept om de data uit te herladen: dan is de laatste datavraag opnieuw stellen de enige
+                weg, met één klik in plaats van zelf een vraag verzinnen (#551). */}
             {hasMessages && !busy && reportState === 'needs_reload' && (
               <p className="report-reload-hint">
-                Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
+                De data van dit gesprek is niet meer geladen. Stel een vraag om haar opnieuw te laden, dan kun je een rapport genereren.
+                {lastDataQuestion(restoredMessages) && (
+                  <button type="button" className="message-continue" disabled={reportBusy}
+                    onClick={() => send(lastDataQuestion(restoredMessages))}>
+                    Stel de laatste vraag opnieuw
+                  </button>
+                )}
               </p>
             )}
             {sendNotice && (
@@ -947,10 +955,12 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
 
   const awaiting = isAwaitingFirstToken(msg)
   // A round with only data steps has no text, but its tables can still be downloaded.
-  const exportable = settled && exportKeys(msg.tools).length > 0
+  const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
   const blocks = answerBlocks(msg, { settled })
-  const dataExport = <DataExport tools={msg.tools} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+  const dataExport = (
+    <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+  )
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
 
   return (
@@ -991,7 +1001,20 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
                 </button>
               </div>
             )}
-            {msg.interrupted && <div className="message-stopped">Verbinding verbroken — antwoord onvolledig</div>}
+            {msg.interrupted && (
+              <div className="message-stopped">
+                Verbinding verbroken — antwoord onvolledig
+                {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
+                {herhaal && (
+                  <>
+                    {' '}
+                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>
+                      Probeer opnieuw
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
             {retry && (
               <ErrorRetry

@@ -147,6 +147,17 @@ def model_provider(model_id: str) -> str:
     return _PROVIDER_BY_PREFIX.get(model_id.split("/")[0].lower(), "")
 
 
+def model_naam(model_id: str) -> str:
+    """De naam van het model voor de gebruiker, zonder provider: "Claude Sonnet 5.5" voor azure_ai/claude-sonnet-5-5.
+
+    Een bekend Claude-model krijgt het merk erbij (de picker toont alleen "Sonnet 5.5" onder een kop); een
+    onbekend model heet naar het deel na de laatste '/', zoals in de picker."""
+    if model_id not in _KNOWN_NAMES:
+        return model_id.split("/")[-1]
+    naam = _KNOWN_NAMES[model_id][0]
+    return f"Claude {naam}" if "/claude-" in model_id else naam
+
+
 def _parse_user_models() -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     if not _USER_MODELS_RAW.strip():

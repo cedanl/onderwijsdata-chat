@@ -35,6 +35,26 @@ def test_bewaren_neemt_de_tabellen_van_het_gesprek_en_hun_bron(db):
     assert db.recipes_for("alice", "c1") == {"cbs:85423NED:ab": _SELECTIE, "cbs:85423NED": _CBS}
 
 
+def test_bewaren_neemt_ook_de_data_van_een_stap_zonder_exporteerbare_tabel(db):
+    """#551: een gesprek met alleen een lader en een KPI had geen exportKey en dus geen recept."""
+    recepten.onthoud("alice", "cbs:85423NED", _CBS)
+    berichten = [
+        {"role": "assistant", "content": "Zoveel.", "tools": [{"name": "get_cbs_data", "dataKey": "cbs:85423NED"}]},
+        {"role": "assistant", "content": "Nog eens.", "tools": [{"name": "compute_kpi", "dataKey": None}]},
+    ]
+    recepten.bewaar("alice", "c1", berichten)
+
+    assert db.recipes_for("alice", "c1") == {"cbs:85423NED": _CBS}
+
+
+def test_datakeys_elk_een_keer_uit_exportkey_en_datakey():
+    berichten = [
+        {"role": "assistant", "tools": [{"exportKey": "a", "dataKey": "a"}, {"dataKey": "b"}, {"exportKey": "a"}, 3]},
+        "geen dict",
+    ]
+    assert recepten._datakeys(berichten) == ["a", "b"]
+
+
 def test_bewaren_slaat_geen_recept_van_een_ander_op(db):
     recepten.onthoud("bob", "cbs:85423NED", _CBS)
     recepten.bewaar("alice", "c1", [{"role": "assistant", "tools": [{"exportKey": "cbs:85423NED"}]}])
