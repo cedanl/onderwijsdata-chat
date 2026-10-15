@@ -950,9 +950,9 @@
       "zoekinput": "slagingspercentage havo vwo",
       "geaccepteerd": [],
       "beantwoordbaar": false,
-      "verboden": ["03_voex-v1", "85381NED"],
+      "verboden": ["03_voex-v1"],
       "kritiek": true,
-      "toelichting": "Vo valt buiten het profiel (#355). Verboden: 03_voex-v1 (slagingspercentages per vestiging) en 85381NED (vo-examenkandidaten en gediplomeerden)."
+      "toelichting": "Vo valt buiten het profiel (#355). Verboden: 03_voex-v1 (slagingspercentages per vestiging). 85381NED (vo-examenkandidaten en gediplomeerden) is sinds #557 vo-context voor ho: havo en vwo zijn ho-markers (#556), dus hij mag hier met het etiket 'vo-context voor ho' verschijnen."
     },
     {
       "id": "bp-05",

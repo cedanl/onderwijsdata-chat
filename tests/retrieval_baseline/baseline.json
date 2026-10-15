@@ -1,5 +1,5 @@
 {
-  "catalogus_digest": "3d738d27ff46",
+  "catalogus_digest": "0460f58ad0bd",
   "catalogusversie": [
     {
       "pakket": "onderwijsdata",
@@ -27,8 +27,8 @@
     }
   ],
   "dataset_counts": {
-    "CBS": 119,
-    "DUO": 14,
+    "CBS": 123,
+    "DUO": 15,
     "RIO": 9
   },
   "doorzoekbaar": [
@@ -126,12 +126,16 @@
     "85356NED",
     "85357NED",
     "85368NED",
+    "85380NED",
+    "85381NED",
+    "85382NED",
     "85421NED",
     "85422NED",
     "85423NED",
     "85424NED",
     "85425NED",
     "85519NED",
+    "85566NED",
     "85569NED",
     "85574NED",
     "85696NED",
@@ -176,9 +180,10 @@
     "p03hoinschr",
     "p04hogdipl",
     "studentprognoses-mbo-per-instelling",
-    "uwv-open-match-data"
+    "uwv-open-match-data",
+    "voprognoses"
   ],
-  "gemeten_op": "2026-10-14",
+  "gemeten_op": "2026-10-15",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 18,
@@ -266,7 +271,7 @@
         0.9286
       ],
       "recall_at_5_vraag": 0.5714,
-      "mrr_vraag": 0.5714,
+      "mrr_vraag": 0.568,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -290,7 +295,7 @@
         1.0
       ],
       "recall_at_5_vraag": 0.8,
-      "mrr_vraag": 0.6278,
+      "mrr_vraag": 0.6244,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -314,7 +319,7 @@
         1.0
       ],
       "recall_at_5_vraag": 0.8571,
-      "mrr_vraag": 0.8,
+      "mrr_vraag": 0.7976,
       "onbeantwoordbaar_geslaagd": [
         1,
         1
@@ -338,7 +343,7 @@
         0.8907
       ],
       "recall_at_5_vraag": 0.8,
-      "mrr_vraag": 0.6496,
+      "mrr_vraag": 0.6485,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
@@ -362,7 +367,7 @@
         0.881
       ],
       "recall_at_5_vraag": 0.7619,
-      "mrr_vraag": 0.6437,
+      "mrr_vraag": 0.6417,
       "onbeantwoordbaar_geslaagd": [
         1,
         3
