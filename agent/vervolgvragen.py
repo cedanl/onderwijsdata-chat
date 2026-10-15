@@ -9,7 +9,9 @@ chat ze kan beantwoorden. Een voorbeeldvraag valt af als ze
 - een ruwe veldnaam, codewaarde of technische term noemt (AANGEBODENBOOPLEIDING, eindeAanmeldperiode,
   code C0001, sub-resource), of een dataset bij zijn ID (aangeboden-opleidingen, 85423NED);
 - naar het antwoord ervoor wijst ("hoe verhoudt dit zich …", "de data"): als knop zegt ze dan niets;
-- over po, so of vo gaat ("BO-opleidingen", vmbo, havo): buiten de scope van de chat (#355);
+- over po, so of vo gaat ("BO-opleidingen", vmbo, havo): buiten de scope van de chat (#355). Een vo-contextrecord
+  (`scopeprofiel.HO_CONTEXT`) houdt zo'n vraag als ze ook hoger onderwijs noemt (`noemt_ho`): dezelfde regel als
+  de zoekpoort voor die records (#557, #558);
 - om een aantal uit een RIO-register vraagt: get_rio_data levert één pagina en geen totalen (#170);
 - haar eigen dataset niet terugvindt met search_catalog: dan vindt het model hem ook niet.
 
@@ -23,6 +25,7 @@ from functools import cache
 from itertools import chain, zip_longest
 
 from tools import catalog, scopeprofiel, store
+from tools.ho_markers import noemt_ho
 
 from .selectie import laadkey, stapkeys
 
@@ -42,13 +45,23 @@ def _noemt_dataset_id(vraag: str) -> bool:
     return any(not dataset_id.isalpha() for dataset_id in catalog.genoemde_datasets(vraag))
 
 
-def _leesbaar(vraag: str) -> bool:
-    """Een vraag die een gebruiker zo kan stellen, die op zichzelf staat en binnen de scope van de chat valt."""
+def _buiten_scope(vraag: str, dataset_id: str | None) -> bool:
+    """Gaat de vraag over po, so of vo? Bij een vo-contextrecord niet als ze ook hoger onderwijs noemt (#558)."""
+    if not scopeprofiel.PO_SO_VO.search(vraag):
+        return False
+    return not (dataset_id and scopeprofiel.is_ho_context(dataset_id) and noemt_ho(vraag))
+
+
+def _leesbaar(vraag: str, dataset_id: str | None = None) -> bool:
+    """Een vraag die een gebruiker zo kan stellen, die op zichzelf staat en binnen de scope van de chat valt.
+
+    `dataset_id` is de dataset waar de vraag bij hoort; zonder ID geldt de po/so/vo-uitsluiting altijd.
+    """
     return not (
         _EERSTE_PERSOON.search(vraag)
         or _VELDNAAM.search(vraag)
         or _VERWIJZEND.search(vraag)
-        or scopeprofiel.PO_SO_VO.search(vraag)
+        or _buiten_scope(vraag, dataset_id)
         or _noemt_dataset_id(vraag)
     )
 
@@ -70,7 +83,9 @@ def _beantwoordbaar(dataset_id: str) -> tuple[str, ...]:
         return tuple(
             vraag
             for vraag in catalog.voorbeeldvragen().get(dataset_id, [])
-            if _leesbaar(vraag) and not (rio and _AANTAL.search(vraag)) and _vindt_eigen_dataset(vraag, dataset_id)
+            if _leesbaar(vraag, dataset_id)
+            and not (rio and _AANTAL.search(vraag))
+            and _vindt_eigen_dataset(vraag, dataset_id)
         )
 
 
