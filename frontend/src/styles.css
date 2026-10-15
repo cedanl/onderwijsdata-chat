@@ -1069,7 +1069,8 @@ html.dark .context-limit-banner--full {
 .wb-gallery-no-hits p { margin: 0 0 16px; }
 .wb-gallery-clear-btn {
   min-height: var(--tap-min); padding: 8px 16px; border-radius: var(--radius-sm);
-  border: 1px solid var(--gray-200); background: transparent; color: var(--accent-text);
+  /* --gray-500, as on the search field: the button edge keeps 3:1 against the page in both themes (WCAG 1.4.11). */
+  border: 1px solid var(--gray-500); background: transparent; color: var(--accent-text);
   font-size: .875rem; font-weight: 600; cursor: pointer; transition: background .15s;
 }
 .wb-gallery-clear-btn:hover { background: var(--blue-50); }
