@@ -52,14 +52,14 @@ def test_cache_hit_skips_second_load():
 
 def test_apply_filters_eq_with_list():
     df = pd.DataFrame({"SECTOR": ["Techniek", "Zorg", "Economie"], "AANTAL": [1, 2, 3]})
-    result, err = _apply_filters(df, {"SECTOR": ["Techniek", "Zorg"]})
-    assert err is None
+    result, err, lezingen = _apply_filters(df, {"SECTOR": ["Techniek", "Zorg"]})
+    assert err is None and lezingen == []
     assert list(result["SECTOR"]) == ["Techniek", "Zorg"]
 
 
 def test_apply_filters_eq_with_list_case_insensitive():
     df = pd.DataFrame({"SECTOR": ["Techniek", "Zorg", "Economie"], "AANTAL": [1, 2, 3]})
-    result, err = _apply_filters(df, {"SECTOR": ["techniek", "ZORG"]})
+    result, err, _lezingen = _apply_filters(df, {"SECTOR": ["techniek", "ZORG"]})
     assert err is None
     assert len(result) == 2
 

@@ -437,6 +437,37 @@ def test_query_data_snippet_geeft_wat_de_app_geeft(duo_in_app_en_snippet, args):
     assert _records(namespace["df"]) == _records(pd.DataFrame(app["rijen"])[kolommen])
 
 
+# Codes als tekst met voorloopnul (riodata 0.5.0, #542): het model schrijft 363, de kolom heeft '0363'.
+_CODES = pd.DataFrame([{"GEMEENTENUMMER": "0363", "N": 1}, {"GEMEENTENUMMER": "0080", "N": 2}])
+_CODE_KEY = "duo:adressen_ho:0"
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"filters": {"GEMEENTENUMMER": 363}},  # zonder voorloopnul: gelezen als 0363
+        {"filters": {"GEMEENTENUMMER": "0363"}},  # exact
+        {"filters": {"GEMEENTENUMMER__in": ["363", "0080"]}},  # één exacte treffer wint: 363 niet erbij
+        {"filters": {"GEMEENTENUMMER__in": [363, 80]}},
+    ],
+)
+def test_code_zonder_voorloopnul_geeft_in_de_snippet_wat_de_app_geeft(clean_packages, monkeypatch, args):
+    import riodata.duo
+
+    monkeypatch.setattr(riodata.duo, "load", lambda *a, **k: _CODES.copy())
+    store.put(
+        _CODE_KEY,
+        _CODES.copy(),
+        store.KeyMeta(
+            bron="duo", dataset="adressen_ho", laad=("get_duo_data", {"dataset_id": "adressen_ho", "resource": 0})
+        ),
+    )
+    app = json.loads(query_data(_CODE_KEY, **args))
+    snippet = generate("query_data", {"data_key": _CODE_KEY, **args})
+    assert snippet is not None
+    assert _records(_run(snippet)["df"]) == _records(pd.DataFrame(app["rijen"]))
+
+
 def test_snippet_sluit_duo_minus_een_uit_net_als_de_app(duo_in_app_en_snippet):
     # Audit ronde 2, N1(b): app 8.918, snippet 8.915 — de -1-cellen telden mee.
     args = {"filters": {"JAAR": 2025}, "group_by": ["JAAR"], "aggregate": {"EX": "sum"}}
