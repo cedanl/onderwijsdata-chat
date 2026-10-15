@@ -9,8 +9,8 @@ export default function IngetrokkenVersies({ versies, eindtekst = '' }) {
     <details className="message-ingetrokken">
       <summary>
         {anders.length === 1
-          ? 'Eerste versie van dit antwoord is aangepast na controle — bekijk wat er veranderde'
-          : `${anders.length} eerdere versies van dit antwoord zijn aangepast na controle — bekijk wat er veranderde`}
+          ? 'Eerste versie van dit antwoord is aangepast na controle — bekijk de eerdere versie en de reden'
+          : `${anders.length} eerdere versies van dit antwoord zijn aangepast na controle — bekijk ze en de reden`}
       </summary>
       {anders.map((v, i) => (
         <div key={i}>
