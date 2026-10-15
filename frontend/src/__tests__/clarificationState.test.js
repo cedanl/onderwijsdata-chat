@@ -95,4 +95,24 @@ describe('buildHistory', () => {
       { role: 'user', content: '2023/24' },
     ])
   })
+
+  // #548: a stopped or interrupted answer goes along marked, even without text, so the server
+  // closes that turn and the next question does not continue it.
+  it('marks a stopped or interrupted answer as afgebroken, text or not', () => {
+    expect(buildHistory([
+      { id: 1, role: 'user', content: 'Welke vacatures?' },
+      { id: 2, role: 'assistant', content: 'Ik haal de UWV-vacatures op.', done: true, interrupted: true },
+      { id: 3, role: 'user', content: 'Hoeveel mbo-studenten?' },
+      { id: 4, role: 'assistant', content: '', done: true, stopped: true, tools: [{ name: 'get_uwv_vacatures' }] },
+    ])).toEqual([
+      { role: 'user', content: 'Welke vacatures?' },
+      { role: 'assistant', content: 'Ik haal de UWV-vacatures op.', afgebroken: true },
+      { role: 'user', content: 'Hoeveel mbo-studenten?' },
+      { role: 'assistant', content: '', afgebroken: true },
+    ])
+  })
+
+  it('still drops an empty answer that was not interrupted', () => {
+    expect(buildHistory([{ id: 1, role: 'assistant', content: '', done: true }])).toEqual([])
+  })
 })
