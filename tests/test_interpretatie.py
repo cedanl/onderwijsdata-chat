@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from agent.interpretatie import interpretatiezin, is_vaag, met_interpretatie
+from agent.interpretatie import interpretatiezin, is_vaag, is_vervolgvraag, met_interpretatie
 from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
@@ -73,16 +73,57 @@ def test_zonder_bekende_dataset_geen_zin():
 
 
 def test_het_antwoord_opent_met_de_zin_voor_een_vage_vraag(geladen):
-    tekst = met_interpretatie("Er zijn veel studenten.", "studentenwelzijn", [_STAP], {})
-    assert tekst.startswith("Ik ga uit van de lezing «")
+    tekst = met_interpretatie("Er zijn veel studenten.", "studentenwelzijn", [_STAP], {}, vervolg=False)
+    assert tekst.startswith(
+        "Ik ga uit van de lezing «Hoger onderwijs; ingeschrevenen» voor je vraag 'studentenwelzijn'."
+    )
     assert tekst.endswith("\n\nEr zijn veel studenten.")
 
 
 def test_geen_zin_bij_een_duidelijke_vraag_na_een_kaart_of_eigen_lezing(geladen):
-    assert met_interpretatie("Antwoord.", "Hoeveel studenten heeft de HU?", [_STAP], {}) == "Antwoord."
-    assert met_interpretatie("Antwoord.", "studentenwelzijn", [_STAP], {"clarify_rondes": 1}) == "Antwoord."
+    assert met_interpretatie("Antwoord.", "Hoeveel studenten heeft de HU?", [_STAP], {}, vervolg=False) == "Antwoord."
+    assert (
+        met_interpretatie("Antwoord.", "studentenwelzijn", [_STAP], {"clarify_rondes": 1}, vervolg=False) == "Antwoord."
+    )
     eigen = "Ik ga uit van ingeschrevenen in het hoger onderwijs. Antwoord."
-    assert met_interpretatie(eigen, "studentenwelzijn", [_STAP], {}) == eigen
+    assert met_interpretatie(eigen, "studentenwelzijn", [_STAP], {}, vervolg=False) == eigen
+
+
+# --- een vervolgvraag: de lezing lag al vast bij de eerste vraag (#545) ---
+
+
+def _gebruiker(tekst) -> dict:
+    return {"role": "user", "content": tekst}
+
+
+def _assistent(tekst: str) -> dict:
+    return {"role": "assistant", "content": tekst}
+
+
+def test_geen_zin_bij_een_vage_vervolgvraag(geladen):
+    gesprek = [
+        _gebruiker("Hoeveel mbo-studenten in 2024/25?"),
+        _assistent("Er zijn er veel."),
+        _gebruiker("Alleen vrouwen"),
+    ]
+    session: dict = {}
+    assert met_interpretatie("Antwoord.", "Alleen vrouwen", [_STAP], session, vervolg=is_vervolgvraag(gesprek)) == (
+        "Antwoord."
+    )
+    assert session == {}
+
+
+def test_alleen_de_eerste_gebruikersbeurt_is_geen_vervolgvraag():
+    assert not is_vervolgvraag([_gebruiker("studentenwelzijn")])
+    assert not is_vervolgvraag([_assistent("Welkom."), _gebruiker("studentenwelzijn")])
+    assert is_vervolgvraag([_gebruiker("mbo 2024/25"), _assistent("Antwoord."), _gebruiker("Alleen vrouwen")])
+    # Een blokkenlijst telt als beurt als er tekst in staat.
+    assert is_vervolgvraag([_gebruiker([{"type": "text", "text": "mbo"}]), _gebruiker("Alleen vrouwen")])
+
+
+@pytest.mark.parametrize("leeg", ["", "   ", None, [], [{"type": "text", "text": " "}]])
+def test_een_lege_gebruikersbeurt_telt_niet(leeg):
+    assert not is_vervolgvraag([_gebruiker(leeg), _gebruiker("studentenwelzijn")])
 
 
 def test_een_titel_met_cijfers_komt_niet_in_de_zin(geladen):
@@ -97,7 +138,12 @@ _LAAD = {"id": "l1", "name": "get_duo_data", "arguments": '{"dataset_id": "duo-a
 _DUO = [{"leverancier": "DUO", "bron": "Ingeschrevenen hbo", "tags": ["hbo"], "_ckan_id": "duo-a"}]
 
 
-def _run(monkeypatch, steps: list[StreamResult], vraag: str, session: dict | None = None) -> tuple[str, list[dict]]:
+def _run(
+    monkeypatch, steps: list[StreamResult], vraag: str | list[dict], session: dict | None = None
+) -> tuple[str, list[dict]]:
+    """Eén beurt door run(); `vraag` is één vraag of het hele gesprek tot en met de laatste gebruikersbeurt."""
+    messages = [{"role": "user", "content": vraag}] if isinstance(vraag, str) else vraag
+
     async def fake_completion(*args, **kwargs):
         return object()
 
@@ -117,11 +163,7 @@ def _run(monkeypatch, steps: list[StreamResult], vraag: str, session: dict | Non
 
     store.put("duo:p02:a", pd.DataFrame({"AANTAL": [5943]}), KeyMeta(bron="duo", dataset="duo-a"))
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=_DUO):
-        tekst = asyncio.run(
-            run_module.run(
-                [{"role": "user", "content": vraag}], session or {}, emit, asyncio.Event(), model="openai/gpt-4o"
-            )
-        )
+        tekst = asyncio.run(run_module.run(messages, session or {}, emit, asyncio.Event(), model="openai/gpt-4o"))
     return tekst, events
 
 
@@ -155,6 +197,45 @@ def test_een_duidelijke_vraag_krijgt_geen_lezing(monkeypatch):
 def test_zonder_data_geen_lezing(monkeypatch):
     tekst, _ = _run(monkeypatch, [StreamResult(text="Daar heb ik geen data voor.", tool_calls=[])], "studentenwelzijn")
     assert not tekst.startswith("Ik ga uit van")
+
+
+def _datastappen() -> list[StreamResult]:
+    return [
+        StreamResult(text="", tool_calls=[_LAAD]),
+        StreamResult(text="Daar heb ik data over gevonden.", tool_calls=[]),
+    ]
+
+
+_KETEN = ["mbo 2024/25", "En in 2021?", "Alleen vrouwen"]
+
+
+def _gesprek_tot(beurt: int) -> list[dict]:
+    """Het gesprek uit de keten tot en met gebruikersbeurt `beurt` (0-based), met een antwoord tussen de beurten."""
+    gesprek: list[dict] = []
+    for vraag in _KETEN[:beurt]:
+        gesprek += [_gebruiker(vraag), _assistent("Daar heb ik data over gevonden.")]
+    return [*gesprek, _gebruiker(_KETEN[beurt])]
+
+
+def test_een_vage_vervolgvraag_krijgt_geen_lezing(monkeypatch):
+    tekst, events = _run(monkeypatch, _datastappen(), _gesprek_tot(2))
+    [einde] = [e for e in events if e.get("type") == "message_end"]
+    assert "Bedoel je iets anders" not in tekst
+    assert "Bedoel je iets anders" not in einde["content"]
+    assert einde["bronnen"]
+
+
+def test_een_vaag_thema_als_eerste_beurt_houdt_de_lezing(monkeypatch):
+    tekst, events = _run(monkeypatch, _datastappen(), [_gebruiker("studentenwelzijn")])
+    [einde] = [e for e in events if e.get("type") == "message_end"]
+    assert "Bedoel je iets anders" in tekst and "Bedoel je iets anders" in einde["content"]
+
+
+@pytest.mark.parametrize("beurt", range(len(_KETEN)))
+def test_geen_beurt_in_de_keten_krijgt_een_lezing(monkeypatch, beurt):
+    tekst, events = _run(monkeypatch, _datastappen(), _gesprek_tot(beurt))
+    [einde] = [e for e in events if e.get("type") == "message_end"]
+    assert "Bedoel je iets anders" not in tekst and "Bedoel je iets anders" not in einde["content"]
 
 
 def test_de_prompt_noemt_de_regel():
