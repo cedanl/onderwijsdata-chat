@@ -408,6 +408,8 @@ de laatste tag is 1.8.6.
   controle — bekijk wat er veranderde" (bij meer versies "2 eerdere versies van dit antwoord zijn aangepast na
   controle — …"), in plaats van "Eerdere versie ingetrokken na controle", wat als interne ruis las. Het blok blijft
   standaard dicht; de reden en de eerdere tekst staan er ongewijzigd in (#496, F-01).
+- Die kopregel belooft niet meer "bekijk wat er veranderde", want het blok markeert geen wijzigingen: hij zegt
+  nu "— bekijk de eerdere versie en de reden" (bij meer versies "— bekijk ze en de reden") (#566).
 - Een gesprek verwijderen is acht seconden ongedaan te maken (#493): na het bevestigen verdwijnt het gesprek
   meteen uit de lijst en toont een toast "Gesprek verwijderd" met "Ongedaan maken"; de verwijdering op de server
   gaat pas als die tijd om is, of direct bij het sluiten van de tab. Ongedaan maken zet het gesprek met zijn

@@ -24,7 +24,7 @@ describe('IngetrokkenVersies (#398)', () => {
     const details = el.querySelector('details')
     expect(details.open).toBe(false)
     expect(details.querySelector('summary').textContent)
-      .toBe('Eerste versie van dit antwoord is aangepast na controle — bekijk wat er veranderde')
+      .toBe('Eerste versie van dit antwoord is aangepast na controle — bekijk de eerdere versie en de reden')
     expect(details.textContent).toContain('Het zijn er 99.')
   })
 
@@ -34,7 +34,7 @@ describe('IngetrokkenVersies (#398)', () => {
     const details = el.querySelector('details')
     expect(details.open).toBe(false)
     expect(details.querySelector('summary').textContent)
-      .toBe('2 eerdere versies van dit antwoord zijn aangepast na controle — bekijk wat er veranderde')
+      .toBe('2 eerdere versies van dit antwoord zijn aangepast na controle — bekijk ze en de reden')
     expect(details.textContent).toContain('Het zijn er 99.')
     expect(details.textContent).toContain('Het zijn er 98.')
   })
