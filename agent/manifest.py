@@ -25,7 +25,7 @@ from pathlib import Path
 from litellm import get_supported_openai_params
 
 from config import Config
-from core.config import SEED, TEMPERATURE
+from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
 from tools import store
 from tools.catalog import catalogus_digest, catalogus_laatste_update
@@ -106,11 +106,13 @@ def _catalogus() -> str:
 def bouw(model: str, data_keys, model_versie: str | None = None) -> dict:
     """Het manifest van één antwoord of rapport.
 
-    `model` is wat de app koos; `model_versie` is wat de provider terugmeldde
-    (bijv. een gedateerde modelnaam) en staat erbij zodra hij afwijkt.
+    `model` is wat de app koos, `model_naam` hoe de gebruiker het kent; `model_versie` is wat de
+    provider terugmeldde (bijv. een gedateerde modelnaam) en staat erbij zodra hij afwijkt.
     """
     m = {
         "model": model,
+        # De naam die de gebruiker leest (BEV-10); `model` blijft het id, voor herhaalbaarheid en log.
+        "model_naam": model_naam(model),
         "sampling": _sampling(model),
         "prompt_hash": prompt_hash(),
         "catalogus": _catalogus(),

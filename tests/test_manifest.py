@@ -8,7 +8,7 @@ from agent import manifest
 from core.config import SEED, TEMPERATURE
 from tools import store
 
-_VASTE_SLEUTELS = {"model", "sampling", "prompt_hash", "catalogus", "app", "data_as_of", "gemaakt_op"}
+_VASTE_SLEUTELS = {"model", "model_naam", "sampling", "prompt_hash", "catalogus", "app", "data_as_of", "gemaakt_op"}
 
 
 def test_provider_zonder_seed_staat_in_het_manifest():
@@ -97,3 +97,12 @@ def test_slotbericht_draagt_het_manifest():
 
     event = _slotbericht("Antwoord.", LoopResult(), [], False, [], manifest={"model": "m/x"})
     assert event["manifest"] == {"model": "m/x"}
+
+
+def test_manifest_draagt_de_modelnaam_naast_het_id():
+    """De gebruikersnaam voor de Verantwoording (BEV-10); het id blijft voor herhaalbaarheid."""
+    with patch("agent.manifest.get_supported_openai_params", return_value=[]):
+        bekend = manifest.bouw("azure_ai/claude-sonnet-5-5", [])
+        onbekend = manifest.bouw("azure_ai/nieuw-model", [])
+    assert (bekend["model"], bekend["model_naam"]) == ("azure_ai/claude-sonnet-5-5", "Claude Sonnet 5.5")
+    assert (onbekend["model"], onbekend["model_naam"]) == ("azure_ai/nieuw-model", "nieuw-model")
