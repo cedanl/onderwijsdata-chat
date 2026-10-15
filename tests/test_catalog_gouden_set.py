@@ -15,6 +15,9 @@ import pytest
 
 from tools.catalog import search_catalog
 
+# Vooropleiding van eerstejaars: het ho-bestand 85422NED beantwoordt hem, niet de vo-doorstroom 85566NED (#559).
+_VOOROPLEIDING = "welke vooropleiding hebben eerstejaars hbo en wo (havo, vwo, mbo)"
+
 # (query, doel-ID, maximale rang)
 GOED = [
     ("ingeschrevenen wo", "p01hoinges", 3),
@@ -41,6 +44,12 @@ GOED = [
     ("leerlingen en studenten onderwijssoort woonregio", "85701NED", 1),
     ("studenten hoger onderwijs per woongemeente", "85701NED", 1),
     ("woonplaats studenten hoger onderwijs", "85701NED", 2),
+    # Ho-doorstroom (#559), gemeten op 15 oktober 2026: vo-context voor ho (#554) achter de zoekpoort (#557).
+    # Alleen vragen uit de ontwikkelreeks van tests/retrieval_baseline; de testreeks blijft buiten de gouden set.
+    (_VOOROPLEIDING, "85422NED", 1),
+    ("havo geslaagden regio", "85382NED", 2),
+    ("Hoeveel havo-geslaagden zijn er per regio?", "85382NED", 8),
+    ("havo gediplomeerden herkomst", "85381NED", 4),
 ]
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
@@ -52,6 +61,10 @@ BEKENDE_MISSERS = [
     # Metadata-audit CHAT-10 (#360): 'unieke' en 'open' vinden de bron niet (niet in de top 15).
     ("Hoeveel unieke hbo-studenten zijn er?", "p01hoinges", 5, None),
     ("Open mbo-cohorten", "aangeboden-opleiding-cohorten", 5, None),
+    # Ho-doorstroom (#559): 85566NED (vo-doorstroom) staat bij geen enkele doorstroomvraag in de top 15.
+    # Termweging, niet afgesteld; vervolg buiten #559.
+    ("Hoeveel vwo-leerlingen stromen door naar het wo?", "85566NED", 5, None),
+    ("Hoeveel havo-leerlingen stromen door naar het hbo?", "85566NED", 5, None),
 ]
 
 _TOP_N = 15
@@ -93,6 +106,13 @@ def test_doel_staat_binnen_zijn_rang(query, doel, max_rang):
 def test_bekende_misser(query, doel, max_rang):
     rang = _rang(query, doel)
     assert rang is not None and rang <= max_rang, f"{doel} op rang {rang} (max {max_rang}) voor {query!r}"
+
+
+def test_vooropleiding_eerstejaars_geeft_het_ho_bestand_voor_de_vo_doorstroom():
+    """Een ho-vraag met havo en vwo opent de zoekpoort (#557), maar de vo-context zakt niet boven 85422NED (#559)."""
+    ids = _ids(_VOOROPLEIDING)
+    assert "85422NED" in ids, ids
+    assert "85566NED" not in ids or ids.index("85566NED") > ids.index("85422NED"), ids
 
 
 def test_zelfde_vraag_geeft_dezelfde_volgorde():
