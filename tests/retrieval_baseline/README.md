@@ -120,7 +120,10 @@ vragenset falen) en verantwoord de verschillen in de MR.
 Epic #554 laat vijf vo-records (`scopeprofiel.HO_CONTEXT`: 85566NED, 85380NED, 85381NED, 85382NED,
 `voprognoses`) toe als context bij een ho-vraag, achter de zoekpoort `ho_markers.noemt_ho` (#557). Zeven
 vragen meten dat; hun labels komen alleen uit die vijf records, en elke `zoekinput` en `vraag` noemt ho.
-`test_retrieval_baseline.py` bewaakt dat.
+`test_retrieval_baseline.py` bewaakt dat. Let op: `havo` en `vwo` tellen als ho-marker (#556) en de
+`zoekinput` van hbo-25, hbo-26, hbo-27, wo-27 en wo-28 opent de poort alleen daardoor, zodat de gemeten
+rangen net zo gelden voor een zuivere vo-vraag die havo of vwo noemt en die dus ook vo-context krijgt (zie
+bp-04), wat de open beleidsvraag #355/#554 is en hier niet beslist wordt.
 
 Gemeten op 15 oktober 2026, catalogus `0460f58ad0bd` (rang in de top 15, met `zoekinput` en met `vraag`):
 
