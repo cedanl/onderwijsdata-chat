@@ -24,6 +24,7 @@ from dataclasses import dataclass
 
 from riodata import scope
 
+from .canoniek import zonder_bronprefix
 from .schemas import TOOL_GET_RIO_INSTELLING
 
 SECTOREN = frozenset({"MBO", "HBO", "WO", "HO"})
@@ -216,6 +217,21 @@ TOEGELATEN: dict[str, str] = {
     "uwv-open-match-data": "UWV-vacatures; arbeidsmarktkant van het chatprofiel",
 }
 
+# Vo-bronnen die een ho-vraag van context voorzien: wie er van het vo naar het ho kan instromen.
+# Een aparte categorie naast TOEGELATEN, nog niet toegelaten: in_scope leest deze lijst niet;
+# de zoekpoort (#557) onderscheidt er later een contextrecord mee van een gewoon toegelaten record (#554).
+HO_CONTEXT: dict[str, str] = {
+    "85566NED": "Doorstroom van vo naar ho als context voor de instroom in het ho; het gaat om vo-leerlingen, "
+    "geen studenten",
+    "85381NED": "Vo-gediplomeerden naar onderwijssoort als context voor de potentiële instroom in het ho; "
+    "het gaat om vo-leerlingen, geen studenten",
+    "85382NED": "Vo-gediplomeerden naar woonregio als context voor de regionale instroom in het ho; "
+    "het gaat om vo-leerlingen, geen studenten",
+    "voprognoses": "Prognoses van leerlingaantallen in het vo als context voor de toekomstige instroom in het ho; "
+    "het gaat om vo-leerlingen, geen studenten",
+}
+_HO_CONTEXT_SLEUTELS = frozenset(i.lower() for i in HO_CONTEXT)
+
 MELDING = (
     "Deze dataset valt buiten het profiel van de chat: die werkt alleen voor mbo, hbo en wo. "
     "Geef er geen cijfers voor en zeg niet dat de bron niet bestaat; noem dat de chat deze "
@@ -232,6 +248,13 @@ REGISTER_MELDING = (
 
 def dataset_id(entry: dict) -> str | None:
     return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or entry.get("_roa_id")
+
+
+def is_ho_context(entry_or_id: dict | str) -> bool:
+    """Of een record of ID in HO_CONTEXT staat; hoofdletterongevoelig en zonder bron-voorvoegsel,
+    zoals `catalog.bron_id` het ID terugvindt (`cbs:85566ned` is `85566NED`)."""
+    ruw = dataset_id(entry_or_id) if isinstance(entry_or_id, dict) else entry_or_id
+    return bool(ruw) and zonder_bronprefix(ruw).lower() in _HO_CONTEXT_SLEUTELS
 
 
 def in_scope(entry: dict) -> bool:

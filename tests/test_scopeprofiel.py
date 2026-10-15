@@ -7,6 +7,7 @@ over mbo, hbo of wo gaat, en een directe dataset-ID omzeilt dat niet.
 """
 
 import json
+import re
 from unittest.mock import patch
 
 import pytest
@@ -602,3 +603,71 @@ def test_een_gesloten_selectie_met_een_vo_code_wordt_niet_opgehaald(catalogus):
 
     data.assert_not_called()
     assert "data_key" not in result and "A025290" in result
+
+
+# ── Vo-context voor ho-vragen (#555, epic #554) ───────────────────────────────
+# Een aparte categorie naast TOEGELATEN: nog niet toegelaten, de zoekpoort (#557) leest haar later.
+
+_HO_CONTEXT_IDS = ("85566NED", "85381NED", "85382NED", "voprognoses")
+_CBS_HO_CONTEXT = {"leverancier": "CBS", "_cbs_id": "85566NED", "bron": "Vo; geslaagden", "onderwijstype": ["VO"]}
+
+
+def test_de_ho_contextlijst_noemt_precies_de_vier_vo_bronnen():
+    assert set(scopeprofiel.HO_CONTEXT) == set(_HO_CONTEXT_IDS)
+
+
+@pytest.mark.parametrize("dataset_id", _HO_CONTEXT_IDS)
+def test_elke_ho_contextreden_is_een_zin_over_vo_leerlingen_geen_studenten(dataset_id):
+    reden = scopeprofiel.HO_CONTEXT[dataset_id]
+
+    assert reden.strip()
+    assert re.search(r"\bvo\b", reden) and "studenten" in reden
+    assert not re.search(r"[.!?]\s+\S", reden), "één zin"
+
+
+def test_ho_context_en_toegelaten_delen_geen_id():
+    toegelaten = {i.lower() for i in scopeprofiel.TOEGELATEN}
+
+    assert not {i.lower() for i in scopeprofiel.HO_CONTEXT} & toegelaten
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    [
+        *_HO_CONTEXT_IDS,
+        "85566ned",
+        "cbs:85566NED",
+        "cbs_85566ned",
+        "VOPROGNOSES",
+        "duo:voprognoses",
+        _VO,
+        _CBS_HO_CONTEXT,
+        {**_CBS_HO_CONTEXT, "_cbs_id": "85566ned"},
+    ],
+)
+def test_een_ho_contextbron_wordt_herkend_in_elke_spelling(spelling):
+    assert scopeprofiel.is_ho_context(spelling) is True
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    [_CBS_VO, "80040ned", "cbs:80040ned", "02voins-v1", "p01hoinges", "85701NED", _CBS_WOONREGIO, "", {}],
+)
+def test_een_andere_bron_is_geen_ho_context(spelling):
+    assert scopeprofiel.is_ho_context(spelling) is False
+
+
+@pytest.mark.parametrize("dataset_id", _HO_CONTEXT_IDS)
+def test_een_ho_contextbron_blijft_buiten_het_profiel(dataset_id):
+    """Alleen de lijst; in_scope leest haar niet (#557 doet de zoekpoort)."""
+    sleutel = "_ckan_id" if dataset_id == "voprognoses" else "_cbs_id"
+
+    assert scopeprofiel.in_scope({"leverancier": "?", sleutel: dataset_id, "onderwijstype": ["VO"]}) is False
+    assert scopeprofiel.in_scope({"leverancier": "?", sleutel: dataset_id}) is False
+
+
+def test_elke_ho_contextbron_bestaat_in_de_echte_catalogus():
+    """Hoofdletterongevoelig, zoals catalog.bron_id het ID terugvindt."""
+    echt = {str(i).lower() for i in _echt()}
+
+    assert {i.lower() for i in scopeprofiel.HO_CONTEXT} <= echt
