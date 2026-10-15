@@ -606,6 +606,54 @@
       "toelichting": "83286NED en 83282NED: ho-cohorten met Onderwijspositie peilmoment en niet-gediplomeerden per peilmoment (tag studievoortgang)."
     },
     {
+      "id": "hbo-25",
+      "sector": "hbo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel havo-geslaagden zijn er per regio?",
+      "zoekinput": "havo geslaagden regio",
+      "geaccepteerd": ["85382NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom. 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85381NED heeft geen regio."
+    },
+    {
+      "id": "hbo-26",
+      "sector": "hbo",
+      "reeks": "test",
+      "vraag": "Hoeveel havo-leerlingen zitten er per provincie in de bovenbouw, als toekomstige hbo-instroom?",
+      "zoekinput": "havo leerlingen leerjaar provincie",
+      "geaccepteerd": ["85380NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): de huidige havo-bovenbouw is de toekomstige hbo-instroom. 85380NED: leerlingen per onderwijssoort (Havo 3-5), leerjaar en woonregio (provincie), samenvatting 'instroomanalyses'; vo-context voor ho (scopeprofiel.HO_CONTEXT)."
+    },
+    {
+      "id": "hbo-27",
+      "sector": "hbo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel havisten met een migratieachtergrond halen hun diploma, als instroom voor het hbo?",
+      "zoekinput": "havo gediplomeerden herkomst",
+      "geaccepteerd": ["85381NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): 85381NED: examenkandidaten en gediplomeerden per onderwijssoort in detail met Herkomstland en Geboorteland (ouders), tags herkomst en kansengelijkheid; vo-context voor de potentiële instroom in het ho (scopeprofiel.HO_CONTEXT). 85382NED heeft geen herkomst."
+    },
+    {
+      "id": "hbo-28",
+      "sector": "hbo",
+      "reeks": "test",
+      "vraag": "Hoeveel havo-leerlingen stromen door naar het hbo?",
+      "zoekinput": "doorstroom havo hbo",
+      "geaccepteerd": ["85566NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.HO_CONTEXT noemt het context voor de instroom in het ho."
+    },
+    {
       "id": "wo-01",
       "sector": "wo",
       "reeks": "ontwikkel",
@@ -905,6 +953,42 @@
       "verboden": ["p04hogdipl"],
       "kritiek": true,
       "toelichting": "85702NED: gediplomeerden per onderwijssoort en woonregio (corop), wo-rijen via CBS_SECTORFILTER. Verboden: p04hogdipl is volgens niet_geschikt_voor niet geschikt voor woonplaats; de plaats is de vestiging."
+    },
+    {
+      "id": "wo-26",
+      "sector": "wo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel vwo-leerlingen stromen door naar het wo?",
+      "zoekinput": "doorstroom vwo wo",
+      "geaccepteerd": ["85566NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.HO_CONTEXT noemt het context voor de instroom in het ho. 85422NED (eerstejaars naar vooropleiding) telt vanuit het ho en staat in wo-09."
+    },
+    {
+      "id": "wo-27",
+      "sector": "wo",
+      "reeks": "test",
+      "vraag": "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030?",
+      "zoekinput": "vwo leerlingen prognose",
+      "geaccepteerd": ["voprognoses"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): de vwo-leerlingen van straks zijn de toekomstige wo-instroom. voprognoses: PROGNOSEAANTALLEN per ONDERWIJSNIVEAU (VWO_) en JAAR (2024-2043); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85380NED telt alleen huidige leerlingen."
+    },
+    {
+      "id": "wo-28",
+      "sector": "wo",
+      "reeks": "test",
+      "vraag": "Hoeveel vwo-gediplomeerden komen er per woonregio bij als instroom voor het wo?",
+      "zoekinput": "vwo gediplomeerden woonregio",
+      "geaccepteerd": ["85382NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Ho-doorstroom (#559): 85382NED: gediplomeerden per onderwijssoort (Vwo) en woonregio (landsdeel, provincie, gemeente); vo-context voor de regionale instroom in het ho (scopeprofiel.HO_CONTEXT)."
     },
     {
       "id": "bp-01",

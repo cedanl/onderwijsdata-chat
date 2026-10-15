@@ -17,6 +17,7 @@ de modelroute-evals (#190, `tests/e2e`) en de weigervragen (#36). Overlap in que
 | `harnas.py` | draait `search_catalog` zonder netwerk en zonder instellingsregister |
 | `rapport.py` | de tabel per sector × reeks en de inhoud van `baseline.json` |
 | `test_meting.py`, `test_retrieval_baseline.py` | pytest: rekenwerk, vragenset, snapshot, release-eis, rapport |
+| `test_ho_context_poort.py` | pytest: geen vo-context (#554) bij een vraag zonder ho-marker |
 | `scripts/meet_retrieval.py` | het rapport op de commandoregel |
 
 ## Vragenset
@@ -37,7 +38,10 @@ Elke vraag heeft:
   bij een vraag over woonplaats (`niet_geschikt_voor`), inschrijvingen (`p03hoinschr`) bij een vraag
   over unieke studenten, een bestand met alleen documentatie (een DUO-changelog), of een CBS-tabel
   over alle onderwijssoorten zonder sectorselectie. Een verboden ID buiten het profiel kan nu niet in
-  de top 5 komen; zo'n vraag bewaakt de scopegrens (#355).
+  de top 5 komen; zo'n vraag bewaakt de scopegrens (#355). Een vo-contextbestand uit
+  `scopeprofiel.HO_CONTEXT` is bij een ho-vraag niet meer verboden (#554): het geeft context voor de
+  ho-instroom, en de zoekpoort (#557) laat het alleen door bij een vraag die ho noemt. Bij een mbo-vraag
+  blijft het verboden.
 - `kritiek`: de vraag valt onder de release-eis hieronder. Een kritieke vraag heeft altijd `verboden`.
 - `toelichting`: het bewijs uit de catalogus voor de labels.
 
@@ -110,6 +114,53 @@ catalogusbump, een wijziging aan `tools/duo_correcties.py` of `tools/scopeprofie
 gewijzigde `[[kolomcorrectie]]` of `[[herkomst_is_vestiging]]` in `data/domeinregels.toml`, en is zo
 bedoeld: meet opnieuw, controleer of de labels nog kloppen (een vervallen ID laat de validatie van de
 vragenset falen) en verantwoord de verschillen in de MR.
+
+## ho-doorstroomvragen (#559)
+
+Epic #554 laat vijf vo-records (`scopeprofiel.HO_CONTEXT`: 85566NED, 85380NED, 85381NED, 85382NED,
+`voprognoses`) toe als context bij een ho-vraag, achter de zoekpoort `ho_markers.noemt_ho` (#557). Zeven
+vragen meten dat; hun labels komen alleen uit die vijf records, en elke `zoekinput` en `vraag` noemt ho.
+`test_retrieval_baseline.py` bewaakt dat.
+
+Gemeten op 15 oktober 2026, catalogus `0460f58ad0bd` (rang in de top 15, met `zoekinput` en met `vraag`):
+
+| Vraag | Reeks | Geaccepteerd | Rang `zoekinput` | Rang `vraag` |
+|---|---|---|---|---|
+| hbo-25 | ontwikkel | 85382NED | 2 | 8 |
+| hbo-26 | test | 85380NED | 1 | 8 |
+| hbo-27 | ontwikkel | 85381NED | 4 | niet in de top 15 |
+| hbo-28 | test | 85566NED | niet in de top 15 | niet in de top 15 |
+| wo-26 | ontwikkel | 85566NED | niet in de top 15 | niet in de top 15 |
+| wo-27 | test | `voprognoses` | 2 | niet in de top 15 |
+| wo-28 | test | 85382NED | 2 | niet in de top 15 |
+
+Verschil met de vorige baseline (zelfde datum en catalogus, zonder deze zeven vragen), uit het rapport van
+`scripts/meet_retrieval.py`:
+
+| Cel | n | recall@5 | MRR |
+|---|---|---|---|
+| mbo/ontwikkel | 18 → 18 | 0.94 → 0.94 (+0.00) | 0.81 → 0.81 (+0.00) |
+| mbo/test | 8 → 8 | 0.86 → 0.86 (+0.00) | 0.75 → 0.75 (+0.00) |
+| hbo/ontwikkel | 16 → 18 | 0.86 → 0.88 (+0.02) | 0.71 → 0.67 (-0.04) |
+| hbo/test | 8 → 10 | 0.86 → 0.78 (-0.08) | 0.67 → 0.63 (-0.04) |
+| wo/ontwikkel | 17 → 18 | 0.87 → 0.81 (-0.05) | 0.84 → 0.79 (-0.05) |
+| wo/test | 8 → 10 | 0.71 → 0.78 (+0.06) | 0.74 → 0.69 (-0.05) |
+| totaal/ontwikkel | 51 → 54 | 0.89 → 0.88 (-0.01) | 0.79 → 0.76 (-0.03) |
+| totaal/test | 24 → 28 | 0.81 → 0.80 (-0.01) | 0.72 → 0.68 (-0.04) |
+
+`kritiek_falend` is ongewijzigd (hbo-09, hbo-10, wo-11, wo-25); de nieuwe vragen zijn niet kritiek.
+
+85566NED (doorstroom en uitstroom in het vo) staat bij geen enkele doorstroomvraag in de top 15, ook niet
+bij "doorstroom vwo wo": daar wint het ho-bestand 85422NED (eerstejaars naar vooropleiding). Dat gat zit
+in de termweging van `_score`. Het is bewust niet afgesteld en is een vervolg; de gouden set
+(`tests/test_catalog_gouden_set.py`) houdt de twee missers als strict xfail bij, en houdt 85422NED boven
+85566NED bij de vraag naar de vooropleiding van eerstejaars hbo en wo.
+
+De poort zelf bewaakt `test_ho_context_poort.py`: elke mbo-, hbo- en wo-vraag zoekt met `zoekinput` en met
+`vraag` (een mbo-vraag ook met `source` cbs en duo) in de top 50. Noemt de tekst geen ho, dan geeft geen
+treffer een HO_CONTEXT-ID of het veld `context`. Geen mbo-vraag noemt ho, zodat een marker die toets niet
+stil uitzet, en een controle toont dat een hbo- of wo-vraag mét marker wel een HO_CONTEXT-record vindt.
+Zonder de poort in `catalog._verzamel` falen de mbo-gevallen.
 
 ## Draaien
 
