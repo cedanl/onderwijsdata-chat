@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -7,6 +7,7 @@ import WorkbookPreview from '../components/WorkbookPreviews'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { groupByMonth } from '../workbookGroups'
+import { filterWorkbooks } from '../workbookFilter'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -43,6 +44,41 @@ function RapportCard({ wb, onOpen, onDelete }) {
   )
 }
 
+// Title search (#562): filters the list already in the browser on every keystroke.
+function RapportenZoekveld({ query, onChange, inputRef }) {
+  const id = useId()
+  return (
+    <div className="wb-gallery-search">
+      <label htmlFor={id} className="wb-gallery-search-label">Zoek in rapporten</label>
+      <input
+        id={id}
+        ref={inputRef}
+        type="search"
+        className="wb-gallery-search-input"
+        placeholder="Titel of woorden uit de titel"
+        autoComplete="off"
+        value={query}
+        onChange={e => onChange(e.target.value)}
+      />
+    </div>
+  )
+}
+
+// Never a blank page: no hits says so and offers the way back to the full list.
+function GeenTreffers({ query, onClear }) {
+  return (
+    <div className="wb-gallery-no-hits">
+      <p>Geen rapporten gevonden voor {`'${query}'`}</p>
+      <button type="button" className="wb-gallery-clear-btn" onClick={onClear}>Wis zoekopdracht</button>
+    </div>
+  )
+}
+
+function aantalTekst(zichtbaar, totaal, zoekt) {
+  const rapport = `rapport${totaal !== 1 ? 'en' : ''}`
+  return zoekt ? `${zichtbaar} van ${totaal} ${rapport}` : `${totaal} ${rapport}`
+}
+
 export default function RapportenPage({ settings, feedbackEnabled = false }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -61,6 +97,10 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
       initialSelected: navWorkbook,
     })
   useDocumentTitle(pageTitle(selected?.title || 'Rapporten'))
+  const [query, setQuery] = useState('')
+  const searchRef = useRef(null)
+  const zichtbaar = filterWorkbooks(rapporten, query)
+  const zoekt = query.trim() !== ''
 
   useEffect(() => {
     if (!selected && pendingId && missingId === pendingId) {
@@ -107,11 +147,14 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
         <div className="wb-gallery-header">
           <div>
             <h1 className="wb-gallery-title">Rapporten</h1>
-            <div className="wb-gallery-sub">
-              {loading && rapporten.length === 0 ? '' : `${rapporten.length} rapport${rapporten.length !== 1 ? 'en' : ''}`}
+            {/* A live region, so a screen reader hears the number of hits while the user types. */}
+            <div className="wb-gallery-sub" role="status">
+              {loading && rapporten.length === 0 ? '' : aantalTekst(zichtbaar.length, rapporten.length, zoekt)}
             </div>
           </div>
         </div>
+
+        {rapporten.length > 0 && <RapportenZoekveld query={query} onChange={setQuery} inputRef={searchRef} />}
 
         {missingId && (
           <div className="wb-gallery-notice" role="alert">
@@ -139,8 +182,10 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
               Stel een vraag en klik op &ldquo;Genereer rapport&rdquo; om een rapport hier op te slaan.
             </p>
           </div>
+        ) : zichtbaar.length === 0 ? (
+          <GeenTreffers query={query.trim()} onClear={() => { setQuery(''); searchRef.current?.focus() }} />
         ) : (
-          groupByMonth(rapporten).map(groep => (
+          groupByMonth(zichtbaar).map(groep => (
             <section key={groep.label} className="wb-gallery-group">
               <h2 className="wb-gallery-group-title">{groep.label} <span>({groep.workbooks.length})</span></h2>
               <div className="wb-grid">

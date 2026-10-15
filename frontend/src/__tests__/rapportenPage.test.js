@@ -2,13 +2,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act, Fragment } from 'react'
 import { createRoot } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 
-const server = vi.hoisted(() => ({ resolve: null }))
+const server = vi.hoisted(() => ({ resolve: null, local: [] }))
 vi.mock('../workbooks', () => ({
-  getWorkbooks: () => [],
+  getWorkbooks: () => server.local,
   getWorkbookType: (wb) => wb.type,
-  deleteWorkbook: vi.fn(),
+  deleteWorkbook: vi.fn(id => { server.local = server.local.filter(wb => wb.id !== id) }),
   migrateLocalWorkbooks: () => Promise.resolve(),
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),
 }))
@@ -21,11 +21,17 @@ vi.mock('../components/WorkbookViewer', () => ({
 vi.mock('../components/WorkbookPreviews', () => ({ default: () => null }))
 
 import RapportenPage from '../pages/RapportenPage'
+import { deleteWorkbook } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 let root
 let container
+
+// Shows the current query string, so a test can see the ?id= the page sets.
+function LocationProbe() {
+  return createElement('output', { 'data-testid': 'location' }, useLocation().search)
+}
 
 async function render(url = '/rapporten') {
   document.title = 'openEDUdata+'
@@ -33,13 +39,18 @@ async function render(url = '/rapporten') {
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root.render(createElement(MemoryRouter, { initialEntries: [url] }, createElement(RapportenPage, { settings: {} })))
+    root.render(createElement(MemoryRouter, { initialEntries: [url] },
+      createElement(RapportenPage, { settings: {} }),
+      createElement(LocationProbe),
+    ))
   })
 }
 
 afterEach(() => {
   act(() => root.unmount())
   container.remove()
+  server.local = []
+  vi.clearAllMocks()
 })
 
 describe('RapportenPage first load', () => {
@@ -134,5 +145,112 @@ describe('RapportenPage tab title', () => {
     const pendingWorkbook = { id: 'wb-3', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z' }
     await render({ pathname: '/rapporten', state: { pendingWorkbook } })
     expect(document.title).toBe('Instroom hbo — openEDUdata+')
+  })
+})
+
+// #562: a title search above the report cards.
+describe('RapportenPage search', () => {
+  const rapporten = [
+    { id: 'wb-1', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z' },
+    { id: 'wb-2', type: 'report', title: 'Uitval mbo', createdAt: '2026-10-02T00:00:00Z' },
+    { id: 'wb-3', type: 'report', title: 'Instroom Economië', createdAt: '2026-09-15T00:00:00Z' },
+  ]
+
+  async function renderWith(list) {
+    server.local = list
+    await render()
+    await act(async () => { server.resolve(list) })
+  }
+
+  const searchInput = () => container.querySelector('input[type="search"]')
+  const cardTitles = () => [...container.querySelectorAll('.wb-card-title')].map(t => t.textContent)
+  const headings = () => [...container.querySelectorAll('.wb-gallery-group-title')].map(h => h.textContent)
+  const subtitle = () => container.querySelector('.wb-gallery-sub').textContent
+  const buttonNamed = name => [...container.querySelectorAll('button')].find(b => b.textContent === name)
+
+  // React tracks the input value itself; the native setter plus an input event is what a keystroke does.
+  async function type(value) {
+    const input = searchInput()
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    await act(async () => {
+      setValue.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
+  it('is absent while the list loads and when there are no reports', async () => {
+    await render()
+    expect(searchInput()).toBeNull()
+    await act(async () => { server.resolve([]) })
+    expect(container.textContent).toContain('Nog geen rapporten opgeslagen.')
+    expect(searchInput()).toBeNull()
+  })
+
+  it('is a search field named "Zoek in rapporten" once there are reports', async () => {
+    await renderWith(rapporten)
+    const input = searchInput()
+    expect(input).not.toBeNull()
+    const name = input.getAttribute('aria-label') ?? [...input.labels].map(l => l.textContent).join(' ')
+    expect(name).toBe('Zoek in rapporten')
+    expect(input.value).toBe('')
+    expect(subtitle()).toBe('3 rapporten')
+  })
+
+  it('narrows the cards, month groups and counts on every keystroke', async () => {
+    await renderWith(rapporten)
+    await type('instroom')
+    expect(cardTitles()).toEqual(['Instroom hbo', 'Instroom Economië'])
+    expect(headings()).toEqual(['Oktober 2026 (1)', 'September 2026 (1)'])
+    expect(subtitle()).toBe('2 van 3 rapporten')
+
+    await type('instroom economie')
+    expect(cardTitles()).toEqual(['Instroom Economië'])
+    expect(headings()).toEqual(['September 2026 (1)'])
+    expect(subtitle()).toBe('1 van 3 rapporten')
+
+    await type('')
+    expect(cardTitles()).toHaveLength(3)
+    expect(subtitle()).toBe('3 rapporten')
+  })
+
+  it('keeps the singular for a single report', async () => {
+    await renderWith(rapporten.slice(0, 1))
+    expect(subtitle()).toBe('1 rapport')
+    await type('hbo')
+    expect(subtitle()).toBe('1 van 1 rapport')
+  })
+
+  it('says nothing was found, shows the query as text, and clears it back to the full list', async () => {
+    await renderWith(rapporten)
+    await type('<b>arbeidsmarkt</b>')
+    expect(cardTitles()).toEqual([])
+    expect(container.textContent).toContain("Geen rapporten gevonden voor '<b>arbeidsmarkt</b>'")
+    expect(container.querySelector('.wb-gallery-page b')).toBeNull()
+    expect(subtitle()).toBe('0 van 3 rapporten')
+
+    await act(async () => { buttonNamed('Wis zoekopdracht').click() })
+    expect(searchInput().value).toBe('')
+    expect(cardTitles()).toHaveLength(3)
+    expect(container.textContent).not.toContain('Geen rapporten gevonden')
+    expect(document.activeElement).toBe(searchInput())
+  })
+
+  it('opens a report found by the search', async () => {
+    await renderWith(rapporten)
+    await type('uitval')
+    await act(async () => { container.querySelector('.wb-card').click() })
+    expect(container.querySelector('[data-testid="viewer"]')?.textContent).toBe('Uitval mbo')
+    expect(container.querySelector('[data-testid="location"]').textContent).toBe('?id=wb-2')
+  })
+
+  it('deletes a report found by the search and keeps the search applied', async () => {
+    await renderWith(rapporten)
+    await type('instroom')
+    await act(async () => { container.querySelector('[aria-label="Verwijder rapport Instroom hbo"]').click() })
+    await act(async () => { container.querySelector('.confirm-destructive').click() })
+    expect(deleteWorkbook).toHaveBeenCalledWith('wb-1')
+    expect(searchInput().value).toBe('instroom')
+    expect(cardTitles()).toEqual(['Instroom Economië'])
+    expect(subtitle()).toBe('1 van 2 rapporten')
   })
 })
