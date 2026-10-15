@@ -23,6 +23,11 @@ de laatste tag is 1.8.6.
   selectie in de code als bij de VSV-tabellen, in de aanroep en op de rijen, en de bronvermelding zegt
   "…, alleen mbo, hbo en wo". Het is de enige open bron voor hbo/wo-studenten naar woongemeente, COROP,
   provincie of landsdeel (zonder instelling). De CBS-telling gaat van 117 naar 119 tabellen.
+- Vijf vo-bronnen zijn op te vragen als vo-context voor ho: de CBS-tabellen `85566NED` (doorstroom uit vo en
+  vso), `85380NED` (vo-leerlingen), `85381NED` en `85382NED` (vo-gediplomeerden), en DUO's `voprognoses`. De
+  zoekfunctie toont ze alleen bij een vraag die ho noemt (hbo, wo, ho, hoger onderwijs, havo, vwo, hogeschool,
+  universiteit); elke treffer en elke bronvermelding zegt "vo-context voor ho". Andere po-, so- en vo-bronnen
+  blijven erbuiten. De CBS-telling gaat van 119 naar 123 tabellen, de DUO-telling van 14 naar 15 datasets.
 - RIO-registers over alle sectoren (aangeboden opleidingen, opleidingen, opleidingserkenningen,
   onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
