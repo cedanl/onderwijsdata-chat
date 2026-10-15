@@ -19,8 +19,11 @@ from .selectie import data_keys
 # is dat niet altijd: 'Totaal (speciaal) basisonderwijs' is een deeltotaal.
 _TOTAALCODE = re.compile(r"^T00")
 _LABEL = "_label"
-# Onderwijssoorten met leerlingen, niet studenten: po, so en vo.
-_LEERLINGEN = re.compile(r"basisonderwijs|speciaal onderwijs|voortgezet|vmbo|havo|vwo|praktijkonderwijs", re.IGNORECASE)
+# Onderwijssoorten met leerlingen, niet studenten: po, so en vo. "Leerjaar 1" en "Vso ..." zijn vo-posities in de
+# doorstroomtabel 85566NED (#558); geen ho-term als "wo" of "hoger onderwijs" erbij.
+_LEERLINGEN = re.compile(
+    r"basisonderwijs|speciaal onderwijs|voortgezet|vmbo|havo|vwo|praktijkonderwijs|\bleerjaar\b|\bvso\b", re.IGNORECASE
+)
 _STUDENTEN = re.compile(r"\bstudenten\b", re.IGNORECASE)
 _LEERLINGWOORD = re.compile(r"\bleerlingen\b", re.IGNORECASE)
 
@@ -82,8 +85,12 @@ def _ruimer_dan_gekozen(tekst: str, dataset: str, dim: str, code: str | None, la
 
 
 def _studenten_bij_leerlingen(tekst: str, dataset: str, dim: str, label: str) -> Probleem | None:
-    """'Studenten' terwijl de gekozen onderwijssoort po, so of vo is."""
-    if not dim.lower().startswith("onderwijssoort") or not _LEERLINGEN.search(label):
+    """'Studenten' terwijl de gekozen onderwijssoort of -positie po, so of vo is.
+
+    Elke dimensie die met 'onderwijs' begint: Onderwijssoort(InDetail), en OnderwijsPositieBasisjaar/-VolgendSchooljaar
+    van 85566NED (#558).
+    """
+    if not dim.lower().startswith("onderwijs") or not _LEERLINGEN.search(label):
         return None
     if not _STUDENTEN.search(tekst) or _LEERLINGWOORD.search(tekst):
         return None

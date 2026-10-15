@@ -96,3 +96,71 @@ def test_een_dimensie_met_veel_waarden_is_geen_selectie():
     [regel] = selectie_regels(_beurt("cbs:85701NED"))
 
     assert "Onderwijssoort" not in regel and "RegioS: Utrecht (PV)" in regel
+
+
+# --- vo-contextrecords (epic #554, #558): echte dimensienamen, synthetische rijen ---
+
+_CONTEXTDIMENSIES = {
+    "85566NED": ["OnderwijsPositieBasisjaar", "OnderwijsPositieVolgendSchooljaar"],
+    "85381NED": ["OnderwijssoortInDetail"],
+    "85382NED": ["Onderwijssoort"],
+}
+_VO_LABELS = [
+    "Leerjaar 1",
+    "Vmbo-b 3",
+    "Havo 5 met diploma",
+    "Vwo 6",
+    "Praktijkonderwijs",
+    "Totaal voortgezet onderwijs (vo)",
+    "Totaal voortgezet speciaal onderwijs",
+    "Vso uitstroomprofiel arbeidsmarkt",
+    "Havo",
+    "Vwo",
+]
+_HO_LABELS = [
+    "Hoger beroepsonderwijs",
+    "Wetenschappelijk onderwijs",
+    "Totaal hoger onderwijs",
+    "Mbo niveau 4 (inclusief extranei)",
+]
+_VO_SELECTIES = [
+    *(("85566NED", "OnderwijsPositieBasisjaar", label) for label in _VO_LABELS),
+    *(("85566NED", "OnderwijsPositieVolgendSchooljaar", label) for label in ("Havo 5 met diploma", "Vwo 6")),
+    *(("85381NED", "OnderwijssoortInDetail", label) for label in _VO_LABELS),
+    *(("85382NED", "Onderwijssoort", label) for label in ("Havo", "Vwo", "Totaal voortgezet onderwijs (vo)")),
+]
+
+
+def _contextselectie(dataset: str, dim: str, label: str) -> str:
+    """Een CBS-key waarin alleen `dim` op `label` ligt; een andere dimensie heeft twee waarden."""
+    df = pd.DataFrame({"Perioden": ["2024JJ00"] * 2, "Aantal_1": [1200, 800]})
+    for d in _CONTEXTDIMENSIES[dataset]:
+        gekozen = d == dim
+        df[d] = ["A000001"] * 2 if gekozen else ["A000002", "A000003"]
+        df[d + "_label"] = [label] * 2 if gekozen else ["Vmbo 3", "Wetenschappelijk onderwijs"]
+    cbs.register_dimensions(dataset, [*_CONTEXTDIMENSIES[dataset], "Perioden"])
+    store.put(f"cbs:{dataset}", df, KeyMeta(bron="cbs", dataset=dataset, periodekolom="Perioden"))
+    return f"cbs:{dataset}"
+
+
+@pytest.mark.parametrize(("dataset", "dim", "label"), _VO_SELECTIES)
+def test_studenten_bij_een_vo_label_van_een_contextrecord_is_een_probleem(dataset, dim, label):
+    key = _contextselectie(dataset, dim, label)
+
+    [probleem] = verkeerde_dimensielabels("In 2024 ging het om 2.000 studenten.", _beurt(key))
+
+    assert "studenten" in probleem and "leerlingen" in probleem and label in probleem
+
+
+@pytest.mark.parametrize(("dataset", "dim", "label"), _VO_SELECTIES)
+def test_leerlingen_bij_een_vo_label_van_een_contextrecord_is_in_orde(dataset, dim, label):
+    key = _contextselectie(dataset, dim, label)
+
+    assert verkeerde_dimensielabels("In 2024 ging het om 2.000 leerlingen, later studenten.", _beurt(key)) == []
+
+
+@pytest.mark.parametrize("label", _HO_LABELS)
+def test_studenten_bij_alleen_een_ho_label_is_in_orde(label):
+    key = _contextselectie("85566NED", "OnderwijsPositieVolgendSchooljaar", label)
+
+    assert verkeerde_dimensielabels("Een jaar later waren het 2.000 studenten.", _beurt(key)) == []
