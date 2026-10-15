@@ -235,6 +235,45 @@ describe('RapportenPage search', () => {
     expect(document.activeElement).toBe(searchInput())
   })
 
+  // #564: the count is a live region only during a search, so the total is not read out on load.
+  describe('count line as live region', () => {
+    const countLine = () => container.querySelector('.wb-gallery-sub')
+
+    it('is no live region and stays empty while the list loads', async () => {
+      await render()
+      expect(countLine().hasAttribute('role')).toBe(false)
+      expect(countLine().textContent).toBe('')
+      expect(container.querySelector('.wb-gallery-loading').getAttribute('role')).toBe('status')
+    })
+
+    it('is plain text without a query once the list has loaded', async () => {
+      await renderWith(rapporten)
+      expect(countLine().hasAttribute('role')).toBe(false)
+      expect(subtitle()).toBe('3 rapporten')
+    })
+
+    it('becomes a live region while a query is typed, and plain text again when it is emptied', async () => {
+      await renderWith(rapporten)
+      await type('instroom')
+      expect(countLine().getAttribute('role')).toBe('status')
+      expect(subtitle()).toBe('2 van 3 rapporten')
+      await type('   ')
+      expect(countLine().hasAttribute('role')).toBe(false)
+      await type('')
+      expect(countLine().hasAttribute('role')).toBe(false)
+      expect(subtitle()).toBe('3 rapporten')
+    })
+
+    it('stops being a live region after "Wis zoekopdracht"', async () => {
+      await renderWith(rapporten)
+      await type('arbeidsmarkt')
+      expect(countLine().getAttribute('role')).toBe('status')
+      await act(async () => { buttonNamed('Wis zoekopdracht').click() })
+      expect(countLine().hasAttribute('role')).toBe(false)
+      expect(subtitle()).toBe('3 rapporten')
+    })
+  })
+
   it('opens a report found by the search', async () => {
     await renderWith(rapporten)
     await type('uitval')
