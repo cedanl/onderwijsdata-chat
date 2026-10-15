@@ -17,3 +17,11 @@ export function canGenerateReport(liveMessages, restoredMessages = [], restoredD
   if (hasReportableAnswer(restoredMessages)) return restoredDataKeys > 0 ? 'ready' : 'needs_reload'
   return 'no_data'
 }
+
+// The question behind the last answer with data: what one click asks again when a reopened
+// conversation has no recipe to reload its data from (#551). Null without such a question.
+export function lastDataQuestion(messages) {
+  const i = messages.findLastIndex(m => hasReportableAnswer([m]))
+  const vraag = i < 0 ? null : messages.slice(0, i).findLast(m => m.role === 'user' && typeof m.content === 'string')
+  return vraag?.content?.trim() || null
+}

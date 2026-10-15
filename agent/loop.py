@@ -29,6 +29,7 @@ from .models import litellm_kwargs
 from .probleem import controlenamen, herstelbare
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
+from .selectie import data_keys
 from .stream import Emit, StreamResult, accumulate_stream
 
 logger = logging.getLogger(__name__)
@@ -153,6 +154,10 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
         end_event["snippet"] = snippet
     if key := export_key(call.name, result):
         end_event["export_key"] = key
+    # Ook de key van een lader of KPI-bron: zo bewaart het opgeslagen gesprek het recept van álle data
+    # waarop het rust, en kent een heropend gesprek zijn data weer zonder nieuwe vraag (#551).
+    if keys := data_keys([result]):
+        end_event["data_key"] = keys[0]
     await emit(end_event)
     logger.debug("TOOL RESULT %-29s → %s", call.name, result[:_EVENT_OUTPUT_CHARS])
     return result, figure

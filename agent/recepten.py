@@ -2,9 +2,9 @@
 
 Zodra een tool een key oplevert, onthoudt de sessie hier zijn recept, uit de aanroep die de
 server zelf deed. Welk gesprek dat is weet de server dan nog niet: het gesprek-id kiest de
-frontend. Bij het opslaan van het gesprek gaan de recepten van zijn exporteerbare tabellen,
-met de keys waar die op rusten, naar de database. Opzoeken gaat altijd per gebruiker: nooit
-via het recept van een ander.
+frontend. Bij het opslaan van het gesprek gaan de recepten van alle data waarop het rust
+(de keys die de stappen meldden, met hun ouders) naar de database. Opzoeken gaat altijd per
+gebruiker: nooit via het recept van een ander.
 """
 
 from collections import OrderedDict
@@ -33,9 +33,9 @@ def voor(username: str | None, key: str) -> dict | None:
 
 
 def bewaar(username: str, conv_id: str, messages: list) -> None:
-    """Bewaar de recepten achter de tabellen van een opgeslagen gesprek, ouders erbij."""
+    """Bewaar de recepten achter de data van een opgeslagen gesprek, ouders erbij."""
     recepten: dict[str, dict] = {}
-    for key in _exportkeys(messages):
+    for key in _datakeys(messages):
         while isinstance(key, str) and key not in recepten and (recept := _wachtend.get((username, key))):
             recepten[key] = recept
             key = recept.get("afgeleid_van")
@@ -95,12 +95,19 @@ def wis() -> None:
     _wachtend.clear()
 
 
-def _exportkeys(messages: list) -> list[str]:
-    """De tabellen die de frontend onder een antwoord aanbiedt (tools[].exportKey, #269)."""
-    return [
-        tool["exportKey"]
+def _datakeys(messages: list) -> list[str]:
+    """De data achter de stappen van een gesprek: de tabellen onder een antwoord (tools[].exportKey, #269) en
+    de key die elke stap meldde (tools[].dataKey, #551), elk één keer, in volgorde.
+
+    Alleen op exportKey kende een gesprek met een lader en een KPI, zonder selectie in de store, bij
+    heropenen geen data meer: dan vroeg de app om eerst een nieuwe vraag te stellen."""
+    keys = [
+        tool[veld]
         for m in messages or []
         if isinstance(m, dict) and isinstance(m.get("tools"), list)
         for tool in m["tools"]
-        if isinstance(tool, dict) and isinstance(tool.get("exportKey"), str)
+        if isinstance(tool, dict)
+        for veld in ("exportKey", "dataKey")
+        if isinstance(tool.get(veld), str)
     ]
+    return list(dict.fromkeys(keys))

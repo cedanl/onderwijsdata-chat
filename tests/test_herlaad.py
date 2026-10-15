@@ -456,6 +456,49 @@ def _heropen(username: str, conv_id: str | None) -> tuple[dict, list[dict]]:
     return session, events
 
 
+def test_tool_end_meldt_de_key_van_een_lader_voor_het_recept(monkeypatch):
+    """#551: de frontend bewaart tools[].dataKey; de server zet hem in het tool_end-event."""
+    from agent import loop as loop_module
+
+    result = json.dumps({"data_key": "duo:p01hoinges:0", "preview": [{"N": 1}]})
+    monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (result, None))
+    events: list[dict] = []
+
+    async def emit(ev):
+        events.append(ev)
+
+    args = {"dataset_id": "p01hoinges", "resource": 0}
+    call = loop_module.ToolCall(id="t1", name=TOOL_GET_DUO_DATA, arguments=json.dumps(args), args=args)
+    asyncio.run(loop_module._execute_tool(call, emit))
+
+    end = next(e for e in events if e["type"] == "tool_end")
+    assert end["data_key"] == "duo:p01hoinges:0" and "export_key" not in end
+
+
+def test_een_gesprek_zonder_exporteerbare_tabel_kent_bij_heropenen_toch_zijn_data(database):
+    """#551 (UX F04): een lader plus een KPI legt geen selectie in de store; het recept van de lader is
+    genoeg om het gesprek bij heropenen zijn data terug te geven, zonder eerst een nieuwe vraag."""
+    with _bronnen():
+        session = {"username": "alice"}
+        bron = _stap(session, *_ROOTS["duo"])
+        # Wat PUT /api/conversations doet met tools[].dataKey van de lader en een KPI zonder key.
+        recepten.bewaar(
+            "alice",
+            "c1",
+            [{"role": "assistant", "tools": [{"name": TOOL_GET_DUO_DATA, "dataKey": bron}, {"name": "compute_kpi"}]}],
+        )
+        _herstart()
+
+        heropend, events = _heropen("alice", "c1")
+        assert heropend["data_keys"] == [bron]
+        assert events == [{"type": "history_data", "data_keys": 1}]
+
+        herstel = herstel_data_keys(heropend, "alice")
+
+    assert not herstel.onherstelbaar
+    assert store.get(bron) is not None
+
+
 def test_een_heropend_gesprek_kent_zijn_data_weer_en_herlaadt_haar_voor_een_rapport(database):
     with _bronnen():
         session = {"username": "alice"}

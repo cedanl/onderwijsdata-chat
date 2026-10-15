@@ -17,6 +17,13 @@ describe('exportKeys (#269)', () => {
     expect(finishStep({ name: 'search_catalog', done: false }, {}).exportKey).toBeNull()
   })
 
+  // #551: ook de key van een lader gaat mee, zodat het opgeslagen gesprek het recept van al zijn data bewaart.
+  it('neemt de data-key van elke stap over, los van de exporteerbare tabel', () => {
+    const lader = finishStep({ name: 'get_duo_data', done: false }, { data_key: 'duo:x:0' })
+    expect(lader).toMatchObject({ dataKey: 'duo:x:0', exportKey: null })
+    expect(finishStep({ name: 'compute_kpi', done: false }, {}).dataKey).toBeNull()
+  })
+
   it('geeft elke tabel één keer, in volgorde', () => {
     expect(exportKeys([stap('a'), stap(null), stap('b'), stap('a')])).toEqual(['a', 'b'])
   })

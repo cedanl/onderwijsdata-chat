@@ -28,7 +28,7 @@ import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
-import { canGenerateReport } from '../reportEligibility'
+import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
@@ -790,9 +790,17 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
+            {/* Geen recept om de data uit te herladen: dan is de laatste datavraag opnieuw stellen de enige
+                weg, met één klik in plaats van zelf een vraag verzinnen (#551). */}
             {hasMessages && !busy && reportState === 'needs_reload' && (
               <p className="report-reload-hint">
-                Stel eerst een vraag om de data opnieuw te laden, dan kun je een rapport genereren.
+                De data van dit gesprek is niet meer geladen. Stel een vraag om haar opnieuw te laden, dan kun je een rapport genereren.
+                {lastDataQuestion(restoredMessages) && (
+                  <button type="button" className="message-continue" disabled={reportBusy}
+                    onClick={() => send(lastDataQuestion(restoredMessages))}>
+                    Stel de laatste vraag opnieuw
+                  </button>
+                )}
               </p>
             )}
             {sendNotice && (
