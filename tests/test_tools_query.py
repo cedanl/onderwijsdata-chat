@@ -31,6 +31,68 @@ def test_filter_case_insensitive():
     assert '"totaal_rijen":1' in result
 
 
+# ── Codes met voorloopnul (#542): riodata 0.5.0 laadt GEMEENTENUMMER als '0363', het model schrijft 363 ──
+
+_GEMEENTEN = [
+    {"GEMEENTENUMMER": "0363", "N": 1},
+    {"GEMEENTENUMMER": "0080", "N": 2},
+    {"GEMEENTENUMMER": "0855", "N": 3},
+]
+_LEZING = "Filter GEMEENTENUMMER: 363 gelezen als 0363 (de kolom is tekst met voorloopnul)."
+
+
+@pytest.mark.parametrize("waarde", [363, "363"])
+def test_een_code_zonder_voorloopnul_vindt_de_tekstcode_en_zegt_hoe_hij_gelezen_is(waarde):
+    _put("test:df", _GEMEENTEN)
+    result = json.loads(query_data("test:df", filters={"GEMEENTENUMMER": waarde}))
+    assert result["totaal_rijen"] == 1 and result["rijen"][0]["N"] == 1
+    assert _LEZING in result["databewerking"]
+
+
+def test_de_exacte_code_blijft_werken_zonder_lezing():
+    _put("test:df", _GEMEENTEN)
+    result = json.loads(query_data("test:df", filters={"GEMEENTENUMMER": "0363"}))
+    assert result["totaal_rijen"] == 1
+    assert "databewerking" not in result
+
+
+def test_in_filter_met_codes_zonder_voorloopnul():
+    _put("test:df", _GEMEENTEN)
+    result = json.loads(query_data("test:df", filters={"GEMEENTENUMMER__in": [363, 80]}))
+    assert result["totaal_rijen"] == 2
+    assert "363 gelezen als 0363; 80 gelezen als 0080" in result["databewerking"][0]
+
+
+def test_staan_beide_spellingen_in_de_kolom_dan_wint_de_exacte():
+    _put("test:df", [*_GEMEENTEN, {"GEMEENTENUMMER": "363", "N": 9}])
+    result = json.loads(query_data("test:df", filters={"GEMEENTENUMMER": "363"}))
+    assert result["totaal_rijen"] == 1 and result["rijen"][0]["N"] == 9
+    assert "databewerking" not in result
+
+
+def test_geen_lezing_voor_tekst_of_een_code_die_er_niet_is():
+    _put("test:df", [*_GEMEENTEN, {"GEMEENTENUMMER": "Amsterdam", "N": 4}])
+    assert json.loads(query_data("test:df", filters={"GEMEENTENUMMER": "amsterdam"}))["totaal_rijen"] == 1
+    leeg = json.loads(query_data("test:df", filters={"GEMEENTENUMMER": 999}))
+    assert leeg["totaal_rijen"] == 0 and "suggesties" in leeg
+
+
+def test_een_bewaard_recept_met_de_oude_spelling_herlaadt_dezelfde_rijen():
+    """Een recept van vóór de pin (filter 363 op een toen numerieke kolom) speelt op de tekstkolom af."""
+    from tools import herlaad
+
+    _put("test:df", _GEMEENTEN)
+    key = json.loads(query_data("test:df", filters={"GEMEENTENUMMER": 363}))["data_key"]
+    store.clear()
+    _put("test:df", _GEMEENTEN)
+    recept = {"afgeleid_van": "test:df", "tool": "query_data", "args": {"filters": {"GEMEENTENUMMER": 363}}}
+
+    uitkomst = herlaad.herlaad(key, recept, lambda _ouder: None)
+
+    assert uitkomst.gelukt
+    assert store.get(key)["N"].tolist() == [1]
+
+
 def test_column_selection():
     _put("test:df", [{"A": "1", "B": "2"}, {"A": "3", "B": "4"}])
     result = query_data("test:df", columns=["A"])

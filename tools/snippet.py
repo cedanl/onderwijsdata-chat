@@ -181,6 +181,16 @@ def _filterregel(key: str, val) -> str:
     col, op = parse_filter_key(key)
     if op in ("eq", "in"):
         vals = [str(v).lower() for v in (val if isinstance(val, list) else [val])]
+        if all(v.isdigit() for v in vals):
+            # Codes als tekst met voorloopnul ('0363' voor 363, #542): eerst exact, anders zonder voorloopnullen.
+            kaal = [v.lstrip("0") or "0" for v in vals]
+            return "\n".join(
+                [
+                    f"_kolom = df[{col!r}].astype(str)",
+                    f"_exact = _kolom.str.lower().isin({vals!r})",
+                    f"df = df[_exact] if _exact.any() else df[_kolom.str.isdigit() & _kolom.str.lstrip('0').replace('', '0').isin({kaal!r})]",
+                ]
+            )
         return f"df = df[df[{col!r}].astype(str).str.lower().isin({vals!r})]"
     teken = _VERGELIJKING[op]
     try:

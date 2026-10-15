@@ -80,7 +80,40 @@ def _resource_hint(known, col: str) -> str:
     )
 
 
+def _zonder_voorloopnullen(tekst: str) -> str:
+    return tekst.lstrip("0") or "0"
+
+
+def _codemasker(series: pd.Series, vals: list) -> tuple[pd.Series, dict[str, str]]:
+    """Het masker voor eq/in, en per waarde hoe hij gelezen is als de code zonder voorloopnul kwam (#542).
+
+    riodata 0.5.0 laadt DUO-codekolommen als tekst met voorloopnul ('0363'); het model schrijft 363 en
+    kreeg 0 rijen. Eerst exact (zonder hoofdletters); matcht niets en bestaan alle waarden uit cijfers,
+    dan zonder voorloopnullen. Staan 363 en 0363 allebei in de kolom, dan wint de exacte vergelijking.
+    """
+    tekst = series.astype(str)
+    masker = tekst.str.lower().isin({str(v).lower() for v in vals})
+    if masker.any() or not all(str(v).isdigit() for v in vals):
+        return masker, {}
+    kaal = tekst.map(_zonder_voorloopnullen)
+    cijfers = tekst.str.isdigit()
+    masker = cijfers & kaal.isin({_zonder_voorloopnullen(str(v)) for v in vals})
+    gelezen = {
+        str(v): ", ".join(sorted(tekst[masker & (kaal == _zonder_voorloopnullen(str(v)))].unique())) for v in vals
+    }
+    return masker, {w: g for w, g in gelezen.items() if g}
+
+
+def _lezing(col: str, gelezen: dict[str, str]) -> str:
+    return (
+        f"Filter {col}: {'; '.join(f'{w} gelezen als {g}' for w, g in gelezen.items())} "
+        "(de kolom is tekst met voorloopnul)."
+    )
+
+
 def _apply_filters(df, filters: dict, known=None):
+    """(gefilterd, fout, lezingen): de lezingen zeggen welke code zonder voorloopnul is gelezen (#542)."""
+    lezingen: list[str] = []
     for key, val in filters.items():
         col, op = parse_filter_key(key)
 
@@ -88,22 +121,24 @@ def _apply_filters(df, filters: dict, known=None):
             return (
                 None,
                 f"Kolom '{col}' bestaat niet. Beschikbare kolommen: {list(df.columns)}{_resource_hint(known, col)}",
+                [],
             )
         if op not in _SUPPORTED_OPS:
-            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in."
+            return None, f"Onbekende operator '{op}' in filter '{key}'. Ondersteunde operatoren: gte, lte, in.", []
 
         series = df[col]
 
         if op in ("eq", "in"):
-            vals = val if isinstance(val, list) else [val]
-            vals_lower = {str(v).lower() for v in vals}
-            df = df[series.astype(str).str.lower().isin(vals_lower)]
+            masker, gelezen = _codemasker(series, val if isinstance(val, list) else [val])
+            if gelezen:
+                lezingen.append(_lezing(col, gelezen))
+            df = df[masker]
         elif op == "gte":
             df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] >= _coerce_pair(v, t)[1])]
         elif op == "lte":
             df = df[series.apply(lambda v, t=val: _coerce_pair(v, t)[0] <= _coerce_pair(v, t)[1])]
 
-    return df, None
+    return df, None, lezingen
 
 
 def _validate_aggregation(df, group_by, aggregate):
@@ -392,6 +427,7 @@ def query_data(
     if not complete and (group_by or aggregate):
         return store.ONVOLLEDIG
 
+    lezingen: list[str] = []
     if filters:
         # Schooljaarspelling eerst naar de spelling van de data; buiten het vocabulaire weigeren (#342).
         # De tellogregels voeden de reparatie-/weigeringsgraad van #347; periodewaarden zijn
@@ -404,7 +440,7 @@ def query_data(
             anders = [naam for naam in filters if hersteld.get(naam) != filters[naam]]
             logger.info("PERIODE_HERSTEL key=%s kolommen=%s", data_key, anders)
         filters = hersteld
-        gefilterd, err = _apply_filters(df, filters, known)
+        gefilterd, err, lezingen = _apply_filters(df, filters, known)
         if err:
             return err
         if len(gefilterd) == 0:
@@ -428,7 +464,7 @@ def query_data(
         if isinstance(geaggregeerd, str):
             return geaggregeerd
         sel = geaggregeerd
-    sel.notes += cellen_noot + duo.periode_noot(per_jaar, kolom or "")
+    sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "")
 
     result_key = _bewaar(data_key, sel, filters, columns, group_by, aggregate, gedekt)
     return _resultaat(result_key, sel, known, labels, complete, max_rows, gegroepeerd)
