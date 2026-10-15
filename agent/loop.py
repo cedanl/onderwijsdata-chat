@@ -18,8 +18,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
+from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, dispatch, fouten, outcome
+from tools import LABELS, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
 from tools.snippet import generate as _generate_snippet
@@ -137,6 +138,11 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
     result, figure = await asyncio.to_thread(dispatch, call.name, call.args)
     result = str(result)
+    # Welke stap het geheugen opjaagt (#546): het proces en de datastore na elke tool, alleen getallen.
+    gebruik = store.gebruik()
+    logger.info(
+        "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
+    )
 
     snippet = _generate_snippet(call.name, call.args, result)
     if snippet:
