@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from tests.retrieval_baseline import harnas, rapport
-from tools import catalog
+from tools import catalog, scopeprofiel
+from tools.ho_markers import noemt_ho
 
 ROOT = Path(__file__).resolve().parents[2]
 VRAGEN = harnas.laad_vragen()
@@ -118,6 +119,45 @@ def test_verboden_ids_bestaan_in_de_volledige_inventaris():
     inventaris = harnas.inventaris_ids()
     fout = {v["id"]: sorted(set(v["verboden"]) - inventaris) for v in VRAGEN if set(v["verboden"]) - inventaris}
     assert fout == {}, f"Niet in _cbs_alles of _rio_duo_alles: {fout}"
+
+
+# Ho-doorstroomvragen (#559): een vraag met een vo-contextrecord (#554) als label.
+_HO_DOORSTROOM = [v for v in VRAGEN if set(v["geaccepteerd"]) & set(scopeprofiel.HO_CONTEXT)]
+# De voorbeelden uit #559, met het record dat ze moet beantwoorden.
+_VOORBEELDEN = {
+    "Hoeveel vwo-leerlingen stromen door naar het wo?": "85566NED",
+    "Hoeveel havo-geslaagden zijn er per regio?": "85382NED",
+    "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030?": "voprognoses",
+}
+
+
+def test_ho_doorstroomvragen_zijn_ho_vragen_met_alleen_vo_context_als_label():
+    fout = {
+        v["id"]: v["geaccepteerd"]
+        for v in _HO_DOORSTROOM
+        if v["sector"] not in ("hbo", "wo") or not set(v["geaccepteerd"]) <= set(scopeprofiel.HO_CONTEXT)
+    }
+    assert fout == {}
+
+
+def test_ho_doorstroomvragen_openen_de_zoekpoort():
+    """Zonder ho-marker (#557) blijft het label weg: dan meet de vraag de poort, niet de vindbaarheid."""
+    dicht = [(v["id"], tekst) for v in _HO_DOORSTROOM for tekst in (v["zoekinput"], v["vraag"]) if not noemt_ho(tekst)]
+    assert dicht == []
+
+
+def test_ho_doorstroomvragen_dekken_elk_contextrecord_en_beide_reeksen():
+    assert len(_HO_DOORSTROOM) >= 6, [v["id"] for v in _HO_DOORSTROOM]
+    reeksen = Counter(v["reeks"] for v in _HO_DOORSTROOM)
+    assert reeksen["ontwikkel"] >= 2 and reeksen["test"] >= 2, reeksen
+    gedekt = {i for v in _HO_DOORSTROOM for i in v["geaccepteerd"]}
+    assert set(scopeprofiel.HO_CONTEXT) <= gedekt, sorted(set(scopeprofiel.HO_CONTEXT) - gedekt)
+
+
+def test_ho_doorstroomvragen_bevatten_de_voorbeelden_uit_het_issue():
+    gelabeld = {v["vraag"]: v["geaccepteerd"] for v in _HO_DOORSTROOM}
+    ontbreekt = {vraag: doel for vraag, doel in _VOORBEELDEN.items() if doel not in gelabeld.get(vraag, [])}
+    assert ontbreekt == {}
 
 
 _PERSOONSGEGEVENS = {
