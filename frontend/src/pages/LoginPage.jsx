@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { login } from '../auth'
+import PrivacyLink from '../components/PrivacyLink'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
 export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false }) {
@@ -149,7 +150,7 @@ export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false
 
         <p style={{ fontSize: '.78rem', color: 'var(--gray-500)', marginTop: 24, marginBottom: 0, lineHeight: 1.5 }}>
           Je vragen gaan naar een externe AI-dienst en worden bewaard.{' '}
-          <a href="/privacy" style={{ color: 'var(--gray-600)', textDecoration: 'underline' }}>Privacy-informatie</a>
+          <PrivacyLink />
         </p>
       </div>
     </main>

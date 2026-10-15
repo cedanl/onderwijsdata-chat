@@ -859,7 +859,7 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 }
 /* Text buttons in a line of text (#425, #490): the box is a full tap target, the negative margin
    gives the line its own height back, so the text around them does not move. */
-.disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link {
+.disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
   display: inline-flex; align-items: center; min-height: var(--tap-min-aa);
   margin-block: min(0px, (1lh - var(--tap-min-aa)) / 2);
 }
@@ -1684,7 +1684,7 @@ html.dark .suggested-btn:hover {
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
   .sources-link, .export-conversation-btn, .model-picker select { min-height: var(--tap-min); }
 
-  .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link {
+  .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
   }
   /* The hit box grows on both sides; the negative margin keeps the old 22px footprint next to the bubble. */
@@ -1741,12 +1741,27 @@ html.dark .suggested-btn:hover {
   body:has(.chat-input:focus) .mobile-tabs { display: none; }
 }
 
-/* ─── Privacy-informatie (#477) ─────────────────────────── */
-.privacy-page { max-width: 720px; margin: 0 auto; padding: 48px 24px 96px; line-height: 1.6; }
+/* ─── Privacy-informatie (#477, popup #572) ─────────────── */
+.privacy-page { max-width: 720px; margin: 0 auto; padding: 48px 24px 96px; }
 .privacy-page--standalone { min-height: 100vh; background: var(--white); }
-.privacy-page h1 { font-size: 1.75rem; margin-bottom: 8px; }
-.privacy-page h2 { font-size: 1.1rem; margin: 28px 0 8px; }
-.privacy-page p, .privacy-page li { color: var(--gray-700); font-size: .92rem; }
+.privacy-page-footer { margin-top: 32px; font-size: .92rem; }
+/* The text itself, shared by the page and the popup. */
+.privacy-text { line-height: 1.6; overflow-wrap: break-word; }
+.privacy-text h1 { font-size: 1.75rem; margin-bottom: 8px; }
+.privacy-text h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+.privacy-text p, .privacy-text li { color: var(--gray-700); font-size: .92rem; }
 .privacy-page-lead { color: var(--muted-text); }
-.privacy-page ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-.privacy-page-footer { margin-top: 32px; }
+.privacy-text ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+/* Text button that opens the popup (login page, settings dialog). */
+.privacy-link { color: var(--gray-600); text-decoration: underline; padding: 0; }
+/* The settings dialog (z-index 2000) can open the popup, so it stacks above it. */
+.modal-overlay--privacy { z-index: 2100; }
+.modal--privacy { max-width: 720px; }
+/* Zero height, so it takes no room above the title; sticky, so the close button stays in view
+   while the overlay scrolls the long text. */
+.privacy-modal-bar { position: sticky; top: 12px; z-index: 1; height: 0; display: flex; justify-content: flex-end; }
+.privacy-modal-bar .modal-close { margin: -24px -24px 0 0; background: var(--white); border-radius: 50%; box-shadow: var(--shadow); }
+@media (max-width: 600px) {
+  .privacy-modal-bar { top: 20px; }
+  .privacy-modal-bar .modal-close { margin: -20px -12px 0 0; }
+}

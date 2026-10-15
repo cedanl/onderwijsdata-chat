@@ -55,6 +55,7 @@ import AnswerFeedback from '../components/AnswerFeedback'
 import CopyButton from '../components/CopyButton'
 import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
+import PrivacyLink from '../components/PrivacyLink'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
@@ -822,7 +823,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               prefill={prefill}
               clearPrefill={clearPrefill}
             />
-            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <a href="/privacy" className="disclaimer-link">Privacy-informatie</a></p>
+            <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <PrivacyLink className="disclaimer-link" /></p>
           </div>
         </div>
       </div>

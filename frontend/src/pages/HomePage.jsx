@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
+import PrivacyLink from '../components/PrivacyLink'
 import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
@@ -130,7 +131,7 @@ export default function HomePage({ dashboardsEnabled = true }) {
               <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
                 Gebaseerd op open onderwijsdata
               </button>
-              <a href="/privacy" className="sources-link">Privacy</a>
+              <PrivacyLink className="sources-link">Privacy</PrivacyLink>
             </span>
           </div>
           <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
