@@ -151,8 +151,9 @@ describe('buildReportHtml', () => {
 })
 
 // Loads generated HTML in a fresh DOM that runs its inline scripts, with Plotly, the
-// dialogs and matchMedia stubbed, and records what the page did.
-function runPage(html) {
+// dialogs and matchMedia stubbed, and records what the page did. `dark` answers the
+// prefers-color-scheme query.
+function runPage(html, { dark = false } = {}) {
   const seen = { dialogs: [], plots: [], errors: [] }
   const virtualConsole = new VirtualConsole()
   virtualConsole.on('jsdomError', err => seen.errors.push(err.message))
@@ -161,7 +162,7 @@ function runPage(html) {
     virtualConsole,
     beforeParse(window) {
       for (const name of ['alert', 'confirm', 'prompt']) window[name] = (...args) => seen.dialogs.push([name, ...args])
-      window.matchMedia = () => ({ matches: false })
+      window.matchMedia = () => ({ matches: dark })
       window.Plotly = { newPlot: (...args) => seen.plots.push(args) }
     },
   })
@@ -196,6 +197,124 @@ describe('figure JSON in an inline script (#474)', () => {
     expect(seen.dialogs).toEqual([])
     expect(seen.errors).toEqual([])
     expect(seen.plots[0][2].title).toBe(TITLE)
+  })
+})
+
+// WCAG relative luminance and contrast ratio of #RRGGBB colours.
+function luminance(hex) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+function contrast(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+// The light colours tools/plot.py bakes into a figure stayed in the dark report (#567).
+describe('chart colours in a dark report (#567)', () => {
+  const CARD = '#1F2937'
+  const PLOT_BG = '#111827'
+  const axis = { showgrid: true, gridcolor: '#f0f0f0', linecolor: '#ccc', zeroline: false }
+  const layout = {
+    title: {
+      text: 'Instroom per jaar', font: { size: 16, color: '#222' }, yref: 'container', y: 0.98,
+      subtitle: { text: 'Afgerond op 10-tallen', font: { size: 11, color: '#666' } },
+    },
+    xaxis: { ...axis, title: { text: 'Jaar' }, type: 'category' },
+    yaxis: { ...axis, title: { text: 'Aantal' }, tickformat: ',d' },
+    legend: { bgcolor: 'rgba(255,255,255,0.8)', bordercolor: '#ddd', borderwidth: 1, orientation: 'h' },
+    margin: { t: 100 },
+  }
+  const data = [
+    { type: 'bar', name: 'A', x: ['2023'], y: [1], marker: { color: '#0072B2' } },
+    { type: 'bar', name: 'B', x: ['2023'], y: [2], marker: { color: '#000000' } },
+    { type: 'scatter', name: 'C', x: ['2023'], y: [3], line: { color: '#000000', width: 2 } },
+    { type: 'bar', name: 'D', x: ['2023'], y: [4], marker: { color: ['#B0B0B0', '#000', 'black'] } },
+    { type: 'pie', labels: ['p', 'q', 'r'], values: [1, 2, 3], marker: { colors: ['#0072B2', '#F0E442', '#000000'] } },
+  ]
+  const figure = { data, layout }
+  const report = (...figures) => buildReportHtml({
+    ...fullSpec,
+    visualisaties: figures.map((f, i) => ({ titel: `G${i}`, figure_json: JSON.stringify(f) })),
+  })
+  const plotted = (fig, dark) => {
+    const seen = runPage(report(fig), { dark })
+    expect(seen.errors).toEqual([])
+    return { data: seen.plots[0][1], layout: seen.plots[0][2] }
+  }
+
+  it('gives title, subtitle, grid, axis lines and legend dark colours', () => {
+    const { layout: l } = plotted(figure, true)
+    expect(l.title.font.color).not.toBe('#222')
+    expect(l.title.subtitle.font.color).not.toBe('#666')
+    expect(contrast(l.title.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(l.title.subtitle.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    for (const ax of [l.xaxis, l.yaxis]) {
+      expect(ax.gridcolor).not.toBe('#f0f0f0')
+      expect(ax.linecolor).not.toBe('#ccc')
+      expect(luminance(ax.gridcolor)).toBeLessThan(luminance(ax.linecolor))
+      expect(contrast(ax.gridcolor, PLOT_BG)).toBeGreaterThan(1.3)
+      expect(contrast(ax.gridcolor, PLOT_BG)).toBeLessThan(3)
+    }
+    expect(l.legend.bgcolor).not.toBe('rgba(255,255,255,0.8)')
+    expect(l.legend.bgcolor).toMatch(/^rgba\(\d+,\d+,\d+,0?\.\d+\)$/)
+    expect(l.legend.bordercolor).not.toBe('#ddd')
+  })
+
+  it('keeps the other nested layout keys in dark mode', () => {
+    const { layout: l } = plotted(figure, true)
+    expect(l.title).toMatchObject({ text: 'Instroom per jaar', yref: 'container', y: 0.98, font: { size: 16 } })
+    expect(l.title.subtitle).toMatchObject({ text: 'Afgerond op 10-tallen', font: { size: 11 } })
+    expect(l.xaxis).toMatchObject({ title: { text: 'Jaar' }, type: 'category', showgrid: true, zeroline: false })
+    expect(l.yaxis).toMatchObject({ title: { text: 'Aantal' }, tickformat: ',d' })
+    expect(l.legend).toMatchObject({ orientation: 'h', borderwidth: 1 })
+    expect(l.plot_bgcolor).toBe(PLOT_BG)
+    expect(l.margin.t).toBe(100)
+  })
+
+  it('turns a black series light in dark mode and leaves the other colours', () => {
+    const { data: d } = plotted(figure, true)
+    expect(d[0].marker.color).toBe('#0072B2')
+    expect(contrast(d[1].marker.color, PLOT_BG)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(d[2].line.color, PLOT_BG)).toBeGreaterThanOrEqual(4.5)
+    expect(d[2].line.width).toBe(2)
+    expect(d[3].marker.color[0]).toBe('#B0B0B0')
+    expect(d[3].marker.color.slice(1).every(c => contrast(c, PLOT_BG) >= 4.5)).toBe(true)
+    expect(d[4].marker.colors.slice(0, 2)).toEqual(['#0072B2', '#F0E442'])
+    expect(contrast(d[4].marker.colors[2], CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(d[4]).not.toHaveProperty('line')
+    expect(d[4].marker).not.toHaveProperty('color')
+  })
+
+  it('passes the figure unchanged in light mode', () => {
+    const { data: d, layout: l } = plotted(figure, false)
+    expect(d).toEqual(data)
+    expect(l).toEqual({
+      ...layout,
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: '#F9FAFB',
+      margin: { t: 100, r: 24, b: 48, l: 60 },
+      font: { color: '#374151', family: 'system-ui,sans-serif', size: 12 },
+    })
+  })
+
+  it('gives every chart of a dark report the same dark colours', () => {
+    const seen = runPage(report(figure, figure), { dark: true })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots).toHaveLength(2)
+    expect(seen.plots[1][1]).toEqual(seen.plots[0][1])
+    expect(seen.plots[1][2]).toEqual(seen.plots[0][2])
+  })
+
+  it('handles a string title, no title and no axes in dark mode', () => {
+    expect(plotted({ data: [], layout: { title: 'x' } }, true).layout.title).toBe('x')
+    const bare = plotted({ data: [{ type: 'pie', values: [1] }], layout: {} }, true)
+    expect(bare.layout).not.toHaveProperty('title')
+    expect(bare.layout).not.toHaveProperty('xaxis')
+    expect(bare.layout).not.toHaveProperty('legend')
+    expect(bare.data).toEqual([{ type: 'pie', values: [1] }])
+    expect(plotted({ layout: {} }, true).data).toBeUndefined()
   })
 })
 
