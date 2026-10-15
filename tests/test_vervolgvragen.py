@@ -8,6 +8,7 @@ import asyncio
 import importlib
 import json
 import logging
+import re
 
 import pandas as pd
 import pytest
@@ -19,7 +20,8 @@ from agent.probleem import INGEHOUDEN, Probleem, hard
 from agent.scopevraag import Kaart
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
-from tools import catalog, store
+from tools import catalog, scopeprofiel, store
+from tools.ho_markers import noemt_ho
 from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
@@ -182,6 +184,62 @@ def test_een_vraag_over_po_so_of_vo_valt_af(eigen_catalogus):
     vragen = vervolgvragen.beantwoordbare_vragen()
     assert "Hoeveel gediplomeerden hadden een havo-diploma?" not in vragen["90001NED"]
     assert vragen["duo-eerstejaars"] == ("Welke instellingen trekken de meeste eerstejaars?",)
+
+
+# Een vo-contextrecord (epic #554) laat een vraag over vo toe als ze ook hoger onderwijs noemt (#558).
+_HO_VRAAG = "Verschilt het slagingspercentage naar herkomst bij HAVO?"  # havo is een ho-marker (#556)
+_ZONDER_HO = "Hoeveel VO-leerlingen stromen door naar een hoger niveau?"
+
+
+def _contextrecord(dataset_id: str) -> dict:
+    """Een synthetisch catalogusrecord met dit ID: CBS als het ID er zo uitziet, anders DUO."""
+    cbs = re.fullmatch(r"\d+NED", dataset_id, re.IGNORECASE)
+    return {
+        "_cbs_id" if cbs else "_ckan_id": dataset_id,
+        "leverancier": "CBS" if cbs else "DUO",
+        "bron": "Slagingspercentage vo naar herkomst en doorstroom",
+        "voorbeeldvragen": [_HO_VRAAG, _ZONDER_HO],
+    }
+
+
+@pytest.fixture(params=sorted(scopeprofiel.HO_CONTEXT))
+def contextcatalogus(request, monkeypatch) -> str:
+    """De eigen catalogus plus één vo-contextrecord; geeft zijn ID."""
+    record = _contextrecord(request.param)
+    cbs = "_cbs_id" in record
+    monkeypatch.setattr(catalog, "_cbs", lambda: [*_CBS, record] if cbs else _CBS)
+    monkeypatch.setattr(catalog, "_rio_duo", lambda: _RIO_DUO if cbs else [*_RIO_DUO, record])
+    monkeypatch.setattr(catalog, "_rio_duo_alles", lambda: [*catalog._rio_duo(), _BUITEN_PROFIEL])
+    return request.param
+
+
+def test_een_contextrecord_houdt_een_vo_vraag_die_ho_noemt(contextcatalogus):
+    assert scopeprofiel.is_ho_context(contextcatalogus)
+    assert scopeprofiel.PO_SO_VO.search(_HO_VRAAG) and noemt_ho(_HO_VRAAG)
+
+    assert vervolgvragen.beantwoordbare_vragen()[contextcatalogus] == (_HO_VRAAG,)
+
+
+def test_een_contextrecord_laat_een_vo_vraag_zonder_ho_marker_vallen(contextcatalogus):
+    assert scopeprofiel.PO_SO_VO.search(_ZONDER_HO) and not noemt_ho(_ZONDER_HO)
+
+    assert not vervolgvragen._leesbaar(_ZONDER_HO, contextcatalogus)
+    assert _ZONDER_HO not in vervolgvragen.beantwoordbare_vragen().get(contextcatalogus, ())
+
+
+def test_een_contextrecord_maakt_een_andere_vraag_niet_leesbaar(contextcatalogus):
+    # Eerste persoon en veldnamen vallen ook bij een contextrecord af.
+    assert not vervolgvragen._leesbaar("Wat is het slagingspercentage voor VWO in mijn regio?", contextcatalogus)
+    assert not vervolgvragen._leesbaar("Hoeveel havo-leerlingen per ONDERWIJSNIVEAU?", contextcatalogus)
+
+
+def test_buiten_de_contextrecords_blijft_een_vo_vraag_met_ho_marker_vallen(contextcatalogus):
+    vraag = "Hoeveel gediplomeerden hadden een havo-diploma?"
+    assert noemt_ho(vraag) and not scopeprofiel.is_ho_context("90001NED")
+
+    assert not vervolgvragen._leesbaar(vraag)
+    assert not vervolgvragen._leesbaar(vraag, "90001NED")
+    assert vraag not in vervolgvragen.beantwoordbare_vragen()["90001NED"]
 
 
 def test_een_aantal_uit_een_rio_register_valt_af(eigen_catalogus):
