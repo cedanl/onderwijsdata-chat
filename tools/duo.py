@@ -19,7 +19,7 @@ from . import (
     periode,
     store,
 )
-from .catalog import bron_id, catalogus_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
+from .catalog import bron_id, bron_titel, is_documentbestand, resource_titel, scope_blokkade, tabelbestanden
 from .definitie import met_voorbeeldstatus
 
 _SAMPLE_ROWS = 3
@@ -375,7 +375,7 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
 
     result = {
         "data_key": key,
-        "catalogus_titel": catalogus_titel(dataset_id),
+        "catalogus_titel": bron_titel(dataset_id),
         "resource_titel": resource_titel(dataset_id, resource),
         "totaal_rijen": len(df),
         "kolommen": schema,

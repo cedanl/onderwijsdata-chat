@@ -14,7 +14,7 @@ from riodata import catalog as _rio_catalog
 
 from core.logging_util import tekst_kenmerk
 
-from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, instelling, scopeprofiel
+from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
 from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
@@ -543,19 +543,36 @@ def geodekking(entry: dict, niveau: str) -> str:
     return "ja" if niveau == "landelijk" else "nee"
 
 
-def _verzamel(words: list[tuple[str, float]], source: str, termen: list[str], nodig: int) -> tuple[list, list, list]:
+def _zoekbaar(entry: dict, ho_vraag: bool) -> bool:
+    """De zoekpoort (#557): een vo-contextrecord uit HO_CONTEXT alleen bij een vraag die ho noemt.
+
+    Beslist op het catalogusrecord, niet op een ID-string van het model; een directe ID laadt hij
+    wel (scope_blokkade), want in_scope laat de record toe.
+    """
+    return ho_vraag or not scopeprofiel.is_ho_context(entry)
+
+
+def _context(entry: dict) -> dict:
+    """Het etiket voor een treffer uit HO_CONTEXT; op de treffer, nooit op het gecachete catalogusrecord."""
+    return {"context": scopeprofiel.HO_CONTEXT_ETIKET} if scopeprofiel.is_ho_context(entry) else {}
+
+
+def _verzamel(
+    words: list[tuple[str, float]], source: str, termen: list[str], nodig: int, *, ho_vraag: bool
+) -> tuple[list, list, list]:
     """De scorende treffers uit `source`: actief, archief, en te zwak voor de drempel (#351).
 
     `source` betekent wat de naam zegt (#356): `cbs`, `rio` (alleen leverancier RIO), `duo` (alleen DUO),
-    `riodata` (alles uit de riodata-package: RIO, DUO, ROA, UWV) of `both` (alles).
+    `riodata` (alles uit de riodata-package: RIO, DUO, ROA, UWV) of `both` (alles). Zonder `ho_vraag`
+    blijven de vo-contextrecords weg (#557).
     """
     treffers: list = []
 
     if source in ("cbs", "both"):
         treffers += [
-            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry})
+            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry, **_context(entry)})
             for entry in _cbs()
-            if (s := _score(entry, words))
+            if _zoekbaar(entry, ho_vraag) and (s := _score(entry, words))
         ]
 
     if source in ("riodata", "both", "rio", "duo"):
@@ -565,8 +582,11 @@ def _verzamel(words: list[tuple[str, float]], source: str, termen: list[str], no
                 continue
             if source in ("rio", "duo") and leverancier_ != source.upper():
                 continue
+            if not _zoekbaar(entry, ho_vraag):
+                continue
             if s := _score(entry, words):
-                treffers.append((s, entry, {"status": status(entry), **entry, **(_niet_opvraagbaar(entry) or {})}))
+                hit = {"status": status(entry), **entry, **(_niet_opvraagbaar(entry) or {}), **_context(entry)}
+                treffers.append((s, entry, hit))
 
     active: list = []
     archive: list = []
@@ -629,15 +649,23 @@ def kandidaten(query: str, n: int = _MAX_SUGGESTIES) -> list[dict]:
     Dezelfde weging als de tool, actieve records vóór het archief, geen geofilter, maar een strengere
     drempel: elke term moet raken. De tool laat in een volzin één term volstaan (#351), omdat het model
     de treffers nog weegt; een kaart uit code doet dat niet, dus "Wanneer speelt Ajax thuis?" mag op
-    "thuis" alleen geen maat-opties krijgen. Per record het dataset-ID, de titel (`bron`) en de samenvatting.
+    "thuis" alleen geen maat-opties krijgen. Per record het dataset-ID, de titel (`bron`) en de samenvatting,
+    en bij vo-context voor ho (#557) het etiket `context`.
     """
     woorden = _woorden(query)
     trefwoorden = _filter_stopwoorden(woorden)
     termen, _nodig = _drempel(query, woorden, trefwoorden)
-    active, archive, _zwak = _verzamel(_expand_query(trefwoorden), "both", termen, len(termen))
+    active, archive, _zwak = _verzamel(
+        _expand_query(trefwoorden), "both", termen, len(termen), ho_vraag=ho_markers.noemt_ho(query)
+    )
     hits, _onbekend = _gerangschikt(active or archive, None)
     return [
-        {"id": _dataset_id(h), "titel": str(h.get("bron") or _dataset_id(h)), "samenvatting": h.get("samenvatting")}
+        {
+            "id": _dataset_id(h),
+            "titel": str(h.get("bron") or _dataset_id(h)),
+            "samenvatting": h.get("samenvatting"),
+            **({"context": h["context"]} if "context" in h else {}),
+        }
         for h in hits[:n]
         if _dataset_id(h) != "?"
     ]
@@ -656,13 +684,17 @@ def search_catalog(
     hint = _volzin_hint(query, query_words, filtered_words)
     termen, nodig = _drempel(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
+    # De zoekpoort voor vo-context (#557): de zoekterm van het model moet ho noemen.
+    ho_vraag = ho_markers.noemt_ho(query)
 
     # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
     # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.
     instellingsvraag = source in ("cbs", "both") and instelling.noemt_instelling(query)
-    active, archive, zwak = _verzamel(words, "riodata" if instellingsvraag else source, termen, nodig)
+    active, archive, zwak = _verzamel(
+        words, "riodata" if instellingsvraag else source, termen, nodig, ho_vraag=ho_vraag
+    )
     if instellingsvraag and not (active or archive):
-        active, archive, zwak = _verzamel(words, source, termen, nodig)
+        active, archive, zwak = _verzamel(words, source, termen, nodig, ho_vraag=ho_vraag)
     historisch = bool(_HISTORISCH & set(query_words))
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -898,11 +930,15 @@ def catalogus_titel(dataset_id: str) -> str:
 
 
 def bron_titel(dataset_id: str) -> str:
-    """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45).
-    Net als catalogus_titel het kale ID als de catalogus de dataset niet kent."""
-    titel = catalogus_titel(dataset_id)
-    deel = scopeprofiel.cbs_sectordeel(dataset_id)
-    return f"{titel}, {deel}" if deel and titel != dataset_id else titel
+    """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45), of
+    'vo-context voor ho' (#557). Elke spelling van het ID (`cbs:85566ned`) vindt dezelfde titel;
+    net als catalogus_titel het ID zelf als de catalogus de dataset niet kent."""
+    kaal = bron_id(dataset_id)
+    titel = catalogus_titel(kaal)
+    if titel == kaal:
+        return dataset_id
+    etiket = scopeprofiel.bronetiket(kaal)
+    return f"{titel}, {etiket}" if etiket else titel
 
 
 def bron_naam(dataset_id: str) -> str:
