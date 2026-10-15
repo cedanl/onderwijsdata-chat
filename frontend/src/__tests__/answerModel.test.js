@@ -21,6 +21,13 @@ describe('answerModels', () => {
     expect(answerModels([{ id: 1, role: 'user' }, { id: 2, role: 'assistant', done: true }], MODELS)).toEqual({})
   })
 
+  // #565: a fixed answer from code (scope explanation, refusal, sentinel answer) was written by no model.
+  it('labels no fixed answer from code, also when it ends the turn', () => {
+    const vraag = { id: 1, role: 'user', model: 'claude-sonnet' }
+    expect(answerModels([vraag, { id: 2, role: 'assistant', done: true, vast: true, content: 'vast' }], MODELS)).toEqual({})
+    expect(answerModels([vraag, { id: 2, role: 'assistant', done: true, content: 'model' }], MODELS)).toEqual({ 2: 'Sonnet' })
+  })
+
   it('falls back to the model id when the model is no longer offered', () => {
     expect(answerModels([{ id: 1, role: 'user', model: 'oud-model' }, { id: 2, role: 'assistant', done: true }], MODELS)).toEqual({ 2: 'oud-model' })
   })

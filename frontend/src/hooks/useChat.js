@@ -259,6 +259,8 @@ export function useChat() {
             ...(ev.truncated && { truncated: true }),
             // Step budget spent: a partial answer, which another model often completes (#405).
             ...(ev.partial && { partial: true }),
+            // A fixed answer from code, written by no model: no "Antwoord van <model>" under it (#565).
+            ...(ev.vast === true && { vast: true }),
             // What the server's check on this answer still found wrong (#185, #187).
             ...(ev.controle?.length && { controle: ev.controle }),
             // Sentences in which the model revised itself go to the reasoning card, not the answer (#412).
