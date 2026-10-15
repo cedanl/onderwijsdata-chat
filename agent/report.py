@@ -21,6 +21,7 @@ import plotly.io as pio
 
 from agent import manifest
 from agent.aanspreekvorm import in_je_vorm
+from agent.antwoordtaal import taal
 from agent.dashboard import (
     _build_recipe,
     _extract_json_object,
@@ -28,6 +29,7 @@ from agent.dashboard import (
     build_dataset_context,
     herstel_data,
 )
+from agent.getalnotatie import nl_notatie
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
@@ -314,7 +316,7 @@ def _parse_spec_from_response(
     # De modeltekst in de je-vorm (#536); de onderzoeksvraag en de titel citeren de gebruiker en blijven.
     beantwoordt = _lijst_in_je_vorm(spec_data.get("beantwoordt") or [])
     beantwoordt_niet = _lijst_in_je_vorm(spec_data.get("beantwoordt_niet") or [])
-    conclusie = in_je_vorm((spec_data.get("conclusie") or "").strip())
+    conclusie = _conclusie((spec_data.get("conclusie") or "").strip())
     # Wat het rapport toont, om te bepalen welke brondefinities erbij horen (#422).
     rapporttekst = "\n".join(
         [
@@ -339,6 +341,15 @@ def _parse_spec_from_response(
         auteur=(author or "").strip(),
         datum=_nl_datum(),
     )
+
+
+def _conclusie(tekst: str) -> str:
+    """De conclusie in de vorm van de app: je-vorm, en getallen als in tekst en grafiek (248.930, BEV-10).
+
+    Dezelfde taalregel als het chatantwoord (`run._antwoordtekst`, #326): een Engelse conclusie houdt de
+    notatie van het model. Zonder de stappen van de run: codes en jaren herkent `nl_notatie` aan hun vorm
+    en het woord ervoor; de grondingscontrole leest 248930 en 248.930 als hetzelfde getal."""
+    return in_je_vorm(tekst if taal(tekst) == "en" else nl_notatie(tekst))
 
 
 def _lijst_in_je_vorm(items):
