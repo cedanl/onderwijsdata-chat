@@ -98,7 +98,7 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 **Grenzen.** De uitzondering is minder streng dan ze klinkt:
 
 - **havo en vwo openen de poort.** havo en vwo tellen als ho-woord (#556), dus een zuivere vo-vraag die havo of vwo noemt (zoals "Wat is het slagingspercentage op havo en vwo?") kan deze tabellen ook vinden en laden. Het label is dan de enige rem. Of dat zo blijft, is een open punt op epic #554.
-- **De keuzekaart toont het label niet.** Bij een vage vraag biedt de chat een keuzekaart met datasets als opties ("Welke maat bedoel je bij …?"). Daar kan een vo-tabel staan met alleen haar titel ("Vo; …"), zonder "vo-context voor ho".
+- **De keuzekaart toont het label niet.** Bij een vage vraag biedt de chat een keuzekaart met datasets als opties ("Welke maat bedoel je bij …?"). Noemt die vage vraag zelf het hoger onderwijs (ook havo of vwo), dan kan daar een vo-tabel staan met alleen haar titel ("Vo; …"), zonder "vo-context voor ho".
 - **Een dataset-ID laadt zonder ho-woord.** De poort zit alleen in het zoeken: met een van deze vijf ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook als niemand het hoger onderwijs noemt.
 - **Alle vo-rijen.** De vier CBS-tabellen krijgen geen sectorselectie zoals de VSV-tabellen: `85566NED`, `85380NED`, `85381NED` en `85382NED` laden al hun vo-rijen (bij `85566NED` ook vso). Alleen het label zegt dat het context is.
 

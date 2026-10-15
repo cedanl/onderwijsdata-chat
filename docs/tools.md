@@ -313,7 +313,7 @@ De vijf vo-bronnen in `HO_CONTEXT` (`tools/scopeprofiel.py`, epic #554) zitten a
 zoekterm die het model meestuurt, niet voor de vraag van de gebruiker. Ho-woorden zijn hbo, wo, ho, hoger onderwijs,
 havo, vwo, hogeschool en universiteit (#556). Zo'n hit draagt het veld `context` met de waarde
 `vo-context voor ho: leerlingen in het voortgezet onderwijs, geen studenten`; de bronregel zegt "…, vo-context voor ho".
-De poort heeft grenzen: havo en vwo openen haar ook voor een zuivere vo-vraag, de maatkaart bij een vage vraag
+De poort heeft grenzen: havo en vwo openen haar ook voor een zuivere vo-vraag, de maatkaart bij een vage vraag die ho noemt
 (`agent/scopevraag.maatvraag`) toont het label niet, en met een dataset-ID laadt de chat de data ook zonder ho-woord. Zie
 [Vo-context voor ho](databronnen.md#vo-context-voor-ho).
 

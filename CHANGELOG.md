@@ -7,8 +7,8 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Scope
-- De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `voprognoses`,
-  `02voins-v1`) zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
+- De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `02voins-v1`)
+  zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
   vraag. De DUO-telling gaat daardoor van 56 naar 14 datasets. Een record zonder scopebesluit valt erbuiten.
 - Dezelfde grens geldt nu voor CBS: tabellen over alle onderwijssoorten (zoals `37220`) of over po/vo
   zijn niet te vinden, op te vragen of te laden, ook niet als herstelpoging na een lege selectie. De
