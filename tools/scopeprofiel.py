@@ -109,7 +109,8 @@ class CbsSectorfilter:
 # ook alleen die over: geen filter van het model en geen herstelpoging kan de sector
 # verbreden (CH-03). De CBS-feed gebruikt bij twee clausules op dezelfde dimensie alleen
 # de eerste: op "(vo-code) and (mbo-codes)" kwamen de vo-rijen. De sectorselectie staat
-# daarom vooraan. Codes uit de dimensie zelf.
+# daarom vooraan. Het filter van het model komt erachter zonder haakjes: zie _als_term.
+# Codes uit de dimensie zelf.
 _VSV_MBO = frozenset({"T001336", "A041868", "A025293", "A041773"})  # mbo totaal, bol, bbl, extranei
 CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
     # Voortijdig schoolverlaten (VSV): mbo en vo.
@@ -269,6 +270,25 @@ class CbsSectorselectie:
         return [r for r in rows if str(r.get(self.dimensie, "")).strip() in self.codes]
 
 
+def _als_term(eigen: str) -> str:
+    """Het filter van het model als één term achter de sectorselectie.
+
+    De CBS-feed geeft een serverfout (HTTP 500) op `(A or B) and (X and Y)`: een haakjesgroep met
+    een `and` erin naast een andere groep. `(A or B) and X and Y` en `(A or B) and (X or Y)` werken
+    (gemeten 15-10-2026 op 85701NED: regio én periode gaf altijd een 500). Haakjes dus alleen om
+    een filter met een `or` op het hoogste niveau, want daar binden ze de voorrang.
+    """
+    diepte = 0
+    for i, teken in enumerate(eigen):
+        if teken == "(":
+            diepte += 1
+        elif teken == ")":
+            diepte -= 1
+        elif diepte == 0 and eigen[i : i + 4].lower() == " or ":
+            return f"({eigen})"
+    return eigen
+
+
 def cbs_sectorselectie(dataset_id: str, params: dict) -> CbsSectorselectie | str | None:
     """De params met de sectorselectie vooraan in $filter; None voor een andere tabel.
 
@@ -292,7 +312,7 @@ def cbs_sectorselectie(dataset_id: str, params: dict) -> CbsSectorselectie | str
     if not codes:
         return filter_.geen_rijen(dataset_id)
     sector = " or ".join(f"{dimensie} eq '{c}'" for c in sorted(codes))
-    nieuw = {**params, "$filter": f"({sector}) and ({eigen})" if eigen else sector}
+    nieuw = {**params, "$filter": f"({sector}) and {_als_term(eigen)}" if eigen else sector}
     if "$select" in nieuw and dimensie not in (k.strip() for k in str(nieuw["$select"]).split(",")):
         nieuw["$select"] = f"{nieuw['$select']},{dimensie}"
     return CbsSectorselectie(nieuw, dimensie, codes, filter_.deel)

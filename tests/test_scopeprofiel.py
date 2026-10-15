@@ -306,7 +306,7 @@ def test_de_aanroep_van_een_mbo_en_vo_tabel_selecteert_mbo_vooraf(catalogus):
     eerste, tweede = (c.kwargs["$filter"] for c in data.call_args_list)
     assert eerste.startswith(_MBO_EERST.removesuffix(" or ").removeprefix("("))
     assert "A042781" not in eerste and "A043837" not in eerste
-    assert tweede.startswith(_MBO_EERST) and tweede.endswith(") and (Perioden eq '2023SJ00')")
+    assert tweede.startswith(_MBO_EERST) and tweede.endswith(") and Perioden eq '2023SJ00'")
 
 
 def test_een_mbo_code_van_het_model_versmalt_de_selectie(catalogus):
@@ -321,6 +321,34 @@ def test_een_mbo_code_van_het_model_versmalt_de_selectie(catalogus):
 
     assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A041868') and (")
     assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A041868"]
+
+
+# De CBS-feed geeft HTTP 500 op "(A or B) and (X and Y)": een haakjesgroep met een `and` erin naast de
+# sectorgroep (gemeten 15-10-2026 op 85701NED; elke vraag met regio én periode gaf een serverfout).
+# "(A or B) and X and Y" en "(A or B) and (X or Y)" geven 200.
+def _sectorfilter(eigen: str) -> str:
+    """Het $filter dat de sectorselectie van 85701NED om `eigen` bouwt."""
+    from tools.scopeprofiel import CbsSectorselectie, cbs_sectorselectie
+
+    selectie = cbs_sectorselectie("85701NED", {"$filter": eigen})
+    assert isinstance(selectie, CbsSectorselectie)
+    return selectie.params["$filter"]
+
+
+def test_het_modelfilter_komt_zonder_haakjes_achter_de_sectorselectie():
+    aanroep = _sectorfilter("trim(Regiokenmerken) eq 'PV26' and trim(Perioden) eq '2024SJ00'")
+    assert aanroep.startswith("(Onderwijssoort eq ")
+    assert aanroep.endswith(") and trim(Regiokenmerken) eq 'PV26' and trim(Perioden) eq '2024SJ00'")
+
+
+def test_een_or_op_het_hoogste_niveau_houdt_zijn_haakjes_en_een_gebonden_or_niet():
+    los = _sectorfilter("Regiokenmerken eq 'PV26' or Regiokenmerken eq 'PV27'")
+    assert los.endswith(") and (Regiokenmerken eq 'PV26' or Regiokenmerken eq 'PV27')")
+    # Eén dimensie met meer codes, zoals de compiler schrijft: de or staat al tussen haakjes.
+    gebonden = _sectorfilter("(trim(Geslacht) eq '3000' or trim(Geslacht) eq '4000') and trim(Perioden) eq '2024SJ00'")
+    assert gebonden.endswith(
+        ") and (trim(Geslacht) eq '3000' or trim(Geslacht) eq '4000') and trim(Perioden) eq '2024SJ00'"
+    )
 
 
 def test_een_onbekende_vorm_van_het_sectorfilter_wordt_niet_opgehaald(catalogus):
@@ -411,7 +439,7 @@ def test_een_woonregiotabel_geeft_alleen_mbo_hbo_en_wo(catalogus):
         result = json.loads(get_cbs_data("85701NED", {"$filter": "Regiokenmerken eq 'GM0106'"}))
 
     aanroep = data.call_args.kwargs["$filter"]
-    assert aanroep.startswith("(Onderwijssoort eq ") and aanroep.endswith(") and (Regiokenmerken eq 'GM0106')")
+    assert aanroep.startswith("(Onderwijssoort eq ") and aanroep.endswith(") and Regiokenmerken eq 'GM0106'")
     assert "A025280" not in aanroep and "T001345" not in aanroep
     assert sorted(store.get(result["data_key"])["Onderwijssoort"]) == ["A025294", "A041867"]
 
@@ -564,7 +592,7 @@ def test_een_gesloten_selectie_op_de_sectordimensie_versmalt_de_selectie(catalog
             get_cbs_data("85368NED", selectie={"dimensies": {"Onderwijssoort": "A041868"}, "periode": ["2023/24"]})
         )
 
-    assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A041868') and (")
+    assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A041868') and trim(Onderwijssoort) eq ")
     assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A041868"]
 
 
