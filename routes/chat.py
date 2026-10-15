@@ -104,6 +104,8 @@ def _open_conversation(session: dict, messages: list, data_keys: list[str] | Non
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
     messages: list = session["messages"]
     messages.append({"role": "user", "content": content})
+    # Waarop 'wij' in deze beurt slaat; wisselt het profiel later, dan hoort het model dat (#543).
+    instelling = (session.get("chat_settings") or {}).get("instelling") or ""
 
     stop_event = asyncio.Event()
     session["stop_event"] = stop_event
@@ -133,6 +135,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
                 "answer": response_text,
                 "tool_calls": turn_tool_calls,
                 "figures": session.get("turn_figures", []),
+                "instelling": instelling,
             }
         )
         session["turns"] = turns
