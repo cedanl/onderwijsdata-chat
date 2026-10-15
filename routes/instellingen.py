@@ -16,6 +16,7 @@ from data.dashboard import (
 from data.instellingen import get_all as get_all_instellingen
 from tools.catalog import _cbs as _cbs_catalog
 from tools.catalog import _rio_duo as _rio_duo_catalog
+from tools.scopeprofiel import is_ho_context
 
 router = APIRouter(tags=["instellingen"])
 
@@ -33,9 +34,13 @@ TAG_STARTERS = _TAG_STARTERS
 
 
 def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
+    """Startervragen per tag. Vo-context voor ho (#557) blijft erbuiten: een startervraag heeft geen
+    ho-vraag achter zich, dus de zoekpoort kan een pure vo-vraag daar niet tegenhouden."""
     seen: set[str] = set()
     questions: list[str] = []
     for entry in list(_cbs_catalog()) + list(_rio_duo_catalog()):
+        if is_ho_context(entry):
+            continue
         if any(t in entry.get("tags", []) for t in tags):
             for q in entry.get("voorbeeldvragen", []):
                 if q not in seen:
