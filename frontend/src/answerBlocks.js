@@ -2,7 +2,7 @@
 // citaties, 3 of 4 CSV-knoppen en wel of geen Telling-blok: wat er onder het antwoord stond,
 // verschilde per run. Het aantal items volgt de tekst en de stappen; welke blokken er staan en
 // in welke volgorde, staat hier vast. Een blok zonder inhoud zegt "n.v.t." in plaats van te ontbreken.
-import { exportKeys } from './dataExport'
+import { hasExport } from './dataExport'
 import { splitsTelling } from './telling'
 
 export const BLOKKEN = ['citaties', 'telling', 'export', 'bronnen']
@@ -29,7 +29,7 @@ export function answerBlocks(msg, { settled = false } = {}) {
   const gevuld = {
     citaties: msg.citaties?.length > 0,
     telling: Boolean(splitsTelling(msg.content).telling),
-    export: exportKeys(msg.tools).length > 0,
+    export: hasExport(msg),
     bronnen: bronnenTekst(msg.bronnen).length > 0,
   }
   return BLOKKEN.map(kind => ({ kind, status: gevuld[kind] ? AANWEZIG : NVT }))

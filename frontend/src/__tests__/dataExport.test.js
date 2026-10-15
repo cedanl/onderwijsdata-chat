@@ -71,6 +71,28 @@ describe('DataExport', () => {
     expect(render({ tools: [{ name: 'search_catalog', done: true, exportKey: null }] })).toEqual([])
   })
 
+  // #544: zonder tabel-key van de server zijn de geciteerde getallen de export, zodat de knop er is
+  // ongeacht via welke tool het model de tabel maakte.
+  const citatie = { getal: '36.206', vastgesteld: true, stap: 1, tool: 'compute_kpi', bron: 'DUO · X', maat: 'Aantal' }
+
+  it('biedt de geciteerde getallen aan als de server geen tabel noemde', () => {
+    const save = vi.fn()
+    const [knop] = render({ tools: [{ name: 'compute_kpi', done: true, exportKey: null }], citaties: [citatie], save })
+    expect(knop.textContent).toBe('Download cijfers als CSV')
+    act(() => knop.click())
+    expect(save).toHaveBeenCalledOnce()
+    expect(save.mock.calls[0][0]).toContain('36.206;Aantal;;;DUO · X;1')
+  })
+
+  it('biedt de geciteerde getallen niet ook nog aan naast een tabel van de server', () => {
+    const knoppen = render({ tools: [stap('a')], citaties: [citatie] })
+    expect(knoppen.map(k => k.textContent)).toEqual(['Download data als CSV'])
+  })
+
+  it('toont geen knop als geen geciteerd getal een vastgestelde herkomst heeft', () => {
+    expect(render({ tools: [], citaties: [{ getal: '1', vastgesteld: false }] })).toEqual([])
+  })
+
   it('toont geen knop zolang het antwoord nog loopt', () => {
     expect(render({ tools: [stap('a')], settled: false })).toEqual([])
   })

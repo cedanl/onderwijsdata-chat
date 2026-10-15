@@ -49,7 +49,7 @@ import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
 import IngetrokkenVersies from '../components/IngetrokkenVersies'
-import { exportKeys, roundSettled } from '../dataExport'
+import { hasExport, roundSettled } from '../dataExport'
 import ConversationExport from '../components/ConversationExport'
 import AnswerFeedback from '../components/AnswerFeedback'
 import CopyButton from '../components/CopyButton'
@@ -947,10 +947,12 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
 
   const awaiting = isAwaitingFirstToken(msg)
   // A round with only data steps has no text, but its tables can still be downloaded.
-  const exportable = settled && exportKeys(msg.tools).length > 0
+  const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
   const blocks = answerBlocks(msg, { settled })
-  const dataExport = <DataExport tools={msg.tools} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+  const dataExport = (
+    <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
+  )
   if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
 
   return (
