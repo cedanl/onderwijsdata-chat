@@ -108,15 +108,15 @@ def _scopegrens(result: str) -> bool:
 def scope_uitleg(tekst: str, tool_results: list[str], vraag: str) -> str | None:
     """De vaste scope-uitleg als de beurt zonder data op de scopegrens stuitte; anders None.
 
-    Code beslist (#191): heeft een stap data geladen, dan blijft het antwoord van het model. Zonder data
-    is het de uitleg als een tool de data buiten de scope legde (`buiten_scope`), of als het antwoord
-    tooltaal doorgeeft op een vraag die po, so of vo noemt en geen mbo, hbo of wo."""
-    if data_keys(tool_results):
+    Code beslist (#191): heeft een stap data geladen, of noemt de vraag mbo, hbo of wo, dan blijft het
+    antwoord van het model; het model kan na een po/so/vo-tabel een passende bron gevonden hebben (#563).
+    Anders is het de uitleg als een tool de data buiten de scope legde (`buiten_scope`), of als het
+    antwoord tooltaal doorgeeft op een vraag die po, so of vo noemt."""
+    if data_keys(tool_results) or _MBO_HBO_WO.search(vraag):
         return None
     if any(_scopegrens(result) for result in tool_results):
         return SCOPE_UITLEG
-    po_so_vo = scopeprofiel.PO_SO_VO.search(vraag) and not _MBO_HBO_WO.search(vraag)
-    if po_so_vo and _TOOLWEIGERING.search(tekst):
+    if scopeprofiel.PO_SO_VO.search(vraag) and _TOOLWEIGERING.search(tekst):
         return SCOPE_UITLEG
     return None
 

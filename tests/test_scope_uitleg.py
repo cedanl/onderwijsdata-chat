@@ -27,6 +27,8 @@ _CONTRACT = (
     "Selectie voor 85525NED geweigerd door het CBS-contract: code hoort niet bij sector mbo. "
     "Kies codes uit get_cbs_dimension en een periode die in de tabel voorkomt."
 )
+# Een antwoord nadat het model een mbo/hbo/wo-bron in de catalogus vond, zonder data te laden (#563).
+_UIT_CATALOGUS = "In de catalogus staat een DUO-bestand met studenten per opleiding; dat kan ik voor je ophalen."
 _DATA = json.dumps({"data_key": "cbs:85525NED:ab", "rijen": [{"Perioden": "2022SJ00", "Leerlingen": 1}]})
 
 
@@ -45,6 +47,10 @@ def test_scopegrens_zonder_data_wordt_de_uitleg():
     assert scope_uitleg(TOOLTAAL, [_PO_TABEL], GROEP_8) == SCOPE_UITLEG
     # Ook als het model iets anders zegt: de toolstap beslist, niet de formulering.
     assert scope_uitleg("Daar heb ik geen cijfers voor.", [_PO_TABEL], "Hoeveel leerlingen?") == SCOPE_UITLEG
+    # Een pure vo-vraag: "vwo" noemt geen mbo, hbo of wo.
+    assert scope_uitleg("Daar heb ik geen cijfers voor.", [_PO_TABEL], "Hoeveel leerlingen zitten er in het vwo?") == (
+        SCOPE_UITLEG
+    )
 
 
 def test_tooltaal_op_een_po_vraag_wordt_de_uitleg():
@@ -65,6 +71,20 @@ def test_tooltaal_op_een_po_vraag_wordt_de_uitleg():
         (TOOLTAAL, [_CONTRACT], "Hoeveel hbo-eerstejaars kwamen van het vwo?"),
         # Een po-vraag zonder tooltaal en zonder scopegrens: het model zei het al zelf.
         ("Daar heb ik geen data over gevonden.", [], GROEP_8),
+        # Eerst een po/so/vo-tabel, daarna een mbo/hbo/wo-bron uit de catalogus: de vraag noemt de scope (#563).
+        *(
+            (_UIT_CATALOGUS, [_PO_TABEL], vraag)
+            for vraag in (
+                "Hoeveel mbo-studenten waren er in 2022?",
+                "Hoeveel hbo-eerstejaars kwamen van het vwo?",
+                "Hoeveel wo-studenten waren er in 2022?",
+                "Hoeveel ho-studenten waren er in 2022?",
+                "Hoeveel studenten in het hoger onderwijs?",
+                "Hoeveel studenten heeft de Hogeschool Utrecht?",
+                "Hoeveel studenten heeft de Universiteit Leiden?",
+                "Hoeveel studenten heeft het ROC Midden Nederland?",
+            )
+        ),
     ],
 )
 def test_andere_beurten_houden_hun_antwoord(tekst, results, vraag):
@@ -122,3 +142,13 @@ def test_een_getal_uit_het_geheugen_houdt_de_uitleg_niet_tegen(monkeypatch):
 def test_mbo_vraag_met_tooltaal_houdt_het_antwoord_van_het_model(monkeypatch):
     text, _ = _run(monkeypatch, "Hoeveel mbo-studenten waren er in 2022?", _CONTRACT, [TOOLTAAL] * 3)
     assert text != SCOPE_UITLEG
+
+
+def test_mbo_vraag_na_een_scopegrens_houdt_het_antwoord_van_het_model(monkeypatch):
+    """Een tool legde een po/so/vo-tabel buiten de scope, het model vond een mbo-bron: geen scope-uitleg (#563)."""
+    vraag = "Hoeveel mbo-studenten waren er in 2022?"
+    text, events = _run(monkeypatch, vraag, _PO_TABEL, [_UIT_CATALOGUS] * 3)
+
+    assert text == _UIT_CATALOGUS
+    end = events[-1]
+    assert end["type"] == "message_end" and end["content"] != SCOPE_UITLEG
