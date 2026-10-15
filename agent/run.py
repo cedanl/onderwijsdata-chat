@@ -45,7 +45,7 @@ from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
-from .vaste_antwoorden import WEIGER_ANTWOORD, sentinelvraag, weigering
+from .vaste_antwoorden import SCOPE_UITLEG, WEIGER_ANTWOORD, scope_uitleg, sentinelvraag, weigering
 from .zelfcorrectie import zonder_zelfcorrectie
 
 logger = logging.getLogger(__name__)
@@ -377,13 +377,23 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     return met_telling(tekst, result.tool_results)
 
 
+def _vast_antwoord(result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict) -> str | None:
+    """Een vast antwoord uit code in plaats van de modeltekst: de weigering of de scope-uitleg (BEV-12)."""
+    return weigering(antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))) or (
+        scope_uitleg(antwoord, result.tool_results, vraag)
+    )
+
+
 def _eindtekst(
-    result: LoopResult, antwoord: str, earlier: list[str], session: dict, model: str, bronnen: list[str]
+    result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict, model: str, bronnen: list[str]
 ) -> str:
-    """Het antwoord zoals de gebruiker het ziet: weigering of antwoord met Telling, of ingehouden."""
-    text_content = weigering(
-        antwoord, result.tool_calls, eerder_gesprek=bool(earlier or session.get("data_keys"))
-    ) or _antwoordtekst(result, antwoord, earlier, bronnen)
+    """Het antwoord zoals de gebruiker het ziet: weigering, scope-uitleg of antwoord met Telling, of ingehouden.
+
+    Een vast antwoord rust niet op de modeltekst: wat de controle daarin vond, houdt het niet tegen."""
+    if vast := _vast_antwoord(result, antwoord, vraag, earlier, session):
+        logger.info("VAST ANTWOORD  %s  controles=%s", tekst_kenmerk(vast), controlenamen(result.problems))
+        return vast
+    text_content = _antwoordtekst(result, antwoord, earlier, bronnen)
     if result.wrapped_up:
         text_content = f"{DEELANTWOORD}\n\n{text_content}"
     # Geen antwoordtekst op INFO: het log valt buiten "gesprek verwijderen" (#475).
@@ -408,7 +418,8 @@ def _eindtekst(
 
 # Vaste antwoorden uit code: ze rusten niet op de data van de beurt, dus ook geen bronnen eronder.
 # Een weigering komt nu alleen zonder tools (dus zonder bronnen), maar hoort er ook met tools bij.
-_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, WEIGER_ANTWOORD})
+_VASTE_ANTWOORDEN = frozenset({WEIGER_ANTWOORD, SCOPE_UITLEG})
+_ZONDER_BRONNEN = frozenset({INGEHOUDEN, LEEG_ANTWOORD, *_VASTE_ANTWOORDEN})
 
 
 def _slotbericht(
@@ -433,7 +444,12 @@ def _slotbericht(
         **({"tussentekst": herzien} if herzien else {}),
         **({"truncated": True} if truncated else {}),
         **({"partial": True} if result.wrapped_up else {}),
-        **({"controle": meldingen(result.problems)} if result.problems else {}),
+        # Een vast antwoord rust niet op de modeltekst: de meldingen over die tekst horen er niet onder.
+        **(
+            {"controle": meldingen(result.problems)}
+            if result.problems and text_content not in _VASTE_ANTWOORDEN
+            else {}
+        ),
         **({"vervolgvragen": vervolgvragen} if vervolgvragen else {}),
     }
 
@@ -549,7 +565,7 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  herzien=%d", len(herzien))
         logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
     bronnen = _veilige_bronnen(result.steps)
-    text_content = _eindtekst(result, antwoord, earlier, session, chosen_model, bronnen)
+    text_content = _eindtekst(result, antwoord, last_user_msg, earlier, session, chosen_model, bronnen)
     if bronnen and text_content not in _ZONDER_BRONNEN:
         # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
         text_content = met_interpretatie(text_content, last_user_msg, result.steps, session)

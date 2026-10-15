@@ -7,11 +7,18 @@ het domein hebben één juist antwoord. Per model verschilde het: uit het geheug
 Code beslist, niet het model (#403): ook een langere vraag over -1 krijgt het
 vaste antwoord, en een antwoord met feiten zonder enige opgehaalde data (een
 verzonnen wedstrijddatum) wordt de vaste weigering, ook als het model niet weigert.
+
+Een vraag over po, so of vo krijgt de vaste scope-uitleg (BEV-12): het model gaf op "groep 8"
+de tooltaal door ("De tool weigerde mijn selectie") zonder de reden in gewone taal.
 """
 
+import json
 import re
 
 from core.sentinels import BETEKENIS
+from tools import scopeprofiel
+
+from .selectie import data_keys
 
 _MIN = r"[-−–]\s?1"
 _SENTINELVRAAG = re.compile(
@@ -53,6 +60,55 @@ WEIGER_ANTWOORD = (
     "- Hoe ontwikkelde het aantal wo-studenten zich de afgelopen vijf jaar?\n"
     "- Welke hbo-opleidingen hebben de meeste deeltijdstudenten?"
 )
+
+
+# De uitleg als de beurt op de scopegrens van de chat stuit (#355, BEV-12). Gewone taal: geen tool,
+# selectie of weigering, en niet dat de bron niet bestaat (zoals scopeprofiel.MELDING het model vraagt).
+SCOPE_UITLEG = (
+    "Deze chat beantwoordt alleen vragen over het mbo, hbo en wo. Het primair, speciaal en voortgezet onderwijs "
+    "(po, so en vo, zoals de basisschool en de middelbare school) behandelt de chat niet, dus daar geeft hij "
+    "geen cijfers over.\n\n"
+    "Een vraag die wel kan:\n"
+    "- Hoeveel eerstejaars had de Hogeschool Utrecht in 2024/25?"
+)
+
+# Tooltaal in het antwoord: "De tool weigerde mijn selectie", "de selectie werd geweigerd".
+_TOOLWEIGERING = re.compile(
+    r"\btools?\b[^.\n]{0,30}\bweiger|\bweiger\w*\s+(?:mijn|de|je)\s+selectie\b|\bselectie\b[^.\n]{0,30}\bgeweigerd\b",
+    re.IGNORECASE,
+)
+# Een vraag die ook mbo, hbo of wo noemt ("hbo-studenten die van het vwo komen") valt niet buiten de scope.
+_MBO_HBO_WO = re.compile(r"\b(?:mbo|hbo|wo|ho|hoger\s+onderwijs|hogescho\w*|universiteit\w*|roc)\b", re.IGNORECASE)
+
+
+def _scopegrens(result: str) -> bool:
+    """Weigerde een tool deze stap omdat de data over po, so of vo gaat? Een RIO-register zonder
+    sectorfilter (REGISTER_MELDING) is geen po/so/vo-vraag: dat register haalt de chat voor niemand op."""
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return False
+    return (
+        isinstance(parsed, dict)
+        and parsed.get("buiten_scope") is True
+        and parsed.get("melding") != scopeprofiel.REGISTER_MELDING
+    )
+
+
+def scope_uitleg(tekst: str, tool_results: list[str], vraag: str) -> str | None:
+    """De vaste scope-uitleg als de beurt zonder data op de scopegrens stuitte; anders None.
+
+    Code beslist (#191): heeft een stap data geladen, dan blijft het antwoord van het model. Zonder data
+    is het de uitleg als een tool de data buiten de scope legde (`buiten_scope`), of als het antwoord
+    tooltaal doorgeeft op een vraag die po, so of vo noemt en geen mbo, hbo of wo."""
+    if data_keys(tool_results):
+        return None
+    if any(_scopegrens(result) for result in tool_results):
+        return SCOPE_UITLEG
+    po_so_vo = scopeprofiel.PO_SO_VO.search(vraag) and not _MBO_HBO_WO.search(vraag)
+    if po_so_vo and _TOOLWEIGERING.search(tekst):
+        return SCOPE_UITLEG
+    return None
 
 
 def sentinelvraag(vraag: str) -> str | None:
