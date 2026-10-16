@@ -122,3 +122,8 @@ export async function fetchAnswerFeedback(conversationId) {
 export async function postAnswerFeedback(body) {
   return apiFetch('/api/answer-feedback', { method: 'POST', body: JSON.stringify(body) })
 }
+
+// General feedback from the Feedback link (#600): { tekst, soort, pagina }.
+export async function postAlgemeneFeedback(body) {
+  return apiFetch('/api/feedback/algemeen', { method: 'POST', body: JSON.stringify(body) })
+}

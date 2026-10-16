@@ -208,7 +208,7 @@ function AppShell() {
         <ErrorBoundary key={location.pathname}>
           <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
             <Routes>
-              <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} />} />
+              <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
               <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
               <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
               <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
@@ -226,6 +226,7 @@ function AppShell() {
           onClose={handleCloseSettings}
           onLogout={authRequired ? handleLogout : null}
           isOnboarding={isOnboarding}
+          feedbackEnabled={feedbackEnabled}
           sramName={userInfo?.name || null}
           sramInstelling={sramInstelling || null}
           sramIdentity={userInfo ? [userInfo.org, userInfo.institution, userInfo.email_domein].filter(Boolean) : []}

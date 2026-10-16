@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
+import FeedbackLink from '../components/FeedbackLink'
 import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
 
-export default function HomePage({ dashboardsEnabled = true }) {
+export default function HomePage({ dashboardsEnabled = true, feedbackEnabled = false }) {
   useDocumentTitle(APP_NAME)
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)
@@ -132,6 +133,7 @@ export default function HomePage({ dashboardsEnabled = true }) {
                 Gebaseerd op open onderwijsdata
               </button>
               <PrivacyLink className="sources-link">Privacy</PrivacyLink>
+              {feedbackEnabled && <FeedbackLink className="sources-link" />}
             </span>
           </div>
           <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>

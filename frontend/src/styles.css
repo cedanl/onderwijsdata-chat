@@ -1756,6 +1756,10 @@ html.dark .suggested-btn:hover {
 .privacy-link { color: var(--gray-600); text-decoration: underline; padding: 0; }
 /* The settings dialog (z-index 2000) can open the popup, so it stacks above it. */
 .modal-overlay--privacy { z-index: 2100; }
+/* The general feedback form (#600) opens from the settings dialog too. */
+.algemene-feedback-overlay { z-index: 2100; }
+.wb-gallery-feedback, .settings-feedback { margin-top: 24px; font-size: .82rem; color: var(--muted-text); text-align: center; }
+.settings-feedback { margin: 16px 0 0; }
 .modal--privacy { max-width: 720px; }
 /* Zero height, so it takes no room above the title; sticky, so the close button stays in view
    while the overlay scrolls the long text. */
