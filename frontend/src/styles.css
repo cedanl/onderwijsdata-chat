@@ -1734,11 +1734,13 @@ html.dark .suggested-btn:hover {
 }
 
 /* Toetsenbord open op een telefoon (#527): zolang het invoerveld focus heeft, is de vaste
-   tabbalk verborgen en krijgt de chat die hoogte terug; bij blur komt hij terug. Alleen op
-   touch: op desktop met een smal venster blijft de navigatie staan. */
+   tabbalk verborgen en krijgt de chat die hoogte terug; bij blur komt hij terug. De klasse zet
+   invoerFocus.js, pas na de lopende tik: een directe :focus-regel verschoof het invoergebied
+   midden in een tik, en dan kwam 'Verstuur bericht' niet aan (#584). Alleen op touch: op
+   desktop met een smal venster blijft de navigatie staan. */
 @media (pointer: coarse) and (max-width: 1024px) {
-  body:has(.chat-input:focus) { --mobile-tabs-h: 0px; }
-  body:has(.chat-input:focus) .mobile-tabs { display: none; }
+  body.invoer-actief { --mobile-tabs-h: 0px; }
+  body.invoer-actief .mobile-tabs { display: none; }
 }
 
 /* ─── Privacy-informatie (#477, popup #572) ─────────────── */
