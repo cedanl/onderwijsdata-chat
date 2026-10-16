@@ -883,6 +883,49 @@ def test_een_directe_id_van_een_vo_contextbron_laadt_zonder_ho_marker(catalogus,
     assert "buiten_scope" not in details and "niet gevonden" not in json.dumps(details)
 
 
+def _vergelijkbaar(melding: str) -> str:
+    """Het hintdeel van scope_blokkade bij een onbekend ID, zonder het gezochte ID vooraan."""
+    return melding.partition("staat niet in de catalogus")[2]
+
+
+@pytest.mark.parametrize("onbekend", ["vo", "8538", "prognoses", "voprog"])
+def test_de_hint_bij_een_onbekend_id_noemt_geen_vo_contextbron(onbekend):
+    """De hint is een zoekroute zonder poort en zonder etiket (#573); tegen de echte catalogus."""
+    melding = scope_blokkade(onbekend) or ""
+
+    assert "staat niet in de catalogus" in melding
+    assert not [i for i in _HO_CONTEXT_IDS if i.lower() in _vergelijkbaar(melding).lower()], melding
+
+
+def test_de_hint_bij_een_onbekend_id_noemt_wel_andere_datasets():
+    assert "studentprognoses-mbo-per-instelling" in (scope_blokkade("prognoses") or "")
+    assert "85423NED" in (scope_blokkade("85423") or "")
+
+
+def test_zonder_vergelijkbare_dataset_verwijst_de_hint_naar_search_catalog():
+    """`voprog` raakt alleen voprognoses: na de poort blijft er niets over."""
+    melding = scope_blokkade("voprog") or ""
+
+    assert "staat niet in de catalogus" in melding
+    assert melding.endswith("Zoek de juiste dataset-ID met search_catalog.")
+
+
+def test_een_no_match_suggestie_uit_de_vo_context_draagt_het_etiket():
+    """De poort laat ze bij een ho-vraag door (#557); dan noemt de suggestie het deel, zoals een bronregel."""
+    from tools.catalog import _no_match
+
+    zwak = [
+        (2.0, {**_CBS_HO_CONTEXT, "bron": "Doorstroom vo", "context": _ETIKET}),
+        (1.0, {"_ckan_id": "voprognoses", "bron": "Prognose leerlingen vo"}),
+        (1.5, {**_CBS_MBO, "bron": "Mbo-studenten"}),
+    ]
+    melding = _no_match("doorstroom naar hbo", zwak, None)
+
+    assert "85566NED (Doorstroom vo, vo-context voor ho)" in melding
+    assert "voprognoses (Prognose leerlingen vo, vo-context voor ho)" in melding
+    assert "85353NED (Mbo-studenten)," in melding
+
+
 def test_een_vo_contexttreffer_draagt_het_etiket_en_het_catalogusrecord_niet(catalogus):
     vraag = "Hoeveel leerlingen stromen door van vwo naar wo?"
     treffers = _treffers(search_catalog(vraag))
