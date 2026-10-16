@@ -1599,7 +1599,6 @@ html.dark .suggested-btn:hover {
   .chat-input-wrap { padding: 8px 10px; }
   .chat-input-footer { margin-top: 6px; padding-top: 6px; }
   .chat-disclaimer { margin-top: 4px; }
-  .chat-input { font-size: 1rem; }
   .send-btn { width: 44px; height: 44px; }
 
   /* Tool snippets: contain wide code */
@@ -1707,6 +1706,17 @@ html.dark .suggested-btn:hover {
   /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
   .history-item-row { align-items: center; }
   .history-item-actions { position: static; transform: none; }
+}
+
+/* ─── Form fields on touch screens (#590) ────────────────────── */
+/* Safari on an iPhone zooms the page in when a field under 16px gets focus. The root is 15px, so 1rem is
+   15px as well: the size is a fixed 16px, never rem or em (it replaces the old 1rem on .chat-input).
+   Every base rule comes earlier in the file and these selectors match their specificity, so this wins.
+   The chat input takes line-height 1.5, so one row stays 24px as before (15px x 1.6) in the compact area (#527). */
+@media (pointer: coarse), (max-width: 1024px) {
+  .chat-input, .login-input, .instelling-search, .history-search, .dc-textarea, .title-edit-input,
+  .answer-feedback-form textarea, .feedback-question textarea, .model-picker select { font-size: 16px; }
+  .chat-input { line-height: 1.5; }
 }
 
 /* A5 (#517): geen overgangen of animaties voor wie het systeem op minder beweging zet
