@@ -12,6 +12,7 @@ import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './consta
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
+import { volgInvoerFocus } from './invoerFocus'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
 const ChatPage = lazy(() => import('./pages/ChatPage'))
@@ -237,6 +238,8 @@ function AppShell() {
 }
 
 function MobileTabs({ dashboardsEnabled }) {
+  // Verborgen zolang het invoerveld focus heeft, gewisseld na de lopende tik (#527, #584).
+  useEffect(() => volgInvoerFocus(document), [])
   return (
     <nav className="mobile-tabs">
       <MobileTabBtn icon="home" label="Home" to="/" />
