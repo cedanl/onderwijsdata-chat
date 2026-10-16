@@ -752,7 +752,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 </div>
               </div>
             )}
-            <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
             <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
           </div>
@@ -768,19 +767,28 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
               </div>
             )}
-            {/* Eén compacte rij (#527): gestapelde actieknoppen duwden op een telefoon de chat uit beeld. */}
-            {hasMessages && !busy && (
-              <div className="chat-actions">
-                <ConversationExport messages={displayMessages} />
-                {canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
-                  <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
-                    </svg>
-                    {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
-                  </button>
+            {/* Eén vaste statusrij (#594): tijdens een antwoord de voortgang, daarna de acties, op dezelfde
+                hoogte. Onder de berichten zakte de voortgang bij elke stap mee met de redeneerkaart, en de
+                acties die na het antwoord terugkwamen duwden het invoerveld 50 px omhoog, net toen je begon te
+                lezen. De acties staan op één compacte rij (#527). */}
+            {hasMessages && (
+              <div className="chat-statusrij">
+                {busy ? (
+                  <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
+                ) : (
+                  <div className="chat-actions">
+                    <ConversationExport messages={displayMessages} />
+                    {canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
+                      <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+                        </svg>
+                        {reportBusy ? 'Rapport wordt gegenereerd…' : 'Genereer rapport'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}

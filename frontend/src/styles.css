@@ -412,6 +412,13 @@ input, textarea { font: inherit; }
 
 /* Acties boven het invoerveld op één rij (#527): gestapeld namen ze op een telefoon twee rijen van 44px. */
 .chat-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-bottom: 6px; }
+/* De statusrij boven het invoerveld (#594): de voortgang tijdens een antwoord, de acties daarna. Een vaste
+   minimumhoogte, die van de actierij (een 44px-knop plus 6px), zodat de wissel het invoerveld niet verschuift. */
+/* De voortgang staat links: gecentreerd schoof elk langer staplabel de hele pil opzij. */
+.chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.chat-statusrij .run-progress-group { align-self: stretch; }
+.chat-statusrij .run-progress { margin: 0 0 6px; }
+.chat-statusrij .run-progress-note { margin: -4px 0 6px; padding-inline: 11px; }
 .make-rapport-btn {
   display: flex; align-items: center; gap: 7px;
   padding: 8px 18px; border-radius: var(--radius-sm);
