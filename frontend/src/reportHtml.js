@@ -79,11 +79,34 @@ const DARK_RULES = [
 const metVoorvoegsel = (voorvoegsel, selector) => selector.split(',').map(s => `${voorvoegsel} ${s}`).join(',')
 const darkCss = voorvoegsel => DARK_RULES.map(([sel, decl]) => `${metVoorvoegsel(voorvoegsel, sel)}{${decl}}`).join('\n    ')
 
-// Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek.
+// Op een telefoon (#571, gemeten op 390 px): de figuurtitel viel rechts weg, de legendatitel naast de items
+// maakte de legenda breder dan de figuur, en bij liggende staven lieten de namen op de y-as 64 px plotvlak
+// over. Hieronder NARROW_PX: de titel afgebroken in regels en kleiner (de marge erboven groeit mee), de
+// legendatitel boven de items, kleinere tick- en legendaletters, en de namen op de y-as van liggende staven
+// afgebroken (de figuur krijgt per extra regel hoogte). Een titel met een noot hangt aan de bovenrand (CH-34);
+// afgebroken stak zijn eerste regel 4 px boven de figuur uit (gemeten), vandaar 10 px padding erboven.
+// Alleen kopieën, zoals DARK_FIGURE_JS; _o en _w van daar.
+const NARROW_PX = 640
+const NARROW_FIGURE_JS = `function _wr(s,n){var r=[],c='';String(s).split(' ').forEach(function(x){if(c&&(c+' '+x).length>n){r.push(c);c=x}else c=c?c+' '+x:x});if(c)r.push(c);return r.join('<br>')}
+function _tf(a){return _w(a,{tickfont:_w(a.tickfont,{size:11})})}
+function _nl(l){l=_w(l);var t=l.title;if(_o(t)&&typeof t.text==='string'&&t.text.indexOf('<br>')<0){var s=_wr(t.text,42),n=s.split('<br>').length;l.title=_w(t,{text:s,font:_w(t.font,{size:14})});if(n>1){l.margin=_w(l.margin,{t:(l.margin&&l.margin.t||48)+17*(n-1)});if(t.yref==='container'&&t.yanchor==='top')l.title.pad=_w(t.pad,{t:10})}}
+if(_o(l.legend)){var lt=l.legend.title;l.legend=_w(l.legend,{font:_w(l.legend.font,{size:11})});if(_o(lt)&&lt.text||typeof lt==='string')l.legend.title=_w(_o(lt)?lt:{text:lt},{side:'top'})}
+Object.keys(l).forEach(function(k){if(/^[xy]axis\\d*$/.test(k)&&_o(l[k]))l[k]=_tf(l[k])});return l}
+function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,extra:0};
+d.forEach(function(t){if(_o(t)&&Array.isArray(t.y))t.y.forEach(function(v){if(typeof v==='string'&&c.indexOf(v)<0)c.push(v)})});
+var tt=c.map(function(v){return _wr(v,24)}),extra=tt.reduce(function(a,v){return a+v.split('<br>').length-1},0);if(!extra)return{layout:l,extra:0};
+return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),extra:extra}}`
+
+// Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek. Een figuur die haar
+// eigen hoogte meebrengt (liggende staven) houdt die; de andere krijgen de basishoogte uit de CSS (.plot-auto),
+// op een telefoon hoger, zodat titel, ticklabels en legenda het plotvlak niet opeten (#571).
 function plotlyHtml(figureJson, id) {
-  return `<div class="card"><div id="${id}" style="height:${figureHeightOfJson(figureJson, 360)}px"></div></div>
+  const eigen = figureHeightOfJson(figureJson, 0)
+  const div = eigen ? `<div id="${id}" class="plot" style="height:${eigen}px">` : `<div id="${id}" class="plot plot-auto">`
+  return `<div class="card">${div}</div></div>
     <script>(function(){${DARK_FIGURE_JS}
-var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('${id}',_d?_dd(f.data):f.data,_d?_dl(_l):_l,{responsive:true,displayModeBar:false});})()</script>`
+${NARROW_FIGURE_JS}
+var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_y.layout;if(_y.extra)_e.style.height=(_e.getBoundingClientRect().height+14*_y.extra)+'px'}Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});})()</script>`
 }
 
 export function buildReportHtml(spec, { instelling = '' } = {}) {
@@ -185,6 +208,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .def-term{flex:0 0 34%;font-weight:700;color:#111827;font-size:.92rem}
   .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
   .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
+  .plot-auto{height:360px}
   .vis-bron{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.5}
   .vis-bron a{color:#2563EB;text-decoration:underline}
   .vis-note{margin-top:14px;color:#4B5563;line-height:1.6;font-size:.92rem;background:#F9FAFB;border-left:3px solid #DBEAFE;padding:12px 16px;border-radius:0 6px 6px 0}
@@ -198,7 +222,8 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .bronnen li{color:#4B5563;font-size:.88rem;line-height:1.6;margin:.3em 0}
   .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
-  @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0}}
+  .header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}
+  @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.header-top{flex-direction:column}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0;margin:0 -16px}.plot-auto{height:420px}.header-label,.section-label,.manifest,.footer{font-size:.75rem}}
   ${darkCss('html.dark')}
   @media(prefers-color-scheme:dark){
     ${darkCss('html:not(.light)')}
