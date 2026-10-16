@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../api'
 import { useReportFrame } from '../hooks/useReportFrame'
+import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import WorkbookDownload from './WorkbookDownload'
+import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 
 const BUILTIN_COMPONENTS = {
@@ -89,6 +91,10 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const spec = workbook.dashboardSpec
   const canRefresh = spec && (spec.figure_recipes?.length || spec.recipe?.length)
   const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
+  // Op een telefoon is er geen ruimte voor titel én knoppen naast elkaar (#604): de titel blijft op één
+  // regel en Download en feedback verhuizen naar het ⋯-menu in de navbar, net als bij de chat (#596).
+  // Desktop houdt de knoppen inline in de kopbalk.
+  const smal = useMediaQuery(NARROW_SCREEN)
   // A report renders in a sandboxed frame whose content is not in this DOM: until it has loaded the region is
   // busy, a report without content says so instead of showing a blank frame (#387, #533), and a frame that
   // shows nothing gets a notice with the download outside it (#541).
@@ -122,7 +128,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
               tabIndex={workbook.builtin ? undefined : 0}
               onClick={handleTitleEdit}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTitleEdit() } }}
-              style={{ cursor: workbook.builtin ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{ cursor: workbook.builtin ? 'default' : 'pointer' }}
               title={workbook.builtin ? undefined : 'Klik om titel te bewerken'}
             >
               {workbook.title}
@@ -135,26 +141,34 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
             </span>
           )}
         </h1>
-        <div className="wb-viewer-actions">
-          <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
-          {feedbackEnabled && (
-            feedbackGiven ? (
-              <span className="wb-feedback-given" role="status">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Feedback gegeven
-              </span>
-            ) : (
-              <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Geef feedback op dit rapport
-              </button>
-            )
-          )}
-        </div>
+        {smal ? (
+          <RapportNavActies
+            workbook={workbook} instelling={instelling} save={save}
+            feedbackEnabled={feedbackEnabled} feedbackGiven={feedbackGiven}
+            onFeedback={() => setShowFeedback(true)}
+          />
+        ) : (
+          <div className="wb-viewer-actions">
+            <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+            {feedbackEnabled && (
+              feedbackGiven ? (
+                <span className="wb-feedback-given" role="status">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Feedback gegeven
+                </span>
+              ) : (
+                <button type="button" className="wb-feedback-btn" onClick={() => setShowFeedback(true)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  Geef feedback op dit rapport
+                </button>
+              )
+            )}
+          </div>
+        )}
       </div>
       {showFeedback && (
         <FeedbackModal
