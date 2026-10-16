@@ -757,7 +757,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
-            <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
+            {/* Only a filled chat needs it; on the welcome screen it covered a suggestion (#592). */}
+            {hasMessages && <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />}
           </div>
 
           <div className="chat-input-area">
