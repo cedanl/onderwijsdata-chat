@@ -318,6 +318,81 @@ describe('chart colours in a dark report (#567)', () => {
   })
 })
 
+// Under each chart its own source line from code, with a link to the open-data source (#569).
+describe('bronregel onder een grafiek (#569)', () => {
+  const cbs = {
+    bron: 'CBS', dataset: '85423NED',
+    tekst: 'CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Voorlopig',
+    url: 'https://opendata.cbs.nl/ODataApi/OData/85423NED',
+  }
+  const duo = {
+    bron: 'DUO', dataset: 'p01hoinges',
+    tekst: 'DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24',
+    url: 'https://onderwijsdata.duo.nl/dataset/p01hoinges',
+  }
+  const report = (...bronnen) => buildReportHtml({
+    ...fullSpec,
+    visualisaties: bronnen.map((bron, i) => ({ titel: `G${i}`, figure_json: '{"data":[],"layout":{}}', toelichting: `T${i}`, bron })),
+  })
+  const regels = html => [...html.matchAll(/<p class="vis-bron">([^]*?)<\/p>/g)].map(m => m[1])
+
+  it('toont onder elke grafiek de regel van haar eigen dataset, met de link', () => {
+    const html = report(cbs, duo)
+    const [eerste, tweede] = regels(html)
+    expect(regels(html)).toHaveLength(2)
+    expect(eerste).toContain('Bron: CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Voorlopig')
+    expect(eerste).toContain('<a href="https://opendata.cbs.nl/ODataApi/OData/85423NED" target="_blank" rel="noopener noreferrer">Bekijk de bron bij CBS</a>')
+    expect(tweede).toContain('Bron: DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24')
+    expect(tweede).toContain('href="https://onderwijsdata.duo.nl/dataset/p01hoinges"')
+    expect(tweede).toContain('Bekijk de bron bij DUO')
+  })
+
+  it('staat direct onder de grafiek, vóór de toelichting', () => {
+    const html = report(cbs)
+    expect(html.indexOf('id="rp0"')).toBeLessThan(html.indexOf('class="vis-bron"'))
+    expect(html.indexOf('class="vis-bron"')).toBeLessThan(html.indexOf('class="vis-note"'))
+  })
+
+  it.each([[null], [undefined], [{}], [{ tekst: '' }]])('zegt "Bron niet vastgesteld" voor bron %j', bron => {
+    const [regel] = regels(report(bron))
+    expect(regel).toBe('Bron niet vastgesteld')
+  })
+
+  it('toont de regel zonder link als de catalogus geen link kent', () => {
+    const [regel] = regels(report({ ...cbs, url: null }))
+    expect(regel).toBe(`Bron: ${cbs.tekst}`)
+    expect(regel).not.toContain('<a ')
+  })
+
+  it('maakt alleen van een http(s)-adres een link en escapet aanhalingstekens erin', () => {
+    const [vreemd] = regels(report({ ...cbs, url: 'javascript:alert(1)' }))
+    expect(vreemd).not.toContain('<a ')
+    expect(vreemd).not.toContain('javascript:')
+    const [quotes] = regels(report({ ...cbs, url: 'https://example.org/data?q="x"&y=\'z\'' }))
+    expect(quotes).toContain('href="https://example.org/data?q=&quot;x&quot;&amp;y=&#39;z&#39;"')
+    expect(quotes).not.toContain('"x"')
+  })
+
+  it('escapet de tekst van de regel', () => {
+    const [regel] = regels(report({ ...cbs, tekst: '<img src=x onerror=alert(1)>', bron: '<b>CBS</b>' }))
+    expect(regel).not.toContain('<img')
+    expect(regel).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(regel).toContain('bij &lt;b&gt;CBS&lt;/b&gt;')
+  })
+
+  it('leest in beide thema\'s met genoeg contrast op de kaart', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(html).toMatch(/\.vis-bron\{[^}]*color:#6B7280/)
+    expect(contrast('#6B7280', '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#2563EB', '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+    const donker = html.slice(html.indexOf('@media(prefers-color-scheme:dark)'))
+    expect(donker).toContain('.vis-bron{color:#9CA3AF}')
+    expect(donker).toContain('.vis-bron a{color:#60A5FA}')
+    expect(contrast('#9CA3AF', '#1F2937')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#60A5FA', '#1F2937')).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 describe('manifest (#345)', () => {
   const manifest = {
     model: 'anthropic/claude-sonnet-4-6',

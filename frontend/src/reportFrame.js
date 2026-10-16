@@ -1,5 +1,6 @@
-// Does the report frame show anything (#541)? The report renders in a frame sandboxed with only allow-scripts:
-// its origin is opaque, so the page cannot read its document. Never add allow-same-origin to read it: with
+// Does the report frame show anything (#541)? The report renders in a frame sandboxed without allow-same-origin
+// (allow-scripts, and allow-popups for the source links under the charts, #569): its origin is opaque, so the
+// page cannot read its document. Never add allow-same-origin to read it: with
 // allow-scripts that would let the report lift its own sandbox. postMessage is the one channel out of the
 // frame, so a small probe appended to the shown HTML (not to the download) posts one boolean once the frame
 // has loaded. The report is untrusted and could post the same message itself: the page only reads that

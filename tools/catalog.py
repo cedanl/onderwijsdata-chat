@@ -958,6 +958,21 @@ def catalogus_laatste_update(dataset_id: str) -> str | None:
     return None
 
 
+def documentatie_url(dataset_id: str) -> str | None:
+    """De link naar de open-databron van een dataset, voor de bronregel onder een grafiek (#569).
+
+    De documentatie-URL uit de catalogus (CBS OData, de DUO-datasetpagina, de RIO-API), alleen als het
+    een http(s)-adres is: de regel komt in HTML terecht. None als de catalogus de dataset of de link
+    niet kent; dan is er geen link, geen gok.
+    """
+    entry = _ruw_record(bron_id(dataset_id)) or {}
+    documentatie = entry.get("documentatie")
+    url = documentatie.get("url") if isinstance(documentatie, dict) else None
+    if isinstance(url, str) and url.lower().startswith(("https://", "http://")):
+        return url
+    return None
+
+
 def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
     """Resourcenaam uit de catalogus voor een DUO/RIO dataset.
 
