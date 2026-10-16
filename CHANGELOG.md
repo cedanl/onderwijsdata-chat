@@ -379,6 +379,14 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Een rapport is op een telefoon leesbaar zonder inzoomen (#571, gemeten op 390 en 375 px, licht en donker):
+  een lang woord of een link in de tekst rekt de pagina niet meer op (die werd daardoor uitgezoomd tot 559 px),
+  de instellingsbadge staat onder de titel in plaats van ernaast (de titel had nog de halve breedte), een
+  grafiek krijgt de volle kaartbreedte en 420 in plaats van 360 px hoogte, en in de grafiek wordt een lange
+  titel afgebroken en kleiner, staat de legendatitel boven de items (de legenda was breder dan de grafiek),
+  zijn tick- en legendaletters 11 px en worden lange namen op de y-as van liggende staven afgebroken (het
+  plotvlak was nog 64 px breed). De kleinste letters (sectiekoppen, verantwoording) zijn 12 px. Bestaande
+  rapporten veranderen niet.
 - Een rapport volgt de weergavekeuze van de app (Instellingen: systeem, licht, donker) in plaats van alleen de
   voorkeur van het besturingssysteem (#568). Wie in de app 'Licht' kiest op een donker systeem, kreeg een donker
   rapport, en omgekeerd. Bij 'Systeem' blijft de OS-voorkeur beslissen, net als voor de download; een rapport

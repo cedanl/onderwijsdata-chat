@@ -27,6 +27,12 @@ const fullSpec = {
   datum: '1 september 2026',
 }
 
+// The one phone rule of the report stylesheet.
+const phoneCss = html => {
+  const phone = html.slice(html.indexOf('@media(max-width:640px)'))
+  return phone.slice(0, phone.indexOf('}}') + 2)
+}
+
 describe('buildReportHtml', () => {
   // CH-34: the export's own 48 px top margin put a title note over the plot.
   it('keeps the top margin of a chart with a note under its title', () => {
@@ -36,18 +42,21 @@ describe('buildReportHtml', () => {
     expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
   })
 
-  // Horizontal bars bring their own height; the fixed 360 px squashed 18 universities.
-  it('gives a chart the height it brings, and 360 px otherwise', () => {
+  // Horizontal bars bring their own height; the fixed 360 px squashed 18 universities. The others get the
+  // base height from the CSS, 420 px on a phone (#571).
+  it('gives a chart the height it brings, and the base height from the CSS otherwise', () => {
     const spec = { ...fullSpec, visualisaties: [{ titel: 'WO', figure_json: JSON.stringify({ data: [], layout: { height: 526 } }) }] }
-    expect(buildReportHtml(spec)).toContain('style="height:526px"')
-    expect(buildReportHtml(fullSpec)).toContain('style="height:360px"')
+    expect(buildReportHtml(spec)).toContain('<div id="rp0" class="plot" style="height:526px">')
+    const html = buildReportHtml(fullSpec)
+    expect(html).toContain('<div id="rp0" class="plot plot-auto">')
+    expect(html).toContain('.plot-auto{height:360px}')
+    expect(phoneCss(html)).toContain('.plot-auto{height:420px}')
   })
 
-  // On a phone two nested card paddings left the chart 260 px; long names fell off the left.
+  // On a phone two nested card paddings left the chart 260 px; long names fell off the left. The chart now
+  // also bleeds into the padding of the outer card (#571).
   it('gives a chart the full card width on a phone', () => {
-    const html = buildReportHtml(fullSpec)
-    const phone = html.slice(html.indexOf('@media(max-width:640px)'))
-    expect(phone.slice(0, phone.indexOf('}}') + 2)).toContain('.vis .card{padding:0}')
+    expect(phoneCss(buildReportHtml(fullSpec))).toContain('.vis .card{padding:0;margin:0 -16px}')
   })
 
   it('returns valid HTML with doctype and title', () => {
@@ -153,8 +162,8 @@ describe('buildReportHtml', () => {
 
 // Loads generated HTML in a fresh DOM that runs its inline scripts, with Plotly, the
 // dialogs and matchMedia stubbed, and records what the page did. `dark` answers the
-// prefers-color-scheme query.
-function runPage(html, { dark = false } = {}) {
+// prefers-color-scheme query; `width` is the window width (jsdom's 1024 by default).
+function runPage(html, { dark = false, width = 1024 } = {}) {
   const seen = { dialogs: [], plots: [], errors: [] }
   const virtualConsole = new VirtualConsole()
   virtualConsole.on('jsdomError', err => seen.errors.push(err.message))
@@ -164,7 +173,8 @@ function runPage(html, { dark = false } = {}) {
     beforeParse(window) {
       for (const name of ['alert', 'confirm', 'prompt']) window[name] = (...args) => seen.dialogs.push([name, ...args])
       window.matchMedia = () => ({ matches: dark })
-      window.Plotly = { newPlot: (...args) => seen.plots.push(args) }
+      window.innerWidth = width
+      window.Plotly = { newPlot: (el, ...args) => seen.plots.push([el.id ?? el, ...args]) }
     },
   })
   seen.images = dom.window.document.querySelectorAll('img').length
@@ -433,6 +443,98 @@ describe('rapportthema volgt de app-keuze (#568)', () => {
   it('volgt zonder klasse de OS-voorkeur, zoals voorheen', () => {
     expect(runPage(html, { dark: true }).plots[0][2].plot_bgcolor).toBe('#111827')
     expect(runPage(html, { dark: false }).plots[0][2].plot_bgcolor).toBe('#F9FAFB')
+  })
+})
+
+// Measured on 390 px (#571): the chart title fell off the right, the legend title beside the items made the
+// legend wider than the chart, and the names on the y-axis of horizontal bars left 64 px of plot area.
+describe('grafiek op een telefoon (#571)', () => {
+  const axis = { showgrid: true, gridcolor: '#f0f0f0', linecolor: '#ccc', zeroline: false }
+  const lijn = {
+    data: [
+      { type: 'scatter', mode: 'lines', name: 'Economie en bedrijfskunde', x: ['2015', '2016'], y: [1, 2] },
+      { type: 'scatter', mode: 'lines', name: 'Landbouw en natuurlijke omgeving', x: ['2015', '2016'], y: [2, 3] },
+    ],
+    layout: {
+      title: { text: 'Ingeschrevenen per sector 2015/16–2024/25 naar onderdeel', font: { size: 16, color: '#222' } },
+      xaxis: { ...axis, title: { text: 'Studiejaar' }, type: 'category', tickfont: { color: '#333' } },
+      yaxis: { ...axis, title: { text: 'Aantal' }, tickformat: ',' },
+      legend: { bgcolor: 'rgba(255,255,255,0.8)', bordercolor: '#ddd', borderwidth: 1, orientation: 'h', title: { text: 'Onderdeel' } },
+      margin: { t: 60, b: 50, l: 70, r: 20 },
+    },
+  }
+  const namen = ['Hogeschool van Amsterdam', 'HAN University of Applied Sciences', 'Avans']
+  const staven = {
+    data: [{ type: 'bar', orientation: 'h', x: [3, 2, 1], y: namen, text: ['3', '2', '1'] }],
+    layout: { title: { text: 'Kort' }, yaxis: { ...axis, autorange: 'reversed', automargin: true }, xaxis: axis, height: 300, showlegend: false },
+  }
+  const report = fig => buildReportHtml({ ...fullSpec, visualisaties: [{ titel: 'G', figure_json: JSON.stringify(fig) }] })
+  const plotted = (fig, width) => {
+    const seen = runPage(report(fig), { width })
+    expect(seen.errors).toEqual([])
+    return { id: seen.plots[0][0], data: seen.plots[0][1], layout: seen.plots[0][2], dom: seen }
+  }
+
+  it('breekt een lange titel af, maakt hem kleiner en geeft de marge erboven ruimte per extra regel', () => {
+    const { layout: l } = plotted(lijn, 390)
+    expect(l.title.text).toBe('Ingeschrevenen per sector 2015/16–2024/25<br>naar onderdeel')
+    expect(l.title.font).toEqual({ size: 14, color: '#222' })
+    expect(l.title).not.toHaveProperty('pad')
+    expect(l.margin.t).toBe(48 + 17)
+  })
+
+  // A title with a note hangs from the top edge (CH-34); wrapped, its first line stuck out above the chart.
+  it('houdt een afgebroken titel met noot binnen de figuur', () => {
+    const metNoot = { ...lijn, layout: { ...lijn.layout, title: { ...lijn.layout.title, yref: 'container', yanchor: 'top', y: 0.98, subtitle: { text: 'Afgerond op 10-tallen', font: { size: 11, color: '#666' } } }, margin: { t: 100 } } }
+    const { layout: l } = plotted(metNoot, 390)
+    expect(l.title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98, pad: { t: 10 }, subtitle: { text: 'Afgerond op 10-tallen' } })
+    expect(l.margin.t).toBe(100 + 17)
+    const kort = { ...metNoot, layout: { ...metNoot.layout, title: { ...metNoot.layout.title, text: 'Kort' } } }
+    expect(plotted(kort, 390).layout.title).not.toHaveProperty('pad')
+  })
+
+  it('zet de legendatitel boven de items en maakt legenda- en tickletters kleiner', () => {
+    const { layout: l } = plotted(lijn, 390)
+    expect(l.legend.title).toEqual({ text: 'Onderdeel', side: 'top' })
+    expect(l.legend.font).toEqual({ size: 11 })
+    expect(l.legend).toMatchObject({ orientation: 'h', borderwidth: 1 })
+    expect(l.xaxis.tickfont).toEqual({ color: '#333', size: 11 })
+    expect(l.yaxis.tickfont).toEqual({ size: 11 })
+    expect(l.xaxis).toMatchObject({ title: { text: 'Studiejaar' }, type: 'category', showgrid: true })
+  })
+
+  it('breekt lange namen op de y-as van liggende staven af en geeft de figuur hoogte per extra regel', () => {
+    const { layout: l, data: d, id } = plotted(staven, 390)
+    expect(l.yaxis.tickvals).toEqual(namen)
+    expect(l.yaxis.ticktext).toEqual(['Hogeschool van Amsterdam', 'HAN University of<br>Applied Sciences', 'Avans'])
+    expect(l.yaxis).toMatchObject({ autorange: 'reversed', automargin: true })
+    expect(d).toEqual(staven.data)
+    expect(id).toBe('rp0')
+  })
+
+  it('laat een korte titel, een legenda zonder titel en staande staven met rust', () => {
+    const kort = { data: [{ type: 'bar', x: ['HU', 'UU'], y: [1, 2] }], layout: { title: { text: 'Kort' }, legend: { orientation: 'h' }, xaxis: axis } }
+    const { layout: l } = plotted(kort, 390)
+    expect(l.title).toEqual({ text: 'Kort', font: { size: 14 } })
+    expect(l.margin.t).toBe(48)
+    expect(l.legend).toEqual({ orientation: 'h', font: { size: 11 } })
+    expect(l.xaxis).not.toHaveProperty('tickvals')
+  })
+
+  it('verandert niets op een breed scherm', () => {
+    const { layout: l, data: d } = plotted(lijn, 1024)
+    expect(l.title).toEqual(lijn.layout.title)
+    expect(l.legend).toEqual(lijn.layout.legend)
+    expect(l.xaxis).toEqual(lijn.layout.xaxis)
+    expect(d).toEqual(lijn.data)
+    expect(plotted(staven, 1024).layout.yaxis).toEqual(staven.layout.yaxis)
+  })
+
+  it('zet op een telefoon de badge onder de titel, breekt lange woorden en vergroot de kleinste letters', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(phoneCss(html)).toContain('.header-top{flex-direction:column}')
+    expect(phoneCss(html)).toContain('.header-label,.section-label,.manifest,.footer{font-size:.75rem}')
+    expect(html).toContain('.header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}')
   })
 })
 
