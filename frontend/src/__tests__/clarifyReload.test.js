@@ -24,12 +24,11 @@ class FakeWebSocket {
 let root
 let chat
 
-function Harness() {
-  chat = useChat()
-  return null
-}
-
 async function openPage() {
+  function Harness() {
+    chat = useChat()
+    return null
+  }
   root = createRoot(document.createElement('div'))
   await act(async () => { root.render(createElement(Harness)) })
   return FakeWebSocket.last
