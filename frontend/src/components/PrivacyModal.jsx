@@ -9,6 +9,7 @@ import PrivacyInhoud from './PrivacyInhoud'
 export default function PrivacyModal({ onClose }) {
   const dialogRef = useDialog(onClose)
   const closeFromBackdrop = e => {
+    // A portal's click still bubbles through the React tree to every host: stop it here, do not rely on the host.
     e.stopPropagation()
     onClose()
   }
