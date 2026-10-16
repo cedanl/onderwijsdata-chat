@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import RunProgress, { countRunSteps, currentRunStep, formatElapsed, heavyRun, HEAVY_TOOLS } from '../components/RunProgress'
+import RunProgress, { countRunSteps, currentRunStep, formatElapsed, heavyRun, HEAVY_TOOLS, waitNote } from '../components/RunProgress'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -71,6 +71,22 @@ describe('heavyRun', () => {
   })
 })
 
+// #599: a run without a heavy tool can take minutes too; the server says when it is slow (RUN_SLOW_S).
+describe('waitNote', () => {
+  it('says minutes for a heavy run, and a while for a slow one', () => {
+    expect(waitNote({ heavy: true })).toBe('Dit kan 2–3 minuten duren.')
+    expect(waitNote({ slow: true })).toBe('Dit kan even duren, soms een paar minuten.')
+  })
+
+  it('keeps the heavy line when the run is slow too: it is the more precise one', () => {
+    expect(waitNote({ heavy: true, slow: true })).toBe('Dit kan 2–3 minuten duren.')
+  })
+
+  it('says nothing for a run that is neither', () => {
+    expect(waitNote({})).toBeNull()
+  })
+})
+
 it('formats elapsed time as m:ss', () => {
   expect(formatElapsed(0)).toBe('0:00')
   expect(formatElapsed(65)).toBe('1:05')
@@ -115,22 +131,39 @@ describe('RunProgress', () => {
     expect(container.querySelector('.run-progress-step').textContent).toBe('DUO-data ophalen')
   })
 
-  it('says a heavy run takes minutes, outside the timer and without a live region', async () => {
+  it('says a heavy run takes minutes, outside the timer', async () => {
     await render({ busy: true, steps: 2, heavy: true })
     const note = container.querySelector('.run-progress-note')
     expect(note.textContent).toBe('Dit kan 2–3 minuten duren.')
     expect(note.closest('[role="timer"]')).toBeNull()
-    expect(note.closest('[role="alert"], [role="status"], [aria-live]')).toBeNull()
   })
 
-  it('says nothing about the wait for a light run', async () => {
+  it('says a slow run can take a while (#599)', async () => {
+    await render({ busy: true, steps: 2, slow: true })
+    expect(container.querySelector('.run-progress-note').textContent).toBe('Dit kan even duren, soms een paar minuten.')
+  })
+
+  // The slow line replaces a toast that a screen reader announced: the line is a polite status region,
+  // mounted empty with the timer, since a region that mounts together with its text is often not read (#532).
+  it('puts the line in a status region that is there, empty, before the line is', async () => {
+    await render({ busy: true, steps: 1 })
+    const region = container.querySelector('.run-progress-note')
+    expect(region.getAttribute('role')).toBe('status')
+    expect(region.textContent).toBe('')
+
+    await act(async () => { root.render(createElement(RunProgress, { busy: true, steps: 3, slow: true })) })
+    expect(container.querySelector('.run-progress-note')).toBe(region)
+    expect(region.textContent).toBe('Dit kan even duren, soms een paar minuten.')
+  })
+
+  it('says nothing about the wait for a light run that is not slow', async () => {
     await render({ busy: true, steps: 2 })
-    expect(container.textContent).not.toContain('minuten duren')
+    expect(container.textContent).not.toContain('duren')
   })
 
   it('says nothing about the wait when no run is going', async () => {
-    await render({ busy: false, steps: 2, heavy: true })
-    expect(container.textContent).not.toContain('minuten duren')
+    await render({ busy: false, steps: 2, heavy: true, slow: true })
+    expect(container.textContent).not.toContain('duren')
   })
 
   it('disappears when the run ends', async () => {

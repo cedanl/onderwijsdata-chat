@@ -1,4 +1,4 @@
-"""Tijdsgrens per run (#90): melding na de drempel, netjes stoppen na de grens."""
+"""Tijdsgrens per run (#90): een signaal na de drempel, netjes stoppen na de grens."""
 
 import asyncio
 import importlib
@@ -31,6 +31,10 @@ def _toasts(events):
     return [e["message"] for e in events if e["type"] == "toast"]
 
 
+def _traag(events):
+    return [e for e in events if e["type"] == "run_slow"]
+
+
 def test_melding_na_drempel_en_stop_na_grens():
     async def wacht_op_stop(history, stop_event, **kwargs):
         await stop_event.wait()
@@ -39,9 +43,10 @@ def test_melding_na_drempel_en_stop_na_grens():
     events, stop = _draai(wacht_op_stop)
 
     assert stop.is_set()  # de route bewaart een gestopte beurt niet in de geschiedenis
-    toasts = _toasts(events)
-    assert any("langer dan normaal" in t for t in toasts)
-    assert any("gestopt" in t for t in toasts)
+    # Na de drempel een signaal, geen toast (#599): de chat zet het als vaste regel onder de voortgang.
+    assert _traag(events) == [{"type": "run_slow"}]
+    assert [t for t in _toasts(events) if "gestopt" not in t] == []
+    assert any("gestopt" in t for t in _toasts(events))
     assert events[-1] == {"type": "message_end", "aborted": True}
 
 
@@ -64,3 +69,4 @@ def test_snelle_run_krijgt_geen_meldingen():
 
     assert not stop.is_set()
     assert _toasts(events) == []
+    assert _traag(events) == []
