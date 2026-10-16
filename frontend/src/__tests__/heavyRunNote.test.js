@@ -19,10 +19,10 @@ vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }
 vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
-const chat = vi.hoisted(() => ({ messages: [], busy: false }))
+const chat = vi.hoisted(() => ({ messages: [], busy: false, slow: false }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
-    messages: chat.messages, busy: chat.busy, rejectedDraft: null, clearRejectedDraft: () => {},
+    messages: chat.messages, busy: chat.busy, slow: chat.slow, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false,
     reportProgress: { steps: 0, label: null }, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
@@ -50,6 +50,7 @@ beforeEach(() => {
   localStorage.clear()
   localStorage.setItem(STORAGE_TOKEN, 'tok')
   chat.busy = true
+  chat.slow = false
 })
 
 afterEach(async () => {
@@ -87,5 +88,25 @@ describe('ChatPage: wachtregel bij een zware vraag (#547)', () => {
     chat.messages = beurt({ name: 'get_roa_benchmark', label: 'ROA-benchmark ophalen', done: true })
     await mountChat()
     expect(container.textContent).not.toContain(WACHTREGEL)
+  })
+})
+
+// #599: een brede vraag zonder UWV of ROA kan ook minuten duren. Zodra de server de beurt traag noemt
+// (RUN_SLOW_S), staat er een vaste regel onder de voortgang in plaats van een toast die na vier seconden weg was.
+describe('ChatPage: wachtregel bij een trage beurt (#599)', () => {
+  const TRAAG = 'Dit kan even duren, soms een paar minuten.'
+
+  it('staat onder de voortgang zodra de server de beurt traag noemt', async () => {
+    chat.slow = true
+    chat.messages = beurt({ name: 'get_cbs_data', label: 'CBS-data ophalen', done: false })
+    await mountChat()
+    expect(container.querySelector('.chat-statusrij .run-progress-note').textContent).toBe(TRAAG)
+  })
+
+  it('ontbreekt zolang de beurt niet traag is', async () => {
+    chat.messages = beurt({ name: 'get_cbs_data', label: 'CBS-data ophalen', done: false })
+    await mountChat()
+    expect(container.querySelector('.run-progress')).not.toBeNull()
+    expect(container.textContent).not.toContain(TRAAG)
   })
 })

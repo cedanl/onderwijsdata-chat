@@ -26,14 +26,22 @@ export function heavyRun(messages) {
   return runTools(messages).some(t => HEAVY_TOOLS.has(t.name))
 }
 
+// What to expect, as a fixed line under the timer. A heavy tool says minutes at once (#547); any other run
+// says it once the server calls it slow (run_slow after RUN_SLOW_S, #599). The heavy line is the more precise one.
+export function waitNote({ heavy = false, slow = false }) {
+  if (heavy) return 'Dit kan 2–3 minuten duren.'
+  if (slow) return 'Dit kan even duren, soms een paar minuten.'
+  return null
+}
+
 export function formatElapsed(seconds) {
   const m = Math.floor(seconds / 60)
   return `${m}:${String(seconds % 60).padStart(2, '0')}`
 }
 
 // A compact total view while a run is going: elapsed time and steps taken (#91).
-// heavy: a fixed line on what to expect, outside the timer element so it is plain text (#547).
-export default function RunProgress({ busy, steps, stepLabel = null, heavy = false }) {
+// heavy, slow: a fixed line on what to expect, outside the timer element (#547, #599).
+export default function RunProgress({ busy, steps, stepLabel = null, heavy = false, slow = false }) {
   const [seconds, setSeconds] = useState(0)
 
   useEffect(() => {
@@ -61,7 +69,9 @@ export default function RunProgress({ busy, steps, stepLabel = null, heavy = fal
           </>
         )}
       </div>
-      {heavy && <p className="run-progress-note">Dit kan 2–3 minuten duren.</p>}
+      {/* A polite status region, mounted empty with the timer: the slow line replaces a toast that was read
+          out, and a region that mounts together with its text is often not announced (#532). */}
+      <p className="run-progress-note" role="status">{waitNote({ heavy, slow })}</p>
     </div>
   )
 }

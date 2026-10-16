@@ -1,9 +1,10 @@
 """Een tijdsgrens per run (#90).
 
 Runs liepen minutenlang door zonder dat de gebruiker wist of er nog iets gebeurde.
-Na `traag_s` zegt een melding dat lang duren normaal is en dat stoppen kan; na
-`grens_s` stopt de run zoals bij de stopknop, via het stopsignaal. Een modelaanroep
-of tool die dat signaal niet ziet omdat hij vastzit, breekt `afbreken_s` later af.
+Na `traag_s` gaat het signaal `run_slow` naar de chat, die onder de voortgang zegt dat
+het even kan duren (#599); na `grens_s` stopt de run zoals bij de stopknop, via het
+stopsignaal. Een modelaanroep of tool die dat signaal niet ziet omdat hij vastzit,
+breekt `afbreken_s` later af.
 """
 
 import asyncio
@@ -39,15 +40,11 @@ class Timebox:
 async def timebox(emit: Emit, stop: asyncio.Event, traag_s: float, grens_s: float):
     box = Timebox(stop, grens_s)
 
+    # Een signaal, geen toast (#599): een toast verdween na vier seconden, dus wie even wegkeek zag
+    # bij een lange vraag geen verwachting. De tekst staat in de chat, naast de klok die doorloopt.
     async def traag():
         await asyncio.sleep(traag_s)
-        await emit(
-            {
-                "type": "toast",
-                "message": "Dit duurt langer dan normaal. Bij complexe vragen kan dat; met de stopknop breek je af.",
-                "level": "info",
-            }
-        )
+        await emit({"type": "run_slow"})
 
     async def grens():
         await asyncio.sleep(grens_s)

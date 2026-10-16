@@ -34,6 +34,8 @@ export function useChat() {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [thinking, setThinking] = useState(false)
+  // The server calls the current run slow after RUN_SLOW_S (#599); the next question starts without.
+  const [slow, setSlow] = useState(false)
   const [toasts, setToasts] = useState([])
   const [connected, setConnected] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
@@ -175,6 +177,9 @@ export function useChat() {
       },
       toast(ev) {
         addToast(ev.message, ev.level || 'info')
+      },
+      run_slow() {
+        if (busyRef.current) setSlow(true)
       },
       history_data(ev) {
         setHistoryDataKeys(ev.data_keys || 0)
@@ -331,7 +336,7 @@ export function useChat() {
 
     const chatStreamEvents = new Set([
       'message_start', 'message_cancel', 'text_delta', 'tool_start',
-      'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error',
+      'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error', 'run_slow',
     ])
     const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
 
@@ -452,6 +457,7 @@ export function useChat() {
     if (!canSend()) return false
     busyRef.current = true
     setBusy(true)
+    setSlow(false)
     setThinking(true)
     const id = nextId()
     lastSentRef.current = { id, content, draft: true }
@@ -464,6 +470,7 @@ export function useChat() {
     if (!canSend()) return
     busyRef.current = true
     setBusy(true)
+    setSlow(false)
     const id = nextId()
     lastSentRef.current = { id, content: choice, draft: false }
     setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true, model: modelRef.current }])
@@ -550,5 +557,5 @@ export function useChat() {
     }
   }, [clear])
 
-  return { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }

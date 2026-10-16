@@ -330,6 +330,41 @@ describe('useChat vraag tijdens een rapport (#417)', () => {
   })
 })
 
+// #599: na RUN_SLOW_S zegt de server dat de beurt traag is (run_slow). De chat onthoudt dat voor de
+// lopende beurt, zodat de wachtregel blijft staan; de volgende vraag begint weer zonder.
+describe('useChat trage beurt (#599)', () => {
+  it('onthoudt een trage beurt tot de volgende vraag', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Vergelijk alle mbo-sectoren over vijftien jaar') })
+    expect(chat.slow).toBe(false)
+    await act(async () => { ws.emit({ type: 'run_slow' }) })
+    expect(chat.slow).toBe(true)
+    expect(chat.toasts).toEqual([])
+
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'message_end', content: 'Klaar.' })
+    })
+    await act(async () => { chat.send('En in het hbo?') })
+    expect(chat.slow).toBe(false)
+  })
+
+  it('begint ook een keuze op een verduidelijkingsvraag zonder', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Hoeveel studenten?') })
+    await act(async () => { ws.emit({ type: 'run_slow' }) })
+    await act(async () => { ws.emit({ type: 'clarification', question: 'Welk jaar?', options: ['2023/24'] }) })
+    await act(async () => { chat.sendClarification('2023/24') })
+    expect(chat.slow).toBe(false)
+  })
+
+  it('negeert het signaal als er geen beurt loopt', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { ws.emit({ type: 'run_slow' }) })
+    expect(chat.slow).toBe(false)
+  })
+})
+
 describe('useChat tooltrace bij intrekken (#398)', () => {
   const stappen = ws => {
     ws.emit({ type: 'message_start' })

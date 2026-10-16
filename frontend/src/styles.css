@@ -385,7 +385,9 @@ input, textarea { font: inherit; }
    minimumhoogte, die van de actierij (een 44px-knop plus 6px), zodat de wissel het invoerveld niet verschuift. */
 /* De voortgang staat links: gecentreerd schoof elk langer staplabel de hele pil opzij. */
 .chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.chat-statusrij .run-progress-group { align-self: stretch; }
+/* Bovenaan de rij, niet gecentreerd (#599): de wachtregel komt er tijdens het antwoord onder, en gecentreerd
+   schoof de pil dan 8px omhoog. Pil plus regel (44px) passen in de 50px, dus de rij groeit niet. */
+.chat-statusrij .run-progress-group { align-self: stretch; margin-bottom: auto; }
 .chat-statusrij .run-progress { margin: 0 0 6px; }
 .chat-statusrij .run-progress-note { margin: -4px 0 6px; padding-inline: 11px; }
 .make-rapport-btn {
@@ -1717,8 +1719,10 @@ html.dark .suggested-btn:hover {
 }
 .run-progress-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 .run-progress-step { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* What to expect while a heavy step runs (#547): plain text under the timer, not part of it. */
+/* What to expect during a heavy or slow run (#547, #599): text under the timer, not part of it. The line is a
+   status region that is there from the start; empty it takes no room. */
 .run-progress-note { margin: -4px 0 8px 44px; padding-inline: 11px; color: var(--muted-text); font-size: .78rem; }
+.run-progress-group .run-progress-note:empty { margin: 0; }
 @media (max-width: 768px) { .run-progress, .run-progress-note { margin-left: 8px; } }
 .report-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; }
 .report-progress-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
