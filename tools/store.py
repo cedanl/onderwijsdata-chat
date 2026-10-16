@@ -44,6 +44,15 @@ ONVOLLEDIG = (
     "voor aantallen uit RIO: gebruik DUO of CBS."
 )
 
+# What a report or dashboard tells its reader about a source it holds one page of (#578). For the reader,
+# like csv_export.ONVOLLEDIG_EXPORT; ONVOLLEDIG above instructs the model. `aantal` is AFGEKAPT_AANTAL or
+# empty when the row count is unknown; `waar` is "rapport" or "dashboard".
+AFGEKAPT = (
+    "de app haalde één pagina van de bron op{aantal}, niet de hele bron; "
+    "rijen buiten die pagina ontbreken in dit {waar}."
+)
+AFGEKAPT_AANTAL = " ({rijen} rijen)"
+
 
 def rijtelling(n: int, complete: bool) -> dict:
     """Rijtelling onder een naam die past: een afgekapte pagina heeft geen totaal (#177, #186, #5)."""

@@ -18,6 +18,7 @@ from agent.dashboard import (
 from agent.session_data import DATA_WEG
 from core.errors import Gebruikersfout
 from tools import store
+from tools.store import KeyMeta
 
 
 class TestBuildDatasetContext:
@@ -81,6 +82,23 @@ class TestBuildDatasetContext:
         [ds] = build_dataset_context(session)["datasets"]
 
         assert ds["herkomst"] == [call]
+
+    def test_says_whether_each_dataset_is_the_whole_source(self):
+        """#578: a report or dashboard has to know that a key is one page of its source (#186)."""
+        store.put("cbs:85425NED", pd.DataFrame({"a": [1, 2]}), KeyMeta(bron="cbs", dataset="85425NED", volledig=False))
+        store.derive("cbs:85425NED", "cbs:85425NED:aa", pd.DataFrame({"a": [1]}))
+        store.put("cbs:85423NED", pd.DataFrame({"a": [1]}), KeyMeta(bron="cbs", dataset="85423NED"))
+        store.put("rio:erkenningen", pd.DataFrame({"a": [1]}))
+        session = {"data_keys": ["cbs:85425NED", "cbs:85425NED:aa", "cbs:85423NED", "rio:erkenningen"]}
+
+        volledig = {ds["data_key"]: ds["volledig"] for ds in build_dataset_context(session)["datasets"]}
+
+        assert volledig == {
+            "cbs:85425NED": False,
+            "cbs:85425NED:aa": False,
+            "cbs:85423NED": True,
+            "rio:erkenningen": True,
+        }
 
     def test_includes_instelling(self):
         context = build_dataset_context({"chat_settings": {"instelling": "Hogeschool Utrecht"}})

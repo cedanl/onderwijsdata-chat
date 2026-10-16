@@ -21,6 +21,7 @@ import plotly.io as pio
 
 from agent import manifest
 from agent.aanspreekvorm import in_je_vorm
+from agent.afkapping import afkappingsregels
 from agent.antwoordtaal import taal
 from agent.dashboard import (
     _build_recipe,
@@ -214,7 +215,8 @@ async def generate(
             figuurbronnen.append(figuurbron((call.args or {}).get("data_key")))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
-        spec = _parse_spec_from_response(text, figures, context, author, figuurbronnen)
+        # De controles oordelen over wat het model schreef, niet over het voorbehoud uit code (#578).
+        spec = _parse_spec_from_response(text, figures, context, author, figuurbronnen, met_voorbehoud=False)
         return report_problems(spec, figures, [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs)])
 
     result = await tool_loop(
@@ -288,11 +290,15 @@ def _parse_spec_from_response(
     context: dict,
     author: str | None = None,
     figuurbronnen: list[dict | None] | None = None,
+    *,
+    met_voorbehoud: bool = True,
 ) -> ReportSpec:
     """Parse the LLM response into a ReportSpec.
 
     `figuurbronnen` is per figuur de bronregel uit code (#569), in dezelfde volgorde als
-    `figures_json`; een figuur zonder regel krijgt `bron: None`.
+    `figures_json`; een figuur zonder regel krijgt `bron: None`. `met_voorbehoud` zet per
+    afgekapte laadkey het voorbehoud uit code vooraan in `beantwoordt_niet` (#578); de controle
+    in `generate` zet het uit.
     """
     spec_data: dict = {}
     with contextlib.suppress(json.JSONDecodeError, ValueError):
@@ -338,6 +344,11 @@ def _parse_spec_from_response(
             *(f"{v['titel']} {v['toelichting']} {v['figure_json']}" for v in visualisaties),
         ]
     )
+    # Na de rapporttekst: het voorbehoud is geen modeltekst en haalt geen definitie binnen.
+    if met_voorbehoud:
+        beantwoordt_niet = _voorbehoud_vooraan(
+            afkappingsregels(context.get("datasets", []), "rapport"), beantwoordt_niet
+        )
 
     return ReportSpec(
         title=title,
@@ -360,6 +371,13 @@ def _conclusie(tekst: str) -> str:
     notatie van het model. Zonder de stappen van de run: codes en jaren herkent `nl_notatie` aan hun vorm
     en het woord ervoor; de grondingscontrole leest 248930 en 248.930 als hetzelfde getal."""
     return in_je_vorm(tekst if taal(tekst) == "en" else nl_notatie(tekst))
+
+
+def _voorbehoud_vooraan(regels: list[str], items):
+    """De regels uit code vóór wat het model als niet beantwoord noemde; zonder regels blijft dat zoals het was."""
+    if not regels:
+        return items
+    return [*regels, *(items if isinstance(items, list) else [items])]
 
 
 def _lijst_in_je_vorm(items):
