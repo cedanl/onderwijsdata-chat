@@ -26,7 +26,7 @@ from tools.catalog import (
 )
 from tools.cbs import get_cbs_data, get_cbs_dimension
 from tools.duo import get_duo_data
-from tools.ho_markers import noemt_ho
+from tools.ho_markers import beurtvraag, noemt_ho
 from tools.rio import get_rio_data
 
 _HO = {
@@ -835,7 +835,7 @@ def test_de_poort_beslist_op_het_record_niet_op_een_id_in_de_zoekterm(catalogus,
     ("vraag", "verwacht"),
     [
         ("doorstroom vwo naar wo", "85566NED"),
-        ("Hoeveel havo- en vwo-leerlingen verwacht de prognose tot 2030?", "voprognoses"),
+        ("Hoeveel havo- en vwo-leerlingen verwacht de prognose tot 2030, als instroom voor hbo en wo?", "voprognoses"),
         ("aansluiting hbo/wo: hoeveel vo-leerlingen per niveau wonen in provincie Utrecht?", "85380NED"),
     ],
 )
@@ -843,6 +843,20 @@ def test_met_ho_marker_is_de_vo_contextbron_vindbaar_met_etiket(catalogus, vraag
     assert noemt_ho(vraag)
 
     treffer = next(t for t in _treffers(search_catalog(vraag)) if scopeprofiel.dataset_id(t) == verwacht)
+    assert treffer["context"] == _ETIKET
+
+
+# De poort beslist op de vraag van de gebruiker, niet op de zoekterm van het model (#597).
+def test_het_model_opent_de_poort_niet_met_een_ho_woord_in_de_zoekterm(catalogus):
+    with beurtvraag("Hoeveel leerlingen zitten er op het vwo?"):
+        resultaat = search_catalog("vwo leerlingen hbo doorstroom")
+    assert not _noemt_vo_context(resultaat, "vwo leerlingen hbo doorstroom")
+
+
+def test_een_ho_vraag_vindt_de_vo_context_ook_zonder_ho_woord_in_de_zoekterm(catalogus):
+    with beurtvraag("Hoeveel vwo-leerlingen stromen door naar het wo?"):
+        treffers = _treffers(search_catalog("doorstroom vwo"))
+    treffer = next(t for t in treffers if scopeprofiel.dataset_id(t) == "85566NED")
     assert treffer["context"] == _ETIKET
 
 

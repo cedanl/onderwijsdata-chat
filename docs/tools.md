@@ -309,12 +309,13 @@ beslist, de package meldt alleen wat ze kan lezen. De interne bronfilter `source
 `rio` (alleen RIO), `duo` (alleen DUO), `riodata` (alles uit de riodata-package) of `both`.
 
 De vijf vo-bronnen in `HO_CONTEXT` (`tools/scopeprofiel.py`, epic #554) zitten achter een zoekpoort in code
-(`_zoekbaar` in `tools/catalog.py`, #557): ze komen alleen in de resultaten als `ho_markers.noemt_ho` waar is voor de
-zoekterm die het model meestuurt, niet voor de vraag van de gebruiker. Ho-woorden zijn hbo, wo, ho, hoger onderwijs,
-havo, vwo, hogeschool en universiteit (#556). Zo'n hit draagt het veld `context` met de waarde
-`vo-context voor ho: leerlingen in het voortgezet onderwijs, geen studenten`; de bronregel zegt "…, vo-context voor ho".
-De poort heeft grenzen: havo en vwo openen haar ook voor een zuivere vo-vraag, de maatkaart bij een vage vraag die ho noemt
-(`agent/scopevraag.maatvraag`) toont het label niet, en met een dataset-ID laadt de chat de data ook zonder ho-woord. Zie
+(`_zoekbaar` in `tools/catalog.py`, #557): ze komen alleen in de resultaten als `ho_markers.ho_poort` waar is. Die
+kijkt naar de vraag van de gebruiker, niet naar de zoekterm die het model meestuurt (#597): `run()` zet de vraag per
+beurt (`ho_markers.beurtvraag`), bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent. Buiten
+de chat (MCP) beslist de zoekterm. Ho-woorden zijn hbo, wo, ho, hoger onderwijs, hogeschool en universiteit; havo en vwo
+niet, want dat is vo (#597). Zo'n hit draagt het veld `context` met de waarde
+`vo-context voor ho: leerlingen in het voortgezet onderwijs, geen studenten`; de bronregel en de maatkaart zeggen
+"…, vo-context voor ho". Met een dataset-ID laadt de chat de data ook zonder ho-woord. Zie
 [Vo-context voor ho](databronnen.md#vo-context-voor-ho).
 
 ---
@@ -582,7 +583,7 @@ de chat haar kan beantwoorden:
   code `C0001`, "sub-resource") en geen dataset bij zijn ID (`aangeboden-opleidingen`, `85423NED`);
 - ze staat op zichzelf: een sjabloonvraag als "Hoe verhoudt dit zich tot andere jaren?" of "… in de data?" valt af;
 - ze gaat niet over po, so of vo ("BO-opleidingen", vmbo, havo); bij een vo-bron uit `HO_CONTEXT` blijft een vraag
-  die ook het hoger onderwijs noemt (`noemt_ho`, dezelfde ho-woorden als de zoekpoort, dus ook havo en vwo);
+  die ook het hoger onderwijs noemt (`noemt_ho`, dezelfde ho-woorden als de zoekpoort, dus niet havo of vwo);
 - ze vraagt geen aantal uit een RIO-register: `get_rio_data` levert één pagina en geen totaal;
 - `search_catalog` vindt met de vraag haar eigen dataset terug.
 

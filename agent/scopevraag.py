@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 
 from data.instellingen import get_all
-from tools import catalog, instelling
+from tools import catalog, instelling, scopeprofiel
 
 from .interpretatie import is_vaag
 
@@ -209,7 +209,9 @@ def maatvraag(vraag: str) -> Kaart | None:
         return None
     opties = []
     for record in records:
-        optie: dict = {"label": record["titel"]}
+        # Een vo-contextbron noemt het deel, zoals in een bronregel en een suggestie (#557, #597).
+        label = f"{record['titel']}, {scopeprofiel.HO_CONTEXT_DEEL}" if "context" in record else record["titel"]
+        optie: dict = {"label": label}
         if beschrijving := _beschrijving(record):
             optie["beschrijving"] = beschrijving
         opties.append(optie)

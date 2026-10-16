@@ -126,8 +126,8 @@ _HO_DOORSTROOM = [v for v in VRAGEN if set(v["geaccepteerd"]) & set(scopeprofiel
 # De voorbeelden uit #559, met het record dat ze moet beantwoorden.
 _VOORBEELDEN = {
     "Hoeveel vwo-leerlingen stromen door naar het wo?": "85566NED",
-    "Hoeveel havo-geslaagden zijn er per regio?": "85382NED",
-    "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030?": "voprognoses",
+    "Hoeveel havo-geslaagden zijn er per regio, als toekomstige hbo-studenten?": "85382NED",
+    "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030, als toekomstige instroom in het wo?": "voprognoses",
 }
 
 
@@ -141,8 +141,9 @@ def test_ho_doorstroomvragen_zijn_ho_vragen_met_alleen_vo_context_als_label():
 
 
 def test_ho_doorstroomvragen_openen_de_zoekpoort():
-    """Zonder ho-marker (#557) blijft het label weg: dan meet de vraag de poort, niet de vindbaarheid."""
-    dicht = [(v["id"], tekst) for v in _HO_DOORSTROOM for tekst in (v["zoekinput"], v["vraag"]) if not noemt_ho(tekst)]
+    """Zonder ho-marker (#557) blijft het label weg: dan meet de vraag de poort, niet de vindbaarheid.
+    De poort beslist op de vraag van de gebruiker, niet op de zoekinput (#597)."""
+    dicht = [(v["id"], v["vraag"]) for v in _HO_DOORSTROOM if not noemt_ho(v["vraag"])]
     assert dicht == []
 
 

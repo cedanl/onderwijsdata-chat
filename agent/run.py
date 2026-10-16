@@ -9,7 +9,7 @@ import plotly.io as pio
 from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, SCHEMAS
+from tools import LABELS, SCHEMAS, ho_markers
 from tools.csv_export import export_key
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -221,9 +221,23 @@ def tools_for(session: dict) -> list[dict]:
     return [t for t in SCHEMAS if t["function"]["name"] != TOOL_CLARIFY_SCOPE]
 
 
+def _tekst(content) -> str:
+    return (
+        " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+        if isinstance(content, list)
+        else str(content)
+    )
+
+
 def _laatste_vraag(messages: list[dict]) -> str:
-    raw = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
-    return " ".join(b.get("text", "") for b in raw if isinstance(b, dict)) if isinstance(raw, list) else str(raw)
+    return _tekst(next((m["content"] for m in reversed(messages) if m.get("role") == "user"), ""))
+
+
+def _poortvraag(messages: list[dict], session: dict) -> str:
+    """De tekst waarop de zoekpoort voor vo-context beslist (#597): de vraag van de gebruiker, bij een keuze op
+    een verduidelijkingsvraag samen met de vraag die ze afbakent (een keuze als "2023/24" noemt zelf niets)."""
+    vragen = [_tekst(m["content"]) for m in messages if m.get("role") == "user"]
+    return " ".join(vragen[-(session.get("clarify_rondes", 0) + 1) :])
 
 
 def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
@@ -566,36 +580,38 @@ async def run(
     beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
-    async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
-        try:
-            async with asyncio.timeout(box.afbreken_s):
-                result = await tool_loop(
-                    history,
-                    model=chosen_model,
-                    tools=tools_for(session),
-                    emit=emit,
-                    stop_event=stop,
-                    system=system,
-                    stream_text=True,
-                    on_llm_start=lambda: emit({"type": "message_start"}),
-                    on_tool_result=partial(_bewaar_stap, session, emit),
-                    tool_limits=_TOOL_LIMITS,
-                    halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
-                    max_iterations=MAX_TOOL_ITERATIONS,
-                    max_result_chars=_MAX_TOOL_RESULT_CHARS,
-                    check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
-                    correction=_correction,
-                    on_correction=partial(_intrekken, emit),
-                    wrap_up=AFRONDEN,
-                )
-        except TimeoutError:
-            # Vastgelopen aanroep die het stopsignaal niet zag.
-            result = LoopResult(aborted="tools")
-        except Exception:
-            # Bijvoorbeeld een rate limit na alle pogingen: wat al opgehaald is, blijft in het
-            # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
-            messages.extend(afgeronde_stappen(history[initial_history_len:]))
-            raise
+    # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597).
+    with ho_markers.beurtvraag(_poortvraag(messages, session)):
+        async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
+            try:
+                async with asyncio.timeout(box.afbreken_s):
+                    result = await tool_loop(
+                        history,
+                        model=chosen_model,
+                        tools=tools_for(session),
+                        emit=emit,
+                        stop_event=stop,
+                        system=system,
+                        stream_text=True,
+                        on_llm_start=lambda: emit({"type": "message_start"}),
+                        on_tool_result=partial(_bewaar_stap, session, emit),
+                        tool_limits=_TOOL_LIMITS,
+                        halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
+                        max_iterations=MAX_TOOL_ITERATIONS,
+                        max_result_chars=_MAX_TOOL_RESULT_CHARS,
+                        check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
+                        correction=_correction,
+                        on_correction=partial(_intrekken, emit),
+                        wrap_up=AFRONDEN,
+                    )
+            except TimeoutError:
+                # Vastgelopen aanroep die het stopsignaal niet zag.
+                result = LoopResult(aborted="tools")
+            except Exception:
+                # Bijvoorbeeld een rate limit na alle pogingen: wat al opgehaald is, blijft in het
+                # gesprek, zodat een nieuwe poging erop voortbouwt (#431).
+                messages.extend(afgeronde_stappen(history[initial_history_len:]))
+                raise
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
         await emit(box.melding())

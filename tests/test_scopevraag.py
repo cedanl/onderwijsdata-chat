@@ -13,7 +13,7 @@ import pytest
 
 from agent import scopevraag as module
 from agent.scopevraag import Kaart, maatvraag, plaatsvraag, scopevraag
-from tools import instelling
+from tools import instelling, scopeprofiel
 
 _REGISTER = [
     {"naam": "Hogeschool Utrecht", "type": "hbo", "aliassen": ["HU"]},
@@ -165,6 +165,27 @@ def test_een_thema_zonder_maat_vraagt_de_maat_uit_de_catalogus():
     assert (
         "beschrijving" not in per_label["Welzijn van studenten; regio"]
     )  # een lange samenvatting hoort niet op een knop
+
+
+def test_een_vo_contextoptie_op_de_maatkaart_draagt_het_etiket():
+    """Elke plek die een HO_CONTEXT-bron noemt, zegt dat het vo-context voor ho is (#597, punt 4)."""
+    records = [
+        {"id": "85422NED", "titel": "Hbo en wo; vooropleiding eerstejaars", "samenvatting": None},
+        {
+            "id": "85566NED",
+            "titel": "Vo; doorstroom en uitstroom",
+            "samenvatting": None,
+            "context": scopeprofiel.HO_CONTEXT_ETIKET,
+        },
+    ]
+    with patch("tools.catalog.kandidaten", return_value=records):
+        kaart = maatvraag("Aansluiting vo-hbo?")
+
+    assert kaart is not None
+    assert [o["label"] for o in kaart.opties] == [
+        "Hbo en wo; vooropleiding eerstejaars",
+        "Vo; doorstroom en uitstroom, vo-context voor ho",
+    ]
 
 
 def test_minder_dan_twee_records_is_geen_kaart():

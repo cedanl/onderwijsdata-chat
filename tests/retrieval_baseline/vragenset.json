@@ -609,13 +609,13 @@
       "id": "hbo-25",
       "sector": "hbo",
       "reeks": "ontwikkel",
-      "vraag": "Hoeveel havo-geslaagden zijn er per regio?",
+      "vraag": "Hoeveel havo-geslaagden zijn er per regio, als toekomstige hbo-studenten?",
       "zoekinput": "havo geslaagden regio",
       "geaccepteerd": ["85382NED"],
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom. 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85381NED heeft geen regio."
+      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom; de vraag noemt het hbo, want havo of vwo alleen opent de zoekpoort niet (#597). 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85381NED heeft geen regio."
     },
     {
       "id": "hbo-26",
@@ -970,13 +970,13 @@
       "id": "wo-27",
       "sector": "wo",
       "reeks": "test",
-      "vraag": "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030?",
+      "vraag": "Hoe ontwikkelt het aantal vwo-leerlingen zich tot 2030, als toekomstige instroom in het wo?",
       "zoekinput": "vwo leerlingen prognose",
       "geaccepteerd": ["voprognoses"],
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): de vwo-leerlingen van straks zijn de toekomstige wo-instroom. voprognoses: PROGNOSEAANTALLEN per ONDERWIJSNIVEAU (VWO_) en JAAR (2024-2043); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85380NED telt alleen huidige leerlingen."
+      "toelichting": "Ho-doorstroom (#559): de vwo-leerlingen van straks zijn de toekomstige wo-instroom; de vraag noemt het wo, want havo of vwo alleen opent de zoekpoort niet (#597). voprognoses: PROGNOSEAANTALLEN per ONDERWIJSNIVEAU (VWO_) en JAAR (2024-2043); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85380NED telt alleen huidige leerlingen."
     },
     {
       "id": "wo-28",
