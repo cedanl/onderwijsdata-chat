@@ -65,6 +65,13 @@ _HOOGTE_RAND = 130  # titel, waardeas en astitel
 _MIN_HOOGTE = 340  # de standaardhoogte van een grafiek in de chat
 _MAX_HOOGTE = 1200
 
+# Een waardelabel staat boven zijn punt (#22). Het label van het hoogste punt viel boven het plotvlak weg,
+# en een label op de eerste of laatste x-waarde werd aan de zijkant afgeknipt (#579). De waardeas loopt
+# daarom door tot boven het hoogste label: een deel van het waardebereik, zodat het op elke hoogte klopt
+# (op een plotvlak van 160 px, een telefoon, ruim 20 px: de hoogte van een label). Naar binnen wijzende
+# randlabels botsten op een telefoon met hun buurlabel, vandaar mag een lijnlabel buiten het plotvlak staan.
+_LABEL_KOPRUIMTE = 0.15
+
 _TIME_KEYWORDS = {
     "JAAR",
     "STUDIEJAAR",
@@ -213,6 +220,25 @@ def _hoogte(categorieen: int, staven_per_rij: int, marge_boven: int) -> int:
     return max(_MIN_HOOGTE, min(_MAX_HOOGTE, hoogte))
 
 
+def kopruimte(reeksen: list[dict]) -> float | None:
+    """De waarde tot waar de waardeas moet lopen, zodat het label boven het hoogste punt in het plotvlak
+    staat (#579). `reeksen` zijn traces als dict (y, text); alleen reeksen met labels tellen.
+
+    Create_plot gebruikt dit, en het bijsnijden van een rapportgrafiek (#385) opnieuw.
+    """
+    getallen = [
+        y
+        for r in reeksen
+        if r.get("text") is not None
+        for y in r.get("y") or []
+        if isinstance(y, int | float) and not isinstance(y, bool) and not _is_missing(y)
+    ]
+    if not getallen:
+        return None
+    hoog, laag = max(getallen), min(getallen)
+    return hoog + _LABEL_KOPRUIMTE * ((hoog - laag) or abs(hoog) or 1)
+
+
 def _accentkleuren(ruw: list, labels: list, highlight: str) -> list[str]:
     """Per staaf: de accentkleur voor de uitgelichte categorie (code of woord), grijs voor de rest."""
     return [
@@ -251,6 +277,7 @@ def _add_trace(
                 mode="lines+markers" + ("+text" if text else ""),
                 text=text,
                 textposition="top center",
+                cliponaxis=False if text else None,
                 line={"color": color, "width": 2},
                 marker={"size": 5},
                 **common,
@@ -399,6 +426,10 @@ def create_plot(
         else:
             layout["xaxis"] = categorie_as
             layout["yaxis"] = waarde_as
+            if chart_type == "line":
+                kop = kopruimte([{"y": list(t.y or []), "text": t.text} for t in fig.data])
+                if kop is not None:
+                    waarde_as["autorangeoptions"] = {"include": [kop]}
 
     fig.update_layout(**layout)
     fig.update_layout(

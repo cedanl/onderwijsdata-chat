@@ -3,7 +3,7 @@ import { buildReportHtml } from '../reportHtml.js'
 import { buildDashboardHtml } from '../dashboardHtml.js'
 import { PLOTLY_URL } from '../plotlyBron'
 import { metThema } from '../reportThema'
-import { runPage, luminance, contrast } from './helpers/pageRun'
+import { runPage, runPageNaTekenen, luminance, contrast } from './helpers/pageRun'
 import { layout, data } from './fixtures/plotFigure'
 
 const fullSpec = {
@@ -38,7 +38,7 @@ describe('buildReportHtml', () => {
   // CH-34: the export's own 48 px top margin put a title note over the plot.
   it('keeps the top margin of a chart with a note under its title', () => {
     const layout = { title: { text: 'HO', subtitle: { text: 'Afgerond op 10-tallen' } }, margin: { t: 100 } }
-    const spec = { ...fullSpec, visualisaties: [{ titel: 'HO', figure_json: JSON.stringify({ data: [], layout }) }] }
+    const spec = { ...fullSpec, visualisaties: [{ titel: 'Studenten in het ho', figure_json: JSON.stringify({ data: [], layout }) }] }
     expect(buildReportHtml(spec)).toContain('margin:{t:100,')
     expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
   })
@@ -453,12 +453,12 @@ describe('grafiek op een telefoon (#571)', () => {
     expect(l.xaxis).toMatchObject({ title: { text: 'Studiejaar' }, type: 'category', showgrid: true })
   })
 
-  it('breekt lange namen op de y-as van liggende staven af en geeft de figuur hoogte per extra regel', () => {
+  it('breekt lange namen op de y-as van liggende staven af', () => {
     const { layout: l, data: d, id } = plotted(staven, 390)
     expect(l.yaxis.tickvals).toEqual(namen)
     expect(l.yaxis.ticktext).toEqual(['Hogeschool van Amsterdam', 'HAN University of<br>Applied Sciences', 'Avans'])
     expect(l.yaxis).toMatchObject({ autorange: 'reversed', automargin: true })
-    expect(d).toEqual(staven.data)
+    expect(d).toEqual([{ ...staven.data[0], textfont: { size: 11 } }])
     expect(id).toBe('rp0')
   })
 
@@ -528,5 +528,128 @@ describe('manifest (#345)', () => {
   it('zonder manifest geen verantwoordingsblok', () => {
     const html = buildReportHtml(fullSpec)
     expect(html).not.toContain('Verantwoording:')
+  })
+})
+
+describe('rapportgrafiek op een telefoon, restpunten (#579)', () => {
+  const noot = 'De aantallen zijn door CBS afgerond op 10-tallen: een<br>som, verschil of percentage daarvan is niet exact.'
+  const metTitel = (text, extra = {}) => ({
+    data: [{ type: 'scatter', mode: 'lines+markers+text', x: [2019, 2020], y: [2350, 2060], text: ['2.350', '2.060'] }],
+    layout: { title: { text, font: { size: 16, color: '#222' }, yref: 'container', yanchor: 'top', y: 0.98, ...extra }, margin: { t: 100, b: 50, l: 70, r: 20 } },
+  })
+  const rapport = (titel, fig) => buildReportHtml({ ...fullSpec, visualisaties: [{ titel, figure_json: JSON.stringify(fig) }] })
+  const getekend = (html, width) => {
+    const seen = runPage(html, { width })
+    expect(seen.errors).toEqual([])
+    return { data: seen.plots[0][1], layout: seen.plots[0][2] }
+  }
+  const vis = html => html.slice(html.indexOf('<div class="vis">'), html.indexOf('<div class="card"><div id="rp0"'))
+
+  describe('punt 1: de titel één keer', () => {
+    it('laat een figuurtitel die gelijk is aan de kop weg en zet de noot als tekst onder de kop', () => {
+      const html = rapport("Studenten mbo 3 handel 2019/'20-2025/'26", metTitel("Studenten mbo 3 handel 2019/'20–2025/'26", { subtitle: { text: noot } }))
+      expect(vis(html)).toMatch(/<h3 class="vis-title">[^<]*<\/h3>\s*<p class="vis-noot">De aantallen zijn door CBS afgerond op 10-tallen: een som, verschil of percentage daarvan is niet exact\.<\/p>/)
+      for (const width of [390, 1024]) {
+        const { layout: l } = getekend(html, width)
+        expect(l).not.toHaveProperty('title')
+        expect(l.margin.t).toBe(16)
+      }
+    })
+
+    it('negeert hoofdletters, witruimte, streepjes en een punt aan het eind', () => {
+      const html = rapport('Instroom  per jaar.', metTitel('instroom per jaar'))
+      expect(getekend(html, 390).layout).not.toHaveProperty('title')
+      expect(html).not.toContain('class="vis-noot"')
+    })
+
+    it('laat een figuurtitel die meer zegt dan de kop staan, met zijn noot', () => {
+      const html = rapport('Ingeschrevenen per hogeschool 2024/25', metTitel('Ingeschrevenen per hogeschool 2024/25 (afgerond op tientallen)', { subtitle: { text: noot } }))
+      const { layout: l } = getekend(html, 1024)
+      expect(l.title.text).toBe('Ingeschrevenen per hogeschool 2024/25 (afgerond op tientallen)')
+      expect(l.title.subtitle.text).toBe(noot)
+      expect(l.margin.t).toBe(100)
+      expect(html).not.toContain('class="vis-noot"')
+    })
+
+    it('houdt de figuurtitel als het model geen kop gaf (de kop is dan "Visualisatie 1")', () => {
+      const html = rapport('', metTitel('Instroom per jaar'))
+      expect(html).toContain('<h3 class="vis-title">Visualisatie 1</h3>')
+      expect(getekend(html, 1024).layout.title.text).toBe('Instroom per jaar')
+    })
+
+    it('zet de noot als platte tekst neer', () => {
+      const html = rapport('HO', metTitel('HO', { subtitle: { text: 'a<img src=x onerror=alert(1)>b "c"' } }))
+      expect(vis(html)).toContain('<p class="vis-noot">ab &quot;c&quot;</p>')
+      expect(html).not.toContain('<img src=x')
+    })
+
+    it('geeft de noot in een donker rapport een gedempte kleur', () => {
+      expect(rapport('HO', metTitel('HO', { subtitle: { text: noot } }))).toMatch(/html\.dark \.vis-noot\{color:#9CA3AF\}/)
+    })
+  })
+
+  describe('punt 2: jaartallen niet gekanteld', () => {
+    const jaren = (x, extra = {}) => ({
+      data: [{ type: 'scatter', mode: 'lines', x, y: x.map((_, i) => i) }],
+      layout: { title: { text: 'T' }, xaxis: { type: 'category', categoryorder: 'category ascending', ...extra } },
+    })
+    const tien = Array.from({ length: 10 }, (_, i) => 2015 + i)
+
+    it('toont op een telefoon om het andere jaar een label, met het laatste jaar erbij', () => {
+      expect(getekend(rapport('G', jaren(tien)), 390).layout.xaxis).toMatchObject({ tickmode: 'linear', tick0: 1, dtick: 2, type: 'category' })
+      const schooljaren = ["2019/'20", "2020/'21", "2021/'22", "2022/'23", "2023/'24", "2024/'25", "2025/'26"]
+      expect(getekend(rapport('G', jaren(schooljaren)), 390).layout.xaxis).toMatchObject({ tickmode: 'linear', tick0: 0, dtick: 2 })
+    })
+
+    it('slaat meer jaren over naarmate er meer zijn', () => {
+      const twintig = Array.from({ length: 20 }, (_, i) => `${2005 + i}/${String(6 + i).padStart(2, '0')}`)
+      const { xaxis } = getekend(rapport('G', jaren(twintig)), 390).layout
+      expect(xaxis.dtick).toBeGreaterThan(2)
+      expect((twintig.length - 1 - xaxis.tick0) % xaxis.dtick).toBe(0)
+    })
+
+    it('laat weinig jaren, namen, een breed scherm en een eigen tickkeuze met rust', () => {
+      expect(getekend(rapport('G', jaren([2023, 2024, 2025])), 390).layout.xaxis).not.toHaveProperty('dtick')
+      const namen = ['Avans', 'Fontys', 'HAN', 'HvA', 'HR', 'HU', 'Saxion', 'Windesheim', 'Zuyd', 'Inholland']
+      expect(getekend(rapport('G', jaren(namen)), 390).layout.xaxis).not.toHaveProperty('dtick')
+      expect(getekend(rapport('G', jaren(tien)), 1024).layout.xaxis).not.toHaveProperty('dtick')
+      expect(getekend(rapport('G', jaren(tien, { tickvals: [2015, 2024] })), 390).layout.xaxis).not.toHaveProperty('dtick')
+    })
+  })
+
+  describe('punt 3 en 4: het plotvlak groeit mee', () => {
+    const lijn = { data: [{ type: 'scatter', mode: 'lines', x: [1, 2], y: [1, 2] }], layout: { title: { text: 'T' } } }
+
+    it('maakt een te laag plotvlak op een telefoon minstens 220 px hoog', async () => {
+      const seen = await runPageNaTekenen(rapport('G', lijn), { plotH: 159 })
+      expect(seen.errors).toEqual([])
+      expect(seen.relayout).toEqual([{ height: 420 + 220 - 159 }])
+      expect(seen.height).toBe(`${420 + 220 - 159}px`)
+    })
+
+    it('laat een plotvlak dat hoog genoeg is, en een breed scherm, met rust', async () => {
+      expect((await runPageNaTekenen(rapport('G', lijn), { plotH: 240 })).relayout).toEqual([])
+      expect((await runPageNaTekenen(rapport('G', lijn), { width: 1024, plotH: 120 })).relayout).toEqual([])
+    })
+
+    it('geeft elke rij liggende staven ruimte voor de langste afgebroken naam', async () => {
+      const namen = Array.from({ length: 12 }, (_, i) => (i === 3 ? 'HAN University of Applied Sciences' : `Hogeschool ${i}`))
+      const staven = {
+        data: [{ type: 'bar', orientation: 'h', x: namen.map((_, i) => i), y: namen }],
+        layout: { title: { text: 'T' }, yaxis: { autorange: 'reversed', automargin: true }, height: 466 },
+      }
+      // Twaalf rijen van twee regels: 12 × (2 × 14 + 4) = 384 px plotvlak.
+      const seen = await runPageNaTekenen(rapport('G', staven), { plotH: 300 })
+      expect(seen.errors).toEqual([])
+      expect(seen.relayout).toEqual([{ height: 420 + 384 - 300 }])
+    })
+  })
+
+  it('maakt waardelabels op een telefoon even groot als de ticks', () => {
+    const fig = { data: [{ type: 'scatter', mode: 'lines+text', x: [1, 2], y: [1, 2], text: ['1', '2'] }, { type: 'scatter', x: [1, 2], y: [2, 3] }], layout: {} }
+    const { data } = getekend(rapport('G', fig), 390)
+    expect(data[0].textfont).toEqual({ size: 11 })
+    expect(data[1]).not.toHaveProperty('textfont')
+    expect(getekend(rapport('G', fig), 1024).data).toEqual(fig.data)
   })
 })

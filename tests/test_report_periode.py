@@ -125,3 +125,12 @@ def test_zonder_genoemde_periode_blijft_de_reeks_heel():
     )
 
     assert len(_x(spec.visualisaties[0]["figure_json"])) == 11
+
+
+def test_na_het_bijsnijden_volgt_de_kopruimte_de_punten_die_blijven():
+    """De waardeas van een lijn met labels loopt tot boven het hoogste label (#579), ook na het bijsnijden."""
+    rijen = [{"STUDIEJAAR": j, "AANTAL": 5000 - 100 * (j - 2015)} for j in range(2015, 2026)]
+    fig = json.loads(bijgesneden(_figuur(rijen), (2020, 2024)))
+
+    hoog, laag = 4500, 4100
+    assert fig["layout"]["yaxis"]["autorangeoptions"]["include"] == [hoog + 0.15 * (hoog - laag)]

@@ -1,5 +1,6 @@
 import { topMarginOfJson } from './figureMargin'
 import { figureHeightOfJson } from './figureLayout'
+import { zonderDubbeleTitel } from './figureKop'
 import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
@@ -57,6 +58,7 @@ const DARK_RULES = [
   ['.def-term,.vis-title,.prose h1,.prose h2,.prose h3,.prose strong', 'color:#F9FAFB'],
   ['.def-desc,.vis-note,.scope-col li,.prose,.bronnen li', 'color:#D1D5DB'],
   ['.vis-bron', 'color:#9CA3AF'],
+  ['.vis-noot', 'color:#9CA3AF'],
   ['.vis-bron a', 'color:#60A5FA'],
   ['.scope-col li', 'border-bottom-color:#374151'],
   ['.def', 'border-bottom-color:#374151'],
@@ -72,8 +74,15 @@ const darkCss = voorvoegsel => DARK_RULES.map(([sel, decl]) => `${metVoorvoegsel
 // maakte de legenda breder dan de figuur, en bij liggende staven lieten de namen op de y-as 64 px plotvlak
 // over. Hieronder NARROW_PX: de titel afgebroken in regels en kleiner (de marge erboven groeit mee), de
 // legendatitel boven de items, kleinere tick- en legendaletters, en de namen op de y-as van liggende staven
-// afgebroken (de figuur krijgt per extra regel hoogte). Een titel met een noot hangt aan de bovenrand (CH-34);
-// afgebroken stak zijn eerste regel 4 px boven de figuur uit (gemeten), vandaar 10 px padding erboven.
+// afgebroken. Een titel met een noot hangt aan de bovenrand (CH-34); afgebroken stak zijn eerste regel 4 px
+// boven de figuur uit (gemeten), vandaar 10 px padding erboven.
+// Daarna (#579): jaartallen op een categorie-as kantelden 90° zodra ze niet naast elkaar pasten; dan staat om de
+// zoveel jaar een label, het laatste jaar altijd (_nx, de breedte geschat op 6,5 px per teken van 11 px). Namen
+// slaan niets over: elke naam hoort bij zijn staaf. Waardelabels krijgen de lettergrootte van de ticks (_nd). En na
+// het tekenen groeit de figuur zo veel als het plotvlak tekortkomt (_ng): titel, noot, ticks en een legenda van zes
+// reeksen lieten 160 px over, en een rij liggende staven met een naam van twee regels liet 1 px tussen de namen.
+// _fullLayout._size is de maat van het plotvlak; Plotly rekent zelf de rijen gelijk, dus elke rij krijgt de ruimte
+// van de langste naam.
 // Alleen kopieën, zoals DARK_FIGURE_JS (darkFigure.js); _o en _w van daar.
 const NARROW_PX = 640
 const NARROW_FIGURE_JS = `function _wr(s,n){var r=[],c='';String(s).split(' ').forEach(function(x){if(c&&(c+' '+x).length>n){r.push(c);c=x}else c=c?c+' '+x:x});if(c)r.push(c);return r.join('<br>')}
@@ -81,21 +90,32 @@ function _tf(a){return _w(a,{tickfont:_w(a.tickfont,{size:11})})}
 function _nl(l){l=_w(l);var t=l.title;if(_o(t)&&typeof t.text==='string'&&t.text.indexOf('<br>')<0){var s=_wr(t.text,42),n=s.split('<br>').length;l.title=_w(t,{text:s,font:_w(t.font,{size:14})});if(n>1){l.margin=_w(l.margin,{t:(l.margin&&l.margin.t||48)+17*(n-1)});if(t.yref==='container'&&t.yanchor==='top')l.title.pad=_w(t.pad,{t:10})}}
 if(_o(l.legend)){var lt=l.legend.title;l.legend=_w(l.legend,{font:_w(l.legend.font,{size:11})});if(_o(lt)&&lt.text||typeof lt==='string')l.legend.title=_w(_o(lt)?lt:{text:lt},{side:'top'})}
 Object.keys(l).forEach(function(k){if(/^[xy]axis\\d*$/.test(k)&&_o(l[k]))l[k]=_tf(l[k])});return l}
-function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,extra:0};
+function _ny(l,d){var y=_o(l.yaxis)?l.yaxis:{},c=[];if(y.tickvals||!Array.isArray(d)||!d.some(function(t){return _o(t)&&t.type==='bar'&&t.orientation==='h'}))return{layout:l,rij:0};
 d.forEach(function(t){if(_o(t)&&Array.isArray(t.y))t.y.forEach(function(v){if(typeof v==='string'&&c.indexOf(v)<0)c.push(v)})});
-var tt=c.map(function(v){return _wr(v,24)}),extra=tt.reduce(function(a,v){return a+v.split('<br>').length-1},0);if(!extra)return{layout:l,extra:0};
-return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),extra:extra}}`
+var tt=c.map(function(v){return _wr(v,24)}),r=Math.max.apply(null,[1].concat(tt.map(function(v){return v.split('<br>').length})));if(r<2)return{layout:l,rij:0};
+return{layout:_w(l,{yaxis:_w(y,{tickvals:c,ticktext:tt})}),rij:c.length*(r*14+4)}}
+function _nx(l,d,w){var a=l.xaxis,c=[];if(!_o(a)||a.type!=='category'||a.tickvals||a.dtick||!Array.isArray(d))return l;
+d.forEach(function(t){if(_o(t)&&t.orientation!=='h'&&Array.isArray(t.x))t.x.forEach(function(v){v=String(v);if(c.indexOf(v)<0)c.push(v)})});
+if(c.length<3||!c.every(function(v){return /^\\d{4}/.test(v)}))return l;
+var m=l.margin||{},p=Math.max(w-(m.l||60)-(m.r||24),1),n=Math.max.apply(null,c.map(function(v){return v.length})),k=Math.min(Math.ceil(c.length*(n*6.5+10)/p),c.length-1);
+return k>1?_w(l,{xaxis:_w(a,{tickmode:'linear',tick0:(c.length-1)%k,dtick:k})}):l}
+function _nd(d){return Array.isArray(d)?d.map(function(t){return _o(t)&&t.text!=null?_w(t,{textfont:_w(t.textfont,{size:11})}):t}):d}
+function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Math.max(220,rij)-s.h:0;if(tekort<1)return;var h=Math.round(e.getBoundingClientRect().height+tekort);e.style.height=h+'px';return Plotly.relayout(e,{height:h})}`
 
 // Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek. Een figuur die haar
 // eigen hoogte meebrengt (liggende staven) houdt die; de andere krijgen de basishoogte uit de CSS (.plot-auto),
 // op een telefoon hoger, zodat titel, ticklabels en legenda het plotvlak niet opeten (#571).
-function plotlyHtml(figureJson, id) {
+// Zonder titel (de kop erboven zegt het al, #579) is boven het plotvlak alleen ruimte nodig voor de bovenste tick.
+const TOP_ZONDER_TITEL = 16
+
+function plotlyHtml(figureJson, id, { titelWeg = false } = {}) {
   const eigen = figureHeightOfJson(figureJson, 0)
   const div = eigen ? `<div id="${id}" class="plot" style="height:${eigen}px">` : `<div id="${id}" class="plot plot-auto">`
+  const boven = titelWeg ? TOP_ZONDER_TITEL : topMarginOfJson(figureJson, 48)
   return `<div class="card">${div}</div></div>
     <script>(function(){${DARK_FIGURE_JS}
 ${NARROW_FIGURE_JS}
-var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_y.layout;if(_y.extra)_e.style.height=(_e.getBoundingClientRect().height+14*_y.extra)+'px'}Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});})()</script>`
+var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
 }
 
 export function buildReportHtml(spec, { instelling = '' } = {}) {
@@ -131,14 +151,17 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
       </div>`
     : ''
 
-  const visualisaties = (s.visualisaties || []).map((v, i) =>
-    `<div class="vis">
-       <h3 class="vis-title">${escapeHtml(v.titel || `Visualisatie ${i + 1}`)}</h3>
-       ${plotlyHtml(v.figure_json, `rp${i}`)}
+  const visualisaties = (s.visualisaties || []).map((v, i) => {
+    const kop = v.titel || `Visualisatie ${i + 1}`
+    const figuur = zonderDubbeleTitel(v.figure_json, kop)
+    return `<div class="vis">
+       <h3 class="vis-title">${escapeHtml(kop)}</h3>
+       ${figuur.noot ? `<p class="vis-noot">${escapeHtml(figuur.noot)}</p>` : ''}
+       ${plotlyHtml(figuur.figureJson, `rp${i}`, figuur)}
        ${bronregelHtml(v.bron)}
        ${v.toelichting ? `<p class="vis-note">${escapeHtml(v.toelichting)}</p>` : ''}
      </div>`
-  ).join('')
+  }).join('')
 
   const conclusieProse = mdToHtml(escapeHtml(s.conclusie || ''))
   const conclusieHtml = conclusieProse
@@ -198,6 +221,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
   .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
   .plot-auto{height:360px}
+  .vis-noot{margin:-6px 0 10px;color:#6B7280;font-size:.78rem;line-height:1.45}
   .vis-bron{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.5}
   .vis-bron a{color:#2563EB;text-decoration:underline}
   .vis-note{margin-top:14px;color:#4B5563;line-height:1.6;font-size:.92rem;background:#F9FAFB;border-left:3px solid #DBEAFE;padding:12px 16px;border-radius:0 6px 6px 0}
