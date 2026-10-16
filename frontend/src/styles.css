@@ -658,6 +658,15 @@ input, textarea { font: inherit; }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
+/* Code under its own step on a phone (#595), folded behind "Bekijk code". */
+.reasoning-step > div { min-width: 0; flex: 1; }
+.reasoning-step:has(.reasoning-step-code) { align-items: flex-start; }
+.reasoning-step:has(.reasoning-step-code) .reasoning-step-dot { margin-top: 6px; }
+.reasoning-step-code summary {
+  display: inline-flex; align-items: center; min-height: var(--tap-min-aa);
+  cursor: pointer; font-size: .75rem; color: var(--accent-text);
+}
+.reasoning-step-code summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 .telling { margin-top: 12px; font-size: .85rem; color: var(--gray-600); }
 .telling summary { cursor: pointer; }
 .telling[open] summary { margin-bottom: 4px; }

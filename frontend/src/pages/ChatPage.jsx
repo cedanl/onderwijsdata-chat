@@ -112,11 +112,35 @@ function lastAnswerText(messages) {
   return last?.role === 'assistant' && last.done ? last.content : ''
 }
 
+// The code of one step, behind "Bekijk code" (#595): one tap away, without filling the phone screen before the
+// answer. Long lines wrap instead of scrolling sideways.
+function StapCode({ code }) {
+  const thema = codeTheme()
+  return (
+    <details className="reasoning-step-code">
+      <summary>Bekijk code</summary>
+      <SyntaxHighlighter
+        language="python"
+        style={thema}
+        wrapLongLines
+        // The theme sets white-space: pre on the code element, which beats wrapLongLines.
+        codeTagProps={{ style: { ...thema['code[class*="language-"]'], whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } }}
+        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: '0.7rem', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </details>
+  )
+}
+
 function ReasoningPanel({ tools, tussentekst, isDone }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
+  // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
+  // screen before the answer. A wide screen keeps the block.
+  const codePerStap = useMediaQuery(NARROW_SCREEN)
   if (!tools?.length) return null
   const hasSnippets = tools.some(t => t.snippet)
-  
+
   return (
     <div className="reasoning-panel">
       <button type="button" className="reasoning-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
@@ -131,13 +155,15 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
       {open && (
         <div className="reasoning-content">
           {markRecovered(tools).map((t, i) => (
-            <ReasoningStep key={`${t.name}-${i}`} tool={t} />
+            <ReasoningStep key={`${t.name}-${i}`} tool={t}>
+              {codePerStap && t.snippet && <StapCode code={t.snippet} />}
+            </ReasoningStep>
           ))}
           {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
           {tussentekst?.map((tekst, i) => (
             <p key={i} className="reasoning-tussentekst">{tekst}</p>
           ))}
-          {hasSnippets && (
+          {hasSnippets && !codePerStap && (
             <div className="reasoning-snippets">
               {tools.map((t, i) => (
                 t.snippet && (
