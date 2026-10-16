@@ -5,8 +5,7 @@ import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
-import { topMargin } from '../figureMargin'
-import { figureHeight, legendBelow, legendRepeatsAxis } from '../figureLayout'
+import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -21,6 +20,7 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { useElementWidth } from '../hooks/useElementWidth'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
@@ -1055,44 +1055,25 @@ function parseFigure(figureJson) {
   }
 }
 
-function figureLayout(figure, dark) {
-  const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
-  const bg = dark ? '#1E293B' : '#fff'
-  const fontColor = dark ? '#E2E8F0' : '#374151'
-  const legendBg = dark ? 'rgba(30,41,59,0.9)' : 'rgba(255,255,255,0.8)'
-  const legendBorder = dark ? '#475569' : '#ddd'
-  return {
-    ...figure.layout,
-    paper_bgcolor: bg,
-    plot_bgcolor: bg,
-    margin: isMap ? { l: 0, r: 0, t: 32, b: 0 } : { l: 48, r: 24, t: topMargin(figure.layout, 32), b: 40 },
-    font: { family: 'system-ui, sans-serif', size: 12, color: fontColor },
-    legend: {
-      ...legendBelow(figure.layout?.legend),
-      bgcolor: legendBg,
-      bordercolor: legendBorder,
-      font: { color: fontColor },
-    },
-    ...(legendRepeatsAxis(figure.data) && { showlegend: false }),
-    autosize: true,
-  }
-}
-
 const NO_TRACES = []
 const PLOT_CONFIG = { responsive: true, displayModeBar: false }
+// The chart's width in steps of 16 px: its title is broken again when a phone turns (#587), not
+// for every pixel.
+const WIDTH_STEP = 16
 
 // react-plotly redraws when data, layout or config change by reference, and a redraw is costly. So
-// everything handed to <Plot> is derived once per figure and theme, not once per render.
+// everything handed to <Plot> is derived once per figure, theme and width step, not once per render.
 const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const dark = useDarkMode()
+  const [wrapRef, width] = useElementWidth(WIDTH_STEP)
   const figure = useMemo(() => parseFigure(figureJson), [figureJson])
-  const layout = useMemo(() => figure && figureLayout(figure, dark), [figure, dark])
+  const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
   if (!figure) return null
-  const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
+  const isMap = isMapFigure(figure)
   return (
-    <div style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
+    <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
       {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
       {csvProblem && (
         <div role="alert" style={{ fontSize: '.75rem', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
