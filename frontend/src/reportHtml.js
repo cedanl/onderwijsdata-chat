@@ -52,11 +52,38 @@ Object.keys(l).forEach(function(k){if(/^[xy]axis\\d*$/.test(k)&&_o(l[k]))l[k]=_w
 if(_o(l.legend))l.legend=_w(l.legend,{bgcolor:'rgba(31,41,55,0.8)',bordercolor:'#374151'});return l}
 function _dd(d){return Array.isArray(d)?d.map(function(t){if(!_o(t))return t;t=_w(t);if(_o(t.marker))t.marker=_r(t.marker,['color','colors']);if(_o(t.line))t.line=_r(t.line,['color']);return t}):d}`
 
+// De donkere regels, één keer. De themakeuze van de app wint van de OS-voorkeur (#568), zoals styles.css dat
+// voor de app doet: de viewer zet `dark` of `light` op <html> (reportThema.js), zonder klasse (modus 'systeem',
+// de download, een ouder rapport in een oudere viewer) volgt het rapport prefers-color-scheme.
+const DARK_RULES = [
+  ['body', 'color:#F9FAFB;background:#111827'],
+  ['.header', 'background:#1F2937;border-bottom-color:#374151'],
+  ['.header h1', 'color:#F9FAFB'],
+  ['.meta-chip,.meta-chip b', 'color:#9CA3AF'],
+  ['.card', 'background:#1F2937'],
+  ['.vraag', 'background:#1E3A5F;border-left-color:#3B82F6'],
+  ['.vraag .vraag-text', 'color:#DBEAFE'],
+  ['.vraag .section-label', 'color:#93C5FD'],
+  ['.section-label', 'color:#9CA3AF'],
+  ['.def-term,.vis-title,.prose h1,.prose h2,.prose h3,.prose strong', 'color:#F9FAFB'],
+  ['.def-desc,.vis-note,.scope-col li,.prose,.bronnen li', 'color:#D1D5DB'],
+  ['.vis-bron', 'color:#9CA3AF'],
+  ['.vis-bron a', 'color:#60A5FA'],
+  ['.scope-col li', 'border-bottom-color:#374151'],
+  ['.def', 'border-bottom-color:#374151'],
+  ['.vis-note', 'background:#111827;border-left-color:#1D4ED8'],
+  ['.manifest,.footer', 'border-top-color:#374151'],
+]
+
+// Elke selector in een lijst krijgt het voorvoegsel: `.a,.b` wordt `html.dark .a,html.dark .b`.
+const metVoorvoegsel = (voorvoegsel, selector) => selector.split(',').map(s => `${voorvoegsel} ${s}`).join(',')
+const darkCss = voorvoegsel => DARK_RULES.map(([sel, decl]) => `${metVoorvoegsel(voorvoegsel, sel)}{${decl}}`).join('\n    ')
+
 // Plotly zelf staat één keer in de head (plotlyBron.js, #486); hier alleen de grafiek.
 function plotlyHtml(figureJson, id) {
   return `<div class="card"><div id="${id}" style="height:${figureHeightOfJson(figureJson, 360)}px"></div></div>
     <script>(function(){${DARK_FIGURE_JS}
-var f=${scriptSafe(figureJson)},_d=window.matchMedia('(prefers-color-scheme:dark)').matches,_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('${id}',_d?_dd(f.data):f.data,_d?_dl(_l):_l,{responsive:true,displayModeBar:false});})()</script>`
+var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${topMarginOfJson(figureJson, 48)},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('${id}',_d?_dd(f.data):f.data,_d?_dl(_l):_l,{responsive:true,displayModeBar:false});})()</script>`
 }
 
 export function buildReportHtml(spec, { instelling = '' } = {}) {
@@ -172,24 +199,9 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
   @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0}}
+  ${darkCss('html.dark')}
   @media(prefers-color-scheme:dark){
-    body{color:#F9FAFB;background:#111827}
-    .header{background:#1F2937;border-bottom-color:#374151}
-    .header h1{color:#F9FAFB}
-    .meta-chip,.meta-chip b{color:#9CA3AF}
-    .card{background:#1F2937}
-    .vraag{background:#1E3A5F;border-left-color:#3B82F6}
-    .vraag .vraag-text{color:#DBEAFE}
-    .vraag .section-label{color:#93C5FD}
-    .section-label{color:#9CA3AF}
-    .def-term,.vis-title,.prose h1,.prose h2,.prose h3,.prose strong{color:#F9FAFB}
-    .def-desc,.vis-note,.scope-col li,.prose,.bronnen li{color:#D1D5DB}
-    .vis-bron{color:#9CA3AF}
-    .vis-bron a{color:#60A5FA}
-    .scope-col li{border-bottom-color:#374151}
-    .def{border-bottom-color:#374151}
-    .vis-note{background:#111827;border-left-color:#1D4ED8}
-    .manifest,.footer{border-top-color:#374151}
+    ${darkCss('html:not(.light)')}
   }
 </style>
 </head><body>

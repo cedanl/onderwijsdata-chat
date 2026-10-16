@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { metThema } from '../reportThema'
 
 function UserWorkbookPreview({ wb }) {
   const answer = wb.messages?.find(m => m.role === 'assistant' && m.content)?.content || ''
@@ -106,7 +107,8 @@ function NationaalPreview() {
   )
 }
 
-export default function WorkbookPreview({ wb }) {
+// mode: the app's theme choice; a report thumbnail follows it like the report itself (#568).
+export default function WorkbookPreview({ wb, mode }) {
   const [loaded, setLoaded] = useState(false)
   const wrapRef = useRef(null)
   const [scale, setScale] = useState(0.25)
@@ -140,7 +142,7 @@ export default function WorkbookPreview({ wb }) {
         {/* No scripts in a thumbnail (#427): each report would load and draw Plotly once per
             card, and with a hundred cards some stayed blank. The top of a report is static. */}
         <iframe
-          srcDoc={wb.htmlContent}
+          srcDoc={metThema(wb.htmlContent, mode)}
           sandbox=""
           loading="lazy"
           onLoad={() => setLoaded(true)}

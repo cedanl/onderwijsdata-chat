@@ -379,6 +379,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Een rapport volgt de weergavekeuze van de app (Instellingen: systeem, licht, donker) in plaats van alleen de
+  voorkeur van het besturingssysteem (#568). Wie in de app 'Licht' kiest op een donker systeem, kreeg een donker
+  rapport, en omgekeerd. Bij 'Systeem' blijft de OS-voorkeur beslissen, net als voor de download; een rapport
+  van vóór deze wijziging kent de keuze niet en blijft de OS-voorkeur volgen. Ook de voorbeeldkaarten in de
+  rapportenlijst volgen de keuze.
 - De inlogkaart staat op een telefoon in het midden van het zichtbare scherm (#499): de pagina volgt `100dvh`
   (zichtbare hoogte) met `100vh` als terugval, zodat de verborgen adresbalk de kaart niet naar de onderrand duwt.
 - Privacy-informatie in de app (#477): de pagina `/privacy` zegt wat naar de externe AI-dienst gaat, wat de server

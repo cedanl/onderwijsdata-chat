@@ -13,7 +13,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function RapportCard({ wb, onOpen, onDelete }) {
+function RapportCard({ wb, onOpen, onDelete, mode }) {
   return (
     <a
       href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
@@ -21,7 +21,7 @@ function RapportCard({ wb, onOpen, onDelete }) {
       onClick={e => { e.preventDefault(); onOpen() }}
     >
       <div className="wb-card-thumb">
-        <WorkbookPreview wb={wb} />
+        <WorkbookPreview wb={wb} mode={mode} />
       </div>
       <div className="wb-card-body">
         <div className="wb-card-title">{wb.title}</div>
@@ -80,6 +80,7 @@ function aantalTekst(zichtbaar, totaal, zoekt) {
 }
 
 export default function RapportenPage({ settings, feedbackEnabled = false }) {
+  const mode = settings?.mode || 'system'
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -119,6 +120,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
         onUpdate={handleUpdate}
         backLabel="Rapporten"
         feedbackEnabled={feedbackEnabled}
+        mode={mode}
       />
     )
   }
@@ -191,7 +193,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
               <h2 className="wb-gallery-group-title">{groep.label} <span>({groep.workbooks.length})</span></h2>
               <div className="wb-grid">
                 {groep.workbooks.map(wb => (
-                  <RapportCard
+                  <RapportCard mode={mode}
                     key={wb.id}
                     wb={wb}
                     onOpen={() => { setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }}
