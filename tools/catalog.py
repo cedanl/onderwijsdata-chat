@@ -706,8 +706,8 @@ def search_catalog(
     hint = _volzin_hint(query, query_words, filtered_words)
     termen, nodig = _drempel(query, query_words, filtered_words)
     words = _expand_query(filtered_words)
-    # De zoekpoort voor vo-context (#557): de zoekterm van het model moet ho noemen.
-    ho_vraag = ho_markers.noemt_ho(query)
+    # De zoekpoort voor vo-context (#557): de vraag van de gebruiker moet ho noemen, niet de zoekterm (#597).
+    ho_vraag = ho_markers.ho_poort(query)
 
     # De bron kiest de code, niet het model (#334): een instellingsvraag zoekt eerst in DUO en RIO,
     # waar instellingsdata staat, en valt pas daarna terug op CBS-benchmarkdata.

@@ -14,6 +14,7 @@ import logging
 import pytest
 
 from tools.catalog import search_catalog
+from tools.ho_markers import beurtvraag
 
 # Vooropleiding van eerstejaars: het ho-bestand 85422NED beantwoordt hem, niet de vo-doorstroom 85566NED (#559).
 _VOOROPLEIDING = "welke vooropleiding hebben eerstejaars hbo en wo (havo, vwo, mbo)"
@@ -47,9 +48,29 @@ GOED = [
     # Ho-doorstroom (#559), gemeten op 15 oktober 2026: vo-context voor ho (#554) achter de zoekpoort (#557).
     # Alleen vragen uit de ontwikkelreeks van tests/retrieval_baseline; de testreeks blijft buiten de gouden set.
     (_VOOROPLEIDING, "85422NED", 1),
-    ("havo geslaagden regio", "85382NED", 2),
-    ("Hoeveel havo-geslaagden zijn er per regio?", "85382NED", 8),
-    ("havo gediplomeerden herkomst", "85381NED", 4),
+]
+
+# Ho-doorstroom met de vraag van de gebruiker erbij (#597): de zoekterm van het model scoort, de vraag opent
+# de zoekpoort, zoals in de chat. (zoekterm, vraag van de gebruiker, doel-ID, maximale rang)
+HO_DOORSTROOM = [
+    (
+        "havo geslaagden regio",
+        "Hoeveel havo-geslaagden zijn er per regio, als toekomstige hbo-studenten?",
+        "85382NED",
+        2,
+    ),
+    (
+        "Hoeveel havo-geslaagden zijn er per regio, als toekomstige hbo-studenten?",
+        "Hoeveel havo-geslaagden zijn er per regio, als toekomstige hbo-studenten?",
+        "85382NED",
+        8,
+    ),
+    (
+        "havo gediplomeerden herkomst",
+        "Hoeveel havisten met een migratieachtergrond halen hun diploma, als instroom voor het hbo?",
+        "85381NED",
+        4,
+    ),
 ]
 
 # (query, doel-ID, maximale rang, gemeten rang bij de baseline)
@@ -79,10 +100,13 @@ def _zonder_instellingsregister(monkeypatch):
 def _ids(query: str) -> list[str]:
     logging.disable(logging.CRITICAL)
     try:
-        hits = json.loads(search_catalog(query, top_n=_TOP_N))
+        resultaat = search_catalog(query, top_n=_TOP_N)
     finally:
         logging.disable(logging.NOTSET)
-    return [h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") for h in hits]
+    # Niets gevonden is platte tekst, geen JSON: een vo-vraag zonder ho-woord vindt niets (#597).
+    if resultaat.startswith("no_match:"):
+        return []
+    return [h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") for h in json.loads(resultaat)]
 
 
 def _rang(query: str, doel: str) -> int | None:
@@ -94,6 +118,13 @@ def _rang(query: str, doel: str) -> int | None:
 def test_doel_staat_binnen_zijn_rang(query, doel, max_rang):
     rang = _rang(query, doel)
     assert rang is not None and rang <= max_rang, f"{doel} op rang {rang} (max {max_rang}) voor {query!r}"
+
+
+@pytest.mark.parametrize(("zoekterm", "vraag", "doel", "max_rang"), HO_DOORSTROOM)
+def test_ho_doorstroom_staat_binnen_zijn_rang_als_de_vraag_ho_noemt(zoekterm, vraag, doel, max_rang):
+    with beurtvraag(vraag):
+        rang = _rang(zoekterm, doel)
+    assert rang is not None and rang <= max_rang, f"{doel} op rang {rang} (max {max_rang}) voor {zoekterm!r}"
 
 
 @pytest.mark.parametrize(
@@ -131,6 +162,10 @@ BUITEN_PROFIEL = [
     # CBS-tabel over alle onderwijssoorten zonder sectorselectie (CH-03); 85701NED uit de
     # Assen-replay heeft die sinds #473 wel en staat in GOED.
     ("leerlingen en studenten onderwijssoort vanaf 1900", "37220"),
+    # Havo en vwo zijn vo (#597): zonder een ho-woord blijft de vo-context dicht, ook bij een directe vraag.
+    ("Hoeveel havo-geslaagden zijn er per regio?", "85382NED"),
+    ("havo geslaagden regio", "85382NED"),
+    ("Hoeveel leerlingen zitten er op het vwo?", "85380NED"),
 ]
 
 

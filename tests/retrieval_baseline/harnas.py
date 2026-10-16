@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 from core.catalogusversie import catalogusversie
 from tests.retrieval_baseline import meting
-from tools import catalog, instelling, scopeprofiel
+from tools import catalog, ho_markers, instelling, scopeprofiel
 
 MAP = Path(__file__).resolve().parent
 VRAGENSET = MAP / "vragenset.json"
@@ -166,11 +166,14 @@ class Meting:
 
 
 def zoek(invoer: str, vraag: dict, titels: dict[str, str]) -> tuple[list[str], float]:
-    """De ranglijst van search_catalog voor `invoer` met de parameters van de vraag, en de duur in ms."""
+    """De ranglijst van search_catalog voor `invoer` met de parameters van de vraag, en de duur in ms.
+
+    Zoals in de chat: de zoekpoort voor vo-context beslist op de vraag van de gebruiker, niet op `invoer` (#597)."""
     begin = time.perf_counter()
-    resultaat = catalog.search_catalog(
-        invoer, vraag.get("source", "both"), top_n=meting.TOP_N, geo_niveau=vraag.get("geo_niveau")
-    )
+    with ho_markers.beurtvraag(vraag["vraag"]):
+        resultaat = catalog.search_catalog(
+            invoer, vraag.get("source", "both"), top_n=meting.TOP_N, geo_niveau=vraag.get("geo_niveau")
+        )
     return ranking(resultaat, titels), (time.perf_counter() - begin) * 1000
 
 

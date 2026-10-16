@@ -91,14 +91,14 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 | `85382NED` (CBS) | Vo-gediplomeerden naar woonregio | 2011/'12-2024/'25 |
 | `voprognoses` (DUO) | Leerlingenprognose vo per instelling | 2024-2030 |
 
-- **Alleen bij een ho-vraag.** De zoekfunctie toont deze vijf alleen als de zoekterm het hoger onderwijs noemt: hbo, wo, ho, hoger onderwijs, havo, vwo, hogeschool of universiteit. Zonder zo'n woord blijven ze weg. Code beslist dat, op de zoekterm die het model meegeeft (niet op de vraag van de gebruiker); zie [`search_catalog`](tools.md#search_catalog).
+- **Alleen bij een ho-vraag.** De zoekfunctie toont deze vijf alleen als de vraag van de gebruiker het hoger onderwijs noemt: hbo, wo, ho, hoger onderwijs, hogeschool of universiteit. Havo en vwo tellen niet: dat is vo (#597). Zonder zo'n woord blijven ze weg. Code beslist dat, op de vraag van de gebruiker (bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent), niet op de zoekterm die het model meegeeft. Buiten de chat (MCP) is er geen gebruikersvraag en beslist de zoekterm. Zie [`search_catalog`](tools.md#search_catalog).
 - **Altijd met label.** Elke zoektreffer en elke bronvermelding noemt ze "vo-context voor ho": het gaat om leerlingen in het voortgezet onderwijs, niet om studenten.
 - **Verder geen po, so of vo.** Alle andere po-, so- en vo-bronnen blijven buiten het profiel, ook met een dataset-ID uit de vraag.
 
 **Grenzen.** De uitzondering is minder streng dan ze klinkt:
 
-- **havo en vwo openen de poort.** havo en vwo tellen als ho-woord (#556), dus een zuivere vo-vraag die havo of vwo noemt (zoals "Wat is het slagingspercentage op havo en vwo?") kan deze tabellen ook vinden en laden. Het label is dan de enige rem. Of dat zo blijft, is een open punt op epic #554.
-- **De keuzekaart toont het label niet.** Bij een vage vraag biedt de chat een keuzekaart met datasets als opties ("Welke maat bedoel je bij …?"). Noemt die vage vraag zelf het hoger onderwijs (ook havo of vwo), dan kan daar een vo-tabel staan met alleen haar titel ("Vo; …"), zonder "vo-context voor ho".
+- **Een vervolgvraag zonder ho-woord blijft dicht.** "En voor het vwo?" na een hbo-vraag noemt zelf geen ho; de poort kijkt alleen naar de vraag van deze beurt (#597).
+- **`85566NED` is slecht vindbaar.** Bij geen enkele doorstroomvraag stond hij in de top 15 (gemeten in #559); de andere vier worden wel gevonden. Niet bijgesteld zonder een echte vraag die hem mist (#597): dan eerst een testprompt in de retrieval-baseline.
 - **Een dataset-ID laadt zonder ho-woord.** De poort zit alleen in het zoeken: met een van deze vijf ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook als niemand het hoger onderwijs noemt.
 - **Alle vo-rijen.** De vier CBS-tabellen krijgen geen sectorselectie zoals de VSV-tabellen: `85566NED`, `85380NED`, `85381NED` en `85382NED` laden al hun vo-rijen (bij `85566NED` ook vso). Alleen het label zegt dat het context is.
 

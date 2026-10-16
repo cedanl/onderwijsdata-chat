@@ -55,7 +55,7 @@ _CBS = [
             "Hoeveel gediplomeerden telt elk DIPLOMATYPE?",
             "Hoeveel gediplomeerden per soort (HBO_BACHELOR)?",
             "Welke gediplomeerden hebben een lege eindeStudieDatum?",
-            "Hoeveel gediplomeerden hadden een havo-diploma?",
+            "Hoeveel hbo-gediplomeerden hadden een havo-diploma?",
         ],
     },
     {
@@ -182,12 +182,12 @@ def test_een_dataset_id_dat_een_gewoon_woord_is_telt_niet():
 
 def test_een_vraag_over_po_so_of_vo_valt_af(eigen_catalogus):
     vragen = vervolgvragen.beantwoordbare_vragen()
-    assert "Hoeveel gediplomeerden hadden een havo-diploma?" not in vragen["90001NED"]
+    assert "Hoeveel hbo-gediplomeerden hadden een havo-diploma?" not in vragen["90001NED"]
     assert vragen["duo-eerstejaars"] == ("Welke instellingen trekken de meeste eerstejaars?",)
 
 
 # Een vo-contextrecord (epic #554) laat een vraag over vo toe als ze ook hoger onderwijs noemt (#558).
-_HO_VRAAG = "Verschilt het slagingspercentage naar herkomst bij HAVO?"  # havo is een ho-marker (#556)
+_HO_VRAAG = "Verschilt de doorstroom van HAVO naar hbo naar herkomst?"  # hbo is de ho-marker; havo niet (#597)
 _ZONDER_HO = "Hoeveel VO-leerlingen stromen door naar een hoger niveau?"
 
 
@@ -234,7 +234,7 @@ def test_een_contextrecord_maakt_een_andere_vraag_niet_leesbaar(contextcatalogus
 
 
 def test_buiten_de_contextrecords_blijft_een_vo_vraag_met_ho_marker_vallen(contextcatalogus):
-    vraag = "Hoeveel gediplomeerden hadden een havo-diploma?"
+    vraag = "Hoeveel hbo-gediplomeerden hadden een havo-diploma?"
     assert noemt_ho(vraag) and not scopeprofiel.is_ho_context("90001NED")
 
     assert not vervolgvragen._leesbaar(vraag)

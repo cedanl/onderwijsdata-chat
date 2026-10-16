@@ -13,8 +13,8 @@ sectorselectie, en een record zonder besluit. Voor CBS en DUO geldt dezelfde reg
 De bronpackages mogen een bredere inventaris houden.
 
 Eén uitzondering (#554): de vo-bronnen in `HO_CONTEXT` geven een ho-vraag context. Ze vallen
-binnen het profiel, maar `catalog.search_catalog` toont ze alleen bij een vraag die ho noemt
-(`ho_markers.noemt_ho`), en elke treffer en bronregel noemt ze "vo-context voor ho".
+binnen het profiel, maar `catalog.search_catalog` toont ze alleen als de vraag van de gebruiker ho
+noemt (`ho_markers.ho_poort`, #597), en elke treffer, bronregel en maatkaartoptie noemt ze "vo-context voor ho".
 
 Een RIO-register over alle sectoren is alleen toegelaten als een filter de sector
 vastlegt (`SECTORFILTER`); die toets doet `sectorfilter_ontbreekt` vóór elke aanroep.
