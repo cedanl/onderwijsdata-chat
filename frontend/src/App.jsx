@@ -12,7 +12,7 @@ import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './consta
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
-import { volgInvoerFocus } from './invoerFocus'
+import { NavSlotContext } from './navSlot'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
 const ChatPage = lazy(() => import('./pages/ChatPage'))
@@ -57,6 +57,8 @@ function AppShell() {
   const [authLoading, setAuthLoading] = useState(true)
   const [settings, setSettings] = useState(loadSettings)
   const [showSettings, setShowSettings] = useState(false)
+  // De plek in de navbar waar een pagina op een telefoon zijn knoppen neerzet (#596).
+  const [navSlot, setNavSlot] = useState(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
@@ -204,22 +206,24 @@ function AppShell() {
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
         instelling={sramInstelling || settings.instelling}
         dashboardsEnabled={dashboardsEnabled}
+        slotRef={setNavSlot}
       />
       <main className="page-wrap">
-        <ErrorBoundary key={location.pathname}>
-          <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
-            <Routes>
-              <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
-              <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
-              <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
-              <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
+        <NavSlotContext.Provider value={navSlot}>
+          <ErrorBoundary key={location.pathname}>
+            <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
+              <Routes>
+                <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
+                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
+                <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
+                <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </NavSlotContext.Provider>
       </main>
-      <MobileTabs dashboardsEnabled={dashboardsEnabled} />
       {showSettings && (
         <SettingsModal
           settings={settings}
@@ -234,19 +238,6 @@ function AppShell() {
         />
       )}
     </>
-  )
-}
-
-function MobileTabs({ dashboardsEnabled }) {
-  // Verborgen zolang het invoerveld focus heeft, gewisseld na de lopende tik (#527, #584).
-  useEffect(() => volgInvoerFocus(document), [])
-  return (
-    <nav className="mobile-tabs">
-      <MobileTabBtn icon="home" label="Home" to="/" />
-      <MobileTabBtn icon="chat" label="Chat" to="/chat" />
-      <MobileTabBtn icon="rapporten" label="Rapporten" to="/rapporten" />
-      {dashboardsEnabled && <MobileTabBtn icon="dashboard" label="Dashboard" to="/dashboards" />}
-    </nav>
   )
 }
 
@@ -269,29 +260,4 @@ class ErrorBoundary extends Component {
     )
     return this.props.children
   }
-}
-
-const TAB_ICONS = {
-  home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
-  chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
-  rapporten: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></>,
-  dashboard: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></>,
-}
-
-function MobileTabBtn({ icon, label, to }) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
-  return (
-    <a
-      href={to}
-      className={`mobile-tab-btn${isActive ? ' active' : ''}`}
-      onClick={(e) => { e.preventDefault(); navigate(to) }}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {TAB_ICONS[icon]}
-      </svg>
-      {label}
-    </a>
-  )
 }

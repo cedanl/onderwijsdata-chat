@@ -41,14 +41,15 @@ function ExportDialog({ messages, save, onClose }) {
 }
 
 // The conversation as an audit file, with the code that reproduces each step (#366).
-export default function ConversationExport({ messages, save = saveFile }) {
+// onClose: de dialoog is dicht (geannuleerd of gedownload); het ⋯-menu in de navbar sluit dan ook (#596).
+export default function ConversationExport({ messages, save = saveFile, onClose }) {
   const [open, setOpen] = useState(false)
   return (
     <>
       <button type="button" className="export-conversation-btn" onClick={() => setOpen(true)}>
         Exporteer gesprek
       </button>
-      {open && <ExportDialog messages={messages} save={save} onClose={() => setOpen(false)} />}
+      {open && <ExportDialog messages={messages} save={save} onClose={() => { setOpen(false); onClose?.() }} />}
     </>
   )
 }

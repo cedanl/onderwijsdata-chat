@@ -8,6 +8,15 @@ import { persoonsgegevensMelding } from '../persoonsgegevens'
 import { refusalReason, sendBlockReason } from '../sendBlockReason'
 
 const NO_PREFILL = () => {}
+const NO_MODELS = []
+
+// Op een telefoon staat de privacyzin niet meer onder het veld (#596); de placeholder draagt hem, zonder
+// hoogte te kosten. Hij staat weg zodra je typt, maar de waarschuwing bij een persoonsgegeven (#478) blijft.
+export const PLACEHOLDER_COMPACT = 'Stel je vraag, zonder persoonsgegevens'
+function placeholderTekst(hasMessages, compact) {
+  if (compact) return PLACEHOLDER_COMPACT
+  return hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'
+}
 const REFUSED = 'refused'
 
 // The reason a tap brought up (#585), only while it is still why sending is blocked. A refused question
@@ -34,7 +43,7 @@ function autoResize(el) {
 export default function Composer({
   hasMessages, connected, busy, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
   onModelChange, onStop, onSubmit, max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
-  refusal = null, clearRefusal = NO_PREFILL,
+  refusal = null, clearRefusal = NO_PREFILL, compact = false,
 }) {
   const [input, setInput] = useState('')
   // The refused tap: { key } of its reason, a new object per tap (SendNotice restarts its time on it).
@@ -120,7 +129,7 @@ export default function Composer({
         className="chat-input"
         aria-label="Chatbericht"
         rows={1}
-        placeholder={hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'}
+        placeholder={placeholderTekst(hasMessages, compact)}
         value={input}
         maxLength={2 * max}
         aria-describedby={MESSAGE_COUNTER_ID}
@@ -131,7 +140,7 @@ export default function Composer({
       <ChatInputFooter
         connected={connected}
         busy={busy}
-        models={models}
+        models={compact ? NO_MODELS : models}
         selectedModel={selectedModel}
         onModelChange={onModelChange}
         onStop={onStop}

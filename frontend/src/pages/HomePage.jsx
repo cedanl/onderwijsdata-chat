@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
 import FeedbackLink from '../components/FeedbackLink'
+import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
@@ -136,7 +137,11 @@ export default function HomePage({ dashboardsEnabled = true, feedbackEnabled = f
               {feedbackEnabled && <FeedbackLink className="sources-link" />}
             </span>
           </div>
-          <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
+          {/* De disclaimer staat hier en op desktop onder het invoerveld; op een telefoon kost hij de chat te veel ruimte (#596). */}
+          <p className="home-disclaimer" style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, borderTop: '1px solid var(--gray-100)', paddingTop: 12, margin: 0, textAlign: 'center' }}>
+            Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING}
+          </p>
+          <p style={{ fontSize: '.75rem', color: 'var(--muted-text)', lineHeight: 1.6, margin: 0, textAlign: 'center' }}>
             Op deze tool is de{' '}
             <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.nl" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--muted-text)', textDecoration: 'underline' }}>
               Creative Commons ShareAlike Naamsvermelding 4.0-licentie

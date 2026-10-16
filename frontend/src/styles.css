@@ -55,6 +55,7 @@
   /* Tap targets (#490): 24x24 everywhere (WCAG 2.2 AA 2.5.8), 44x44 on touch screens (2.5.5). */
   --tap-min-aa: 24px;
   --tap-min: 44px;
+  --navbar-h: 64px;
 }
 
 /* ─── Dark mode ───────────────────────────────────────────── */
@@ -140,7 +141,7 @@ input, textarea { font: inherit; }
   background: var(--white);
   border-bottom: 1px solid var(--gray-200);
   position: sticky; top: 0; z-index: 100;
-  height: 64px;
+  height: var(--navbar-h);
 }
 .navbar .container { height: 100%; display: flex; align-items: center; justify-content: space-between; }
 .navbar-brand { display: flex; align-items: center; gap: 10px; }
@@ -172,6 +173,8 @@ input, textarea { font: inherit; }
   transition: background .15s;
 }
 .navbar-cta:hover { background: var(--blue-700); }
+/* Alleen op een telefoon (#596): menu-hamburger en pagina-knoppen in de navbar. */
+.navbar-menu-btn, .navbar-icon-btn, .navbar-pagina { display: none; }
 
 /* De inlogkaart staat in het midden van wat je ziet (#499): 100vh telt op een telefoon de verborgen
    adresbalk mee en duwt een gecentreerde kaart naar de onderrand; 100dvh volgt de zichtbare hoogte.
@@ -197,40 +200,6 @@ input, textarea { font: inherit; }
   display: none;
   position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 199;
 }
-.hamburger-btn {
-  display: none;
-  align-items: center; gap: 8px;
-  background: none; border: none; cursor: pointer; padding: 6px 8px;
-  color: var(--gray-700); border-radius: var(--radius-sm);
-  font-size: .85rem; font-weight: 600;
-  transition: background .15s;
-}
-.hamburger-btn:hover { background: var(--gray-100); }
-.chat-mobile-topbar {
-  display: none;
-  align-items: center;
-  padding: 0 8px; background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
-}
-
-/* ─── Mobile bottom tab bar ──────────────────────────────── */
-.mobile-tabs {
-  display: none;
-  position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--mobile-tabs-h);
-  background: var(--white); border-top: 1px solid var(--gray-200);
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
-  z-index: 100; justify-content: space-around;
-}
-.mobile-tab-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 4px 20px; border-radius: var(--radius-sm);
-  font-size: .7rem; font-weight: 500; color: var(--gray-500);
-  transition: all .15s;
-}
-.mobile-tab-btn svg { width: 22px; height: 22px; }
-.mobile-tab-btn.active { color: var(--accent-text); }
-
 /* ─── Pages ───────────────────────────────────────────────── */
 .page-wrap { flex: 1; display: flex; flex-direction: column; }
 
@@ -1367,9 +1336,9 @@ html.dark .send-notice:not(:empty) {
   animation: slideUp .3s ease;
 }
 /* Meerdere meldingen tegelijk (#521) liggen onder elkaar in plaats van op dezelfde plek, en
-   blijven op een smal scherm binnen beeld en boven de vaste tabbalk. */
+   blijven op een smal scherm binnen beeld. */
 .toast-stack {
-  position: fixed; right: 24px; bottom: calc(24px + var(--mobile-tabs-h, 0px));
+  position: fixed; right: 24px; bottom: 24px;
   max-width: calc(100vw - 48px); z-index: 999;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
@@ -1594,19 +1563,53 @@ html.dark .suggested-btn:hover {
 
 /* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  /* 52px houdt de tabknoppen boven de 44px-tap-grens en geeft 4px terug aan de chat (#527). */
-  :root { --mobile-tabs-h: calc(52px + max(6px, env(safe-area-inset-bottom))); }
-  .mobile-tabs { padding: 6px 0 max(6px, env(safe-area-inset-bottom)); }
   .hero h1 { font-size: 2.2rem; }
-  /* Keep content above the fixed tab bar instead of underneath it */
-  .page-wrap { padding-bottom: var(--mobile-tabs-h); }
-  .chat-layout { grid-template-columns: 1fr; height: calc(100dvh - 64px - var(--mobile-tabs-h)); }
+  .chat-layout { grid-template-columns: 1fr; height: calc(100dvh - var(--navbar-h)); }
   .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   .charts-grid { grid-template-columns: 1fr; }
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .navbar-nav { display: none; }
   .navbar .navbar-cta { display: none; }
-  .mobile-tabs { display: flex; }
+
+  /* Eén smalle bovenrij (#596): menu, merk en de knoppen van de pagina. Instellingen en uitloggen staan in het
+     menu; de tabbalk is weg en de gesprekkenbalk is in deze rij opgegaan. */
+  :root { --navbar-h: 52px; }
+  .navbar .container { padding-inline: 4px 8px; }
+  .navbar-brand { gap: 8px; }
+  .navbar-logo { width: 30px; height: 30px; }
+  .navbar-logo svg { width: 17px; height: 17px; }
+  .navbar-name { font-size: 1.1rem; }
+  .navbar-profile-btn { display: none !important; } /* de inline stijl zet display: flex */
+  .navbar-menu-btn, .navbar-icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer; color: var(--gray-700);
+    border-radius: var(--radius-sm); transition: background .15s; flex-shrink: 0;
+  }
+  .navbar-menu-btn:hover, .navbar-icon-btn:hover { background: var(--gray-100); }
+  .navbar-menu-btn svg, .navbar-icon-btn svg { width: 22px; height: 22px; }
+  .navbar-pagina { display: flex; align-items: center; gap: 0; }
+  .navbar-meer { position: relative; }
+
+  /* Het menu: onder de balk, over de pagina. De overlay vangt een tik ernaast op. */
+  .navbar-menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 150; }
+  .navbar-menu, .navbar-meer-menu {
+    position: absolute; z-index: 151; background: var(--white);
+    border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    padding: 6px; display: flex; flex-direction: column; min-width: 220px;
+  }
+  .navbar-menu { top: calc(var(--navbar-h) - 4px); left: 8px; right: 8px; max-width: 360px; }
+  .navbar-meer-menu { top: 100%; right: 0; }
+  .navbar-menu-item, .navbar-meer-menu .export-conversation-btn {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; text-align: left; width: 100%;
+    min-height: var(--tap-min); padding: 8px 12px; border: none; border-radius: var(--radius-sm);
+    background: none; color: var(--gray-800); font: inherit; font-size: .95rem; cursor: pointer; text-decoration: none;
+  }
+  .navbar-menu-item:hover, .navbar-meer-menu .export-conversation-btn:hover { background: var(--gray-100); }
+  .navbar-menu-item.active { color: var(--accent-text); font-weight: 600; }
+  .navbar-menu-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .navbar-menu-sub { flex-basis: 100%; font-size: .75rem; color: var(--muted-text); }
+  .navbar-menu-scheiding { height: 1px; background: var(--gray-100); margin: 4px 0; }
+  .navbar-meer-menu .export-conversation-btn { text-decoration: none; }
 
   /* Sidebar: slide-over op mobiel/tablet */
   .chat-sidebar {
@@ -1623,9 +1626,18 @@ html.dark .suggested-btn:hover {
   .sidebar-overlay { display: block; }
   .chat-welcome { padding: 24px 16px; }
 
-  /* Hamburger en mobiele topbar */
-  .hamburger-btn { display: flex; }
-  .chat-mobile-topbar { display: flex; }
+  /* De voortgang tijdens een antwoord (#594, #596) hangt als pil over de onderkant van de berichten: de statusrij
+     heeft geen hoogte meer, dus er is geen vaste ruimte te reserveren en het invoerveld verspringt niet als het
+     antwoord begint of eindigt. De berichten krijgen er onderaan ruimte bij zolang hij er is. */
+  .chat-statusrij { min-height: 0; height: 0; position: relative; }
+  .chat-statusrij .run-progress-group { position: absolute; left: 10px; right: 10px; bottom: 8px; pointer-events: none; z-index: 5; }
+  .chat-statusrij .run-progress { background: var(--white); margin: 0; }
+  .chat-statusrij .run-progress-note { background: var(--white); border-radius: var(--radius-sm); margin: 4px 0 0; padding: 2px 11px; width: fit-content; max-width: 100%; }
+  .chat-main:has(.run-progress-group) .chat-messages { padding-bottom: 72px; }
+  /* 'Genereer rapport' onder het laatste antwoord, in plaats van een vaste actierij boven het invoerveld. */
+  .chat-rapport-rij { display: flex; justify-content: flex-start; padding-left: 2px; }
+  .sidebar-model { margin-top: 16px; }
+  .sidebar-model .sidebar-section-title { margin-bottom: 8px; }
 
   /* Plotly figures: prevent horizontal overflow */
   .js-plotly-plot, .plot-container { max-width: 100%; overflow-x: auto; }
@@ -1636,11 +1648,19 @@ html.dark .suggested-btn:hover {
   .message.user { max-width: 100%; }
 
   /* Invoergebied compact (#527): elke pixel hier gaat van de berichten af. Tap targets blijven ≥44px. */
-  .chat-input-area { padding: 8px 10px; }
-  .chat-input-wrap { padding: 8px 10px; }
-  .chat-input-footer { margin-top: 6px; padding-top: 6px; }
-  .chat-disclaimer { margin-top: 4px; }
-  .send-btn { width: 44px; height: 44px; }
+  .chat-input-area { padding: 6px 10px 8px; }
+  /* Het invoerkader als pil (#596): veld en verstuurknop op één rij, zonder modelkiezer, providerregel of
+     disclaimer eronder. De modelkeuze staat in de drawer, de privacyzin in de placeholder. */
+  .chat-input-wrap { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 0 8px; padding: 4px 4px 4px 14px; border-radius: 26px; }
+  .chat-input-wrap > .context-limit-banner, .chat-input-wrap > .send-notice { flex: 1 0 100%; margin: 4px 10px 4px 0; }
+  .chat-input { flex: 1 1 0; min-width: 0; padding: 9px 0; }
+  /* De placeholder draagt de privacyzin en moet op één regel passen; het veld zelf blijft 16 px (iOS zoomt eronder). */
+  .chat-input::placeholder { font-size: .875rem; line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-input-footer { flex: 0 0 auto; gap: 0; margin: 0; padding: 0; border-top: none; }
+  /* De tekenteller en de verbindingsmelding zijn live regions die altijd bestaan, meestal leeg. Pas als er
+     tekst in staat (zeldzaam), krijgen ze een eigen regel onder het veld. */
+  .chat-input-footer:has(.message-counter:not(:empty), .ws-reconnecting:not(:empty)) { flex: 1 0 100%; gap: 8px; padding: 2px 0 0; }
+  .send-btn { width: 44px; height: 44px; border-radius: 50%; }
 
   /* Tool snippets: contain wide code */
   .tool-snippet-code { margin-left: 8px; max-width: 100%; overflow-x: auto; white-space: pre; }
@@ -1716,7 +1736,7 @@ html.dark .suggested-btn:hover {
 /* Touch screens and narrow windows: 44x44 (WCAG 2.5.5), the icons themselves stay small.
    Last in the file, so no rule above lowers them again. */
 @media (pointer: coarse), (max-width: 1024px) {
-  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .hamburger-btn, .wb-delete-btn,
+  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .wb-delete-btn,
   .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
   .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
@@ -1784,16 +1804,6 @@ html.dark .suggested-btn:hover {
     animation-iteration-count: infinite !important;
   }
   html { scroll-behavior: auto !important; }
-}
-
-/* Toetsenbord open op een telefoon (#527): zolang het invoerveld focus heeft, is de vaste
-   tabbalk verborgen en krijgt de chat die hoogte terug; bij blur komt hij terug. De klasse zet
-   invoerFocus.js, pas na de lopende tik: een directe :focus-regel verschoof het invoergebied
-   midden in een tik, en dan kwam 'Verstuur bericht' niet aan (#584). Alleen op touch: op
-   desktop met een smal venster blijft de navigatie staan. */
-@media (pointer: coarse) and (max-width: 1024px) {
-  body.invoer-actief { --mobile-tabs-h: 0px; }
-  body.invoer-actief .mobile-tabs { display: none; }
 }
 
 /* ─── Privacy-informatie (#477, popup #572) ─────────────── */
