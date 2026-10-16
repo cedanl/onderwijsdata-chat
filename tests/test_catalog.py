@@ -1,15 +1,18 @@
 import json
 import logging
+import re
 from unittest.mock import patch
 
 import pytest
 
+from core.logging_util import tekst_kenmerk
 from tools.catalog import (
     catalogus_digest,
     catalogus_titel,
     dataset_details,
     geodekking,
     resource_titel,
+    scope_blokkade,
     search_catalog,
 )
 
@@ -619,6 +622,117 @@ def test_dataset_details_logs_miss(caplog):
         result = dataset_details("nope-123")
     assert "niet gevonden" in result
     assert any("miss" in r.message and "dataset_details" in r.message for r in caplog.records)
+    assert not any("nope-123" in _volledig(r) for r in caplog.records)
+
+
+# --- #580: een onbekend ID van het model staat alleen als lengte en hash in het log ---
+
+_ONBEKEND_ID = "onbekend\nid-" + "x" * 200
+
+
+@pytest.fixture
+def lege_catalogus():
+    """Binnen en buiten het profiel leeg: bron_id en _ruw_record kennen geen enkel ID."""
+    with (
+        patch("tools.catalog._cbs", return_value=[]),
+        patch("tools.catalog._rio_duo", return_value=[]),
+        patch("tools.catalog._cbs_alles", return_value=[]),
+        patch("tools.catalog._rio_duo_alles", return_value=[]),
+    ):
+        yield
+
+
+def _volledig(record: logging.LogRecord) -> str:
+    """Alles wat een handler van een record schrijft: bericht en exc_text."""
+    return f"{record.getMessage()}\n{record.exc_text or ''}"
+
+
+def _lekken(caplog) -> list[str]:
+    return [
+        tekst
+        for r in caplog.records
+        if _ONBEKEND_ID in (tekst := _volledig(r)) or "onbekend" in tekst or "x" * 20 in tekst
+    ]
+
+
+def _waarschuwing(caplog) -> str:
+    [regel] = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    return regel
+
+
+def _id_hash(regel: str) -> str:
+    match = re.search(r"id_len=\d+ id_hash=([0-9a-f]{8})", regel)
+    assert match, regel
+    return match.group(1)
+
+
+@pytest.mark.parametrize("ruw", [_ONBEKEND_ID, f"duo:{_ONBEKEND_ID}"], ids=["kaal", "met-voorvoegsel"])
+def test_scope_blokkade_logt_een_onbekend_id_als_lengte_en_hash(lege_catalogus, caplog, ruw):
+    with caplog.at_level(logging.INFO, logger="tools.catalog"):
+        result = scope_blokkade(ruw)
+
+    assert result == (
+        f"Dataset '{_ONBEKEND_ID}' staat niet in de catalogus; zonder scopebesluit laadt de chat hem niet."
+        " Zoek de juiste dataset-ID met search_catalog."
+    )
+    assert not _lekken(caplog)
+    regel = _waarschuwing(caplog)
+    assert "niet in de catalogus" in regel
+    # Het ID zoals het model het aanleverde, vóór bron_id het voorvoegsel afhaalt: zo koppelt het aan CATALOGUS_GELADEN.
+    assert tekst_kenmerk(ruw, "id_") in regel
+    assert re.search(rf"id_len={len(ruw)} id_hash=[0-9a-f]{{8}}", regel)
+
+
+@pytest.mark.parametrize("ruw", [_ONBEKEND_ID, f"duo:{_ONBEKEND_ID}"], ids=["kaal", "met-voorvoegsel"])
+def test_dataset_details_logt_een_onbekend_id_als_lengte_en_hash(lege_catalogus, caplog, ruw):
+    with caplog.at_level(logging.INFO, logger="tools.catalog"):
+        result = dataset_details(ruw)
+
+    assert result == f"Dataset '{_ONBEKEND_ID}' niet gevonden in de catalogus."
+    assert not _lekken(caplog)
+    regel = _waarschuwing(caplog)
+    assert "dataset_details miss" in regel
+    assert tekst_kenmerk(ruw, "id_") in regel
+    assert re.search(rf"id_len={len(ruw)} id_hash=[0-9a-f]{{8}}", regel)
+
+
+def test_dezelfde_invoer_geeft_dezelfde_hash_en_koppelt_aan_catalogus_geladen(lege_catalogus, caplog):
+    from agent.search_trace import SearchTrace
+
+    def hash_van(aanroep, ruw: str) -> str:
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="tools.catalog"):
+            aanroep(ruw)
+        return _id_hash(_waarschuwing(caplog))
+
+    hashes = {hash_van(scope_blokkade, _ONBEKEND_ID), hash_van(dataset_details, _ONBEKEND_ID)}
+    hashes.add(hash_van(scope_blokkade, _ONBEKEND_ID))
+    assert len(hashes) == 1
+    assert hash_van(scope_blokkade, _ONBEKEND_ID + "y") not in hashes
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="agent.search_trace"):
+        SearchTrace().note("get_duo_data", {"dataset_id": _ONBEKEND_ID}, "")
+    [geladen] = [r.getMessage() for r in caplog.records if "CATALOGUS_GELADEN" in r.getMessage()]
+    assert _id_hash(geladen) in hashes
+
+
+def test_een_bekend_id_blijft_letterlijk_in_het_log(caplog):
+    """Een ID dat de catalogus kent is geen vrije tekst (#580): treffer en 'buiten profiel' noemen het zelf."""
+    cbs = [{"_cbs_id": "83456NED", "bron": "Instroom ho", "_kolommen": {"COL": ["a"]}}]
+    vo = {"leverancier": "DUO", "_ckan_id": "voprognoses", "bron": "Prognoses vo", "onderwijstype": ["VO"]}
+    with (
+        patch("tools.catalog._cbs", return_value=cbs),
+        patch("tools.catalog._rio_duo", return_value=[]),
+        patch("tools.catalog._cbs_alles", return_value=cbs),
+        patch("tools.catalog._rio_duo_alles", return_value=[vo]),
+        caplog.at_level(logging.INFO, logger="tools.catalog"),
+    ):
+        dataset_details("83456NED")
+        scope_blokkade("voprognoses")
+    berichten = [(r.levelno, r.getMessage()) for r in caplog.records]
+    assert (logging.INFO, "dataset_details id=83456NED bron=CBS") in berichten
+    assert (logging.INFO, "scope_blokkade id=voprognoses buiten profiel") in berichten
 
 
 # --- Issue #87: catalogustitels voor bronvermelding ---
