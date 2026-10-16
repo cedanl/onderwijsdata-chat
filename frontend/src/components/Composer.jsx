@@ -1,11 +1,22 @@
-import { useRef, useEffect, useLayoutEffect, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react'
 import ChatInputFooter from './ChatInputFooter'
+import SendNotice from './SendNotice'
 import { MESSAGE_COUNTER_ID } from './MessageCounter'
 import { messageLengthState } from '../messageLength'
 import { MAX_TEXTAREA_HEIGHT } from '../constants'
 import { persoonsgegevensMelding } from '../persoonsgegevens'
+import { refusalReason, sendBlockReason } from '../sendBlockReason'
 
 const NO_PREFILL = () => {}
+const REFUSED = 'refused'
+
+// The reason a tap brought up (#585), only while it is still why sending is blocked. A refused question
+// (send() said no) keeps a notice: the reason the chat gives by now, or a general one.
+function noticeText(tap, reason, chat) {
+  if (!tap) return ''
+  if (tap.key === REFUSED) return refusalReason(chat).text
+  return reason?.key === tap.key ? reason.text : ''
+}
 
 function autoResize(el) {
   el.style.height = 'auto'
@@ -16,13 +27,19 @@ function autoResize(el) {
 // (and with it every markdown block and chart) above it.
 //
 // onSubmit(question) returns whether the question went out; only then is the draft cleared.
-// ready: everything but the draft that lets a question go out (connected, idle, room left).
+// connected, busy, resetting, reportBusy, atContextLimit: what decides, besides the draft, whether a question
+// can go out; a tap while one blocks says why (#585).
 // prefill ({ tekst }): a follow-up question the user picked (#364); it replaces the draft and is not sent.
+// refusal ({}): a question sent from elsewhere ("Opnieuw") was refused; the notice here says why (#585).
 export default function Composer({
-  hasMessages, connected, busy, ready, models, selectedModel, onModelChange, onStop, onSubmit,
-  max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
+  hasMessages, connected, busy, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
+  onModelChange, onStop, onSubmit, max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
+  refusal = null, clearRefusal = NO_PREFILL,
 }) {
   const [input, setInput] = useState('')
+  // The refused tap: { key } of its reason, a new object per tap (SendNotice restarts its time on it).
+  const [tap, setTap] = useState(null)
+  const endNotice = useCallback(() => setTap(null), [])
   // The prefill just applied: once the box holds its text, it gets the focus and its height.
   const [applied, setApplied] = useState(null)
   const textareaRef = useRef(null)
@@ -42,6 +59,13 @@ export default function Composer({
     clearPrefill()
   }, [prefill, clearPrefill])
 
+  // "Opnieuw" under an error goes past the draft; when send() refuses it, the reason shows here too (#585).
+  useEffect(() => {
+    if (refusal === null) return
+    setTap({ key: REFUSED })
+    clearRefusal()
+  }, [refusal, clearRefusal])
+
   useLayoutEffect(() => {
     const el = textareaRef.current
     if (!applied || !el) return
@@ -53,13 +77,28 @@ export default function Composer({
   const over = messageLengthState(input, max).over
   // Waarschuwt, blokkeert niet (#478): een 9-cijferige code kan de elfproef toevallig doorstaan.
   const persoonsgegevens = persoonsgegevensMelding(input)
+  const chat = { connected, busy, resetting, reporting: reportBusy, atContextLimit }
+  const reason = sendBlockReason({ ...chat, text: input, over })
+  const notice = noticeText(tap, reason, chat)
+
+  // Its reason lapsed (typing, the connection back, the answer done): the notice is over, also when the reason
+  // returns later. The text is already gone in this render; this only ends the tap.
+  const lapsed = tap !== null && !notice
+  useEffect(() => {
+    if (lapsed) setTap(null)
+  }, [lapsed])
 
   const handleSend = () => {
-    const q = input.trim()
-    // Over the limit (an older or restored draft) it stays in the box; the counter says why (#481).
-    if (!q || over) return
-    // A refused question stays in the box.
-    if (!onSubmit(q)) return
+    // A blocked question, also one over the limit (#481), stays in the box; the notice says why.
+    if (reason) {
+      setTap({ key: reason.key })
+      return
+    }
+    if (!onSubmit(input.trim())) {
+      setTap({ key: REFUSED })
+      return
+    }
+    setTap(null)
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
@@ -88,6 +127,7 @@ export default function Composer({
         onChange={e => { setInput(e.target.value); autoResize(e.target) }}
         onKeyDown={handleKey}
       />
+      <SendNotice text={notice} tap={tap} onExpire={endNotice} />
       <ChatInputFooter
         connected={connected}
         busy={busy}
@@ -96,7 +136,7 @@ export default function Composer({
         onModelChange={onModelChange}
         onStop={onStop}
         onSend={handleSend}
-        canSend={Boolean(input.trim()) && ready && !over}
+        canSend={!reason}
         text={input}
         max={max}
       />

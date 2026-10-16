@@ -122,7 +122,7 @@ describe('Message: de "Verken …"-starters', () => {
 
 describe('Composer: een gekozen vervolgvraag', () => {
   const props = {
-    hasMessages: true, connected: true, busy: false, ready: true, models: [], selectedModel: '',
+    hasMessages: true, connected: true, busy: false, models: [], selectedModel: '',
     onModelChange: () => {}, onStop: () => {}, max: MAX_MESSAGE_CHARS, rejectedDraft: null, clearRejectedDraft: () => {},
   }
 

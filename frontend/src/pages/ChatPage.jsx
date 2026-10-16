@@ -62,7 +62,6 @@ import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
-import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
@@ -208,12 +207,14 @@ function MessageContent({ msg, blocks = null }) {
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
-  const [sendNotice, setSendNotice] = useState(null)
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
   const prefillComposer = useCallback(tekst => setPrefill({ tekst }), [])
   const clearPrefill = useCallback(() => setPrefill(null), [])
+  // "Opnieuw" under an error sends past the composer; when send() refuses it, the composer says why (#585).
+  const [refusal, setRefusal] = useState(null)
+  const clearRefusal = useCallback(() => setRefusal(null), [])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
@@ -572,21 +573,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   useAutoScroll(messagesContainerRef, messages)
 
-  // Verandert de toestand die het versturen blokkeerde, dan is de melding achterhaald.
-  useEffect(() => { setSendNotice(null) }, [busy, connected, resetting])
-
-  // The composer holds the draft and clears it when this returns true.
-  const submitQuestion = (q) => {
-    if (atContextLimit) return false
-    // send() refuses while busy, resetting or reconnecting; the typed question then stays.
-    if (!send(q)) {
-      setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
-      return false
-    }
-    setSendNotice(null)
-    return true
-  }
-
   // Opnieuw na een foutmelding (#333). Met een ander model gaan de instellingen eerst:
   // de server beantwoordt de vraag met het model uit zijn instellingen.
   const handleRetry = (question, modelId) => {
@@ -594,7 +580,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       handleModelChange(modelId)
       sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
     }
-    if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
+    if (!send(question)) setRefusal({})
   }
 
   // De vraag achter het antwoord op index i opnieuw: na een herstart haalt alleen dat de data terug (CH-44).
@@ -809,24 +795,25 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 )}
               </p>
             )}
-            {sendNotice && (
-              <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{sendNotice}</p>
-            )}
             <Composer
               hasMessages={hasMessages}
               connected={connected}
               busy={busy}
-              ready={connected && !busy && !resetting && !atContextLimit}
+              resetting={resetting}
+              reportBusy={reportBusy}
+              atContextLimit={atContextLimit}
               models={models}
               selectedModel={selectedModel}
               onModelChange={handleModelChange}
               onStop={stop}
-              onSubmit={submitQuestion}
+              onSubmit={send}
               max={maxMessageChars}
               rejectedDraft={rejectedDraft}
               clearRejectedDraft={clearRejectedDraft}
               prefill={prefill}
               clearPrefill={clearPrefill}
+              refusal={refusal}
+              clearRefusal={clearRefusal}
             />
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <PrivacyLink className="disclaimer-link" /></p>
           </div>
