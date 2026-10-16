@@ -5,17 +5,33 @@ beide is per instelling. De data komt uit `data/arbeidsmarkt.py` (gedeeld met de
 CH-23) en elke aanroep loopt langs dezelfde scopepoort als CBS, DUO en RIO (`scope_blokkade`, CH-37). Elk getal komt uit de
 bron, met de peildatum of versie uit de data zelf: tot CH-37 gaf get_roa_benchmark vaste,
 in de code geschreven waarden ("~80%") als ROA-cijfers door.
+
+Een arbeidsmarktresultaat is een dataset (#577): de tabel achter het resultaat staat in de store
+onder een `data_key`, met de laadaanroep en de peildatum of versie in haar KeyMeta. Zo lopen
+rapport en dashboard (`build_dataset_context`), het recept na een herstart (#472), de bronnenlijst,
+de citaties, de snippet en de CSV-export vanzelf mee; tot #577 bestonden UWV en ROA voor het
+rapport niet en schreef het model dat er geen vacaturegegevens waren.
 """
 
 import json
+import re
+
+import pandas as pd
 
 from data import arbeidsmarkt
 
-from . import fouten
+from . import fouten, store
 from .catalog import catalogus_titel, scope_blokkade
+from .schemas import TOOL_GET_ROA_BENCHMARK, TOOL_GET_UWV_VACATURES
 
 UWV_ID = "uwv-open-match-data"
 ROA_ID = "ais2030"
+# De vaste dataset en bron achter elke arbeidsmarkttool: de aanroep noemt geen dataset-ID (#577).
+DATASET = {TOOL_GET_UWV_VACATURES: UWV_ID, TOOL_GET_ROA_BENCHMARK: ROA_ID}
+_BRON = {TOOL_GET_UWV_VACATURES: "uwv", TOOL_GET_ROA_BENCHMARK: "roa"}
+# De onderdelen van een ROA-resultaat, met hun naam voor de tabel en de citaties.
+ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
+_ROA_KOLOMMEN = ["ONDERDEEL", "REGIO", "OPLEIDING", "INDICATOR", "PERCENTAGE", "AANTAL", "TYPERING"]
 # Zoveel beroepenclusters in het resultaat; het totaal staat er altijd bij.
 _MAX_CLUSTERS = 15
 # De niveaukolommen zijn bij vacatures leeg; zonder deze regel las het model chauffeursbanen als hbo-vraag (#449).
@@ -45,6 +61,54 @@ _TOEWIJZING = (
 
 def _json(result: dict) -> str:
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+
+
+def _slug(tekst: str) -> str:
+    """Een naam als deel van een data_key: "Noord-Holland" en "noord-holland" zijn dezelfde selectie."""
+    return re.sub(r"[^a-z0-9]+", "-", tekst.lower()).strip("-")
+
+
+def peilmoment(tool: str) -> str | None:
+    """Wanneer de momentopname achter een arbeidsmarkttool is genomen, in de woorden van de bron (#577):
+    de peildatum van UWV, de versie van ROA. None voor een andere tool."""
+    if tool == TOOL_GET_UWV_VACATURES:
+        return f"peildatum {arbeidsmarkt.uwv_peildatum()}"
+    if tool == TOOL_GET_ROA_BENCHMARK:
+        return f"versie {arbeidsmarkt.roa_versie()}"
+    return None
+
+
+def _bewaar(key: str, tabel: pd.DataFrame, tool: str, args: dict, peilmoment: str) -> None:
+    """De tabel achter een resultaat in de store, met haar laadaanroep en peilmoment (#577)."""
+    meta = store.KeyMeta(bron=_BRON[tool], dataset=DATASET[tool], laad=(tool, args), peilmoment=peilmoment)
+    store.put(key, tabel, meta)
+
+
+def _uwv_tabel(stand: arbeidsmarkt.UwvStand) -> pd.DataFrame:
+    """Alle beroepenclusters van de plaats, aflopend, met de plaats als kolom: de rijen zeggen zelf waar ze over gaan."""
+    plaats = {"PROVINCIE": stand.provincie, **({"GEMEENTE": stand.gemeente} if stand.gemeente else {})}
+    return pd.DataFrame([{**plaats, "BEROEPENCLUSTER": c, "VACATURES": n} for c, n in stand.clusters.items()])
+
+
+def _roa_tabel(onderdelen: dict) -> pd.DataFrame:
+    """Elk ROA-cijfer als rij: onderdeel, de regio van dat onderdeel (een landelijke terugval heet landelijk),
+    opleiding, indicator en de waarde als percentage, aantal of typering."""
+    herkomst = onderdelen.get("herkomst") or {}
+    rijen = [
+        {
+            "ONDERDEEL": naam,
+            "REGIO": herkomst.get(sleutel) or onderdelen["regio"],
+            "OPLEIDING": opleiding,
+            "INDICATOR": indicator,
+            "PERCENTAGE": waarden.get("perc"),
+            "AANTAL": waarden.get("aantal"),
+            "TYPERING": waarden.get("typering"),
+        }
+        for sleutel, naam in ROA_ONDERDELEN.items()
+        for opleiding, indicatoren in (onderdelen.get(sleutel) or {}).items()
+        for indicator, waarden in indicatoren.items()
+    ]
+    return pd.DataFrame(rijen, columns=_ROA_KOLOMMEN)
 
 
 def _grootste_clusters(clusters: dict[str, int], soort: str = "beroepenclusters") -> dict:
@@ -90,13 +154,18 @@ def get_uwv_vacatures(provincie: str, sector: str | None = None, gemeente: str |
     except Exception as e:
         return fouten.bronfout("UWV", e)
 
+    # Sector is een zicht op dezelfde tabel, geen andere selectie: één key per plaats, in de spelling van de bron.
+    args = {"provincie": stand.provincie, **({"gemeente": stand.gemeente} if stand.gemeente else {})}
+    key = ":".join(["uwv", _slug(stand.provincie), *([_slug(stand.gemeente)] if stand.gemeente else [])])
+    _bewaar(key, _uwv_tabel(stand), TOOL_GET_UWV_VACATURES, args, f"peildatum {stand.peildatum}")
     result = {
         "bron": catalogus_titel(UWV_ID),
         "dataset": UWV_ID,
+        "data_key": key,
         "peildatum": stand.peildatum,
         "momentopname": "Vacatures op de peildatum; geen actuele stand en geen reeks.",
-        "provincie": provincie,
-        **({"gemeente": gemeente} if gemeente else {}),
+        "provincie": stand.provincie,
+        **({"gemeente": stand.gemeente} if stand.gemeente else {}),
         "totaal_vacatures": stand.totaal,
         "opleidingsniveau": _OPLEIDINGSNIVEAU,
     }
@@ -141,12 +210,13 @@ def get_roa_benchmark(sector: str | None = None, regio: str | None = None) -> st
         regionaam = arbeidsmarkt.roa_regio(regio) if regio else arbeidsmarkt.ROA_LANDELIJK
         if regionaam is None:
             return f"ROA-regio '{regio}' is onbekend. Kies een arbeidsmarktregio of provincie: {arbeidsmarkt.roa_regios()}."
-        result = {
-            "bron": f"ROA, {catalogus_titel(ROA_ID)}",
-            "dataset": ROA_ID,
-            "versie": arbeidsmarkt.roa_versie(),
-            **_roa_onderdelen(niveaus, per_sector, regionaam),
-        }
+        onderdelen = _roa_onderdelen(niveaus, per_sector, regionaam)
+        versie = arbeidsmarkt.roa_versie()
     except Exception as e:
         return fouten.bronfout("ROA", e)
-    return _json(result)
+    args = {k: v for k, v in (("sector", sector), ("regio", regio)) if v}
+    key = ":".join(["roa", _slug(regionaam), *([_slug(sector)] if sector else [])])
+    _bewaar(key, _roa_tabel(onderdelen), TOOL_GET_ROA_BENCHMARK, args, f"versie {versie}")
+    return _json(
+        {"bron": f"ROA, {catalogus_titel(ROA_ID)}", "dataset": ROA_ID, "data_key": key, "versie": versie, **onderdelen}
+    )

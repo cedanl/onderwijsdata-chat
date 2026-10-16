@@ -82,6 +82,9 @@ class KeyMeta:
     # kunnen afwijken van het eerdere antwoord. Een afleiding erft het niet: wat live op deze data wordt berekend,
     # is wat dat antwoord toont. Alleen wat een recept terugzet, krijgt het. Herkomst, geen identiteit.
     herladen_op: str | None = field(default=None, compare=False)
+    # Wanneer een momentopname (UWV, ROA) is genomen, in de woorden van de bron: "peildatum 2023-05-16",
+    # "versie v20251218". Een bronregel noemt het achter de titel (#577). Herkomst, geen identiteit.
+    peilmoment: str | None = field(default=None, compare=False)
 
 
 def _bytes(value) -> int:

@@ -73,7 +73,8 @@ def _sampling(model: str) -> dict:
 
 def _data_as_of(data_keys) -> list[dict]:
     """Per dataset wat er over haar actualiteit bekend is: de catalogusdatum (CBS), de
-    CBS-Periodestatus van de geladen rijen (#180) en een eventuele herlaaddatum (#472)."""
+    CBS-Periodestatus van de geladen rijen (#180), een eventuele herlaaddatum (#472) en bij een
+    momentopname (UWV, ROA) de peildatum of versie (#577)."""
     per_dataset: dict[tuple, dict] = {}
     for key in data_keys:
         known = store.meta(key)
@@ -94,6 +95,8 @@ def _data_as_of(data_keys) -> list[dict]:
             entry["periodestatus"] = sorted(statussen)
         if known.herladen_op:
             entry["herladen_op"] = known.herladen_op
+        if known.peilmoment:
+            entry["peilmoment"] = known.peilmoment
     return [per_dataset[sleutel] for sleutel in sorted(per_dataset)]
 
 

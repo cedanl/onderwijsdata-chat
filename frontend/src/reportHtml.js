@@ -282,6 +282,7 @@ function manifestHtml(manifest) {
       d.laatste_update ? `bijgewerkt ${d.laatste_update}` : '',
       d.periodestatus?.length ? `status ${d.periodestatus.join('/')}` : '',
       d.herladen_op ? `herladen ${d.herladen_op}` : '',
+      d.peilmoment || '',
     ].filter(Boolean).join(', ')
     return `${d.bron.toUpperCase()} ${d.dataset}${extra ? ` (${extra})` : ''}`
   })

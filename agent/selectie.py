@@ -49,8 +49,10 @@ def stapkeys(result: str) -> list[str]:
 
 
 def bron_in_woorden(known: KeyMeta) -> str:
-    """De bron van een selectie in woorden: DUO · <titel>, met het deel dat de chat laadt (CH-45)."""
-    return f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)}"
+    """De bron van een selectie in woorden: DUO · <titel>, met het deel dat de chat laadt (CH-45), en bij een
+    momentopname (UWV, ROA) de peildatum of versie erachter (#577)."""
+    tekst = f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)}"
+    return f"{tekst}, {known.peilmoment}" if known.peilmoment else tekst
 
 
 def bestand_in_woorden(known: KeyMeta) -> str | None:

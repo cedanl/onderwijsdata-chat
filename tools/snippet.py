@@ -120,7 +120,59 @@ def _rio_laadregels(args: dict) -> list[str]:
     ]
 
 
-_LAADREGELS = {"get_duo_data": _duo_laadregels, "get_cbs_data": _cbs_laadregels, "get_rio_data": _rio_laadregels}
+def _uwv_laadregels(args: dict) -> list[str]:
+    """Dezelfde tabel als get_uwv_vacatures in de store zet (#577): alle beroepenclusters van de plaats, aflopend."""
+    regels = [
+        "import pandas as pd",
+        "from riodata import uwv",
+        "",
+        'df = uwv.load("latest", rec_type="Vacature")',
+        f'df = df[df["PROVINCIE"].str.lower() == {_lit(args["provincie"].lower())}]',
+    ]
+    if gemeente := args.get("gemeente"):
+        regels.append(f'df = df[df["GEMEENTE"].str.lower() == {_lit(gemeente.lower())}]')
+    regels += [
+        'df = df.groupby("BEROEPENCLUSTER", as_index=False)["AANTAL"].sum().sort_values("AANTAL", ascending=False)',
+        'df = df.rename(columns={"AANTAL": "VACATURES"})',
+        f'df.insert(0, "PROVINCIE", {_lit(args["provincie"])})',
+    ]
+    if gemeente:
+        regels.append(f'df.insert(1, "GEMEENTE", {_lit(gemeente)})')
+    return regels
+
+
+def _roa_laadregels(args: dict) -> list[str]:
+    """De ROA-rijen achter get_roa_benchmark (#577): de regio (of landelijk) voor schoolverlaters en prognose.
+
+    De app neemt per onderdeel de regio en valt terug op Nederland als ROA daar geen cijfers heeft;
+    die keuze staat als commentaar, de rijen van beide staan in `df`.
+    """
+    regio = args.get("regio") or "Nederland"
+    niveau = "opleidingssector (ONR2019)" if args.get("sector") else "opleidingsniveau (ONR2019)"
+    regels = [
+        "import pandas as pd",
+        "from riodata import roa",
+        "",
+        'df = roa.load("ais2030", "arbeidsmarkt")',
+        f'df = df[df["regionaam"].str.lower().isin([{_lit(regio.lower())}, "nederland", "provincie " + {_lit(regio.lower())}])]',
+        f'df = df[df["aggregatieniveau"].str.strip() == {_lit(niveau)}]',
+    ]
+    if sector := args.get("sector"):
+        regels.append(f'df = df[df["detailniveau"] == {_lit(sector)}]')
+    regels += [
+        'df = df[["thema", "regionaam", "detailniveau", "onderwerp", "perc", "aantal", "typering", "versie"]]',
+        "# De app neemt per onderdeel (schoolverlaters, prognose) de regio en valt terug op Nederland als ROA daar geen cijfers heeft.",
+    ]
+    return regels
+
+
+_LAADREGELS = {
+    "get_duo_data": _duo_laadregels,
+    "get_cbs_data": _cbs_laadregels,
+    "get_rio_data": _rio_laadregels,
+    "get_uwv_vacatures": _uwv_laadregels,
+    "get_roa_benchmark": _roa_laadregels,
+}
 
 
 def _bron_van_key(data_key: str) -> tuple[str, dict] | None:
