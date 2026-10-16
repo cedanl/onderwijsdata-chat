@@ -1707,6 +1707,8 @@ html.dark .suggested-btn:hover {
   /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
   .history-item-row { align-items: center; }
   .history-item-actions { position: static; transform: none; }
+  /* A figure in a sentence keeps its line (#517 A2); its invisible hit area grows from 24 to 44 px (#598). */
+  .citatie-getal::before { width: max(100%, var(--tap-min)); height: var(--tap-min); }
 }
 
 /* A5 (#517): geen overgangen of animaties voor wie het systeem op minder beweging zet
