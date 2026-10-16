@@ -45,6 +45,7 @@ import {
 } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
+import { figuurBeschrijving } from '../figuurBeschrijving'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
@@ -1090,6 +1091,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const layout = useMemo(() => figure && figureLayout(figure, dark), [figure, dark])
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
+  const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
   if (!figure) return null
   const isMap = figure.data?.some(t => t.type?.includes('choropleth'))
   return (
@@ -1112,13 +1114,17 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
           CSV
         </button>
       )}
-      <Plot
-        data={figure.data || NO_TRACES}
-        layout={layout}
-        config={PLOT_CONFIG}
-        useResizeHandler
-        style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
-      />
+      {/* The chart's accessible name (#588), on the chart only: role="img" makes its children
+          presentational, and the CSV button above must stay a button. */}
+      <div {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
+        <Plot
+          data={figure.data || NO_TRACES}
+          layout={layout}
+          config={PLOT_CONFIG}
+          useResizeHandler
+          style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
+        />
+      </div>
     </div>
   )
 })
