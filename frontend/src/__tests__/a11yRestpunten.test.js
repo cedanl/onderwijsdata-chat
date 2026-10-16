@@ -47,3 +47,19 @@ describe('a11y-restpunten (#517)', () => {
     expect(regel).toContain('animation-iteration-count: infinite !important')
   })
 })
+
+// #598: the 24 px hit area of #517 is the floor; on touch the figure gets 44 px (WCAG 2.5.5).
+describe('citaatgetal op touch (#598)', () => {
+  const touchBlok = css.slice(css.indexOf('@media (pointer: coarse), (max-width: 1024px)'))
+  const hitArea = touchBlok.match(/\.citatie-getal::before\s*{[^}]*}/s)?.[0]
+
+  it('het klikvlak is op touch en smalle schermen 44 px hoog', () => {
+    expect(hitArea).toBeDefined()
+    expect(hitArea).toContain('height: var(--tap-min)')
+    expect(hitArea).toContain('width: max(100%, var(--tap-min))')
+  })
+
+  it('de zichtbare regel verandert niet: het vlak blijft een onzichtbare ::before', () => {
+    expect(touchBlok).not.toMatch(/\.citatie-getal\s*{[^}]*(padding|min-height|line-height)/s)
+  })
+})
