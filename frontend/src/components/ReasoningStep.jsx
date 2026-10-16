@@ -1,12 +1,13 @@
 // One step in the reasoning card. Green only when the step delivered; an empty filter or a
 // failed step says so, with the values that do exist when the server sent them (#386).
 // A failed step that a later attempt made good is dimmed and says so (#426).
+// children: what belongs under this step, such as its code on a phone (#595).
 const UITLEG = {
   recovered: 'Een volgende poging lukte; het antwoord gebruikt die.',
   error: 'Het filter kon niet op de data worden uitgevoerd.',
 }
 
-export default function ReasoningStep({ tool }) {
+export default function ReasoningStep({ tool, children = null }) {
   const status = tool.status && tool.done ? ` ${tool.status}${tool.recovered ? ' recovered' : ''}` : ''
   const suggesties = tool.recovered ? [] : Object.entries(tool.suggesties || {})
   const uitleg = tool.done && (tool.recovered ? UITLEG.recovered : UITLEG[tool.status])
@@ -23,6 +24,7 @@ export default function ReasoningStep({ tool }) {
             ))}
           </ul>
         )}
+        {children}
       </div>
     </div>
   )

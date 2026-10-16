@@ -412,6 +412,13 @@ input, textarea { font: inherit; }
 
 /* Acties boven het invoerveld op één rij (#527): gestapeld namen ze op een telefoon twee rijen van 44px. */
 .chat-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-bottom: 6px; }
+/* De statusrij boven het invoerveld (#594): de voortgang tijdens een antwoord, de acties daarna. Een vaste
+   minimumhoogte, die van de actierij (een 44px-knop plus 6px), zodat de wissel het invoerveld niet verschuift. */
+/* De voortgang staat links: gecentreerd schoof elk langer staplabel de hele pil opzij. */
+.chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.chat-statusrij .run-progress-group { align-self: stretch; }
+.chat-statusrij .run-progress { margin: 0 0 6px; }
+.chat-statusrij .run-progress-note { margin: -4px 0 6px; padding-inline: 11px; }
 .make-rapport-btn {
   display: flex; align-items: center; gap: 7px;
   padding: 8px 18px; border-radius: var(--radius-sm);
@@ -651,6 +658,15 @@ input, textarea { font: inherit; }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
+/* Code under its own step on a phone (#595), folded behind "Bekijk code". */
+.reasoning-step > div { min-width: 0; flex: 1; }
+.reasoning-step:has(.reasoning-step-code) { align-items: flex-start; }
+.reasoning-step:has(.reasoning-step-code) .reasoning-step-dot { margin-top: 6px; }
+.reasoning-step-code summary {
+  display: inline-flex; align-items: center; min-height: var(--tap-min-aa);
+  cursor: pointer; font-size: .75rem; color: var(--accent-text);
+}
+.reasoning-step-code summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 .telling { margin-top: 12px; font-size: .85rem; color: var(--gray-600); }
 .telling summary { cursor: pointer; }
 .telling[open] summary { margin-bottom: 4px; }
