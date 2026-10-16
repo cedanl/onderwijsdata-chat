@@ -71,6 +71,7 @@ import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { platteTekst } from '../platteTekst'
+import { welkomstSub } from '../functies'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -848,9 +849,6 @@ function WelcomeScreen({ instelling, functie, children }) {
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
     : 'Stel je vraag aan openEDUdata+'
-  const sub = functie
-    ? `Als ${functie} krijg je onderbouwde antwoorden over instroom, voortgang, arbeidsmarkt en diplomering — direct uit open onderwijsdata.`
-    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
   return (
     <div className="chat-welcome">
       <div className="chat-welcome-icon">
@@ -859,7 +857,7 @@ function WelcomeScreen({ instelling, functie, children }) {
         </svg>
       </div>
       <h2>{greeting}</h2>
-      <p>{sub}</p>
+      <p>{welkomstSub(functie)}</p>
       {children}
     </div>
   )
