@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildReportHtml } from '../reportHtml.js'
 import { buildDashboardHtml } from '../dashboardHtml.js'
 import { PLOTLY_URL } from '../plotlyBron'
+import { metThema } from '../reportThema'
 import { runPage, luminance, contrast } from './helpers/pageRun'
 import { layout, data } from './fixtures/plotFigure'
 
@@ -27,6 +28,12 @@ const fullSpec = {
   datum: '1 september 2026',
 }
 
+// The one phone rule of the report stylesheet.
+const phoneCss = html => {
+  const phone = html.slice(html.indexOf('@media(max-width:640px)'))
+  return phone.slice(0, phone.indexOf('}}') + 2)
+}
+
 describe('buildReportHtml', () => {
   // CH-34: the export's own 48 px top margin put a title note over the plot.
   it('keeps the top margin of a chart with a note under its title', () => {
@@ -36,18 +43,21 @@ describe('buildReportHtml', () => {
     expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
   })
 
-  // Horizontal bars bring their own height; the fixed 360 px squashed 18 universities.
-  it('gives a chart the height it brings, and 360 px otherwise', () => {
+  // Horizontal bars bring their own height; the fixed 360 px squashed 18 universities. The others get the
+  // base height from the CSS, 420 px on a phone (#571).
+  it('gives a chart the height it brings, and the base height from the CSS otherwise', () => {
     const spec = { ...fullSpec, visualisaties: [{ titel: 'WO', figure_json: JSON.stringify({ data: [], layout: { height: 526 } }) }] }
-    expect(buildReportHtml(spec)).toContain('style="height:526px"')
-    expect(buildReportHtml(fullSpec)).toContain('style="height:360px"')
+    expect(buildReportHtml(spec)).toContain('<div id="rp0" class="plot" style="height:526px">')
+    const html = buildReportHtml(fullSpec)
+    expect(html).toContain('<div id="rp0" class="plot plot-auto">')
+    expect(html).toContain('.plot-auto{height:360px}')
+    expect(phoneCss(html)).toContain('.plot-auto{height:420px}')
   })
 
-  // On a phone two nested card paddings left the chart 260 px; long names fell off the left.
+  // On a phone two nested card paddings left the chart 260 px; long names fell off the left. The chart now
+  // also bleeds into the padding of the outer card (#571).
   it('gives a chart the full card width on a phone', () => {
-    const html = buildReportHtml(fullSpec)
-    const phone = html.slice(html.indexOf('@media(max-width:640px)'))
-    expect(phone.slice(0, phone.indexOf('}}') + 2)).toContain('.vis .card{padding:0}')
+    expect(phoneCss(buildReportHtml(fullSpec))).toContain('.vis .card{padding:0;margin:0 -16px}')
   })
 
   it('returns valid HTML with doctype and title', () => {
@@ -266,6 +276,215 @@ describe('chart colours in a dark report (#567)', () => {
     expect(bare.layout).not.toHaveProperty('legend')
     expect(bare.data).toEqual([{ type: 'pie', values: [1] }])
     expect(plotted({ layout: {} }, true).data).toBeUndefined()
+  })
+})
+
+// Under each chart its own source line from code, with a link to the open-data source (#569).
+describe('bronregel onder een grafiek (#569)', () => {
+  const cbs = {
+    bron: 'CBS', dataset: '85423NED',
+    tekst: 'CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Voorlopig',
+    url: 'https://opendata.cbs.nl/ODataApi/OData/85423NED',
+  }
+  const duo = {
+    bron: 'DUO', dataset: 'p01hoinges',
+    tekst: 'DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24',
+    url: 'https://onderwijsdata.duo.nl/dataset/p01hoinges',
+  }
+  const report = (...bronnen) => buildReportHtml({
+    ...fullSpec,
+    visualisaties: bronnen.map((bron, i) => ({ titel: `G${i}`, figure_json: '{"data":[],"layout":{}}', toelichting: `T${i}`, bron })),
+  })
+  const regels = html => [...html.matchAll(/<p class="vis-bron">([^]*?)<\/p>/g)].map(m => m[1])
+
+  it('toont onder elke grafiek de regel van haar eigen dataset, met de link', () => {
+    const html = report(cbs, duo)
+    const [eerste, tweede] = regels(html)
+    expect(regels(html)).toHaveLength(2)
+    expect(eerste).toContain('Bron: CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Voorlopig')
+    expect(eerste).toContain('<a href="https://opendata.cbs.nl/ODataApi/OData/85423NED" target="_blank" rel="noopener noreferrer">Bekijk de bron bij CBS</a>')
+    expect(tweede).toContain('Bron: DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24')
+    expect(tweede).toContain('href="https://onderwijsdata.duo.nl/dataset/p01hoinges"')
+    expect(tweede).toContain('Bekijk de bron bij DUO')
+  })
+
+  it('staat direct onder de grafiek, vóór de toelichting', () => {
+    const html = report(cbs)
+    expect(html.indexOf('id="rp0"')).toBeLessThan(html.indexOf('class="vis-bron"'))
+    expect(html.indexOf('class="vis-bron"')).toBeLessThan(html.indexOf('class="vis-note"'))
+  })
+
+  it.each([[null], [undefined], [{}], [{ tekst: '' }]])('zegt "Bron niet vastgesteld" voor bron %j', bron => {
+    const [regel] = regels(report(bron))
+    expect(regel).toBe('Bron niet vastgesteld')
+  })
+
+  it('toont de regel zonder link als de catalogus geen link kent', () => {
+    const [regel] = regels(report({ ...cbs, url: null }))
+    expect(regel).toBe(`Bron: ${cbs.tekst}`)
+    expect(regel).not.toContain('<a ')
+  })
+
+  it('maakt alleen van een http(s)-adres een link en escapet aanhalingstekens erin', () => {
+    const [vreemd] = regels(report({ ...cbs, url: 'javascript:alert(1)' }))
+    expect(vreemd).not.toContain('<a ')
+    expect(vreemd).not.toContain('javascript:')
+    const [quotes] = regels(report({ ...cbs, url: 'https://example.org/data?q="x"&y=\'z\'' }))
+    expect(quotes).toContain('href="https://example.org/data?q=&quot;x&quot;&amp;y=&#39;z&#39;"')
+    expect(quotes).not.toContain('"x"')
+  })
+
+  it('escapet de tekst van de regel', () => {
+    const [regel] = regels(report({ ...cbs, tekst: '<img src=x onerror=alert(1)>', bron: '<b>CBS</b>' }))
+    expect(regel).not.toContain('<img')
+    expect(regel).toContain('&lt;img src=x onerror=alert(1)&gt;')
+    expect(regel).toContain('bij &lt;b&gt;CBS&lt;/b&gt;')
+  })
+
+  it('leest in beide thema\'s met genoeg contrast op de kaart', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(html).toMatch(/\.vis-bron\{[^}]*color:#6B7280/)
+    expect(contrast('#6B7280', '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#2563EB', '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+    const donker = html.slice(html.indexOf('@media(prefers-color-scheme:dark)'))
+    expect(donker).toContain('.vis-bron{color:#9CA3AF}')
+    expect(donker).toContain('.vis-bron a{color:#60A5FA}')
+    expect(contrast('#9CA3AF', '#1F2937')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#60A5FA', '#1F2937')).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// The app's theme choice wins over the OS preference (#568): a class on <html> picks the theme, no class
+// leaves it to prefers-color-scheme, as before.
+describe('rapportthema volgt de app-keuze (#568)', () => {
+  const html = buildReportHtml(fullSpec)
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+  const donker = css.slice(css.indexOf('@media(prefers-color-scheme:dark)'))
+
+  it('heeft donkere regels voor html.dark, en als terugval voor de OS-voorkeur alleen zonder html.light', () => {
+    expect(css).toContain('html.dark body{color:#F9FAFB;background:#111827}')
+    expect(css).toContain('html.dark .card{background:#1F2937}')
+    expect(donker).toContain('html:not(.light) body{color:#F9FAFB;background:#111827}')
+    expect(donker).toContain('html:not(.light) .card{background:#1F2937}')
+    // Every dark rule exists in both forms, and a selector list gets the prefix on each part.
+    const regels = blok => [...blok.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => [m[1].trim(), m[2]])
+    const expliciet = regels(css.slice(css.indexOf('html.dark'), css.indexOf('@media(prefers-color-scheme:dark)')))
+    const terugval = regels(donker.slice(donker.indexOf('{') + 1))
+    expect(expliciet.length).toBeGreaterThan(10)
+    expect(terugval.map(([sel, decl]) => [sel.replaceAll('html:not(.light) ', 'html.dark '), decl])).toEqual(expliciet)
+    expect(expliciet.every(([sel]) => sel.split(',').every(s => s.startsWith('html.dark ')))).toBe(true)
+    expect(donker).not.toMatch(/\{\s*body\{/)
+  })
+
+  it('geeft de grafiek donkere kleuren bij html.dark, ook als het OS licht is', () => {
+    const seen = runPage(metThema(html, 'dark'), { dark: false })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].plot_bgcolor).toBe('#111827')
+    expect(seen.plots[0][2].font.color).toBe('#D1D5DB')
+  })
+
+  it('houdt de grafiek licht bij html.light, ook als het OS donker is', () => {
+    const seen = runPage(metThema(html, 'light'), { dark: true })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].plot_bgcolor).toBe('#F9FAFB')
+    expect(seen.plots[0][2].font.color).toBe('#374151')
+  })
+
+  it('volgt zonder klasse de OS-voorkeur, zoals voorheen', () => {
+    expect(runPage(html, { dark: true }).plots[0][2].plot_bgcolor).toBe('#111827')
+    expect(runPage(html, { dark: false }).plots[0][2].plot_bgcolor).toBe('#F9FAFB')
+  })
+})
+
+// Measured on 390 px (#571): the chart title fell off the right, the legend title beside the items made the
+// legend wider than the chart, and the names on the y-axis of horizontal bars left 64 px of plot area.
+describe('grafiek op een telefoon (#571)', () => {
+  const axis = { showgrid: true, gridcolor: '#f0f0f0', linecolor: '#ccc', zeroline: false }
+  const lijn = {
+    data: [
+      { type: 'scatter', mode: 'lines', name: 'Economie en bedrijfskunde', x: ['2015', '2016'], y: [1, 2] },
+      { type: 'scatter', mode: 'lines', name: 'Landbouw en natuurlijke omgeving', x: ['2015', '2016'], y: [2, 3] },
+    ],
+    layout: {
+      title: { text: 'Ingeschrevenen per sector 2015/16–2024/25 naar onderdeel', font: { size: 16, color: '#222' } },
+      xaxis: { ...axis, title: { text: 'Studiejaar' }, type: 'category', tickfont: { color: '#333' } },
+      yaxis: { ...axis, title: { text: 'Aantal' }, tickformat: ',' },
+      legend: { bgcolor: 'rgba(255,255,255,0.8)', bordercolor: '#ddd', borderwidth: 1, orientation: 'h', title: { text: 'Onderdeel' } },
+      margin: { t: 60, b: 50, l: 70, r: 20 },
+    },
+  }
+  const namen = ['Hogeschool van Amsterdam', 'HAN University of Applied Sciences', 'Avans']
+  const staven = {
+    data: [{ type: 'bar', orientation: 'h', x: [3, 2, 1], y: namen, text: ['3', '2', '1'] }],
+    layout: { title: { text: 'Kort' }, yaxis: { ...axis, autorange: 'reversed', automargin: true }, xaxis: axis, height: 300, showlegend: false },
+  }
+  const report = fig => buildReportHtml({ ...fullSpec, visualisaties: [{ titel: 'G', figure_json: JSON.stringify(fig) }] })
+  const plotted = (fig, width) => {
+    const seen = runPage(report(fig), { width })
+    expect(seen.errors).toEqual([])
+    return { id: seen.plots[0][0], data: seen.plots[0][1], layout: seen.plots[0][2], dom: seen }
+  }
+
+  it('breekt een lange titel af, maakt hem kleiner en geeft de marge erboven ruimte per extra regel', () => {
+    const { layout: l } = plotted(lijn, 390)
+    expect(l.title.text).toBe('Ingeschrevenen per sector 2015/16–2024/25<br>naar onderdeel')
+    expect(l.title.font).toEqual({ size: 14, color: '#222' })
+    expect(l.title).not.toHaveProperty('pad')
+    expect(l.margin.t).toBe(48 + 17)
+  })
+
+  // A title with a note hangs from the top edge (CH-34); wrapped, its first line stuck out above the chart.
+  it('houdt een afgebroken titel met noot binnen de figuur', () => {
+    const metNoot = { ...lijn, layout: { ...lijn.layout, title: { ...lijn.layout.title, yref: 'container', yanchor: 'top', y: 0.98, subtitle: { text: 'Afgerond op 10-tallen', font: { size: 11, color: '#666' } } }, margin: { t: 100 } } }
+    const { layout: l } = plotted(metNoot, 390)
+    expect(l.title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98, pad: { t: 10 }, subtitle: { text: 'Afgerond op 10-tallen' } })
+    expect(l.margin.t).toBe(100 + 17)
+    const kort = { ...metNoot, layout: { ...metNoot.layout, title: { ...metNoot.layout.title, text: 'Kort' } } }
+    expect(plotted(kort, 390).layout.title).not.toHaveProperty('pad')
+  })
+
+  it('zet de legendatitel boven de items en maakt legenda- en tickletters kleiner', () => {
+    const { layout: l } = plotted(lijn, 390)
+    expect(l.legend.title).toEqual({ text: 'Onderdeel', side: 'top' })
+    expect(l.legend.font).toEqual({ size: 11 })
+    expect(l.legend).toMatchObject({ orientation: 'h', borderwidth: 1 })
+    expect(l.xaxis.tickfont).toEqual({ color: '#333', size: 11 })
+    expect(l.yaxis.tickfont).toEqual({ size: 11 })
+    expect(l.xaxis).toMatchObject({ title: { text: 'Studiejaar' }, type: 'category', showgrid: true })
+  })
+
+  it('breekt lange namen op de y-as van liggende staven af en geeft de figuur hoogte per extra regel', () => {
+    const { layout: l, data: d, id } = plotted(staven, 390)
+    expect(l.yaxis.tickvals).toEqual(namen)
+    expect(l.yaxis.ticktext).toEqual(['Hogeschool van Amsterdam', 'HAN University of<br>Applied Sciences', 'Avans'])
+    expect(l.yaxis).toMatchObject({ autorange: 'reversed', automargin: true })
+    expect(d).toEqual(staven.data)
+    expect(id).toBe('rp0')
+  })
+
+  it('laat een korte titel, een legenda zonder titel en staande staven met rust', () => {
+    const kort = { data: [{ type: 'bar', x: ['HU', 'UU'], y: [1, 2] }], layout: { title: { text: 'Kort' }, legend: { orientation: 'h' }, xaxis: axis } }
+    const { layout: l } = plotted(kort, 390)
+    expect(l.title).toEqual({ text: 'Kort', font: { size: 14 } })
+    expect(l.margin.t).toBe(48)
+    expect(l.legend).toEqual({ orientation: 'h', font: { size: 11 } })
+    expect(l.xaxis).not.toHaveProperty('tickvals')
+  })
+
+  it('verandert niets op een breed scherm', () => {
+    const { layout: l, data: d } = plotted(lijn, 1024)
+    expect(l.title).toEqual(lijn.layout.title)
+    expect(l.legend).toEqual(lijn.layout.legend)
+    expect(l.xaxis).toEqual(lijn.layout.xaxis)
+    expect(d).toEqual(lijn.data)
+    expect(plotted(staven, 1024).layout.yaxis).toEqual(staven.layout.yaxis)
+  })
+
+  it('zet op een telefoon de badge onder de titel, breekt lange woorden en vergroot de kleinste letters', () => {
+    const html = buildReportHtml(fullSpec)
+    expect(phoneCss(html)).toContain('.header-top{flex-direction:column}')
+    expect(phoneCss(html)).toContain('.header-label,.section-label,.manifest,.footer{font-size:.75rem}')
+    expect(html).toContain('.header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}')
   })
 })
 

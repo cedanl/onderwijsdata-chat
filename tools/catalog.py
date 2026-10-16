@@ -294,9 +294,23 @@ def scope_blokkade(dataset_id: str) -> str | None:
         logger.info("scope_blokkade id=%s buiten profiel", dataset_id)
         return json.dumps(scopeprofiel.buiten_scope_voor(bekend), ensure_ascii=False)
     logger.warning("scope_blokkade id=%s niet in de catalogus", dataset_id)
-    ids = [i for e in binnen if (i := scopeprofiel.dataset_id(e)) and dataset_id.lower() in i.lower()]
+    ids = _vergelijkbare_ids(dataset_id, binnen)
     hint = f" Vergelijkbare datasets: {ids[:3]}." if ids else " Zoek de juiste dataset-ID met search_catalog."
     return f"Dataset '{dataset_id}' staat niet in de catalogus; zonder scopebesluit laadt de chat hem niet.{hint}"
+
+
+def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
+    """De ID's binnen het profiel die `dataset_id` bevatten, als hint bij een onbekend ID.
+
+    Zonder de vo-contextrecords (#573): de hint heeft geen zoekpoort en geen etiket, dus een tikfout
+    als `vo` mag ze niet aanbieden. Een directe ID laadt ze nog wel (#557).
+    """
+    gezocht = dataset_id.lower()
+    return [
+        i
+        for e in binnen
+        if not scopeprofiel.is_ho_context(e) and (i := scopeprofiel.dataset_id(e)) and gezocht in i.lower()
+    ]
 
 
 def _dataset_id(entry: dict) -> str:
@@ -634,13 +648,21 @@ def _no_match(query: str, zwak: list, geo_niveau: str | None) -> str:
     suggesties = [h for h in _gerangschikt(passend, None)[0] if _dataset_id(h) != "?"][:_MAX_SUGGESTIES]
     if not suggesties:
         return melding
-    namen = ", ".join(f"{_dataset_id(h)} ({h.get('bron') or h.get('title') or '-'})" for h in suggesties)
+    namen = ", ".join(_suggestie(h) for h in suggesties)
     return (
         f"{melding}\nneeds_clarification: deze datasets raken te weinig zoektermen; het zijn suggesties, geen "
         f"keuze: {namen}. Laad geen van deze. Is clarify_scope beschikbaar, stel daarmee één vraag met deze "
         "datasets als opties; anders zeg dat geen dataset de vraag goed dekt, noem deze suggesties bij hun "
         "titel, en zeg niet dat de data niet bestaat."
     )
+
+
+def _suggestie(hit: dict) -> str:
+    """`ID (titel)` voor een no_match-suggestie; een vo-contextrecord noemt het deel, zoals een bronregel (#573)."""
+    titel = hit.get("bron") or hit.get("title") or "-"
+    if hit.get("context") or scopeprofiel.is_ho_context(hit):
+        titel = f"{titel}, {scopeprofiel.HO_CONTEXT_DEEL}"
+    return f"{_dataset_id(hit)} ({titel})"
 
 
 def kandidaten(query: str, n: int = _MAX_SUGGESTIES) -> list[dict]:
@@ -955,6 +977,21 @@ def catalogus_laatste_update(dataset_id: str) -> str | None:
     for entry in _cbs():
         if entry.get("_cbs_id") == dataset_id:
             return entry.get("_laatste_update")
+    return None
+
+
+def documentatie_url(dataset_id: str) -> str | None:
+    """De link naar de open-databron van een dataset, voor de bronregel onder een grafiek (#569).
+
+    De documentatie-URL uit de catalogus (CBS OData, de DUO-datasetpagina, de RIO-API), alleen als het
+    een http(s)-adres is: de regel komt in HTML terecht. None als de catalogus de dataset of de link
+    niet kent; dan is er geen link, geen gok.
+    """
+    entry = _ruw_record(bron_id(dataset_id)) or {}
+    documentatie = entry.get("documentatie")
+    url = documentatie.get("url") if isinstance(documentatie, dict) else None
+    if isinstance(url, str) and url.lower().startswith(("https://", "http://")):
+        return url
     return None
 
 

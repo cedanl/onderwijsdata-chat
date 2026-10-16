@@ -74,10 +74,17 @@ def selectie_in_woorden(data_key: str) -> str | None:
     tekst = bron_in_woorden(known)
     if bestand := bestand_in_woorden(known):
         tekst += f", bestand {bestand}"
-    if known.schooljaren:
-        van, tot = min(known.schooljaren), max(known.schooljaren)
-        tekst += f", {periode.label(van)}" + (f" t/m {periode.label(tot)}" if tot != van else "")
+    if jaren := periode_in_woorden(known):
+        tekst += f", {jaren}"
     return tekst
+
+
+def periode_in_woorden(known: KeyMeta) -> str | None:
+    """De schooljaren die een key dekt als bereik, 2019/20 t/m 2024/25; None als ze onbekend zijn."""
+    if not known.schooljaren:
+        return None
+    van, tot = min(known.schooljaren), max(known.schooljaren)
+    return periode.label(van) + (f" t/m {periode.label(tot)}" if tot != van else "")
 
 
 def keten(key: str) -> list[str]:

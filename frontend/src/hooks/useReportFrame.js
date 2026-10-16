@@ -1,17 +1,20 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { metEigenPlotly } from '../plotlyBron'
 import { FRAME_TIMEOUT_MS, frameSignaal, metFrameSignaal } from '../reportFrame'
+import { metThema } from '../reportThema'
 
 // Per shown report: did the frame load (onLoad, only for the spinner), what did its probe say, and did the
 // timeout pass without a word from it.
 const BEGIN = { geladen: false, signaal: null, verlopen: false }
 
 // The state of the sandboxed report frame (#387, #541). `html` is the report HTML, or null when no frame is
-// shown. `probleem` is null, 'leeg' (the frame says it shows nothing) or 'niet-geladen' (no word from the frame
-// within FRAME_TIMEOUT_MS); a later word from the frame still counts, so a slow report is not failed for good.
-export function useReportFrame(html) {
+// shown. `mode` is the app's theme choice ('light', 'dark' or 'system'), carried into the frame as a class on
+// <html> (#568); a change reloads the frame. `probleem` is null, 'leeg' (the frame says it shows nothing) or
+// 'niet-geladen' (no word from the frame within FRAME_TIMEOUT_MS); a later word from the frame still counts, so
+// a slow report is not failed for good.
+export function useReportFrame(html, mode) {
   const frameRef = useRef(null)
-  const srcDoc = useMemo(() => (html ? metFrameSignaal(metEigenPlotly(html)) : null), [html])
+  const srcDoc = useMemo(() => (html ? metFrameSignaal(metEigenPlotly(metThema(html, mode))) : null), [html, mode])
   const [frame, setFrame] = useState({ srcDoc, ...BEGIN })
   // Another report starts from BEGIN: the state belongs to the srcDoc it was set for.
   const huidig = frame.srcDoc === srcDoc ? frame : BEGIN

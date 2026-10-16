@@ -3,8 +3,8 @@ import { JSDOM, VirtualConsole } from 'jsdom'
 
 // Loads generated HTML in a fresh DOM that runs its inline scripts, with Plotly, the
 // dialogs and matchMedia stubbed, and records what the page did. `dark` answers the
-// prefers-color-scheme query.
-export function runPage(html, { dark = false } = {}) {
+// prefers-color-scheme query; `width` is the window width (jsdom's 1024 by default).
+export function runPage(html, { dark = false, width = 1024 } = {}) {
   const seen = { dialogs: [], plots: [], errors: [] }
   const virtualConsole = new VirtualConsole()
   virtualConsole.on('jsdomError', err => seen.errors.push(err.message))
@@ -14,7 +14,8 @@ export function runPage(html, { dark = false } = {}) {
     beforeParse(window) {
       for (const name of ['alert', 'confirm', 'prompt']) window[name] = (...args) => seen.dialogs.push([name, ...args])
       window.matchMedia = () => ({ matches: dark })
-      window.Plotly = { newPlot: (...args) => seen.plots.push(args) }
+      window.innerWidth = width
+      window.Plotly = { newPlot: (el, ...args) => seen.plots.push([el.id ?? el, ...args]) }
     },
   })
   seen.images = dom.window.document.querySelectorAll('img').length

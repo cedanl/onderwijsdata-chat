@@ -184,7 +184,7 @@ describe('the report frame itself (#541)', () => {
   it('keeps the sandbox and carries the probe once, next to one Plotly script of our own', async () => {
     const oud = '<head><script src="https://cdn.plot.ly/plotly-4.1.0.min.js"></script></head><p>rapport</p>'
     await render({ ...RAPPORT, htmlContent: oud })
-    expect(frame().getAttribute('sandbox')).toBe('allow-scripts')
+    expect(frame().getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-popups-to-escape-sandbox')
     const srcdoc = frame().getAttribute('srcdoc')
     expect(srcdoc.split(FRAME_BRON)).toHaveLength(2)
     expect(srcdoc.split(PLOTLY_URL)).toHaveLength(2)

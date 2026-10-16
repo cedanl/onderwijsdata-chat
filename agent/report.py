@@ -29,6 +29,7 @@ from agent.dashboard import (
     build_dataset_context,
     herstel_data,
 )
+from agent.figuurbron import figuurbron
 from agent.getalnotatie import nl_notatie
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
@@ -202,15 +203,18 @@ async def generate(
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
     figures: list[str] = []
+    # Per figuur de bronregel eronder, uit de key die de grafiek tekende (#569).
+    figuurbronnen: list[dict | None] = []
     dataset_context = json.dumps(context, default=str)
 
     async def keep_figure(call: ToolCall, result: str, figure) -> None:
         _log_tool_call(call.name, call.args, result)
         if figure is not None and len(figures) < _MAX_VISUALISATIES:
             figures.append(pio.to_json(figure))
+            figuurbronnen.append(figuurbron((call.args or {}).get("data_key")))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
-        spec = _parse_spec_from_response(text, figures, context, author)
+        spec = _parse_spec_from_response(text, figures, context, author, figuurbronnen)
         return report_problems(spec, figures, [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs)])
 
     result = await tool_loop(
@@ -245,7 +249,7 @@ async def generate(
         logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
-    spec = _parse_spec_from_response(result.text, figures, context, author)
+    spec = _parse_spec_from_response(result.text, figures, context, author, figuurbronnen)
     keys = [ds["data_key"] for ds in context["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(model or MODEL, keys, model_versie=getattr(result, "model_versie", None))
     log_publicatie(RAPPORT, keys, spec.manifest)
@@ -283,8 +287,13 @@ def _parse_spec_from_response(
     figures_json: list[str],
     context: dict,
     author: str | None = None,
+    figuurbronnen: list[dict | None] | None = None,
 ) -> ReportSpec:
-    """Parse the LLM response into a ReportSpec."""
+    """Parse the LLM response into a ReportSpec.
+
+    `figuurbronnen` is per figuur de bronregel uit code (#569), in dezelfde volgorde als
+    `figures_json`; een figuur zonder regel krijgt `bron: None`.
+    """
     spec_data: dict = {}
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
@@ -310,6 +319,7 @@ def _parse_spec_from_response(
                 "titel": titel or f"Visualisatie {idx + 1}",
                 "toelichting": in_je_vorm((meta.get("toelichting") or "").strip()),
                 "figure_json": bijgesneden(figure_json, bereik) if bereik else figure_json,
+                "bron": figuurbronnen[idx] if figuurbronnen and idx < len(figuurbronnen) else None,
             }
         )
 

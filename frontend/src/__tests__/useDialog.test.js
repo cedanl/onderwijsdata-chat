@@ -15,6 +15,20 @@ const press = (key, opts = {}) =>
   act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...opts })) })
 const buttons = () => [...host.querySelectorAll('button')]
 
+// Every element that gets focus while fn runs, including focus that moves on again before fn ends.
+// Focus does not bubble, so listen in the capture phase.
+async function focusedDuring(fn) {
+  const focused = []
+  const record = e => focused.push(e.target)
+  document.addEventListener('focus', record, true)
+  try {
+    await fn()
+  } finally {
+    document.removeEventListener('focus', record, true)
+  }
+  return focused
+}
+
 beforeEach(async () => {
   opener = document.createElement('button')
   document.body.appendChild(opener)
@@ -96,7 +110,8 @@ describe('stacked dialogs (#572)', () => {
   it('Tab stays in the topmost dialog', async () => {
     const [first, last] = [...upperHost.querySelectorAll('button')]
     last.focus()
-    await press('Tab')
+    const focused = await focusedDuring(() => press('Tab'))
+    expect(focused.filter(el => host.contains(el)), 'focus in the lower dialog').toEqual([])
     expect(document.activeElement).toBe(first)
   })
 

@@ -13,12 +13,12 @@ vi.mock('../workbooks', () => ({
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),
 }))
 vi.mock('../components/WorkbookViewer', () => ({
-  default: ({ workbook, onBack }) => createElement(Fragment, null,
-    createElement('div', { 'data-testid': 'viewer' }, workbook.title),
+  default: ({ workbook, onBack, mode }) => createElement(Fragment, null,
+    createElement('div', { 'data-testid': 'viewer', 'data-mode': mode }, workbook.title),
     createElement('button', { type: 'button', 'data-testid': 'back', onClick: onBack }, 'Rapporten'),
   ),
 }))
-vi.mock('../components/WorkbookPreviews', () => ({ default: () => null }))
+vi.mock('../components/WorkbookPreviews', () => ({ default: ({ mode }) => createElement('div', { 'data-testid': 'preview', 'data-mode': mode }) }))
 
 import RapportenPage from '../pages/RapportenPage'
 import { deleteWorkbook } from '../workbooks'
@@ -33,14 +33,14 @@ function LocationProbe() {
   return createElement('output', { 'data-testid': 'location' }, useLocation().search)
 }
 
-async function render(url = '/rapporten') {
+async function render(url = '/rapporten', settings = {}) {
   document.title = 'openEDUdata+'
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
     root.render(createElement(MemoryRouter, { initialEntries: [url] },
-      createElement(RapportenPage, { settings: {} }),
+      createElement(RapportenPage, { settings }),
       createElement(LocationProbe),
     ))
   })
@@ -291,5 +291,24 @@ describe('RapportenPage search', () => {
     expect(searchInput().value).toBe('instroom')
     expect(cardTitles()).toEqual(['Instroom Economië'])
     expect(subtitle()).toBe('1 van 2 rapporten')
+  })
+})
+
+// #568: the theme choice from the settings reaches the report frame and the thumbnails.
+describe('RapportenPage and the app theme (#568)', () => {
+  const rapport = { id: 'wb-1', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z' }
+
+  it('gives the previews and an opened report the chosen mode', async () => {
+    await render('/rapporten?id=wb-1', { mode: 'dark' })
+    await act(async () => { server.resolve([rapport]) })
+    expect(container.querySelector('[data-testid="viewer"]').getAttribute('data-mode')).toBe('dark')
+    await act(async () => { container.querySelector('[data-testid="back"]').click() })
+    expect(container.querySelector('[data-testid="preview"]').getAttribute('data-mode')).toBe('dark')
+  })
+
+  it('passes system without a choice in the settings', async () => {
+    await render('/rapporten?id=wb-1')
+    await act(async () => { server.resolve([rapport]) })
+    expect(container.querySelector('[data-testid="viewer"]').getAttribute('data-mode')).toBe('system')
   })
 })
