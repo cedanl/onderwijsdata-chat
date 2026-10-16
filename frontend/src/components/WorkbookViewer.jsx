@@ -14,8 +14,9 @@ const BUILTIN_COMPONENTS = {
   [BUILTIN_NATIONAAL.id]: InlineDashboardNationaal,
 }
 
-// save: the download target, for tests (as in WorkbookDownload).
-export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save }) {
+// save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
+// frame follows (#568).
+export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
   const [refreshing, setRefreshing] = useState(false) // false of de lopende modus: 'ververs' | 'reproduceer'
   const [refreshError, setRefreshError] = useState(null)
   const [refreshResult, setRefreshResult] = useState(null) // { melding, veranderingen } van de laatste herhaling
@@ -93,7 +94,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   // shows nothing gets a notice with the download outside it (#541).
   const isReport = !BuiltinDash && !spec
   const reportEmpty = isReport && !String(workbook.htmlContent ?? '').trim()
-  const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null)
+  const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null, mode)
 
   return (
     <div className="wb-viewer">

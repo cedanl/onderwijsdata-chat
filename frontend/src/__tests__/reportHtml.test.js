@@ -3,6 +3,7 @@ import { JSDOM, VirtualConsole } from 'jsdom'
 import { buildReportHtml } from '../reportHtml.js'
 import { buildDashboardHtml } from '../dashboardHtml.js'
 import { PLOTLY_URL } from '../plotlyBron'
+import { metThema } from '../reportThema'
 
 const fullSpec = {
   title: 'Instroom ROC van Flevoland 2018–2024',
@@ -390,6 +391,48 @@ describe('bronregel onder een grafiek (#569)', () => {
     expect(donker).toContain('.vis-bron a{color:#60A5FA}')
     expect(contrast('#9CA3AF', '#1F2937')).toBeGreaterThanOrEqual(4.5)
     expect(contrast('#60A5FA', '#1F2937')).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// The app's theme choice wins over the OS preference (#568): a class on <html> picks the theme, no class
+// leaves it to prefers-color-scheme, as before.
+describe('rapportthema volgt de app-keuze (#568)', () => {
+  const html = buildReportHtml(fullSpec)
+  const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+  const donker = css.slice(css.indexOf('@media(prefers-color-scheme:dark)'))
+
+  it('heeft donkere regels voor html.dark, en als terugval voor de OS-voorkeur alleen zonder html.light', () => {
+    expect(css).toContain('html.dark body{color:#F9FAFB;background:#111827}')
+    expect(css).toContain('html.dark .card{background:#1F2937}')
+    expect(donker).toContain('html:not(.light) body{color:#F9FAFB;background:#111827}')
+    expect(donker).toContain('html:not(.light) .card{background:#1F2937}')
+    // Every dark rule exists in both forms, and a selector list gets the prefix on each part.
+    const regels = blok => [...blok.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => [m[1].trim(), m[2]])
+    const expliciet = regels(css.slice(css.indexOf('html.dark'), css.indexOf('@media(prefers-color-scheme:dark)')))
+    const terugval = regels(donker.slice(donker.indexOf('{') + 1))
+    expect(expliciet.length).toBeGreaterThan(10)
+    expect(terugval.map(([sel, decl]) => [sel.replaceAll('html:not(.light) ', 'html.dark '), decl])).toEqual(expliciet)
+    expect(expliciet.every(([sel]) => sel.split(',').every(s => s.startsWith('html.dark ')))).toBe(true)
+    expect(donker).not.toMatch(/\{\s*body\{/)
+  })
+
+  it('geeft de grafiek donkere kleuren bij html.dark, ook als het OS licht is', () => {
+    const seen = runPage(metThema(html, 'dark'), { dark: false })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].plot_bgcolor).toBe('#111827')
+    expect(seen.plots[0][2].font.color).toBe('#D1D5DB')
+  })
+
+  it('houdt de grafiek licht bij html.light, ook als het OS donker is', () => {
+    const seen = runPage(metThema(html, 'light'), { dark: true })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].plot_bgcolor).toBe('#F9FAFB')
+    expect(seen.plots[0][2].font.color).toBe('#374151')
+  })
+
+  it('volgt zonder klasse de OS-voorkeur, zoals voorheen', () => {
+    expect(runPage(html, { dark: true }).plots[0][2].plot_bgcolor).toBe('#111827')
+    expect(runPage(html, { dark: false }).plots[0][2].plot_bgcolor).toBe('#F9FAFB')
   })
 })
 
