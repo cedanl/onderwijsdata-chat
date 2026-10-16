@@ -146,6 +146,17 @@ describe('PrivacyLink', () => {
     expect(privacyDialog()).toBeNull()
   })
 
+  it('a backdrop click does not reach a click handler of the host', async () => {
+    // The portal's click bubbles through the React tree, so the popup stops it itself instead of relying on the host.
+    const hostClick = vi.fn()
+    await render(createElement('div', { onClick: hostClick }, createElement(PrivacyLink)))
+    await openFrom(privacyButton('Privacy-informatie'))
+    hostClick.mockClear()
+    await act(async () => { privacyDialog().click() })
+    expect(privacyDialog()).toBeNull()
+    expect(hostClick).not.toHaveBeenCalled()
+  })
+
   it('keeps Tab inside the popup', async () => {
     await open()
     await press('Tab')
