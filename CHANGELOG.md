@@ -621,6 +621,10 @@ de laatste tag is 1.8.6.
   traceback staat onder hetzelfde fout-ID op DEBUG. De melding "Sampling-ondersteuning … niet vast te stellen"
   noemt het type en een kenmerk in plaats van de providerfout. Tests houden elke INFO+-regel van het rapportpad
   vrij van vraag, antwoord, toolargumenten en fouttekst.
+- Log-hardening, restpunt van #475/#502 (#580): een dataset-ID dat de catalogus niet kent, staat ook in de
+  WARNING-regels van de scopegrens ("niet in de catalogus") en van `dataset_details` ("dataset_details miss")
+  alleen als lengte en hash (`id_len=… id_hash=…`), niet letterlijk; een regeleinde in zo'n ID splitst de regel
+  niet meer. Een bekend ID blijft letterlijk; de tekst richting het model is ongewijzigd.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.

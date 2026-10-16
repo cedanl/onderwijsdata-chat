@@ -280,20 +280,32 @@ def bron_id(dataset_id: str) -> str:
     return kaal
 
 
+def _id_kenmerk(dataset_id: str) -> str:
+    """Een ID dat de catalogus niet kent is vrije tekst van het model: in het log alleen lengte en hash (#580, #475).
+
+    Geef het ID zoals het model het aanleverde, vóór bron_id een voorvoegsel afhaalt: dan is `id_hash`
+    gelijk aan die in CATALOGUS_GELADEN of CATALOGUS_AFWIJKING voor dezelfde invoer. `str()` zoals bron_id:
+    een toolargument uit JSON hoeft geen tekst te zijn.
+    """
+    return tekst_kenmerk(str(dataset_id), "id_")
+
+
 def scope_blokkade(dataset_id: str) -> str | None:
     """Waarom een datatool `dataset_id` niet laadt; None als het binnen het profiel valt.
 
     Een directe ID uit de vraag of van het model omzeilt de grens niet (#355), ook niet
     bij een herstelpoging met een andere tabel (CH-03).
     """
+    ruw = dataset_id
     dataset_id = bron_id(dataset_id)
     binnen = [*_cbs(), *_rio_duo()]
     if any(scopeprofiel.dataset_id(e) == dataset_id for e in binnen):
         return None
     if bekend := _ruw_record(dataset_id):
+        # Letterlijk mag: _ruw_record vond een record met precies dit ID, dus geen vrije tekst van het model (#580).
         logger.info("scope_blokkade id=%s buiten profiel", dataset_id)
         return json.dumps(scopeprofiel.buiten_scope_voor(bekend), ensure_ascii=False)
-    logger.warning("scope_blokkade id=%s niet in de catalogus", dataset_id)
+    logger.warning("scope_blokkade %s niet in de catalogus", _id_kenmerk(ruw))
     ids = _vergelijkbare_ids(dataset_id, binnen)
     hint = f" Vergelijkbare datasets: {ids[:3]}." if ids else " Zoek de juiste dataset-ID met search_catalog."
     return f"Dataset '{dataset_id}' staat niet in de catalogus; zonder scopebesluit laadt de chat hem niet.{hint}"
@@ -1061,6 +1073,7 @@ def resources_met_kolom(dataset_id: str, kolom: str) -> list[tuple[int, str]]:
 def dataset_details(dataset_id: str) -> str:
     """Geef gedetailleerde kolominformatie voor één dataset."""
     # cbs:85423NED, duo:p01hoinges en rio:erkenningen zijn dezelfde records als zonder voorvoegsel (#370, #356).
+    ruw = dataset_id
     dataset_id = cbs_id = bron_id(dataset_id)
     for entry in _cbs():
         if entry.get("_cbs_id") == cbs_id:
@@ -1091,5 +1104,5 @@ def dataset_details(dataset_id: str) -> str:
     if buiten := _ruw_record(cbs_id) or _ruw_record(dataset_id):
         # Bekend maar buiten het profiel: zeg waarom, anders leest het model 'bestaat niet' (#355, #396).
         return json.dumps(scopeprofiel.buiten_scope_voor(buiten), ensure_ascii=False)
-    logger.warning("dataset_details miss id=%s", dataset_id)
+    logger.warning("dataset_details miss %s", _id_kenmerk(ruw))
     return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
