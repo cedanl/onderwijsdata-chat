@@ -107,6 +107,11 @@ de laatste tag is 1.8.6.
   tabblad opent. Twee gebruikers vroegen bij een rapportgrafiek waar precies deze cijfers vandaan komen; de
   lijst Bronnen onderaan zei dat niet per grafiek en doorklikken kon niet. Een grafiek zonder herleidbare
   bron zegt "Bron niet vastgesteld". Bestaande rapporten veranderen niet.
+- Een rapport of dashboard op een afgekapte bron zegt dat nu ook (#578). De chat meldde het al ("ik kan niet
+  uitsluiten dat er in de rest van het bestand nog andere rijen staan"), het rapport op dezelfde data zweeg erover.
+  Per afgekapte laadkey staat er één vaste regel uit code, met bron en catalogustitel en het aantal opgehaalde
+  rijen: in een rapport vooraan in "Wat dit rapport niet beantwoordt", in een dashboard na de bronnen. De
+  controles op het rapport zien alleen de modeltekst. Bestaande rapporten en dashboards veranderen niet.
 - Het Bronnen-blok onder een antwoord noemt bij een DUO-dataset met meer dan één tabelbestand ook het bestand
   (#540): de drie hbo-bestanden van `p01hoinges` gaven voor dezelfde instelling en hetzelfde studiejaar 34.751,
   34.754 en 34.755, elk met andere onderdrukte cellen, terwijl de bron er hetzelfde uitzag. Een telvraag via
