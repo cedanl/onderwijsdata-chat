@@ -1,4 +1,4 @@
-"""Feedback op een rapport.
+"""Feedback op een rapport, en algemene feedback via de Feedback-link (#600).
 
 Gewone functies, geen coroutines: de databaselaag is synchroon en hoort in de threadpool van
 FastAPI, niet op de event loop (#508, zie routes/persistence.py).
@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, StringConstraints
 
+from core.algemene_feedback import MAX_TEKST, PAGINA_PATROON, Soort
 from core.auth import FALLBACK_USER, get_current_user
 from core.config import FEEDBACK_ENABLED
 from core.feedback import QUESTIONS, validate_answers
@@ -22,6 +23,10 @@ router = APIRouter(tags=["feedback"])
 # tegelijk feedback geven, maar niet één rapport blijven bestoken.
 _limiter = RateLimiter(max_attempts=3, window_seconds=600)
 
+# Algemene feedback per gebruiker, ruimer dan per rapport: in een gedeeld account (iedereen "gast") delen
+# alle bezoekers deze grens, dus een zaal vol testers moet er samen een paar kwijt kunnen.
+_algemeen_limiter = RateLimiter(max_attempts=10, window_seconds=600)
+
 _Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
 
 
@@ -30,6 +35,12 @@ class FeedbackIn(BaseModel):
     report_type: _Short
     report_title: _Short = ""
     answers: dict[str, object]
+
+
+class AlgemeneFeedbackIn(BaseModel):
+    tekst: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TEKST)]
+    soort: Soort | None = None
+    pagina: Annotated[str, StringConstraints(pattern=PAGINA_PATROON)] = "/"
 
 
 def _require_enabled() -> None:
@@ -68,4 +79,18 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
             headers={"Retry-After": str(retry)},
         )
     persistence_db.add_feedback(username, body.workbook_id, body.report_type, body.report_title, answers)
+    return {"ok": True}
+
+
+@router.post("/api/feedback/algemeen", dependencies=[Depends(_require_enabled)])
+def post_algemene_feedback(body: AlgemeneFeedbackIn, username: str = Depends(get_current_user)) -> dict:
+    """Een idee, probleem of compliment los van een antwoord of rapport (#600)."""
+    if not _algemeen_limiter.is_allowed(username):
+        retry = _algemeen_limiter.retry_after(username)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Je hebt net al een paar keer feedback gegeven. Probeer het over {retry} seconden opnieuw.",
+            headers={"Retry-After": str(retry)},
+        )
+    persistence_db.add_algemene_feedback(username, body.soort or "", body.tekst, body.pagina)
     return {"ok": True}

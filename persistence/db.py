@@ -289,6 +289,19 @@ _FEEDBACK_TABLE = """
 """
 
 
+# Algemene feedback via de Feedback-link (#600): één rij per bericht; soort is '' als de gebruiker er geen koos.
+_ALGEMENE_FEEDBACK_TABLE = """
+    CREATE TABLE IF NOT EXISTS algemene_feedback (
+        id         TEXT PRIMARY KEY,
+        username   TEXT NOT NULL,
+        soort      TEXT NOT NULL DEFAULT '',
+        tekst      TEXT NOT NULL,
+        pagina     TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+"""
+
+
 # Eén oordeel per antwoord; een nieuw oordeel vervangt het oude (#248). trace is
 # JSON uit het opgeslagen gesprek (core/answer_feedback.py), zodat de melding
 # reproduceerbaar blijft als het gesprek later verandert of verdwijnt; verdwijnt het,
@@ -367,6 +380,7 @@ def init_db() -> None:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
             cursor.execute(_FEEDBACK_TABLE)
             cursor.execute(_ANSWER_FEEDBACK_TABLE)
+            cursor.execute(_ALGEMENE_FEEDBACK_TABLE)
             cursor.execute(_DATA_RECIPES_TABLE)
             cursor.execute(_DATA_RECIPES_INDEX)
             cursor.execute(_REVOKED_TOKENS_TABLE)
@@ -405,6 +419,7 @@ def init_db() -> None:
             """)
             conn.execute(_FEEDBACK_TABLE)
             conn.execute(_ANSWER_FEEDBACK_TABLE)
+            conn.execute(_ALGEMENE_FEEDBACK_TABLE)
             conn.execute(_DATA_RECIPES_TABLE)
             conn.execute(_DATA_RECIPES_INDEX)
             conn.execute(_REVOKED_TOKENS_TABLE)
@@ -772,6 +787,23 @@ def answer_feedback_for(username: str, conv_id: str) -> dict[int, str]:
             (username, conv_id),
         ).fetchall()
     return {r["message_index"]: r["oordeel"] for r in rows}
+
+
+def add_algemene_feedback(username: str, soort: str, tekst: str, pagina: str) -> None:
+    with _connection() as conn:
+        _execute(
+            conn,
+            "INSERT INTO algemene_feedback (id, username, soort, tekst, pagina, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), username, soort, tekst, pagina, datetime.now(UTC).isoformat(timespec="seconds")),
+        )
+        conn.commit()
+
+
+def all_algemene_feedback() -> list[dict]:
+    """Alle algemene feedback, nieuwste eerst: de lijst voor het team (#600)."""
+    with _connection() as conn:
+        rows = _execute(conn, "SELECT * FROM algemene_feedback ORDER BY created_at DESC").fetchall()
+    return [dict(r) for r in rows]
 
 
 def all_answer_feedback() -> list[dict]:

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
+import FeedbackLink from '../components/FeedbackLink'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
@@ -203,6 +204,12 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
               </div>
             </section>
           ))
+        )}
+        {/* /rapporten has no footer: the general feedback form (#600) gets one line at the bottom. */}
+        {feedbackEnabled && (
+          <p className="wb-gallery-feedback">
+            Mis je iets of werkt iets niet? <FeedbackLink>Geef feedback</FeedbackLink>
+          </p>
         )}
       </div>
     </>

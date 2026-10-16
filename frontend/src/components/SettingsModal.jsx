@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
 import PrivacyLink from './PrivacyLink'
+import FeedbackLink from './FeedbackLink'
 import { useDialog } from '../hooks/useDialog'
 import { FUNCTIES, isFunctie } from '../functies'
 
@@ -29,7 +30,7 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, onLogout, isOnboarding, sramName, sramInstelling, sramIdentity }) {
+export default function SettingsModal({ settings, onSave, onClose, onLogout, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity }) {
   // A saved instelling that is exactly the raw SRAM org/institution string is
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
@@ -192,6 +193,12 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
             </button>
           )}
         </div>
+        {/* Reachable from every route through the name in the header, also from /rapporten (#600). */}
+        {feedbackEnabled && !isOnboarding && (
+          <p className="settings-feedback">
+            Iets kwijt over openEDUdata+? <FeedbackLink>Geef feedback</FeedbackLink>
+          </p>
+        )}
         {/* The navbar hides its logout button up to 1024px; this dialog opens from the name in the header. */}
         {onLogout && !isOnboarding && (
           <button type="button"

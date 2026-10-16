@@ -53,7 +53,8 @@ export default function PrivacyInhoud() {
         <li>
           <strong>Feedback</strong>: je antwoorden op de vragen bij een rapport of dashboard, en per antwoord je
           duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder je het gesprek, dan wordt
-          die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard.
+          die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
+          de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
         </li>
         <li>
           <strong>Datarecepten</strong>: hoe een tabel is opgehaald (dataset en selectie), zodat een export na een
