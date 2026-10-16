@@ -68,6 +68,20 @@ const press = (key, opts = {}) =>
   act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...opts })) })
 const closeButton = () => privacyDialog().querySelector('button[aria-label="Sluiten"]')
 
+// Every element that gets focus while fn runs, including focus that moves on again before fn ends.
+// Focus does not bubble, so listen in the capture phase.
+async function focusedDuring(fn) {
+  const focused = []
+  const record = e => focused.push(e.target)
+  document.addEventListener('focus', record, true)
+  try {
+    await fn()
+  } finally {
+    document.removeEventListener('focus', record, true)
+  }
+  return focused
+}
+
 async function openFrom(button) {
   button.focus()
   await act(async () => { button.click() })
@@ -176,7 +190,9 @@ describe('the privacy popup inside the settings dialog', () => {
   it('Tab stays in the popup, not in settings', async () => {
     await openInSettings()
     for (const shiftKey of [false, true, false]) {
-      await press('Tab', { shiftKey })
+      // Not only where focus ends: a settings Tab trap that pulls focus over and loses it again must fail too.
+      const focused = await focusedDuring(() => press('Tab', { shiftKey }))
+      expect(focused.filter(el => settingsDialog().contains(el)), `focus in settings, shiftKey: ${shiftKey}`).toEqual([])
       expect(privacyDialog().contains(document.activeElement)).toBe(true)
     }
     expect(settingsDialog().contains(document.activeElement)).toBe(false)
