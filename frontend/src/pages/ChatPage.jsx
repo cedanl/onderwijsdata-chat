@@ -70,6 +70,7 @@ import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
+import { platteTekst } from '../platteTekst'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -106,10 +107,11 @@ function lastAnswerIndex(messages) {
   return messages.findLastIndex(m => m.role === 'assistant' && !m.figures?.length)
 }
 
-// Announced once an answer is complete; streaming deltas would flood a screen reader.
+// Announced once an answer is complete; streaming deltas would flood a screen reader. As plain text,
+// so it does not read out the markdown signs (#589).
 function lastAnswerText(messages) {
   const last = messages.findLast(m => m.role !== 'assistant' || m.content)
-  return last?.role === 'assistant' && last.done ? last.content : ''
+  return last?.role === 'assistant' && last.done ? platteTekst(last.content) : ''
 }
 
 function ReasoningPanel({ tools, tussentekst, isDone }) {
