@@ -15,7 +15,7 @@ from dataclasses import dataclass, replace
 
 from tools import TOOL_RUN_ANALYSIS
 from tools.analysis import SCRIPTCONSTANTEN
-from tools.arbeidsmarkt import ROA_ID, UWV_ID
+from tools.arbeidsmarkt import ROA_ID, ROA_ONDERDELEN, UWV_ID
 from tools.kolomlabel import kolomlabel
 
 from . import kpi_bron
@@ -40,7 +40,7 @@ class Meetwaarde:
     selectie: tuple[str, ...] = ()  # de andere cellen van haar rij, in woorden
     data_key: str | None = None
     eenheid: str | None = None
-    bron: str | None = None  # zonder data_key: de bron in woorden (UWV, ROA)
+    bron: str | None = None  # zonder data_key: de bron in woorden (een UWV- of ROA-resultaat van vóór #577)
     rij: int | None = None  # positie in de rijen van de tabel achter data_key (CH-07)
 
 
@@ -126,12 +126,21 @@ def _blok(parsed: dict, naam: str) -> dict:
     return blok if isinstance(blok, dict) else {}
 
 
+def _arbeidsmarktbron(parsed: dict, tekst: str) -> tuple[str | None, str | None]:
+    """(data_key, bron): met een data_key wijst de citatie naar de tabel in de store, die de bron en de
+    peildatum of versie zelf kent (#577); een ouder resultaat zonder key houdt de bron in woorden."""
+    data_key = parsed.get("data_key") if isinstance(parsed.get("data_key"), str) else None
+    return data_key, None if data_key else tekst
+
+
 def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
     """UWV-vacatures (CH-39): het totaal, de sector en elk beroepencluster, op plaats en peildatum.
 
     Met een sector staan de clusters in `uwv_broncijfer` en het sectorgetal in `gewogen_aandeel`
     (#460); dat getal is onze weging over onze clustertoewijzing, en de maat zegt dat."""
-    bron = f"{parsed.get('bron')}, {parsed.get('peildatum')}"  # de toolbron noemt UWV al
+    data_key, bron = _arbeidsmarktbron(
+        parsed, f"{parsed.get('bron')}, {parsed.get('peildatum')}"
+    )  # de toolbron noemt UWV al
     plaats = tuple(
         f"{label}: {parsed[k]}" for k, label in (("provincie", "Provincie"), ("gemeente", "Gemeente")) if parsed.get(k)
     )
@@ -143,23 +152,20 @@ def _uit_uwv(parsed: dict) -> Iterator[Meetwaarde]:
         (gewogen, _UWV_GEWOGEN, plaats + sector),
     ):
         if (cijfers := _getal(waarde)) is not None:
-            yield Meetwaarde(cijfers, maat, selectie, bron=bron)
+            yield Meetwaarde(cijfers, maat, selectie, data_key, bron=bron)
     clusters = (_blok(parsed, "uwv_broncijfer") or parsed).get("clusters")
     for naam, aantal in clusters.items() if isinstance(clusters, dict) else ():
         if (cijfers := _getal(aantal)) is not None:
-            yield Meetwaarde(cijfers, "Vacatures", (*plaats, *sector, f"Beroepencluster: {naam}"), bron=bron)
-
-
-_ROA_ONDERDELEN = {"schoolverlaters_sis_2024": "Schoolverlaters (SIS 2024)", "prognose_tot_2030": "Prognose tot 2030"}
+            yield Meetwaarde(cijfers, "Vacatures", (*plaats, *sector, f"Beroepencluster: {naam}"), data_key, bron=bron)
 
 
 def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
     """ROA per onderdeel, opleiding en indicator (CH-39); de regio per onderdeel uit `herkomst`,
     zodat een landelijke terugval landelijk heet."""
-    bron = f"{parsed.get('bron')} ({parsed.get('versie')})"  # "ROA, AIS tot 2030"
+    data_key, bron = _arbeidsmarktbron(parsed, f"{parsed.get('bron')} ({parsed.get('versie')})")  # "ROA, AIS tot 2030"
     gegeven = parsed.get("herkomst")
     herkomst: dict = gegeven if isinstance(gegeven, dict) else {}
-    for onderdeel, naam in _ROA_ONDERDELEN.items():
+    for onderdeel, naam in ROA_ONDERDELEN.items():
         regio = herkomst.get(onderdeel) or parsed.get("regio")
         opleidingen = parsed.get(onderdeel)
         for opleiding, indicatoren in opleidingen.items() if isinstance(opleidingen, dict) else ():
@@ -167,9 +173,7 @@ def _uit_roa(parsed: dict) -> Iterator[Meetwaarde]:
                 for soort, waarde in waarden.items() if isinstance(waarden, dict) else ():
                     if (cijfers := _getal(waarde)) is not None:
                         selectie = (f"Opleiding: {opleiding}", f"Regio: {regio}", naam)
-                        yield Meetwaarde(
-                            cijfers, indicator, selectie, eenheid="%" if soort == "perc" else None, bron=bron
-                        )
+                        yield Meetwaarde(cijfers, indicator, selectie, data_key, "%" if soort == "perc" else None, bron)
 
 
 _ARBEIDSMARKT = {UWV_ID: _uit_uwv, ROA_ID: _uit_roa}

@@ -559,7 +559,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "description": (
                 "UWV-vacatures per provincie of gemeente en beroepencluster, optioneel voor één onderwijssector. "
                 "Een momentopname (peildatum in het resultaat), geen reeks, niet per instelling en zonder "
-                "opleidingsniveau. Arbeidsmarkt-context bij een onderwijsvraag."
+                "opleidingsniveau. Arbeidsmarkt-context bij een onderwijsvraag. Het resultaat heeft een data_key: "
+                "de tabel met alle beroepenclusters (BEROEPENCLUSTER, VACATURES) voor query_data en create_plot."
             ),
             "parameters": {
                 "type": "object",
@@ -590,7 +591,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "ROA (AIS 2030): schoolverlaters (SIS 2024: werkloosheid, vast dienstverband, buiten de "
                 "vakrichting; alleen landelijk) en de prognose tot 2030 (landelijk, of per arbeidsmarktregio "
                 "of provincie), per opleidingsniveau mbo2-4, bachelor en master, of voor één opleidingssector. "
-                "Niet per instelling."
+                "Niet per instelling. Het resultaat heeft een data_key: de tabel met elk cijfer als rij "
+                "(ONDERDEEL, REGIO, OPLEIDING, INDICATOR, PERCENTAGE, AANTAL, TYPERING) voor query_data en create_plot."
             ),
             "parameters": {
                 "type": "object",

@@ -74,7 +74,8 @@ def _registerbron(tool: str, result: str) -> list[str]:
 
 def _stapbronnen(tool: str, result: str) -> list[str]:
     datasets = [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
-    # UWV en ROA staan niet in de store: hun bron is die van hun citaties (agent/meetwaarden.py).
+    # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
+    # citaties (agent/meetwaarden.py). Met een data_key staat de bron, met peildatum of versie, al in `datasets`.
     buiten_de_store = [w.bron for w in meetwaarden(result, tool) if w.bron]
     return datasets + buiten_de_store + _registerbron(tool, result)
 

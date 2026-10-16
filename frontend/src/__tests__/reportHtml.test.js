@@ -550,6 +550,7 @@ describe('manifest (#345)', () => {
     data_as_of: [
       { bron: 'cbs', dataset: '85423NED', laatste_update: '2026-09-15', periodestatus: ['Voorlopig'] },
       { bron: 'duo', dataset: 'p01hoinges', herladen_op: '11-10-2026' },
+      { bron: 'uwv', dataset: 'uwv-open-match-data', peilmoment: 'peildatum 2023-05-16' },
     ],
     gemaakt_op: '12-10-2026',
   }
@@ -564,6 +565,7 @@ describe('manifest (#345)', () => {
     expect(html).toContain('catalogus bd4942907ddd')
     expect(html).toContain('CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig)')
     expect(html).toContain('DUO p01hoinges (herladen 11-10-2026)')
+    expect(html).toContain('UWV uwv-open-match-data (peildatum 2023-05-16)')
   })
 
   it('een ouder manifest zonder model_naam toont het id zonder provider (BEV-10)', () => {

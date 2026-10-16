@@ -282,7 +282,8 @@ def test_uwv_zegt_dat_het_opleidingsniveau_onbekend_is(bronnen, args):
 def test_uwv_per_gemeente(bronnen):
     uit = json.loads(get_uwv_vacatures("Utrecht", gemeente="utrecht"))
 
-    assert uit["gemeente"] == "utrecht"
+    # In de spelling van de bron (#577): de tabel in de store en haar laadaanroep gebruiken die ook.
+    assert uit["gemeente"] == "Utrecht"
     assert uit["totaal_vacatures"] == 1000
     assert uit["clusters"] == {"Zorg en welzijn": 900, "ICT": 100}
 

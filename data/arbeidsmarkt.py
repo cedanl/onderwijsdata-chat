@@ -92,6 +92,8 @@ class UwvStand:
     totaal: int
     peildatum: str  # ISO-datum(s) uit de data
     clusters: dict[str, int]  # beroepencluster → vacatures, aflopend
+    provincie: str = ""  # de plaats zoals de data haar spelt, niet zoals de vraag haar schreef (#577)
+    gemeente: str | None = None
 
 
 @functools.cache
@@ -108,6 +110,11 @@ def _peildatum(df: pd.DataFrame) -> str:
 
 def provincies() -> list[str]:
     return sorted(_uwv()["PROVINCIE"].dropna().unique())
+
+
+def uwv_peildatum() -> str:
+    """De peildatum van de hele UWV-momentopname, voor een bronregel zonder selectie (#577)."""
+    return _peildatum(_uwv())
 
 
 def _in_provincie(df: pd.DataFrame, provincie: str) -> pd.DataFrame:
@@ -134,6 +141,8 @@ def uwv_stand(provincie: str, gemeente: str | None = None) -> UwvStand | None:
         totaal=int(subset["AANTAL"].sum()),
         peildatum=_peildatum(subset),
         clusters={str(k): int(v) for k, v in per_cluster.items()},
+        provincie=str(subset["PROVINCIE"].iloc[0]),
+        gemeente=str(subset["GEMEENTE"].iloc[0]) if gemeente else None,
     )
 
 

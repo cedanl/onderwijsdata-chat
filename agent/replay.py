@@ -27,6 +27,8 @@ from tools.schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_UWV_VACATURES,
     TOOL_QUERY_DATA,
 )
 
@@ -49,7 +51,10 @@ def geldige_modus(mode: object) -> bool:
 # samenstelt. Het recept komt van de client, en zonder deze grens kon een ingelogde
 # client er elke tool mee aanroepen, run_analysis inbegrepen (#505). De scopecontrole
 # (#355) zit in de tools zelf en geldt zo ook voor dit pad.
-REPLAYABLE_TOOLS = frozenset({TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA})
+# De arbeidsmarkttools laden sinds #577 ook een dataset; hun scopepoort zit in de tool.
+REPLAYABLE_TOOLS = frozenset(
+    {TOOL_GET_DUO_DATA, TOOL_GET_CBS_DATA, TOOL_GET_RIO_DATA, TOOL_GET_UWV_VACATURES, TOOL_GET_ROA_BENCHMARK}
+)
 
 
 def replay_data_calls(calls: list[dict]) -> list[dict]:

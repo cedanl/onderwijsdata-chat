@@ -11,9 +11,9 @@ herleidbare bron krijgt geen regel; het rapport zegt dan dat de bron niet is vas
 """
 
 from tools import store
-from tools.catalog import documentatie_url
+from tools.catalog import bron_titel, documentatie_url
 
-from .selectie import bestand_in_woorden, bron_in_woorden, laadkey, periode_in_woorden
+from .selectie import SCHEIDING, bestand_in_woorden, laadkey, periode_in_woorden
 
 _PERIODESTATUS = "Periodestatus"
 
@@ -37,7 +37,9 @@ def figuurbron(data_key) -> dict | None:
         return None
     # De periode van wat de grafiek toont: de selectie, niet de hele geladen dataset.
     getekend = store.meta(data_key) or known
-    delen = [f"{bron_in_woorden(known)} ({known.dataset})"]
+    delen = [f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)} ({known.dataset})"]
+    if known.peilmoment:
+        delen.append(known.peilmoment)
     if bestand := bestand_in_woorden(known):
         delen.append(f"bestand {bestand}")
     if jaren := periode_in_woorden(getekend):

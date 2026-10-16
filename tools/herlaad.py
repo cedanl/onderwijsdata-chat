@@ -1,8 +1,8 @@
 """Een data-key terughalen na een herstart, uit zijn recept (#472).
 
 De store leeft in het geheugen. Per key bewaart de database daarom hoe hij ontstond: de
-laadaanroep (get_cbs_data, get_duo_data, get_rio_data) of de selectie (query_data) op een
-andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste
+laadaanroep (get_cbs_data, get_duo_data, get_rio_data, get_uwv_vacatures, get_roa_benchmark)
+of de selectie (query_data) op een andere key. Hier wordt dat recept opnieuw uitgevoerd, door dezelfde tools als de eerste
 keer: scopegrens, sentinelmaskering, CBS-afronding en KeyMeta komen zo hetzelfde terug.
 Alleen toolnamen uit een vaste lijst; de argumenten toetst de tool zelf, er wordt niets
 geëvalueerd. Een eigen berekening (run_analysis) wordt niet opnieuw uitgevoerd: van die
@@ -18,6 +18,7 @@ from datetime import date
 from core.logging_util import foutkenmerk
 
 from . import store
+from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_laatste_update
 from .cbs import get_cbs_data
 from .duo import get_duo_data
@@ -29,6 +30,8 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_UWV_VACATURES,
     TOOL_QUERY_DATA,
     TOOL_RUN_ANALYSIS,
 )
@@ -42,6 +45,9 @@ _LADERS: dict[str, tuple[Callable[..., str], str]] = {
     TOOL_GET_CBS_DATA: (get_cbs_data, "CBS"),
     TOOL_GET_DUO_DATA: (get_duo_data, "DUO"),
     TOOL_GET_RIO_DATA: (get_rio_data, "RIO"),
+    # Een arbeidsmarktresultaat is een dataset met een laadaanroep (#577).
+    TOOL_GET_UWV_VACATURES: (get_uwv_vacatures, "UWV"),
+    TOOL_GET_ROA_BENCHMARK: (get_roa_benchmark, "ROA"),
 }
 _MAX_STAPPEN = 10  # een keten van selecties; meer is een kapot of rondlopend recept
 _MAX_REDEN = 300

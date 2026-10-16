@@ -101,6 +101,12 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een UWV- of ROA-resultaat is een dataset zoals elke andere (#577): de tabel erachter staat in de store onder een
+  `data_key`, met de laadaanroep en de peildatum of versie. Een rapport over een gesprek met vacaturecijfers ziet
+  die cijfers nu (het rapport van 8 oktober schreef "geen vacaturegegevens geladen" terwijl de chat ze toonde),
+  de bronnenlijst van rapport en dashboard noemt UWV Open Match met peildatum en ROA met versie, het recept haalt
+  ze na een herstart terug, de citaties wijzen naar de tabel, en snippet en CSV-export werken erop. Het model kan
+  de tabel met `query_data` filteren en met `create_plot` tekenen.
 - Onder elke grafiek in een rapport staat een bronregel uit code (#569): bron en catalogustitel, dataset-ID,
   bij een DUO-dataset met meer bestanden het bestand, de periode en de CBS-periodestatus van de getekende
   rijen, en een link naar de open-databron (CBS OData, de DUO-datasetpagina, de RIO-API) die in een nieuw

@@ -26,7 +26,7 @@ from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, store
+from tools import LABELS, arbeidsmarkt, store
 from tools.catalog import bron_titel, resource_titel
 from tools.columns import sample_values
 from tools.schemas import (
@@ -35,6 +35,8 @@ from tools.schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
     TOOL_GET_RIO_DATA,
+    TOOL_GET_ROA_BENCHMARK,
+    TOOL_GET_UWV_VACATURES,
     TOOL_QUERY_DATA,
     TOOL_SCHEMAS,
 )
@@ -420,6 +422,8 @@ _SOURCE_PREFIXES = {
     TOOL_GET_DUO_DATA: "DUO",
     TOOL_GET_CBS_DATA: "CBS",
     TOOL_GET_RIO_DATA: "RIO",
+    TOOL_GET_UWV_VACATURES: "UWV",
+    TOOL_GET_ROA_BENCHMARK: "ROA",
 }
 
 
@@ -448,9 +452,12 @@ def _sources_from_recipe(recipe: list[dict]) -> list[str]:
             args = json.loads(call["arguments"]) if isinstance(call["arguments"], str) else call["arguments"]
         except (json.JSONDecodeError, TypeError):
             args = {}
-        dataset = args.get("dataset_id") or args.get("resource") or ""
+        # Een arbeidsmarkttool laadt één vaste dataset (#577): het ID en de peildatum of versie komen uit de tool.
+        dataset = args.get("dataset_id") or args.get("resource") or arbeidsmarkt.DATASET.get(call["name"], "")
         resource = args.get("resource") if args.get("dataset_id") else None
         label = _source_label(prefix, dataset, resource)
+        if peilmoment := arbeidsmarkt.peilmoment(call["name"]):
+            label += f", {peilmoment}"
         if label not in sources:
             sources.append(label)
     return sources

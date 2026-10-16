@@ -26,6 +26,7 @@ _URLS = {
 def catalogus():
     with (
         patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
+        patch("agent.figuurbron.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
         patch("agent.figuurbron.documentatie_url", side_effect=_URLS.get),
         patch("agent.selectie.tabelbestanden", return_value=[]),
     ):
