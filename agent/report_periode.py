@@ -14,6 +14,7 @@ import json
 import re
 
 from tools import periode
+from tools.plot import kopruimte
 
 # Een tijdas: jaartal, schooljaar (2021/22, 2021/2022) of CBS-periodecode (2021SJ00, 2021JJ00).
 _JAARTAL = re.compile(r"^(20\d{2})$")
@@ -69,7 +70,21 @@ def bijgesneden(figure_json: str, bereik: tuple[int, int]) -> str:
         meta["data"] = [
             rij for rij in meta["data"] if (j := _startjaar(rij.get(meta["x"]))) is None or bereik[0] <= j <= bereik[1]
         ]
+    _kopruimte_opnieuw(figuur)
     return json.dumps(figuur, ensure_ascii=False)
+
+
+def _kopruimte_opnieuw(figuur: dict) -> None:
+    """De waardeas van een lijn met labels loopt tot boven het hoogste label (#579); na het bijsnijden
+    is dat het hoogste punt dat blijft. Een as zonder die ruimte blijft zoals hij is."""
+    as_ = figuur.get("layout", {}).get("yaxis")
+    if not (isinstance(as_, dict) and isinstance(opties := as_.get("autorangeoptions"), dict) and "include" in opties):
+        return
+    kop = kopruimte(figuur.get("data") or [])
+    if kop is None:
+        del opties["include"]
+    else:
+        opties["include"] = [kop]
 
 
 def gevraagd_bereik(*teksten: str) -> tuple[int, int] | None:
