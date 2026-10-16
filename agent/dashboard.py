@@ -18,6 +18,7 @@ from pathlib import Path
 import plotly.io as pio
 
 from agent import kpi_bron
+from agent.afkapping import afkappingsregels
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
 from agent.replay import REPLAYABLE_TOOLS, ankers_van_recipe
@@ -161,12 +162,15 @@ def build_dataset_context(session: dict) -> dict:
     datasets: list[dict] = []
     for key in session_data_keys(session):
         df = store.get(key)
+        known = store.meta(key)
         datasets.append(
             {
                 "data_key": key,
                 "row_count": len(df),
                 "columns": [_column_summary(df, col) for col in df.columns],
                 "herkomst": data_lineage(session, key),
+                # False: one page of the source, not the whole source (#186); the report and dashboard say so (#578).
+                "volledig": known.volledig if known else True,
             }
         )
 
@@ -401,7 +405,8 @@ def _parse_spec_from_response(
     recipe = _build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Dashboard")
 
-    sources = _sources_from_recipe(recipe)
+    # Na de bronvermelding het voorbehoud bij een afgekapte bron, ook uit code (#578).
+    sources = [*_sources_from_recipe(recipe), *afkappingsregels(context.get("datasets", []), "dashboard")]
 
     return DashboardSpec(
         title=spec_data.get("title") or topic[:60] or "Dashboard",

@@ -109,7 +109,7 @@ def test_de_rapportfase_krijgt_het_rekenbewijs_van_de_sessie(monkeypatch):
     )
     monkeypatch.setattr(report, "report_problems", bronnen_vastleggen)
     monkeypatch.setattr(report, "tool_loop", eenmaal_controleren)
-    monkeypatch.setattr(report, "_parse_spec_from_response", lambda *a: _spec(""))
+    monkeypatch.setattr(report, "_parse_spec_from_response", lambda *a, **kw: _spec(""))
 
     asyncio.run(report.generate(session, emit))
 
