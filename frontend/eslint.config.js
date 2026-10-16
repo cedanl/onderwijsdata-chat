@@ -71,6 +71,31 @@ export default [
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**", "**/*.test.js"],
+    // Tests draaien in vitest (jsdom of node): de globals die ze daarnaast gebruiken.
+    files: ["src/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        // jsdom/browser
+        btoa: "readonly",
+        DOMException: "readonly",
+        Element: "readonly",
+        HTMLAnchorElement: "readonly",
+        HTMLInputElement: "readonly",
+        HTMLTextAreaElement: "readonly",
+        KeyboardEvent: "readonly",
+        MessageEvent: "readonly",
+        MouseEvent: "readonly",
+        Node: "readonly",
+        Response: "readonly",
+        Storage: "readonly",
+        structuredClone: "readonly",
+        // node (vitest zet __dirname ook in ESM-tests)
+        __dirname: "readonly",
+        process: "readonly",
+      },
+    },
+  },
+  {
+    ignores: ["dist/**", "node_modules/**"],
   },
 ];

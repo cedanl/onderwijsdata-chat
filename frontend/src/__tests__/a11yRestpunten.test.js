@@ -38,7 +38,7 @@ describe('a11y-restpunten (#517)', () => {
 
   it('A5: laad- en activiteitsindicatoren blijven rustig doorlopen bij reduced motion', () => {
     const blok = css.match(/@media \(prefers-reduced-motion: reduce\)\s*{[\s\S]*?\n}/)?.[0]
-    const regel = blok.match(/\n  \.spinner,[^{]*{[^}]*}/)?.[0]
+    const regel = blok.match(/\n {2}\.spinner,[^{]*{[^}]*}/)?.[0]
     expect(regel).toBeDefined()
     for (const kiezer of ['.spinner', '.ai-typing span', '.ws-dot', '.tool-step-dot:not(.done)']) {
       expect(regel).toContain(kiezer)

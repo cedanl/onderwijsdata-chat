@@ -14,12 +14,11 @@ let root
 let container
 let search
 
-function Harness() {
-  search = useConversationSearch()
-  return null
-}
-
 beforeEach(async () => {
+  function Harness() {
+    search = useConversationSearch()
+    return null
+  }
   vi.useFakeTimers()
   fetchConversations.mockReset()
   container = document.createElement('div')

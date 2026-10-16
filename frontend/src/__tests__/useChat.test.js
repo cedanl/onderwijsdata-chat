@@ -23,16 +23,19 @@ let root
 let container
 let chat
 
-function Harness() {
-  chat = useChat()
-  return null
+async function mount() {
+  function Harness() {
+    chat = useChat()
+    return null
+  }
+  root = createRoot(container)
+  await act(async () => { root.render(createElement(Harness)) })
 }
 
 beforeEach(async () => {
   globalThis.WebSocket = FakeWebSocket
   container = document.createElement('div')
-  root = createRoot(container)
-  await act(async () => { root.render(createElement(Harness)) })
+  await mount()
 })
 
 afterEach(() => {
@@ -862,8 +865,7 @@ describe('deltas per animation frame', () => {
     expect(cancel).toHaveBeenCalledWith(7)
 
     // De afterEach van dit bestand unmount de root nog eens: geef hem een verse.
-    root = createRoot(container)
-    await act(async () => { root.render(createElement(Harness)) })
+    await mount()
   })
 
   it('zet de gebufferde tekst in het bericht als de verbinding wegvalt', async () => {
