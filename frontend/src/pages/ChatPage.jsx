@@ -61,6 +61,7 @@ import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
 import FeedbackLink from '../components/FeedbackLink'
+import { relatieveDatum } from '../relatieveDatum'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
@@ -272,7 +273,7 @@ function MessageContent({ msg, blocks = null }) {
   )
 }
 
-export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   // A question on its way into the input box, not sent: a follow-up question picked under the last
@@ -486,6 +487,15 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       .catch(() => addToast('Gesprek openen is mislukt. Probeer het opnieuw.', 'error'))
       .finally(() => setOpeningId(null))
   }, [openingId, saveConversation, openConversation, addToast, tokenAtMount])
+
+  // A conversation picked in the search palette (#602) opens here, once; App forgets it straight away.
+  const handleLoadRef = useRef(handleLoad)
+  useEffect(() => { handleLoadRef.current = handleLoad })
+  useEffect(() => {
+    if (!teOpenenGesprek) return
+    onGesprekGeopend?.()
+    handleLoadRef.current({ id: teOpenenGesprek })
+  }, [teOpenenGesprek, onGesprekGeopend])
 
   // Older conversations stay on the server until asked for (#123).
   const handleLoadMoreHistory = useCallback(() => {
@@ -1203,18 +1213,6 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
 
   if (history.length === 0) return null
 
-  const relativeDate = (ts) => {
-    // Locally-created timestamps are ms (Date.now()); the backend normalizes
-    // and returns them in seconds (persistence/db.py's _normalize_ts). Same
-    // > 1e12 heuristic as the backend uses, so either source renders correctly.
-    const tsMs = ts > 1e12 ? ts : ts * 1000
-    const diff = Date.now() - tsMs
-    const days = Math.floor(diff / 86400000)
-    if (days === 0) return 'Vandaag'
-    if (days === 1) return 'Gisteren'
-    return new Date(tsMs).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
-  }
-
   const startEditing = (conv, e) => {
     e.stopPropagation()
     setEditDraft(conv.title)
@@ -1282,7 +1280,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
                   ) : (
                     <span className="history-btn-title" title={conv.title}>{conv.title}</span>
                   )}
-                  <span className="history-btn-date">{openingId === conv.id ? 'Openen…' : relativeDate(conv.timestamp)}</span>
+                  <span className="history-btn-date">{openingId === conv.id ? 'Openen…' : relatieveDatum(conv.timestamp)}</span>
                 </div>
               </button>
               <div className="history-item-actions">

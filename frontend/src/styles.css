@@ -1773,7 +1773,7 @@ html.dark .suggested-btn:hover {
 /* Touch screens and narrow windows: 44x44 (WCAG 2.5.5), the icons themselves stay small.
    Last in the file, so no rule above lowers them again. */
 @media (pointer: coarse), (max-width: 1024px) {
-  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .wb-delete-btn,
+  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .navbar-zoek-btn, .wb-delete-btn,
   .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
   .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
@@ -1862,6 +1862,38 @@ html.dark .suggested-btn:hover {
 .algemene-feedback-overlay { z-index: 2100; }
 .wb-gallery-feedback, .settings-feedback { margin-top: 24px; font-size: .82rem; color: var(--muted-text); text-align: center; }
 .settings-feedback { margin: 16px 0 0; }
+
+/* Search palette (#602): a panel near the top, like other command palettes. It can open above the settings
+   dialog (z-index 2000), so it stacks like the privacy popup. */
+.zoek-overlay { z-index: 2100; align-items: flex-start; }
+.zoek-palet {
+  margin: 10vh auto 0; width: min(640px, 100%); max-height: 70vh; display: flex; flex-direction: column;
+  background: var(--white); border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.25); overflow: hidden;
+}
+.zoek-invoer {
+  border: none; border-bottom: 1px solid var(--gray-200); padding: 16px 18px; font-size: 1rem;
+  background: transparent; color: var(--gray-900);
+}
+.zoek-invoer:focus { outline: none; }
+.zoek-palet:focus-within .zoek-invoer { box-shadow: inset 0 -2px 0 var(--focus-ring); }
+.zoek-lijst { overflow-y: auto; }
+.zoek-groep-kop { padding: 10px 18px 4px; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-text); }
+.zoek-optie { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 18px; cursor: pointer; font-size: .9rem; color: var(--gray-800); }
+.zoek-optie.actief { background: var(--blue-50); }
+.zoek-optie-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zoek-optie-datum { flex-shrink: 0; font-size: .75rem; color: var(--muted-text); }
+.zoek-status { margin: 0; padding: 10px 18px; border-top: 1px solid var(--gray-100); font-size: .78rem; color: var(--muted-text); }
+.navbar-zoek-btn {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm); background: var(--white); color: var(--gray-600); font-size: .8rem;
+}
+.navbar-zoek-btn svg { width: 16px; height: 16px; }
+.navbar-zoek-hint { font-family: inherit; font-size: .7rem; padding: 1px 5px; border: 1px solid var(--gray-200); border-radius: 4px; color: var(--muted-text); }
+/* On a phone only the icon: the header is narrow (#596). */
+@media (max-width: 768px) {
+  .navbar-zoek-label, .navbar-zoek-hint { display: none; }
+  .navbar-zoek-btn { border: none; padding: 10px; justify-content: center; }
+}
 .modal--privacy { max-width: 720px; }
 /* Zero height, so it takes no room above the title; sticky, so the close button stays in view
    while the overlay scrolls the long text. */

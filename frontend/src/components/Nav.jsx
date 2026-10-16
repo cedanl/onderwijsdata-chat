@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import DataSourcesModal from './DataSourcesModal'
 import PrivacyLink from './PrivacyLink'
 import { useEscape } from '../hooks/useEscape'
+import { sneltoetsHint } from '../hooks/useZoekSneltoets'
 
 const BESTEMMINGEN = [
   {
@@ -26,7 +27,7 @@ const BESTEMMINGEN = [
 const isActief = (to, pathname) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
 
 // slotRef: de plek in de balk waar een pagina op een telefoon zijn knoppen neerzet (navSlot.jsx).
-export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = true, slotRef }) {
+export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = true, slotRef, onZoek = null }) {
   const bestemmingen = BESTEMMINGEN.filter(b => dashboardsEnabled || !b.dashboard)
   return (
     <nav className="navbar">
@@ -50,6 +51,16 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
 
         <div className="navbar-acties" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
           <div className="navbar-pagina" ref={slotRef} />
+          {/* Search over conversations and reports (#602); the hint shows the shortcut, on a phone only the icon. */}
+          {onZoek && (
+            <button type="button" className="navbar-zoek-btn" onClick={onZoek} aria-label="Zoeken" aria-keyshortcuts="Control+K Meta+K">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span className="navbar-zoek-label" aria-hidden="true">Zoeken</span>
+              <kbd className="navbar-zoek-hint" aria-hidden="true">{sneltoetsHint()}</kbd>
+            </button>
+          )}
           {user && (
             <button type="button"
               className="navbar-profile-btn"

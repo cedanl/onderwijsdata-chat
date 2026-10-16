@@ -81,7 +81,7 @@ CHAT_SECRET=<willekeurige lange string>
 
 Meerdere gebruikers zijn mogelijk als kommalijst: `CHAT_USERS=alice:ww1,bob:ww2`.
 
-Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen — lokaal in het SQLite-bestand `app.db`, of in PostgreSQL als `POSTGRES_URI` is ingesteld. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk.
+Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen — lokaal in het SQLite-bestand `app.db`, of in PostgreSQL als `POSTGRES_URI` is ingesteld. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk, of met **Ctrl+K** (⌘K op een Mac) of de zoekknop in de kop: dat zoekt in één keer in je gesprekken (titel en tekst) en rapporten (titel).
 
 !!! tip "Uitschakelen"
     Verwijder `CHAT_USERS` uit `.env` om terug te gaan naar de anonieme modus.

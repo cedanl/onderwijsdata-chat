@@ -68,6 +68,24 @@ async function mountChat() {
 
 const gesprekKnop = () => container.querySelector('.history-btn')
 
+// #602: een gesprek dat in het zoekpalet gekozen is, opent op de chatpagina, één keer.
+describe('een gesprek uit het zoekpalet (#602)', () => {
+  it('opent het gekozen gesprek en meldt dat het geopend is', async () => {
+    api.fetchConversation.mockResolvedValue({ ...rij, messages: [vraag, antwoord] })
+    const geopend = vi.fn()
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root.render(createElement(ChatPage, { user: 'tester', teOpenenGesprek: 'c1', onGesprekGeopend: geopend }))
+    })
+
+    expect(geopend).toHaveBeenCalledTimes(1)
+    expect(api.fetchConversation).toHaveBeenCalledWith('c1')
+    expect(container.textContent).toContain('Hoeveel studenten heeft de HU?')
+  })
+})
+
 describe('een gesprek openen (#509)', () => {
   it('haalt het gesprek op en toont zijn berichten', async () => {
     api.fetchConversation.mockResolvedValue({ ...rij, messages: [vraag, antwoord] })
