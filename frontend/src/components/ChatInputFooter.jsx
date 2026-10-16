@@ -21,7 +21,7 @@ export default function ChatInputFooter({
       <ConnectionStatus connected={connected} />
       <MessageCounter {...length} />
       {busy ? (
-        <button type="button" className="send-btn" onClick={onStop} title="Stop genereren">
+        <button type="button" className="send-btn" onClick={onStop} title="Stop genereren" aria-label="Stop genereren">
           <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}><rect x="5" y="5" width="14" height="14" rx="2" /></svg>
         </button>
       ) : (

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
 import PrivacyLink from './PrivacyLink'
 import { useDialog } from '../hooks/useDialog'
+import { FUNCTIES, isFunctie } from '../functies'
 
-const FUNCTIES = ['Bestuurder', 'Directeur', 'Beleidsmedewerker', 'Onderzoeker', 'Anders']
 const MODES = [
   { id: 'system', label: 'Systeem' },
   { id: 'light',  label: 'Licht' },
@@ -35,7 +35,8 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
   // profile — reset it so the picker starts clean and the user can choose.
   const pollutedSaved = (sramIdentity || []).includes(settings.instelling)
   const [instelling, setInstelling] = useState(pollutedSaved ? '' : (settings.instelling || sramInstelling || ''))
-  const [functie, setFunctie] = useState(settings.functie || '')
+  // A stored role that is not in the list (an older value) shows as no choice, and is saved as none (#591).
+  const [functie, setFunctie] = useState(isFunctie(settings.functie) ? settings.functie : '')
   const [mode, setMode] = useState(settings.mode || 'system')
   const dialogRef = useDialog(onClose)
 
@@ -121,6 +122,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
               {FUNCTIES.map(f => (
                 <button type="button"
                   key={f}
+                  aria-pressed={functie === f}
                   onClick={() => setFunctie(functie === f ? '' : f)}
                   style={{
                     padding: '7px 14px', borderRadius: 'var(--radius-sm)', fontSize: '.82rem', fontWeight: 600,

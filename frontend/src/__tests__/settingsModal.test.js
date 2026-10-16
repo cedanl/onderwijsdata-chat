@@ -44,6 +44,33 @@ describe('SettingsModal logout', () => {
   })
 })
 
+describe('SettingsModal functie (#591)', () => {
+  const button = text => [...container.querySelectorAll('button')].find(b => b.textContent === text)
+
+  it('offers Docent; choosing it and saving passes it on', async () => {
+    const onSave = vi.fn()
+    await render({ onSave })
+    expect(button('Docent').getAttribute('aria-pressed')).toBe('false')
+
+    await act(async () => { button('Docent').click() })
+    expect(button('Docent').getAttribute('aria-pressed')).toBe('true')
+    await act(async () => { button('Opslaan').click() })
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ functie: 'Docent' }))
+  })
+
+  it('deselects a role on a second click', async () => {
+    const onSave = vi.fn()
+    await render({ onSave, settings: { functie: 'Docent' } })
+    expect(button('Docent').getAttribute('aria-pressed')).toBe('true')
+
+    await act(async () => { button('Docent').click() })
+    await act(async () => { button('Opslaan').click() })
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ functie: '' }))
+  })
+})
+
 describe('SettingsModal tap targets', () => {
   it('carries the class the 44px touch rule for its buttons hangs on (#490)', async () => {
     await render({})

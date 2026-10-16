@@ -45,6 +45,7 @@ import {
 } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
+import { figuurBeschrijving } from '../figuurBeschrijving'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
@@ -61,7 +62,6 @@ import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
 import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
-import { sendRefusalReason } from '../sendRefusal'
 import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
@@ -70,6 +70,8 @@ import { useConversationSearch } from '../hooks/useConversationSearch'
 import { splitsTelling } from '../telling'
 import { answerBlocks, metBronnen } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
+import { platteTekst } from '../platteTekst'
+import { welkomstSub } from '../functies'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -106,10 +108,11 @@ function lastAnswerIndex(messages) {
   return messages.findLastIndex(m => m.role === 'assistant' && !m.figures?.length)
 }
 
-// Announced once an answer is complete; streaming deltas would flood a screen reader.
+// Announced once an answer is complete; streaming deltas would flood a screen reader. As plain text,
+// so it does not read out the markdown signs (#589).
 function lastAnswerText(messages) {
   const last = messages.findLast(m => m.role !== 'assistant' || m.content)
-  return last?.role === 'assistant' && last.done ? last.content : ''
+  return last?.role === 'assistant' && last.done ? platteTekst(last.content) : ''
 }
 
 function ReasoningPanel({ tools, tussentekst, isDone }) {
@@ -204,12 +207,14 @@ function MessageContent({ msg, blocks = null }) {
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
-  const [sendNotice, setSendNotice] = useState(null)
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
   const prefillComposer = useCallback(tekst => setPrefill({ tekst }), [])
   const clearPrefill = useCallback(() => setPrefill(null), [])
+  // "Opnieuw" under an error sends past the composer; when send() refuses it, the composer says why (#585).
+  const [refusal, setRefusal] = useState(null)
+  const clearRefusal = useCallback(() => setRefusal(null), [])
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState('')
   const [defaultModel, setDefaultModel] = useState('')
@@ -568,21 +573,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   useAutoScroll(messagesContainerRef, messages)
 
-  // Verandert de toestand die het versturen blokkeerde, dan is de melding achterhaald.
-  useEffect(() => { setSendNotice(null) }, [busy, connected, resetting])
-
-  // The composer holds the draft and clears it when this returns true.
-  const submitQuestion = (q) => {
-    if (atContextLimit) return false
-    // send() refuses while busy, resetting or reconnecting; the typed question then stays.
-    if (!send(q)) {
-      setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
-      return false
-    }
-    setSendNotice(null)
-    return true
-  }
-
   // Opnieuw na een foutmelding (#333). Met een ander model gaan de instellingen eerst:
   // de server beantwoordt de vraag met het model uit zijn instellingen.
   const handleRetry = (question, modelId) => {
@@ -590,7 +580,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       handleModelChange(modelId)
       sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
     }
-    if (!send(question)) setSendNotice(sendRefusalReason({ connected, busy, resetting, reporting: reportBusy }))
+    if (!send(question)) setRefusal({})
   }
 
   // De vraag achter het antwoord op index i opnieuw: na een herstart haalt alleen dat de data terug (CH-44).
@@ -754,7 +744,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             <RunProgress busy={busy} steps={countRunSteps(messages)} stepLabel={currentRunStep(messages)} heavy={heavyRun(messages)} />
             <div ref={messagesEndRef} />
-            <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />
+            {/* Only a filled chat needs it; on the welcome screen it covered a suggestion (#592). */}
+            {hasMessages && <ScrollToBottom sentinelRef={messagesEndRef} scrollContainerRef={messagesContainerRef} />}
           </div>
 
           <div className="chat-input-area">
@@ -804,24 +795,25 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 )}
               </p>
             )}
-            {sendNotice && (
-              <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{sendNotice}</p>
-            )}
             <Composer
               hasMessages={hasMessages}
               connected={connected}
               busy={busy}
-              ready={connected && !busy && !resetting && !atContextLimit}
+              resetting={resetting}
+              reportBusy={reportBusy}
+              atContextLimit={atContextLimit}
               models={models}
               selectedModel={selectedModel}
               onModelChange={handleModelChange}
               onStop={stop}
-              onSubmit={submitQuestion}
+              onSubmit={send}
               max={maxMessageChars}
               rejectedDraft={rejectedDraft}
               clearRejectedDraft={clearRejectedDraft}
               prefill={prefill}
               clearPrefill={clearPrefill}
+              refusal={refusal}
+              clearRefusal={clearRefusal}
             />
             <p className="chat-disclaimer">openEDUdata+ gebruikt <button type="button" className="disclaimer-link" onClick={() => setShowSources(true)}>open onderwijsdata</button>. Controleer altijd de bronnen bij beleidsbeslissingen. {PERSOONSGEGEVENS_WAARSCHUWING} <PrivacyLink className="disclaimer-link" /></p>
           </div>
@@ -846,9 +838,6 @@ function WelcomeScreen({ instelling, functie, children }) {
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
     : 'Stel je vraag aan openEDUdata+'
-  const sub = functie
-    ? `Als ${functie} krijg je onderbouwde antwoorden over instroom, voortgang, arbeidsmarkt en diplomering — direct uit open onderwijsdata.`
-    : 'Vraag wat je wilt weten over instroom, voortgang, arbeidsmarkt of diplomering. Ik combineer open data van CBS, DUO en RIO en geef je een onderbouwd antwoord.'
   return (
     <div className="chat-welcome">
       <div className="chat-welcome-icon">
@@ -857,7 +846,7 @@ function WelcomeScreen({ instelling, functie, children }) {
         </svg>
       </div>
       <h2>{greeting}</h2>
-      <p>{sub}</p>
+      <p>{welkomstSub(functie)}</p>
       {children}
     </div>
   )
@@ -1070,6 +1059,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
+  const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
   if (!figure) return null
   const isMap = isMapFigure(figure)
   return (
@@ -1092,13 +1082,17 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
           CSV
         </button>
       )}
-      <Plot
-        data={figure.data || NO_TRACES}
-        layout={layout}
-        config={PLOT_CONFIG}
-        useResizeHandler
-        style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
-      />
+      {/* The chart's accessible name (#588), on the chart only: role="img" makes its children
+          presentational, and the CSV button above must stay a button. */}
+      <div {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
+        <Plot
+          data={figure.data || NO_TRACES}
+          layout={layout}
+          config={PLOT_CONFIG}
+          useResizeHandler
+          style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
+        />
+      </div>
     </div>
   )
 })

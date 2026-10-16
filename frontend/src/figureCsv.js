@@ -33,10 +33,10 @@ function cell(value) {
 // Also the row format of the cited-numbers export (citatieCsv.js).
 export const toCsv = rows => rows.map(r => r.map(cell).join(';')).join('\n')
 
-// A horizontal bar draws its categories on y and its values on x.
+// A horizontal bar draws its categories on y and its values on x. Also read by figuurBeschrijving.js.
 const isHorizontal = trace => trace.orientation === 'h'
-const xsOf = trace => plotlyArray(isHorizontal(trace) ? trace.y : (trace.x ?? trace.labels)) ?? []
-const ysOf = trace => plotlyArray(isHorizontal(trace) ? trace.x : (trace.y ?? trace.values)) ?? []
+export const xsOf = trace => plotlyArray(isHorizontal(trace) ? trace.y : (trace.x ?? trace.labels)) ?? []
+export const ysOf = trace => plotlyArray(isHorizontal(trace) ? trace.x : (trace.y ?? trace.values)) ?? []
 // Heatmaps and maps keep their values in z: x and y are only labels, so the
 // traces cannot be read as points. Without tool rows they get no CSV (#217).
 const hasZ = trace => trace.z != null

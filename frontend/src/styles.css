@@ -890,6 +890,31 @@ html.dark .context-limit-banner--full {
     background: rgba(153, 27, 27, 0.15); border-color: rgba(254, 202, 202, 0.3); color: #FCA5A5;
   }
 }
+
+/* ─── Why sending is not possible (#585) ──────────────────── */
+/* Over the content just above the composer, never in the flow: the layout does not shift and the send button
+   stays where the finger is. Not tappable, so it never catches a tap. Empty, it draws no box; the live region
+   stays mounted. Warn colours of the banner above, on an opaque surface because messages scroll beneath it. */
+.chat-input-wrap { position: relative; }
+.send-notice {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 11;
+  margin: 0; pointer-events: none;
+  font-size: .78rem; font-weight: 500; text-align: center;
+}
+.send-notice:not(:empty) {
+  padding: 8px 14px; border: 1px solid; border-radius: var(--radius-sm); box-shadow: var(--shadow);
+  background: #FFFBEB; border-color: #FDE68A; color: #92400E;
+}
+html.dark .send-notice:not(:empty) {
+  background: linear-gradient(rgba(146, 64, 14, 0.15), rgba(146, 64, 14, 0.15)), var(--white);
+  border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
+}
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .send-notice:not(:empty) {
+    background: linear-gradient(rgba(146, 64, 14, 0.15), rgba(146, 64, 14, 0.15)), var(--white);
+    border-color: rgba(253, 230, 138, 0.3); color: #FDE68A;
+  }
+}
 .ws-reconnecting { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: .72rem; color: var(--muted-text); }
 /* De live region blijft altijd gemount (#532); leeg is hij geen flex-item, dus geen ruimte en geen gap. */
 .ws-reconnecting:empty { position: absolute; }
