@@ -532,7 +532,10 @@ Maakt een interactieve Plotly-grafiek.
 | `data` | array | Lijst van datarijen als objecten (optioneel, alternatief voor `data_key`) |
 | `color_by` | string | Veldnaam voor groepering (optioneel) |
 
-De grafiek wordt direct in de chat weergegeven.
+De grafiek wordt direct in de chat weergegeven. In een rapport staat onder elke grafiek een bronregel uit code
+(`agent/figuurbron.py`, #569): bron en catalogustitel, dataset-ID, bij meer bestanden het bestand, de periode en de
+CBS-periodestatus van de getekende rijen, en de documentatie-URL uit de catalogus als link. De regel komt uit de
+`data_key` van de aanroep; een grafiek uit losse `data` heeft geen herleidbare bron en zegt dat.
 
 ---
 

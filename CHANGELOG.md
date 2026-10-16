@@ -101,6 +101,12 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Onder elke grafiek in een rapport staat een bronregel uit code (#569): bron en catalogustitel, dataset-ID,
+  bij een DUO-dataset met meer bestanden het bestand, de periode en de CBS-periodestatus van de getekende
+  rijen, en een link naar de open-databron (CBS OData, de DUO-datasetpagina, de RIO-API) die in een nieuw
+  tabblad opent. Twee gebruikers vroegen bij een rapportgrafiek waar precies deze cijfers vandaan komen; de
+  lijst Bronnen onderaan zei dat niet per grafiek en doorklikken kon niet. Een grafiek zonder herleidbare
+  bron zegt "Bron niet vastgesteld". Bestaande rapporten veranderen niet.
 - Het Bronnen-blok onder een antwoord noemt bij een DUO-dataset met meer dan één tabelbestand ook het bestand
   (#540): de drie hbo-bestanden van `p01hoinges` gaven voor dezelfde instelling en hetzelfde studiejaar 34.751,
   34.754 en 34.755, elk met andere onderdrukte cellen, terwijl de bron er hetzelfde uitzag. Een telvraag via

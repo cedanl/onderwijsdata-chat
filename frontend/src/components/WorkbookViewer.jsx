@@ -207,8 +207,11 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
                   Rapport wordt geladen…
                 </div>
               )}
+              {/* allow-popups (escaping the sandbox) lets the source link under each chart open the open-data
+                  source in a new tab (#569); without it a click would load that site inside the report frame.
+                  The links carry rel="noopener", so the new tab has no way back in. Never allow-same-origin. */}
               <iframe ref={reportFrame.frameRef} className="wb-iframe" srcDoc={reportFrame.srcDoc} title={workbook.title}
-                sandbox="allow-scripts" onLoad={reportFrame.onLoad} />
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" onLoad={reportFrame.onLoad} />
             </>
           )
         })()}

@@ -26,6 +26,20 @@ function bullets(items) {
   return items.map(item => `<li>${escapeHtml(item)}</li>`).join('')
 }
 
+// Alleen een http(s)-adres wordt een link: de regel komt uit de store en de catalogus (agent/figuurbron.py),
+// maar wat in een spec staat is tekst, en een javascript:-adres mag nooit een href worden.
+const HTTP_URL = /^https?:\/\//i
+
+// De bronregel onder een grafiek (#569): bron, titel, dataset-ID, periode en status uit code, met de link
+// naar de open-databron. Zonder herleidbare bron zegt de regel dat, en gokt niet.
+function bronregelHtml(bron) {
+  if (!bron || !bron.tekst) return '<p class="vis-bron">Bron niet vastgesteld</p>'
+  const link = typeof bron.url === 'string' && HTTP_URL.test(bron.url)
+    ? ` · <a href="${escapeHtml(bron.url)}" target="_blank" rel="noopener noreferrer">Bekijk de bron${bron.bron ? ` bij ${escapeHtml(bron.bron)}` : ''}</a>`
+    : ''
+  return `<p class="vis-bron">Bron: ${escapeHtml(bron.tekst)}${link}</p>`
+}
+
 // Donkere tegenhangers van de lichte kleuren die tools/plot.py in de figuur bakt (#567): titel,
 // ondertitel, raster, aslijnen, legenda en een zwarte reeks. Per genest object samengevoegd, zodat
 // titeltekst, astitels, tickformat enz. blijven; alleen kopieën, de figuur zelf blijft ongemoeid.
@@ -82,6 +96,7 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
     `<div class="vis">
        <h3 class="vis-title">${escapeHtml(v.titel || `Visualisatie ${i + 1}`)}</h3>
        ${plotlyHtml(v.figure_json, `rp${i}`)}
+       ${bronregelHtml(v.bron)}
        ${v.toelichting ? `<p class="vis-note">${escapeHtml(v.toelichting)}</p>` : ''}
      </div>`
   ).join('')
@@ -143,6 +158,8 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .def-term{flex:0 0 34%;font-weight:700;color:#111827;font-size:.92rem}
   .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
   .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
+  .vis-bron{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.5}
+  .vis-bron a{color:#2563EB;text-decoration:underline}
   .vis-note{margin-top:14px;color:#4B5563;line-height:1.6;font-size:.92rem;background:#F9FAFB;border-left:3px solid #DBEAFE;padding:12px 16px;border-radius:0 6px 6px 0}
   .conf{background:#fff}
   .prose{line-height:1.7;color:#374151}
@@ -167,6 +184,8 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
     .section-label{color:#9CA3AF}
     .def-term,.vis-title,.prose h1,.prose h2,.prose h3,.prose strong{color:#F9FAFB}
     .def-desc,.vis-note,.scope-col li,.prose,.bronnen li{color:#D1D5DB}
+    .vis-bron{color:#9CA3AF}
+    .vis-bron a{color:#60A5FA}
     .scope-col li{border-bottom-color:#374151}
     .def{border-bottom-color:#374151}
     .vis-note{background:#111827;border-left-color:#1D4ED8}
