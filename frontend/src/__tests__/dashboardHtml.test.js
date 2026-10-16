@@ -2,6 +2,8 @@
 import { describe, it, expect } from 'vitest'
 import { buildDashboardHtml, workbookHtml, workbookFilename } from '../dashboardHtml'
 import { PLOTLY_URL } from '../plotlyBron'
+import { runPage, luminance, contrast } from './helpers/pageRun'
+import { layout, data } from './fixtures/plotFigure'
 
 const FIGUUR = { data: [{ type: 'bar', x: ['2023'], y: [5], name: '</script><script>alert(1)</script>' }], layout: { title: { text: 'Instroom' } } }
 
@@ -40,6 +42,110 @@ describe('buildDashboardHtml (#254)', () => {
 
   it('laat geen script ontsnappen uit de grafiekdata', () => {
     expect(html).not.toContain('</script><script>alert(1)')
+  })
+})
+
+// The dashboard merged the layout shallowly, so the light colours of tools/plot.py stayed on
+// the dark card (#574); it now shares the dark conversion of the report (#567).
+describe('chart colours in a dark dashboard (#574)', () => {
+  const CARD = '#1F2937'
+  const xaxis2 = { showgrid: true, gridcolor: '#f0f0f0', linecolor: '#ccc', anchor: 'y' }
+  const figure = { data, layout: { ...layout, xaxis2 } }
+  const dashboard = (...figures) => buildDashboardHtml({ figures_json: figures.map(f => JSON.stringify(f)) }, { title: 'D' })
+  const plotted = (fig, dark) => {
+    const seen = runPage(dashboard(fig), { dark })
+    expect(seen.errors).toEqual([])
+    return { data: seen.plots[0][1], layout: seen.plots[0][2] }
+  }
+
+  it('gives title, subtitle, grid, axis lines and legend dark colours', () => {
+    const { layout: l } = plotted(figure, true)
+    expect(l.title.font.color).not.toBe('#222')
+    expect(l.title.subtitle.font.color).not.toBe('#666')
+    expect(contrast(l.title.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(l.title.subtitle.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    for (const ax of [l.xaxis, l.yaxis, l.xaxis2]) {
+      expect(ax.gridcolor).not.toBe('#f0f0f0')
+      expect(ax.linecolor).not.toBe('#ccc')
+      expect(luminance(ax.gridcolor)).toBeLessThan(luminance(ax.linecolor))
+      expect(contrast(ax.gridcolor, CARD)).toBeGreaterThan(1.3)
+    }
+    expect(l.legend.bgcolor).not.toBe('rgba(255,255,255,0.8)')
+    expect(l.legend.bordercolor).not.toBe('#ddd')
+  })
+
+  it('keeps the other nested layout keys and its own background, margin and font', () => {
+    const { layout: l } = plotted(figure, true)
+    expect(l.title).toMatchObject({ text: 'Instroom per jaar', yref: 'container', y: 0.98, font: { size: 16 } })
+    expect(l.title.subtitle).toMatchObject({ text: 'Afgerond op 10-tallen', font: { size: 11 } })
+    expect(l.xaxis).toMatchObject({ title: { text: 'Jaar' }, type: 'category', showgrid: true, zeroline: false })
+    expect(l.yaxis).toMatchObject({ title: { text: 'Aantal' }, tickformat: ',d' })
+    expect(l.xaxis2).toMatchObject({ anchor: 'y', showgrid: true })
+    expect(l.legend).toMatchObject({ orientation: 'h', borderwidth: 1 })
+    expect(l.paper_bgcolor).toBe('transparent')
+    expect(l.plot_bgcolor).toBe('transparent')
+    expect(l.margin).toEqual({ t: 48, r: 24, b: 48, l: 60 })
+    expect(l.font).toEqual({ color: '#D1D5DB', family: 'system-ui,sans-serif', size: 12 })
+  })
+
+  it('turns a black series light in dark mode and leaves the other colours', () => {
+    const { data: d } = plotted(figure, true)
+    expect(d[0].marker.color).toBe('#0072B2')
+    expect(contrast(d[1].marker.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(d[2].line.color, CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(d[2].line.width).toBe(2)
+    expect(d[3].marker.color[0]).toBe('#B0B0B0')
+    expect(d[3].marker.color.slice(1).every(c => contrast(c, CARD) >= 4.5)).toBe(true)
+    expect(d[4].marker.colors.slice(0, 2)).toEqual(['#0072B2', '#F0E442'])
+    expect(contrast(d[4].marker.colors[2], CARD)).toBeGreaterThanOrEqual(4.5)
+    expect(d[4]).not.toHaveProperty('line')
+    expect(d[4].marker).not.toHaveProperty('color')
+  })
+
+  it('passes the figure unchanged in light mode', () => {
+    const { data: d, layout: l } = plotted(figure, false)
+    expect(d).toEqual(figure.data)
+    expect(l).toEqual({
+      ...figure.layout,
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      margin: { t: 48, r: 24, b: 48, l: 60 },
+      font: { color: '#374151', family: 'system-ui,sans-serif', size: 12 },
+    })
+  })
+
+  it('gives every chart of a dark dashboard the same dark colours, without touching the figure', () => {
+    const before = JSON.parse(JSON.stringify(figure))
+    const seen = runPage(buildDashboardHtml({ figures_json: [figure, JSON.stringify(figure)] }, { title: 'D' }), { dark: true })
+    expect(seen.errors).toEqual([])
+    expect(seen.plots).toHaveLength(2)
+    expect(seen.plots[0][2].title.font.color).not.toBe('#222')
+    expect(seen.plots[1][1]).toEqual(seen.plots[0][1])
+    expect(seen.plots[1][2]).toEqual(seen.plots[0][2])
+    expect(figure).toEqual(before)
+  })
+
+  it('handles a string title, no title, no axes, no layout and no data in dark mode', () => {
+    expect(plotted({ data: [], layout: { title: 'x' } }, true).layout.title).toBe('x')
+    const bare = plotted({ data: [{ type: 'pie', values: [1] }], layout: {} }, true)
+    expect(bare.layout).not.toHaveProperty('title')
+    expect(bare.layout).not.toHaveProperty('xaxis')
+    expect(bare.layout).not.toHaveProperty('legend')
+    expect(bare.data).toEqual([{ type: 'pie', values: [1] }])
+    expect(plotted({ data: [{ type: 'bar', y: [1] }] }, true).data).toEqual([{ type: 'bar', y: [1] }])
+    expect(plotted({ layout: {} }, true).data).toEqual([])
+  })
+
+  // #474 in the dark branch: the title only reaches Plotly as text.
+  it('renders a title with </script> as chart text in dark mode', () => {
+    const TITLE = '</script><img src=x onerror=alert(1)>'
+    const html = dashboard({ data: [], layout: { title: TITLE } })
+    expect(html.match(/<script/g).length).toBe(html.match(/<\/script>/g).length)
+    const seen = runPage(html, { dark: true })
+    expect(seen.images).toBe(0)
+    expect(seen.dialogs).toEqual([])
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2].title).toBe(TITLE)
   })
 })
 

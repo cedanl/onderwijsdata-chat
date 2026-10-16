@@ -5,6 +5,7 @@ import { escapeHtml } from './reportHtml'
 import { plotlyScript } from './plotlyBron'
 import { scriptSafe } from './scriptSafe'
 import { figureHeightOfJson } from './figureLayout'
+import { DARK_FIGURE_JS } from './darkFigure'
 
 const asJson = fig => (typeof fig === 'string' ? fig : JSON.stringify(fig))
 
@@ -18,9 +19,12 @@ function kpiHtml(kpi) {
   </div>`
 }
 
+// In a dark browser the figure goes through the report's dark conversion (#567, #574): the
+// light colours of tools/plot.py sit in nested keys that the shallow layout merge keeps.
 function figureHtml(fig, i) {
   return `<div class="card"><div id="fig${i}" style="height:${figureHeightOfJson(asJson(fig), 320)}px"></div></div>
-<script>(function(){var f=${scriptSafe(asJson(fig))},d=window.matchMedia('(prefers-color-scheme:dark)').matches;Plotly.newPlot('fig${i}',f.data||[],Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{t:48,r:24,b:48,l:60},font:{color:d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),{responsive:true,displayModeBar:false});})()</script>`
+<script>(function(){${DARK_FIGURE_JS}
+var f=${scriptSafe(asJson(fig))},d=window.matchMedia('(prefers-color-scheme:dark)').matches,D=f.data||[],L=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{t:48,r:24,b:48,l:60},font:{color:d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('fig${i}',d?_dd(D):D,d?_dl(L):L,{responsive:true,displayModeBar:false});})()</script>`
 }
 
 // narrativeHtml: the narrative already rendered as safe HTML (see workbookHtml).
