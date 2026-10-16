@@ -1,7 +1,8 @@
-// #584: een tik op 'Verstuur bericht' op een telefoon kwam niet aan. Met focus in het invoerveld is de tabbalk
+// #584: een tik op 'Verstuur bericht' op een telefoon kwam niet aan. Met focus in het invoerveld was de tabbalk
 // verborgen (#527); de tik verplaatste de focus naar de knop, de tabbalk kwam meteen terug en het invoergebied
 // sprong 58 px omhoog, dus de mouseup landde op de disclaimer en de klik ging naar het invoergebied eromheen.
-// Hetzelfde gold voor de stopknop en voor elke tik buiten het veld. Draait zonder LLM: de chat-socket is
+// Hetzelfde gold voor de stopknop en voor elke tik buiten het veld. De tabbalk is er niet meer (#596); deze test
+// blijft als vangnet: het invoergebied mag tussen pointerdown en click nooit meer verschuiven. Draait zonder LLM: de chat-socket is
 // nagebootst en telt wat de app verstuurt. Draaien: `npx playwright test mobiel-tik` (playwright.config.js).
 import { test, expect, devices } from 'playwright/test'
 import { handleLoginIfNeeded } from './helpers.js'
@@ -30,8 +31,6 @@ for (const toestel of ['iPhone 14', 'Pixel 7']) {
       const veld = page.locator('textarea.chat-input')
       await veld.tap()
       await veld.fill(VRAAG)
-      // Met focus in het veld is de tabbalk weg (#527).
-      await expect(page.locator('.mobile-tabs')).toBeHidden()
     })
 
     test('verstuurt de vraag, en de knop blijft staan tussen pointerdown en click', async ({ page }) => {
@@ -42,8 +41,6 @@ for (const toestel of ['iPhone 14', 'Pixel 7']) {
       await expect(page.locator('textarea.chat-input')).toHaveValue('')
       const [neer, klik] = await page.evaluate(() => window.__posities)
       expect(klik).toBe(neer)
-      // Na de tik staat de focus op de knop en komt de tabbalk terug.
-      await expect(page.locator('.mobile-tabs')).toBeVisible()
     })
 
     test('de stopknop in dezelfde voet komt ook aan', async ({ page }) => {
