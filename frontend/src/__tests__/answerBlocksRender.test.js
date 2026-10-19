@@ -106,6 +106,64 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
   })
 })
 
+// #621: elke bronregel linkt naar de bronpagina die de server meestuurt, met dezelfde http(s)-keuring als het rapport.
+describe('bronregels als link naar de bronpagina', () => {
+  const PER_BRON = {
+    CBS: [CBS, 'https://opendata.cbs.nl/ODataApi/OData/85423NED'],
+    DUO: [DUO, 'https://onderwijsdata.duo.nl/dataset/p01hoinges'],
+    RIO: ['RIO erkenningen, peildatum 2026-10-09', 'https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen'],
+    UWV: ['UWV · UWV Open Match (uwv-open-match-data), peildatum 2023-05-16', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
+    ROA: ['ROA · AIS tot 2030 (ais2030), versie v20251218', 'https://doi.org/10.34894/DVQTOG'],
+  }
+  const regels = el => [...blok(el, 'bronnen').querySelectorAll('li')]
+
+  for (const [naam, [bron, url]] of Object.entries(PER_BRON)) {
+    it(`${naam}: de regel is een link die in een nieuw tabblad opent, met de regel als tekst`, () => {
+      const el = render({ ...VIJF_ANTWOORDEN[0], bronnen: [bron], bronlinks: { [bron]: url } })
+      const [li] = regels(el)
+      const a = li.querySelector('a')
+      expect(li.children).toHaveLength(1)
+      expect(a.getAttribute('href')).toBe(url)
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+      expect(a.textContent).toBe(bron)
+      expect(li.textContent).toBe(bron)
+      expect(a.getAttribute('aria-label')).toBe(`${bron} (opent in een nieuw tabblad)`)
+    })
+  }
+
+  it('een regel zonder link blijft tekst naast een regel met link', () => {
+    const el = render({ ...VIJF_ANTWOORDEN[1], bronlinks: { [CBS]: PER_BRON.CBS[1] } })
+    const [duo, cbs] = regels(el)
+    expect(duo.querySelector('a')).toBeNull()
+    expect(duo.textContent).toBe(DUO)
+    expect(cbs.querySelector('a').getAttribute('href')).toBe(PER_BRON.CBS[1])
+  })
+
+  it.each([
+    ['javascript:alert(1)'], ['data:text/html,x'], ['//evil.example'], ['/relatief'], ['ftp://x'], [' https://x'],
+    [42], [null], [{ href: 'https://x' }],
+  ])('een slecht adres (%j) wordt nooit een link', url => {
+    const el = render({ ...VIJF_ANTWOORDEN[0], bronlinks: { [DUO]: url } })
+    expect(el.querySelector('.answer-bronnen a')).toBeNull()
+    expect(regels(el).map(li => li.textContent)).toEqual([DUO])
+  })
+
+  it.each([[[PER_BRON.DUO[1]]], ['https://x'], [null]])('bronlinks die geen object zijn (%j) geven tekst', bronlinks => {
+    const el = render({ ...VIJF_ANTWOORDEN[0], bronlinks })
+    expect(el.querySelector('.answer-bronnen a')).toBeNull()
+    expect(regels(el).map(li => li.textContent)).toEqual([DUO])
+  })
+
+  it('een bericht van vóór de links toont de bronnen als tekst, zoals het was', () => {
+    const met = render({ ...VIJF_ANTWOORDEN[1], bronlinks: {} })
+    const oud = render(VIJF_ANTWOORDEN[1])
+    expect(oud.querySelector('.answer-bronnen a')).toBeNull()
+    expect(blok(oud, 'bronnen').innerHTML).toBe(blok(met, 'bronnen').innerHTML)
+    expect(blok(oud, 'bronnen').querySelector('dd').innerHTML).toBe(`<ul class="answer-bronnen"><li>${DUO}</li><li>${CBS}</li></ul>`)
+  })
+})
+
 describe('geen dataantwoord: zoals het was', () => {
   const [, data] = VIJF_ANTWOORDEN
 
