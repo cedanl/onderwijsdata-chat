@@ -390,6 +390,12 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Elke regel in het Bronnen-blok onder een dataantwoord is een link naar de bronpagina van de dataset (#621): de
+  CBS-tabel, de DUO-datasetpagina, het RIO-register, UWV Open Match en de ROA-dataset (AIS 2030). De link komt uit
+  de catalogus, dezelfde als onder een rapportgrafiek (#569), en opent in een nieuw tabblad. Op een telefoon is de
+  hele regel het tikdoel (minstens 44 px hoog) en past het blok op 390 px. Een regel heeft bewust geen link als de
+  catalogus de dataset niet kent of er geen http(s)-adres voor heeft, en in een gesprek van vóór deze wijziging.
+  De tekst van de regels, kopiëren en de gespreksexport zijn ongewijzigd.
 - De chat krijgt op een telefoon ruim 80 % van het scherm (#596, gemeten op 390×664 zonder toetsenbord; was 43 %).
   Er is één bovenrij van 52 px met een menu (Home, Chat, Rapporten, Dashboard, instellingen, bronnen, privacy,
   uitloggen), de gesprekkenlijst en een ⋯-menu met "Exporteer gesprek". De tabbalk, de aparte gesprekkenbalk en

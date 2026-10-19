@@ -4,6 +4,7 @@ import { zonderDubbeleTitel } from './figureKop'
 import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
+import { veiligeBronUrl } from './bronLink'
 
 export function escapeHtml(str) {
   return String(str)
@@ -28,16 +29,14 @@ function bullets(items) {
   return items.map(item => `<li>${escapeHtml(item)}</li>`).join('')
 }
 
-// Alleen een http(s)-adres wordt een link: de regel komt uit de store en de catalogus (agent/figuurbron.py),
-// maar wat in een spec staat is tekst, en een javascript:-adres mag nooit een href worden.
-const HTTP_URL = /^https?:\/\//i
-
 // De bronregel onder een grafiek (#569): bron, titel, dataset-ID, periode en status uit code, met de link
-// naar de open-databron. Zonder herleidbare bron zegt de regel dat, en gokt niet.
+// naar de open-databron. Zonder herleidbare bron zegt de regel dat, en gokt niet. Alleen een http(s)-adres
+// wordt een link (bronLink.js): de regel komt uit de store en de catalogus, maar wat in een spec staat is tekst.
 function bronregelHtml(bron) {
   if (!bron || !bron.tekst) return '<p class="vis-bron">Bron niet vastgesteld</p>'
-  const link = typeof bron.url === 'string' && HTTP_URL.test(bron.url)
-    ? ` · <a href="${escapeHtml(bron.url)}" target="_blank" rel="noopener noreferrer">Bekijk de bron${bron.bron ? ` bij ${escapeHtml(bron.bron)}` : ''}</a>`
+  const url = veiligeBronUrl(bron.url)
+  const link = url
+    ? ` · <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Bekijk de bron${bron.bron ? ` bij ${escapeHtml(bron.bron)}` : ''}</a>`
     : ''
   return `<p class="vis-bron">Bron: ${escapeHtml(bron.tekst)}${link}</p>`
 }

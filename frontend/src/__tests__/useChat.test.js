@@ -531,6 +531,23 @@ describe('useChat stop', () => {
     expect(assistantMessages().map(m => m.bronnen)).toEqual([[bron], [], undefined, undefined])
   })
 
+  // #621: next to the sources, the link per source line; anything but a plain object of strings is dropped.
+  it('keeps the source links only as a plain object with string values', async () => {
+    const ws = FakeWebSocket.last
+    const bron = 'DUO · Ingeschrevenen hoger onderwijs, 2024/25 (p01hoinges)'
+    const links = { [bron]: 'https://onderwijsdata.duo.nl/dataset/p01hoinges' }
+    const kapot = [[links[bron]], links[bron], null, { [bron]: 42 }]
+    await act(async () => {
+      for (const bronlinks of [links, ...kapot, undefined]) {
+        ws.emit({ type: 'message_start' })
+        ws.emit({ type: 'message_end', content: 'Het zijn er 36.201.', bronnen: [bron], bronlinks })
+      }
+    })
+    const berichten = assistantMessages()
+    expect(berichten.map(m => m.bronlinks)).toEqual([links, undefined, undefined, undefined, undefined, undefined])
+    expect(berichten.map(m => m.bronnen)).toEqual(Array(6).fill([bron]))
+  })
+
   it('drops the unchecked answer when the server withdraws it for a correction', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
+import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
@@ -274,6 +275,8 @@ export function useChat() {
             ...(ev.citaties?.length && { citaties: ev.citaties }),
             // The sources the server derived from the steps, also when empty: they mark a data answer (#416).
             ...(Array.isArray(ev.bronnen) && { bronnen: ev.bronnen }),
+            // Source line → link to its source page, from the catalogue (#621); a line without one stays text.
+            ...(zijnBronlinks(ev.bronlinks) && { bronlinks: ev.bronlinks }),
             // Questions to ask next; a click puts one in the input box (#364).
             ...(vragen.length && { vervolgvragen: vragen }),
             // A finished turn without text would otherwise render nothing at all.

@@ -653,6 +653,14 @@ input, textarea { font: inherit; }
 .answer-block-nvt { color: var(--muted-text); }
 .answer-block .telling, .answer-block .data-export { margin-top: 0; font-size: inherit; }
 .answer-bronnen { margin: 0; padding-left: 16px; }
+/* A source line links to its source page (#621). The link fills the line, so on touch the whole line is the
+   tap target (touch block below); a long line still wraps inside the bubble (overflow-wrap from the dd).
+   The arrow after the text says it opens a new tab (screen readers get that from the aria-label); as an
+   inline block it stays out of the underline. */
+.answer-bronnen a { display: flex; align-items: center; min-height: var(--tap-min-aa); color: var(--accent-text); }
+.answer-bronnen a > span { text-decoration: underline; text-underline-offset: 2px; }
+.answer-bronnen a:hover > span { text-decoration-thickness: 2px; }
+.answer-bronnen a > span::after { content: '\2197'; content: '\2197' / ''; display: inline-block; margin-left: 4px; }
 /* Narrow screens: label above its content, so the CSV buttons and sources get the full bubble width. */
 @media (max-width: 480px) {
   .answer-block { flex-direction: column; align-items: stretch; gap: 2px; }
@@ -1771,7 +1779,7 @@ html.dark .suggested-btn:hover {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
-  .sources-link, .export-conversation-btn, .model-picker select { min-height: var(--tap-min); }
+  .sources-link, .export-conversation-btn, .model-picker select, .answer-bronnen a { min-height: var(--tap-min); }
 
   .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);

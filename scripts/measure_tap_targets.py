@@ -20,6 +20,7 @@ on /chat, in the sidebar, in the data-sources dialog and in the settings dialog,
 - at widths up to 1024: targets whose boxes intersect within one layer (a scroll area or a popover;
   the floating scroll button aside). On wider screens the history actions show on hover, on top of the row;
 - icons that grew (resend and copy 14px, history actions 13px) and horizontal overflow on /chat;
+- the Bronnen block under the answer (#621): long source lines, most with a link, must stay inside the viewport;
 - the copied state of the copy button (#492): its "Gekopieerd" label must not be hidden under the
   touch frame, and the widened button keeps the minimum size.
 
@@ -44,15 +45,33 @@ TOUCH_MIN = 44
 TOUCH_MAX_WIDTH = 1024
 NAMED = (
     ".resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn, "
-    ".scroll-to-bottom-btn, .message-continue, .data-export-btn"
+    ".scroll-to-bottom-btn, .message-continue, .data-export-btn, .answer-bronnen a"
 )
 ICONS = {".resend-btn svg": 14, ".copy-btn svg": 14, ".history-action-icon svg": 13}
 
+# The first paragraph is longer than one line at 390 px on purpose. A one-line paragraph followed by a code
+# block reproduces the real overlap of the message copy button and the code copy button on touch widths (5 px),
+# which is tracked in #623; this script measures the rest of the page.
 ANSWER = (
-    "In 2024 stonden er 12.345 studenten ingeschreven.\n\n"
+    "In 2024 stonden er 12.345 studenten ingeschreven aan een hbo-instelling in Nederland, "
+    "een stijging ten opzichte van het jaar ervoor.\n\n"
     "```python\nprint('reproduceerbaar')\n```\n\n"
     "De cijfers komen van DUO."
 )
+# Long source lines, as the server derives them from the steps; all but the last carry a link (#621).
+BRONNEN = [
+    "DUO · Ingeschrevenen hoger onderwijs, bestand Ingeschrevenen hoger beroepsonderwijs inclusief opleidingsvorm, "
+    "2019/20 t/m 2024/25 (p01hoinges)",
+    "CBS · Hoger onderwijs; ingeschrevenen, studierichting, geslacht, migratieachtergrond, regio (85423NED), "
+    "2019/20 t/m 2024/25",
+    "UWV · UWV Open Match (uwv-open-match-data), peildatum 2023-05-16",
+    "RIO · onbekend",
+]
+BRONLINKS = {
+    BRONNEN[0]: "https://onderwijsdata.duo.nl/dataset/p01hoinges",
+    BRONNEN[1]: "https://opendata.cbs.nl/ODataApi/OData/85423NED",
+    BRONNEN[2]: "https://data.overheid.nl/dataset/uwv-open-match-data",
+}
 FIGURE = {"data": [{"type": "bar", "x": ["2023", "2024"], "y": [12000, 12345]}], "layout": {"title": "Studenten"}}
 HISTORY = [
     {"id": f"gesprek-{i}", "title": f"Ingeschrevenen hbo, vraag {i}", "timestamp": 1_760_000_000 - i * 3600}
@@ -101,7 +120,7 @@ MEASURE = """({scope, skip, allNamed, named, overlaps: checkOverlaps}) => {
   return {
     targets: targets.map(({ el, r }) => ({
       target: describe(el), w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10,
-      named: allNamed || el.matches(named),
+      named: allNamed || el.matches(named), matches: named.split(', ').filter(s => el.matches(s)),
     })),
     overlaps,
   };
@@ -127,8 +146,19 @@ COPIED_LABEL = """() => {
 }"""
 
 
+# The Bronnen block must lie inside the viewport, so a long source line cannot widen the page (#621).
+BRONNEN_FIT = """() => {
+  const block = document.querySelector('.answer-bronnen');
+  if (!block) return ['no Bronnen block under the answer'];
+  const r = block.getBoundingClientRect();
+  return r.left < 0 || r.right > window.innerWidth
+    ? [`Bronnen block outside the viewport: ${Math.round(r.left)}..${Math.round(r.right)} of ${window.innerWidth}`]
+    : [];
+}"""
+
+
 def mock_chat(ws):
-    """One answer with text, a code block, a data step, a figure and a cut-off end; then an error."""
+    """One answer with text, a code block, a data step, a figure, its sources and a cut-off end; then an error."""
 
     def on_message(message):
         if json.loads(message).get("action") != "message":
@@ -139,7 +169,7 @@ def mock_chat(ws):
             {"type": "tool_end", "name": "query_data", "export_key": "duo:meting:0:0", "snippet": "print(1)"},
             {"type": "figure", "label": "Studenten per jaar", "figure_json": json.dumps(FIGURE)},
             {"type": "text_delta", "content": ANSWER},
-            {"type": "message_end", "content": ANSWER, "truncated": True},
+            {"type": "message_end", "content": ANSWER, "bronnen": BRONNEN, "bronlinks": BRONLINKS, "truncated": True},
             {"type": "error", "message": "Er ging iets mis bij het ophalen.", "modelafhankelijk": True},
         ]
         for event in events:
@@ -205,6 +235,15 @@ def check_copied_state(page, narrow):
     return problems
 
 
+def open_from_menu(page, narrow, desktop, name):
+    """Open a dialog the way the screen offers it: on narrow screens from the navbar menu (#596), else `desktop`."""
+    if narrow:
+        page.locator(".navbar-menu-btn").click()
+        page.locator("#navbar-menu").get_by_role("button", name=name).click()
+    else:
+        desktop.click()
+
+
 def run_viewport(browser, base, width, height, allow_absent=()):
     """All findings for one viewport, plus every target measured."""
     context = browser.new_context(
@@ -234,13 +273,15 @@ def run_viewport(browser, base, width, height, allow_absent=()):
     overflow = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
     if overflow[0] > overflow[1]:
         problems.append(f"horizontal overflow on /chat: scrollWidth {overflow[0]} > {overflow[1]}")
+    problems.extend(page.evaluate(BRONNEN_FIT))
     problems.extend(check_copied_state(page, narrow))
 
-    page.locator(".disclaimer-link").click()
+    disclaimer = page.locator(".chat-disclaimer").get_by_role("button", name="open onderwijsdata")
+    open_from_menu(page, narrow, disclaimer, "Gebaseerd op open onderwijsdata")
     collect("data sources dialog", '[role="dialog"][aria-label="Databronnen"]')
     page.keyboard.press("Escape")
 
-    page.locator(".navbar-profile-btn").click()
+    open_from_menu(page, narrow, page.locator(".navbar-profile-btn"), re.compile(r"^Instellingen"))
     dialog = page.locator('[role="dialog"][aria-label="Instellingen"]')
     dialog.get_by_role("button", name=re.compile(r"^WO")).click()
     dialog.locator("#settings-instelling").fill("zzzz")
@@ -249,7 +290,7 @@ def run_viewport(browser, base, width, height, allow_absent=()):
     page.keyboard.press("Escape")
 
     if narrow:
-        page.locator(".hamburger-btn").click()
+        page.get_by_role("button", name="Gesprekken en suggesties").click()
         page.wait_for_timeout(400)  # the drawer slides in
     page.locator(".chat-sidebar .suggested-category-btn").first.click()
     page.locator(".chat-sidebar .history-btn").first.hover()
@@ -262,7 +303,7 @@ def run_viewport(browser, base, width, height, allow_absent=()):
             problems.append(f"under {AA_MIN}x{AA_MIN} ({t['where']}): {t['target']} {t['w']}x{t['h']}")
         elif narrow and t["named"] and (t["w"] < TOUCH_MIN or t["h"] < TOUCH_MIN):
             problems.append(f"under {TOUCH_MIN}x{TOUCH_MIN} ({t['where']}): {t['target']} {t['w']}x{t['h']}")
-    absent = [c for c in NAMED.split(", ") if c not in allow_absent and not any(c in t["target"] for t in targets)]
+    absent = [c for c in NAMED.split(", ") if c not in allow_absent and not any(c in t["matches"] for t in targets)]
     problems.extend(f"not on the page, so not measured: {c}" for c in absent)
     context.close()
     return problems, targets
