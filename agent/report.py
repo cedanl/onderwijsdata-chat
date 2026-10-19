@@ -373,10 +373,12 @@ def _conclusie(tekst: str) -> str:
     return in_je_vorm(tekst if taal(tekst) == "en" else nl_notatie(tekst))
 
 
-def _voorbehoud_vooraan(regels: list[str], items):
-    """De regels uit code vóór wat het model als niet beantwoord noemde; zonder regels blijft dat zoals het was."""
-    if not regels:
-        return items
+def _voorbehoud_vooraan(regels: list[str], items: list[str] | str) -> list[str]:
+    """De regels uit code vóór wat het model als niet beantwoord noemde, altijd als lijst (#583).
+
+    Het model geeft `beantwoordt_niet` meestal als lijst, maar mag één string teruggeven: die telt als
+    één item. Ook zonder regels komt die als lijst terug — `ReportSpec.beantwoordt_niet` is een lijst en
+    de export mapt erover."""
     return [*regels, *(items if isinstance(items, list) else [items])]
 
 
