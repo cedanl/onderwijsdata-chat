@@ -31,7 +31,7 @@ More orchestration, and the checks reduce the risk; they do not eliminate it. Kn
 - Binding only works when a sentence names exactly one year and one institution.
 - Numbers from earlier messages in the conversation count as sourced, including numbers the user gave.
 - `run_analysis` executes model-written Python in a separate process (AST check, resource limits, audit hook blocking network, writes and subprocesses; #62). That sandbox limits damage but is not a kernel-level security boundary (#443).
-- Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision.
+- Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision (see ADR-007 for when).
 
 ---
 
@@ -189,9 +189,71 @@ ophalen van 5.000 rijen, en een stilzwijgend opengelaten dimensie telde later du
 
 ---
 
+## ADR-007: Geen grootboek en geen plan-and-execute voor het antwoordpad
+
+**Date:** 2026-10-19  
+**Status:** Decided  
+**Issue:** #349 (raakt #191, #197, #212)
+
+### Problem
+Een blueprint (`audits/HARNESS-BLUEPRINT.md`, 03-10-2026) stelde na de normalisatielaag een
+volgende stap voor: een planner (model) → compiler (code) → uitvoerder (code) → renderer die
+het feitenblok uit een grootboek bouwt. Elk getal wordt daarin een post met binding (jaar, maat,
+bron, dataset, plan-digest); het model schrijft alleen getalvrije interpretatie, en bij afkeuring
+blijft het feitenblok staan (fail closed). Dat raakt `agent/grounding.py`, `agent/binding.py` en
+`agent/run.py`. De blueprint en de PoC (`audits/canoniek.py`, `uitvoerder.py`, `grootboek.py`,
+18 tests) staan lokaal, niet in git.
+
+### Decision
+- Het grootboek en plan-and-execute worden **niet gebouwd**. De blueprint en de PoC worden niet
+  aan de repo toegevoegd, ook niet als spike.
+- **Vervangen of aanvullen:** geen van beide; er komt niets bij. De antwoordcontroles van ADR-001
+  blijven het enige systeem: `agent/grounding.py` (getallen), `agent/binding.py` (getal bij jaar
+  en instelling) en de andere controlemodules, die `agent/run.py` na elk antwoord draait. Er
+  staan dus geen twee systemen naast elkaar.
+- **Vraagklassen met een vast plan:** geen. Een vraag naar data blijft vrije verkenning met tools,
+  en elk antwoord gaat door dezelfde poorten: de volledigheidspoort vóór het laden (ADR-006) en de
+  antwoordcontroles erna (ADR-001). De vaste antwoorden uit code (`agent/vaste_antwoorden.py`,
+  zoals de betekenis van een sentinel of een vraag buiten het domein) en de verduidelijkingskaart
+  (`agent/scopevraag.py`) blijven zoals ze zijn; zij halen geen data op en zijn geen plan.
+- **Migratiepad:** de drie stappen vóór het grootboek staan al op `main`, en elk levert los winst
+  op. Alleen het grootboek bleef over; daarvoor zijn geen vervolgissues nodig.
+    1. Canonieke selectie (#342, `tools/canoniek.py`): dezelfde selectie in een andere spelling
+       geeft één digest, één `data_key` en één load.
+    2. Gesloten foutcodes en herhaal-detectie (#331, `tools/fouten.py`, `agent/loop.py`): een
+       ruwe providerfout wordt een vaste code met een vaste tekst, en een tool die twee keer
+       dezelfde fout geeft, gaat voor de rest van de beurt op slot.
+    3. Gesloten selectieschema (#343, ADR-006): het model kiest codes, de server bouwt de filter
+       en weigert een onvolledige selectie vóór het laden.
+- **#197 en #212** (binding op de gezamenlijke rij) blijven in `agent/binding.py`: een getal moet
+  in een rij staan die past bij het jaar én de instelling die dezelfde zin of tabelrij noemt.
+
+### Rationale
+- **Geen tweede laag:** de controlelaag telde in audit 11 en 12 al 23 regexguards ("tactical
+  tornado", #349). Een grootboek vervangt binding en grounding, en dat is een herbouw van het
+  antwoordpad, of het komt er als tweede, parallelle laag naast. Het eerste is te groot voor de
+  demofase, het tweede is wat #349 juist wil voorkomen.
+- **De winst zonder grootboek is binnen:** canonieke selectie, foutcodes en het selectieschema
+  brengen codes, selectie en foutafhandeling in code (epic #191), zonder het antwoordpad om te
+  bouwen.
+- **ADR-001 voorziet het heroverwegen al** ("When the set of check modules keeps growing, revisit
+  this decision"). Dit besluit maakt dat moment concreet (zie hieronder).
+
+### Trade-off(s)
+- De getallen in de antwoordtekst blijven door het model geschreven en achteraf gecontroleerd, met
+  de bekende gaten van ADR-001 ([Wat dit niet dekt](anti-hallucination-architecture.md#wat-dit-niet-dekt)).
+  Een feitenblok dat bij afkeuring blijft staan, komt er niet.
+- Een nieuwe klasse fout vraagt een nieuwe controle; de controlelaag kan dus verder groeien.
+- **Heroverwegen** zodra een van deze zich voordoet:
+    - een nieuwe klasse getalfout vraagt nog een guard die niet in de bestaande controlemodules past;
+    - een bindingsfout van het type #197/#212 is niet in `agent/binding.py` op te lossen;
+    - de app gaat van de demofase naar productie.
+
+---
+
 ## How to add a new ADR
 
-1. Increment the number (ADR-006, etc.)
+1. Increment the number (ADR-008, etc.)
 2. Add to this file with:
    - Date
    - Status (Decided, Proposed, Deprecated)
