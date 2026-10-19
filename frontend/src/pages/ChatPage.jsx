@@ -51,6 +51,7 @@ import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
 import IngetrokkenVersies from '../components/IngetrokkenVersies'
 import { hasExport, roundSettled } from '../dataExport'
+import { groepeerFiguren } from '../figuurGroep'
 import ConversationExport from '../components/ConversationExport'
 import ChatNavActies from '../components/ChatNavActies'
 import ModelPicker from '../components/ModelPicker'
@@ -106,7 +107,7 @@ const MARKDOWN_COMPONENTS = {
 }
 
 // The answer of the last turn, which carries its follow-up questions (#364). A chart arrives as a
-// message of its own after the answer, so it does not count.
+// message of its own after the answer (shown inside the answer, figuurGroep.js), so it does not count.
 function lastAnswerIndex(messages) {
   return messages.findLastIndex(m => m.role === 'assistant' && !m.figures?.length)
 }
@@ -651,6 +652,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [reportSpec, settings?.instelling, openRapport, clearReport, tokenAtMount])
 
   const displayMessages = [...restoredMessages, ...messages]
+  // Een grafiek staat in de bubbel van zijn antwoord, niet als bericht eronder (#610).
+  const rijen = groepeerFiguren(displayMessages)
   const vervolgIndex = lastAnswerIndex(displayMessages)
   const modelLabels = answerModels(displayMessages, models)
   const hasMessages = displayMessages.length > 0
@@ -750,14 +753,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                   : 'Ingeladen gesprek — stel een nieuwe vraag om door te gaan'}
               </div>
             )}
-            {displayMessages.map((msg, i) => (
+            {rijen.map(({ msg, index: i, figures, laatsteId }) => (
               <Message
-                key={msg.id} msg={msg}
+                key={msg.id} msg={msg} figures={figures}
                 onClarification={sendClarification} onSend={send} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
-                settings={settings} modelLabel={modelLabels[msg.id]}
+                settings={settings} modelLabel={modelLabels[laatsteId] ?? modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
                 retry={offersRetry(msg) ? {
@@ -965,7 +968,8 @@ const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content &&
 
 // onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
-export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
+export function Message({ msg, figures = null, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -992,6 +996,8 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
   }
 
   const awaiting = isAwaitingFirstToken(msg)
+  const figuren = figures ?? msg.figures ?? []
+  const inhoud = hasAssistantContent(msg) || figuren.length > 0
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
@@ -999,7 +1005,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
   const dataExport = (
     <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
   )
-  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
+  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
 
   return (
     <div className="message assistant">
@@ -1011,14 +1017,15 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
         <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
-        {(awaiting || exportable || hasAssistantContent(msg)) && (
+        {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={metBronnen(msg.content, msg.bronnen)} className="copy-btn-message" />}
             <MessageContent msg={msg} blocks={blocks} />
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
-            {msg.figures?.map((fig, i) => (
+            {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
+            {figuren.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
             {blocks
