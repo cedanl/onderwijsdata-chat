@@ -60,7 +60,6 @@ ALIASSEN: dict[str, list[str]] = {
     "Breda University of Applied Sciences": ["BUas", "NHTV"],
     "HZ University of Applied Sciences": ["HZ"],
     "Codarts, Hogeschool voor de Kunsten": ["Codarts"],
-    "Amsterdamse Hogeschool voor de Kunsten": ["AHK"],
     "Hogeschool voor de Kunsten Utrecht": ["HKU"],
     # MBO
     "ROC van Amsterdam": ["ROCvA"],

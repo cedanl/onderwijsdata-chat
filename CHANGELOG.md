@@ -25,7 +25,7 @@ de laatste tag is 1.8.6.
   catalogus is Nederlandstalig en "university students" vond niets.
 - UWV: `Fryslân` telt als `Friesland` (de spelling van CBS naast die van UWV) en `Onbekend` staat niet meer in de
   lijst provincies die de foutmelding noemt.
-- Instellingsregister: aliassen `VU Amsterdam`, `Codarts`, `AHK`, `HKU`, `Graafschap College`; een lidwoord vóór een
+- Instellingsregister: aliassen `VU Amsterdam`, `Codarts`, `HKU`, `Graafschap College`; een lidwoord vóór een
   naam of alias ("de VU", "het Deltion") telt niet mee, een naam die zelf met een lidwoord begint ("De Haagse
   Hogeschool") blijft gewoon werken.
 - Docs: de zoeklimiet van `search_catalog` is 3 (`SEARCH_CATALOG_LIMIT`), niet 5 zoals `docs/tools.md` en
