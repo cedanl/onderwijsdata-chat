@@ -404,6 +404,10 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Het zoekpalet (Ctrl/⌘K, #602) is rustiger vormgegeven: een lichte schaduw in plaats van het blauwe vlak van de
+  dialogen, een zoekicoon voor het veld, een duidelijke markering van de gekozen treffer en op een computer de
+  toetsen (Esc, ↑↓, ↵) onderaan. Op een telefoon zoomt Safari niet meer in zodra het zoekveld opent: het veld is 16 px
+  (#590) en het palet past dus weer in het scherm.
 - Elke regel in het Bronnen-blok onder een dataantwoord is een link naar de bronpagina van de dataset (#621): de
   CBS-tabel, de DUO-datasetpagina, het RIO-register, UWV Open Match en de ROA-dataset (AIS 2030). De link komt uit
   de catalogus, dezelfde als onder een rapportgrafiek (#569), en opent in een nieuw tabblad. Op een telefoon is de

@@ -1927,25 +1927,42 @@ html.dark .suggested-btn:hover {
 .wb-fav-btn.aan { color: #F59E0B; }
 
 /* Search palette (#602): a panel near the top, like other command palettes. It can open above the settings
-   dialog (z-index 2000), so it stacks like the privacy popup. */
-.zoek-overlay { z-index: 2100; align-items: flex-start; }
+   dialog (z-index 2000), so it stacks like the privacy popup. The backdrop only dims: the brand gradient
+   of the dialogs would turn a quick jump into a full-screen event. */
+.zoek-overlay { z-index: 2100; align-items: flex-start; background: rgba(13,35,64,.45); backdrop-filter: blur(2px); }
 .zoek-palet {
-  margin: 10vh auto 0; width: min(640px, 100%); max-height: 70vh; display: flex; flex-direction: column;
-  background: var(--white); border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.25); overflow: hidden;
+  margin: 10vh auto 0; width: min(640px, 100%); max-height: 70vh; max-height: 70dvh; display: flex; flex-direction: column;
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.28); overflow: hidden;
 }
+.zoek-invoerrij { display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--gray-200); }
+.zoek-palet:focus-within .zoek-invoerrij { box-shadow: inset 0 -2px 0 var(--focus-ring); }
+.zoek-icoon { flex-shrink: 0; width: 18px; height: 18px; color: var(--muted-text); }
 .zoek-invoer {
-  border: none; border-bottom: 1px solid var(--gray-200); padding: 16px 18px; font-size: 1rem;
+  flex: 1; min-width: 0; border: none; padding: 16px 0; font-size: 1rem;
   background: transparent; color: var(--gray-900);
 }
 .zoek-invoer:focus { outline: none; }
-.zoek-palet:focus-within .zoek-invoer { box-shadow: inset 0 -2px 0 var(--focus-ring); }
-.zoek-lijst { overflow-y: auto; }
-.zoek-groep-kop { padding: 10px 18px 4px; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-text); }
-.zoek-optie { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 18px; cursor: pointer; font-size: .9rem; color: var(--gray-800); }
-.zoek-optie.actief { background: var(--blue-50); }
+.zoek-toets { font-family: inherit; font-size: .7rem; padding: 1px 5px; border: 1px solid var(--gray-200); border-radius: 4px; color: var(--muted-text); }
+.zoek-lijst { overflow-y: auto; padding-bottom: 6px; }
+.zoek-groep-kop { padding: 12px 18px 4px; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-text); }
+.zoek-optie { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 18px; margin: 0 6px; border-radius: var(--radius-sm); cursor: pointer; font-size: .9rem; color: var(--gray-800); }
+.zoek-optie.actief { background: var(--blue-50); box-shadow: inset 3px 0 0 var(--blue-600); }
 .zoek-optie-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zoek-optie-datum { flex-shrink: 0; font-size: .75rem; color: var(--muted-text); }
-.zoek-status { margin: 0; padding: 10px 18px; border-top: 1px solid var(--gray-100); font-size: .78rem; color: var(--muted-text); }
+.zoek-voet { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; border-top: 1px solid var(--gray-100); font-size: .78rem; color: var(--muted-text); }
+.zoek-status { margin: 0; }
+.zoek-hints { display: flex; gap: 12px; white-space: nowrap; }
+/* The keys help a keyboard, not a thumb: on a phone the field's own clear button stays, the hints go. */
+@media (hover: none), (pointer: coarse) { .zoek-toets-esc, .zoek-hints { display: none; } }
+@media (hover: hover) and (pointer: fine) { .zoek-invoer::-webkit-search-cancel-button { appearance: none; display: none; } }
+/* 16px in px, after the base rule (the list under "Form fields on touch screens" comes earlier in the file, so
+   it would lose): the field has focus on opening, and under 16px Safari zooms the page in (#590). */
+@media (pointer: coarse), (max-width: 1024px) { .zoek-invoer { font-size: 16px; } }
+@media (max-width: 600px) {
+  .zoek-overlay { padding: 8px; }
+  .zoek-palet { margin-top: 8px; }
+}
 .navbar-zoek-btn {
   display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm); background: var(--white); color: var(--gray-600); font-size: .8rem;
