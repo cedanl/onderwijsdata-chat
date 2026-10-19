@@ -44,7 +44,8 @@ PO_SO_VO = re.compile(
 
 # Per RIO-register het filter dat de sector vastlegt, met de waarden die mbo/hbo/wo
 # betekenen. Zonder dat filter haalt de chat het register niet op: een pagina zonder
-# sectorfilter bevat ook po/vo-records.
+# sectorfilter bevat ook po/vo-records. Sinds RIO LOD API v3 heet het typefilter op elk
+# register `type` (#627); test_scopeprofiel toetst de namen tegen het riodata-contract.
 SECTORFILTER: dict[str, tuple[str, frozenset[str]]] = {
     "aangeboden-opleidingen": (
         "type",
@@ -58,7 +59,7 @@ SECTORFILTER: dict[str, tuple[str, frozenset[str]]] = {
         ),
     ),
     "opleidingen": (
-        "opleidingseenheidtype",
+        "type",
         frozenset(
             {
                 "HOONDERWIJSEENHEDENCLUSTER",
@@ -78,7 +79,7 @@ SECTORFILTER: dict[str, tuple[str, frozenset[str]]] = {
         ),
     ),
     "opleidingserkenningen": (
-        "opleidingserkenningtype",
+        "type",
         frozenset({"HOOPLEIDINGSERKENNING", "MBOOPLEIDINGSERKENNING", "MBOGENERIEKEXAMENONDERDEELERKENNING"}),
     ),
     "onderwijslicenties": (

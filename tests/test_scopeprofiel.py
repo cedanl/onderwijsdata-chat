@@ -1024,3 +1024,17 @@ def test_geen_startervraag_komt_uit_een_vo_contextbron(aantal):
 
     for label, tags in TAG_STARTERS.items():
         assert not alleen_context & set(tag_voorbeeldvragen(tags, n=aantal)), label
+
+
+def test_sectorfilters_bestaan_in_het_riodata_contract():
+    """De filternaam en de waarden per RIO-register komen uit het contract van riodata (v3: `type`, #627);
+    een hernoeming in de RIO-API valt zo hier op in plaats van live met HTTP 400."""
+    from riodata import filtercontract
+
+    from tools.scopeprofiel import SECTORFILTER
+
+    for resource, (naam, waarden) in SECTORFILTER.items():
+        res = filtercontract()["resources"][resource]
+        assert res.get("lijst_endpoint", True), resource
+        (filter_,) = [f for f in res["filters"] if f["naam"] == naam]
+        assert waarden <= set(filter_["enum"]), resource

@@ -16,7 +16,7 @@ from tools import fouten, rio_instelling
 from tools.rio import get_rio_data
 from tools.rio_instelling import get_rio_instelling
 
-_BASIS = "https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen"
+_BASIS = "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen"
 _PEIL = date(2026, 10, 7)
 
 
@@ -34,12 +34,19 @@ def _erkenning(code, naam, soort, wet=None, erkenner="OCW", eind=None):
 
 
 def _relatie(van, naar, soort="HIERARCHISCH", eind=None):
+    """Een instellingsrelatie zoals RIO v3 hem geeft: de codes als veld én als link."""
     return {
         "soort": soort,
         "begindatum": "2000-01-01",
         "einddatum": eind,
-        "vanErkenning": f"{_BASIS}/{van}?datumGeldigOp=2000-01-01",
-        "naarErkenning": f"{_BASIS}/{naar}?datumGeldigOp=2000-01-01",
+        "vanErkenningId": van,
+        "naarErkenningId": naar,
+        "vanErkenningType": "ERKENDE_ONDERWIJSINSTELLING",
+        "naarErkenningType": "ERKENDE_VESTIGING",
+        "_links": {
+            "van": {"href": f"{_BASIS}/{van}?datumGeldigOp=2000-01-01"},
+            "naar": {"href": f"{_BASIS}/{naar}?datumGeldigOp=2000-01-01"},
+        },
     }
 
 
@@ -96,7 +103,7 @@ class _NepRio:
         return self._lijst(
             e
             for e in self.erkenningen.values()
-            if naam in e["volledigeNaam"].lower() and e["type"] == params.get("erkenningtype", e["type"])
+            if naam in e["volledigeNaam"].lower() and e["type"] == params.get("type", e["type"])
         )
 
     def related(self, resource: str, id: str, sub: str, **params):
@@ -165,7 +172,7 @@ def test_een_instellingsnaam_zonder_bestuursnaam_vindt_het_bestuur_via_de_instel
 
     assert uit["bevoegd_gezag"]["code"] == "41171"
     assert uit["aantallen"]["instellingen"] == 3
-    assert ("erkenningen", {"volledigeNaam": "ROC Mondriaan", "erkenningtype": "ERKENDE_ONDERWIJSINSTELLING",
+    assert ("erkenningen", {"volledigeNaam": "ROC Mondriaan", "type": "ERKENDE_ONDERWIJSINSTELLING",
                             "datumGeldigOp": "2026-10-07"}) in nep.aanroepen  # fmt: skip
 
 
@@ -308,3 +315,22 @@ def test_andere_erkenningen_onder_het_bestuur_worden_genoemd(rio):
 
     assert uit["aantallen"]["erkenningen"] == 34
     assert uit["niet_meegeteld"] == {"ERKENDE_ONDERWIJSONDERSTEUNER": 2}
+
+
+def test_een_relatie_met_alleen_links_werkt_ook(rio):
+    """Terugval: zonder `vanErkenningId`/`naarErkenningId` komt de code uit `_links` (v2-vorm, en wat v3 ook meestuurt)."""
+    erkenningen, relaties = _mondriaan()
+    for lijst in relaties.values():
+        for r in lijst:
+            del r["vanErkenningId"], r["naarErkenningId"]
+    rio(erkenningen, relaties)
+    uit = _overzicht("ROC Mondriaan")
+    assert uit["aantallen"]["vestigingen"] == 30
+
+
+def test_de_route_zoekt_met_het_v3_typefilter(rio):
+    nep = rio()
+    _overzicht("ROC Mondriaan")
+    for resource, params in nep.aanroepen:
+        if resource == "erkenningen":
+            assert "type" in params and "erkenningtype" not in params

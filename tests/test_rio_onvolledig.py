@@ -20,7 +20,7 @@ from tools.kpi import compute_kpi
 from tools.query import query_data
 from tools.rio import get_rio_data
 
-_ERKENNINGEN_FILTERS = ["erkenningtype", "volledigeNaam", "plaatsnaam", "datumGeldigOp"]
+_ERKENNINGEN_FILTERS = ["type", "volledigeNaam", "plaatsnaam", "datumGeldigOp"]
 _CATALOG = [{"_rio_resource": "erkenningen", "bron": "Erkenningen", "filters": _ERKENNINGEN_FILTERS}]
 
 

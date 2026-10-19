@@ -52,6 +52,14 @@ def _code(href: str) -> str:
     return urlparse(href).path.rstrip("/").rsplit("/", 1)[-1]
 
 
+def _relatiecode(relatie: dict, kant: str) -> str:
+    """De erkenningscode aan één kant van een relatie: RIO v3 geeft `vanErkenningId`/`naarErkenningId`
+    als veld; de link `_links.van`/`_links.naar` (met `?datumGeldigOp=`) is de terugval."""
+    if code := relatie.get(f"{kant}ErkenningId"):
+        return str(code)
+    return _code(relatie["_links"][kant]["href"])
+
+
 def _geldig(item: dict, peildatum: str) -> bool:
     """Geldig en in bedrijf op de peildatum; een relatie kent alleen begin en einde."""
     begin, eind, uit = item.get("begindatum"), item.get("einddatum"), item.get("uitBedrijfdatum")
@@ -59,14 +67,15 @@ def _geldig(item: dict, peildatum: str) -> bool:
 
 
 def _zoek(naam: str, soort: str, peildatum: str) -> list[dict]:
-    gevonden = fetch(ERKENNINGEN, volledigeNaam=naam, erkenningtype=soort, datumGeldigOp=peildatum)
+    # RIO v3: het typefilter heet `type` (v2: erkenningtype; die versie is op 19-10-2026 verwijderd, #627).
+    gevonden = fetch(ERKENNINGEN, volledigeNaam=naam, type=soort, datumGeldigOp=peildatum)
     return [e for e in gevonden if e.get("type") == soort and _geldig(e, peildatum)]
 
 
 def _relaties(code: str, peildatum: str) -> list[tuple[str, str]]:
     """De geldige hiërarchische relaties van een erkenning, als (van, naar)."""
     return [
-        (_code(r["vanErkenning"]), _code(r["naarErkenning"]))
+        (_relatiecode(r, "van"), _relatiecode(r, "naar"))
         # Dit endpoint pagineert niet en weigert page/pageSize (HTTP 400): related, niet fetch.
         for r in related(ERKENNINGEN, code, "instellingsrelaties")
         if r.get("soort") == _HIERARCHISCH and _geldig(r, peildatum)

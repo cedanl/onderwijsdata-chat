@@ -66,7 +66,7 @@ Aanbevolen tool-sequenties (chains) voor verschillende soorten vragen. Het LLM k
 
 **Voorbeeld:** "Hoeveel MBO-instellingen zijn er in Utrecht?"
 - search_catalog → "MBO instellingen" → RIO-dataset gevonden
-- dataset_details → RIO-dataset → organisatorischeEenheidcode, plaats, etc.
+- dataset_details → RIO-dataset → type, organisatorischeEenheidcode, etc.
 - get_rio_data → Filter op plaats='Utrecht' en soort=MBO
 
 #### Flowchart
@@ -399,7 +399,7 @@ Haalt records op uit het RIO-register.
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `resource` | string | Resource naam, bijv. `"onderwijslocaties"` |
-| `filters` | object | Filterparameters, bijv. `{"organisatorischeEenheidcode": "25LH"}` |
+| `filters` | object | Filterparameters, bijv. `{"type": "AANGEBODENMBOOPLEIDING"}`; `organisatorischeEenheidcode` is de RIO-code van een aanbieder (zoals `114A897`), niet de BRIN-code |
 
 Zie [Databronnen → RIO](databronnen.md) voor beschikbare resources.
 
