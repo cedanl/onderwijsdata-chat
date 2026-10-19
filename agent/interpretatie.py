@@ -79,14 +79,15 @@ def interpretatiezin(vraag: str, steps: list[tuple[str, str]]) -> str | None:
     )
 
 
-def met_interpretatie(tekst: str, vraag: str, steps: list[tuple[str, str]], session: dict, *, vervolg: bool) -> str:
-    """Het antwoord met de interpretatiezin ervoor, als de vraag vaag was en het antwoord op data rust.
+def interpretatie_bij(
+    tekst: str, vraag: str, steps: list[tuple[str, str]], session: dict, *, vervolg: bool
+) -> str | None:
+    """De interpretatiezin waarmee het antwoord opent, als de vraag vaag was en het antwoord op data rust; anders None.
 
     Niet na een verduidelijkingskaart (dan koos de gebruiker de lezing al), niet bij een
     vervolgvraag (de lezing lag al vast bij de eerste vraag), en niet als het model zijn lezing
-    zelf al benoemde.
+    zelf al benoemde. `tekst` is de modeltekst zelf: een regel die de app ervoor zet, telt niet mee (#620).
     """
     if vervolg or session.get("clarify_rondes", 0) or not is_vaag(vraag) or _EIGEN_LEZING.search(tekst[:400]):
-        return tekst
-    zin = interpretatiezin(vraag, steps)
-    return f"{zin}\n\n{tekst}" if zin else tekst
+        return None
+    return interpretatiezin(vraag, steps)

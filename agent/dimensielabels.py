@@ -13,7 +13,7 @@ from tools import cbs, store
 from tools.catalog import bron_naam
 
 from .probleem import Probleem
-from .selectie import data_keys
+from .selectie import bladeren, data_keys
 
 # CBS-totaalcodes beginnen met T00 (T001038 'Totaal'); een label dat met 'Totaal' begint
 # is dat niet altijd: 'Totaal (speciaal) basisonderwijs' is een deeltotaal.
@@ -30,9 +30,7 @@ _LEERLINGWOORD = re.compile(r"\bleerlingen\b", re.IGNORECASE)
 
 def _bladeren(tool_results: list[str]) -> list[str]:
     """De CBS-keys van de beurt waar geen andere key van de beurt van is afgeleid: de selectie."""
-    keys = [k for k in dict.fromkeys(data_keys(tool_results)) if k.startswith("cbs:")]
-    ouders = {known.afgeleid_van for k in keys if (known := store.meta(k)) and known.afgeleid_van}
-    return [k for k in keys if k not in ouders]
+    return bladeren([k for k in data_keys(tool_results) if k.startswith("cbs:")])
 
 
 def _gekozen(key: str) -> dict[str, tuple[str | None, str]]:
@@ -51,6 +49,14 @@ def _gekozen(key: str) -> dict[str, tuple[str | None, str]]:
         codes = df[dim].dropna().unique() if dim in df.columns else []
         gekozen[dim] = (str(codes[0]) if len(codes) == 1 else None, str(labels[0]))
     return gekozen
+
+
+def vaste_waarden(key: str) -> list[str]:
+    """De labels van de dimensies die in de data achter `key` op één waarde liggen, zonder totaal (T00…).
+
+    Een totaal legt niets vast; zonder eenduidige code is niet te zeggen of het er een is, dus dan ook niet (#620).
+    """
+    return [label for code, label in _gekozen(key).values() if code and not _TOTAALCODE.match(code)]
 
 
 def _selecties(tool_results: list[str]) -> dict[str, dict[str, tuple[str | None, str]]]:

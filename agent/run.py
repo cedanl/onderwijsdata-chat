@@ -29,7 +29,7 @@ from .grafiekvraag import ontbrekende_grafiek
 from .grounding import afgeleide_verschillen, unverified
 from .history import afgeronde_stappen, trim
 from .instellingswissel import eerdere_instellingen, wisselcontext
-from .interpretatie import is_vervolgvraag, met_interpretatie
+from .interpretatie import interpretatie_bij, is_vervolgvraag
 from .kenmerken import verkeerde_kenmerken
 from .keuze import genegeerde_keuze
 from .kpi_periode import verkeerde_kpi_periodes
@@ -47,6 +47,7 @@ from .stream import Emit
 from .tekens import zonder_citaatkop
 from .telling import met_telling
 from .timebox import timebox
+from .uitgangspunt import met_uitgangspunt
 from .vaste_antwoorden import (
     SCOPE_UITLEG,
     SENTINEL_ANTWOORD,
@@ -238,6 +239,17 @@ def _poortvraag(messages: list[dict], session: dict) -> str:
     een verduidelijkingsvraag samen met de vraag die ze afbakent (een keuze als "2023/24" noemt zelf niets)."""
     vragen = [_tekst(m["content"]) for m in messages if m.get("role") == "user"]
     return " ".join(vragen[-(session.get("clarify_rondes", 0) + 1) :])
+
+
+def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[tuple[str, str]]) -> str:
+    """Boven een antwoord met data, uit code: de lezing van een vaag thema (#514) en de Uitgangspunt-regel (#620).
+
+    De lezing beslist op de modeltekst zelf: de regel mag een eigen "Ik ga uit van" van het model niet uit de eerste
+    regels duwen. Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545). De regel
+    kijkt naar de vraag met de gekozen verduidelijkingsopties: een gekozen instelling of jaar noemde de gebruiker."""
+    zin = interpretatie_bij(tekst, _laatste_vraag(messages), steps, session, vervolg=is_vervolgvraag(messages))
+    tekst = met_uitgangspunt(tekst, _poortvraag(messages, session), steps)
+    return f"{zin}\n\n{tekst}" if zin else tekst
 
 
 def _beurtcontext(vraag: str, settings: dict, turns: list[dict]) -> str:
@@ -627,11 +639,8 @@ async def run(
     bronnen = _veilige_bronnen(result.steps)
     text_content = _eindtekst(result, antwoord, last_user_msg, earlier, session, chosen_model, bronnen)
     if bronnen and text_content not in _ZONDER_BRONNEN:
-        # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
-        # Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545).
-        text_content = met_interpretatie(
-            text_content, last_user_msg, result.steps, session, vervolg=is_vervolgvraag(messages)
-        )
+        # Vóór het eerste getal: op welke lezing het antwoord rust (#514) en wat de selectie afbakent (#620).
+        text_content = _met_kopregels(text_content, messages, session, result.steps)
     session["_last_turn_tool_calls"] = result.tool_calls
     _log_export(text_content, result.steps)
     truncated = result.finish_reason == "length"
