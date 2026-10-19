@@ -794,7 +794,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {rijen.map(({ msg, index: i, figures, laatsteId }) => (
               <Message
-                key={msg.id} msg={msg} figures={figures}
+                key={msg.id} msg={msg} figures={figures} verbinding={connected}
                 onClarification={sendClarification} onSend={send} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
@@ -1008,7 +1008,8 @@ const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content &&
 // onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
-export function Message({ msg, figures = null, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
+export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -1086,13 +1087,17 @@ export function Message({ msg, figures = null, onClarification, onSend, busy, se
               </div>
             )}
             {msg.interrupted && (
-              <div className="message-stopped">
-                Verbinding verbroken — antwoord onvolledig
+              /* Zodra de verbinding terug is, zegt de regel dat en licht de knop op (#617): wie in de trein weer
+                 bereik heeft, hoeft de knop niet zelf te bedenken. Alleen als er een knop is (een ingeladen gesprek
+                 zonder vraag ervoor heeft er geen); geen automatische tweede run (die telt mee in de berichtlimiet,
+                 #444). aria-live: ook voor een schermlezer een melding, geen tweede knop. */
+              <div className={`message-stopped${verbinding && herhaal ? ' verbinding-terug' : ''}`} role="status" aria-live="polite">
+                {verbinding && herhaal ? 'Verbinding terug — probeer opnieuw' : 'Verbinding verbroken — antwoord onvolledig'}
                 {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
                 {herhaal && (
                   <>
                     {' '}
-                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>
+                    <button type="button" className={`message-continue${verbinding ? ' message-continue--licht' : ''}`} onClick={herhaal} disabled={busy}>
                       Probeer opnieuw
                     </button>
                   </>

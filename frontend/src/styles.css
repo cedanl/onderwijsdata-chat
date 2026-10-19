@@ -831,6 +831,14 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 .send-btn:disabled, .send-btn[aria-disabled="true"] { background: var(--gray-200); color: var(--muted-text); cursor: not-allowed; box-shadow: none; transform: none; }
 .message-model { font-size: .72rem; color: var(--muted-text); margin-left: 2px; }
 .message-stopped { font-size: .78rem; color: var(--gray-500); font-style: italic; margin-top: 4px; }
+/* Verbinding terug na een afgebroken antwoord (#617): de regel wordt gewoon leesbaar en de knop licht even op
+   (de algemene reduced-motion-regel onderaan zet ook deze animatie uit). */
+.message-stopped.verbinding-terug { font-style: normal; color: var(--gray-700); }
+.message-continue--licht { animation: oplichten 1.6s ease-out 2; }
+@keyframes oplichten {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, .35); }
+}
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
 .message-continue {
