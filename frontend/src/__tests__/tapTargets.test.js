@@ -56,7 +56,12 @@ const NAMED = [
   '.chat-sidebar button', '.settings-modal button',
   // "Anders formuleren" on a clarification card (#494).
   '.clarification-reformulate',
+  // The buttons of the export, delete and feedback dialogs (#612).
+  '.confirm-cancel', '.confirm-primary', '.confirm-destructive',
 ]
+
+// Targets as wide as their row or text, that were too low on phones (#612): the height is what they lack.
+const TALL = ['.reasoning-toggle', '.history-search', '.reasoning-step-code summary']
 
 describe('tap target tokens', () => {
   it('defines the AA minimum and the touch minimum in :root', () => {
@@ -111,6 +116,53 @@ describe('touch block', () => {
     for (const rule of rules.filter(r => r.selectors.some(s => s.includes(selector)))) {
       for (const [, value] of sizes(rule.body, 'max-(?:height|width)')) expectAtLeastTouch(value, selector)
     }
+  })
+})
+
+describe('touch block, height only (#612)', () => {
+  it.each(TALL)('gives %s a 44px tap height', selector => {
+    expect(touchRules.some(r => r.selectors.includes(selector) && declares(r.body, 'min-height', 'var(--tap-min)'))).toBe(true)
+  })
+
+  it.each(TALL)('has no later rule that lowers %s again', selector => {
+    const last = Math.max(...touchRules.filter(r => r.selectors.includes(selector)).map(r => r.index))
+    const later = rules.filter(r => r.index > last && r.selectors.some(s => s.includes(selector)))
+    for (const rule of later) {
+      for (const [, value] of sizes(rule.body, '(?:min-|max-)?height')) expectAtLeastTouch(value, selector)
+    }
+  })
+
+  it.each(TALL)('has no max-height under the token for %s anywhere', selector => {
+    for (const rule of rules.filter(r => r.selectors.some(s => s.includes(selector)))) {
+      for (const [, value] of sizes(rule.body, 'max-height')) expectAtLeastTouch(value, selector)
+    }
+  })
+
+  // "Bekijk code" under a reasoning step: the box grows, the negative margin keeps the 24px footprint of the
+  // base rule, so the steps do not move apart.
+  it('keeps the 24px footprint of "Bekijk code"', () => {
+    const base = rules.find(r => !r.media && r.selectors.includes('.reasoning-step-code summary'))
+    expect(declares(base.body, 'min-height', 'var(--tap-min-aa)')).toBe(true)
+    const touch = touchRules.find(r => r.selectors.includes('.reasoning-step-code summary'))
+    expect(declares(touch.body, 'margin-block', 'calc((var(--tap-min-aa) - var(--tap-min)) / 2)')).toBe(true)
+  })
+})
+
+// The CSV chip on a chart (#612): it keeps its 25px look; an invisible ::before is the 44x44 tap area.
+describe('CSV chip on a chart', () => {
+  it('is positioned, so its ::before is laid out around the chip', () => {
+    const base = rules.find(r => !r.media && r.selectors.includes('.csv-download-btn'))
+    expect(declares(base.body, 'position', 'absolute')).toBe(true)
+  })
+
+  it('draws an invisible 44x44 area around the chip on touch', () => {
+    const area = touchRules.find(r => r.selectors.includes('.csv-download-btn::before'))
+    expect(area).toBeDefined()
+    expect(area.body).toMatch(/content:\s*''/)
+    expect(declares(area.body, 'position', 'absolute')).toBe(true)
+    expect(declares(area.body, 'width', 'max(100%, var(--tap-min))')).toBe(true)
+    expect(declares(area.body, 'height', 'max(100%, var(--tap-min))')).toBe(true)
+    expect(area.body).not.toMatch(/background|border/)
   })
 })
 

@@ -1,7 +1,8 @@
-// #606, #611: een lang woord of een URL zonder spaties in een bubbel (en een tabel die breder is dan de bubbel), en
-// het tikvlak van een citaatgetal tussen gestapelde getallen. Gemeten in de gebouwde app op 390 px (aanraking) en
-// 1366 px. Draait zonder LLM: de chat-socket is nagebootst en geeft per vraag een vast antwoord. Niet in CI.
-// Draaien: `npx playwright test mobiel-tikvlakken` (playwright.config.js).
+// #606, #611, #612: een lang woord of een URL zonder spaties in een bubbel (en een tabel die breder is dan de bubbel),
+// het tikvlak van een citaatgetal tussen gestapelde getallen, de laatste kleine tikdoelen op een telefoon en een
+// invoerveld dat verspringt door de tekenteller. Gemeten in de gebouwde app op 390 px (aanraking) en 1366 px. Draait
+// zonder LLM: de chat-socket is nagebootst en geeft per vraag een vast antwoord. Niet in CI. Draaien:
+// `npx playwright test mobiel-tikvlakken` (playwright.config.js).
 import { test, expect, devices } from 'playwright/test'
 import { handleLoginIfNeeded } from './helpers.js'
 
@@ -12,6 +13,7 @@ const VRAAG_URL = 'Waar staat de tabel?'
 const VRAAG_TABEL = 'Zet alles in een tabel.'
 const VRAAG_CIJFERS = 'Hoeveel studenten zijn er per niveau?'
 const VRAAG_KOPIEER = 'Geef alleen de getallen.'
+const VRAAG_GRAFIEK = 'Toon de studenten per niveau in een grafiek.'
 
 const LANGE_URL = 'https://opendata.cbs.nl/statline/#/CBS/nl/dataset/85423NED/table?dl=' + '9A3F0C1D'.repeat(50)
 // Breder dan een telefoon: zeven kolommen waarin de getallen het breedst zijn.
@@ -53,8 +55,20 @@ const CIJFERS = [
 // Een alinea vol getallen: de bovenste regel loopt onder de kopieerknop van het antwoord door.
 const KOPIEER_GETALLEN = Array.from({ length: 60 }, (_, i) => `1.${String(i + 1).padStart(3, '0')}`)
 
-function antwoord(content, { citaties = [] } = {}) {
-  return [{ type: 'message_start' }, { type: 'text_delta', content }, { type: 'message_end', content, citaties }]
+const FIGUUR = {
+  data: [{ type: 'bar', name: 'Studenten', x: ['mbo', 'hbo', 'wo'], y: [512345, 498765, 341200] }],
+  layout: { title: { text: 'Ingeschreven studenten per niveau' } },
+}
+
+function antwoord(content, { citaties = [], stap = null, figuur = null } = {}) {
+  const events = [{ type: 'message_start' }]
+  if (stap) {
+    events.push({ type: 'tool_start', name: 'cbs_query', label: 'CBS-data ophalen' })
+    events.push({ type: 'tool_end', name: 'cbs_query', snippet: stap })
+  }
+  if (figuur) events.push({ type: 'figure', label: 'Studenten per niveau', figure_json: JSON.stringify(figuur) })
+  events.push({ type: 'text_delta', content }, { type: 'message_end', content, citaties })
+  return events
 }
 
 const ANTWOORDEN = {
@@ -63,6 +77,9 @@ const ANTWOORDEN = {
   [VRAAG_TABEL]: antwoord(BREDE_TABEL),
   [VRAAG_CIJFERS]: antwoord(CIJFERS_TEKST, { citaties: CIJFERS }),
   [VRAAG_KOPIEER]: antwoord(KOPIEER_GETALLEN.join(' '), { citaties: KOPIEER_GETALLEN.map(g => citatie(g, 'mbo')) }),
+  [VRAAG_GRAFIEK]: antwoord('In de grafiek staan de studenten per niveau.', {
+    stap: "df = cbs.get_data('85423NED')\nprint(df.groupby('niveau').sum())", figuur: FIGUUR,
+  }),
 }
 
 // Antwoordt op de heartbeat en op elke bekende vraag; de rest van wat de app stuurt, telt niet.
@@ -81,6 +98,9 @@ async function stuur(page, vraag) {
   await expect(vragen).toHaveCount(eerder + 1)
   await expect(page.getByRole('button', { name: 'Verstuur bericht' })).toBeVisible()
 }
+
+const volgendFrame = page =>
+  page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
 
 const TOESTELLEN = [
   ['telefoon', (({ defaultBrowserType: _, ...apparaat }) => apparaat)(devices['iPhone 14']), true],
@@ -210,7 +230,92 @@ for (const [naam, apparaat, aanraking] of TOESTELLEN) {
       if (aanraking) expect(uitslag.onder).toBeGreaterThan(0)
       expect(uitslag.mis, JSON.stringify(uitslag)).toEqual([])
     })
+
+    test('het invoerveld verspringt niet door de tekenteller (#612)', async ({ page }) => {
+      const veld = page.locator('textarea.chat-input')
+      const teller = page.locator('#message-counter')
+      const top = async () => {
+        await volgendFrame(page)
+        return page.locator('.chat-input-wrap').evaluate(el => el.getBoundingClientRect().top)
+      }
+      // Op desktop is het lege veld 22,8 px (1 regel van 14,25 px x 1,6) en zet de auto-grow bij de eerste toets de
+      // afgeronde scrollHeight van 23 px: een verschil onder een pixel, geen sprong. Daarom hier op een halve pixel.
+      const leeg = await top()
+      await veld.fill('a')
+      expect(await top()).toBeCloseTo(leeg, 0)
+      await veld.fill('')
+      expect(await top()).toBeCloseTo(leeg, 0)
+
+      await veld.fill('a'.repeat(3199))
+      await expect(teller).toHaveText('')
+      const bijna = await top()
+      await veld.fill('a'.repeat(3200))
+      await expect(teller).toContainText('3200 / 4000')
+      expect(await top()).toBe(bijna)
+
+      await veld.fill('a'.repeat(4000))
+      const grens = await top()
+      await veld.fill('a'.repeat(4001))
+      await expect(teller).toContainText('te lang')
+      expect(await top()).toBe(grens)
+
+      // De teller staat in beeld en niet over de verstuurknop heen.
+      const [tel, knop] = await Promise.all(['#message-counter', '.send-btn'].map(s =>
+        page.locator(s).evaluate(el => el.getBoundingClientRect().toJSON())))
+      expect(tel.width).toBeGreaterThan(0)
+      expect(tel.left).toBeGreaterThanOrEqual(0)
+      expect(tel.right).toBeLessThanOrEqual(apparaat.viewport.width)
+      const naast = tel.right <= knop.left || tel.left >= knop.right || tel.bottom <= knop.top || tel.top >= knop.bottom
+      expect(naast, JSON.stringify({ tel, knop })).toBe(true)
+    })
+
+    if (aanraking) {
+      test('de laatste kleine tikdoelen zijn 44 px, ook via een ::before (#612)', async ({ page }) => {
+        await stuur(page, VRAAG_GRAFIEK)
+        await expect(page.locator('.csv-download-btn')).toBeAttached()
+        // Alle stappen komen in één keer binnen, dus de redenering kan al dicht zijn; de code staat erin.
+        const redenering = page.locator('.reasoning-toggle').first()
+        if ((await redenering.getAttribute('aria-expanded')) === 'false') await tik(redenering)
+        const maten = {}
+        for (const kiezer of ['.csv-download-btn', '.reasoning-toggle', '.reasoning-step-code summary']) {
+          maten[kiezer] = await page.locator(kiezer).first().evaluate(tikvlak)
+        }
+
+        await tik(page.getByRole('button', { name: 'Meer acties' }))
+        await tik(page.getByRole('button', { name: 'Exporteer gesprek' }))
+        for (const kiezer of ['.confirm-cancel', '.confirm-primary']) {
+          maten[kiezer] = await page.locator(kiezer).evaluate(tikvlak)
+        }
+        await tik(page.locator('.confirm-cancel'))
+
+        await tik(page.getByRole('button', { name: 'Gesprekken en suggesties' }))
+        maten['.history-search'] = await page.locator('.history-search').evaluate(tikvlak)
+        // De verwijderknop staat in de lade die nog inschuift; de dialoog is wat telt.
+        await page.locator('.history-action-icon-delete').first().dispatchEvent('click')
+        maten['.confirm-destructive'] = await page.locator('.confirm-destructive').evaluate(tikvlak)
+
+        for (const [kiezer, maat] of Object.entries(maten)) {
+          expect(maat.hoogte, `${kiezer}: ${JSON.stringify(maat)}`).toBeGreaterThanOrEqual(TIK)
+          expect(maat.breedte, `${kiezer}: ${JSON.stringify(maat)}`).toBeGreaterThanOrEqual(TIK)
+        }
+        // Het onzichtbare vlak van de CSV-knop ligt boven de grafiek: een tik aan de rand ervan raakt de knop.
+        expect(maten['.csv-download-btn'].randen).toEqual([true, true])
+      })
+    }
   })
+}
+
+// Het tikvlak van een element: zijn eigen vak of zijn ::before, wat groter is. `randen`: raakt een tik 1 px binnen de
+// boven- en onderrand van dat vlak (midden horizontaal) het element zelf?
+function tikvlak(el) {
+  const r = el.getBoundingClientRect()
+  const voor = getComputedStyle(el, '::before')
+  const absoluut = voor.content !== 'none' && voor.position === 'absolute'
+  const hoogte = Math.max(r.height, absoluut ? parseFloat(voor.height) : 0)
+  const breedte = Math.max(r.width, absoluut ? parseFloat(voor.width) : 0)
+  const x = r.left + r.width / 2, y = r.top + r.height / 2
+  const randen = [y - hoogte / 2 + 1, y + hoogte / 2 - 1].map(py => el.contains(document.elementFromPoint(x, py)))
+  return { hoogte, breedte, randen }
 }
 
 // Of `el` boven de citaatgetallen eronder ligt: een tik op zijn midden en op het midden van elke overlap met een getal
