@@ -158,6 +158,27 @@ def test_het_rapport_krijgt_de_regel_ook_als_het_model_niets_als_niet_beantwoord
     assert _rapport(_datasets(_KEY)).beantwoordt_niet == [_REGEL]
 
 
+@pytest.mark.parametrize(
+    ("beantwoordt_niet", "afgekapte", "verwacht"),
+    [
+        # Zonder regels lijst was al gedekt; de string en de situatie zonder regels liepen niet mee (#583).
+        (["Uitval"], True, [_REGEL, "Uitval"]),
+        ("Uitval", True, [_REGEL, "Uitval"]),
+        (["Uitval"], False, ["Uitval"]),
+        ("Uitval", False, ["Uitval"]),
+    ],
+)
+def test_de_regel_komt_voor_een_lijst_en_voor_een_enkele_string(beantwoordt_niet, afgekapte, verwacht):
+    """Het model mag `beantwoordt_niet` als één string geven: die telt als één item, achter de regel (#583)."""
+    _pagina()
+    spec = _rapport(
+        _datasets(_KEY, volledig=not afgekapte),
+        beantwoordt_niet=beantwoordt_niet,
+    )
+
+    assert spec.beantwoordt_niet == verwacht
+
+
 @pytest.mark.parametrize("dataset", [{"data_key": _KEY, "volledig": True}, {"data_key": _KEY}])
 def test_zonder_afkapping_staat_er_precies_wat_het_model_schreef(dataset):
     _pagina(volledig=dataset.get("volledig", False))
