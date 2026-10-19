@@ -1,0 +1,129 @@
+// @vitest-environment jsdom
+// #610: een grafiek komt als eigen bericht na het antwoord binnen en stond daardoor ónder de bubbel. Zodra
+// de vaste blokken, vervolgvragen en feedback aan het eind van het antwoord landden, schoof hij op een
+// telefoon 360 px omlaag (CLS 0,38). Nu staat hij in de bubbel van het antwoord, vóór die blokken.
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { createElement, act } from 'react'
+import { createRoot } from 'react-dom/client'
+import { MemoryRouter } from 'react-router-dom'
+
+const api = vi.hoisted(() => ({
+  fetchWorkbooks: vi.fn().mockResolvedValue([]),
+  putWorkbook: vi.fn().mockResolvedValue({}),
+  deleteWorkbookApi: vi.fn().mockResolvedValue({}),
+  fetchConversations: vi.fn().mockResolvedValue([]),
+  putConversation: vi.fn().mockResolvedValue({}),
+  renameConversationApi: vi.fn().mockResolvedValue({}),
+  deleteConversationApi: vi.fn().mockResolvedValue({}),
+  fetchSettingsConfig: vi.fn().mockResolvedValue({}),
+}))
+vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }))
+vi.mock('react-plotly.js', () => ({ default: () => null }))
+vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
+
+const chat = vi.hoisted(() => ({ messages: [] }))
+vi.mock('../hooks/useChat', () => ({
+  useChat: () => ({
+    messages: chat.messages, busy: false, rejectedDraft: null, clearRejectedDraft: () => {}, thinking: false,
+    connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false, reportProgress: null,
+    reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(), sendSettings: vi.fn(), sendHistory: vi.fn(),
+    stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(), clearReport: vi.fn(), clear: vi.fn(),
+    startNewConversation: vi.fn(), addToast: vi.fn(),
+  }),
+}))
+
+import ChatPage from '../pages/ChatPage'
+import { groepeerFiguren, isFiguurBericht } from '../figuurGroep'
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
+globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
+window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
+
+const FIG = JSON.stringify({ data: [{ type: 'bar', x: [2023, 2024], y: [1, 2] }], layout: { title: { text: 'Studenten' } } })
+const vraag = { id: 1, role: 'user', content: 'Hoeveel mbo-studenten per jaar?', done: true, model: 'm1' }
+const antwoord = {
+  id: 2, role: 'assistant', content: 'Er waren 475.460 studenten.', done: true,
+  tools: [{ name: 'get_cbs_data', label: 'CBS data opgehaald', done: true }],
+  bronnen: ['CBS · Mbo; studenten (85354NED)'], citaties: [], vervolgvragen: ['En in 2021?'],
+}
+const grafiek = { id: 3, role: 'assistant', content: '', figures: [{ label: 'Grafiek aangemaakt', json: FIG }], done: true }
+
+describe('groepeerFiguren', () => {
+  it('vouwt het grafiekbericht direct na een antwoord in dat antwoord', () => {
+    const rijen = groepeerFiguren([vraag, antwoord, grafiek])
+    expect(rijen.map(r => r.msg.id)).toEqual([1, 2])
+    expect(rijen[1]).toMatchObject({ index: 1, laatsteId: 3, gevouwen: 1 })
+    expect(rijen[1].figures).toHaveLength(1)
+  })
+
+  it('houdt twee grafieken van één antwoord bij elkaar, in volgorde', () => {
+    const tweede = { ...grafiek, id: 4, figures: [{ label: 'Tweede', json: FIG }] }
+    const [, rij] = groepeerFiguren([vraag, antwoord, grafiek, tweede])
+    expect(rij.figures.map(f => f.label)).toEqual(['Grafiek aangemaakt', 'Tweede'])
+    expect(rij.laatsteId).toBe(4)
+  })
+
+  it('laat een grafiek zonder antwoord ervoor als eigen bericht staan', () => {
+    expect(groepeerFiguren([vraag, grafiek]).map(r => r.msg.id)).toEqual([1, 3])
+    // Een grafiek achter een ander grafiekbericht: niets om in te vouwen.
+    expect(groepeerFiguren([grafiek, { ...grafiek, id: 4 }]).map(r => r.msg.id)).toEqual([3, 4])
+  })
+
+  it('kent een grafiekbericht aan zijn vorm: alleen figuren, geen tekst, stappen of fout', () => {
+    expect(isFiguurBericht(grafiek)).toBe(true)
+    expect(isFiguurBericht({ ...grafiek, content: 'tekst' })).toBe(false)
+    expect(isFiguurBericht({ ...grafiek, tools: [{ name: 'create_plot' }] })).toBe(false)
+    expect(isFiguurBericht(antwoord)).toBe(false)
+  })
+})
+
+describe('de grafiek in de bubbel van het antwoord', () => {
+  let root
+  let container
+
+  afterEach(async () => {
+    if (root) await act(async () => root.unmount())
+    container?.remove()
+    root = null
+    chat.messages = []
+  })
+
+  async function render() {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const pagina = createElement(MemoryRouter, { initialEntries: ['/chat'] },
+      createElement(ChatPage, { user: 'tester', feedbackEnabled: true, openRapport: vi.fn() }))
+    await act(async () => { root.render(pagina) })
+  }
+
+  it('toont één antwoordbericht met de grafiek vóór de blokken en de vervolgvragen', async () => {
+    chat.messages = [vraag, antwoord, grafiek]
+    await render()
+    const berichten = container.querySelectorAll('.message.assistant')
+    expect(berichten).toHaveLength(1)
+    const bubbel = berichten[0].querySelector('.message-bubble-assistant')
+    const kinderen = [...bubbel.children].map(k => k.className)
+    const grafiekPlek = kinderen.findIndex(c => c.includes('plotly-figure-wrap'))
+    const blokkenPlek = kinderen.findIndex(c => c.includes('answer-blocks'))
+    const vervolgPlek = kinderen.findIndex(c => c.includes('question-buttons'))
+    expect(grafiekPlek).toBeGreaterThan(-1)
+    expect(blokkenPlek).toBeGreaterThan(grafiekPlek)
+    expect(vervolgPlek).toBeGreaterThan(grafiekPlek)
+  })
+
+  it('houdt het modeletiket van de beurt, dat aan het grafiekbericht hing, één keer onder het antwoord', async () => {
+    chat.messages = [vraag, antwoord, grafiek]
+    await render()
+    const etiketten = [...container.querySelectorAll('.message-model')].map(e => e.textContent)
+    expect(etiketten).toHaveLength(1)
+    expect(etiketten[0]).toMatch(/^Antwoord van /)
+  })
+
+  it('laat een grafiek zonder antwoord ervoor als eigen bericht staan', async () => {
+    chat.messages = [vraag, grafiek]
+    await render()
+    expect(container.querySelectorAll('.message.assistant')).toHaveLength(1)
+    expect(container.querySelector('.plotly-figure-wrap')).not.toBeNull()
+  })
+})
