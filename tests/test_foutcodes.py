@@ -125,7 +125,7 @@ def _loop(monkeypatch, steps: list[StreamResult], results: dict[str, str]):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return steps.pop(0)
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         executed.append(call.arguments)
         return results[call.name], None
 

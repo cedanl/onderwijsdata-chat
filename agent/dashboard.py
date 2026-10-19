@@ -21,6 +21,7 @@ from agent import kpi_bron
 from agent.afkapping import afkappingsregels
 from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
+from agent.recepten import van_session
 from agent.replay import REPLAYABLE_TOOLS, ankers_van_recipe
 from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
 from agent.stream import Emit
@@ -270,6 +271,7 @@ async def generate(
         max_result_chars=_MAX_TOOL_RESULT_CHARS,
         on_tool_result=collect,
         keep_partial=lambda: bool(figures),
+        recept_van=van_session(session),
     )
     if result.partial_error:
         await emit(

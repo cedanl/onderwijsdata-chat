@@ -468,7 +468,7 @@ def _run(monkeypatch, steps: list[StreamResult], vraag: str | list[dict], sessio
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return steps.pop(0)
 
-    async def execute(call, emit):
+    async def execute(call, emit, recept_van=None):
         return json.dumps({"data_key": _G2, "rijen": rijen}), None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)

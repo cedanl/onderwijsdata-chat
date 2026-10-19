@@ -11,10 +11,25 @@ from collections import OrderedDict
 
 from persistence import db
 from tools import herlaad, store
+from tools.snippet import Receptbron
 
 # Wacht tot het gesprek is opgeslagen. Begrensd: een gesprek dat nooit wordt opgeslagen blijft niet hangen.
 _MAX_WACHTEND = 2000
 _wachtend: OrderedDict[tuple[str, str], dict] = OrderedDict()
+
+
+def van_session(session: dict) -> Receptbron:
+    """De receptopzoeker voor de snippets van een sessie (#624): alleen de eigen gebruiker.
+
+    Zelfde vorm als Receptbron uit tools.snippet: per key het recept waarmee hij ontstond,
+    zodat een afgeleide snippet de stappen van zijn ouder kan herhalen.
+    """
+    username = session.get("username")
+
+    def van(key: str) -> dict | None:
+        return voor(username, key) if isinstance(username, str) else None
+
+    return van
 
 
 def onthoud(username: str, key: str, recept: dict) -> None:

@@ -44,7 +44,7 @@ def _run(monkeypatch, steps: list[StreamResult], vraag: str) -> str:
 
     real_execute = loop_module._execute_tool
 
-    async def execute(call, emit):
+    async def execute(call, emit, recept_van=None):
         if call.name == "search_catalog":
             return await real_execute(call, emit)
         return _ROWS, None
@@ -183,7 +183,7 @@ def test_ingehouden_antwoord_logt_model_lengte_en_hash(monkeypatch, caplog):
 
 def test_reproduceer_logt_de_snippet_alleen_op_debug(monkeypatch, caplog):
     monkeypatch.setattr(loop_module, "dispatch", lambda name, args: ("{}", None))
-    monkeypatch.setattr(loop_module, "_generate_snippet", lambda name, args, result: f"zoek('{MARKER}')")
+    monkeypatch.setattr(loop_module, "_generate_snippet", lambda name, args, result, **kw: f"zoek('{MARKER}')")
     caplog.set_level(logging.INFO)
 
     async def emit(event):

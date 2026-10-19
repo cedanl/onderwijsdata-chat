@@ -303,38 +303,172 @@ def test_load_snippet_runs_and_carries_source_id_and_filters(clean_packages, bro
     assert all(str(v) in snippet for v in [laadargs.get("dataset_id") or laadargs["resource"]])
 
 
-def test_derived_result_becomes_rows_in_the_snippet(clean_packages):
+# --- #624: een afgeleide snippet herhaalt de stappen van zijn ouder ---
+
+
+_BRONKEY = "duo:p01hoinges:3"
+_SELECTIE = "duo:p01hoinges:3:sel"
+_SELECTIE_RECEPT = {
+    "afgeleid_van": _BRONKEY,
+    "tool": "query_data",
+    "args": {"filters": {"JAAR": "2022"}},
+    "stap": 'filters {"JAAR": 2022}',
+}
+
+
+@pytest.fixture
+def keten(clean_packages):
+    """Bron plus een afgeleide selectie, met het recept zoals de sessie het onthoudt (#472)."""
     store.put(
-        "duo:p01hoinges:3",
+        _BRONKEY,
         pd.DataFrame(_ROWS),
         store.KeyMeta(
             bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
         ),
     )
-    store.derive("duo:p01hoinges:3", "analysis:1", pd.DataFrame([{"JAAR": 2021, "AANTAL": float("nan")}]))
+    store.derive(_BRONKEY, _SELECTIE, pd.DataFrame([{"JAAR": 2022, "AANTAL": 20.0}]), stap=_SELECTIE_RECEPT["stap"])
+    return {_SELECTIE: _SELECTIE_RECEPT}
+
+
+def test_grafiek_snippet_laat_de_laadstap_en_de_stappen_van_de_ouder_zien(clean_packages, keten):
+    snippet = generate(
+        "create_plot",
+        {"data_key": _SELECTIE, "x": "JAAR", "y": "AANTAL", "title": "t"},
+        recept_van=keten.get,
+    )
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet  # de laadstap van de bron
+    assert "pd.DataFrame([" not in snippet  # geen rijen uit de eerdere stap
+    namespace = _run(snippet)
+    assert clean_packages == [("duo", "p01hoinges", 3)]
+    assert namespace["df"]["JAAR"].tolist() == [2022]  # de filter van de ouder is toegepast
+
+
+def test_kpi_snippet_laat_de_laadstap_en_de_stappen_van_de_ouder_zien(clean_packages, keten):
+    args = {"data_key": _SELECTIE, "value_column": "AANTAL", "metric": "sum", "label": "Totaal"}
+    snippet = generate("compute_kpi", args, recept_van=keten.get)
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet
+    assert "pd.DataFrame([" not in snippet
+    namespace = _run(snippet)
+    assert clean_packages == [("duo", "p01hoinges", 3)]
+    assert namespace["kpi"] == 20.0
+
+
+def test_snippet_in_een_schone_namespace_volgt_de_dubbelganger_van_het_pakket(clean_packages, keten, monkeypatch):
+    """Acceptatie #624: de dubbelganger bepaalt de uitkomst, niet de ingebakken rijen."""
+    args = {"data_key": _SELECTIE, "value_column": "AANTAL", "metric": "sum", "label": "Totaal"}
+    snippet = generate("compute_kpi", args, recept_van=keten.get)
+    assert snippet is not None
+    assert _run(snippet)["kpi"] == 20.0
+
+    monkeypatch.setattr("riodata.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
+    assert _run(snippet)["kpi"] == 7.0  # dezelfde code, andere data uit het pakket
+
+
+def test_selectie_op_een_selectie_herhaalt_beide_stappen(clean_packages, keten):
+    tweede = f"{_SELECTIE}:kolommen"
+    store.derive(_SELECTIE, tweede, pd.DataFrame([{"JAAR": 2022}]), stap="kolommen ['JAAR']")
+    recepten = {
+        **keten,
+        tweede: {"afgeleid_van": _SELECTIE, "tool": "query_data", "args": {"columns": ["JAAR"]}, "stap": "kolommen"},
+    }
+
+    snippet = generate("query_data", {"data_key": tweede}, recept_van=recepten.get)
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet
+    assert "isin(['2022'])" in snippet  # de filter van de eerste stap
+    assert "['JAAR']" in snippet  # de kolommen van de tweede stap
+    assert "pd.DataFrame([" not in snippet
+
+
+def test_vaste_maat_met_som_herhaalt_de_bron_en_de_som_van_de_leerwegen():
+    """Voorbeeld 1 van #624: de mbo-som is zelf geen query_data-stap, maar het recept is dat wel."""
+    args = {"maat": "mbo_studenten_instelling", "instelling": "ROC Mondriaan", "vorm": "bol"}
+    recept = {"afgeleid_van": "duo:mbo-studenten-per-instelling:0", "tool": "get_maat", "args": args}
+
+    snippet = generate(
+        "compute_kpi",
+        {
+            "data_key": "duo:mbo-studenten-per-instelling:0:recept",
+            "value_column": "AANTAL",
+            "metric": "sum",
+            "label": "L",
+        },
+        recept_van=lambda key: recept if key.startswith("duo:mbo-studenten-per-instelling") else None,
+    )
+
+    assert snippet is not None
+    assert 'duo.load("mbo-studenten-per-instelling"' in snippet
+    assert "BOLVT" in snippet and "BOLDT" in snippet  # de som van de leerwegkolommen
+    assert "pd.DataFrame([" not in snippet
+
+
+def test_onbekende_keten_bakt_de_waarden_in_met_een_eerlijke_opmerking(clean_packages):
+    """Zonder recept (na een herstart, #472, of een eigen berekening) blijft inbakken de noodoplossing."""
+    store.put(
+        _BRONKEY,
+        pd.DataFrame(_ROWS),
+        store.KeyMeta(
+            bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+        ),
+    )
+    store.derive(_BRONKEY, "analysis:1", pd.DataFrame([{"JAAR": 2021, "AANTAL": float("nan")}]))
 
     snippet = generate("create_plot", {"data_key": "analysis:1", "x": "JAAR", "y": "AANTAL", "title": "t"})
+    assert snippet is not None
     namespace = _run(snippet)
 
-    assert clean_packages == []  # de bron wordt niet opnieuw geladen: de rijen staan in de snippet
+    assert clean_packages == []  # de bron wordt niet geladen: de rijen staan als kopie in de snippet
+    assert "groeien niet mee met de bron" in snippet
     assert namespace["df"].to_dict("records") == [{"JAAR": 2021, "AANTAL": None}]
 
 
-def test_big_derived_result_loads_the_source_with_a_note(clean_packages):
+def test_grote_afgeleide_uitkomst_laad_de_bron_met_een_eerlijk_nb(clean_packages):
+    """Te veel rijen om te kopiëren zonder keten: de bron, met een NB dat de uitkomst kan afwijken."""
     store.put(
-        "duo:p01hoinges:3",
+        _BRONKEY,
         pd.DataFrame(_ROWS),
         store.KeyMeta(
             bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
         ),
     )
-    store.derive("duo:p01hoinges:3", "analysis:2", pd.DataFrame({"A": range(500)}))
+    store.derive(_BRONKEY, "analysis:2", pd.DataFrame({"A": range(500)}))
 
     snippet = generate("query_data", {"data_key": "analysis:2"})
 
     assert snippet is not None
     assert 'duo.load("p01hoinges", 3)' in snippet
     assert "NB:" in snippet
+    assert "kan afwijken van wat de app toonde" in snippet
+
+
+def test_tool_end_snippet_volgt_de_keten_van_de_stap(clean_packages, monkeypatch):
+    """Naad met de gespreksexport (#366): tool_end draagt de snippet die de export bewaart."""
+    store.put(
+        _BRONKEY,
+        pd.DataFrame(_ROWS),
+        store.KeyMeta(
+            bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+        ),
+    )
+    store.derive(_BRONKEY, _SELECTIE, pd.DataFrame([{"JAAR": 2022, "AANTAL": 20.0}]), stap=_SELECTIE_RECEPT["stap"])
+    monkeypatch.setattr(loop_module, "dispatch", lambda name, args: (json.dumps({"data_key": _SELECTIE}), None))
+    events: list[dict] = []
+
+    async def emit(ev):
+        events.append(ev)
+
+    args = {"data_key": _SELECTIE, "x": "JAAR", "y": "AANTAL", "title": "t"}
+    call = loop_module.ToolCall(id="t1", name="create_plot", arguments=json.dumps(args), args=args)
+    asyncio.run(loop_module._execute_tool(call, emit, recept_van={_SELECTIE: _SELECTIE_RECEPT}.get))
+    end = next(e for e in events if e["type"] == "tool_end")
+
+    assert 'duo.load("p01hoinges", 3)' in end["snippet"]
+    assert "pd.DataFrame([" not in end["snippet"]
 
 
 def test_loaders_record_the_call_that_a_snippet_needs(zonder_scopegrens):
