@@ -1966,8 +1966,9 @@ html.dark .suggested-btn:hover {
 .navbar-zoek-btn {
   display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm); background: var(--white); color: var(--gray-600); font-size: .8rem;
+  white-space: nowrap; flex-shrink: 0; /* "Ctrl K" breekt anders op een smalle balk over twee regels */
 }
-.navbar-zoek-btn svg { width: 16px; height: 16px; }
+.navbar-zoek-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .navbar-zoek-hint { font-family: inherit; font-size: .7rem; padding: 1px 5px; border: 1px solid var(--gray-200); border-radius: 4px; color: var(--muted-text); }
 /* On a phone only the icon: the header is narrow (#596). */
 @media (max-width: 768px) {
