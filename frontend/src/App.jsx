@@ -6,6 +6,8 @@ import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/LoginPage'
 import PrivacyPage from './pages/PrivacyPage'
 import SettingsModal from './components/SettingsModal'
+import ZoekPalet from './components/ZoekPalet'
+import { useZoekSneltoets } from './hooks/useZoekSneltoets'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
@@ -65,6 +67,8 @@ function AppShell() {
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
   // The server ended the session (#499): the login screen says why. Logout needs no notice.
   const [sessionExpired, setSessionExpired] = useState(false)
+  const [zoekOpen, setZoekOpen] = useState(false)
+  const [teOpenenGesprek, setTeOpenenGesprek] = useState(null)
 
   useEffect(() => { applyMode(settings.mode || 'system') }, [settings.mode])
 
@@ -179,6 +183,21 @@ function AppShell() {
     navigate('/rapporten', workbook ? { state: { pendingWorkbook: workbook } } : undefined)
   }
 
+  // The search palette (#602): Ctrl/⌘K or the search button, on every route once logged in. A conversation
+  // picked there opens in the chat (ChatPage reads `teOpenenGesprek`), a report on /rapporten by its id.
+  const openZoeken = useCallback(() => setZoekOpen(true), [])
+  useZoekSneltoets(!authLoading && (!authRequired || user) ? openZoeken : null)
+  const openGesprekUitZoeken = (id) => {
+    setZoekOpen(false)
+    setTeOpenenGesprek(id)
+    navigate('/chat')
+  }
+  const openRapportUitZoeken = (id) => {
+    setZoekOpen(false)
+    navigate(`/rapporten?id=${encodeURIComponent(id)}`)
+  }
+  const gesprekGeopend = useCallback(() => setTeOpenenGesprek(null), [])
+
   if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 
   if (authRequired && !user) {
@@ -207,6 +226,7 @@ function AppShell() {
         instelling={sramInstelling || settings.instelling}
         dashboardsEnabled={dashboardsEnabled}
         slotRef={setNavSlot}
+        onZoek={openZoeken}
       />
       <main className="page-wrap">
         <NavSlotContext.Provider value={navSlot}>
@@ -214,7 +234,7 @@ function AppShell() {
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
               <Routes>
                 <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
-                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} />} />
+                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
                 <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
@@ -224,6 +244,9 @@ function AppShell() {
           </ErrorBoundary>
         </NavSlotContext.Provider>
       </main>
+      {zoekOpen && (
+        <ZoekPalet onClose={() => setZoekOpen(false)} onOpenGesprek={openGesprekUitZoeken} onOpenRapport={openRapportUitZoeken} />
+      )}
       {showSettings && (
         <SettingsModal
           settings={settings}

@@ -9,12 +9,45 @@ import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { groupByMonth } from '../workbookGroups'
 import { filterWorkbooks } from '../workbookFilter'
+import { inVolgorde, noteerRapport, useRecent, wisselFavoriet } from '../recentBekeken'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function RapportCard({ wb, onOpen, onDelete, mode }) {
+// A star to mark a favourite (#603): kept in this browser only, like "recent bekeken".
+function FavorietKnop({ wb, aan }) {
+  return (
+    <button type="button"
+      className={`wb-fav-btn${aan ? ' aan' : ''}`}
+      aria-pressed={aan}
+      aria-label={`Favoriet: ${wb.title}`}
+      title={aan ? 'Uit je favorieten halen' : 'Markeer als favoriet'}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); wisselFavoriet(wb.id) }}
+    >
+      <svg viewBox="0 0 24 24" fill={aan ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    </button>
+  )
+}
+
+// One row of reports to go back to quickly (#603): favourites or recently viewed, as small buttons.
+function SnelRij({ kop, rapporten, onOpen }) {
+  if (!rapporten.length) return null
+  return (
+    <div className="wb-snel-rij">
+      <h2 className="wb-snel-kop">{kop}</h2>
+      <div className="wb-snel-knoppen">
+        {rapporten.map(wb => (
+          <button key={wb.id} type="button" className="wb-snel-knop" onClick={() => onOpen(wb)}>{wb.title}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RapportCard({ wb, onOpen, onDelete, mode, favoriet = false }) {
   return (
     <a
       href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
@@ -29,6 +62,7 @@ function RapportCard({ wb, onOpen, onDelete, mode }) {
         <div className="wb-card-desc">{wb.description}</div>
         <div className="wb-card-footer">
           <span className="wb-card-date">{formatDate(wb.createdAt)}</span>
+          <FavorietKnop wb={wb} aan={favoriet} />
           <button type="button"
             className="wb-delete-btn"
             title="Verwijder"
@@ -103,6 +137,13 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   const searchRef = useRef(null)
   const zichtbaar = filterWorkbooks(rapporten, query)
   const zoekt = query.trim() !== ''
+  const recent = useRecent()
+  const favorieten = inVolgorde(recent.favorieten, rapporten)
+  const recentBekeken = inVolgorde(recent.rapporten, rapporten).slice(0, 4)
+  const openRapport = wb => { setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }
+
+  // An opened report counts as viewed in this browser (#603).
+  useEffect(() => { if (selected?.id) noteerRapport(selected.id) }, [selected?.id])
 
   useEffect(() => {
     if (!selected && pendingId && missingId === pendingId) {
@@ -160,6 +201,15 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
 
         {rapporten.length > 0 && <RapportenZoekveld query={query} onChange={setQuery} inputRef={searchRef} />}
 
+        {/* Back to what you use (#603), only in this browser: in a shared account others do not see it. */}
+        {!zoekt && (favorieten.length > 0 || recentBekeken.length > 0) && (
+          <section className="wb-snel" aria-label="Snel terug">
+            <SnelRij kop="Favorieten" rapporten={favorieten} onOpen={openRapport} />
+            <SnelRij kop="Recent bekeken" rapporten={recentBekeken} onOpen={openRapport} />
+            <p className="wb-snel-noot">Alleen in deze browser: anderen met hetzelfde account zien dit niet.</p>
+          </section>
+        )}
+
         {missingId && (
           <div className="wb-gallery-notice" role="alert">
             Dit rapport is niet gevonden. Het is misschien verwijderd of opgeslagen onder een ander account.
@@ -197,7 +247,8 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
                   <RapportCard mode={mode}
                     key={wb.id}
                     wb={wb}
-                    onOpen={() => { setSelected(wb); setSearchParams({ id: wb.id }, { replace: true }) }}
+                    favoriet={recent.favorieten.includes(String(wb.id))}
+                    onOpen={() => openRapport(wb)}
                     onDelete={() => handleDelete(wb.id)}
                   />
                 ))}
