@@ -94,25 +94,34 @@ export default function ZoekPalet({ onClose, onOpenGesprek, onOpenRapport }) {
     <div className="modal-overlay zoek-overlay" onClick={closeFromBackdrop}>
       <div className="zoek-palet" ref={dialogRef} role="dialog" aria-modal="true" aria-label="Zoeken" tabIndex={-1}
         onClick={e => e.stopPropagation()}>
-        <input
-          type="search"
-          className="zoek-invoer"
-          role="combobox"
-          aria-expanded={treffers.length > 0}
-          aria-controls={`${id}-lijst`}
-          aria-activedescendant={treffers.length ? optieId(gekozen) : undefined}
-          aria-autocomplete="list"
-          aria-label="Zoek in gesprekken en rapporten"
-          placeholder="Zoek in gesprekken en rapporten"
-          value={gesprekken.query}
-          onChange={e => { gesprekken.setQuery(e.target.value); setActief(0) }}
-          onKeyDown={onKeyDown}
-        />
+        <div className="zoek-invoerrij">
+          <svg className="zoek-icoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            type="search"
+            className="zoek-invoer"
+            role="combobox"
+            aria-expanded={treffers.length > 0}
+            aria-controls={`${id}-lijst`}
+            aria-activedescendant={treffers.length ? optieId(gekozen) : undefined}
+            aria-autocomplete="list"
+            aria-label="Zoek in gesprekken en rapporten"
+            placeholder="Zoek in gesprekken en rapporten"
+            value={gesprekken.query}
+            onChange={e => { gesprekken.setQuery(e.target.value); setActief(0) }}
+            onKeyDown={onKeyDown}
+          />
+          <kbd className="zoek-toets zoek-toets-esc" aria-hidden="true">Esc</kbd>
+        </div>
         <div id={`${id}-lijst`} role="listbox" aria-label="Treffers" className="zoek-lijst">
           {groep('gesprek', 'Gesprekken')}
           {groep('rapport', 'Rapporten')}
         </div>
-        <p className="zoek-status" role="status">{status}</p>
+        <div className="zoek-voet">
+          <p className="zoek-status" role="status">{status}</p>
+          <span className="zoek-hints" aria-hidden="true"><span>↑↓ kiezen</span><span>↵ openen</span></span>
+        </div>
       </div>
     </div>,
     document.body,

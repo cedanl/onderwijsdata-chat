@@ -106,6 +106,8 @@ const FIELDS = [
   // Inline rename in the history list, and of a report title (it also carries .wb-viewer-title).
   ['.title-edit-input'],
   ['.wb-viewer-title', '.title-edit-input'],
+  // The search palette (#602) opens with focus in this field: under 16px, Safari zoomed the whole page in.
+  ['.zoek-invoer'],
   // Already 16px everywhere (#562); kept in the list so it does not drop again.
   ['.wb-gallery-search-input'],
 ]
