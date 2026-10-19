@@ -6,6 +6,15 @@ de laatste tag is 1.8.6.
 
 ## Niet uitgebracht
 
+### Bronnen
+- RIO heeft op 19-10-2026 API v2 verwijderd (HTTP 410 op elke aanroep): `get_rio_instelling` en `get_rio_data`
+  werkten niet meer, op test en playground. De chat draait nu op RIO LOD API v3 via riodata 0.6.0 (#627): het
+  typefilter heet op elk register `type` (v2: `erkenningtype`, `opleidingseenheidtype`, `opleidingserkenningtype`),
+  de route per instelling leest de relaties via `vanErkenningId`/`naarErkenningId`, en de bronlinks wijzen naar v3.
+  `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` hebben in v3 geen lijst-endpoint;
+  `get_rio_data` zegt dat vóór de aanroep. De sectorfilters in `tools/scopeprofiel.py` worden getoetst tegen het
+  riodata-contract, zodat een volgende hernoeming in de test opvalt en niet live.
+
 ### Scope
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `02voins-v1`)
   zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
@@ -38,6 +47,9 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- `scripts/ijkwaarden.py` stopt niet meer bij de eerste bron die niet antwoordt: de ijkwaarden van CBS en DUO worden
+  toch vergeleken, het ijkpunt dat faalde staat met de fout van de bron in het rapport (exitcode 1) en zijn vastgelegde
+  waarde blijft staan, ook met `--schrijf`. Dat was nodig toen RIO op 19-10 HTTP 410 gaf (#627).
 - Ketenbrede controle los van `/health` en `/ready` (#169). Elk gepubliceerd resultaat (antwoord, figuur, CSV-export,
   rapport) schrijft één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
   selectie), volledigheid, afronding en herlaaddatum, en de versies uit het manifest (model, prompt, catalogus, app);
@@ -384,6 +396,12 @@ de laatste tag is 1.8.6.
 - Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
   namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
   dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
+- De snippet van een grafiek, KPI, selectie of eigen berekening op een eerdere stap herhaalt de stappen van die
+  stap in plaats van de rijen ervan in te bakken (#624): eerst de laadstap van de bron, dan de selectie
+  (`query_data`), de vaste maat (`get_maat`) of het script van de eigen berekening (`run_analysis`), zodat `df` in
+  dezelfde snippet ontstaat en de code opnieuw draait op actuele data. Het script van een eigen berekening komt
+  uit het geheugen van de sessie; de database bewaart nog steeds geen script. Alleen zonder bekende keten (na een
+  herstart) staat er een kopie van de rijen, met de opmerking dat die niet meegroeit met de bron.
 - De knop "Download data als CSV" staat ook onder een antwoord dat via `get_maat` liep (#538): een telvraag
   als "Hoeveel studenten zaten er in 2022 in het mbo?" kreeg sinds `get_maat` geen knop meer, omdat de export
   alleen `query_data` en `run_analysis` als bron kende. De download heet `<titel>_<dataset-id>.csv`, zoals bij

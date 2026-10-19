@@ -146,7 +146,7 @@ def test_partial_page_has_nothing_more():
 
 
 def test_http_status_error_returns_explicit_fallback():
-    request = httpx.Request("GET", "https://lod.onderwijsregistratie.nl/api/rio/v2/x")
+    request = httpx.Request("GET", "https://lod.onderwijsregistratie.nl/api/rio/v3/x")
     response = httpx.Response(400, request=request)
     error = httpx.HTTPStatusError("Client error", request=request, response=response)
 
@@ -167,27 +167,44 @@ def test_tool_description_sets_expectation_for_counts():
     assert "totalen" in tool["description"]
 
 
-def test_status_filter_op_cohorten_gaat_door_naar_rio():
-    # #353: RIO accepteert status live (codes als "G"); de oude allowlist kende het niet.
-    with patch("tools.rio.fetch", return_value=[{"id": 1, "status": "G"}]) as fetch:
-        get_rio_data("aangeboden-opleiding-cohorten", filters={"status": "G"})
-    assert fetch.call_args.kwargs["status"] == "G"
+def test_cohorten_hebben_in_v3_geen_lijstendpoint():
+    # RIO LOD API v3 (#627): aangeboden-opleiding-cohorten bestaat alleen als sub-resource van een
+    # aangeboden opleiding; het contract van riodata zegt dat vóór de netwerkaanroep.
+    with patch("tools.rio.fetch") as fetch:
+        result = get_rio_data("aangeboden-opleiding-cohorten", filters={"aanmeldperiode": "2026-09-01"})
+    fetch.assert_not_called()
+    assert "geen lijst-endpoint" in result
+    assert "/aangeboden-opleidingen/{id}/aangeboden-opleiding-cohorten" in result
+
+
+def test_typefilter_gaat_door_naar_rio():
+    # v3: het typefilter heet op elk register `type`; de waarde gaat ongewijzigd door.
+    with patch("tools.rio.fetch", return_value=[{"id": 1, "type": "BEVOEGD_GEZAG"}]) as fetch:
+        get_rio_data("erkenningen", filters={"type": "BEVOEGD_GEZAG", "volledigeNaam": "ROC Mondriaan"})
+    assert fetch.call_args.kwargs["type"] == "BEVOEGD_GEZAG"
 
 
 def test_onbekend_filter_blijft_geweigerd():
     with patch("tools.rio.fetch") as fetch:
-        result = get_rio_data("aangeboden-opleiding-cohorten", filters={"onzin": "x"})
+        result = get_rio_data("erkenningen", filters={"onzin": "x"})
     fetch.assert_not_called()
     assert "Onbekend filter 'onzin'" in result
-    assert "status" in result  # de geldige filters staan in de hint
+    assert "volledigeNaam" in result  # de geldige filters staan in de hint
+
+
+def test_de_v2_filternaam_wordt_geweigerd_met_de_v3_naam_als_hint():
+    with patch("tools.rio.fetch") as fetch:
+        result = get_rio_data("erkenningen", filters={"erkenningtype": "BEVOEGD_GEZAG"})
+    fetch.assert_not_called()
+    assert "Onbekend filter 'erkenningtype'" in result and "type" in result
 
 
 @pytest.mark.parametrize(
     ("resource", "filters", "herstel"),
     [
         # Leesbare waarden gaven live HTTP 400 (#353): het contract noemt de codes.
-        ("aangeboden-opleiding-cohorten", {"status": "OPEN"}, "Geldig: O, G"),
-        ("opleidingen", {"opleidingseenheidtype": "HBO"}, "HOOPLEIDING"),
+        ("erkenningen", {"type": "BESTUUR"}, "BEVOEGD_GEZAG"),
+        ("opleidingen", {"type": "HBO"}, "HOOPLEIDING"),
         ("erkenningen", {"datumGeldigOp": "2026-13-01"}, "YYYY-MM-DD"),
     ],
 )
@@ -200,8 +217,8 @@ def test_ongeldige_waarde_wordt_geweigerd_met_de_geldige_waarden(resource, filte
 
 def test_geldige_enumwaarde_gaat_door():
     with patch("tools.rio.fetch", return_value=[{"id": 1}]) as fetch:
-        get_rio_data("opleidingen", {"opleidingseenheidtype": "HOOPLEIDING"})
-    assert fetch.call_args.kwargs["opleidingseenheidtype"] == "HOOPLEIDING"
+        get_rio_data("opleidingen", {"type": "HOOPLEIDING"})
+    assert fetch.call_args.kwargs["type"] == "HOOPLEIDING"
 
 
 def test_onbekende_resource_noemt_de_bedoelde():
@@ -222,5 +239,26 @@ def test_getal_als_code_en_paging_als_tekst_worden_niet_geweigerd():
 def test_filters_komen_uit_het_riodata_contract():
     from tools.rio import rio_filters
 
-    assert "status" in rio_filters("aangeboden-opleiding-cohorten")
+    assert rio_filters("erkenningen") == ["type", "volledigeNaam", "plaatsnaam", "datumGeldigOp"]
+    assert rio_filters("aangeboden-opleiding-cohorten") == ["aanmeldperiode"]  # alleen als sub-resource (v3)
     assert rio_filters("bestaat-niet") == []
+
+
+def test_een_register_zonder_lijstendpoint_is_alleen_catalogus():
+    """RIO v3 (#627): cohorten bestaan alleen als sub-resource; de catalogus zegt dat, de telling laat ze weg."""
+    from riodata.client import zonder_lijstendpoint
+
+    from tools import catalog
+
+    (cohorten,) = [e for e in catalog._rio_duo() if e.get("_rio_resource") == "aangeboden-opleiding-cohorten"]
+    assert catalog.status(cohorten) == catalog.STATUS_ALLEEN_CATALOGUS
+    uit = catalog._niet_opvraagbaar(cohorten)
+    assert uit is not None
+    assert uit["opvraagbaar"] is False and "geen lijst-endpoint" in uit["melding"]
+    (aanbod,) = [e for e in catalog._rio_duo() if e.get("_rio_resource") == "aangeboden-opleidingen"]
+    assert catalog.status(aanbod) == catalog.STATUS_OPVRAAGBAAR
+    # De telling laat elk register zonder lijst-endpoint weg (binnen het profiel is dat cohorten: 9 → 8).
+    rio = [e for e in catalog._rio_duo() if e.get("leverancier") == "RIO"]
+    met_lijst = [e for e in rio if zonder_lijstendpoint(e["_rio_resource"]) is None]
+    assert len(met_lijst) < len(rio)
+    assert catalog.dataset_counts()["RIO"] == len(met_lijst)

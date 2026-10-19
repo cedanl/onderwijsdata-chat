@@ -11,6 +11,7 @@ from collections import OrderedDict
 
 from persistence import db
 from tools import herlaad, store
+from tools.schemas import TOOL_RUN_ANALYSIS
 from tools.snippet import Receptbron
 
 # Wacht tot het gesprek is opgeslagen. Begrensd: een gesprek dat nooit wordt opgeslagen blijft niet hangen.
@@ -22,14 +23,30 @@ def van_session(session: dict) -> Receptbron:
     """De receptopzoeker voor de snippets van een sessie (#624): alleen de eigen gebruiker.
 
     Zelfde vorm als Receptbron uit tools.snippet: per key het recept waarmee hij ontstond,
-    zodat een afgeleide snippet de stappen van zijn ouder kan herhalen.
+    zodat een afgeleide snippet de stappen van zijn ouder kan herhalen. Een eigen berekening
+    krijgt daarbij haar script mee uit het geheugen van deze sessie (data_provenance): het
+    recept zelf bewaart geen script (#472), dus na een herstart blijft voor zo'n stap de kopie
+    van de rijen over.
     """
     username = session.get("username")
 
     def van(key: str) -> dict | None:
-        return voor(username, key) if isinstance(username, str) else None
+        if not isinstance(username, str):
+            return None
+        return _met_script(voor(username, key), (session.get("data_provenance") or {}).get(key))
 
     return van
+
+
+def _met_script(recept: dict | None, aanroep: object) -> dict | None:
+    """Het recept van een eigen berekening met het script van de aanroep die haar maakte."""
+    if recept is None or recept.get("stap") != herlaad.STAP_ANALYSE or "tool" in recept:
+        return recept
+    args = aanroep.get("arguments") if isinstance(aanroep, dict) and aanroep.get("name") == TOOL_RUN_ANALYSIS else None
+    code = args.get("code") if isinstance(args, dict) else None
+    if not isinstance(code, str):
+        return recept
+    return {**recept, "tool": TOOL_RUN_ANALYSIS, "args": {"code": code}}
 
 
 def onthoud(username: str, key: str, recept: dict) -> None:

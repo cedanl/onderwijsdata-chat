@@ -38,7 +38,7 @@ Zie [reproducibility.md](docs/reproducibility.md) voor details.
 | Bron | Inhoud | Catalogus |
 |------|--------|-----------|
 | **CBS** | 123 datasets met onderwijsstatistieken over mbo, hbo en wo; vier daarvan zijn vo-tabellen, alleen als vo-context voor ho | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
-| **RIO** | Register van onderwijsinstellingen en opleidingen, met sectorfilter op mbo/hbo/wo (9 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
+| **RIO** | Register van onderwijsinstellingen en opleidingen, met sectorfilter op mbo/hbo/wo (8 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
 | **DUO** | 15 open datasets over mbo, hbo en wo: prognoses, diplomering, instroom, adressen; één daarvan (`voprognoses`) is alleen vo-context voor ho | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | **ROA** | Arbeidsmarkt-analyses per opleidingsniveau (AIS2030); alleen dashboards, niet via de chat | — |
 | **UWV** | Open match vacatures (momentopname mei 2023); alleen dashboards, niet via de chat | — |

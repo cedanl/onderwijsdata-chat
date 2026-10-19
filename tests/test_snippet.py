@@ -407,6 +407,136 @@ def test_vaste_maat_met_som_herhaalt_de_bron_en_de_som_van_de_leerwegen():
     assert "pd.DataFrame([" not in snippet
 
 
+# --- #624, vervolg: een eigen berekening (run_analysis) herhaalt haar script, niet haar rijen ---
+
+
+_ANALYSE = "analysis:0123456789ab"
+_ANALYSE_CODE = "result = df[df['JAAR'] == 2022].assign(DUBBEL=lambda d: d['AANTAL'] * 2)"
+_ANALYSE_STAP = "eigen berekening (run_analysis)"
+_ANALYSE_RECEPT = {
+    "afgeleid_van": _BRONKEY,
+    "tool": "run_analysis",
+    "args": {"code": _ANALYSE_CODE},
+    "stap": _ANALYSE_STAP,
+    "herlaadbaar": False,
+}
+
+
+@pytest.fixture
+def berekening(clean_packages):
+    """Bron plus een eigen berekening erop, met het script zoals recepten.van_session het uit de sessie meegeeft."""
+    store.put(
+        _BRONKEY,
+        pd.DataFrame(_ROWS),
+        store.KeyMeta(
+            bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+        ),
+    )
+    store.derive(_BRONKEY, _ANALYSE, pd.DataFrame([{"JAAR": 2022, "AANTAL": 20.0, "DUBBEL": 40.0}]), stap=_ANALYSE_STAP)
+    return {_ANALYSE: _ANALYSE_RECEPT}
+
+
+def test_kpi_op_een_eigen_berekening_herhaalt_de_laadstap_en_het_script(clean_packages, berekening):
+    args = {"data_key": _ANALYSE, "value_column": "DUBBEL", "metric": "sum", "label": "Dubbel"}
+    snippet = generate("compute_kpi", args, recept_van=berekening.get)
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet
+    assert _ANALYSE_CODE in snippet
+    assert "pd.DataFrame([" not in snippet  # geen kopie van de uitkomst
+    namespace = _run(snippet)
+    assert clean_packages == [("duo", "p01hoinges", 3)]
+    assert namespace["kpi"] == 40.0
+
+
+def test_grafiek_op_een_eigen_berekening_volgt_de_dubbelganger_van_het_pakket(clean_packages, berekening, monkeypatch):
+    """Acceptatie #624 voor een berekening: andere data uit het pakket, andere uitkomst."""
+    args = {"data_key": _ANALYSE, "x": "JAAR", "y": "DUBBEL", "title": "t"}
+    snippet = generate("create_plot", args, recept_van=berekening.get)
+
+    assert snippet is not None
+    assert "pd.DataFrame([" not in snippet
+    assert _run(snippet)["df"]["DUBBEL"].tolist() == [40.0]
+    monkeypatch.setattr("riodata.duo.load", lambda *a, **k: pd.DataFrame([{"JAAR": 2022, "AANTAL": 7.0}]))
+    assert _run(snippet)["df"]["DUBBEL"].tolist() == [14.0]
+
+
+def test_berekening_op_een_selectie_herhaalt_de_selectie_en_dan_het_script(clean_packages, keten):
+    analyse = "analysis:op-selectie"
+    code = "result = df.assign(DUBBEL=df['AANTAL'] * 2)"
+    store.derive(_SELECTIE, analyse, pd.DataFrame([{"JAAR": 2022, "AANTAL": 20.0, "DUBBEL": 40.0}]), stap=_ANALYSE_STAP)
+    recepten = {
+        **keten,
+        analyse: {"afgeleid_van": _SELECTIE, "tool": "run_analysis", "args": {"code": code}, "stap": _ANALYSE_STAP},
+    }
+    args = {"data_key": analyse, "value_column": "DUBBEL", "metric": "sum", "label": "L"}
+
+    snippet = generate("compute_kpi", args, recept_van=recepten.get)
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet
+    assert snippet.index("isin(['2022'])") < snippet.index(code)  # eerst de selectie, dan het script
+    assert "pd.DataFrame([" not in snippet
+    assert _run(snippet)["kpi"] == 40.0
+
+
+def test_berekening_op_een_berekening_herhaalt_eerst_het_script_van_de_ouder(clean_packages, berekening):
+    code = "result = {'som': float(df['DUBBEL'].sum())}"
+
+    snippet = generate("run_analysis", {"data_key": _ANALYSE, "code": code}, recept_van=berekening.get)
+
+    assert snippet is not None
+    assert snippet.index(_ANALYSE_CODE) < snippet.index(code)
+    assert snippet.count("import plotly.express as px") == 1  # de imports staan één keer, bovenaan de keten
+    assert "pd.DataFrame([" not in snippet
+    assert _run(snippet)["result"] == {"som": 40.0}
+
+
+def test_berekening_zonder_script_in_het_recept_blijft_een_eerlijke_kopie(clean_packages, berekening):
+    """Na een herstart kent de sessie het script niet meer (#472): dan blijft de kopie, met de opmerking."""
+    zonder_script = {_ANALYSE: {"afgeleid_van": _BRONKEY, "stap": _ANALYSE_STAP, "herlaadbaar": False}}
+    args = {"data_key": _ANALYSE, "value_column": "DUBBEL", "metric": "sum", "label": "Dubbel"}
+
+    snippet = generate("compute_kpi", args, recept_van=zonder_script.get)
+
+    assert snippet is not None
+    assert "groeien niet mee met de bron" in snippet
+    assert _run(snippet)["kpi"] == 40.0
+    assert clean_packages == []
+
+
+def test_kpi_na_een_echte_berekening_herhaalt_het_script_via_de_sessie(clean_packages):
+    """De keten van de app zelf: run_analysis in de sandbox, de sessie onthoudt de stap, de KPI-snippet herhaalt hem."""
+    from agent import recepten
+    from agent.session_data import record_data_key
+    from tools.analysis import run_analysis
+
+    store.put(
+        _BRONKEY,
+        pd.DataFrame(_ROWS),
+        store.KeyMeta(
+            bron="duo", dataset="p01hoinges", laad=("get_duo_data", {"dataset_id": "p01hoinges", "resource": 3})
+        ),
+    )
+    recepten.wis()
+    session = {"username": "alice"}
+    args = {"code": _ANALYSE_CODE, "data_key": _BRONKEY}
+    uitkomst = run_analysis(**args)
+    assert isinstance(uitkomst, str), uitkomst
+    record_data_key(session, uitkomst, {"name": "run_analysis", "arguments": args})
+    analyse = json.loads(uitkomst)["data_key"]
+    kpi = {"data_key": analyse, "value_column": "DUBBEL", "metric": "sum", "label": "Dubbel"}
+
+    snippet = generate("compute_kpi", kpi, recept_van=recepten.van_session(session))
+    recepten.wis()
+
+    assert snippet is not None
+    assert 'duo.load("p01hoinges", 3)' in snippet
+    assert _ANALYSE_CODE in snippet
+    assert "pd.DataFrame([" not in snippet
+    assert _run(snippet)["kpi"] == 40.0
+
+
 def test_onbekende_keten_bakt_de_waarden_in_met_een_eerlijke_opmerking(clean_packages):
     """Zonder recept (na een herstart, #472, of een eigen berekening) blijft inbakken de noodoplossing."""
     store.put(

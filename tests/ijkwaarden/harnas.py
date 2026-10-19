@@ -21,7 +21,6 @@ from datetime import date
 from functools import cache
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 FIXTURE = Path(__file__).resolve().parent.parent / "e2e" / "ijkwaarden.json"
 
@@ -163,7 +162,7 @@ IJKPUNTEN: tuple[Ijkpunt, ...] = (
         "rio",
         "Aeres Hogeschool: instellingscode en vestigingen",
         "code en vestigingsplaatsen",
-        {"resource": "erkenningen", "volledigeNaam": "Aeres Hogeschool", "erkenningtype": RIO_INSTELLING},
+        {"resource": "erkenningen", "volledigeNaam": "Aeres Hogeschool", "type": RIO_INSTELLING},
     ),
 )
 
@@ -256,10 +255,6 @@ def haal_duo(punt: Ijkpunt) -> dict[str, Any]:
     }
 
 
-def _rio_code(href: str) -> str:
-    return urlparse(href).path.rstrip("/").rsplit("/", 1)[-1]
-
-
 def vestigingsplaats(volledige_naam: str) -> str:
     """RIO zet de plaats achter de naam: 'Aeres Hogeschool; Ede' → 'Ede'."""
     naam = " ".join(str(volledige_naam).split())
@@ -271,25 +266,24 @@ def haal_rio(punt: Ijkpunt) -> dict[str, Any]:
 
     s = punt.selectie
     vandaag = date.today().isoformat()
-    gevonden = fetch(
-        s["resource"], volledigeNaam=s["volledigeNaam"], erkenningtype=s["erkenningtype"], datumGeldigOp=vandaag
-    )
-    codes = sorted({e["code"] for e in gevonden if e.get("type") == s["erkenningtype"] and not e.get("einddatum")})
+    # RIO LOD API v3: het typefilter heet `type`; v2 (erkenningtype) is op 19-10-2026 verwijderd (#627).
+    gevonden = fetch(s["resource"], volledigeNaam=s["volledigeNaam"], type=s["type"], datumGeldigOp=vandaag)
+    codes = sorted({e["code"] for e in gevonden if e.get("type") == s["type"] and not e.get("einddatum")})
     if len(codes) != 1:
         raise ValueError(f"{punt.id}: {len(codes)} instellingen bij RIO voor {s['volledigeNaam']!r}: {codes}")
     code = codes[0]
     relaties = related(s["resource"], code, "instellingsrelaties")
     onder = sorted(
         {
-            _rio_code(r["naarErkenning"])
+            str(r["naarErkenningId"])
             for r in relaties
-            if r.get("soort") == RIO_HIERARCHISCH and _rio_code(r["vanErkenning"]) == code and not r.get("einddatum")
+            if r.get("soort") == RIO_HIERARCHISCH and str(r["vanErkenningId"]) == code and not r.get("einddatum")
         }
     )
     vestigingen = {c: vestigingsplaats(get(s["resource"], c).get("volledigeNaam", "")) for c in onder}
     return {
         "waarde": {"code": code, "vestigingen": vestigingen},
-        "url": f"https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen/{code}",
+        "url": f"https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen/{code}",
     }
 
 
@@ -302,8 +296,22 @@ def haal(punt: Ijkpunt) -> dict[str, Any]:
     return {**kern, **_HALERS[punt.bron](punt)}
 
 
-def haal_alles(bronnen: set[str] | None = None) -> dict[str, dict[str, Any]]:
-    return {p.id: haal(p) for p in IJKPUNTEN if bronnen is None or p.bron in bronnen}
+def haal_alles(bronnen: set[str] | None = None) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """Elke ijkwaarde die de bron geeft, plus per ijkpunt de fout van wie niet antwoordde (#627).
+
+    Eén bron die faalt (RIO gaf op 19-10 HTTP 410) mag het rapport over CBS en DUO niet blokkeren: de
+    aanroeper ziet in `fouten` wat ontbreekt en beslist of dat telt.
+    """
+    live: dict[str, dict[str, Any]] = {}
+    fouten: dict[str, str] = {}
+    for punt in IJKPUNTEN:
+        if bronnen is not None and punt.bron not in bronnen:
+            continue
+        try:
+            live[punt.id] = haal(punt)
+        except Exception as fout:  # een bron die niet antwoordt is een meetfout, geen nieuwe stand
+            fouten[punt.id] = f"{type(fout).__name__}: {fout}"
+    return live, fouten
 
 
 # --- vergelijken en vastleggen ---------------------------------------------------------
