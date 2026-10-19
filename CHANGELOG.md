@@ -101,6 +101,11 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- De kaart (`create_choropleth_map`) tekent nu ook met namen: DUO-kolommen als `PROVINCIE INSTELLING` en
+  `GEMEENTE INSTELLING` en elke groepering op een naamkolom, in elke spelling (`'S-GRAVENHAGE`, `HENGELO` voor
+  Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding
+  "Kaart aangemaakt (12 provincies)". Het niveau volgt uit wat past, locaties die niet op de kaart staan worden
+  genoemd, en past er niets (of past het gekozen niveau niet) dan is het een fout in plaats van een lege kaart (#628).
 - Blijft na de herkansing alleen een getal over dat niet in de opgehaalde data staat (meestal eigen rekenwerk in
   een lang antwoord), dan houdt de app niet meer het hele antwoord in: code haalt de zinnen en tabelrijen met dat
   getal weg, toetst de rest opnieuw en zegt eronder dat er iets is weggelaten. Valt er meer weg dan blijft, of

@@ -7,7 +7,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import cbs_afronding, duo, fouten, store
+from . import cbs_afronding, duo, fouten, kaartlocaties, store
 from .getal import nl_getal
 from .kolomlabel import kolomlabel, leesbaar, waardelabels
 
@@ -155,6 +155,8 @@ _GEOJSON_URLS = {
     "corop": "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
 }
 _GEOJSON_CACHE: dict[str, dict] = {}
+# De kolom met de feature-id waartegen de kaart tekent; de locatiekolom van de data houdt de namen (#628).
+_KAARTCODE = "kaartcode"
 
 
 def _is_missing(value) -> bool:
@@ -571,18 +573,6 @@ def _load_geojson(level: str) -> dict:
     return _GEOJSON_CACHE[url]
 
 
-def _detect_level(codes: list[str]) -> str:
-    for code in codes:
-        c = code.strip().upper()
-        if c.startswith("GM"):
-            return "gemeente"
-        if c.startswith("CR"):
-            return "corop"
-        if c.startswith("PV"):
-            return "provincie"
-    return "provincie"
-
-
 def create_choropleth_map(
     data: list[dict] | None = None,
     location_col: str = "",
@@ -612,13 +602,13 @@ def create_choropleth_map(
     if not cleaned:
         return f"Kolommen '{location_col}' of '{value_col}' zijn leeg of niet gevonden.", None
 
-    codes = [row[location_col] for row in cleaned]
-    detected = _detect_level(codes) if level == "auto" else level
-
     try:
-        geojson = _load_geojson(detected)
+        locaties = kaartlocaties.vertaal([row[location_col] for row in cleaned], level, _load_geojson)
+    except kaartlocaties.Geweigerd as weigering:
+        return str(weigering), None
     except Exception as exc:
-        return f"GeoJSON laden mislukt ({detected}): {exc}", None
+        return f"GeoJSON laden mislukt: {exc}", None
+    detected = locaties.niveau
 
     try:
         for row in cleaned:
@@ -626,16 +616,23 @@ def create_choropleth_map(
     except (TypeError, ValueError):
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
+    # Alleen wat op de kaart staat gaat mee; de rest staat in de melding. De kaart tekent op de feature-id,
+    # het hoverlabel en de CSV houden de naam uit de data (#628).
+    cleaned = [row for row in cleaned if row[location_col] in locaties.code_van]
     import pandas as pd
 
     df = pd.DataFrame(cleaned)
+    df[_KAARTCODE] = [locaties.code_van[row[location_col]] for row in cleaned]
+    geojson = _load_geojson(detected)
 
     # Use px.choropleth_map (Plotly 6 maplibre renderer) — more reliable than geo projection
     # featureidkey='id' matches against the top-level GeoJSON feature id (e.g. 'PV20')
     fig = px.choropleth_map(
         df,
         geojson=geojson,
-        locations=location_col,
+        locations=_KAARTCODE,
+        hover_name=location_col,
+        hover_data={_KAARTCODE: False},
         color=value_col,
         featureidkey="id",
         center={"lat": 52.3, "lon": 5.3},
@@ -659,4 +656,6 @@ def create_choropleth_map(
     )
 
     level_labels = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
-    return f"Kaart '{title}' aangemaakt ({len(cleaned)} {level_labels.get(detected, detected)}).", fig
+    aangemaakt = f"Kaart '{title}' aangemaakt ({len(cleaned)} {level_labels.get(detected, detected)})."
+    totaal = len(locaties.code_van) + len(locaties.onbekend)
+    return aangemaakt + kaartlocaties.melding_onbekend(locaties, totaal), fig

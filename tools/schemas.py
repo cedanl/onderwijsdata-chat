@@ -362,7 +362,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "location_col": {
                         "type": "string",
-                        "description": "Kolomnaam met CBS-regiocodes, bijv. 'RegioS' (waarden als 'GM0363' of 'PV20')",
+                        "description": "Kolomnaam met de locaties: CBS-regiocodes ('RegioS' met 'GM0363' of 'PV20') of namen van provincies, gemeenten of COROP-gebieden (DUO: 'PROVINCIE INSTELLING', 'GEMEENTE INSTELLING'). Locaties die niet op de kaart staan worden in het antwoord genoemd.",
                     },
                     "value_col": {
                         "type": "string",
@@ -372,7 +372,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "level": {
                         "type": "string",
                         "enum": ["auto", "provincie", "gemeente", "corop"],
-                        "description": "Geografisch niveau. 'auto' detecteert op basis van de codes (standaard).",
+                        "description": "Geografisch niveau. 'auto' (standaard) leidt het af uit de codes of uit de niveau waar de namen op passen; een niveau waar geen enkele locatie bij past geeft een fout.",
                     },
                 },
                 "required": ["data_key", "location_col", "value_col", "title"],
