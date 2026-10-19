@@ -10,7 +10,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS, ho_markers
-from tools.csv_export import export_key
+from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest, vervolgvragen
@@ -498,14 +498,17 @@ def _log_export(text_content: str, steps: list[tuple[str, str]]) -> None:
     """Per antwoord: staat er een tabel in, en welke stap leverde een exporteerbare tabel (#544)?
 
     De CSV-knop onder een tabelantwoord ontbrak wisselend. Alleen tellingen en toolnamen: zo is per beurt
-    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep."""
+    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep.
+    Kreeg een tabelantwoord geen key, dan zegt `reden` waarom dat een keuze van de code is (#605)."""
     tabellen = [tool for tool, result in steps if export_key(tool, result)]
+    tabel = heeft_tabel(text_content)
     logger.info(
-        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s",
-        heeft_tabel(text_content),
+        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s  reden=%s",
+        tabel,
         len(tabellen),
         tabellen[-1] if tabellen else "-",
         ",".join(dict.fromkeys(tool for tool, _ in steps)) or "-",
+        geen_export_reden(steps) if tabel and not tabellen else "-",
     )
 
 

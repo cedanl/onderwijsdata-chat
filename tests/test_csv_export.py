@@ -15,8 +15,18 @@ from fastapi.testclient import TestClient
 
 from agent import loop as loop_module
 from agent import recepten
-from tools import TOOL_GET_MAAT, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, csv_export, duo, store
-from tools.csv_export import bestandsnaam, export_key, naar_csv
+from tools import (
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_MAAT,
+    TOOL_GET_RIO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+    csv_export,
+    duo,
+    store,
+)
+from tools.csv_export import bestandsnaam, export_key, geen_export_reden, naar_csv
 from tools.query import query_data
 from tools.store import KeyMeta
 
@@ -190,7 +200,54 @@ def test_get_maat_met_rijen_levert_de_key():
 
 
 def test_andere_tools_leveren_niets():
-    assert export_key("get_duo_data", json.dumps({"data_key": "duo:x:0", "rijen": [{"a": 1}]})) is None
+    assert export_key("compute_kpi", json.dumps({"data_key": "duo:x:0", "rijen": [{"a": 1}]})) is None
+
+
+# ── Een lader waarvan het resultaat alle rijen toonde (#605) ─────────────────
+
+_TWEE_SCHOOLJAREN = [
+    {"Perioden": "2021SJ00", "MboStudenten_1": 248930},
+    {"Perioden": "2024SJ00", "MboStudenten_1": 230450},
+]
+
+
+def test_lader_die_alle_rijen_toonde_levert_de_key():
+    """ "Hoeveel vrouwelijke mbo-studenten in 2021/22 en 2024/25?" liep via get_cbs_data met een filter op twee
+    schooljaren en verder niets: die selectie van twee rijen is de tabel achter het antwoord (#605)."""
+    result = json.dumps(
+        {"data_key": "cbs:85354NED:c7a8bce6", "totaal_rijen": 2, "preview": _TWEE_SCHOOLJAREN, "kolommen": []}
+    )
+    assert export_key(TOOL_GET_CBS_DATA, result) == "cbs:85354NED:c7a8bce6"
+    rio = json.dumps(
+        {"data_key": "rio:erk:0", "opgehaalde_rijen": 2, "meer_beschikbaar": False, "preview": _TWEE_SCHOOLJAREN}
+    )
+    assert export_key(TOOL_GET_RIO_DATA, rio) == "rio:erk:0"
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        pytest.param({"totaal_rijen": 1200, "preview": _TWEE_SCHOOLJAREN}, id="meer rijen dan getoond"),
+        pytest.param({"opgehaalde_rijen": 2, "volledig": False, "preview": _TWEE_SCHOOLJAREN}, id="afgekapt"),
+        pytest.param(
+            {"opgehaalde_rijen": 2, "meer_beschikbaar": True, "preview": _TWEE_SCHOOLJAREN}, id="rio: nog een pagina"
+        ),
+        pytest.param({"totaal_rijen": 0, "preview": []}, id="leeg"),
+        pytest.param({"totaal_rijen": 2}, id="zonder preview"),
+    ],
+)
+def test_lader_die_niet_alle_rijen_toonde_levert_niets(result):
+    """Het hele bronbestand is niet de tabel in het antwoord: dan zijn de citaties de export (#544)."""
+    assert export_key(TOOL_GET_DUO_DATA, json.dumps({"data_key": "duo:p:0", **result})) is None
+
+
+def test_reden_zonder_tabel_key_is_een_keuze_van_de_code():
+    groot = json.dumps({"data_key": "duo:p:0", "totaal_rijen": 1200, "preview": _TWEE_SCHOOLJAREN})
+    assert (
+        geen_export_reden([(TOOL_GET_DUO_DATA, groot), ("compute_kpi", "{}")]) == csv_export.BRON_GROTER_DAN_RESULTAAT
+    )
+    assert geen_export_reden([("search_catalog", "[]"), ("compute_kpi", "{}")]) == csv_export.GEEN_DATASTAP
+    assert geen_export_reden([(TOOL_GET_DUO_DATA, "Bestand niet gevonden.")]) == csv_export.GEEN_DATASTAP
 
 
 # Per tool die een tabel of getal oplevert: een tabel-key, of bewust niet en waarom (#544). De tools zonder
@@ -209,16 +266,28 @@ _PER_TOOL = [
         TOOL_RUN_ANALYSIS, {"gelezen": ["duo:p:0"], "resultaat": 36206}, False, id="run_analysis: één getal, geen tabel"
     ),
     pytest.param(
-        "get_duo_data", {"data_key": "duo:p:0", "preview": _RIJEN}, False, id="get_duo_data: het hele bronbestand"
+        "get_duo_data",
+        {"data_key": "duo:p:0", "totaal_rijen": 4200, "preview": _RIJEN},
+        False,
+        id="get_duo_data: het hele bronbestand",
     ),
     pytest.param(
         "get_cbs_data",
-        {"data_key": "cbs:85423NED:x", "preview": _RIJEN},
+        {"data_key": "cbs:85423NED:x", "totaal_rijen": 160, "preview": _RIJEN},
         False,
-        id="get_cbs_data: het hele bronbestand",
+        id="get_cbs_data: een selectie groter dan het resultaat",
     ),
     pytest.param(
-        "get_rio_data", {"data_key": "rio:erk:0", "preview": _RIJEN}, False, id="get_rio_data: het hele bronbestand"
+        "get_cbs_data",
+        {"data_key": "cbs:85423NED:x", "totaal_rijen": 1, "preview": _RIJEN},
+        True,
+        id="get_cbs_data: de hele selectie in het resultaat (#605)",
+    ),
+    pytest.param(
+        "get_rio_data",
+        {"data_key": "rio:erk:0", "opgehaalde_rijen": 500, "meer_beschikbaar": True, "preview": _RIJEN},
+        False,
+        id="get_rio_data: een afgekapte pagina",
     ),
     pytest.param(
         "compute_kpi",
@@ -269,7 +338,20 @@ def test_elk_antwoord_logt_of_het_een_tabel_heeft_en_welke_stap_een_tabel_leverd
     vraag = [{"role": "user", "content": "Hoeveel studenten per jaar?"}]
     with caplog.at_level(logging.INFO, logger="agent.run"), patch.object(run_module, "tool_loop", nep_loop):
         asyncio.run(run_module.run(vraag, session={}, emit=emit))
-    assert "EXPORT  tabel_in_antwoord=True  tabellen=0  tabelstap=-  tools=get_duo_data,compute_kpi" in caplog.text
+    assert (
+        "EXPORT  tabel_in_antwoord=True  tabellen=0  tabelstap=-  tools=get_duo_data,compute_kpi  reden=geen_datastap"
+        in caplog.text
+    )
+
+    groot = json.dumps({"data_key": "duo:p:0", "totaal_rijen": 4200, "preview": [{"STUDIEJAAR": 2023, "AANTAL": 1}]})
+
+    async def nep_loop_grote_bron(history, **kwargs):
+        return uitkomst([("get_duo_data", groot), ("compute_kpi", kpi)])
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="agent.run"), patch.object(run_module, "tool_loop", nep_loop_grote_bron):
+        asyncio.run(run_module.run(vraag, session={}, emit=emit))
+    assert "tabellen=0  tabelstap=-  tools=get_duo_data,compute_kpi  reden=bron_groter_dan_toolresultaat" in caplog.text
 
     async def nep_loop_met_tabel(history, **kwargs):
         return uitkomst([("get_duo_data", "{}"), (TOOL_QUERY_DATA, tabel)])
@@ -278,7 +360,8 @@ def test_elk_antwoord_logt_of_het_een_tabel_heeft_en_welke_stap_een_tabel_leverd
     with caplog.at_level(logging.INFO, logger="agent.run"), patch.object(run_module, "tool_loop", nep_loop_met_tabel):
         asyncio.run(run_module.run(vraag, session={}, emit=emit))
     assert (
-        "EXPORT  tabel_in_antwoord=True  tabellen=1  tabelstap=query_data  tools=get_duo_data,query_data" in caplog.text
+        "EXPORT  tabel_in_antwoord=True  tabellen=1  tabelstap=query_data  tools=get_duo_data,query_data  reden=-"
+        in caplog.text
     )
 
 
