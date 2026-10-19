@@ -43,6 +43,9 @@ organisatie en instelling staan tijdens de sessie in het geheugen van de server 
 - `localStorage`: een kopie van de gesprekken en het lopende gesprek, de werkboeken, de dashboardchat, het profiel
   (instelling, functie, weergave) en het sessietoken. Uitloggen wist dit alles (`SESSION_DATA_KEYS` en het profiel,
   `frontend/src/App.jsx`).
+- `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
+  favoriete rapporten; geen titels of inhoud. Blijft na uitloggen staan (`NOT_SESSION_DATA_KEYS`): de chat en
+  `/rapporten` tonen een ID alleen als het bij een gesprek of rapport van het ingelogde account hoort.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
   inloggen. Tijdens het inloggen met SRAM staat er kort een cookie met de OIDC-state; verder gebruikt de app geen
   cookies en geen analytics.

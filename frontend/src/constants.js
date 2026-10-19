@@ -9,6 +9,7 @@ export const STORAGE_DC_FIGURES = 'edudata_dc_figures'
 export const STORAGE_CURRENT_CHAT = 'openEDUdata_current_chat'
 export const STORAGE_MODEL = 'openEDUdata_model'
 export const STORAGE_USERINFO = 'userInfo'
+export const STORAGE_RECENT = 'openEDUdata_recent'
 
 // What the previous user of this browser left behind: wiped on logout, login, SRAM landing
 // and session end (#498). Every STORAGE_* key is in exactly one of these two lists; a test
@@ -27,6 +28,7 @@ export const NOT_SESSION_DATA_KEYS = [
   STORAGE_TOKEN,      // the login itself: clearToken removes it, together with the cached userInfo
   STORAGE_MODEL,      // a model id, a device preference without user data: stays on logout
   STORAGE_USERINFO,   // the cached user info of the login: clearToken removes it together with the token
+  STORAGE_RECENT,     // only IDs, no titles; shown only for conversations and reports of the account logged in (#603)
 ]
 
 // ─── Shared color palette ────────────────────────────────────────────────────

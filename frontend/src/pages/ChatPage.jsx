@@ -62,6 +62,7 @@ import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
 import FeedbackLink from '../components/FeedbackLink'
 import { relatieveDatum } from '../relatieveDatum'
+import { inVolgorde, noteerGesprek, useRecent } from '../recentBekeken'
 import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
@@ -483,6 +484,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       .then(full => {
         if (sessionEndedSince(tokenAtMount)) return
         openConversation(full)
+        noteerGesprek(full.id)
       })
       .catch(() => addToast('Gesprek openen is mislukt. Probeer het opnieuw.', 'error'))
       .finally(() => setOpeningId(null))
@@ -722,6 +724,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     </button>
   )
 
+  // A conversation with a question counts as opened in this browser (#603), also a new one.
+  useEffect(() => { if (hasMessages) noteerGesprek(conversationId) }, [hasMessages, conversationId])
+  const recent = useRecent()
+  const gaVerder = inVolgorde(recent.gesprekken, conversationHistory).find(c => String(c.id) !== conversationId)
+
   return (
     <>
       <div className="toast-stack">
@@ -787,6 +794,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           <div className="chat-messages" ref={messagesContainerRef}>
             {!hasMessages && (
               <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
+                {/* The conversation this browser opened last (#603), only if it is one of this account. */}
+                {gaVerder && (
+                  <button type="button" className="ga-verder-chip" onClick={() => handleLoad(gaVerder)} disabled={!!openingId}>
+                    Ga verder met <span className="ga-verder-titel">{gaVerder.title}</span>
+                  </button>
+                )}
                 {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
                 {narrowScreen && (
                   <div className="chat-welcome-suggestions">

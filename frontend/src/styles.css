@@ -1773,7 +1773,7 @@ html.dark .suggested-btn:hover {
 /* Touch screens and narrow windows: 44x44 (WCAG 2.5.5), the icons themselves stay small.
    Last in the file, so no rule above lowers them again. */
 @media (pointer: coarse), (max-width: 1024px) {
-  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .navbar-zoek-btn, .wb-delete-btn,
+  .chat-sidebar button, .settings-modal button, .suggested-btn, .navbar-profile-btn, .navbar-menu-btn, .navbar-icon-btn, .navbar-zoek-btn, .wb-delete-btn, .wb-fav-btn,
   .resend-btn, .copy-btn, .modal-close, .modal-overlay-close, .answer-feedback-btn,
   .scroll-to-bottom-btn, .message-continue, .data-export-btn, .clarification-reformulate {
     min-width: var(--tap-min); min-height: var(--tap-min);
@@ -1862,6 +1862,29 @@ html.dark .suggested-btn:hover {
 .algemene-feedback-overlay { z-index: 2100; }
 .wb-gallery-feedback, .settings-feedback { margin-top: 24px; font-size: .82rem; color: var(--muted-text); text-align: center; }
 .settings-feedback { margin: 16px 0 0; }
+
+/* Back to what you used (#603): the conversation this browser opened last, and favourite and recently viewed
+   reports. Small pills, so they do not push the suggestions or the gallery down much. */
+.ga-verder-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: var(--tap-min, 44px); white-space: nowrap;
+  margin: 4px auto 12px; padding: 6px 14px; border: 1px solid var(--blue-100); border-radius: 999px;
+  background: var(--blue-50); color: var(--accent-text); font-size: .85rem; font-weight: 600;
+}
+.ga-verder-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.wb-snel { display: flex; flex-direction: column; gap: 12px; margin: 0 0 24px; }
+.wb-snel-kop { font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-text); margin: 0 0 6px; }
+.wb-snel-knoppen { display: flex; flex-wrap: wrap; gap: 8px; }
+.wb-snel-knop {
+  max-width: 100%; min-height: var(--tap-min, 44px); padding: 6px 14px; border: 1px solid var(--gray-200); border-radius: 999px;
+  background: var(--white); color: var(--gray-800); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wb-snel-noot { margin: 0; font-size: .75rem; color: var(--muted-text); }
+.wb-fav-btn {
+  width: 28px; height: 28px; margin-left: auto; border-radius: var(--radius-sm); display: flex; align-items: center;
+  justify-content: center; color: var(--muted-text); background: none; border: none;
+}
+.wb-fav-btn svg { width: 16px; height: 16px; }
+.wb-fav-btn.aan { color: #F59E0B; }
 
 /* Search palette (#602): a panel near the top, like other command palettes. It can open above the settings
    dialog (z-index 2000), so it stacks like the privacy popup. */

@@ -80,6 +80,12 @@ export default function PrivacyInhoud() {
           deze browser.
         </li>
         <li>
+          Welke gesprekken en rapporten je hier het laatst opende en welke rapporten je als favoriet markeerde, staan
+          er als nummers, zonder titel of inhoud. Die blijven na uitloggen staan, zodat je ze een volgende keer
+          terugvindt; ze verschijnen alleen bij een gesprek of rapport van het account waarmee je inlogt. Anderen met
+          hetzelfde account zien ze niet.
+        </li>
+        <li>
           Een sessie duurt 8 uur en wordt bij gebruik verlengd tot ten hoogste 24 uur na het inloggen. Tijdens het
           inloggen met SRAM staat er kort een cookie voor de beveiliging van die stap; verder gebruikt de app geen
           cookies en geen analytics.

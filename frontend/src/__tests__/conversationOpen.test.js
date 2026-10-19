@@ -31,7 +31,8 @@ vi.mock('../hooks/useChat', () => ({
 }))
 
 import ChatPage from '../pages/ChatPage'
-import { STORAGE_TOKEN } from '../constants'
+import { STORAGE_TOKEN, STORAGE_RECENT } from '../constants'
+import { vergeetCache } from '../recentBekeken'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -46,6 +47,7 @@ let container
 
 beforeEach(() => {
   localStorage.clear()
+  vergeetCache()
   localStorage.setItem(STORAGE_TOKEN, 'tok')
   api.fetchConversations.mockResolvedValue([rij])
   api.fetchConversation.mockReset()
@@ -83,6 +85,38 @@ describe('een gesprek uit het zoekpalet (#602)', () => {
     expect(geopend).toHaveBeenCalledTimes(1)
     expect(api.fetchConversation).toHaveBeenCalledWith('c1')
     expect(container.textContent).toContain('Hoeveel studenten heeft de HU?')
+  })
+})
+
+// #603: de start van de chat biedt het gesprek aan dat deze browser het laatst opende.
+describe('ga verder (#603)', () => {
+  it('biedt het laatst geopende gesprek van dit account aan en opent het', async () => {
+    api.fetchConversation.mockResolvedValue({ ...rij, messages: [vraag, antwoord] })
+    localStorage.setItem(STORAGE_RECENT, JSON.stringify({ gesprekken: ['van-een-ander', 'c1'] }))
+    vergeetCache()
+    await mountChat()
+    const chip = container.querySelector('.ga-verder-chip')
+    expect(chip.textContent).toBe('Ga verder met Studenten HU')
+
+    await act(async () => { chip.click() })
+
+    expect(api.fetchConversation).toHaveBeenCalledWith('c1')
+    expect(container.textContent).toContain('Hoeveel studenten heeft de HU?')
+    expect(container.querySelector('.ga-verder-chip')).toBeNull()
+  })
+
+  it('ontbreekt zonder een eerder geopend gesprek van dit account', async () => {
+    localStorage.setItem(STORAGE_RECENT, JSON.stringify({ gesprekken: ['van-een-ander'] }))
+    vergeetCache()
+    await mountChat()
+    expect(container.querySelector('.ga-verder-chip')).toBeNull()
+  })
+
+  it('onthoudt een gesprek dat geopend wordt', async () => {
+    api.fetchConversation.mockResolvedValue({ ...rij, messages: [vraag, antwoord] })
+    await mountChat()
+    await act(async () => { gesprekKnop().click() })
+    expect(JSON.parse(localStorage.getItem(STORAGE_RECENT)).gesprekken[0]).toBe('c1')
   })
 })
 
