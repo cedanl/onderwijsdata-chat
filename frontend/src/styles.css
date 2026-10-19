@@ -523,10 +523,13 @@ input, textarea { font: inherit; }
 .message.user .message-avatar { background: var(--blue-600); color: var(--on-color); }
 .message.assistant .message-avatar { background: linear-gradient(135deg, var(--blue-600), var(--teal-500)); }
 .message-avatar svg { width: 18px; height: 18px; color: white; }
+/* A pasted word or URL without spaces breaks inside the bubble (#606). `anywhere`, not `break-word`: it also
+   lowers the min-content width, without which the user bubble, a flex item, stayed as wide as the word. */
 .message-bubble {
   background: var(--white); border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg); padding: 16px 20px;
   font-size: .9rem; line-height: 1.65; box-shadow: var(--shadow-sm);
+  overflow-wrap: anywhere;
 }
 .message.user .message-bubble { background: var(--blue-600); color: var(--on-color); border-color: transparent; }
 .resend-btn {
@@ -556,6 +559,9 @@ input, textarea { font: inherit; }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }
+/* Table cells keep their old wrapping (#606): with `anywhere` a table wider than the bubble squeezed its columns
+   below the width of a word and broke figures mid-number. Such a table stays as wide as its content, as before. */
+.message-bubble :is(th, td) { overflow-wrap: normal; }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {
