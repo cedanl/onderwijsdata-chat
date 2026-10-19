@@ -385,7 +385,7 @@ def test_selectie_op_een_selectie_herhaalt_beide_stappen(clean_packages, keten):
     assert "pd.DataFrame([" not in snippet
 
 
-def test_vaste_maat_met_som_herhaalt_de_bron_en_de_som_van_de_leerwegen(clean_packages):
+def test_vaste_maat_met_som_herhaalt_de_bron_en_de_som_van_de_leerwegen():
     """Voorbeeld 1 van #624: de mbo-som is zelf geen query_data-stap, maar het recept is dat wel."""
     args = {"maat": "mbo_studenten_instelling", "instelling": "ROC Mondriaan", "vorm": "bol"}
     recept = {"afgeleid_van": "duo:mbo-studenten-per-instelling:0", "tool": "get_maat", "args": args}
