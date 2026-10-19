@@ -59,6 +59,12 @@ const FIGUUR = {
   data: [{ type: 'bar', name: 'Studenten', x: ['mbo', 'hbo', 'wo'], y: [512345, 498765, 341200] }],
   layout: { title: { text: 'Ingeschreven studenten per niveau' } },
 }
+// Bewust langer dan twee regels op 390 px. De grafiek staat in de bubbel onder de tekst (#610); na een antwoord van
+// één regel valt de bovenrand van het onzichtbare vlak van de CSV-knop onder de kopieerknop van het antwoord (44 px,
+// z-index 2). Die overlap staat ook op main en is een eigen bevinding (zelfde patroon als #623); deze meting gaat
+// over het vlak van de CSV-knop zelf.
+const GRAFIEK_TEKST = 'In de grafiek staan de ingeschreven studenten per onderwijsniveau, zoals ze in de opgehaalde ' +
+  'CBS-tabel staan: het mbo is het grootst, het hbo volgt kort daarna en het wo is het kleinst.'
 
 function antwoord(content, { citaties = [], stap = null, figuur = null } = {}) {
   const events = [{ type: 'message_start' }]
@@ -77,7 +83,7 @@ const ANTWOORDEN = {
   [VRAAG_TABEL]: antwoord(BREDE_TABEL),
   [VRAAG_CIJFERS]: antwoord(CIJFERS_TEKST, { citaties: CIJFERS }),
   [VRAAG_KOPIEER]: antwoord(KOPIEER_GETALLEN.join(' '), { citaties: KOPIEER_GETALLEN.map(g => citatie(g, 'mbo')) }),
-  [VRAAG_GRAFIEK]: antwoord('In de grafiek staan de studenten per niveau.', {
+  [VRAAG_GRAFIEK]: antwoord(GRAFIEK_TEKST, {
     stap: "df = cbs.get_data('85423NED')\nprint(df.groupby('niveau').sum())", figuur: FIGUUR,
   }),
 }
@@ -280,6 +286,14 @@ for (const [naam, apparaat, aanraking] of TOESTELLEN) {
         for (const kiezer of ['.csv-download-btn', '.reasoning-toggle', '.reasoning-step-code summary']) {
           maten[kiezer] = await page.locator(kiezer).first().evaluate(tikvlak)
         }
+        // Voorwaarde voor de randen hieronder (zie GRAFIEK_TEKST): het vlak van de CSV-knop begint onder de kopieerknop.
+        const csv = await page.locator('.csv-download-btn').first().evaluate(el => {
+          const r = el.getBoundingClientRect()
+          const kopieer = el.closest('.message-bubble').querySelector('.copy-btn-message').getBoundingClientRect()
+          return { midden: r.top + r.height / 2, kopieerOnder: kopieer.bottom }
+        })
+        expect(csv.midden - maten['.csv-download-btn'].hoogte / 2, JSON.stringify(csv))
+          .toBeGreaterThanOrEqual(csv.kopieerOnder)
 
         await tik(page.getByRole('button', { name: 'Meer acties' }))
         await tik(page.getByRole('button', { name: 'Exporteer gesprek' }))
