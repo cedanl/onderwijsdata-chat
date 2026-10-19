@@ -8,17 +8,22 @@ model vervalt, net als zijn Definities bij een teldefinitie uit de bron (#402).
 import asyncio
 import importlib
 import json
+import logging
 import time
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
-from agent.bronvermelding import bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
+from agent.bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
 from agent.loop import LoopResult
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
 from tools import store
+from tools.arbeidsmarkt import DATASET, ROA_ID, UWV_ID
+from tools.catalog import documentatie_url
+from tools.rio_instelling import ERKENNINGEN
 from tools.store import KeyMeta
 
 run_module = importlib.import_module("agent.run")
@@ -345,6 +350,140 @@ def test_vast_antwoord_over_min_een_heeft_lege_bronnen(monkeypatch):
     einde = _slot(monkeypatch, [], vraag="Wat betekent -1 in DUO-data?")
 
     assert einde["bronnen"] == []
+
+
+# --- de link bij elke bronregel (#621): dezelfde catalogus-URL als onder een rapportgrafiek (#569) ---
+
+_CBS_URL = "https://opendata.cbs.nl/ODataApi/OData/85423NED"
+_DUO_URL = "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+
+
+def test_cbs_regel_linkt_naar_de_cbs_tabel():
+    steps = [_stap("get_cbs_data", data_key="cbs:85423NED")]
+
+    assert bronlinks_van(steps) == {_CBS: _CBS_URL}
+    assert documentatie_url("85423NED") == _CBS_URL
+
+
+def test_duo_regel_linkt_naar_de_duo_datasetpagina():
+    steps = [_stap("get_duo_data", data_key="duo:p01hoinges:0"), _stap("query_data", data_key="duo:p01hoinges:0:sel")]
+
+    assert bronlinks_van(steps) == {_DUO: _DUO_URL}
+    assert documentatie_url("p01hoinges") == _DUO_URL
+
+
+def test_rio_regels_linken_naar_de_rio_dataset():
+    """Een get_rio_data-key en de registerregel van get_rio_instelling (dataset erkenningen)."""
+    store.put("rio:erkenningen", pd.DataFrame({"x": [1]}), KeyMeta(bron="rio", dataset=ERKENNINGEN))
+    register = {"bron": "RIO", "catalogus_titel": "RIO erkenningen", "peildatum": "2026-10-09", "status": "uniek"}
+    steps = [_stap("get_rio_data", data_key="rio:erkenningen"), ("get_rio_instelling", json.dumps(register))]
+    url = documentatie_url(ERKENNINGEN)
+
+    assert (url or "").startswith("https://")
+    assert bronlinks_van(steps) == {"RIO · erkenningen": url, "RIO erkenningen, peildatum 2026-10-09": url}
+
+
+def test_uwv_en_roa_met_data_key_linken_naar_hun_dataset():
+    store.put("uwv:gelderland", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="uwv", dataset=UWV_ID, peilmoment="mei"))
+    store.put("roa:gelderland", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="roa", dataset=ROA_ID, peilmoment="v1"))
+    steps = [
+        ("get_uwv_vacatures", json.dumps({**json.loads(_UWV), "data_key": "uwv:gelderland"})),
+        ("get_roa_benchmark", json.dumps({**json.loads(_ROA), "data_key": "roa:gelderland"})),
+    ]
+
+    assert bronlinks_van(steps) == {
+        f"UWV · {UWV_ID}, mei": documentatie_url(UWV_ID),
+        f"ROA · {ROA_ID}, v1": documentatie_url(ROA_ID),
+    }
+    assert all((url or "").startswith("https://") for url in bronlinks_van(steps).values())
+
+
+def test_uwv_en_roa_van_voor_577_linken_naar_de_dataset_van_hun_tool():
+    """Zonder data_key staat de bron in woorden; de dataset is die van de tool (tools.arbeidsmarkt.DATASET)."""
+    steps = [("get_uwv_vacatures", _UWV), ("get_roa_benchmark", _ROA)]
+
+    assert bronlinks_van(steps) == {
+        "UWV Open Match, mei 2023": documentatie_url(DATASET["get_uwv_vacatures"]),
+        "ROA, AIS tot 2030 (v20251218)": documentatie_url(DATASET["get_roa_benchmark"]),
+    }
+
+
+def test_een_link_die_geen_http_adres_is_blijft_weg_en_de_regel_blijft():
+    record = {"_cbs_id": "85423NED", "documentatie": {"url": "javascript:alert(1)"}}
+    steps = [_stap("get_cbs_data", data_key="cbs:85423NED")]
+    with patch("tools.catalog._ruw_record", return_value=record):
+        assert bronlinks_van(steps) == {}
+        assert bronnen_van(steps) == [_CBS]
+
+
+def test_een_dataset_die_de_catalogus_niet_kent_krijgt_geen_link():
+    store.put("rio:onbekend", pd.DataFrame({"x": [1]}), KeyMeta(bron="rio", dataset="onbekend"))
+    steps = [_stap("get_rio_data", data_key="rio:onbekend"), _stap("get_cbs_data", data_key="cbs:85423NED")]
+
+    assert bronnen_van(steps) == ["RIO · onbekend", _CBS]
+    assert bronlinks_van(steps) == {_CBS: _CBS_URL}
+
+
+def test_zonder_gelezen_data_geen_links():
+    assert bronlinks_van([_stap("search_catalog", resultaten=[{"id": "p01hoinges"}])]) == {}
+    assert bronlinks_van([]) == {}
+
+
+def test_elke_link_hoort_bij_een_regel_uit_de_bronnenlijst():
+    steps = [
+        _stap("get_duo_data", data_key="duo:p01hoinges:0"),
+        _stap("get_cbs_data", data_key="cbs:85423NED"),
+        ("get_uwv_vacatures", _UWV),
+        ("get_uwv_vacatures", _UWV),
+    ]
+
+    assert list(bronlinks_van(steps)) == bronnen_van(steps)
+
+
+# --- message_end: bronlinks naast bronnen, alleen als er links zijn ---
+
+
+def test_slotbericht_draagt_de_links_naast_de_bronnen():
+    einde = run_module._slotbericht(_ANTWOORD, LoopResult(), [], False, [_DUO, _CBS], bronlinks={_DUO: _DUO_URL})
+
+    assert einde["bronnen"] == [_DUO, _CBS]
+    assert einde["bronlinks"] == {_DUO: _DUO_URL}
+
+
+def test_slotbericht_zonder_links_heeft_geen_bronlinks():
+    assert "bronlinks" not in run_module._slotbericht(_ANTWOORD, LoopResult(), [], False, [_DUO], bronlinks={})
+    assert "bronlinks" not in run_module._slotbericht(_ANTWOORD, LoopResult(), [], False, [_DUO])
+
+
+@pytest.mark.parametrize("vast", [INGEHOUDEN, run_module.LEEG_ANTWOORD, WEIGER_ANTWOORD])
+def test_een_vast_antwoord_krijgt_nooit_links(vast):
+    einde = run_module._slotbericht(vast, LoopResult(), [], False, [_DUO], bronlinks={_DUO: _DUO_URL})
+
+    assert einde["bronnen"] == [] and "bronlinks" not in einde
+
+
+def test_dataantwoord_krijgt_de_links_bij_de_bronnen(monkeypatch):
+    einde = _slot(monkeypatch, [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=_ANTWOORD, tool_calls=[])])
+
+    assert einde["bronnen"] == [_DUO]
+    assert einde["bronlinks"] == {_DUO: _DUO_URL}
+
+
+def test_vallen_de_links_uit_dan_blijven_antwoord_en_bronnen(monkeypatch, caplog):
+    """Net als bij de bronnen: een fout in de links breekt het antwoord niet, en logt alleen een kenmerk."""
+
+    def kapot(steps):
+        raise ValueError("kapot")
+
+    monkeypatch.setattr(run_module, "bronlinks_van", kapot)
+    caplog.set_level(logging.ERROR)
+    antwoord = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges"
+    einde = _slot(monkeypatch, [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=antwoord, tool_calls=[])])
+
+    assert einde["content"] == _ANTWOORD
+    assert einde["bronnen"] == [_DUO]
+    assert "bronlinks" not in einde
+    assert any(r.levelno == logging.ERROR and "in bronlinks" in r.getMessage() for r in caplog.records)
 
 
 @pytest.mark.parametrize(
