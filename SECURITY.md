@@ -28,6 +28,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S18 | `/info` gaf zonder inloggen databasetype en omgeving prijs | Laag | ✅ Opgelost (#518) |
 | S19 | `LOG_LEVEL=DEBUG` zet gesprekstekst in het log | Laag | ℹ️ Gedocumenteerd (#516) — waarschuwing bij opstarten en in de docs |
 | S20 | `/version` zonder inloggen geeft versie en commit prijs | Laag | ℹ️ Geaccepteerd (#552) — blijft open voor de deploycontrole; restrisico hieronder |
+| S21 | SRAM-e-mailadres als sleutel van de gebruikersdata; `CHAT_USERS`-wachtwoorden in platte tekst | Laag–Gemiddeld | ℹ️ Bekend, bewust uitgesteld (#487, 19-10-2026) — de SRAM-gebruikerscache is al begrensd; voorwaarde voor productie hieronder |
 
 ---
 
@@ -246,10 +247,28 @@ Test: `tests/test_token_intrekking.py`.
 
 ---
 
+### S21 — SRAM-e-mailadres als sleutel; `CHAT_USERS`-wachtwoorden in platte tekst ℹ️ Bekend, bewust uitgesteld
+
+**Aangetroffen in:** privacy-review, bevindingen M4 en L4 (testronde 9 okt 2026; uit code-review, niet live gereproduceerd)  
+**Locatie:** `routes/auth.py` (`oidc_callback`, `_oidc_user_cache`), `core/auth.py` (`parse_users`, `check_credentials`), `persistence/db.py`  
+**Situatie:**
+- **E-mailadres als sleutel:** na inloggen met SURF SRAM is de gebruikersnaam `userinfo.get("email") or userinfo.get("sub")` (`oidc_callback`): het e-mailadres, en alleen zonder e-mail het pseudonieme `sub`. Die gebruikersnaam is de sleutel van `conversations`, `workbooks`, `feedback`, `answer_feedback` (tot het gesprek wordt verwijderd, #476), `algemene_feedback` en `data_recipes` (`persistence/db.py`). Ook de auteur van een rapport komt uit het account: de chatpagina stuurt de naam uit SRAM mee, of zonder naam die gebruikersnaam; zonder auteur valt `routes/chat.py` terug op de gebruikersnaam, en `frontend/src/reportHtml.js` zet de auteur in het rapport. Elke rij en elk rapport van een SRAM-gebruiker is zo direct identificerend. `/privacy` en `docs/privacy.md` ("Wat de server bewaart") noemen het e-mailadres als accountnaam (S16).
+- **Wachtwoorden in platte tekst:** `CHAT_USERS` (`gebruiker:wachtwoord,…`) staat ongehasht in de omgeving. `parse_users` leest de waarde in, `check_credentials` vergelijkt met `hmac.compare_digest` (timing-safe), en login is beperkt tot 5 pogingen per minuut per gebruikersnaam + adres (S5). `manifests/{test,playground,production}/values.yaml` laden `CHAT_USERS` uit de secret; test en playground zetten daarnaast `OIDC_PROVIDER=SRAM`, productie niet.
+- **Al opgelost: de SRAM-gebruikerscache.** `_oidc_user_cache` in `routes/auth.py` (naam, e-mail, organisatie en instelling per gebruiker, in het geheugen van het proces) is begrensd (#487, `ac07d2e`): een rij vervalt na `SESSION_MAX` (`SESSION_MAX_HOURS`, standaard 24 uur), en boven `_OIDC_CACHE_MAX` (1000) gebruikers gaat de langst niet gebruikte eruit. Test: `tests/test_oidc_cache.py`.
+
+**Besluit (#487, 19-10-2026):** in de demofase wordt niets gebouwd. De sleutel en de wachtwoorden blijven zoals ze zijn; beide zijn bekend en bewust uitgesteld.  
+**Restrisico:** wie de database kan lezen, ziet bij elke rij van een SRAM-gebruiker het e-mailadres, en een rapport noemt de naam of het e-mailadres als auteur. Wie de omgevingsvariabelen van de pod of de ontsleutelde secret kan lezen, kent de wachtwoorden van alle `CHAT_USERS`-accounts.  
+**Voorwaarde voor productie:**
+- De sleutel wordt het pseudonieme `sub`, met het e-mailadres alleen als weergavenaam, en een migratie van de bestaande rijen in de tabellen hierboven.
+- Productie alleen via SRAM of met gehashte wachtwoorden; niet met `CHAT_USERS` in platte tekst, zoals `manifests/production/values.yaml` nu.
+
+---
+
 ## Aanbevelingen voor volgende stap
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
 2. **S13** — `'unsafe-inline'` vervangen door nonces of hashes; CDN-hosts (#486) en `connect-src` (#506) zijn gedaan
 3. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
 4. **S12** — de gele `audit:*`-jobs volgen; een dependency-scan in CI (#506), `nh3` opruimen (S1) en de CORS-validatie (S8) zijn gedaan
-5. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+5. **S21** — vóór productie: sleutel naar `sub` met e-mail alleen als weergavenaam en een migratie van de bestaande rijen; productie alleen via SRAM of gehashte wachtwoorden (#487). In de demofase bewust niet gebouwd; de SRAM-cache is al begrensd
+6. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
