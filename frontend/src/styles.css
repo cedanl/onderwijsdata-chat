@@ -527,10 +527,13 @@ input, textarea { font: inherit; }
 .message.user .message-avatar { background: var(--blue-600); color: var(--on-color); }
 .message.assistant .message-avatar { background: linear-gradient(135deg, var(--blue-600), var(--teal-500)); }
 .message-avatar svg { width: 18px; height: 18px; color: white; }
+/* A pasted word or URL without spaces breaks inside the bubble (#606). `anywhere`, not `break-word`: it also
+   lowers the min-content width, without which the user bubble, a flex item, stayed as wide as the word. */
 .message-bubble {
   background: var(--white); border: 1px solid var(--gray-200);
   border-radius: var(--radius-lg); padding: 16px 20px;
   font-size: .9rem; line-height: 1.65; box-shadow: var(--shadow-sm);
+  overflow-wrap: anywhere;
 }
 .message.user .message-bubble { background: var(--blue-600); color: var(--on-color); border-color: transparent; }
 .resend-btn {
@@ -560,6 +563,9 @@ input, textarea { font: inherit; }
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble strong { font-weight: 600; }
+/* Table cells keep their old wrapping (#606): with `anywhere` a table wider than the bubble squeezed its columns
+   below the width of a word and broke figures mid-number. Such a table stays as wide as its content, as before. */
+.message-bubble :is(th, td) { overflow-wrap: normal; }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {
@@ -683,6 +689,13 @@ input, textarea { font: inherit; }
   content: ''; position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%); width: max(100%, 24px); height: 24px;
 }
+/* #611: het eigen vak van het getal (rand onderaan inbegrepen) ligt boven de klikvlakken van andere getallen.
+   Die vlakken komen later in de boom en vielen dus over het getal ervoor: in een lijst of tabel met een getal per
+   regel ving het vlak van het getal eronder de onderste helft van dit getal. Bewuste ondergrens: tussen gestapelde
+   getallen (middens minder dan een tikvlak uit elkaar) is het tikvlak het eigen vak, de extra ruimte rond het getal
+   bestaat alleen waar plaats is. Boven gewone tekst liggen de vlakken nog steeds; een open uitleg (z-index 10) en de
+   kopieerknop (z-index 2) liggen boven het getal. */
+.citatie-getal::after { content: ''; position: absolute; inset: 0 0 -1px; z-index: 1; }
 .citatie-getal:hover, .citatie-getal[aria-expanded="true"] { border-bottom-style: solid; }
 .citatie-icoon { width: .8em; height: .8em; margin-left: 2px; vertical-align: super; font-size: .8em; }
 .citatie-getal.citatie-onbepaald { color: inherit; border-bottom-style: dashed; border-bottom-color: var(--gray-500); }
@@ -825,11 +838,13 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 @media (prefers-color-scheme: dark) {
   html:not(.dark):not(.light) .message-counter--limit { color: #FCA5A5; }
 }
-/* Over de grens past de uitleg op een smal scherm niet naast modelpicker en knop: eigen regel erboven. */
+/* Over de grens past de hele uitleg op een smal scherm niet naast het veld en de knop, en een eigen regel liet het
+   invoerkader verspringen (#612): zichtbaar staat er "te lang", het advies blijft voor de schermlezer (als .sr-only). */
 @media (max-width: 600px) {
-  .chat-input-footer:has(.message-counter--over) { flex-wrap: wrap; }
-  .chat-input-footer .message-counter--over { order: 0; flex-basis: 100%; text-align: right; }
-  .chat-input-footer:has(.message-counter--over) .send-btn { margin-left: auto; }
+  .message-counter-advies {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
 }
 .send-btn {
   width: 38px; height: 38px; border-radius: var(--radius);
@@ -1682,9 +1697,12 @@ html.dark .suggested-btn:hover {
   /* De placeholder draagt de privacyzin en moet op één regel passen; het veld zelf blijft 16 px (iOS zoomt eronder). */
   .chat-input::placeholder { font-size: .875rem; line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-input-footer { flex: 0 0 auto; gap: 0; margin: 0; padding: 0; border-top: none; }
-  /* De tekenteller en de verbindingsmelding zijn live regions die altijd bestaan, meestal leeg. Pas als er
-     tekst in staat (zeldzaam), krijgen ze een eigen regel onder het veld. */
-  .chat-input-footer:has(.message-counter:not(:empty), .ws-reconnecting:not(:empty)) { flex: 1 0 100%; gap: 8px; padding: 2px 0 0; }
+  /* De tekenteller en de verbindingsmelding zijn live regions die altijd bestaan, meestal leeg. De teller staat
+     vanaf 80% van de limiet naast de verstuurknop, in de rij van het veld: dat is dan al op zijn maximale hoogte,
+     dus het invoerkader verspringt niet (#612). De verbindingsmelding krijgt, als er tekst in staat (zeldzaam),
+     een eigen regel onder het veld. */
+  .chat-input-footer:has(.message-counter:not(:empty)) { gap: 8px; }
+  .chat-input-footer:has(.ws-reconnecting:not(:empty)) { flex: 1 0 100%; gap: 8px; padding: 2px 0 0; }
   .send-btn { width: 44px; height: 44px; border-radius: 50%; }
 
   /* Tool snippets: contain wide code */
@@ -1806,6 +1824,19 @@ html.dark .suggested-btn:hover {
   .history-item-actions { position: static; transform: none; }
   /* A figure in a sentence keeps its line (#517 A2); its invisible hit area grows from 24 to 44 px (#598). */
   .citatie-getal::before { width: max(100%, var(--tap-min)); height: var(--tap-min); }
+  /* The last small targets of the phone round (#612). The dialog buttons (export, delete, feedback), the reasoning
+     toggle and the history search grow to 44px. "Bekijk code" grows inside its 24px footprint, like the text
+     buttons above, so the steps keep their spacing. The CSV chip sits on the chart and keeps its look: an
+     invisible 44px area, as for the figures. */
+  .confirm-cancel, .confirm-primary, .confirm-destructive { min-width: var(--tap-min); min-height: var(--tap-min); }
+  .reasoning-toggle, .history-search { min-height: var(--tap-min); }
+  .reasoning-step-code summary {
+    min-height: var(--tap-min); margin-block: calc((var(--tap-min-aa) - var(--tap-min)) / 2);
+  }
+  .csv-download-btn::before {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%); width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
+  }
 }
 
 /* ─── Form fields on touch screens (#590) ────────────────────── */

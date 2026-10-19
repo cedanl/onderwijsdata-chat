@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import ChatInputFooter from '../components/ChatInputFooter'
@@ -210,6 +212,55 @@ describe('ChatInputFooter tekenteller (#481)', () => {
   it('houdt de verzendknop vóór de modelpicker in de tab-volgorde', () => {
     const { container, root } = renderFooter(props('x'.repeat(MAX_MESSAGE_CHARS)))
     expect(focusableOrder(container)).toEqual(['Verstuur bericht', 'Model'])
+    act(() => root.unmount())
+  })
+})
+
+// #612: op een telefoon schoof het invoerkader 46 px omhoog zodra de teller verscheen (vanaf 80%), en nog eens bij
+// "te lang". De teller blijft nu in de rij van het veld; jsdom rekent geen layout, dus de CSS ligt hier vast en
+// tests/e2e/mobiel-tikvlakken.spec.js meet het in de browser.
+describe('ChatInputFooter zonder sprong (#612)', () => {
+  const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const regels = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, kiezer, body]) => ({ kiezer: kiezer.trim(), body }))
+  const props = text => ({
+    connected: true, busy: false, models, selectedModel: 'openai/gpt-oss-120b', onModelChange: vi.fn(),
+    onStop: vi.fn(), onSend: vi.fn(), canSend: true, text,
+  })
+
+  it('geeft de voet geen eigen regel omdat de teller tekst heeft', () => {
+    const opTeller = regels.filter(r => r.kiezer.includes('.message-counter'))
+    expect(opTeller.length).toBeGreaterThan(0)
+    for (const { kiezer, body } of opTeller) {
+      expect(body, kiezer).not.toMatch(/(?:^|[;\s])flex(?:-basis)?:[^;]*100%/)
+      expect(body, kiezer).not.toMatch(/flex-wrap:\s*wrap/)
+    }
+  })
+
+  it('houdt de eigen regel voor de verbindingsmelding', () => {
+    const ws = regels.find(r => r.kiezer === '.chat-input-footer:has(.ws-reconnecting:not(:empty))')
+    expect(ws?.body).toMatch(/flex:\s*1 0 100%/)
+  })
+
+  it('verbergt het advies op een smal scherm alleen visueel, zoals .sr-only', () => {
+    const blok = css.match(/@media \(max-width: 600px\)\s*{[^{}]*\.message-counter-advies\s*{([^}]*)}/)?.[1]
+    expect(blok).toBeDefined()
+    for (const decl of [/position:\s*absolute/, /width:\s*1px/, /height:\s*1px/, /clip-path:\s*inset\(50%\)/]) {
+      expect(blok).toMatch(decl)
+    }
+    expect(blok).not.toMatch(/display:\s*none|visibility:\s*hidden/)
+  })
+
+  it('zet het advies in een eigen element, de zin zelf blijft gelijk', () => {
+    const { container, root } = renderFooter(props('x'.repeat(MAX_MESSAGE_CHARS + 1)))
+    const el = container.querySelector('.message-counter')
+    expect(el.textContent).toContain(' · te lang, kort je bericht in')
+    expect(el.querySelector('.message-counter-advies').textContent).toBe(', kort je bericht in')
+    act(() => root.unmount())
+  })
+
+  it('heeft geen advies zolang de tekst niet te lang is', () => {
+    const { container, root } = renderFooter(props('x'.repeat(MAX_MESSAGE_CHARS)))
+    expect(container.querySelector('.message-counter-advies')).toBeNull()
     act(() => root.unmount())
   })
 })
