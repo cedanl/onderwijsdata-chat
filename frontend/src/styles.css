@@ -6,6 +6,10 @@
 }
 
 :root {
+  /* Kleine lagen (#613): op desktop zoals ze waren, op een telefoon de ondergrens van 12,5 px (code 11 px). */
+  --font-klein: .75rem;
+  --font-label: .8rem;
+  --font-code: .7rem;
   --blue-900: #0D2340;
   --blue-800: #163558;
   --blue-700: #1E4A7A;
@@ -1858,4 +1862,20 @@ html.dark .suggested-btn:hover {
 @media (max-width: 600px) {
   .privacy-modal-bar { top: 20px; }
   .privacy-modal-bar .modal-close { margin: -20px -12px 0 0; }
+}
+
+/* Lettergroottes op een telefoon (#613, mobiel N5). Antwoordtekst 16 px zoals de referenties (ChatGPT 16,
+   Gemini 17); de kleinere lagen — citaatpopover, chips, stappen, blokken, instellingen, figuurlabels — minimaal
+   12,5 px; code in de stappen 11 px ("Bekijk code" blijft een bewuste keuze). Rapportmetadata op /rapporten blijft
+   bewust klein (.wb-card-date). Gemeten op 390 px in de MR. */
+@media (max-width: 600px) {
+  :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
+  .message-bubble { font-size: 16px; line-height: 1.55; }
+  .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
+  .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
+  .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
+  .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
+  .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst {
+    font-size: 12.5px;
+  }
 }

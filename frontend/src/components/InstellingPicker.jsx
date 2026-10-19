@@ -117,7 +117,7 @@ export default function InstellingPicker({ inputId, value, onChange }) {
             type="button"
             onClick={() => toggleNiveau(n.id)}
             style={{
-              padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: '.75rem', fontWeight: 600,
+              padding: '4px 10px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-klein)', fontWeight: 600,
               border: `1.5px solid ${niveauFilter.has(n.id) ? 'var(--blue-500)' : 'var(--gray-200)'}`,
               background: niveauFilter.has(n.id) ? 'var(--blue-50)' : 'var(--white)',
               color: niveauFilter.has(n.id) ? 'var(--blue-700)' : 'var(--gray-500)',
@@ -215,7 +215,7 @@ export default function InstellingPicker({ inputId, value, onChange }) {
             >
               <span style={{ fontWeight: 500, color: 'var(--gray-900)' }}>{inst.naam}</span>
               <span style={{
-                fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase',
+                fontSize: 'var(--font-klein)', fontWeight: 700, textTransform: 'uppercase',
                 color: inst.type === 'wo' ? '#7C3AED' : inst.type === 'hbo' ? '#2563EB' : '#0D9488',
                 background: inst.type === 'wo' ? '#EDE9FE' : inst.type === 'hbo' ? '#EFF6FF' : '#F0FDFA',
                 padding: '2px 6px', borderRadius: 4,

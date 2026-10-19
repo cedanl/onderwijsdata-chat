@@ -72,7 +72,8 @@ export function chatFigureLayout(figure, dark, width) {
     paper_bgcolor: colours.bg,
     plot_bgcolor: colours.bg,
     margin: { ...(isMap ? MAP_MARGIN : CHART_MARGIN), t: top + extra },
-    font: { family: 'system-ui, sans-serif', size: 12, color: colours.font },
+    // Op een telefoon 12,5 px, de ondergrens voor leesbare lagen (#613); breder blijft 12.
+    font: { family: 'system-ui, sans-serif', size: width > 0 && width <= TOUCH_WIDTH ? 12.5 : 12, color: colours.font },
     legend: {
       ...legendBelow(figure.layout?.legend),
       bgcolor: colours.legendBg,

@@ -1,0 +1,34 @@
+// #613 (mobiel N5): op een telefoon was de antwoordtekst 14,4 px en zaten de kleinste lagen (code, citaatpopover,
+// chips, labels) op 10,5–12 px. Besluit 19-10: antwoordtekst 16 px, ondergrens 12,5 px; code mag 11 px en de
+// rapportmetadata op /rapporten blijft bewust klein. Gemeten op 390 px in de MR; dit legt de regels vast.
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const css = readFileSync(join(import.meta.dirname, '..', 'styles.css'), 'utf8')
+const telefoon = css.slice(css.indexOf('Lettergroottes op een telefoon (#613'))
+const blok = telefoon.match(/@media \(max-width: 600px\)\s*{[\s\S]*?\n}/)?.[0]
+
+describe('lettergroottes op een telefoon (#613)', () => {
+  it('zet de antwoordtekst op 16 px', () => {
+    expect(blok).toMatch(/\.message-bubble\s*{\s*font-size:\s*16px/)
+  })
+
+  it('geeft de kleine lagen 12,5 px en code 11 px via de variabelen', () => {
+    expect(blok).toContain('--font-klein: 12.5px')
+    expect(blok).toContain('--font-label: 12.5px')
+    expect(blok).toContain('--font-code: 11px')
+    for (const laag of ['.suggested-btn', '.citatie-details', '.reasoning-step-code summary', '.question-buttons-kop', '.data-export-btn', '.message-model', '.settings-modal label']) {
+      expect(blok, laag).toContain(laag)
+    }
+    expect(blok).toMatch(/font-size:\s*12\.5px/)
+  })
+
+  it('houdt de variabelen op desktop op de oude maten', () => {
+    expect(css).toMatch(/:root\s*{[\s\S]*?--font-klein:\s*\.75rem;[\s\S]*?--font-label:\s*\.8rem;[\s\S]*?--font-code:\s*\.7rem;/)
+  })
+
+  it('laat de rapportmetadata op /rapporten bewust klein', () => {
+    expect(blok).not.toContain('.wb-card-date')
+  })
+})
