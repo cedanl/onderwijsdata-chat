@@ -8,6 +8,8 @@ breedte. Liggende staven met de naam als gewone tekst, een hoogte die meegroeit 
 aantal staven en geen legenda die de as herhaalt, lossen dat op.
 """
 
+import json
+
 import plotly.graph_objects as go
 import pytest
 
@@ -175,3 +177,63 @@ class TestLegendaOnder:
         fig = go.Figure([go.Scatter(x=[1, 2], y=[3, 4], name="a")], layout={"legend": {"x": 0.02, "y": 0.98}})
         legend = leesbare_titels(fig, None).layout.legend
         assert (legend.x, legend.y, legend.orientation) == (0.02, 0.98, None)
+
+
+_LEGENDE_RIJEN = [
+    {"JAAR": jaar, "AANTAL": aantal, "SECTOR": sector}
+    for jaar, aantallen in ((2023, (10, 12, 14)), (2024, (11, 13, 15)))
+    for sector, aantal in zip(("Zorg", "Techniek", "Onderwijs"), aantallen, strict=True)
+]
+
+
+class TestAssenZonderTemplate:
+    """De legenda onder de grafiek duwt de ondermarge op via `automargin` (#575). Dat komt normaal
+    uit Plotly's template; zonder die template overlapt de legenda de astitel en de tick-labels.
+    De assen krijgen dezelfde waarden daarom expliciet mee."""
+
+    @pytest.mark.parametrize("chart_type", ["line", "bar", "scatter", "histogram"])
+    def test_elke_as_heeft_automargin_en_standoff(self, chart_type):
+        fig = _plot(rows=_LEGENDE_RIJEN, chart_type=chart_type, x="JAAR", color_by="SECTOR")
+        for as_ in (fig.layout.xaxis, fig.layout.yaxis):
+            assert as_.automargin is True
+            assert as_.title.standoff == 15
+        assert fig.layout.xaxis.title.text == "Jaar"  # de astitel zelf verandert niet
+        assert fig.layout.legend.orientation == "h"
+
+    def test_liggende_staven_groeien_ook_met_de_legenda(self):
+        rows = [
+            {"INSTELLING": naam, "AANTAL": n, "GESLACHT": g}
+            for naam, n in _UNIVERSITEITEN[:4]
+            for g in ("Man", "Vrouw")
+        ]
+        fig = _plot(rows=rows, color_by="GESLACHT")
+        assert fig.layout.xaxis.automargin is True
+        assert fig.layout.xaxis.title.standoff == 15
+        # De categorie-as ligt hier omgekeerd en heeft geen astitel; automargin moet wel groeien.
+        assert fig.layout.yaxis.automargin is True
+
+    def test_zonder_template_blijven_de_sleutels_in_de_json(self):
+        fig = _plot(rows=_LEGENDE_RIJEN, chart_type="line", x="JAAR", color_by="SECTOR")
+        fig.layout.template = None
+        layout = json.loads(fig.to_json())["layout"]
+        for as_ in ("xaxis", "yaxis"):
+            assert layout[as_]["automargin"] is True
+            assert layout[as_]["title"]["standoff"] == 15
+
+    def test_eigen_figuur_krijgt_automargin_en_standoff(self):
+        fig = go.Figure([go.Scatter(x=[1, 2], y=[3, 4], name="a")])
+        leesbare_titels(fig, None)
+        for as_ in (fig.layout.xaxis, fig.layout.yaxis):
+            assert as_.automargin is True
+            assert as_.title.standoff == 15
+
+    def test_eigen_figuur_met_eigen_asruimte_houdt_die(self):
+        fig = go.Figure(
+            [go.Scatter(x=[1, 2], y=[3, 4], name="a")],
+            layout={"xaxis": {"automargin": False, "title": {"standoff": 8}}},
+        )
+        leesbare_titels(fig, None)
+        assert fig.layout.xaxis.automargin is False
+        assert fig.layout.xaxis.title.standoff == 8
+        assert fig.layout.yaxis.automargin is True
+        assert fig.layout.yaxis.title.standoff == 15
