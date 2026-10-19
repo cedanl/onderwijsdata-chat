@@ -38,6 +38,7 @@ vi.mock('../hooks/useChat', () => ({
 import Nav from '../components/Nav'
 import Composer, { PLACEHOLDER_COMPACT } from '../components/Composer'
 import ChatPage from '../pages/ChatPage'
+import { EXTERNE_AI_MELDING } from '../components/ChatNavActies'
 import { NavSlotContext } from '../navSlot'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 
@@ -128,11 +129,11 @@ describe('menu in de navbar (vervangt de tabbalk)', () => {
   })
 })
 
-function Pagina({ user = 'tester' }) {
+function Pagina({ user = 'tester', feedbackEnabled = false }) {
   const [slot, setSlot] = useState(null)
   return createElement(MemoryRouter, null,
     createElement(Nav, { user, slotRef: setSlot }),
-    createElement(NavSlotContext.Provider, { value: slot }, createElement(ChatPage, { user })))
+    createElement(NavSlotContext.Provider, { value: slot }, createElement(ChatPage, { user, feedbackEnabled })))
 }
 
 describe('de chat op een telefoon', () => {
@@ -161,6 +162,38 @@ describe('de chat op een telefoon', () => {
     expect(menu.textContent).toContain('Exporteer gesprek')
     // De vaste actierij boven het invoerveld is er op een telefoon niet meer.
     expect(container.querySelector('.chat-actions')).toBeNull()
+  })
+
+  // #608: met de disclaimer verdwenen op een telefoon (#596) waren ook de externe-AI-melding, de privacy-informatie
+  // en de feedbacklink uit de chat weg. Ze staan nu in het ⋯-menu: twee tikken vanuit een lopend gesprek.
+  it('zet de externe-AI-melding, privacy-informatie en feedback in het ⋯-menu', async () => {
+    smal.aan = true
+    chat.messages = [
+      { id: 1, role: 'user', content: 'Hoeveel mbo-studenten?', done: true },
+      { id: 2, role: 'assistant', content: 'Veel.', done: true, tools: [] },
+    ]
+    await render(createElement(Pagina, { feedbackEnabled: true }))
+    await klik(knop('Meer acties'))
+    const menu = container.querySelector('#navbar-meer-menu')
+    expect(menu.querySelector('.navbar-meer-noot').textContent).toBe(EXTERNE_AI_MELDING)
+    expect(EXTERNE_AI_MELDING).toContain('externe AI-dienst')
+    const items = [...menu.querySelectorAll('.navbar-menu-item')].map(k => k.textContent)
+    expect(items).toEqual(['Privacy-informatie', 'Geef feedback'])
+    // Tik twee (na het menu): het feedbackformulier.
+    await klik([...menu.querySelectorAll('.navbar-menu-item')].find(k => k.textContent === 'Geef feedback'))
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Feedback over openEDUdata+')
+  })
+
+  it('laat de feedbackknop weg uit het ⋯-menu als het formulier uitstaat', async () => {
+    smal.aan = true
+    chat.messages = [
+      { id: 1, role: 'user', content: 'Hoeveel mbo-studenten?', done: true },
+      { id: 2, role: 'assistant', content: 'Veel.', done: true, tools: [] },
+    ]
+    await render(createElement(Pagina))
+    await klik(knop('Meer acties'))
+    const items = [...container.querySelectorAll('#navbar-meer-menu .navbar-menu-item')].map(k => k.textContent)
+    expect(items).toEqual(['Privacy-informatie'])
   })
 
   it('toont geen disclaimer onder het invoerveld, en de privacyzin staat in de placeholder', async () => {

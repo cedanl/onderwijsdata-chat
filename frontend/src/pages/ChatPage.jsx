@@ -732,6 +732,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(o => !o)}
             exportMessages={hasMessages ? displayMessages : null}
+            feedback={feedbackEnabled}
           />
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
