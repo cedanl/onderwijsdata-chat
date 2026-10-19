@@ -103,6 +103,13 @@ def laadkey(key: str) -> str:
     return keten(key)[-1]
 
 
+def bladeren(keys: list[str]) -> list[str]:
+    """De keys waar geen andere key uit `keys` van is afgeleid, in volgorde en zonder dubbele: de selecties."""
+    uniek = list(dict.fromkeys(keys))
+    ouders = {known.afgeleid_van for k in uniek if (known := store.meta(k)) and known.afgeleid_van}
+    return [k for k in uniek if k not in ouders]
+
+
 def _selecties(tool_results: list[str], veld: str) -> dict[str, set]:
     """Per laadkey: de waarden van `veld` over alle selecties van de beurt die het weten."""
     gekozen: dict[str, set] = {}

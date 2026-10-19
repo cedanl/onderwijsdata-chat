@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from agent.interpretatie import interpretatiezin, is_vaag, is_vervolgvraag, met_interpretatie
+from agent.interpretatie import interpretatie_bij, interpretatiezin, is_vaag, is_vervolgvraag
 from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
@@ -72,21 +72,17 @@ def test_zonder_bekende_dataset_geen_zin():
     assert interpretatiezin("studentenwelzijn", []) is None
 
 
-def test_het_antwoord_opent_met_de_zin_voor_een_vage_vraag(geladen):
-    tekst = met_interpretatie("Er zijn veel studenten.", "studentenwelzijn", [_STAP], {}, vervolg=False)
-    assert tekst.startswith(
-        "Ik ga uit van de lezing «Hoger onderwijs; ingeschrevenen» voor je vraag 'studentenwelzijn'."
-    )
-    assert tekst.endswith("\n\nEr zijn veel studenten.")
+def test_een_vage_vraag_krijgt_de_zin(geladen):
+    zin = interpretatie_bij("Er zijn veel studenten.", "studentenwelzijn", [_STAP], {}, vervolg=False)
+    assert zin is not None
+    assert zin.startswith("Ik ga uit van de lezing «Hoger onderwijs; ingeschrevenen» voor je vraag 'studentenwelzijn'.")
 
 
 def test_geen_zin_bij_een_duidelijke_vraag_na_een_kaart_of_eigen_lezing(geladen):
-    assert met_interpretatie("Antwoord.", "Hoeveel studenten heeft de HU?", [_STAP], {}, vervolg=False) == "Antwoord."
-    assert (
-        met_interpretatie("Antwoord.", "studentenwelzijn", [_STAP], {"clarify_rondes": 1}, vervolg=False) == "Antwoord."
-    )
+    assert interpretatie_bij("Antwoord.", "Hoeveel studenten heeft de HU?", [_STAP], {}, vervolg=False) is None
+    assert interpretatie_bij("Antwoord.", "studentenwelzijn", [_STAP], {"clarify_rondes": 1}, vervolg=False) is None
     eigen = "Ik ga uit van ingeschrevenen in het hoger onderwijs. Antwoord."
-    assert met_interpretatie(eigen, "studentenwelzijn", [_STAP], {}, vervolg=False) == eigen
+    assert interpretatie_bij(eigen, "studentenwelzijn", [_STAP], {}, vervolg=False) is None
 
 
 # --- een vervolgvraag: de lezing lag al vast bij de eerste vraag (#545) ---
@@ -107,9 +103,7 @@ def test_geen_zin_bij_een_vage_vervolgvraag(geladen):
         _gebruiker("Alleen vrouwen"),
     ]
     session: dict = {}
-    assert met_interpretatie("Antwoord.", "Alleen vrouwen", [_STAP], session, vervolg=is_vervolgvraag(gesprek)) == (
-        "Antwoord."
-    )
+    assert interpretatie_bij("Antwoord.", "Alleen vrouwen", [_STAP], session, vervolg=is_vervolgvraag(gesprek)) is None
     assert session == {}
 
 

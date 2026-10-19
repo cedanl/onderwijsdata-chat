@@ -208,6 +208,16 @@ de laatste tag is 1.8.6.
   de datasets waarop het rust, uit de catalogus, en de uitnodiging om de maat of bron te noemen als iets anders
   bedoeld was. De app zet die zin er in code voor als het model zijn lezing niet zelf benoemde; de systeemprompt
   vraagt het model eerst om een verduidelijkingsvraag of die zin.
+- Een antwoord met data opent met een vaste regel "**Uitgangspunt:** …" als de selectie een afbakening vastlegt
+  die de gebruiker niet noemde (#620, besluit: altijd tonen). De regel noemt de gekozen instelling met haar
+  volledige naam en code ("Universiteit Utrecht (21PD)" in plaats van "Utrecht", naast Hogeschool Utrecht
+  dubbelzinnig), de CBS-dimensies die op één waarde liggen (geen totaal), de periode, en bij `get_maat` zonder
+  instelling de sector en de vorm. Bijvoorbeeld bij "Waarom zijn er meer studenten informatica?":
+  "WO · Informatica · Nederland · 2015/16 t/m 2024/25". De regel komt helemaal uit de toolstappen, niet uit de
+  modeltekst, en staat na de interpretatiezin van #514. Hij blijft weg als de vraag (met de gekozen
+  verduidelijking) alles al noemt en het antwoord de instelling volledig noemt, bij meer dan drie instellingen
+  (dan geen opsomming van instellingen), en bij een vast antwoord. De regel is ook bij een Engels antwoord
+  Nederlands, en een periode in woorden ("laatste vijf jaar") telt niet als genoemd.
 - `dataset_details` noemt voor een CBS-tabel nu ook de populatie, de sectoren in het profiel, de
   periodecodes met hun CBS-status ("2025/'26 (voorlopig)"), het bereik en de geografische dekking uit het
   contract van de CBS-package (#370), naast de teldefinitie en afronding van #383. Het model kiest zo een

@@ -287,7 +287,9 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
     )
     store.clear()
 
-    assert text == "De HU had 26.370 voltijdstudenten."
+    # "De HU" is de afkorting: de Uitgangspunt-regel noemt de instelling volledig, en alleen de selectie waarop het
+    # antwoord rust, niet de vervangen Aeres-selectie (#620).
+    assert text == "**Uitgangspunt:** Hogeschool Utrecht (25DW)\n\nDe HU had 26.370 voltijdstudenten."
     correctie = seen[2][-1]["content"]
     assert "Hogeschool Utrecht (25DW)" in correctie and "INSTELLINGSCODE_ACTUEEL=25DW" in correctie
     assert "controle" not in events[-1]
