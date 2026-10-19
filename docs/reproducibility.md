@@ -77,7 +77,7 @@ Dit getal matcht precies wat de app rapporteerde. Geen gissing, geen "zwarte doo
 
 Een snippet begint altijd met de echte laadstap van zijn bron (bron-ID, resource en filters) via de publieke pakketten `onderwijsdata` en `riodata`. Het gebruikt dus nooit iets dat alleen in de app bestaat. Voor DUO-data met een `STUDIEJAAR` voegt de snippet ook `STUDIEJAAR_LABEL` toe (2021 → 2021/2022), zoals de app dat doet.
 
-Is de data het resultaat van een eerdere stap (een analyse of een selectie), dan staat die als rijen in de snippet, tot 200 rijen. Bij meer rijen laadt de snippet de bron en staat er een `# NB:` dat het om een selectie van die data gaat. Is voor een key geen laadstap bekend, bijvoorbeeld na een herstart, dan zegt de snippet dat in een opmerking.
+Is de data het resultaat van een eerdere stap (een selectie of een vaste maat), dan herhaalt de snippet de stappen van die ouder uit het recept dat de sessie bewaart: eerst de laadstap van de bron, dan de filters, kolommen en aggregaties. Zo ontstaat `df` binnen één snippet en draait de code opnieuw tegen actuele data, hoeveel rijen het resultaat ook heeft (#624). Zonder bekend recept — na een herstart, of bij een eigen berekening zonder recept — blijft alleen een kopie van de rijen over, tot 200 rijen, met een opmerking dat die waarden niet meegroeien met de bron. Bij meer rijen laadt de snippet de hele bron met een `# NB:` dat de uitkomst kan afwijken van wat de app toonde. Is voor een key geen laadstap bekend, dan zegt de snippet dat in een opmerking.
 
 ## Voor onderzoekers
 
