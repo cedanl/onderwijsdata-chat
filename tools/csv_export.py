@@ -1,6 +1,7 @@
 """CSV van de tabel achter een antwoord, voor Excel (#269).
 
 De export is de tabel die query_data, run_analysis of get_maat in de store legde,
+of de selectie van een lader als het toolresultaat haar helemaal toonde (#605);
 niet de tabel die het model in zijn antwoord overschreef. Puntkomma en decimale komma,
 zoals Nederlandse Excel ze verwacht; wat de tabel over zichzelf moet zeggen
 (bron, selecties, afkap, onderdrukte cellen) staat als '#'-regels erboven,
@@ -17,27 +18,72 @@ import unicodedata
 import pandas as pd
 
 from . import catalog, duo, herlaad, store
-from .schemas import TOOL_GET_MAAT, TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS
+from .schemas import (
+    TOOL_GET_CBS_DATA,
+    TOOL_GET_DUO_DATA,
+    TOOL_GET_MAAT,
+    TOOL_GET_RIO_DATA,
+    TOOL_QUERY_DATA,
+    TOOL_RUN_ANALYSIS,
+)
 
 # De stappen die een selectie in de store leggen en `data_key` plus `rijen` teruggeven. get_maat selecteert zelf
-# (#188) en gaf daardoor geen CSV-knop (#538). De laders (get_cbs_data, get_duo_data, get_rio_data) blijven
-# erbuiten: de export is de tabel achter het antwoord, niet het hele bronbestand.
+# (#188) en gaf daardoor geen CSV-knop (#538).
 _EXPORTEERBAAR = {TOOL_QUERY_DATA, TOOL_RUN_ANALYSIS, TOOL_GET_MAAT}
+# De laders leggen een hele selectie in de store en tonen het model alleen de eerste rijen (`preview`). Toonde
+# het resultaat álle rijen, dan is die selectie de tabel achter het antwoord: het model schreef zijn tabel eruit
+# en er kwam geen query_data meer aan te pas (#605: een CBS-selectie van twee schooljaren gaf geen knop). Een
+# grotere selectie blijft erbuiten: de export zou het hele bronbestand zijn, niet de tabel in het antwoord; de
+# geciteerde getallen zijn dan de export (frontend/src/citatieCsv.js, #544).
+_LADERS = {TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_GET_RIO_DATA}
 
 
-def export_key(name: str, result: str) -> str | None:
-    """De key van de tabel die deze stap opleverde, of None als er niets te exporteren is."""
-    if name not in _EXPORTEERBAAR:
-        return None
+def _resultaat(result: str) -> dict | None:
     try:
         parsed = json.loads(result)
     except ValueError:
         return None
-    # run_analysis zonder bron verpakt zijn uitkomst onder 'resultaat': geen tabel uit de bron (#201).
-    if not isinstance(parsed, dict) or not parsed.get("rijen"):
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _alle_rijen_getoond(parsed: dict) -> bool:
+    """Staan alle rijen van de geladen selectie in het toolresultaat (store.rijtelling, rio.get_rio_data)?"""
+    preview = parsed.get("preview")
+    if not isinstance(preview, list) or not preview:
+        return False
+    if parsed.get("volledig") is False or parsed.get("meer_beschikbaar") is True:
+        return False
+    aantal = parsed.get("totaal_rijen", parsed.get("opgehaalde_rijen"))
+    return isinstance(aantal, int) and aantal == len(preview)
+
+
+def export_key(name: str, result: str) -> str | None:
+    """De key van de tabel die deze stap opleverde, of None als er niets te exporteren is."""
+    parsed = _resultaat(result)
+    if parsed is None:
+        return None
+    if name in _EXPORTEERBAAR:
+        # run_analysis zonder bron verpakt zijn uitkomst onder 'resultaat': geen tabel uit de bron (#201).
+        tabel = bool(parsed.get("rijen"))
+    elif name in _LADERS:
+        tabel = _alle_rijen_getoond(parsed)
+    else:
         return None
     key = parsed.get("data_key")
-    return key if isinstance(key, str) else None
+    return key if tabel and isinstance(key, str) else None
+
+
+# Waarom een antwoord met een tabel geen tabel-key kreeg (#605), voor het EXPORT-log in agent/run.py.
+GEEN_DATASTAP = "geen_datastap"
+BRON_GROTER_DAN_RESULTAAT = "bron_groter_dan_toolresultaat"
+
+
+def geen_export_reden(steps: list[tuple[str, str]]) -> str:
+    """Een lader legde wel data in de store, maar toonde niet alle rijen; of er was geen datastap."""
+    for tool, result in steps:
+        if tool in _LADERS and (parsed := _resultaat(result)) and isinstance(parsed.get("data_key"), str):
+            return BRON_GROTER_DAN_RESULTAAT
+    return GEEN_DATASTAP
 
 
 # Excel voert tekst die met = + - of @ begint uit als formule (#483). Zulke tekst

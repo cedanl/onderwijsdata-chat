@@ -76,6 +76,26 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
     expect(blok(zonder, 'export').querySelector('dd').textContent).toBe('n.v.t.')
   })
 
+  // #605: "Hoeveel vrouwelijke mbo-studenten in 2021/22 en 2024/25?" liep via get_cbs_data met een filter op
+  // twee schooljaren en verder niets. De server noemt zo'n volledig getoonde selectie nu als tabel (tool_end
+  // export_key), dus de knop hangt niet af van citaties in de tekst: ook een tabel zonder geciteerde getallen
+  // krijgt hem, en zonder tabel-key én zonder citaties is de export bewust n.v.t.
+  const TABEL = 'Vrouwelijke mbo-studenten:\n\n| Schooljaar | Studenten |\n|---|---|\n| 2021/22 | 248.930 |\n| 2024/25 | 230.450 |'
+  const lader = exportKey => ({ name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, exportKey, dataKey: 'cbs:85354NED:c7a8bce6' })
+  const tabelantwoord = (tools, citaties) => ({ role: 'assistant', done: true, content: TABEL, tools, citaties, bronnen: [CBS] })
+
+  it('geven een tabel uit een volledig getoonde laderselectie de CSV-knop, ook zonder geciteerde getallen', () => {
+    const el = render(tabelantwoord([lader('cbs:85354NED:c7a8bce6')], []))
+    expect(blok(el, 'export').dataset.status).toBe('aanwezig')
+    expect([...el.querySelectorAll('.data-export-btn')].map(k => k.textContent)).toEqual(['Download data als CSV'])
+  })
+
+  it('zetten de export op n.v.t. bij een tabel zonder tabel-key en zonder geciteerde getallen', () => {
+    const el = render(tabelantwoord([lader(null)], []))
+    expect(blok(el, 'export').querySelector('dd').textContent).toBe('n.v.t.')
+    expect(el.querySelectorAll('.data-export-btn')).toHaveLength(0)
+  })
+
   it('tonen het aantal citaties en hoeveel daarvan geen vastgestelde herkomst hebben', () => {
     const el = render(VIJF_ANTWOORDEN[1])
     expect(blok(el, 'citaties').querySelector('dd').textContent).toBe('9 getallen, waarvan 2 zonder vastgestelde herkomst')
