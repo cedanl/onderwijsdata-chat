@@ -381,6 +381,9 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
+  namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
+  dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
 - De knop "Download data als CSV" staat ook onder een antwoord dat via `get_maat` liep (#538): een telvraag
   als "Hoeveel studenten zaten er in 2022 in het mbo?" kreeg sinds `get_maat` geen knop meer, omdat de export
   alleen `query_data` en `run_analysis` als bron kende. De download heet `<titel>_<dataset-id>.csv`, zoals bij
