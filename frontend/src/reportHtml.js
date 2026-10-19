@@ -117,6 +117,48 @@ ${NARROW_FIGURE_JS}
 var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
 }
 
+// Afdrukken als PDF (#622): de browser drukt af, het rapport zorgt dat het op A4 past. Licht thema (de
+// printhandler zet de klasse), geen schaduwen of achtergrond, elke kaart en grafiek op één pagina, grafieken
+// op de breedte van een A4-kolom (de handler hieronder tekent ze daarop over vóór het afdrukken).
+export const PRINT_BREEDTE = 680
+export const PRINT_CSS = `@media print{
+    @page{size:A4;margin:14mm}
+    html,body{background:#fff!important;min-height:0}
+    body{font-size:12px}
+    .header{padding:0 0 16px;border-bottom:1px solid #E5E7EB;break-after:avoid}
+    .body{padding:16px 0 0;max-width:none}
+    .card,.vraag,.header{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+    .vis{break-inside:avoid;page-break-inside:avoid}
+    .vis .card{margin:0;padding:0}
+    .card{border:1px solid #E5E7EB}
+    .plot,.plot-auto{max-height:330px}
+    .scope-row{grid-template-columns:1fr 1fr}
+    .manifest,.footer{break-inside:avoid}
+    a{color:inherit}
+  }`
+// Het bericht van de app ('edudata:print', WorkbookPrint.jsx): het rapport staat in een sandbox-frame met een
+// opaque origin, dus de app kan print() niet zelf aanroepen. Vóór het afdrukken: licht thema en grafieken op
+// A4-breedte; erna alles terug. Een rapport van vóór deze build kent het bericht niet: de app toont dan geen knop.
+export const PRINT_BERICHT = 'edudata:print'
+export const PRINT_JS = `(function(){
+  var H=document.documentElement,B=document.body;
+  function plots(){return Array.prototype.slice.call(document.querySelectorAll('.js-plotly-plot'))}
+  function voorbereiden(){
+    H.setAttribute('data-print-thema',H.classList.contains('dark')?'dark':H.classList.contains('light')?'light':'');
+    H.classList.remove('dark');H.classList.add('light');
+    B.style.width='${PRINT_BREEDTE}px';
+    if(window.Plotly)plots().forEach(function(e){Plotly.relayout(e,{width:${PRINT_BREEDTE},height:Math.min(e.getBoundingClientRect().height||330,330)})});
+  }
+  function herstellen(){
+    var t=H.getAttribute('data-print-thema');H.classList.remove('light');if(t)H.classList.add(t);H.removeAttribute('data-print-thema');
+    B.style.width='';
+    if(window.Plotly)plots().forEach(function(e){Plotly.relayout(e,{width:null,height:null,autosize:true})});
+  }
+  window.__edudataPrint={voorbereiden:voorbereiden,herstellen:herstellen};
+  window.addEventListener('afterprint',herstellen);
+  window.addEventListener('message',function(ev){if(ev.data!=='${PRINT_BERICHT}')return;voorbereiden();setTimeout(function(){window.print()},150)});
+})()`
+
 export function buildReportHtml(spec, { instelling = '' } = {}) {
   const s = spec || {}
   const datum = s.datum || new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -236,6 +278,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
   .header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}
   @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.header-top{flex-direction:column}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0;margin:0 -16px}.plot-auto{height:420px}.header-label,.section-label,.manifest,.footer{font-size:.75rem}}
+  ${PRINT_CSS}
   ${darkCss('html.dark')}
   @media(prefers-color-scheme:dark){
     ${darkCss('html:not(.light)')}
@@ -268,6 +311,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
 </div>
 ${verantwoording}
 <div class="footer">Gegenereerd door openEDUdata+ · Gebaseerd op open onderwijsdata</div>
+<script>${PRINT_JS}</script>
 </body></html>`
 }
 

@@ -7,6 +7,7 @@ import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashb
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import WorkbookDownload from './WorkbookDownload'
+import WorkbookPrint from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 
@@ -146,10 +147,12 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
             workbook={workbook} instelling={instelling} save={save}
             feedbackEnabled={feedbackEnabled} feedbackGiven={feedbackGiven}
             onFeedback={() => setShowFeedback(true)}
+            afdrukken={<WorkbookPrint frameRef={reportFrame.frameRef} html={reportFrame.srcDoc} className="navbar-menu-item" />}
           />
         ) : (
           <div className="wb-viewer-actions">
             <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+            <WorkbookPrint frameRef={reportFrame.frameRef} html={reportFrame.srcDoc} />
             {feedbackEnabled && (
               feedbackGiven ? (
                 <span className="wb-feedback-given" role="status">
@@ -224,9 +227,10 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
               )}
               {/* allow-popups (escaping the sandbox) lets the source link under each chart open the open-data
                   source in a new tab (#569); without it a click would load that site inside the report frame.
-                  The links carry rel="noopener", so the new tab has no way back in. Never allow-same-origin. */}
+                  The links carry rel="noopener", so the new tab has no way back in. allow-modals lets the report
+                  call print() for "Opslaan als PDF" (#622). Never allow-same-origin. */}
               <iframe ref={reportFrame.frameRef} className="wb-iframe" srcDoc={reportFrame.srcDoc} title={workbook.title}
-                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" onLoad={reportFrame.onLoad} />
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals" onLoad={reportFrame.onLoad} />
             </>
           )
         })()}
