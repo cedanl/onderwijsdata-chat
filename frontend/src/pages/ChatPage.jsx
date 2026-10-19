@@ -1,4 +1,4 @@
-import { memo, useId, useMemo, useRef, useEffect, useState, useCallback } from 'react'
+import { memo, useId, useLayoutEffect, useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import Plot from '../components/LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -140,17 +140,55 @@ function StapCode({ code }) {
   )
 }
 
+// De hoogte van de open stappenlijst als de kop van de kaart in beeld staat (#609); 0 als de kaart boven of onder
+// het beeld ligt, of als er niets te meten is (jsdom). Met de kop in beeld verankert de browser de scroll aan de kop
+// en niet aan wat eronder wegvalt, dus dan compenseert ReasoningPanel zelf.
+function zichtbareKaarthoogte(panel) {
+  const content = panel?.querySelector('.reasoning-content')
+  const scroller = panel?.closest('.chat-messages')
+  if (!content || !scroller) return 0
+  const kop = panel.getBoundingClientRect()
+  const zicht = scroller.getBoundingClientRect()
+  const inBeeld = kop.top >= zicht.top && kop.top < zicht.bottom
+  return inBeeld ? content.getBoundingClientRect().height : 0
+}
+
 function ReasoningPanel({ tools, tussentekst, isDone }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
   // screen before the answer. A wide screen keeps the block.
   const codePerStap = useMediaQuery(NARROW_SCREEN)
+  const panelRef = useRef(null)
+  // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
+  // die vanzelf openging bij het wachten.
+  const handmatig = useRef(false)
+  // Op een telefoon klapt de kaart in zodra het antwoord compleet is (#609): open bleef hij 380–430 px hoog en begon
+  // het antwoord onder de vouw. Desktop ongewijzigd. Staat de kaart in beeld, dan zou het antwoord eronder omhoog
+  // springen (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar
+  // de dichte kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
+  // (de lezer is al bij het eind), dan houdt de scroll-verankering van de browser alles op zijn plek.
+  const compensatie = useRef(0)
+  useLayoutEffect(() => {
+    if (!isDone || !codePerStap || !open || handmatig.current) return
+    compensatie.current = zichtbareKaarthoogte(panelRef.current)
+    setOpen(false)
+  }, [isDone, codePerStap, open])
+  useLayoutEffect(() => {
+    if (open || !compensatie.current) return
+    const scroller = panelRef.current?.closest('.chat-messages')
+    if (scroller) {
+      scroller.scrollTop -= compensatie.current
+      panelRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }
+    compensatie.current = 0
+  }, [open])
   if (!tools?.length) return null
   const hasSnippets = tools.some(t => t.snippet)
+  const toggle = () => { handmatig.current = true; setOpen(o => !o) }
 
   return (
-    <div className="reasoning-panel">
-      <button type="button" className="reasoning-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+    <div className="reasoning-panel" ref={panelRef}>
+      <button type="button" className="reasoning-toggle" onClick={toggle} aria-expanded={open}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
