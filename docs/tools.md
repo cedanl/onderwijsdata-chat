@@ -549,12 +549,21 @@ Maakt een choropleth-kaart van Nederland op provincie-, gemeente- of COROP-nivea
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `location_col` | string | Kolomnaam met locatienamen |
+| `data_key` | string | Data_key van eerder opgehaalde data; de kaart leest de rijen zelf uit de store |
+| `location_col` | string | Kolomnaam met de locaties: CBS-codes (`PV26`, `GM0344`, `CR17`) of namen |
 | `value_col` | string | Kolomnaam met waarden |
 | `title` | string | Titel van de kaart |
-| `data_key` | string | Data_key van eerder opgehaalde data (optioneel) |
-| `data` | array | Lijst van datarijen als objecten (optioneel) |
 | `level` | string | `"auto"`, `"provincie"`, `"gemeente"` of `"corop"` (standaard: auto) |
+
+**Locaties (#628).** De kaart tekent tegen CBS-codes. Namen gaan naar dezelfde code (`tools/kaartlocaties.py`),
+dus een DUO-kolom als `PROVINCIE INSTELLING` of `GEMEENTE INSTELLING` en elke `query_data`-groepering op een
+naamkolom werken: hoofdletters, een voorloopapostrof (`'S-GRAVENHAGE`), het punt in `Hengelo (O.)` en het
+gemeentenummer van DUO (`344`) maken niet uit, en `HENGELO` past bij `Hengelo (O.)` zolang er één gebied zo heet
+(`BERGEN` is Bergen (L.) of Bergen (NH.) en wordt niet gegokt). Bij `level="auto"` beslist het voorvoegsel van een
+code, anders het niveau waar de meeste namen op passen; bij gelijke dekking wint het grootste gebied (de lijst
+Utrecht, Groningen is een lijst provincies). Locaties die niet op de kaart staan worden in het antwoord genoemd en
+blijven weg uit de figuur. Past geen enkele locatie, of past het gekozen `level` niet, dan is het antwoord een fout
+en komt er geen figuur.
 
 ---
 

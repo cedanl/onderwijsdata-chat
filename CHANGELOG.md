@@ -101,6 +101,11 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- De kaart (`create_choropleth_map`) tekent nu ook met namen: DUO-kolommen als `PROVINCIE INSTELLING` en
+  `GEMEENTE INSTELLING` en elke groepering op een naamkolom, in elke spelling (`'S-GRAVENHAGE`, `HENGELO` voor
+  Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding
+  "Kaart aangemaakt (12 provincies)". Het niveau volgt uit wat past, locaties die niet op de kaart staan worden
+  genoemd, en past er niets (of past het gekozen niveau niet) dan is het een fout in plaats van een lege kaart (#628).
 - `run_analysis` geeft bij een fout een korte, leesbare melding: de regel in het script en de laatste regel van de
   fout, zonder paden van de server. Een deling door nul met numpy-getallen (zoals `df['a'].sum() / df['b'].sum()`)
   eindigde in `KeyError: '__import__'`; dat is nu een `FloatingPointError` met de uitleg dat de noemer 0 is. Een
