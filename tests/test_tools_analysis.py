@@ -21,6 +21,22 @@ def test_simple_sum():
     assert json.loads(result)["resultaat"]["totaal"] == 300
 
 
+def test_tellingen_in_de_uitkomst_zijn_hele_getallen():
+    """#631: een som over een gemaskeerde (float) kolom kwam als 23449.0 terug; query_data gaf 23449."""
+    _put("test:an:f", [{"JAAR": 2021, "N": 100.0}, {"JAAR": 2022, "N": 200.0}, {"JAAR": 2022, "N": 0.5}])
+    tabel = run_analysis(code="result = df.groupby('JAAR')['N'].sum().reset_index()", data_key="test:an:f")
+    assert isinstance(tabel, str)
+    assert [r["N"] for r in json.loads(tabel)["rijen"]] == [100, 200.5]
+    los = run_analysis(
+        code="result = {'totaal': float(df.loc[df['JAAR'] == 2021, 'N'].sum()), 'gem': df['N'].mean()}",
+        data_key="test:an:f",
+    )
+    assert isinstance(los, str)
+    uitkomst = json.loads(los)["resultaat"]
+    assert uitkomst["totaal"] == 100 and isinstance(uitkomst["totaal"], int)  # 100.0 → 100
+    assert uitkomst["gem"] == 100.16666666666667  # een echte breuk blijft een breuk
+
+
 def test_groupby_in_script():
     _put(
         "test:an",
