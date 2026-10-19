@@ -12,11 +12,12 @@ function axisTitle(axis) {
   return typeof title === 'string' ? title : title?.text
 }
 
-// Excel runs a text cell that starts with = + - or @ as a formula (#483). Such
-// text gets a leading ' (so the CSV differs from the tool rows there, on
-// purpose); numbers and numeric text like '-1' or '-0,5' stay as they are.
-// Same rule as _veilig in tools/csv_export.py.
-const NEEDS_PREFIX = /^[=+\-@]/
+// Excel runs a text cell that starts with = + - or @ as a formula (#483); OWASP
+// (CSV injection) also lists a leading tab or CR (#607). Such text gets a
+// leading ' (so the CSV differs from the tool rows there, on purpose); numbers
+// and numeric text like '-1' or '-0,5' stay as they are. Same rule as _veilig
+// in tools/csv_export.py.
+const NEEDS_PREFIX = /^[=+\-@\t\r]/
 const NUMERIC = /^[+-]?\d+([.,]\d+)*$/
 
 function safeText(value) {
@@ -25,9 +26,10 @@ function safeText(value) {
   return `'${s}`
 }
 
+// A CR outside quotes ends a row for Excel and csv readers, like a newline.
 function cell(value) {
   const s = safeText(value)
-  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
 // Also the row format of the cited-numbers export (citatieCsv.js).

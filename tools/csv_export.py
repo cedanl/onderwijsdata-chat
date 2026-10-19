@@ -86,11 +86,12 @@ def geen_export_reden(steps: list[tuple[str, str]]) -> str:
     return GEEN_DATASTAP
 
 
-# Excel voert tekst die met = + - of @ begint uit als formule (#483). Zulke tekst
-# krijgt een ' ervoor, dus de CSV wijkt daar bewust af van de tabel in de store;
-# getallen en getaltekst als '-1' of '-0,5' blijven zoals ze zijn.
-# Dezelfde regel als safeText in frontend/src/figureCsv.js.
-_FORMULE = re.compile(r"[=+\-@]")
+# Excel voert tekst die met = + - of @ begint uit als formule (#483); OWASP (CSV injection)
+# noemt ook een tab en een CR vooraan (#607). Zulke tekst krijgt een ' ervoor, dus de CSV
+# wijkt daar bewust af van de tabel in de store; getallen en getaltekst als '-1' of '-0,5'
+# blijven zoals ze zijn. csv.writer zet een cel met een CR tussen quotes, dus die splitst
+# geen rij. Dezelfde regel als safeText in frontend/src/figureCsv.js.
+_FORMULE = re.compile(r"[=+\-@\t\r]")
 _GETAL = re.compile(r"[+-]?\d+([.,]\d+)*")
 
 

@@ -6,7 +6,9 @@ decimale komma zoals Nederlandse Excel ze verwacht.
 """
 
 import asyncio
+import csv
 import importlib
+import io
 import json
 
 import pandas as pd
@@ -120,6 +122,25 @@ def test_formule_in_cel_en_kolomnaam_krijgt_een_apostrof(tekst):
     """Excel voert tekst die met = + - of @ begint uit als formule (#483)."""
     _bron(df=pd.DataFrame({tekst: [tekst]}))
     assert _regels(naar_csv("duo:p01hoinges:0"))[-2:] == [f"'{tekst}", f"'{tekst}"]
+
+
+def _rijen(uit: str | None) -> list[list[str]]:
+    """De rijen zoals een CSV-lezer ze ziet, zonder de '#'-regels: een CR buiten quotes eindigt een rij."""
+    assert uit is not None
+    rijen = csv.reader(io.StringIO(uit, newline=""), delimiter=";")
+    return [rij for rij in rijen if not (rij and rij[0].startswith("#"))]
+
+
+@pytest.mark.parametrize("tekst", ["\tcmd", "\r=1+1"])
+def test_tab_of_cr_vooraan_in_cel_en_kolomnaam_krijgt_een_apostrof(tekst):
+    """OWASP noemt ook een tab en een CR vooraan in een cel (#607)."""
+    _bron(df=pd.DataFrame({tekst: [tekst]}))
+    assert _rijen(naar_csv("duo:p01hoinges:0")) == [[f"'{tekst}"], [f"'{tekst}"]]
+
+
+def test_cr_vooraan_splitst_geen_rij():
+    _bron(df=pd.DataFrame({"A": ["\r=1+1", "x"], "B": ["y", "\rcmd"]}))
+    assert _rijen(naar_csv("duo:p01hoinges:0")) == [["A", "B"], ["'\r=1+1", "y"], ["x", "'\rcmd"]]
 
 
 def test_getallen_en_getaltekst_blijven_zoals_ze_zijn():
