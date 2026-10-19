@@ -22,6 +22,7 @@ import pickle
 import resource
 import sys
 import traceback
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,10 @@ import plotly.graph_objects as go
 
 _CPU_SECONDS = 15
 _GEHEUGEN_BYTES = 1024**3
+# De uitkomst gaat als JSON door een pipe naar de server en door alle antwoordcontroles; een tabel van
+# tientallen MB hoort daar niet doorheen (#629). De server kapt de rijen voor het model verder af.
+_MAX_UITVOER_TEKENS = 8_000_000
+_MAX_FOUT_TEKENS = 400
 
 # Audit-events (prefix) die het script nooit nodig heeft.
 _VERBODEN_EVENTS = (
@@ -165,6 +170,30 @@ def _plat(waarde):
     return waarde
 
 
+def _fouttekst(code: str) -> str:
+    """De fout van het script voor het model: de scriptregels en de laatste regel, geen serverpaden (#629).
+
+    Een volledige traceback loopt door pandas en numpy en noemt de paden van de server; het model heeft de
+    regel in zijn eigen script en de foutmelding nodig.
+    """
+    soort, waarde, spoor = sys.exc_info()
+    bron = code.splitlines()
+    regels = ["Traceback (most recent call last):"]
+    for frame in traceback.extract_tb(spoor):
+        if frame.filename != "<analysis>":
+            continue
+        regels.append(f'  File "<analysis>", line {frame.lineno}, in {frame.name}')
+        if frame.lineno and 0 < frame.lineno <= len(bron):
+            regels.append(f"    {bron[frame.lineno - 1].strip()}")
+    laatste = "".join(traceback.format_exception_only(soort, waarde)).strip()
+    if len(laatste) > _MAX_FOUT_TEKENS:
+        laatste = laatste[:_MAX_FOUT_TEKENS] + "…"
+    regels.append(laatste)
+    if isinstance(waarde, FloatingPointError):
+        regels.append("De noemer van een deling is 0 (of de waarde is ongeldig); controleer de noemer vóór je deelt.")
+    return "\n".join(regels)
+
+
 def _voer_uit(invoer: dict) -> dict:
     gelezen: list[str] = []
     tabellen = invoer["tabellen"]
@@ -188,10 +217,16 @@ def _voer_uit(invoer: dict) -> dict:
     if invoer["df"] is not None:
         namespace["df"] = invoer["df"]
 
+    # Een waarschuwing (numpy: deling door nul) doet in de C-code een lazy import, en `__import__` staat niet in
+    # de builtins van het script: het script eindigde dan in `KeyError: '__import__'`. Waarschuwingen gaan dus uit
+    # en een numpy-deling door nul of een ongeldige waarde is een gewone fout, zoals bij een Python-float (#629).
+    # pandas rekent met inf en NaN in een eigen errstate en blijft ongemoeid.
     try:
-        exec(compile(invoer["code"], "<analysis>", "exec"), namespace)
+        with np.errstate(divide="raise", invalid="raise", over="ignore", under="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            exec(compile(invoer["code"], "<analysis>", "exec"), namespace)
     except Exception:
-        return {"fout": traceback.format_exc()}
+        return {"fout": _fouttekst(invoer["code"])}
 
     result, figure = namespace["result"], namespace["figure"]
     if isinstance(result, pd.DataFrame):
@@ -212,7 +247,16 @@ def main() -> None:
     try:
         tekst = json.dumps(uitkomst, ensure_ascii=False, default=_standaard)
     except (ValueError, RecursionError):  # o.a. een result dat naar zichzelf verwijst
-        tekst = json.dumps({"fout": traceback.format_exc()})
+        tekst = json.dumps({"fout": _fouttekst("")})
+    if len(tekst) > _MAX_UITVOER_TEKENS:
+        tekst = json.dumps(
+            {
+                "fout": (
+                    f"De uitkomst is te groot ({len(tekst) // 1_000_000} MB; het maximum is {_MAX_UITVOER_TEKENS // 1_000_000} MB). "
+                    "Filter, aggregeer of selecteer minder kolommen en geef dat als result."
+                )
+            }
+        )
     uit.write(tekst)
     uit.flush()
 

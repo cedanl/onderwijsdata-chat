@@ -101,6 +101,11 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- `run_analysis` geeft bij een fout een korte, leesbare melding: de regel in het script en de laatste regel van de
+  fout, zonder paden van de server. Een deling door nul met numpy-getallen (zoals `df['a'].sum() / df['b'].sum()`)
+  eindigde in `KeyError: '__import__'`; dat is nu een `FloatingPointError` met de uitleg dat de noemer 0 is. Een
+  uitkomst als `result = df` geeft het model hoogstens zoveel rijen als `query_data` (met `totaal_rijen` en de
+  verwijzing naar de `data_key`, waar de volledige tabel staat), en een uitkomst boven 8 MB wordt geweigerd (#629).
 - Blijft na de herkansing alleen een getal over dat niet in de opgehaalde data staat (meestal eigen rekenwerk in
   een lang antwoord), dan houdt de app niet meer het hele antwoord in: code haalt de zinnen en tabelrijen met dat
   getal weg, toetst de rest opnieuw en zegt eronder dat er iets is weggelaten. Valt er meer weg dan blijft, of
