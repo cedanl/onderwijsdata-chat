@@ -511,6 +511,7 @@ def _log_export(text_content: str, steps: list[tuple[str, str]]) -> None:
 
 async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, session: dict) -> list[str]:
     """Vervolgvragen onder elk gewoon antwoord met data (#364): code biedt ze aan, geen keuze van het model (#539).
+    De eerste twee uit de vraag zelf (zelfde maat, ander schooljaar, ontwikkeling; #615), de rest uit de dataset.
 
     Een weigering, een ingehouden of leeg antwoord, een deelantwoord en een afgekapt antwoord krijgen er geen.
     Wat dit gesprek al aanbood, onthoudt de sessie: een nieuw gesprek begint met een lege sessie."""
@@ -522,7 +523,7 @@ async def _vervolgvragen(result: LoopResult, text_content: str, vraag: str, sess
     try:
         datasets = vervolgvragen.datasets_van(result.steps)
         # Een dataset die nog niet getoetst is, kost een paar zoekacties in de catalogus: niet op de event loop.
-        gekozen = await asyncio.to_thread(vervolgvragen.kies, result.steps, vraag, getoond)
+        gekozen = await asyncio.to_thread(vervolgvragen.kies, result.steps, vraag, getoond, tekst=text_content)
     except Exception as exc:
         # Vervolgvragen zijn een extra: lukt het niet, dan gaat het antwoord zonder (zoals bij citaties).
         log_interne_fout(exc, "vervolgvragen")

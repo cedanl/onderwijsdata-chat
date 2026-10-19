@@ -322,6 +322,100 @@ def test_kies_zonder_geladen_dataset_niets(vaste_lijst):
     assert vervolgvragen.kies([("search_catalog", '[{"_ckan_id": "duo-a"}]')], "Vraag?", []) == []
 
 
+# --- uit de vraagcontext (#615): zelfde maat, ander schooljaar, ontwikkeling; dan pas de dataset ---
+
+_JAREN = (2019, 2020, 2021, 2022, 2023, 2024)
+_META = KeyMeta(bron="cbs", dataset="85354NED", schooljaren=_JAREN, kolomtitels={"MboStudenten_1": "Mbo studenten"})
+
+
+def _cite(
+    selectie="Geslacht: Vrouwen · Niveau: Totaal · Perioden: 2021/'22", maat="MboStudenten_1", eenheid="Aantal", **extra
+):
+    return {
+        "getal": "248.930",
+        "vastgesteld": True,
+        "maat": maat,
+        "eenheid": eenheid,
+        "selectie": selectie,
+        "data_key": "cbs:85354NED:x",
+        **extra,
+    }
+
+
+def test_contextvragen_zelfde_maat_en_selectie_nieuwste_jaar_en_ontwikkeling():
+    assert vervolgvragen.kandidaten_uit_context([_cite()], lambda key: _META) == [
+        "Hoeveel mbo studenten (vrouwen) waren er in 2024/25?",
+        "Hoe ontwikkelde het aantal mbo studenten (vrouwen) zich van 2019/20 tot en met 2024/25?",
+    ]
+
+
+def test_contextvragen_zonder_selectie_en_bij_een_percentage():
+    cite = _cite(selectie="Perioden: 2024/'25", maat="AandeelVrouwen_2", eenheid="%")
+    meta = KeyMeta(bron="cbs", dataset="x", schooljaren=_JAREN, kolomtitels={"AandeelVrouwen_2": "Aandeel vrouwen"})
+    assert vervolgvragen.kandidaten_uit_context([cite], lambda key: meta) == [
+        "Hoe hoog was aandeel vrouwen in 2023/24?",
+        "Hoe ontwikkelde aandeel vrouwen zich van 2019/20 tot en met 2024/25?",
+    ]
+
+
+def test_contextvragen_slaan_een_jaar_over_dat_het_antwoord_al_noemt_en_een_reeks_die_er_al_staat():
+    alle = " · ".join(f"Perioden: {j}/'{(j + 1) % 100:02d}" for j in _JAREN)
+    assert vervolgvragen.kandidaten_uit_context([_cite(selectie=alle)], lambda key: _META) == []
+    twee = KeyMeta(bron="cbs", dataset="x", schooljaren=(2023, 2024), kolomtitels={"MboStudenten_1": "Mbo studenten"})
+    assert vervolgvragen.kandidaten_uit_context([_cite(selectie="Perioden: 2023/'24")], lambda key: twee) == [
+        "Hoeveel mbo studenten waren er in 2024/25?",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("cites", "meta"),
+    [
+        pytest.param(
+            [_cite(maat="AANTAL")],
+            KeyMeta(bron="duo", dataset="p", schooljaren=_JAREN),
+            id="maat zonder leesbare titel",
+        ),
+        pytest.param(
+            [_cite()],
+            KeyMeta(bron="cbs", dataset="x", schooljaren=(2024,), kolomtitels={"MboStudenten_1": "Mbo studenten"}),
+            id="één schooljaar",
+        ),
+        pytest.param([_cite()], None, id="bron niet meer in de store"),
+        pytest.param([_cite(vastgesteld=False)], _META, id="getal zonder herkomst"),
+        pytest.param([], _META, id="geen citaties"),
+    ],
+)
+def test_zonder_bruikbare_context_geen_contextvragen(cites, meta):
+    assert vervolgvragen.kandidaten_uit_context(cites, lambda key: meta) == []
+
+
+def test_kies_zet_de_contextvragen_voor_de_datasetvraag(vaste_lijst, monkeypatch):
+    monkeypatch.setattr(
+        vervolgvragen, "uit_vraagcontext", lambda steps, tekst: ["Context 1?", "Context 2?"] if tekst else []
+    )
+    steps = [("get_duo_data", _laad("duo:duo-a:0", "duo-a"))]
+    assert vervolgvragen.kies(steps, "Vraag?", [], tekst="Antwoord.") == ["Context 1?", "Context 2?", "A1?"]
+    # Zonder tekst (of zonder context): alles uit de dataset, zoals voorheen.
+    assert vervolgvragen.kies(steps, "Vraag?", []) == ["A1?", "A2?", "A3?"]
+    # Wat al aangeboden is, ook niet als contextvraag.
+    assert vervolgvragen.kies(steps, "Vraag?", ["context 1?"], tekst="Antwoord.") == ["Context 2?", "A1?", "A2?"]
+
+
+def test_contextvragen_uit_een_echt_antwoord_via_de_citaties():
+    store.put("cbs:85354NED:c7", pd.DataFrame({"Perioden": ["2021SJ00"], "MboStudenten_1": [248930]}), _META)
+    stap = json.dumps(
+        {
+            "data_key": "cbs:85354NED:c7",
+            "totaal_rijen": 1,
+            "preview": [{"Perioden": "2021SJ00", "MboStudenten_1": 248930}],
+        }
+    )
+    vragen = vervolgvragen.uit_vraagcontext(
+        [("get_cbs_data", stap)], "Er waren 248.930 vrouwelijke mbo-studenten in 2021/22."
+    )
+    assert vragen and all("mbo studenten" in v for v in vragen)
+
+
 # --- de beurt: run() met een nagebootst model ---
 
 _VRAAG = "Hoeveel eerstejaars had het hbo in 2024?"
@@ -426,9 +520,9 @@ def kies_aanroepen(monkeypatch) -> list[tuple]:
     aanroepen: list[tuple] = []
     echte_kies = vervolgvragen.kies
 
-    def kies(*args):
+    def kies(*args, **kwargs):
         aanroepen.append(args)
-        return echte_kies(*args)
+        return echte_kies(*args, **kwargs)
 
     monkeypatch.setattr(vervolgvragen, "kies", kies)
     return aanroepen
