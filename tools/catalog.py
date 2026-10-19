@@ -13,6 +13,7 @@ from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
 from riodata.client import zonder_lijstendpoint
 
+from core.config import TOOL_RESULT_MAX_CHARS
 from core.logging_util import tekst_kenmerk
 
 from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
@@ -210,7 +211,6 @@ _SEARCH_KEEP_FIELDS = frozenset(
         "_perioden_formaat",
         "_periode_waarden",
         "_archief",
-        "_thema",
     }
 )
 
@@ -224,11 +224,65 @@ def _zoekkaart(entry: dict) -> dict | None:
     return {k: v for k, v in kaart.items() if v} or None
 
 
+# De publieke velden van een zoekhit (#358, stap 1): genoeg om tussen kandidaten te kiezen, niet alles.
+# Verrijking voor de catalogussite (voorbeeldvragen, tags, combineerbaar_met, kolomtoelichting,
+# niet_geschikt_voor, waardenbereik, doel, beschrijving) blijft in dataset_details: met alles erbij
+# woog een RIO-hit 4.800 tekens en gingen 8 van 12 zoektermen bij top_n=15 over het toolbudget van
+# 12.000 tekens, zodat het model de afkapmelding las en de rest van de treffers nooit zag.
+_SEARCH_PUBLIC_FIELDS = frozenset(
+    {
+        "identifier",
+        "title",
+        "bron",
+        "status",
+        "opvraagbaar",
+        "melding",
+        "via_tool",
+        "leverancier",
+        "periode",
+        "onderwijstype",
+        "samenvatting",
+        "niet_geschikt_voor",  # scoort niet, maar hoort bij de keuze (#362)
+        "filters",
+        "sub_resources",
+        "context",
+    }
+)
+# Eén korte tekst per hit: de samenvatting, anders de beschrijving of het doel, afgekapt.
+_SAMENVATTING_BRONNEN = ("samenvatting", "beschrijving", "doel")
+_SAMENVATTING_MAX = 200
+# Lijsten die in een hit lang kunnen worden: de eerste zoveel, met een teller; de rest in dataset_details.
+_LIJST_MAX = {"_meetwaarden": 12, "niet_geschikt_voor": 3}
+
+
+def _begrensd(naam: str, waarde):
+    maximum = _LIJST_MAX.get(naam)
+    if maximum is None or not isinstance(waarde, list) or len(waarde) <= maximum:
+        return waarde
+    return [*waarde[:maximum], f"… en {len(waarde) - maximum} meer (zie dataset_details)"]
+
+
+def _samenvatting(entry: dict) -> str | None:
+    tekst = next((str(entry[k]).strip() for k in _SAMENVATTING_BRONNEN if entry.get(k)), None)
+    if tekst is None:
+        return None
+    if len(tekst) <= _SAMENVATTING_MAX:
+        return tekst
+    return tekst[: _SAMENVATTING_MAX - 1].rstrip() + "…"
+
+
 def _compacte_hit(entry: dict) -> dict:
-    """Een zoekhit: de publieke velden plus de interne velden waarop het model kiest. Bij DUO ook de
-    zoekkaart, zodat teleenheid (personen of inschrijvingen), peildatum en afrondingsregel vóór
-    dataset_details zichtbaar zijn."""
-    hit = {k: v for k, v in entry.items() if not k.startswith("_") or k in _SEARCH_KEEP_FIELDS}
+    """Een zoekhit: de kernvelden plus de interne velden waarop het model kiest, en één korte
+    samenvatting. Bij DUO ook de zoekkaart, zodat teleenheid (personen of inschrijvingen), peildatum
+    en afrondingsregel vóór dataset_details zichtbaar zijn. De rest staat in dataset_details (#358)."""
+    # Een leeg veld (None, [], {}, "") zegt het model niets en kost per hit tekens; weg ermee.
+    hit = {
+        k: _begrensd(k, v)
+        for k, v in entry.items()
+        if (k in _SEARCH_PUBLIC_FIELDS or k in _SEARCH_KEEP_FIELDS) and (v or v is False or v == 0)
+    }
+    if (samenvatting := _samenvatting(entry)) is not None:
+        hit["samenvatting"] = samenvatting
     if kaart := _zoekkaart(entry):
         hit["zoekkaart"] = kaart
     return hit
@@ -794,16 +848,51 @@ def search_catalog(
         elapsed_ms,
     )
 
-    lean = [_compacte_hit(h) for h in hits[:top_n]]
+    meldingen = []
     if hint:
-        lean.append({"melding": hint})
+        meldingen.append({"melding": hint})
     if geo_niveau and onbekend:
-        lean.append({"melding": _onbekende_dekking(onbekend, geo_niveau)})
-    return json.dumps(lean, ensure_ascii=False, separators=(",", ":"))
+        meldingen.append({"melding": _onbekende_dekking(onbekend, geo_niveau)})
+    lean, weggelaten = _binnen_budget([_compacte_hit(h) for h in hits[:top_n]], meldingen, TOOL_RESULT_MAX_CHARS)
+    if weggelaten:
+        logger.info("search_catalog budget %s results=%d weggelaten=%d", kenmerk, len(hits), weggelaten)
+    return _json_compact(lean)
+
+
+def _json_compact(waarde) -> str:
+    return json.dumps(waarde, ensure_ascii=False, separators=(",", ":"))
+
+
+def _weglaatmelding(aantal: int, budget: int) -> dict:
+    return {
+        "melding": (
+            f"{aantal} treffer(s) weggelaten om binnen het toolbudget van {budget} tekens te blijven: de treffers "
+            "hierboven zijn de best scorende. Zoek met gerichtere trefwoorden of vraag minder resultaten (top_n)."
+        )
+    }
+
+
+def _binnen_budget(hits: list[dict], meldingen: list[dict], budget: int) -> tuple[list, int]:
+    """Hele treffers van achteren weglaten tot het resultaat binnen het toolbudget past (#358).
+
+    De loop (agent/loop.py) kapt een langer toolresultaat af op `budget` tekens: het model las dan een
+    halve JSON en de afkapmelding, en miste de laatste treffers zonder te weten welke. Nu zijn het hele
+    treffers minder, met een melding erbij; minstens één treffer blijft staan.
+    """
+    weggelaten = 0
+
+    def uit() -> list:
+        return [*hits, *meldingen, *([_weglaatmelding(weggelaten, budget)] if weggelaten else [])]
+
+    while len(hits) > 1 and len(_json_compact(uit())) > budget:
+        hits.pop()
+        weggelaten += 1
+    return uit(), weggelaten
 
 
 _DETAILS_EXTRA = frozenset(
     {
+        "documentatie",  # de bronpagina; sinds #358 niet meer in de zoekhit, wel hier
         "_resources",
         "populatie",
         "perioden",
