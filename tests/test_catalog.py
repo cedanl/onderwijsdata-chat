@@ -992,3 +992,140 @@ def test_echte_duo_hit_draagt_de_zoekkaart_van_riodata():
     hit = next(h for h in hits if h.get("_ckan_id") == "p01hoinges")
     assert hit["zoekkaart"]["teleenheid"] == "personen"
     assert hit["zoekkaart"]["peildatum"] == "1 oktober"
+
+
+# --- #358 stap 1: een zoekhit draagt alleen wat het model nodig heeft om te kiezen ---
+
+
+def _hit_van(entry: dict, query: str = "ingeschrevenen") -> dict:
+    with patch("tools.catalog._cbs", return_value=[entry]), patch("tools.catalog._rio_duo", return_value=[]):
+        (hit,) = json.loads(search_catalog(query, source="cbs"))
+    return hit
+
+
+def test_zoekhit_laat_verrijking_voor_de_site_weg():
+    """Voorbeeldvragen, tags, combineerbaar_met, doel en beschrijving wogen per RIO-hit 4.800 tekens; ze
+    staan in dataset_details, niet in de hit (#358)."""
+    entry = {
+        "_cbs_id": "1NED",
+        "bron": "Ingeschrevenen",
+        "beschrijving": "ingeschrevenen per jaar",
+        "doel": "doel",
+        "voorbeeldvragen": ["Hoeveel ingeschrevenen?"],
+        "tags": ["ingeschrevenen"],
+        "combineerbaar_met": ["x"],
+        "kolomtoelichting": {"A": "b"},
+        "waardenbereik": {"A": [1, 2]},
+        "categorie": "c",
+        "sectie": "s",
+        "frequentie": "jaarlijks",
+        "repositories": [],
+        "publieke_producten": [],
+        "_dimensies": ["Geslacht"],
+        "_kolommen": {"Geslacht": ["Totaal"]},
+    }
+    hit = _hit_van(entry)
+    assert set(hit) == {
+        "bron",
+        "status",
+        "_cbs_id",
+        "_dimensies",
+        "samenvatting",
+    }  # geen documentatie: die staat in dataset_details
+    assert hit["samenvatting"] == "ingeschrevenen per jaar"  # terugval op de beschrijving
+
+
+def test_zoekhit_samenvatting_is_kort_en_lege_velden_blijven_weg():
+    lang = "ingeschrevenen " * 30
+    entry = {
+        "_cbs_id": "1NED",
+        "bron": "Ingeschrevenen",
+        "samenvatting": lang,
+        "filters": [],
+        "sub_resources": [],
+        "_rio_resource": None,
+        "_meetwaarden": [],
+        "niet_geschikt_voor": None,
+        "_archief": False,
+    }
+    hit = _hit_van(entry)
+    assert len(hit["samenvatting"]) == 200 and hit["samenvatting"].endswith("…")
+    assert "filters" not in hit and "sub_resources" not in hit and "_rio_resource" not in hit
+    assert "_meetwaarden" not in hit and "niet_geschikt_voor" not in hit
+    assert hit["_archief"] is False  # een False is geen leeg veld
+
+
+def test_zoekhit_begrenst_lange_lijsten_met_een_teller():
+    entry = {
+        "_cbs_id": "1NED",
+        "bron": "Ingeschrevenen",
+        "_meetwaarden": [f"Maat_{i}" for i in range(20)],
+        "niet_geschikt_voor": ["a", "b", "c", "d", "e"],
+        "_dimensies": [f"D{i}" for i in range(20)],
+    }
+    hit = _hit_van(entry)
+    assert hit["_meetwaarden"][:12] == [f"Maat_{i}" for i in range(12)]
+    assert hit["_meetwaarden"][12] == "… en 8 meer (zie dataset_details)" and len(hit["_meetwaarden"]) == 13
+    assert hit["niet_geschikt_voor"] == ["a", "b", "c", "… en 2 meer (zie dataset_details)"]
+    assert len(hit["_dimensies"]) == 20  # dimensies zijn de keuzebasis: nooit afgekapt
+
+
+_AUDITTERMEN = (
+    "mbo studenten niveau leerweg",
+    "mbo opleidingen aanbod",
+    "hbo instellingen locaties",
+    "ingeschrevenen hbo",
+    "croho opleidingen hbo",
+    "eerstejaars hbo",
+    "mbo studenten gemeente",
+    "examenlicenties mbo",
+)
+
+
+@pytest.mark.parametrize("term", _AUDITTERMEN)
+def test_zoekresultaat_past_in_het_toolbudget(term):
+    """Audit 19-10 (#358): bij top_n=15 gingen 8 van 12 termen over de 12.000 tekens die het model ziet
+    (agent/run.py _MAX_TOOL_RESULT_CHARS); het las de afkapmelding en miste de rest. Op de echte catalogus."""
+    from tools import ho_markers
+
+    with ho_markers.beurtvraag(f"Hoeveel hbo-studenten zijn er? {term}"):
+        tekst = search_catalog(term, top_n=15)
+    assert len(tekst) <= 12000, f"{term}: {len(tekst)} tekens"
+
+
+def test_zoekresultaat_laat_hele_treffers_weg_binnen_het_budget(monkeypatch):
+    """#358: boven het toolbudget kapte de loop de JSON af; nu vallen hele treffers af, met een melding."""
+    from tools import catalog
+
+    entries = [
+        {
+            "_cbs_id": f"{10000 + i}NED",
+            "bron": f"Ingeschrevenen {i}",
+            "samenvatting": "x" * 150,
+            "_dimensies": ["Geslacht"],
+        }
+        for i in range(15)
+    ]
+    monkeypatch.setattr(catalog, "TOOL_RESULT_MAX_CHARS", 1500)
+    with patch("tools.catalog._cbs", return_value=entries), patch("tools.catalog._rio_duo", return_value=[]):
+        tekst = search_catalog("ingeschrevenen", source="cbs", top_n=15)
+    uit = json.loads(tekst)  # geldige JSON, geen afgekapte tekst
+    assert len(tekst) <= 1500
+    hits = [h for h in uit if "_cbs_id" in h]
+    (melding,) = [m for m in uit if "melding" in m]
+    assert 1 <= len(hits) < 15 and hits[0]["_cbs_id"] == "10000NED"  # van achteren weggelaten
+    assert f"{15 - len(hits)} treffer(s) weggelaten" in melding["melding"] and "1500 tekens" in melding["melding"]
+    # Ruim binnen het budget blijft alles staan en komt er geen melding.
+    monkeypatch.setattr(catalog, "TOOL_RESULT_MAX_CHARS", 100000)
+    with patch("tools.catalog._cbs", return_value=entries), patch("tools.catalog._rio_duo", return_value=[]):
+        uit = json.loads(search_catalog("ingeschrevenen", source="cbs", top_n=15))
+    assert len(uit) == 15 and not any("melding" in m for m in uit)
+
+
+def test_dataset_details_draagt_de_documentatielink():
+    """De bronpagina staat sinds #358 niet in de zoekhit maar in dataset_details (de prompt verwijst ernaar)."""
+    from tools.catalog import dataset_details
+
+    for dataset_id in ("p01hoinges", "85423NED", "aangeboden-opleidingen"):
+        details = json.loads(dataset_details(dataset_id))
+        assert details["documentatie"]["url"].startswith("https://"), dataset_id

@@ -15,6 +15,16 @@ de laatste tag is 1.8.6.
   `get_rio_data` zegt dat vóór de aanroep. De sectorfilters in `tools/scopeprofiel.py` worden getoetst tegen het
   riodata-contract, zodat een volgende hernoeming in de test opvalt en niet live.
 
+### Zoeken (#358, stap 1)
+- Een zoekhit van `search_catalog` is compact: ID, titel, status, leverancier, periode, onderwijstype, één samenvatting
+  van hoogstens 200 tekens, de CBS-dimensies en -meetwaarden (eerste twaalf), geo-niveau en perioden, de DUO-zoekkaart,
+  de RIO-filters en -sub-resources en `niet_geschikt_voor` (eerste drie); lege velden ontbreken. De documentatielink,
+  voorbeeldvragen, tags, `combineerbaar_met`, kolomtoelichting en waardenbereik staan alleen nog in `dataset_details`.
+  Past het resultaat ook zo niet binnen wat het model van een toolresultaat ziet (`TOOL_RESULT_MAX_CHARS`, 12.000), dan
+  laat de tool hele treffers van achteren weg en meldt hoeveel; het model leest zo altijd geldige JSON. Gemeten op twaalf
+  zoektermen uit de audit van 19-10: bij `top_n=15` ging acht keer het resultaat over die grens (tot 49.000 tekens), nu
+  geen enkele keer; de rangorde verandert niet (retrieval-baseline Δ 0,00).
+
 ### Scope
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `02voins-v1`)
   zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de

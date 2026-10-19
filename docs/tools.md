@@ -299,6 +299,16 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
+Een zoekhit is compact (#358): het dataset-ID, `bron` (de titel), `status`, `leverancier`, `periode`, `onderwijstype`, één
+`samenvatting` van hoogstens 200 tekens (anders de beschrijving of het doel), bij CBS `_dimensies`, `_meetwaarden` (de eerste
+twaalf), `_geo_niveau`, `_perioden_formaat` en `_periode_waarden`, bij DUO de `zoekkaart`, bij RIO `filters` en `sub_resources`,
+en `niet_geschikt_voor` (de eerste drie). Lege velden staan er niet in. De documentatielink, voorbeeldvragen, tags,
+`combineerbaar_met`, kolomtoelichting en waardenbereik staan in `dataset_details` (en op de catalogussite), niet in de hit:
+met alles erbij woog een RIO-hit 4.800 tekens en ging acht van twaalf zoektermen bij `top_n=15` over de grens van 12.000
+tekens die het model van een toolresultaat ziet (`TOOL_RESULT_MAX_CHARS`), zodat het de afkapmelding las en de rest van de
+treffers nooit zag. Past het resultaat ook zo niet, dan laat de tool hele treffers van achteren weg en zegt hoeveel, zodat
+het model geldige JSON leest.
+
 **Let op:** Deze tool is beperkt tot **5 aanroepen per vraag** om oneindige zoeklussen te voorkomen.
 
 Elke hit draagt een `status` (#356): `opvraagbaar` (een datatool laadt hem), `via_tool` (alleen met de genoemde eigen
