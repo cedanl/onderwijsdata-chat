@@ -84,3 +84,29 @@ def test_de_api_bewaart_bij_opslaan_en_vergeet_bij_verwijderen(client, db):
 
     assert db.recipes_for("gast", "c1") == {}
     assert recepten.voor("gast", "cbs:85423NED") is None
+
+
+def test_van_session_geeft_een_eigen_berekening_haar_script_uit_het_geheugen_van_de_sessie(db):
+    """De snippet van een stap op een berekening herhaalt die berekening (#624); de database bewaart geen script (#472)."""
+    recepten.wis()
+    recept = {"afgeleid_van": "cbs:85423NED", "stap": "eigen berekening (run_analysis)", "herlaadbaar": False}
+    recepten.onthoud("alice", "analysis:1", recept)
+    aanroep = {"name": "run_analysis", "arguments": {"code": "result = df", "data_key": "cbs:85423NED"}}
+    session = {"username": "alice", "data_provenance": {"analysis:1": aanroep}}
+
+    bron = recepten.van_session(session)
+
+    assert bron("analysis:1") == {**recept, "tool": "run_analysis", "args": {"code": "result = df"}}
+    assert recepten.van_session({"username": "alice"})("analysis:1") == recept  # een nieuwe sessie: geen script
+    assert recepten.van_session({"username": "bob", "data_provenance": {"analysis:1": aanroep}})("analysis:1") is None
+    assert recepten.voor("alice", "analysis:1") == recept  # het recept zelf blijft zonder script
+
+
+def test_van_session_laat_een_selectie_ongemoeid(db):
+    recepten.wis()
+    recepten.onthoud("alice", "cbs:85423NED:sel", _SELECTIE)
+    aanroep = {"name": "query_data", "arguments": {"data_key": "cbs:85423NED", "filters": {"a": 1}}}
+
+    session = {"username": "alice", "data_provenance": {"cbs:85423NED:sel": aanroep}}
+
+    assert recepten.van_session(session)("cbs:85423NED:sel") == _SELECTIE
