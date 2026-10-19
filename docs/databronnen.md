@@ -133,6 +133,29 @@ Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel 
 
 ---
 
+## Bronnen onder een antwoord
+
+Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.
+
+Elke regel is een link naar de bronpagina van die dataset (#621), die in een nieuw tabblad opent. Het is dezelfde link als onder een grafiek in een rapport: de documentatie-URL uit de catalogus. Op een telefoon is de hele regel aan te tikken.
+
+| Bron | Link naar |
+|------|-----------|
+| CBS | de tabel in CBS Open Data, bijv. `https://opendata.cbs.nl/ODataApi/OData/85423NED` |
+| DUO | de datasetpagina, bijv. `https://onderwijsdata.duo.nl/dataset/p01hoinges` |
+| RIO | het register in de RIO-API, ook bij een opzoeking per instelling (`erkenningen`) |
+| UWV | UWV Open Match op data.overheid.nl |
+| ROA | de dataset AIS 2030 (DOI) |
+
+Een regel heeft bewust geen link:
+
+- **De catalogus kent de dataset niet, of heeft er geen http(s)-adres voor.** De app gokt geen link; de regel blijft tekst. Alleen een `http://`- of `https://`-adres wordt een link, op de server en nog eens in de browser.
+- **Het antwoord is van vóór deze wijziging.** Een eerder bewaard gesprek toont zijn bronnen als tekst; de links worden niet achteraf toegevoegd.
+
+Kopiëren en de gespreksexport geven de bronnen als tekst, zoals voorheen.
+
+---
+
 ## Catalogus doorzoeken
 
 De assistent kan de catalogus van CBS, RIO, DUO, ROA en UWV doorzoeken met `search_catalog`; UWV- en ROA-treffers (AIS 2030) noemen de tool waarmee ze op te vragen zijn; oudere ROA-edities zijn gemarkeerd als niet via de chat op te vragen. Gebruik dit als je niet zeker weet welke dataset je nodig hebt:
