@@ -22,11 +22,11 @@ from tools.arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 
 _UWV = pd.DataFrame(
     {
-        "PEILDATUM": ["16-05-2023"] * 4,
-        "PROVINCIE": ["Utrecht", "Utrecht", "Utrecht", "Gelderland"],
-        "GEMEENTE": ["Utrecht", "Amersfoort", "Utrecht", "Arnhem"],
-        "BEROEPENCLUSTER": ["Zorg en welzijn", "ICT", "ICT", "ICT"],
-        "AANTAL": [900, 200, 100, 50],
+        "PEILDATUM": ["16-05-2023"] * 6,
+        "PROVINCIE": ["Utrecht", "Utrecht", "Utrecht", "Gelderland", "Friesland", "Onbekend"],
+        "GEMEENTE": ["Utrecht", "Amersfoort", "Utrecht", "Arnhem", "Leeuwarden", None],
+        "BEROEPENCLUSTER": ["Zorg en welzijn", "ICT", "ICT", "ICT", "ICT", "ICT"],
+        "AANTAL": [900, 200, 100, 50, 30, 5],
     }
 )
 
@@ -434,3 +434,11 @@ def test_uwv_en_roa_ais2030_zijn_binnen_het_scopeprofiel():
 
     assert scope_blokkade("uwv-open-match-data") is None
     assert scope_blokkade("ais2030") is None
+
+
+def test_fryslan_is_friesland_en_onbekend_is_geen_provincie(bronnen):
+    """#631: CBS spelt Fryslân, UWV Friesland; en 'Onbekend' (rijen zonder plaats) is geen keuze."""
+    uit = json.loads(get_uwv_vacatures("Fryslân"))
+    assert uit["provincie"] == "Friesland" and uit["totaal_vacatures"] == 30
+    fout = get_uwv_vacatures("Narnia")
+    assert "Friesland" in fout and "Onbekend" not in fout
