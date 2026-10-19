@@ -225,6 +225,19 @@ describe('copy button gutter in the answer (#623)', () => {
   })
 })
 
+describe('room below a status line with a text button (#625)', () => {
+  // "Ga verder" has a 44px box that reaches past its line; the feedback buttons follow right below it.
+  it('leaves the desktop status line as it was', () => {
+    expect(rules.some(r => !r.media && r.selectors.some(s => s.includes('.message-stopped:has(')))).toBe(false)
+  })
+
+  it('gives a status line with a continue button on touch screens the room its box reaches below the line', () => {
+    const room = touchRules.find(r => r.selectors.includes('.message-stopped:has(.message-continue)'))
+    expect(room).toBeDefined()
+    expect(room.body).toMatch(/margin-bottom:\s*calc\(\(var\(--tap-min\)\s*-\s*1lh\)\s*\/\s*2\)\s*;/)
+  })
+})
+
 describe('icons stay small', () => {
   it('keeps the history action icons at 13px', () => {
     const icon = rules.find(r => !r.media && r.selectors.includes('.history-action-icon svg'))
