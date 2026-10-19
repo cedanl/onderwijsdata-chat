@@ -34,6 +34,20 @@ afterEach(() => {
 const privacyButtons = () => [...container.querySelectorAll('button')].filter(b => b.textContent === 'Privacy-informatie')
 const privacyLinks = () => [...container.querySelectorAll('a[href="/privacy"]')]
 
+// One section of the rendered page: the elements between its h2 and the next h2.
+function sectionElements(kop) {
+  const h2 = [...container.querySelectorAll('h2')].find(h => h.textContent === kop)
+  const elements = []
+  for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) elements.push(el)
+  return elements
+}
+const sectionText = kop => sectionElements(kop).map(el => el.textContent).join(' ')
+
+// docs/privacy.md and one of its sections (from its '## ' heading up to the next one).
+const readDocs = () => readFileSync(join(__dirname, '..', '..', '..', 'docs', 'privacy.md'), 'utf8')
+const docsSection = kop => readDocs().split(/^## /m).find(deel => deel.startsWith(`${kop}\n`)) ?? ''
+const oneLine = text => text.replace(/\s+/g, ' ')
+
 describe('PrivacyPage', () => {
   it('names the page in the tab title and carries every section', async () => {
     await render(createElement(PrivacyPage))
@@ -43,17 +57,32 @@ describe('PrivacyPage', () => {
   })
 
   it('has the same sections as docs/privacy.md', () => {
-    const docs = readFileSync(join(__dirname, '..', '..', '..', 'docs', 'privacy.md'), 'utf8')
-    const kopjes = [...docs.matchAll(/^## (.+)$/gm)].map(m => m[1])
+    const kopjes = [...readDocs().matchAll(/^## (.+)$/gm)].map(m => m[1])
     expect(kopjes).toEqual(PRIVACY_KOPJES)
   })
 
   it('does not present the open points as settled facts', async () => {
     await render(createElement(PrivacyPage))
-    const open = [...container.querySelectorAll('h2')].at(-1).nextElementSibling.textContent
-    expect(open).toContain('Verwerkingsverantwoordelijke')
+    const open = sectionText('Open punten')
+    expect(open).toContain('Verwerkersovereenkomst')
     expect(open).toContain('Bewaartermijn')
     expect(container.textContent).not.toMatch(/geen persoonsgegevens worden verwerkt/i)
+  })
+
+  // #553 point 1, decided 19-10-2026: the controller is no longer an open point, in the app or the docs.
+  it('names the deelnemende instelling as verwerkingsverantwoordelijke, in the app and in docs/privacy.md', async () => {
+    await render(createElement(PrivacyPage))
+    const app = sectionText('Verantwoordelijke en contact')
+    const docs = oneLine(docsSection('Verantwoordelijke en contact'))
+    for (const tekst of [app, docs]) {
+      expect(tekst).toContain('deelnemende instelling')
+      expect(tekst).not.toMatch(/vóór de demofase eindigt/)
+    }
+    const appBullets = sectionElements('Open punten').flatMap(el => [...el.querySelectorAll('li')]).map(li => li.textContent)
+    const docsBullets = docsSection('Open punten').split(/^- /m).slice(1)
+    expect(appBullets).toHaveLength(3)
+    expect(docsBullets).toHaveLength(3)
+    for (const bullet of [...appBullets, ...docsBullets]) expect(bullet).not.toMatch(/verwerkingsverantwoordelijke/i)
   })
 })
 

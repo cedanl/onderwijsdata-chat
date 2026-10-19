@@ -425,6 +425,8 @@ de laatste tag is 1.8.6.
   de instellingen (die nu ook zeggen dat instelling en functie alleen in de browser staan en als context naar de
   AI-dienst gaan). Dezelfde tekst staat in `docs/privacy.md`. Verwerkingsverantwoordelijke, verwerkersovereenkomst,
   regio en bewaartermijn staan als open punten op de pagina, niet als feit.
+- `/privacy` en `docs/privacy.md` noemen de deelnemende instelling als verwerkingsverantwoordelijke (#553): een
+  privacyvraag gaat naar die instelling. Verwerkersovereenkomst, regio, bewaartermijn en DPIA blijven open punten.
 - Onder de opties van een verduidelijkingskaart staat "Anders formuleren": een klik zet je oorspronkelijke vraag
   terug in het invoerveld, om aan te passen en opnieuw te stellen. Er gaat niets vanzelf weg en de gekozen optie
   blijft staan; wie meteen een optie kiest, merkt er niets van (#494).

@@ -1,8 +1,9 @@
 // Privacy-informatie (#477): wat naar de AI-dienst gaat, wat de server en de browser bewaren en wat
 // je zelf kunt doen. De pagina /privacy (ook vóór het inloggen) en de popup (#572) tonen allebei
 // deze ene tekst. Dezelfde tekst staat in docs/privacy.md; privacyPage.test.js bewaakt dat de kopjes
-// gelijk blijven. Open punten (verantwoordelijke, verwerkersovereenkomst, regio, bewaartermijn) staan
-// onderaan als open punten, niet als feit: dit is de demofase.
+// gelijk blijven. Open punten (verwerkersovereenkomst, regio, bewaartermijn, DPIA) staan onderaan als
+// open punten, niet als feit: dit is de demofase. De verwerkingsverantwoordelijke is besloten (#553): de
+// deelnemende instelling.
 
 export const PRIVACY_KOPJES = [
   'Wat naar de AI-dienst gaat',
@@ -109,14 +110,18 @@ export default function PrivacyInhoud() {
 
       <h2>{PRIVACY_KOPJES[5]}</h2>
       <p>
-        openEDUdata+ is een project van CEDA (Npuls). Wie de verwerkingsverantwoordelijke is en bij wie je terecht
-        kunt met een privacyvraag, wordt vastgesteld vóór de demofase eindigt; tot die tijd kun je vragen stellen aan
-        het projectteam van CEDA.
+        openEDUdata+ is een project van CEDA (Npuls). De verwerkingsverantwoordelijke is de deelnemende instelling.
+        Met een privacyvraag kun je terecht bij die instelling: bij de privacycontactpersoon of de functionaris
+        gegevensbescherming (FG) van de instelling. Het projectteam van CEDA is er alleen voor vragen over de demo
+        zelf.
       </p>
 
       <h2>{PRIVACY_KOPJES[6]}</h2>
+      <p>
+        Te beantwoorden vóór de tekst definitief is. Over de verwerkingsverantwoordelijke is besloten (19-10-2026;
+        zie hierboven). Open blijven:
+      </p>
       <ul>
-        <li>Verwerkingsverantwoordelijke (Npuls, SURF of de instelling), contactpunt en functionaris gegevensbescherming.</li>
         <li>Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt bewaard of gebruikt voor training.</li>
         <li>Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen of exporteren.</li>
         <li>Of er een DPIA nodig is.</li>
