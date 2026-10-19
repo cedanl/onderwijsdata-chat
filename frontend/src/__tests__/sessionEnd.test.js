@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { endSession, onSessionEnded, fetchUserInfo, refreshAuthToken, checkSession } from '../auth'
-import { fetchWorkbooks, downloadDataCsv } from '../api'
+import { fetchWorkbooks, downloadDataCsv, fetchSettingsConfig } from '../api'
 import { useChat } from '../hooks/useChat'
 import useDashboardChat from '../hooks/useDashboardChat'
 import App from '../App'
@@ -189,6 +189,28 @@ describe('api 401', () => {
     await expect(fetchWorkbooks()).rejects.toThrow()
     expect(localStorage.getItem(STORAGE_TOKEN)).toBe('tok')
     expect(ended).not.toHaveBeenCalled()
+  })
+})
+
+// #607: with login on, /api/settings/config needs a token like the other /api routes.
+describe('fetchSettingsConfig', () => {
+  it('sends the stored token as a Bearer header', async () => {
+    logIn('tok')
+    const config = { models: [], default_model: 'm' }
+    const fetch = vi.fn(async () => response(200, config))
+    vi.stubGlobal('fetch', fetch)
+    expect(await fetchSettingsConfig()).toEqual(config)
+    expect(fetch).toHaveBeenCalledWith('/api/settings/config', {
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+    })
+  })
+
+  it('ends the session on 401', async () => {
+    logIn()
+    vi.stubGlobal('fetch', vi.fn(async () => response(401)))
+    await expect(fetchSettingsConfig()).rejects.toMatchObject({ status: 401 })
+    expect(loggedOut()).toBe(true)
+    expect(ended).toHaveBeenCalledTimes(1)
   })
 })
 

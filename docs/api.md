@@ -52,7 +52,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `GET` | `/api/settings/config` | Beschikbare modellen en standaardmodel voor de (optioneel ingelogde) gebruiker |
+| `GET` | `/api/settings/config` | Beschikbare modellen en standaardmodel voor de ingelogde gebruiker. Met authenticatie aan alleen met een geldig token in `Authorization: Bearer …`, anders 401; zonder authenticatie voor `gast` |
 | `GET` | `/api/instellingen` | Lijst van onderwijsinstellingen, optioneel gefilterd op `type` (query param, komma-gescheiden) |
 | `GET` | `/api/dashboard/instroom` | Dashboard-instroomgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/regio` | Dashboard-regiogegevens voor een instelling (`instelling` param) |

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
+import { figureToCsv, figureCsvProblem, figureCsvFilename, toCsv } from '../figureCsv'
 
 const lines = csv => csv.split('\n')
 
@@ -227,7 +227,44 @@ describe('figureToCsv formula injection', () => {
   it('keeps empty cells empty', () => {
     expect(lines(figureToCsv(rowsFigure([{ A: null, B: '', C: undefined }])))[1]).toBe(';;')
   })
+
+  // #607: OWASP also lists a leading tab or CR. A cell with a CR is quoted as well.
+  it.each([
+    ['\tcmd', "'\tcmd"],
+    ['\r=1+1', `"'\r=1+1"`],
+  ])('prefixes %j in a data cell, a column name and a series name', (text, written) => {
+    expect(lines(figureToCsv(rowsFigure([{ NAAM: text }])))).toEqual(['NAAM', written])
+    expect(lines(figureToCsv(rowsFigure([{ [text]: 1 }])))[0]).toBe(written)
+    const series = { data: [{ name: text, x: [2021], y: [10] }], layout: { meta: { x: 'JAAR', y: 'AANTAL' } } }
+    expect(lines(figureToCsv(series))[0]).toBe(`JAAR;${written}`)
+  })
+
+  it('keeps a cell that starts with a CR on its own row, as a csv reader sees it', () => {
+    const csv = toCsv([['A', 'B'], ['\r=1+1', 'y'], ['x', '\rcmd']])
+    expect(readCsv(csv)).toEqual([['A', 'B'], ["'\r=1+1", 'y'], ['x', "'\rcmd"]])
+  })
 })
+
+// RFC 4180 with ';', read the way Excel and Python's csv.reader do: outside
+// quotes a CR or a newline ends the row, inside quotes it is text.
+function readCsv(text) {
+  const rows = [[]]
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (quoted && c === '"' && text[i + 1] === '"') { field += '"'; i++ }
+    else if (c === '"') quoted = !quoted
+    else if (quoted || (c !== ';' && c !== '\n' && c !== '\r')) field += c
+    else {
+      rows.at(-1).push(field)
+      field = ''
+      if (c !== ';') rows.push([])
+    }
+  }
+  rows.at(-1).push(field)
+  return rows
+}
 
 describe('figureCsvFilename (#496 F11)', () => {
   it('gebruikt de titel van de grafiek, veilig voor bestandsnamen', () => {

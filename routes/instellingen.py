@@ -2,7 +2,7 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Query
 
-from core.auth import get_optional_user
+from core.auth import get_current_user
 from core.config import MODEL, get_available_models_for_user
 from data.dashboard import (
     load_dashboard as load_dashboard_data,
@@ -55,8 +55,10 @@ def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
 # ─── Settings ────────────────────────────────────────────────────────────────
 
 
+# Met login aan alleen voor een ingelogde gebruiker, zoals de andere /api-routes: de modellijst helpt anders bij
+# fingerprinting (#607). De loginpagina vraagt haar niet op; ChatPage en DashboardCreator pas na het inloggen.
 @router.get("/api/settings/config")
-async def get_settings_config(username: str | None = Depends(get_optional_user)) -> dict:
+async def get_settings_config(username: str = Depends(get_current_user)) -> dict:
     available = get_available_models_for_user(username)
     return {
         "models": [
