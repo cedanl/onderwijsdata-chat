@@ -11,7 +11,7 @@ dependencies = [
     "plotly>=5.0",
     "python-dotenv>=1.0",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git@v0.2.0",
-    "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git@f93defe7763576ef32aa7860e14037791ca77319",
+    "riodata[analyse] @ git+https://github.com/cedanl/rio-onderwijsdata.git@ef7f92fa98432ee07e8417066cd8d78d002005de",
     "markdown>=3.10.2",
     "openpyxl>=3.1.5",
     "authlib>=1.3",
