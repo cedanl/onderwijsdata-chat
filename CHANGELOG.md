@@ -106,6 +106,11 @@ de laatste tag is 1.8.6.
   Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding
   "Kaart aangemaakt (12 provincies)". Het niveau volgt uit wat past, locaties die niet op de kaart staan worden
   genoemd, en past er niets (of past het gekozen niveau niet) dan is het een fout in plaats van een lege kaart (#628).
+- `run_analysis` geeft bij een fout een korte, leesbare melding: de regel in het script en de laatste regel van de
+  fout, zonder paden van de server. Een deling door nul met numpy-getallen (zoals `df['a'].sum() / df['b'].sum()`)
+  eindigde in `KeyError: '__import__'`; dat is nu een `FloatingPointError` met de uitleg dat de noemer 0 is. Een
+  uitkomst als `result = df` geeft het model hoogstens zoveel rijen als `query_data` (met `totaal_rijen` en de
+  verwijzing naar de `data_key`, waar de volledige tabel staat), en een uitkomst boven 8 MB wordt geweigerd (#629).
 - Blijft na de herkansing alleen een getal over dat niet in de opgehaalde data staat (meestal eigen rekenwerk in
   een lang antwoord), dan houdt de app niet meer het hele antwoord in: code haalt de zinnen en tabelrijen met dat
   getal weg, toetst de rest opnieuw en zegt eronder dat er iets is weggelaten. Valt er meer weg dan blijft, of

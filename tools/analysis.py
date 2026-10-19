@@ -17,9 +17,14 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 
+from core.config import DUO_ROW_LIMIT
+
 from . import afhankelijkheid, cbs_afronding, dekking, fouten, plot, sandbox, scriptcontrole, store
 
 logger = logging.getLogger(__name__)
+
+# Zoveel waarden (rijen × kolommen) zet query_data hoogstens in één antwoord; run_analysis houdt dezelfde grens aan.
+_MAX_WAARDEN = 2000
 
 SCRIPTCONSTANTEN = afhankelijkheid.SCRIPTCONSTANTEN
 
@@ -126,13 +131,32 @@ def _bewaar(run: _Run, controle: afhankelijkheid.Toets | None) -> str | None:
     return result_key
 
 
+def _rijen(rijen: list, result_key: str, complete: bool) -> dict:
+    """De rijen voor het model, begrensd zoals bij query_data; de volledige tabel staat onder `result_key` (#629).
+
+    Een uitkomst als `result = df` kan duizenden rijen hebben. Die gaan niet allemaal de tekst in: het model
+    ziet er een deel van en leest de rest met query_data, en de antwoordcontroles lopen niet over megabytes.
+    """
+    n_kolommen = len(rijen[0]) if isinstance(rijen[0], dict) else 1
+    maximum = max(30, min(DUO_ROW_LIMIT, _MAX_WAARDEN // max(n_kolommen, 1)))
+    uit: dict = {"data_key": result_key, "rijen": rijen[:maximum]}
+    waarschuwingen = [] if complete else [store.ONVOLLEDIG]
+    if len(rijen) > maximum:
+        uit.update(store.rijtelling(len(rijen), complete))
+        waarschuwingen.append(
+            f"Eerste {maximum} van {len(rijen)} rijen teruggegeven ({n_kolommen} kolommen × {maximum} rijen). "
+            f"De volledige tabel staat onder data_key: lees verder met query_data."
+        )
+    if waarschuwingen:
+        uit["waarschuwing"] = " ".join(waarschuwingen)
+    return uit
+
+
 def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | None) -> str:
     """Het toolresultaat voor het model: de uitkomst, waar hij op rust en wat er niet als bewijs telt."""
     text_obj = run.result if run.result is not None else {}
     if result_key:
-        text_obj = {"data_key": result_key, "rijen": run.result}
-        if not run.complete:
-            text_obj["waarschuwing"] = store.ONVOLLEDIG
+        text_obj = _rijen(run.result, result_key, run.complete)
     if not run.bronnen:
         # Een uitkomst die geen data las is geen bewijs: de getalcontrole telt haar niet mee (#201).
         text_obj = {"bron": None, "resultaat": text_obj}
