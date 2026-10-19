@@ -242,7 +242,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "filters": {
                         "type": "object",
-                        "description": 'Filter parameters, bijv. {"organisatorischeEenheidcode": "25LH"}',
+                        "description": (
+                            'Filter parameters, bijv. {"type": "AANGEBODENMBOOPLEIDING"}. organisatorischeEenheidcode '
+                            "is de RIO-code van een aanbieder (zoals 114A897), niet de BRIN-code."
+                        ),
                     },
                 },
                 "required": ["resource"],

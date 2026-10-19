@@ -26,27 +26,30 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## RIO — Register Instellingen en Opleidingen
 
-**9 resources** uit het officiële register van erkende Nederlandse onderwijsinstellingen en hun aangeboden opleidingen. Registers over alle sectoren haalt de chat alleen op met een filter op mbo/hbo/wo; bestuur, instellingen en vestigingen van één instelling lopen via een vaste route.
+**8 resources** uit het officiële register van erkende Nederlandse onderwijsinstellingen en hun aangeboden opleidingen. Registers over alle sectoren haalt de chat alleen op met een filter op mbo/hbo/wo; bestuur, instellingen en vestigingen van één instelling lopen via een vaste route.
 
 | Eigenschap | Details |
 |------------|---------|
-| Toegang | RIO LOD (Linked Open Data) API |
+| Toegang | RIO LOD (Linked Open Data) API v3 (`https://lod.onderwijsregistratie.nl/api/rio/v3`; v2 is op 19-10-2026 verwijderd) |
 | Catalogus | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
 | Inhoud | Instellingen, locaties, opleidingen, besturen |
 
-**Beschikbare resources:**
+**Beschikbare resources** (de namen van de RIO-API):
 
-| Resource | Beschrijving |
-|----------|-------------|
-| `onderwijslocaties` | Alle fysieke locaties van onderwijsinstellingen |
-| `aangeboden-opleidingen` | Erkende opleidingen per instelling |
-| `onderwijsaanbieders` | Rechtspersonen die onderwijs aanbieden |
-| `onderwijserkenningen` | Formele erkenningen |
-| `besturen` | Schoolbesturen en hun instellingen |
+| Resource | Beschrijving | In de chat |
+|----------|-------------|------------|
+| `aangeboden-opleidingen` | Opleidingsaanbod per instelling en locatie | met `type` op een mbo/ho-waarde |
+| `opleidingen`, `opleidingsfasen`, `opleidingsgroepen`, `opleidingsonderdelen` | De opleidingsstructuur | met `type` op een mbo/ho-waarde |
+| `opleidingserkenningen`, `onderwijslicenties` | Erkenningen en licenties per opleiding | met `type` op een mbo/ho-waarde |
+| `examenlicenties` | Examenlicenties (alleen mbo) | ja |
+| `erkenningen` | Besturen, instellingen en vestigingen met hun erkenning | alleen via `get_rio_instelling` |
+| `organisatorische-eenheden`, `onderwijslocaties` | Aanbieders en fysieke locaties | niet per sector te selecteren: niet |
+
+Sinds v3 heet het typefilter op elk register `type` (v2: `erkenningtype`, `opleidingseenheidtype`, …), en bestaan `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` alleen nog als sub-resource van een ander record, niet als lijst. De chat laadt ze daarom niet; de catalogus noemt ze wel.
 
 **Voorbeeldvragen:**
-- *"Welke hbo-instellingen zijn er in Rotterdam?"*
-- *"Hoeveel onderwijslocaties heeft de Radboud Universiteit?"*
+- *"Welke hbo-opleidingen biedt de Hogeschool Rotterdam aan?"*
+- *"Hoeveel vestigingen heeft ROC Mondriaan?"*
 
 ---
 

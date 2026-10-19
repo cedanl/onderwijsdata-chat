@@ -6,6 +6,15 @@ de laatste tag is 1.8.6.
 
 ## Niet uitgebracht
 
+### Bronnen
+- RIO heeft op 19-10-2026 API v2 verwijderd (HTTP 410 op elke aanroep): `get_rio_instelling` en `get_rio_data`
+  werkten niet meer, op test en playground. De chat draait nu op RIO LOD API v3 via riodata 0.6.0 (#627): het
+  typefilter heet op elk register `type` (v2: `erkenningtype`, `opleidingseenheidtype`, `opleidingserkenningtype`),
+  de route per instelling leest de relaties via `vanErkenningId`/`naarErkenningId`, en de bronlinks wijzen naar v3.
+  `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` hebben in v3 geen lijst-endpoint;
+  `get_rio_data` zegt dat vóór de aanroep. De sectorfilters in `tools/scopeprofiel.py` worden getoetst tegen het
+  riodata-contract, zodat een volgende hernoeming in de test opvalt en niet live.
+
 ### Scope
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `02voins-v1`)
   zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de

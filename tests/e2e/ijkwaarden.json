@@ -1,6 +1,6 @@
 {
   "_doc": "Vastgelegde ijkwaarden voor de bronwaarheid-evals (#190), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; niet met de hand bewerken. evaluations.json verwijst per referentiewaarde naar een id hier (data_points.ijkwaarden). `python scripts/ijkwaarden.py` toont elk verschil met de bron; `--schrijf` legt de nieuwe stand vast.",
-  "opgehaald_op": "2026-10-13",
+  "opgehaald_op": "2026-10-19",
   "waarden": {
     "cbs-hbo-totaal-2024": {
       "bron": "cbs",
@@ -375,7 +375,7 @@
       "selectie": {
         "resource": "erkenningen",
         "volledigeNaam": "Aeres Hogeschool",
-        "erkenningtype": "ERKENDE_ONDERWIJSINSTELLING"
+        "type": "ERKENDE_ONDERWIJSINSTELLING"
       },
       "schooljaar": null,
       "waarde": {
@@ -388,7 +388,7 @@
           "30TX04": "Nijmegen"
         }
       },
-      "url": "https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen/30TX"
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen/30TX"
     }
   }
 }

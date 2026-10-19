@@ -11,6 +11,7 @@ from functools import cache
 
 from onderwijsdata import catalog as _cbs_catalog
 from riodata import catalog as _rio_catalog
+from riodata.client import zonder_lijstendpoint
 
 from core.logging_util import tekst_kenmerk
 
@@ -70,6 +71,16 @@ _NIET_OPVRAAGBAAR = {
         "datatool voor. Noem de dataset, geef er geen cijfers voor, en zeg niet dat de bron niet bestaat."
     ),
 }
+# RIO LOD API v3 (#627): een register dat alleen als sub-resource van een ander record bestaat
+# (cohorten, contactadressen, onderwijslocatiegebruiken) heeft geen lijst om uit te laden.
+_ALLEEN_SUBRESOURCE = {
+    "opvraagbaar": False,
+    "melding": (
+        "Dit RIO-register heeft in de RIO-API geen lijst-endpoint: het bestaat alleen als onderdeel van een "
+        "ander record (bijvoorbeeld de cohorten van één aangeboden opleiding). De chat haalt het niet op. "
+        "Noem de dataset, geef er geen cijfers voor, en zeg niet dat de bron niet bestaat."
+    ),
+}
 
 
 # Formaten die riodata.duo.load als tabel leest. Een DUO-changelog is alleen een PDF (#408).
@@ -104,6 +115,8 @@ def status(entry: dict) -> str:
         return STATUS_VIA_TOOL
     if not _via_chat(entry):
         return STATUS_ALLEEN_CATALOGUS
+    if (resource := entry.get("_rio_resource")) and zonder_lijstendpoint(resource):
+        return STATUS_ALLEEN_CATALOGUS
     if entry.get("_resources") and not _tabelbestanden(entry):
         return STATUS_ALLEEN_DOCUMENTATIE
     return STATUS_OPVRAAGBAAR
@@ -121,7 +134,11 @@ def _niet_opvraagbaar(entry: dict) -> dict | None:
             "via_tool": tool,
             "melding": f"Op te vragen met {tool}; get_*_data, query_data en run_analysis werken hier niet op.",
         }
-    return {"status": soort, **(_ALLEEN_DOCUMENTATIE if soort == STATUS_ALLEEN_DOCUMENTATIE else _NIET_OPVRAAGBAAR)}
+    if soort == STATUS_ALLEEN_DOCUMENTATIE:
+        return {"status": soort, **_ALLEEN_DOCUMENTATIE}
+    if (resource := entry.get("_rio_resource")) and zonder_lijstendpoint(resource):
+        return {"status": soort, **_ALLEEN_SUBRESOURCE}
+    return {"status": soort, **_NIET_OPVRAAGBAAR}
 
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
@@ -340,9 +357,10 @@ def catalogus_digest() -> str:
 def dataset_counts() -> dict[str, int]:
     """Datasets per bron die de chat kan opvragen; bron voor startpagina, databronnenvenster en README.
 
-    CBS telt ook gearchiveerde tabellen mee: search_catalog valt daarop terug.
+    CBS telt ook gearchiveerde tabellen mee: search_catalog valt daarop terug. Een record binnen het
+    profiel dat de chat toch niet kan laden (een RIO-register zonder lijst-endpoint, #627) telt niet mee.
     """
-    rio_duo = _rio_duo()
+    rio_duo = [e for e in _rio_duo() if _niet_opvraagbaar(e) is None]
     return {
         "CBS": len(_cbs()),
         "DUO": sum(1 for e in rio_duo if e.get("leverancier") == "DUO"),
