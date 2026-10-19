@@ -100,7 +100,9 @@ def test_get_one_conversation_with_messages(client):
 
 
 def test_get_unknown_conversation_returns_404(client):
-    assert client.get("/api/conversations/bestaat-niet").status_code == 404
+    resp = client.get("/api/conversations/bestaat-niet")
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "Gesprek niet gevonden"}
 
 
 def test_get_conversation_of_another_user_returns_404(authed_client):
@@ -147,6 +149,7 @@ def test_patch_conversation_rejects_empty_title(client, body):
 def test_patch_unknown_conversation_returns_404(client):
     resp = client.patch("/api/conversations/bestaat-niet", json={"title": "X"})
     assert resp.status_code == 404
+    assert resp.json() == {"detail": "Gesprek niet gevonden"}
 
 
 # ── Persoonsgegevens in de gesprekstitel (#552, F5) ──────────────────────────

@@ -239,6 +239,58 @@ def test_refresh_van_een_oud_token_geeft_het_nieuwe_formaat(oidc_client, monkeyp
     assert (user, int(start), int(exp)) == ("alice", t0, t0 + UUR + auth.SESSION_TTL)
 
 
+# ── #607: refresh antwoordt in het Nederlands ────────────────────────────────
+
+
+@pytest.mark.parametrize("body", [{}, {"token": "  "}], ids=["zonder-token", "lege-token"])
+def test_refresh_zonder_token_zegt_dat_het_ontbreekt(oidc_client, body):
+    resp = oidc_client.post("/api/auth/refresh", json=body)
+
+    assert resp.status_code == 400
+    assert resp.json() == {"detail": "Token ontbreekt"}
+
+
+def _ongeldig_token(client, monkeypatch) -> str:
+    return "abc.def"
+
+
+def _verlopen_token(client, monkeypatch) -> str:
+    from core import auth
+
+    klok = _zet_klok(monkeypatch, 1_800_000_000)
+    token = _token()
+    klok.t += auth.SESSION_TTL + 1
+    return token
+
+
+def _ingetrokken_token(client, monkeypatch) -> str:
+    token = _token()
+    assert client.post("/api/auth/logout", headers=_bearer(token)).status_code == 204
+    return token
+
+
+def _token_voorbij_sessie_max(client, monkeypatch) -> str:
+    from core import auth
+
+    start = 1_800_000_000
+    klok = _zet_klok(monkeypatch, start)
+    token = auth.make_token("alice", start=start - auth.SESSION_MAX + UUR)
+    klok.t = start + UUR
+    return token
+
+
+@pytest.mark.parametrize(
+    "geef_token",
+    [_ongeldig_token, _verlopen_token, _ingetrokken_token, _token_voorbij_sessie_max],
+    ids=["ongeldig", "verlopen", "ingetrokken", "voorbij-sessie-max"],
+)
+def test_refresh_met_een_ongeldig_token_zegt_dat_het_niet_meer_geldt(oidc_client, monkeypatch, geef_token):
+    resp = oidc_client.post("/api/auth/refresh", json={"token": geef_token(oidc_client, monkeypatch)})
+
+    assert resp.status_code == 401
+    assert resp.json() == {"detail": "Ongeldig of verlopen token"}
+
+
 # ── Criterium 4: logout is idempotent en werkt zonder login ──────────────────
 
 

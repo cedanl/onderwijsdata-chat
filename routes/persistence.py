@@ -46,7 +46,7 @@ def get_conversation(conv_id: str, username: str = Depends(get_current_user)) ->
     """One own conversation with its messages, for opening it from the list (#509)."""
     conversation = persistence_db.get_conversation(username, conv_id)
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise HTTPException(status_code=404, detail="Gesprek niet gevonden")
     return conversation
 
 
@@ -72,7 +72,7 @@ def rename_conversation(
     username: str = Depends(get_current_user),
 ) -> dict:
     if not persistence_db.rename_conversation(username, conv_id, veilige_gesprekstitel(body.title)):
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise HTTPException(status_code=404, detail="Gesprek niet gevonden")
     return {"ok": True}
 
 

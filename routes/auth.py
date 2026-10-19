@@ -153,12 +153,12 @@ if is_oidc_configured():
         """
         old_token = body.get("token", "").strip()
         if not old_token:
-            raise HTTPException(status_code=400, detail="Token erforderlich")
+            raise HTTPException(status_code=400, detail="Token ontbreekt")
 
         username = verify_token(old_token)
         start = session_start(old_token)
         if not username or start is None or time.time() >= start + SESSION_MAX:
-            raise HTTPException(status_code=401, detail="Ungültiger oder abgelaufener Token")
+            raise HTTPException(status_code=401, detail="Ongeldig of verlopen token")
 
         new_token = make_token(username, start)
         user_info = {"username": username, "name": username}
