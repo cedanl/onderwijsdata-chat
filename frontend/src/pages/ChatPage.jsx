@@ -132,7 +132,7 @@ function StapCode({ code }) {
         wrapLongLines
         // The theme sets white-space: pre on the code element, which beats wrapLongLines.
         codeTagProps={{ style: { ...thema['code[class*="language-"]'], whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } }}
-        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: '0.7rem', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
+        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: 'var(--font-code)', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
       >
         {code}
       </SyntaxHighlighter>
@@ -217,7 +217,7 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
                     <SyntaxHighlighter
                       language="python"
                       style={codeTheme()}
-                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: '0.7rem' }}
+                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
                     >
                       {t.snippet}
                     </SyntaxHighlighter>
@@ -1163,9 +1163,9 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const isMap = isMapFigure(figure)
   return (
     <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
-      {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
       {csvProblem && (
-        <div role="alert" style={{ fontSize: '.75rem', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
+        <div role="alert" style={{ fontSize: 'var(--font-klein)', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
           Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
         </div>
       )}

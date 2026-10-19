@@ -104,19 +104,19 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <label htmlFor="settings-instelling" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <label htmlFor="settings-instelling" style={{ fontSize: 'var(--font-label)', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
             <InstellingPicker inputId="settings-instelling" value={instelling} onChange={setInstelling} />
             {sramInstelling && (
-              <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginTop: 6 }}>
+              <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginTop: 6 }}>
                 {sramInstelling} gevonden via je SRAM-account{sramName ? ` (${sramName})` : ''} — je kunt dit hieronder aanpassen.
               </div>
             )}
           </div>
 
           <div>
-            <div id="settings-functie-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div id="settings-functie-label" style={{ fontSize: 'var(--font-label)', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Functie
             </div>
             <div role="group" aria-labelledby="settings-functie-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -140,7 +140,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
           </div>
 
           <div>
-            <div id="settings-weergave-label" style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
+            <div id="settings-weergave-label" style={{ fontSize: 'var(--font-label)', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Weergave
             </div>
             <div role="group" aria-labelledby="settings-weergave-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>

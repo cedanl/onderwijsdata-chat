@@ -11,7 +11,7 @@ const STANDAARD_HOOGTE = 340
 
 const PLAATSHOUDER_STIJL = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontSize: '.75rem', color: 'var(--muted-text)',
+  fontSize: 'var(--font-klein)', color: 'var(--muted-text)',
 }
 
 function plaatshouderStijl(style) {
