@@ -163,7 +163,7 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 
 | Criterium | Punten | Wat het meet |
 |-----------|--------|-------------|
-| Search efficiency | 20 | `search_catalog` binnen limiet (≤5x) |
+| Search efficiency | 20 | `search_catalog` binnen limiet (≤3x, `SEARCH_CATALOG_LIMIT`) |
 | Juiste tools | 20 | Verwachte tools aangeroepen |
 | Dataset match | 20 | Verwacht dataset-ID gevonden |
 | Inhoudelijke kwaliteit | 20 | Verplichte termen aanwezig |

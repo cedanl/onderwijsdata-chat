@@ -16,7 +16,7 @@ De assistent volgt een **agentic loop**:
 
 **Beperkingen per turn:**
 - Maximaal 25 iteraties (stap 2-4, configureerbaar via `MAX_TOOL_ITERATIONS`)
-- `search_catalog` max 5x per vraag
+- `search_catalog` max 3x per vraag (`SEARCH_CATALOG_LIMIT` in `core/config.py`; de prompt noemt hetzelfde getal)
 - Tool-resultaten begrensd op 12.000 karakters
 
 **Caching:** Als dezelfde tool met identieke parameters tweemaal wordt aangeroepen, geeft het systeem het eerder gecachde resultaat terug (geen dubbele query).
@@ -32,7 +32,7 @@ flowchart TD
     FinalAnswer --> End["😊 Jij krijgt antwoord + snippet"]
     
     Decision1 -->|Ja| Iterate["Iteratie 1-25"]
-    Iterate --> CheckLimit["⚙️ Check tool limits<br/>search_catalog ≤5x"]
+    Iterate --> CheckLimit["⚙️ Check tool limits<br/>search_catalog ≤3x"]
     CheckLimit --> CheckCache["💾 Cache check:<br/>Call al uit voerd?"]
     
     CheckCache -->|Cache hit| ReturnCached["📦 Gebruik cached result"]
@@ -299,7 +299,7 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
-**Let op:** Deze tool is beperkt tot **5 aanroepen per vraag** om oneindige zoeklussen te voorkomen.
+**Let op:** Deze tool is beperkt tot **3 aanroepen per vraag** (`SEARCH_CATALOG_LIMIT`) om oneindige zoeklussen te voorkomen; de systeemprompt noemt hetzelfde getal.
 
 Elke hit draagt een `status` (#356): `opvraagbaar` (een datatool laadt hem), `via_tool` (alleen met de genoemde eigen
 tool, zoals `get_uwv_vacatures`), `alleen_documentatie` (de bron heeft alleen een PDF of changelog) of
