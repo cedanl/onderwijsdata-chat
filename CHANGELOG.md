@@ -638,6 +638,13 @@ de laatste tag is 1.8.6.
   WARNING-regels van de scopegrens ("niet in de catalogus") en van `dataset_details` ("dataset_details miss")
   alleen als lengte en hash (`id_len=… id_hash=…`), niet letterlijk; een regeleinde in zo'n ID splitst de regel
   niet meer. Een bekend ID blijft letterlijk; de tekst richting het model is ongewijzigd.
+- Restpunten van de robuustheidsronde van 16 oktober (#607). `GET /api/settings/config` (de modellijst) vraagt met
+  inloggen aan een geldig token, zoals de andere `/api`-routes, en geeft anders 401; zonder inloggen blijft het
+  voor `gast`. De loginpagina vraagt de lijst niet op. `POST /api/auth/refresh` antwoordt in het Nederlands ("Token
+  ontbreekt", "Ongeldig of verlopen token" in plaats van Duitse meldingen), en een onbekend gesprek geeft "Gesprek
+  niet gevonden". De CSV-export van een tabel en van een grafiek zet ook een `'` voor een cel, kolomnaam of
+  reeksnaam die met een tab of een CR begint (OWASP, CSV-injectie), naast `= + - @` (#483); een cel met een CR
+  staat tussen quotes, zodat ze geen rij splitst.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.
