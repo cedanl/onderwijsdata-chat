@@ -404,6 +404,8 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De zoekknop in de balk houdt "Zoeken" en de sneltoets (Ctrl K) op één regel; op een smal venster (rond 1025 px)
+  brak de sneltoets over twee regels (#602).
 - Het zoekpalet (Ctrl/⌘K, #602) is rustiger vormgegeven: een lichte schaduw in plaats van het blauwe vlak van de
   dialogen, een zoekicoon voor het veld, een duidelijke markering van de gekozen treffer en op een computer de
   toetsen (Esc, ↑↓, ↵) onderaan. Op een telefoon zoomt Safari niet meer in zodra het zoekveld opent: het veld is 16 px
