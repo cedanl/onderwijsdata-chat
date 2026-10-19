@@ -18,7 +18,7 @@ _ADRES_CACHE: dict[str, dict] | None = None
 # waarvandaan (#316). Pas de datum aan bij elke wijziging aan een lijst;
 # tests/test_referentielijsten.py bewaakt dit en de botsingen tussen de lijsten.
 REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
-    "ALIASSEN": {"bijgewerkt": "2026-09-26", "bron": "handmatig: gangbare afkortingen per instelling"},
+    "ALIASSEN": {"bijgewerkt": "2026-10-19", "bron": "handmatig: gangbare afkortingen per instelling"},
     "SRAM_ORGS": {
         "bijgewerkt": "2026-09-08",
         "bron": "SURF, Institutions using SRAM (servicedesk.surf.nl/wiki/spaces/IAM/pages/74226143)",
@@ -28,7 +28,7 @@ REFERENTIELIJSTEN: dict[str, dict[str, str]] = {
 
 ALIASSEN: dict[str, list[str]] = {
     # WO
-    "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit"],
+    "Vrije Universiteit Amsterdam": ["VU", "Vrije Universiteit", "VU Amsterdam"],
     "Universiteit van Amsterdam": ["UvA"],
     "Erasmus Universiteit Rotterdam": ["EUR", "Erasmus"],
     "Rijksuniversiteit Groningen": ["RUG"],
@@ -59,6 +59,9 @@ ALIASSEN: dict[str, list[str]] = {
     "Hogeschool Leiden": ["HL"],
     "Breda University of Applied Sciences": ["BUas", "NHTV"],
     "HZ University of Applied Sciences": ["HZ"],
+    "Codarts, Hogeschool voor de Kunsten": ["Codarts"],
+    "Amsterdamse Hogeschool voor de Kunsten": ["AHK"],
+    "Hogeschool voor de Kunsten Utrecht": ["HKU"],
     # MBO
     "ROC van Amsterdam": ["ROCvA"],
     "ROC Midden Nederland": ["ROC MN"],
@@ -70,6 +73,7 @@ ALIASSEN: dict[str, list[str]] = {
     "Summa College": ["Summa"],
     "Grafisch Lyceum R'dam": ["GLR"],
     "Zadkine": ["Zadkine Rotterdam"],
+    "ROC Graafschap College": ["Graafschap College", "Graafschap"],
 }
 
 
@@ -306,8 +310,25 @@ def _get_alias_lookup() -> dict[str, str]:
     return _alias_lookup
 
 
+# "de VU", "het Deltion": een lidwoord vóór de naam of alias hoort niet bij de sleutel; een naam die zelf
+# met een lidwoord begint ("De Haagse Hogeschool") blijft eerst als geheel geprobeerd (#631).
+_LIDWOORDEN = ("de ", "het ")
+
+
+def _canoniek(naam: str) -> str | None:
+    """De registernaam bij een naam of alias (hoofdletterongevoelig, lidwoord ervoor mag); None als onbekend."""
+    lookup = _get_alias_lookup()
+    sleutel = " ".join(naam.split()).lower()
+    if sleutel in lookup:
+        return lookup[sleutel]
+    for lidwoord in _LIDWOORDEN:
+        if sleutel.startswith(lidwoord) and sleutel[len(lidwoord) :] in lookup:
+            return lookup[sleutel[len(lidwoord) :]]
+    return None
+
+
 def resolve_alias(naam: str) -> str:
-    return _get_alias_lookup().get(naam.lower(), naam)
+    return _canoniek(naam) or naam
 
 
 def instellingsprofiel(naam: str) -> dict | None:
@@ -322,7 +343,7 @@ def instellingsprofiel(naam: str) -> dict | None:
     de arbeidsmarktregio volgt uit de gemeente, in de namen van UWV en ROA (#454).
     Zonder adres blijven provincie en arbeidsmarktregio None.
     """
-    canoniek = _get_alias_lookup().get(naam.strip().lower())
+    canoniek = _canoniek(naam)
     inst = next((i for i in get_all() if i["naam"] == canoniek), None)
     if inst is None:
         return None
