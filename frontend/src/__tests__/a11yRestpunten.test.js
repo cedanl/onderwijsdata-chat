@@ -63,3 +63,43 @@ describe('citaatgetal op touch (#598)', () => {
     expect(touchBlok).not.toMatch(/\.citatie-getal\s*{[^}]*(padding|min-height|line-height)/s)
   })
 })
+
+// #611: the hit area of a later figure (its ::before) covered the lower half of the figure above it in a list or
+// table. The figure's own box (::after) now lies above every hit area, and below the open explanation and the copy
+// button. jsdom does no hit testing; tests/e2e/mobiel-tikvlakken.spec.js measures it in the browser.
+describe('citaatgetal tussen gestapelde getallen (#611)', () => {
+  const zonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const escape = tekst => tekst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regels = kiezer => [...zonderCommentaar.matchAll(new RegExp(`(?:^|[},])\\s*${escape(kiezer)}\\s*{([^}]*)}`, 'gm'))]
+    .map(m => m[1])
+  const zIndex = body => body.match(/z-index:\s*(-?\d+|auto)/)?.[1]
+  const [eigenVak] = regels('.citatie-getal::after')
+
+  it('het eigen vak is een onzichtbare laag precies over de knop, rand onderaan inbegrepen', () => {
+    expect(eigenVak).toBeDefined()
+    expect(eigenVak).toMatch(/content:\s*''/)
+    expect(eigenVak).toMatch(/position:\s*absolute/)
+    expect(eigenVak).toMatch(/inset:\s*0 0 -1px/)
+    expect(eigenVak).not.toMatch(/background|border|transform/)
+  })
+
+  it('ligt boven de klikvlakken van andere getallen: die houden z-index auto', () => {
+    expect(Number(zIndex(eigenVak))).toBeGreaterThan(0)
+    for (const vlak of regels('.citatie-getal::before')) expect(zIndex(vlak) ?? 'auto').toBe('auto')
+  })
+
+  it('de knop zelf maakt geen stapelcontext, dus vak en vlakken van alle getallen liggen in dezelfde', () => {
+    for (const knop of regels('.citatie-getal')) {
+      expect(knop).toMatch(/position:\s*relative/)
+      expect(zIndex(knop)).toBeUndefined()
+    }
+    for (const omhulsel of regels('.citatie')) expect(zIndex(omhulsel)).toBeUndefined()
+  })
+
+  it('blijft onder een open uitleg en onder de kopieerknop', () => {
+    const [uitleg] = regels('.citatie-uitleg')
+    const [kopieer] = regels('.copy-btn')
+    expect(Number(zIndex(eigenVak))).toBeLessThan(Number(zIndex(uitleg)))
+    expect(Number(zIndex(eigenVak))).toBeLessThan(Number(zIndex(kopieer)))
+  })
+})

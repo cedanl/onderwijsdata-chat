@@ -677,6 +677,13 @@ input, textarea { font: inherit; }
   content: ''; position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%); width: max(100%, 24px); height: 24px;
 }
+/* #611: het eigen vak van het getal (rand onderaan inbegrepen) ligt boven de klikvlakken van andere getallen.
+   Die vlakken komen later in de boom en vielen dus over het getal ervoor: in een lijst of tabel met een getal per
+   regel ving het vlak van het getal eronder de onderste helft van dit getal. Bewuste ondergrens: tussen gestapelde
+   getallen (middens minder dan een tikvlak uit elkaar) is het tikvlak het eigen vak, de extra ruimte rond het getal
+   bestaat alleen waar plaats is. Boven gewone tekst liggen de vlakken nog steeds; een open uitleg (z-index 10) en de
+   kopieerknop (z-index 2) liggen boven het getal. */
+.citatie-getal::after { content: ''; position: absolute; inset: 0 0 -1px; z-index: 1; }
 .citatie-getal:hover, .citatie-getal[aria-expanded="true"] { border-bottom-style: solid; }
 .citatie-icoon { width: .8em; height: .8em; margin-left: 2px; vertical-align: super; font-size: .8em; }
 .citatie-getal.citatie-onbepaald { color: inherit; border-bottom-style: dashed; border-bottom-color: var(--gray-500); }
