@@ -38,6 +38,9 @@ de laatste tag is 1.8.6.
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
 
 ### Evaluatie
+- `scripts/ijkwaarden.py` stopt niet meer bij de eerste bron die niet antwoordt: de ijkwaarden van CBS en DUO worden
+  toch vergeleken, het ijkpunt dat faalde staat met de fout van de bron in het rapport (exitcode 1) en zijn vastgelegde
+  waarde blijft staan, ook met `--schrijf`. Dat was nodig toen RIO op 19-10 HTTP 410 gaf (#627).
 - Ketenbrede controle los van `/health` en `/ready` (#169). Elk gepubliceerd resultaat (antwoord, figuur, CSV-export,
   rapport) schrijft één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
   selectie), volledigheid, afronding en herlaaddatum, en de versies uit het manifest (model, prompt, catalogus, app);
