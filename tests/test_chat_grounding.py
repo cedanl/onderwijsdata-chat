@@ -88,6 +88,34 @@ def test_number_that_stays_unsourced_withholds_the_answer(monkeypatch):
     assert events[-1]["controle"] == ["6.340 staat niet in de opgehaalde data."]
 
 
+def test_alleen_de_zin_met_het_ongedekte_getal_vervalt_na_de_herkansing(monkeypatch):
+    """#619: een lang antwoord met één eigen berekening dat ook na de herkansing blijft, werd ingehouden."""
+    antwoord = "In 2024 waren er 5.943 eerstejaars.\n\nDat is 11.111 meer dan in 2023. Het verschil zit bij het hbo."
+    text, events = _chat(
+        monkeypatch,
+        [
+            StreamResult(text="", tool_calls=[_QUERY]),
+            StreamResult(text=antwoord, tool_calls=[]),
+            StreamResult(text=antwoord, tool_calls=[]),
+        ],
+    )
+
+    assert text == "In 2024 waren er 5.943 eerstejaars.\n\nHet verschil zit bij het hbo."
+    end = events[-1]
+    assert end["content"] == text
+    assert end["controle"] == [
+        "Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten. "
+        "Stel de vraag opnieuw, of preciezer, voor die cijfers."
+    ]
+
+
+def test_de_herkansing_vraagt_ook_verschillen_en_percentages_uit_de_data():
+    instructie = run_module._correction(["70,8% staat niet in de opgehaalde data."])
+
+    assert "verschillen, percentages en aandelen" in instructie
+    assert "compute_kpi" in instructie
+
+
 def test_soft_problem_keeps_the_answer_with_a_warning(monkeypatch):
     """Een getal dat alleen de gebruiker noemde is zacht: een weerlegging citeert het ook (#207, #214)."""
     earlier = [{"role": "user", "content": "Het waren toch 987654 studenten?"}]

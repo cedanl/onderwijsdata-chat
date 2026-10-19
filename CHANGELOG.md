@@ -101,6 +101,13 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Blijft na de herkansing alleen een getal over dat niet in de opgehaalde data staat (meestal eigen rekenwerk in
+  een lang antwoord), dan houdt de app niet meer het hele antwoord in: code haalt de zinnen en tabelrijen met dat
+  getal weg, toetst de rest opnieuw en zegt eronder dat er iets is weggelaten. Valt er meer weg dan blijft, of
+  klopt de rest niet, dan blijft het antwoord ingehouden. De herkansing vraagt het model nu ook verschillen,
+  percentages en aandelen met `compute_kpi` of `query_data` te berekenen. De oorzaakcontrole kent een voorbehoud
+  ook in andere woorden ("de data laat de oorzaak niet zien", "vermoedens", "denkbaar", "zou kunnen samenhangen")
+  en slaat de herhaalde onderzoeksvraag over (#619).
 - Een lang antwoord (drie of meer onderdelen, of meer dan ± 600 tekens) begint met de kern in één of twee zinnen en
   geeft elk onderdeel daarna een kop of een lijst, zodat je op een telefoon kunt skimmen; een kort antwoord blijft
   één alinea. De regel "Onderzoeksvraag:" komt bij een lang antwoord direct na de kern, als gewone regel en niet

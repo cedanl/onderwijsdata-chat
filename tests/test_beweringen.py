@@ -46,6 +46,41 @@ def test_oorzaak_met_voorbehoud_is_eerlijk():
     assert ongedekte_oorzaak(tekst, _DATA) == []
 
 
+# Formuleringen uit de antwoorden van 6 t/m 16 oktober waarop de regel onterecht afging: het voorbehoud stond
+# er wel, in andere woorden (#619).
+@pytest.mark.parametrize(
+    "voorbehoud",
+    [
+        "**Mogelijke verklaring:** de data laat de oorzaak niet zien. Het verschil komt doordat studenten kiezen.",
+        "Dit komt doordat studenten kiezen. Dit zijn vermoedens, de data toont de oorzaak niet.",
+        "Het is denkbaar dat dit komt doordat studenten verhuizen.",
+        "Dit zou kunnen samenhangen met het aantal opleidingen; het verschil komt mede door de instroom.",
+        "Het verschil komt doordat studenten kiezen, maar dat is een vermoeden.",
+        "De oorzaak is niet uit de data te halen.",
+    ],
+)
+def test_oorzaak_met_voorbehoud_in_andere_woorden_is_eerlijk(voorbehoud):
+    assert ongedekte_oorzaak(f"Het verschil is 571. {voorbehoud}", _DATA) == []
+
+
+def test_oorzaak_naast_een_voorbehoud_in_een_andere_alinea_blijft_ongedekt():
+    tekst = "Dit komt doordat studenten kiezen.\n\nOver de reden zijn alleen vermoedens bij andere opleidingen."
+    assert len(ongedekte_oorzaak(tekst, _DATA)) == 1
+
+
+def test_de_herhaalde_onderzoeksvraag_is_geen_bewering_van_het_model():
+    tekst = "**Onderzoeksvraag:** Is het verschil te verklaren uit de locatie van de opleiding?\n\nHet verschil is 571."
+    assert ongedekte_oorzaak(tekst, _DATA) == []
+
+
+def test_een_oorzaak_in_de_alinea_na_de_onderzoeksvraag_blijft_ongedekt():
+    tekst = (
+        "**Onderzoeksvraag:** Is het verschil te verklaren uit de locatie?\n"
+        "Dit komt doordat studenten kiezen voor een andere stad."
+    )
+    assert len(ongedekte_oorzaak(tekst, _DATA)) == 1
+
+
 def test_zonder_data_zwijgt_de_oorzaakcontrole():
     assert ongedekte_oorzaak("Dat komt doordat het beleid veranderde.", []) == []
 

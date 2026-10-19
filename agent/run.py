@@ -40,6 +40,7 @@ from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
 from .publicatie import ANTWOORD, FIGUUR, log_publicatie
+from .schrappen import zonder_ongedekte_zinnen
 from .scopevraag import Kaart, scopevraag
 from .selectie import data_keys, ontbrekende_instellingen, ontbrekende_schooljaren, onvolledige_selecties
 from .session_data import record_data_key, record_rekenbewijs
@@ -173,7 +174,9 @@ def _correction(problems: list[str]) -> str:
         "Controle van je antwoord tegen de data van dit gesprek:\n"
         + "\n".join(f"- {p}" for p in problems)
         + "\nReken niet zelf en rond niet af: haal elk getal op met query_data (group_by/aggregate) "
-        "of compute_kpi, selecteer het gevraagde schooljaar en de gevraagde instelling, of laat het weg.\n"
+        "of compute_kpi, selecteer het gevraagde schooljaar en de gevraagde instelling, of laat het weg. "
+        "Dat geldt ook voor verschillen, percentages en aandelen: bereken die met compute_kpi of query_data, "
+        "schrijf ze niet uit je hoofd op.\n"
         "Schrijf daarna een volledig nieuw antwoord voor de gebruiker, alsof het het eerste is: zonder kop of inleiding "
         "over de herziening, zonder te verwijzen naar een eerdere versie of naar deze controle, en zonder toolnamen."
     )
@@ -301,10 +304,8 @@ def _lezingen(antwoord: str) -> list[str]:
     return lezingen
 
 
-def _antwoordcontrole(
-    vraag: str, earlier: list[str], said_by_user: list[str], session: dict
-) -> Callable[[str, list[str]], list[str]]:
-    """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop.
+def _getalcontrole(earlier: list[str], said_by_user: list[str]) -> Callable[[str, list[str]], list[Probleem]]:
+    """De getalcontrole van een antwoord: per getal dat niet in de data staat één probleem.
 
     Wat de assistent al zei telt als bron: een vervolgvraag mag een getal uit een eerdere
     beurt herhalen. Wat de gebruiker zei niet (#211): dat is een bewering om te toetsen.
@@ -315,6 +316,7 @@ def _antwoordcontrole(
         getal = nl_notatie(n)
         if unverified(n, [], said_by_user):
             (verzonnen,) = hard([Probleem(f"{getal} staat niet in de opgehaalde data.")])
+            verzonnen.getal = n
             return verzonnen
         # Zacht: een correcte weerlegging citeert het getal van de gebruiker ook (#207, #214).
         return Probleem(
@@ -327,10 +329,26 @@ def _antwoordcontrole(
         afgeleid = afgeleide_verschillen(gelezen, tool_results)
         return [n for n in unverified(gelezen, tool_results, earlier) if n not in afgeleid]
 
-    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
+    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[Probleem]:
         # Een getal dat in één lezing ongedekt is, telt: ook 3303 en 3.303 uit twee lezingen geven één melding.
         gevonden = [n for gelezen in _lezingen(text) for n in ongedekt_gelezen(gelezen, tool_results)]
         return list(dict.fromkeys(ongedekt(n) for n in gevonden))
+
+    return ongedekte_getallen
+
+
+def _antwoordcontrole(
+    vraag: str,
+    earlier: list[str],
+    said_by_user: list[str],
+    session: dict,
+    getalcontrole: Callable[[str, list[str]], list[Probleem]] | None = None,
+) -> Callable[[str, list[str]], list[str]]:
+    """De controle van een antwoord tegen de data van dit gesprek, voor tool_loop."""
+    getalcontrole = getalcontrole or _getalcontrole(earlier, said_by_user)
+
+    def ongedekte_getallen(text: str, tool_results: list[str]) -> list[str]:
+        return list(getalcontrole(text, tool_results))
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         leestekst = _leestekst(text)
@@ -610,6 +628,8 @@ async def run(
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
     # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597).
+    getalcontrole = _getalcontrole(earlier, said_by_user)
+    check = _antwoordcontrole(last_user_msg, earlier, said_by_user, session, getalcontrole)
     with ho_markers.beurtvraag(_poortvraag(messages, session)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
@@ -628,7 +648,7 @@ async def run(
                         halt_on=frozenset({TOOL_CLARIFY_SCOPE}),
                         max_iterations=MAX_TOOL_ITERATIONS,
                         max_result_chars=_MAX_TOOL_RESULT_CHARS,
-                        check=_antwoordcontrole(last_user_msg, earlier, said_by_user, session),
+                        check=check,
                         correction=_correction,
                         on_correction=partial(_intrekken, emit),
                         wrap_up=AFRONDEN,
@@ -649,6 +669,8 @@ async def run(
     if (einde := await _vroeg_einde(result, history[initial_history_len:], messages, session, emit)) is not None:
         return einde
 
+    # Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619).
+    result = zonder_ongedekte_zinnen(result, check, getalcontrole)
     # Wat het model onderweg herzag, gaat naar de redeneerkaart; het antwoord zelf herziet niets (#412).
     antwoord, herzien = zonder_zelfcorrectie(result.text)
     if herzien:

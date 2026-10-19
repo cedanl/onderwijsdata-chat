@@ -41,9 +41,14 @@ _OORZAAK = re.compile(
 )
 _VOORBEHOUD = re.compile(
     r"\bniet\s+(?:vast\s+te\s+stellen|af\s+te\s+leiden|te\s+herleiden|uit\s+(?:deze|de)\s+(?:data|gegevens))\b"
-    r"|\bniet\s+(?:met|uit)\s+deze\s+(?:data|gegevens)\b|\bmogelijk(?:e)?\b[^.\n]{0,40}\bniet\s+getoetst\b",
+    r"|\bniet\s+(?:met|uit)\s+deze\s+(?:data|gegevens)\b|\bmogelijk(?:e)?\b[^.\n]{0,40}\bniet\s+getoetst\b"
+    # Het voorbehoud in andere woorden (#619): "de data laat de oorzaak niet zien", "vermoedens", "denkbaar".
+    r"|\b(?:laat|laten|toont|tonen|geeft|geven)\b[^.\n]{0,40}\b(?:oorza(?:ak|ken)|reden(?:en)?)\b[^.\n]{0,20}\bniet\b"
+    r"|\bvermoeden(?:s)?\b|\bdenkbaar\b|\bzou(?:den)?\s+(?:\w+\s+)?kunnen\s+samenhangen\b",
     re.IGNORECASE,
 )
+# De onderzoeksvraag herhaalt wat de gebruiker vroeg ("te verklaren uit locatie?"): geen bewering van het model.
+_ONDERZOEKSVRAAG = re.compile(r"^\W*onderzoeksvraag\b.*$", re.IGNORECASE | re.MULTILINE)
 
 
 def geladen_datasets(tool_results: list[str]) -> set[str]:
@@ -130,7 +135,7 @@ def ongedekte_oorzaak(tekst: str, tool_results: list[str]) -> list[str]:
     """
     if not _heeft_data(tool_results):
         return []
-    alineas = [alinea.strip() for alinea in re.split(r"\n\s*\n", tekst)]
+    alineas = [alinea.strip() for alinea in re.split(r"\n\s*\n", _ONDERZOEKSVRAAG.sub("", tekst))]
     ongedekt = [alinea for alinea in alineas if _OORZAAK.search(alinea) and not _VOORBEHOUD.search(alinea)]
     if not ongedekt:
         return []
