@@ -72,6 +72,13 @@ def segmenten(tekst: str) -> list[str]:
     return [s for s in (s.strip() for s in _SEGMENT.split(tekst)) if s]
 
 
+def segmenten_met_scheiding(tekst: str) -> list[tuple[str, str]]:
+    """De zinnen en tabelrijen van een tekst, elk met de scheiding erachter: samen weer de hele tekst."""
+    stukken = re.split(f"({_SEGMENT.pattern})", tekst)
+    stukken.append("")
+    return [(stukken[i], stukken[i + 1]) for i in range(0, len(stukken) - 1, 2)]
+
+
 def zin_op(tekst: str, positie: int) -> str:
     """De zin of tabelrij waarin de tekst op `positie` staat (CH-08: niet de eerste met hetzelfde getal)."""
     begin = 0

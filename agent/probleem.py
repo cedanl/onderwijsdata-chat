@@ -42,6 +42,7 @@ class Probleem(str):
     hard: bool = False
     niet_gecontroleerd: bool = False
     controle: str | None = None  # welke controle het vond: voor het log en de afvuurfrequentie (CH-01)
+    getal: str | None = None  # het ongedekte getal zoals het in de tekst staat: om de zin ervan te schrappen (#619)
 
     def __new__(cls, melding: str, opdracht: str = ""):
         probleem = super().__new__(cls, f"{melding} {opdracht}".strip())
@@ -101,6 +102,7 @@ def hard(problemen: Iterable[str]) -> list[Probleem]:
         probleem = str.__new__(Probleem, p)
         probleem.melding = getattr(p, "melding", p)
         probleem.controle = getattr(p, "controle", None)
+        probleem.getal = getattr(p, "getal", None)
         probleem.hard = True
         gemarkeerd.append(probleem)
     return gemarkeerd
