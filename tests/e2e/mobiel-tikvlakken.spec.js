@@ -52,17 +52,18 @@ const CIJFERS = [
   ['489.430', 'hbo, 2022'], ['511.002', 'mbo, 2023'], ['497.001', 'hbo, 2023'],
 ].map(([getal, selectie]) => citatie(getal, selectie))
 
-// Een alinea vol getallen: de bovenste regel loopt onder de kopieerknop van het antwoord door.
+// Een alinea vol getallen: de bovenste regel loopt op desktop onder de kopieerknop van het antwoord door. Op een
+// telefoon hangt die knop in de goot naast de tekstkolom (#623), zodat er geen getal meer onder ligt.
 const KOPIEER_GETALLEN = Array.from({ length: 60 }, (_, i) => `1.${String(i + 1).padStart(3, '0')}`)
 
 const FIGUUR = {
   data: [{ type: 'bar', name: 'Studenten', x: ['mbo', 'hbo', 'wo'], y: [512345, 498765, 341200] }],
   layout: { title: { text: 'Ingeschreven studenten per niveau' } },
 }
-// Bewust langer dan twee regels op 390 px. De grafiek staat in de bubbel onder de tekst (#610); na een antwoord van
-// één regel valt de bovenrand van het onzichtbare vlak van de CSV-knop onder de kopieerknop van het antwoord (44 px,
-// z-index 2). Die overlap staat ook op main en is een eigen bevinding (zelfde patroon als #623); deze meting gaat
-// over het vlak van de CSV-knop zelf.
+// Bewust langer dan twee regels op 390 px: de meting hieronder vraagt dat het onzichtbare vlak van de CSV-knop
+// onder de kopieerknop van het antwoord begint (verticale voorwaarde), en bij een antwoord van één regel komt de
+// grafiek dichter tegen de eerste regel liggen. Zo'n kort antwoord gaf op main ook een horizontale overlap met die
+// knop, zelfde patroon als #623; die is weg zodra de knop van het bericht in de goot naast de kolom hangt.
 const GRAFIEK_TEKST = 'In de grafiek staan de ingeschreven studenten per onderwijsniveau, zoals ze in de opgehaalde ' +
   'CBS-tabel staan: het mbo is het grootst, het hbo volgt kort daarna en het wo is het kleinst.'
 
@@ -228,12 +229,13 @@ for (const [naam, apparaat, aanraking] of TOESTELLEN) {
       await expect(knop).toHaveAttribute('aria-expanded', 'false')
     })
 
-    test('de kopieerknop blijft boven een getal dat eronder doorloopt (#611)', async ({ page }) => {
+    test('de kopieerknop blijft boven een getal dat eronder doorloopt (#611), en staat op een telefoon naast de kolom (#623)', async ({ page }) => {
       await stuur(page, VRAAG_KOPIEER)
       await expect(page.locator('.citatie-getal')).toHaveCount(KOPIEER_GETALLEN.length)
       const uitslag = await page.locator('.message-bubble-assistant .copy-btn-message').last().evaluate(bovenGetallen)
-      // Op een telefoon is de knop 44 px en ligt hij over de eerste twee regels; op desktop ligt er geen getal onder.
-      if (aanraking) expect(uitslag.onder).toBeGreaterThan(0)
+      // Op een telefoon hangt de 44px-knop in de goot naast de tekstkolom (#623), zodat er geen getal onder ligt;
+      // op desktop blijft hij op de rand van die kolom staan en loopt de volle alinea er wel onder door.
+      if (aanraking) expect(uitslag.onder).toBe(0)
       expect(uitslag.mis, JSON.stringify(uitslag)).toEqual([])
     })
 

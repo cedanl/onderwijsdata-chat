@@ -1819,6 +1819,10 @@ html.dark .suggested-btn:hover {
   .copy-btn[data-copied] { padding-inline: calc(8px + (var(--tap-min) - 28px) / 2 - 1px); }
   .copy-btn-message { top: 0; right: 0; }
   .copy-btn-code { top: 8px; right: 0; }
+  /* #623: de goot rechts houdt het 44px-tikvlak van de kopieerknop van het bericht buiten de tekstkolom, zodat
+     het tikvlak van een codeblok-knopje eronder (8px) en dat van de CSV-knop op een figuur (5,5px voorbij de
+     figuurrand) het niet raken. Alleen op touch; het desktopbeeld blijft ongewijzigd. */
+  .message-bubble-assistant { padding-right: calc(var(--tap-min) + 8px); }
   /* History actions sit next to the history button instead of on top of it, so the targets do not overlap. */
   .history-item-row { align-items: center; }
   .history-item-actions { position: static; transform: none; }
