@@ -144,7 +144,7 @@ def _run(
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return steps.pop(0)
 
-    async def execute(call, emit):
+    async def execute(call, emit, recept_van=None):
         return _ROWS, None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)

@@ -471,7 +471,7 @@ def _beurt(monkeypatch, steps, *, session=None, problemen=(), toolresultaat=None
         stap = steps.pop(0)
         return stap(stop_event) if callable(stap) else stap
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         return (_RESULTATEN[call.name] if toolresultaat is None else toolresultaat), None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)

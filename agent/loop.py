@@ -23,6 +23,7 @@ from core.logging_util import tekst_kenmerk
 from tools import LABELS, dispatch, fouten, outcome, store
 from tools.canoniek import aanroep as _canonieke_aanroep
 from tools.csv_export import export_key
+from tools.snippet import Receptbron
 from tools.snippet import generate as _generate_snippet
 
 from .model_context import clamp_max_tokens
@@ -133,7 +134,7 @@ def _is_hit(content: str) -> bool:
     return isinstance(hits, list) and bool(hits)
 
 
-async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
+async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | None = None) -> tuple[str, Any]:
     label = LABELS.get(call.name, call.name)
     logger.debug("TOOL CALL  %-30s args=%s", call.name, call.arguments)
     await emit({"type": "tool_start", "name": call.name, "label": label, "input": call.args})
@@ -145,7 +146,7 @@ async def _execute_tool(call: ToolCall, emit: Emit) -> tuple[str, Any]:
         "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
     )
 
-    snippet = _generate_snippet(call.name, call.args, result)
+    snippet = _generate_snippet(call.name, call.args, result, recept_van=recept_van)
     if snippet:
         # De snippet bevat de toolargumenten, dus tekst uit de vraag: alleen op DEBUG (#475).
         logger.info("REPRODUCEER %-28s %s", call.name, tekst_kenmerk(snippet))
@@ -187,6 +188,8 @@ class _Loop:
     tool_limits: dict[str, int]
     halt_on: frozenset[str]
     wrap_up: str | None
+    # Het recept per key, zodat een afgeleide snippet de stappen van zijn ouder herhaalt (#624).
+    recept_van: Receptbron | None = None
     result: LoopResult = field(default_factory=LoopResult)
     cache: dict[str, tuple[str, Any]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
@@ -306,7 +309,7 @@ class _Loop:
             for c in calls
             if c.id not in blocked and c.name not in self.halt_on and c.args is not None and c.key not in self.cache
         }
-        outcomes = await asyncio.gather(*[_execute_tool(c, self.emit) for c in runnable.values()])
+        outcomes = await asyncio.gather(*[_execute_tool(c, self.emit, self.recept_van) for c in runnable.values()])
         self.cache.update(zip(runnable, outcomes, strict=True))
 
         for c in calls:
@@ -366,6 +369,7 @@ async def tool_loop(
     on_correction: Callable[[list[str]], Awaitable[None]] | None = None,
     keep_partial: Callable[[], bool] | None = None,
     wrap_up: str | None = None,
+    recept_van: Receptbron | None = None,
 ) -> LoopResult:
     """Let the model call tools until it answers.
 
@@ -398,6 +402,7 @@ async def tool_loop(
         tool_limits=tool_limits or {},
         halt_on=halt_on,
         wrap_up=wrap_up,
+        recept_van=recept_van,
     )
     result = run.result
     try:

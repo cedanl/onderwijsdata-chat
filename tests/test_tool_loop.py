@@ -32,7 +32,7 @@ def _steps(monkeypatch, steps: list[StreamResult], seen: list | None = None) -> 
 
 
 def _fake_tools(monkeypatch, results: dict[str, str], calls: list | None = None) -> None:
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         if calls is not None:
             calls.append(call.name)
         return results[call.name], None
@@ -198,7 +198,7 @@ def test_identical_tool_call_shows_its_figure_once_but_answers_every_call(monkey
     )
     executed: list[str] = []
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         executed.append(call.name)
         return "grafiek gemaakt", "FIG"
 
@@ -229,7 +229,7 @@ def test_the_same_chart_from_differently_written_arguments_is_shown_once(monkeyp
         ],
     )
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         return "grafiek gemaakt", go.Figure(go.Bar(x=["a"], y=[1]))
 
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
@@ -254,7 +254,7 @@ def test_same_tool_with_other_arguments_shows_another_figure(monkeypatch):
         ],
     )
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         return "ok", f"FIG-{call.args['x']}"
 
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute)
@@ -303,7 +303,7 @@ def test_stop_while_tools_run_aborts_before_the_next_model_call(monkeypatch):
     stop_event = asyncio.Event()
     _steps(monkeypatch, [StreamResult(text="Even kijken.", tool_calls=[_call("search_catalog")])])
 
-    async def fake_execute(call, emit):
+    async def fake_execute(call, emit, recept_van=None):
         stop_event.set()
         return "treffers", None
 

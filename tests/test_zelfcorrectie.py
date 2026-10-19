@@ -101,7 +101,7 @@ def test_chat_zet_de_zelfcorrectie_in_de_redeneerkaart_en_niet_in_het_antwoord(m
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
 
-    async def fake_execute_tool(call, emit):
+    async def fake_execute_tool(call, emit, recept_van=None):
         return overzicht, None
 
     monkeypatch.setattr(loop_module, "_execute_tool", fake_execute_tool)

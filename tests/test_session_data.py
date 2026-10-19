@@ -51,7 +51,7 @@ def test_agent_run_records_keys_of_its_tool_calls(monkeypatch):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return next(steps)
 
-    async def fake_execute_tool(call, emit):
+    async def fake_execute_tool(call, emit, recept_van=None):
         return json.dumps({"data_key": "cbs:85423NED"}), None
 
     async def emit(event: dict) -> None:

@@ -13,7 +13,7 @@ from tools import LABELS, SCHEMAS, ho_markers
 from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
-from . import manifest, vervolgvragen
+from . import manifest, recepten, vervolgvragen
 from .aanspreekcontrole import overgebleven_u_vorm
 from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
@@ -632,6 +632,7 @@ async def run(
                         correction=_correction,
                         on_correction=partial(_intrekken, emit),
                         wrap_up=AFRONDEN,
+                        recept_van=recepten.van_session(session),
                     )
             except TimeoutError:
                 # Vastgelopen aanroep die het stopsignaal niet zag.

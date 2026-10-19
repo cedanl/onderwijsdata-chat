@@ -35,6 +35,7 @@ from agent.getalnotatie import nl_notatie
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
+from agent.recepten import van_session
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
@@ -231,6 +232,7 @@ async def generate(
         check=check,
         correction=_correction,
         keep_partial=lambda: bool(figures),
+        recept_van=van_session(session),
     )
     if result.aborted:
         raise RapportGeannuleerd

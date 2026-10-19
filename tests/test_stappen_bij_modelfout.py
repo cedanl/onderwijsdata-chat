@@ -67,7 +67,7 @@ def _chat_met_rate_limit_na_een_stap(monkeypatch) -> list[dict]:
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return antwoorden.pop(0)
 
-    async def fake_execute_tool(call, emit):
+    async def fake_execute_tool(call, emit, recept_van=None):
         return '{"data_key": "duo:p01hoinges:0"}', None
 
     async def emit(event):

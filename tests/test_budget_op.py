@@ -72,7 +72,7 @@ def _chat(monkeypatch, steps: list[StreamResult], tool_result: str):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return steps.pop(0)
 
-    async def fake_execute_tool(call, emit):
+    async def fake_execute_tool(call, emit, recept_van=None):
         return tool_result, None
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)

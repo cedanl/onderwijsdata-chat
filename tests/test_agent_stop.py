@@ -22,7 +22,7 @@ def test_stop_during_tool_step_ends_message_as_aborted(monkeypatch):
     async def fake_accumulate(stream, stop_event=None, emit=None):
         return StreamResult(text="", tool_calls=[{"id": "t1", "name": "search_catalog", "arguments": "{}"}])
 
-    async def fake_execute_tool(call, emit):
+    async def fake_execute_tool(call, emit, recept_van=None):
         stop_event.set()  # user presses Stop while the tool runs
         return "resultaat", None
 
