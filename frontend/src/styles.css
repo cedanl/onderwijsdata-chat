@@ -566,6 +566,8 @@ input, textarea { font: inherit; }
 /* Table cells keep their old wrapping (#606): with `anywhere` a table wider than the bubble squeezed its columns
    below the width of a word and broke figures mid-number. Such a table stays as wide as its content, as before. */
 .message-bubble :is(th, td) { overflow-wrap: normal; }
+/* A wide table scrolls inside the answer instead of widening the message list (#626). */
+.tabel-scroll { max-width: 100%; overflow-x: auto; }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {
