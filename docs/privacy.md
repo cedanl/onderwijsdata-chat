@@ -68,15 +68,16 @@ is een open punt.
 
 ## Verantwoordelijke en contact
 
-openEDUdata+ is een project van CEDA (Npuls). Wie de verwerkingsverantwoordelijke is en bij wie een gebruiker
-terechtkan met een privacyvraag, wordt vastgesteld vóór de demofase eindigt; tot die tijd via het projectteam van
-CEDA.
+openEDUdata+ is een project van CEDA (Npuls). De verwerkingsverantwoordelijke is de deelnemende instelling
+(besluit 19-10-2026, #553). Met een privacyvraag kan een gebruiker terecht bij die instelling: bij de
+privacycontactpersoon of de functionaris gegevensbescherming (FG) van de instelling. Het projectteam van CEDA is er
+alleen voor vragen over de demo zelf.
 
 ## Open punten
 
-Te beantwoorden door het team of de functionaris gegevensbescherming vóór de tekst definitief is (#477):
+Te beantwoorden door het team of de functionaris gegevensbescherming vóór de tekst definitief is (#477). Over de
+verwerkingsverantwoordelijke is besloten (#553, 19-10-2026; zie hierboven). Open blijven:
 
-- Verwerkingsverantwoordelijke (Npuls, SURF of de instelling), contactpunt en functionaris gegevensbescherming.
 - Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt
   bewaard of gebruikt voor training.
 - Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen of exporteren (#485).
