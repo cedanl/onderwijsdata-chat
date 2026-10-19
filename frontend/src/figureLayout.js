@@ -57,6 +57,10 @@ function darkTitle(title) {
 // The layout of a chart in the chat, for the theme and the width the chart really has (0 while that
 // is unknown). A long title is broken into lines, with their height added to the top margin; the
 // figure itself stays as it is, so the CSV export reads the unbroken title.
+// Tot deze breedte (px) is het scherm er een om aan te raken: geen sleepzoom, de tik toont de waarde (#614).
+export const TOUCH_WIDTH = 600
+export const HOVER_DISTANCE = 40
+
 export function chatFigureLayout(figure, dark, width) {
   const isMap = isMapFigure(figure)
   const colours = dark ? DARK : LIGHT
@@ -68,7 +72,8 @@ export function chatFigureLayout(figure, dark, width) {
     paper_bgcolor: colours.bg,
     plot_bgcolor: colours.bg,
     margin: { ...(isMap ? MAP_MARGIN : CHART_MARGIN), t: top + extra },
-    font: { family: 'system-ui, sans-serif', size: 12, color: colours.font },
+    // Op een telefoon 12,5 px, de ondergrens voor leesbare lagen (#613); breder blijft 12.
+    font: { family: 'system-ui, sans-serif', size: width > 0 && width <= TOUCH_WIDTH ? 12.5 : 12, color: colours.font },
     legend: {
       ...legendBelow(figure.layout?.legend),
       bgcolor: colours.legendBg,
@@ -76,6 +81,12 @@ export function chatFigureLayout(figure, dark, width) {
       font: { color: colours.font },
     },
     ...(legendRepeatsAxis(figure.data) && { showlegend: false }),
+    // Op een telefoon is een tik de enige weg naar een waarde (#614): geen zoom-sleep die de tik opeet, het
+    // dichtstbijzijnde punt binnen 40 px (tikdoel), en een tooltip in de kleuren van het thema.
+    hovermode: 'closest',
+    hoverdistance: HOVER_DISTANCE,
+    ...(width > 0 && width <= TOUCH_WIDTH && { dragmode: false }),
+    hoverlabel: { bgcolor: colours.legendBg, bordercolor: colours.legendBorder, font: { color: colours.font, size: 13 } },
     autosize: true,
   }
 }

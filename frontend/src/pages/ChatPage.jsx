@@ -1,4 +1,4 @@
-import { memo, useId, useMemo, useRef, useEffect, useState, useCallback } from 'react'
+import { memo, useId, useLayoutEffect, useMemo, useRef, useEffect, useState, useCallback } from 'react'
 import Plot from '../components/LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -51,6 +51,7 @@ import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
 import IngetrokkenVersies from '../components/IngetrokkenVersies'
 import { hasExport, roundSettled } from '../dataExport'
+import { groepeerFiguren } from '../figuurGroep'
 import ConversationExport from '../components/ConversationExport'
 import ChatNavActies from '../components/ChatNavActies'
 import ModelPicker from '../components/ModelPicker'
@@ -106,7 +107,7 @@ const MARKDOWN_COMPONENTS = {
 }
 
 // The answer of the last turn, which carries its follow-up questions (#364). A chart arrives as a
-// message of its own after the answer, so it does not count.
+// message of its own after the answer (shown inside the answer, figuurGroep.js), so it does not count.
 function lastAnswerIndex(messages) {
   return messages.findLastIndex(m => m.role === 'assistant' && !m.figures?.length)
 }
@@ -131,7 +132,7 @@ function StapCode({ code }) {
         wrapLongLines
         // The theme sets white-space: pre on the code element, which beats wrapLongLines.
         codeTagProps={{ style: { ...thema['code[class*="language-"]'], whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } }}
-        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: '0.7rem', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
+        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: 'var(--font-code)', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
       >
         {code}
       </SyntaxHighlighter>
@@ -139,17 +140,55 @@ function StapCode({ code }) {
   )
 }
 
+// De hoogte van de open stappenlijst als de kop van de kaart in beeld staat (#609); 0 als de kaart boven of onder
+// het beeld ligt, of als er niets te meten is (jsdom). Met de kop in beeld verankert de browser de scroll aan de kop
+// en niet aan wat eronder wegvalt, dus dan compenseert ReasoningPanel zelf.
+function zichtbareKaarthoogte(panel) {
+  const content = panel?.querySelector('.reasoning-content')
+  const scroller = panel?.closest('.chat-messages')
+  if (!content || !scroller) return 0
+  const kop = panel.getBoundingClientRect()
+  const zicht = scroller.getBoundingClientRect()
+  const inBeeld = kop.top >= zicht.top && kop.top < zicht.bottom
+  return inBeeld ? content.getBoundingClientRect().height : 0
+}
+
 function ReasoningPanel({ tools, tussentekst, isDone }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
   // screen before the answer. A wide screen keeps the block.
   const codePerStap = useMediaQuery(NARROW_SCREEN)
+  const panelRef = useRef(null)
+  // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
+  // die vanzelf openging bij het wachten.
+  const handmatig = useRef(false)
+  // Op een telefoon klapt de kaart in zodra het antwoord compleet is (#609): open bleef hij 380–430 px hoog en begon
+  // het antwoord onder de vouw. Desktop ongewijzigd. Staat de kaart in beeld, dan zou het antwoord eronder omhoog
+  // springen (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar
+  // de dichte kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
+  // (de lezer is al bij het eind), dan houdt de scroll-verankering van de browser alles op zijn plek.
+  const compensatie = useRef(0)
+  useLayoutEffect(() => {
+    if (!isDone || !codePerStap || !open || handmatig.current) return
+    compensatie.current = zichtbareKaarthoogte(panelRef.current)
+    setOpen(false)
+  }, [isDone, codePerStap, open])
+  useLayoutEffect(() => {
+    if (open || !compensatie.current) return
+    const scroller = panelRef.current?.closest('.chat-messages')
+    if (scroller) {
+      scroller.scrollTop -= compensatie.current
+      panelRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }
+    compensatie.current = 0
+  }, [open])
   if (!tools?.length) return null
   const hasSnippets = tools.some(t => t.snippet)
+  const toggle = () => { handmatig.current = true; setOpen(o => !o) }
 
   return (
-    <div className="reasoning-panel">
-      <button type="button" className="reasoning-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+    <div className="reasoning-panel" ref={panelRef}>
+      <button type="button" className="reasoning-toggle" onClick={toggle} aria-expanded={open}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -178,7 +217,7 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
                     <SyntaxHighlighter
                       language="python"
                       style={codeTheme()}
-                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: '0.7rem' }}
+                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
                     >
                       {t.snippet}
                     </SyntaxHighlighter>
@@ -651,6 +690,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [reportSpec, settings?.instelling, openRapport, clearReport, tokenAtMount])
 
   const displayMessages = [...restoredMessages, ...messages]
+  // Een grafiek staat in de bubbel van zijn antwoord, niet als bericht eronder (#610).
+  const rijen = groepeerFiguren(displayMessages)
   const vervolgIndex = lastAnswerIndex(displayMessages)
   const modelLabels = answerModels(displayMessages, models)
   const hasMessages = displayMessages.length > 0
@@ -729,6 +770,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             sidebarOpen={sidebarOpen}
             onToggleSidebar={() => setSidebarOpen(o => !o)}
             exportMessages={hasMessages ? displayMessages : null}
+            feedback={feedbackEnabled}
           />
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
@@ -750,14 +792,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                   : 'Ingeladen gesprek — stel een nieuwe vraag om door te gaan'}
               </div>
             )}
-            {displayMessages.map((msg, i) => (
+            {rijen.map(({ msg, index: i, figures, laatsteId }) => (
               <Message
-                key={msg.id} msg={msg}
+                key={msg.id} msg={msg} figures={figures} verbinding={connected}
                 onClarification={sendClarification} onSend={send} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
-                settings={settings} modelLabel={modelLabels[msg.id]}
+                settings={settings} modelLabel={modelLabels[laatsteId] ?? modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
                 retry={offersRetry(msg) ? {
@@ -965,7 +1007,9 @@ const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content &&
 
 // onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
 // onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
-export function Message({ msg, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+// figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
+// verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
+export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -992,6 +1036,8 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
   }
 
   const awaiting = isAwaitingFirstToken(msg)
+  const figuren = figures ?? msg.figures ?? []
+  const inhoud = hasAssistantContent(msg) || figuren.length > 0
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && hasExport(msg)
   // A data answer gets its fixed building blocks; any other message renders as before (#416).
@@ -999,7 +1045,7 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
   const dataExport = (
     <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
   )
-  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !hasAssistantContent(msg)) return null
+  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
 
   return (
     <div className="message assistant">
@@ -1011,14 +1057,15 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
         <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
-        {(awaiting || exportable || hasAssistantContent(msg)) && (
+        {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
             {msg.content && <CopyButton text={metBronnen(msg.content, msg.bronnen)} className="copy-btn-message" />}
             <MessageContent msg={msg} blocks={blocks} />
             {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
                 niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
             {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
-            {msg.figures?.map((fig, i) => (
+            {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
+            {figuren.map((fig, i) => (
               <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
             ))}
             {blocks
@@ -1040,13 +1087,17 @@ export function Message({ msg, onClarification, onSend, busy, settled = true, se
               </div>
             )}
             {msg.interrupted && (
-              <div className="message-stopped">
-                Verbinding verbroken — antwoord onvolledig
+              /* Zodra de verbinding terug is, zegt de regel dat en licht de knop op (#617): wie in de trein weer
+                 bereik heeft, hoeft de knop niet zelf te bedenken. Alleen als er een knop is (een ingeladen gesprek
+                 zonder vraag ervoor heeft er geen); geen automatische tweede run (die telt mee in de berichtlimiet,
+                 #444). aria-live: ook voor een schermlezer een melding, geen tweede knop. */
+              <div className={`message-stopped${verbinding && herhaal ? ' verbinding-terug' : ''}`} role="status" aria-live="polite">
+                {verbinding && herhaal ? 'Verbinding terug — probeer opnieuw' : 'Verbinding verbroken — antwoord onvolledig'}
                 {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
                 {herhaal && (
                   <>
                     {' '}
-                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>
+                    <button type="button" className={`message-continue${verbinding ? ' message-continue--licht' : ''}`} onClick={herhaal} disabled={busy}>
                       Probeer opnieuw
                     </button>
                   </>
@@ -1112,9 +1163,9 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const isMap = isMapFigure(figure)
   return (
     <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
-      {label && <div style={{ fontSize: '.75rem', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
       {csvProblem && (
-        <div role="alert" style={{ fontSize: '.75rem', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
+        <div role="alert" style={{ fontSize: 'var(--font-klein)', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
           Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
         </div>
       )}

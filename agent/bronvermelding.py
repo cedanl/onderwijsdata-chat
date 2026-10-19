@@ -4,6 +4,9 @@ Het model schreef zelf een Bronnen-sectie. Vijf keer dezelfde vraag gaf de ene k
 de andere keer twee, met een eigen titel of zonder periode. Welke data de beurt las, staat in
 de stappen: de app zet die lijst onder het antwoord, en de eigen sectie van het model vervalt,
 net als zijn Definities bij een teldefinitie uit de bron (agent/telling.py, #402).
+
+Elke regel linkt naar de bronpagina van zijn dataset (#621), met de documentatie-URL uit de
+catalogus: dezelfde link als onder een rapportgrafiek (agent/figuurbron.py, #569).
 """
 
 import json
@@ -11,10 +14,16 @@ import re
 from collections.abc import Callable
 
 from tools import store
+from tools.arbeidsmarkt import DATASET
+from tools.catalog import documentatie_url
+from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import TOOL_GET_RIO_INSTELLING
 
 from .meetwaarden import meetwaarden
 from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
+
+# Een bronregel en de dataset waar hij over gaat; None als de stap die niet noemt.
+Bronregel = tuple[str, str | None]
 
 # De eigen Bronnen-sectie van het model: de kop (**Bronnen**, **Bronnen:** of **Bronnen**:) en zijn lijst.
 _KOP = r"\*\*Bronnen(?::\*\*|\*\*:?)"
@@ -48,16 +57,16 @@ def _zonder_sectie(sectie: re.Match[str]) -> str:
     return "\n" if len(volgt) == 2 and volgt[0] == "\n" and volgt[1] != "\n" else ""
 
 
-def _datasetbron(key: str) -> str | None:
+def _datasetbron(key: str) -> Bronregel | None:
     """De geladen dataset achter een key in woorden, met zijn ID; None als hij onbekend is (CH-30)."""
     geladen = laadkey(key)
     if not (known := store.meta(geladen)) or not (tekst := selectie_in_woorden(geladen)):
         return None
     # Zonder catalogustitel is de titel het ID al.
-    return tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"
+    return (tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"), str(known.dataset)
 
 
-def _registerbron(tool: str, result: str) -> list[str]:
+def _registerbron(tool: str, result: str) -> list[Bronregel]:
     """Een opzoeking in het RIO-register (get_rio_instelling) laadt niets in de store, maar leest wel data."""
     if tool != TOOL_GET_RIO_INSTELLING:
         return []
@@ -69,15 +78,25 @@ def _registerbron(tool: str, result: str) -> list[str]:
         return []
     bron = str(parsed.get("bron") or "RIO")
     tekst = titel if titel.startswith(bron) else f"{bron}{SCHEIDING}{titel}"
-    return [f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst]
+    return [(f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst, ERKENNINGEN)]
 
 
-def _stapbronnen(tool: str, result: str) -> list[str]:
+def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     datasets = [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
-    # citaties (agent/meetwaarden.py). Met een data_key staat de bron, met peildatum of versie, al in `datasets`.
-    buiten_de_store = [w.bron for w in meetwaarden(result, tool) if w.bron]
+    # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
+    # peildatum of versie, al in `datasets`.
+    buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron]
     return datasets + buiten_de_store + _registerbron(tool, result)
+
+
+def _bronregels(steps: list[tuple[str, str]]) -> dict[str, str | None]:
+    """Elke bronregel één keer, in volgorde van eerste gebruik, met de dataset van dat eerste gebruik."""
+    regels: dict[str, str | None] = {}
+    for tool, result in steps:
+        for tekst, dataset in _stapbronnen(tool, result):
+            regels.setdefault(tekst, dataset)
+    return regels
 
 
 def bronnen_van(steps: list[tuple[str, str]]) -> list[str]:
@@ -85,7 +104,18 @@ def bronnen_van(steps: list[tuple[str, str]]) -> list[str]:
 
     Leeg als de beurt geen data las. Alleen de stappen tellen, niet wat het model schreef.
     """
-    return list(dict.fromkeys(bron for tool, result in steps for bron in _stapbronnen(tool, result)))
+    return list(_bronregels(steps))
+
+
+def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
+    """Bronregel → link naar de bronpagina (#621), voor dezelfde stappen en regels als `bronnen_van`.
+
+    De link is de documentatie-URL van de dataset in de catalogus, alleen als http(s)-adres. Een regel
+    zonder dataset die de catalogus kent, of zonder zo'n link, staat er niet in: die blijft tekst, geen gok.
+    """
+    return {
+        tekst: url for tekst, dataset in _bronregels(steps).items() if dataset and (url := documentatie_url(dataset))
+    }
 
 
 def zonder_bronnensectie(tekst: str) -> str:

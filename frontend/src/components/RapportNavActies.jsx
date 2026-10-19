@@ -6,7 +6,8 @@ import { useEscape } from '../hooks/useEscape'
 // De knoppen van een geopend rapport in de navbar op een telefoon (#604): downloaden en feedback passen
 // niet naast een titel van twee regels, dus staan ze — net als bij de chat (#596, ChatNavActies) — in een
 // ⋯-menu in de nav-slot. Desktop toont ze inline in de kopbalk (WorkbookViewer).
-export default function RapportNavActies({ workbook, instelling, save, feedbackEnabled, feedbackGiven, onFeedback }) {
+// afdrukken: de knop "Opslaan als PDF" (#622), als menu-item; null voor een rapport dat het niet kan.
+export default function RapportNavActies({ workbook, instelling, save, feedbackEnabled, feedbackGiven, onFeedback, afdrukken = null }) {
   const [open, setOpen] = useState(false)
   const knopRef = useRef(null)
   useEscape(open, () => { setOpen(false); knopRef.current?.focus() })
@@ -28,6 +29,7 @@ export default function RapportNavActies({ workbook, instelling, save, feedbackE
             <div className="navbar-menu-overlay" onClick={() => setOpen(false)} aria-hidden="true" />
             <div className="navbar-meer-menu" id="navbar-meer-rapport">
               <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+              {afdrukken}
               {feedbackEnabled && (feedbackGiven ? (
                 <span className="navbar-menu-item" role="status">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

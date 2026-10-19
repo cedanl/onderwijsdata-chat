@@ -10,7 +10,7 @@ from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, S
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS, ho_markers
-from tools.csv_export import export_key
+from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
 from . import manifest, vervolgvragen
@@ -19,7 +19,7 @@ from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
-from .bronvermelding import bronnen_van, buiten_bronnensectie, zonder_bronnensectie, zonder_eigen_bronnen
+from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
 from .dimensielabels import verkeerde_dimensielabels
@@ -194,6 +194,15 @@ def _veilige_bronnen(steps: list[tuple[str, str]]) -> list[str]:
     except Exception as exc:
         log_interne_fout(exc, "bronnen")
         return []
+
+
+def _veilige_bronlinks(steps: list[tuple[str, str]]) -> dict[str, str]:
+    """De links bij de bronnen (#621) zijn een extra: lukt het niet, dan staan de bronnen er als tekst."""
+    try:
+        return bronlinks_van(steps)
+    except Exception as exc:
+        log_interne_fout(exc, "bronlinks")
+        return {}
 
 
 _MAX_CLARIFY_RONDES = 1
@@ -467,17 +476,21 @@ def _slotbericht(
     herzien: list[str],
     truncated: bool,
     bronnen: list[str],
+    bronlinks: dict[str, str] | None = None,
     manifest: dict | None = None,
     vervolgvragen: list[str] | None = None,
 ) -> dict:
     """Het message_end-event van een gewoon antwoord, met alleen de velden die er zijn.
 
-    `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416)."""
+    `bronnen` staat er altijd, ook leeg: zo weet de frontend dat het een nieuw antwoord is (#416).
+    `bronlinks` (bronregel → bronpagina, #621) alleen als er links zijn, en nooit onder een vast antwoord."""
+    vast_zonder_bronnen = text_content in _ZONDER_BRONNEN
     return {
         "type": "message_end",
         "content": text_content,
         "actions": [],
-        "bronnen": [] if text_content in _ZONDER_BRONNEN else bronnen,
+        "bronnen": [] if vast_zonder_bronnen else bronnen,
+        **({"bronlinks": bronlinks} if bronlinks and not vast_zonder_bronnen else {}),
         **({"manifest": manifest} if manifest else {}),
         **({"citaties": cites} if (cites := _veilige_citaties(text_content, result.steps)) else {}),
         **({"tussentekst": herzien} if herzien else {}),
@@ -498,14 +511,17 @@ def _log_export(text_content: str, steps: list[tuple[str, str]]) -> None:
     """Per antwoord: staat er een tabel in, en welke stap leverde een exporteerbare tabel (#544)?
 
     De CSV-knop onder een tabelantwoord ontbrak wisselend. Alleen tellingen en toolnamen: zo is per beurt
-    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep."""
+    te meten hoe vaak een antwoord met een tabel geen tabel-key kreeg, en via welke tools het dan liep.
+    Kreeg een tabelantwoord geen key, dan zegt `reden` waarom dat een keuze van de code is (#605)."""
     tabellen = [tool for tool, result in steps if export_key(tool, result)]
+    tabel = heeft_tabel(text_content)
     logger.info(
-        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s",
-        heeft_tabel(text_content),
+        "EXPORT  tabel_in_antwoord=%s  tabellen=%d  tabelstap=%s  tools=%s  reden=%s",
+        tabel,
         len(tabellen),
         tabellen[-1] if tabellen else "-",
         ",".join(dict.fromkeys(tool for tool, _ in steps)) or "-",
+        geen_export_reden(steps) if tabel and not tabellen else "-",
     )
 
 
@@ -625,6 +641,7 @@ async def run(
         logger.info("ZELFCORRECTIE naar redeneerkaart  herzien=%d", len(herzien))
         logger.debug("ZELFCORRECTIE TEKST  %r", herzien)
     bronnen = _veilige_bronnen(result.steps)
+    bronlinks = _veilige_bronlinks(result.steps) if bronnen else {}
     text_content = _eindtekst(result, antwoord, last_user_msg, earlier, session, chosen_model, bronnen)
     if bronnen and text_content not in _ZONDER_BRONNEN:
         # Een vaag thema zonder maat: zeg op welke lezing het antwoord rust, vóór het eerste getal (#514).
@@ -642,5 +659,7 @@ async def run(
     gekozen = await _vervolgvragen(result, text_content, last_user_msg, session)
     if text_content not in _ZONDER_BRONNEN:
         log_publicatie(ANTWOORD, data_keys(result.tool_results), mani)
-    await emit(_slotbericht(text_content, result, herzien, truncated, bronnen, manifest=mani, vervolgvragen=gekozen))
+    await emit(
+        _slotbericht(text_content, result, herzien, truncated, bronnen, bronlinks, manifest=mani, vervolgvragen=gekozen)
+    )
     return text_content

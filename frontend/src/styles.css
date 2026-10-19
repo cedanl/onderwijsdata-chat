@@ -6,6 +6,10 @@
 }
 
 :root {
+  /* Kleine lagen (#613): op desktop zoals ze waren, op een telefoon de ondergrens van 12,5 px (code 11 px). */
+  --font-klein: .75rem;
+  --font-label: .8rem;
+  --font-code: .7rem;
   --blue-900: #0D2340;
   --blue-800: #163558;
   --blue-700: #1E4A7A;
@@ -655,6 +659,14 @@ input, textarea { font: inherit; }
 .answer-block-nvt { color: var(--muted-text); }
 .answer-block .telling, .answer-block .data-export { margin-top: 0; font-size: inherit; }
 .answer-bronnen { margin: 0; padding-left: 16px; }
+/* A source line links to its source page (#621). The link fills the line, so on touch the whole line is the
+   tap target (touch block below); a long line still wraps inside the bubble (overflow-wrap from the dd).
+   The arrow after the text says it opens a new tab (screen readers get that from the aria-label); as an
+   inline block it stays out of the underline. */
+.answer-bronnen a { display: flex; align-items: center; min-height: var(--tap-min-aa); color: var(--accent-text); }
+.answer-bronnen a > span { text-decoration: underline; text-underline-offset: 2px; }
+.answer-bronnen a:hover > span { text-decoration-thickness: 2px; }
+.answer-bronnen a > span::after { content: '\2197'; content: '\2197' / ''; display: inline-block; margin-left: 4px; }
 /* Narrow screens: label above its content, so the CSV buttons and sources get the full bubble width. */
 @media (max-width: 480px) {
   .answer-block { flex-direction: column; align-items: stretch; gap: 2px; }
@@ -846,6 +858,14 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 .send-btn:disabled, .send-btn[aria-disabled="true"] { background: var(--gray-200); color: var(--muted-text); cursor: not-allowed; box-shadow: none; transform: none; }
 .message-model { font-size: .72rem; color: var(--muted-text); margin-left: 2px; }
 .message-stopped { font-size: .78rem; color: var(--gray-500); font-style: italic; margin-top: 4px; }
+/* Verbinding terug na een afgebroken antwoord (#617): de regel wordt gewoon leesbaar en de knop licht even op
+   (de algemene reduced-motion-regel onderaan zet ook deze animatie uit). */
+.message-stopped.verbinding-terug { font-style: normal; color: var(--gray-700); }
+.message-continue--licht { animation: oplichten 1.6s ease-out 2; }
+@keyframes oplichten {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 0 4px rgba(37, 99, 235, .35); }
+}
 /* Een controlemelding bij een afgerond antwoord (#215): geen "gestopt"-stijl, wel opvallend. */
 .message-controle { font-size: .78rem; color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin-top: 6px; }
 .message-continue {
@@ -1628,6 +1648,8 @@ html.dark .suggested-btn:hover {
   .navbar-menu-sub { flex-basis: 100%; font-size: .75rem; color: var(--muted-text); }
   .navbar-menu-scheiding { height: 1px; background: var(--gray-100); margin: 4px 0; }
   .navbar-meer-menu .export-conversation-btn { text-decoration: none; }
+  /* De melding uit de disclaimer, nu in het menu (#608): leesbaar (≥ 12 px), geen tikdoel. */
+  .navbar-meer-noot { margin: 0; padding: 6px 12px; font-size: .8rem; line-height: 1.4; color: var(--muted-text); max-width: 260px; }
 
   /* Sidebar: slide-over op mobiel/tablet */
   .chat-sidebar {
@@ -1775,7 +1797,7 @@ html.dark .suggested-btn:hover {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
-  .sources-link, .export-conversation-btn, .model-picker select { min-height: var(--tap-min); }
+  .sources-link, .export-conversation-btn, .model-picker select, .answer-bronnen a { min-height: var(--tap-min); }
 
   .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
@@ -1879,4 +1901,20 @@ html.dark .suggested-btn:hover {
 @media (max-width: 600px) {
   .privacy-modal-bar { top: 20px; }
   .privacy-modal-bar .modal-close { margin: -20px -12px 0 0; }
+}
+
+/* Lettergroottes op een telefoon (#613, mobiel N5). Antwoordtekst 16 px zoals de referenties (ChatGPT 16,
+   Gemini 17); de kleinere lagen — citaatpopover, chips, stappen, blokken, instellingen, figuurlabels — minimaal
+   12,5 px; code in de stappen 11 px ("Bekijk code" blijft een bewuste keuze). Rapportmetadata op /rapporten blijft
+   bewust klein (.wb-card-date). Gemeten op 390 px in de MR. */
+@media (max-width: 600px) {
+  :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
+  .message-bubble { font-size: 16px; line-height: 1.55; }
+  .message-bubble .answer-blocks, .message-bubble .telling, .message-bubble .data-export, .message-bubble .data-export-error,
+  .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
+  .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
+  .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
+  .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst {
+    font-size: 12.5px;
+  }
 }

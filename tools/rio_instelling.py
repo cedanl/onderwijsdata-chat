@@ -25,7 +25,8 @@ from riodata import fetch, get, related
 from . import fouten, scopeprofiel
 from .catalog import catalogus_titel
 
-_ERKENNINGEN = "erkenningen"
+# De RIO-dataset van het register; ook de bron van de regel onder het antwoord (agent/bronvermelding.py, #621).
+ERKENNINGEN = "erkenningen"
 _BEVOEGD_GEZAG = "BEVOEGD_GEZAG"
 _INSTELLING = "ERKENDE_ONDERWIJSINSTELLING"
 _VESTIGING = "ERKENDE_VESTIGING"
@@ -58,7 +59,7 @@ def _geldig(item: dict, peildatum: str) -> bool:
 
 
 def _zoek(naam: str, soort: str, peildatum: str) -> list[dict]:
-    gevonden = fetch(_ERKENNINGEN, volledigeNaam=naam, erkenningtype=soort, datumGeldigOp=peildatum)
+    gevonden = fetch(ERKENNINGEN, volledigeNaam=naam, erkenningtype=soort, datumGeldigOp=peildatum)
     return [e for e in gevonden if e.get("type") == soort and _geldig(e, peildatum)]
 
 
@@ -67,7 +68,7 @@ def _relaties(code: str, peildatum: str) -> list[tuple[str, str]]:
     return [
         (_code(r["vanErkenning"]), _code(r["naarErkenning"]))
         # Dit endpoint pagineert niet en weigert page/pageSize (HTTP 400): related, niet fetch.
-        for r in related(_ERKENNINGEN, code, "instellingsrelaties")
+        for r in related(ERKENNINGEN, code, "instellingsrelaties")
         if r.get("soort") == _HIERARCHISCH and _geldig(r, peildatum)
     ]
 
@@ -106,7 +107,7 @@ def _lees(codes: list[str]) -> tuple[dict[str, dict], list[str]]:
 
     def een(code: str) -> tuple[str, dict | None]:
         try:
-            return code, get(_ERKENNINGEN, code)
+            return code, get(ERKENNINGEN, code)
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return code, None
@@ -195,7 +196,7 @@ def get_rio_instelling(naam: str, peildatum: date | None = None) -> str:
     """Bestuur, instellingen en vestigingen van één onderwijsinstelling, geteld in code."""
     naam = " ".join(naam.split())
     peil = (peildatum or date.today()).isoformat()
-    kop = {"bron": "RIO", "catalogus_titel": catalogus_titel(_ERKENNINGEN), "peildatum": peil, "gezocht": naam}
+    kop = {"bron": "RIO", "catalogus_titel": catalogus_titel(ERKENNINGEN), "peildatum": peil, "gezocht": naam}
     try:
         gekozen = _kies(naam, _besturen(naam, peil))
         if not gekozen:
