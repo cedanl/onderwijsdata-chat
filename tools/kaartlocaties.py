@@ -16,6 +16,9 @@ from . import relaties
 # De volgorde is ook de voorkeur bij gelijke dekking: de lijst "Utrecht, Groningen" is een lijst provincies.
 NIVEAUS = ("provincie", "gemeente", "corop")
 _VOORVOEGSEL = {"PV": "provincie", "GM": "gemeente", "CR": "corop"}
+# Hoe de melding van de kaart het niveau noemt ("12 provincies"); het recept leest het daar weer uit (#630).
+NIVEAU_LABELS = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
+_MELDING = re.compile(r"\(\d+ (" + "|".join(map(re.escape, NIVEAU_LABELS.values())) + r")\)")
 _CODE = re.compile(r"^(PV|GM|CR)\d{2,4}$")
 _ZONDER_TOEVOEGING = re.compile(r"\s*\([^)]*\)\s*$")  # 'hengelo (o)' → 'hengelo'
 _VOORBEELDEN = 3
@@ -127,3 +130,10 @@ def melding_onbekend(locaties: Locaties, totaal: int) -> str:
         return ""
     genoemd = ", ".join(locaties.onbekend[:_GENOEMD]) + (", …" if len(locaties.onbekend) > _GENOEMD else "")
     return f" {len(locaties.onbekend)} van {totaal} locaties staan niet op de kaart: {genoemd}."
+
+
+def niveau_uit_melding(melding: str | None) -> str | None:
+    """Het niveau waarop de kaart tekende, uit haar melding ("Kaart 'T' aangemaakt (12 provincies)")."""
+    if not melding or not (m := _MELDING.search(melding)):
+        return None
+    return next(niveau for niveau, label in NIVEAU_LABELS.items() if label == m.group(1))

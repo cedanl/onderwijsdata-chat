@@ -393,6 +393,9 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
+  namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
+  dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
 - De snippet van een grafiek, KPI, selectie of eigen berekening op een eerdere stap herhaalt de stappen van die
   stap in plaats van de rijen ervan in te bakken (#624): eerst de laadstap van de bron, dan de selectie
   (`query_data`), de vaste maat (`get_maat`) of het script van de eigen berekening (`run_analysis`), zodat `df` in

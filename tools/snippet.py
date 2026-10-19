@@ -21,12 +21,12 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import cbs_selectie, instellingsprovincie, maten, scopeprofiel, store
+from . import cbs_selectie, instellingsprovincie, kaartlocaties, maten, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
 from .periode import STUDIEJAAR_LABEL
-from .plot import is_liggend, resolve_chart_type
+from .plot import GEOJSON_URLS, KAART_OPTIES, is_liggend, resolve_chart_type
 from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -470,16 +470,72 @@ def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     return "\n".join(lines)
 
 
+# Het recept vertaalt locaties zoals tools/kaartlocaties.py: een code, een naam in elke spelling, en per niveau
+# wat DUO erbij schrijft. Het kan `tools` niet importeren (het draait buiten de app), dus staat de regel hier.
+_KAART_VERTALING = [
+    "def sleutel(naam):",
+    '    tekst = str(naam).replace("’", "\'").casefold().replace(".", "")',
+    '    return re.sub(r"\\s+", " ", tekst).strip().lstrip("\'")',
+    "",
+    "",
+    'ids = {f["id"] for f in geojson["features"]}',
+    "namen, kort = {}, {}",
+    'for f in geojson["features"]:',
+    '    naam = sleutel(f["properties"]["statnaam"])',
+    '    namen.setdefault(naam, f["id"])',
+    '    kort.setdefault(re.sub(r"\\s*\\([^)]*\\)$", "", naam), []).append(f["id"])',
+    "# HENGELO voor Hengelo (O.): alleen als één gebied zo heet.",
+    "namen = {**{k: v[0] for k, v in kort.items() if len(v) == 1}, **namen}",
+]
+_KAART_PROVINCIE = ['namen.setdefault("friesland", namen.get("fryslân"))  # DUO schrijft Friesland']
+_KAART_GEMEENTENUMMER = [
+    "    try:  # DUO schrijft het gemeentenummer: 344 of '344.0'",
+    '        nummer = f"GM{int(float(tekst)):04d}"',
+    "    except ValueError:",
+    "        return None",
+    "    return nummer if nummer in ids else None",
+]
+
+
+def _kaartcode_regels(niveau: str) -> list[str]:
+    """`kaartcode(waarde)`: de feature-id van een code of naam, of None als de kaart hem niet kent."""
+    regels = ["", "", "def kaartcode(waarde):", "    tekst = str(waarde).strip()"]
+    regels += ["    if tekst.upper() in ids:", "        return tekst.upper()"]
+    regels += ["    if sleutel(tekst) in namen:", "        return namen[sleutel(tekst)]"]
+    regels += _KAART_GEMEENTENUMMER if niveau == "gemeente" else ["    return None"]
+    return regels
+
+
 def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
+    """De kaart zoals de app hem tekent: de GeoJSON van het niveau, locaties naar feature-id, dezelfde opmaak (#630)."""
     location_col = args.get("location_col", "")
     value_col = args.get("value_col", "")
     title = args.get("title", "")
-    data_key = args.get("data_key")
+    level = args.get("level")
+    niveau = level if isinstance(level, str) and level in GEOJSON_URLS else "provincie"
+    opmaak = ", ".join(f"{naam}={waarde!r}" for naam, waarde in KAART_OPTIES.items())
 
-    lines = _frame_regels(args, data_key, recept_van)
-
-    lines.append(f'fig = px.choropleth_map(df, locations="{location_col}", color="{value_col}", title="{title}")')
-    lines.append("fig.show()")
+    lines = _frame_regels(args, args.get("data_key"), recept_van)
+    lines += ["import json", "import re", "import urllib.request", ""]
+    lines += ["# De kaart tekent op CBS-gebiedscodes (PV26, GM0344, CR17); namen gaan er hieronder naartoe.", ""]
+    lines += [f"GEOJSON = {GEOJSON_URLS[niveau]!r}", "with urllib.request.urlopen(GEOJSON, timeout=15) as resp:"]
+    lines += ["    geojson = json.loads(resp.read())", "", ""]
+    lines += _KAART_VERTALING
+    lines += _KAART_PROVINCIE if niveau == "provincie" else []
+    lines += _kaartcode_regels(niveau)
+    lines += ["", ""]
+    lines += [f'df["kaartcode"] = df["{location_col}"].map(kaartcode)']
+    lines += ['if df["kaartcode"].isna().any():']
+    lines += [
+        f'    print("Niet op de kaart:", sorted(df.loc[df["kaartcode"].isna(), "{location_col}"].astype(str).unique()))'
+    ]
+    lines += ['df = df[df["kaartcode"].notna()]']
+    lines += [
+        f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
+        f'hover_name="{location_col}", hover_data={{"kaartcode": False}}, color="{value_col}", '
+        f'{opmaak}, title="{title}")',
+        "fig.show()",
+    ]
     return "\n".join(lines)
 
 
@@ -555,6 +611,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     gen = _GENERATORS.get(tool_name)
     if gen is None:
         return None
+    if tool_name == TOOL_CREATE_CHOROPLETH_MAP and args.get("level", "auto") == "auto":
+        # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
+        args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
     snippet = gen(args, recept_van=recept_van)
     if snippet and (regels := _bewerkingsregels(result)):
         return "\n".join(["# Databewerking in de app:", *regels, "", snippet])
