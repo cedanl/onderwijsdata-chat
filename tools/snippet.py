@@ -8,10 +8,12 @@ store bij de key bewaart.
 Wat de tool met de data deed (sentinels uitgesloten, CBS-afronding, een afgekapte
 pagina) komt als commentaar bovenaan, uit dezelfde response die het model las (#4).
 
-Een afgeleide uitkomst (selectie, vaste maat) herhaalt de stappen van zijn ouder
-uit zijn recept (#472), zodat `df` in dezelfde snippet ontstaat en de code opnieuw
-te draaien is op actuele data. Zonder bekende keten blijft alleen een kopie van
-de rijen over, met een opmerking die dat zegt (#624).
+Een afgeleide uitkomst (selectie, vaste maat, eigen berekening) herhaalt de stappen
+van zijn ouder uit zijn recept (#472), zodat `df` in dezelfde snippet ontstaat en de
+code opnieuw te draaien is op actuele data. Het script van een eigen berekening komt
+daarbij uit het geheugen van de sessie, niet uit de database (agent.recepten). Zonder
+bekende keten blijft alleen een kopie van de rijen over, met een opmerking die dat
+zegt (#624).
 """
 
 import json
@@ -43,6 +45,9 @@ _MAX_INLINE_RIJEN = 200
 
 # Zo lang mag een receptenketen zijn, zoals herlaad._MAX_STAPPEN: een rondlopend recept loopt niet door (#624).
 _MAX_KETEN = 10
+
+# De sandbox geeft np, px en go kant-en-klaar; buiten de app moet een script ze zelf importeren.
+_ANALYSE_IMPORTS = ["import numpy as np", "import plotly.express as px", "import plotly.graph_objects as go"]
 
 
 def _lit(value) -> str:
@@ -226,6 +231,15 @@ def _stapregels(recept: object, recept_van: Receptbron | None, stappen: int) -> 
     ouder = recept.get("afgeleid_van")
     if tool == TOOL_QUERY_DATA and isinstance(ouder, str):
         return [*_laadregels(ouder, recept_van, stappen + 1), *_query_stappen(args)]
+    if tool == TOOL_RUN_ANALYSIS and isinstance(ouder, str) and isinstance(code := args.get("code"), str):
+        # Het script staat alleen in het geheugen van de sessie (agent.recepten.van_session), nooit in de database.
+        ouderregels = _laadregels(ouder, recept_van, stappen + 1)
+        return [
+            *ouderregels,
+            *_analyse_regels(code, ouderregels),
+            "",
+            "df = pd.DataFrame(result)  # de uitkomst van deze berekening is de tabel van de volgende stap",
+        ]
     if tool == TOOL_GET_MAAT:
         # Het recept van een vaste maat laadt en selecteert zelf (#188), zoals herlaad._hermaat.
         regels, fout = _maat_regels(args)
@@ -395,14 +409,18 @@ def _compute_kpi_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     return "\n".join(lines)
 
 
+def _analyse_regels(code: str, eerder: list[str]) -> list[str]:
+    """Het script van een eigen berekening met zijn imports; die niet dubbel na een eerdere berekening in de keten."""
+    return [*(regel for regel in _ANALYSE_IMPORTS if regel not in eerder), "", code]
+
+
 def _run_analysis_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
     code = args.get("code", "")
     data_key = args.get("data_key")
     if not data_key:
         return code
-    # De sandbox geeft np, px en go kant-en-klaar; buiten de app moeten ze geïmporteerd worden.
-    imports = ["import numpy as np", "import plotly.express as px", "import plotly.graph_objects as go"]
-    return "\n".join([*_laadregels(data_key, recept_van), *imports, "", code])
+    laad = _laadregels(data_key, recept_van)
+    return "\n".join([*laad, *_analyse_regels(code, laad)])
 
 
 def _get_duo_data_snippet(args: dict, recept_van: Receptbron | None = None) -> str:

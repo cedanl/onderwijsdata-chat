@@ -393,6 +393,12 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- De snippet van een grafiek, KPI, selectie of eigen berekening op een eerdere stap herhaalt de stappen van die
+  stap in plaats van de rijen ervan in te bakken (#624): eerst de laadstap van de bron, dan de selectie
+  (`query_data`), de vaste maat (`get_maat`) of het script van de eigen berekening (`run_analysis`), zodat `df` in
+  dezelfde snippet ontstaat en de code opnieuw draait op actuele data. Het script van een eigen berekening komt
+  uit het geheugen van de sessie; de database bewaart nog steeds geen script. Alleen zonder bekende keten (na een
+  herstart) staat er een kopie van de rijen, met de opmerking dat die niet meegroeit met de bron.
 - De knop "Download data als CSV" staat ook onder een antwoord dat via `get_maat` liep (#538): een telvraag
   als "Hoeveel studenten zaten er in 2022 in het mbo?" kreeg sinds `get_maat` geen knop meer, omdat de export
   alleen `query_data` en `run_analysis` als bron kende. De download heet `<titel>_<dataset-id>.csv`, zoals bij
