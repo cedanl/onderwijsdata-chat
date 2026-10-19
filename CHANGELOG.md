@@ -101,6 +101,10 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Een lang antwoord (drie of meer onderdelen, of meer dan ± 600 tekens) begint met de kern in één of twee zinnen en
+  geeft elk onderdeel daarna een kop of een lijst, zodat je op een telefoon kunt skimmen; een kort antwoord blijft
+  één alinea. De regel "Onderzoeksvraag:" komt bij een lang antwoord direct na de kern, als gewone regel en niet
+  meer als citaatblok (#618).
 - Een UWV- of ROA-resultaat is een dataset zoals elke andere (#577): de tabel erachter staat in de store onder een
   `data_key`, met de laadaanroep en de peildatum of versie. Een rapport over een gesprek met vacaturecijfers ziet
   die cijfers nu (het rapport van 8 oktober schreef "geen vacaturegegevens geladen" terwijl de chat ze toonde),
