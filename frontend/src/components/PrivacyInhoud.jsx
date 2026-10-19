@@ -36,7 +36,10 @@ export default function PrivacyInhoud() {
         </li>
         <li>
           Voer geen persoonsgegevens in. De app herkent een BSN, een e-mailadres en een telefoonnummer en waarschuwt
-          dan, maar blokkeert niet; een naam herkent zij niet.
+          dan, maar blokkeert niet en maskeert niet; een naam herkent zij niet. Verstuur je de vraag toch, dan gaat
+          de tekst met die gegevens naar de AI-dienst en blijft hij staan in het gesprek op de server, in de kopie in
+          je browser en in een export van het gesprek, tot je het gesprek verwijdert; alleen de titel van het gesprek
+          wordt gemaskeerd.
         </li>
       </ul>
 

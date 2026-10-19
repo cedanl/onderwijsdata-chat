@@ -16,8 +16,11 @@ blijven.
 - De cijfers zelf komen van open bronnen (CBS, DUO en RIO). Daarheen gaat alleen de opvraag (welke tabel, welke
   selectie), niets over de gebruiker.
 - Voer geen persoonsgegevens in. De app herkent een BSN (elfproef), een e-mailadres en een Nederlands
-  telefoonnummer en waarschuwt dan, maar blokkeert niet; een naam herkent zij niet
-  (`frontend/src/persoonsgegevens.js`, `core/persoonsgegevens.py`, #478).
+  telefoonnummer en waarschuwt dan, maar blokkeert niet en maskeert niet; een naam herkent zij niet
+  (`frontend/src/persoonsgegevens.js`, `core/persoonsgegevens.py`, #478). Verstuur je de vraag toch, dan gaat de
+  tekst met die gegevens naar de AI-dienst en blijft hij staan in het gesprek op de server, in de kopie in je
+  browser en in een export van het gesprek, tot je het gesprek verwijdert; alleen de titel van het gesprek wordt
+  gemaskeerd (besluit 19-10, #616).
 
 ## Wat de server bewaart
 
