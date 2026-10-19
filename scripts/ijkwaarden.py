@@ -8,8 +8,9 @@ Gebruik:
     uv run python scripts/ijkwaarden.py --alleen cbs,duo # alleen deze bronnen
 
 Elk verschil (waarde, CBS-status, onderdrukte cellen) staat in het rapport; het script neemt nooit
-stil een nieuwe waarde over. Exitcode 1 bij een verschil zonder --schrijf, en als een bron niet
-antwoordt. Definities en de lijst ijkpunten: tests/ijkwaarden/README.md en harnas.py.
+stil een nieuwe waarde over. Exitcode 1 bij een verschil zonder --schrijf, en als een ijkpunt niet
+antwoordt; de bronnen die wel antwoorden staan dan toch in het rapport (#627). Definities en de lijst
+ijkpunten: tests/ijkwaarden/README.md en harnas.py.
 """
 
 from __future__ import annotations
@@ -40,11 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Onbekende bron(nen): {', '.join(sorted(onbekend))}", file=sys.stderr)
         return 2
 
-    try:
-        live = harnas.haal_alles(bronnen)
-    except Exception as fout:  # een bron die niet antwoordt is een meetfout, geen nieuwe stand
-        print(f"Ophalen mislukt: {type(fout).__name__}: {fout}", file=sys.stderr)
-        return 1
+    live, fouten = harnas.haal_alles(bronnen)
 
     try:
         vastgelegd = harnas.lees()["waarden"]
@@ -52,13 +49,16 @@ def main(argv: list[str] | None = None) -> int:
         vastgelegd = {}
     if bronnen:
         vastgelegd = {id: w for id, w in vastgelegd.items() if w.get("bron") in bronnen}
+    # Wat niet antwoordde is niet "verdwenen uit de lijst": het blijft vastgelegd en buiten de vergelijking.
+    vergelijkbaar = {id: w for id, w in vastgelegd.items() if id not in fouten}
 
-    verschillen = harnas.vergelijk(vastgelegd, live)
+    verschillen = harnas.vergelijk(vergelijkbaar, live)
     print(f"IJkwaarden: {len(live)} opgehaald, {len(vastgelegd)} vastgelegd in {harnas.FIXTURE.relative_to(ROOT)}")
     for id, w in sorted(live.items()):
         status = f" ({w['status']})" if w.get("status") else ""
         cellen = f", {w['onderdrukte_cellen']} onderdrukte cel(len)" if w.get("onderdrukte_cellen") else ""
         print(f"  {id:<36} {w['waarde']!r}{status}{cellen}")
+    _meld_fouten(fouten, vastgelegd)
     if verschillen:
         print(f"\n{len(verschillen)} verschil(len) met de vastgelegde stand:")
         for v in verschillen:
@@ -67,13 +67,23 @@ def main(argv: list[str] | None = None) -> int:
         print("\nGeen verschil met de vastgelegde stand.")
 
     if args.schrijf:
-        if bronnen:
-            # Alleen de opgehaalde bronnen vervangen; de rest blijft zoals vastgelegd.
+        if bronnen or fouten:
+            # Alleen de opgehaalde ijkpunten vervangen; de rest blijft zoals vastgelegd.
             live = {**harnas.lees()["waarden"], **live} if harnas.FIXTURE.exists() else live
         harnas.schrijf(live)
         print(f"Vastgelegd in {harnas.FIXTURE.relative_to(ROOT)}.")
-        return 0
-    return 1 if verschillen else 0
+        return 1 if fouten else 0
+    return 1 if verschillen or fouten else 0
+
+
+def _meld_fouten(fouten: dict[str, str], vastgelegd: dict[str, dict]) -> None:
+    """De ijkpunten die niet antwoordden, per bron, met de fout van de bron."""
+    if not fouten:
+        return
+    print(f"\n{len(fouten)} ijkpunt(en) niet opgehaald; hun vastgelegde waarde is niet vergeleken en niet vervangen:")
+    for id, fout in sorted(fouten.items()):
+        bron = vastgelegd.get(id, {}).get("bron") or next((p.bron for p in harnas.IJKPUNTEN if p.id == id), "?")
+        print(f"  ! {id:<36} [{bron}] {fout}")
 
 
 if __name__ == "__main__":

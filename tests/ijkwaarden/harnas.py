@@ -302,8 +302,22 @@ def haal(punt: Ijkpunt) -> dict[str, Any]:
     return {**kern, **_HALERS[punt.bron](punt)}
 
 
-def haal_alles(bronnen: set[str] | None = None) -> dict[str, dict[str, Any]]:
-    return {p.id: haal(p) for p in IJKPUNTEN if bronnen is None or p.bron in bronnen}
+def haal_alles(bronnen: set[str] | None = None) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """Elke ijkwaarde die de bron geeft, plus per ijkpunt de fout van wie niet antwoordde (#627).
+
+    Eén bron die faalt (RIO gaf op 19-10 HTTP 410) mag het rapport over CBS en DUO niet blokkeren: de
+    aanroeper ziet in `fouten` wat ontbreekt en beslist of dat telt.
+    """
+    live: dict[str, dict[str, Any]] = {}
+    fouten: dict[str, str] = {}
+    for punt in IJKPUNTEN:
+        if bronnen is not None and punt.bron not in bronnen:
+            continue
+        try:
+            live[punt.id] = haal(punt)
+        except Exception as fout:  # een bron die niet antwoordt is een meetfout, geen nieuwe stand
+            fouten[punt.id] = f"{type(fout).__name__}: {fout}"
+    return live, fouten
 
 
 # --- vergelijken en vastleggen ---------------------------------------------------------
