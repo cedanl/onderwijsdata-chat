@@ -1613,6 +1613,8 @@ html.dark .suggested-btn:hover {
   .navbar-menu-sub { flex-basis: 100%; font-size: .75rem; color: var(--muted-text); }
   .navbar-menu-scheiding { height: 1px; background: var(--gray-100); margin: 4px 0; }
   .navbar-meer-menu .export-conversation-btn { text-decoration: none; }
+  /* De melding uit de disclaimer, nu in het menu (#608): leesbaar (≥ 12 px), geen tikdoel. */
+  .navbar-meer-noot { margin: 0; padding: 6px 12px; font-size: .8rem; line-height: 1.4; color: var(--muted-text); max-width: 260px; }
 
   /* Sidebar: slide-over op mobiel/tablet */
   .chat-sidebar {
