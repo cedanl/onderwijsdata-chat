@@ -632,6 +632,11 @@ de laatste tag is 1.8.6.
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
 
 ### Beheer
+- Wekelijkse bron-ping in CI (#627): de geplande job `bron:ping` roept elke bron één keer aan door de toollaag van de
+  chat (CBS, DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt
+  zodra één bron niet antwoordt. RIO verwijderde API v2 op 19 oktober en dat viel pas op in een chatbeurt, omdat
+  pytest de bronnen mockt en `/health` er geen toetst. Een geplande pipeline op `main` bouwt en rolt niets meer uit:
+  elke regel op `main` sluit haar uit, ook die van de SBOM- en failure-jobs van de SDP-componenten.
 - Afspraken voor de testomgeving (#488): een eigen account per tester en per auditspoor, geen persoonsgegevens in
   een vraag, en opruimen na een ronde (`docs/test-environment.md`). Een test toetst dat gesprekken, werkboeken,
   rapport- en antwoordfeedback en de CSV-export per account gescheiden zijn.
