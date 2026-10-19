@@ -7,14 +7,18 @@ er één vaste regel van, per laadkey: een selectie op een afgekapte pagina noem
 pagina, dus één regel voor beide. Een key zonder KeyMeta heeft geen bron om te noemen en krijgt geen regel.
 """
 
+from typing import Literal
+
 from tools import store
 from tools.getal import nl_getal
 from tools.store import KeyMeta
 
-from .selectie import bestand_in_woorden, bron_in_woorden, laadkey
+from .selectie import bron_met_bestand, laadkey
+
+Waar = Literal["rapport", "dashboard"]
 
 
-def afkappingsregels(datasets: list[dict], waar: str) -> list[str]:
+def afkappingsregels(datasets: list[dict], waar: Waar) -> list[str]:
     """Per afgekapte laadkey in de datasetcontext één regel voor de lezer; `waar` is "rapport" of "dashboard".
 
     Alleen een dataset waarvan de context `volledig: False` zegt en waarvan de store de herkomst kent.
@@ -31,10 +35,8 @@ def afkappingsregels(datasets: list[dict], waar: str) -> list[str]:
     return list(regels.values())
 
 
-def _regel(known: KeyMeta, pagina, waar: str) -> str:
+def _regel(known: KeyMeta, pagina, waar: Waar) -> str:
     """De bron in woorden zoals de chat haar noemt (CH-45, #540), dan het voorbehoud uit de store."""
-    bron = bron_in_woorden(known)
-    if bestand := bestand_in_woorden(known):
-        bron += f", bestand {bestand}"
+    bron = bron_met_bestand(known)
     aantal = store.AFGEKAPT_AANTAL.format(rijen=nl_getal(len(pagina))) if pagina is not None else ""
     return f"{bron}: {store.AFGEKAPT.format(aantal=aantal, waar=waar)}"

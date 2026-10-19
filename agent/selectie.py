@@ -67,15 +67,22 @@ def bestand_in_woorden(known: KeyMeta) -> str | None:
     return resource_titel(known.dataset, known.resource)
 
 
+def bron_met_bestand(known: KeyMeta) -> str:
+    """De bron in woorden en, bij meer DUO-bestanden, het bestand erachter (#540); de vaste samenstelling
+    achter de selectie in woorden en de afkappingsregel (#583)."""
+    tekst = bron_in_woorden(known)
+    if bestand := bestand_in_woorden(known):
+        tekst += f", bestand {bestand}"
+    return tekst
+
+
 def selectie_in_woorden(data_key: str) -> str | None:
     """De selectie van een key in woorden, voor de gebruiker: DUO · <titel>, bij meer bestanden het
     bestand, en de periode als die bekend is. None als de key onbekend is; de key zelf hoort er
     niet in (CH-30)."""
     if not (known := store.meta(laadkey(data_key))):
         return None
-    tekst = bron_in_woorden(known)
-    if bestand := bestand_in_woorden(known):
-        tekst += f", bestand {bestand}"
+    tekst = bron_met_bestand(known)
     if jaren := periode_in_woorden(known):
         tekst += f", {jaren}"
     return tekst
