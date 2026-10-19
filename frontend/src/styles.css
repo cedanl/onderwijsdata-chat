@@ -566,6 +566,8 @@ input, textarea { font: inherit; }
 /* Table cells keep their old wrapping (#606): with `anywhere` a table wider than the bubble squeezed its columns
    below the width of a word and broke figures mid-number. Such a table stays as wide as its content, as before. */
 .message-bubble :is(th, td) { overflow-wrap: normal; }
+/* A wide table scrolls inside the answer instead of widening the message list (#626). */
+.tabel-scroll { max-width: 100%; overflow-x: auto; }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {
@@ -1802,6 +1804,9 @@ html.dark .suggested-btn:hover {
   .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
   }
+  /* A text button in a status line (Ga verder, Probeer opnieuw) has a 44px box that reaches past its line, as far
+     as the negative margin above pulls it in. Without room below, it lies over the feedback buttons that follow (#625). */
+  .message-stopped:has(.message-continue) { margin-bottom: calc((var(--tap-min) - 1lh) / 2); }
   /* The hit box grows on both sides; the negative margin keeps the old 22px footprint next to the bubble. */
   .resend-btn { margin-inline: calc((22px - var(--tap-min)) / 2); }
   /* The copy button keeps its 28px frame, drawn on ::before; the box around it is the tap target.

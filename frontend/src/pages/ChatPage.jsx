@@ -3,6 +3,7 @@ import Plot from '../components/LazyPlot'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
+import TabelScroll from '../components/TabelScroll'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
@@ -104,6 +105,7 @@ function CodeBlock({ className, children }) {
 const MARKDOWN_COMPONENTS = {
   pre({ children }) { return <>{children}</> },
   code: CodeBlock,
+  table: TabelScroll,
   th: KolomKop,
   span: CitedNumber,
 }
