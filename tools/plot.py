@@ -52,6 +52,14 @@ _NL_SEPARATORS = ",."
 
 _AXIS_STYLE = {"showgrid": True, "gridcolor": "#f0f0f0", "linecolor": "#ccc", "zeroline": False}
 
+# Plotly's eigen `plotly`-template geeft elke as automargin en een title.standoff van 15: de
+# ondermarge groeit dan mee met de legendarijen en de astitel blijft boven de tick-labels. Een
+# figuur zonder template (geëxporteerd, of na `layout.pop("template")`) mist dat en dan valt de
+# horizontale legenda over de astitel (#575). Hier expliciet, met dezelfde waarden, zodat de
+# weergave met de template pixelgelijk blijft.
+_AS_AUTOMARGIN = True
+_AS_STANDOFF = 15
+
 # Staande staven kantelen veel of lange namen onder de as tot ze onleesbaar zijn (90° in de
 # chat, achttien universiteiten op een plotvlak van 60px). Liggend staat elke naam als gewone
 # tekst naast zijn staaf.
@@ -313,6 +321,12 @@ def _titel(title: str, data_key: str | None) -> tuple[dict, dict]:
     return {**titel, **plaats, **ondertitel}, {**_MARGE, "t": _MARGE_MET_NOOT}
 
 
+def _astitel(tekst: str) -> dict:
+    """De astitel met de standoff van Plotly's template, zodat de titel boven de tick-labels blijft
+    en niet tegen de legenda aan staat (#575)."""
+    return {"text": tekst, "standoff": _AS_STANDOFF}
+
+
 def create_plot(
     data: list[dict] | None = None,
     chart_type: str = "auto",
@@ -409,15 +423,20 @@ def create_plot(
         layout["showlegend"] = False
 
     if chart_type != "pie":
-        categorie_as = {"title": kolomlabel(x, titels), **_AXIS_STYLE}
+        categorie_as = {"title": _astitel(kolomlabel(x, titels)), "automargin": _AS_AUTOMARGIN, **_AXIS_STYLE}
         if _is_time_axis(x):
             # Jaartallen als categorie: geen 2.023,5-tussenticks met duizendtalpunt (#240).
             categorie_as.update(type="category", categoryorder="category ascending")
-        waarde_as = {"title": kolomlabel(y, titels), "tickformat": ",", **_AXIS_STYLE}
+        waarde_as = {
+            "title": _astitel(kolomlabel(y, titels)),
+            "tickformat": ",",
+            "automargin": _AS_AUTOMARGIN,
+            **_AXIS_STYLE,
+        }
         if liggend:
             # De eerste rij bovenaan, zoals de agent de rijen sorteerde; de namen duwen de marge opzij.
             # Zonder astitel: de namen spreken voor zich, en op een telefoon viel de titel eroverheen.
-            layout["yaxis"] = {**categorie_as, "title": {"text": ""}, "autorange": "reversed", "automargin": True}
+            layout["yaxis"] = {**categorie_as, "title": {"text": ""}, "autorange": "reversed"}
             if any(t.text is not None for t in fig.data):
                 # Elke staaf draagt zijn getal: een waardeas ernaast herhaalt dat, en kantelt op een telefoon.
                 waarde_as.update(showticklabels=False, showgrid=False)
@@ -499,8 +518,18 @@ def leesbare_titels(fig: go.Figure, known: store.KeyMeta | None) -> go.Figure:
     """
     titels = known.kolomtitels if known else None
     for as_ in ("xaxis", "yaxis"):
-        if tekst := fig.layout[as_].title.text:
-            fig.layout[as_].title.text = kolomlabel(tekst, titels)
+        as_object = fig.layout[as_]
+        if tekst := as_object.title.text:
+            as_object.title.text = kolomlabel(tekst, titels)
+        # Automargin en standoff komen normaal uit Plotly's template; zonder template overlapt de
+        # legenda de astitel (#575). Alleen aanvullen wat de figuur zelf niet zette.
+        aanvullen = {}
+        if as_object.automargin is None:
+            aanvullen["automargin"] = _AS_AUTOMARGIN
+        if as_object.title.standoff is None:
+            aanvullen["title"] = {"standoff": _AS_STANDOFF}
+        if aanvullen:
+            fig.update_layout({as_: aanvullen})
     if tekst := fig.layout.legend.title.text:
         fig.layout.legend.title.text = kolomlabel(tekst, titels)
     legenda = fig.layout.legend
