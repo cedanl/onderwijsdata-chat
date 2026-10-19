@@ -199,6 +199,32 @@ describe('copy button on touch', () => {
   })
 })
 
+describe('copy button gutter in the answer (#623)', () => {
+  // On touch the answer's own copy button is a 44px box in the top right, over the text column, while the copy
+  // button of a code block under the first line sits in that column: the two then intersect (#623). The gutter
+  // moves the first box outside the column; on desktop the box stays 28px and the layout must not change (#623).
+  const base = rules.find(r => !r.media && r.selectors.includes('.message-bubble-assistant'))
+
+  it('leaves the desktop answer untouched', () => {
+    expect(base).toBeDefined()
+    expect(base.body).toMatch(/padding:\s*0\s*;/)
+    expect(base.body).not.toMatch(/padding-right/)
+  })
+
+  it('gives the answer a gutter of the touch target plus 8px on touch screens', () => {
+    const gutter = touchRules.find(r => r.selectors.includes('.message-bubble-assistant'))
+    expect(gutter).toBeDefined()
+    expect(gutter.body).toMatch(/padding-right:\s*calc\(var\(--tap-min\)\s*\+\s*8px\)\s*;/)
+  })
+
+  it('hangs the answer copy button in that gutter', () => {
+    const button = rules.find(r => !r.media && r.selectors.includes('.message-bubble-assistant .copy-btn-message'))
+    expect(button).toBeDefined()
+    expect(button.body).toMatch(/top:\s*0\s*;/)
+    expect(button.body).toMatch(/right:\s*0\s*;/)
+  })
+})
+
 describe('icons stay small', () => {
   it('keeps the history action icons at 13px', () => {
     const icon = rules.find(r => !r.media && r.selectors.includes('.history-action-icon svg'))

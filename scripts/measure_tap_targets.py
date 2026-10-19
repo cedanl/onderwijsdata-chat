@@ -49,12 +49,11 @@ NAMED = (
 )
 ICONS = {".resend-btn svg": 14, ".copy-btn svg": 14, ".history-action-icon svg": 13}
 
-# The first paragraph is longer than one line at 390 px on purpose. A one-line paragraph followed by a code
-# block reproduces the real overlap of the message copy button and the code copy button on touch widths (5 px),
-# which is tracked in #623; this script measures the rest of the page.
+# The first paragraph stays one line at 390 px on purpose: the code block then starts directly under the answer's
+# own copy button, which is the layout behind #623 (message copy button over code copy button, 5 px). The overlap
+# check at widths up to 1024 only guards the fix while this line stays short, so keep it that way.
 ANSWER = (
-    "In 2024 stonden er 12.345 studenten ingeschreven aan een hbo-instelling in Nederland, "
-    "een stijging ten opzichte van het jaar ervoor.\n\n"
+    "In 2024 stonden er 12.345 studenten ingeschreven.\n\n"
     "```python\nprint('reproduceerbaar')\n```\n\n"
     "De cijfers komen van DUO."
 )
