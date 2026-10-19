@@ -77,6 +77,10 @@ variables:
   CHART_PATH: $CI_PROJECT_DIR/charts/onderwijsdata-chat
   CI_PROJECT_NAME: onderwijsdata-chat
 
+# Een geplande pipeline (schedule) op main bouwt en rolt niets uit: elke regel op main sluit haar uit, zodat
+# alleen bron:ping (met BRON_PING=1) en eval:bronwaarheid (met EVAL_BASE_URL) in zo'n pipeline draaien (#627).
+# De SAST- en secret-detectionjobs van de securitycomponent zet het schema zelf uit (SAST_DISABLED=1,
+# SECRET_DETECTION_DISABLED=1): hun regels staan in de component.
 stages:
   - build
   - test
@@ -87,7 +91,7 @@ stages:
 
 version:generate:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
 
 version:promote:
@@ -103,7 +107,7 @@ pytest:
   # generate-sbom job (see 3d989ee).
   stage: .pre
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_TAG
   needs: []
@@ -135,7 +139,7 @@ pytest:
 frontend:
   stage: .pre
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_TAG
   needs: []
@@ -193,6 +197,35 @@ eval:bronwaarheid:
     paths:
       - eval_results/
 
+# Eén aanroep per bron door de toollaag van de chat (CBS, DUO, RIO en de GeoJSON van de kaart), zonder LLM
+# en zonder testomgeving (#627): RIO verwijderde API v2 op 19-10-2026 en dat viel pas op in een chatbeurt,
+# want pytest mockt de bronnen en /health toetst er geen. Gepland (wekelijks op main; het schema zet
+# BRON_PING=1, SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via "Run pipeline" met
+# BRON_PING=1. Faalt zodra één bron niet antwoordt: de melding van de mislukte geplande pipeline is het signaal.
+bron:ping:
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $BRON_PING == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $BRON_PING == "1"
+  needs: []
+  image:
+    name: python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+  variables:
+    UV_CACHE_DIR: .uv-cache
+  cache:
+    key:
+      files:
+        - uv.lock
+    paths:
+      - .uv-cache
+  before_script:
+    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock
+    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    - pip install --no-cache-dir uv
+  script:
+    - uv sync --frozen
+    - uv run python scripts/bronping.py
+
 # Bekende kwetsbaarheden in de dependencies (#506, SECURITY.md S12): de SDP-securitycomponent
 # draait alleen secret detection en SAST, geen dependency-scan. Informatief, zoals de oude
 # GitHub-stap: een nieuwe CVE mag een MR die er niets mee te maken heeft niet blokkeren;
@@ -200,7 +233,7 @@ eval:bronwaarheid:
 audit:python:
   stage: test
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
   needs: []
   allow_failure: true
@@ -218,7 +251,7 @@ audit:python:
 audit:npm:
   stage: test
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
   needs: []
   allow_failure: true
@@ -231,12 +264,21 @@ audit:npm:
 
 docker:docker-build:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
   needs:
     - version:generate
     - pytest
     - frontend
+
+# De componentjob heeft eigen regels (main en MR) en needs docker:docker-build: zonder die build, in een
+# geplande pipeline, zou de pipeline niet eens starten.
+docker:docker-build:generate-sbom:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
 
 docker:docker-promote:
   rules:
@@ -246,17 +288,17 @@ docker:docker-promote:
 
 helm:lint:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
 
 helm:package:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
 
 helm:publish:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
 
 helm:promote:
@@ -269,7 +311,7 @@ helm:publish-promoted:
 
 kubernetes:diff:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_TAG
   needs:
@@ -278,14 +320,14 @@ kubernetes:diff:
 
 kubernetes:dry-run:
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
 
 kubernetes:verify-up:
   # Checks that *this* commit is deployed; pointless once a newer one lands.
   interruptible: true
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
 
 # Uit: playground staat vast op een eerdere release en haalt de nieuwe tag pas
 # binnen bij een promotie-MR, dus deze job kan tijdens de tag-pipeline niet slagen.
@@ -293,11 +335,18 @@ kubernetes:verify-up:tag:
   rules:
     - when: never
 
+# De componentjob rapporteert de namespace als een deploy faalt; een mislukte bron-ping is geen deploy.
+kubernetes:failure:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_failure
+
 # De ladder: test houdt de open range, playground pint een bestaande release-tag.
 env:promotion-ladder:
   stage: .pre
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
     - if: $CI_MERGE_REQUEST_IID
   needs: []
   image:
@@ -313,7 +362,7 @@ env:promotion-ladder:
 debug:logs:
   stage: .post
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
       when: manual
       allow_failure: true
   environment:
@@ -330,7 +379,7 @@ debug:logs:
 sync:github:
   stage: .post
   rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
       when: always
     - if: $CI_COMMIT_TAG
       when: always
