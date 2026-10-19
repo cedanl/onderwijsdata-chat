@@ -5,7 +5,8 @@ getal klopte, de naam was verkort en naast Hogeschool Utrecht dubbelzinnig. Op "
 informatica?" rustte het antwoord op wo, informatica en landelijk, maar dat stond alleen in losse tekst. Legt de
 selectie van de beurt een afbakening vast die de gebruiker niet noemde, dan opent het antwoord met één regel
 "**Uitgangspunt:** …": de instelling met haar volledige naam en code, de CBS-dimensies op één waarde en de
-periode. Alleen uit de toolstappen, geen modeltekst (#191), net als de interpretatiezin (#514).
+periode. Alleen uit de toolstappen, geen modeltekst (#191), net als de interpretatiezin (#514). Een eigen
+berekening (run_analysis) telt met de selectie die ze las: haar uitvoer komt uit het script van het model.
 """
 
 import json
@@ -14,13 +15,14 @@ from dataclasses import dataclass, field
 
 from tools import instelling, store
 from tools.catalog import bron_naam
+from tools.herlaad import STAP_ANALYSE
 from tools.maten import ALLE
 from tools.schemas import TOOL_GET_MAAT
 from tools.store import KeyMeta
 
 from .dimensielabels import vaste_waarden
 from .grounding import bewijs_getallen, checked_numbers, getallen_met_positie
-from .selectie import SCHEIDING, bladeren, laadkey, periode_in_woorden, stapkeys
+from .selectie import SCHEIDING, bladeren, keten, laadkey, periode_in_woorden, stapkeys
 
 KOP = "**Uitgangspunt:**"
 # Meer instellingen is een vergelijking of een overzicht: een opsomming daarvan is geen uitgangspunt.
@@ -32,7 +34,7 @@ _JAARTAL = re.compile(r"(?<!\w)(\d{4})(?!\d)")
 class _Afbakening:
     """Wat de selecties uit één dataset vastleggen."""
 
-    instellingen: dict[str, str] = field(default_factory=dict)  # code → naam; "" als de naam onbekend is
+    instellingen: dict[str, str] = field(default_factory=dict)  # code → naam; "" als get_maat geen naam gaf
     waarden: list[str] = field(default_factory=list)  # sector en vorm van get_maat, CBS-dimensielabels
     perioden: list[KeyMeta] = field(default_factory=list)
 
@@ -79,19 +81,41 @@ def _is_selectie(known: KeyMeta) -> bool:
 
 
 def _instellingen(key: str, known: KeyMeta) -> dict[str, str]:
-    """Code → naam van de instellingen in een selectie, de naam zoals de geladen DUO-data hem noemt."""
+    """Code → naam van de instellingen in een selectie, zoals de geladen DUO-data ze noemt.
+
+    Een code die daar niet met een naam in staat, valt weg: de regel noemt alleen instellingen uit de bron.
+    """
     if not known.instellingen or len(known.instellingen) > _MAX_INSTELLINGEN or not known.instellingskolom:
         return {}
     df = store.get(laadkey(key))
-    namen: dict[str, str] = {}
-    if df is not None and instelling.codekolom(df.columns) == known.instellingskolom:
-        namen = instelling.namen(df, known.instellingskolom)
-    return {code: namen.get(code, "") for code in known.instellingen}
+    if df is None or instelling.codekolom(df.columns) != known.instellingskolom:
+        return {}
+    namen = instelling.namen(df, known.instellingskolom)
+    return {code: namen[code] for code in known.instellingen if code in namen}
+
+
+def _berekening(key: str) -> str | None:
+    """De eerste eigen berekening (run_analysis) in de afleiding van `key`, vanaf de laadkey; None als er geen is."""
+    return next((k for k in reversed(keten(key)) if (m := store.meta(k)) and m.stap == STAP_ANALYSE), None)
+
+
+def _bronselecties(key: str, gezien: frozenset[str] = frozenset()) -> list[str]:
+    """De selecties waarop `key` rust.
+
+    De instellingen en schooljaren van een eigen berekening, en van wat daarop verder bouwt, komen uit de rijen die
+    het script van het model teruggaf. In hun plaats tellen de selecties die de berekening las (`gelezen`).
+    """
+    if (berekening := _berekening(key)) is None:
+        return [key]
+    if berekening in gezien or not (known := store.meta(berekening)):
+        return []
+    return [bron for k in known.gelezen or () for bron in _bronselecties(k, gezien | {berekening})]
 
 
 def _uit_selecties(steps: list[tuple[str, str]], per: dict[str, _Afbakening]) -> None:
     """De afbakening in de bladselecties van de beurt: de keys waar geen andere key van de beurt van is afgeleid."""
-    for key in bladeren([k for _, result in steps for k in stapkeys(result)]):
+    bladen = bladeren([k for _, result in steps for k in stapkeys(result)])
+    for key in dict.fromkeys(bron for blad in bladen for bron in _bronselecties(blad)):
         if not (known := store.meta(key)) or not _is_selectie(known):
             continue
         afbakening = per.setdefault(known.dataset, _Afbakening())
