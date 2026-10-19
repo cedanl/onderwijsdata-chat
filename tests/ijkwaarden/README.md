@@ -60,3 +60,6 @@ TEST_MODELS=azure_ai/claude-sonnet-5-5 TEST_REPEATS=3 \
 nooit uit de repo. De CI-job `eval:bronwaarheid` (`.gitlab-ci.yml`) doet hetzelfde, gepland of met de hand,
 met `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` als (masked) CI-variabelen, en bewaart
 `eval_results/` 90 dagen als artifact. Elke beurt kost een modelaanroep op die omgeving.
+
+Los daarvan pingt de geplande CI-job `bron:ping` (`scripts/bronping.py`) elke bron één keer door de toollaag van de
+chat, met de selecties van deze ijkpunten en zonder waarden te vergelijken: alleen of de bron nog antwoordt (#627).
