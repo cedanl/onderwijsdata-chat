@@ -205,6 +205,15 @@ def check_copied_state(page, narrow):
     return problems
 
 
+def open_from_menu(page, narrow, desktop, name):
+    """Open a dialog the way the screen offers it: on narrow screens from the navbar menu (#596), else `desktop`."""
+    if narrow:
+        page.locator(".navbar-menu-btn").click()
+        page.locator("#navbar-menu").get_by_role("button", name=name).click()
+    else:
+        desktop.click()
+
+
 def run_viewport(browser, base, width, height, allow_absent=()):
     """All findings for one viewport, plus every target measured."""
     context = browser.new_context(
@@ -236,11 +245,12 @@ def run_viewport(browser, base, width, height, allow_absent=()):
         problems.append(f"horizontal overflow on /chat: scrollWidth {overflow[0]} > {overflow[1]}")
     problems.extend(check_copied_state(page, narrow))
 
-    page.locator(".disclaimer-link").click()
+    disclaimer = page.locator(".chat-disclaimer").get_by_role("button", name="open onderwijsdata")
+    open_from_menu(page, narrow, disclaimer, "Gebaseerd op open onderwijsdata")
     collect("data sources dialog", '[role="dialog"][aria-label="Databronnen"]')
     page.keyboard.press("Escape")
 
-    page.locator(".navbar-profile-btn").click()
+    open_from_menu(page, narrow, page.locator(".navbar-profile-btn"), re.compile(r"^Instellingen"))
     dialog = page.locator('[role="dialog"][aria-label="Instellingen"]')
     dialog.get_by_role("button", name=re.compile(r"^WO")).click()
     dialog.locator("#settings-instelling").fill("zzzz")
@@ -249,7 +259,7 @@ def run_viewport(browser, base, width, height, allow_absent=()):
     page.keyboard.press("Escape")
 
     if narrow:
-        page.locator(".hamburger-btn").click()
+        page.get_by_role("button", name="Gesprekken en suggesties").click()
         page.wait_for_timeout(400)  # the drawer slides in
     page.locator(".chat-sidebar .suggested-category-btn").first.click()
     page.locator(".chat-sidebar .history-btn").first.hover()
