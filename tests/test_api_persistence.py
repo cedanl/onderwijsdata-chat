@@ -41,9 +41,8 @@ def authed_client(tmp_path, monkeypatch):
 
     importlib.reload(server)
     c = TestClient(server.app)
-    resp = c.post("/api/auth/login", json={"username": "testuser", "password": "testpass"})
-    token = resp.json()["token"]
-    c.headers["Authorization"] = f"Bearer {token}"
+    # Een echt token zonder de login-route: de login-limiet geldt voor de hele testrun.
+    c.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
     return c
 
 
@@ -274,6 +273,19 @@ def test_auth_enabled_no_token_returns_401(authed_client):
     c = TestClient(authed_client.app)
     resp = c.get("/api/conversations")
     assert resp.status_code == 401
+
+
+def test_unknown_conversation_with_a_valid_token_is_404(authed_client):
+    """#637, point 3: not reproduced; the reported 401 came from a request without Authorization header."""
+    resp = authed_client.get("/api/conversations/bestaat-niet-123")
+    assert resp.status_code == 404
+    assert resp.content == b'{"detail":"Gesprek niet gevonden"}'
+
+
+def test_unknown_conversation_without_authorization_header_is_401(authed_client):
+    resp = TestClient(authed_client.app).get("/api/conversations/bestaat-niet-123")
+    assert resp.status_code == 401
+    assert resp.content == b'{"detail":"Niet geautoriseerd"}'
 
 
 def test_auth_enabled_with_token_works(authed_client):
