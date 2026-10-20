@@ -39,6 +39,7 @@ import {
   persistCurrentChat, upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
+import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
 import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
 import {
@@ -315,7 +316,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const openChatRef = useRef(initialChat)
-  const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
+  // What the server has of the open conversation. A restored one only counts as saved when its last PUT
+  // landed (#635): a reload during a question or a PUT while offline left it in this browser only.
+  const savedJsonRef = useRef(null)
+  if (savedJsonRef.current === null) {
+    const json = JSON.stringify(initialChat.messages)
+    savedJsonRef.current = isOpgeslagen(initialChat.id, json) ? json : ''
+  }
   // Het verwijderde open gesprek (#530): geen lokale save schrijft het terug tot er een nieuw gesprek begint.
   const verwijderdRef = useRef(null)
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
@@ -429,8 +436,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
     if (!record || json === savedJsonRef.current) return null
+    // A failed PUT does not count as saved (#635): the next chance (an answer, the connection back) sends it again.
+    const vorige = savedJsonRef.current
     savedJsonRef.current = json
-    savingRef.current = putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
+    savingRef.current = volgOpslag(putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }))
+      .then(() => { if (!sessionEndedSince(tokenAtMount)) noteerOpgeslagen(id, json) }, () => {
+        if (savedJsonRef.current === json) savedJsonRef.current = vorige
+      })
     return upsertConversation(loadConversationHistory(), record)
   }, [tokenAtMount])
 
@@ -445,10 +457,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [putOpenConversation, persistHistoryMetMelding])
   const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
-  // Save every finished answer, so closing the tab loses nothing.
+  // Save every finished answer, so closing the tab loses nothing. Also when the connection is back: a save
+  // that failed offline goes again then (#635); an unchanged conversation is not sent twice.
   useEffect(() => {
     if (!busy) saveConversation()
-  }, [busy, saveConversation])
+  }, [busy, connected, saveConversation])
 
   const handleClear = useCallback(() => {
     saveConversation()
