@@ -300,3 +300,11 @@ describe('figureCsvFilename (#496 F11)', () => {
     expect(metId.length).toBeLessThanOrEqual(80 + '_85354NED.csv'.length)
   })
 })
+
+// #642: een rij in layout.meta.data die geen object is, liet het hele antwoord vallen.
+describe('tool rows that are not objects', () => {
+  it('skips them and exports the rest', () => {
+    const fig = { data: [], layout: { meta: { data: [null, ['a', 1], 'tekst', { Provincie: 'Zeeland', Studenten: 9000 }] } } }
+    expect(figureToCsv(fig)).toBe('Provincie;Studenten\nZeeland;9000')
+  })
+})

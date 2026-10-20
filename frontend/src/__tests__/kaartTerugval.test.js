@@ -19,6 +19,7 @@ vi.mock('react-plotly.js', async () => {
 })
 
 import { Message } from '../pages/ChatPage'
+import { NUL_BEVESTIGING } from '../kaartStatus'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 window.matchMedia ??= q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
@@ -92,11 +93,38 @@ describe('kaart die niet getekend is (#632)', () => {
     expect(wrap().querySelector('.csv-download-btn')).not.toBeNull()
   })
 
-  it('toont de melding als de kaart nul gebieden tekent', async () => {
+  it('toont de melding als de kaart nul gebieden tekent, na de bevestiging', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     await render(KAART, props => props.onInitialized({}, kaartMet([])))
     await act(async () => {})
+    expect(wrap().querySelector('[role="alert"]')).toBeNull()
+    await act(async () => { vi.advanceTimersByTime(NUL_BEVESTIGING) })
     expect(wrap().querySelector('[role="alert"]').textContent).toContain('De kaart kon niet worden getekend')
     expect(cellen()).toHaveLength(2)
+    vi.useRealTimers()
+  })
+
+  // #642: na een niet-fatale fout bleven melding en tabel staan, ook als de kaart daarna toch tekende.
+  it('haalt melding en tabel weg als de kaart na een fout alsnog tekent', async () => {
+    const luisteraars = {}
+    const vormen = []
+    const gd = { _fullLayout: { map: { _subplot: { map: {
+      on(naam, f) { luisteraars[naam] = f }, off(naam) { delete luisteraars[naam] }, loaded: () => false,
+      queryRenderedFeatures: () => vormen,
+    } } } } }
+    await render(KAART, props => props.onInitialized({}, gd))
+    await act(async () => { luisteraars.error() })
+    expect(wrap().querySelector('[role="alert"]')).not.toBeNull()
+    vormen.push({ id: 0, properties: { ct: [5, 52] }, layer: { type: 'fill' } })
+    await act(async () => { luisteraars.idle() })
+    expect(wrap().querySelector('[role="alert"]')).toBeNull()
+    expect(wrap().querySelector('[role="img"], [hidden]')?.hidden ?? false).toBe(false)
+  })
+
+  it('slaat rijen over die geen object zijn', async () => {
+    const kapot = { ...KAART, layout: { ...KAART.layout, meta: { ...KAART.layout.meta, data: [null, ['Utrecht', 1], 'tekst', { Provincie: 'Zeeland', Studenten: 9000 }] } } }
+    await render(kapot, props => props.onError(new Error('Map error.')))
+    expect(cellen()).toEqual([['Zeeland', '9.000']])
   })
 
   it('verwijst naar het antwoord als de figuur geen rijen meegeeft', async () => {
