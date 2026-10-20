@@ -295,7 +295,7 @@ Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `w
 - Geen `Permissions-Policy`-header.
 
 **Nu (#636):**
-- De API-documentatie bestaat alleen buiten productie. "Productie" is `Config.is_production()`: `POSTGRES_URI` én `SESSION_SECRET` gezet. Daar geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Geen antwoord noemt dan nog `cdn.jsdelivr.net`.
+- De API-documentatie bestaat alleen buiten productie. "Productie" is `Config.is_production()`: `POSTGRES_URI` én `SESSION_SECRET` gezet. Daar geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
 - De vijf dashboard-eindpunten vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` dezelfde 403 als `POST /api/dashboard/refresh` (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
 - `Permissions-Policy` op elk antwoord, zie S3.
 - Al gedekt, geen wijziging: het printbericht van een rapport telt alleen als het van de app komt (`event.source === parent`, `PRINT_JS` in `frontend/src/reportHtml.js`; #634, zie S22).
