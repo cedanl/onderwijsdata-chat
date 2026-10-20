@@ -77,6 +77,35 @@ describe('conversationMarkdown (#366)', () => {
   })
 })
 
+// #640: a call the scope boundary refused counts as a failed step, written by its outcome only.
+describe('conversationMarkdown met een geweigerde opvraag (#640)', () => {
+  const gesprek = tools => [
+    { role: 'user', content: 'Hoeveel leerlingen in groep 8?' },
+    { role: 'assistant', content: 'De chat werkt alleen voor mbo, hbo en wo.', done: true, tools },
+  ]
+  const geweigerd = {
+    name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, status: 'buiten_scope',
+    statusLabel: 'CBS-opvraag geweigerd (buiten scope)', snippet: null,
+  }
+  const zoeken = { name: 'search_catalog', label: 'Catalogus doorzocht', done: true, snippet: null }
+  const stappen = (tools, opties) => conversationMarkdown(gesprek(tools), { datum: '20 oktober 2026', ...opties })
+    .split('\n').filter(r => /^\d+\. /.test(r))
+
+  it('laat de geweigerde stap standaard weg', () => {
+    expect(stappen([zoeken, geweigerd])).toEqual(['1. Catalogus doorzocht'])
+  })
+
+  it('noemt hem met de foutentoggle alleen naar zijn uitkomst', () => {
+    expect(stappen([zoeken, geweigerd], { fouten: true }))
+      .toEqual(['1. Catalogus doorzocht', '2. CBS-opvraag geweigerd (buiten scope)'])
+  })
+
+  it('houdt een opgeslagen stap zonder uitkomst bij zijn oude label', () => {
+    const oud = { name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, snippet: null }
+    expect(stappen([zoeken, oud])).toEqual(['1. Catalogus doorzocht', '2. CBS data opgehaald'])
+  })
+})
+
 describe('conversationMarkdown na een correctie (#398)', () => {
   const GECORRIGEERD = [
     { role: 'user', content: 'Hoeveel eerstejaars?' },

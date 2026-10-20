@@ -803,6 +803,23 @@ describe('useChat reasoning steps (#76)', () => {
     const [step] = assistantMessages()[0].tools
     expect(step).toMatchObject({ done: true, status: 'empty', statusLabel: 'Filter leverde 0 rijen op', suggesties: { Niveau: ['Hbo', 'Wo'] } })
   })
+
+  // #640: a refused call on the scope boundary loaded nothing; the step follows the result.
+  it('keeps a refused call on the scope boundary as such, not as data loaded', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'tool_start', name: 'get_cbs_data', label: 'CBS data opgehaald' })
+      ws.emit({
+        type: 'tool_end', name: 'get_cbs_data', status: 'buiten_scope',
+        status_label: 'CBS-opvraag geweigerd (buiten scope)',
+      })
+    })
+    const [step] = assistantMessages()[0].tools
+    expect(step).toMatchObject({
+      done: true, status: 'buiten_scope', statusLabel: 'CBS-opvraag geweigerd (buiten scope)', dataKey: null, exportKey: null,
+    })
+  })
 })
 
 describe('useChat question model', () => {

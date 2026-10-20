@@ -1,5 +1,5 @@
 // A reasoning step once its tool_end arrives. The server reads the outcome from the tool
-// result (#386): status 'empty' or 'error' with its own label; no status means it delivered.
+// result (#386): status 'empty', 'error' or 'buiten_scope' (#640) with its own label; no status means it delivered.
 // exportKey: the table this step left in the store, for the CSV download (#269).
 // dataKey: the data this step loaded or made; saved with the conversation as its recipe, so a
 // reopened conversation knows its data again without a new question (#551).
