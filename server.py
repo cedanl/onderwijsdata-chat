@@ -45,10 +45,15 @@ from routes import (
     persistence_router,
 )
 
+# API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
+# en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+_DOCS = not Config.is_production()
+
 app = FastAPI(
     title="Onderwijsdata Chat",
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if _DOCS else None,
+    redoc_url="/redoc" if _DOCS else None,
+    openapi_url="/api/openapi.json" if _DOCS else None,
 )
 
 # Initialize database
