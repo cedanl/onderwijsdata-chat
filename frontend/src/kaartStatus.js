@@ -30,42 +30,57 @@ export function getekendeGebieden(map) {
   }
 }
 
-// Volgt de kaart van `gd` en meldt via `meld` 'getekend' of 'mislukt'. Mislukt alleen bij een fout van maplibre
-// zonder getekend gebied, of als na 'idle' of na de wachttijd geen gebied getekend is. Een kaart die daarna alsnog
-// tekent, meldt nog 'getekend'. Geeft een opruimfunctie terug.
+// Zo lang moet een kaart zonder gebieden leeg blijven voordat dat telt: de eerste 'idle' kan komen voordat de
+// vlakken er staan, en de melding flitste dan kort op (#642).
+export const NUL_BEVESTIGING = 1000
+
+// Volgt de kaart van `gd` en meldt via `meld` 'getekend' of 'mislukt'. Mislukt bij een fout van maplibre zonder
+// getekend gebied, als na 'idle' ook NUL_BEVESTIGING later geen gebied getekend is, of na de wachttijd. Ook daarna
+// blijft de controle kijken (#642): een fout is vaak niet fataal (een tegel, een stijlwaarschuwing), en een kaart die
+// alsnog tekent, meldt 'getekend'. Pas dan stopt hij. Geeft een opruimfunctie terug.
 export function volgKaart(gd, meld, wachttijd = KAART_WACHTTIJD) {
   const map = kaartVan(gd)
   if (!map) return () => {}
   let klaar = false
+  let laatste = null
+  let bevestiging = null
+  const zeg = status => {
+    if (status === laatste) return
+    laatste = status
+    meld(status)
+  }
   const stop = () => {
     klaar = true
     clearTimeout(timer)
+    clearTimeout(bevestiging)
     map.off('idle', tel)
     map.off('error', fout)
   }
-  function tel() {
+  // Getekend telt meteen en voor altijd; geeft het aantal terug (null als de kaart niet kan tellen).
+  function getekend() {
     const n = getekendeGebieden(map)
-    if (klaar || n === null) return
     if (n > 0) {
       stop()
-      meld('getekend')
-    } else {
-      meld('mislukt')
+      zeg('getekend')
     }
+    return n
+  }
+  function tel() {
+    if (klaar || getekend() !== 0 || bevestiging) return
+    bevestiging = setTimeout(() => {
+      bevestiging = null
+      if (!klaar && getekend() === 0) zeg('mislukt')
+    }, NUL_BEVESTIGING)
   }
   function fout() {
-    if (klaar) return
-    const n = getekendeGebieden(map)
-    stop()
-    meld(n > 0 ? 'getekend' : 'mislukt')
+    if (!klaar && !(getekend() > 0)) zeg('mislukt')
   }
-  const timer = setTimeout(tel, wachttijd)
+  const timer = setTimeout(() => {
+    if (!klaar && getekend() === 0) zeg('mislukt')
+  }, wachttijd)
   map.on('idle', tel)
   map.on('error', fout)
   // De kaart kan al klaar zijn voordat de controle begint; alleen een getekende kaart telt dan meteen.
-  if (map.loaded?.() && getekendeGebieden(map) > 0) {
-    stop()
-    meld('getekend')
-  }
+  if (map.loaded?.()) getekend()
   return stop
 }

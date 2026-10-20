@@ -112,8 +112,11 @@ function tracesToCsv(figure) {
   return traces.some(hasRepeatedX) ? longCsv(traces, xName, yName) : wideCsv(traces, xName, yName)
 }
 
-const toolRows = figure => figure.layout?.meta?.data
-const hasToolRows = figure => Array.isArray(toolRows(figure)) && toolRows(figure).length > 0
+// A tool row is an object; anything else in a stored meta (null, a list, text) is skipped rather than
+// taking the whole answer down (#642). Also read by KaartTerugval.jsx.
+export const isRij = rij => rij !== null && typeof rij === 'object' && !Array.isArray(rij)
+const toolRows = figure => (Array.isArray(figure.layout?.meta?.data) ? figure.layout.meta.data.filter(isRij) : null)
+const hasToolRows = figure => toolRows(figure)?.length > 0
 
 // Source and selections from tools/plot.py, as '#' lines above the header:
 // pandas skips them with comment='#', a spreadsheet shows them as text (#118).
