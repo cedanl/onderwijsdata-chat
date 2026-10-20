@@ -1799,7 +1799,7 @@ html.dark .suggested-btn:hover {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
-  .sources-link, .export-conversation-btn, .model-picker select, .answer-bronnen a { min-height: var(--tap-min); }
+  .sources-link, .export-conversation-btn, .make-rapport-btn, .model-picker select, .answer-bronnen a { min-height: var(--tap-min); }
 
   .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
