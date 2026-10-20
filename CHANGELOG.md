@@ -731,6 +731,8 @@ de laatste tag is 1.8.6.
   die de verstuurde waarde herhaalde en "Field required" of "Input should …" zei. Een onbekende `/api`-route geeft 404
   "Niet gevonden" (was "Not Found"), een verkeerde methode 405 "Methode niet toegestaan" met de `Allow`-header. Geen
   melding noemt het pad of de invoer; wat een route zelf meldt ("Gesprek niet gevonden" en dergelijke) blijft gelijk.
+  Een WebSocket-frame met een onbekende actie, zonder `action` of met een lijst als `action` krijgt direct een
+  foutframe ("Onbekende actie. …") in plaats van stilte tot de time-out van de client; de verbinding blijft open.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.

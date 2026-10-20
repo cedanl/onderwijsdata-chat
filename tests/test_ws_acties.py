@@ -6,6 +6,7 @@ handtekening (msg, session, emit, lopende taak) -> lopende taak.
 
 import asyncio
 import importlib
+import json
 
 import pytest
 
@@ -93,14 +94,70 @@ def test_history_opent_een_opgeslagen_gesprek():
     assert session["messages"] == [{"role": "user", "content": "Hallo"}]
 
 
-def test_een_onbekende_actie_wordt_genegeerd():
+def _dispatch(msg: dict, task=None):
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
     async def scenario():
-        async def emit(event):
-            raise AssertionError(event)
+        return await chat._dispatch(msg, chat._new_session(), emit, task)
 
-        return await chat._dispatch({"action": "bestaat_niet"}, chat._new_session(), emit, None)
+    return asyncio.run(scenario()), events
 
-    assert asyncio.run(scenario()) is None
+
+@pytest.mark.parametrize(
+    "msg",
+    [{"action": "bestaat-niet-31337"}, {}, {"action": []}, {"action": {"a": 1}}, {"action": None}],
+    ids=["onbekend", "zonder-action", "lijst", "object", "null"],
+)
+def test_een_onbekende_actie_krijgt_direct_een_foutframe(msg):
+    """#637: zonder antwoord wachtte de client tot zijn time-out; een lijst als actie gaf een TypeError."""
+    taak = object()
+
+    terug, events = _dispatch(msg, taak)
+
+    assert terug is taak
+    assert events == [{"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}]
+    assert "31337" not in chat.ONBEKENDE_ACTIE
+
+
+@pytest.fixture
+def ws_client(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    from persistence import db
+
+    db.init_db()
+    from fastapi.testclient import TestClient
+
+    import server
+
+    monkeypatch.setattr(chat, "AUTH_ENABLED", False)
+    return TestClient(server.app)
+
+
+def _frames_na(ws, msg: dict, aantal: int) -> list[dict]:
+    """De eerste frames na msg plus een ping, zonder de system_message over de API-key.
+
+    De ping erachter laat een test falen in plaats van eeuwig wachten als het foutframe uitblijft.
+    """
+    ws.send_text(json.dumps(msg))
+    ws.send_text(json.dumps({"action": "ping"}))
+    frames: list[dict] = []
+    while len(frames) < aantal:
+        frame = json.loads(ws.receive_text())
+        if frame["type"] != "system_message":
+            frames.append(frame)
+    return frames
+
+
+def test_onbekende_actie_over_de_websocket_houdt_de_verbinding_open(ws_client):
+    fout = {"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}
+    with ws_client.websocket_connect("/api/chat") as ws:
+        for msg in ({"action": "bestaat-niet"}, {}, {"action": []}):
+            frames = _frames_na(ws, msg, 2)
+            assert frames == [fout, {"type": "pong"}], msg
+            assert "bestaat-niet" not in json.dumps(frames)
 
 
 # ─── Maximale berichtlengte (#481, SECURITY.md S7) ──────────────────────────
