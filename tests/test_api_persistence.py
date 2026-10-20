@@ -240,6 +240,16 @@ def test_put_and_get_workbook(client):
     assert len(data) == 1
     assert data[0]["id"] == "wb1"
     assert data[0]["title"] == "Dashboard"
+    assert data[0]["type"] == "report"
+    assert "html_content" not in data[0]
+
+    werkboek = client.get("/api/workbooks/wb1").json()
+    assert werkboek["html_content"] == "<html></html>"
+    assert werkboek["instelling"] == "HU"
+
+
+def test_get_workbook_dat_er_niet_is(client):
+    assert client.get("/api/workbooks/bestaat-niet").status_code == 404
 
 
 def test_delete_workbook(client):

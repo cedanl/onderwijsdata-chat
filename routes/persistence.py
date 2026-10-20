@@ -85,7 +85,16 @@ def delete_conversation(conv_id: str, username: str = Depends(get_current_user))
 
 @router.get("/api/workbooks")
 def list_workbooks(username: str = Depends(get_current_user)) -> list[dict]:
+    """Id, titel, beschrijving, instelling, datum en type per werkboek; de inhoud via GET …/{id} (#633)."""
     return persistence_db.list_workbooks(username)
+
+
+@router.get("/api/workbooks/{wb_id}")
+def get_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
+    workbook = persistence_db.get_workbook(username, wb_id)
+    if workbook is None:
+        raise HTTPException(status_code=404, detail="Werkboek niet gevonden")
+    return workbook
 
 
 @router.put("/api/workbooks/{wb_id}")

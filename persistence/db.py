@@ -641,16 +641,39 @@ def recipe_for_key(username: str, key: str) -> dict | None:
     return json.loads(row["recipe"]) if row else None
 
 
+# Een rapport is een werkboek met HTML en zonder dashboard-spec; zo leest de frontend het ook (getWorkbookType).
+_WERKBOEK_TYPE = (
+    "CASE WHEN dashboard_spec IS NULL AND COALESCE(html_content, '') <> '' THEN 'report' ELSE 'dashboard' END"
+)
+
+
 def list_workbooks(username: str) -> list[dict]:
+    """De werkboeken van een gebruiker zonder hun inhoud, nieuwste eerst (#633).
+
+    De lijst draagt alleen wat een kaart toont; de HTML, berichten, figuren en spec komen per werkboek
+    uit `get_workbook`. Met alle rapport-HTML erin werd de lijst bij 85 rapporten 2,1 MB.
+    """
     with _connection() as conn:
         rows = _execute(
             conn,
-            "SELECT id, title, description, messages, figures, instelling, "
-            "html_content, dashboard_spec, created_at FROM workbooks "
+            f"SELECT id, title, description, instelling, created_at, {_WERKBOEK_TYPE} AS type FROM workbooks "
             "WHERE username = ? ORDER BY created_at DESC",
             (username,),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_workbook(username: str, wb_id: str) -> dict | None:
+    """Eén eigen werkboek met zijn inhoud, of None als het er niet (meer) is."""
+    with _connection() as conn:
+        row = _execute(
+            conn,
+            "SELECT id, title, description, messages, figures, instelling, "
+            f"html_content, dashboard_spec, created_at, {_WERKBOEK_TYPE} AS type FROM workbooks "
+            "WHERE id = ? AND username = ?",
+            (wb_id, username),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def upsert_workbook(

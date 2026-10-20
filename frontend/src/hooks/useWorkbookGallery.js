@@ -1,25 +1,44 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getWorkbooks, getWorkbookType, deleteWorkbook, loadWorkbooksFromServer, migrateLocalWorkbooks } from '../workbooks'
+import { getWorkbooks, getWorkbookType, deleteWorkbook, isVolledig, loadWorkbook, loadWorkbooksFromServer } from '../workbooks'
 
 export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessage, initialSelected = null }) {
   const [workbooks, setWorkbooks] = useState(() => {
     const all = getWorkbooks()
     return type ? all.filter(w => getWorkbookType(w) === type) : all
   })
-  const [selected, setSelected] = useState(initialSelected)
+  const [gekozen, setSelected] = useState(initialSelected)
   const [pendingConfirm, setPendingConfirm] = useState(null)
   // The localStorage list can be empty or stale; only the server list may say "nothing saved".
   const [loading, setLoading] = useState(true)
+  const [missingId, setMissingId] = useState(null)
+  const [openFout, setOpenFout] = useState(null)
 
   useEffect(() => {
-    migrateLocalWorkbooks().then(() => loadWorkbooksFromServer()).then(wbs => {
+    loadWorkbooksFromServer().then(wbs => {
       setWorkbooks(type ? wbs.filter(w => getWorkbookType(w) === type) : wbs)
     }).finally(() => setLoading(false))
   }, [type])
 
+  // The list holds summaries (#633): a chosen one opens once its content is in. Until then the page
+  // shows that it is opening; the viewer never gets a workbook without its report or spec.
+  const openen = gekozen && !isVolledig(gekozen) ? gekozen : null
+  useEffect(() => {
+    if (!openen) return
+    let weg = false
+    setOpenFout(null)
+    loadWorkbook(openen.id).then(full => {
+      if (!weg) setSelected(prev => (prev?.id === full.id ? full : prev))
+    }).catch(err => {
+      if (weg) return
+      setSelected(null)
+      if (err.status === 404) setMissingId(openen.id)
+      else setOpenFout('Dit rapport openen lukt nu niet. Probeer het zo opnieuw.')
+    })
+    return () => { weg = true }
+  }, [openen])
+
   // A linked id may only be known to the server (other device, cleared storage): look again
   // once the server list is in, and only then call it missing (#387).
-  const [missingId, setMissingId] = useState(null)
   useEffect(() => {
     if (!pendingId) return
     const wbs = getWorkbooks()
@@ -54,10 +73,14 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
         deleteWorkbook(id)
         const all = getWorkbooks()
         setWorkbooks(type ? all.filter(w => getWorkbookType(w) === type) : all)
-        if (selected?.id === id) setSelected(null)
+        if (gekozen?.id === id) setSelected(null)
       },
     })
-  }, [type, deleteMessage, selected])
+  }, [type, deleteMessage, gekozen])
 
-  return { workbooks, setWorkbooks, loading, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete }
+  const selected = openen ? null : gekozen
+  return {
+    workbooks, setWorkbooks, loading, missingId, openFout, opening: Boolean(openen),
+    selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete,
+  }
 }
