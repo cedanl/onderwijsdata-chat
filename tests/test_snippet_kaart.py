@@ -143,3 +143,37 @@ def test_het_recept_noemt_wat_niet_op_de_kaart_staat(capsys):
     _recept(args, melding)
     uit = capsys.readouterr().out
     assert "Atlantis" in uit and "Amsterdam" not in uit
+
+
+def test_de_kaartopties_tonen_heel_nederland_in_een_standaardfiguur():
+    """Met centrum 52,3 en zoom 6 viel Limburg onderaan buiten de kaart (#642); app en recept delen KAART_OPTIES."""
+    import math
+    from pathlib import Path
+
+    from tools.plot import KAART_OPTIES
+
+    fixture = Path(__file__).parent / "e2e" / "fixtures" / "kaart-provincies.json"
+    punten = []
+
+    def loop(c):
+        if isinstance(c[0], (int, float)):
+            punten.append(c)
+        else:
+            for d in c:
+                loop(d)
+
+    for f in json.loads(fixture.read_text())["data"][0]["geojson"]["features"]:
+        loop(f["geometry"]["coordinates"])
+
+    def mx(lon):
+        return (lon + 180) / 360
+
+    def my(lat):
+        return (1 - math.log(math.tan(math.pi / 4 + lat * math.pi / 360)) / math.pi) / 2
+
+    schaal = 512 * 2 ** KAART_OPTIES["zoom"]
+    cx, cy = mx(KAART_OPTIES["center"]["lon"]), my(KAART_OPTIES["center"]["lat"])
+    # Plotly-standaard 700 x 450, min de kleurenbalk (100) en de titelmarge (60).
+    breedte, hoogte = 600, 390
+    assert max(abs(mx(lon) - cx) for lon, _ in punten) * schaal <= breedte / 2
+    assert max(abs(my(lat) - cy) for _, lat in punten) * schaal <= hoogte / 2
