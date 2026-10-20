@@ -10,6 +10,7 @@ export const STORAGE_CURRENT_CHAT = 'openEDUdata_current_chat'
 export const STORAGE_MODEL = 'openEDUdata_model'
 export const STORAGE_USERINFO = 'userInfo'
 export const STORAGE_RECENT = 'openEDUdata_recent'
+export const STORAGE_SAVED_CHAT = 'openEDUdata_opgeslagen'
 
 // What the previous user of this browser left behind: wiped on logout, login, SRAM landing
 // and session end (#498). Every STORAGE_* key is in exactly one of these two lists; a test
@@ -17,6 +18,7 @@ export const STORAGE_RECENT = 'openEDUdata_recent'
 export const SESSION_DATA_KEYS = [
   STORAGE_CONVERSATIONS,
   STORAGE_CURRENT_CHAT,
+  STORAGE_SAVED_CHAT, // which open conversation the server has (#635): goes with the conversation it describes
   STORAGE_WORKBOOKS,
   STORAGE_DC_MESSAGES,
   STORAGE_DC_FIGURES,

@@ -8,6 +8,7 @@ import PrivacyPage from './pages/PrivacyPage'
 import SettingsModal from './components/SettingsModal'
 import ZoekPalet from './components/ZoekPalet'
 import { useZoekSneltoets } from './hooks/useZoekSneltoets'
+import { wachtOpOpslag } from './gesprekOpslag'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
@@ -206,10 +207,13 @@ function AppShell() {
     return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} />
   }
 
+  // Logging out is immediate here, but the token is revoked on the server only once a save of the open
+  // conversation that is still under way has landed (#635): it carries that token.
   const handleLogout = () => {
-    logout(getToken())
+    const token = getToken()
     clearToken()
     resetSession()
+    wachtOpOpslag().then(() => logout(token))
   }
 
   // Only use the SRAM identity as instelling when it matches a known

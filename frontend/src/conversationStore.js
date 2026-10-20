@@ -29,8 +29,12 @@ const showsSomething = m =>
 // A reopened conversation shows what the chat showed (#109). Records from the old server copy
 // also hold tool messages ('OK', catalogue JSON) and tool calls without text, and a stopped
 // answer can be saved empty; those would render as raw JSON or a bubble that keeps typing.
+// An answer still being written when the page went away (a reload during a question) was cut off: it comes back
+// as such, with its text, the "onvolledig" line and "Probeer opnieuw" (#635), and the server closes that turn (#548).
+const afgebrokenBijHerladen = m => (m.role === 'assistant' && m.done === false ? { ...m, done: true, interrupted: true } : m)
+
 export function restorableMessages(messages) {
-  return messages.filter(m => m.role === 'user' || (m.role === 'assistant' && showsSomething(m)))
+  return messages.filter(m => m.role === 'user' || (m.role === 'assistant' && showsSomething(m))).map(afgebrokenBijHerladen)
 }
 
 // The open conversation survives a reload as {id, messages}; older builds stored only the messages.

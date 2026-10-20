@@ -147,6 +147,22 @@ describe('conversation history', () => {
 
 // #109: a reopened conversation showed raw tool JSON, 'OK' and a bubble that kept typing.
 describe('restorableMessages', () => {
+  // #635: herladen tijdens een vraag liet het halve antwoord terugkomen zonder dat het zei dat het onvolledig was.
+  it('brengt een antwoord dat nog liep terug als afgebroken, met zijn tekst', () => {
+    const [vraag, half] = restorableMessages([
+      { id: 1, role: 'user', content: 'Hoeveel?', done: true },
+      { id: 2, role: 'assistant', content: '| 2023 | 470.000 |', done: false },
+    ])
+    expect(vraag).toEqual({ id: 1, role: 'user', content: 'Hoeveel?', done: true })
+    expect(half).toMatchObject({ content: '| 2023 | 470.000 |', done: true, interrupted: true })
+  })
+
+  it('laat een afgerond antwoord en een oud record zonder done zoals het is', () => {
+    const klaar = { id: 2, role: 'assistant', content: 'Klaar.', done: true }
+    const oud = { role: 'assistant', content: 'Van de oude server.' }
+    expect(restorableMessages([klaar, oud])).toEqual([klaar, oud])
+  })
+
   const { messages } = herstelClarify
   const restored = restorableMessages(messages)
 
