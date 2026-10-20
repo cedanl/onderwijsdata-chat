@@ -160,7 +160,7 @@ function zichtbareKaarthoogte(panel) {
   return inBeeld ? content.getBoundingClientRect().height : 0
 }
 
-function ReasoningPanel({ tools, tussentekst, isDone }) {
+function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false }) {
   const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
   // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
   // screen before the answer. A wide screen keeps the block.
@@ -169,17 +169,26 @@ function ReasoningPanel({ tools, tussentekst, isDone }) {
   // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
   // die vanzelf openging bij het wachten.
   const handmatig = useRef(false)
-  // Op een telefoon klapt de kaart in zodra het antwoord compleet is (#609): open bleef hij 380–430 px hoog en begon
+  // Op een telefoon klapt de kaart in zodra het antwoord begint (#609, #639): open bleef hij 380–430 px hoog en begon
   // het antwoord onder de vouw. Desktop ongewijzigd. Staat de kaart in beeld, dan zou het antwoord eronder omhoog
   // springen (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar
   // de dichte kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
   // (de lezer is al bij het eind), dan houdt de scroll-verankering van de browser alles op zijn plek.
+  // Bij de eerste antwoordtekst en niet pas bij `done` (#639): in een kort gesprek staat de scroll op 0 en valt er
+  // niets te compenseren, en dan schoof bij `done` het hele antwoord omhoog (CLS 0,05). Bij de eerste regel is de
+  // bubbel nog klein. Tekst waarna toch weer een stap start, was tussentekst (#393): dan gaat de kaart weer open.
   const compensatie = useRef(0)
+  const stapLoopt = !!tools?.some(t => !t.done)
+  const antwoordBegonnen = isDone || (heeftTekst && !stapLoopt)
   useLayoutEffect(() => {
-    if (!isDone || !codePerStap || !open || handmatig.current) return
-    compensatie.current = zichtbareKaarthoogte(panelRef.current)
-    setOpen(false)
-  }, [isDone, codePerStap, open])
+    if (!codePerStap || handmatig.current) return
+    if (antwoordBegonnen && open) {
+      compensatie.current = zichtbareKaarthoogte(panelRef.current)
+      setOpen(false)
+    } else if (!antwoordBegonnen && stapLoopt && !open) {
+      setOpen(true)
+    }
+  }, [antwoordBegonnen, stapLoopt, codePerStap, open])
   useLayoutEffect(() => {
     if (open || !compensatie.current) return
     const scroller = panelRef.current?.closest('.chat-messages')
@@ -1050,6 +1059,7 @@ const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content &&
 // figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
 // verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
 export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
+  const smal = useMediaQuery(NARROW_SCREEN)
   if (msg.role === 'user') {
     return (
       <div className="message user">
@@ -1076,7 +1086,10 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
   }
 
   const awaiting = isAwaitingFirstToken(msg)
-  const figuren = figures ?? msg.figures ?? []
+  // Een grafiek komt binnen zodra create_plot draait, vóór de eindtekst; in de bubbel staat ze onder de tekst, dus
+  // op een telefoon duwde elke gestreamde regel haar omlaag (CLS 0,096, #639). Daar verschijnt ze pas als het
+  // antwoord compleet is. Op een breed scherm zijn het weinig regels (0,016), en later tonen kostte er meer (0,054).
+  const figuren = !smal || msg.done || !busy ? (figures ?? msg.figures ?? []) : []
   const inhoud = hasAssistantContent(msg) || figuren.length > 0
   // A round with only data steps has no text, but its tables can still be downloaded.
   const exportable = settled && hasExport(msg)
@@ -1095,7 +1108,7 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} />
+        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} />
         <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
         {(awaiting || exportable || inhoud) && (
           <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
