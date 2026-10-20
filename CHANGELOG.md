@@ -726,6 +726,11 @@ de laatste tag is 1.8.6.
   niet gevonden". De CSV-export van een tabel en van een grafiek zet ook een `'` voor een cel, kolomnaam of
   reeksnaam die met een tab of een CR begint (OWASP, CSV-injectie), naast `= + - @` (#483); een cel met een CR
   staat tussen quotes, zodat ze geen rij splitst.
+- Laatste Engelse foutmeldingen van de API (#637). Ongeldige invoer (een `limit` buiten 1–50, een lege titel,
+  `POST /api/auth/refresh` zonder body) geeft 422 met één Nederlandse zin in `detail` in plaats van pydantic's lijst,
+  die de verstuurde waarde herhaalde en "Field required" of "Input should …" zei. Een onbekende `/api`-route geeft 404
+  "Niet gevonden" (was "Not Found"), een verkeerde methode 405 "Methode niet toegestaan" met de `Allow`-header. Geen
+  melding noemt het pad of de invoer; wat een route zelf meldt ("Gesprek niet gevonden" en dergelijke) blijft gelijk.
 - De datastore in het geheugen heeft een bovengrens (#13): `STORE_MAX_MB` (standaard 512). Daarboven gaan de
   langst niet gebruikte tabellen eruit, met hun metadata en onderdrukte-celtelling; het log noemt de key en de
   omvang. Een gesprek dat zo'n tabel nog nodig heeft, haalt haar uit zijn recept terug zoals na een herstart.

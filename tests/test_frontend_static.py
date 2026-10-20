@@ -3,6 +3,7 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.testclient import TestClient
 
+from core.foutmeldingen import NIET_GEVONDEN
 from frontend_static import mount_frontend
 
 
@@ -43,7 +44,9 @@ def test_onbekende_api_route_is_json_404_en_niet_de_spa(tmp_path):
         resp = client.get(pad)
         assert resp.status_code == 404, pad
         assert resp.headers["content-type"].startswith("application/json"), pad
-        assert resp.json() == {"detail": "Not Found"}
+        # Nederlands en zonder het pad (#637); ook zonder geregistreerde foutafhandeling.
+        assert resp.json() == {"detail": NIET_GEVONDEN}
+        assert "bestaat-niet" not in resp.text
         assert "EDUdata" not in resp.text
 
 

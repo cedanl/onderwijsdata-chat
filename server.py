@@ -16,6 +16,7 @@ load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
 from config import Config, ConfigError
+from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from frontend_static import mount_frontend
 from logging_config import setup_logging
@@ -50,6 +51,8 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+# Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
+foutmeldingen.registreer(app)
 
 # Initialize database
 try:

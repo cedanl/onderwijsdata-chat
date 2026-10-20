@@ -3,6 +3,7 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
+from core.foutmeldingen import ONGELDIGE_INVOER
 from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS, MAX_GESPREKSTITEL
 
 
@@ -143,7 +144,17 @@ def test_patch_conversation_rejects_empty_title(client, body):
     client.put("/api/conversations/c1", json={"title": "Oud", "timestamp": 1, "messages": []})
     resp = client.patch("/api/conversations/c1", json=body)
     assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
     assert client.get("/api/conversations").json()[0]["title"] == "Oud"
+
+
+@pytest.mark.parametrize("limit", ["500", "0", "999777"])
+def test_list_with_invalid_limit_is_a_dutch_string_without_the_input(client, limit):
+    """#637: pydantic's list echoed the value and spoke English ("Input should be ...")."""
+    resp = client.get("/api/conversations", params={"limit": limit})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert "999777" not in resp.text and "Input should" not in resp.text
 
 
 def test_patch_unknown_conversation_returns_404(client):
