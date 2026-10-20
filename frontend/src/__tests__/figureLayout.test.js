@@ -125,3 +125,29 @@ describe('chatFigureLayout', () => {
     expect(chatFigureLayout({ data: [] }, false, 336).margin.t).toBe(32)
   })
 })
+
+// #642: een kaart viel op 390 px links en rechts weg, en had een witte achtergrond in het donkere thema.
+describe('chatFigureLayout op een kaart', () => {
+  const kaart = {
+    data: [{ type: 'choroplethmap', geojson: { features: [{ geometry: { type: 'Polygon', coordinates: [[[3.36, 50.75], [7.23, 50.75], [7.23, 53.55], [3.36, 50.75]]] } }] } }],
+    layout: { map: { center: { lat: 52.3, lon: 5.3 }, zoom: 6, style: 'white-bg' }, coloraxis: {} },
+  }
+
+  it('zoomt uit op een telefoon en houdt het centrum op de gebieden', () => {
+    const { map } = chatFigureLayout(kaart, false, 390)
+    expect(map.zoom).toBeLessThan(6)
+    expect(map.center.lon).toBeCloseTo(5.295, 2)
+    expect(chatFigureLayout(kaart, false, 1280).map.zoom).toBeGreaterThan(map.zoom)
+  })
+
+  it('geeft de kaart de achtergrond van het thema', () => {
+    const achtergrond = l => l.map.style.layers[0].paint['background-color']
+    expect(achtergrond(chatFigureLayout(kaart, true, 390))).toBe('#1E293B')
+    expect(achtergrond(chatFigureLayout(kaart, false, 390))).toBe('#fff')
+  })
+
+  it('laat zoom en centrum van de server staan zolang de breedte onbekend is', () => {
+    expect(chatFigureLayout(kaart, false, 0).map).toMatchObject({ center: { lat: 52.3, lon: 5.3 }, zoom: 6 })
+  })
+})
+

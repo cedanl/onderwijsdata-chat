@@ -8,6 +8,7 @@ import KaartTerugval from '../components/KaartTerugval'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
+import { KAART_HOOGTE } from '../kaartBeeld'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
 import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
@@ -1235,7 +1236,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
           useResizeHandler
           onInitialized={kaart.onInitialized}
           onError={kaart.onError}
-          style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
+          style={{ width: '100%', height: isMap ? KAART_HOOGTE : figureHeight(figure.layout, 340) }}
         />
       </div>
     </div>

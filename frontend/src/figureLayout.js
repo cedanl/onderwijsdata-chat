@@ -1,5 +1,6 @@
 import { topMargin } from './figureMargin'
 import { titelOpBreedte } from './figureTitel'
+import { KAART_HOOGTE, kaartPassend, kaartStijl } from './kaartBeeld'
 
 // A chart that brings its own height gets it: horizontal bars grow with the number of
 // categories, and the fixed height of the chat or the report squashed 18 of them together.
@@ -66,8 +67,17 @@ export function chatFigureLayout(figure, dark, width) {
   const colours = dark ? DARK : LIGHT
   const top = isMap ? BASE_TOP_MARGIN : topMargin(figure.layout, BASE_TOP_MARGIN)
   const { title, extra } = titelOpBreedte(figure.layout?.title, width - TITLE_SIDES, top)
+  // Een kaart past op de breedte die ze heeft, met de achtergrond van het thema (#642).
+  const kaart = isMap && figure.layout?.map && {
+    map: {
+      ...figure.layout.map,
+      ...kaartPassend(figure.data, width, KAART_HOOGTE - top - extra, figure.layout?.coloraxis?.showscale !== false),
+      style: kaartStijl(colours.bg),
+    },
+  }
   return {
     ...figure.layout,
+    ...kaart,
     ...(title !== undefined && { title: dark ? darkTitle(title) : title }),
     paper_bgcolor: colours.bg,
     plot_bgcolor: colours.bg,

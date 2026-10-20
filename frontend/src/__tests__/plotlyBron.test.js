@@ -1,6 +1,7 @@
 // #486: Plotly voor rapporten en dashboards komt van de eigen server, niet van cdn.plot.ly.
 import { describe, it, expect } from 'vitest'
 import { PLOTLY_URL, metEigenPlotly, plotlyScript, plotlyScripts } from '../plotlyBron'
+import { kaartAlsSvgScript } from '../kaartRapport'
 
 const CDN = '<script src="https://cdn.plot.ly/plotly-4.1.0.min.js"></script>'
 
@@ -9,7 +10,8 @@ describe('plotlyBron (#486)', () => {
     expect(PLOTLY_URL).toMatch(/^\//)
     expect(PLOTLY_URL).not.toMatch(/^https?:/)
     expect(PLOTLY_URL).toMatch(/plotly.*\.js$/)
-    expect(plotlyScript()).toBe(`<script src="${PLOTLY_URL}"></script>`)
+    // Met het script dat een kaart zonder maplibre-worker tekent erachter (#642).
+    expect(plotlyScript()).toBe(`<script src="${PLOTLY_URL}"></script>${kaartAlsSvgScript()}`)
   })
 
   it('herkent het script van de CDN en dat van een eigen build', () => {
@@ -24,6 +26,7 @@ describe('plotlyBron (#486)', () => {
     const nieuw = metEigenPlotly(oud)
     expect(nieuw).not.toContain('cdn.plot.ly')
     expect(nieuw.match(/<script src=/g)).toHaveLength(1)
+    expect(nieuw.split('__kaartAlsSvg=true')).toHaveLength(2)
     expect(nieuw.indexOf(PLOTLY_URL)).toBeLessThan(nieuw.indexOf("Plotly.newPlot('rp0')"))
     expect(nieuw).toContain('<div id="rp1"></div>')
   })

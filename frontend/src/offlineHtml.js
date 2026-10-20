@@ -2,6 +2,7 @@
 // stored HTML loads Plotly from our own server (#486), which keeps it small enough for
 // storage; the download gets Plotly inline instead, fetched from that same asset only
 // when the user downloads, so the build carries Plotly once.
+import { heeftKaartAlsSvg, kaartAlsSvgScript } from './kaartRapport'
 import { PLOTLY_SCRIPT, PLOTLY_URL, plotlyScripts } from './plotlyBron'
 
 const bundledPlotly = () => fetch(PLOTLY_URL).then(r => {
@@ -17,6 +18,7 @@ export async function inlinePlotly(html, loadPlotly = bundledPlotly) {
   return html.replace(PLOTLY_SCRIPT, () => {
     if (!first) return ''
     first = false
-    return `<script>${source}</script>`
+    // Een bestand van schijf heeft geen eigen origin: ook daar de kaart zonder worker (#642).
+    return `<script>${source}</script>${heeftKaartAlsSvg(html) ? '' : kaartAlsSvgScript()}`
   })
 }
