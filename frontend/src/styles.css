@@ -639,10 +639,13 @@ input, textarea { font: inherit; }
   animation: pulse 1.2s infinite;
 }
 .reasoning-step-dot.done { background: var(--green-500); animation: none; }
-.reasoning-step-dot.empty, .tool-step-dot.empty { background: #F59E0B; }
+/* A call the scope boundary refused (#640) loaded nothing either: amber like an empty filter. */
+.reasoning-step-dot.empty, .tool-step-dot.empty,
+.reasoning-step-dot.buiten_scope, .tool-step-dot.buiten_scope { background: #F59E0B; }
 .reasoning-step-dot.error, .tool-step-dot.error { background: #DC2626; }
-.reasoning-step.empty, .reasoning-step.error { align-items: flex-start; color: var(--gray-700); }
-.reasoning-step.empty .reasoning-step-dot, .reasoning-step.error .reasoning-step-dot { margin-top: 6px; }
+.reasoning-step.empty, .reasoning-step.error, .reasoning-step.buiten_scope { align-items: flex-start; color: var(--gray-700); }
+.reasoning-step.empty .reasoning-step-dot, .reasoning-step.error .reasoning-step-dot,
+.reasoning-step.buiten_scope .reasoning-step-dot { margin-top: 6px; }
 .reasoning-step.recovered { color: var(--gray-500); }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }

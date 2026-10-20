@@ -5,14 +5,20 @@
 import { conversationTitle } from './conversationTitle'
 import { metBronnen } from './answerBlocks'
 
-const failed = step => step.status === 'error' || step.status === 'empty'
+const failed = step => ['error', 'empty', 'buiten_scope'].includes(step.status)
+
+// A failed step says what went wrong. A call the scope boundary refused (#640) is named by its
+// outcome alone: "CBS data opgehaald (CBS-opvraag geweigerd ...)" would contradict itself.
+function stepLabel(step) {
+  if (!failed(step) || !step.statusLabel) return step.label
+  return step.status === 'buiten_scope' ? step.statusLabel : `${step.label} (${step.statusLabel})`
+}
 
 // Steps from index `correctie` on ran after a withdrawn answer (#398).
 function stepLines(tools, { snippets, fouten }, correctie = Infinity) {
   const steps = (tools || []).map((t, i) => ({ ...t, naCorrectie: i >= correctie })).filter(t => fouten || !failed(t))
   return steps.flatMap((t, i) => {
-    const label = failed(t) && t.statusLabel ? `${t.label} (${t.statusLabel})` : t.label
-    const lines = [`${i + 1}. ${label}${t.naCorrectie ? ' (na de correctie)' : ''}`]
+    const lines = [`${i + 1}. ${stepLabel(t)}${t.naCorrectie ? ' (na de correctie)' : ''}`]
     if (snippets && t.snippet) lines.push('', '```python', t.snippet, '```', '')
     return lines
   })
