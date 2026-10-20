@@ -1480,7 +1480,8 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .feedback-intro { font-size: .85rem; color: var(--muted-text); margin-bottom: 16px; }
 .feedback-question { border: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 6px; }
 .feedback-question legend, .feedback-question label { font-size: .9rem; font-weight: 600; padding: 0; }
-.feedback-question textarea {
+.feedback-section { font-size: .95rem; font-weight: 700; margin: 20px 0 12px; padding-top: 14px; border-top: 1px solid var(--gray-200); }
+.feedback-question textarea, .feedback-other {
   font: inherit; font-size: .9rem; padding: 8px; resize: vertical;
   border: 1.5px solid var(--gray-200); border-radius: 8px; background: var(--white); color: inherit;
 }
@@ -1872,7 +1873,7 @@ html.dark .suggested-btn:hover {
    The chat input takes line-height 1.5, so one row stays 24px as before (15px x 1.6) in the compact area (#527). */
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-input, .login-input, .instelling-search, .history-search, .dc-textarea, .title-edit-input,
-  .answer-feedback-form textarea, .feedback-question textarea, .model-picker select { font-size: 16px; }
+  .answer-feedback-form textarea, .feedback-question textarea, .feedback-other, .model-picker select { font-size: 16px; }
   .chat-input { line-height: 1.5; }
 }
 

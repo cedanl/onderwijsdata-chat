@@ -1,9 +1,58 @@
-import { useEffect, useId, useState } from 'react'
+import { Fragment, useEffect, useId, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { fetchFeedbackQuestions, postFeedback } from '../api'
 
+// "Anders" in a multi question is stored as 'Anders' or 'Anders: <what>' (core/feedback.py).
+const OTHER = 'Anders'
+const OTHER_PREFIX = `${OTHER}: `
+const isOther = item => item === OTHER || item.startsWith(OTHER_PREFIX)
+
+const hasValue = value => (Array.isArray(value) ? value.length > 0 : value.trim() !== '')
+
+function MultiQuestion({ question, value, onChange }) {
+  const chosen = value || []
+  const other = chosen.find(isOther)
+  const toggle = option => {
+    if (option === OTHER) onChange(other === undefined ? [...chosen, OTHER] : chosen.filter(item => !isOther(item)))
+    else onChange(chosen.includes(option) ? chosen.filter(item => item !== option) : [...chosen, option])
+  }
+  const setOtherDetail = detail => {
+    const item = detail.trim() ? `${OTHER_PREFIX}${detail}` : OTHER
+    onChange(chosen.map(c => (isOther(c) ? item : c)))
+  }
+  return (
+    <fieldset className="feedback-question">
+      <legend>{question.text}</legend>
+      <div className="feedback-options multi">
+        {question.options.map(option => (
+          <label key={option} className="feedback-option">
+            <input
+              type="checkbox"
+              value={option}
+              checked={option === OTHER ? other !== undefined : chosen.includes(option)}
+              onChange={() => toggle(option)}
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+      </div>
+      {other !== undefined && (
+        <input
+          type="text"
+          className="feedback-other"
+          aria-label={`${OTHER}, welke?`}
+          maxLength={200}
+          value={other.slice(OTHER_PREFIX.length)}
+          onChange={e => setOtherDetail(e.target.value)}
+        />
+      )}
+    </fieldset>
+  )
+}
+
 function Question({ question, value, onChange }) {
   const id = useId()
+  if (question.type === 'multi') return <MultiQuestion question={question} value={value} onChange={onChange} />
   if (question.type === 'text') {
     return (
       <div className="feedback-question">
@@ -51,7 +100,7 @@ export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
     return () => { cancelled = true }
   }, [])
 
-  const hasAnswer = Object.values(answers).some(v => v.trim())
+  const hasAnswer = Object.values(answers).some(hasValue)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -90,12 +139,14 @@ export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
         </p>
         {!questions && !error && <p role="status">Vragen worden geladen…</p>}
         {questions?.map(q => (
-          <Question
-            key={q.id}
-            question={q}
-            value={answers[q.id] ?? ''}
-            onChange={v => setAnswers(prev => ({ ...prev, [q.id]: v }))}
-          />
+          <Fragment key={q.id}>
+            {q.section && <h3 className="feedback-section">{q.section}</h3>}
+            <Question
+              question={q}
+              value={answers[q.id] ?? ''}
+              onChange={v => setAnswers(prev => ({ ...prev, [q.id]: v }))}
+            />
+          </Fragment>
         ))}
         {error && <p role="alert" className="feedback-error">{error}</p>}
         <div className="confirm-actions">
