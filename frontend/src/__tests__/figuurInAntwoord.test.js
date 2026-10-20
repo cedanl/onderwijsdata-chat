@@ -21,10 +21,10 @@ vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }
 vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
-const chat = vi.hoisted(() => ({ messages: [] }))
+const chat = vi.hoisted(() => ({ messages: [], busy: false }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
-    messages: chat.messages, busy: false, rejectedDraft: null, clearRejectedDraft: () => {}, thinking: false,
+    messages: chat.messages, busy: chat.busy, rejectedDraft: null, clearRejectedDraft: () => {}, thinking: false,
     connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false, reportProgress: null,
     reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(), sendSettings: vi.fn(), sendHistory: vi.fn(),
     stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(), clearReport: vi.fn(), clear: vi.fn(),
@@ -37,7 +37,8 @@ import { groepeerFiguren, isFiguurBericht } from '../figuurGroep'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
-window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
+const scherm = vi.hoisted(() => ({ smal: false }))
+window.matchMedia = q => ({ matches: scherm.smal && q === '(max-width: 1024px)', media: q, addEventListener() {}, removeEventListener() {} })
 
 const FIG = JSON.stringify({ data: [{ type: 'bar', x: [2023, 2024], y: [1, 2] }], layout: { title: { text: 'Studenten' } } })
 const vraag = { id: 1, role: 'user', content: 'Hoeveel mbo-studenten per jaar?', done: true, model: 'm1' }
@@ -86,6 +87,8 @@ describe('de grafiek in de bubbel van het antwoord', () => {
     container?.remove()
     root = null
     chat.messages = []
+    chat.busy = false
+    scherm.smal = false
   })
 
   async function render() {
@@ -118,6 +121,28 @@ describe('de grafiek in de bubbel van het antwoord', () => {
     const etiketten = [...container.querySelectorAll('.message-model')].map(e => e.textContent)
     expect(etiketten).toHaveLength(1)
     expect(etiketten[0]).toMatch(/^Antwoord van /)
+  })
+
+  // #639: de grafiek komt binnen vóór de eindtekst; onder de gestreamde regels schoof ze steeds omlaag (CLS 0,096).
+  it('toont de grafiek op een telefoon pas als het antwoord compleet is', async () => {
+    scherm.smal = true
+    chat.messages = [vraag, { ...antwoord, content: 'Er waren', done: false }, grafiek]
+    chat.busy = true
+    await render()
+    expect(container.querySelectorAll('.message.assistant')).toHaveLength(1)
+    expect(container.querySelector('.plotly-figure-wrap')).toBeNull()
+    chat.messages = [vraag, antwoord, grafiek]
+    chat.busy = false
+    await act(async () => { root.render(createElement(MemoryRouter, { initialEntries: ['/chat'] },
+      createElement(ChatPage, { user: 'tester', feedbackEnabled: true, openRapport: vi.fn() }))) })
+    expect(container.querySelector('.plotly-figure-wrap')).not.toBeNull()
+  })
+
+  it('toont de grafiek op een breed scherm al tijdens het antwoord', async () => {
+    chat.messages = [vraag, { ...antwoord, content: 'Er waren', done: false }, grafiek]
+    chat.busy = true
+    await render()
+    expect(container.querySelector('.plotly-figure-wrap')).not.toBeNull()
   })
 
   it('laat een grafiek zonder antwoord ervoor als eigen bericht staan', async () => {
