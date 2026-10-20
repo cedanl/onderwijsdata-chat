@@ -43,6 +43,7 @@ from routes import (
     data_export_router,
     feedback_router,
     instellingen_router,
+    mijn_gegevens_router,
     persistence_router,
 )
 
@@ -230,6 +231,7 @@ app.include_router(auth_router)
 app.include_router(persistence_router)
 app.include_router(instellingen_router)
 app.include_router(data_export_router)
+app.include_router(mijn_gegevens_router)
 app.include_router(chat_router)
 
 # ─── Serve React frontend ───────────────────────────────────────────────────
