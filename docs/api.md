@@ -15,6 +15,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` en `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk) |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
+| `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen buiten productie; in productie (`POSTGRES_URI` en `SESSION_SECRET` gezet) bestaan ze niet (`SECURITY.md`, S23) |
 
 ---
 
@@ -59,6 +60,8 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `GET` | `/api/dashboard/nationaal` | Dashboard-nationale gegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/rendement` | Dashboard-rendementsgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/arbeidsmarktmatch` | Dashboard-arbeidsmarktmatch voor een instelling (`instelling` param) |
+
+De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Met `ENABLE_DASHBOARDS=false` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}`, net als `POST /api/dashboard/refresh` (#636).
 
 ---
 
