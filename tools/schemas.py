@@ -87,9 +87,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "query": {
                         "type": "string",
                         "description": (
-                            "2 tot 4 losse trefwoorden, GEEN volzin en GEEN vraagteken. Laat instellingsnamen, plaatsnamen en "
-                            "jaartallen weg: daar wordt niet op gefilterd. Goed: 'ingeschrevenen wo opleidingsvorm'. "
-                            "Fout: 'Hoeveel voltijdstudenten heeft de VU?'"
+                            "2 tot 4 losse Nederlandse trefwoorden, ook bij een vraag in een andere taal (de catalogus is "
+                            "Nederlandstalig; 'university students' vindt niets). GEEN volzin en GEEN vraagteken. Laat "
+                            "instellingsnamen, plaatsnamen en jaartallen weg: daar wordt niet op gefilterd. "
+                            "Goed: 'ingeschrevenen wo opleidingsvorm'. Fout: 'Hoeveel voltijdstudenten heeft de VU?'"
                         ),
                     },
                     "top_n": {"type": "integer", "description": "Maximaal aantal resultaten (standaard: 15)"},

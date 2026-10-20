@@ -94,6 +94,16 @@ def _uit(tekst: str) -> dict:
 # --- het plan: geen gok --------------------------------------------------------------------------
 
 
+def test_tellingen_komen_als_hele_getallen_terug():
+    """#631: na het maskeren van -1 is een kolom float en stond 4507.0 in het antwoord van get_maat."""
+    mbo = _uit(get_maat("mbo_studenten_instelling", "ROC Mondriaan"))
+    for rij in mbo["rijen"]:
+        for kolom, waarde in rij.items():
+            if kolom != "JAAR" and waarde is not None:
+                assert isinstance(waarde, int), (kolom, waarde)
+    assert [r["AANTAL"] for r in mbo["rijen"]] == [6050, 6220]
+
+
 @pytest.mark.parametrize(
     ("args", "tekst"),
     [
