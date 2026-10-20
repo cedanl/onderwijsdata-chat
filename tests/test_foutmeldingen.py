@@ -142,11 +142,24 @@ def test_server_onbekende_api_route_is_nederlands(server_client):
     assert resp.json() == {"detail": foutmeldingen.NIET_GEVONDEN}
 
 
-def test_server_workbook_zonder_get_route_is_nederlands(server_client):
-    """Met dist vangt de catch-all de GET (404); zonder dist bestaat het pad alleen voor PUT en DELETE (405)."""
-    resp = server_client.get("/api/workbooks/bestaat-niet")
+def test_server_verkeerde_methode_op_een_werkboek_is_nederlands(server_client):
+    """Het werkboekpad kent GET, PUT en DELETE; een POST is 405, met en zonder dist (de catch-all is alleen GET)."""
+    resp = server_client.post("/api/workbooks/bestaat-niet-424242")
 
-    verwacht = {404: foutmeldingen.NIET_GEVONDEN, 405: foutmeldingen.METHODE_NIET_TOEGESTAAN}
-    assert resp.status_code in verwacht
-    assert resp.json() == {"detail": verwacht[resp.status_code]}
-    _geen_engels_of_invoer(resp, "bestaat-niet")
+    assert resp.status_code == 405
+    assert resp.json() == {"detail": foutmeldingen.METHODE_NIET_TOEGESTAAN}
+    # Starlette noemt de methoden van de eerste route die op het pad past; de header moet blijven staan.
+    assert set(resp.headers["allow"].split(", ")) <= {"GET", "PUT", "DELETE"}
+    _geen_engels_of_invoer(resp, "bestaat-niet", "424242")
+
+
+def test_server_onbekend_werkboek_houdt_de_eigen_melding_van_de_route(server_client, monkeypatch):
+    """Sinds #633 heeft het werkboekpad een GET; die meldt zelf een 404, de handler laat die tekst staan."""
+    import server
+    from core.auth import get_current_user
+
+    monkeypatch.setitem(server.app.dependency_overrides, get_current_user, lambda: "demo")
+    resp = server_client.get("/api/workbooks/bestaat-niet-424242")
+
+    assert resp.status_code == 404
+    assert resp.content == b'{"detail":"Werkboek niet gevonden"}'
