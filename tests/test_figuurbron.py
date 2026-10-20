@@ -17,7 +17,7 @@ from tools.store import KeyMeta
 
 _TITELS = {"85423NED": "Hoger onderwijs; ingeschrevenen", "p01hoinges": "Ingeschrevenen hoger onderwijs"}
 _URLS = {
-    "85423NED": "https://opendata.cbs.nl/ODataApi/OData/85423NED",
+    "85423NED": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table",
     "p01hoinges": "https://onderwijsdata.duo.nl/dataset/p01hoinges",
 }
 
@@ -45,7 +45,7 @@ def test_cbs_regel_met_titel_id_periode_status_en_link(catalogus):
         "bron": "CBS",
         "dataset": "85423NED",
         "tekst": "CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Definitief/Voorlopig",
-        "url": "https://opendata.cbs.nl/ODataApi/OData/85423NED",
+        "url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table",
     }
 
 
@@ -62,7 +62,7 @@ def test_afgeleide_key_noemt_de_bron_en_de_periode_van_de_selectie(catalogus):
     bron = figuurbron("cbs:85423NED:abc") or {}
 
     assert bron["tekst"] == "CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2024/25, status Voorlopig"
-    assert bron["url"] == "https://opendata.cbs.nl/ODataApi/OData/85423NED"
+    assert bron["url"] == "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table"
 
 
 def test_duo_regel_noemt_het_bestand_als_de_dataset_er_meer_heeft(catalogus):
@@ -97,16 +97,51 @@ def test_zonder_herleidbare_bron_geen_regel(catalogus, data_key):
     assert figuurbron(data_key) is None
 
 
-def test_de_link_komt_uit_de_catalogus_en_is_altijd_https():
-    # Tegen de echte catalogus: elke spelling van het ID vindt dezelfde link; een onbekend ID geen.
-    assert documentatie_url("85423NED") == "https://opendata.cbs.nl/ODataApi/OData/85423NED"
-    assert documentatie_url("cbs:85423ned") == "https://opendata.cbs.nl/ODataApi/OData/85423NED"
-    assert (documentatie_url("p01hoinges") or "").startswith("https://")
+_STATLINE = "https://opendata.cbs.nl/#/CBS/nl/dataset/{}/table"
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "cbs_id"),
+    [("85354NED", "85354NED"), ("80040ned", "80040ned"), ("cbs:85423ned", "85423NED"), ("85423NED", "85423NED")],
+)
+def test_een_cbs_tabel_linkt_naar_de_statline_pagina_in_de_spelling_van_de_catalogus(dataset_id, cbs_id):
+    # Tegen de echte catalogus (#638): de StatLine-tabelpagina, niet de OData-JSON; geen upper()/lower().
+    assert documentatie_url(dataset_id) == _STATLINE.format(cbs_id)
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "url"),
+    [
+        ("p01hoinges", "https://onderwijsdata.duo.nl/dataset/p01hoinges"),
+        ("erkenningen", "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen"),
+        ("uwv-open-match-data", "https://data.overheid.nl/dataset/uwv-open-match-data"),
+        ("ais2030", "https://doi.org/10.34894/DVQTOG"),
+    ],
+)
+def test_de_link_van_een_andere_bron_blijft_de_catalogus_url(dataset_id, url):
+    # DUO, RIO, UWV en ROA: ongewijzigd door #638.
+    assert documentatie_url(dataset_id) == url
+
+
+def test_een_onbekend_id_heeft_geen_link():
     assert documentatie_url("bestaat-niet") is None
 
 
 def test_een_link_die_geen_http_adres_is_blijft_weg():
     record = {"_cbs_id": "85423NED", "documentatie": {"url": "javascript:alert(1)"}}
+    with patch("tools.catalog._ruw_record", return_value=record):
+        assert documentatie_url("85423NED") is None
+
+
+def test_een_cbs_record_zonder_catalogus_url_linkt_via_zijn_id():
+    # De StatLine-URL hangt aan het ID; de catalogus-URL is alleen nodig voor de http(s)-poort.
+    with patch("tools.catalog._ruw_record", return_value={"_cbs_id": "85423NED"}):
+        assert documentatie_url("85423NED") == _STATLINE.format("85423NED")
+
+
+@pytest.mark.parametrize("cbs_id", ["854/23NED", "85423NED?x=1", "", "85423 NED", None, 85423])
+def test_een_cbs_id_dat_niet_alfanumeriek_is_geeft_geen_link(cbs_id):
+    record = {"_cbs_id": cbs_id, "documentatie": {"url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table"}}
     with patch("tools.catalog._ruw_record", return_value=record):
         assert documentatie_url("85423NED") is None
 

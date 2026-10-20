@@ -14,6 +14,9 @@ de laatste tag is 1.8.6.
   `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` hebben in v3 geen lijst-endpoint;
   `get_rio_data` zegt dat vóór de aanroep. De sectorfilters in `tools/scopeprofiel.py` worden getoetst tegen het
   riodata-contract, zodat een volgende hernoeming in de test opvalt en niet live.
+- De bronlink van een CBS-tabel (bronnenblok onder een antwoord, bronregel onder een rapportgrafiek) opent de
+  StatLine-tabelpagina (`https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table`) in plaats van de ruwe OData-JSON
+  (#638). DUO, RIO, UWV en ROA houden hun link; bewaarde gesprekken houden de oude link.
 
 ### Tools en documentatie (audit 19 oktober, #631)
 - `compute_kpi` weigert `delta`, `pct_change`, `index`, `max_drop` en `max_rise` over één waarde ("minstens twee
