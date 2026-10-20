@@ -6,6 +6,8 @@ handtekening (msg, session, emit, lopende taak) -> lopende taak.
 
 import asyncio
 import importlib
+import json
+import logging
 
 import pytest
 
@@ -93,14 +95,90 @@ def test_history_opent_een_opgeslagen_gesprek():
     assert session["messages"] == [{"role": "user", "content": "Hallo"}]
 
 
-def test_een_onbekende_actie_wordt_genegeerd():
+def _dispatch(msg: dict, task=None):
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
     async def scenario():
-        async def emit(event):
-            raise AssertionError(event)
+        return await chat._dispatch(msg, chat._new_session(), emit, task)
 
-        return await chat._dispatch({"action": "bestaat_niet"}, chat._new_session(), emit, None)
+    return asyncio.run(scenario()), events
 
-    assert asyncio.run(scenario()) is None
+
+@pytest.mark.parametrize(
+    "msg",
+    [{"action": "bestaat-niet-31337"}, {}, {"action": []}, {"action": {"a": 1}}, {"action": None}],
+    ids=["onbekend", "zonder-action", "lijst", "object", "null"],
+)
+def test_een_onbekende_actie_krijgt_direct_een_foutframe(msg):
+    """#637: zonder antwoord wachtte de client tot zijn time-out; een lijst als actie gaf een TypeError."""
+    taak = object()
+
+    terug, events = _dispatch(msg, taak)
+
+    assert terug is taak
+    assert events == [{"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}]
+    assert "31337" not in chat.ONBEKENDE_ACTIE
+
+
+@pytest.mark.parametrize("actie", [["x" * 100_000], "y" * 100_000], ids=["lijst", "string"])
+def test_een_onbekende_actie_logt_het_type_en_een_ingekorte_waarde(actie, caplog):
+    """#637: de verbinding blijft open, dus een enorme actie mag niet per frame volledig in de log."""
+    caplog.set_level(logging.WARNING, logger=chat.logger.name)
+
+    _dispatch({"action": actie}, None)
+
+    [regel] = [r.getMessage() for r in caplog.records if "Onbekende websocket-actie" in r.getMessage()]
+    assert type(actie).__name__ in regel
+    assert len(regel) < 200
+
+
+@pytest.fixture
+def ws_client(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+    from persistence import db
+
+    db.init_db()
+    from fastapi.testclient import TestClient
+
+    import server
+
+    monkeypatch.setattr(chat, "AUTH_ENABLED", False)
+    return TestClient(server.app)
+
+
+MAX_FRAMES_TOT_PONG = 10
+
+
+def _frames_tot_pong(ws, msg: dict) -> list[dict]:
+    """De frames na msg tot en met de pong op een ping erachter, zonder de system_message over de API-key.
+
+    Lezen tot de pong (en nooit een vast aantal) laat een test falen in plaats van eeuwig wachten als het
+    foutframe uitblijft: de pong komt altijd, het foutframe niet. Het plafond begrenst de lus als er toch
+    nooit een pong komt.
+    """
+    ws.send_text(json.dumps(msg))
+    ws.send_text(json.dumps({"action": "ping"}))
+    frames: list[dict] = []
+    for _ in range(MAX_FRAMES_TOT_PONG):
+        frame = json.loads(ws.receive_text())
+        if frame["type"] == "system_message":
+            continue
+        frames.append(frame)
+        if frame["type"] == "pong":
+            return frames
+    raise AssertionError(f"geen pong binnen {MAX_FRAMES_TOT_PONG} frames: {frames}")
+
+
+def test_onbekende_actie_over_de_websocket_houdt_de_verbinding_open(ws_client):
+    fout = {"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}
+    with ws_client.websocket_connect("/api/chat") as ws:
+        for msg in ({"action": "bestaat-niet"}, {}, {"action": []}):
+            frames = _frames_tot_pong(ws, msg)
+            assert frames == [fout, {"type": "pong"}], msg
+            assert "bestaat-niet" not in json.dumps(frames)
 
 
 # ─── Maximale berichtlengte (#481, SECURITY.md S7) ──────────────────────────

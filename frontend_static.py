@@ -15,6 +15,8 @@ from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from core.foutmeldingen import NIET_GEVONDEN
+
 _EEN_JAAR = "public, max-age=31536000, immutable"
 
 
@@ -32,7 +34,7 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     @app.get("/api", include_in_schema=False)
     @app.get("/api/{rest:path}", include_in_schema=False)
     async def onbekende_api_route() -> JSONResponse:
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
+        return JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str) -> Response:
