@@ -92,3 +92,102 @@ def test_buiten_productie_blijft_de_api_documentatie(ontwikkel_app):
     assert schema.status_code == 200
     assert "/health" in schema.json()["paths"]
     assert client.get("/redoc").status_code == 200
+
+
+# ── Dashboard-eindpunten ─────────────────────────────────────────────────────
+
+# Pad en de loader in routes.instellingen die het pad aanroept.
+DASHBOARDS = {
+    "/api/dashboard/instroom": "load_dashboard_data",
+    "/api/dashboard/regio": "load_dashboard_regio",
+    "/api/dashboard/nationaal": "load_dashboard_nationaal",
+    "/api/dashboard/rendement": "load_dashboard_rendement",
+    "/api/dashboard/arbeidsmarktmatch": "load_dashboard_arbeidsmarktmatch",
+}
+
+
+@pytest.fixture
+def loaders(monkeypatch):
+    """Elke dashboardloader nagebootst (geen DUO-download); de lijst zegt welke paden data laadden."""
+    import routes.instellingen
+
+    geladen: list[tuple[str, str]] = []
+    for naam in DASHBOARDS.values():
+        monkeypatch.setattr(
+            routes.instellingen, naam, lambda instelling, naam=naam: geladen.append((naam, instelling)) or {"ok": naam}
+        )
+    return geladen
+
+
+def _client(database, monkeypatch, *, login: bool, dashboards: bool) -> TestClient:
+    """De gewone app, zonder modules te herladen: login en de dashboardvlag via monkeypatch."""
+    import routes.instellingen
+    import server
+    from core import auth
+    from persistence import db
+
+    db.init_db()
+    monkeypatch.setattr(auth, "AUTH_ENABLED", login)
+    monkeypatch.setattr(routes.instellingen, "DASHBOARDS_ENABLED", dashboards)
+    return TestClient(server.app)
+
+
+def _bearer(username: str = "alice") -> dict:
+    # Het token direct, niet via /api/auth/login: de loginlimiet geldt voor de hele testrun.
+    from core import auth
+
+    return {"Authorization": f"Bearer {auth.make_token(username)}"}
+
+
+@pytest.mark.parametrize("pad", DASHBOARDS)
+def test_dashboard_zonder_token_geeft_401(database, monkeypatch, loaders, pad):
+    client = _client(database, monkeypatch, login=True, dashboards=True)
+
+    resp = client.get(pad, params={"instelling": "Hogeschool Utrecht"})
+
+    assert resp.status_code == 401
+    assert loaders == []
+
+
+@pytest.mark.parametrize("pad", DASHBOARDS)
+def test_dashboard_met_ongeldig_token_geeft_401(database, monkeypatch, loaders, pad):
+    client = _client(database, monkeypatch, login=True, dashboards=True)
+
+    resp = client.get(pad, params={"instelling": "Hogeschool Utrecht"}, headers={"Authorization": "Bearer nep.sig"})
+
+    assert resp.status_code == 401
+    assert loaders == []
+
+
+@pytest.mark.parametrize("pad, loader", DASHBOARDS.items())
+def test_dashboard_met_token_geeft_de_data(database, monkeypatch, loaders, pad, loader):
+    client = _client(database, monkeypatch, login=True, dashboards=True)
+
+    resp = client.get(pad, params={"instelling": "Hogeschool Utrecht"}, headers=_bearer())
+
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": loader}
+    assert loaders == [(loader, "Hogeschool Utrecht")]
+
+
+@pytest.mark.parametrize("login", [True, False])
+@pytest.mark.parametrize("pad", DASHBOARDS)
+def test_dashboard_uit_geeft_403_en_laadt_niets(database, monkeypatch, loaders, pad, login):
+    client = _client(database, monkeypatch, login=login, dashboards=False)
+
+    resp = client.get(pad, params={"instelling": "Hogeschool Utrecht"}, headers=_bearer())
+
+    assert resp.status_code == 403
+    assert resp.json() == {"error": "Dashboards zijn niet beschikbaar"}
+    assert loaders == []
+
+
+@pytest.mark.parametrize("pad, loader", DASHBOARDS.items())
+def test_dashboard_zonder_login_werkt_als_voorheen(database, monkeypatch, loaders, pad, loader):
+    client = _client(database, monkeypatch, login=False, dashboards=True)
+
+    resp = client.get(pad, params={"instelling": "VU"})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": loader}
+    assert loaders == [(loader, "VU")]
