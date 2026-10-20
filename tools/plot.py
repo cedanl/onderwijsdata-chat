@@ -166,10 +166,12 @@ GEOJSON_URLS = {
     "corop": "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
 }
 _GEOJSON_CACHE: dict[str, dict] = {}
-# De opmaak van de kaart; het recept (tools/snippet.py) gebruikt dezelfde waarden (#630).
+# De opmaak van de kaart; het recept (tools/snippet.py) gebruikt dezelfde waarden (#630). Centrum en zoom laten heel
+# Nederland zien in een Plotly-figuur van standaardmaat (700 x 450, kleurenbalk en titel eraf); met 52,3 en zoom 6
+# viel Limburg onderaan weg (#642). De chat rekent ze zelf uit voor de breedte die de kaart heeft (kaartBeeld.js).
 KAART_OPTIES = {
-    "center": {"lat": 52.3, "lon": 5.3},
-    "zoom": 6,
+    "center": {"lat": 52.18, "lon": 5.3},
+    "zoom": 5.8,
     "map_style": "white-bg",
     "color_continuous_scale": "Blues",
 }

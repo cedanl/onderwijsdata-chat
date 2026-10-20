@@ -145,6 +145,42 @@ def test_het_recept_noemt_wat_niet_op_de_kaart_staat(capsys):
     assert "Atlantis" in uit and "Amsterdam" not in uit
 
 
+def test_de_kaartopties_tonen_heel_nederland_in_een_standaardfiguur():
+    """Met centrum 52,3 en zoom 6 viel Limburg onderaan buiten de kaart (#642); app en recept delen KAART_OPTIES."""
+    import math
+    from pathlib import Path
+    from typing import cast
+
+    from tools.plot import KAART_OPTIES
+
+    fixture = Path(__file__).parent / "e2e" / "fixtures" / "kaart-provincies.json"
+    punten: list[tuple[float, float]] = []
+
+    def loop(c: list) -> None:
+        if isinstance(c[0], (int, float)):
+            punten.append((float(c[0]), float(c[1])))
+        else:
+            for d in c:
+                loop(d)
+
+    for f in json.loads(fixture.read_text())["data"][0]["geojson"]["features"]:
+        loop(f["geometry"]["coordinates"])
+
+    def mx(lon: float) -> float:
+        return (lon + 180) / 360
+
+    def my(lat: float) -> float:
+        return (1 - math.log(math.tan(math.pi / 4 + lat * math.pi / 360)) / math.pi) / 2
+
+    centrum = cast(dict[str, float], KAART_OPTIES["center"])
+    schaal = 512 * 2 ** cast(float, KAART_OPTIES["zoom"])
+    cx, cy = mx(centrum["lon"]), my(centrum["lat"])
+    # Plotly-standaard 700 x 450, min de kleurenbalk (100) en de titelmarge (60).
+    breedte, hoogte = 600, 390
+    assert max(abs(mx(lon) - cx) for lon, _ in punten) * schaal <= breedte / 2
+    assert max(abs(my(lat) - cy) for _, lat in punten) * schaal <= hoogte / 2
+
+
 def test_het_recept_tekent_dezelfde_kleurenbalk_en_titel_als_de_app():
     """#640: de maatnaam uit de bron op de kleurenbalk en de titel met spatie, ook in het recept."""
     rijen = [{"LOC": "PV20", "MboStudenten_1": 1}, {"LOC": "PV26", "MboStudenten_1": 2}]
@@ -178,3 +214,22 @@ def test_zonder_titels_volgt_ook_het_recept_kolomlabel():
     fig = _recept(args, melding)["fig"]
     assert fig_app.layout.coloraxis.colorbar.title.text == "Aantal studenten"
     assert fig.layout.coloraxis.colorbar.title.text == "Aantal studenten"
+
+
+def test_een_aanhalingsteken_in_de_kolomnaam_breekt_het_recept_niet(capsys):
+    """#640-review: de kolomnamen staan als Python-literal in het recept, ook met een `"` erin."""
+    gewoon = _args(["Amsterdam", "Atlantis", "Utrecht"], "gemeente")
+    rijen = [{'Regio "Noord"': r["LOC"], 'Waarde "x"': r["N"]} for r in gewoon["data"]]
+    args = {**gewoon, "data": rijen, "location_col": 'Regio "Noord"', "value_col": 'Waarde "x"'}
+    melding, fig_app = _app(args)
+    recept = generate("create_choropleth_map", args, melding)
+    assert recept is not None
+    compile(recept, "<recept>", "exec")
+
+    fig = _recept(args, melding)["fig"]
+    niet_op_kaart = capsys.readouterr().out
+    fig_gewoon = _recept(gewoon, _app(gewoon)[0])["fig"]
+
+    assert list(fig.data[0].locations) == list(fig_app.data[0].locations) == list(fig_gewoon.data[0].locations)
+    assert list(fig.data[0].z) == list(fig_app.data[0].z) == list(fig_gewoon.data[0].z)
+    assert niet_op_kaart == capsys.readouterr().out == "Niet op de kaart: ['Atlantis']\n"
