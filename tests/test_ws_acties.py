@@ -7,6 +7,7 @@ handtekening (msg, session, emit, lopende taak) -> lopende taak.
 import asyncio
 import importlib
 import json
+import logging
 
 import pytest
 
@@ -120,6 +121,18 @@ def test_een_onbekende_actie_krijgt_direct_een_foutframe(msg):
     assert terug is taak
     assert events == [{"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}]
     assert "31337" not in chat.ONBEKENDE_ACTIE
+
+
+@pytest.mark.parametrize("actie", [["x" * 100_000], "y" * 100_000], ids=["lijst", "string"])
+def test_een_onbekende_actie_logt_het_type_en_een_ingekorte_waarde(actie, caplog):
+    """#637: de verbinding blijft open, dus een enorme actie mag niet per frame volledig in de log."""
+    caplog.set_level(logging.WARNING, logger=chat.logger.name)
+
+    _dispatch({"action": actie}, None)
+
+    [regel] = [r.getMessage() for r in caplog.records if "Onbekende websocket-actie" in r.getMessage()]
+    assert type(actie).__name__ in regel
+    assert len(regel) < 200
 
 
 @pytest.fixture

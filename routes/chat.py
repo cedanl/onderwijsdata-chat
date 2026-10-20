@@ -718,7 +718,8 @@ async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task |
     # Een lijst of object als actie is niet hashbaar: dat gaf een TypeError en sloot de verbinding.
     handler = ACTIES.get(actie) if isinstance(actie, str) else None
     if handler is None:
-        logger.warning("Onbekende websocket-actie genegeerd: %r", actie)
+        # Type plus een ingekorte repr: de verbinding blijft open, dus een enorme actie niet per frame volledig loggen.
+        logger.warning("Onbekende websocket-actie genegeerd: %s %.80r", type(actie).__name__, actie)
         # Hardop weigeren, zoals bij een te lang bericht: anders wacht de client tot zijn time-out.
         await emit({"type": "error", "message": ONBEKENDE_ACTIE, "modelafhankelijk": False})
         return current_task
