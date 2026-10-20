@@ -52,7 +52,6 @@ def test_productie_publiceert_geen_openapi_schema(productie_app):
 def test_productie_met_spa_geeft_voor_docs_geen_documentatie(productie_app, tmp_path):
     # Met een gebouwde frontend vangt /api/{rest} de docs-paden op met een JSON-404, en /redoc krijgt
     # index.html van de SPA, net als elk onbekend pad. Geen van beide noemt de CDN of de API.
-    from core.foutmeldingen import NIET_GEVONDEN
     from frontend_static import mount_frontend
 
     (tmp_path / "assets").mkdir()
