@@ -159,7 +159,9 @@ def test_het_recept_tekent_dezelfde_kleurenbalk_en_titel_als_de_app():
         "title": 'Mbo-studenten "2024" perprovincie',
         "level": "auto",
     }
-    melding, fig_app = create_choropleth_map(**args)
+    melding, fig_app = create_choropleth_map(
+        data_key=args["data_key"], location_col="LOC", value_col="MboStudenten_1", title=args["title"]
+    )
     assert fig_app is not None, melding
     fig = _recept(args, melding)["fig"]
     assert fig_app.layout.coloraxis.colorbar.title.text == "Mbo-studenten"
