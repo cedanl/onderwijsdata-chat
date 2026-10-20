@@ -4,8 +4,6 @@ In productie geen API-documentatie (Swagger UI haalde zijn scripts van cdn.jsdel
 dashboard-eindpunten alleen voor een ingelogde gebruiker en alleen als dashboards aan staan.
 """
 
-import importlib
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,39 +12,24 @@ from core.foutmeldingen import NIET_GEVONDEN
 DOCS_PADEN = ("/api/docs", "/docs/oauth2-redirect", "/redoc", "/api/openapi.json")
 
 
-def _herlaad_server(monkeypatch, productie: bool):
-    """server opnieuw opgebouwd, zonder de gebouwde SPA (frontend/dist), met of zonder productie."""
-    import frontend_static
-    import server
-    from config import Config
-
-    with monkeypatch.context() as m:
-        m.setattr(frontend_static, "mount_frontend", lambda app, dist: None)
-        if productie:
-            m.setattr(Config, "POSTGRES_URI", "postgresql://test")
-            m.setattr(Config, "SESSION_SECRET", "test")
-        importlib.reload(server)
-    return server.app
-
-
 @pytest.fixture
 def database(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
 
 
 @pytest.fixture
-def productie_app(database, monkeypatch):
-    app = _herlaad_server(monkeypatch, productie=True)
-    yield app
-    # De volgende test krijgt weer de gewone app; DATABASE_PATH staat dan nog op de tijdelijke map.
-    importlib.reload(importlib.import_module("server"))
+def productie_app():
+    """Een productie-app uit de fabriek, zonder de gebouwde SPA (frontend/dist) en zonder server te herladen."""
+    from server import create_app
+
+    return create_app(production=True)
 
 
 @pytest.fixture
-def ontwikkel_app(database, monkeypatch):
-    app = _herlaad_server(monkeypatch, productie=False)
-    yield app
-    importlib.reload(importlib.import_module("server"))
+def ontwikkel_app():
+    from server import create_app
+
+    return create_app(production=False)
 
 
 # ── API-documentatie ─────────────────────────────────────────────────────────
@@ -69,6 +52,7 @@ def test_productie_publiceert_geen_openapi_schema(productie_app):
 def test_productie_met_spa_geeft_voor_docs_geen_documentatie(productie_app, tmp_path):
     # Met een gebouwde frontend vangt /api/{rest} de docs-paden op met een JSON-404, en /redoc krijgt
     # index.html van de SPA, net als elk onbekend pad. Geen van beide noemt de CDN of de API.
+    from core.foutmeldingen import NIET_GEVONDEN
     from frontend_static import mount_frontend
 
     (tmp_path / "assets").mkdir()
@@ -94,6 +78,46 @@ def test_buiten_productie_blijft_de_api_documentatie(ontwikkel_app):
     assert schema.status_code == 200
     assert "/health" in schema.json()["paths"]
     assert client.get("/redoc").status_code == 200
+
+
+# ── De fabriek en de app van de module ───────────────────────────────────────
+
+
+def _routes(routes) -> list[tuple]:
+    """Elke route op volgorde, ook die van een ingesloten router (FastAPI nest die in app.routes)."""
+    platte = []
+    for route in routes:
+        if hasattr(route, "original_router"):
+            platte += _routes(route.original_router.routes)
+        else:
+            platte.append((type(route).__name__, getattr(route, "path", None), sorted(getattr(route, "methods", ()))))
+    return platte
+
+
+def test_de_fabriek_bouwt_dezelfde_app_als_server_app():
+    import server
+
+    frontend = server._FRONTEND_DIST if server._FRONTEND_DIST.exists() else None
+    app = server.create_app(production=False, frontend_dist=frontend)
+
+    assert _routes(app.routes) == _routes(server.app.routes)
+    assert {"/health", "/ready", "/startup", "/version", "/api/version", "/info"} <= set(app.openapi()["paths"])
+    assert [(m.cls, m.kwargs) for m in app.user_middleware] == [(m.cls, m.kwargs) for m in server.app.user_middleware]
+    assert app.exception_handlers.keys() == server.app.exception_handlers.keys()
+    assert app.router.on_startup == server.app.router.on_startup == [server.on_startup]
+    assert app.router.on_shutdown == server.app.router.on_shutdown == [server.on_shutdown]
+
+
+def test_de_fabriek_zet_dezelfde_beveiligingsheaders_als_server_app():
+    import server
+
+    koppen = ("x-content-type-options", "x-frame-options", "strict-transport-security", "referrer-policy")
+    koppen += ("permissions-policy", "content-security-policy")
+    for app in (server.create_app(production=True), server.create_app(production=False)):
+        fabriek = TestClient(app).get("/health").headers
+        module = TestClient(server.app).get("/health").headers
+        assert {k: fabriek.get(k) for k in koppen} == {k: module.get(k) for k in koppen}
+        assert all(fabriek.get(k) for k in koppen)
 
 
 # ── Dashboard-eindpunten ─────────────────────────────────────────────────────

@@ -657,8 +657,9 @@ input, textarea { font: inherit; }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
-/* Code under its own step on a phone (#595), folded behind "Bekijk code". */
-.reasoning-step > div { min-width: 0; flex: 1; }
+/* Code under its own step on a phone (#595), folded behind "Bekijk code". Only the text fills the row:
+   a rule on every child div also stretched the status dot into a bar (#640). */
+.reasoning-step-body { min-width: 0; flex: 1; }
 .reasoning-step:has(.reasoning-step-code) { align-items: flex-start; }
 .reasoning-step:has(.reasoning-step-code) .reasoning-step-dot { margin-top: 6px; }
 .reasoning-step-code summary {
