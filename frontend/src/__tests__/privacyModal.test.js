@@ -28,6 +28,7 @@ vi.mock('../api', () => {
     deleteConversationApi: pending,
     fetchAnswerFeedback: pending,
     postAnswerFeedback: pending,
+    downloadMijnGegevens: pending,
   }
 })
 vi.mock('../components/ScrollToBottom', () => ({ default: () => null }))
