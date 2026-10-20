@@ -100,6 +100,9 @@ async def security_headers(request, call_next):
         "script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob:; "
+        # Maplibre (de kaart) start zijn worker vanaf een blob:-URL; zonder worker-src valt dat terug op
+        # script-src en blijft de kaart leeg (#632). Alleen hier blob:, niet in script-src.
+        "worker-src 'self' blob:; "
         f"connect-src {_CONNECT_SRC}; "
         "font-src 'self'; "
         "frame-ancestors 'none';"

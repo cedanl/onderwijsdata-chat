@@ -568,6 +568,12 @@ input, textarea { font: inherit; }
 .message-bubble :is(th, td) { overflow-wrap: normal; }
 /* A wide table scrolls inside the answer instead of widening the message list (#626). */
 .tabel-scroll { max-width: 100%; overflow-x: auto; }
+/* A map that did not draw (#632): the notice and its numbers as a table, in the place of the empty map. */
+.kaart-mislukt { color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin: 4px 0 8px; }
+.kaart-tabel { border-collapse: collapse; min-width: min(100%, 24rem); }
+.kaart-tabel caption { text-align: left; font-weight: 600; margin-bottom: 4px; }
+.kaart-tabel :is(th, td) { padding: 4px 16px 4px 0; border-bottom: 1px solid var(--gray-200); text-align: left; }
+.kaart-tabel :is(th, td):last-child { padding-right: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {

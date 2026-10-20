@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
 import TabelScroll from '../components/TabelScroll'
+import KaartTerugval from '../components/KaartTerugval'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
@@ -22,6 +23,7 @@ import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useElementWidth } from '../hooks/useElementWidth'
+import { useKaartStatus } from '../hooks/useKaartStatus'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
@@ -1197,11 +1199,15 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
   const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
+  const isMap = Boolean(figure && isMapFigure(figure))
+  const kaart = useKaartStatus(isMap)
   if (!figure) return null
-  const isMap = isMapFigure(figure)
+  // Een kaart die niet getekend is, heet niet "Kaart aangemaakt" (#632): de melding en de tabel nemen haar plaats in.
+  const kaartMislukt = isMap && kaart.status === 'mislukt'
   return (
     <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
-      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{kaartMislukt ? 'Kaart niet getekend' : label}</div>}
+      {kaartMislukt && <KaartTerugval figure={figure} />}
       {csvProblem && (
         <div role="alert" style={{ fontSize: 'var(--font-klein)', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
           Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
@@ -1221,12 +1227,14 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
       )}
       {/* The chart's accessible name (#588), on the chart only: role="img" makes its children
           presentational, and the CSV button above must stay a button. */}
-      <div {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
+      <div hidden={kaartMislukt} {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
         <Plot
           data={figure.data || NO_TRACES}
           layout={layout}
           config={PLOT_CONFIG}
           useResizeHandler
+          onInitialized={kaart.onInitialized}
+          onError={kaart.onError}
           style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
         />
       </div>

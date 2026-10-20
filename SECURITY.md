@@ -56,7 +56,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 **Aangetroffen in:** ZAP-scan (16 alerts waaronder CSP, X-Frame-Options, HSTS, X-Content-Type-Options)  
 **Fix:** middleware in `server.py` zet:
-- `Content-Security-Policy` — beperkt script-, style-, img- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506). Restpunt `'unsafe-inline'`: zie S13
+- `Content-Security-Policy` — beperkt script-, style-, img-, worker- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506); `worker-src 'self' blob:` omdat de kaart (maplibre) zijn worker vanaf een `blob:`-URL start (#632). Restpunt `'unsafe-inline'`: zie S13
 - `X-Frame-Options: DENY` en CSP `frame-ancestors 'none'` — voorkomt clickjacking
 - `Strict-Transport-Security` — dwingt HTTPS af
 - `X-Content-Type-Options: nosniff`
@@ -169,6 +169,7 @@ Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blo
 - De CDN-hosts zijn weg (#486): Plotly voor de HTML van rapporten en dashboards komt van de eigen server (`frontend/src/plotlyBron.js`, als asset onder `/assets`), oude opgeslagen HTML met `cdn.plot.ly` wordt bij het tonen herschreven, en de download krijgt Plotly inline. `cdn.jsdelivr.net` werd door de app niet gebruikt. Een test (`tests/test_security_headers.py`) houdt `script-src` zonder derde partij.
 - `connect-src` stond `wss:` en `ws:` toe, dus WebSocket-verbindingen naar elke host; een script dat toch draaide, kon zo gegevens uit de browser (zoals het token in localStorage, S9) naar buiten sturen. Nu alleen de eigen server (#506): `'self'` plus de `wss://`-origin uit `SERVER_URL` (`server.connect_src`). Die origin staat er expliciet bij omdat oudere Safari-versies `'self'` niet op `wss:` laten slaan; zonder `SERVER_URL` (lokaal) alleen `'self'`. De chat opent zijn WebSocket naar `location.host` (`frontend/src/auth.js`).
 - `'unsafe-inline'` laat inline scripts toe, waardoor de CSP XSS maar ten dele afvangt.
+- `worker-src 'self' blob:` (#632): maplibre, waarmee Plotly de kaart van `create_choropleth_map` tekent, start zijn web-worker vanaf een `blob:`-URL. Zonder `worker-src` viel dat terug op `script-src`, werd de worker geblokkeerd en bleef de kaart leeg. `blob:` staat alleen in `worker-src`, niet in `script-src`: een script dat al draait kan zo een worker uit een blob starten, maar geen blob als script laden. Dat is smaller dan wat `'unsafe-inline'` al toestaat. Een test houdt `worker-src` op precies `'self' blob:` en `script-src` zonder `blob:`.
 
 **Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"` met een eigen policy, S22).
 

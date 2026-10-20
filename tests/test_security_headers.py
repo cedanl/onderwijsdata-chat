@@ -96,3 +96,26 @@ def test_csp_laat_geen_websocket_naar_een_andere_host_toe(client):
     assert "wss:" not in bronnen
     assert "ws:" not in bronnen
     assert bronnen[0] == "'self'"
+
+
+# #632: maplibre (de kaart van create_choropleth_map) start zijn worker vanaf een blob:-URL. Zonder worker-src viel
+# dat terug op script-src, waar blob: niet in staat, en bleef de kaart leeg. Alleen worker-src krijgt blob:.
+def test_csp_staat_de_kaartworker_toe_vanaf_blob(client):
+    csp = _richtlijnen(client.get("/health").headers["Content-Security-Policy"])
+    assert csp["worker-src"] == "'self' blob:"
+    assert "blob:" not in csp["script-src"]
+    assert "http" not in csp["script-src"]
+
+
+def test_csp_wijzigt_naast_worker_src_geen_andere_richtlijn(client):
+    csp = _richtlijnen(client.get("/health").headers["Content-Security-Policy"])
+    csp.pop("connect-src")  # hangt af van SERVER_URL, zie hierboven
+    assert csp == {
+        "default-src": "'self'",
+        "script-src": "'self' 'unsafe-inline'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob:",
+        "worker-src": "'self' blob:",
+        "font-src": "'self'",
+        "frame-ancestors": "'none'",
+    }
