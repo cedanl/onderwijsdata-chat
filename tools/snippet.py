@@ -26,7 +26,7 @@ from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
 from .periode import STUDIEJAAR_LABEL
-from .plot import GEOJSON_URLS, KAART_OPTIES, is_liggend, resolve_chart_type
+from .plot import GEOJSON_URLS, KAART_OPTIES, is_liggend, kaartlabel, resolve_chart_type, schone_titel
 from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -447,7 +447,7 @@ def _frame_regels(args: dict, data_key: str | None, recept_van: Receptbron | Non
 def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
     x = args.get("x", "x")
     y = args.get("y", "y")
-    title = args.get("title", "")
+    title = schone_titel(args.get("title", ""))
     color_by = args.get("color_by")
     data_key = args.get("data_key")
 
@@ -510,12 +510,15 @@ def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None)
     """De kaart zoals de app hem tekent: de GeoJSON van het niveau, locaties naar feature-id, dezelfde opmaak (#630)."""
     location_col = args.get("location_col", "")
     value_col = args.get("value_col", "")
-    title = args.get("title", "")
+    title = schone_titel(args.get("title", ""))
+    data_key = args.get("data_key")
+    # Het recept draait zonder tools: de kleurenbalktitel van de app staat er letterlijk in (#640).
+    labels = {value_col: kaartlabel(value_col, store.meta(data_key) if data_key else None)}
     level = args.get("level")
     niveau = level if isinstance(level, str) and level in GEOJSON_URLS else "provincie"
     opmaak = ", ".join(f"{naam}={waarde!r}" for naam, waarde in KAART_OPTIES.items())
 
-    lines = _frame_regels(args, args.get("data_key"), recept_van)
+    lines = _frame_regels(args, data_key, recept_van)
     lines += ["import json", "import re", "import urllib.request", ""]
     lines += ["# De kaart tekent op CBS-gebiedscodes (PV26, GM0344, CR17); namen gaan er hieronder naartoe.", ""]
     lines += [f"GEOJSON = {GEOJSON_URLS[niveau]!r}", "with urllib.request.urlopen(GEOJSON, timeout=15) as resp:"]
@@ -532,8 +535,8 @@ def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None)
     lines += ['df = df[df["kaartcode"].notna()]']
     lines += [
         f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
-        f'hover_name="{location_col}", hover_data={{"kaartcode": False}}, color="{value_col}", '
-        f'{opmaak}, title="{title}")',
+        f'hover_name="{location_col}", hover_data={{"kaartcode": False}}, color="{value_col}", labels={labels!r}, '
+        f"{opmaak}, title={title!r})",
         "fig.show()",
     ]
     return "\n".join(lines)

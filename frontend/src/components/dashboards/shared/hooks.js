@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
 import { benchmarkColor, chartOpts, buildIndexChartOpts } from './chart-opts'
 import {
@@ -38,8 +39,7 @@ function useDashboardFetch(endpoint, instelling) {
     setLoading(true)
     setData(null)
     setError(null)
-    fetch(`${endpoint}?instelling=${encodeURIComponent(instelling)}`, { signal: ac.signal })
-      .then(r => r.json())
+    fetchDashboardData(endpoint, instelling, { signal: ac.signal })
       .then(d => { if (!ac.signal.aborted) { setData(d); setLoading(false) } })
       .catch(e => { if (!ac.signal.aborted) { setError(e.message); setLoading(false) } })
     return () => ac.abort()

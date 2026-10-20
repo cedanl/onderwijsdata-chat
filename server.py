@@ -16,6 +16,7 @@ load_dotenv()
 
 # Setup structured logging (JSON for production, text for development)
 from config import Config, ConfigError
+from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from frontend_static import mount_frontend
 from logging_config import setup_logging
@@ -45,11 +46,18 @@ from routes import (
     persistence_router,
 )
 
+# API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
+# en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+_DOCS = not Config.is_production()
+
 app = FastAPI(
     title="Onderwijsdata Chat",
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if _DOCS else None,
+    redoc_url="/redoc" if _DOCS else None,
+    openapi_url="/api/openapi.json" if _DOCS else None,
 )
+# Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
+foutmeldingen.registreer(app)
 
 # Initialize database
 try:
@@ -86,6 +94,9 @@ def connect_src(server_url: str | None) -> str:
 
 _CONNECT_SRC = connect_src(Config.SERVER_URL)
 
+# Browserfuncties die de app niet gebruikt, ook niet voor een ingesloten frame of een geïnjecteerd script (#636).
+PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
 
 @app.middleware("http")
 async def security_headers(request, call_next):
@@ -94,6 +105,7 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         # Geen derde partij: Plotly voor rapporten en dashboards komt van de eigen server (#486).

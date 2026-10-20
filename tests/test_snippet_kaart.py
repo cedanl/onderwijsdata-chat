@@ -179,3 +179,38 @@ def test_de_kaartopties_tonen_heel_nederland_in_een_standaardfiguur():
     breedte, hoogte = 600, 390
     assert max(abs(mx(lon) - cx) for lon, _ in punten) * schaal <= breedte / 2
     assert max(abs(my(lat) - cy) for _, lat in punten) * schaal <= hoogte / 2
+
+
+def test_het_recept_tekent_dezelfde_kleurenbalk_en_titel_als_de_app():
+    """#640: de maatnaam uit de bron op de kleurenbalk en de titel met spatie, ook in het recept."""
+    rijen = [{"LOC": "PV20", "MboStudenten_1": 1}, {"LOC": "PV26", "MboStudenten_1": 2}]
+    meta = store.KeyMeta(
+        bron="cbs", dataset="85353NED", afgeleid_van="cbs:85353NED", kolomtitels={"MboStudenten_1": "Mbo-studenten"}
+    )
+    store.put("cbs:85353NED:sel640", pd.DataFrame(rijen), meta)
+    args = {
+        "data_key": "cbs:85353NED:sel640",
+        "location_col": "LOC",
+        "value_col": "MboStudenten_1",
+        "title": 'Mbo-studenten "2024" perprovincie',
+        "level": "auto",
+    }
+    melding, fig_app = create_choropleth_map(
+        data_key=args["data_key"], location_col="LOC", value_col="MboStudenten_1", title=args["title"]
+    )
+    assert fig_app is not None, melding
+    fig = _recept(args, melding)["fig"]
+    assert fig_app.layout.coloraxis.colorbar.title.text == "Mbo-studenten"
+    assert fig.layout.coloraxis.colorbar.title.text == fig_app.layout.coloraxis.colorbar.title.text
+    assert fig_app.layout.title.text == 'Mbo-studenten "2024" per provincie'
+    assert fig.layout.title.text == fig_app.layout.title.text
+    assert fig.data[0].hovertemplate == fig_app.data[0].hovertemplate
+
+
+def test_zonder_titels_volgt_ook_het_recept_kolomlabel():
+    args = {**_args(["PV20", "PV26"]), "value_col": "AANTAL_STUDENTEN"}
+    args["data"] = [{"LOC": r["LOC"], "AANTAL_STUDENTEN": r["N"]} for r in args["data"]]
+    melding, fig_app = _app(args)
+    fig = _recept(args, melding)["fig"]
+    assert fig_app.layout.coloraxis.colorbar.title.text == "Aantal studenten"
+    assert fig.layout.coloraxis.colorbar.title.text == "Aantal studenten"

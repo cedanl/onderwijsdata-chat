@@ -49,6 +49,24 @@ describe('ReasoningStep', () => {
     expect(container.textContent).toContain('kon niet op de data worden uitgevoerd')
   })
 
+  // #640: a call the scope boundary refused loaded nothing, so it is not "CBS data opgehaald".
+  it('shows a refused call on the scope boundary by its outcome, without a filter error text', async () => {
+    await render({
+      name: 'get_cbs_data', label: 'CBS data opgehaald', done: true, status: 'buiten_scope',
+      statusLabel: 'CBS-opvraag geweigerd (buiten scope)',
+    })
+    expect(container.querySelector('.reasoning-step').className).toBe('reasoning-step buiten_scope')
+    expect(container.querySelector('.reasoning-step-dot').className).toBe('reasoning-step-dot done buiten_scope')
+    expect(container.querySelector('span').textContent).toBe('CBS-opvraag geweigerd (buiten scope)')
+    expect(container.textContent).not.toContain('CBS data opgehaald')
+    expect(container.querySelector('.reasoning-step-uitleg')).toBeNull()
+  })
+
+  it('keeps the old label of a stored step without an outcome', async () => {
+    await render({ name: 'get_cbs_data', label: 'CBS data opgehaald', done: true })
+    expect(container.textContent).toBe('CBS data opgehaald')
+  })
+
   // #426: the app retried and the retry delivered; a bare red "Filter mislukt" read as a dead end.
   it('dims a failed step that a later attempt made good, and says so', async () => {
     await render({ name: 'query_data', label: 'Data gefilterd', done: true, status: 'error', statusLabel: 'Filter mislukt', recovered: true })

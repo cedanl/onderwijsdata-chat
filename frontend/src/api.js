@@ -92,6 +92,11 @@ export async function fetchSettingsConfig() {
   return apiFetch('/api/settings/config')
 }
 
+// The data behind a built-in dashboard; with login on the server wants the token (#636).
+export async function fetchDashboardData(endpoint, instelling, { signal } = {}) {
+  return apiFetch(`${endpoint}?${new URLSearchParams({ instelling })}`, { signal })
+}
+
 // mode: 'ververs' haalt de data opnieuw op bij de bron en meldt wat er veranderde;
 // 'reproduceer' rendert opnieuw uit de opgeslagen data, zonder netwerk (#346).
 export async function refreshDashboard(spec, settings = {}, mode = 'ververs') {

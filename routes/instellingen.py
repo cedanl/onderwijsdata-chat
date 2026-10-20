@@ -1,9 +1,11 @@
 import asyncio
+from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 
 from core.auth import get_current_user
-from core.config import MODEL, get_available_models_for_user
+from core.config import DASHBOARDS_ENABLED, MODEL, get_available_models_for_user
 from data.dashboard import (
     load_dashboard as load_dashboard_data,
 )
@@ -83,31 +85,39 @@ async def get_instellingen(type: str | None = Query(default=None)) -> list[dict]
     return alle
 
 
-@router.get("/api/dashboard/instroom")
-async def dashboard_instroom(instelling: str = Query(...)) -> dict:
+# Met login aan alleen voor een ingelogde gebruiker, en alleen als dashboards aan staan (#636): elke aanroep
+# laadt en rekent DUO- en CBS-data. Zonder login (lokaal) voor `gast`, zoals voorheen.
+_INGELOGD = [Depends(get_current_user)]
+
+
+async def _laad_dashboard(loader: Callable[[str], dict], instelling: str) -> dict | JSONResponse:
+    if not DASHBOARDS_ENABLED:
+        # Dezelfde 403 als POST /api/dashboard/refresh; de frontend leest `error`.
+        return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, load_dashboard_data, instelling)
+    return await loop.run_in_executor(None, loader, instelling)
 
 
-@router.get("/api/dashboard/regio")
-async def dashboard_regio(instelling: str = Query(...)) -> dict:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, load_dashboard_regio, instelling)
+@router.get("/api/dashboard/instroom", response_model=None, dependencies=_INGELOGD)
+async def dashboard_instroom(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_data, instelling)
 
 
-@router.get("/api/dashboard/nationaal")
-async def dashboard_nationaal(instelling: str = Query(...)) -> dict:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, load_dashboard_nationaal, instelling)
+@router.get("/api/dashboard/regio", response_model=None, dependencies=_INGELOGD)
+async def dashboard_regio(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_regio, instelling)
 
 
-@router.get("/api/dashboard/rendement")
-async def dashboard_rendement(instelling: str = Query(...)) -> dict:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, load_dashboard_rendement, instelling)
+@router.get("/api/dashboard/nationaal", response_model=None, dependencies=_INGELOGD)
+async def dashboard_nationaal(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_nationaal, instelling)
 
 
-@router.get("/api/dashboard/arbeidsmarktmatch")
-async def dashboard_arbeidsmarktmatch(instelling: str = Query(...)) -> dict:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, load_dashboard_arbeidsmarktmatch, instelling)
+@router.get("/api/dashboard/rendement", response_model=None, dependencies=_INGELOGD)
+async def dashboard_rendement(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_rendement, instelling)
+
+
+@router.get("/api/dashboard/arbeidsmarktmatch", response_model=None, dependencies=_INGELOGD)
+async def dashboard_arbeidsmarktmatch(instelling: str = Query(...)) -> dict | JSONResponse:
+    return await _laad_dashboard(load_dashboard_arbeidsmarktmatch, instelling)

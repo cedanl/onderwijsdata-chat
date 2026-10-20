@@ -14,6 +14,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from core import foutmeldingen
+
 UUR = 3600
 
 
@@ -61,6 +63,8 @@ def oidc_client(database, monkeypatch):
         monkeypatch.setattr(Config, naam, "test")
     importlib.reload(routes.auth)
     app = FastAPI()
+    # Dezelfde foutafhandeling als server.app (#637).
+    foutmeldingen.registreer(app)
     app.include_router(routes.auth.router)
     yield TestClient(app)
     monkeypatch.undo()
@@ -247,7 +251,16 @@ def test_refresh_zonder_token_zegt_dat_het_ontbreekt(oidc_client, body):
     resp = oidc_client.post("/api/auth/refresh", json=body)
 
     assert resp.status_code == 400
-    assert resp.json() == {"detail": "Token ontbreekt"}
+    assert resp.content == b'{"detail":"Token ontbreekt"}'
+
+
+def test_refresh_zonder_body_is_een_nederlandse_422(oidc_client):
+    """#637: zonder body gaf FastAPI 422 met pydantic's Engelse "Field required"."""
+    resp = oidc_client.post("/api/auth/refresh")
+
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": foutmeldingen.ONGELDIGE_INVOER}
+    assert "Field required" not in resp.text
 
 
 def _ongeldig_token(client, monkeypatch) -> str:
@@ -288,7 +301,7 @@ def test_refresh_met_een_ongeldig_token_zegt_dat_het_niet_meer_geldt(oidc_client
     resp = oidc_client.post("/api/auth/refresh", json={"token": geef_token(oidc_client, monkeypatch)})
 
     assert resp.status_code == 401
-    assert resp.json() == {"detail": "Ongeldig of verlopen token"}
+    assert resp.content == b'{"detail":"Ongeldig of verlopen token"}'
 
 
 # ── Criterium 4: logout is idempotent en werkt zonder login ──────────────────

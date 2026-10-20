@@ -3,6 +3,7 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
+from core.foutmeldingen import ONGELDIGE_INVOER
 from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS, MAX_GESPREKSTITEL
 
 
@@ -40,9 +41,8 @@ def authed_client(tmp_path, monkeypatch):
 
     importlib.reload(server)
     c = TestClient(server.app)
-    resp = c.post("/api/auth/login", json={"username": "testuser", "password": "testpass"})
-    token = resp.json()["token"]
-    c.headers["Authorization"] = f"Bearer {token}"
+    # Een echt token zonder de login-route: de login-limiet geldt voor de hele testrun.
+    c.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
     return c
 
 
@@ -143,7 +143,17 @@ def test_patch_conversation_rejects_empty_title(client, body):
     client.put("/api/conversations/c1", json={"title": "Oud", "timestamp": 1, "messages": []})
     resp = client.patch("/api/conversations/c1", json=body)
     assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
     assert client.get("/api/conversations").json()[0]["title"] == "Oud"
+
+
+@pytest.mark.parametrize("limit", ["500", "0", "999777"])
+def test_list_with_invalid_limit_is_a_dutch_string_without_the_input(client, limit):
+    """#637: pydantic's list echoed the value and spoke English ("Input should be ...")."""
+    resp = client.get("/api/conversations", params={"limit": limit})
+    assert resp.status_code == 422
+    assert resp.json() == {"detail": ONGELDIGE_INVOER}
+    assert "999777" not in resp.text and "Input should" not in resp.text
 
 
 def test_patch_unknown_conversation_returns_404(client):
@@ -273,6 +283,19 @@ def test_auth_enabled_no_token_returns_401(authed_client):
     c = TestClient(authed_client.app)
     resp = c.get("/api/conversations")
     assert resp.status_code == 401
+
+
+def test_unknown_conversation_with_a_valid_token_is_404(authed_client):
+    """#637, point 3: not reproduced; the reported 401 came from a request without Authorization header."""
+    resp = authed_client.get("/api/conversations/bestaat-niet-123")
+    assert resp.status_code == 404
+    assert resp.content == b'{"detail":"Gesprek niet gevonden"}'
+
+
+def test_unknown_conversation_without_authorization_header_is_401(authed_client):
+    resp = TestClient(authed_client.app).get("/api/conversations/bestaat-niet-123")
+    assert resp.status_code == 401
+    assert resp.content == b'{"detail":"Niet geautoriseerd"}'
 
 
 def test_auth_enabled_with_token_works(authed_client):

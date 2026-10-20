@@ -1,6 +1,7 @@
 import json as _json
 import logging
 import math
+import re
 import textwrap
 import urllib.request
 
@@ -46,6 +47,16 @@ _LAYOUT_BASE = {
 # Titel plus de afgebroken noot eronder (drie regels), boven het plotvlak en de waardelabels (CH-34).
 _MARGE_MET_NOOT = 100
 _NOOT_BREEDTE = 55  # tekens: past ook in een smalle grafiek op mobiel
+
+# "Mbo-studenten perprovincie": "per" vast aan een niveauwoord in de titel van het model (#640). Alleen
+# deze woorden, aan het begin van een woord, zodat "perspectief" en "personeel" blijven staan.
+_PER_NIVEAU = re.compile(r"\b(per)(?=provincie|gemeente|corop|regio)", re.IGNORECASE)
+
+
+def schone_titel(title: str) -> str:
+    """De titel van een grafiek of kaart met de spatie na een vastgeplakt "per"; verder ongewijzigd."""
+    return _PER_NIVEAU.sub(r"\1 ", title) if isinstance(title, str) else title
+
 
 # Nederlandse notatie: punt voor duizendtallen, komma voor decimalen (#22).
 _NL_SEPARATORS = ",."
@@ -363,6 +374,7 @@ def create_plot(
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None
+    title = schone_titel(title)
     if err := _validate_axes(data, x, y):
         return err, None
     if len(data) == 1 and chart_type != "bar":
@@ -582,6 +594,11 @@ def _load_geojson(level: str) -> dict:
     return _GEOJSON_CACHE[url]
 
 
+def kaartlabel(value_col: str, known: store.KeyMeta | None) -> str:
+    """De titel van de kleurenbalk: de titel uit de bron, anders de leesbare kolomnaam."""
+    return kolomlabel(value_col, known.kolomtitels if known else None)
+
+
 def create_choropleth_map(
     data: list[dict] | None = None,
     location_col: str = "",
@@ -602,6 +619,7 @@ def create_choropleth_map(
         logger.info("create_choropleth_map zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data om op kaart te tonen. Geef de data_key van een query_data-resultaat mee.", None
+    title = schone_titel(title)
 
     cleaned = [
         {**row, location_col: str(row.get(location_col, "")).strip()}
@@ -633,6 +651,7 @@ def create_choropleth_map(
     df = pd.DataFrame(cleaned)
     df[_KAARTCODE] = [locaties.code_van[row[location_col]] for row in cleaned]
     geojson = _load_geojson(detected)
+    known = store.meta(data_key) if data_key else None
 
     # Use px.choropleth_map (Plotly 6 maplibre renderer) — more reliable than geo projection
     # featureidkey='id' matches against the top-level GeoJSON feature id (e.g. 'PV20')
@@ -643,6 +662,9 @@ def create_choropleth_map(
         hover_name=location_col,
         hover_data={_KAARTCODE: False},
         color=value_col,
+        # De kleurenbalk en het hoverlabel heten naar de maat, zoals een grafiekas (#418, #640);
+        # meta.value_col houdt de kolomnaam voor de CSV.
+        labels={value_col: kaartlabel(value_col, known)},
         featureidkey="id",
         title=title,
         **KAART_OPTIES,

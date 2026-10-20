@@ -1,7 +1,7 @@
 // #632: of een kaart echt getekend is, gemeten aan de maplibre-kaart achter de Plotly-grafiek. Hier met nagemaakte
 // grafiek-divs: getekend, nul gebieden, een fout, een kaart die nooit 'idle' wordt, en geen kaart.
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { kaartVan, getekendeGebieden, volgKaart, KAART_WACHTTIJD } from '../kaartStatus'
+import { kaartVan, getekendeGebieden, volgKaart, KAART_WACHTTIJD, NUL_BEVESTIGING } from '../kaartStatus'
 
 const vlak = id => ({ id, layer: { type: 'fill' } })
 const lijn = id => ({ id, layer: { type: 'line' } })
@@ -65,25 +65,61 @@ describe('volgKaart', () => {
     expect(map.aantal('error')).toBe(0)
   })
 
-  it('meldt mislukt als er na idle geen gebied staat, en daarna alsnog getekend', () => {
+  it('meldt mislukt als er na idle ook even later geen gebied staat, en daarna alsnog getekend', () => {
+    vi.useFakeTimers()
     const map = nepKaart()
     const meld = vi.fn()
     volgKaart(grafiek(map), meld)
     map.emit('idle')
+    expect(meld).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(NUL_BEVESTIGING)
     expect(meld.mock.calls).toEqual([['mislukt']])
     map.vormen = [vlak('PV20')]
     map.emit('idle')
     expect(meld.mock.calls).toEqual([['mislukt'], ['getekend']])
   })
 
-  it('meldt mislukt bij een fout van de kaart zonder getekend gebied, en stopt', () => {
+  // #642: de eerste idle kwam soms vóór de vlakken, en de melding flitste kort op.
+  it('meldt niets als de vlakken binnen de bevestiging alsnog verschijnen', () => {
+    vi.useFakeTimers()
+    const map = nepKaart()
+    const meld = vi.fn()
+    volgKaart(grafiek(map), meld)
+    map.emit('idle')
+    vi.advanceTimersByTime(NUL_BEVESTIGING / 2)
+    map.vormen = [vlak('PV20')]
+    map.emit('idle')
+    vi.advanceTimersByTime(NUL_BEVESTIGING * 2)
+    expect(meld.mock.calls).toEqual([['getekend']])
+  })
+
+  // #642: na een niet-fatale fout stopte de controle; tekende de kaart daarna, dan bleven melding en tabel staan.
+  it('meldt mislukt bij een fout zonder getekend gebied, en blijft kijken', () => {
+    vi.useFakeTimers()
     const map = nepKaart()
     const meld = vi.fn()
     volgKaart(grafiek(map), meld)
     map.emit('error')
+    expect(meld.mock.calls).toEqual([['mislukt']])
+    expect(map.aantal('idle')).toBe(1)
     map.vormen = [vlak('PV20')]
     map.emit('idle')
+    expect(meld.mock.calls).toEqual([['mislukt'], ['getekend']])
+    expect(map.aantal('idle')).toBe(0)
+  })
+
+  it('telt na een fout ook nog op de wachttijd, en meldt mislukt maar één keer', () => {
+    vi.useFakeTimers()
+    const map = nepKaart()
+    const meld = vi.fn()
+    volgKaart(grafiek(map), meld)
+    map.emit('error')
+    map.emit('error')
+    vi.advanceTimersByTime(KAART_WACHTTIJD)
     expect(meld.mock.calls).toEqual([['mislukt']])
+    map.vormen = [vlak('PV20')]
+    map.emit('idle')
+    expect(meld.mock.calls.at(-1)).toEqual(['getekend'])
   })
 
   it('houdt een fout na een getekende kaart voor getekend', () => {

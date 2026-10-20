@@ -709,10 +709,19 @@ ACTIES: dict[str, Handler] = {
 }
 
 
+# Noemt de actie niet: de melding herhaalt geen invoer (#637).
+ONBEKENDE_ACTIE = "Onbekende actie. Ververs de pagina en probeer opnieuw."
+
+
 async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
-    handler = ACTIES.get(msg.get("action"))
+    actie = msg.get("action")
+    # Een lijst of object als actie is niet hashbaar: dat gaf een TypeError en sloot de verbinding.
+    handler = ACTIES.get(actie) if isinstance(actie, str) else None
     if handler is None:
-        logger.warning("Onbekende websocket-actie genegeerd: %r", msg.get("action"))
+        # Type plus een ingekorte repr: de verbinding blijft open, dus een enorme actie niet per frame volledig loggen.
+        logger.warning("Onbekende websocket-actie genegeerd: %s %.80r", type(actie).__name__, actie)
+        # Hardop weigeren, zoals bij een te lang bericht: anders wacht de client tot zijn time-out.
+        await emit({"type": "error", "message": ONBEKENDE_ACTIE, "modelafhankelijk": False})
         return current_task
     return await handler(msg, session, emit, current_task)
 
