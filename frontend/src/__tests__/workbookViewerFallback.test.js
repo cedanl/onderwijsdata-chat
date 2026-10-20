@@ -13,6 +13,7 @@ vi.mock('../components/InlineDashboards', () => ({
 import WorkbookViewer from '../components/WorkbookViewer'
 import { FRAME_BRON, FRAME_TIMEOUT_MS } from '../reportFrame'
 import { PLOTLY_URL } from '../plotlyBron'
+import { metCsp } from '../rapportSandbox'
 import { BUILTIN_ARBEIDSMARKT } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -153,7 +154,7 @@ describe('the download in the notice (#541)', () => {
     expect(knop.disabled).toBe(false)
   })
 
-  it('saves the same file as the bar button: the report without the probe', async () => {
+  it('saves the same file as the bar button: the report without the probe, under the report policy (#634)', async () => {
     const save = vi.fn()
     const knop = await renderWithNotice(RAPPORT, save)
     await act(async () => knop.click())
@@ -164,7 +165,8 @@ describe('the download in the notice (#541)', () => {
     expect(naamBalk).toBe(naam)
     expect(blob.type).toBe('text/html;charset=utf-8')
     const tekst = await blob.text()
-    expect(tekst).toBe(RAPPORT.htmlContent)
+    expect(tekst).toBe(metCsp(RAPPORT.htmlContent))
+    expect(tekst).toContain("connect-src 'none'")
     expect(tekst).not.toContain(FRAME_BRON)
     expect(await blobBalk.text()).toBe(tekst)
   })
@@ -184,10 +186,10 @@ describe('the report frame itself (#541)', () => {
   it('keeps the sandbox and carries the probe once, next to one Plotly script of our own', async () => {
     const oud = '<head><script src="https://cdn.plot.ly/plotly-4.1.0.min.js"></script></head><p>rapport</p>'
     await render({ ...RAPPORT, htmlContent: oud })
-    // allow-modals: het rapport mag print() aanroepen voor "Opslaan als PDF" (#622); nooit allow-same-origin.
-    expect(frame().getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals')
+    // Alleen allow-scripts (#634): geen dialogen en geen pop-ups uit opgeslagen HTML; nooit allow-same-origin.
+    expect(frame().getAttribute('sandbox')).toBe('allow-scripts')
     const srcdoc = frame().getAttribute('srcdoc')
-    expect(srcdoc.split(FRAME_BRON)).toHaveLength(2)
+    expect(srcdoc.split(`bron: '${FRAME_BRON}', zichtbaar`)).toHaveLength(2)
     expect(srcdoc.split(PLOTLY_URL)).toHaveLength(2)
     expect(srcdoc).not.toContain('cdn.plot.ly')
   })

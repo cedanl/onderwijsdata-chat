@@ -31,7 +31,11 @@ describe('WorkbookDownload (#254)', () => {
     const [blob, naam] = save.mock.calls[0]
     expect(naam).toBe('Instroom_hbo.html')
     expect(blob.type).toBe('text/html;charset=utf-8')
-    expect(await blob.text()).toBe('<html>rapport</html>')
+    const tekst = await blob.text()
+    expect(tekst.endsWith('<html>rapport</html>')).toBe(true)
+    // Van schijf geopend heeft het bestand geen sandbox: de policy houdt verbindingen en formulieren tegen (#634).
+    expect(tekst.startsWith('<!DOCTYPE html><meta http-equiv="Content-Security-Policy"')).toBe(true)
+    expect(tekst).toContain("connect-src 'none'")
   })
 
   it('heeft geen knop bij een ingebouwd dashboard', () => {
