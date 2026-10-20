@@ -4,12 +4,13 @@ import { createElement, act, Fragment } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 
-const server = vi.hoisted(() => ({ resolve: null, local: [] }))
+const server = vi.hoisted(() => ({ resolve: null, local: [], load: () => new Promise(() => {}) }))
 vi.mock('../workbooks', () => ({
   getWorkbooks: () => server.local,
   getWorkbookType: (wb) => wb.type,
   deleteWorkbook: vi.fn(id => { server.local = server.local.filter(wb => wb.id !== id) }),
-  migrateLocalWorkbooks: () => Promise.resolve(),
+  isVolledig: (wb) => !wb?.samenvatting,
+  loadWorkbook: vi.fn(id => server.load(id)),
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),
 }))
 vi.mock('../components/WorkbookViewer', () => ({
@@ -21,7 +22,7 @@ vi.mock('../components/WorkbookViewer', () => ({
 vi.mock('../components/WorkbookPreviews', () => ({ default: ({ mode }) => createElement('div', { 'data-testid': 'preview', 'data-mode': mode }) }))
 
 import RapportenPage from '../pages/RapportenPage'
-import { deleteWorkbook } from '../workbooks'
+import { deleteWorkbook, loadWorkbook } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -50,6 +51,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   server.local = []
+  server.load = () => new Promise(() => {})
   vi.clearAllMocks()
 })
 
@@ -310,5 +312,42 @@ describe('RapportenPage and the app theme (#568)', () => {
     await render('/rapporten?id=wb-1')
     await act(async () => { server.resolve([rapport]) })
     expect(container.querySelector('[data-testid="viewer"]').getAttribute('data-mode')).toBe('system')
+  })
+})
+
+// #633: the server list carries no report HTML; opening a card fetches the report first.
+describe('RapportenPage with a list of summaries', () => {
+  const kaart = { id: 'wb-1', type: 'report', title: 'Instroom hbo', createdAt: '2026-10-01T00:00:00Z', samenvatting: true }
+
+  it('opens the viewer only once the full report is in', async () => {
+    let geef
+    server.load = () => new Promise(r => { geef = r })
+    await render()
+    await act(async () => { server.resolve([kaart]) })
+    await act(async () => { container.querySelector('.wb-card').click() })
+    expect(loadWorkbook).toHaveBeenCalledWith('wb-1')
+    expect(container.querySelector('[data-testid="viewer"]')).toBeNull()
+    expect(container.textContent).toContain('Rapport wordt opgehaald')
+    await act(async () => { geef({ ...kaart, samenvatting: undefined, title: 'Instroom hbo (volledig)', htmlContent: '<p/>' }) })
+    expect(container.querySelector('[data-testid="viewer"]').textContent).toBe('Instroom hbo (volledig)')
+  })
+
+  it('says the report is gone when the server no longer has it', async () => {
+    server.load = () => Promise.reject(Object.assign(new Error('Werkboek niet gevonden'), { status: 404 }))
+    await render()
+    await act(async () => { server.resolve([kaart]) })
+    await act(async () => { container.querySelector('.wb-card').click() })
+    expect(container.querySelector('[data-testid="viewer"]')).toBeNull()
+    expect(container.textContent).toContain('Dit rapport is niet gevonden')
+  })
+
+  it('says opening failed when the server does not answer, and keeps the list', async () => {
+    server.load = () => Promise.reject(Object.assign(new Error('API 503'), { status: 503 }))
+    await render()
+    await act(async () => { server.resolve([kaart]) })
+    await act(async () => { container.querySelector('.wb-card').click() })
+    expect(container.textContent).toContain('Dit rapport openen lukt nu niet')
+    expect(container.textContent).toContain('Instroom hbo')
+    expect(container.querySelector('[data-testid="location"]').textContent).toBe('')
   })
 })

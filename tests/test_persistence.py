@@ -145,7 +145,39 @@ def test_upsert_and_list_workbook(db):
     assert result[0]["id"] == "wb1"
     assert result[0]["title"] == "Dashboard 1"
     assert result[0]["instelling"] == "HU"
-    assert json.loads(result[0]["messages"]) == [{"role": "user", "content": "test"}]
+    werkboek = db.get_workbook("alice", "wb1")
+    assert json.loads(werkboek["messages"]) == [{"role": "user", "content": "test"}]
+    assert werkboek["html_content"] == "<html></html>"
+
+
+# #633: met alle rapport-HTML erin was de lijst 2,1 MB bij 85 rapporten en crashte /rapporten.
+def test_de_werkboekenlijst_draagt_geen_inhoud(db):
+    db.upsert_workbook("alice", "r1", "Rapport", "", html_content="<p>x</p>", created_at="2024-01-02T00:00:00Z")
+    db.upsert_workbook("alice", "d1", "Dashboard", "", dashboard_spec={"kpis": []}, created_at="2024-01-01T00:00:00Z")
+    lijst = db.list_workbooks("alice")
+    assert [set(w) for w in lijst] == [{"id", "title", "description", "instelling", "created_at", "type"}] * 2
+    assert [(w["id"], w["type"]) for w in lijst] == [("r1", "report"), ("d1", "dashboard")]
+
+
+def test_de_lijst_van_85_rapporten_blijft_onder_100_kb(db):
+    html = "<html>" + "x" * 25_000 + "</html>"
+    for i in range(85):
+        db.upsert_workbook(
+            "alice",
+            f"r{i}",
+            f"Rapport {i}",
+            "Rapport door alice · gegenereerd op 19 oktober 2026",
+            html_content=html,
+            created_at=f"2026-10-19T10:{i % 60:02d}:00Z",
+        )
+    assert len(json.dumps(db.list_workbooks("alice"))) < 100_000
+
+
+def test_get_workbook_alleen_van_de_eigenaar(db):
+    db.upsert_workbook("alice", "wb1", "A", "", html_content="<p>a</p>", created_at="2024-01-01T00:00:00Z")
+    assert db.get_workbook("alice", "wb1")["type"] == "report"
+    assert db.get_workbook("bob", "wb1") is None
+    assert db.get_workbook("alice", "bestaat-niet") is None
 
 
 def test_workbooks_scoped_to_user(db):
@@ -193,17 +225,15 @@ def test_workbook_with_dashboard_spec(db):
         dashboard_spec=spec,
         created_at="2024-01-01T00:00:00Z",
     )
-    result = db.list_workbooks("alice")
-    assert len(result) == 1
-    loaded = json.loads(result[0]["dashboard_spec"])
+    assert db.list_workbooks("alice")[0]["type"] == "dashboard"
+    loaded = json.loads(db.get_workbook("alice", "wb-spec")["dashboard_spec"])
     assert loaded["title"] == "Test Dashboard"
     assert len(loaded["kpis"]) == 1
 
 
 def test_workbook_without_dashboard_spec_returns_none(db):
     db.upsert_workbook("alice", "wb-old", "Old", "", created_at="2024-01-01T00:00:00Z")
-    result = db.list_workbooks("alice")
-    assert result[0]["dashboard_spec"] is None
+    assert db.get_workbook("alice", "wb-old")["dashboard_spec"] is None
 
 
 # --- Timestamp-normalisatie ---

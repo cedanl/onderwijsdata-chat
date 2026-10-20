@@ -24,11 +24,21 @@ describe('lettergroottes op een telefoon (#613)', () => {
     expect(blok).toMatch(/font-size:\s*12\.5px/)
   })
 
+  // #639: de herhaalmeting op 390 px vond nog lagen met een eigen font-size buiten de variabelen (10,5–12,3 px).
+  it('brengt ook de lagen met een eigen font-size op 12,5 px', () => {
+    for (const laag of ['.sidebar-section-title', '.suggested-category-btn', '.new-chat-btn', '.model-picker-provider', '.navbar-menu-sub',
+      '.wb-gallery-sub', '.wb-gallery-search-label', '.wb-gallery-feedback', '.wb-gallery-leeg-tip', '.privacy-link',
+      '.history-btn-title', '.history-btn-date']) {
+      expect(blok, laag).toContain(laag)
+    }
+  })
+
   it('houdt de variabelen op desktop op de oude maten', () => {
     expect(css).toMatch(/:root\s*{[\s\S]*?--font-klein:\s*\.75rem;[\s\S]*?--font-label:\s*\.8rem;[\s\S]*?--font-code:\s*\.7rem;/)
   })
 
   it('laat de rapportmetadata op /rapporten bewust klein', () => {
     expect(blok).not.toContain('.wb-card-date')
+    expect(blok).not.toContain('.wb-card-desc')
   })
 })

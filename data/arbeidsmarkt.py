@@ -108,8 +108,19 @@ def _peildatum(df: pd.DataFrame) -> str:
     return ", ".join(waarden) or "onbekend"
 
 
+# UWV kent de Friese provincie als "Friesland"; CBS en de vraag van een gebruiker zeggen ook "Fryslân".
+_PROVINCIE_ALIAS = {"fryslân": "friesland", "fryslan": "friesland"}
+# Rijen zonder plaats dragen "Onbekend" als provincie: geen keuze om een gebruiker voor te leggen (#631).
+_GEEN_PROVINCIE = "onbekend"
+
+
+def _provincienaam(provincie: str) -> str:
+    naam = " ".join(provincie.split()).lower()
+    return _PROVINCIE_ALIAS.get(naam, naam)
+
+
 def provincies() -> list[str]:
-    return sorted(_uwv()["PROVINCIE"].dropna().unique())
+    return sorted(p for p in _uwv()["PROVINCIE"].dropna().unique() if str(p).lower() != _GEEN_PROVINCIE)
 
 
 def uwv_peildatum() -> str:
@@ -118,7 +129,7 @@ def uwv_peildatum() -> str:
 
 
 def _in_provincie(df: pd.DataFrame, provincie: str) -> pd.DataFrame:
-    return df[df["PROVINCIE"].str.lower() == provincie.lower()]
+    return df[df["PROVINCIE"].str.lower() == _provincienaam(provincie)]
 
 
 def gemeenten(provincie: str) -> list[str]:

@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 
 from core.config import DUO_ROW_LIMIT
 
-from . import afhankelijkheid, cbs_afronding, dekking, fouten, plot, sandbox, scriptcontrole, store
+from . import afhankelijkheid, cbs_afronding, dekking, duo, fouten, plot, sandbox, scriptcontrole, store
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def _rijen(rijen: list, result_key: str, complete: bool) -> dict:
     """
     n_kolommen = len(rijen[0]) if isinstance(rijen[0], dict) else 1
     maximum = max(30, min(DUO_ROW_LIMIT, _MAX_WAARDEN // max(n_kolommen, 1)))
-    uit: dict = {"data_key": result_key, "rijen": rijen[:maximum]}
+    uit: dict = {"data_key": result_key, "rijen": [_netjes(rij) for rij in rijen[:maximum]]}
     waarschuwingen = [] if complete else [store.ONVOLLEDIG]
     if len(rijen) > maximum:
         uit.update(store.rijtelling(len(rijen), complete))
@@ -152,9 +152,19 @@ def _rijen(rijen: list, result_key: str, complete: bool) -> dict:
     return uit
 
 
+def _netjes(waarde):
+    """Tellingen als tellingen in het toolresultaat (#631): een som over hele getallen werd 23449.0, omdat de
+    -1-maskering kolommen float maakt. Dezelfde regel als query_data (duo.json_waarde), ook in dicts en lijsten."""
+    if isinstance(waarde, dict):
+        return {k: _netjes(v) for k, v in waarde.items()}
+    if isinstance(waarde, list):
+        return [_netjes(v) for v in waarde]
+    return duo.json_waarde(waarde)
+
+
 def _tekst(run: _Run, result_key: str | None, controle: afhankelijkheid.Toets | None) -> str:
     """Het toolresultaat voor het model: de uitkomst, waar hij op rust en wat er niet als bewijs telt."""
-    text_obj = run.result if run.result is not None else {}
+    text_obj = _netjes(run.result) if run.result is not None else {}
     if result_key:
         text_obj = _rijen(run.result, result_key, run.complete)
     if not run.bronnen:

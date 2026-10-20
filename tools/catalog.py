@@ -1099,19 +1099,33 @@ def catalogus_laatste_update(dataset_id: str) -> str | None:
     return None
 
 
-def documentatie_url(dataset_id: str) -> str | None:
-    """De link naar de open-databron van een dataset, voor de bronregel onder een grafiek (#569).
+_STATLINE_URL = "https://opendata.cbs.nl/#/CBS/nl/dataset/{}/table"
+_STATLINE_ID = re.compile(r"[A-Za-z0-9]+")
 
-    De documentatie-URL uit de catalogus (CBS OData, de DUO-datasetpagina, de RIO-API), alleen als het
-    een http(s)-adres is: de regel komt in HTML terecht. None als de catalogus de dataset of de link
-    niet kent; dan is er geen link, geen gok.
+
+def _statline_url(cbs_id: object) -> str | None:
+    """De StatLine-tabelpagina van een CBS-tabel (#638); None als het ID niet alfanumeriek is."""
+    if isinstance(cbs_id, str) and _STATLINE_ID.fullmatch(cbs_id):
+        return _STATLINE_URL.format(cbs_id)
+    return None
+
+
+def documentatie_url(dataset_id: str) -> str | None:
+    """De link naar de open-databron van een dataset, voor de bronregel onder een grafiek (#569) en het bronnenblok (#621).
+
+    Een CBS-tabel linkt naar haar StatLine-pagina, met het ID in de spelling van de catalogus (#638); een
+    andere bron naar de documentatie-URL uit de catalogus (de DUO-datasetpagina, de RIO-API). Een
+    catalogus-URL die geen http(s)-adres is geeft geen link, ook bij CBS: de regel komt in HTML terecht.
+    None als de catalogus de dataset of de link niet kent; dan is er geen link, geen gok.
     """
     entry = _ruw_record(bron_id(dataset_id)) or {}
     documentatie = entry.get("documentatie")
     url = documentatie.get("url") if isinstance(documentatie, dict) else None
-    if isinstance(url, str) and url.lower().startswith(("https://", "http://")):
-        return url
-    return None
+    if url is not None and not (isinstance(url, str) and url.lower().startswith(("https://", "http://"))):
+        return None
+    if "_cbs_id" in entry:
+        return _statline_url(entry["_cbs_id"])
+    return url
 
 
 def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:

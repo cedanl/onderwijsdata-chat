@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
 import TabelScroll from '../components/TabelScroll'
+import KaartTerugval from '../components/KaartTerugval'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
@@ -22,6 +23,7 @@ import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useElementWidth } from '../hooks/useElementWidth'
+import { useKaartStatus } from '../hooks/useKaartStatus'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import ReasoningStep from '../components/ReasoningStep'
 import { markRecovered } from '../toolSteps'
@@ -39,6 +41,7 @@ import {
   persistCurrentChat, upsertConversation,
 } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
+import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
 import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
 import {
@@ -315,7 +318,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
   const openChatRef = useRef(initialChat)
-  const savedJsonRef = useRef(JSON.stringify(initialChat.messages))
+  // What the server has of the open conversation. A restored one only counts as saved when its last PUT
+  // landed (#635): a reload during a question or a PUT while offline left it in this browser only.
+  const savedJsonRef = useRef(null)
+  if (savedJsonRef.current === null) {
+    const json = JSON.stringify(initialChat.messages)
+    savedJsonRef.current = isOpgeslagen(initialChat.id, json) ? json : ''
+  }
   // Het verwijderde open gesprek (#530): geen lokale save schrijft het terug tot er een nieuw gesprek begint.
   const verwijderdRef = useRef(null)
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
@@ -429,8 +438,13 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
     if (!record || json === savedJsonRef.current) return null
+    // A failed PUT does not count as saved (#635): the next chance (an answer, the connection back) sends it again.
+    const vorige = savedJsonRef.current
     savedJsonRef.current = json
-    savingRef.current = putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }).catch(() => {})
+    savingRef.current = volgOpslag(putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }))
+      .then(() => { if (!sessionEndedSince(tokenAtMount)) noteerOpgeslagen(id, json) }, () => {
+        if (savedJsonRef.current === json) savedJsonRef.current = vorige
+      })
     return upsertConversation(loadConversationHistory(), record)
   }, [tokenAtMount])
 
@@ -445,10 +459,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [putOpenConversation, persistHistoryMetMelding])
   const answerFeedback = useAnswerFeedback({ conversationId, enabled: feedbackEnabled, save: saveConversation })
 
-  // Save every finished answer, so closing the tab loses nothing.
+  // Save every finished answer, so closing the tab loses nothing. Also when the connection is back: a save
+  // that failed offline goes again then (#635); an unchanged conversation is not sent twice.
   useEffect(() => {
     if (!busy) saveConversation()
-  }, [busy, saveConversation])
+  }, [busy, connected, saveConversation])
 
   const handleClear = useCallback(() => {
     saveConversation()
@@ -1184,11 +1199,15 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
   const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
+  const isMap = Boolean(figure && isMapFigure(figure))
+  const kaart = useKaartStatus(isMap)
   if (!figure) return null
-  const isMap = isMapFigure(figure)
+  // Een kaart die niet getekend is, heet niet "Kaart aangemaakt" (#632): de melding en de tabel nemen haar plaats in.
+  const kaartMislukt = isMap && kaart.status === 'mislukt'
   return (
     <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
-      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{label}</div>}
+      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{kaartMislukt ? 'Kaart niet getekend' : label}</div>}
+      {kaartMislukt && <KaartTerugval figure={figure} />}
       {csvProblem && (
         <div role="alert" style={{ fontSize: 'var(--font-klein)', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
           Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
@@ -1208,12 +1227,14 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
       )}
       {/* The chart's accessible name (#588), on the chart only: role="img" makes its children
           presentational, and the CSV button above must stay a button. */}
-      <div {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
+      <div hidden={kaartMislukt} {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
         <Plot
           data={figure.data || NO_TRACES}
           layout={layout}
           config={PLOT_CONFIG}
           useResizeHandler
+          onInitialized={kaart.onInitialized}
+          onError={kaart.onError}
           style={{ width: '100%', height: isMap ? 480 : figureHeight(figure.layout, 340) }}
         />
       </div>

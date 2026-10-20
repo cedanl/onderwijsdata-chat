@@ -29,6 +29,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S19 | `LOG_LEVEL=DEBUG` zet gesprekstekst in het log | Laag | ℹ️ Gedocumenteerd (#516) — waarschuwing bij opstarten en in de docs |
 | S20 | `/version` zonder inloggen geeft versie en commit prijs | Laag | ℹ️ Geaccepteerd (#552) — blijft open voor de deploycontrole; restrisico hieronder |
 | S21 | SRAM-e-mailadres als sleutel van de gebruikersdata; `CHAT_USERS`-wachtwoorden in platte tekst | Laag–Gemiddeld | ℹ️ Bekend, bewust uitgesteld (#487, 19-10-2026) — de SRAM-gebruikerscache is al begrensd; voorwaarde voor productie hieronder |
+| S22 | Opgeslagen rapport-HTML draaide met dialogen en pop-ups in de viewer en ongesandboxt in de download | Gemiddeld | ⚠️ Deels opgelost (#634) — viewer alleen `allow-scripts`, policy in frame en download; de server controleert de HTML niet (restpunt, voorwaarde voor productie hieronder) |
 
 ---
 
@@ -55,7 +56,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 
 **Aangetroffen in:** ZAP-scan (16 alerts waaronder CSP, X-Frame-Options, HSTS, X-Content-Type-Options)  
 **Fix:** middleware in `server.py` zet:
-- `Content-Security-Policy` — beperkt script-, style-, img- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506). Restpunt `'unsafe-inline'`: zie S13
+- `Content-Security-Policy` — beperkt script-, style-, img-, worker- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506); `worker-src 'self' blob:` omdat de kaart (maplibre) zijn worker vanaf een `blob:`-URL start (#632). Restpunt `'unsafe-inline'`: zie S13
 - `X-Frame-Options: DENY` en CSP `frame-ancestors 'none'` — voorkomt clickjacking
 - `Strict-Transport-Security` — dwingt HTTPS af
 - `X-Content-Type-Options: nosniff`
@@ -168,8 +169,9 @@ Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blo
 - De CDN-hosts zijn weg (#486): Plotly voor de HTML van rapporten en dashboards komt van de eigen server (`frontend/src/plotlyBron.js`, als asset onder `/assets`), oude opgeslagen HTML met `cdn.plot.ly` wordt bij het tonen herschreven, en de download krijgt Plotly inline. `cdn.jsdelivr.net` werd door de app niet gebruikt. Een test (`tests/test_security_headers.py`) houdt `script-src` zonder derde partij.
 - `connect-src` stond `wss:` en `ws:` toe, dus WebSocket-verbindingen naar elke host; een script dat toch draaide, kon zo gegevens uit de browser (zoals het token in localStorage, S9) naar buiten sturen. Nu alleen de eigen server (#506): `'self'` plus de `wss://`-origin uit `SERVER_URL` (`server.connect_src`). Die origin staat er expliciet bij omdat oudere Safari-versies `'self'` niet op `wss:` laten slaan; zonder `SERVER_URL` (lokaal) alleen `'self'`. De chat opent zijn WebSocket naar `location.host` (`frontend/src/auth.js`).
 - `'unsafe-inline'` laat inline scripts toe, waardoor de CSP XSS maar ten dele afvangt.
+- `worker-src 'self' blob:` (#632): maplibre, waarmee Plotly de kaart van `create_choropleth_map` tekent, start zijn web-worker vanaf een `blob:`-URL. Zonder `worker-src` viel dat terug op `script-src`, werd de worker geblokkeerd en bleef de kaart leeg. `blob:` staat alleen in `worker-src`, niet in `script-src`: een script dat al draait kan zo een worker uit een blob starten, maar geen blob als script laden. Dat is smaller dan wat `'unsafe-inline'` al toestaat. Een test houdt `worker-src` op precies `'self' blob:` en `script-src` zonder `blob:`.
 
-**Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"`).
+**Vervolg:** `'unsafe-inline'` apart beoordelen (nonce of hash; het rapport-iframe is `sandbox="allow-scripts"` met een eigen policy, S22).
 
 ---
 
@@ -264,6 +266,23 @@ Test: `tests/test_token_intrekking.py`.
 
 ---
 
+### S22 — Opgeslagen rapport-HTML ⚠️ Deels opgelost
+
+**Aangetroffen in:** robuustheidsronde 19-10-2026 (M-1, live bevestigd op build `60e0526`)  
+**Locatie:** `routes/persistence.py` (`PUT /api/workbooks/{id}`), `frontend/src/components/WorkbookViewer.jsx`, `frontend/src/components/WorkbookDownload.jsx`, `frontend/src/rapportSandbox.js`  
+**Was:** de server bewaart `html_content` byte voor byte, dus ook `<script>` en `onerror`. De viewer toonde het rapport met `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals"`: een opgeslagen rapport kon `alert`, `confirm` en een geloofwaardige `prompt("Log opnieuw in…")` tonen en een tab naar elke host openen. "Download als HTML" leverde hetzelfde bestand zonder sandbox. Het frame had wel een opaque origin: het bereikte het token, de app en haar opslag niet. Op het gedeelde demo-account opent elke tester rapporten van anderen (#488).  
+**Nu (#634):**
+- Het viewerframe heeft alleen `allow-scripts`: geen dialogen, geen pop-ups. Een link in het rapport gaat als bericht naar de app, die alleen een `http(s)`-adres opent, met `noopener,noreferrer`, en alleen direct na een klik van de gebruiker (`navigator.userActivation`).
+- "Opslaan als PDF" (#622) heeft `allow-modals` nodig voor `print()`. Dat krijgt alleen een eigen, onzichtbaar printframe dat de knop maakt, zonder `allow-popups`, en daarin bestaan `alert`, `confirm` en `prompt` niet (niet te overschrijven; een kindframe om ze terug te halen houdt `frame-src 'none'` tegen). Het printbericht telt alleen als het van de app komt (`event.source === parent`).
+- Een `Content-Security-Policy`-meta vooraan in het frame én in de download: scripts alleen inline en (in het frame) van de eigen server, geen `connect-src`, `form-action`, `frame-src` of `base-uri`, beelden en fonts alleen als `data:`. Een gedownload rapport dat van schijf draait, kan zo niets versturen.
+- De voorbeeldtegels hadden al `sandbox=""` (#427).
+
+Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `workbookViewerFallback.test.js`, `workbookDownload.test.js`; live gemeten in de MR van #634.  
+**Restpunt (bewust):** de server controleert of bouwt `html_content` niet. Rapport-HTML wordt in de browser gemaakt (`buildReportHtml`), en de spec waaruit het komt wordt niet bewaard, dus de server kan een rapport niet opnieuw opbouwen; een HTML-filter op de server zou de grafiekscripts van elk echt rapport ook moeten toelaten. Een opgeslagen rapport kan dus nog willekeurige scripts draaien, binnen de grenzen hierboven.  
+**Voorwaarde voor productie:** een eigen account per gebruiker (niet het gedeelde demo-account van #488), zodat een kwaadaardig rapport alleen zijn eigen maker raakt; of de server bewaart de spec en bouwt de HTML zelf.
+
+---
+
 ## Aanbevelingen voor volgende stap
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
@@ -271,4 +290,5 @@ Test: `tests/test_token_intrekking.py`.
 3. **S16** — privacy-informatie in app en docs (#477); geen browseropslag meer na uitloggen (#507)
 4. **S12** — de gele `audit:*`-jobs volgen; een dependency-scan in CI (#506), `nh3` opruimen (S1) en de CORS-validatie (S8) zijn gedaan
 5. **S21** — vóór productie: sleutel naar `sub` met e-mail alleen als weergavenaam en een migratie van de bestaande rijen; productie alleen via SRAM of gehashte wachtwoorden (#487). In de demofase bewust niet gebouwd; de SRAM-cache is al begrensd
-6. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+6. **S22** — vóór productie: eigen account per gebruiker, of de server bewaart de rapportspec en bouwt de HTML zelf (#634)
+7. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

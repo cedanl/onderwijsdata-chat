@@ -39,6 +39,10 @@ _STEP_METRICS = {"max_drop": "daling", "max_rise": "stijging"}
 # Maten waarvan de uitkomst een verandering is; die krijgen een trendlabel.
 _TREND_METRICS = frozenset({"delta", "pct_change", "max_drop", "max_rise"})
 
+# Maten over een reeks: met één waarde is er geen verandering te berekenen. "0,0%" over één jaar
+# las als "geen verandering" (audit 19-10, #631); dat is een fout, geen uitkomst.
+_REEKS_METRICS = frozenset({"delta", "pct_change", "index", "max_drop", "max_rise"})
+
 # Maten met een relatieve uitkomst worden op één decimaal getoond.
 _DECIMAL_METRICS = frozenset({"pct_change", "index", "mean"})
 
@@ -70,8 +74,9 @@ def _periodelabel(bron: str, waarde) -> str:
     return periode.label(startjaar) if startjaar is not None else str(waarde)
 
 
-def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step, bron: str) -> dict:
-    """Over welke periode de KPI gaat (#235): de eerste en laatste meegetelde rij, of de stap."""
+def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step, bron: str, metric: str) -> dict:
+    """Over welke periode de KPI gaat (#235): de eerste en laatste meegetelde rij, de stap, of bij
+    `last`/`first` alleen de rij waar de waarde vandaan komt (#631: een `last` over 2012-2024 is één jaar)."""
     if not sort_column:
         return {}
     if step:
@@ -79,6 +84,10 @@ def _periode(df: pd.DataFrame, value_column: str, sort_column: str | None, step,
     else:
         meegeteld = df.loc[pd.to_numeric(df[value_column], errors="coerce").notna(), sort_column]
         van, tot = meegeteld.iloc[0], meegeteld.iloc[-1]
+        if metric == "last":
+            van = tot
+        elif metric == "first":
+            tot = van
     return {"periode": {"van": _periodelabel(bron, van), "tot": _periodelabel(bron, tot)}}
 
 
@@ -143,7 +152,12 @@ def _reeks(
 
 
 def _rekenfout(metric: str, value_column: str, series: pd.Series, step) -> str | None:
-    """Een maat die over deze reeks niet bestaat: geen stap die kant op, of delen door een eerste 0."""
+    """Een maat die over deze reeks niet bestaat: één waarde, geen stap die kant op, of delen door een eerste 0."""
+    if metric in _REEKS_METRICS and series.size < 2:
+        return (
+            f"'{metric}' heeft minstens twee waarden nodig; '{value_column}' heeft er {series.size}. "
+            "Neem meer perioden (van/tot of een bredere selectie), of gebruik last of first voor één waarde."
+        )
     if metric in _STEP_METRICS and step is None:
         return (
             f"Geen {_STEP_METRICS[metric]} in '{value_column}': geen enkele opeenvolgende waarde verandert die kant op."
@@ -227,7 +241,7 @@ def compute_kpi(
 
     value = _waarde(metric, series, step)
     tekst, trend, trend_direction = _opmaak(metric, value)
-    periode_van_kpi = _periode(reeks, value_column, sort_column, step, bron)
+    periode_van_kpi = _periode(reeks, value_column, sort_column, step, bron, metric)
     if foutief_label := _label_klopt_niet(label, periode_van_kpi):
         return _error(foutief_label)
     return json.dumps(

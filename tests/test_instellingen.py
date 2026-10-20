@@ -606,3 +606,31 @@ def test_dashboard_arbeidsmarktmatch_endpoint(client):
     data = resp.json()
     assert data["gevonden"] is True
     assert "gediplomeerden_per_sector" in data
+
+
+@pytest.mark.parametrize(
+    ("invoer", "naam"),
+    [
+        ("de VU", "Vrije Universiteit Amsterdam"),
+        ("VU Amsterdam", "Vrije Universiteit Amsterdam"),
+        ("het Deltion", "Deltion College"),
+        ("Codarts", "Codarts, Hogeschool voor de Kunsten"),
+        ("Graafschap College", "ROC Graafschap College"),
+        ("De Haagse Hogeschool", "De Haagse Hogeschool"),  # het lidwoord is hier deel van de naam
+        ("haagse", "De Haagse Hogeschool"),
+    ],
+)
+def test_aliassen_en_lidwoorden_uit_de_audit(invoer, naam):
+    """#631: 'de VU', 'VU Amsterdam', 'Codarts' en 'Graafschap College' waren onbekend in get_maat."""
+    from data.instellingen import instellingsprofiel, resolve_alias
+
+    assert resolve_alias(invoer) == naam
+    profiel = instellingsprofiel(invoer)
+    assert profiel is not None and profiel["naam"] == naam
+
+
+def test_een_onbekende_naam_blijft_onbekend_ook_met_lidwoord():
+    from data.instellingen import instellingsprofiel, resolve_alias
+
+    assert resolve_alias("de Hogeschool van Narnia") == "de Hogeschool van Narnia"
+    assert instellingsprofiel("de Hogeschool van Narnia") is None

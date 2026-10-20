@@ -14,6 +14,25 @@ de laatste tag is 1.8.6.
   `aangeboden-opleiding-cohorten`, `contactadressen` en `onderwijslocatiegebruiken` hebben in v3 geen lijst-endpoint;
   `get_rio_data` zegt dat vóór de aanroep. De sectorfilters in `tools/scopeprofiel.py` worden getoetst tegen het
   riodata-contract, zodat een volgende hernoeming in de test opvalt en niet live.
+- De bronlink van een CBS-tabel (bronnenblok onder een antwoord, bronregel onder een rapportgrafiek) opent de
+  StatLine-tabelpagina (`https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table`) in plaats van de ruwe OData-JSON
+  (#638). DUO, RIO, UWV en ROA houden hun link; bewaarde gesprekken houden de oude link.
+
+### Tools en documentatie (audit 19 oktober, #631)
+- `compute_kpi` weigert `delta`, `pct_change`, `index`, `max_drop` en `max_rise` over één waarde ("minstens twee
+  waarden") in plaats van "0,0%" te geven; bij `last` en `first` noemt `periode` alleen het jaar van die waarde, niet
+  de hele reeks.
+- `get_maat` (mbo) en `run_analysis` geven tellingen als hele getallen (4507, niet 4507.0), dezelfde regel als
+  `query_data`; een echte breuk blijft een breuk.
+- `search_catalog` vraagt in het schema om Nederlandse trefwoorden, ook bij een vraag in een andere taal: de
+  catalogus is Nederlandstalig en "university students" vond niets.
+- UWV: `Fryslân` telt als `Friesland` (de spelling van CBS naast die van UWV) en `Onbekend` staat niet meer in de
+  lijst provincies die de foutmelding noemt.
+- Instellingsregister: aliassen `VU Amsterdam`, `Codarts`, `HKU`, `Graafschap College`; een lidwoord vóór een
+  naam of alias ("de VU", "het Deltion") telt niet mee, een naam die zelf met een lidwoord begint ("De Haagse
+  Hogeschool") blijft gewoon werken.
+- Docs: de zoeklimiet van `search_catalog` is 3 (`SEARCH_CATALOG_LIMIT`), niet 5 zoals `docs/tools.md` en
+  `docs/kwaliteit-en-veiligheid.md` zeiden.
 
 ### Zoeken (#358, stap 1)
 - Een zoekhit van `search_catalog` is compact: ID, titel, status, leverancier, periode, onderwijstype, één samenvatting

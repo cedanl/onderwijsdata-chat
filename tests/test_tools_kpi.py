@@ -157,10 +157,30 @@ def test_zonder_daling_is_het_een_fout_geen_nul():
 # --- #235: de periode hoort bij het resultaat, zodat het antwoord haar niet zelf hoeft te benoemen ---
 
 
-@pytest.mark.parametrize("metric", ["first", "last", "sum", "mean", "delta", "pct_change", "index"])
+@pytest.mark.parametrize("metric", ["sum", "mean", "delta", "pct_change", "index"])
 def test_kpi_noemt_de_periode_waarover_hij_rekent(metric):
     result = json.loads(compute_kpi("duo:kpi:test", "AANTAL", metric, sort_column="STUDIEJAAR"))
     assert result["periode"] == {"van": "2021/22", "tot": "2025/26"}
+
+
+@pytest.mark.parametrize(("metric", "jaar"), [("last", "2025/26"), ("first", "2021/22")])
+def test_last_en_first_noemen_alleen_hun_eigen_periode(metric, jaar):
+    """#631: een `last` over een reeks van 2021-2025 is één jaar, geen bereik."""
+    result = json.loads(compute_kpi("duo:kpi:test", "AANTAL", metric, sort_column="STUDIEJAAR"))
+    assert result["periode"] == {"van": jaar, "tot": jaar}
+
+
+@pytest.mark.parametrize("metric", ["delta", "pct_change", "index", "max_drop", "max_rise"])
+def test_een_reeks_van_een_waarde_geeft_geen_verandering_maar_een_fout(metric):
+    """#631: pct_change over één rij gaf "0,0%", wat als "geen verandering" te lezen was."""
+    store.put(
+        "duo:kpi:een",
+        pd.DataFrame({"STUDIEJAAR": [2024], "AANTAL": [25210]}),
+        store.KeyMeta(bron="duo", dataset="kpi:een"),
+    )
+    result = json.loads(compute_kpi("duo:kpi:een", "AANTAL", metric, sort_column="STUDIEJAAR"))
+    assert "minstens twee waarden" in result["fout"] and "heeft er 1" in result["fout"]
+    assert json.loads(compute_kpi("duo:kpi:een", "AANTAL", "last", sort_column="STUDIEJAAR"))["value"] == "25.210"
 
 
 def test_cbs_schooljaren_krijgen_hun_label():

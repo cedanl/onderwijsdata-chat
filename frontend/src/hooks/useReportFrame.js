@@ -1,7 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { metEigenPlotly } from '../plotlyBron'
+import { metEigenPlotly, PLOTLY_URL } from '../plotlyBron'
 import { FRAME_TIMEOUT_MS, frameSignaal, metFrameSignaal } from '../reportFrame'
+import { GEEN_DIALOGEN_JS, metCsp, metLinkDoorgifte, openRapportLink } from '../rapportSandbox'
 import { metThema } from '../reportThema'
+
+// Plotly komt van de eigen server (#486): de enige scriptbron naast inline in de policy van het frame (#634).
+const scriptBron = () => new URL(PLOTLY_URL, window.location.href).origin
 
 // Per shown report: did the frame load (onLoad, only for the spinner), what did its probe say, and did the
 // timeout pass without a word from it.
@@ -11,10 +15,16 @@ const BEGIN = { geladen: false, signaal: null, verlopen: false }
 // shown. `mode` is the app's theme choice ('light', 'dark' or 'system'), carried into the frame as a class on
 // <html> (#568); a change reloads the frame. `probleem` is null, 'leeg' (the frame says it shows nothing) or
 // 'niet-geladen' (no word from the frame within FRAME_TIMEOUT_MS); a later word from the frame still counts, so
-// a slow report is not failed for good.
+// a slow report is not failed for good. `printDoc` is the same report for the print frame (WorkbookPrint.jsx):
+// without the probe, the links or the theme (printing is light), and without alert/confirm/prompt (#634).
 export function useReportFrame(html, mode) {
   const frameRef = useRef(null)
-  const srcDoc = useMemo(() => (html ? metFrameSignaal(metEigenPlotly(metThema(html, mode))) : null), [html, mode])
+  const srcDoc = useMemo(() => (html
+    ? metCsp(metLinkDoorgifte(metFrameSignaal(metEigenPlotly(metThema(html, mode)))), { scriptBron: scriptBron() })
+    : null), [html, mode])
+  const printDoc = useMemo(() => (html
+    ? metCsp(metEigenPlotly(html), { scriptBron: scriptBron(), vooraf: GEEN_DIALOGEN_JS })
+    : null), [html])
   const [frame, setFrame] = useState({ srcDoc, ...BEGIN })
   // Another report starts from BEGIN: the state belongs to the srcDoc it was set for.
   const huidig = frame.srcDoc === srcDoc ? frame : BEGIN
@@ -27,7 +37,9 @@ export function useReportFrame(html, mode) {
   useLayoutEffect(() => {
     if (!srcDoc) return undefined
     const onMessage = event => {
-      const zichtbaar = frameSignaal(event, frameRef.current?.contentWindow)
+      const frameWindow = frameRef.current?.contentWindow
+      if (openRapportLink(event, frameWindow)) return
+      const zichtbaar = frameSignaal(event, frameWindow)
       if (zichtbaar !== null) zet({ signaal: zichtbaar })
     }
     window.addEventListener('message', onMessage)
@@ -46,5 +58,5 @@ export function useReportFrame(html, mode) {
   // Busy until the frame loads or speaks, but never for good: a shown problem ends it.
   const loading = Boolean(srcDoc) && !probleem && !huidig.geladen && huidig.signaal === null
 
-  return { frameRef, srcDoc, onLoad, loading, probleem }
+  return { frameRef, srcDoc, printDoc, onLoad, loading, probleem }
 }

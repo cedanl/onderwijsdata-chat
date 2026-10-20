@@ -23,6 +23,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar
 
+import pandas as pd
+
 from data import instellingen
 
 from . import cbs_selectie, duo, periode, store
@@ -269,6 +271,12 @@ def _melding(uit) -> str:
     return json.dumps(uit, ensure_ascii=False) if isinstance(uit, dict | list) else str(uit)
 
 
+def _records(df: pd.DataFrame) -> list[dict]:
+    """De rijen voor het model, met tellingen als tellingen: na het maskeren van -1 is een kolom float en
+    stond 4507.0 in het antwoord (#631); dezelfde regel als query_data (duo.json_waarde)."""
+    return [{k: duo.json_waarde(v) for k, v in rij.items()} for rij in df.to_dict(orient="records")]
+
+
 def _met_totaal(querykey: str, p: Plan) -> tuple[str, list[dict]]:
     """Bij mbo: de som van de leerwegkolommen als AANTAL, als eigen key afgeleid van de selectie."""
     assert isinstance(p.recept, DuoBreedRecept)
@@ -279,7 +287,7 @@ def _met_totaal(querykey: str, p: Plan) -> tuple[str, list[dict]]:
     store.derive(querykey, key, totaal, stap=f"recept {p.recept.naam}: {AANTAL} = {' + '.join(kolommen)}")
     if (cellen := duo.sentinel_cells(querykey)) is not None:
         duo.record_sentinel_cells(key, cellen, groepen=True)  # dezelfde rijen: de onderdrukking reist mee
-    return key, json.loads(store.get(key).to_json(orient="records", force_ascii=False))
+    return key, _records(store.get(key))
 
 
 def _duo(p: Plan) -> dict | str:
@@ -326,7 +334,7 @@ def _cbs(p: Plan) -> dict | str:
     known = store.meta(key)
     tijd = (known.periodekolom if known else None) or "Perioden"
     kolommen = [c for c in (tijd, f"{tijd}_label", "Periodestatus", r.onderwerp) if c in df.columns]
-    uit = {"data_key": key, "rijen": json.loads(df[kolommen].to_json(orient="records", force_ascii=False))}
+    uit = {"data_key": key, "rijen": _records(df[kolommen])}
     for veld in ("afronding", "afronding_onbekend", "laatste_update", "beschikbare_schooljaren", "metadata_ontbreekt"):
         if geladen.get(veld) is not None:
             uit[veld] = geladen[veld]

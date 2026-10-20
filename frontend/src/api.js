@@ -19,7 +19,7 @@ async function throwIfFailed(res, sentToken) {
     if (body.error) detail = body.error
     else if (typeof body.detail === 'string') detail = body.detail
   } catch { /* noop */ }
-  throw new Error(detail)
+  throw Object.assign(new Error(detail), { status: res.status })
 }
 
 async function apiFetch(path, options = {}) {
@@ -69,6 +69,11 @@ export async function deleteConversationApi(id, { keepalive = false } = {}) {
 
 export async function fetchWorkbooks() {
   return apiFetch('/api/workbooks')
+}
+
+// The list carries no content (#633); opening a report or showing its thumbnail fetches it.
+export async function fetchWorkbook(id) {
+  return apiFetch(`/api/workbooks/${encodeURIComponent(id)}`)
 }
 
 export async function putWorkbook(id, data) {

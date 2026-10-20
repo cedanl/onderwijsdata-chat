@@ -137,7 +137,7 @@ export const PRINT_CSS = `@media print{
     a{color:inherit}
   }`
 // Het bericht van de app ('edudata:print', WorkbookPrint.jsx): het rapport staat in een sandbox-frame met een
-// opaque origin, dus de app kan print() niet zelf aanroepen. Vóór het afdrukken: licht thema en grafieken op
+// opaque origin, dus de app kan print() niet zelf aanroepen. Alleen een bericht van de app zelf telt (#634). Vóór het afdrukken: licht thema en grafieken op
 // A4-breedte; erna alles terug. Een rapport van vóór deze build kent het bericht niet: de app toont dan geen knop.
 export const PRINT_BERICHT = 'edudata:print'
 export const PRINT_JS = `(function(){
@@ -156,7 +156,7 @@ export const PRINT_JS = `(function(){
   }
   window.__edudataPrint={voorbereiden:voorbereiden,herstellen:herstellen};
   window.addEventListener('afterprint',herstellen);
-  window.addEventListener('message',function(ev){if(ev.data!=='${PRINT_BERICHT}')return;voorbereiden();setTimeout(function(){window.print()},150)});
+  window.addEventListener('message',function(ev){if(ev.source!==window.parent||ev.data!=='${PRINT_BERICHT}')return;voorbereiden();setTimeout(function(){window.print()},150)});
 })()`
 
 export function buildReportHtml(spec, { instelling = '' } = {}) {
