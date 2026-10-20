@@ -11,6 +11,7 @@ from core.feedback import QUESTIONS, validate_answers
 _SCALE = next(q for q in QUESTIONS if q["type"] == "scale")
 _CHOICE = next(q for q in QUESTIONS if q["type"] == "choice")
 _TEXT = next(q for q in QUESTIONS if q["type"] == "text")
+_MULTI = next(q for q in QUESTIONS if q["id"] == "dashboardtool")
 
 
 def _stored() -> list[dict]:
@@ -84,8 +85,8 @@ def _body(**answers):
 def test_questions_have_unique_ids_and_known_types():
     ids = [q["id"] for q in QUESTIONS]
     assert len(ids) == len(set(ids))
-    assert 5 <= len(QUESTIONS) <= 10
-    assert {q["type"] for q in QUESTIONS} <= {"scale", "choice", "text"}
+    assert 5 <= len(QUESTIONS) <= 12
+    assert {q["type"] for q in QUESTIONS} <= {"scale", "choice", "multi", "text"}
     assert all(q["options"] for q in QUESTIONS if q["type"] != "text")
 
 
@@ -102,9 +103,50 @@ def test_vertrouwen_heeft_een_eigen_toelichting():
     assert validate_answers(answers) == {"vertrouwen": "Deels", "vertrouwen_waarom": "De totalen tellen niet op."}
 
 
+def test_conferentievragen_staan_in_een_eigen_blok_over_de_instelling():
+    """De vragen over de instelling (conferentie) volgen na de rapportvragen, onder één kopje."""
+    ids = [q["id"] for q in QUESTIONS]
+    start = ids.index("poc")
+    assert QUESTIONS[start]["section"] == "Over jouw instelling"
+    assert [q["id"] for q in QUESTIONS[start:]] == ["poc", "dashboardtool", "doelgroep", "ceda_oppakken", "contact"]
+    assert [q["id"] for q in QUESTIONS if q.get("section")] == ["poc"]
+
+
+def test_validate_multi_keeps_the_chosen_options_as_a_list():
+    assert validate_answers({"dashboardtool": ["Power BI", "Tableau"]}) == {"dashboardtool": ["Power BI", "Tableau"]}
+
+
+def test_validate_multi_accepts_anders_with_and_without_detail():
+    assert validate_answers({"doelgroep": ["Studenten", "Anders: Alumni"]}) == {
+        "doelgroep": ["Studenten", "Anders: Alumni"]
+    }
+    assert validate_answers({"doelgroep": ["Anders"]}) == {"doelgroep": ["Anders"]}
+    assert validate_answers({"doelgroep": ["Anders:   Alumni "]}) == {"doelgroep": ["Anders: Alumni"]}
+
+
+def test_validate_multi_drops_duplicates_and_empty_lists():
+    assert validate_answers({"dashboardtool": ["Qlik", "Qlik"], "nuttig": "4"}) == {
+        "dashboardtool": ["Qlik"],
+        "nuttig": "4",
+    }
+    assert validate_answers({"dashboardtool": [], "nuttig": "4"}) == {"nuttig": "4"}
+
+
+def test_contactgegevens_zijn_vrije_tekst_en_optioneel():
+    assert validate_answers({"contact": "  a@b.nl "}) == {"contact": "a@b.nl"}
+    assert validate_answers({"contact": " ", "poc": "3"}) == {"poc": "3"}
+
+
 @pytest.mark.parametrize(
     "answers",
     [
+        {"dashboardtool": "Power BI"},
+        {"dashboardtool": ["Excel"]},
+        {"dashboardtool": [5]},
+        {"dashboardtool": ["Anders: " + "x" * 201]},
+        {"dashboardtool": ["Anders:"]},
+        {"nuttig": ["4"]},
+        {"contact": ["a@b.nl"]},
         {},
         {_TEXT["id"]: "   "},
         {"onbekend": "x"},

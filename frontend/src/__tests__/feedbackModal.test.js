@@ -9,6 +9,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const QUESTIONS = [
   { id: 'nuttig', text: 'Hoe nuttig was dit rapport voor je?', type: 'scale', options: ['1', '2', '3', '4', '5'], labels: ['Niet', 'Zeer'] },
   { id: 'mist', text: 'Mist er iets in dit rapport?', type: 'text' },
+  { id: 'dashboardtool', text: 'Welke dashboardtool gebruiken jullie?', type: 'multi', section: 'Over jouw instelling', options: ['Power BI', 'Tableau', 'Anders', 'Weet ik niet'] },
 ]
 const WORKBOOK = { id: 'wb-1', type: 'report', title: 'Instroom hbo' }
 
@@ -94,5 +95,46 @@ describe('FeedbackModal', () => {
     expect(container.querySelector('[role="alert"]').textContent).toContain('Je hebt net al feedback op dit rapport gegeven.')
     expect(onSubmitted).not.toHaveBeenCalled()
     expect(submitButton().disabled).toBe(false)
+  })
+
+  it('shows the heading of a section above its first question', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+    await render()
+    const headings = [...container.querySelectorAll('h3')].map(h => h.textContent)
+    expect(headings).toEqual(['Over jouw instelling'])
+  })
+
+  it('lets a multi question take several options, with free text behind Anders', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+    vi.stubGlobal('fetch', fetch)
+    await render()
+
+    const box = value => container.querySelector(`input[type="checkbox"][value="${value}"]`)
+    expect(container.querySelector('input[aria-label="Anders, welke?"]')).toBeNull()
+    await act(async () => { box('Power BI').click() })
+    await act(async () => { box('Tableau').click() })
+    await act(async () => { box('Tableau').click() })
+    await act(async () => { box('Anders').click() })
+    const detail = container.querySelector('input[aria-label="Anders, welke?"]')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(detail, 'Metabase')
+      detail.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(submitButton().disabled).toBe(false)
+    await submit()
+
+    expect(JSON.parse(fetch.mock.calls[1][1].body).answers).toEqual({ dashboardtool: ['Power BI', 'Anders: Metabase'] })
+  })
+
+  it('does not count a multi question without a choice as an answer', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+    await render()
+    const box = container.querySelector('input[type="checkbox"][value="Power BI"]')
+    await act(async () => { box.click() })
+    expect(submitButton().disabled).toBe(false)
+    await act(async () => { box.click() })
+    expect(submitButton().disabled).toBe(true)
   })
 })
