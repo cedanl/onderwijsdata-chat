@@ -9,6 +9,8 @@ import importlib
 import pytest
 from fastapi.testclient import TestClient
 
+from core.foutmeldingen import NIET_GEVONDEN
+
 DOCS_PADEN = ("/api/docs", "/docs/oauth2-redirect", "/redoc", "/api/openapi.json")
 
 
@@ -77,7 +79,7 @@ def test_productie_met_spa_geeft_voor_docs_geen_documentatie(productie_app, tmp_
     for pad in ("/api/docs", "/api/openapi.json"):
         resp = client.get(pad)
         assert resp.status_code == 404, pad
-        assert resp.json() == {"detail": "Not Found"}
+        assert resp.json() == {"detail": NIET_GEVONDEN}
     redoc = client.get("/redoc")
     assert redoc.text == "<!doctype html><title>EDUdata</title>"
     for pad in (*DOCS_PADEN, "/", "/dashboards"):
