@@ -178,3 +178,22 @@ def test_zonder_titels_volgt_ook_het_recept_kolomlabel():
     fig = _recept(args, melding)["fig"]
     assert fig_app.layout.coloraxis.colorbar.title.text == "Aantal studenten"
     assert fig.layout.coloraxis.colorbar.title.text == "Aantal studenten"
+
+
+def test_een_aanhalingsteken_in_de_kolomnaam_breekt_het_recept_niet(capsys):
+    """#640-review: de kolomnamen staan als Python-literal in het recept, ook met een `"` erin."""
+    gewoon = _args(["Amsterdam", "Atlantis", "Utrecht"], "gemeente")
+    rijen = [{'Regio "Noord"': r["LOC"], 'Waarde "x"': r["N"]} for r in gewoon["data"]]
+    args = {**gewoon, "data": rijen, "location_col": 'Regio "Noord"', "value_col": 'Waarde "x"'}
+    melding, fig_app = _app(args)
+    recept = generate("create_choropleth_map", args, melding)
+    assert recept is not None
+    compile(recept, "<recept>", "exec")
+
+    fig = _recept(args, melding)["fig"]
+    niet_op_kaart = capsys.readouterr().out
+    fig_gewoon = _recept(gewoon, _app(gewoon)[0])["fig"]
+
+    assert list(fig.data[0].locations) == list(fig_app.data[0].locations) == list(fig_gewoon.data[0].locations)
+    assert list(fig.data[0].z) == list(fig_app.data[0].z) == list(fig_gewoon.data[0].z)
+    assert niet_op_kaart == capsys.readouterr().out == "Niet op de kaart: ['Atlantis']\n"

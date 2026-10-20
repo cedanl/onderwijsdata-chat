@@ -527,15 +527,15 @@ def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None)
     lines += _KAART_PROVINCIE if niveau == "provincie" else []
     lines += _kaartcode_regels(niveau)
     lines += ["", ""]
-    lines += [f'df["kaartcode"] = df["{location_col}"].map(kaartcode)']
+    lines += [f'df["kaartcode"] = df[{location_col!r}].map(kaartcode)']
     lines += ['if df["kaartcode"].isna().any():']
     lines += [
-        f'    print("Niet op de kaart:", sorted(df.loc[df["kaartcode"].isna(), "{location_col}"].astype(str).unique()))'
+        f'    print("Niet op de kaart:", sorted(df.loc[df["kaartcode"].isna(), {location_col!r}].astype(str).unique()))'
     ]
     lines += ['df = df[df["kaartcode"].notna()]']
     lines += [
         f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
-        f'hover_name="{location_col}", hover_data={{"kaartcode": False}}, color="{value_col}", labels={labels!r}, '
+        f'hover_name={location_col!r}, hover_data={{"kaartcode": False}}, color={value_col!r}, labels={labels!r}, '
         f"{opmaak}, title={title!r})",
         "fig.show()",
     ]
