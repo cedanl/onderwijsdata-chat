@@ -91,6 +91,9 @@ def connect_src(server_url: str | None) -> str:
 
 _CONNECT_SRC = connect_src(Config.SERVER_URL)
 
+# Browserfuncties die de app niet gebruikt, ook niet voor een ingesloten frame of een geïnjecteerd script (#636).
+PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
 
 @app.middleware("http")
 async def security_headers(request, call_next):
@@ -99,6 +102,7 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         # Geen derde partij: Plotly voor rapporten en dashboards komt van de eigen server (#486).
