@@ -119,3 +119,20 @@ def test_csp_wijzigt_naast_worker_src_geen_andere_richtlijn(client):
         "font-src": "'self'",
         "frame-ancestors": "'none'",
     }
+
+
+# #636: de app gebruikt geen camera, microfoon, locatie, betalingen of usb; een ingesloten of
+# geïnjecteerd script mag ze dan ook niet vragen.
+def test_permissions_policy_zet_ongebruikte_browserfuncties_uit(client):
+    beleid = {
+        naam.strip(): waarde.strip()
+        for naam, _, waarde in (
+            r.partition("=") for r in client.get("/health").headers["Permissions-Policy"].split(",")
+        )
+    }
+    for functie in ("camera", "microphone", "geolocation", "payment", "usb"):
+        assert beleid[functie] == "()", functie
+
+
+def test_permissions_policy_staat_ook_op_een_foutantwoord(client):
+    assert "Permissions-Policy" in client.get("/api/bestaat-niet").headers
