@@ -44,6 +44,16 @@ export async function downloadDataCsv(key) {
   return res.headers.get('X-Data-Herladen')
 }
 
+// Everything the server keeps under this account as one JSON file (#645), fetched as a blob for the same
+// reason. A stream cut off halfway makes reading the blob fail, so a truncated file is never saved.
+export async function downloadMijnGegevens({ save = saveFile } = {}) {
+  const token = getToken()
+  const res = await fetch('/api/mijn-gegevens/export', { headers: authHeaders(token) })
+  await throwIfFailed(res, token)
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'mijn-gegevens.json'
+  save(await res.blob(), filename)
+}
+
 export async function fetchConversations(params = {}) {
   const query = new URLSearchParams(params).toString()
   return apiFetch(query ? `/api/conversations?${query}` : '/api/conversations')
