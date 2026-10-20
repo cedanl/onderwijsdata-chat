@@ -61,7 +61,8 @@ const NAMED = [
 ]
 
 // Targets as wide as their row or text, that were too low on phones (#612): the height is what they lack.
-const TALL = ['.reasoning-toggle', '.history-search', '.reasoning-step-code summary']
+// "Genereer rapport" (#639): 162x33 on a phone.
+const TALL = ['.reasoning-toggle', '.history-search', '.reasoning-step-code summary', '.make-rapport-btn']
 
 describe('tap target tokens', () => {
   it('defines the AA minimum and the touch minimum in :root', () => {
