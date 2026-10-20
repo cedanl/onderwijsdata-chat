@@ -7,7 +7,7 @@ import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashb
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import WorkbookDownload from './WorkbookDownload'
-import WorkbookPrint from './WorkbookPrint'
+import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
 
@@ -102,6 +102,8 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
   const isReport = !BuiltinDash && !spec
   const reportEmpty = isReport && !String(workbook.htmlContent ?? '').trim()
   const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null, mode)
+  // A print frame belongs to the report that was open (WorkbookPrint.jsx).
+  useEffect(() => ruimPrintframeOp, [reportFrame.printDoc])
 
   return (
     <div className="wb-viewer">
@@ -147,12 +149,12 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
             workbook={workbook} instelling={instelling} save={save}
             feedbackEnabled={feedbackEnabled} feedbackGiven={feedbackGiven}
             onFeedback={() => setShowFeedback(true)}
-            afdrukken={<WorkbookPrint frameRef={reportFrame.frameRef} html={reportFrame.srcDoc} className="navbar-menu-item" />}
+            afdrukken={<WorkbookPrint html={reportFrame.printDoc} className="navbar-menu-item" />}
           />
         ) : (
           <div className="wb-viewer-actions">
             <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
-            <WorkbookPrint frameRef={reportFrame.frameRef} html={reportFrame.srcDoc} />
+            <WorkbookPrint html={reportFrame.printDoc} />
             {feedbackEnabled && (
               feedbackGiven ? (
                 <span className="wb-feedback-given" role="status">
@@ -225,12 +227,11 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
                   Rapport wordt geladen…
                 </div>
               )}
-              {/* allow-popups (escaping the sandbox) lets the source link under each chart open the open-data
-                  source in a new tab (#569); without it a click would load that site inside the report frame.
-                  The links carry rel="noopener", so the new tab has no way back in. allow-modals lets the report
-                  call print() for "Opslaan als PDF" (#622). Never allow-same-origin. */}
+              {/* Only allow-scripts (#634): the stored HTML is untrusted, so no dialogs and no pop-ups. A link
+                  opens through the app (rapportSandbox.js), "Opslaan als PDF" prints in a frame of its own
+                  (WorkbookPrint.jsx). Never allow-same-origin: with allow-scripts the report could lift its sandbox. */}
               <iframe ref={reportFrame.frameRef} className="wb-iframe" srcDoc={reportFrame.srcDoc} title={workbook.title}
-                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals" onLoad={reportFrame.onLoad} />
+                sandbox="allow-scripts" onLoad={reportFrame.onLoad} />
             </>
           )
         })()}
