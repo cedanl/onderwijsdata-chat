@@ -143,3 +143,36 @@ def test_het_recept_noemt_wat_niet_op_de_kaart_staat(capsys):
     _recept(args, melding)
     uit = capsys.readouterr().out
     assert "Atlantis" in uit and "Amsterdam" not in uit
+
+
+def test_het_recept_tekent_dezelfde_kleurenbalk_en_titel_als_de_app():
+    """#640: de maatnaam uit de bron op de kleurenbalk en de titel met spatie, ook in het recept."""
+    rijen = [{"LOC": "PV20", "MboStudenten_1": 1}, {"LOC": "PV26", "MboStudenten_1": 2}]
+    meta = store.KeyMeta(
+        bron="cbs", dataset="85353NED", afgeleid_van="cbs:85353NED", kolomtitels={"MboStudenten_1": "Mbo-studenten"}
+    )
+    store.put("cbs:85353NED:sel640", pd.DataFrame(rijen), meta)
+    args = {
+        "data_key": "cbs:85353NED:sel640",
+        "location_col": "LOC",
+        "value_col": "MboStudenten_1",
+        "title": 'Mbo-studenten "2024" perprovincie',
+        "level": "auto",
+    }
+    melding, fig_app = create_choropleth_map(**args)
+    assert fig_app is not None, melding
+    fig = _recept(args, melding)["fig"]
+    assert fig_app.layout.coloraxis.colorbar.title.text == "Mbo-studenten"
+    assert fig.layout.coloraxis.colorbar.title.text == fig_app.layout.coloraxis.colorbar.title.text
+    assert fig_app.layout.title.text == 'Mbo-studenten "2024" per provincie'
+    assert fig.layout.title.text == fig_app.layout.title.text
+    assert fig.data[0].hovertemplate == fig_app.data[0].hovertemplate
+
+
+def test_zonder_titels_volgt_ook_het_recept_kolomlabel():
+    args = {**_args(["PV20", "PV26"]), "value_col": "AANTAL_STUDENTEN"}
+    args["data"] = [{"LOC": r["LOC"], "AANTAL_STUDENTEN": r["N"]} for r in args["data"]]
+    melding, fig_app = _app(args)
+    fig = _recept(args, melding)["fig"]
+    assert fig_app.layout.coloraxis.colorbar.title.text == "Aantal studenten"
+    assert fig.layout.coloraxis.colorbar.title.text == "Aantal studenten"
