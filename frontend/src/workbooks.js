@@ -1,5 +1,5 @@
 import { STORAGE_WORKBOOKS } from './constants'
-import { fetchWorkbooks, putWorkbook, deleteWorkbookApi } from './api'
+import { fetchWorkbooks, fetchWorkbook, putWorkbook, deleteWorkbookApi } from './api'
 
 export const BUILTIN_MIJN_INSTELLING = {
   id: '__builtin_mijn_instelling__',
@@ -78,24 +78,56 @@ export function saveWorkbook({ title, description, messages, figures, instelling
   }
 }
 
+// Workbooks fetched in this tab, so a thumbnail scrolled back into view and the report opened from it
+// fetch once. Bounded: a long gallery scrolled top to bottom does not keep every report in memory.
+const VOLLEDIG_MAX = 30
+const volledig = new Map()
+
 export function deleteWorkbook(id) {
+  volledig.delete(String(id))
   try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id))) } catch { /* noop */ }
   deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
 }
 
+// The server list holds what a card shows, not the content (#633): with every report's HTML in it, 85
+// reports made 2.1 MB and /rapporten crashed the tab. A summary says so; the content comes per workbook.
+export function isVolledig(wb) {
+  return Boolean(wb?.builtin) || !wb?.samenvatting
+}
+
+function samenvatting(wb) {
+  return { ...wb, createdAt: wb.created_at ?? wb.createdAt, samenvatting: true }
+}
+
+function volledigWerkboek(wb) {
+  return {
+    ...wb,
+    messages: typeof wb.messages === 'string' ? JSON.parse(wb.messages) : wb.messages,
+    figures: typeof wb.figures === 'string' ? JSON.parse(wb.figures) : wb.figures,
+    htmlContent: wb.html_content ?? wb.htmlContent,
+    dashboardSpec: typeof wb.dashboard_spec === 'string' ? JSON.parse(wb.dashboard_spec) : wb.dashboard_spec ?? wb.dashboardSpec,
+    createdAt: wb.created_at ?? wb.createdAt,
+  }
+}
+
+export function loadWorkbook(id) {
+  const key = String(id)
+  if (!volledig.has(key)) {
+    const laden = fetchWorkbook(key).then(volledigWerkboek)
+    laden.catch(() => volledig.delete(key))
+    volledig.set(key, laden)
+    if (volledig.size > VOLLEDIG_MAX) volledig.delete(volledig.keys().next().value)
+  }
+  return volledig.get(key)
+}
+
 export async function loadWorkbooksFromServer() {
   try {
-    const wbs = await fetchWorkbooks()
-    const parsed = wbs.map(wb => ({
-      ...wb,
-      messages: typeof wb.messages === 'string' ? JSON.parse(wb.messages) : wb.messages,
-      figures: typeof wb.figures === 'string' ? JSON.parse(wb.figures) : wb.figures,
-      htmlContent: wb.html_content ?? wb.htmlContent,
-      dashboardSpec: typeof wb.dashboard_spec === 'string' ? JSON.parse(wb.dashboard_spec) : wb.dashboard_spec ?? wb.dashboardSpec,
-      createdAt: wb.created_at ?? wb.createdAt,
-    }))
-    localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(parsed))
-    return parsed
+    let wbs = await fetchWorkbooks()
+    if (wbs.length === 0 && await migrateLocalWorkbooks()) wbs = await fetchWorkbooks()
+    const lijst = wbs.map(samenvatting)
+    localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(lijst))
+    return lijst
   } catch {
     return getWorkbooks()
   }
@@ -131,6 +163,8 @@ export async function saveWorkbookWithSync(fields) {
 // The viewer holds the workbook and the server stores it; the local list is only a
 // cache. A workbook missing from that cache is still saved (#176).
 export async function updateWorkbook(workbook, changes) {
+  // The PUT replaces the whole row: a summary would save the report without its HTML.
+  if (!isVolledig(workbook)) throw new Error('Werkboek is nog niet geladen')
   const updated = { ...workbook, ...changes }
   const cached = getWorkbooks()
   if (cached.some(w => w.id === updated.id)) {
@@ -138,23 +172,16 @@ export async function updateWorkbook(workbook, changes) {
     try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(next)) } catch { /* noop */ }
   }
   await putWorkbook(updated.id, serverFields(updated))
+  volledig.set(String(updated.id), Promise.resolve(updated))
   return updated
 }
 
-export async function migrateLocalWorkbooks() {
-  try {
-    const serverWbs = await fetchWorkbooks()
-    if (serverWbs.length > 0) {
-      localStorage.removeItem(STORAGE_WORKBOOKS)
-      return
-    }
-    const localWbs = getWorkbooks()
-    if (localWbs.length === 0) return
-    const results = await Promise.allSettled(localWbs.map(wb => putWorkbook(wb.id, serverFields(wb))))
-    if (results.every(r => r.status === 'fulfilled')) {
-      localStorage.removeItem(STORAGE_WORKBOOKS)
-    }
-  } catch (e) {
-    console.warn('Workbook migration failed:', e.message)
-  }
+// Workbooks saved only in this browser (from before the server stored them) go up once, when the server
+// has none. A summary has no content to send. True when something went up.
+async function migrateLocalWorkbooks() {
+  const localWbs = getWorkbooks().filter(isVolledig)
+  if (localWbs.length === 0) return false
+  const results = await Promise.allSettled(localWbs.map(wb => putWorkbook(wb.id, serverFields(wb))))
+  if (results.some(r => r.status === 'rejected')) console.warn('Workbook migration failed')
+  return results.some(r => r.status === 'fulfilled')
 }

@@ -17,7 +17,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
   const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)
 
-  const { workbooks, setWorkbooks, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks, setWorkbooks, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'dashboard',
       pendingId,
@@ -73,6 +73,17 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
     )
   }
 
+  if (opening) {
+    return (
+      <div className="wb-gallery-page">
+        <div className="wb-gallery-loading" aria-busy="true" role="status">
+          <span className="spinner" aria-hidden="true" />
+          Dashboard wordt geopend…
+        </div>
+      </div>
+    )
+  }
+
   if (showCreator) {
     return (
       <div className="wb-gallery-page">
@@ -98,6 +109,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
           onCancel={() => setPendingConfirm(null)}
         />
       )}
+      {openFout && <div className="wb-gallery-notice" role="alert">{openFout}</div>}
       <DashboardGallery
         workbooks={all}
         instelling={instelling}

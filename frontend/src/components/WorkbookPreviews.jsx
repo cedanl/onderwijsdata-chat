@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import { BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, getWorkbookType, isVolledig, loadWorkbook } from '../workbooks'
 import { metThema } from '../reportThema'
 
 function UserWorkbookPreview({ wb }) {
@@ -107,11 +107,47 @@ function NationaalPreview() {
   )
 }
 
+// Near the viewport: a card this close to the screen loads its thumbnail before it scrolls in.
+const IN_BEELD_MARGE = '300px'
+
+// True while the element is on or near the screen. Without IntersectionObserver (old browser, tests)
+// everything counts as in view, as before #633.
+function useInBeeld(ref, aan) {
+  const [inBeeld, setInBeeld] = useState(() => typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    const el = ref.current
+    if (!aan || !el || typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver(([entry]) => setInBeeld(entry.isIntersecting), { rootMargin: IN_BEELD_MARGE })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [ref, aan])
+  return inBeeld
+}
+
+// The report's HTML for a thumbnail on screen: from the workbook when it has it, else fetched (#633).
+function useRapportHtml(wb, inBeeld) {
+  const eigen = isVolledig(wb) ? wb.htmlContent : null
+  const [geladen, setGeladen] = useState(null)
+  useEffect(() => {
+    if (!inBeeld || eigen != null || geladen?.id === wb.id) return
+    let weg = false
+    loadWorkbook(wb.id).then(full => { if (!weg) setGeladen({ id: wb.id, html: full.htmlContent }) }).catch(() => {})
+    return () => { weg = true }
+  }, [inBeeld, eigen, geladen, wb.id])
+  return eigen ?? (geladen?.id === wb.id ? geladen.html : null)
+}
+
 // mode: the app's theme choice; a report thumbnail follows it like the report itself (#568).
 export default function WorkbookPreview({ wb, mode }) {
   const [loaded, setLoaded] = useState(false)
   const wrapRef = useRef(null)
   const [scale, setScale] = useState(0.25)
+  const isRapport = !wb.builtin && !wb.messages && getWorkbookType(wb) === 'report'
+  const inBeeld = useInBeeld(wrapRef, isRapport)
+  const html = useRapportHtml(wb, isRapport && inBeeld)
+  const toon = inBeeld && html != null
+  // A frame scrolled out and back in is a new frame: the shimmer stays until it has loaded again.
+  useEffect(() => { if (!toon) setLoaded(false) }, [toon])
 
   useEffect(() => {
     if (wb.builtin) return
@@ -132,24 +168,28 @@ export default function WorkbookPreview({ wb, mode }) {
 
   if (wb.messages) return <UserWorkbookPreview wb={wb} />
 
+  // Only a card on or near the screen holds an iframe (#633): `loading="lazy"` does nothing for a
+  // srcdoc frame, and 81 of them at once crashed the tab. Off screen the card keeps its shimmer.
   return (
     <div ref={wrapRef} className="wb-preview-wrap">
-      {!loaded && <div className="wb-preview-shimmer" />}
-      <div
-        className="wb-preview-frame-outer"
-        style={{ transform: `scale(${scale})`, height: Math.ceil(155 / scale) }}
-      >
-        {/* No scripts in a thumbnail (#427): each report would load and draw Plotly once per
-            card, and with a hundred cards some stayed blank. The top of a report is static. */}
-        <iframe
-          srcDoc={metThema(wb.htmlContent, mode)}
-          sandbox=""
-          loading="lazy"
-          onLoad={() => setLoaded(true)}
-          style={{ width: 960, height: '100%', border: 'none' }}
-          title={wb.title}
-        />
-      </div>
+      {!(toon && loaded) && isRapport && <div className="wb-preview-shimmer" />}
+      {toon && (
+        <div
+          className="wb-preview-frame-outer"
+          style={{ transform: `scale(${scale})`, height: Math.ceil(155 / scale) }}
+        >
+          {/* No scripts in a thumbnail (#427): each report would load and draw Plotly once per
+              card, and with a hundred cards some stayed blank. The top of a report is static. */}
+          <iframe
+            srcDoc={metThema(html, mode)}
+            sandbox=""
+            loading="lazy"
+            onLoad={() => setLoaded(true)}
+            style={{ width: 960, height: '100%', border: 'none' }}
+            title={wb.title}
+          />
+        </div>
+      )}
     </div>
   )
 }

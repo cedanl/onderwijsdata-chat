@@ -124,7 +124,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   // setSearchParams/History API calls that can hit Firefox's rate limit.
   const navWorkbook = location.state?.pendingWorkbook ?? null
 
-  const { workbooks: rapporten, loading, missingId, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks: rapporten, loading, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
     useWorkbookGallery({
       type: 'report',
       pendingId: navWorkbook ? null : pendingId,
@@ -146,10 +146,10 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   useEffect(() => { if (selected?.id) noteerRapport(selected.id) }, [selected?.id])
 
   useEffect(() => {
-    if (!selected && pendingId && missingId === pendingId) {
+    if (!selected && !opening && pendingId && (missingId === pendingId || openFout)) {
       setSearchParams({}, { replace: true })
     }
-  }, [selected, pendingId, missingId, setSearchParams])
+  }, [selected, opening, pendingId, missingId, openFout, setSearchParams])
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
 
@@ -167,7 +167,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
     )
   }
 
-  if (pendingId && !navWorkbook && missingId !== pendingId) {
+  if (opening || (pendingId && !navWorkbook && missingId !== pendingId && !openFout)) {
     return (
       <div className="wb-gallery-page">
         <div className="wb-gallery-loading" aria-busy="true" role="status">
@@ -215,6 +215,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
             Dit rapport is niet gevonden. Het is misschien verwijderd of opgeslagen onder een ander account.
           </div>
         )}
+        {openFout && !missingId && <div className="wb-gallery-notice" role="alert">{openFout}</div>}
 
         {loading && rapporten.length === 0 ? (
           <div className="wb-gallery-loading" aria-busy="true" role="status">

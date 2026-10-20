@@ -73,6 +73,7 @@ def test_werkboeken_zijn_alleen_voor_de_eigenaar(client):
 
     _als(client, "bert")
     assert client.get("/api/workbooks").json() == []
+    assert client.get("/api/workbooks/w1").status_code == 404
     assert client.delete("/api/workbooks/w1").status_code == 200
 
     _als(client, "anna")

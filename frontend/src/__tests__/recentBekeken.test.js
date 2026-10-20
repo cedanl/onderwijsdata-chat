@@ -7,12 +7,13 @@ import { MemoryRouter } from 'react-router-dom'
 import { STORAGE_RECENT, NOT_SESSION_DATA_KEYS, SESSION_DATA_KEYS } from '../constants'
 import { inVolgorde, noteerGesprek, noteerRapport, vergeetCache, wisselFavoriet } from '../recentBekeken'
 
-const server = vi.hoisted(() => ({ resolve: null, local: [] }))
+const server = vi.hoisted(() => ({ resolve: null, local: [], load: () => new Promise(() => {}) }))
 vi.mock('../workbooks', () => ({
   getWorkbooks: () => server.local,
   getWorkbookType: (wb) => wb.type,
   deleteWorkbook: vi.fn(),
-  migrateLocalWorkbooks: () => Promise.resolve(),
+  isVolledig: (wb) => !wb?.samenvatting,
+  loadWorkbook: vi.fn(id => server.load(id)),
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),
 }))
 vi.mock('../components/WorkbookViewer', () => ({

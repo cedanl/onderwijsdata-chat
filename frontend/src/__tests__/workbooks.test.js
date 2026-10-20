@@ -15,10 +15,11 @@ const api = vi.hoisted(() => ({
   putWorkbook: vi.fn(() => Promise.resolve({})),
   deleteWorkbookApi: vi.fn(() => Promise.resolve({})),
   fetchWorkbooks: vi.fn(() => Promise.resolve([])),
+  fetchWorkbook: vi.fn(),
 }))
 vi.mock('../api', () => api)
 
-const { saveWorkbook, saveWorkbookWithSync, updateWorkbook, getWorkbooks, deleteWorkbook } = await import('../workbooks.js')
+const { saveWorkbook, saveWorkbookWithSync, updateWorkbook, getWorkbooks, deleteWorkbook, loadWorkbook, loadWorkbooksFromServer, isVolledig } = await import('../workbooks.js')
 
 beforeEach(() => {
   localStorageMock.clear()
@@ -159,5 +160,70 @@ describe('updateWorkbook', () => {
   it('rejects when the server does not save it', async () => {
     api.putWorkbook.mockImplementation(() => Promise.reject(new Error('HTTP 500')))
     await expect(updateWorkbook(rapport, { title: 'Nieuw' })).rejects.toThrow('HTTP 500')
+  })
+})
+
+// #633: the list carries no content; a report's HTML comes per workbook, once.
+describe('loadWorkbooksFromServer', () => {
+  const kaart = { id: 'r1', title: 'Rapport', description: '', instelling: null, created_at: '2026-10-19T10:00:00Z', type: 'report' }
+  beforeEach(() => {
+    api.fetchWorkbooks.mockReset()
+    api.putWorkbook.mockReset().mockResolvedValue({})
+  })
+
+  it('asks the server for the list once and marks each row as a summary', async () => {
+    api.fetchWorkbooks.mockResolvedValue([kaart])
+    const lijst = await loadWorkbooksFromServer()
+    expect(api.fetchWorkbooks).toHaveBeenCalledTimes(1)
+    expect(lijst).toEqual([expect.objectContaining({ id: 'r1', createdAt: '2026-10-19T10:00:00Z', samenvatting: true })])
+    expect(isVolledig(lijst[0])).toBe(false)
+  })
+
+  it('puts workbooks saved only in this browser on an empty server, then reads the list again', async () => {
+    storage.edudata_workbooks = JSON.stringify([{ id: 'oud', title: 'Oud', htmlContent: '<p/>' }])
+    api.fetchWorkbooks.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...kaart, id: 'oud' }])
+    const lijst = await loadWorkbooksFromServer()
+    expect(api.putWorkbook).toHaveBeenCalledWith('oud', expect.objectContaining({ htmlContent: '<p/>' }))
+    expect(lijst.map(w => w.id)).toEqual(['oud'])
+  })
+
+  it('never puts a summary back: it has no content', async () => {
+    storage.edudata_workbooks = JSON.stringify([{ ...kaart, samenvatting: true }])
+    api.fetchWorkbooks.mockResolvedValue([])
+    expect(await loadWorkbooksFromServer()).toEqual([])
+    expect(api.putWorkbook).not.toHaveBeenCalled()
+  })
+})
+
+describe('loadWorkbook', () => {
+  it('fetches a workbook once and parses its content', async () => {
+    api.fetchWorkbook.mockResolvedValue({ id: 'r2', title: 'R', html_content: '<p>r</p>', dashboard_spec: null, messages: null, created_at: 'x' })
+    const [a, b] = await Promise.all([loadWorkbook('r2'), loadWorkbook('r2')])
+    expect(api.fetchWorkbook).toHaveBeenCalledTimes(1)
+    expect(a).toBe(b)
+    expect(a).toMatchObject({ htmlContent: '<p>r</p>', createdAt: 'x' })
+    expect(isVolledig(a)).toBe(true)
+  })
+
+  it('tries again after a failed fetch', async () => {
+    api.fetchWorkbook.mockRejectedValueOnce(new Error('API 503')).mockResolvedValueOnce({ id: 'r3', html_content: '<p/>' })
+    await expect(loadWorkbook('r3')).rejects.toThrow('API 503')
+    await expect(loadWorkbook('r3')).resolves.toMatchObject({ htmlContent: '<p/>' })
+  })
+
+  it('fetches a deleted workbook again rather than serving it from memory', async () => {
+    api.fetchWorkbook.mockResolvedValue({ id: 'r4', html_content: '<p/>' })
+    await loadWorkbook('r4')
+    deleteWorkbook('r4')
+    await loadWorkbook('r4')
+    expect(api.fetchWorkbook).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('updateWorkbook with a summary', () => {
+  // The PUT replaces the row: a summary from the list would save the report without its HTML.
+  it('refuses, and sends nothing', async () => {
+    await expect(updateWorkbook({ id: 'r1', title: 'R', samenvatting: true }, { title: 'Nieuw' })).rejects.toThrow()
+    expect(api.putWorkbook).not.toHaveBeenCalled()
   })
 })
