@@ -1907,6 +1907,7 @@ html.dark .suggested-btn:hover {
 /* The general feedback form (#600) opens from the settings dialog too. */
 .algemene-feedback-overlay { z-index: 2100; }
 .wb-gallery-feedback, .settings-feedback { margin-top: 24px; font-size: .82rem; color: var(--muted-text); text-align: center; }
+.wb-gallery-leeg-tip { margin-top: 12px; font-size: .82rem; color: var(--muted-text); }
 .settings-feedback { margin: 16px 0 0; }
 
 /* Back to what you used (#603): the conversation this browser opened last, and favourite and recently viewed
@@ -1994,7 +1995,10 @@ html.dark .suggested-btn:hover {
 /* Lettergroottes op een telefoon (#613, mobiel N5). Antwoordtekst 16 px zoals de referenties (ChatGPT 16,
    Gemini 17); de kleinere lagen — citaatpopover, chips, stappen, blokken, instellingen, figuurlabels — minimaal
    12,5 px; code in de stappen 11 px ("Bekijk code" blijft een bewuste keuze). Rapportmetadata op /rapporten blijft
-   bewust klein (.wb-card-date). Gemeten op 390 px in de MR. */
+   bewust klein (.wb-card-date, .wb-card-desc). Gemeten op 390 px in de MR. De tweede rij zijn de lagen met een eigen
+   font-size buiten de variabelen die de herhaalmeting van #639 nog onder de grens vond: zijbalkkoppen, categoriechips,
+   "Nieuw gesprek", de gesprekslijst, de accountnaam in het menu en de kop, zoekveld, lege lijst en feedbackregel
+   van /rapporten. */
 @media (max-width: 600px) {
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
@@ -2002,7 +2006,9 @@ html.dark .suggested-btn:hover {
   .csv-download-btn, .data-export-btn, .message-model, .message-stopped, .reasoning-toggle, .reasoning-step, .reasoning-step-uitleg,
   .reasoning-step-hints, .reasoning-step-code summary, .reasoning-tussentekst, .citatie-key, .citatie-details,
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
-  .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst {
+  .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst,
+  .sidebar-section-title, .suggested-category-btn, .new-chat-btn, .model-picker-provider, .navbar-menu-sub,
+  .wb-gallery-sub, .wb-gallery-search-label, .wb-gallery-feedback, .wb-gallery-leeg-tip, .privacy-link, .history-btn-title, .history-btn-date {
     font-size: 12.5px;
   }
 }

@@ -232,7 +232,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
             <button type="button" className="navbar-cta" onClick={() => navigate('/chat')}>
               Ga naar Chat
             </button>
-            <p style={{ marginTop: 12, fontSize: '.82rem', color: 'var(--muted-text)' }}>
+            <p className="wb-gallery-leeg-tip">
               Stel een vraag en klik op &ldquo;Genereer rapport&rdquo; om een rapport hier op te slaan.
             </p>
           </div>
