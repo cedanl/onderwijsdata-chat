@@ -227,6 +227,9 @@ input, textarea { font: inherit; }
   margin-bottom: 24px; backdrop-filter: blur(8px);
 }
 .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-500); }
+/* At 320px "reproduceerbare" and "IR-dataprofessionals" are wider than the column: hyphenate (lang="nl"), and break
+   where the browser has no Dutch hyphenation (#639). */
+.hero h1, .section-title { hyphens: auto; overflow-wrap: break-word; }
 .hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; margin-bottom: 20px; }
 .hero h1 em { font-style: normal; color: #7DD3FC; }
 .hero p { font-size: 1.2rem; line-height: 1.7; color: rgba(255,255,255,.8); max-width: 560px; margin-bottom: 36px; }
@@ -245,7 +248,8 @@ input, textarea { font: inherit; }
   transition: all .15s;
 }
 .btn-ghost:hover { background: rgba(255,255,255,.1); }
-.hero-stats { display: flex; gap: 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
+/* Wraps at 320px (WCAG reflow), where three figures with a 40px gap no longer fit side by side (#639). */
+.hero-stats { display: flex; flex-wrap: wrap; gap: 20px 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
 .hero-stat-value { font-size: 2rem; font-weight: 800; color: var(--on-color); letter-spacing: -.03em; }
 .hero-stat-label { font-size: .85rem; color: rgba(255,255,255,.65); margin-top: 2px; }
 
@@ -304,6 +308,9 @@ input, textarea { font: inherit; }
   font-size: .8rem; color: var(--muted-text);
   text-decoration: underline; text-underline-offset: 3px;
   transition: color .15s;
+  /* The 24px minimum for buttons (top of file) replaces the flex minimum, so a link in the footer row shrank below its
+     own words and the text ran past the page edge (375px, #639). */
+  min-width: min-content;
 }
 .sources-link:hover { color: var(--gray-600); }
 
