@@ -149,15 +149,16 @@ def test_de_kaartopties_tonen_heel_nederland_in_een_standaardfiguur():
     """Met centrum 52,3 en zoom 6 viel Limburg onderaan buiten de kaart (#642); app en recept delen KAART_OPTIES."""
     import math
     from pathlib import Path
+    from typing import cast
 
     from tools.plot import KAART_OPTIES
 
     fixture = Path(__file__).parent / "e2e" / "fixtures" / "kaart-provincies.json"
-    punten = []
+    punten: list[tuple[float, float]] = []
 
-    def loop(c):
+    def loop(c: list) -> None:
         if isinstance(c[0], (int, float)):
-            punten.append(c)
+            punten.append((float(c[0]), float(c[1])))
         else:
             for d in c:
                 loop(d)
@@ -165,14 +166,15 @@ def test_de_kaartopties_tonen_heel_nederland_in_een_standaardfiguur():
     for f in json.loads(fixture.read_text())["data"][0]["geojson"]["features"]:
         loop(f["geometry"]["coordinates"])
 
-    def mx(lon):
+    def mx(lon: float) -> float:
         return (lon + 180) / 360
 
-    def my(lat):
+    def my(lat: float) -> float:
         return (1 - math.log(math.tan(math.pi / 4 + lat * math.pi / 360)) / math.pi) / 2
 
-    schaal = 512 * 2 ** KAART_OPTIES["zoom"]
-    cx, cy = mx(KAART_OPTIES["center"]["lon"]), my(KAART_OPTIES["center"]["lat"])
+    centrum = cast(dict[str, float], KAART_OPTIES["center"])
+    schaal = 512 * 2 ** cast(float, KAART_OPTIES["zoom"])
+    cx, cy = mx(centrum["lon"]), my(centrum["lat"])
     # Plotly-standaard 700 x 450, min de kleurenbalk (100) en de titelmarge (60).
     breedte, hoogte = 600, 390
     assert max(abs(mx(lon) - cx) for lon, _ in punten) * schaal <= breedte / 2
