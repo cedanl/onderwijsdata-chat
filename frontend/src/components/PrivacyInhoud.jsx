@@ -110,7 +110,13 @@ export default function PrivacyInhoud() {
         <li>Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten.</li>
         <li>Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV.</li>
         <li>
-          Al je gegevens in één keer verwijderen of exporteren kan nog niet; dat staat bij de open punten.
+          Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
+          (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
+          dashboards, feedback en datarecepten. Niet erin: wat alleen in je browser staat, en feedback van een
+          verwijderd gesprek, die niet meer aan je account hangt.
+        </li>
+        <li>
+          Al je gegevens in één keer verwijderen kan nog niet; dat staat bij de open punten.
         </li>
       </ul>
 
@@ -129,7 +135,7 @@ export default function PrivacyInhoud() {
       </p>
       <ul>
         <li>Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt bewaard of gebruikt voor training.</li>
-        <li>Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen of exporteren.</li>
+        <li>Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen.</li>
         <li>Of er een DPIA nodig is.</li>
       </ul>
     </div>
