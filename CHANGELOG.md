@@ -31,6 +31,16 @@ de laatste tag is 1.8.6.
 - Docs: de zoeklimiet van `search_catalog` is 3 (`SEARCH_CATALOG_LIMIT`), niet 5 zoals `docs/tools.md` en
   `docs/kwaliteit-en-veiligheid.md` zeiden.
 
+### Zoeken (#358, stap 1)
+- Een zoekhit van `search_catalog` is compact: ID, titel, status, leverancier, periode, onderwijstype, één samenvatting
+  van hoogstens 200 tekens, de CBS-dimensies en -meetwaarden (eerste twaalf), geo-niveau en perioden, de DUO-zoekkaart,
+  de RIO-filters en -sub-resources en `niet_geschikt_voor` (eerste drie); lege velden ontbreken. De documentatielink,
+  voorbeeldvragen, tags, `combineerbaar_met`, kolomtoelichting en waardenbereik staan alleen nog in `dataset_details`.
+  Past het resultaat ook zo niet binnen wat het model van een toolresultaat ziet (`TOOL_RESULT_MAX_CHARS`, 12.000), dan
+  laat de tool hele treffers van achteren weg en meldt hoeveel; het model leest zo altijd geldige JSON. Gemeten op twaalf
+  zoektermen uit de audit van 19-10: bij `top_n=15` ging acht keer het resultaat over die grens (tot 49.000 tekens), nu
+  geen enkele keer; de rangorde verandert niet (retrieval-baseline Δ 0,00).
+
 ### Scope
 - De chat werkt alleen voor mbo, hbo en wo. Po-, so- en vo-bestanden van DUO (o.a. `02voins-v1`)
   zijn niet meer te vinden, op te vragen of te laden, ook niet met een dataset-ID uit de
@@ -409,6 +419,15 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
+  namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
+  dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
+- De snippet van een grafiek, KPI, selectie of eigen berekening op een eerdere stap herhaalt de stappen van die
+  stap in plaats van de rijen ervan in te bakken (#624): eerst de laadstap van de bron, dan de selectie
+  (`query_data`), de vaste maat (`get_maat`) of het script van de eigen berekening (`run_analysis`), zodat `df` in
+  dezelfde snippet ontstaat en de code opnieuw draait op actuele data. Het script van een eigen berekening komt
+  uit het geheugen van de sessie; de database bewaart nog steeds geen script. Alleen zonder bekende keten (na een
+  herstart) staat er een kopie van de rijen, met de opmerking dat die niet meegroeit met de bron.
 - De knop "Download data als CSV" staat ook onder een antwoord dat via `get_maat` liep (#538): een telvraag
   als "Hoeveel studenten zaten er in 2022 in het mbo?" kreeg sinds `get_maat` geen knop meer, omdat de export
   alleen `query_data` en `run_analysis` als bron kende. De download heet `<titel>_<dataset-id>.csv`, zoals bij
@@ -648,6 +667,11 @@ de laatste tag is 1.8.6.
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
 
 ### Beheer
+- Wekelijkse bron-ping in CI (#627): de geplande job `bron:ping` roept elke bron één keer aan door de toollaag van de
+  chat (CBS, DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt
+  zodra één bron niet antwoordt. RIO verwijderde API v2 op 19 oktober en dat viel pas op in een chatbeurt, omdat
+  pytest de bronnen mockt en `/health` er geen toetst. Een geplande pipeline op `main` bouwt en rolt niets meer uit:
+  elke regel op `main` sluit haar uit, ook die van de SBOM- en failure-jobs van de SDP-componenten.
 - Afspraken voor de testomgeving (#488): een eigen account per tester en per auditspoor, geen persoonsgegevens in
   een vraag, en opruimen na een ronde (`docs/test-environment.md`). Een test toetst dat gesprekken, werkboeken,
   rapport- en antwoordfeedback en de CSV-export per account gescheiden zijn.

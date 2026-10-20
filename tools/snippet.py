@@ -8,10 +8,12 @@ store bij de key bewaart.
 Wat de tool met de data deed (sentinels uitgesloten, CBS-afronding, een afgekapte
 pagina) komt als commentaar bovenaan, uit dezelfde response die het model las (#4).
 
-Een afgeleide uitkomst (selectie, vaste maat) herhaalt de stappen van zijn ouder
-uit zijn recept (#472), zodat `df` in dezelfde snippet ontstaat en de code opnieuw
-te draaien is op actuele data. Zonder bekende keten blijft alleen een kopie van
-de rijen over, met een opmerking die dat zegt (#624).
+Een afgeleide uitkomst (selectie, vaste maat, eigen berekening) herhaalt de stappen
+van zijn ouder uit zijn recept (#472), zodat `df` in dezelfde snippet ontstaat en de
+code opnieuw te draaien is op actuele data. Het script van een eigen berekening komt
+daarbij uit het geheugen van de sessie, niet uit de database (agent.recepten). Zonder
+bekende keten blijft alleen een kopie van de rijen over, met een opmerking die dat
+zegt (#624).
 """
 
 import json
@@ -19,12 +21,12 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import cbs_selectie, instellingsprovincie, maten, scopeprofiel, store
+from . import cbs_selectie, instellingsprovincie, kaartlocaties, maten, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
 from .periode import STUDIEJAAR_LABEL
-from .plot import is_liggend, resolve_chart_type
+from .plot import GEOJSON_URLS, KAART_OPTIES, is_liggend, resolve_chart_type
 from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -43,6 +45,9 @@ _MAX_INLINE_RIJEN = 200
 
 # Zo lang mag een receptenketen zijn, zoals herlaad._MAX_STAPPEN: een rondlopend recept loopt niet door (#624).
 _MAX_KETEN = 10
+
+# De sandbox geeft np, px en go kant-en-klaar; buiten de app moet een script ze zelf importeren.
+_ANALYSE_IMPORTS = ["import numpy as np", "import plotly.express as px", "import plotly.graph_objects as go"]
 
 
 def _lit(value) -> str:
@@ -226,6 +231,15 @@ def _stapregels(recept: object, recept_van: Receptbron | None, stappen: int) -> 
     ouder = recept.get("afgeleid_van")
     if tool == TOOL_QUERY_DATA and isinstance(ouder, str):
         return [*_laadregels(ouder, recept_van, stappen + 1), *_query_stappen(args)]
+    if tool == TOOL_RUN_ANALYSIS and isinstance(ouder, str) and isinstance(code := args.get("code"), str):
+        # Het script staat alleen in het geheugen van de sessie (agent.recepten.van_session), nooit in de database.
+        ouderregels = _laadregels(ouder, recept_van, stappen + 1)
+        return [
+            *ouderregels,
+            *_analyse_regels(code, ouderregels),
+            "",
+            "df = pd.DataFrame(result)  # de uitkomst van deze berekening is de tabel van de volgende stap",
+        ]
     if tool == TOOL_GET_MAAT:
         # Het recept van een vaste maat laadt en selecteert zelf (#188), zoals herlaad._hermaat.
         regels, fout = _maat_regels(args)
@@ -395,14 +409,18 @@ def _compute_kpi_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     return "\n".join(lines)
 
 
+def _analyse_regels(code: str, eerder: list[str]) -> list[str]:
+    """Het script van een eigen berekening met zijn imports; die niet dubbel na een eerdere berekening in de keten."""
+    return [*(regel for regel in _ANALYSE_IMPORTS if regel not in eerder), "", code]
+
+
 def _run_analysis_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
     code = args.get("code", "")
     data_key = args.get("data_key")
     if not data_key:
         return code
-    # De sandbox geeft np, px en go kant-en-klaar; buiten de app moeten ze geïmporteerd worden.
-    imports = ["import numpy as np", "import plotly.express as px", "import plotly.graph_objects as go"]
-    return "\n".join([*_laadregels(data_key, recept_van), *imports, "", code])
+    laad = _laadregels(data_key, recept_van)
+    return "\n".join([*laad, *_analyse_regels(code, laad)])
 
 
 def _get_duo_data_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
@@ -452,16 +470,72 @@ def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     return "\n".join(lines)
 
 
+# Het recept vertaalt locaties zoals tools/kaartlocaties.py: een code, een naam in elke spelling, en per niveau
+# wat DUO erbij schrijft. Het kan `tools` niet importeren (het draait buiten de app), dus staat de regel hier.
+_KAART_VERTALING = [
+    "def sleutel(naam):",
+    '    tekst = str(naam).replace("’", "\'").casefold().replace(".", "")',
+    '    return re.sub(r"\\s+", " ", tekst).strip().lstrip("\'")',
+    "",
+    "",
+    'ids = {f["id"] for f in geojson["features"]}',
+    "namen, kort = {}, {}",
+    'for f in geojson["features"]:',
+    '    naam = sleutel(f["properties"]["statnaam"])',
+    '    namen.setdefault(naam, f["id"])',
+    '    kort.setdefault(re.sub(r"\\s*\\([^)]*\\)$", "", naam), []).append(f["id"])',
+    "# HENGELO voor Hengelo (O.): alleen als één gebied zo heet.",
+    "namen = {**{k: v[0] for k, v in kort.items() if len(v) == 1}, **namen}",
+]
+_KAART_PROVINCIE = ['namen.setdefault("friesland", namen.get("fryslân"))  # DUO schrijft Friesland']
+_KAART_GEMEENTENUMMER = [
+    "    try:  # DUO schrijft het gemeentenummer: 344 of '344.0'",
+    '        nummer = f"GM{int(float(tekst)):04d}"',
+    "    except ValueError:",
+    "        return None",
+    "    return nummer if nummer in ids else None",
+]
+
+
+def _kaartcode_regels(niveau: str) -> list[str]:
+    """`kaartcode(waarde)`: de feature-id van een code of naam, of None als de kaart hem niet kent."""
+    regels = ["", "", "def kaartcode(waarde):", "    tekst = str(waarde).strip()"]
+    regels += ["    if tekst.upper() in ids:", "        return tekst.upper()"]
+    regels += ["    if sleutel(tekst) in namen:", "        return namen[sleutel(tekst)]"]
+    regels += _KAART_GEMEENTENUMMER if niveau == "gemeente" else ["    return None"]
+    return regels
+
+
 def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None) -> str:
+    """De kaart zoals de app hem tekent: de GeoJSON van het niveau, locaties naar feature-id, dezelfde opmaak (#630)."""
     location_col = args.get("location_col", "")
     value_col = args.get("value_col", "")
     title = args.get("title", "")
-    data_key = args.get("data_key")
+    level = args.get("level")
+    niveau = level if isinstance(level, str) and level in GEOJSON_URLS else "provincie"
+    opmaak = ", ".join(f"{naam}={waarde!r}" for naam, waarde in KAART_OPTIES.items())
 
-    lines = _frame_regels(args, data_key, recept_van)
-
-    lines.append(f'fig = px.choropleth_map(df, locations="{location_col}", color="{value_col}", title="{title}")')
-    lines.append("fig.show()")
+    lines = _frame_regels(args, args.get("data_key"), recept_van)
+    lines += ["import json", "import re", "import urllib.request", ""]
+    lines += ["# De kaart tekent op CBS-gebiedscodes (PV26, GM0344, CR17); namen gaan er hieronder naartoe.", ""]
+    lines += [f"GEOJSON = {GEOJSON_URLS[niveau]!r}", "with urllib.request.urlopen(GEOJSON, timeout=15) as resp:"]
+    lines += ["    geojson = json.loads(resp.read())", "", ""]
+    lines += _KAART_VERTALING
+    lines += _KAART_PROVINCIE if niveau == "provincie" else []
+    lines += _kaartcode_regels(niveau)
+    lines += ["", ""]
+    lines += [f'df["kaartcode"] = df["{location_col}"].map(kaartcode)']
+    lines += ['if df["kaartcode"].isna().any():']
+    lines += [
+        f'    print("Niet op de kaart:", sorted(df.loc[df["kaartcode"].isna(), "{location_col}"].astype(str).unique()))'
+    ]
+    lines += ['df = df[df["kaartcode"].notna()]']
+    lines += [
+        f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
+        f'hover_name="{location_col}", hover_data={{"kaartcode": False}}, color="{value_col}", '
+        f'{opmaak}, title="{title}")',
+        "fig.show()",
+    ]
     return "\n".join(lines)
 
 
@@ -537,6 +611,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     gen = _GENERATORS.get(tool_name)
     if gen is None:
         return None
+    if tool_name == TOOL_CREATE_CHOROPLETH_MAP and args.get("level", "auto") == "auto":
+        # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
+        args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
     snippet = gen(args, recept_van=recept_van)
     if snippet and (regels := _bewerkingsregels(result)):
         return "\n".join(["# Databewerking in de app:", *regels, "", snippet])

@@ -149,12 +149,19 @@ def resolve_chart_type(
     return _infer_chart_type(x, y, color_by, num_groups, is_share)
 
 
-_GEOJSON_URLS = {
+GEOJSON_URLS = {
     "provincie": "https://cartomap.github.io/nl/wgs84/provincie_2024.geojson",
     "gemeente": "https://cartomap.github.io/nl/wgs84/gemeente_2024.geojson",
     "corop": "https://cartomap.github.io/nl/wgs84/coropgebied_2024.geojson",
 }
 _GEOJSON_CACHE: dict[str, dict] = {}
+# De opmaak van de kaart; het recept (tools/snippet.py) gebruikt dezelfde waarden (#630).
+KAART_OPTIES = {
+    "center": {"lat": 52.3, "lon": 5.3},
+    "zoom": 6,
+    "map_style": "white-bg",
+    "color_continuous_scale": "Blues",
+}
 # De kolom met de feature-id waartegen de kaart tekent; de locatiekolom van de data houdt de namen (#628).
 _KAARTCODE = "kaartcode"
 
@@ -566,7 +573,7 @@ def _plain(value):
 
 
 def _load_geojson(level: str) -> dict:
-    url = _GEOJSON_URLS[level]
+    url = GEOJSON_URLS[level]
     if url not in _GEOJSON_CACHE:
         with urllib.request.urlopen(url, timeout=15) as resp:
             _GEOJSON_CACHE[url] = _json.loads(resp.read())
@@ -635,11 +642,8 @@ def create_choropleth_map(
         hover_data={_KAARTCODE: False},
         color=value_col,
         featureidkey="id",
-        center={"lat": 52.3, "lon": 5.3},
-        zoom=6,
-        map_style="white-bg",
-        color_continuous_scale="Blues",
         title=title,
+        **KAART_OPTIES,
     )
     fig.update_layout(
         font={"family": "Inter, Arial, sans-serif", "size": 13},
@@ -647,7 +651,7 @@ def create_choropleth_map(
         margin={"t": 60, "b": 0, "l": 0, "r": 0},
         meta={
             "type": "choropleth",
-            "geojson_url": _GEOJSON_URLS.get(detected, ""),
+            "geojson_url": GEOJSON_URLS.get(detected, ""),
             "location_col": location_col,
             "value_col": value_col,
             "data": cleaned,
@@ -655,7 +659,7 @@ def create_choropleth_map(
         },
     )
 
-    level_labels = {"provincie": "provincies", "gemeente": "gemeenten", "corop": "COROP-gebieden"}
-    aangemaakt = f"Kaart '{title}' aangemaakt ({len(cleaned)} {level_labels.get(detected, detected)})."
+    label = kaartlocaties.NIVEAU_LABELS.get(detected, detected)
+    aangemaakt = f"Kaart '{title}' aangemaakt ({len(cleaned)} {label})."
     totaal = len(locaties.code_van) + len(locaties.onbekend)
     return aangemaakt + kaartlocaties.melding_onbekend(locaties, totaal), fig

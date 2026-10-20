@@ -22,6 +22,11 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
   testomgeving (`EVAL_BASE_URL`, `EVAL_USERNAME`, `EVAL_PASSWORD`), los van `/health` en `/ready`: dat de server draait
   zegt niets over de juistheid van een antwoord. Het slagingspercentage per model en vraag komt als artifact in
   `eval_results/`.
+- **Bronnen, gepland**: de CI-job `bron:ping` doet wekelijks één aanroep per bron door de toollaag van de chat (CBS,
+  DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt zodra één
+  bron niet antwoordt. Een verwijderde API of een gewijzigd filtercontract (RIO v2 → v3 op 19 oktober 2026, #627) komt
+  zo bij de beheerder binnen in plaats van via een gebruiker: pytest mockt de bronnen en `/health` toetst er geen.
+  Waarden vergelijkt de ping niet; dat doet `scripts/ijkwaarden.py`.
 
 Niet afgedwongen, alleen gevraagd: toon, voorzichtigheid met causaliteit, en of het model de bron goed duidt. De
 regels hieronder zijn die verzoeken.
@@ -195,4 +200,5 @@ Transparantie over wat nog niet getest is:
 - **Logging:** gestructureerde logging op INFO-niveau, tool-calls gelogd met argumenten en executietijden
 - **Reproduceerbaarheid:** bij elke tool-aanroep wordt een Python-snippet gelogd voor debugging
 - **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
+- **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
 - **Herkomstlog:** per gepubliceerd resultaat één regel `GEPUBLICEERD` (INFO) met soort, data-keys en versies; de selectiestappen op DEBUG (#169)

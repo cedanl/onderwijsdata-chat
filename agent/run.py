@@ -6,7 +6,14 @@ from functools import partial
 
 import plotly.io as pio
 
-from core.config import MAX_TOOL_ITERATIONS, MODEL, RUN_SLOW_S, RUN_TIMEOUT_S, SEARCH_CATALOG_LIMIT
+from core.config import (
+    MAX_TOOL_ITERATIONS,
+    MODEL,
+    RUN_SLOW_S,
+    RUN_TIMEOUT_S,
+    SEARCH_CATALOG_LIMIT,
+    TOOL_RESULT_MAX_CHARS,
+)
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, SCHEMAS, ho_markers
@@ -70,7 +77,7 @@ LEEG_ANTWOORD = (
 )
 
 _TOOL_LIMITS: dict[str, int] = {"search_catalog": SEARCH_CATALOG_LIMIT}
-_MAX_TOOL_RESULT_CHARS = 12000
+_MAX_TOOL_RESULT_CHARS = TOOL_RESULT_MAX_CHARS
 
 # LiteLLM bug: transform_request for ollama_chat converts tool_calls in history
 # messages but never writes them to the output Ollama message, causing orphaned
