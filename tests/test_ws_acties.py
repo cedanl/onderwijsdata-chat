@@ -136,26 +136,34 @@ def ws_client(tmp_path, monkeypatch):
     return TestClient(server.app)
 
 
-def _frames_na(ws, msg: dict, aantal: int) -> list[dict]:
-    """De eerste frames na msg plus een ping, zonder de system_message over de API-key.
+MAX_FRAMES_TOT_PONG = 10
 
-    De ping erachter laat een test falen in plaats van eeuwig wachten als het foutframe uitblijft.
+
+def _frames_tot_pong(ws, msg: dict) -> list[dict]:
+    """De frames na msg tot en met de pong op een ping erachter, zonder de system_message over de API-key.
+
+    Lezen tot de pong (en nooit een vast aantal) laat een test falen in plaats van eeuwig wachten als het
+    foutframe uitblijft: de pong komt altijd, het foutframe niet. Het plafond begrenst de lus als er toch
+    nooit een pong komt.
     """
     ws.send_text(json.dumps(msg))
     ws.send_text(json.dumps({"action": "ping"}))
     frames: list[dict] = []
-    while len(frames) < aantal:
+    for _ in range(MAX_FRAMES_TOT_PONG):
         frame = json.loads(ws.receive_text())
-        if frame["type"] != "system_message":
-            frames.append(frame)
-    return frames
+        if frame["type"] == "system_message":
+            continue
+        frames.append(frame)
+        if frame["type"] == "pong":
+            return frames
+    raise AssertionError(f"geen pong binnen {MAX_FRAMES_TOT_PONG} frames: {frames}")
 
 
 def test_onbekende_actie_over_de_websocket_houdt_de_verbinding_open(ws_client):
     fout = {"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}
     with ws_client.websocket_connect("/api/chat") as ws:
         for msg in ({"action": "bestaat-niet"}, {}, {"action": []}):
-            frames = _frames_na(ws, msg, 2)
+            frames = _frames_tot_pong(ws, msg)
             assert frames == [fout, {"type": "pong"}], msg
             assert "bestaat-niet" not in json.dumps(frames)
 
