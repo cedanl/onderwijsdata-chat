@@ -143,6 +143,8 @@ describe('the dialog', () => {
     await open()
 
     const d = dialoog()
+    // On a div: ARIA in HTML allows only search, none and presentation on a form.
+    expect(d.tagName).toBe('DIV')
     expect(d.getAttribute('aria-modal')).toBe('true')
     expect(document.getElementById(d.getAttribute('aria-labelledby')).textContent).toBe('Al je gegevens verwijderen?')
     const uitleg = document.getElementById(d.getAttribute('aria-describedby')).textContent
@@ -239,7 +241,7 @@ describe('confirming', () => {
       await typ(tekst)
       expect(bevestigKnop().disabled).toBe(true)
       await act(async () => { bevestigKnop().click() })
-      await act(async () => { dialoog().requestSubmit() })
+      await act(async () => { invoer().form.requestSubmit() })
     }
     expect(verwijder).not.toHaveBeenCalled()
 
@@ -255,8 +257,9 @@ describe('confirming', () => {
     await typ(BEVESTIGWOORD)
 
     // jsdom does no implicit submission; a browser submits the field's form on Enter (checked in the MR).
-    expect(invoer().form).toBe(dialoog())
-    expect(bevestigKnop().form).toBe(dialoog())
+    expect(invoer().form).not.toBeNull()
+    expect(bevestigKnop().form).toBe(invoer().form)
+    expect(dialoog().contains(invoer().form)).toBe(true)
     await act(async () => { invoer().form.requestSubmit() })
 
     expect(verwijder).toHaveBeenCalledOnce()
@@ -306,7 +309,7 @@ describe('confirming', () => {
     expect(knopMetTekst('Annuleren').disabled).toBe(true)
     await toets('Escape')
     await act(async () => { document.querySelector('.mijn-gegevens-verwijderen-overlay').click() })
-    await act(async () => { dialoog().requestSubmit() })
+    await act(async () => { invoer().form.requestSubmit() })
     expect(dialoog()).not.toBeNull()
     expect(verwijder).toHaveBeenCalledOnce()
 

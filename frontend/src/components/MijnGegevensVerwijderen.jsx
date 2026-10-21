@@ -98,7 +98,7 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
 
   return createPortal(
     <div className="confirm-overlay mijn-gegevens-verwijderen-overlay" onClick={sluitVanAchtergrond}>
-      <form
+      <div
         className="confirm-dialog mijn-gegevens-verwijderen-dialog"
         ref={dialogRef}
         role="alertdialog"
@@ -106,7 +106,6 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
         aria-labelledby={titelId}
         aria-describedby={uitlegId}
         tabIndex={-1}
-        onSubmit={onSubmit}
         onClick={e => e.stopPropagation()}
       >
         <h2 className="mijn-gegevens-verwijderen-titel" id={titelId}>Al je gegevens verwijderen?</h2>
@@ -124,30 +123,33 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
         </div>
         <p className="mijn-gegevens-verwijderen-export-tip">Bewaar eerst een kopie van je gegevens:</p>
         <MijnGegevensExport />
-        <label htmlFor={invoerId} className="mijn-gegevens-verwijderen-label">
-          Typ <strong>{BEVESTIGWOORD}</strong> om te bevestigen
-        </label>
-        <input
-          id={invoerId}
-          ref={invoerRef}
-          className="mijn-gegevens-verwijderen-invoer"
-          type="text"
-          value={invoer}
-          onChange={e => setInvoer(e.target.value)}
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-        {mislukt && <p className="mijn-gegevens-verwijderen-fout" role="alert">{VERWIJDEREN_MISLUKT}</p>}
-        <div className="confirm-actions mijn-gegevens-verwijderen-acties">
-          <button type="button" className="confirm-cancel" onClick={onClose} disabled={busy}>Annuleren</button>
-          <button type="submit" ref={bevestigRef} className="confirm-destructive mijn-gegevens-verwijderen-bevestig"
-            disabled={!bevestigd || busy} aria-busy={busy ? 'true' : 'false'}>
-            {busy ? 'Bezig met verwijderen…' : 'Definitief verwijderen'}
-          </button>
-        </div>
-      </form>
+        {/* One form for field and buttons: Enter in the field submits it. */}
+        <form onSubmit={onSubmit}>
+          <label htmlFor={invoerId} className="mijn-gegevens-verwijderen-label">
+            Typ <strong>{BEVESTIGWOORD}</strong> om te bevestigen
+          </label>
+          <input
+            id={invoerId}
+            ref={invoerRef}
+            className="mijn-gegevens-verwijderen-invoer"
+            type="text"
+            value={invoer}
+            onChange={e => setInvoer(e.target.value)}
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          {mislukt && <p className="mijn-gegevens-verwijderen-fout" role="alert">{VERWIJDEREN_MISLUKT}</p>}
+          <div className="confirm-actions mijn-gegevens-verwijderen-acties">
+            <button type="button" className="confirm-cancel" onClick={onClose} disabled={busy}>Annuleren</button>
+            <button type="submit" ref={bevestigRef} className="confirm-destructive mijn-gegevens-verwijderen-bevestig"
+              disabled={!bevestigd || busy} aria-busy={busy ? 'true' : 'false'}>
+              {busy ? 'Bezig met verwijderen…' : 'Definitief verwijderen'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>,
     document.body,
   )

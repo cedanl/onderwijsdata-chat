@@ -61,7 +61,7 @@ class Bevestiging(BaseModel):
 
 
 @router.delete("/api/mijn-gegevens")
-def verwijder_alles(
+def verwijder_mijn_gegevens(
     bevestiging: Bevestiging,
     username: Annotated[str, Depends(eigen_account)],
     authorization: Annotated[str | None, Header()] = None,
