@@ -7,6 +7,7 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Bronnen
+- Afhankelijkheden: `pillow` 12.3.0 → 13.0.0 (acht CVE's; alleen transitief via matplotlib, de app importeert PIL niet) en `certifi` 2026.7.22 → 2026.10.19 (PYSEC-2026-4320). `pip-audit` meldt daarna geen bekende kwetsbaarheden meer.
 - Vijf DUO-datasets (`ho_opleidingsoverzicht`, `overzicht-erkenningen-ho`, `mbo_opleidingsaanbod`,
   `rio_nfo_po_vo_vavo_mbo_ho`, `sectorale_ontwikkelpaden`) hebben in de catalogus weer een werkende verwijzing naar
   hun controlebestand: DUO maakt dat bestand bij elke publicatie opnieuw aan, het snapshot hield de oude ID vast
