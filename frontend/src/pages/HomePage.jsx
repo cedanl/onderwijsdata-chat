@@ -120,7 +120,8 @@ export default function HomePage({ dashboardsEnabled = true, feedbackEnabled = f
 
       <footer style={{ background: 'var(--white)', borderTop: '1px solid var(--gray-200)', padding: '32px 0' }}>
         <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Op een telefoon past logo plus links niet naast elkaar: de links gaan dan naar een eigen regel (#639). */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <div className="navbar-brand">
               <div className="navbar-logo" style={{ width: 28, height: 28 }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
@@ -129,7 +130,7 @@ export default function HomePage({ dashboardsEnabled = true, feedbackEnabled = f
               </div>
               <span className="navbar-name" style={{ fontSize: '1rem' }}>openEDU<span>data+</span></span>
             </div>
-            <span style={{ display: 'flex', gap: 16 }}>
+            <span style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16 }}>
               <button type="button" className="sources-link" onClick={() => setShowSources(true)}>
                 Gebaseerd op open onderwijsdata
               </button>

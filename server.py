@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -47,19 +47,6 @@ from routes import (
     persistence_router,
 )
 
-# API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
-# en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
-_DOCS = not Config.is_production()
-
-app = FastAPI(
-    title="Onderwijsdata Chat",
-    docs_url="/api/docs" if _DOCS else None,
-    redoc_url="/redoc" if _DOCS else None,
-    openapi_url="/api/openapi.json" if _DOCS else None,
-)
-# Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
-foutmeldingen.registreer(app)
-
 # Initialize database
 try:
     persistence_db.init_db()
@@ -67,18 +54,6 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
     sys.exit(1)
-
-# Setup CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=Config.get_parsed_cors_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Bundel, catalogus en API-antwoorden gecomprimeerd: de ingress doet het niet (#110).
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 def connect_src(server_url: str | None) -> str:
@@ -99,7 +74,6 @@ _CONNECT_SRC = connect_src(Config.SERVER_URL)
 PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 
 
-@app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -125,21 +99,24 @@ async def security_headers(request, call_next):
 
 # ─── Health checks ───────────────────────────────────────────────────────────
 
+# De eigen routes van de server; create_app hangt ze aan elke app.
+_routes = APIRouter()
 
-@app.get("/health", tags=["health"])
+
+@_routes.get("/health", tags=["health"])
 async def health_endpoint() -> dict:
     """Liveness probe: application is running."""
     return await health.health_check()
 
 
-@app.get("/ready", tags=["health"])
+@_routes.get("/ready", tags=["health"])
 async def ready_endpoint() -> JSONResponse:
     """Readiness probe: application is ready to serve traffic (503 if a check fails, #482)."""
     result, status_code = await health.readiness_check()
     return JSONResponse(content=result, status_code=status_code)
 
 
-@app.get("/startup", tags=["health"])
+@_routes.get("/startup", tags=["health"])
 async def startup_endpoint() -> dict:
     """Startup verification: checks if initialization completed successfully."""
     return await health.startup_check()
@@ -148,8 +125,8 @@ async def startup_endpoint() -> dict:
 _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
 
-@app.get("/version", tags=["info"])
-@app.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
+@_routes.get("/version", tags=["info"])
+@_routes.get("/api/version", tags=["info"])  # zonder deze route gaf de SPA-fallback HTML terug (#405)
 async def version() -> dict:
     """Release uit het chart (APP_VERSION), anders pyproject.toml; de commit waaruit het image is gebouwd (#231), de catalogus (#361)
     en de dataversie van UWV en ROA (CH-46)."""
@@ -168,7 +145,7 @@ async def version() -> dict:
     }
 
 
-@app.get("/info", tags=["info"])
+@_routes.get("/info", tags=["info"])
 async def info() -> dict:
     """Naam en of OIDC aan staat. Databasetype en omgevingslabel stonden hier ook,
     maar het eindpunt is zonder token bereikbaar en die details helpen vooral een
@@ -182,7 +159,6 @@ async def info() -> dict:
 # ─── Startup and Shutdown ────────────────────────────────────────────────────
 
 
-@app.on_event("startup")
 async def on_startup() -> None:
     """Initialize application and record startup time."""
     health.record_startup()
@@ -199,7 +175,6 @@ async def on_startup() -> None:
     )
 
 
-@app.on_event("shutdown")
 async def on_shutdown() -> None:
     """Graceful shutdown: close connections and cleanup."""
     logger.info("Application shutdown initiated")
@@ -222,21 +197,59 @@ def _handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, _handle_sigterm)
 
 
-# ─── Routers ─────────────────────────────────────────────────────────────────
+# ─── App ─────────────────────────────────────────────────────────────────────
 
-app.include_router(config_router)
-app.include_router(feedback_router)
-app.include_router(answer_feedback_router)
-app.include_router(auth_router)
-app.include_router(persistence_router)
-app.include_router(instellingen_router)
-app.include_router(data_export_router)
-app.include_router(mijn_gegevens_router)
-app.include_router(chat_router)
+_ROUTERS = (
+    config_router,
+    feedback_router,
+    answer_feedback_router,
+    auth_router,
+    persistence_router,
+    instellingen_router,
+    data_export_router,
+    mijn_gegevens_router,
+    chat_router,
+)
+
+
+def create_app(*, production: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
+    """De app met middleware, routes en event handlers; zonder frontend_dist geen SPA.
+
+    production=None volgt Config.is_production(). Tests bouwen zo een productie-app zonder de module te herladen.
+    """
+    # API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
+    # en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+    docs = not (Config.is_production() if production is None else production)
+    app = FastAPI(
+        title="Onderwijsdata Chat",
+        docs_url="/api/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/api/openapi.json" if docs else None,
+    )
+    # Validatiefouten en onbekende routes in het Nederlands, zonder de invoer te herhalen (#637).
+    foutmeldingen.registreer(app)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=Config.get_parsed_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    # Bundel, catalogus en API-antwoorden gecomprimeerd: de ingress doet het niet (#110).
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.middleware("http")(security_headers)
+    app.include_router(_routes)
+    app.router.add_event_handler("startup", on_startup)
+    app.router.add_event_handler("shutdown", on_shutdown)
+    for router in _ROUTERS:
+        app.include_router(router)
+    if frontend_dist is not None:
+        mount_frontend(app, frontend_dist)
+    return app
+
 
 # ─── Serve React frontend ───────────────────────────────────────────────────
 
 _FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 
-if _FRONTEND_DIST.exists():
-    mount_frontend(app, _FRONTEND_DIST)
+app = create_app(frontend_dist=_FRONTEND_DIST if _FRONTEND_DIST.exists() else None)

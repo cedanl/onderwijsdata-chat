@@ -14,7 +14,7 @@ export default function ReasoningStep({ tool, children = null }) {
   return (
     <div className={`reasoning-step${status}`}>
       <div className={`reasoning-step-dot${tool.done ? ' done' : ''}${status}`} />
-      <div>
+      <div className="reasoning-step-body">
         <span>{(tool.done && tool.statusLabel) || tool.label}</span>
         {uitleg && <p className="reasoning-step-uitleg">{uitleg}</p>}
         {suggesties.length > 0 && (

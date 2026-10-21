@@ -5,10 +5,12 @@
 // de hand gelijk blijven aan de gebundelde versie die de figuur-JSON maakt. Oude HTML wordt bij het
 // tonen herschreven (metEigenPlotly); de download krijgt Plotly inline (offlineHtml.js).
 import plotlyUrl from 'plotly.js/dist/plotly.min.js?url'
+import { heeftKaartAlsSvg, kaartAlsSvgScript } from './kaartRapport'
 
 export const PLOTLY_URL = plotlyUrl
 
-export const plotlyScript = () => `<script src="${PLOTLY_URL}"></script>`
+// Met daarachter het script dat een kaart zonder maplibre-worker tekent (kaartRapport.js, #642).
+export const plotlyScript = () => `<script src="${PLOTLY_URL}"></script>${kaartAlsSvgScript()}`
 
 // Het Plotly-script in opgeslagen HTML: de CDN van vóór #486, of een eerdere eigen build (andere hash).
 export const PLOTLY_SCRIPT = /<script src="(?:https:\/\/cdn\.plot\.ly\/plotly-[\d.]+\.min\.js|[^"]*\/plotly[^"]*\.js)"><\/script>/g
@@ -19,9 +21,10 @@ export const plotlyScripts = html => String(html ?? '').match(PLOTLY_SCRIPT) || 
 export function metEigenPlotly(html) {
   if (!html || !plotlyScripts(html).length) return html
   let eerste = true
+  const script = heeftKaartAlsSvg(html) ? `<script src="${PLOTLY_URL}"></script>` : plotlyScript()
   return html.replace(PLOTLY_SCRIPT, () => {
     if (!eerste) return ''
     eerste = false
-    return plotlyScript()
+    return script
   })
 }

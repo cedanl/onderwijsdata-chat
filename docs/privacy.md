@@ -30,7 +30,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 |---|---|---|
 | Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | tot de gebruiker het gesprek verwijdert |
 | Rapporten en dashboards (werkboeken) | `workbooks` | tot de gebruiker ze onder Rapporten verwijdert; het verwijderen van een gesprek laat ze staan (#513) |
-| Feedback op rapporten en dashboards | `feedback` | onbepaald |
+| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling en eventueel achtergelaten contactgegevens (vrije tekst) | `feedback` | onbepaald |
 | Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | onbepaald; bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476) |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | onbepaald (besluit in #485) |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek |

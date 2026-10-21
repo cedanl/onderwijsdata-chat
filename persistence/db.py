@@ -740,7 +740,7 @@ def add_feedback(
     workbook_id: str,
     report_type: str,
     report_title: str,
-    answers: dict[str, str],
+    answers: dict[str, str | list[str]],
 ) -> None:
     with _connection() as conn:
         _execute(

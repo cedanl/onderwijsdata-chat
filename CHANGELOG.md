@@ -476,6 +476,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Het feedbackformulier op een rapport heeft een blok "Over jouw instelling" voor de conferentie: of een PoC
+  het komende jaar mogelijk is (1-5), welke dashboardtool en voor welke doelgroepen (meerdere antwoorden, met
+  "Anders" en een toelichting), wat CEDA moet oppakken en optioneel contactgegevens voor vervolgvragen. Nieuw is
+  het vraagtype `multi`: dat antwoord staat in `feedback.answers` als lijst, niet als tekst; de contactgegevens
+  zijn vrije tekst bij het account (`docs/privacy.md`).
 - De zoekknop in de balk houdt "Zoeken" en de sneltoets (Ctrl K) op één regel; op een smal venster (rond 1025 px)
   brak de sneltoets over twee regels (#602).
 - Het zoekpalet (Ctrl/⌘K, #602) is rustiger vormgegeven: een lichte schaduw in plaats van het blauwe vlak van de

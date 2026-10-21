@@ -227,6 +227,9 @@ input, textarea { font: inherit; }
   margin-bottom: 24px; backdrop-filter: blur(8px);
 }
 .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-500); }
+/* At 320px "reproduceerbare" and "IR-dataprofessionals" are wider than the column: hyphenate (lang="nl"), and break
+   where the browser has no Dutch hyphenation (#639). */
+.hero h1, .section-title { hyphens: auto; overflow-wrap: break-word; }
 .hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; letter-spacing: -.03em; margin-bottom: 20px; }
 .hero h1 em { font-style: normal; color: #7DD3FC; }
 .hero p { font-size: 1.2rem; line-height: 1.7; color: rgba(255,255,255,.8); max-width: 560px; margin-bottom: 36px; }
@@ -245,7 +248,8 @@ input, textarea { font: inherit; }
   transition: all .15s;
 }
 .btn-ghost:hover { background: rgba(255,255,255,.1); }
-.hero-stats { display: flex; gap: 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
+/* Wraps at 320px (WCAG reflow), where three figures with a 40px gap no longer fit side by side (#639). */
+.hero-stats { display: flex; flex-wrap: wrap; gap: 20px 40px; margin-top: 56px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,.15); }
 .hero-stat-value { font-size: 2rem; font-weight: 800; color: var(--on-color); letter-spacing: -.03em; }
 .hero-stat-label { font-size: .85rem; color: rgba(255,255,255,.65); margin-top: 2px; }
 
@@ -304,6 +308,9 @@ input, textarea { font: inherit; }
   font-size: .8rem; color: var(--muted-text);
   text-decoration: underline; text-underline-offset: 3px;
   transition: color .15s;
+  /* The 24px minimum for buttons (top of file) replaces the flex minimum, so a link in the footer row shrank below its
+     own words and the text ran past the page edge (375px, #639). */
+  min-width: min-content;
 }
 .sources-link:hover { color: var(--gray-600); }
 
@@ -650,8 +657,9 @@ input, textarea { font: inherit; }
 .reasoning-step-dot.recovered { background: var(--gray-400); }
 .reasoning-step-uitleg { margin: 2px 0 0; font-size: .75rem; color: var(--gray-500); }
 .reasoning-step-hints { margin: 2px 0 0; padding-left: 16px; font-size: .75rem; color: var(--gray-500); }
-/* Code under its own step on a phone (#595), folded behind "Bekijk code". */
-.reasoning-step > div { min-width: 0; flex: 1; }
+/* Code under its own step on a phone (#595), folded behind "Bekijk code". Only the text fills the row:
+   a rule on every child div also stretched the status dot into a bar (#640). */
+.reasoning-step-body { min-width: 0; flex: 1; }
 .reasoning-step:has(.reasoning-step-code) { align-items: flex-start; }
 .reasoning-step:has(.reasoning-step-code) .reasoning-step-dot { margin-top: 6px; }
 .reasoning-step-code summary {
@@ -1472,7 +1480,8 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .feedback-intro { font-size: .85rem; color: var(--muted-text); margin-bottom: 16px; }
 .feedback-question { border: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 6px; }
 .feedback-question legend, .feedback-question label { font-size: .9rem; font-weight: 600; padding: 0; }
-.feedback-question textarea {
+.feedback-section { font-size: .95rem; font-weight: 700; margin: 20px 0 12px; padding-top: 14px; border-top: 1px solid var(--gray-200); }
+.feedback-question textarea, .feedback-other {
   font: inherit; font-size: .9rem; padding: 8px; resize: vertical;
   border: 1.5px solid var(--gray-200); border-radius: 8px; background: var(--white); color: inherit;
 }
@@ -1864,7 +1873,7 @@ html.dark .suggested-btn:hover {
    The chat input takes line-height 1.5, so one row stays 24px as before (15px x 1.6) in the compact area (#527). */
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-input, .login-input, .instelling-search, .history-search, .dc-textarea, .title-edit-input,
-  .answer-feedback-form textarea, .feedback-question textarea, .model-picker select { font-size: 16px; }
+  .answer-feedback-form textarea, .feedback-question textarea, .feedback-other, .model-picker select { font-size: 16px; }
   .chat-input { line-height: 1.5; }
 }
 

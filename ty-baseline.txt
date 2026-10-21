@@ -13,8 +13,6 @@ logging_config.py: error[no-matching-overload] No overload of bound method `Muta
 logging_config.py: warning[deprecated] The function `utcnow` is deprecated: Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)
 routes/chat.py: error[unresolved-attribute] Attribute `cancel` is not defined on `None` in union `Task[Unknown] | None`
 scripts/refresh_sector_mapping.py: error[unresolved-attribute] Attribute `choices` is not defined on `CustomStreamWrapper`, `Coroutine[object, object, ModelResponse | CustomStreamWrapper]` in union `ModelResponse | CustomStreamWrapper | Coroutine[object, object, ModelResponse | CustomStreamWrapper]`
-server.py: warning[deprecated] The function `on_event` is deprecated: 
-server.py: warning[deprecated] The function `on_event` is deprecated: 
 tests/test_clarify_once.py: error[invalid-assignment] Object of type `def noop(...) -> CoroutineType[Any, Any, Unknown]` is not assignable to attribute `_process_message` of type `def _process_message(content: str, session: dict[Unknown, Unknown], emit, model: str | None) -> CoroutineType[Any, Any, None]`
 tests/test_config_provider_keys.py: warning[invalid-argument-type] Argument to function `get_required_api_key_env_var` is incorrect: Expected `str`, found `None`
 tests/test_controle_melding.py: error[unresolved-attribute] Object of type `str` has no attribute `melding`
