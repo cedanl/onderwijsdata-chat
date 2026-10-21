@@ -122,6 +122,11 @@ def _get_oidc_user(username: str) -> dict | None:
     return user_data
 
 
+def vergeet_oidc_gebruiker(username: str) -> None:
+    """Na "verwijder al mijn gegevens" (#646) staan naam, e-mail en organisatie niet meer in het geheugen."""
+    _oidc_user_cache.pop(username, None)
+
+
 # Only add user info + refresh endpoints if OIDC is configured
 # GitHub version (basic auth) doesn't need these
 if is_oidc_configured():
