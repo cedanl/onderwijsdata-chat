@@ -1,17 +1,15 @@
-// A figure with the light colours tools/plot.py bakes in (#567): title with subtitle, grid,
-// axis lines, legend, and black series in every place a trace colour can sit. Shared by the
-// report and dashboard dark-mode tests.
+// A figure with the light colours tools/plot.py bakes in (#567): title, grid, axis lines,
+// legend, and black series in every place a trace colour can sit. Shared by the report and
+// dashboard dark-mode tests. The rounding note travels in layout.meta, not in the figure (#651).
 const axis = { showgrid: true, gridcolor: '#f0f0f0', linecolor: '#ccc', zeroline: false }
 
 export const layout = {
-  title: {
-    text: 'Instroom per jaar', font: { size: 16, color: '#222' }, yref: 'container', y: 0.98,
-    subtitle: { text: 'Afgerond op 10-tallen', font: { size: 11, color: '#666' } },
-  },
+  title: { text: 'Instroom per jaar', font: { size: 16, color: '#222' } },
   xaxis: { ...axis, title: { text: 'Jaar' }, type: 'category' },
   yaxis: { ...axis, title: { text: 'Aantal' }, tickformat: ',d' },
   legend: { bgcolor: 'rgba(255,255,255,0.8)', bordercolor: '#ddd', borderwidth: 1, orientation: 'h' },
-  margin: { t: 100 },
+  margin: { t: 60 },
+  meta: { afrondingsnoot: 'Afgerond op 10-tallen' },
 }
 
 export const data = [

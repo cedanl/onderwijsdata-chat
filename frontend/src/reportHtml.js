@@ -1,6 +1,6 @@
-import { topMarginOfJson } from './figureMargin'
 import { figureHeightOfJson } from './figureLayout'
 import { zonderDubbeleTitel } from './figureKop'
+import { scheidNootJson } from './figuurNoot'
 import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
@@ -73,12 +73,12 @@ const darkCss = voorvoegsel => DARK_RULES.map(([sel, decl]) => `${metVoorvoegsel
 // maakte de legenda breder dan de figuur, en bij liggende staven lieten de namen op de y-as 64 px plotvlak
 // over. Hieronder NARROW_PX: de titel afgebroken in regels en kleiner (de marge erboven groeit mee), de
 // legendatitel boven de items, kleinere tick- en legendaletters, en de namen op de y-as van liggende staven
-// afgebroken. Een titel met een noot hangt aan de bovenrand (CH-34); afgebroken stak zijn eerste regel 4 px
-// boven de figuur uit (gemeten), vandaar 10 px padding erboven.
+// afgebroken. De titel van een figuur van vóór #651 met noot hangt aan de bovenrand (CH-34); afgebroken stak zijn
+// eerste regel 4 px boven de figuur uit (gemeten), vandaar 10 px padding erboven.
 // Daarna (#579): jaartallen op een categorie-as kantelden 90° zodra ze niet naast elkaar pasten; dan staat om de
 // zoveel jaar een label, het laatste jaar altijd (_nx, de breedte geschat op 6,5 px per teken van 11 px). Namen
 // slaan niets over: elke naam hoort bij zijn staaf. Waardelabels krijgen de lettergrootte van de ticks (_nd). En na
-// het tekenen groeit de figuur zo veel als het plotvlak tekortkomt (_ng): titel, noot, ticks en een legenda van zes
+// het tekenen groeit de figuur zo veel als het plotvlak tekortkomt (_ng): titel, ticks en een legenda van zes
 // reeksen lieten 160 px over, en een rij liggende staven met een naam van twee regels liet 1 px tussen de namen.
 // _fullLayout._size is de maat van het plotvlak; Plotly rekent zelf de rijen gelijk, dus elke rij krijgt de ruimte
 // van de langste naam.
@@ -110,7 +110,7 @@ const TOP_ZONDER_TITEL = 16
 function plotlyHtml(figureJson, id, { titelWeg = false } = {}) {
   const eigen = figureHeightOfJson(figureJson, 0)
   const div = eigen ? `<div id="${id}" class="plot" style="height:${eigen}px">` : `<div id="${id}" class="plot plot-auto">`
-  const boven = titelWeg ? TOP_ZONDER_TITEL : topMarginOfJson(figureJson, 48)
+  const boven = titelWeg ? TOP_ZONDER_TITEL : 48
   return `<div class="card">${div}</div></div>
     <script>(function(){${DARK_FIGURE_JS}
 ${NARROW_FIGURE_JS}
@@ -194,11 +194,13 @@ export function buildReportHtml(spec, { instelling = '' } = {}) {
 
   const visualisaties = (s.visualisaties || []).map((v, i) => {
     const kop = v.titel || `Visualisatie ${i + 1}`
-    const figuur = zonderDubbeleTitel(v.figure_json, kop)
+    // De afrondingsnoot als tekstregel onder de grafiek, vóór de bronregel (#651).
+    const { figureJson, noot } = scheidNootJson(v.figure_json)
+    const figuur = zonderDubbeleTitel(figureJson, kop)
     return `<div class="vis">
        <h3 class="vis-title">${escapeHtml(kop)}</h3>
-       ${figuur.noot ? `<p class="vis-noot">${escapeHtml(figuur.noot)}</p>` : ''}
        ${plotlyHtml(figuur.figureJson, `rp${i}`, figuur)}
+       ${noot ? `<p class="vis-noot">${escapeHtml(noot)}</p>` : ''}
        ${bronregelHtml(v.bron)}
        ${v.toelichting ? `<p class="vis-note">${escapeHtml(v.toelichting)}</p>` : ''}
      </div>`
@@ -262,7 +264,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
   .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
   .plot-auto{height:360px}
-  .vis-noot{margin:-6px 0 10px;color:#6B7280;font-size:.78rem;line-height:1.45}
+  .vis-noot{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.45}
   .vis-bron{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.5}
   .vis-bron a{color:#2563EB;text-decoration:underline}
   .vis-note{margin-top:14px;color:#4B5563;line-height:1.6;font-size:.92rem;background:#F9FAFB;border-left:3px solid #DBEAFE;padding:12px 16px;border-radius:0 6px 6px 0}
@@ -276,7 +278,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .bronnen li{color:#4B5563;font-size:.88rem;line-height:1.6;margin:.3em 0}
   .manifest{color:#9CA3AF;font-size:.7rem;line-height:1.6;padding:12px 32px 0;border-top:1px solid #F3F4F6;margin-top:8px}
   .footer{text-align:center;color:#9CA3AF;font-size:.72rem;padding:20px 32px 32px;border-top:1px solid #F3F4F6;margin-top:8px}
-  .header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}
+  .header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-noot,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}
   @media(max-width:640px){.scope-row{grid-template-columns:1fr}.body{padding:16px}.header{padding:20px 16px}.header-top{flex-direction:column}.def{flex-direction:column;gap:4px}.card{padding:16px}.vis .card{padding:0;margin:0 -16px}.plot-auto{height:420px}.header-label,.section-label,.manifest,.footer{font-size:.75rem}}
   ${PRINT_CSS}
   ${darkCss('html.dark')}

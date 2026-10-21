@@ -346,41 +346,48 @@ def _afgeronde_cbs_key() -> str:
     return key
 
 
-def test_afrondingsnoot_krijgt_ruimte_boven_de_grafiek():
-    """CH-34: de noot onder de titel lag over het plotvlak en het bovenste waardelabel."""
-    _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
+def test_afrondingsnoot_staat_in_een_eigen_veld_niet_in_de_figuur():
+    """#651: als ondertitel van 11 px was de noot niet te selecteren, op een telefoon te klein, en kostte
+    hij 40 px bovenmarge (CH-34). De weergave zet hem als tekstregel onder de grafiek."""
+    key = _afgeronde_cbs_key()
+    _, fig = create_plot(data_key=key, chart_type="bar", x="Perioden", y="N", title="HO")
     assert fig is not None
-    assert "10-tallen" in fig.layout.title.subtitle.text
-    assert fig.layout.margin.t >= 100
+    assert fig.layout.title.subtitle.text is None
+    assert fig.layout.margin.t == 60
     titel = fig.layout.title
-    assert (titel.yref, titel.yanchor) == ("container", "top")
-    assert titel.y < 1
+    assert (titel.yref, titel.yanchor, titel.y) == (None, None, None)
+    assert fig.layout.meta["afrondingsnoot"] == cbs_afronding.van_key(key)
+    assert "<br>" not in fig.layout.meta["afrondingsnoot"]
 
 
-def test_afrondingsnoot_breekt_af_zodat_ze_in_de_grafiek_past():
+def test_afrondingsnoot_reist_mee_in_het_figuurjson():
     _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
     assert fig is not None
-    regels = fig.layout.title.subtitle.text.split("<br>")
-    assert len(regels) > 1
-    assert all(len(r) <= 60 for r in regels)
-    assert " ".join(regels) == cbs_afronding.van_key("cbs:85423NED:0")
+    tekst = pio.to_json(fig)
+    assert json.loads(tekst)["layout"]["meta"]["afrondingsnoot"] == cbs_afronding.van_key("cbs:85423NED:0")
+    assert '"subtitle"' not in tekst
 
 
-def test_titel_en_afgebroken_noot_passen_in_de_bovenmarge():
-    """Het plotvlak begint onder de laatste regel van de noot, ook als de noot langer afbreekt.
-
-    Plotly zet een regel op ongeveer 1,3 keer de lettergrootte; de titel staat (1 - y) van de
-    figuurhoogte onder de bovenrand. 450 px is Plotly's standaardhoogte, hoger dan chat en export."""
-    _, fig = create_plot(data_key=_afgeronde_cbs_key(), chart_type="bar", x="Perioden", y="N", title="HO")
-    assert fig is not None
-    titel = fig.layout.title
-    regels = titel.subtitle.text.split("<br>")
-    hoogte = (1 - titel.y) * 450 + 1.3 * titel.font.size + 1.3 * titel.subtitle.font.size * len(regels)
-    assert hoogte < fig.layout.margin.t
-
-
-def test_zonder_noot_blijft_de_bovenmarge_gewoon():
+def test_zonder_afronding_geen_noot_en_de_gewone_bovenmarge():
     _, fig = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
     assert fig is not None
     assert fig.layout.margin.t == 60
     assert fig.layout.title.subtitle.text is None
+    assert "afrondingsnoot" not in fig.layout.meta
+    store.put("cbs:x:0", pd.DataFrame(_ROWS), store.KeyMeta(bron="cbs", dataset="x"))
+    _, zonder = create_plot(data_key="cbs:x:0", chart_type="bar", x="jaar", y="waarde", title="T")
+    assert zonder is not None
+    assert "afrondingsnoot" not in zonder.layout.meta
+
+
+def test_liggende_staven_met_noot_zijn_even_hoog_als_zonder():
+    """De noot kost de figuur geen hoogte meer: hij staat eronder, als tekst."""
+    rijen = [{"INSTELLING": f"Hogeschool nummer {i}", "N": 10 * i} for i in range(12)]
+    store.put("cbs:85423NED:1", pd.DataFrame(rijen), store.KeyMeta(bron="cbs", dataset="85423NED", afronding=10))
+    store.put("cbs:85423NED:2", pd.DataFrame(rijen), store.KeyMeta(bron="cbs", dataset="85423NED"))
+    _, met = create_plot(data_key="cbs:85423NED:1", chart_type="bar", x="INSTELLING", y="N", title="HO")
+    _, zonder = create_plot(data_key="cbs:85423NED:2", chart_type="bar", x="INSTELLING", y="N", title="HO")
+    assert met is not None and zonder is not None
+    assert met.data[0].orientation == "h"
+    assert "afrondingsnoot" in met.layout.meta
+    assert met.layout.height == zonder.layout.height

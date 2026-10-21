@@ -51,6 +51,7 @@ import {
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { figuurBeschrijving } from '../figuurBeschrijving'
+import { scheidNoot } from '../figuurNoot'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
 import AnswerBlocks from '../components/AnswerBlocks'
@@ -1211,7 +1212,8 @@ const WIDTH_STEP = 16
 const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const dark = useDarkMode()
   const [wrapRef, width] = useElementWidth(WIDTH_STEP)
-  const figure = useMemo(() => parseFigure(figureJson), [figureJson])
+  // De afrondingsnoot als tekstregel onder de grafiek, niet in de figuur (#651).
+  const { figure, noot } = useMemo(() => scheidNoot(parseFigure(figureJson)), [figureJson])
   const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
@@ -1255,6 +1257,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
           style={{ width: '100%', height: isMap ? KAART_HOOGTE : figureHeight(figure.layout, 340) }}
         />
       </div>
+      {noot && <p className="figuur-noot">{noot}</p>}
     </div>
   )
 })

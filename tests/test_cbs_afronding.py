@@ -147,7 +147,8 @@ def test_kpi_zonder_afronding_heeft_geen_noot():
 def test_grafiek_en_export_noemen_de_afronding():
     _, fig = create_plot(chart_type="line", x="Perioden", y="TotaalIngeschrevenen_1", title="HO", data_key=_KEY)
     assert fig is not None
-    assert "10-tallen" in fig.layout.title.subtitle.text
+    assert fig.layout.meta["afrondingsnoot"] == cbs_afronding.noot(10)
+    assert fig.layout.title.subtitle.text is None
     assert f"afronding: {cbs_afronding.noot(10)}" in fig.layout.meta["herkomst"]
 
 

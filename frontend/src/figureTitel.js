@@ -9,7 +9,7 @@ const ENTITEIT = /&#?\w+;/g
 
 const REGELAFSTAND = 1.3 // em tussen twee basislijnen, zoals Plotly (LINE_SPACING)
 const KAPHOOGTE = 0.7 // em van de bovenkant van een hoofdletter tot de basislijn (Plotly: CAP_SHIFT)
-const TITELGROOTTE = 16 // de lettergrootte die tools/plot.py (_titel) de titel geeft
+const TITELGROOTTE = 16 // de lettergrootte die create_plot (tools/plot.py) de titel geeft
 // Gemiddelde tekenbreedte in em. Gemeten in Chromium (DejaVu Sans): 0,51-0,55 voor gewone titels,
 // 0,63 voor hoofdletters; de ruimte die figureLayout rechts van de titel vrijhoudt vangt dat op.
 const TEKENBREEDTE = 0.56
@@ -88,8 +88,8 @@ function plaatsVoorRegels(title, bovenmarge, grootte) {
 }
 
 // De titel afgebroken voor een regel van `breedte` pixels, en hoeveel pixels de bovenmarge daarvoor
-// hoger moet (Plotly zet een noot onder de titel, dus die schuift mee). Zonder bekende breedte, zonder
-// tekst of op één regel: de titel precies zoals hij was. Het titelobject zelf blijft ongemoeid.
+// hoger moet. Zonder bekende breedte, zonder tekst of op één regel: de titel precies zoals hij was. Het
+// titelobject zelf blijft ongemoeid.
 export function titelOpBreedte(title, breedte, bovenmarge) {
   const tekst = typeof title === 'string' ? title : title?.text
   if (!(breedte > 0) || typeof tekst !== 'string') return { title, extra: 0 }

@@ -58,12 +58,10 @@ describe('chart colours in a dark dashboard (#574)', () => {
     return { data: seen.plots[0][1], layout: seen.plots[0][2] }
   }
 
-  it('gives title, subtitle, grid, axis lines and legend dark colours', () => {
+  it('gives title, grid, axis lines and legend dark colours', () => {
     const { layout: l } = plotted(figure, true)
     expect(l.title.font.color).not.toBe('#222')
-    expect(l.title.subtitle.font.color).not.toBe('#666')
     expect(contrast(l.title.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(l.title.subtitle.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
     for (const ax of [l.xaxis, l.yaxis, l.xaxis2]) {
       expect(ax.gridcolor).not.toBe('#f0f0f0')
       expect(ax.linecolor).not.toBe('#ccc')
@@ -76,8 +74,8 @@ describe('chart colours in a dark dashboard (#574)', () => {
 
   it('keeps the other nested layout keys and its own background, margin and font', () => {
     const { layout: l } = plotted(figure, true)
-    expect(l.title).toMatchObject({ text: 'Instroom per jaar', yref: 'container', y: 0.98, font: { size: 16 } })
-    expect(l.title.subtitle).toMatchObject({ text: 'Afgerond op 10-tallen', font: { size: 11 } })
+    expect(l.title).toMatchObject({ text: 'Instroom per jaar', font: { size: 16 } })
+    expect(l.meta).toEqual(layout.meta)
     expect(l.xaxis).toMatchObject({ title: { text: 'Jaar' }, type: 'category', showgrid: true, zeroline: false })
     expect(l.yaxis).toMatchObject({ title: { text: 'Aantal' }, tickformat: ',d' })
     expect(l.xaxis2).toMatchObject({ anchor: 'y', showgrid: true })
@@ -146,6 +144,42 @@ describe('chart colours in a dark dashboard (#574)', () => {
     expect(seen.dialogs).toEqual([])
     expect(seen.errors).toEqual([])
     expect(seen.plots[0][2].title).toBe(TITLE)
+  })
+})
+
+// #651: the rounding note is a text line under the chart, also in the download; a stored dashboard still has it as a
+// subtitle in the figure.
+describe('rounding note under a dashboard chart (#651)', () => {
+  const NOOT = 'De aantallen zijn door CBS afgerond op 10-tallen: een som, verschil of percentage daarvan is niet exact.'
+  const nieuw = { data: [], layout: { title: { text: 'Instroom' }, meta: { afrondingsnoot: NOOT } } }
+  const oud = { data: [], layout: { title: { text: 'Uitval', subtitle: { text: 'De aantallen zijn door CBS afgerond op 10-tallen: een<br>som, verschil of percentage daarvan is niet exact.' } } } }
+  const kaart = (html, i) => html.slice(html.indexOf(`<div class="card"><div id="fig${i}"`), html.indexOf(`Plotly.newPlot('fig${i}'`))
+
+  it('puts the note as a line in the chart card, after the chart, for a new and a stored figure', () => {
+    const html = buildDashboardHtml({ figures_json: [JSON.stringify(nieuw), oud, JSON.stringify(FIGUUR)] }, { title: 'D' })
+    for (const i of [0, 1]) {
+      expect(kaart(html, i)).toMatch(new RegExp(`<div id="fig${i}" style="height:320px"></div><p class="figuur-noot">${NOOT}</p></div>\\s*<script>`))
+    }
+    expect(kaart(html, 2)).not.toContain('figuur-noot')
+    const seen = runPage(html)
+    expect(seen.errors).toEqual([])
+    expect(seen.plots.map(p => p[2].title)).toEqual([{ text: 'Instroom' }, { text: 'Uitval' }, { text: 'Instroom' }])
+    expect(html).not.toContain('subtitle')
+  })
+
+  it('escapes the note', () => {
+    const html = buildDashboardHtml({ figures_json: [{ data: [], layout: { meta: { afrondingsnoot: '<img src=x onerror=alert(1)> & "c"' } } }] }, { title: 'D' })
+    expect(html).toContain('<p class="figuur-noot">&lt;img src=x onerror=alert(1)&gt; &amp; &quot;c&quot;</p>')
+    expect(runPage(html, { dark: true }).images).toBe(0)
+  })
+
+  it('gives the note at least .8rem and a light colour in the dark media query', () => {
+    const html = buildDashboardHtml({ figures_json: [nieuw] }, { title: 'D' })
+    expect(html).toMatch(/\.figuur-noot\{[^}]*font-size:\.8rem/)
+    const donker = html.slice(html.indexOf('@media(prefers-color-scheme:dark)'))
+    const kleur = donker.match(/([^{}]*\.figuur-noot[^{}]*)\{color:(#[0-9A-F]{6})\}/i)
+    expect(kleur).not.toBeNull()
+    expect(contrast(kleur[2], '#1F2937')).toBeGreaterThanOrEqual(4.5)
   })
 })
 

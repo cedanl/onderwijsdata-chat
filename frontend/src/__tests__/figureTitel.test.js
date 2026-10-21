@@ -115,15 +115,13 @@ describe('titelOpBreedte', () => {
     expect(title.pad.t).toBeCloseTo(16)
   })
 
-  it('houdt plaats en ondertitel van een titel met noot, met de kaphoogte terug als pad', () => {
-    const metNoot = {
-      ...titel, yref: 'container', yanchor: 'top', y: 0.98,
-      subtitle: { text: 'De aantallen zijn afgerond<br>op 10-tallen.', font: { size: 11, color: '#666' } },
-    }
-    const { title } = titelOpBreedte(metNoot, 268, 100)
-    expect(title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98, subtitle: metNoot.subtitle })
+  // Zo plaatste create_plot vóór #651 een titel met noot; een bewaarde grafiek heeft die plaats nog.
+  it('houdt de plaats van een titel die aan de bovenkant hangt, met de kaphoogte terug als pad', () => {
+    const bovenaan = { ...titel, yref: 'container', yanchor: 'top', y: 0.98 }
+    const { title } = titelOpBreedte(bovenaan, 268, 32)
+    expect(title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98 })
     expect(title.pad.t).toBeCloseTo(0.7 * 16)
-    expect(titelOpBreedte({ ...metNoot, pad: { t: 2, l: 4 } }, 268, 100).title.pad).toEqual({ t: 2 + 0.7 * 16, l: 4 })
+    expect(titelOpBreedte({ ...bovenaan, pad: { t: 2, l: 4 } }, 268, 32).title.pad).toEqual({ t: 2 + 0.7 * 16, l: 4 })
   })
 
   it('laat een titel met een eigen plaats die niet aan de bovenkant hangt op zijn plaats', () => {

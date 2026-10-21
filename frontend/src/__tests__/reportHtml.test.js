@@ -35,11 +35,13 @@ const phoneCss = html => {
 }
 
 describe('buildReportHtml', () => {
-  // CH-34: the export's own 48 px top margin put a title note over the plot.
-  it('keeps the top margin of a chart with a note under its title', () => {
+  // CH-34 kept the server's 100 px for a title note; the note is now a line under the chart (#651), so every chart
+  // gets the export's own 48 px, a stored one with its note as subtitle too.
+  it('gives every chart the top margin of the export, also a stored one with a note under its title', () => {
     const layout = { title: { text: 'HO', subtitle: { text: 'Afgerond op 10-tallen' } }, margin: { t: 100 } }
     const spec = { ...fullSpec, visualisaties: [{ titel: 'Studenten in het ho', figure_json: JSON.stringify({ data: [], layout }) }] }
-    expect(buildReportHtml(spec)).toContain('margin:{t:100,')
+    expect(buildReportHtml(spec)).toContain('margin:{t:48,')
+    expect(buildReportHtml(spec)).not.toContain('margin:{t:100,')
     expect(buildReportHtml(fullSpec)).toContain('margin:{t:48,')
   })
 
@@ -205,12 +207,10 @@ describe('chart colours in a dark report (#567)', () => {
     return { data: seen.plots[0][1], layout: seen.plots[0][2] }
   }
 
-  it('gives title, subtitle, grid, axis lines and legend dark colours', () => {
+  it('gives title, grid, axis lines and legend dark colours', () => {
     const { layout: l } = plotted(figure, true)
     expect(l.title.font.color).not.toBe('#222')
-    expect(l.title.subtitle.font.color).not.toBe('#666')
     expect(contrast(l.title.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(l.title.subtitle.font.color, CARD)).toBeGreaterThanOrEqual(4.5)
     for (const ax of [l.xaxis, l.yaxis]) {
       expect(ax.gridcolor).not.toBe('#f0f0f0')
       expect(ax.linecolor).not.toBe('#ccc')
@@ -225,13 +225,13 @@ describe('chart colours in a dark report (#567)', () => {
 
   it('keeps the other nested layout keys in dark mode', () => {
     const { layout: l } = plotted(figure, true)
-    expect(l.title).toMatchObject({ text: 'Instroom per jaar', yref: 'container', y: 0.98, font: { size: 16 } })
-    expect(l.title.subtitle).toMatchObject({ text: 'Afgerond op 10-tallen', font: { size: 11 } })
+    expect(l.title).toMatchObject({ text: 'Instroom per jaar', font: { size: 16 } })
+    expect(l.meta).toEqual(layout.meta)
     expect(l.xaxis).toMatchObject({ title: { text: 'Jaar' }, type: 'category', showgrid: true, zeroline: false })
     expect(l.yaxis).toMatchObject({ title: { text: 'Aantal' }, tickformat: ',d' })
     expect(l.legend).toMatchObject({ orientation: 'h', borderwidth: 1 })
     expect(l.plot_bgcolor).toBe(PLOT_BG)
-    expect(l.margin.t).toBe(100)
+    expect(l.margin.t).toBe(48)
   })
 
   it('turns a black series light in dark mode and leaves the other colours', () => {
@@ -255,7 +255,7 @@ describe('chart colours in a dark report (#567)', () => {
       ...layout,
       paper_bgcolor: 'transparent',
       plot_bgcolor: '#F9FAFB',
-      margin: { t: 100, r: 24, b: 48, l: 60 },
+      margin: { t: 48, r: 24, b: 48, l: 60 },
       font: { color: '#374151', family: 'system-ui,sans-serif', size: 12 },
     })
   })
@@ -433,12 +433,14 @@ describe('grafiek op een telefoon (#571)', () => {
     expect(l.margin.t).toBe(48 + 17)
   })
 
-  // A title with a note hangs from the top edge (CH-34); wrapped, its first line stuck out above the chart.
+  // The title of a stored chart with a note hangs from the top edge (CH-34); wrapped, its first line stuck out above
+  // the chart. The note itself is a line under the chart now (#651).
   it('houdt een afgebroken titel met noot binnen de figuur', () => {
     const metNoot = { ...lijn, layout: { ...lijn.layout, title: { ...lijn.layout.title, yref: 'container', yanchor: 'top', y: 0.98, subtitle: { text: 'Afgerond op 10-tallen', font: { size: 11, color: '#666' } } }, margin: { t: 100 } } }
     const { layout: l } = plotted(metNoot, 390)
-    expect(l.title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98, pad: { t: 10 }, subtitle: { text: 'Afgerond op 10-tallen' } })
-    expect(l.margin.t).toBe(100 + 17)
+    expect(l.title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98, pad: { t: 10 } })
+    expect(l.title).not.toHaveProperty('subtitle')
+    expect(l.margin.t).toBe(48 + 17)
     const kort = { ...metNoot, layout: { ...metNoot.layout, title: { ...metNoot.layout.title, text: 'Kort' } } }
     expect(plotted(kort, 390).layout.title).not.toHaveProperty('pad')
   })
@@ -484,7 +486,7 @@ describe('grafiek op een telefoon (#571)', () => {
     const html = buildReportHtml(fullSpec)
     expect(phoneCss(html)).toContain('.header-top{flex-direction:column}')
     expect(phoneCss(html)).toContain('.header-label,.section-label,.manifest,.footer{font-size:.75rem}')
-    expect(html).toContain('.header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}')
+    expect(html).toContain('.header h1,.vraag-text,.scope-col li,.def-desc,.vis-note,.vis-noot,.vis-bron,.prose,.bronnen li,.manifest{overflow-wrap:anywhere}')
   })
 })
 
@@ -544,11 +546,13 @@ describe('rapportgrafiek op een telefoon, restpunten (#579)', () => {
     return { data: seen.plots[0][1], layout: seen.plots[0][2] }
   }
   const vis = html => html.slice(html.indexOf('<div class="vis">'), html.indexOf('<div class="card"><div id="rp0"'))
+  const onderGrafiek = html => html.slice(html.indexOf('</script>', html.indexOf('<div id="rp0"')), html.indexOf('<p class="vis-bron">'))
 
   describe('punt 1: de titel één keer', () => {
-    it('laat een figuurtitel die gelijk is aan de kop weg en zet de noot als tekst onder de kop', () => {
+    it('laat een figuurtitel die gelijk is aan de kop weg en zet de noot als tekst onder de grafiek', () => {
       const html = rapport("Studenten mbo 3 handel 2019/'20-2025/'26", metTitel("Studenten mbo 3 handel 2019/'20–2025/'26", { subtitle: { text: noot } }))
-      expect(vis(html)).toMatch(/<h3 class="vis-title">[^<]*<\/h3>\s*<p class="vis-noot">De aantallen zijn door CBS afgerond op 10-tallen: een som, verschil of percentage daarvan is niet exact\.<\/p>/)
+      expect(vis(html)).toMatch(/<h3 class="vis-title">[^<]*<\/h3>\s*$/)
+      expect(onderGrafiek(html)).toMatch(/^<\/script>\s*<p class="vis-noot">De aantallen zijn door CBS afgerond op 10-tallen: een som, verschil of percentage daarvan is niet exact\.<\/p>\s*$/)
       for (const width of [390, 1024]) {
         const { layout: l } = getekend(html, width)
         expect(l).not.toHaveProperty('title')
@@ -562,13 +566,13 @@ describe('rapportgrafiek op een telefoon, restpunten (#579)', () => {
       expect(html).not.toContain('class="vis-noot"')
     })
 
-    it('laat een figuurtitel die meer zegt dan de kop staan, met zijn noot', () => {
+    it('laat een figuurtitel die meer zegt dan de kop staan, met de noot als tekst onder de grafiek', () => {
       const html = rapport('Ingeschrevenen per hogeschool 2024/25', metTitel('Ingeschrevenen per hogeschool 2024/25 (afgerond op tientallen)', { subtitle: { text: noot } }))
       const { layout: l } = getekend(html, 1024)
       expect(l.title.text).toBe('Ingeschrevenen per hogeschool 2024/25 (afgerond op tientallen)')
-      expect(l.title.subtitle.text).toBe(noot)
-      expect(l.margin.t).toBe(100)
-      expect(html).not.toContain('class="vis-noot"')
+      expect(l.title).not.toHaveProperty('subtitle')
+      expect(l.margin.t).toBe(48)
+      expect(onderGrafiek(html)).toContain('<p class="vis-noot">De aantallen zijn door CBS afgerond op 10-tallen: een som,')
     })
 
     it('houdt de figuurtitel als het model geen kop gaf (de kop is dan "Visualisatie 1")', () => {
@@ -579,7 +583,7 @@ describe('rapportgrafiek op een telefoon, restpunten (#579)', () => {
 
     it('zet de noot als platte tekst neer', () => {
       const html = rapport('HO', metTitel('HO', { subtitle: { text: 'a<img src=x onerror=alert(1)>b "c"' } }))
-      expect(vis(html)).toContain('<p class="vis-noot">ab &quot;c&quot;</p>')
+      expect(onderGrafiek(html)).toContain('<p class="vis-noot">ab &quot;c&quot;</p>')
       expect(html).not.toContain('<img src=x')
     })
 
@@ -651,5 +655,71 @@ describe('rapportgrafiek op een telefoon, restpunten (#579)', () => {
     expect(data[0].textfont).toEqual({ size: 11 })
     expect(data[1]).not.toHaveProperty('textfont')
     expect(getekend(rapport('G', fig), 1024).data).toEqual(fig.data)
+  })
+})
+
+// #651: de afrondingsnoot stond als ondertitel van 11 px in de figuur, of (titel gelijk aan de kop) als tekst boven de
+// grafiek. Nu altijd als tekstregel onder de grafiek, vóór de bronregel; de figuur zelf draagt hem niet meer.
+describe('afrondingsnoot onder een rapportgrafiek (#651)', () => {
+  const NOOT = 'De aantallen zijn door CBS afgerond op 10-tallen: een som, verschil of percentage daarvan is niet exact.'
+  const BRON = { bron: 'CBS', dataset: '85423NED', tekst: 'CBS · Hoger onderwijs; ingeschrevenen (85423NED)' }
+  const figuur = (titel, meta = { afrondingsnoot: NOOT }) => ({
+    data: [{ type: 'bar', x: ['2023', '2024'], y: [1, 2] }],
+    layout: { title: { text: titel, font: { size: 16, color: '#222' } }, margin: { t: 60 }, meta },
+  })
+  const rapport = (kop, fig) => buildReportHtml({ ...fullSpec, visualisaties: [{ titel: kop, figure_json: JSON.stringify(fig), bron: BRON }] })
+  const naGrafiek = new RegExp(`</script>\\s*<p class="vis-noot">${NOOT}</p>\\s*<p class="vis-bron">`)
+
+  it('zet de noot na de grafiek en vóór de bronregel als de figuurtitel gelijk is aan de kop', () => {
+    const html = rapport('Ingeschrevenen HO', figuur('Ingeschrevenen HO'))
+    expect(html).toMatch(naGrafiek)
+    expect(html.match(/class="vis-noot"/g)).toHaveLength(1)
+    const seen = runPage(html)
+    expect(seen.errors).toEqual([])
+    expect(seen.plots[0][2]).not.toHaveProperty('title')
+  })
+
+  it('doet hetzelfde als de figuurtitel blijft staan', () => {
+    const html = rapport('Ingeschrevenen', figuur('Ingeschrevenen HO per jaar'))
+    expect(html).toMatch(naGrafiek)
+    expect(runPage(html).plots[0][2].title).toEqual({ text: 'Ingeschrevenen HO per jaar', font: { size: 16, color: '#222' } })
+  })
+
+  it('haalt de ondertitel uit een bewaarde figuur, ook in het ingebedde figuurJSON', () => {
+    const oud = figuur('Ingeschrevenen HO per jaar', undefined)
+    oud.layout.title.subtitle = { text: 'De aantallen zijn door CBS afgerond op 10-tallen: een<br>som, verschil of percentage daarvan is niet exact.', font: { size: 11, color: '#666' } }
+    oud.layout.margin = { t: 100 }
+    for (const kop of ['Ingeschrevenen HO per jaar', 'Ingeschrevenen']) {
+      const html = rapport(kop, oud)
+      expect(html).toMatch(naGrafiek)
+      expect(html).not.toContain('subtitle')
+      for (const dark of [false, true]) {
+        const seen = runPage(html, { dark })
+        expect(seen.plots[0][2].title?.subtitle).toBeUndefined()
+        expect(seen.plots[0][2].margin.t).toBeLessThanOrEqual(48)
+      }
+    }
+  })
+
+  it('zet de noot geëscaped neer', () => {
+    const html = rapport('HO', figuur('HO', { afrondingsnoot: '<img src=x onerror=alert(1)> & "c"' }))
+    expect(html).toContain('<p class="vis-noot">&lt;img src=x onerror=alert(1)&gt; &amp; &quot;c&quot;</p>')
+    expect(runPage(html).images).toBe(0)
+  })
+
+  it('heeft zonder afronding geen noot', () => {
+    expect(rapport('HO', figuur('HO', { data: [] }))).not.toContain('class="vis-noot"')
+    expect(buildReportHtml(fullSpec)).not.toContain('class="vis-noot"')
+  })
+
+  it('geeft de noot de maat van de bronregel, afbreken in lange woorden en een donkere regel', () => {
+    const html = rapport('HO', figuur('HO'))
+    const regel = sel => html.match(new RegExp(`\\n\\s*\\${sel}\\{([^}]*)\\}`))?.[1] ?? ''
+    expect(regel('.vis-noot')).toContain('font-size:.8rem')
+    expect(regel('.vis-bron')).toContain('font-size:.8rem')
+    expect(regel('.vis-noot')).toContain('margin-top:8px')
+    expect(html).toMatch(/[,\n ]\.vis-noot,[^{]*\{overflow-wrap:anywhere\}/)
+    expect(html).toMatch(/html\.dark \.vis-noot\{color:#9CA3AF\}/)
+    expect(html).toMatch(/html:not\(\.light\) \.vis-noot\{color:#9CA3AF\}/)
   })
 })

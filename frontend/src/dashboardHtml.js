@@ -6,6 +6,7 @@ import { plotlyScript } from './plotlyBron'
 import { scriptSafe } from './scriptSafe'
 import { figureHeightOfJson } from './figureLayout'
 import { DARK_FIGURE_JS } from './darkFigure'
+import { scheidNootJson } from './figuurNoot'
 
 const asJson = fig => (typeof fig === 'string' ? fig : JSON.stringify(fig))
 
@@ -21,10 +22,13 @@ function kpiHtml(kpi) {
 
 // In a dark browser the figure goes through the report's dark conversion (#567, #574): the
 // light colours of tools/plot.py sit in nested keys that the shallow layout merge keeps.
+// The rounding note is a text line under the chart, not part of the figure (#651).
 function figureHtml(fig, i) {
-  return `<div class="card"><div id="fig${i}" style="height:${figureHeightOfJson(asJson(fig), 320)}px"></div></div>
+  const { figureJson, noot } = scheidNootJson(asJson(fig))
+  const nootHtml = noot ? `<p class="figuur-noot">${escapeHtml(noot)}</p>` : ''
+  return `<div class="card"><div id="fig${i}" style="height:${figureHeightOfJson(figureJson, 320)}px"></div>${nootHtml}</div>
 <script>(function(){${DARK_FIGURE_JS}
-var f=${scriptSafe(asJson(fig))},d=window.matchMedia('(prefers-color-scheme:dark)').matches,D=f.data||[],L=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{t:48,r:24,b:48,l:60},font:{color:d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('fig${i}',d?_dd(D):D,d?_dl(L):L,{responsive:true,displayModeBar:false});})()</script>`
+var f=${scriptSafe(figureJson)},d=window.matchMedia('(prefers-color-scheme:dark)').matches,D=f.data||[],L=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:'transparent',margin:{t:48,r:24,b:48,l:60},font:{color:d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}});Plotly.newPlot('fig${i}',d?_dd(D):D,d?_dl(L):L,{responsive:true,displayModeBar:false});})()</script>`
 }
 
 // narrativeHtml: the narrative already rendered as safe HTML (see workbookHtml).
@@ -49,6 +53,7 @@ export function buildDashboardHtml(spec, { title, instelling = '', narrativeHtml
   .kpi-value{font-size:1.6rem;font-weight:800;margin:6px 0}
   .kpi-trend{font-size:.8rem;color:#15803D}.kpi-trend.down{color:#B91C1C}
   .sub{color:#6B7280}
+  .figuur-noot{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.45;overflow-wrap:anywhere}
   .prose{line-height:1.7}.prose p,.prose ul,.prose table{margin:.5em 0}.prose li{margin-left:1.4em}
   .prose table{border-collapse:collapse}.prose th,.prose td{border:1px solid #E5E7EB;padding:4px 10px;text-align:left}
   .label{font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
@@ -58,7 +63,7 @@ export function buildDashboardHtml(spec, { title, instelling = '', narrativeHtml
   @media(prefers-color-scheme:dark){
     body{color:#F9FAFB;background:#111827}
     header,.card{background:#1F2937}header{border-bottom-color:#374151}
-    .kpi-label,.sub,.label,.bronnen{color:#9CA3AF}
+    .kpi-label,.sub,.label,.bronnen,.figuur-noot{color:#9CA3AF}
     .prose th,.prose td{border-color:#374151}
   }
 </style>

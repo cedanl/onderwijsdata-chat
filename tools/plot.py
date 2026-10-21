@@ -2,7 +2,6 @@ import json as _json
 import logging
 import math
 import re
-import textwrap
 import urllib.request
 
 import plotly.express as px
@@ -43,10 +42,6 @@ _LAYOUT_BASE = {
     "margin": _MARGE,
     "legend": {"bgcolor": "rgba(255,255,255,0.8)", "bordercolor": "#ddd", "borderwidth": 1, **_LEGENDA_ONDER},
 }
-
-# Titel plus de afgebroken noot eronder (drie regels), boven het plotvlak en de waardelabels (CH-34).
-_MARGE_MET_NOOT = 100
-_NOOT_BREEDTE = 55  # tekens: past ook in een smalle grafiek op mobiel
 
 # "Mbo-studenten perprovincie": "per" vast aan een niveauwoord in de titel van het model (#640). Alleen
 # deze woorden, aan het begin van een woord, zodat "perspectief" en "personeel" blijven staan.
@@ -244,9 +239,9 @@ def is_liggend(rows: list[dict], chart_type: str, x: str, data_key: str | None =
     return _liggend(chart_type, x, leesbaar([row.get(x) for row in rows], labels))
 
 
-def _hoogte(categorieen: int, staven_per_rij: int, marge_boven: int) -> int:
+def _hoogte(categorieen: int, staven_per_rij: int) -> int:
     rij = _RIJ_RUIMTE + _STAAF_HOOGTE * staven_per_rij
-    hoogte = categorieen * rij + _HOOGTE_RAND + marge_boven - _MARGE["t"]
+    hoogte = categorieen * rij + _HOOGTE_RAND
     return max(_MIN_HOOGTE, min(_MAX_HOOGTE, hoogte))
 
 
@@ -319,28 +314,6 @@ def _add_trace(
         fig.add_trace(go.Histogram(x=x_vals, marker_color=color, opacity=0.7 if name else 0.85, **common))
     elif chart_type == "pie" and not name:
         fig.add_trace(go.Pie(labels=x_vals, values=y_vals, marker={"colors": _PALETTE}, hole=0.3))
-
-
-def _ondertitel(data_key: str | None) -> dict:
-    """Dezelfde afrondingsnoot als in tekst, KPI en export, onder de titel (#352).
-
-    Afgebroken in regels: Plotly breekt een ondertitel niet zelf af, en de noot is breder dan de grafiek.
-    """
-    noot = cbs_afronding.van_key(data_key) if data_key else None
-    if not noot:
-        return {}
-    regels = textwrap.wrap(noot, _NOOT_BREEDTE, break_on_hyphens=False)
-    return {"subtitle": {"text": "<br>".join(regels), "font": {"size": 11, "color": "#666"}}}
-
-
-def _titel(title: str, data_key: str | None) -> tuple[dict, dict]:
-    """De titel en de marge erboven. Met een noot staan beide bovenaan de figuur, in een hogere
-    marge: anders liggen ze over het plotvlak en het bovenste waardelabel (CH-34)."""
-    titel = {"text": title, "font": {"size": 16, "color": "#222"}}
-    if not (ondertitel := _ondertitel(data_key)):
-        return titel, _MARGE
-    plaats = {"yref": "container", "yanchor": "top", "y": 0.98}
-    return {**titel, **plaats, **ondertitel}, {**_MARGE, "t": _MARGE_MET_NOOT}
 
 
 def _astitel(tekst: str) -> dict:
@@ -434,11 +407,9 @@ def create_plot(
         kleur = _accentkleuren(x_ruw, x_vals, highlight) if uitlichten else _PALETTE[0]
         _add_trace(fig, chart_type, x_vals, y_vals, kleur, text=_value_labels(y_vals, show_labels), liggend=liggend)
 
-    titel, marge = _titel(title, data_key)
     layout = {
         **_LAYOUT_BASE,
-        "title": titel,
-        "margin": marge,
+        "title": {"text": title, "font": {"size": 16, "color": "#222"}},
         "legend_title": kolomlabel(groepkolom, titels) if groepkolom else "",
         "separators": _NL_SEPARATORS,
     }
@@ -464,7 +435,7 @@ def create_plot(
                 # Elke staaf draagt zijn getal: een waardeas ernaast herhaalt dat, en kantelt op een telefoon.
                 waarde_as.update(showticklabels=False, showgrid=False)
             layout["xaxis"] = waarde_as
-            layout["height"] = _hoogte(len(set(x_vals)), max(len(fig.data), 1), marge["t"])
+            layout["height"] = _hoogte(len(set(x_vals)), max(len(fig.data), 1))
         else:
             layout["xaxis"] = categorie_as
             layout["yaxis"] = waarde_as
@@ -483,6 +454,7 @@ def create_plot(
             "color_by": color_by,
             "herkomst": store.herkomst(data_key) if data_key else [],
             **_dataset_meta(data_key),
+            **_noot_meta(data_key),
         }
     )
 
@@ -494,6 +466,14 @@ def _dataset_meta(data_key: str | None) -> dict:
     """Het dataset-id voor de CSV-naam van de grafiek, <titel>_<dataset-id>.csv (#533); leeg zonder bron."""
     known = store.meta(data_key) if data_key else None
     return {"dataset": known.dataset} if known else {}
+
+
+def _noot_meta(data_key: str | None) -> dict:
+    """Dezelfde afrondingsnoot als in tekst, KPI en export (#352), als platte tekst naast de figuur: de weergave
+    zet hem als tekstregel onder de grafiek (#651). Als ondertitel in de figuur was hij niet te selecteren,
+    op een telefoon te klein, en kostte hij bovenmarge (CH-34). Leeg zonder afronding."""
+    noot = cbs_afronding.van_key(data_key) if data_key else None
+    return {"afrondingsnoot": noot} if noot else {}
 
 
 def _axis_name(fig: go.Figure, axis: str, default: str) -> str:
