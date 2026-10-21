@@ -71,6 +71,29 @@ describe('SettingsModal functie (#591)', () => {
   })
 })
 
+describe('SettingsModal: Verwijder al mijn gegevens (#646)', () => {
+  const deleteButton = () => container.querySelector('.mijn-gegevens-verwijderen-btn')
+
+  it('offers it with a callback, under the export and before Uitloggen', async () => {
+    await render({ onLogout: vi.fn(), onGegevensVerwijderd: vi.fn() })
+    expect(deleteButton().textContent).toBe('Verwijder al mijn gegevens')
+    const section = deleteButton().parentElement
+    expect(section.previousElementSibling.querySelector('.mijn-gegevens-export-btn')).not.toBeNull()
+    expect(section.nextElementSibling).toBe(logoutButton())
+  })
+
+  it('does not offer it without a callback (login off: everyone is the shared guest)', async () => {
+    await render({ onLogout: null, onGegevensVerwijderd: null })
+    expect(deleteButton()).toBeNull()
+    expect(container.textContent).not.toContain('Verwijder al mijn gegevens')
+  })
+
+  it('does not offer it during onboarding', async () => {
+    await render({ onLogout: vi.fn(), onGegevensVerwijderd: vi.fn(), isOnboarding: true })
+    expect(deleteButton()).toBeNull()
+  })
+})
+
 describe('SettingsModal tap targets', () => {
   it('carries the class the 44px touch rule for its buttons hangs on (#490)', async () => {
     await render({})

@@ -85,18 +85,25 @@ describe('PrivacyPage', () => {
     for (const bullet of [...appBullets, ...docsBullets]) expect(bullet).not.toMatch(/verwerkingsverantwoordelijke/i)
   })
 
-  // #645: exporting everything is possible, deleting everything is still open (#485), in the app and the docs.
-  it('says that all data can be exported, and that deleting it all is still open', async () => {
+  // #645 and #646: exporting and deleting everything are both possible, in the app and the docs; what stays after the
+  // delete is named, and a retention term follows at production (#485).
+  it('says that all data can be exported and deleted, what the delete leaves, and that a retention term follows', async () => {
     await render(createElement(PrivacyPage))
-    const app = [sectionText('Wat je zelf kunt doen'), sectionText('Open punten')]
-    const docs = [oneLine(docsSection('Wat je zelf kunt doen')), oneLine(docsSection('Open punten'))]
-    for (const [zelf, open] of [app, docs]) {
+    const app = [sectionText('Wat je zelf kunt doen'), sectionText('Open punten'), sectionText('Wat de server bewaart')]
+    const docs = [oneLine(docsSection('Wat je zelf kunt doen')), oneLine(docsSection('Open punten')), oneLine(docsSection('Wat de server bewaart'))]
+    for (const [zelf, open, server] of [app, docs]) {
       expect(zelf).toContain('Exporteer al mijn gegevens')
       expect(zelf).toContain('/api/mijn-gegevens/export')
-      expect(zelf).toContain('verwijderen kan nog niet')
-      expect(zelf).not.toMatch(/exporteren kan nog niet/)
-      expect(open).toContain('alles verwijderen')
-      expect(open).not.toMatch(/exporteren/)
+      expect(zelf).toContain('Verwijder al mijn gegevens')
+      expect(zelf).not.toMatch(/kan nog niet/)
+      // What goes and what stays.
+      for (const tekst of ['kopie in deze browser', 'serverlogs', 'back-ups van de beheerder', 'tot zij verloopt', 'losgekoppeld', 'ander apparaat', 'gedeeld account']) {
+        expect(zelf).toContain(tekst)
+      }
+      expect(open).not.toMatch(/alles verwijderen|exporteren/)
+      expect(open).toContain('Bewaartermijn')
+      expect(open).toContain('bij productie')
+      expect(server).toMatch(/al (je|zijn) gegevens verwijdert/)
     }
   })
 })
