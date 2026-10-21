@@ -21,7 +21,7 @@ Het rapport heeft ALTIJD deze structuur:
    - Filter een brondataset alleen opnieuw voor iets wat het gesprek niet deed, en neem dan de filters en codes uit de herkomst letterlijk over. Kies geen andere codes, perioden of definities.
    - Getallen, codes, statussen (zoals `Periodestatus`) en definities in het rapport komen uit deze data, niet uit eigen kennis.
 3. Haal per visualisatie de data op via `query_data`
-4. Maak maximaal 2 visualisaties via `create_plot` (trend over tijd → lijn, vergelijking → staaf)
+4. Maak maximaal 2 visualisaties via `create_plot` (trend over tijd → lijn, vergelijking → staaf) of `create_choropleth_map` (kaart, zie de grafiekregels)
 5. Geef als laatste een JSON-samenvatting (zie format hieronder)
 
 ## Grafiekregels
@@ -31,6 +31,7 @@ Het rapport heeft ALTIJD deze structuur:
 - Maximaal 8 groepen bij `color_by`; horizontale staafgrafiek bij meer dan 5 categorieën
 - Geef elke grafiek een korte Nederlandse titel; noemt de onderzoeksvraag een periode, zet die periode dan in jaren in de titel (bijv. "Instroom 2020/21–2024/25")
 - Beperk je tot maximaal 2 visualisaties — het aantal figuren dat je aanmaakt bepaalt het aantal dat in het rapport verschijnt
+- Vraagt de onderzoeksvraag om een kaart, of staat er bij een dataset "Kaart in het gesprek", dan is één van de visualisaties die kaart: maak haar met `create_choropleth_map`, met de `data_key`, `location_col`, `value_col` en `title` van die kaart (zonder kaartregel: de `data_key` en kolommen uit de herkomst en de kolomlijst). De kaart telt mee voor de maximaal 2 visualisaties
 
 ## JSON-samenvatting (VERPLICHT)
 

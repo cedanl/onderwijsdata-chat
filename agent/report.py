@@ -45,11 +45,14 @@ from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
-from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
+from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP, TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
-_REPORT_TOOLS = [s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)]
+# Met de kaarttool: het rapport van een kaartvraag toont de kaart (#648).
+_REPORT_TOOLS = [
+    s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP)
+]
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +134,32 @@ def _describe_herkomst(herkomst: list[dict]) -> str:
     return " → ".join(_describe_call(call) for call in herkomst)
 
 
+def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
+    """Per data_key de laatste kaart die het gesprek ervan tekende (#648).
+
+    De herkomst noemt alleen de aanroepen die de data maakten, niet de kaart erop; zonder deze regel weet het
+    rapport niet dat er een kaart was, of met welke kolommen. Een onleesbare aanroep slaat het over.
+    """
+    kaarten: dict[str, dict] = {}
+    for turn in session.get("turns") or []:
+        for call in turn.get("tool_calls") or []:
+            if call.get("name") != TOOL_CREATE_CHOROPLETH_MAP:
+                continue
+            try:
+                args = json.loads(call.get("arguments") or "")
+            except (TypeError, ValueError):
+                continue
+            if isinstance(args, dict) and isinstance(args.get("data_key"), str):
+                kaarten[args["data_key"]] = args
+    return kaarten
+
+
+def _describe_kaart(kaart: dict | None) -> str:
+    if not kaart:
+        return ""
+    return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': kaart})}"
+
+
 def _build_system_prompt(context: dict) -> str:
     """Build the system prompt with injected dataset context."""
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
@@ -140,7 +169,8 @@ def _build_system_prompt(context: dict) -> str:
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
         dataset_blocks.append(
             f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n"
-            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}\n- Kolommen:\n{cols}"
+            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(ds.get('kaart'))}\n"
+            f"- Kolommen:\n{cols}"
         )
 
     datasets_section = "\n\n".join(dataset_blocks) if dataset_blocks else "Geen datasets geladen."
@@ -196,6 +226,10 @@ async def generate(
 
     if not context["datasets"]:
         raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
+    kaarten = _kaarten_in_gesprek(session)
+    for ds in context["datasets"]:
+        if kaart := kaarten.get(ds.get("data_key")):
+            ds["kaart"] = kaart
 
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
