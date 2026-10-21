@@ -157,6 +157,40 @@ describe('het zoekpalet', () => {
     expect(opties().map(o => o.querySelector('.zoek-optie-titel').textContent)).toEqual(['Instroom in het hbo'])
   })
 
+  // #654: dezelfde vraag twee keer gesteld geeft twee gesprekken met één titel; de tijd houdt ze uit elkaar.
+  it('toont bij gesprekken met dezelfde titel de tijd erbij', async () => {
+    const d = new Date()
+    const gisteren = (h, min) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, h, min).getTime() / 1000
+    api.fetchConversations.mockResolvedValue([
+      { id: 'c7', title: 'Instroom hbo', timestamp: gisteren(14, 32) },
+      { id: 'c8', title: 'Instroom hbo', timestamp: gisteren(14, 42) },
+    ])
+    api.fetchWorkbooks.mockResolvedValue([])
+    await openPalet()
+    await typ('instroom')
+    expect(opties().map(o => o.querySelector('.zoek-optie-titel').textContent)).toEqual(['Instroom hbo', 'Instroom hbo'])
+    const [eerste, tweede] = opties().map(o => o.querySelector('.zoek-optie-datum').textContent)
+    expect(eerste).not.toBe(tweede)
+    expect(eerste).toMatch(/\d{2}:\d{2}$/)
+    expect(tweede).toMatch(/\d{2}:\d{2}$/)
+    expect([eerste, tweede]).toEqual(['Gisteren 14:32', 'Gisteren 14:42'])
+  })
+
+  it('toont bij een rapport ook datum en tijd, en niets zonder geldige datum', async () => {
+    const d = new Date()
+    api.fetchConversations.mockResolvedValue([])
+    api.fetchWorkbooks.mockResolvedValue([
+      { id: 'r5', title: 'Instroom 2024', type: 'report', html_content: '<p/>',
+        created_at: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 5).toISOString() },
+      { id: 'r6', title: 'Instroom zonder datum', type: 'report', html_content: '<p/>', created_at: 'onbekend' },
+    ])
+    await openPalet()
+    await typ('instroom')
+    const rij = titel => opties().find(o => o.querySelector('.zoek-optie-titel').textContent === titel)
+    expect(rij('Instroom 2024').querySelector('.zoek-optie-datum').textContent).toBe('Vandaag 09:05')
+    expect(rij('Instroom zonder datum').querySelector('.zoek-optie-datum')).toBeNull()
+  })
+
   it('sluit met Escape', async () => {
     const h = await openPalet()
     await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })

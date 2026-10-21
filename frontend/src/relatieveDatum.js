@@ -14,3 +14,10 @@ export function relatieveDatum(ts, nu = Date.now()) {
   if (days === 1) return 'Gisteren'
   return new Date(tsMs).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
+
+// The same with the local time, "Vandaag 14:32": two conversations of one day with the same title are then told
+// apart (#654).
+export function relatieveDatumTijd(ts, nu = Date.now()) {
+  const tijd = new Date(naarMs(ts)).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+  return `${relatieveDatum(ts, nu)} ${tijd}`
+}

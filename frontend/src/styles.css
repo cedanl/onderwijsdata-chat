@@ -1968,7 +1968,8 @@ html.dark .suggested-btn:hover {
 .zoek-optie { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 18px; margin: 0 6px; border-radius: var(--radius-sm); cursor: pointer; font-size: .9rem; color: var(--gray-800); }
 .zoek-optie.actief { background: var(--blue-50); box-shadow: inset 3px 0 0 var(--blue-600); }
 .zoek-optie-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zoek-optie-datum { flex-shrink: 0; font-size: .75rem; color: var(--muted-text); }
+/* Date and time (#654); equal-width digits keep the times in the column under each other. */
+.zoek-optie-datum { flex-shrink: 0; font-size: .75rem; color: var(--muted-text); font-variant-numeric: tabular-nums; }
 .zoek-voet { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; border-top: 1px solid var(--gray-100); font-size: .78rem; color: var(--muted-text); }
 .zoek-status { margin: 0; }
 .zoek-hints { display: flex; gap: 12px; white-space: nowrap; }
