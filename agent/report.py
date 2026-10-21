@@ -154,22 +154,32 @@ def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
     return kaarten
 
 
+# Wat de kaartregel van een gesprekskaart noemt. Niet de titel (tekst van het model) en niet `data` (rijen buiten
+# de store): het rapport zou ze herhalen, en via zijn toolresultaat telden ze dan toch als bewijs (#211).
+_KAARTREGEL_ARGUMENTEN = ("data_key", "location_col", "value_col", "level")
+
+
 def _describe_kaart(kaart: dict | None) -> str:
     if not kaart:
         return ""
-    return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': kaart})}"
+    argumenten = {k: kaart[k] for k in _KAARTREGEL_ARGUMENTEN if k in kaart}
+    return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': argumenten})}"
 
 
 def _build_system_prompt(context: dict) -> str:
-    """Build the system prompt with injected dataset context."""
+    """Build the system prompt with injected dataset context.
+
+    `context["kaarten"]` (per data_key) is for the prompt only: `generate` keeps it out of the evidence.
+    """
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
 
+    kaarten = context.get("kaarten") or {}
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
         dataset_blocks.append(
             f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n"
-            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(ds.get('kaart'))}\n"
+            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(kaarten.get(ds['data_key']))}\n"
             f"- Kolommen:\n{cols}"
         )
 
@@ -226,16 +236,15 @@ async def generate(
 
     if not context["datasets"]:
         raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
-    kaarten = _kaarten_in_gesprek(session)
-    for ds in context["datasets"]:
-        if kaart := kaarten.get(ds.get("data_key")):
-            ds["kaart"] = kaart
 
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
     context["berekeningen"] = bewijs
+    # De kaarten uit het gesprek zijn modelaanroepen, geen data: alleen in de prompt, niet in `context`, dat de
+    # controles als bewijs lezen (#211, #648).
+    prompt_context = {**context, "kaarten": _kaarten_in_gesprek(session)}
     messages: list[dict] = [
-        {"role": "system", "content": _build_system_prompt(context)},
+        {"role": "system", "content": _build_system_prompt(prompt_context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
     figures: list[str] = []

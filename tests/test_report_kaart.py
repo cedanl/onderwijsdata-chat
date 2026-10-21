@@ -46,18 +46,25 @@ def _geojson():
         yield
 
 
+def _kaartbeurt(kaart: dict) -> dict:
+    """Een beurt zoals de chatroute haar bewaart: de aanroep van het model en de figuur die ze tekende."""
+    _, figuur = create_choropleth_map(
+        data_key=kaart["data_key"],
+        location_col=kaart["location_col"],
+        value_col=kaart["value_col"],
+        title=kaart.get("title", ""),
+    )
+    return {
+        "question": "Maak een kaart met het aantal mbo-studenten per provincie",
+        "tool_calls": [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": json.dumps(kaart)}],
+        "figures": [figuur] if figuur is not None else [],
+    }
+
+
 @pytest.fixture
 def sessie():
     store.put(_KEY, pd.DataFrame({"PROVINCIE": ["Utrecht", "Drenthe", "Groningen"], "AANTAL": [41230, 12040, 20500]}))
-    return {
-        "data_keys": [_KEY],
-        "turns": [
-            {
-                "question": "Maak een kaart met het aantal mbo-studenten per provincie",
-                "tool_calls": [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": json.dumps(_KAART)}],
-            }
-        ],
-    }
+    return {"data_keys": [_KEY], "turns": [_kaartbeurt(_KAART)]}
 
 
 def test_de_rapportrun_kan_een_kaart_maken():
@@ -70,8 +77,7 @@ def test_de_rapportprompt_noemt_de_kaarttool():
     assert TOOL_CREATE_CHOROPLETH_MAP in prompt
 
 
-def test_de_kaart_uit_het_gesprek_staat_bij_haar_dataset_in_de_prompt(sessie, monkeypatch):
-    """Het model ziet welke kaart het gesprek van deze data tekende, met kolommen en titel."""
+def _systeemprompt(sessie, monkeypatch) -> str:
     prompts: list[str] = []
 
     async def loop(messages, **_):
@@ -80,24 +86,31 @@ def test_de_kaart_uit_het_gesprek_staat_bij_haar_dataset_in_de_prompt(sessie, mo
 
     monkeypatch.setattr(report, "tool_loop", loop)
     asyncio.run(report.generate(sessie, _stil))
+    return prompts[0]
 
-    blok = prompts[0].split(f"### {_KEY}", 1)[1]
+
+def test_de_kaart_uit_het_gesprek_staat_bij_haar_dataset_in_de_prompt(sessie, monkeypatch):
+    """Het model ziet welke kaart het gesprek van deze data tekende, met haar kolommen."""
+    blok = _systeemprompt(sessie, monkeypatch).split(f"### {_KEY}", 1)[1]
     assert f"Kaart in het gesprek: {TOOL_CREATE_CHOROPLETH_MAP} " in blok
     assert '"location_col": "PROVINCIE"' in blok and '"value_col": "AANTAL"' in blok
 
 
+def test_de_kaartregel_noemt_alleen_data_key_kolommen_en_niveau(sessie, monkeypatch):
+    """De titel is tekst van het model en `data` zijn rijen buiten de store (#211): geen van beide hoort in de
+    prompt, anders herhaalt het rapport ze en komen ze via het toolresultaat toch als bewijs terug."""
+    kaart = {**_KAART, "level": "provincie", "title": "Samen 98765 studenten", "data": [{"PROVINCIE": "X"}]}
+    sessie["turns"][0]["tool_calls"] = [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": json.dumps(kaart)}]
+
+    regel = _systeemprompt(sessie, monkeypatch).split("Kaart in het gesprek: ", 1)[1].split("\n", 1)[0]
+
+    argumenten = json.loads(regel.removeprefix(f"{TOOL_CREATE_CHOROPLETH_MAP} "))
+    assert argumenten == {"data_key": _KEY, "location_col": "PROVINCIE", "value_col": "AANTAL", "level": "provincie"}
+
+
 def test_zonder_kaart_in_het_gesprek_geen_kaartregel(sessie, monkeypatch):
     sessie["turns"] = [{"question": "Hoeveel?", "tool_calls": [{"name": "query_data", "arguments": "{}"}]}]
-    prompts: list[str] = []
-
-    async def loop(messages, **_):
-        prompts.append(messages[0]["content"])
-        return LoopResult(text=_ANTWOORD)
-
-    monkeypatch.setattr(report, "tool_loop", loop)
-    asyncio.run(report.generate(sessie, _stil))
-
-    blok = prompts[0].split(f"### {_KEY}", 1)[1]
+    blok = _systeemprompt(sessie, monkeypatch).split(f"### {_KEY}", 1)[1]
     assert "Kaart in het gesprek" not in blok
 
 
@@ -105,6 +118,35 @@ def test_zonder_kaart_in_het_gesprek_geen_kaartregel(sessie, monkeypatch):
 def test_een_onleesbare_kaartaanroep_wordt_overgeslagen(sessie, argumenten):
     sessie["turns"][0]["tool_calls"] = [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": argumenten}]
     assert report._kaarten_in_gesprek(sessie) == {}
+
+
+def test_een_getal_uit_de_kaarttitel_van_het_gesprek_is_geen_bewijs(sessie, monkeypatch):
+    """Een titel is tekst van het model, geen data (#211): een getal dat alleen daarin staat, blijft een harde
+    fout in de controle van het rapport (#175, #515), en het rapport wordt geweigerd."""
+    titel = "Mbo-studenten per provincie, samen 98765"
+    sessie["turns"] = [_kaartbeurt({**_KAART, "title": titel})]
+    antwoord = json.loads(_ANTWOORD) | {"conclusie": "Samen zijn er 98765 mbo-studenten in deze provincies."}
+    prompts: list[str] = []
+    harde_problemen: list[list[str]] = []
+
+    async def loop(messages, *, on_tool_result, check, **_):
+        prompts.append(messages[0]["content"])
+        # Het rapport tekent de kaart met de kolommen uit de kaartregel en een eigen titel.
+        melding, figuur = create_choropleth_map(
+            data_key=_KEY, location_col="PROVINCIE", value_col="AANTAL", title="Mbo-studenten per provincie"
+        )
+        call = ToolCall(id="k", name=TOOL_CREATE_CHOROPLETH_MAP, arguments="{}", args={"data_key": _KEY})
+        await on_tool_result(call, melding, figuur)
+        problemen = check(json.dumps(antwoord), [melding])
+        harde_problemen.append(harde(problemen))
+        return LoopResult(text=json.dumps(antwoord), problems=problemen)
+
+    monkeypatch.setattr(report, "tool_loop", loop)
+    with pytest.raises(report.RapportGeweigerd):
+        asyncio.run(report.generate(sessie, _stil))
+
+    assert "98765" not in prompts[0]
+    assert any("98.765" in str(p) for p in harde_problemen[0])
 
 
 def test_de_kaart_van_de_rapportrun_komt_als_kaart_in_het_rapport(sessie, monkeypatch):
