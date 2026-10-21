@@ -166,6 +166,12 @@ de laatste tag is 1.8.6.
   telling zonder extranei alleen als de gebruiker daarom vraagt ("zonder extranei", "bol en bbl"), ook eerder in
   het gesprek. De Uitgangspunt-regel, het recept en de code-snippet tonen de telling die geladen is. De tabellen en
   de regel staan in `docs/domeinregels.md`.
+- Waar de code de telling zonder extranei verving door de ruimste, levert `get_cbs_data` hem gegrond mee (#658): in
+  dezelfde aanroep haalt hij beide totalen op (één CBS-aanroep met twee codes) en bewaart de smallere onder een eigen
+  `data_key` in `alternatieve_telling` (label, code, preview, herlaadbaar). De standaardtelling blijft het antwoord;
+  het model noemt de andere telling alleen als de gebruiker erom vraagt, en dan met een citatie. Past de aanroep
+  met twee totalen niet in een pagina of weigert de bron hem, dan valt `get_cbs_data` terug op de standaard alleen,
+  zonder alternatief.
 - De kaart (`create_choropleth_map`) tekent nu ook met namen: DUO-kolommen als `PROVINCIE INSTELLING` en
   `GEMEENTE INSTELLING` en elke groepering op een naamkolom, in elke spelling (`'S-GRAVENHAGE`, `HENGELO` voor
   Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding

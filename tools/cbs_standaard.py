@@ -29,12 +29,18 @@ class Standaard:
     smaller_label: str
     uitsluiting: re.Pattern[str]  # hoe een gebruiker de smallere telling kiest
 
+    def alternatief(self, selectie: dict, *, beide: bool) -> dict:
+        """De selectie met de smallere telling (#658): alleen die, of samen met de standaard in één aanroep."""
+        dimensies = selectie["dimensies"]
+        codes = [self.code, self.smaller] if beide else self.smaller
+        return {**selectie, "dimensies": {**dimensies, self.dimensie: codes}}
+
     def uitleg(self) -> str:
         """Voor het model, als de code zijn keuze verving: waarom de telling anders is dan gevraagd."""
         return (
             f"{self.dimensie} staat op {self.code} '{self.label}' in plaats van {self.smaller} "
             f"'{self.smaller_label}': de vaste standaard van deze tabel (#653). De telling zonder extranei alleen "
-            "als de gebruiker daarom vraagt."
+            "als de gebruiker daarom vraagt; die staat dan klaar in `alternatieve_telling`."
         )
 
 
