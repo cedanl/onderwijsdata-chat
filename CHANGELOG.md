@@ -425,8 +425,16 @@ de laatste tag is 1.8.6.
 - "Exporteer al mijn gegevens" in de instellingen (#645, AVG art. 15): één JSON-bestand met alles wat de server
   onder je account bewaart (gesprekken, rapporten en dashboards met hun HTML, feedback, feedback per antwoord en
   datarecepten), via `GET /api/mijn-gegevens/export`. De export wordt rij voor rij geschreven, zodat ook tachtig
-  rapporten van een paar MB niet tegelijk in het geheugen staan. `/privacy` en `docs/privacy.md` noemen hem; alles in
-  één keer verwijderen blijft een open punt (#485).
+  rapporten van een paar MB niet tegelijk in het geheugen staan. `/privacy` en `docs/privacy.md` noemen hem.
+- "Verwijder al mijn gegevens" in de instellingen (#646, AVG art. 17): na het typen van "verwijder" verdwijnt in één
+  transactie alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, alle feedback, ook de
+  feedback per antwoord met zijn kopie van vraag en antwoord, en datarecepten), via `DELETE /api/mijn-gegevens`. Het
+  token wordt ingetrokken, de browser wist zijn kopie en het profiel, en de loginpagina zegt "Al je gegevens zijn
+  verwijderd. Je bent uitgelogd." De dialoog biedt eerst de export aan en waarschuwt dat een gedeeld account ook het
+  werk van de anderen kwijtraakt. Alleen met een eigen login: zonder login (iedereen is `gast`) ontbreekt de knop en
+  antwoordt de server 404. Blijven staan: serverlogs en back-ups van de beheerder, feedback die al van een verwijderd
+  gesprek was losgekoppeld (#476) en de kopie op andere apparaten tot je daar uitlogt. `/privacy`, `docs/privacy.md`
+  en `SECURITY.md` (S16) beschrijven het; een bewaartermijn volgt bij productie (#485).
 - Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
   namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
   dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).

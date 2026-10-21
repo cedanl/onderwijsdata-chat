@@ -59,6 +59,7 @@ export default function PrivacyInhoud() {
           duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder je het gesprek, dan wordt
           die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
           de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
+          Al je feedback blijft staan tot je al je gegevens verwijdert.
         </li>
         <li>
           <strong>Datarecepten</strong>: hoe een tabel is opgehaald (dataset en selectie), zodat een export na een
@@ -72,7 +73,7 @@ export default function PrivacyInhoud() {
         </li>
         <li>
           <strong>Bewaartermijn</strong>: er is nog geen automatische opschoning; gegevens blijven staan tot je ze
-          zelf verwijdert.
+          zelf verwijdert, één voor één of alles tegelijk. Een bewaartermijn volgt bij productie.
         </li>
       </ul>
 
@@ -81,7 +82,7 @@ export default function PrivacyInhoud() {
         <li>
           In de opslag van je browser staan een kopie van je gesprekken en het lopende gesprek, je werkboeken, de
           dashboardchat, je profiel (instelling, functie, weergave) en je sessie. Uitloggen wist dit allemaal uit
-          deze browser.
+          deze browser, en al je gegevens verwijderen ook.
         </li>
         <li>
           Welke gesprekken en rapporten je hier het laatst opende en welke rapporten je als favoriet markeerde, staan
@@ -116,7 +117,14 @@ export default function PrivacyInhoud() {
           verwijderd gesprek, die niet meer aan je account hangt.
         </li>
         <li>
-          Al je gegevens in één keer verwijderen kan nog niet; dat staat bij de open punten.
+          Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;,
+          nadat je het woord &ldquo;verwijder&rdquo; hebt getypt. Dat kan niet ongedaan worden gemaakt; exporteer
+          eerst. Dan verdwijnt alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, al
+          je feedback, ook de kopie bij de feedback per antwoord, en de datarecepten), en ook de kopie in deze
+          browser; je wordt uitgelogd. Wat blijft: de serverlogs (zonder gesprekstekst) en de back-ups van de
+          beheerder, een hash van je sessie tot zij verloopt, feedback die al eerder van een verwijderd gesprek is
+          losgekoppeld en niet meer aan je account hangt, en de kopie op een ander apparaat tot je daar uitlogt.
+          Gebruik je een gedeeld account, dan verdwijnt ook het werk van de anderen. Zonder eigen login kan het niet.
         </li>
       </ul>
 
@@ -135,7 +143,7 @@ export default function PrivacyInhoud() {
       </p>
       <ul>
         <li>Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt bewaard of gebruikt voor training.</li>
-        <li>Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen.</li>
+        <li>Bewaartermijn per gegevenssoort en automatische opschoning; die volgen bij productie.</li>
         <li>Of er een DPIA nodig is.</li>
       </ul>
     </div>
