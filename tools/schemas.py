@@ -80,7 +80,13 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": TOOL_SEARCH_CATALOG,
-            "description": "Zoek in de CBS-, RIO- en DUO-catalogus naar relevante datasets. De catalogus bevat CBS statistieken, RIO registers én DUO open data (prognoses, diplomering, instroom, etc.).",
+            "description": (
+                "Zoek in de CBS-, RIO- en DUO-catalogus naar relevante datasets. De catalogus bevat CBS statistieken, "
+                "RIO registers én DUO open data (prognoses, diplomering, instroom, etc.). Het antwoord is altijd JSON "
+                "met een `status` (candidates, no_match, needs_clarification, out_of_scope, metadata_unknown, "
+                "source_unavailable of tool_error), de `kandidaten` (elk met `dataset_id` en `geraakt`), een `melding` "
+                "en een `vervolgstap`. Lees eerst de status."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -118,7 +124,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "properties": {
                     "dataset_id": {
                         "type": "string",
-                        "description": "Dataset-ID: CBS _cbs_id (bijv. '85423NED'), DUO _ckan_id (bijv. 'instromende-mbo-studenten'), of RIO _rio_resource (bijv. 'onderwijslocaties')",
+                        "description": "Dataset-ID uit `dataset_id` van een kandidaat in search_catalog: CBS (bijv. '85423NED'), DUO (bijv. 'instromende-mbo-studenten') of RIO (bijv. 'onderwijslocaties')",
                     },
                 },
                 "required": ["dataset_id"],

@@ -5,6 +5,7 @@ via dispatch() tenzij een test _execute_tool vervangt.
 """
 
 import asyncio
+import json
 
 import plotly.graph_objects as go
 import pytest
@@ -12,6 +13,11 @@ import pytest
 from agent import loop as loop_module
 from agent.stream import StreamResult
 from core.logging_util import tekst_kenmerk
+
+
+def _envelop(status: str, kandidaten: list[dict]) -> str:
+    """Een search_catalog-uitkomst in de vaste envelope (#358)."""
+    return json.dumps({"status": status, "catalogus": "test", "kandidaten": kandidaten})
 
 
 def _call(name: str, arguments: str = "{}", call_id: str = "t1") -> dict:
@@ -137,7 +143,7 @@ def test_tool_limit_blocks_further_calls(monkeypatch):
         ],
     )
     executed: list[str] = []
-    _fake_tools(monkeypatch, {"search_catalog": '[{"_cbs_id": "85423NED"}]'}, executed)
+    _fake_tools(monkeypatch, {"search_catalog": _envelop("candidates", [{"_cbs_id": "85423NED"}])}, executed)
     messages = [{"role": "user", "content": "vraag"}]
 
     _run(messages, tool_limits={"search_catalog": 1})
@@ -156,7 +162,7 @@ def test_a_search_without_hits_does_not_use_up_the_limit(monkeypatch):
         ],
     )
     executed: list[str] = []
-    _fake_tools(monkeypatch, {"search_catalog": "Geen resultaten gevonden voor 'x'."}, executed)
+    _fake_tools(monkeypatch, {"search_catalog": _envelop("no_match", [])}, executed)
     messages = [{"role": "user", "content": "vraag"}]
 
     _run(messages, tool_limits={"search_catalog": 1})
@@ -466,7 +472,10 @@ def test_caller_hears_about_the_correction_before_it_runs(monkeypatch):
 
 # --- #18: geladen dataset gekoppeld aan de zoekactie ervoor ---
 
-_TREFFERS = '[{"_cbs_id": "85423NED"}, {"_ckan_id": "p01hoinges"}, {"_ckan_id": "p02ho1ejrs"}, {"_ckan_id": "ver-weg"}]'
+_TREFFERS = _envelop(
+    "candidates",
+    [{"_cbs_id": "85423NED"}, {"_ckan_id": "p01hoinges"}, {"_ckan_id": "p02ho1ejrs"}, {"_ckan_id": "ver-weg"}],
+)
 
 
 def _search_then_load(monkeypatch, laad_tool, laad_args):

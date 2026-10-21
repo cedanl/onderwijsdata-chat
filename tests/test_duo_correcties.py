@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 from riodata import duo as _duo
 
+from tests.zoekuitkomst import treffers
 from tools import duo_correcties, duo_meta
 from tools.catalog import _rio_duo, dataset_details, search_catalog
 from tools.duo import column_definitions, get_duo_data
@@ -149,7 +150,7 @@ def test_dataset_details_zegt_dat_de_ho_plaats_geen_herkomst_is():
 
 
 def test_zoeken_naar_woonplaats_ho_meldt_de_vestiging():
-    hits = json.loads(search_catalog("woonplaats studenten hoger onderwijs"))
+    hits = treffers(search_catalog("woonplaats studenten hoger onderwijs"))
     ho = [h for h in hits if h.get("_ckan_id") in _HO]
 
     assert ho, "de ho-bestanden horen nog gevonden te worden, met de melding erbij"

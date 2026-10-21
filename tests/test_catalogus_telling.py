@@ -8,6 +8,7 @@ zonder treffers leidde tot "geen geschikte DUO-bron", terwijl het bestand er was
 import json
 from unittest.mock import patch
 
+from tests.zoekuitkomst import envelop
 from tools import dispatch
 from tools.catalog import _rio_duo, _rio_duo_alles, dataset_counts, dataset_details, search_catalog
 
@@ -42,12 +43,24 @@ def test_dataset_counts_is_een_tool_met_de_telling_per_bron():
 def test_een_zoekopdracht_zonder_treffers_zegt_niet_dat_de_bron_ontbreekt():
     cbs, rio_duo = _catalogus()
     with cbs, rio_duo:
+        result = search_catalog("eindexamencijfers")
+
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "no_match"
+    assert "zegt niet dat" in uitkomst["melding"] or "ontbreekt" in uitkomst["melding"]
+    assert "dataset_details" in uitkomst["vervolgstap"]
+    assert "bestaat niet" not in result
+
+
+def test_een_zoekopdracht_over_vo_is_out_of_scope_en_zegt_niet_dat_de_bron_ontbreekt():
+    cbs, rio_duo = _catalogus()
+    with cbs, rio_duo:
         result = search_catalog("eindexamencijfers vmbo")
 
-    assert "Geen resultaten" in result
-    assert "zegt niet dat" in result
-    assert "dataset_details" in result
-    assert "bestaat niet" not in result
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "out_of_scope"
+    assert "zeg niet dat de bron niet bestaat" in uitkomst["melding"]
+    assert "alleen mbo, hbo en wo" in uitkomst["vervolgstap"]
 
 
 # ── Scopebesluit uit riodata (#375) ───────────────────────────────────────────

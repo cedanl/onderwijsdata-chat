@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from tests.zoekuitkomst import envelop, treffers
 from tools import scopeprofiel
 from tools.catalog import (
     _cbs,
@@ -814,12 +815,11 @@ def test_in_de_echte_catalogus_vallen_precies_de_vijf_vo_contextbronnen_binnen_d
 
 
 def _treffers(resultaat: str) -> list[dict]:
-    """De treffers van search_catalog; een melding (no_match) heeft er geen."""
-    try:
-        lijst = json.loads(resultaat)
-    except ValueError:
+    """De treffers van search_catalog: de kandidaten bij `candidates`; andere uitkomsten hebben er geen."""
+    uitkomst = envelop(resultaat)
+    if uitkomst["status"] != "candidates":
         return []
-    return [t for t in lijst if scopeprofiel.dataset_id(t)]
+    return [t for t in uitkomst["kandidaten"] if scopeprofiel.dataset_id(t)]
 
 
 def _ids(resultaat: str) -> set[str]:
@@ -827,10 +827,13 @@ def _ids(resultaat: str) -> set[str]:
 
 
 def _noemt_vo_context(resultaat: str, vraag: str) -> bool:
-    """Noemt het resultaat een vo-contextbron: als treffer, met het etiket of als suggestie bij no_match.
-    De zoekterm zelf staat in een no_match-melding en telt niet."""
-    tekst = resultaat.replace(vraag, "").lower()
-    return "vo-context" in tekst or any(i.lower() in tekst for i in _HO_CONTEXT_IDS)
+    """Noemt het resultaat een vo-contextbron: als kandidaat met het etiket, of als suggestie bij needs_clarification.
+    Alleen de kandidaten tellen: de zoekterm staat in `gezocht` en `melding` en is geen treffer."""
+    ids = {i.lower() for i in _HO_CONTEXT_IDS}
+    return any(
+        k.get("context") or "vo-context" in k.get("bron", "") or str(k.get("dataset_id", "")).lower() in ids
+        for k in treffers(resultaat)
+    )
 
 
 _ZONDER_HO = [
@@ -973,11 +976,13 @@ def test_een_no_match_suggestie_uit_de_vo_context_draagt_het_etiket():
         (1.0, {"_ckan_id": "voprognoses", "bron": "Prognose leerlingen vo"}),
         (1.5, {**_CBS_MBO, "bron": "Mbo-studenten"}),
     ]
-    melding = _no_match("doorstroom naar hbo", zwak, None)
+    uitkomst = envelop(_no_match("doorstroom naar hbo", ["doorstroom", "hbo"], zwak, None))
 
-    assert "85566NED (Doorstroom vo, vo-context voor ho)" in melding
-    assert "voprognoses (Prognose leerlingen vo, vo-context voor ho)" in melding
-    assert "85353NED (Mbo-studenten)," in melding
+    assert uitkomst["status"] == "needs_clarification"
+    suggesties = {k["dataset_id"]: k["bron"] for k in uitkomst["kandidaten"]}
+    assert suggesties["85566NED"] == "Doorstroom vo, vo-context voor ho"
+    assert suggesties["voprognoses"] == "Prognose leerlingen vo, vo-context voor ho"
+    assert suggesties["85353NED"] == "Mbo-studenten"
 
 
 def test_een_vo_contexttreffer_draagt_het_etiket_en_het_catalogusrecord_niet(catalogus):

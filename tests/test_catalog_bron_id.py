@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from tests.zoekuitkomst import treffers
 from tools import catalog
 from tools.canoniek import zonder_bronprefix
 from tools.catalog import bron_id, dataset_details, scope_blokkade, search_catalog, status
@@ -85,7 +86,7 @@ _RIO_DUO = [
 
 def _hits(query: str, **kw) -> list[dict]:
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=_RIO_DUO):
-        uit = json.loads(search_catalog(query, **kw))
+        uit = treffers(search_catalog(query, **kw))
     return [h for h in uit if "bron" in h]  # zonder de hintregels
 
 

@@ -26,6 +26,7 @@ from core.domeinregels import (
     Sentinelregel,
 )
 from core.sentinels import mask_sentinels
+from tests.zoekuitkomst import treffers
 from tools import duo_meta, kolomlabel
 from tools.catalog import _rio_duo, dataset_details, search_catalog
 from tools.duo import column_definitions, count_cells, sentinel_notes
@@ -357,7 +358,7 @@ def _effect_kolomcorrectie(regel: Kolomcorrectie) -> None:
 def _effect_herkomst(regel: HerkomstIsVestiging) -> None:
     for dataset in regel.datasets:
         assert json.loads(dataset_details(dataset))["niet_geschikt_voor"] == regel.melding
-        treffer = next(h for h in json.loads(search_catalog(dataset)) if h.get("_ckan_id") == dataset)
+        treffer = next(h for h in treffers(search_catalog(dataset)) if h.get("_ckan_id") == dataset)
         assert treffer["niet_geschikt_voor"] == regel.melding
         vragen = _in_scope(dataset).get("voorbeeldvragen") or []
         for vraag in duo_meta.record(dataset).get("voorbeeldvragen") or []:

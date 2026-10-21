@@ -127,11 +127,12 @@ def _limiet(name: str, limit: int) -> str:
 
 
 def _is_hit(content: str) -> bool:
+    """Gaf de zoekactie kandidaten? Alleen een envelope met status `candidates` telt (#358)."""
     try:
-        hits = json.loads(content)
+        envelop = json.loads(content)
     except (TypeError, ValueError):
         return False
-    return isinstance(hits, list) and bool(hits)
+    return isinstance(envelop, dict) and envelop.get("status") == "candidates" and bool(envelop.get("kandidaten"))
 
 
 async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | None = None) -> tuple[str, Any]:

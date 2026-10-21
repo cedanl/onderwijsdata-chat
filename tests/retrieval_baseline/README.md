@@ -70,7 +70,7 @@ Regels:
   (2000 trekkingen met teruglegging, vaste seed 359, percentielmethode). Een cel met minder dan 10
   beantwoordbare vragen heet **indicatief**.
 - **Onbeantwoordbaar geslaagd**: bij een vraag zonder geaccepteerde dataset geeft `search_catalog`
-  geen kandidaat (`no_match`, of de geo-melding zonder treffers). Informatief: de lexicale zoekfunctie
+  geen kandidaat (status `no_match`, `needs_clarification` of `metadata_unknown`). Informatief: de lexicale zoekfunctie
   geeft al treffers zodra één term raakt, dus dit getal zegt hoe vaak het model zelf moet weigeren.
 - **Kritiek geslaagd**: geen `verboden` ID in de top 5.
 - **Vraag als invoer**: recall@5 en MRR met `vraag` in plaats van `zoekinput`. Het verschil is het gat
@@ -78,7 +78,8 @@ Regels:
 - **Latentie**: p50 en p95 van één `search_catalog`-aanroep met de `zoekinput`. Hangt af van de
   machine en staat daarom niet in de baseline.
 
-Een resultaat dat geen JSON-lijst is (`no_match`, de geo-melding) telt als lege ranglijst. Het ID van
+Alleen een envelope met status `candidates` heeft een ranglijst (`kandidaten`); elke andere status
+(`no_match`, `needs_clarification`, de geo-melding) telt als lege ranglijst. Het ID van
 een treffer komt van `scopeprofiel.dataset_id`; de ROA-records (`ais2028`, `ais2030`) verliezen
 `_roa_id` in de zoekuitvoer, en daarvoor valt de meting terug op de unieke `bron`-titel.
 

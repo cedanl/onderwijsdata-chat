@@ -1,3 +1,4 @@
+import difflib
 import hashlib
 import json
 import logging
@@ -389,11 +390,14 @@ def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
     als `vo` mag ze niet aanbieden. Een directe ID laadt ze nog wel (#557).
     """
     gezocht = dataset_id.lower()
-    return [
-        i
-        for e in binnen
-        if not scopeprofiel.is_ho_context(e) and (i := scopeprofiel.dataset_id(e)) and gezocht in i.lower()
-    ]
+    ids = [i for e in binnen if not scopeprofiel.is_ho_context(e) and (i := scopeprofiel.dataset_id(e))]
+    bevat = [i for i in ids if gezocht in i.lower()]
+    if bevat:
+        return bevat
+    # Een tikfout ("85423NEDX", "p01hoingess") bevat het ID niet: de dichtstbijzijnde ID's als herstelopties (#358).
+    dichtbij = difflib.get_close_matches(gezocht, [i.lower() for i in ids], n=3, cutoff=0.8)
+    per_klein = {i.lower(): i for i in ids}
+    return [per_klein[k] for k in dichtbij]
 
 
 def _dataset_id(entry: dict) -> str:
@@ -728,6 +732,7 @@ STATUS_METADATA_UNKNOWN = "metadata_unknown"  # de catalogus weet niet of een da
 STATUS_SOURCE_UNAVAILABLE = "source_unavailable"  # de catalogus kan niet gelezen worden
 STATUS_TOOL_ERROR = "tool_error"  # een onverwachte fout in de zoekfunctie
 
+_VERVOLGSTAP_KANDIDATEN = "Kies de kandidaat die de vraag dekt en bekijk hem met dataset_details voordat je data laadt."
 _VERVOLGSTAP_GEEN_TREFFER = (
     "Zoek hooguit één keer opnieuw, met andere of bredere trefwoorden voor hetzelfde onderwerp (een synoniem, "
     "enkelvoud of meervoud). Laat de sector (mbo, hbo, wo), de periode en de populatie uit de vraag niet los. "
@@ -966,7 +971,7 @@ def _zoek(query: str, source: str, top_n: int, geo_niveau: str | None) -> str:
         STATUS_CANDIDATES,
         kandidaten=kandidaten,
         meldingen=[*meldingen, _weglaatmelding(weggelaten, TOOL_RESULT_MAX_CHARS)] if weggelaten else meldingen,
-        vervolgstap="Kies de kandidaat die de vraag dekt en bekijk hem met dataset_details voordat je data laadt.",
+        vervolgstap=_VERVOLGSTAP_KANDIDATEN,
     )
 
 
@@ -992,7 +997,12 @@ def _binnen_budget(kandidaten: list[dict], meldingen: list[str], budget: int) ->
 
     def tekst() -> str:
         extra = [_weglaatmelding(weggelaten, budget)] if weggelaten else []
-        return _envelop(STATUS_CANDIDATES, kandidaten=kandidaten, meldingen=[*meldingen, *extra], vervolgstap="-")
+        return _envelop(
+            STATUS_CANDIDATES,
+            kandidaten=kandidaten,
+            meldingen=[*meldingen, *extra],
+            vervolgstap=_VERVOLGSTAP_KANDIDATEN,
+        )
 
     while len(kandidaten) > 1 and len(tekst()) > budget:
         kandidaten.pop()
@@ -1336,4 +1346,6 @@ def dataset_details(dataset_id: str) -> str:
         # Bekend maar buiten het profiel: zeg waarom, anders leest het model 'bestaat niet' (#355, #396).
         return json.dumps(scopeprofiel.buiten_scope_voor(buiten), ensure_ascii=False)
     logger.warning("dataset_details miss %s", _id_kenmerk(ruw))
-    return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
+    ids = _vergelijkbare_ids(dataset_id, [*_cbs(), *_rio_duo()])
+    hint = f" Bedoelde je: {ids[:3]}?" if ids else " Zoek de juiste dataset-ID met search_catalog."
+    return f"Dataset '{dataset_id}' niet gevonden in de catalogus.{hint}"

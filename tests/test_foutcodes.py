@@ -224,3 +224,11 @@ def test_het_gesprek_volgt_de_lijst_van_de_sessie_live():
         sessie["data_keys"] = ["duo:b:0"]
         assert store.eigen_keys() == ["duo:b:0"]
     assert store.eigen_keys() == []
+
+
+def test_de_foutstatussen_van_de_zoekenvelop_hebben_een_foutcode():
+    """search_catalog (#358): tool_error en source_unavailable zijn fouten, no_match is een gewone uitkomst."""
+    assert fouten.code('{"status":"tool_error","melding":"x"}') == fouten.Fout.TOOLFOUT
+    assert fouten.code('{"status":"source_unavailable"}') == fouten.Fout.BRON_ONBEREIKBAAR
+    assert fouten.code('{"status":"no_match","kandidaten":[]}') is None
+    assert fouten.code('{"status":"candidates","kandidaten":[]}') is None

@@ -8,11 +8,11 @@ en hoort de vraag naar GOED te verhuizen. Een regressie op GOED faalt met de ran
 Baseline gemeten op 2 oktober 2026.
 """
 
-import json
 import logging
 
 import pytest
 
+from tests.zoekuitkomst import envelop
 from tools.catalog import search_catalog
 from tools.ho_markers import beurtvraag
 
@@ -104,10 +104,11 @@ def _ids(query: str) -> list[str]:
         resultaat = search_catalog(query, top_n=_TOP_N)
     finally:
         logging.disable(logging.NOTSET)
-    # Niets gevonden is platte tekst, geen JSON: een vo-vraag zonder ho-woord vindt niets (#597).
-    if resultaat.startswith("no_match:"):
+    # Zonder status `candidates` is er geen treffer: een vo-vraag zonder ho-woord vindt niets (#597).
+    uitkomst = envelop(resultaat)
+    if uitkomst["status"] != "candidates":
         return []
-    return [h.get("_cbs_id") or h.get("_ckan_id") or h.get("_rio_resource") for h in json.loads(resultaat)]
+    return [h["dataset_id"] for h in uitkomst["kandidaten"]]
 
 
 def _rang(query: str, doel: str) -> int | None:
