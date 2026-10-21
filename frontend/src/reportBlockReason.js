@@ -5,7 +5,8 @@ const REDENEN = {
   reporting: 'Er wordt al een rapport gemaakt',
   open: 'Wacht tot het antwoord klaar is',
   resetting: 'Even wachten: het nieuwe gesprek wordt gestart',
-  offline: 'Geen verbinding: het rapport kan starten zodra de verbinding terug is',
+  // Na de herverbinding start het rapport niet vanzelf: de gebruiker tikt opnieuw.
+  offline: 'Geen verbinding: tik opnieuw zodra de verbinding terug is',
 }
 
 const reden = key => ({ key, text: REDENEN[key] })

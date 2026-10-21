@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { useChat, REPORT_TIMEOUT_MS } from '../hooks/useChat'
+import { useChat, REPORT_TIMEOUT_MS, REASON_TOAST_MS } from '../hooks/useChat'
 import { FakeWebSocket } from './fakeWebSocket'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -124,6 +124,36 @@ describe('generateReport kan niet starten (#648)', () => {
     const { frames } = await vraag(ws)
     expect(frames).toBe(1)
     expect(toastTeksten()).toContain('Er wordt al een rapport gemaakt')
+  })
+
+  it('zegt dat je opnieuw moet tikken: zonder verbinding start het rapport niet vanzelf', async () => {
+    const ws = await mount({ open: false })
+    await vraag(ws)
+    expect(toastTeksten()).toEqual(['Geen verbinding: tik opnieuw zodra de verbinding terug is'])
+  })
+
+  it('snel herhaalde tikken met dezelfde reden geven één melding; na die melding weer een nieuwe', async () => {
+    vi.useFakeTimers()
+    const ws = await mount({ open: false })
+
+    for (let i = 0; i < 3; i++) await vraag(ws)
+    expect(toastTeksten()).toHaveLength(1)
+
+    await act(async () => { vi.advanceTimersByTime(REASON_TOAST_MS) })
+    expect(chat.toasts).toEqual([])
+    await vraag(ws)
+    expect(toastTeksten()).toHaveLength(1)
+    expect(ws.sent).toEqual([])
+  })
+
+  it('een andere reden krijgt wel een eigen melding', async () => {
+    const ws = await mount()
+    await vraag(ws)
+    await vraag(ws)
+    await act(async () => { ws.emit({ type: 'report_ready', spec: { titel: 'R' } }) })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await vraag(ws)
+    expect(toastTeksten()).toEqual(['Er wordt al een rapport gemaakt', 'Wacht tot het antwoord klaar is'])
   })
 
   it('start wel als alles klaar is, zonder melding', async () => {

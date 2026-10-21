@@ -11,6 +11,8 @@ import { reportBlockReason } from '../reportBlockReason'
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
+// How long the toast with the reason a report cannot start stays up (#648).
+export const REASON_TOAST_MS = 4000
 
 // A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
 // An answer that was stopped or cut off by a dropped connection goes along marked `afgebroken`, even
@@ -88,6 +90,8 @@ export function useChat() {
   }, [])
   // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
   const reportAbandonedRef = useRef(false)
+  // Per reason, until when its toast shows: quick taps during an outage stacked identical toasts (#648).
+  const reasonToastUntilRef = useRef({})
   const nextId = () => ++idRef.current
 
   // The report is over, with or without a result: no more waiting, button free again.
@@ -533,7 +537,11 @@ export function useChat() {
       resetting: resettingRef.current,
     })
     if (reden) {
-      addToast(reden.text, 'warning')
+      const nu = Date.now()
+      if ((reasonToastUntilRef.current[reden.key] ?? 0) <= nu) {
+        reasonToastUntilRef.current[reden.key] = nu + REASON_TOAST_MS
+        addToast(reden.text, 'warning', { duur: REASON_TOAST_MS })
+      }
       return false
     }
     reportingRef.current = true
