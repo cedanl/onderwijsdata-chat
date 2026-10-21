@@ -33,6 +33,19 @@ describe('lettergroottes op een telefoon (#613)', () => {
     }
   })
 
+  // #650: de meting op 390 px (licht en donker, touch) na #639 vond nog "Meer laden", de noot in het ⋯-menu, de
+  // homepage (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de nieuw-kaart en de voorbeeldkaarten.
+  it('brengt de restlagen van #650 op 12,5 px', () => {
+    for (const laag of ['.history-more-btn', '.navbar-meer-noot', '.section-label', '.home-disclaimer', '.home-licentie',
+      '.sources-link', '.wb-new-card small', '.wb-builtin-badge', '.wb-builtin-instelling']) {
+      expect(blok, laag).toContain(laag)
+    }
+  })
+
+  it('verbergt de Ctrl K-hint op een aanraakscherm, ook breder dan 768 px (#650)', () => {
+    expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\)\s*{\s*\.navbar-zoek-hint\s*{\s*display:\s*none/)
+  })
+
   it('houdt de variabelen op desktop op de oude maten', () => {
     expect(css).toMatch(/:root\s*{[\s\S]*?--font-klein:\s*\.75rem;[\s\S]*?--font-label:\s*\.8rem;[\s\S]*?--font-code:\s*\.7rem;/)
   })

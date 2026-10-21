@@ -320,6 +320,10 @@ html.dark .login-melding { color: var(--accent-text); }
   min-width: min-content;
 }
 .sources-link:hover { color: var(--gray-600); }
+/* The small lines under the home page footer. They live here, not inline, so the phone rule of #613 can raise
+   them (#650). */
+.home-disclaimer, .home-licentie { margin: 0; font-size: .75rem; line-height: 1.6; color: var(--muted-text); text-align: center; }
+.home-disclaimer { border-top: 1px solid var(--gray-100); padding-top: 12px; }
 
 /* ─── Modal ──────────────────────────────────────────────── */
 .modal-overlay {
@@ -2092,6 +2096,8 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   .navbar-zoek-label, .navbar-zoek-hint { display: none; }
   .navbar-zoek-btn { border: none; padding: 10px; justify-content: center; }
 }
+/* A keyboard shortcut means nothing on a touch screen, also on a tablet wider than 768px (#650). */
+@media (hover: none), (pointer: coarse) { .navbar-zoek-hint { display: none; } }
 .modal--privacy { max-width: 720px; }
 /* Zero height, so it takes no room above the title; sticky, so the close button stays in view
    while the overlay scrolls the long text. */
@@ -2108,7 +2114,8 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
    bewust klein (.wb-card-date, .wb-card-desc). Gemeten op 390 px in de MR. De tweede rij zijn de lagen met een eigen
    font-size buiten de variabelen die de herhaalmeting van #639 nog onder de grens vond: zijbalkkoppen, categoriechips,
    "Nieuw gesprek", de gesprekslijst, de accountnaam in het menu en de kop, zoekveld, lege lijst en feedbackregel
-   van /rapporten. */
+   van /rapporten. De derde rij komt uit de meting van #650: "Meer laden", de noot in het ⋯-menu, de homepage
+   (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de nieuw-kaart en de voorbeeldkaarten. */
 @media (max-width: 600px) {
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
@@ -2118,7 +2125,9 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   .citatie-details summary, .citatie-stap, .citatie-uitleg, .question-buttons-kop, .suggested-btn, .make-rapport-btn,
   .settings-modal label, .settings-modal button, .settings-modal .privacy-link, .settings-feedback, .plaatshouder-tekst,
   .sidebar-section-title, .suggested-category-btn, .new-chat-btn, .model-picker-provider, .navbar-menu-sub,
-  .wb-gallery-sub, .wb-gallery-search-label, .wb-gallery-feedback, .wb-gallery-leeg-tip, .privacy-link, .history-btn-title, .history-btn-date {
+  .wb-gallery-sub, .wb-gallery-search-label, .wb-gallery-feedback, .wb-gallery-leeg-tip, .privacy-link, .history-btn-title, .history-btn-date,
+  .history-more-btn, .navbar-meer-noot, .section-label, .home-disclaimer, .home-licentie, .sources-link, .wb-new-card small,
+  .wb-builtin-badge, .wb-builtin-instelling {
     font-size: 12.5px;
   }
 }

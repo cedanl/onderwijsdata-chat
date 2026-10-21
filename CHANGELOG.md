@@ -490,6 +490,12 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Op een telefoon is de kleinste tekst nu overal minstens 12,5 px (#650, gemeten op 390 px, licht en donker): "Meer
+  laden" in de gesprekkenlijst, de noot in het ⋯-menu, op de homepage het sectielabel, de footerlinks, de disclaimer en
+  de licentieregel, en op /dashboards de tekst op de nieuw-kaart en het label "Voorbeeld" en de instellingsnaam op een
+  voorbeeldkaart (tot 9,75 px). Alleen de beschrijving op een kaart in /rapporten en /dashboards blijft bewust klein
+  (#613). De sneltoets-hint "Ctrl K" naast Zoeken staat niet meer op een aanraakscherm, ook niet op een tablet. De
+  CSV-knop bij een grafiek en de footerlinks hadden op een telefoon al een tikvlak van minstens 44 px.
 - De afrondingsnoot van CBS ("De aantallen zijn door CBS afgerond op 10-tallen: …") staat niet meer als kleine
   ondertitel in de grafiek, maar als gewone tekstregel onder de grafiek (#651): in de chat, in een rapport (viewer,
   HTML-download en PDF, vóór de bronregel) en in een gegenereerd dashboard (weergave en download). Hij is nu te
