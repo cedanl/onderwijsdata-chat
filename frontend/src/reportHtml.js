@@ -78,7 +78,7 @@ const darkCss = voorvoegsel => DARK_RULES.map(([sel, decl]) => `${metVoorvoegsel
 // Daarna (#579): jaartallen op een categorie-as kantelden 90° zodra ze niet naast elkaar pasten; dan staat om de
 // zoveel jaar een label, het laatste jaar altijd (_nx, de breedte geschat op 6,5 px per teken van 11 px). Namen
 // slaan niets over: elke naam hoort bij zijn staaf. Waardelabels krijgen de lettergrootte van de ticks (_nd). En na
-// het tekenen groeit de figuur zo veel als het plotvlak tekortkomt (_ng): titel, noot, ticks en een legenda van zes
+// het tekenen groeit de figuur zo veel als het plotvlak tekortkomt (_ng): titel, ticks en een legenda van zes
 // reeksen lieten 160 px over, en een rij liggende staven met een naam van twee regels liet 1 px tussen de namen.
 // _fullLayout._size is de maat van het plotvlak; Plotly rekent zelf de rijen gelijk, dus elke rij krijgt de ruimte
 // van de langste naam.
