@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, getWorkbookType, isVolledig, loadWorkbook } from '../workbooks'
 import { metThema } from '../reportThema'
+import { zonderScripts } from '../zonderScripts'
 
 function UserWorkbookPreview({ wb }) {
   const answer = wb.messages?.find(m => m.role === 'assistant' && m.content)?.content || ''
@@ -145,6 +146,8 @@ export default function WorkbookPreview({ wb, mode }) {
   const isRapport = !wb.builtin && !wb.messages && getWorkbookType(wb) === 'report'
   const inBeeld = useInBeeld(wrapRef, isRapport)
   const html = useRapportHtml(wb, isRapport && inBeeld)
+  // Once per report and theme, not on every render of a long gallery.
+  const srcDoc = useMemo(() => metThema(zonderScripts(html), mode), [html, mode])
   const toon = inBeeld && html != null
   // A frame scrolled out and back in is a new frame: the shimmer stays until it has loaded again.
   useEffect(() => { if (!toon) setLoaded(false) }, [toon])
@@ -179,9 +182,11 @@ export default function WorkbookPreview({ wb, mode }) {
           style={{ transform: `scale(${scale})`, height: Math.ceil(155 / scale) }}
         >
           {/* No scripts in a thumbnail (#427): each report would load and draw Plotly once per
-              card, and with a hundred cards some stayed blank. The top of a report is static. */}
+              card, and with a hundred cards some stayed blank. The top of a report is static.
+              sandbox="" blocks them; the srcdoc leaves them out too, so the console stays free of
+              "Blocked script execution" lines (#654). */}
           <iframe
-            srcDoc={metThema(html, mode)}
+            srcDoc={srcDoc}
             sandbox=""
             loading="lazy"
             onLoad={() => setLoaded(true)}

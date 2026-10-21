@@ -29,6 +29,21 @@ describe('report thumbnail', () => {
     expect(frame.getAttribute('sandbox')).toBe('')
     expect(frame.getAttribute('loading')).toBe('lazy')
   })
+
+  // #654: sandbox="" blocked each script with a "Blocked script execution" line in the console.
+  it('leaves the scripts out of the srcdoc and keeps the theme', async () => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const htmlContent = '<html><head><script src="/plotly.min.js"></script></head>'
+      + '<body><h1>Instroom hbo</h1><SCRIPT type="text/javascript">\nPlotly.newPlot()\n</SCRIPT></body></html>'
+    const wb = { id: 'wb-2', title: 'Instroom hbo', htmlContent }
+    await act(async () => { root.render(createElement(WorkbookPreview, { wb, mode: 'dark' })) })
+    const frame = container.querySelector('iframe')
+    expect(frame.getAttribute('srcdoc')).not.toMatch(/<script/i)
+    expect(frame.getAttribute('srcdoc')).toBe('<html class="dark"><head></head><body><h1>Instroom hbo</h1></body></html>')
+    expect(frame.getAttribute('sandbox')).toBe('')
+  })
 })
 
 // #633: `loading="lazy"` does nothing for a srcdoc frame; 81 report frames at once crashed the tab.

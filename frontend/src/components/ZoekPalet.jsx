@@ -5,7 +5,7 @@ import { useDialog } from '../hooks/useDialog'
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { getWorkbooks, getWorkbookType, loadWorkbooksFromServer } from '../workbooks'
 import { filterWorkbooks } from '../workbookFilter'
-import { relatieveDatum } from '../relatieveDatum'
+import { relatieveDatumTijd } from '../relatieveDatum'
 
 // At most this many hits per group: the palette is for jumping, the pages are for browsing.
 const PER_GROEP = 6
@@ -16,7 +16,7 @@ function rapportenVan(workbooks) {
 
 function rapportDatum(wb) {
   const ms = Date.parse(wb.createdAt ?? wb.created_at ?? '')
-  return Number.isNaN(ms) ? '' : relatieveDatum(ms)
+  return Number.isNaN(ms) ? '' : relatieveDatumTijd(ms)
 }
 
 // One search over conversations and reports (#602), with the search logic each page already has: the
@@ -38,7 +38,7 @@ export default function ZoekPalet({ onClose, onOpenGesprek, onOpenRapport }) {
   const term = gesprekken.query.trim()
   const treffers = term ? [
     ...(gesprekken.results ?? []).slice(0, PER_GROEP).map(c => ({
-      soort: 'gesprek', key: `g-${c.id}`, titel: c.title || 'Gesprek zonder titel', datum: relatieveDatum(c.timestamp),
+      soort: 'gesprek', key: `g-${c.id}`, titel: c.title || 'Gesprek zonder titel', datum: relatieveDatumTijd(c.timestamp),
       open: () => onOpenGesprek(String(c.id)),
     })),
     ...filterWorkbooks(rapporten, term).slice(0, PER_GROEP).map(wb => ({
