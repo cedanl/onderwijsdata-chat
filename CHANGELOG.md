@@ -7,6 +7,10 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Bronnen
+- Vijf DUO-datasets (`ho_opleidingsoverzicht`, `overzicht-erkenningen-ho`, `mbo_opleidingsaanbod`,
+  `rio_nfo_po_vo_vavo_mbo_ho`, `sectorale_ontwikkelpaden`) hebben in de catalogus weer een werkende verwijzing naar
+  hun controlebestand: DUO maakt dat bestand bij elke publicatie opnieuw aan, het snapshot hield de oude ID vast
+  (riodata 9931ce3). De databestanden zelf werkten al.
 - CBS-catalogus: twee tabellen erbij, `85367NED` (voortijdig schoolverlaters naar geslacht, leeftijd, onderwijssoort
   en herkomst; de chat laadt alleen de mbo-rij `A025290`, zoals bij `85368NED`) en `84312NED` (mbo-studenten in
   Caribisch Nederland). Het pakket `onderwijsdata` gaat van v0.2.0 naar v0.2.2. `84732NED` (Caribisch NL, po/vo/mbo
