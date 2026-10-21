@@ -99,3 +99,24 @@ env:
     value: "placeholder-key-for-testing"
   - name: OPENAI_API_KEY
     value: "placeholder-key-for-testing"
+
+# Opschoning na de bewaartermijn (#485): een CronJob die `python -m persistence.opschonen` draait, dezelfde code
+# als het beheerscript. Standaard uit; aan per omgeving in manifests/<omgeving>/values.yaml. Vraagt POSTGRES_URI in
+# `env` (alleen die en BEWAARTERMIJN_* gaan mee, geen andere geheimen): SQLite staat in de pod van de app, daar kan
+# een aparte pod niet bij. Termijnen: BEWAARTERMIJN_GESPREKKEN_DAGEN (90) en BEWAARTERMIJN_RAPPORTEN_DAGEN (365),
+# in `env` of `opschonen.env`. `droog: true` telt alleen.
+opschonen:
+  enabled: false
+  droog: false
+  # Elke nacht om 03:30 Nederlandse tijd.
+  schedule: "30 3 * * *"
+  timeZone: "Europe/Amsterdam"
+  env: []
+  # Klein: één transactie met een handvol DELETE's. Telt mee in het ResourceQuota van de namespace.
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi

@@ -1,0 +1,72 @@
+{{- /*
+Opschoning na de bewaartermijn (#485): persistence/opschonen.py, met alleen de databasevariabelen uit `env`.
+*/ -}}
+{{- if .Values.opschonen.enabled }}
+{{- $env := list }}
+{{- range .Values.env }}
+{{- if or (eq .name "POSTGRES_URI") (hasPrefix "BEWAARTERMIJN_" .name) }}
+{{- $env = append $env . }}
+{{- end }}
+{{- end }}
+{{- $postgres := false }}
+{{- range $env }}{{ if eq .name "POSTGRES_URI" }}{{ $postgres = true }}{{ end }}{{ end }}
+{{- if not $postgres }}
+{{- fail "opschonen.enabled vraagt POSTGRES_URI in env: zonder Postgres staat de database in de pod van de app" }}
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "onderwijsdata-chat.fullname" . }}-opschonen
+  labels:
+    {{- include "onderwijsdata-chat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opschonen
+spec:
+  schedule: {{ .Values.opschonen.schedule | quote }}
+  {{- with .Values.opschonen.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Geen herhaling: een mislukte run verwijdert niets (één transactie), de volgende nacht probeert het opnieuw.
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 604800
+      template:
+        metadata:
+          labels:
+            # Dezelfde naam als de app, zodat een NetworkPolicy op die naam ook deze pod de database laat bereiken;
+            # een andere instance, zodat de Service en de Deployment (naam én instance) hem nooit kiezen.
+            app.kubernetes.io/name: {{ include "onderwijsdata-chat.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}-opschonen
+            app.kubernetes.io/component: opschonen
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: opschonen
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["/app/.venv/bin/python", "-m", "persistence.opschonen"]
+              {{- if .Values.opschonen.droog }}
+              args: ["--droog"]
+              {{- end }}
+              resources:
+                {{- toYaml .Values.opschonen.resources | nindent 16 }}
+              env:
+                {{- toYaml $env | nindent 16 }}
+                {{- with .Values.opschonen.env }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+{{- end }}

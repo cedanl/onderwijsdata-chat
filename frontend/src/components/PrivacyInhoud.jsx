@@ -1,8 +1,9 @@
 // Privacy-informatie (#477): wat naar de AI-dienst gaat, wat de server en de browser bewaren en wat
 // je zelf kunt doen. De pagina /privacy (ook vóór het inloggen) en de popup (#572) tonen allebei
 // deze ene tekst. Dezelfde tekst staat in docs/privacy.md; privacyPage.test.js bewaakt dat de kopjes
-// gelijk blijven. Open punten (verwerkersovereenkomst, regio, bewaartermijn, DPIA) staan onderaan als
-// open punten, niet als feit: dit is de demofase. De verwerkingsverantwoordelijke is besloten (#553): de
+// gelijk blijven. Open punten (verwerkersovereenkomst, regio, bewaartermijn van logs en back-ups, DPIA) staan
+// onderaan als open punten, niet als feit: dit is de demofase. De bewaartermijn van de gegevens in de app is
+// besloten (#485): persistence/opschonen.py. De verwerkingsverantwoordelijke is besloten (#553): de
 // deelnemende instelling.
 
 export const PRIVACY_KOPJES = [
@@ -47,19 +48,21 @@ export default function PrivacyInhoud() {
       <h2>{PRIVACY_KOPJES[1]}</h2>
       <ul>
         <li>
-          <strong>Gesprekken</strong>: vraag, antwoord, toolstappen en titel, per account, tot je het gesprek
-          verwijdert.
+          <strong>Gesprekken</strong>: vraag, antwoord, toolstappen en titel, per account, tot 90 dagen na je laatste
+          bericht in het gesprek, of tot je het eerder verwijdert.
         </li>
         <li>
           <strong>Rapporten en dashboards</strong>: blijven bewaard als je het gesprek verwijdert (de
-          verwijderdialoog zegt dat); verwijder ze apart onder Rapporten.
+          verwijderdialoog zegt dat); verwijder ze apart onder Rapporten. Een rapport of dashboard dat je 365 dagen
+          niet hebt geopend of gewijzigd, wordt verwijderd.
         </li>
         <li>
           <strong>Feedback</strong>: je antwoorden op de vragen bij een rapport of dashboard, en per antwoord je
           duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder je het gesprek, dan wordt
           die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
           de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
-          Al je feedback blijft staan tot je al je gegevens verwijdert.
+          Feedback wordt 90 dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog
+          bestaat), of eerder als je al je gegevens verwijdert.
         </li>
         <li>
           <strong>Datarecepten</strong>: hoe een tabel is opgehaald (dataset en selectie), zodat een export na een
@@ -72,8 +75,10 @@ export default function PrivacyInhoud() {
           hoogste 24 uur). Een ingetrokken sessie wordt als hash bewaard tot zij verloopt.
         </li>
         <li>
-          <strong>Bewaartermijn</strong>: er is nog geen automatische opschoning; gegevens blijven staan tot je ze
-          zelf verwijdert, één voor één of alles tegelijk. Een bewaartermijn volgt bij productie.
+          <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is: je gesprekken
+          90 dagen na je laatste bericht erin, je feedback 90 dagen nadat je hem gaf, en rapporten en dashboards 365
+          dagen nadat je ze voor het laatst opende of wijzigde. Eerder verwijderen kan altijd zelf, één voor één of
+          alles tegelijk.
         </li>
       </ul>
 
@@ -143,7 +148,7 @@ export default function PrivacyInhoud() {
       </p>
       <ul>
         <li>Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt bewaard of gebruikt voor training.</li>
-        <li>Bewaartermijn per gegevenssoort en automatische opschoning; die volgen bij productie.</li>
+        <li>De bewaartermijn van het serverlog en van de back-ups van de beheerder.</li>
         <li>Of er een DPIA nodig is.</li>
       </ul>
     </div>

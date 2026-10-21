@@ -30,11 +30,17 @@ strategy:
 # (Recreate). Playground staat nog op 2 GiB.
 resources:
   limits:
-    cpu: 1000m
+    cpu: 900m
     memory: 3Gi
   requests:
     cpu: 500m
     memory: 512Mi
+
+# Opschoning na de bewaartermijn (#485, charts/onderwijsdata-chat/templates/cronjob-opschonen.yaml): elke nacht,
+# tegen de Postgres van POSTGRES_URI hieronder. De CronJob-pod telt mee in het quotum (limits.cpu 1): daarom heeft
+# de app hierboven 900m in plaats van 1000m, en de opschoonpod 100m (opschonen.resources in de chart).
+opschonen:
+  enabled: true
 
 env:
   # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to

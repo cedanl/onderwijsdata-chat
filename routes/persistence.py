@@ -94,6 +94,8 @@ def get_workbook(wb_id: str, username: str = Depends(get_current_user)) -> dict:
     workbook = persistence_db.get_workbook(username, wb_id)
     if workbook is None:
         raise HTTPException(status_code=404, detail="Werkboek niet gevonden")
+    # Openen telt als gebruik: de bewaartermijn van het werkboek begint opnieuw (#485).
+    persistence_db.werkboek_geopend(username, wb_id)
     return workbook
 
 
