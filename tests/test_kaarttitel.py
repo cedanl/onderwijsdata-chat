@@ -45,7 +45,17 @@ def test_de_kleurenbalk_heet_naar_de_titel_uit_de_bron():
     _, fig = _kaart({"MboStudenten_1": "Mbo-studenten"})
     assert fig is not None
     assert fig.layout.coloraxis.colorbar.title.text == "Mbo-studenten"
-    assert "Mbo-studenten=" in fig.data[0].hovertemplate  # ook het hoverlabel noemt de maat
+    assert "Mbo-studenten: " in fig.data[0].hovertemplate  # ook het hoverlabel noemt de maat
+
+
+def test_een_tik_op_een_provincie_toont_naam_en_een_nederlands_getal():
+    # #655: een tik op een provincie gaf "Mbo-studenten=41.5k", ook de kleurenbalk telde in "k". Nu staat er
+    # "Mbo-studenten: 41.500", met de scheidingstekens van een grafiekas.
+    _, fig = _kaart({"MboStudenten_1": "Mbo-studenten"})
+    assert fig is not None
+    assert fig.data[0].hovertemplate == "<b>%{hovertext}</b><br>Mbo-studenten: %{z:,}<extra></extra>"
+    assert fig.layout.separators == ",."
+    assert fig.layout.coloraxis.colorbar.tickformat == ","
 
 
 def test_zonder_titels_uit_de_bron_volgt_de_kleurenbalk_kolomlabel():

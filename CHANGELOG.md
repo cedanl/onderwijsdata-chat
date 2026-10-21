@@ -490,6 +490,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Een tik op een provincie of gemeente op de kaart toont naam en waarde (#655), in de chat, de rapportviewer en de
+  HTML-download (gemeten op 390 px met aanraking, licht en donker). De waarde staat er als Nederlands getal
+  ("Mbo-studenten: 41.500" in plaats van "Mbo-studenten=41.5k"), ook op de kleurenbalk ("40.000" in plaats van
+  "40k"); het recept van de kaart tekent hetzelfde. In de download verdween het label direct na de tik: de browser
+  stuurt na de klik ook mouseout, en Plotly haalde het label dan weg. Het kaartscript zet het nu terug.
 - Op een telefoon is de kleinste tekst nu overal minstens 12,5 px (#650, gemeten op 390 px, licht en donker): "Meer
   laden" in de gesprekkenlijst, de noot in het ⋯-menu, op de homepage het sectielabel, de footerlinks, de disclaimer en
   de licentieregel, en op /dashboards de tekst op de nieuw-kaart en het label "Voorbeeld" en de instellingsnaam op een
