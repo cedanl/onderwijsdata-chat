@@ -46,8 +46,21 @@ de laatste tag is 1.8.6.
 - Docs: de zoeklimiet van `search_catalog` is 3 (`SEARCH_CATALOG_LIMIT`), niet 5 zoals `docs/tools.md` en
   `docs/kwaliteit-en-veiligheid.md` zeiden.
 
-### Zoeken (#358, stap 1)
-- Een zoekhit van `search_catalog` is compact: ID, titel, status, leverancier, periode, onderwijstype, één samenvatting
+### Zoeken (#358)
+- **Stap 2: een vaste envelope.** `search_catalog` geeft altijd dezelfde JSON terug, ook bij een fout: `status`,
+  `catalogus` (hash van de catalogus), `kandidaten`, `melding`/`meldingen` en `vervolgstap`. Voorheen was het een
+  lijst met treffers, platte tekst (`no_match: …`) bij een miss en pseudo-records met een `melding`. De zeven statussen
+  zijn `candidates`, `no_match`, `needs_clarification` (zwakke suggesties; het model laadt er geen en stelt één vraag),
+  `out_of_scope` (de zoekvraag gaat over po, so of vo zonder ho of mbo; dezelfde regel als `agent/po_vraag.py`),
+  `metadata_unknown` (bij `geo_niveau`: de geodekking is onbekend), `source_unavailable` (de catalogus is niet
+  leesbaar) en `tool_error` (een onverwachte fout, in plaats van een uitzondering naar de loop).
+- Een kandidaat draagt `dataset_id` (het ID voor `dataset_details` en de datatools) en `geraakt`: de zoektermen die
+  hij raakt. `no_match` en `needs_clarification` noemen de gebruikte zoektermen (`gezocht`) en geven een begrensde
+  herformulering mee: hooguit één nieuwe poging met andere of bredere termen, zonder sector, periode of populatie los
+  te laten; daarna zegt het model dat de catalogus niets vindt dat past, niet dat de data niet bestaat.
+- Prompt, toolschema, MCP-server (`docs/mcp.md`), de aanroepers in de agent en het retrieval-harnas lezen de nieuwe vorm;
+  een test houdt de statussen in prompt en schema gelijk aan de code. Meting vóór en na: de retrieval-baseline (`scripts/meet_retrieval.py`) is ongewijzigd (recall en MRR gelijk: de zoekcode scoort hetzelfde); op acht audittermen blijft de envelope onder het toolbudget van 12.000 tekens (9.000 tot 11.800 tekens, was 9.000 tot 11.700) en een tikfout in een dataset-ID (`85423NEDX`) noemt nu de bedoelde dataset. De bronwaarheid-evals (`eval:bronwaarheid`) zijn niet opnieuw gedraaid: ze lopen tegen de testomgeving en volgen na de merge.
+- **Stap 1:** een zoekhit van `search_catalog` is compact: ID, titel, status, leverancier, periode, onderwijstype, één samenvatting
   van hoogstens 200 tekens, de CBS-dimensies en -meetwaarden (eerste twaalf), geo-niveau en perioden, de DUO-zoekkaart,
   de RIO-filters en -sub-resources en `niet_geschikt_voor` (eerste drie); lege velden ontbreken. De documentatielink,
   voorbeeldvragen, tags, `combineerbaar_met`, kolomtoelichting en waardenbereik staan alleen nog in `dataset_details`.

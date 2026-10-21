@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
+from tests.zoekuitkomst import treffers
 from tools import fouten
 from tools.catalog import dataset_details, search_catalog
 from tools.duo import get_duo_data
@@ -39,7 +40,7 @@ def _catalogus(*entries):
 
 def test_changelog_is_niet_opvraagbaar_in_zoekresultaat_en_details():
     with patch("tools.catalog._cbs", return_value=[]), _catalogus(_CHANGELOG, _SO_VSO):
-        hits = {h["_ckan_id"]: h for h in json.loads(search_catalog("opleidingsoverzicht", source="duo"))}
+        hits = {h["_ckan_id"]: h for h in treffers(search_catalog("opleidingsoverzicht", source="duo"))}
         details = json.loads(dataset_details("ho_opleidingsoverzicht-changelog"))
     assert hits["ho_opleidingsoverzicht-changelog"]["opvraagbaar"] is False
     assert "documentatie" in hits["ho_opleidingsoverzicht-changelog"]["melding"]

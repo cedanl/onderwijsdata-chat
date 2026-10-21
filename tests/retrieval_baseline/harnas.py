@@ -116,14 +116,15 @@ def treffer_id(treffer: dict, titels: dict[str, str]) -> str:
 
 
 def ranking(resultaat: str, titels: dict[str, str]) -> list[str]:
-    """De dataset-ID's in volgorde; een tekstresultaat (no_match, geo-melding) is een lege ranglijst."""
+    """De dataset-ID's van de kandidaten in volgorde; een andere status dan `candidates` (no_match, geo-melding,
+    suggesties bij needs_clarification) is een lege ranglijst."""
     try:
-        treffers = json.loads(resultaat)
+        envelop = json.loads(resultaat)
     except json.JSONDecodeError:
         return []
-    if not isinstance(treffers, list):
+    if not isinstance(envelop, dict) or envelop.get("status") != "candidates":
         return []
-    return [treffer_id(t, titels) for t in treffers if isinstance(t, dict) and set(t) != {"melding"}]
+    return [treffer_id(t, titels) for t in envelop.get("kandidaten") or [] if isinstance(t, dict)]
 
 
 @dataclass(frozen=True)

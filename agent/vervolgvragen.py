@@ -77,10 +77,14 @@ def _leesbaar(vraag: str, dataset_id: str | None = None) -> bool:
 def _vindt_eigen_dataset(vraag: str, dataset_id: str) -> bool:
     """Zet search_catalog de dataset van de vraag bij zijn treffers?"""
     try:
-        treffers = json.loads(catalog.search_catalog(vraag))
-    except ValueError:  # geen treffers: dan is het antwoord een melding, geen lijst
+        envelop = json.loads(catalog.search_catalog(vraag))
+    except ValueError:
         return False
-    return any(isinstance(t, dict) and scopeprofiel.dataset_id(t) == dataset_id for t in treffers)
+    if not isinstance(envelop, dict) or envelop.get("status") != "candidates":  # geen treffers: een melding
+        return False
+    return any(
+        isinstance(t, dict) and scopeprofiel.dataset_id(t) == dataset_id for t in envelop.get("kandidaten") or []
+    )
 
 
 @cache

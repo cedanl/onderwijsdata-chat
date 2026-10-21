@@ -30,6 +30,9 @@ class Fout(StrEnum):
 
 
 _CODE = re.compile(r"^Fout \(([a-z_]+)\): ")
+# De foutstatussen van de envelope van search_catalog (#358) tellen als fout: de toolloop sluit een tool die twee
+# keer dezelfde fout geeft, en MCP markeert het resultaat als fout. no_match en de andere statussen zijn gewone uitkomsten.
+_ENVELOP_FOUT = {"tool_error": Fout.TOOLFOUT.value, "source_unavailable": Fout.BRON_ONBEREIKBAAR.value}
 
 
 def melding(code: Fout, tekst: str) -> str:
@@ -46,6 +49,8 @@ def code(result: str) -> str | None:
             parsed = json.loads(result)
         except ValueError:
             return None
+        if isinstance(parsed, dict) and (code_ := _ENVELOP_FOUT.get(parsed.get("status"))):
+            return code_
         result = parsed.get("fout", "") if isinstance(parsed, dict) else ""
         if not isinstance(result, str):
             return None

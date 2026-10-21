@@ -251,7 +251,7 @@ def test_een_aantal_uit_een_rio_register_valt_af(eigen_catalogus):
 
 def test_een_vraag_die_haar_dataset_niet_terugvindt_valt_af(eigen_catalogus):
     vraag = "Hoeveel promoties waren er per vakgebied?"
-    treffers = [t.get("_cbs_id") for t in json.loads(catalog.search_catalog(vraag))]
+    treffers = [t.get("_cbs_id") for t in json.loads(catalog.search_catalog(vraag))["kandidaten"]]
     assert "90002NED" in treffers and "70001ned" not in treffers
 
     assert "70001ned" not in vervolgvragen.beantwoordbare_vragen()
@@ -297,7 +297,7 @@ def test_de_datasets_van_een_beurt_komen_uit_de_laadkey_van_elke_stap():
     laad = _laad("duo:duo-a:0", "duo-a")
     store.put("q1", pd.DataFrame({"AANTAL": [1]}), KeyMeta(bron="duo", dataset="duo-a", afgeleid_van="duo:duo-a:0"))
     steps = [
-        ("search_catalog", '[{"_ckan_id": "duo-b"}]'),
+        ("search_catalog", json.dumps({"status": "candidates", "kandidaten": [{"_ckan_id": "duo-b"}]})),
         ("get_duo_data", laad),
         ("query_data", json.dumps({"data_key": "q1"})),
         ("get_cbs_data", _laad("cbs:90001NED", "90001NED", "cbs")),
@@ -319,7 +319,14 @@ def test_kies_niet_de_gestelde_vraag_en_niet_wat_al_aangeboden_is(vaste_lijst):
 
 
 def test_kies_zonder_geladen_dataset_niets(vaste_lijst):
-    assert vervolgvragen.kies([("search_catalog", '[{"_ckan_id": "duo-a"}]')], "Vraag?", []) == []
+    assert (
+        vervolgvragen.kies(
+            [("search_catalog", json.dumps({"status": "candidates", "kandidaten": [{"_ckan_id": "duo-a"}]}))],
+            "Vraag?",
+            [],
+        )
+        == []
+    )
 
 
 # --- uit de vraagcontext (#615): zelfde maat, ander schooljaar, ontwikkeling; dan pas de dataset ---
@@ -712,8 +719,8 @@ def test_elke_vervolgvraag_uit_de_catalogus_is_beantwoordbaar():
         assert catalog.scope_blokkade(dataset_id) is None, dataset_id
         assert catalog.opvraagbaar(dataset_id), dataset_id
         for vraag in vragen:
-            treffers = json.loads(catalog.search_catalog(vraag))
-            assert dataset_id in [t.get("_cbs_id") or t.get("_ckan_id") or t.get("_rio_resource") for t in treffers]
+            treffers = json.loads(catalog.search_catalog(vraag)).get("kandidaten", [])
+            assert dataset_id in [t.get("dataset_id") for t in treffers]
 
 
 @pytest.mark.parametrize(

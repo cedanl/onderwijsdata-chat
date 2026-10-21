@@ -299,6 +299,40 @@ Doorzoekt de gecombineerde catalogus van CBS, RIO en DUO.
 
 **Gebruik:** Als startpunt bij onduidelijke vragen of om te verkennen welke datasets beschikbaar zijn.
 
+### De envelope
+
+Het antwoord is altijd dezelfde JSON-envelope (#358, stap 2), ook bij een fout. Voorheen was het een lijst met treffers,
+platte tekst bij een miss en pseudo-records met een `melding`; het model las drie vormen.
+
+```json
+{"status":"candidates","catalogus":"9eab4249d9b8","kandidaten":[{"dataset_id":"85423NED","bron":"…","geraakt":["ingeschrevenen","hbo"],…}],
+ "meldingen":["…"],"vervolgstap":"Kies de kandidaat die de vraag dekt en bekijk hem met dataset_details voordat je data laadt."}
+```
+
+| Veld | Betekenis |
+|------|-----------|
+| `status` | Wat er gebeurde, zie hieronder |
+| `catalogus` | Korte hash van de geladen catalogus (#344): een verschoven top is zo terug te voeren op een andere catalogus |
+| `gezocht` | Bij `no_match` en `needs_clarification`: de zoektermen na het schrappen van stopwoorden, zodat een tweede poging ze niet loslaat |
+| `melding` | Wat het model moet weten bij een uitkomst zonder kandidaten |
+| `meldingen` | Teksten bij kandidaten: een volzin als zoekterm (#351), onbekende geodekking, weggelaten treffers |
+| `kandidaten` | Zie hieronder; bij `needs_clarification` alleen `{dataset_id, bron}` |
+| `vervolgstap` | Wat het model daarna doet; de begrensde herformulering staat hier |
+
+| `status` | Wanneer | Wat het model doet |
+|----------|---------|--------------------|
+| `candidates` | Minstens één treffer | Kiest er één tot drie, controleert ze met `dataset_details`, laadt daarna data |
+| `no_match` | Niets raakt de vraag (of het geo-niveau) | Zoekt hooguit één keer opnieuw met andere of bredere termen, zonder sector, periode of populatie los te laten; vindt ook dat niets, dan zegt het dat de catalogus geen dataset vindt, niet dat de data niet bestaat |
+| `needs_clarification` | Alleen zwakke suggesties (drempel #351) | Laadt er geen, stelt met `clarify_scope` één vraag met deze datasets als opties |
+| `out_of_scope` | De zoekvraag gaat over po, so of vo en noemt geen ho of mbo (dezelfde regel als `agent/po_vraag.py`) | Legt uit dat de assistent alleen mbo, hbo en wo behandelt |
+| `metadata_unknown` | Met `geo_niveau`: geen dataset heeft het niveau zeker, wel van enkele is de dekking onbekend | Controleert de dekking met `dataset_details` |
+| `source_unavailable` | De catalogus (packages `onderwijsdata`, `riodata`) is niet leesbaar | Zegt dat zoeken nu niet werkt |
+| `tool_error` | Een onverwachte fout in de zoekfunctie | Probeert hooguit één keer opnieuw |
+
+Een kandidaat is de compacte hit, plus `dataset_id` (het ID om in `dataset_details` en de datatools te gebruiken) en
+`geraakt`: de zoektermen die hij raakt. Raakt een kandidaat maar één van meer termen, dan weegt het model of hij de
+rest van de vraag dekt.
+
 Een zoekhit is compact (#358): het dataset-ID, `bron` (de titel), `status`, `leverancier`, `periode`, `onderwijstype`, één
 `samenvatting` van hoogstens 200 tekens (anders de beschrijving of het doel), bij CBS `_dimensies`, `_meetwaarden` (de eerste
 twaalf), `_geo_niveau`, `_perioden_formaat` en `_periode_waarden`, bij DUO de `zoekkaart`, bij RIO `filters` en `sub_resources`,
@@ -306,8 +340,8 @@ en `niet_geschikt_voor` (de eerste drie). Lege velden staan er niet in. De docum
 `combineerbaar_met`, kolomtoelichting en waardenbereik staan in `dataset_details` (en op de catalogussite), niet in de hit:
 met alles erbij woog een RIO-hit 4.800 tekens en ging acht van twaalf zoektermen bij `top_n=15` over de grens van 12.000
 tekens die het model van een toolresultaat ziet (`TOOL_RESULT_MAX_CHARS`), zodat het de afkapmelding las en de rest van de
-treffers nooit zag. Past het resultaat ook zo niet, dan laat de tool hele treffers van achteren weg en zegt hoeveel, zodat
-het model geldige JSON leest.
+treffers nooit zag. Past het resultaat ook zo niet, dan laat de tool hele kandidaten van achteren weg en zegt hoeveel in `meldingen`, zodat
+het model geldige JSON leest; minstens één kandidaat blijft staan.
 
 **Let op:** Deze tool is beperkt tot **3 aanroepen per vraag** (`SEARCH_CATALOG_LIMIT`) om oneindige zoeklussen te voorkomen; de systeemprompt noemt hetzelfde getal.
 

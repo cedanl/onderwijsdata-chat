@@ -16,7 +16,8 @@ scopegrens mbo/hbo/wo, de bron-ID's en de status per record zijn daardoor gelijk
 
 Elke zoekhit en elk detailrecord draagt een `status`: `opvraagbaar`, `via_tool`, `alleen_documentatie` of
 `alleen_catalogus`; alleen `opvraagbaar` is in de chat-app als data te laden. Een lege zoekuitkomst
-(`no_match: …`) is een gewoon resultaat, net als in de chat. Een onbekende tool, een parameter buiten het
+(`"status":"no_match"`) is een gewoon resultaat, net als in de chat: `search_catalog` geeft altijd dezelfde
+JSON-envelope met `status`, `kandidaten`, `melding` en `vervolgstap` (zie [Tools](tools.md#search_catalog)). Een onbekende tool, een parameter buiten het
 schema of een fout in de tool komt terug als MCP-fout (`isError`), met de parameternaam en zonder de waarde.
 
 **Niet beschikbaar** zijn de datatools van de chat (`get_cbs_data`, `get_duo_data`, `get_rio_data`,

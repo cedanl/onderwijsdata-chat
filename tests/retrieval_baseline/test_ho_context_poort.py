@@ -27,9 +27,6 @@ def _bronnen(vraag: dict) -> list[str]:
     return list(dict.fromkeys((eigen, *extra)))
 
 
-# Platte tekst die search_catalog bewust teruggeeft als er niets is: de no_match-payload en de geo-melding.
-_GEEN_TREFFERS = ("no_match:", "Geen datasets gevonden")
-
 _ZOEKACTIES = [(v, veld, bron) for v in _VRAGEN for veld in _VELDEN for bron in _bronnen(v)]
 _DICHT = [z for z in _ZOEKACTIES if not noemt_ho(z[0][z[1]])]
 _OPEN = [z for z in _ZOEKACTIES if noemt_ho(z[0][z[1]])]
@@ -38,16 +35,16 @@ _OPEN = [z for z in _ZOEKACTIES if noemt_ho(z[0][z[1]])]
 def _treffers(vraag: dict, veld: str, bron: str) -> list[dict]:
     with harnas.zonder_netwerk(), harnas.zonder_instellingsregister():
         resultaat = catalog.search_catalog(vraag[veld], bron, top_n=_TOP_N, geo_niveau=vraag.get("geo_niveau"))
-    if resultaat.startswith(_GEEN_TREFFERS):
-        return []
     waar = f"{vraag['id']} ({veld}, source={bron})"
     try:
-        treffers = json.loads(resultaat)
+        envelop = json.loads(resultaat)
     except json.JSONDecodeError:
-        pytest.fail(f"{waar}: search_catalog gaf geen JSON en geen bekende lege uitkomst: {resultaat[:200]!r}")
-    if not isinstance(treffers, list):
-        pytest.fail(f"{waar}: search_catalog gaf JSON dat geen lijst is: {resultaat[:200]!r}")
-    return [t for t in treffers if isinstance(t, dict)]
+        pytest.fail(f"{waar}: search_catalog gaf geen JSON-envelope: {resultaat[:200]!r}")
+    if not isinstance(envelop, dict) or "status" not in envelop:
+        pytest.fail(f"{waar}: search_catalog gaf JSON zonder status: {resultaat[:200]!r}")
+    if envelop["status"] != "candidates":  # geen treffers: no_match, needs_clarification, geo-melding
+        return []
+    return [t for t in envelop.get("kandidaten") or [] if isinstance(t, dict)]
 
 
 def _vo_context(treffers: list[dict]) -> list[str]:

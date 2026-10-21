@@ -36,15 +36,16 @@ def test_zoeken_geeft_hetzelfde_resultaat_als_de_chat():
     argumenten = {"query": "ingeschrevenen hbo", "top_n": 3}
     tekst, fout = mcp_server.voer_uit("search_catalog", argumenten)
     assert not fout
-    hits = json.loads(tekst)
-    assert hits and all("status" in hit for hit in hits)
+    envelop = json.loads(tekst)
+    assert envelop["status"] == "candidates"
+    assert envelop["kandidaten"] and all("status" in hit and "dataset_id" in hit for hit in envelop["kandidaten"])
     assert tekst == tools.dispatch("search_catalog", argumenten)[0]
 
 
 def test_lege_zoekuitkomst_is_een_resultaat_geen_fout():
     tekst, fout = mcp_server.voer_uit("search_catalog", {"query": "xyzzyq"})
     assert not fout
-    assert tekst.startswith("no_match:")
+    assert json.loads(tekst)["status"] == "no_match"
 
 
 def test_telling_komt_uit_de_catalogus():

@@ -1,3 +1,4 @@
+import difflib
 import hashlib
 import json
 import logging
@@ -389,11 +390,14 @@ def _vergelijkbare_ids(dataset_id: str, binnen: list[dict]) -> list[str]:
     als `vo` mag ze niet aanbieden. Een directe ID laadt ze nog wel (#557).
     """
     gezocht = dataset_id.lower()
-    return [
-        i
-        for e in binnen
-        if not scopeprofiel.is_ho_context(e) and (i := scopeprofiel.dataset_id(e)) and gezocht in i.lower()
-    ]
+    ids = [i for e in binnen if not scopeprofiel.is_ho_context(e) and (i := scopeprofiel.dataset_id(e))]
+    bevat = [i for i in ids if gezocht in i.lower()]
+    if bevat:
+        return bevat
+    # Een tikfout ("85423NEDX", "p01hoingess") bevat het ID niet: de dichtstbijzijnde ID's als herstelopties (#358).
+    dichtbij = difflib.get_close_matches(gezocht, [i.lower() for i in ids], n=3, cutoff=0.8)
+    per_klein = {i.lower(): i for i in ids}
+    return [per_klein[k] for k in dichtbij]
 
 
 def _dataset_id(entry: dict) -> str:
@@ -716,37 +720,107 @@ def _onbekende_dekking(ids: list[str], geo_niveau: str) -> str:
     )
 
 
+# De vaste envelope van search_catalog (#358, stap 2): elke uitkomst heeft dezelfde vorm, ook een fout.
+# `status` zegt wat er gebeurd is, `kandidaten` wat de zoekfunctie aanbiedt, `melding` en `meldingen` wat het
+# model moet weten, `vervolgstap` wat het daarna doet. Eén vorm in plaats van een lijst, platte tekst en
+# pseudo-records met een `melding`.
+STATUS_CANDIDATES = "candidates"  # kandidaten om uit te kiezen
+STATUS_NO_MATCH = "no_match"  # niets dat de vraag raakt; geen bewijs dat de data ontbreekt
+STATUS_NEEDS_CLARIFICATION = "needs_clarification"  # zwakke suggesties: eerst de vraag verduidelijken
+STATUS_OUT_OF_SCOPE = "out_of_scope"  # de vraag gaat over po/so/vo, buiten het profiel
+STATUS_METADATA_UNKNOWN = "metadata_unknown"  # de catalogus weet niet of een dataset het gevraagde dekt
+STATUS_SOURCE_UNAVAILABLE = "source_unavailable"  # de catalogus kan niet gelezen worden
+STATUS_TOOL_ERROR = "tool_error"  # een onverwachte fout in de zoekfunctie
+
+_VERVOLGSTAP_KANDIDATEN = "Kies de kandidaat die de vraag dekt en bekijk hem met dataset_details voordat je data laadt."
+_VERVOLGSTAP_GEEN_TREFFER = (
+    "Zoek hooguit één keer opnieuw, met andere of bredere trefwoorden voor hetzelfde onderwerp (een synoniem, "
+    "enkelvoud of meervoud). Laat de sector (mbo, hbo, wo), de periode en de populatie uit de vraag niet los. "
+    "Hoort er een dataset-ID bij de vraag, controleer die dan met dataset_details. Vindt ook de tweede poging "
+    "niets, zeg dan dat deze catalogus geen dataset vindt die past, en niet dat de data niet bestaat."
+)
+
+
+def _envelop(
+    status_: str,
+    *,
+    kandidaten: list | None = None,
+    melding: str | None = None,
+    meldingen: list[str] | None = None,
+    vervolgstap: str | None = None,
+    gezocht: list[str] | None = None,
+) -> str:
+    """De envelope als compacte JSON; lege delen ontbreken."""
+    envelop: dict = {"status": status_, "catalogus": catalogus_digest()}
+    if gezocht:
+        envelop["gezocht"] = gezocht
+    if melding:
+        envelop["melding"] = melding
+    if meldingen:
+        envelop["meldingen"] = meldingen
+    if kandidaten is not None:
+        envelop["kandidaten"] = kandidaten
+    if vervolgstap:
+        envelop["vervolgstap"] = vervolgstap
+    return _json_compact(envelop)
+
+
 _MAX_SUGGESTIES = 3
 
 
-def _no_match(query: str, zwak: list, geo_niveau: str | None) -> str:
+def _buiten_profiel(query: str) -> bool:
+    """Noemt de zoekvraag po, so of vo zonder het ho of mbo erbij? Dezelfde regel als agent/po_vraag.py.
+
+    "so" en "bo" beslissen niet: dat zijn ook Engels en namen. Een vraag met vo-context voor ho blijft erbinnen.
+    """
+    if all(m.group().lower() in {"so", "bo"} for m in scopeprofiel.PO_SO_VO.finditer(query)):
+        return False
+    return not (ho_markers.noemt_ho(query) or ho_markers.HO_MBO_CONTEXT.search(query))
+
+
+def _no_match(query: str, termen: list[str], zwak: list, geo_niveau: str | None) -> str:
     """Geen geschikte kandidaat na de drempel (#351); een miss las het model als "geen bron" (#168).
 
-    Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py), dus de tekst dekt beide gevallen.
+    Met zwakke suggesties is het `needs_clarification`, anders `no_match`; een vraag over po, so of vo is
+    `out_of_scope`. Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py), dus de tekst dekt beide
+    gevallen.
     """
-    melding = (
-        f"no_match: Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt: probeer "
-        "andere trefwoorden, of controleer een bekend dataset-ID met dataset_details."
-    )
+    if _buiten_profiel(query):
+        return _envelop(
+            STATUS_OUT_OF_SCOPE,
+            melding=scopeprofiel.MELDING,
+            vervolgstap="Leg uit dat de assistent alleen mbo, hbo en wo behandelt; zoek niet verder.",
+            kandidaten=[],
+        )
     passend = [(s, h) for s, h in zwak if not geo_niveau or geodekking(h, geo_niveau) != "nee"]
     suggesties = [h for h in _gerangschikt(passend, None)[0] if _dataset_id(h) != "?"][:_MAX_SUGGESTIES]
     if not suggesties:
-        return melding
-    namen = ", ".join(_suggestie(h) for h in suggesties)
-    return (
-        f"{melding}\nneeds_clarification: deze datasets raken te weinig zoektermen; het zijn suggesties, geen "
-        f"keuze: {namen}. Laad geen van deze. Is clarify_scope beschikbaar, stel daarmee één vraag met deze "
-        "datasets als opties; anders zeg dat geen dataset de vraag goed dekt, noem deze suggesties bij hun "
-        "titel, en zeg niet dat de data niet bestaat."
+        return _envelop(
+            STATUS_NO_MATCH,
+            gezocht=termen,
+            melding=(f"Geen resultaten gevonden voor '{query}'. Dat zegt niet dat de data ontbreekt."),
+            vervolgstap=_VERVOLGSTAP_GEEN_TREFFER,
+            kandidaten=[],
+        )
+    return _envelop(
+        STATUS_NEEDS_CLARIFICATION,
+        gezocht=termen,
+        melding=("Deze datasets raken te weinig zoektermen; het zijn suggesties, geen keuze. Laad geen van deze."),
+        kandidaten=[_suggestie(h) for h in suggesties],
+        vervolgstap=(
+            "Is clarify_scope beschikbaar, stel daarmee één vraag met deze datasets als opties; anders zeg dat "
+            "geen dataset de vraag goed dekt, noem deze suggesties bij hun titel, en zeg niet dat de data niet "
+            "bestaat."
+        ),
     )
 
 
-def _suggestie(hit: dict) -> str:
-    """`ID (titel)` voor een no_match-suggestie; een vo-contextrecord noemt het deel, zoals een bronregel (#573)."""
+def _suggestie(hit: dict) -> dict:
+    """Een no_match-suggestie: ID en titel; een vo-contextrecord noemt het deel, zoals een bronregel (#573)."""
     titel = hit.get("bron") or hit.get("title") or "-"
     if hit.get("context") or scopeprofiel.is_ho_context(hit):
         titel = f"{titel}, {scopeprofiel.HO_CONTEXT_DEEL}"
-    return f"{_dataset_id(hit)} ({titel})"
+    return {"dataset_id": _dataset_id(hit), "bron": titel}
 
 
 def kandidaten(query: str, n: int = _MAX_SUGGESTIES) -> list[dict]:
@@ -783,6 +857,35 @@ def search_catalog(
     top_n: int = 15,
     geo_niveau: str | None = None,
 ) -> str:
+    """Zoek in de catalogus; het antwoord is altijd de envelope van `_envelop` (#358, stap 2)."""
+    try:
+        return _zoek(query, source, top_n, geo_niveau)
+    except (OSError, ImportError, json.JSONDecodeError):
+        # De catalogus komt uit de packages `onderwijsdata` en `riodata`; zonder leesbare data is er niets te zoeken.
+        logger.exception("search_catalog bron niet beschikbaar %s", tekst_kenmerk(query, "query_"))
+        return _envelop(
+            STATUS_SOURCE_UNAVAILABLE,
+            melding="De catalogus kan nu niet worden gelezen.",
+            vervolgstap="Probeer het niet opnieuw met andere trefwoorden. Zeg dat de catalogus nu niet bereikbaar is.",
+        )
+    except Exception:
+        logger.exception("search_catalog fout %s", tekst_kenmerk(query, "query_"))
+        return _envelop(
+            STATUS_TOOL_ERROR,
+            melding="De zoekfunctie gaf een onverwachte fout.",
+            vervolgstap="Zoek één keer opnieuw met eenvoudiger trefwoorden; lukt dat niet, zeg dat zoeken nu niet werkt.",
+        )
+
+
+def _kandidaat(hit: dict, termen: list[str]) -> dict:
+    """Een kandidaat: de compacte hit, met het gewone `dataset_id` en de zoektermen die hij raakt (`geraakt`)."""
+    kandidaat = {"dataset_id": _dataset_id(hit), **_compacte_hit(hit)}
+    if geraakt := sorted(_geraakte_termen(hit, termen)):
+        kandidaat["geraakt"] = geraakt
+    return kandidaat
+
+
+def _zoek(query: str, source: str, top_n: int, geo_niveau: str | None) -> str:
     t0 = time.perf_counter()
     query_words = _woorden(query)
     # F1: Filter stopwoorden
@@ -809,7 +912,7 @@ def search_catalog(
 
     if not active and not archive:
         logger.warning("search_catalog miss %s source=%s geo=%s elapsed_ms=%d", kenmerk, source, geo_niveau, elapsed_ms)
-        return _no_match(query, zwak, geo_niveau)
+        return _no_match(query, termen, zwak, geo_niveau)
 
     # Archief is reserve, maar pas na de relevantiefilters: een actieve treffer die daarop
     # afvalt mag een passende archieftreffer niet blokkeren (#350). Een expliciet historische vraag gaat direct naar het archief.
@@ -820,8 +923,12 @@ def search_catalog(
         onbekend += onbekend_reserve
 
     if geo_niveau and not hits and onbekend:
-        return f"Geen datasets gevonden voor '{query}' die zeker niveau '{geo_niveau}' hebben. " + _onbekende_dekking(
-            onbekend, geo_niveau
+        return _envelop(
+            STATUS_METADATA_UNKNOWN,
+            melding=f"Geen datasets gevonden voor '{query}' die zeker niveau '{geo_niveau}' hebben. "
+            + _onbekende_dekking(onbekend, geo_niveau),
+            kandidaten=[],
+            vervolgstap="Controleer de geodekking van deze datasets met dataset_details voordat je er een kiest.",
         )
     if geo_niveau and not hits:
         logger.warning(
@@ -831,10 +938,12 @@ def search_catalog(
             geo_niveau,
             elapsed_ms,
         )
-        return (
-            f"Geen datasets gevonden voor '{query}' die het niveau "
-            f"'{geo_niveau}' ondersteunen. Probeer een hoger aggregatieniveau "
-            f"(bijv. 'provincie' in plaats van 'gemeente')."
+        return _envelop(
+            STATUS_NO_MATCH,
+            gezocht=termen,
+            melding=f"Geen datasets gevonden voor '{query}' die het niveau '{geo_niveau}' ondersteunen.",
+            kandidaten=[],
+            vervolgstap="Probeer een hoger aggregatieniveau (bijv. 'provincie' in plaats van 'gemeente').",
         )
 
     top_ids = [_dataset_id(h) for h in hits[:3]]
@@ -850,44 +959,55 @@ def search_catalog(
 
     meldingen = []
     if hint:
-        meldingen.append({"melding": hint})
+        meldingen.append(hint)
     if geo_niveau and onbekend:
-        meldingen.append({"melding": _onbekende_dekking(onbekend, geo_niveau)})
-    lean, weggelaten = _binnen_budget([_compacte_hit(h) for h in hits[:top_n]], meldingen, TOOL_RESULT_MAX_CHARS)
+        meldingen.append(_onbekende_dekking(onbekend, geo_niveau))
+    kandidaten, weggelaten = _binnen_budget(
+        [_kandidaat(h, termen) for h in hits[:top_n]], meldingen, TOOL_RESULT_MAX_CHARS
+    )
     if weggelaten:
         logger.info("search_catalog budget %s results=%d weggelaten=%d", kenmerk, len(hits), weggelaten)
-    return _json_compact(lean)
+    return _envelop(
+        STATUS_CANDIDATES,
+        kandidaten=kandidaten,
+        meldingen=[*meldingen, _weglaatmelding(weggelaten, TOOL_RESULT_MAX_CHARS)] if weggelaten else meldingen,
+        vervolgstap=_VERVOLGSTAP_KANDIDATEN,
+    )
 
 
 def _json_compact(waarde) -> str:
     return json.dumps(waarde, ensure_ascii=False, separators=(",", ":"))
 
 
-def _weglaatmelding(aantal: int, budget: int) -> dict:
-    return {
-        "melding": (
-            f"{aantal} treffer(s) weggelaten om binnen het toolbudget van {budget} tekens te blijven: de treffers "
-            "hierboven zijn de best scorende. Zoek met gerichtere trefwoorden of vraag minder resultaten (top_n)."
-        )
-    }
+def _weglaatmelding(aantal: int, budget: int) -> str:
+    return (
+        f"{aantal} treffer(s) weggelaten om binnen het toolbudget van {budget} tekens te blijven: de treffers "
+        "hierboven zijn de best scorende. Zoek met gerichtere trefwoorden of vraag minder resultaten (top_n)."
+    )
 
 
-def _binnen_budget(hits: list[dict], meldingen: list[dict], budget: int) -> tuple[list, int]:
-    """Hele treffers van achteren weglaten tot het resultaat binnen het toolbudget past (#358).
+def _binnen_budget(kandidaten: list[dict], meldingen: list[str], budget: int) -> tuple[list[dict], int]:
+    """Hele kandidaten van achteren weglaten tot de envelope binnen het toolbudget past (#358).
 
     De loop (agent/loop.py) kapt een langer toolresultaat af op `budget` tekens: het model las dan een
     halve JSON en de afkapmelding, en miste de laatste treffers zonder te weten welke. Nu zijn het hele
-    treffers minder, met een melding erbij; minstens één treffer blijft staan.
+    treffers minder, met een melding erbij; minstens één kandidaat blijft staan.
     """
     weggelaten = 0
 
-    def uit() -> list:
-        return [*hits, *meldingen, *([_weglaatmelding(weggelaten, budget)] if weggelaten else [])]
+    def tekst() -> str:
+        extra = [_weglaatmelding(weggelaten, budget)] if weggelaten else []
+        return _envelop(
+            STATUS_CANDIDATES,
+            kandidaten=kandidaten,
+            meldingen=[*meldingen, *extra],
+            vervolgstap=_VERVOLGSTAP_KANDIDATEN,
+        )
 
-    while len(hits) > 1 and len(_json_compact(uit())) > budget:
-        hits.pop()
+    while len(kandidaten) > 1 and len(tekst()) > budget:
+        kandidaten.pop()
         weggelaten += 1
-    return uit(), weggelaten
+    return kandidaten, weggelaten
 
 
 _DETAILS_EXTRA = frozenset(
@@ -1226,4 +1346,6 @@ def dataset_details(dataset_id: str) -> str:
         # Bekend maar buiten het profiel: zeg waarom, anders leest het model 'bestaat niet' (#355, #396).
         return json.dumps(scopeprofiel.buiten_scope_voor(buiten), ensure_ascii=False)
     logger.warning("dataset_details miss %s", _id_kenmerk(ruw))
-    return f"Dataset '{dataset_id}' niet gevonden in de catalogus."
+    ids = _vergelijkbare_ids(dataset_id, [*_cbs(), *_rio_duo()])
+    hint = f" Bedoelde je: {ids[:3]}?" if ids else " Zoek de juiste dataset-ID met search_catalog."
+    return f"Dataset '{dataset_id}' niet gevonden in de catalogus.{hint}"

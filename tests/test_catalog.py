@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from core.logging_util import tekst_kenmerk
+from tests.zoekuitkomst import envelop, treffers
 from tools.catalog import (
     catalogus_digest,
     catalogus_titel,
@@ -26,7 +27,7 @@ def test_archief_entries_excluded_when_active_entries_exist():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("dataset", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     identifiers = [e.get("identifier") for e in data]
     assert "actief" in identifiers
     assert "archief" not in identifiers
@@ -38,7 +39,7 @@ def test_archief_entries_returned_as_fallback_when_no_active_results():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("historisch", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     assert len(data) == 1
     assert data[0]["identifier"] == "archief"
 
@@ -52,7 +53,7 @@ def test_active_entries_rank_before_archive_via_separate_sort():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("onderwijs mbo data", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     identifiers = [e.get("identifier") for e in data]
     # archive entries excluded; active entries appear sorted by score
     assert "archief-hi" not in identifiers
@@ -66,7 +67,7 @@ def test_gelijke_score_volgt_de_dataset_id_niet_de_inleesvolgorde():
 
     def volgorde(catalogus):
         with patch("tools.catalog._cbs", return_value=catalogus), patch("tools.catalog._rio_duo", return_value=[]):
-            return [e["_cbs_id"] for e in json.loads(search_catalog("studenten hbo", source="cbs"))]
+            return [e["_cbs_id"] for e in treffers(search_catalog("studenten hbo", source="cbs"))]
 
     assert volgorde(entries) == volgorde(list(reversed(entries))) == sorted(i["_cbs_id"] for i in entries)
 
@@ -82,7 +83,7 @@ def test_no_archief_field_treated_as_active():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("dataset", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["identifier"] == "geen-veld"
 
 
@@ -100,7 +101,7 @@ def test_leverancier_filter_supported_and_excluded():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=rio_entries):
         result = search_catalog("data", source="riodata")
-    data = json.loads(result)
+    data = treffers(result)
     identifiers = {e.get("identifier") for e in data}
     assert "rio-entry" in identifiers
     assert "duo-entry" in identifiers
@@ -118,7 +119,7 @@ def test_leverancier_filter_case_insensitive():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=rio_entries):
         result = search_catalog("data", source="riodata")
-    data = json.loads(result)
+    data = treffers(result)
     identifiers = {e.get("identifier") for e in data}
     assert "rio-lower" in identifiers
     assert "duo-mixed" in identifiers
@@ -136,7 +137,7 @@ def test_geo_niveau_filter_excludes_datasets_without_level():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
-    data = json.loads(result)
+    data = treffers(result)
     identifiers = {e.get("identifier") for e in data}
     assert "gemeente-ds" in identifiers
     assert "provinciaal" not in identifiers
@@ -150,7 +151,7 @@ def test_dataset_zonder_regiodimensie_is_landelijk():
         {"identifier": "zonder-regio", "title": "instroom data", "_geo_niveau": [], "_dimensies": ["Perioden"]},
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
-        landelijk = json.loads(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
+        landelijk = treffers(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
         gemeente = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
     assert [e.get("identifier") for e in landelijk] == ["zonder-regio"]
     assert "Geen datasets gevonden" in gemeente
@@ -184,15 +185,17 @@ def test_onbekende_dekking_wordt_niet_als_landelijk_gekozen():
         {"identifier": "onbekend", "title": "instroom data instroom"},
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
-        result = json.loads(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
-    assert [e.get("identifier") for e in result if "identifier" in e] == ["bewezen"]
-    assert "onbekend" in result[-1]["melding"] and "dataset_details" in result[-1]["melding"]
+        result = envelop(search_catalog("instroom", source="cbs", geo_niveau="landelijk"))
+    assert [e.get("identifier") for e in result["kandidaten"]] == ["bewezen"]
+    assert "onbekend" in result["meldingen"][-1] and "dataset_details" in result["meldingen"][-1]
 
 
 def test_alleen_onbekende_dekking_vraagt_om_inspectie():
     cbs_entries = [{"identifier": "onbekend", "title": "instroom data", "_cbs_id": "99999NED"}]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "metadata_unknown" and uitkomst["kandidaten"] == []
     assert "onbekend" in result and "99999NED" in result and "dataset_details" in result
 
 
@@ -244,7 +247,7 @@ def test_instellingsvraag_met_geo_niveau_telt_de_instelling_niet_als_regio():
         patch("tools.catalog._cbs", return_value=[]),
         patch("tools.catalog._rio_duo", return_value=[_INSTELLINGSREGISTER]),
     ):
-        landelijk = json.loads(search_catalog(query, geo_niveau="landelijk"))
+        landelijk = treffers(search_catalog(query, geo_niveau="landelijk"))
         gemeente = search_catalog(query, geo_niveau="gemeente")
     assert [h["_ckan_id"] for h in landelijk] == ["instellingsregister"]
     assert "Geen datasets gevonden" in gemeente and "instellingsregister" not in gemeente
@@ -259,17 +262,23 @@ def test_geen_geschikte_kandidaat_geeft_no_match():
     for cbs in (alleen_synoniem, []):
         with patch("tools.catalog._cbs", return_value=cbs), patch("tools.catalog._rio_duo", return_value=[]):
             result = search_catalog("studenten", source="cbs")
-        assert result.startswith("no_match")
-        assert not result.lstrip().startswith("[")
-        assert "zegt niet dat de data ontbreekt" in result
+        uitkomst = envelop(result)
+        # Zwakke suggesties zijn geen keuze (needs_clarification); zonder ook die is het een no_match.
+        assert uitkomst["status"] in ("no_match", "needs_clarification")
+        if uitkomst["status"] == "no_match":
+            assert uitkomst["kandidaten"] == []
+            assert "zegt niet dat de data ontbreekt" in uitkomst["melding"]
+        else:
+            assert "zeg niet dat de data niet bestaat" in uitkomst["vervolgstap"]
 
 
 def test_zwakke_kandidaten_zijn_een_suggestie_geen_keuze():
     zwak = [{"_cbs_id": f"{i}NED", "title": "ingeschrevenen"} for i in range(10000, 10005)]
     with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("studenten", source="cbs")
-    assert result.startswith("no_match") and "needs_clarification" in result
-    assert sum(f"{i}NED" in result for i in range(10000, 10005)) == 3
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "needs_clarification"
+    assert sum(f"{i}NED" in json.dumps(uitkomst["kandidaten"]) for i in range(10000, 10005)) == 3
 
 
 def test_alleen_synoniem_wordt_geen_top_1_naast_de_gebruikersterm():
@@ -314,7 +323,8 @@ def test_onderwerpterm_die_geen_dataset_kent_telt_mee():
         patch("tools.catalog._rio_duo", return_value=[]),
     ):
         result = search_catalog("leraren tekort mbo", source="cbs")
-    assert result.startswith("no_match") and "needs_clarification" in result and "mbo-studenten" in result
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "needs_clarification" and "mbo-studenten" in json.dumps(uitkomst["kandidaten"])
 
 
 @pytest.mark.parametrize(("namen", "ids"), [({"Hogeschool Utrecht", "HU"}, ["a"]), (set(), [])])
@@ -337,12 +347,13 @@ def test_needs_clarification_laadt_niets_en_werkt_ook_zonder_clarify_scope():
     zwak = [{"_cbs_id": "11111NED", "title": "ingeschrevenen", "bron": "Ingeschrevenen hbo"}]
     with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("studenten", source="cbs")
-    eerste, tweede = result.split("\n")
-    assert eerste.startswith("no_match") and tweede.startswith("needs_clarification")
-    assert "11111NED (Ingeschrevenen hbo)" in tweede and "[" not in tweede
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "needs_clarification"
+    assert uitkomst["kandidaten"] == [{"dataset_id": "11111NED", "bron": "Ingeschrevenen hbo"}]
     # Na één beantwoorde scopevraag is clarify_scope weg (agent/run.py): de tekst dekt beide gevallen.
-    assert "Laad geen van deze" in tweede and "Is clarify_scope beschikbaar" in tweede
-    assert "noem deze suggesties bij hun titel" in tweede and "zeg niet dat de data niet bestaat" in tweede
+    assert "Laad geen van deze" in uitkomst["melding"] and "Is clarify_scope beschikbaar" in uitkomst["vervolgstap"]
+    assert "noem deze suggesties bij hun titel" in uitkomst["vervolgstap"]
+    assert "zeg niet dat de data niet bestaat" in uitkomst["vervolgstap"]
 
 
 def test_suggestie_zonder_het_gevraagde_geo_niveau_valt_af():
@@ -352,7 +363,9 @@ def test_suggestie_zonder_het_gevraagde_geo_niveau_valt_af():
     ]
     with patch("tools.catalog._cbs", return_value=zwak), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("studenten", source="cbs", geo_niveau="gemeente")
-    assert "needs_clarification" in result and "gemeente (" in result and "landelijk (" not in result
+    uitkomst = envelop(result)
+    ids = [k["dataset_id"] for k in uitkomst["kandidaten"]]
+    assert uitkomst["status"] == "needs_clarification" and ids == ["gemeente"]
 
 
 def test_instellingsvraag_met_alleen_een_zwakke_duo_treffer_valt_terug_op_cbs():
@@ -376,8 +389,10 @@ def test_geo_niveau_filter_returns_error_when_no_match():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("instroom", source="cbs", geo_niveau="gemeente")
-    assert "Geen datasets gevonden" in result
-    assert "gemeente" in result
+    uitkomst = envelop(result)
+    assert uitkomst["status"] == "no_match" and uitkomst["kandidaten"] == []
+    assert "Geen datasets gevonden" in uitkomst["melding"]
+    assert "gemeente" in uitkomst["melding"] and "hoger aggregatieniveau" in uitkomst["vervolgstap"]
 
 
 def test_geo_niveau_filter_none_returns_all():
@@ -387,7 +402,7 @@ def test_geo_niveau_filter_none_returns_all():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("instroom", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     assert len(data) == 2
 
 
@@ -416,7 +431,7 @@ def test_title_match_ranks_higher_than_column_sample_match():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
         result = search_catalog("eerstejaars bachelor", source="duo")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Eerstejaars ingeschrevenen hoger onderwijs"
 
 
@@ -442,7 +457,7 @@ def test_voorbeeldvragen_boost_ranking():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
         result = search_catalog("studenten per instelling", source="duo")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Dataset A"
 
 
@@ -464,7 +479,7 @@ def test_tags_match_boosts_ranking():
     ]
     with patch("tools.catalog._cbs", return_value=cbs_entries), patch("tools.catalog._rio_duo", return_value=[]):
         result = search_catalog("instroom mbo", source="cbs")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Dataset met tag match"
 
 
@@ -490,7 +505,7 @@ def test_synonym_studenten_matches_ingeschrevenen():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
         result = search_catalog("studenten ho", source="duo")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Ingeschrevenen hoger onderwijs"
 
 
@@ -513,7 +528,7 @@ def test_synonym_diplomering_matches_gediplomeerden():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
         result = search_catalog("mbo diplomering", source="duo")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Gediplomeerde mbo-studenten"
 
 
@@ -534,7 +549,7 @@ def test_synonym_hbo_expands_to_ho():
     ]
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=duo_entries):
         result = search_catalog("hbo studenten", source="duo")
-    data = json.loads(result)
+    data = treffers(result)
     assert data[0]["bron"] == "Ingeschrevenen hoger onderwijs"
 
 
@@ -688,7 +703,7 @@ def test_dataset_details_logt_een_onbekend_id_als_lengte_en_hash(lege_catalogus,
     with caplog.at_level(logging.INFO, logger="tools.catalog"):
         result = dataset_details(ruw)
 
-    assert result == f"Dataset '{_ONBEKEND_ID}' niet gevonden in de catalogus."
+    assert result.startswith(f"Dataset '{_ONBEKEND_ID}' niet gevonden in de catalogus.")  # daarna de herstelhint (#358)
     assert not _lekken(caplog)
     regel = _waarschuwing(caplog)
     assert "dataset_details miss" in regel
@@ -821,7 +836,7 @@ _DUO = {"leverancier": "DUO", "_ckan_id": "p01hoinges", "bron": "Ingeschrevenen 
 
 def test_catalogusbron_zonder_datatool_is_gemarkeerd_in_zoekresultaat():
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_ROA_OUD, _DUO]):
-        hits = {h["bron"]: h for h in json.loads(search_catalog("vacatures", source="riodata"))}
+        hits = {h["bron"]: h for h in treffers(search_catalog("vacatures", source="riodata"))}
     assert hits["AIS tot 2028"]["opvraagbaar"] is False
     assert "niet op te vragen" in hits["AIS tot 2028"]["melding"]
     assert "opvraagbaar" not in hits["Ingeschrevenen hbo"]
@@ -837,7 +852,7 @@ def test_dataset_details_van_catalogusbron_zonder_datatool_meldt_dat():
 def test_catalogusbron_met_eigen_tool_noemt_die_tool():
     """UWV en ROA AIS 2030 hebben een eigen tool (#441): 'niet op te vragen' zou dan onwaar zijn."""
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[_UWV]):
-        hit = json.loads(search_catalog("vacatures", source="riodata"))[0]
+        hit = treffers(search_catalog("vacatures", source="riodata"))[0]
         details = json.loads(dataset_details("uwv-open-match-data"))
     for uit in (hit, details):
         assert uit["via_tool"] == "get_uwv_vacatures"
@@ -849,24 +864,28 @@ def test_catalogusbron_met_eigen_tool_noemt_die_tool():
 _HINT_ENTRIES = [{"identifier": "ds1", "_cbs_id": "12345", "title": "voltijd ingeschrevenen hoger onderwijs"}]
 
 
-def _zoek(query):
+def _zoek_envelop(query):
     with patch("tools.catalog._cbs", return_value=_HINT_ENTRIES), patch("tools.catalog._rio_duo", return_value=[]):
-        return json.loads(search_catalog(query, source="cbs"))
+        return envelop(search_catalog(query, source="cbs"))
+
+
+def _zoek(query):
+    return _zoek_envelop(query).get("kandidaten", [])
 
 
 def test_volzin_query_is_normalised_and_the_hint_is_in_the_response():
-    hits = _zoek("Hoeveel voltijd ingeschrevenen heeft de universiteit eigenlijk in het hoger onderwijs?")
+    uitkomst = _zoek_envelop("Hoeveel voltijd ingeschrevenen heeft de universiteit eigenlijk in het hoger onderwijs?")
 
-    assert hits[0]["_cbs_id"] == "12345"
-    assert "melding" in hits[-1]
-    assert "Query genormaliseerd naar trefwoorden" in hits[-1]["melding"]
-    assert "?" not in hits[-1]["melding"].split("'")[1]
+    assert uitkomst["kandidaten"][0]["_cbs_id"] == "12345"
+    (hint,) = uitkomst["meldingen"]
+    assert "Query genormaliseerd naar trefwoorden" in hint
+    assert "?" not in hint.split("'")[1]
 
 
 def test_short_keyword_query_is_left_alone():
-    hits = _zoek("voltijd ingeschrevenen")
+    uitkomst = _zoek_envelop("voltijd ingeschrevenen")
 
-    assert len(hits) == 1 and "melding" not in hits[0]
+    assert len(uitkomst["kandidaten"]) == 1 and "meldingen" not in uitkomst
 
 
 def test_trailing_punctuation_does_not_break_the_match():
@@ -887,7 +906,8 @@ def test_tool_description_shows_a_good_and_a_bad_query():
 def _zoek_catalogus(query: str, cbs=(), rio=(), **kwargs) -> list[dict]:
     with patch("tools.catalog._cbs", return_value=list(cbs)), patch("tools.catalog._rio_duo", return_value=list(rio)):
         resultaat = search_catalog(query, **kwargs)
-    return json.loads(resultaat) if resultaat.startswith("[") else []
+    uitkomst = envelop(resultaat)
+    return uitkomst["kandidaten"] if uitkomst["status"] == "candidates" else []
 
 
 def test_niet_geschikt_voor_scoort_niet_maar_blijft_zichtbaar():
@@ -967,7 +987,7 @@ def _duo_hit(zoekkaart) -> dict:
         "_zoekkaart": zoekkaart,
     }
     with patch("tools.catalog._cbs", return_value=[]), patch("tools.catalog._rio_duo", return_value=[duo]):
-        return json.loads(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))[0]
+        return treffers(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))[0]
 
 
 def test_zoekhit_draagt_de_duo_zoekkaart_zonder_lege_delen():
@@ -988,7 +1008,7 @@ def test_zoekhit_zonder_gevulde_zoekkaart_heeft_er_geen(zoekkaart):
 
 def test_echte_duo_hit_draagt_de_zoekkaart_van_riodata():
     """p01hoinges heeft in riodata een gevulde zoekkaart: teleenheid personen, peildatum 1 oktober."""
-    hits = json.loads(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))
+    hits = treffers(search_catalog("ingeschrevenen hoger onderwijs", source="duo"))
     hit = next(h for h in hits if h.get("_ckan_id") == "p01hoinges")
     assert hit["zoekkaart"]["teleenheid"] == "personen"
     assert hit["zoekkaart"]["peildatum"] == "1 oktober"
@@ -999,7 +1019,7 @@ def test_echte_duo_hit_draagt_de_zoekkaart_van_riodata():
 
 def _hit_van(entry: dict, query: str = "ingeschrevenen") -> dict:
     with patch("tools.catalog._cbs", return_value=[entry]), patch("tools.catalog._rio_duo", return_value=[]):
-        (hit,) = json.loads(search_catalog(query, source="cbs"))
+        (hit,) = treffers(search_catalog(query, source="cbs"))
     return hit
 
 
@@ -1026,6 +1046,8 @@ def test_zoekhit_laat_verrijking_voor_de_site_weg():
     }
     hit = _hit_van(entry)
     assert set(hit) == {
+        "dataset_id",
+        "geraakt",
         "bron",
         "status",
         "_cbs_id",
@@ -1109,17 +1131,17 @@ def test_zoekresultaat_laat_hele_treffers_weg_binnen_het_budget(monkeypatch):
     monkeypatch.setattr(catalog, "TOOL_RESULT_MAX_CHARS", 1500)
     with patch("tools.catalog._cbs", return_value=entries), patch("tools.catalog._rio_duo", return_value=[]):
         tekst = search_catalog("ingeschrevenen", source="cbs", top_n=15)
-    uit = json.loads(tekst)  # geldige JSON, geen afgekapte tekst
+    uit = envelop(tekst)  # geldige JSON, geen afgekapte tekst
     assert len(tekst) <= 1500
-    hits = [h for h in uit if "_cbs_id" in h]
-    (melding,) = [m for m in uit if "melding" in m]
+    hits = uit["kandidaten"]
+    (melding,) = uit["meldingen"]
     assert 1 <= len(hits) < 15 and hits[0]["_cbs_id"] == "10000NED"  # van achteren weggelaten
-    assert f"{15 - len(hits)} treffer(s) weggelaten" in melding["melding"] and "1500 tekens" in melding["melding"]
+    assert f"{15 - len(hits)} treffer(s) weggelaten" in melding and "1500 tekens" in melding
     # Ruim binnen het budget blijft alles staan en komt er geen melding.
     monkeypatch.setattr(catalog, "TOOL_RESULT_MAX_CHARS", 100000)
     with patch("tools.catalog._cbs", return_value=entries), patch("tools.catalog._rio_duo", return_value=[]):
-        uit = json.loads(search_catalog("ingeschrevenen", source="cbs", top_n=15))
-    assert len(uit) == 15 and not any("melding" in m for m in uit)
+        uit = envelop(search_catalog("ingeschrevenen", source="cbs", top_n=15))
+    assert len(uit["kandidaten"]) == 15 and "meldingen" not in uit
 
 
 def test_dataset_details_draagt_de_documentatielink():

@@ -221,13 +221,24 @@ def test_script_laadt_geen_model_en_eindigt_met_0():
     assert all(re.search(rf"^{re.escape(naam)}\s", uit.stdout, re.MULTILINE) for naam in rapport.CELLEN), uit.stdout
 
 
-def test_tekstresultaat_is_een_lege_ranglijst():
-    assert harnas.ranking("no_match: Geen resultaten gevonden voor 'x'.", {}) == []
-    assert harnas.ranking("Geen datasets gevonden voor 'x' die het niveau 'gemeente' ondersteunen.", {}) == []
+@pytest.mark.parametrize(
+    "status",
+    ["no_match", "needs_clarification", "out_of_scope", "metadata_unknown", "source_unavailable", "tool_error"],
+)
+def test_een_envelope_zonder_treffers_is_een_lege_ranglijst(status):
+    uitvoer = json.dumps({"status": status, "kandidaten": [{"dataset_id": "85423NED", "bron": "suggestie"}]})
+    assert harnas.ranking(uitvoer, {}) == []
+    assert harnas.ranking("platte tekst, geen envelope", {}) == []
 
 
-def test_melding_in_de_uitvoer_is_geen_treffer():
-    uitvoer = json.dumps([{"_cbs_id": "85423NED"}, {"melding": "Query genormaliseerd naar trefwoorden"}])
+def test_een_meldingen_in_de_envelope_is_geen_treffer():
+    uitvoer = json.dumps(
+        {
+            "status": "candidates",
+            "kandidaten": [{"dataset_id": "85423NED", "_cbs_id": "85423NED"}],
+            "meldingen": ["Query genormaliseerd naar trefwoorden"],
+        }
+    )
     assert harnas.ranking(uitvoer, {}) == ["85423NED"]
 
 
@@ -235,7 +246,7 @@ def test_roa_treffer_krijgt_zijn_id_via_de_unieke_titel():
     with harnas.zonder_instellingsregister():
         uitvoer = catalog.search_catalog("AIS tot 2030 arbeidsmarkt", top_n=15)
     # De zoekuitvoer houdt _roa_id niet (_SEARCH_KEEP_FIELDS); daarom de terugval op de titel.
-    roa = next(t for t in json.loads(uitvoer) if t.get("bron") == "AIS tot 2030")
+    roa = next(t for t in json.loads(uitvoer)["kandidaten"] if t.get("bron") == "AIS tot 2030")
     titels = harnas.unieke_titels(harnas.doorzoekbaar())
     assert harnas.treffer_id(roa, titels) == "ais2030"
     assert "ais2030" in harnas.ranking(uitvoer, titels)

@@ -43,12 +43,14 @@ class SearchTrace:
 
     def _note_search(self, args: dict, content: str) -> None:
         try:
-            hits = json.loads(content)
+            envelop = json.loads(content)
         except (TypeError, ValueError):
-            return  # "Geen resultaten": an unsuccessful search leaves the previous top as it was
-        if not isinstance(hits, list):
+            return  # not an envelope: the previous top stays as it was
+        # Only `candidates` is a hit list; no_match, needs_clarification and the other statuses leave the previous top.
+        if not isinstance(envelop, dict) or envelop.get("status") != "candidates":
             return
-        ids = [next((h[f] for f in _ID_FIELDS if h.get(f)), None) for h in hits if "melding" not in h]
+        hits = [h for h in envelop.get("kandidaten") or [] if isinstance(h, dict)]
+        ids = [h.get("dataset_id") or next((h[f] for f in _ID_FIELDS if h.get(f)), None) for h in hits]
         self.query = args.get("query")
         self.hits = [i for i in ids if i]
         self.top = self.hits[:_TOP]
