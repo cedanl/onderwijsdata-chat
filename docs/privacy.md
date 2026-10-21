@@ -64,7 +64,11 @@ is een open punt.
 
 - Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
-- Al je gegevens in één keer verwijderen of exporteren kan nog niet (#485).
+- Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
+  (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback
+  en datarecepten. Niet erin: wat alleen in je browser staat, en feedback van een verwijderd gesprek, die niet meer aan
+  je account hangt.
+- Al je gegevens in één keer verwijderen kan nog niet (#485).
 
 ## Verantwoordelijke en contact
 
@@ -80,5 +84,5 @@ verwerkingsverantwoordelijke is besloten (#553, 19-10-2026; zie hierboven). Open
 
 - Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt
   bewaard of gebruikt voor training.
-- Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen of exporteren (#485).
+- Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen (#485).
 - Of er een DPIA nodig is.

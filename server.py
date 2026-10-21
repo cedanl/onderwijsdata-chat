@@ -43,6 +43,7 @@ from routes import (
     data_export_router,
     feedback_router,
     instellingen_router,
+    mijn_gegevens_router,
     persistence_router,
 )
 
@@ -206,6 +207,7 @@ _ROUTERS = (
     persistence_router,
     instellingen_router,
     data_export_router,
+    mijn_gegevens_router,
     chat_router,
 )
 

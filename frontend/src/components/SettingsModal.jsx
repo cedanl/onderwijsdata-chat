@@ -2,6 +2,7 @@ import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
 import PrivacyLink from './PrivacyLink'
 import FeedbackLink from './FeedbackLink'
+import MijnGegevensExport from './MijnGegevensExport'
 import { useDialog } from '../hooks/useDialog'
 import { FUNCTIES, isFunctie } from '../functies'
 
@@ -199,6 +200,8 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
             Iets kwijt over openEDUdata+? <FeedbackLink>Geef feedback</FeedbackLink>
           </p>
         )}
+        {/* Everything the server keeps under this account as a file (#645); not during onboarding, like Uitloggen. */}
+        {!isOnboarding && <MijnGegevensExport />}
         {/* The navbar hides its logout button up to 1024px; this dialog opens from the name in the header. */}
         {onLogout && !isOnboarding && (
           <button type="button"

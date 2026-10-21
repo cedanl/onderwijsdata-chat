@@ -84,6 +84,21 @@ describe('PrivacyPage', () => {
     expect(docsBullets).toHaveLength(3)
     for (const bullet of [...appBullets, ...docsBullets]) expect(bullet).not.toMatch(/verwerkingsverantwoordelijke/i)
   })
+
+  // #645: exporting everything is possible, deleting everything is still open (#485), in the app and the docs.
+  it('says that all data can be exported, and that deleting it all is still open', async () => {
+    await render(createElement(PrivacyPage))
+    const app = [sectionText('Wat je zelf kunt doen'), sectionText('Open punten')]
+    const docs = [oneLine(docsSection('Wat je zelf kunt doen')), oneLine(docsSection('Open punten'))]
+    for (const [zelf, open] of [app, docs]) {
+      expect(zelf).toContain('Exporteer al mijn gegevens')
+      expect(zelf).toContain('/api/mijn-gegevens/export')
+      expect(zelf).toContain('verwijderen kan nog niet')
+      expect(zelf).not.toMatch(/exporteren kan nog niet/)
+      expect(open).toContain('alles verwijderen')
+      expect(open).not.toMatch(/exporteren/)
+    }
+  })
 })
 
 describe('buttons for the privacy information', () => {
