@@ -13,7 +13,7 @@ from onderwijsdata.client import get
 from core.config import CBS_ROW_LIMIT
 from core.logging_util import foutkenmerk
 
-from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, fouten, periode, scopeprofiel, store
+from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, cbs_standaard, fouten, periode, scopeprofiel, store
 from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
@@ -314,9 +314,12 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    standaard = None
     if selectie is not None:
         # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
         # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
+        # Waar de tabel een vaste standaard heeft, kiest de code die, niet het model (#653).
+        selectie, standaard = cbs_standaard.toegepast(dataset_id, selectie)
         col_defs_vooraf = _load_definitions(dataset_id)
         uitkomst = cbs_selectie.compileer(dataset_id, selectie, col_defs_vooraf)
         if isinstance(uitkomst, str):
@@ -412,6 +415,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
             "CBS-metadata (DataProperties) kon niet worden opgehaald: kolomdefinities, eenheden "
             "en dimensielabels ontbreken in dit resultaat. Noem dat als je de cijfers duidt."
         )
+
+    if standaard:
+        result["standaardselectie"] = standaard.uitleg()
 
     if eenheid:
         result["afronding"] = cbs_afronding.noot(eenheid)

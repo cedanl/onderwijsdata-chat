@@ -21,7 +21,7 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import cbs_selectie, instellingsprovincie, kaartlocaties, maten, scopeprofiel, store
+from . import cbs_selectie, cbs_standaard, instellingsprovincie, kaartlocaties, maten, scopeprofiel, store
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
@@ -96,11 +96,13 @@ def _duo_sentinelregels() -> list[str]:
 
 def _cbs_filters(args: dict) -> dict:
     """De OData-parameters van de aanroep: de bewaarde `filters`, of het compilaat van een
-    gesloten selectie (#343). Zonder poort: de snippet reproduceert de aanroep, hij keurt hem niet."""
+    gesloten selectie (#343), met de standaard die de app laadde (#653). Zonder poort: de snippet reproduceert de
+    aanroep, hij keurt hem niet."""
     if (filters := args.get("filters")) is not None:
         return dict(filters)
     if (selectie := args.get("selectie")) is None:
         return {}
+    selectie, _ = cbs_standaard.toegepast(args["dataset_id"], selectie)
     compilaat = cbs_selectie.compileer(args["dataset_id"], selectie, None)
     return compilaat if isinstance(compilaat, dict) else {}
 
