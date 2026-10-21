@@ -362,6 +362,10 @@ describe('CSS', () => {
     expect(css).toMatch(/--tap-min:\s*44px/)
   })
 
+  it('gives Annuleren a text colour of its own: a button does not inherit one, and it was black in dark mode', () => {
+    expect(regel('.mijn-gegevens-verwijderen-acties .confirm-cancel')).toMatch(/color:\s*var\(--gray-700\)/)
+  })
+
   it('gives the field 16px on every screen and stacks the dialog above the settings (2000)', () => {
     expect(regel('.mijn-gegevens-verwijderen-invoer')).toMatch(/font-size:\s*16px/)
     expect(regel('.mijn-gegevens-verwijderen-overlay')).toMatch(/z-index:\s*2100/)

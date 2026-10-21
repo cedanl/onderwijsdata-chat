@@ -68,4 +68,13 @@ describe('LoginPage notice', () => {
     await rerender({ gegevensVerwijderd: true })
     expect(status().textContent).toBe('Al je gegevens zijn verwijderd. Je bent uitgelogd.')
   })
+
+  it('takes its text colour from CSS, with a readable one in dark mode', async () => {
+    await rerender({ gegevensVerwijderd: true })
+    expect(status().className).toBe('login-melding')
+    expect(status().style.color).toBe('')
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+    expect(css).toMatch(/html\.dark \.login-melding\s*\{\s*color:\s*var\(--accent-text\)/)
+    expect(css).toMatch(/html:not\(\.dark\):not\(\.light\) \.login-melding\s*\{\s*color:\s*var\(--accent-text\)/)
+  })
 })

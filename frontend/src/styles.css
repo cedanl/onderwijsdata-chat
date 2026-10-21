@@ -184,6 +184,13 @@ input, textarea { font: inherit; }
    adresbalk mee en duwt een gecentreerde kaart naar de onderrand; 100dvh volgt de zichtbare hoogte.
    Een browser zonder dvh houdt de 100vh-regel ervoor. */
 .login-page { min-height: 100vh; min-height: 100dvh; padding: 16px; box-sizing: border-box; }
+/* The notice above the login form (session ended #499, data erased #646). --blue-700 on the dark --blue-50 could not
+   be read in dark mode. */
+.login-melding { color: var(--blue-700); }
+html.dark .login-melding { color: var(--accent-text); }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .login-melding { color: var(--accent-text); }
+}
 .login-input {
   width: 100%; padding: 10px 14px;
   border: 1.5px solid var(--gray-200); border-radius: var(--radius);
@@ -1963,7 +1970,10 @@ html.dark .mijn-gegevens-export-melding--fout { color: #FCA5A5; }
 }
 .mijn-gegevens-verwijderen-fout { margin: 10px 0 0; font-size: .85rem; color: #B91C1C; }
 .mijn-gegevens-verwijderen-acties { flex-wrap: wrap; margin-top: 20px; }
-.mijn-gegevens-verwijderen-acties button { min-height: var(--tap-min); }
+/* Growing, so at 390px the two buttons each take a full row instead of wrapping unevenly. */
+.mijn-gegevens-verwijderen-acties button { flex: 1 1 auto; min-height: var(--tap-min); }
+/* .confirm-cancel sets no colour, and a button does not inherit one: in dark mode its text was black. */
+.mijn-gegevens-verwijderen-acties .confirm-cancel { color: var(--gray-700); }
 .mijn-gegevens-verwijderen-acties button:disabled { opacity: .5; cursor: not-allowed; }
 html.dark .mijn-gegevens-verwijderen-btn { border-color: #7F1D1D; color: #FCA5A5; }
 html.dark .mijn-gegevens-verwijderen-btn:hover { border-color: #DC2626; background: #2A1215; }

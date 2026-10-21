@@ -58,8 +58,8 @@ export default function LoginPage({ onLogin, oidcEnabled, sessionExpired = false
         </p>
 
         {(sessionExpired || gegevensVerwijderd) && (
-          <div role="status" style={{
-            background: 'var(--blue-50)', color: 'var(--blue-700)', borderRadius: 'var(--radius-sm)',
+          <div role="status" className="login-melding" style={{
+            background: 'var(--blue-50)', borderRadius: 'var(--radius-sm)',
             padding: '10px 14px', fontSize: '.85rem', fontWeight: 500, marginBottom: 20,
           }}>
             {gegevensVerwijderd ? GEGEVENS_VERWIJDERD : 'Je sessie is verlopen. Log opnieuw in.'}
