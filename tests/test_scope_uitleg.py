@@ -30,6 +30,11 @@ _CONTRACT = (
 # Een antwoord nadat het model een mbo/hbo/wo-bron in de catalogus vond, zonder data te laden (#563).
 _UIT_CATALOGUS = "In de catalogus staat een DUO-bestand met studenten per opleiding; dat kan ik voor je ophalen."
 _DATA = json.dumps({"data_key": "cbs:85525NED:ab", "rijen": [{"Perioden": "2022SJ00", "Leerlingen": 1}]})
+# Na een ho-vraag laat de po-poort vóór het model (#647) een po-vraag door: dan vangt deze uitleg achteraf hem op.
+_NA_HO = (
+    {"role": "user", "content": "Hoeveel hbo-studenten zijn er?"},
+    {"role": "assistant", "content": "Dat zoek ik voor je op."},
+)
 
 
 def test_uitleg_zegt_de_scope_in_gewone_taal():
@@ -91,7 +96,7 @@ def test_andere_beurten_houden_hun_antwoord(tekst, results, vraag):
     assert scope_uitleg(tekst, results, vraag) is None
 
 
-def _run(monkeypatch, vraag: str, tool_result: str, teksten: list[str]):
+def _run(monkeypatch, vraag: str, tool_result: str, teksten: list[str], eerder: tuple[dict, ...] = ()):
     steps = [
         StreamResult(text="", tool_calls=[{"id": "c", "name": "get_cbs_data", "arguments": '{"dataset_id": "x"}'}]),
         *(StreamResult(text=t, tool_calls=[]) for t in teksten),
@@ -115,14 +120,15 @@ def _run(monkeypatch, vraag: str, tool_result: str, teksten: list[str]):
         events.append(event)
 
     text = asyncio.run(
-        run_module.run([{"role": "user", "content": vraag}], {}, emit, asyncio.Event(), model="openai/gpt-4o")
+        run_module.run([*eerder, {"role": "user", "content": vraag}], {}, emit, asyncio.Event(), model="openai/gpt-4o")
     )
+    assert len(steps) < 1 + len(teksten), "de beurt bereikte het model niet"  # deze tests gaan over de uitleg achteraf
     return text, events
 
 
 @pytest.mark.parametrize("tool_result", [_PO_TABEL, _CONTRACT])
 def test_groep_8_krijgt_de_vaste_uitleg_in_de_chat(monkeypatch, tool_result):
-    text, events = _run(monkeypatch, GROEP_8, tool_result, [TOOLTAAL] * 3)
+    text, events = _run(monkeypatch, GROEP_8, tool_result, [TOOLTAAL] * 3, eerder=_NA_HO)
 
     assert text == SCOPE_UITLEG
     end = events[-1]
@@ -135,7 +141,9 @@ def test_groep_8_krijgt_de_vaste_uitleg_in_de_chat(monkeypatch, tool_result):
 
 def test_een_getal_uit_het_geheugen_houdt_de_uitleg_niet_tegen(monkeypatch):
     """Het model noemde zonder data een getal: de uitleg rust niet op die tekst, dus wordt ze niet ingehouden."""
-    text, events = _run(monkeypatch, GROEP_8, _PO_TABEL, ["In 2022 zaten er 183.000 leerlingen in groep 8."] * 3)
+    text, events = _run(
+        monkeypatch, GROEP_8, _PO_TABEL, ["In 2022 zaten er 183.000 leerlingen in groep 8."] * 3, eerder=_NA_HO
+    )
     assert text == SCOPE_UITLEG
     assert events[-1]["content"] == SCOPE_UITLEG and "controle" not in events[-1]
 

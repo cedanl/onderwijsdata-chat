@@ -34,7 +34,8 @@ from .schemas import TOOL_GET_RIO_INSTELLING
 SECTOREN = frozenset({"MBO", "HBO", "WO", "HO"})
 
 # Woorden waarmee een vraag po, so of vo noemt, buiten de scope van de chat (#355): voor de vervolgvragen
-# (agent/vervolgvragen.py) en de vaste scope-uitleg (agent/vaste_antwoorden.py). "groep 1" t/m "groep 8"
+# (agent/vervolgvragen.py), de scope-uitleg vóór het model (agent/po_vraag.py, #647; daar beslist een losse
+# "so" of "bo" niet) en de vaste scope-uitleg achteraf (agent/vaste_antwoorden.py). "groep 1" t/m "groep 8"
 # zijn de jaargroepen van de basisschool (BEV-12).
 PO_SO_VO = re.compile(
     r"\b(?:po|so|vo|vso|bo|sbo|vavo|vmbo|havo|vwo|basisonderwijs|basisschool|basisscholen|praktijkonderwijs"
