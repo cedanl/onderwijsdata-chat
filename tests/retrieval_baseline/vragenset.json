@@ -44,11 +44,11 @@
       "reeks": "ontwikkel",
       "vraag": "Hoeveel voortijdig schoolverlaters zijn er in het mbo?",
       "zoekinput": "voortijdig schoolverlaters mbo",
-      "geaccepteerd": ["85368NED", "85519NED", "85859NED"],
+      "geaccepteerd": ["85367NED", "85368NED", "85519NED", "85859NED"],
       "beantwoordbaar": true,
       "verboden": ["84780NED", "85298NED"],
       "kritiek": true,
-      "toelichting": "85368NED: VSV naar onderwijssoort; scopeprofiel.CBS_SECTORFILTER laadt alleen de mbo-rijen. 85519NED: door- en uitstroom mbo, tags vsv, 'inzicht in voortijdig schoolverlaten'. 85859NED: meetwaarde VoortijdigSchoolverlaters_2 naar Onderwijssoort, mbo-rijen via CBS_SECTORFILTER. Verboden: 84780NED en 85298NED tellen VSV over alle onderwijssoorten zonder sectorselectie en vallen buiten het profiel (CH-03)."
+      "toelichting": "85368NED: VSV naar onderwijssoort; scopeprofiel.CBS_SECTORFILTER laadt alleen de mbo-rijen. 85519NED: door- en uitstroom mbo, tags vsv, 'inzicht in voortijdig schoolverlaten'. 85859NED: meetwaarde VoortijdigSchoolverlaters_2 naar Onderwijssoort, mbo-rijen via CBS_SECTORFILTER. Verboden: 84780NED en 85298NED tellen VSV over alle onderwijssoorten zonder sectorselectie en vallen buiten het profiel (CH-03). 85367NED: dezelfde VSV naar leeftijd (v0.2.1, Onderwijssoort A025290 = mbo), antwoordt op datasetniveau hetzelfde als 85368NED."
     },
     {
       "id": "mbo-05",
@@ -261,11 +261,11 @@
       "reeks": "ontwikkel",
       "vraag": "Hoeveel jongeren verlaten het mbo zonder startkwalificatie?",
       "zoekinput": "mbo zonder startkwalificatie",
-      "geaccepteerd": ["85368NED", "85519NED", "85859NED"],
+      "geaccepteerd": ["85367NED", "85368NED", "85519NED", "85859NED"],
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Zonder startkwalificatie het onderwijs verlaten is voortijdig schoolverlaten: 85368NED (VSV, mbo-rijen), 85519NED (uitstroom mbo, tags vsv) en 85859NED (dimensie Startkwalificatie op peilmoment, mbo-rijen)."
+      "toelichting": "Zonder startkwalificatie het onderwijs verlaten is voortijdig schoolverlaten: 85368NED (VSV, mbo-rijen), 85519NED (uitstroom mbo, tags vsv) en 85859NED (dimensie Startkwalificatie op peilmoment, mbo-rijen). 85367NED: VSV naar leeftijd (v0.2.1), mbo-rijen via CBS_SECTORFILTER."
     },
     {
       "id": "mbo-23",

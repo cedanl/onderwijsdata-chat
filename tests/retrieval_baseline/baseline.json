@@ -1,17 +1,17 @@
 {
-  "catalogus_digest": "bc66490be4a1",
+  "catalogus_digest": "9eab4249d9b8",
   "catalogusversie": [
     {
       "pakket": "onderwijsdata",
-      "versie": "0.2.0",
-      "commit": "ed09a10a2cdc472ed2f1a9bbbc5a023170cb20f5",
+      "versie": "0.2.2",
+      "commit": "6ada0b0813f051440c9674c1eae7160e1651e11a",
       "manifest": {
-        "catalogusrevisie": "ca1b72082e9267ff",
+        "catalogusrevisie": "076d42ee7c5ec9b8",
         "consistent": true,
-        "aantal": 266,
-        "laatste_succesvolle_controle": "2026-10-05",
+        "aantal": 268,
+        "laatste_succesvolle_controle": "2026-10-21",
         "versheid": {
-          "oudste_controle": "2026-10-05",
+          "oudste_controle": "2026-10-21",
           "zonder_controle": 0,
           "perioden_verouderd": 0,
           "perioden_onbekend": 0,
@@ -27,9 +27,9 @@
     }
   ],
   "dataset_counts": {
-    "CBS": 123,
+    "CBS": 125,
     "DUO": 15,
-    "RIO": 9
+    "RIO": 8
   },
   "doorzoekbaar": [
     "3733chd",
@@ -112,6 +112,7 @@
     "83896NED",
     "83897NED",
     "83966NED",
+    "84312NED",
     "84317NED",
     "84318NED",
     "84319NED",
@@ -125,6 +126,7 @@
     "85355NED",
     "85356NED",
     "85357NED",
+    "85367NED",
     "85368NED",
     "85380NED",
     "85381NED",
@@ -183,7 +185,7 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-10-19",
+  "gemeten_op": "2026-10-21",
   "metingen": {
     "mbo/ontwikkel": {
       "n": 18,

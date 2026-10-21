@@ -99,6 +99,13 @@ _CBS_VSV = {
     "bron": "Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst",
     "onderwijstype": ["VO", "MBO"],
 }
+# Dezelfde VSV naar leeftijd (v0.2.1): Onderwijssoort kent alleen totalen, mbo is A025290.
+_CBS_VSV_LEEFTIJD = {
+    "leverancier": "CBS",
+    "_cbs_id": "85367NED",
+    "bron": "Voortijdig schoolverlaters; geslacht, leeftijd en herkomst",
+    "onderwijstype": ["VO", "MBO"],
+}
 _CBS_VO = {"leverancier": "CBS", "_cbs_id": "80040ned", "bron": "Vo; leerlingen", "onderwijstype": ["VO"]}
 # De vo-contextbronnen van CBS (#557), met de woorden van hun catalogusrecord.
 _CBS_HO_CONTEXT = {
@@ -191,7 +198,16 @@ def catalogus():
         _RIO_SECTORFILTER,
         _RIO_ZONDER_SECTOR,
     ]
-    cbs = [_CBS_MBO, _CBS_ALLEN, _CBS_VO, _CBS_VO_DETAIL, _CBS_VSV, _CBS_WOONREGIO, *_CBS_HO_CONTEXT_RECORDS]
+    cbs = [
+        _CBS_MBO,
+        _CBS_ALLEN,
+        _CBS_VO,
+        _CBS_VO_DETAIL,
+        _CBS_VSV,
+        _CBS_VSV_LEEFTIJD,
+        _CBS_WOONREGIO,
+        *_CBS_HO_CONTEXT_RECORDS,
+    ]
     with (
         patch("tools.catalog._cbs_catalog", return_value=cbs),
         patch("tools.catalog._rio_catalog", return_value=rio_duo),
@@ -214,7 +230,7 @@ def test_een_vo_bestand_is_geen_kandidaat_bij_een_mbo_vraag(catalogus):
 
 def test_de_telling_volgt_de_grens(catalogus):
     """De vijf vo-contextbronnen tellen mee (#557): vier CBS-tabellen en voprognoses."""
-    assert dataset_counts() == {"CBS": 7, "DUO": 3, "RIO": 1}
+    assert dataset_counts() == {"CBS": 8, "DUO": 3, "RIO": 1}
 
 
 def test_details_van_een_dataset_buiten_de_grens_zeggen_waarom(catalogus):
@@ -358,6 +374,27 @@ def test_een_vo_selectie_uit_een_mbo_en_vo_tabel_geeft_geen_data(catalogus):
     assert "data_key" not in result
     assert "4000" not in result
     assert "A025290" in result  # de mbo-codes om mee te filteren
+
+
+def test_vsv_naar_leeftijd_geeft_alleen_de_mbo_rij(catalogus):
+    """85367NED (v0.2.1): de dimensie kent alleen totaal, vo, mbo en vavo; de code houdt A025290 over."""
+    from tools import store
+
+    rijen = [*_VSV_RIJEN, {"Onderwijssoort": "A025300", "Perioden": "2023SJ00", "VoortijdigSchoolverlaters_1": 700}]
+    with patch("tools.cbs.data", return_value=rijen) as data, patch("tools.cbs.definitions", return_value={}):
+        result = json.loads(get_cbs_data("85367NED"))
+
+    assert data.call_args.kwargs["$filter"].startswith("Onderwijssoort eq 'A025290'")
+    assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A025290"]
+    assert "700" not in json.dumps(result)  # vavo valt erbuiten
+
+
+def test_vsv_naar_leeftijd_met_een_vo_code_wordt_niet_opgehaald(catalogus):
+    with patch("tools.cbs.data") as data, patch("tools.cbs.definitions", return_value={}):
+        result = get_cbs_data("85367NED", {"$filter": "Onderwijssoort eq 'A042781'"})
+
+    data.assert_not_called()
+    assert "data_key" not in result and "A025290" in result
 
 
 # De CBS-feed gebruikt bij twee clausules op dezelfde dimensie alleen de eerste (live 08-10:
@@ -641,6 +678,9 @@ def test_in_de_echte_catalogus_valt_geen_gemengde_of_po_vo_cbs_tabel_binnen_de_g
     assert not {"80040ned", "85379NED", "85534NED"} & set(cbs)  # andere vo-tabellen blijven erbuiten
     assert {"85701NED", "85702NED"} <= gemengd  # Assen-replay: toegelaten, met de sectorselectie (#473)
     assert {"85353NED", "85422NED", "85423NED"} <= set(cbs)  # tabellen die de code zelf noemt
+    assert {"85367NED", "84312NED"} <= set(cbs)  # package v0.2.1: VSV naar leeftijd (filter) en Caribisch NL mbo
+    assert "84312NED" not in gemengd and "85367NED" in gemengd  # Caribisch NL is puur mbo; VSV heeft het sectorfilter
+    assert "84732NED" not in cbs  # Caribisch NL po/vo/mbo: één mbo-rij naast po en vo, 84312NED dekt mbo
 
 
 def test_elk_besluit_in_de_tabel_hoort_bij_een_bestaand_record():

@@ -7,6 +7,13 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Bronnen
+- CBS-catalogus: twee tabellen erbij, `85367NED` (voortijdig schoolverlaters naar geslacht, leeftijd, onderwijssoort
+  en herkomst; de chat laadt alleen de mbo-rij `A025290`, zoals bij `85368NED`) en `84312NED` (mbo-studenten in
+  Caribisch Nederland). Het pakket `onderwijsdata` gaat van v0.2.0 naar v0.2.2. `84732NED` (Caribisch NL, po/vo/mbo
+  samen) blijft erbuiten: het heeft één mbo-rij naast po en vo en `84312NED` dekt mbo volledig. De telling is nu
+  CBS 125, DUO 15, RIO 8.
+- README en `docs/index.md` zeiden dat ROA en UWV alleen in de dashboards zitten; ze zijn ook in de chat te
+  bevragen met `get_roa_benchmark` en `get_uwv_vacatures`, zoals `docs/databronnen.md` al zei.
 - RIO heeft op 19-10-2026 API v2 verwijderd (HTTP 410 op elke aanroep): `get_rio_instelling` en `get_rio_data`
   werkten niet meer, op test en playground. De chat draait nu op RIO LOD API v3 via riodata 0.6.0 (#627): het
   typefilter heet op elk register `type` (v2: `erkenningtype`, `opleidingseenheidtype`, `opleidingserkenningtype`),
