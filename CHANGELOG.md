@@ -532,6 +532,10 @@ de laatste tag is 1.8.6.
   homepage en op desktop onder het invoerveld; op een telefoon staat "geen persoonsgegevens" in de placeholder,
   en de waarschuwing bij een ingetypt persoonsgegeven blijft. De voortgang tijdens een antwoord hangt als pil over
   de onderkant van de berichten, zodat het invoerveld niet verspringt. Desktop is ongewijzigd.
+- Op een telefoon verspringt de chat niet meer rond de eerste vraag (#649; CLS 0,27 → 0,03 op 390×844 en 0,04 op
+  390×664, nagebootste beurt): het invoerkader houdt een vaste plek van één regel en groeit bij een lange vraag omhoog
+  over de berichten, de melding "Verbinding herstellen..." staat erboven in plaats van erin, en de gesprekkenknop in de
+  navbar blijft staan als het ⋯-menu verschijnt.
 - Een rapport is op een telefoon leesbaar zonder inzoomen (#571, gemeten op 390 en 375 px, licht en donker):
   een lang woord of een link in de tekst rekt de pagina niet meer op (die werd daardoor uitgezoomd tot 559 px),
   de instellingsbadge staat onder de titel in plaats van ernaast (de titel had nog de halve breedte), een
