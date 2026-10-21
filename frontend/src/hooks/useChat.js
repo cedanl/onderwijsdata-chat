@@ -6,10 +6,13 @@ import { finishStep } from '../toolSteps'
 import { closeWithoutText, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
+import { reportBlockReason } from '../reportBlockReason'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
+// How long the toast with the reason a report cannot start stays up (#648).
+export const REASON_TOAST_MS = 4000
 
 // A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
 // An answer that was stopped or cut off by a dropped connection goes along marked `afgebroken`, even
@@ -50,6 +53,8 @@ export function useChat() {
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
+  // Asked for, but no report_generating yet: a busy or error in that window is the server refusing the report (#648).
+  const reportRequestedRef = useRef(false)
   const pendingSettingsRef = useRef(null)
   // Each question records the model it went out with, so a reopened conversation can resume it (#242).
   const modelRef = useRef(null)
@@ -85,6 +90,8 @@ export function useChat() {
   }, [])
   // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
   const reportAbandonedRef = useRef(false)
+  // Per reason, until when its toast shows: quick taps during an outage stacked identical toasts (#648).
+  const reasonToastUntilRef = useRef({})
   const nextId = () => ++idRef.current
 
   // The report is over, with or without a result: no more waiting, button free again.
@@ -92,6 +99,7 @@ export function useChat() {
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = null
     reportingRef.current = false
+    reportRequestedRef.current = false
     setReportBusy(false)
   }, [])
 
@@ -155,6 +163,15 @@ export function useChat() {
       const tekst = deltaBufferRef.current
       deltaBufferRef.current = ''
       if (tekst) updateCurrentMsg(m => ({ ...m, content: m.content + tekst }))
+    }
+
+    // The server refused the report it was just asked for (#648): `busy` (its previous task still ran) or `error`
+    // (the request limit). Both used to leave the button on "wordt gegenereerd" until the timeout (`error` was even
+    // dropped as a stream event); now the wait ends at once and the user reads why.
+    function refuseReport(ev) {
+      endReport()
+      const tekst = ev.message || 'Het rapport kon nu niet starten. Probeer het zo opnieuw.'
+      addToast(tekst, ev.type === 'error' ? 'error' : 'warning', { duur: 8000 })
     }
 
     // The server session is gone with its socket, and so is the answer it was writing.
@@ -309,6 +326,7 @@ export function useChat() {
       },
       report_generating() {
         reportingRef.current = true
+        reportRequestedRef.current = false
         setReportBusy(true)
         setReportSpec(null)
       },
@@ -342,6 +360,7 @@ export function useChat() {
       'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error', 'run_slow',
     ])
     const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
+    const reportRefusals = new Set(['busy', 'error'])
 
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
     // until then the user saw a counting pill and no melding (#489).
@@ -394,9 +413,8 @@ export function useChat() {
         resettingRef.current = false
         setResetting(false)
         retry.reset()
-        reportingRef.current = false
+        endReport()
         reportAbandonedRef.current = false
-        setReportBusy(false)
         setReportSpec(null)
         // A new server session knows no data keys until the history below names them again.
         setHistoryDataKeys(0)
@@ -421,6 +439,10 @@ export function useChat() {
         if (reportAbandonedRef.current) {
           if (reportEndEvents.has(event.type)) reportAbandonedRef.current = false
           if (reportEndEvents.has(event.type) || chatStreamEvents.has(event.type)) return
+        }
+        if (reportRequestedRef.current && reportRefusals.has(event.type)) {
+          refuseReport(event)
+          return
         }
         if (reportingRef.current && chatStreamEvents.has(event.type)) {
           if (event.type === 'tool_start') {
@@ -505,9 +527,25 @@ export function useChat() {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
 
+  // Every tap gives a result (#648): the report starts, or a toast says why it cannot start now. Returns whether
+  // the request went out.
   const generateReport = useCallback((author) => {
-    if (!wsRef.current || currentMsgRef.current) return
+    const reden = reportBlockReason({
+      connected: wsRef.current?.readyState === WebSocket.OPEN,
+      open: currentMsgRef.current !== null || busyRef.current,
+      reporting: reportingRef.current,
+      resetting: resettingRef.current,
+    })
+    if (reden) {
+      const nu = Date.now()
+      if ((reasonToastUntilRef.current[reden.key] ?? 0) <= nu) {
+        reasonToastUntilRef.current[reden.key] = nu + REASON_TOAST_MS
+        addToast(reden.text, 'warning', { duur: REASON_TOAST_MS })
+      }
+      return false
+    }
     reportingRef.current = true
+    reportRequestedRef.current = true
     setReportBusy(true)
     setReportSpec(null)
     setReportProgress(NO_REPORT_PROGRESS)
@@ -518,7 +556,8 @@ export function useChat() {
       abandonReport()
       failReport(`Het rapport is na ${REPORT_TIMEOUT_MS / 60000} minuten nog niet klaar en is afgebroken. Probeer het opnieuw.`)
     }, REPORT_TIMEOUT_MS)
-  }, [abandonReport, failReport])
+    return true
+  }, [abandonReport, addToast, failReport])
 
   // The user stops the report (#339): no error, the button is free at once.
   const cancelReport = useCallback(() => {

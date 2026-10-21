@@ -482,6 +482,15 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Elke tik op "Genereer rapport" geeft een uitkomst (#648): voortgang, een rapport of een melding waarom het nu niet
+  kan ("Wacht tot het antwoord klaar is", "Er wordt al een rapport gemaakt", "Even wachten: het nieuwe gesprek wordt
+  gestart", "Geen verbinding: …"). Een tik vlak nadat de verbinding wegviel, ging eerder stil verloren: het verzoek
+  ging een gesloten verbinding in en de herverbinding zette de knop zonder melding terug. Weigert de server het
+  rapport (er loopt nog een antwoord, of de verzoeklimiet is bereikt), dan stopt het wachten meteen met die melding,
+  in plaats van tien minuten "Rapport wordt gegenereerd…". Zonder verbinding of tijdens een nieuw gesprek is de knop
+  gedimd maar tikbaar (`aria-disabled`). Het rapport van een kaartvraag bevat nu de kaart: de rapportrun kan
+  `create_choropleth_map` gebruiken en kent de kaart uit het gesprek; in de viewer en de HTML-download tekent ze als
+  SVG, zonder maplibre-worker (#642).
 - Het feedbackformulier op een rapport heeft een blok "Over jouw instelling" voor de conferentie: of een PoC
   het komende jaar mogelijk is (1-5), welke dashboardtool en voor welke doelgroepen (meerdere antwoorden, met
   "Anders" en een toelichting), wat CEDA moet oppakken en optioneel contactgegevens voor vervolgvragen. Nieuw is

@@ -740,8 +740,11 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const reportState = canGenerateReport(messages, restoredMessages, historyDataKeys)
 
   // Op een telefoon staat de knop onder het laatste antwoord, in de berichten (#596); op desktop in de statusrij.
-  const rapportKnop = canGenerateReport(messages, restoredMessages, historyDataKeys) === 'ready' && (
-    <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}>
+  // Zonder verbinding of tijdens een nieuw gesprek ziet de knop er uit als niet beschikbaar, maar een tik komt
+  // nog aan: generateReport zegt dan waarom het rapport nu niet start (#648). Alleen een lopend rapport zet hem uit.
+  const rapportKnop = reportState === 'ready' && (
+    <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}
+      aria-disabled={!connected || resetting || undefined}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
