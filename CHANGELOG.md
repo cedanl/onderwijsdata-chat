@@ -7,6 +7,7 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Bronnen
+- Afhankelijkheden: `pillow` 12.3.0 → 13.0.0 (acht CVE's; alleen transitief via matplotlib, de app importeert PIL niet) en `certifi` 2026.7.22 → 2026.10.19 (PYSEC-2026-4320). `pip-audit` meldt daarna geen bekende kwetsbaarheden meer.
 - CBS-catalogus: twee tabellen erbij, `85367NED` (voortijdig schoolverlaters naar geslacht, leeftijd, onderwijssoort
   en herkomst; de chat laadt alleen de mbo-rij `A025290`, zoals bij `85368NED`) en `84312NED` (mbo-studenten in
   Caribisch Nederland). Het pakket `onderwijsdata` gaat van v0.2.0 naar v0.2.2. `84732NED` (Caribisch NL, po/vo/mbo
