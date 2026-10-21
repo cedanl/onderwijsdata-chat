@@ -26,6 +26,7 @@ import re
 
 from data.instellingen import get_all
 from tools import instelling
+from tools.ho_markers import HO_MBO_CONTEXT
 
 from .vaste_antwoorden import VO_ANTWOORD
 
@@ -47,12 +48,6 @@ _GEEN_NAAM = frozenset(
         *("havo", "vwo", "vmbo", "vo", "po", "so", "aandeel", "percentage", "deel"),
         *("zelfstandig", "zelfstandige", "categoriaal", "categoriale", "regulier", "reguliere"),
     }
-)
-# Een mbo/hbo/wo-instelling ("Erasmus Universiteit Rotterdam", "Hanzehogeschool", "ROC van Twente") of
-# ho-context ("wo-studenten", "eerstejaars", "naar het mbo") in de vraag: die blijft bij het model (epic #554).
-_HO_MBO_CONTEXT = re.compile(
-    r"\b(?:\w*universiteit\w*|\w*hogeschool\w*|university|roc|mbo|hbo|wo|ho|\w*student\w*|eerstejaars)\b",
-    re.IGNORECASE,
 )
 
 
@@ -137,7 +132,7 @@ def vo_schoolvraag(vraag: str) -> str | None:
     vanuit async code aan via `asyncio.to_thread`.
     """
     namen = _schoolnamen(vraag)
-    if not namen or _HO_MBO_CONTEXT.search(vraag):
+    if not namen or HO_MBO_CONTEXT.search(vraag):
         return None
     registernamen = _registernamen()
     if not registernamen or instelling.noemt_instelling(vraag):

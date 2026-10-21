@@ -28,24 +28,24 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 
 | Gegevens | Tabel | Tot wanneer |
 |---|---|---|
-| Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | tot de gebruiker het gesprek verwijdert |
-| Rapporten en dashboards (werkboeken) | `workbooks` | tot de gebruiker ze onder Rapporten verwijdert; het verwijderen van een gesprek laat ze staan (#513) |
-| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling en eventueel achtergelaten contactgegevens (vrije tekst) | `feedback` | onbepaald |
-| Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | onbepaald; bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476) |
-| Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | onbepaald (besluit in #485) |
-| Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek |
+| Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | tot de gebruiker het gesprek of al zijn gegevens verwijdert |
+| Rapporten en dashboards (werkboeken) | `workbooks` | tot de gebruiker ze onder Rapporten of al zijn gegevens verwijdert; het verwijderen van een gesprek laat ze staan (#513) |
+| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling en eventueel achtergelaten contactgegevens (vrije tekst) | `feedback` | tot de gebruiker al zijn gegevens verwijdert |
+| Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | tot de gebruiker al zijn gegevens verwijdert; bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), en dan onbepaald |
+| Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | tot de gebruiker al zijn gegevens verwijdert (besluit in #485) |
+| Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek of met al zijn gegevens |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
 
 Inloggen: met `CHAT_USERS` (gebruikersnaam en wachtwoord) bewaart de server alleen de gebruikersnaam bij de
 gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van een rapport (#487); naam,
 organisatie en instelling staan tijdens de sessie in het geheugen van de server (begrensd, ten hoogste
-`SESSION_MAX_HOURS`). Er is nog geen automatische opschoning of bewaartermijn (#485).
+`SESSION_MAX_HOURS`). Er is nog geen automatische opschoning of bewaartermijn; die volgt bij productie (#485).
 
 ## Wat in je browser staat
 
 - `localStorage`: een kopie van de gesprekken en het lopende gesprek, de werkboeken, de dashboardchat, het profiel
   (instelling, functie, weergave) en het sessietoken. Uitloggen wist dit alles (`SESSION_DATA_KEYS` en het profiel,
-  `frontend/src/App.jsx`).
+  `frontend/src/App.jsx`), en "Verwijder al mijn gegevens" ook.
 - `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
   favoriete rapporten; geen titels of inhoud. Blijft na uitloggen staan (`NOT_SESSION_DATA_KEYS`): de chat en
   `/rapporten` tonen een ID alleen als het bij een gesprek of rapport van het ingelogde account hoort.
@@ -64,7 +64,20 @@ is een open punt.
 
 - Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
-- Al je gegevens in één keer verwijderen of exporteren kan nog niet (#485).
+- Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
+  (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback
+  en datarecepten. Niet erin: wat alleen in je browser staat, en feedback van een verwijderd gesprek, die niet meer aan
+  je account hangt.
+- Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
+  (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
+  gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
+  (gesprekken, rapporten en dashboards, al je feedback, ook `answer_feedback` met de `trace`, en datarecepten), en
+  ook de kopie in deze browser; je wordt uitgelogd en het token wordt ingetrokken. Wat blijft: de serverlogs (zonder
+  gesprekstekst, #475) en de back-ups van de beheerder, de hash van je sessie in `revoked_tokens` tot zij verloopt,
+  feedback die al eerder van een verwijderd gesprek is losgekoppeld (`verwijderd`, #476) en niet meer aan je account
+  hangt, en de kopie op een ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
+  teamaccount in `CHAT_USERS`), dan verdwijnt ook het werk van de anderen. Zonder eigen login (iedereen is dan
+  `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404.
 
 ## Verantwoordelijke en contact
 
@@ -80,5 +93,5 @@ verwerkingsverantwoordelijke is besloten (#553, 19-10-2026; zie hierboven). Open
 
 - Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt
   bewaard of gebruikt voor training.
-- Bewaartermijn per gegevenssoort, opschoning, en in één keer alles verwijderen of exporteren (#485).
+- Bewaartermijn per gegevenssoort en automatische opschoning; die volgen bij productie (#485).
 - Of er een DPIA nodig is.

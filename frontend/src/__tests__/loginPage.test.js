@@ -50,3 +50,31 @@ describe('LoginPage', () => {
     expect(container.querySelector('#login-password').getAttribute('autocomplete')).toBe('current-password')
   })
 })
+
+describe('LoginPage notice', () => {
+  const rerender = props => act(async () => { root.render(createElement(LoginPage, { onLogin: vi.fn(), oidcEnabled: false, ...props })) })
+  const status = () => container.querySelector('[role="status"]')
+
+  it('shows none after a plain logout', () => {
+    expect(status()).toBeNull()
+  })
+
+  it('says the session expired when the server ended it (#499)', async () => {
+    await rerender({ sessionExpired: true })
+    expect(status().textContent).toBe('Je sessie is verlopen. Log opnieuw in.')
+  })
+
+  it('confirms that all data was erased and the user is logged out (#646)', async () => {
+    await rerender({ gegevensVerwijderd: true })
+    expect(status().textContent).toBe('Al je gegevens zijn verwijderd. Je bent uitgelogd.')
+  })
+
+  it('takes its text colour from CSS, with a readable one in dark mode', async () => {
+    await rerender({ gegevensVerwijderd: true })
+    expect(status().className).toBe('login-melding')
+    expect(status().style.color).toBe('')
+    const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8')
+    expect(css).toMatch(/html\.dark \.login-melding\s*\{\s*color:\s*var\(--accent-text\)/)
+    expect(css).toMatch(/html:not\(\.dark\):not\(\.light\) \.login-melding\s*\{\s*color:\s*var\(--accent-text\)/)
+  })
+})

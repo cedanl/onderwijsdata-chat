@@ -99,6 +99,13 @@ def vergeet(username: str, keys) -> None:
         _wachtend.pop((username, key), None)
 
 
+def vergeet_gebruiker(username: str) -> None:
+    """Na "verwijder al mijn gegevens" (#646) geen recept van deze gebruiker meer, ook niet van een nooit opgeslagen
+    gesprek: die staan niet in de database, dus `vergeet` met de keys daaruit mist ze."""
+    for sleutel in [s for s in list(_wachtend) if s[0] == username]:
+        _wachtend.pop(sleutel, None)
+
+
 def terughalen(username: str | None, key: str) -> herlaad.Herlaadresultaat | None:
     """Zet `key` terug in de store als hij weg is; None als hij er is of geen recept heeft."""
     if store.get(key) is not None:

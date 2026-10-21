@@ -74,6 +74,12 @@ de laatste tag is 1.8.6.
   onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
+- Een vraag over po, so of vo zonder ho-context ("Hoeveel leerlingen zitten er in groep 8?", "op de basisschool in
+  Utrecht", "op het vwo") krijgt de vaste scope-uitleg uit code, vóór elke verduidelijkingskaart en zonder
+  modelronde of toolaanroep (#647). Het model bood eerst het totaal basisonderwijs uit `85701NED` aan, deed daarvoor
+  een `get_cbs_data`-ronde en stelde bij "basisschool in Utrecht" eerst de plaatskaart. Noemt de vraag of het vorige
+  bericht ook ho, mbo, studenten, eerstejaars of een instelling uit het register, dan gaat ze zoals voorheen naar
+  het model, net als een keuze op een verduidelijkingskaart. Een losse "so" of "bo" (ook Engels) telt niet.
 
 ### Evaluatie
 - `scripts/ijkwaarden.py` stopt niet meer bij de eerste bron die niet antwoordt: de ijkwaarden van CBS en DUO worden
@@ -422,6 +428,19 @@ de laatste tag is 1.8.6.
   antwoord, maar in de redeneerkaart (#412).
 
 ### Export en reproduceerbaarheid
+- "Exporteer al mijn gegevens" in de instellingen (#645, AVG art. 15): één JSON-bestand met alles wat de server
+  onder je account bewaart (gesprekken, rapporten en dashboards met hun HTML, feedback, feedback per antwoord en
+  datarecepten), via `GET /api/mijn-gegevens/export`. De export wordt rij voor rij geschreven, zodat ook tachtig
+  rapporten van een paar MB niet tegelijk in het geheugen staan. `/privacy` en `docs/privacy.md` noemen hem.
+- "Verwijder al mijn gegevens" in de instellingen (#646, AVG art. 17): na het typen van "verwijder" verdwijnt in één
+  transactie alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, alle feedback, ook de
+  feedback per antwoord met zijn kopie van vraag en antwoord, en datarecepten), via `DELETE /api/mijn-gegevens`. Het
+  token wordt ingetrokken, de browser wist zijn kopie en het profiel, en de loginpagina zegt "Al je gegevens zijn
+  verwijderd. Je bent uitgelogd." De dialoog biedt eerst de export aan en waarschuwt dat een gedeeld account ook het
+  werk van de anderen kwijtraakt. Alleen met een eigen login: zonder login (iedereen is `gast`) ontbreekt de knop en
+  antwoordt de server 404. Blijven staan: serverlogs en back-ups van de beheerder, feedback die al van een verwijderd
+  gesprek was losgekoppeld (#476) en de kopie op andere apparaten tot je daar uitlogt. `/privacy`, `docs/privacy.md`
+  en `SECURITY.md` (S16) beschrijven het; een bewaartermijn volgt bij productie (#485).
 - Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
   namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
   dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
@@ -479,6 +498,15 @@ de laatste tag is 1.8.6.
   ze toch, met per script een regel "Blocked script execution" in de console. In een meting met twaalf rapporten
   van drie grafieken ging de pagina-HTML (`outerHTML`) van 406.093 naar 142.057 tekens; het voorbeeld zelf ziet er
   hetzelfde uit.
+- Elke tik op "Genereer rapport" geeft een uitkomst (#648): voortgang, een rapport of een melding waarom het nu niet
+  kan ("Wacht tot het antwoord klaar is", "Er wordt al een rapport gemaakt", "Even wachten: het nieuwe gesprek wordt
+  gestart", "Geen verbinding: …"). Een tik vlak nadat de verbinding wegviel, ging eerder stil verloren: het verzoek
+  ging een gesloten verbinding in en de herverbinding zette de knop zonder melding terug. Weigert de server het
+  rapport (er loopt nog een antwoord, of de verzoeklimiet is bereikt), dan stopt het wachten meteen met die melding,
+  in plaats van tien minuten "Rapport wordt gegenereerd…". Zonder verbinding of tijdens een nieuw gesprek is de knop
+  gedimd maar tikbaar (`aria-disabled`). Het rapport van een kaartvraag bevat nu de kaart: de rapportrun kan
+  `create_choropleth_map` gebruiken en kent de kaart uit het gesprek; in de viewer en de HTML-download tekent ze als
+  SVG, zonder maplibre-worker (#642).
 - Het feedbackformulier op een rapport heeft een blok "Over jouw instelling" voor de conferentie: of een PoC
   het komende jaar mogelijk is (1-5), welke dashboardtool en voor welke doelgroepen (meerdere antwoorden, met
   "Anders" en een toelichting), wat CEDA moet oppakken en optioneel contactgegevens voor vervolgvragen. Nieuw is

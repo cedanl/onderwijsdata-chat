@@ -36,6 +36,10 @@ Afspraken voor de gedeelde testomgeving (#488, privacy H2):
 - **Opruimen na een ronde.** Elke tester verwijdert de eigen gesprekken en rapporten na afloop; er is nog geen
   automatische bewaartermijn (#485). In `demo` verwijder je alleen wat je zelf maakte; bij twijfel laat je het staan,
   want een verwijderd gesprek van een ander is niet terug te halen.
+- **"Verwijder al mijn gegevens" alleen op een eigen account** (#646). Op een eigen account ruimt die knop in de
+  instellingen alles in één keer op (gesprekken, rapporten, dashboards, feedback en datarecepten). Gebruik hem nooit
+  op `demo` of een ander gedeeld account: hij wist het werk van iedereen die dat account gebruikt, en dat is niet terug
+  te halen.
 
 ## Rollout
 

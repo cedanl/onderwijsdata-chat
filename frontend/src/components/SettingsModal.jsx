@@ -2,6 +2,8 @@ import { useState } from 'react'
 import InstellingPicker from './InstellingPicker'
 import PrivacyLink from './PrivacyLink'
 import FeedbackLink from './FeedbackLink'
+import MijnGegevensExport from './MijnGegevensExport'
+import MijnGegevensVerwijderen from './MijnGegevensVerwijderen'
 import { useDialog } from '../hooks/useDialog'
 import { FUNCTIES, isFunctie } from '../functies'
 
@@ -30,7 +32,7 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, onLogout, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity }) {
+export default function SettingsModal({ settings, onSave, onClose, onLogout, onGegevensVerwijderd = null, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity }) {
   // A saved instelling that is exactly the raw SRAM org/institution string is
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
@@ -199,6 +201,11 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, isO
             Iets kwijt over openEDUdata+? <FeedbackLink>Geef feedback</FeedbackLink>
           </p>
         )}
+        {/* Everything the server keeps under this account as a file (#645); not during onboarding, like Uitloggen. */}
+        {!isOnboarding && <MijnGegevensExport />}
+        {/* Erase everything under this account (#646): only with a login of one's own; without one every visitor is
+            the shared guest, and the server refuses it. */}
+        {onGegevensVerwijderd && !isOnboarding && <MijnGegevensVerwijderen onVerwijderd={onGegevensVerwijderd} />}
         {/* The navbar hides its logout button up to 1024px; this dialog opens from the name in the header. */}
         {onLogout && !isOnboarding && (
           <button type="button"

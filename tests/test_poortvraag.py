@@ -29,6 +29,8 @@ def _poort_tijdens_de_loop(messages, session=None, zoekterm="vwo leerlingen hbo"
         patch.object(run_module, "tool_loop", nep_loop),
         patch.object(run_module, "scopevraag", lambda *a, **k: None),
         patch.object(run_module, "vo_schoolvraag", lambda *a, **k: None),
+        # Een zuivere vo-vraag stopt anders vóór de loop (#647); hier gaat het om de poort in de tools.
+        patch.object(run_module, "po_vraag", lambda *a, **k: None),
     ):
         asyncio.run(run_module.run(messages, session=session or {}, emit=emit))
     return gezien

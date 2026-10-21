@@ -17,9 +17,9 @@ De poort kijkt naar de vraag van de gebruiker, niet naar de zoekterm van het mod
 anders opent het model de poort door zelf "hbo" toe te voegen. `run()` zet die vraag per
 beurt (`beurtvraag`); buiten de chat (MCP, evals) is er geen en beslist de zoekterm.
 
-`agent.vo_school._HO_MBO_CONTEXT` is een andere, bredere wegblijf-guard (met mbo,
-student, eerstejaars, roc) voor de vo-schooluitleg; `noemt_ho` is de striktere toets
-"aantoonbaar ho" voor het zoeken.
+`HO_MBO_CONTEXT` is een andere, bredere wegblijf-guard (met mbo, student, eerstejaars, roc)
+voor de vaste uitleg vóór het model (`agent.vo_school`, `agent.po_vraag`); `noemt_ho` is de
+striktere toets "aantoonbaar ho" voor het zoeken.
 """
 
 import contextlib
@@ -32,6 +32,13 @@ _LANG = ("hogeschool", "hogescholen", "universiteit", "universiteiten")
 
 _KORTE_MARKER = re.compile(rf"\b(?:{'|'.join(_KORT)})\b")
 _HOGER_ONDERWIJS = re.compile(r"hoger\s+onderwijs")
+
+# Een mbo/hbo/wo-instelling ("Erasmus Universiteit Rotterdam", "Hanzehogeschool", "ROC van Twente") of
+# ho-context ("wo-studenten", "eerstejaars", "naar het mbo") in de vraag: die blijft bij het model (epic #554).
+HO_MBO_CONTEXT = re.compile(
+    r"\b(?:\w*universiteit\w*|\w*hogeschool\w*|university|roc|mbo|hbo|wo|ho|\w*student\w*|eerstejaars)\b",
+    re.IGNORECASE,
+)
 
 # De vraag van de gebruiker in deze beurt; taken en threads van de beurt erven hem (asyncio.to_thread).
 _beurtvraag: ContextVar[str | None] = ContextVar("beurtvraag", default=None)

@@ -45,11 +45,14 @@ from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
-from tools.schemas import TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
+from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP, TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
-_REPORT_TOOLS = [s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT)]
+# Met de kaarttool: het rapport van een kaartvraag toont de kaart (#648).
+_REPORT_TOOLS = [
+    s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP)
+]
 
 logger = logging.getLogger(__name__)
 
@@ -131,16 +134,67 @@ def _describe_herkomst(herkomst: list[dict]) -> str:
     return " → ".join(_describe_call(call) for call in herkomst)
 
 
+def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
+    """Per data_key de laatste kaart die het gesprek ervan tekende (#648).
+
+    De herkomst noemt alleen de aanroepen die de data maakten, niet de kaart erop; zonder deze regel weet het
+    rapport niet dat er een kaart was, of met welke kolommen. Een onleesbare aanroep slaat het over, en ook een
+    aanroep die geen kaart opleverde: de beurt bewaart wat het model vroeg, niet wat lukte.
+    """
+    kaarten: dict[str, dict] = {}
+    for turn in session.get("turns") or []:
+        getekend = _getekende_kaarten(turn)
+        for call in turn.get("tool_calls") or []:
+            if call.get("name") != TOOL_CREATE_CHOROPLETH_MAP:
+                continue
+            try:
+                args = json.loads(call.get("arguments") or "")
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(args, dict) or not isinstance(args.get("data_key"), str):
+                continue
+            if (args.get("location_col"), args.get("value_col")) in getekend:
+                kaarten[args["data_key"]] = args
+    return kaarten
+
+
+def _getekende_kaarten(turn: dict) -> set[tuple]:
+    """(location_col, value_col) van elke kaart die deze beurt tekende, uit de layout.meta van haar figuren."""
+    getekend: set[tuple] = set()
+    for figuur in turn.get("figures") or []:
+        meta = getattr(getattr(figuur, "layout", None), "meta", None)
+        if isinstance(meta, dict) and meta.get("type") == "choropleth":
+            getekend.add((meta.get("location_col"), meta.get("value_col")))
+    return getekend
+
+
+# Wat de kaartregel van een gesprekskaart noemt. Niet de titel (tekst van het model) en niet `data` (rijen buiten
+# de store): het rapport zou ze herhalen, en via zijn toolresultaat telden ze dan toch als bewijs (#211).
+_KAARTREGEL_ARGUMENTEN = ("data_key", "location_col", "value_col", "level")
+
+
+def _describe_kaart(kaart: dict | None) -> str:
+    if not kaart:
+        return ""
+    argumenten = {k: kaart[k] for k in _KAARTREGEL_ARGUMENTEN if k in kaart}
+    return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': argumenten})}"
+
+
 def _build_system_prompt(context: dict) -> str:
-    """Build the system prompt with injected dataset context."""
+    """Build the system prompt with injected dataset context.
+
+    `context["kaarten"]` (per data_key) is for the prompt only: `generate` keeps it out of the evidence.
+    """
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
 
+    kaarten = context.get("kaarten") or {}
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
         dataset_blocks.append(
             f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n"
-            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}\n- Kolommen:\n{cols}"
+            f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(kaarten.get(ds['data_key']))}\n"
+            f"- Kolommen:\n{cols}"
         )
 
     datasets_section = "\n\n".join(dataset_blocks) if dataset_blocks else "Geen datasets geladen."
@@ -200,8 +254,11 @@ async def generate(
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
     context["berekeningen"] = bewijs
+    # De kaarten uit het gesprek zijn modelaanroepen, geen data: alleen in de prompt, niet in `context`, dat de
+    # controles als bewijs lezen (#211, #648).
+    prompt_context = {**context, "kaarten": _kaarten_in_gesprek(session)}
     messages: list[dict] = [
-        {"role": "system", "content": _build_system_prompt(context)},
+        {"role": "system", "content": _build_system_prompt(prompt_context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
     ]
     figures: list[str] = []

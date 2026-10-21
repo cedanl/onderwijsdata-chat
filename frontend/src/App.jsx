@@ -68,6 +68,8 @@ function AppShell() {
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
   // The server ended the session (#499): the login screen says why. Logout needs no notice.
   const [sessionExpired, setSessionExpired] = useState(false)
+  // The user erased all their data (#646): the login screen confirms it.
+  const [gegevensVerwijderd, setGegevensVerwijderd] = useState(false)
   const [zoekOpen, setZoekOpen] = useState(false)
   const [teOpenenGesprek, setTeOpenenGesprek] = useState(null)
 
@@ -161,6 +163,7 @@ function AppShell() {
   const handleLogin = (u) => {
     clearLocalSessionData()
     setSessionExpired(false)
+    setGegevensVerwijderd(false)
     setUser(u)
     if (!localStorage.getItem(STORAGE_ONBOARDED)) {
       setIsOnboarding(true)
@@ -204,7 +207,7 @@ function AppShell() {
   if (authRequired && !user) {
     // De privacy-informatie moet vóór het inloggen te lezen zijn (#477): de loginpagina linkt ernaar.
     if (location.pathname === '/privacy') return <PrivacyPage standalone />
-    return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} />
+    return <LoginPage onLogin={handleLogin} oidcEnabled={oidcEnabled} sessionExpired={sessionExpired} gegevensVerwijderd={gegevensVerwijderd} />
   }
 
   // Logging out is immediate here, but the token is revoked on the server only once a save of the open
@@ -214,6 +217,14 @@ function AppShell() {
     clearToken()
     resetSession()
     wachtOpOpslag().then(() => logout(token))
+  }
+
+  // "Verwijder al mijn gegevens" (#646): the server erased the account and revoked this token, so no logout call.
+  // The browser copy and the profile go as on logout; the dialog already waited for saves under way.
+  const handleGegevensVerwijderd = () => {
+    clearToken()
+    resetSession()
+    setGegevensVerwijderd(true)
   }
 
   // Only use the SRAM identity as instelling when it matches a known
@@ -257,6 +268,7 @@ function AppShell() {
           onSave={handleSaveSettings}
           onClose={handleCloseSettings}
           onLogout={authRequired ? handleLogout : null}
+          onGegevensVerwijderd={authRequired ? handleGegevensVerwijderd : null}
           isOnboarding={isOnboarding}
           feedbackEnabled={feedbackEnabled}
           sramName={userInfo?.name || null}
