@@ -66,6 +66,8 @@ describe('MijnGegevensExport', () => {
     await render(createElement(MijnGegevensExport, { download, save }))
     expect(exportButton().textContent).toBe(LABEL)
     expect(exportButton().getAttribute('aria-busy')).toBe('false')
+    // The live region is there before the text, so a screen reader announces the text when it arrives.
+    expect(container.querySelector('[role="status"]').textContent).toBe('')
 
     await act(async () => { exportButton().click() })
     expect(download).toHaveBeenCalledOnce()

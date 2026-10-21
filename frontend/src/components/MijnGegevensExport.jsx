@@ -46,7 +46,8 @@ export default function MijnGegevensExport({ download = downloadMijnGegevens, sa
       {melding === 'mislukt' && (
         <p className="mijn-gegevens-export-melding mijn-gegevens-export-melding--fout" role="alert">{EXPORT_MISLUKT}</p>
       )}
-      {melding === 'gelukt' && <p className="mijn-gegevens-export-melding" role="status">{EXPORT_GELUKT}</p>}
+      {/* Always mounted, so a screen reader already watches it when the text arrives. */}
+      <p className="mijn-gegevens-export-melding" role="status">{melding === 'gelukt' ? EXPORT_GELUKT : ''}</p>
     </div>
   )
 }

@@ -1931,6 +1931,7 @@ html.dark .suggested-btn:hover {
 .mijn-gegevens-export-btn:hover:not(:disabled) { border-color: var(--gray-400); color: var(--gray-800); }
 .mijn-gegevens-export-btn:disabled { cursor: progress; opacity: .7; }
 .mijn-gegevens-export-melding { margin: 8px 0 0; font-size: .82rem; color: var(--gray-500); text-align: center; }
+.mijn-gegevens-export-melding:empty { margin: 0; }
 .mijn-gegevens-export-melding--fout { color: #B91C1C; }
 html.dark .mijn-gegevens-export-melding--fout { color: #FCA5A5; }
 @media (prefers-color-scheme: dark) {
