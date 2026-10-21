@@ -412,6 +412,9 @@ input, textarea { font: inherit; }
   background: var(--blue-100); border-color: var(--blue-400);
   transform: translateY(-1px); box-shadow: 0 2px 8px rgba(37,99,235,.15);
 }
+/* Niet beschikbaar, wel tikbaar: een tik zegt waarom (#648). Geen lift bij hover; los van het thema. */
+.make-rapport-btn[aria-disabled="true"],
+.make-rapport-btn[aria-disabled="true"]:hover { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .report-reload-hint {
   align-self: center; margin-bottom: 8px;
