@@ -69,6 +69,28 @@ def test_productie_met_spa_geeft_voor_docs_geen_documentatie(productie_app, tmp_
         assert "cdn.jsdelivr.net" not in client.get(pad).text, pad
 
 
+@pytest.mark.parametrize("productie", [False, True])
+def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
+    # #654: GET /openapi.json gaf de app-shell, HEAD een JSON-405; het echte schema staat onder /api.
+    from server import create_app
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    client = TestClient(create_app(production=productie, frontend_dist=tmp_path))
+
+    get, head = client.get("/openapi.json"), client.head("/openapi.json")
+    assert head.status_code == get.status_code == 200
+    assert head.headers["content-type"] == get.headers["content-type"]
+    # Een echte route houdt zijn eigen antwoord: HEAD /health wordt geen app-shell.
+    assert client.head("/health").headers["content-type"].startswith("application/json")
+    schema = client.head("/api/openapi.json")
+    if productie:
+        assert schema.status_code == 405
+    else:
+        assert schema.status_code == 200
+        assert schema.headers["content-type"] == "application/json"
+
+
 def test_buiten_productie_blijft_de_api_documentatie(ontwikkel_app):
     client = TestClient(ontwikkel_app)
 

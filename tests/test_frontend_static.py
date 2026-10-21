@@ -1,5 +1,6 @@
 """Gehashte assets worden één keer geladen; index.html altijd vers, zodat een deploy direct doorkomt (#110)."""
 
+import pytest
 from fastapi import FastAPI, WebSocket
 from fastapi.testclient import TestClient
 
@@ -87,3 +88,74 @@ def test_websocket_onder_api_blijft_bereikbaar(tmp_path):
     mount_frontend(app, tmp_path)
     with TestClient(app).websocket_connect("/api/chat") as ws:
         assert ws.receive_text() == "hallo"
+
+
+# ── HEAD (#654) ──────────────────────────────────────────────────────────────
+
+
+def _app_met_eigen_routes(tmp_path) -> FastAPI:
+    """Een app met de SPA en een paar echte routes ervoor, zoals server.create_app ze opbouwt."""
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    # Het schema onder /api, zoals in server.create_app: /openapi.json is dan een pad van de app-shell.
+    app = FastAPI(openapi_url="/api/openapi.json")
+
+    @app.get("/api/ping")
+    async def ping() -> dict:
+        return {"pong": True}
+
+    @app.post("/api/bewaar")
+    async def bewaar() -> dict:
+        return {"ok": True}
+
+    @app.get("/health")
+    async def health() -> dict:
+        return {"status": "ok"}
+
+    mount_frontend(app, tmp_path)
+    return app
+
+
+@pytest.mark.parametrize("pad", ["/openapi.json", "/login", "/", "/chat/123", "/apidocs"])
+def test_head_op_een_spa_pad_antwoordt_als_get(tmp_path, pad):
+    """GET gaf de app-shell, HEAD een JSON-405: de HEAD-respons loog over de inhoud."""
+    client = TestClient(_app_met_eigen_routes(tmp_path))
+
+    get, head = client.get(pad), client.head(pad)
+
+    assert get.status_code == head.status_code == 200
+    assert head.headers["content-type"] == get.headers["content-type"]
+    assert head.headers["content-type"].startswith("text/html")
+    assert head.headers["content-length"] == get.headers["content-length"]
+    assert head.headers["cache-control"] == get.headers["cache-control"] == "no-cache"
+    assert head.content == b""
+
+
+@pytest.mark.parametrize(
+    "pad, allow",
+    [("/api/ping", "GET"), ("/api/bewaar", "POST"), ("/api/bestaat-niet", "GET"), ("/api", "GET"), ("/health", "GET")],
+)
+def test_head_op_een_pad_van_een_echte_route_blijft_405(tmp_path, pad, allow):
+    # Een pad dat een andere route kent, krijgt geen app-shell: anders zou HEAD /health of
+    # HEAD /api/ping met 200 en text/html antwoorden, terwijl GET JSON geeft.
+    resp = TestClient(_app_met_eigen_routes(tmp_path)).head(pad)
+
+    assert resp.status_code == 405
+    assert resp.headers["content-type"].startswith("application/json")
+    assert resp.headers["allow"] == allow
+
+
+def test_get_onder_api_blijft_ongewijzigd_naast_head(tmp_path):
+    client = TestClient(_app_met_eigen_routes(tmp_path))
+
+    assert client.get("/api/ping").json() == {"pong": True}
+    onbekend = client.get("/api/bestaat-niet")
+    assert onbekend.status_code == 404
+    assert onbekend.json() == {"detail": NIET_GEVONDEN}
+
+
+def test_head_komt_niet_in_het_schema(tmp_path):
+    paden = _app_met_eigen_routes(tmp_path).openapi()["paths"]
+
+    assert paden["/{full_path}"].keys() == {"get"}
+    assert not [pad for pad, ops in paden.items() if "head" in ops]
