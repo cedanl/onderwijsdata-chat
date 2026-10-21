@@ -33,9 +33,10 @@ Afspraken voor de gedeelde testomgeving (#488, privacy H2):
 - **Geen persoonsgegevens in de testomgeving**, ook geen dummy-BSN of fictief e-mailadres in een vraag: de vraag gaat
   naar de externe AI-dienst en wordt bewaard. De app waarschuwt bij een BSN, e-mailadres of telefoonnummer, maar
   blokkeert niet.
-- **Opruimen na een ronde.** Elke tester verwijdert de eigen gesprekken en rapporten na afloop; er is nog geen
-  automatische bewaartermijn (#485). In `demo` verwijder je alleen wat je zelf maakte; bij twijfel laat je het staan,
-  want een verwijderd gesprek van een ander is niet terug te halen.
+- **Opruimen na een ronde.** Elke tester verwijdert de eigen gesprekken en rapporten na afloop; de automatische
+  opschoning (#485) haalt pas na 90 dagen (gesprekken, feedback) of 365 dagen (rapporten) weg wat niet meer is
+  gebruikt. In `demo` verwijder je alleen wat je zelf maakte; bij twijfel laat je het staan, want een verwijderd
+  gesprek van een ander is niet terug te halen.
 - **"Verwijder al mijn gegevens" alleen op een eigen account** (#646). Op een eigen account ruimt die knop in de
   instellingen alles in één keer op (gesprekken, rapporten, dashboards, feedback en datarecepten). Gebruik hem nooit
   op `demo` of een ander gedeeld account: hij wist het werk van iedereen die dat account gebruikt, en dat is niet terug

@@ -28,18 +28,25 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 
 | Gegevens | Tabel | Tot wanneer |
 |---|---|---|
-| Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | tot de gebruiker het gesprek of al zijn gegevens verwijdert |
-| Rapporten en dashboards (werkboeken) | `workbooks` | tot de gebruiker ze onder Rapporten of al zijn gegevens verwijdert; het verwijderen van een gesprek laat ze staan (#513) |
-| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling en eventueel achtergelaten contactgegevens (vrije tekst) | `feedback` | tot de gebruiker al zijn gegevens verwijdert |
-| Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | tot de gebruiker al zijn gegevens verwijdert; bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), en dan onbepaald |
-| Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | tot de gebruiker al zijn gegevens verwijdert (besluit in #485) |
-| Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek of met al zijn gegevens |
+| Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
+| Rapporten en dashboards (werkboeken) | `workbooks` | 365 dagen nadat het werkboek voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
+| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling en eventueel achtergelaten contactgegevens (vrije tekst) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
+| Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | 90 dagen na het geven, maar niet zolang het gesprek nog bestaat; eerder als de gebruiker al zijn gegevens verwijdert. Bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), daarna tot 90 dagen na het geven |
+| Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
+| Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
 
 Inloggen: met `CHAT_USERS` (gebruikersnaam en wachtwoord) bewaart de server alleen de gebruikersnaam bij de
 gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van een rapport (#487); naam,
 organisatie en instelling staan tijdens de sessie in het geheugen van de server (begrensd, ten hoogste
-`SESSION_MAX_HOURS`). Er is nog geen automatische opschoning of bewaartermijn; die volgt bij productie (#485).
+`SESSION_MAX_HOURS`).
+
+Bewaartermijn (#485, besluit 21-10-2026): elke nacht verwijdert een geplande taak wat over zijn termijn is
+(`python -m persistence.opschonen`, een CronJob in de Helm-chart; aan op test en playground, niet op productie). De
+termijnen staan in de tabel hierboven: gesprekken en feedback 90 dagen, rapporten en dashboards 365 dagen, langer
+omdat een rapport het resultaat is dat je bewaart en terugkijkt. Ze zijn in te stellen met
+`BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een ongeldige waarde of een termijn onder de 7
+dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen buiten deze opschoning.
 
 ## Wat in je browser staat
 
@@ -93,5 +100,6 @@ verwerkingsverantwoordelijke is besloten (#553, 19-10-2026; zie hierboven). Open
 
 - Verwerkersovereenkomst met de AI-aanbieder, de regio van het eindpunt en de afspraak dat invoer niet wordt
   bewaard of gebruikt voor training.
-- Bewaartermijn per gegevenssoort en automatische opschoning; die volgen bij productie (#485).
+- De bewaartermijn van het logplatform en van de back-ups van SDP; die van de gegevens in de app staat hierboven
+  (#485).
 - Of er een DPIA nodig is.

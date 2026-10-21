@@ -7,7 +7,7 @@ import { postAlgemeneFeedback } from '../api'
 const SOORTEN = [['idee', 'Idee'], ['probleem', 'Probleem'], ['compliment', 'Compliment']]
 const MAX_TEKST = 2000
 // What the team gets (#600): the same pattern as the feedback per answer (AnswerFeedback).
-const BEWAARD = 'Het team krijgt je bericht met je accountnaam en de pagina waar je was. ' +
+const BEWAARD = 'Het team krijgt je bericht met je accountnaam en de pagina waar je was, en bewaart het 90 dagen. ' +
   'Zet er geen persoonsgegevens in.'
 
 // The route the user was on, as the server accepts it (core/algemene_feedback.PAGINA_PATROON): never a query

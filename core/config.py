@@ -52,6 +52,12 @@ TOOL_RESULT_MAX_CHARS = int(os.getenv("TOOL_RESULT_MAX_CHARS", "12000"))
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
+# Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):
+# gesprekken met hun datarecepten en alle feedback 90 dagen na de laatste activiteit, rapporten en dashboards
+# 365 dagen nadat ze voor het laatst zijn opgeslagen of geopend. Als tekst: de opschoning toetst ze zelf en
+# verwijdert niets bij een ongeldige waarde of een termijn onder de 7 dagen; de app start er altijd mee.
+BEWAARTERMIJN_GESPREKKEN_DAGEN = os.getenv("BEWAARTERMIJN_GESPREKKEN_DAGEN", "90")
+BEWAARTERMIJN_RAPPORTEN_DAGEN = os.getenv("BEWAARTERMIJN_RAPPORTEN_DAGEN", "365")
 
 # Willma AI-Hub (SURF) — optioneel. Zet WILLMA_API_KEY om via Willma te draaien.
 # Zet MODEL naar bijv. "openai/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.

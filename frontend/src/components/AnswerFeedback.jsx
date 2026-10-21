@@ -4,9 +4,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 const THANKS = 'Bedankt voor je feedback!'
 const THANKS_MS = 4000
 // What a thumbs-down keeps (#476): the trace goes to the team and stays when the conversation is
-// deleted, without the user's name.
+// deleted, without the user's name, until 90 days after it was given (#485, persistence/opschonen.py).
 const BEWAARD = 'Het team krijgt je oordeel met de vraag, het antwoord en de stappen erbij. ' +
-  'Verwijder je het gesprek, dan blijft dit bewaard, maar zonder je naam.'
+  'Verwijder je het gesprek, dan blijft dit bewaard, maar zonder je naam. Na 90 dagen wordt het verwijderd.'
 
 // 👍/👎 under an answer (#248). A thumbs-down asks what is wrong first: with the
 // trace the server adds, that makes it a reproducible bug report.

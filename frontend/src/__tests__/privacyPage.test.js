@@ -65,7 +65,7 @@ describe('PrivacyPage', () => {
     await render(createElement(PrivacyPage))
     const open = sectionText('Open punten')
     expect(open).toContain('Verwerkersovereenkomst')
-    expect(open).toContain('Bewaartermijn')
+    expect(open).toMatch(/bewaartermijn van het serverlog/i)
     expect(container.textContent).not.toMatch(/geen persoonsgegevens worden verwerkt/i)
   })
 
@@ -86,8 +86,8 @@ describe('PrivacyPage', () => {
   })
 
   // #645 and #646: exporting and deleting everything are both possible, in the app and the docs; what stays after the
-  // delete is named, and a retention term follows at production (#485).
-  it('says that all data can be exported and deleted, what the delete leaves, and that a retention term follows', async () => {
+  // delete is named. #485: the retention terms are decided and named; only those of logs and back-ups stay open.
+  it('says that all data can be exported and deleted, what the delete leaves, and the retention terms', async () => {
     await render(createElement(PrivacyPage))
     const app = [sectionText('Wat je zelf kunt doen'), sectionText('Open punten'), sectionText('Wat de server bewaart')]
     const docs = [oneLine(docsSection('Wat je zelf kunt doen')), oneLine(docsSection('Open punten')), oneLine(docsSection('Wat de server bewaart'))]
@@ -101,9 +101,14 @@ describe('PrivacyPage', () => {
         expect(zelf).toContain(tekst)
       }
       expect(open).not.toMatch(/alles verwijderen|exporteren/)
-      expect(open).toContain('Bewaartermijn')
-      expect(open).toContain('bij productie')
+      expect(open).toMatch(/bewaartermijn van het (serverlog|logplatform)/i)
+      expect(open).not.toContain('bij productie')
       expect(server).toMatch(/al (je|zijn) gegevens verwijdert/)
+      // The terms in plain words, and no trace of "nothing is cleaned up".
+      expect(server).toMatch(/90 dagen na (je|het) laatste bericht/)
+      expect(server).toMatch(/365 dagen/)
+      expect(server).toMatch(/90 dagen na(dat je hem gaf| het geven)/)
+      expect(server).not.toMatch(/nog geen automatische opschoning|onbepaald|blijft staan tot je al je gegevens/)
     }
   })
 })

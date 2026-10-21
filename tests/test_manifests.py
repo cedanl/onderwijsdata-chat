@@ -38,3 +38,82 @@ def test_een_pod_zolang_de_staat_in_het_geheugen_leeft(omgeving):
     values = _values(omgeving)
     assert values.get("replicaCount", _CHART["replicaCount"]) == 1
     assert not (values.get("autoscaling") or _CHART["autoscaling"]).get("enabled")
+
+
+# ── Opschoning na de bewaartermijn (#485): CronJob in de chart, per omgeving aan of uit ──
+
+# Demofase: de opschoning draait op test en playground. Productie en development doen niet mee (geen ladder, en
+# productie heeft geen echte gebruikers); aanzetten daar is een eigen besluit.
+_OPSCHONEN_AAN = {"test", "playground"}
+_QUOTUM_CPU_MILLI = 1000  # ResourceQuota limits.cpu van de namespace op test en playground
+
+
+def _milli(cpu: str) -> int:
+    return int(cpu[:-1]) if cpu.endswith("m") else int(float(cpu) * 1000)
+
+
+def test_de_chart_schoont_standaard_niet_op():
+    assert _CHART["opschonen"]["enabled"] is False
+    assert _CHART["opschonen"]["droog"] is False
+
+
+@pytest.mark.parametrize("omgeving", _OMGEVINGEN, ids=lambda p: p.name)
+def test_opschonen_alleen_op_test_en_playground(omgeving):
+    aan = (_values(omgeving).get("opschonen") or {}).get("enabled", _CHART["opschonen"]["enabled"])
+    assert aan is (omgeving.name in _OPSCHONEN_AAN)
+
+
+@pytest.mark.parametrize("omgeving", sorted(_OPSCHONEN_AAN))
+def test_opschonen_past_in_het_quotum_en_heeft_postgres(omgeving):
+    """De CronJob-pod draait naast de app; samen mogen ze niet boven limits.cpu uit, anders start hij nooit."""
+    values = _values(_ROOT / "manifests" / omgeving)
+    app = _milli(values["resources"]["limits"]["cpu"])
+    opschonen = _milli(_CHART["opschonen"]["resources"]["limits"]["cpu"])
+    assert app + opschonen <= _QUOTUM_CPU_MILLI
+    assert "POSTGRES_URI" in {e["name"] for e in values["env"]}
+
+
+def _helm(*args: str) -> str:
+    import shutil
+    import subprocess
+
+    if not shutil.which("helm"):
+        pytest.skip("helm niet geïnstalleerd")
+    return subprocess.run(["helm", *args], capture_output=True, text=True, check=True).stdout
+
+
+def test_cronjob_draait_de_opschoning_zonder_andere_geheimen_en_buiten_de_service():
+    documenten = [
+        d
+        for d in yaml.safe_load_all(
+            _helm(
+                "template",
+                "onderwijsdata-chat",
+                str(_ROOT / "charts/onderwijsdata-chat"),
+                "-f",
+                str(_ROOT / "manifests/base/values-base.yaml"),
+                "-f",
+                str(_ROOT / "manifests/test/values.yaml"),
+            )
+        )
+        if d
+    ]
+    cronjob = next(d for d in documenten if d["kind"] == "CronJob")
+    service = next(d for d in documenten if d["kind"] == "Service")
+    pod = cronjob["spec"]["jobTemplate"]["spec"]["template"]
+    container = pod["spec"]["containers"][0]
+    assert container["command"][-2:] == ["-m", "persistence.opschonen"]
+    assert "args" not in container  # niet droog: echt opschonen
+    assert [e["name"] for e in container["env"]] == ["POSTGRES_URI"]
+    assert pod["spec"]["automountServiceAccountToken"] is False
+    selector = service["spec"]["selector"]
+    assert any(pod["metadata"]["labels"].get(k) != v for k, v in selector.items())
+    assert cronjob["spec"]["concurrencyPolicy"] == "Forbid"
+
+
+def test_cronjob_weigert_zonder_postgres():
+    import subprocess
+
+    with pytest.raises(subprocess.CalledProcessError) as fout:
+        _helm("template", "x", str(_ROOT / "charts/onderwijsdata-chat"), "--set", "opschonen.enabled=true")
+    assert "POSTGRES_URI" in fout.value.stderr

@@ -95,6 +95,15 @@ Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` i
 
 Een ongeldige of niet-positieve waarde voor `SESSION_TTL_HOURS` of `SESSION_MAX_HOURS` laat de app niet starten. Uitloggen trekt het token ook server-side in (tabel `revoked_tokens`).
 
+### Bewaartermijn en opschoning
+
+| Variabele | Standaard | Beschrijving |
+|-----------|-----------|--------------|
+| `BEWAARTERMIJN_GESPREKKEN_DAGEN` | `90` | Dagen na de laatste activiteit waarna een gesprek (met zijn datarecepten) en feedback (`answer_feedback` met de `trace`, `feedback`, `algemene_feedback`) worden verwijderd. Feedback per antwoord blijft zolang het gesprek bestaat. |
+| `BEWAARTERMIJN_RAPPORTEN_DAGEN` | `365` | Dagen nadat een rapport of dashboard voor het laatst is opgeslagen of geopend waarna het wordt verwijderd. |
+
+De opschoning draait als `python -m persistence.opschonen` (met `--droog`: alleen tellen), op SDP als CronJob uit de Helm-chart (`opschonen.enabled`, aan op test en playground). Een termijn die geen geheel getal is of korter dan 7 dagen verwijdert niets (exitcode 2); een databasefout rolt alles terug (exitcode 1). De app zelf start altijd, ook met een ongeldige termijn. Zie `docs/privacy.md` (#485).
+
 ### SURF SRAM-login (OIDC)
 
 SRAM-login is actief als `OIDC_PROVIDER` is ingesteld én de discovery-URL, client-gegevens en `SERVER_URL` aanwezig zijn (`auth/oidc.py`). Ook hiervoor moet `CHAT_SECRET` ingesteld zijn.

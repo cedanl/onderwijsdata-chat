@@ -62,6 +62,7 @@ describe('AnswerFeedback', () => {
     const uitleg = container.querySelector('.answer-feedback-form .answer-feedback-bewaard').textContent
     expect(uitleg).toContain('de vraag, het antwoord en de stappen')
     expect(uitleg).toMatch(/verwijder je het gesprek.*zonder je naam/i)
+    expect(uitleg).toContain('Na 90 dagen wordt het verwijderd') // #485: niet meer onbepaald
     const veld = container.querySelector('textarea')
     expect(veld.getAttribute('aria-describedby')).toBe(container.querySelector('.answer-feedback-bewaard').id)
   })

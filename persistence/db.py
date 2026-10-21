@@ -250,6 +250,14 @@ def _migrate(conn: Any) -> None:
             cursor.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
             conn.commit()
 
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='workbooks' AND column_name='laatst_gebruikt'
+        """)
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE workbooks ADD COLUMN laatst_gebruikt BIGINT")
+            conn.commit()
+
         cursor.execute("SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1")
         if cursor.fetchone():
             cursor.execute(
@@ -263,6 +271,9 @@ def _migrate(conn: Any) -> None:
         if "dashboard_spec" not in columns:
             conn.execute("ALTER TABLE workbooks ADD COLUMN dashboard_spec TEXT")
             conn.commit()
+        if "laatst_gebruikt" not in columns:
+            conn.execute("ALTER TABLE workbooks ADD COLUMN laatst_gebruikt BIGINT")
+            conn.commit()
 
         has_ms = conn.execute("SELECT 1 FROM conversations WHERE timestamp > 1000000000000 LIMIT 1").fetchone()
         if has_ms:
@@ -271,8 +282,19 @@ def _migrate(conn: Any) -> None:
             )
             conn.commit()
 
+    _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
+
+
+def _begin_bewaartermijn_werkboeken(conn: Any) -> None:
+    """Een werkboek van vóór #485 krijgt nu als laatst gebruikt: wanneer het is geopend, is niet bekend.
+
+    Zo begint zijn bewaartermijn (persistence/opschonen.py) bij deze migratie en verdwijnt er niets eerder dan
+    de termijn na de invoering. Alleen lege waarden: upsert_workbook en werkboek_geopend vullen hem altijd.
+    """
+    _execute(conn, "UPDATE workbooks SET laatst_gebruikt = ? WHERE laatst_gebruikt IS NULL", (int(time.time()),))
+    conn.commit()
 
 
 # Eén rij per inzending; answers is JSON {vraag-id: antwoord} (zie core/feedback.py).
@@ -374,6 +396,7 @@ def init_db() -> None:
                     html_content   TEXT,
                     dashboard_spec TEXT,
                     created_at     TEXT NOT NULL,
+                    laatst_gebruikt BIGINT,
                     PRIMARY KEY (id, username)
                 )
             """)
@@ -411,6 +434,7 @@ def init_db() -> None:
                     html_content   TEXT,
                     dashboard_spec TEXT,
                     created_at     TEXT NOT NULL,
+                    laatst_gebruikt BIGINT,
                     PRIMARY KEY (id, username)
                 );
                 CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
@@ -526,10 +550,13 @@ def _contains(row: dict, needle: str) -> bool:
 
 
 def _normalize_ts(timestamp: float) -> int:
-    """Normalize millisecond timestamps to seconds."""
-    if timestamp > 1e12:
-        return int(timestamp) // 1000
-    return int(timestamp)
+    """Milliseconden naar seconden, en nooit later dan nu.
+
+    De tijd komt uit de browser en is de laatste activiteit van het gesprek: met een klok in de toekomst zou het
+    gesprek buiten de bewaartermijn vallen (#485).
+    """
+    seconds = int(timestamp) // 1000 if timestamp > 1e12 else int(timestamp)
+    return min(seconds, int(time.time()))
 
 
 def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
@@ -570,9 +597,19 @@ def delete_conversation(username: str, conv_id: str) -> None:
             "DELETE FROM conversations WHERE id = ? AND username = ?",
             (conv_id, username),
         )
-        _execute(conn, "DELETE FROM data_recipes WHERE conv_id = ? AND username = ?", (conv_id, username))
-        _ontkoppel_feedback(conn, username, conv_id)
+        ruim_gesprek_op(conn, username, conv_id)
         conn.commit()
+
+
+def ruim_gesprek_op(conn: Any, username: str, conv_id: str) -> int:
+    """Wat bij een verwijderd gesprek hoort, in de transactie van `conn`: recepten weg, feedback losgekoppeld (#476).
+
+    Voor het verwijderen door de gebruiker en voor de opschoning na de bewaartermijn (persistence/opschonen.py).
+    Geeft het aantal verwijderde recepten.
+    """
+    recepten = _execute(conn, "DELETE FROM data_recipes WHERE username = ? AND conv_id = ?", (username, conv_id))
+    _ontkoppel_feedback(conn, username, conv_id)
+    return recepten.rowcount
 
 
 def _ontkoppel_feedback(conn: Any, username: str, conv_id: str) -> None:
@@ -692,13 +729,13 @@ def upsert_workbook(
         _execute(
             conn,
             "INSERT INTO workbooks (id, username, title, description, messages, figures, "
-            "instelling, html_content, dashboard_spec, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "instelling, html_content, dashboard_spec, created_at, laatst_gebruikt) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT (id, username) DO UPDATE SET title=excluded.title, "
             "description=excluded.description, messages=excluded.messages, "
             "figures=excluded.figures, instelling=excluded.instelling, "
             "html_content=excluded.html_content, dashboard_spec=excluded.dashboard_spec, "
-            "created_at=excluded.created_at",
+            "created_at=excluded.created_at, laatst_gebruikt=excluded.laatst_gebruikt",
             (
                 wb_id,
                 username,
@@ -710,7 +747,19 @@ def upsert_workbook(
                 html_content,
                 json.dumps(dashboard_spec) if dashboard_spec is not None else None,
                 created_at,
+                int(time.time()),
             ),
+        )
+        conn.commit()
+
+
+def werkboek_geopend(username: str, wb_id: str) -> None:
+    """Een eigen werkboek is geopend: zijn bewaartermijn van 365 dagen begint opnieuw (#485)."""
+    with _connection() as conn:
+        _execute(
+            conn,
+            "UPDATE workbooks SET laatst_gebruikt = ? WHERE id = ? AND username = ?",
+            (int(time.time()), wb_id, username),
         )
         conn.commit()
 

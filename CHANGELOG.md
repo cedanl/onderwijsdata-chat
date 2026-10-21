@@ -457,7 +457,14 @@ de laatste tag is 1.8.6.
   werk van de anderen kwijtraakt. Alleen met een eigen login: zonder login (iedereen is `gast`) ontbreekt de knop en
   antwoordt de server 404. Blijven staan: serverlogs en back-ups van de beheerder, feedback die al van een verwijderd
   gesprek was losgekoppeld (#476) en de kopie op andere apparaten tot je daar uitlogt. `/privacy`, `docs/privacy.md`
-  en `SECURITY.md` (S16) beschrijven het; een bewaartermijn volgt bij productie (#485).
+  en `SECURITY.md` (S16) beschrijven het.
+- Bewaartermijn en opschoning (#485, privacy M5): elke nacht verwijdert een CronJob (`python -m persistence.opschonen`,
+  aan op test en playground, uit op productie) gesprekken 90 dagen na het laatste bericht, met hun datarecepten,
+  en feedback 90 dagen na het geven (ook de `trace` van feedback per antwoord, maar niet zolang het gesprek bestaat);
+  rapporten en dashboards 365 dagen nadat ze voor het laatst zijn opgeslagen of geopend. Instelbaar met
+  `BEWAARTERMIJN_GESPREKKEN_DAGEN` en `BEWAARTERMIJN_RAPPORTEN_DAGEN`; een termijn onder de 7 dagen of een ongeldige
+  waarde verwijdert niets, en alles gebeurt in één transactie. `--droog` telt alleen. `/privacy`, `docs/privacy.md`
+  en de feedbackdialogen noemen de termijnen. Bestaande rapporten tellen vanaf de invoering.
 - Het recept bij een kaart tekent dezelfde kaart als de app: het laadt de GeoJSON van het niveau, vertaalt codes en
   namen (ook DUO-spelling en gemeentenummers) naar de gebiedscode, noemt wat niet op de kaart staat en gebruikt
   dezelfde opmaak. Het gaf eerder `px.choropleth_map(df, locations=…)` zonder GeoJSON: een lege kaart (#630).
