@@ -136,9 +136,12 @@ def _feed(dataset_id, **params):
     """De CBS-feed in het klein: elke `trim(Dim) eq 'x'`-clausule moet kloppen."""
     clausules = [c for c in str(params.get("$filter") or "").split(" and ") if c]
 
-    def klopt(rij, clausule):
-        kolom, _, waarde = clausule.partition(" eq ")
+    def klopt_een(rij, clausule):
+        kolom, _, waarde = clausule.strip("() ").partition(" eq ")
         return str(rij[kolom.removeprefix("trim(").removesuffix(")")]) == waarde.strip("'")
+
+    def klopt(rij, clausule):
+        return any(klopt_een(rij, deel) for deel in clausule.split(" or "))
 
     return [dict(r) for r in _RIJEN if all(klopt(r, c) for c in clausules)]
 
@@ -162,6 +165,7 @@ def test_twee_runs_met_een_andere_modelkeuze_geven_dezelfde_telling_en_uitgangsp
         store.clear()
         ruw, resultaat, calls = _run(leerweg)
         assert all(f"trim(Leerweg) eq '{INCL}'" in c["$filter"] for c in calls)
+        assert len(calls) == 1
         aantallen.append(store.get(resultaat["data_key"])["Instromers_1"].tolist())
         regels.append(uitgangspunt(_VRAAG, tekst, [("get_cbs_data", ruw)]))
 
@@ -189,6 +193,91 @@ def test_het_recept_en_de_snippet_tonen_de_telling_die_geladen_is():
     with cbs_standaard.gesprek([_VRAAG]):
         snippet = generate("get_cbs_data", {"dataset_id": "85569NED", "selectie": _selectie(EXCL)})
     assert snippet is not None and INCL in snippet and EXCL not in snippet
+
+
+# --- de smallere telling als gegrond alternatief (#658) ----------------------------
+
+
+def test_een_ingreep_levert_de_telling_zonder_extranei_gegrond_mee_uit_een_aanroep():
+    _, resultaat, calls = _run(EXCL)
+    alternatief = resultaat["alternatieve_telling"]
+
+    assert len(calls) == 1  # één aanroep met beide codes, geen tweede netwerkaanroep
+    assert INCL in calls[0]["$filter"] and EXCL in calls[0]["$filter"]
+    # De standaard blijft het antwoord: de data_key bevat alleen de ruimste telling.
+    assert store.get(resultaat["data_key"])["Instromers_1"].tolist() == [157450]
+    assert alternatief["code"] == EXCL
+    assert alternatief["label"] == "Totaal mbo (excl. extranei)"
+    assert alternatief["data_key"] != resultaat["data_key"]
+    assert store.get(alternatief["data_key"])["Instromers_1"].tolist() == [155270]
+    assert alternatief["preview"][0]["Instromers_1"] == 155270
+    assert "als de gebruiker erom vraagt" in alternatief["gebruik"]
+    assert "155270" not in json.dumps({k: v for k, v in resultaat.items() if k != "alternatieve_telling"})
+
+
+def test_het_alternatief_kan_herladen_worden_als_eigen_telling():
+    _, resultaat, _ = _run(EXCL)
+    known = store.meta(resultaat["alternatieve_telling"]["data_key"])
+
+    assert known is not None and known.laad is not None
+    assert f"trim(Leerweg) eq '{EXCL}'" in known.laad[1]["filters"]["$filter"]
+    assert INCL not in known.laad[1]["filters"]["$filter"]
+
+
+def test_zonder_ingreep_is_er_geen_alternatieve_telling():
+    """Het model koos zelf de standaard: er is niets vervangen en dus niets aan te vullen."""
+    _, resultaat, calls = _run(INCL)
+
+    assert "alternatieve_telling" not in resultaat
+    assert len(calls) == 1 and EXCL not in calls[0]["$filter"]
+
+
+def test_een_afgekapte_aanroep_met_beide_codes_valt_terug_op_de_standaard_alleen():
+    """Twee totalen verdubbelen de rijen. Past dat niet in een pagina, dan geldt de aanroep zoals voor #658."""
+    with (
+        cbs_standaard.gesprek([_VRAAG]),
+        patch("tools.cbs.definitions", return_value=_DEFS),
+        patch("tools.cbs.get", side_effect=lambda dataset_id, endpoint, **_: _LABELS.get(endpoint, [])),
+        patch("tools.cbs._page_size", return_value=2),
+        patch("tools.cbs.data", side_effect=_feed) as datacall,
+    ):
+        resultaat = json.loads(get_cbs_data("85569NED", selectie=_selectie(EXCL)))
+
+    assert "alternatieve_telling" not in resultaat
+    assert len(datacall.call_args_list) == 2  # de afgekapte aanroep met beide codes, dan de standaard alleen
+    assert EXCL not in datacall.call_args_list[-1].kwargs["$filter"]
+    assert store.get(resultaat["data_key"])["Instromers_1"].tolist() == [157450]
+
+
+def test_een_bronfout_bij_beide_codes_valt_terug_op_de_standaard_alleen():
+    def feed(dataset_id, **params):
+        if EXCL in str(params.get("$filter")):
+            raise RuntimeError("HTTP 500")
+        return _feed(dataset_id, **params)
+
+    with (
+        cbs_standaard.gesprek([_VRAAG]),
+        patch("tools.cbs.definitions", return_value=_DEFS),
+        patch("tools.cbs.get", side_effect=lambda dataset_id, endpoint, **_: _LABELS.get(endpoint, [])),
+        patch("tools.cbs.data", side_effect=feed),
+    ):
+        resultaat = json.loads(get_cbs_data("85569NED", selectie=_selectie(EXCL)))
+
+    assert "alternatieve_telling" not in resultaat
+    assert store.get(resultaat["data_key"])["Instromers_1"].tolist() == [157450]
+
+
+def test_ontbreekt_de_smallere_telling_in_de_bron_dan_geen_veld_en_geen_fout():
+    rijen = [r for r in _RIJEN if r["Leerweg"] == INCL]
+    with (
+        cbs_standaard.gesprek([_VRAAG]),
+        patch("tools.cbs.definitions", return_value=_DEFS),
+        patch("tools.cbs.get", side_effect=lambda dataset_id, endpoint, **_: _LABELS.get(endpoint, [])),
+        patch("tools.cbs.data", return_value=[dict(r) for r in rijen]),
+    ):
+        resultaat = json.loads(get_cbs_data("85569NED", selectie=_selectie(EXCL)))
+
+    assert "alternatieve_telling" not in resultaat and "data_key" in resultaat
 
 
 # --- run() zet het gesprek ---------------------------------------------------------

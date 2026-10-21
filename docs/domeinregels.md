@@ -175,6 +175,12 @@ dezelfde vraag gaf een ander getal (op 85569NED 157.450 of 155.270 mbo-instromer
 - De smallere telling blijft staan als een vraag in het gesprek extranei uitsluit: "zonder extranei",
   "excl. extranei", "exclusief extranei", "geen extranei", "extranei niet …", "bol en bbl". Een uitsluiting
   in een eerdere vraag geldt ook voor de vervolgvragen.
+- Waar de code de smallere telling verving, laadt `get_cbs_data` hem in dezelfde CBS-aanroep mee (één aanroep met
+  beide codes) en bewaart hem onder een eigen `data_key` in `alternatieve_telling` (#658). De standaardtelling blijft
+  het antwoord; het model noemt de telling zonder extranei alleen als de gebruiker erom vraagt, en dan gegrond met
+  die `data_key`. Past de aanroep met twee totalen niet in een pagina, of weigert de bron hem, dan laadt
+  `get_cbs_data` de standaard alleen en is er geen `alternatieve_telling`. Heeft het model de standaard zelf gekozen,
+  dan is er niets vervangen en dus geen alternatief.
 - Uitsplitsen (`*`), bol, bbl, extranei of meer codes tegelijk blijven zoals het model ze koos.
 - Buiten de chat (MCP, evals) is er geen gesprek: daar geldt de code die de aanroeper koos.
 - Andere tabellen kennen hooguit één van beide totalen (85701NED alleen excl., 85702NED alleen incl.), vaak in

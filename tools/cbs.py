@@ -1,3 +1,4 @@
+import dataclasses
 import difflib
 import json
 import logging
@@ -310,24 +311,38 @@ def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pa
     return sectorfilter.geen_rijen(dataset_id)
 
 
-def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
-    dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
-    if blokkade := scope_blokkade(dataset_id):
-        return blokkade
-    standaard = None
-    if selectie is not None:
-        # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
-        # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
-        # Waar de tabel een vaste standaard heeft, kiest de code die, niet het model (#653).
-        selectie, standaard = cbs_standaard.toegepast(dataset_id, selectie)
-        col_defs_vooraf = _load_definitions(dataset_id)
-        uitkomst = cbs_selectie.compileer(dataset_id, selectie, col_defs_vooraf)
-        if isinstance(uitkomst, str):
-            return uitkomst
-        # Kan de tabel deze codes, periode en sector leveren? Het contract van de package oordeelt vóór de datacall (#370).
-        if weigering := cbs_preflight.preflight(dataset_id, selectie, col_defs_vooraf):
-            return weigering
-        filters = uitkomst or None
+@dataclasses.dataclass(frozen=True)
+class _Opgehaald:
+    ruw: list  # wat de bron gaf
+    rows: list  # de rijen binnen de scopegrens
+    truncated: bool  # een volle pagina: de bron kan meer hebben (#5)
+
+
+@dataclasses.dataclass(frozen=True)
+class _Alternatief:
+    """De smallere telling naast de standaard (#658): beide totalen in één aanroep, de smallere ook los herlaadbaar."""
+
+    filters_beide: dict | None
+    filters_smaller: dict | None
+
+
+def _alternatief(dataset_id: str, selectie: dict, standaard, col_defs) -> _Alternatief | None:
+    """De filters voor de aanroep met beide totalen en voor de smallere telling alleen; None als de tabel dat niet kan.
+
+    Een weigering van de selectie of de preflight is hier geen fout: dan blijft het bij de standaard alleen.
+    """
+    gecompileerd = []
+    for beide in (True, False):
+        alt = standaard.alternatief(selectie, beide=beide)
+        uitkomst = cbs_selectie.compileer(dataset_id, alt, col_defs)
+        if isinstance(uitkomst, str) or cbs_preflight.preflight(dataset_id, alt, col_defs):
+            return None
+        gecompileerd.append(uitkomst or None)
+    return _Alternatief(*gecompileerd)
+
+
+def _haal(dataset_id: str, filters: dict | None) -> _Opgehaald | str:
+    """Eén aanroep naar de bron met de scopegrens ervoor en erna (CH-03); een tekst is de weigering of de bronfout."""
     params = dict(filters or {})
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
@@ -348,9 +363,85 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
     rows = sectorselectie.rijen(opgehaald) if sectorselectie else opgehaald
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
-    truncated = len(opgehaald) >= _page_size(params["$top"])
+    return _Opgehaald(opgehaald, rows, len(opgehaald) >= _page_size(params["$top"]))
+
+
+def _splits(rows: list, standaard) -> tuple[list, list]:
+    """De rijen van de standaardtelling en van de smallere, op de code in de dimensie van de standaard."""
+
+    def code(rij: dict) -> str:
+        return str(rij.get(standaard.dimensie, "")).strip()
+
+    return [r for r in rows if code(r) == standaard.code], [r for r in rows if code(r) == standaard.smaller]
+
+
+def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta) -> dict:
+    """Bewaar de smallere telling onder een eigen data_key en geef de verwijzing voor het toolresultaat (#658).
+
+    Het model noemt hem alleen als de gebruiker erom vraagt; staat hij onder een eigen key, dan is elk getal
+    erin gegrond (citatie, export, herladen). De standaardtelling blijft het antwoord.
+    """
+    df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
+    digest = canoniek.cbs_digest(alternatief.filters_smaller)
+    key = f"cbs:{dataset_id}:{digest}" if digest else f"cbs:{dataset_id}"
+    store.put(
+        key,
+        df,
+        dataclasses.replace(
+            meta,
+            volledig=True,
+            laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": alternatief.filters_smaller}),
+        ),
+    )
+    return {
+        "label": standaard.smaller_label,
+        "code": standaard.smaller,
+        "data_key": key,
+        **store.rijtelling(len(df), True),
+        "preview": df.head(_SAMPLE_ROWS).to_dict(orient="records"),
+        "gebruik": (
+            "Alleen noemen als de gebruiker erom vraagt (bijvoorbeeld 'zonder extranei'); het antwoord blijft de "
+            "standaardtelling in data_key hierboven."
+        ),
+    }
+
+
+def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
+    dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
+    if blokkade := scope_blokkade(dataset_id):
+        return blokkade
+    standaard = None
+    alternatief: _Alternatief | None = None
+    if selectie is not None:
+        # De modelinterface is een gesloten selectie; de OData-parameters bouwt de server
+        # (#343, ADR-006). `filters` blijft bestaan voor bewaarde recepten en herladen.
+        # Waar de tabel een vaste standaard heeft, kiest de code die, niet het model (#653).
+        selectie, standaard = cbs_standaard.toegepast(dataset_id, selectie)
+        col_defs_vooraf = _load_definitions(dataset_id)
+        uitkomst = cbs_selectie.compileer(dataset_id, selectie, col_defs_vooraf)
+        if isinstance(uitkomst, str):
+            return uitkomst
+        # Kan de tabel deze codes, periode en sector leveren? Het contract van de package oordeelt vóór de datacall (#370).
+        if weigering := cbs_preflight.preflight(dataset_id, selectie, col_defs_vooraf):
+            return weigering
+        filters = uitkomst or None
+        if standaard:
+            alternatief = _alternatief(dataset_id, selectie, standaard, col_defs_vooraf)
+
+    opgehaald = _haal(dataset_id, alternatief.filters_beide if alternatief else filters)
+    if alternatief and (isinstance(opgehaald, str) or opgehaald.truncated):
+        # Twee totalen verdubbelen de rijen en de bron kan de aanroep weigeren: dan telt de aanroep zoals voor #658.
+        alternatief = None
+        opgehaald = _haal(dataset_id, filters)
+    if isinstance(opgehaald, str):
+        return opgehaald
+    truncated = opgehaald.truncated
+    rows = opgehaald.rows
+    rows_alternatief = []
+    if alternatief:
+        rows, rows_alternatief = _splits(rows, standaard)
     if not rows:
-        return _geen_rijen(dataset_id, filters, opgehaald, truncated)
+        return _geen_rijen(dataset_id, filters, opgehaald.ruw, truncated)
 
     loaded_defs = _load_definitions(dataset_id)
     col_defs = loaded_defs or {}
@@ -362,20 +453,17 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
     eenheid, afronding_bekend = _afronding(dataset_id)
-    store.put(
-        key,
-        df,
-        store.KeyMeta(
-            bron="cbs",
-            dataset=dataset_id,
-            volledig=not truncated,
-            periodekolom=kolom,
-            schooljaren=schooljaren,
-            afronding=eenheid,
-            laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
-            kolomtitels=kolomtitels(col_defs, schooljaren),
-        ),
+    store_meta = store.KeyMeta(
+        bron="cbs",
+        dataset=dataset_id,
+        volledig=not truncated,
+        periodekolom=kolom,
+        schooljaren=schooljaren,
+        afronding=eenheid,
+        laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
+        kolomtitels=kolomtitels(col_defs, schooljaren),
     )
+    store.put(key, df, store_meta)
     store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
 
     dims = _dimension_names(col_defs)
@@ -418,6 +506,11 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
 
     if standaard:
         result["standaardselectie"] = standaard.uitleg()
+
+    if alternatief and rows_alternatief:
+        result["alternatieve_telling"] = _bewaar_alternatief(
+            dataset_id, rows_alternatief, alternatief, standaard, col_defs, store_meta
+        )
 
     if eenheid:
         result["afronding"] = cbs_afronding.noot(eenheid)
