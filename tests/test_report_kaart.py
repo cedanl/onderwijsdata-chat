@@ -112,7 +112,9 @@ def test_de_kaart_van_de_rapportrun_komt_als_kaart_in_het_rapport(sessie, monkey
     harde_problemen: list[list[str]] = []
 
     async def loop(messages, *, on_tool_result, check, **_):
-        melding, figuur = create_choropleth_map(**_KAART)
+        melding, figuur = create_choropleth_map(
+            data_key=_KEY, location_col="PROVINCIE", value_col="AANTAL", title=_KAART["title"]
+        )
         assert figuur is not None
         meldingen.append(melding)
         call = ToolCall(id="k", name=TOOL_CREATE_CHOROPLETH_MAP, arguments=json.dumps(_KAART), args=dict(_KAART))
