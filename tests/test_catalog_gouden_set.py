@@ -25,7 +25,8 @@ GOED = [
     ("Hoeveel eerstejaars heeft de Universiteit Utrecht?", "p02ho1ejrs", 3),
     ("eerstejaars hoger onderwijs", "p02ho1ejrs", 1),
     ("ingeschrevenen hoger onderwijs opleidingsvorm", "85423NED", 1),
-    ("voortijdig schoolverlaters mbo", "85368NED", 1),
+    ("voortijdig schoolverlaters mbo", "85367NED", 1),  # naar leeftijd; even geschikt als 85368NED (v0.2.1)
+    ("voortijdig schoolverlaters mbo", "85368NED", 2),
     ("gediplomeerden hoger onderwijs", "p04hogdipl", 1),
     ("gediplomeerde mbo-studenten", "gediplomeerde-mbo-studenten", 5),
     ("studentprognoses mbo per instelling", "studentprognoses-mbo-per-instelling", 1),

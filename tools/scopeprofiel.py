@@ -154,6 +154,8 @@ CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
         ),
         "mbo",
     ),
+    # Dezelfde VSV, naar leeftijd; de dimensie kent alleen totalen: mbo is A025290 (vo is A042781, vavo A025300).
+    "85367NED": CbsSectorfilter("Onderwijssoort", frozenset({"A025290"}), "mbo"),
     "85859NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
     "85860NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
     "85861NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
