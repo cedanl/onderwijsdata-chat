@@ -64,3 +64,26 @@ describe('tabel in een antwoord (#626)', () => {
     expect(regel[1]).toMatch(/max-width:\s*100%\s*;/)
   })
 })
+
+// #657 (spec van #611, rood na #626): de scrollbox knipt ook verticaal (overflow-y wordt auto), dus de open herkomst van een getal in de
+// tabel viel onderaan weg en scrolde binnen de tabel. Hij hangt nu buiten de box en schuift met de tabel mee.
+describe('herkomst van een getal in een tabel (#657)', () => {
+  const regel = kiezer => css.match(new RegExp(`${kiezer.replace(/[.]/g, '\\.')}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+
+  it('hangt de uitleg buiten de scrollbox, op zijn plek onder het getal', () => {
+    expect(regel('.tabel-scroll .citatie')).toMatch(/position:\s*static\s*;/)
+    const uitleg = regel('.tabel-scroll .citatie-uitleg')
+    expect(uitleg).toMatch(/top:\s*auto\s*;/)
+    expect(uitleg).toMatch(/left:\s*auto\s*;/)
+    expect(uitleg).toMatch(/translate:\s*calc\(-1 \* var\(--tabel-scroll-x, 0px\)\) calc\(-1 \* var\(--tabel-scroll-y, 0px\)\)/)
+  })
+
+  it('geeft de scrollpositie van de tabel door, zodat de uitleg meeschuift', () => {
+    const wrap = render(antwoord).querySelector('.tabel-scroll')
+    Object.defineProperty(wrap, 'scrollLeft', { configurable: true, value: 60 })
+    Object.defineProperty(wrap, 'scrollTop', { configurable: true, value: 3 })
+    act(() => { wrap.dispatchEvent(new Event('scroll')) })
+    expect(wrap.style.getPropertyValue('--tabel-scroll-x')).toBe('60px')
+    expect(wrap.style.getPropertyValue('--tabel-scroll-y')).toBe('3px')
+  })
+})

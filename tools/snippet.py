@@ -26,7 +26,16 @@ from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
 from .periode import STUDIEJAAR_LABEL
-from .plot import GEOJSON_URLS, KAART_OPTIES, is_liggend, kaartlabel, resolve_chart_type, schone_titel
+from .plot import (
+    GEOJSON_URLS,
+    KAART_GETALLEN,
+    KAART_OPTIES,
+    is_liggend,
+    kaart_hoverlabel,
+    kaartlabel,
+    resolve_chart_type,
+    schone_titel,
+)
 from .query import NUMERIEKE_AGG
 from .schemas import (
     TOOL_COMPUTE_KPI,
@@ -539,6 +548,8 @@ def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None)
         f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
         f'hover_name={location_col!r}, hover_data={{"kaartcode": False}}, color={value_col!r}, labels={labels!r}, '
         f"{opmaak}, title={title!r})",
+        f"fig.update_traces(hovertemplate={kaart_hoverlabel(labels[value_col])!r})",
+        "fig.update_layout(" + ", ".join(f"{naam}={waarde!r}" for naam, waarde in KAART_GETALLEN.items()) + ")",
         "fig.show()",
     ]
     return "\n".join(lines)

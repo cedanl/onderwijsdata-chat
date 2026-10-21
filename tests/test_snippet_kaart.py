@@ -205,6 +205,9 @@ def test_het_recept_tekent_dezelfde_kleurenbalk_en_titel_als_de_app():
     assert fig_app.layout.title.text == 'Mbo-studenten "2024" per provincie'
     assert fig.layout.title.text == fig_app.layout.title.text
     assert fig.data[0].hovertemplate == fig_app.data[0].hovertemplate
+    # Ook de getallen zoals de app ze toont (#655): Nederlandse scheidingstekens, geen "k" op de kleurenbalk.
+    assert fig.layout.separators == fig_app.layout.separators == ",."
+    assert fig.layout.coloraxis.colorbar.tickformat == fig_app.layout.coloraxis.colorbar.tickformat == ","
 
 
 def test_zonder_titels_volgt_ook_het_recept_kolomlabel():

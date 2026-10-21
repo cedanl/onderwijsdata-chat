@@ -579,6 +579,17 @@ def kaartlabel(value_col: str, known: store.KeyMeta | None) -> str:
     return kolomlabel(value_col, known.kolomtitels if known else None)
 
 
+# De getallen op een kaart zoals op een grafiekas: Nederlandse scheidingstekens, hele getallen op de kleurenbalk
+# ("40.000", niet "40k"). Recept en app gebruiken dezelfde opmaak (#655).
+KAART_GETALLEN = {"separators": _NL_SEPARATORS, "coloraxis_colorbar_tickformat": ","}
+
+
+def kaart_hoverlabel(maat: str) -> str:
+    """Wat een tik op een gebied toont: de naam vet, daaronder de maat met haar waarde ("Mbo-studenten: 41.500"),
+    in plaats van Plotly's "Mbo-studenten=41.5k" (#655)."""
+    return f"<b>%{{hovertext}}</b><br>{maat}: %{{z:,}}<extra></extra>"
+
+
 def create_choropleth_map(
     data: list[dict] | None = None,
     location_col: str = "",
@@ -632,6 +643,7 @@ def create_choropleth_map(
     df[_KAARTCODE] = [locaties.code_van[row[location_col]] for row in cleaned]
     geojson = _load_geojson(detected)
     known = store.meta(data_key) if data_key else None
+    maat = kaartlabel(value_col, known)
 
     # Use px.choropleth_map (Plotly 6 maplibre renderer) — more reliable than geo projection
     # featureidkey='id' matches against the top-level GeoJSON feature id (e.g. 'PV20')
@@ -644,15 +656,17 @@ def create_choropleth_map(
         color=value_col,
         # De kleurenbalk en het hoverlabel heten naar de maat, zoals een grafiekas (#418, #640);
         # meta.value_col houdt de kolomnaam voor de CSV.
-        labels={value_col: kaartlabel(value_col, known)},
+        labels={value_col: maat},
         featureidkey="id",
         title=title,
         **KAART_OPTIES,
     )
+    fig.update_traces(hovertemplate=kaart_hoverlabel(maat))
     fig.update_layout(
         font={"family": "Inter, Arial, sans-serif", "size": 13},
         paper_bgcolor="white",
         margin={"t": 60, "b": 0, "l": 0, "r": 0},
+        **KAART_GETALLEN,
         meta={
             "type": "choropleth",
             "geojson_url": GEOJSON_URLS.get(detected, ""),

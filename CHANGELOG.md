@@ -496,6 +496,20 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De uitleg bij een getal in een tabel (herkomst, #611) wordt niet meer afgeknipt (#657). Sinds tabellen in een
+  antwoord zelf scrollen (#626) viel de open uitleg onderaan weg en kreeg de tabel een verticale scrollbalk; nu hangt
+  hij buiten de tabel onder het getal en schuift hij mee als je de tabel opzij scrolt.
+- Een tik op een provincie of gemeente op de kaart toont naam en waarde (#655), in de chat, de rapportviewer en de
+  HTML-download (gemeten op 390 px met aanraking, licht en donker). De waarde staat er als Nederlands getal
+  ("Mbo-studenten: 41.500" in plaats van "Mbo-studenten=41.5k"), ook op de kleurenbalk ("40.000" in plaats van
+  "40k"); het recept van de kaart tekent hetzelfde. In de download verdween het label direct na de tik: de browser
+  stuurt na de klik ook mouseout, en Plotly haalde het label dan weg. Het kaartscript zet het nu terug.
+- Op een telefoon is de kleinste tekst nu overal minstens 12,5 px (#650, gemeten op 390 px, licht en donker): "Meer
+  laden" in de gesprekkenlijst, de noot in het ⋯-menu, op de homepage het sectielabel, de footerlinks, de disclaimer en
+  de licentieregel, en op /dashboards de tekst op de nieuw-kaart en het label "Voorbeeld" en de instellingsnaam op een
+  voorbeeldkaart (tot 9,75 px). Alleen de beschrijving op een kaart in /rapporten en /dashboards blijft bewust klein
+  (#613). De sneltoets-hint "Ctrl K" naast Zoeken staat niet meer op een aanraakscherm, ook niet op een tablet. De
+  CSV-knop bij een grafiek en de footerlinks hadden op een telefoon al een tikvlak van minstens 44 px.
 - De afrondingsnoot van CBS ("De aantallen zijn door CBS afgerond op 10-tallen: …") staat niet meer als kleine
   ondertitel in de grafiek, maar als gewone tekstregel onder de grafiek (#651): in de chat, in een rapport (viewer,
   HTML-download en PDF, vóór de bronregel) en in een gegenereerd dashboard (weergave en download). Hij is nu te

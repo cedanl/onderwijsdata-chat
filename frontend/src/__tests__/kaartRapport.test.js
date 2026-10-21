@@ -87,3 +87,49 @@ describe('een kaart in het rapport', () => {
     expect(getekend[0].data[0].geojson.features[0].geometry.coordinates[0]).toEqual(mee)
   })
 })
+
+// #655: op een telefoon toont een tik op een provincie het hoverlabel, maar in een los bestand (de HTML-download)
+// stuurt de browser na de klik mouseout en haalt Plotly het label meteen weer weg. Het script beweegt dan nog één
+// keer over de getikte plek, zodat naam en waarde blijven staan.
+describe('een tik op een gebied in het rapport (#655)', () => {
+  const nepGrafiek = () => {
+    const op = {}
+    return { op, on: (naam, fn) => { op[naam] = fn } }
+  }
+
+  it('laat het label staan als Plotly het direct na de klik weghaalt', async () => {
+    const gd = nepGrafiek()
+    window.Plotly.newPlot = () => Promise.resolve(gd)
+    delete window.Plotly.__kaartAlsSvg
+    new Function(KAART_ALS_SVG_JS)()
+    await window.Plotly.newPlot('k', kaart(), {})
+    const doel = document.createElement('div')
+    const bewogen = []
+    doel.addEventListener('mousemove', e => bewogen.push([e.clientX, e.clientY]))
+    document.elementFromPoint = () => doel
+    gd.op.plotly_click({ points: [{ curveNumber: 0, pointNumber: 0 }], event: { clientX: 120, clientY: 340 } })
+    gd.op.plotly_unhover()
+    await new Promise(r => setTimeout(r, 10))
+    expect(bewogen).toEqual([[120, 340]])
+  })
+
+  it('laat een label weggaan zonder tik ervoor, en laat een gewone grafiek met rust', async () => {
+    const gd = nepGrafiek()
+    window.Plotly.newPlot = () => Promise.resolve(gd)
+    delete window.Plotly.__kaartAlsSvg
+    new Function(KAART_ALS_SVG_JS)()
+    await window.Plotly.newPlot('k', kaart(), {})
+    const bewogen = []
+    document.elementFromPoint = () => ({ dispatchEvent: e => bewogen.push(e) })
+    gd.op.plotly_unhover()
+    await new Promise(r => setTimeout(r, 10))
+    expect(bewogen).toEqual([])
+
+    const staaf = nepGrafiek()
+    window.Plotly.newPlot = () => Promise.resolve(staaf)
+    delete window.Plotly.__kaartAlsSvg
+    new Function(KAART_ALS_SVG_JS)()
+    await window.Plotly.newPlot('k', [{ type: 'bar', x: [1], y: [2] }], {})
+    expect(staaf.op).toEqual({})
+  })
+})
