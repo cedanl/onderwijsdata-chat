@@ -1,5 +1,5 @@
 {
-  "catalogus_digest": "9eab4249d9b8",
+  "catalogus_digest": "2a7dfb99b280",
   "catalogusversie": [
     {
       "pakket": "onderwijsdata",
@@ -23,7 +23,7 @@
     {
       "pakket": "riodata",
       "versie": "0.6.0",
-      "commit": "ef7f92fa98432ee07e8417066cd8d78d002005de"
+      "commit": "9931ce3fc61a9f9133a068319d951bb383f12208"
     }
   ],
   "dataset_counts": {
