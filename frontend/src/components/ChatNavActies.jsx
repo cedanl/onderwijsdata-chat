@@ -10,7 +10,7 @@ import { useEscape } from '../hooks/useEscape'
 // tweede balk onder de kop en geen vaste actierij boven het invoerveld.
 // Sinds de disclaimer op een telefoon weg is (#596), staan de melding dat een vraag naar een externe AI-dienst
 // gaat, de privacy-informatie en de feedbacklink hier ook (#608): één plek, twee tikken, zonder schermruimte.
-// exportMessages: de berichten om te exporteren; null zolang er geen gesprek is (dan geen ⋯-menu).
+// exportMessages: de berichten om te exporteren; null zolang er geen gesprek is (dan geen ⋯-menu, wel zijn plek).
 // feedback: of het algemene feedbackformulier (#600) aanstaat.
 export const EXTERNE_AI_MELDING = 'Je vraag gaat naar een externe AI-dienst en wordt bewaard. Voer geen persoonsgegevens in.'
 
@@ -30,6 +30,9 @@ export default function ChatNavActies({ sidebarOpen, onToggleSidebar, exportMess
           <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" />
         </svg>
       </button>
+      {/* Zonder gesprek een lege plek ter breedte van de ⋯-knop (#649), geen knop en dus geen tabstop: anders schoof
+          de gesprekkenknop bij het eerste bericht 44 px naar links. */}
+      {!exportMessages && <span className="navbar-icon-slot" aria-hidden="true" />}
       {exportMessages && (
         <div className="navbar-meer">
           <button

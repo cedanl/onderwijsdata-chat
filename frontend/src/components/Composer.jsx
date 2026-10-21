@@ -18,6 +18,7 @@ function placeholderTekst(hasMessages, compact) {
   return hasMessages ? 'Stel een vervolgvraag...' : 'Bijv. hoeveel mbo-studenten zijn er in mijn regio?'
 }
 const REFUSED = 'refused'
+const COMPOSER_EXTRA = '--composer-extra'
 
 // The reason a tap brought up (#585), only while it is still why sending is blocked. A refused question
 // (send() said no) keeps a notice: the reason the chat gives by now, or a general one.
@@ -30,6 +31,37 @@ function noticeText(tap, reason, chat) {
 function autoResize(el) {
   el.style.height = 'auto'
   el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT) + 'px'
+}
+
+// What the pill sticks out above its slot, on the chat around it.
+function reportExtra(slot, wrap) {
+  const extra = Math.max(0, wrap.getBoundingClientRect().height - slot.getBoundingClientRect().height)
+  slot.closest('.chat-main')?.style.setProperty(COMPOSER_EXTRA, `${extra}px`)
+}
+
+// On a phone the pill sits in a slot of one line and grows upwards over the messages (#649), so a long draft or
+// clearing the box on send no longer moves the page. What the pill sticks out above its slot goes to the chat as
+// --composer-extra: the CSS gives the messages that room at their end, and moves up what sits above the composer.
+// A ResizeObserver follows the pill; the returned function reports at once, for a height the composer sets itself
+// (the observer came a frame late on send, and the progress pill showed 76 px too high for that frame). Without
+// ResizeObserver the pill still grows upwards; only that room is missing.
+function useComposerExtra(slotRef, wrapRef, active) {
+  const enabled = active && typeof ResizeObserver !== 'undefined'
+  useLayoutEffect(() => {
+    if (!enabled) return
+    const slot = slotRef.current
+    const wrap = wrapRef.current
+    const observer = new ResizeObserver(() => reportExtra(slot, wrap))
+    observer.observe(wrap)
+    reportExtra(slot, wrap)
+    return () => {
+      observer.disconnect()
+      slot.closest('.chat-main')?.style.removeProperty(COMPOSER_EXTRA)
+    }
+  }, [slotRef, wrapRef, enabled])
+  return useCallback(() => {
+    if (enabled) reportExtra(slotRef.current, wrapRef.current)
+  }, [slotRef, wrapRef, enabled])
 }
 
 // The draft lives here, not in ChatPage: a keystroke re-renders only the composer, not every message
@@ -52,6 +84,9 @@ export default function Composer({
   // The prefill just applied: once the box holds its text, it gets the focus and its height.
   const [applied, setApplied] = useState(null)
   const textareaRef = useRef(null)
+  const slotRef = useRef(null)
+  const wrapRef = useRef(null)
+  const syncExtra = useComposerExtra(slotRef, wrapRef, compact)
 
   // The server refused the question because a run was going: the typed text comes back (#145).
   useEffect(() => {
@@ -110,6 +145,7 @@ export default function Composer({
     setTap(null)
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    syncExtra()
   }
 
   const handleKey = (e) => {
@@ -120,35 +156,37 @@ export default function Composer({
   }
 
   return (
-    <div className="chat-input-wrap">
-      {persoonsgegevens && (
-        <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{persoonsgegevens}</p>
-      )}
-      <textarea
-        ref={textareaRef}
-        className="chat-input"
-        aria-label="Chatbericht"
-        rows={1}
-        placeholder={placeholderTekst(hasMessages, compact)}
-        value={input}
-        maxLength={2 * max}
-        aria-describedby={MESSAGE_COUNTER_ID}
-        onChange={e => { setInput(e.target.value); autoResize(e.target) }}
-        onKeyDown={handleKey}
-      />
-      <SendNotice text={notice} tap={tap} onExpire={endNotice} />
-      <ChatInputFooter
-        connected={connected}
-        busy={busy}
-        models={compact ? NO_MODELS : models}
-        selectedModel={selectedModel}
-        onModelChange={onModelChange}
-        onStop={onStop}
-        onSend={handleSend}
-        canSend={!reason}
-        text={input}
-        max={max}
-      />
+    <div className="chat-input-slot" ref={slotRef}>
+      <div className="chat-input-wrap" ref={wrapRef}>
+        {persoonsgegevens && (
+          <p className="context-limit-banner context-limit-banner--warn" role="status" aria-live="polite">{persoonsgegevens}</p>
+        )}
+        <textarea
+          ref={textareaRef}
+          className="chat-input"
+          aria-label="Chatbericht"
+          rows={1}
+          placeholder={placeholderTekst(hasMessages, compact)}
+          value={input}
+          maxLength={2 * max}
+          aria-describedby={MESSAGE_COUNTER_ID}
+          onChange={e => { setInput(e.target.value); autoResize(e.target); syncExtra() }}
+          onKeyDown={handleKey}
+        />
+        <SendNotice text={notice} tap={tap} onExpire={endNotice} />
+        <ChatInputFooter
+          connected={connected}
+          busy={busy}
+          models={compact ? NO_MODELS : models}
+          selectedModel={selectedModel}
+          onModelChange={onModelChange}
+          onStop={onStop}
+          onSend={handleSend}
+          canSend={!reason}
+          text={input}
+          max={max}
+        />
+      </div>
     </div>
   )
 }

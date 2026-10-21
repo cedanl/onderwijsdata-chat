@@ -836,6 +836,8 @@ html.dark .login-melding { color: var(--accent-text); }
   background: var(--white); border-top: 1px solid var(--gray-200);
   padding: 16px 24px;
 }
+/* De vaste plek van het invoerkader op een telefoon (#649); op desktop heeft hij geen eigen vak. */
+.chat-input-slot { display: contents; }
 .chat-input-wrap {
   display: flex; flex-direction: column;
   background: var(--white); border: 1.5px solid var(--gray-200);
@@ -1729,11 +1731,38 @@ html.dark .suggested-btn:hover {
   .chat-input-footer { flex: 0 0 auto; gap: 0; margin: 0; padding: 0; border-top: none; }
   /* De tekenteller en de verbindingsmelding zijn live regions die altijd bestaan, meestal leeg. De teller staat
      vanaf 80% van de limiet naast de verstuurknop, in de rij van het veld: dat is dan al op zijn maximale hoogte,
-     dus het invoerkader verspringt niet (#612). De verbindingsmelding krijgt, als er tekst in staat (zeldzaam),
-     een eigen regel onder het veld. */
+     dus het invoerkader verspringt niet (#612). De verbindingsmelding staat, als er tekst in staat, boven de pil
+     (#649, hieronder). */
   .chat-input-footer:has(.message-counter:not(:empty)) { gap: 8px; }
-  .chat-input-footer:has(.ws-reconnecting:not(:empty)) { flex: 1 0 100%; gap: 8px; padding: 2px 0 0; }
-  .send-btn { width: 44px; height: 44px; border-radius: 50%; }
+  .send-btn { width: var(--tap-min); height: var(--tap-min); border-radius: 50%; }
+
+  /* Een vaste plek van één regel voor de pil (#649): een lange vraag, de verbindingsregel of de waarschuwing bij een
+     persoonsgegeven laat het invoerkader omhoog groeien over de berichten, zoals de voortgang en de melding bij
+     versturen al doen. Zo verschuiven het welkomstscherm en de berichten niet meer bij laden, typen en versturen
+     (CLS was 0,27). Eén regel is de verstuurknop plus de padding (2 × 4 px) en de rand van de pil. Die rand staat
+     hier als echte rand van 1,5 px, omdat browsers hem verschillend afronden (Chromium naar 1 px, Safari niet): zo
+     is de plek in elke browser precies zo hoog als de pil. */
+  .chat-input-slot { display: block; position: relative; }
+  .chat-input-slot::before {
+    content: ''; display: block; box-sizing: content-box;
+    height: calc(var(--tap-min) + 2 * 4px); border-block: 1.5px solid transparent;
+  }
+  .chat-input-slot > .chat-input-wrap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 11; }
+  /* Wat de pil boven zijn plek uitsteekt (--composer-extra, de Composer meet het): de berichten eindigen erboven en
+     wat boven het invoerkader staat (banners, voortgang) schuift mee omhoog, zodat de pil niets afdekt. De berichten
+     alleen als die er zijn: op het welkomstscherm zou het de centrering weer verschuiven. */
+  .chat-main:has(.message) .chat-messages { margin-bottom: var(--composer-extra, 0px); }
+  .chat-input-area > :not(.chat-input-slot) { position: relative; top: calc(-1 * var(--composer-extra, 0px)); }
+  /* De verbindingsmelding (bij het laden, tot de socket open is) als regel boven de pil in plaats van een eigen rij
+     erin: die rij liet de pil bij het verbinden 44 px zakken (CLS 0,07 op 390x664). Ondoorzichtig, want hij ligt
+     over de berichten; de melding bij versturen ("Geen verbinding") gaat er even overheen. */
+  .chat-input-footer .ws-reconnecting:not(:empty) {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 10;
+    width: fit-content; max-width: 100%; margin-inline: auto; padding: 4px 12px; border-radius: 999px;
+    background: var(--white); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
+  }
+  /* Zonder gesprek houdt een lege plek de ruimte van de ⋯-knop vrij, zodat de gesprekkenknop niet verspringt. */
+  .navbar-icon-slot { width: var(--tap-min); flex-shrink: 0; }
 
   /* Tool snippets: contain wide code */
   .tool-snippet-code { margin-left: 8px; max-width: 100%; overflow-x: auto; white-space: pre; }
