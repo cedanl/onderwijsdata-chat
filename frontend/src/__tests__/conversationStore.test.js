@@ -163,6 +163,36 @@ describe('restorableMessages', () => {
     expect(restorableMessages([klaar, oud])).toEqual([klaar, oud])
   })
 
+  // #652: het issue vroeg om deze rondreis; de deeltekst van een afgebroken antwoord komt terug.
+  it('bewaart de deeltekst van een afgebroken antwoord en brengt hem na herladen terug', () => {
+    const deeltekst = 'Het aantal mbo-studenten groeit licht. '.repeat(10).slice(0, 400)
+    persistCurrentChat('conv-b', [
+      { id: 1, role: 'user', content: 'Hoeveel?', done: true },
+      { id: 2, role: 'assistant', content: deeltekst, tools: [], done: true, interrupted: true },
+    ])
+    expect(loadCurrentChat().messages[1]).toMatchObject({ content: deeltekst, done: true, interrupted: true })
+  })
+
+  // #652: een antwoord dat afbrak tussen twee modelrondes had geen eigen tekst; wat het schreef stond als tussentekst
+  // in de dichte redeneerkaart. Ook een zo bewaard gesprek toont die tekst weer als deeltekst.
+  it('zet bij een afgebroken antwoord zonder tekst de laatste tussentekst terug als deeltekst', () => {
+    const stap = { name: 'search_catalog', label: 'Catalogus doorzoeken', done: true }
+    const [, eerder, zonder] = restorableMessages([
+      { id: 1, role: 'user', content: 'Hoeveel?', done: true },
+      { id: 2, role: 'assistant', content: '', tools: [stap], tussentekst: ['Eerst de catalogus.', 'Nu de tabel.'], done: true, interrupted: true },
+      { id: 3, role: 'assistant', content: '', tools: [stap], tussentekst: ['Ik zoek eerst.'], done: false },
+    ])
+    expect(eerder).toMatchObject({ content: 'Nu de tabel.', tussentekst: ['Eerst de catalogus.'], interrupted: true })
+    expect(zonder).toMatchObject({ content: 'Ik zoek eerst.', tussentekst: [], done: true, interrupted: true })
+  })
+
+  it('laat de tussentekst van een afgerond of gestopt antwoord in de redeneerkaart', () => {
+    const stap = { name: 'search_catalog', label: 'Catalogus doorzoeken', done: true }
+    const klaar = { id: 2, role: 'assistant', content: 'Klaar.', tools: [stap], tussentekst: ['Eerst de catalogus.'], done: true }
+    const gestopt = { id: 3, role: 'assistant', content: '', tools: [stap], tussentekst: ['Eerst de catalogus.'], done: true, stopped: true }
+    expect(restorableMessages([klaar, gestopt])).toEqual([klaar, gestopt])
+  })
+
   const { messages } = herstelClarify
   const restored = restorableMessages(messages)
 
