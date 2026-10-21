@@ -138,10 +138,12 @@ def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
     """Per data_key de laatste kaart die het gesprek ervan tekende (#648).
 
     De herkomst noemt alleen de aanroepen die de data maakten, niet de kaart erop; zonder deze regel weet het
-    rapport niet dat er een kaart was, of met welke kolommen. Een onleesbare aanroep slaat het over.
+    rapport niet dat er een kaart was, of met welke kolommen. Een onleesbare aanroep slaat het over, en ook een
+    aanroep die geen kaart opleverde: de beurt bewaart wat het model vroeg, niet wat lukte.
     """
     kaarten: dict[str, dict] = {}
     for turn in session.get("turns") or []:
+        getekend = _getekende_kaarten(turn)
         for call in turn.get("tool_calls") or []:
             if call.get("name") != TOOL_CREATE_CHOROPLETH_MAP:
                 continue
@@ -149,9 +151,21 @@ def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
                 args = json.loads(call.get("arguments") or "")
             except (TypeError, ValueError):
                 continue
-            if isinstance(args, dict) and isinstance(args.get("data_key"), str):
+            if not isinstance(args, dict) or not isinstance(args.get("data_key"), str):
+                continue
+            if (args.get("location_col"), args.get("value_col")) in getekend:
                 kaarten[args["data_key"]] = args
     return kaarten
+
+
+def _getekende_kaarten(turn: dict) -> set[tuple]:
+    """(location_col, value_col) van elke kaart die deze beurt tekende, uit de layout.meta van haar figuren."""
+    getekend: set[tuple] = set()
+    for figuur in turn.get("figures") or []:
+        meta = getattr(getattr(figuur, "layout", None), "meta", None)
+        if isinstance(meta, dict) and meta.get("type") == "choropleth":
+            getekend.add((meta.get("location_col"), meta.get("value_col")))
+    return getekend
 
 
 # Wat de kaartregel van een gesprekskaart noemt. Niet de titel (tekst van het model) en niet `data` (rijen buiten

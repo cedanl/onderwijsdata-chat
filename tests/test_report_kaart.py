@@ -149,6 +149,21 @@ def test_een_getal_uit_de_kaarttitel_van_het_gesprek_is_geen_bewijs(sessie, monk
     assert any("98.765" in str(p) for p in harde_problemen[0])
 
 
+def test_een_kaartaanroep_die_niets_tekende_komt_niet_in_de_prompt(sessie):
+    """De beurt bewaart wat het model vroeg, ook een geweigerde aanroep; alleen een kaart met een figuur telt."""
+    mislukt = {**_KAART, "value_col": "BESTAAT_NIET"}
+    sessie["turns"] = [_kaartbeurt(mislukt)]
+    assert sessie["turns"][0]["figures"] == []
+    assert report._kaarten_in_gesprek(sessie) == {}
+
+
+def test_naast_een_mislukte_aanroep_telt_de_kaart_die_wel_tekende(sessie):
+    gelukt = _kaartbeurt(_KAART)
+    mislukt = _kaartbeurt({**_KAART, "value_col": "BESTAAT_NIET"})
+    sessie["turns"] = [{**gelukt, "tool_calls": [*gelukt["tool_calls"], *mislukt["tool_calls"]]}]
+    assert report._kaarten_in_gesprek(sessie)[_KEY]["value_col"] == "AANTAL"
+
+
 def test_de_kaart_van_de_rapportrun_komt_als_kaart_in_het_rapport(sessie, monkeypatch):
     meldingen: list[str] = []
     harde_problemen: list[list[str]] = []
