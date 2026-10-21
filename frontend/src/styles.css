@@ -570,6 +570,9 @@ html.dark .login-melding { color: var(--accent-text); }
 }
 .csv-download-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
 .plotly-figure-wrap:hover .csv-download-btn { opacity: 1; }
+/* De afrondingsnoot onder een grafiek in chat en dashboard (#651): gewone tekst, selecteerbaar, op een telefoon 12,5 px
+   via de variabele; in de figuur was hij een ondertitel van 11 px. */
+.figuur-noot { margin-top: 4px; font-size: var(--font-label); line-height: 1.45; color: var(--gray-500); }
 .data-export { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .data-export-btn {
   background: var(--white); border: 1px solid var(--gray-200); border-radius: 4px;

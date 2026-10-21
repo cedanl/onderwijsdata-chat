@@ -56,8 +56,8 @@ describe('chatFigureLayout', () => {
   const ISSUE = 'Mbo-studenten totaal (incl. extranei), 2020/2021 – 2024/2025'
   const LINE = 16 * 1.3
   const title = { text: ISSUE, font: { size: 16, color: '#222' } }
-  const note = { text: 'De aantallen zijn door CBS afgerond<br>op 10-tallen.', font: { size: 11, color: '#666' } }
-  const withNote = { ...title, yref: 'container', yanchor: 'top', y: 0.98, subtitle: note }
+  // The place create_plot gave a title with a note before #651; stored charts still have it.
+  const atTop = { ...title, yref: 'container', yanchor: 'top', y: 0.98 }
   const bar = layout => ({ data: [{ type: 'bar', x: ['2020/2021'], y: [1] }], layout })
   const map = layout => ({ data: [{ type: 'choroplethmap', locations: ['PV20'], z: [1] }], layout })
   const lines = layout => layout.title.text.split('<br>').length
@@ -80,13 +80,16 @@ describe('chatFigureLayout', () => {
     const layout = chatFigureLayout(bar({ title }), false, 1280)
     expect(layout.title.text).toBe(ISSUE)
     expect(layout.margin.t).toBe(32)
-    expect(chatFigureLayout(bar({ title: withNote, margin: { t: 100 } }), false, 1280).margin.t).toBe(100)
   })
 
-  it('adds only the extra lines to the margin the server gave a chart with a note', () => {
-    const layout = chatFigureLayout(bar({ title: withNote, margin: { t: 100 } }), false, 336)
-    expect(layout.margin.t).toBeCloseTo(100 + (lines(layout) - 1) * LINE)
-    expect(layout.title.subtitle).toEqual(note)
+  // #651: the note is a line under the chart, so the 100 px a stored chart brings for it is not needed.
+  it('ignores the top margin the server gave a stored chart with a note', () => {
+    expect(chatFigureLayout(bar({ title: atTop, margin: { t: 100 } }), false, 1280).margin.t).toBe(32)
+  })
+
+  it('keeps the place of a title at the top and adds only the extra lines to the chat margin', () => {
+    const layout = chatFigureLayout(bar({ title: atTop, margin: { t: 100 } }), false, 336)
+    expect(layout.margin.t).toBeCloseTo(32 + (lines(layout) - 1) * LINE)
     expect(layout.title).toMatchObject({ yref: 'container', yanchor: 'top', y: 0.98 })
   })
 
@@ -103,21 +106,19 @@ describe('chatFigureLayout', () => {
   })
 
   it('leaves the figure alone, so the CSV file name keeps the unbroken title', () => {
-    const figure = bar({ title: withNote, margin: { t: 100 } })
+    const figure = bar({ title: atTop, margin: { t: 100 } })
     const before = structuredClone(figure)
     chatFigureLayout(figure, true, 336)
     expect(figure).toEqual(before)
     expect(figureCsvFilename(figure)).not.toContain('br')
   })
 
-  it('gives the title and note light colours in the dark theme, and keeps them in the light one', () => {
-    const dark = chatFigureLayout(bar({ title: withNote, margin: { t: 100 } }), true, 336)
+  it('gives the title a light colour in the dark theme, and keeps it in the light one', () => {
+    const dark = chatFigureLayout(bar({ title: atTop, margin: { t: 100 } }), true, 336)
     expect(dark.title.font).toEqual({ size: 16, color: '#F9FAFB' })
-    expect(dark.title.subtitle.font).toEqual({ size: 11, color: '#9CA3AF' })
     expect(dark.paper_bgcolor).toBe('#1E293B')
-    const light = chatFigureLayout(bar({ title: withNote, margin: { t: 100 } }), false, 336)
+    const light = chatFigureLayout(bar({ title: atTop, margin: { t: 100 } }), false, 336)
     expect(light.title.font.color).toBe('#222')
-    expect(light.title.subtitle.font.color).toBe('#666')
   })
 
   it('adds no title to a figure without one', () => {

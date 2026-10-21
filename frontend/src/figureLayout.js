@@ -1,4 +1,3 @@
-import { topMargin } from './figureMargin'
 import { titelOpBreedte } from './figureTitel'
 import { KAART_HOOGTE, kaartPassend, kaartStijl } from './kaartBeeld'
 
@@ -47,12 +46,11 @@ export function isMapFigure(figure) {
   return Boolean(figure.data?.some(t => t.type?.includes('choropleth')))
 }
 
-// The server bakes a dark title (#222) and note (#666) into the figure, and those beat the chat's
-// font colour: in the dark theme they get the light colours of darkFigure.js.
+// The server bakes a dark title colour (#222) into the figure, and that beats the chat's font colour:
+// in the dark theme it gets the light colour of darkFigure.js.
 function darkTitle(title) {
   if (!title || typeof title !== 'object') return title
-  const subtitle = title.subtitle && { ...title.subtitle, font: { ...title.subtitle.font, color: '#9CA3AF' } }
-  return { ...title, font: { ...title.font, color: '#F9FAFB' }, ...(subtitle && { subtitle }) }
+  return { ...title, font: { ...title.font, color: '#F9FAFB' } }
 }
 
 // The layout of a chart in the chat, for the theme and the width the chart really has (0 while that
@@ -65,7 +63,7 @@ export const HOVER_DISTANCE = 40
 export function chatFigureLayout(figure, dark, width) {
   const isMap = isMapFigure(figure)
   const colours = dark ? DARK : LIGHT
-  const top = isMap ? BASE_TOP_MARGIN : topMargin(figure.layout, BASE_TOP_MARGIN)
+  const top = BASE_TOP_MARGIN
   const { title, extra } = titelOpBreedte(figure.layout?.title, width - TITLE_SIDES, top)
   // Een kaart past op de breedte die ze heeft, met de achtergrond van het thema (#642).
   const kaart = isMap && figure.layout?.map && {
