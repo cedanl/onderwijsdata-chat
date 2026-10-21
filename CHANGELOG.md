@@ -490,6 +490,13 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De afrondingsnoot van CBS ("De aantallen zijn door CBS afgerond op 10-tallen: …") staat niet meer als kleine
+  ondertitel in de grafiek, maar als gewone tekstregel onder de grafiek (#651): in de chat, in een rapport (viewer,
+  HTML-download en PDF, vóór de bronregel) en in een gegenereerd dashboard (weergave en download). Hij is nu te
+  selecteren en te kopiëren, op een telefoon 12,5 px in plaats van 11 px, en de grafiek houdt de 40 px bovenmarge
+  die de noot kostte; liggende staven worden er niet meer hoger van. `create_plot` zet de noot in
+  `layout.meta.afrondingsnoot`. Een bewaard gesprek of dashboard toont de noot ook als regel onder de grafiek; een
+  rapport dat al als HTML is bewaard, houdt de oude ondertitel.
 - Het zoekpalet (Ctrl/⌘K) zet de tijd naast de datum van elke treffer ("Vandaag 14:32", "12 okt 09:00"), bij
   gesprekken en rapporten (#654). Twee gesprekken met dezelfde titel, dezelfde vraag twee keer gesteld, waren
   anders niet uit elkaar te houden. "Vandaag" en "Gisteren" tellen nu in kalenderdagen, ook in de gesprekkenlijst:
