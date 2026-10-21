@@ -148,6 +148,12 @@ de laatste tag is 1.8.6.
   `get_roa_benchmark` de regio van het profiel weigerde. `scripts/refresh_arbeidsmarktregio.py` ververst de indeling.
 
 ### Betrouwbaarheid van antwoorden
+- Dezelfde mbo-vraag geeft hetzelfde getal (#653). In veertien mbo-tabellen van CBS (o.a. 85353NED, 85354NED en
+  85569NED) koos het model per run "Totaal mbo (incl. extranei)" of "(excl. extranei)": "vmbo → mbo" telde op
+  19-10 157.450 mbo-instromers en op 20-10 155.270. Nu kiest de code de ruimste telling, inclusief extranei; de
+  telling zonder extranei alleen als de gebruiker daarom vraagt ("zonder extranei", "bol en bbl"), ook eerder in
+  het gesprek. De Uitgangspunt-regel, het recept en de code-snippet tonen de telling die geladen is. De tabellen en
+  de regel staan in `docs/domeinregels.md`.
 - De kaart (`create_choropleth_map`) tekent nu ook met namen: DUO-kolommen als `PROVINCIE INSTELLING` en
   `GEMEENTE INSTELLING` en elke groepering op een naamkolom, in elke spelling (`'S-GRAVENHAGE`, `HENGELO` voor
   Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding
