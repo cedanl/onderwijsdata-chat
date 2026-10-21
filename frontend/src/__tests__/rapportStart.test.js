@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat, REPORT_TIMEOUT_MS, REASON_TOAST_MS } from '../hooks/useChat'
+import { BACKOFF_DELAYS } from '../socketHealth'
 import { FakeWebSocket } from './fakeWebSocket'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -227,6 +228,26 @@ describe('de server weigert het rapport (#648)', () => {
     await act(async () => { ws.emit({ type: 'report_ready', spec: { titel: 'R' } }) })
     expect(chat.reportBusy).toBe(false)
     expect(chat.reportSpec).toEqual({ titel: 'R' })
+  })
+
+  it('na een herverbinding vuurt de time-out van het verloren rapport niet meer', async () => {
+    vi.useFakeTimers()
+    const ws = await mount()
+    await vraag(ws)
+    await act(async () => { ws.close(); ws.finishClose() })
+    await act(async () => { vi.advanceTimersByTime(Math.max(...BACKOFF_DELAYS) + 1) })
+    const nieuw = FakeWebSocket.last
+    expect(nieuw).not.toBe(ws)
+    await act(async () => { nieuw.open() })
+    expect(chat.reportBusy).toBe(false)
+
+    await act(async () => { vi.advanceTimersByTime(REPORT_TIMEOUT_MS + 1) })
+
+    // Alleen de melding van het verbindingsverlies, geen time-outbericht en geen stop naar de nieuwe sessie.
+    expect(chat.messages.map(m => m.content)).toEqual([
+      'De verbinding viel weg tijdens het maken van het rapport. Probeer het opnieuw.',
+    ])
+    expect(FakeWebSocket.instances.flatMap(s => s.sent)).not.toContainEqual({ action: 'stop' })
   })
 
   it('een busy op een gewone vraag gaat nog naar de vraag terug, niet naar het rapport', async () => {
