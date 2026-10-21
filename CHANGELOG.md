@@ -490,6 +490,9 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- De uitleg bij een getal in een tabel (herkomst, #611) wordt niet meer afgeknipt (#657). Sinds tabellen in een
+  antwoord zelf scrollen (#626) viel de open uitleg onderaan weg en kreeg de tabel een verticale scrollbalk; nu hangt
+  hij buiten de tabel onder het getal en schuift hij mee als je de tabel opzij scrolt.
 - Een tik op een provincie of gemeente op de kaart toont naam en waarde (#655), in de chat, de rapportviewer en de
   HTML-download (gemeten op 390 px met aanraking, licht en donker). De waarde staat er als Nederlands getal
   ("Mbo-studenten: 41.500" in plaats van "Mbo-studenten=41.5k"), ook op de kleurenbalk ("40.000" in plaats van

@@ -592,6 +592,15 @@ html.dark .login-melding { color: var(--accent-text); }
 .message-bubble :is(th, td) { overflow-wrap: normal; }
 /* A wide table scrolls inside the answer instead of widening the message list (#626). */
 .tabel-scroll { max-width: 100%; overflow-x: auto; }
+/* The scroll box also clips vertically (overflow-y computes to auto), so the open source note of a figure in the
+   table was cut off at the bottom and scrolled inside the table (#657). In a table the note takes the bubble as its
+   containing block, outside the box, and keeps its place under the figure through its static position. That place
+   ignores the box's scroll offset, so TabelScroll passes it on and the note moves with the table. */
+.tabel-scroll .citatie { position: static; }
+.tabel-scroll .citatie-uitleg {
+  top: auto; left: auto;
+  translate: calc(-1 * var(--tabel-scroll-x, 0px)) calc(-1 * var(--tabel-scroll-y, 0px));
+}
 /* A map that did not draw (#632): the notice and its numbers as a table, in the place of the empty map. */
 .kaart-mislukt { color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin: 4px 0 8px; }
 .kaart-tabel { border-collapse: collapse; min-width: min(100%, 24rem); }
