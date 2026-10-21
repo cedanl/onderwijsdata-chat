@@ -8,8 +8,8 @@
     "eval:unit": "node --test tests/e2e/score-unit.mjs tests/e2e/refusal-unit.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.0",
-    "playwright": "1.64.0",
+    "@playwright/test": "1.64.1",
+    "playwright": "1.64.1",
     "ws": "8.22.0"
   }
 }
