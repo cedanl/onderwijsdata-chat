@@ -471,6 +471,14 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Het zoekpalet (Ctrl/⌘K) zet de tijd naast de datum van elke treffer ("Vandaag 14:32", "12 okt 09:00"), bij
+  gesprekken en rapporten (#654). Twee gesprekken met dezelfde titel, dezelfde vraag twee keer gesteld, waren
+  anders niet uit elkaar te houden. "Vandaag" en "Gisteren" tellen nu in kalenderdagen, ook in de gesprekkenlijst:
+  gisteravond 23:50 is 's ochtends "Gisteren", niet "Vandaag".
+- De voorbeelden op `/rapporten` bevatten geen `<script>`-blokken meer (#654): het frame (`sandbox=""`) blokkeerde
+  ze toch, met per script een regel "Blocked script execution" in de console. In een meting met twaalf rapporten
+  van drie grafieken ging de pagina-HTML (`outerHTML`) van 406.093 naar 142.057 tekens; het voorbeeld zelf ziet er
+  hetzelfde uit.
 - Het feedbackformulier op een rapport heeft een blok "Over jouw instelling" voor de conferentie: of een PoC
   het komende jaar mogelijk is (1-5), welke dashboardtool en voor welke doelgroepen (meerdere antwoorden, met
   "Anders" en een toelichting), wat CEDA moet oppakken en optioneel contactgegevens voor vervolgvragen. Nieuw is
@@ -675,6 +683,9 @@ de laatste tag is 1.8.6.
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
 
 ### Beheer
+- `HEAD` op een pad van de app (`/`, `/login`, `/openapi.json`) antwoordt als `GET`: 200 met `text/html`, zonder
+  body (#654). Het gaf een JSON-405, zodat de HEAD-respons `application/json` beloofde voor een pad dat HTML geeft.
+  `HEAD` op `/health`, `/ready`, `/version` en alles onder `/api` blijft 405, zoals voorheen.
 - Wekelijkse bron-ping in CI (#627): de geplande job `bron:ping` roept elke bron één keer aan door de toollaag van de
   chat (CBS, DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt
   zodra één bron niet antwoordt. RIO verwijderde API v2 op 19 oktober en dat viel pas op in een chatbeurt, omdat
