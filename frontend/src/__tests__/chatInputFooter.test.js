@@ -236,9 +236,11 @@ describe('ChatInputFooter zonder sprong (#612)', () => {
     }
   })
 
-  it('houdt de eigen regel voor de verbindingsmelding', () => {
-    const ws = regels.find(r => r.kiezer === '.chat-input-footer:has(.ws-reconnecting:not(:empty))')
-    expect(ws?.body).toMatch(/flex:\s*1 0 100%/)
+  // #649: de eigen regel voor de verbindingsmelding liet de pil bij het verbinden 44 px zakken; de melding staat nu
+  // boven de pil (composerStabiel.test.js).
+  it('geeft de voet ook voor de verbindingsmelding geen eigen regel', () => {
+    const opWs = regels.filter(r => r.kiezer.includes('.chat-input-footer:has(.ws-reconnecting'))
+    expect(opWs).toEqual([])
   })
 
   it('verbergt het advies op een smal scherm alleen visueel, zoals .sr-only', () => {
