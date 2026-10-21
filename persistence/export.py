@@ -137,7 +137,9 @@ def _dump(waarde: object) -> str:
 def export_json_chunks(username: str, nu: datetime | None = None) -> Iterator[str]:
     """De export als JSON-tekst in stukken: de kop, dan per soort een lijst, rij voor rij.
 
-    Op INFO alleen het aantal rijen per soort, nooit de inhoud of de gebruikersnaam (#475).
+    De regelovergang komt alleen als laatste teken: daaraan ziet de frontend dat het bestand compleet is
+    (`downloadMijnGegevens`), want `json.dumps` schrijft er binnen een tekst nooit een. Op INFO alleen het
+    aantal rijen per soort, nooit de inhoud of de gebruikersnaam (#475).
     """
     exported_at = (nu or datetime.now(UTC)).isoformat(timespec="seconds")
     yield f'{{"schema_version": {SCHEMA_VERSION}, "exported_at": {_dump(exported_at)}, "username": {_dump(username)}'

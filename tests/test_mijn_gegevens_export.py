@@ -160,6 +160,15 @@ def test_json_kolommen_zijn_ontleed(client):
     assert data["data_recipes"][0]["recipe"] == {"laad": ["query_data", {"id": "ANNA-UNIEK"}]}
 
 
+def test_de_enige_regelovergang_is_het_laatste_teken(client):
+    """De frontend bewaart alleen een bestand dat op een regelovergang eindigt: dat is het eindteken."""
+    db.upsert_conversation("anna", "c1", "Twee\nregels", 1_700_000_000, _gesprek("een\nmeer"))
+    db.add_algemene_feedback("anna", "idee", "regel een\nregel twee", "/chat")
+    _, body = _export(client, "anna")
+    assert body.endswith("}\n")
+    assert body.count("\n") == 1
+
+
 def test_niet_ascii_blijft_leesbaar(client):
     db.upsert_conversation("anna", "c1", "Café", 1_700_000_000, _gesprek("één"))
     _, body = _export(client, "anna")

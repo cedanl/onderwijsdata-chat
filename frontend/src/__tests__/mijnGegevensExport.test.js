@@ -10,6 +10,10 @@ import SettingsModal from '../components/SettingsModal'
 import { downloadMijnGegevens } from '../api'
 import { onSessionEnded } from '../auth'
 import { STORAGE_TOKEN } from '../constants'
+import { saveFile } from '../saveFile'
+
+// The real saveFile needs URL.createObjectURL, which jsdom lacks; the tests that render SettingsModal check this mock.
+vi.mock('../saveFile', () => ({ saveFile: vi.fn() }))
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -28,6 +32,7 @@ afterEach(() => {
   container.remove()
   localStorage.clear()
   vi.unstubAllGlobals()
+  vi.mocked(saveFile).mockClear()
 })
 
 const LABEL = 'Exporteer al mijn gegevens'
@@ -42,7 +47,8 @@ function deferred() {
   return { promise, resolve, reject }
 }
 
-function response(status, { body = '{}', headers = {} } = {}) {
+// The server ends the file with a newline, and only there; the helper saves nothing without it.
+function response(status, { body = '{}\n', headers = {} } = {}) {
   return {
     status,
     ok: status >= 200 && status < 300,
@@ -90,7 +96,7 @@ describe('MijnGegevensExport', () => {
   it('saves the file the server sends, under its name, through the real helper', async () => {
     localStorage.setItem(STORAGE_TOKEN, 'tok-1')
     const fetchMock = vi.fn(async () => response(200, {
-      body: '{"schema_version": 1}',
+      body: '{"schema_version": 1}\n',
       headers: { 'Content-Disposition': 'attachment; filename="openedudata-mijn-gegevens-2026-10-20.json"' },
     }))
     vi.stubGlobal('fetch', fetchMock)
@@ -104,7 +110,7 @@ describe('MijnGegevensExport', () => {
     expect(save).toHaveBeenCalledOnce()
     const [blob, filename] = save.mock.calls[0]
     expect(filename).toBe('openedudata-mijn-gegevens-2026-10-20.json')
-    expect(await blob.text()).toBe('{"schema_version": 1}')
+    expect(await blob.text()).toBe('{"schema_version": 1}\n')
     expect(alert()).toBeNull()
   })
 
@@ -112,6 +118,7 @@ describe('MijnGegevensExport', () => {
     ['a 500', async () => response(500, { body: '{"detail": "boom"}' }), ['API 500', 'boom']],
     ['a network error', async () => { throw new TypeError('Failed to fetch') }, ['Failed to fetch']],
     ['a body cut off halfway', async () => ({ ...response(200), blob: async () => { throw new TypeError('network error') } }), ['network error']],
+    ['a body without the closing newline', async () => response(200, { body: '{"schema_version": 1, "conversations": [{}' }), ['onvolledig']],
   ])('on %s shows a Dutch message, without the raw error, and saves nothing', async (_, fetchImpl, raw) => {
     vi.stubGlobal('fetch', vi.fn(fetchImpl))
     const save = vi.fn()
@@ -156,6 +163,9 @@ describe('downloadMijnGegevens', () => {
 
 describe('SettingsModal: Exporteer al mijn gegevens', () => {
   const modal = props => createElement(SettingsModal, { settings: {}, onSave: vi.fn(), onClose: vi.fn(), ...props })
+  // The dialog's InstellingPicker fetches the list of institutions too; only the export calls count here.
+  const fetchWith = exportImpl => vi.fn(url => (url === '/api/instellingen' ? Promise.resolve(response(200, { body: '[]' })) : exportImpl(url)))
+  const exportCalls = fetchMock => fetchMock.mock.calls.filter(([url]) => url !== '/api/instellingen')
 
   it('sits directly above Uitloggen, as a native button the keyboard reaches', async () => {
     await render(modal({ onLogout: vi.fn() }))
@@ -166,6 +176,37 @@ describe('SettingsModal: Exporteer al mijn gegevens', () => {
     expect(button.parentElement.nextElementSibling).toBe(buttonByText('Uitloggen'))
     button.focus()
     expect(document.activeElement).toBe(button)
+  })
+
+  it('calls the export helper once from the dialog: busy and disabled while it runs, then the file is saved', async () => {
+    localStorage.setItem(STORAGE_TOKEN, 'tok-3')
+    const pending = deferred()
+    const fetchMock = fetchWith(() => pending.promise)
+    vi.stubGlobal('fetch', fetchMock)
+    await render(modal({ onLogout: vi.fn() }))
+
+    await act(async () => { exportButton().click() })
+    expect(exportCalls(fetchMock)).toEqual([['/api/mijn-gegevens/export', { headers: { Authorization: 'Bearer tok-3' } }]])
+    expect(exportButton().getAttribute('aria-busy')).toBe('true')
+    expect(exportButton().disabled).toBe(true)
+
+    await act(async () => {
+      pending.resolve(response(200, { headers: { 'Content-Disposition': 'attachment; filename="export.json"' } }))
+    })
+    expect(exportCalls(fetchMock)).toHaveLength(1)
+    expect(saveFile).toHaveBeenCalledOnce()
+    expect(vi.mocked(saveFile).mock.calls[0][1]).toBe('export.json')
+    expect(exportButton().getAttribute('aria-busy')).toBe('false')
+    expect(alert()).toBeNull()
+  })
+
+  it('shows the Dutch message in the dialog when the server fails', async () => {
+    vi.stubGlobal('fetch', fetchWith(async () => response(500, { body: '{"detail": "boom"}' })))
+    await render(modal({ onLogout: vi.fn() }))
+    await act(async () => { exportButton().click() })
+    expect(alert().textContent).toBe(EXPORT_MISLUKT)
+    expect(container.textContent).not.toContain('API 500')
+    expect(saveFile).not.toHaveBeenCalled()
   })
 
   it('is offered without login too, when there is no Uitloggen', async () => {

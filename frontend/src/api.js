@@ -45,13 +45,17 @@ export async function downloadDataCsv(key) {
 }
 
 // Everything the server keeps under this account as one JSON file (#645), fetched as a blob for the same
-// reason. A stream cut off halfway makes reading the blob fail, so a truncated file is never saved.
+// reason. The server writes the file row by row, so a failure halfway leaves the headers sent and the file
+// short. The browser then mostly fails to read the blob; the closing newline catches the rest: the server
+// writes it last and nowhere else (JSON escapes a newline inside a string). A truncated file is never saved.
 export async function downloadMijnGegevens({ save = saveFile } = {}) {
   const token = getToken()
   const res = await fetch('/api/mijn-gegevens/export', { headers: authHeaders(token) })
   await throwIfFailed(res, token)
   const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'mijn-gegevens.json'
-  save(await res.blob(), filename)
+  const blob = await res.blob()
+  if ((await blob.slice(-1).text()) !== '\n') throw new Error('Export onvolledig')
+  save(blob, filename)
 }
 
 export async function fetchConversations(params = {}) {
