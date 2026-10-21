@@ -215,6 +215,24 @@ def test_figure_rows_turn_nan_into_an_empty_value():
     assert fig.layout.meta["data"] == [{"K": "a", "N": 1.0}, {"K": "b", "N": None}]
 
 
+def test_een_script_vult_de_afrondingsnoot_niet():
+    # #651: de regel onder de grafiek komt alleen van create_plot (cbs_afronding); een script dat zelf
+    # meta.afrondingsnoot zet, zou eigen tekst laten lijken op de afrondingsmelding van CBS.
+    _put("test:an", [{"K": "a", "N": 1}])
+    uitkomst = run_analysis(
+        code=(
+            "figure = px.bar(df, x='K', y='N')\n"
+            "figure.update_layout(meta={'data': [{'K': 'a', 'N': 1}], 'afrondingsnoot': 'MODELTEKST'})\n"
+            "result = {'ok': True}"
+        ),
+        data_key="test:an",
+    )
+    assert isinstance(uitkomst, tuple)
+    _, fig = uitkomst
+    assert fig.layout.meta["data"] == [{"K": "a", "N": 1}]
+    assert "afrondingsnoot" not in fig.layout.meta
+
+
 def test_heatmap_rows_carry_the_values_from_z_not_the_labels():
     # Een correlatiematrix heeft even lange x en y; die als punten lezen gaf rijen als ('a', 'a').
     _put("test:an", [{"A": 1, "B": 3}, {"A": 2, "B": 1}, {"A": 3, "B": 2}])

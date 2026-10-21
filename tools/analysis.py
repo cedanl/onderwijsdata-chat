@@ -77,9 +77,19 @@ def _figuur(figure: dict | None) -> go.Figure | None:
     if not figure:
         return None
     try:
-        return go.Figure(figure)
+        fig = go.Figure(figure)
     except ValueError as fout:
         raise _Afgebroken(f"Fout in script: de figuur is geen geldige Plotly-figuur ({fout}).") from fout
+    return _zonder_afrondingsnoot(fig)
+
+
+def _zonder_afrondingsnoot(fig: go.Figure) -> go.Figure:
+    """De regel onder de grafiek (#651) komt alleen van create_plot: een script dat meta.afrondingsnoot zelf zet,
+    zou eigen tekst laten lijken op de afrondingsmelding van CBS."""
+    meta = fig.layout.meta
+    if isinstance(meta, dict) and "afrondingsnoot" in meta:
+        fig.layout.meta = {k: v for k, v in meta.items() if k != "afrondingsnoot"}
+    return fig
 
 
 def _draai(code: str, script: scriptcontrole.Script, data_key: str | None) -> _Run:
