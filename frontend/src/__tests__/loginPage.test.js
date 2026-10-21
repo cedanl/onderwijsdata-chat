@@ -50,3 +50,22 @@ describe('LoginPage', () => {
     expect(container.querySelector('#login-password').getAttribute('autocomplete')).toBe('current-password')
   })
 })
+
+describe('LoginPage notice', () => {
+  const rerender = props => act(async () => { root.render(createElement(LoginPage, { onLogin: vi.fn(), oidcEnabled: false, ...props })) })
+  const status = () => container.querySelector('[role="status"]')
+
+  it('shows none after a plain logout', () => {
+    expect(status()).toBeNull()
+  })
+
+  it('says the session expired when the server ended it (#499)', async () => {
+    await rerender({ sessionExpired: true })
+    expect(status().textContent).toBe('Je sessie is verlopen. Log opnieuw in.')
+  })
+
+  it('confirms that all data was erased and the user is logged out (#646)', async () => {
+    await rerender({ gegevensVerwijderd: true })
+    expect(status().textContent).toBe('Al je gegevens zijn verwijderd. Je bent uitgelogd.')
+  })
+})

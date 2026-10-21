@@ -110,6 +110,8 @@ const FIELDS = [
   ['.zoek-invoer'],
   // Already 16px everywhere (#562); kept in the list so it does not drop again.
   ['.wb-gallery-search-input'],
+  // The confirmation field of "Verwijder al mijn gegevens" gets the focus when its dialog opens (#646).
+  ['.mijn-gegevens-verwijderen-invoer'],
 ]
 
 describe('form fields on a phone (#590)', () => {

@@ -1937,6 +1937,42 @@ html.dark .mijn-gegevens-export-melding--fout { color: #FCA5A5; }
 @media (prefers-color-scheme: dark) {
   html:not(.dark):not(.light) .mijn-gegevens-export-melding--fout { color: #FCA5A5; }
 }
+/* "Verwijder al mijn gegevens" (#646): a destructive button under the export, with room before Uitloggen. Its dialog
+   stacks above the settings dialog (z-index 2000); every button in it is 44px high on every screen, and the field is
+   16px on every screen, so Safari on an iPhone does not zoom in when it gets the focus. */
+.mijn-gegevens-verwijderen { margin: 12px 0 24px; }
+.mijn-gegevens-verwijderen-btn {
+  width: 100%; min-height: var(--tap-min); padding: 10px; border-radius: var(--radius);
+  border: 1.5px solid #FCA5A5; background: var(--white); color: #B91C1C;
+  font-weight: 600; font-size: .9rem; cursor: pointer;
+}
+.mijn-gegevens-verwijderen-btn:hover { border-color: #DC2626; background: #FEF2F2; }
+.mijn-gegevens-verwijderen-overlay { z-index: 2100; padding: 12px; }
+.mijn-gegevens-verwijderen-dialog {
+  max-width: 440px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto;
+}
+.mijn-gegevens-verwijderen-titel { font-size: 1.1rem; font-weight: 700; margin: 0 0 12px; }
+.mijn-gegevens-verwijderen-uitleg p, .mijn-gegevens-verwijderen-export-tip {
+  margin: 0 0 10px; font-size: .88rem; line-height: 1.5; color: var(--gray-700);
+}
+.mijn-gegevens-verwijderen-dialog .mijn-gegevens-export { margin-top: 0; }
+.mijn-gegevens-verwijderen-label { display: block; margin: 20px 0 6px; font-size: .88rem; font-weight: 600; color: var(--gray-700); }
+.mijn-gegevens-verwijderen-invoer {
+  width: 100%; box-sizing: border-box; min-height: var(--tap-min); padding: 8px 12px; font-size: 16px;
+  border: 1.5px solid var(--gray-300); border-radius: var(--radius-sm); background: var(--white); color: var(--gray-900);
+}
+.mijn-gegevens-verwijderen-fout { margin: 10px 0 0; font-size: .85rem; color: #B91C1C; }
+.mijn-gegevens-verwijderen-acties { flex-wrap: wrap; margin-top: 20px; }
+.mijn-gegevens-verwijderen-acties button { min-height: var(--tap-min); }
+.mijn-gegevens-verwijderen-acties button:disabled { opacity: .5; cursor: not-allowed; }
+html.dark .mijn-gegevens-verwijderen-btn { border-color: #7F1D1D; color: #FCA5A5; }
+html.dark .mijn-gegevens-verwijderen-btn:hover { border-color: #DC2626; background: #2A1215; }
+html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not(.light) .mijn-gegevens-verwijderen-btn { border-color: #7F1D1D; color: #FCA5A5; }
+  html:not(.dark):not(.light) .mijn-gegevens-verwijderen-btn:hover { border-color: #DC2626; background: #2A1215; }
+  html:not(.dark):not(.light) .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
+}
 
 /* Back to what you used (#603): the conversation this browser opened last, and favourite and recently viewed
    reports. Small pills, so they do not push the suggestions or the gallery down much. */

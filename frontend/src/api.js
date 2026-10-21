@@ -58,6 +58,12 @@ export async function downloadMijnGegevens({ save = saveFile } = {}) {
   save(blob, filename)
 }
 
+// Everything the server keeps under this account, erased (#646); the server also revokes the token sent. It demands
+// this fixed confirmation; what the user typed is checked by the dialog. Resolves to { ok, verwijderd: counts }.
+export async function deleteMijnGegevens() {
+  return apiFetch('/api/mijn-gegevens', { method: 'DELETE', body: JSON.stringify({ bevestig: 'verwijder' }) })
+}
+
 export async function fetchConversations(params = {}) {
   const query = new URLSearchParams(params).toString()
   return apiFetch(query ? `/api/conversations?${query}` : '/api/conversations')
