@@ -74,6 +74,12 @@ de laatste tag is 1.8.6.
   onderwijslicenties) haalt de chat alleen op met een filter op een mbo/hbo/wo-type. Registers die niet per
   sector te selecteren zijn (erkenningen, contactadressen, onderwijslocaties, organisatorische eenheden) laadt
   hij niet; bestuur, instellingen en vestigingen van een instelling lopen via `get_rio_instelling`.
+- Een vraag over po, so of vo zonder ho-context ("Hoeveel leerlingen zitten er in groep 8?", "op de basisschool in
+  Utrecht", "op het vwo") krijgt de vaste scope-uitleg uit code, vóór elke verduidelijkingskaart en zonder
+  modelronde of toolaanroep (#647). Het model bood eerst het totaal basisonderwijs uit `85701NED` aan, deed daarvoor
+  een `get_cbs_data`-ronde en stelde bij "basisschool in Utrecht" eerst de plaatskaart. Noemt de vraag of het vorige
+  bericht ook ho, mbo, studenten, eerstejaars of een instelling uit het register, dan gaat ze zoals voorheen naar
+  het model, net als een keuze op een verduidelijkingskaart. Een losse "so" of "bo" (ook Engels) telt niet.
 
 ### Evaluatie
 - `scripts/ijkwaarden.py` stopt niet meer bij de eerste bron die niet antwoordt: de ijkwaarden van CBS en DUO worden

@@ -45,6 +45,7 @@ from .labels import onbekende_datasets, ongebruikte_bronnen, verkeerde_opleiding
 from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import metatekst, zonder_toolnamen
 from .models import build_system
+from .po_vraag import po_vraag
 from .probleem import INGEHOUDEN, Probleem, controlenamen, hard, harde, meldingen, uitkomsten, veilig
 from .publicatie import ANTWOORD, FIGUUR, log_publicatie
 from .schrappen import zonder_ongedekte_zinnen
@@ -253,11 +254,28 @@ def _laatste_vraag(messages: list[dict]) -> str:
     return _tekst(next((m["content"] for m in reversed(messages) if m.get("role") == "user"), ""))
 
 
+def _vragen(messages: list[dict]) -> list[str]:
+    return [_tekst(m["content"]) for m in messages if m.get("role") == "user"]
+
+
 def _poortvraag(messages: list[dict], session: dict) -> str:
     """De tekst waarop de zoekpoort voor vo-context beslist (#597): de vraag van de gebruiker, bij een keuze op
     een verduidelijkingsvraag samen met de vraag die ze afbakent (een keuze als "2023/24" noemt zelf niets)."""
-    vragen = [_tekst(m["content"]) for m in messages if m.get("role") == "user"]
-    return " ".join(vragen[-(session.get("clarify_rondes", 0) + 1) :])
+    return " ".join(_vragen(messages)[-(session.get("clarify_rondes", 0) + 1) :])
+
+
+async def _vast_vooraf(vraag: str, messages: list[dict], session: dict) -> str | None:
+    """Een vast antwoord uit code, vóór elke kaart en vóór het model; anders None.
+
+    De betekenis van -1, een vo-school (#549), of een po/so/vo-vraag zonder ho-context (#647). Die laatste alleen
+    bij een nieuwe vraag: een keuze op een verduidelijkingskaart beslist het model. Het register laadt bij een
+    schoolnaam of een po/so/vo-vraag over het netwerk: niet op de event loop."""
+    if vast := sentinelvraag(vraag) or await asyncio.to_thread(vo_schoolvraag, vraag):
+        return vast
+    if session.get("clarify_rondes", 0):
+        return None
+    vragen = _vragen(messages)
+    return await asyncio.to_thread(po_vraag, vraag, vragen[-2] if len(vragen) > 1 else "")
 
 
 def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[tuple[str, str]]) -> str:
@@ -601,9 +619,8 @@ async def run(
     logger.info("RUN START  model=%s  %s", chosen_model, tekst_kenmerk(last_user_msg, "vraag_"))
     logger.debug("RUN VRAAG  %r", last_user_msg[:200])
 
-    # Een vo-school valt buiten de scope (#355): de vaste uitleg uit code, vóór elke kaart (#549).
-    # Bij een schoolnaam laadt het register over het netwerk: niet op de event loop.
-    if vast := sentinelvraag(last_user_msg) or await asyncio.to_thread(vo_schoolvraag, last_user_msg):
+    # Wat code zelf beantwoordt (-1, een vo-school, een po/so/vo-vraag), krijgt geen kaart en geen model.
+    if vast := await _vast_vooraf(last_user_msg, messages, session):
         await emit({"type": "message_start"})
         await emit({"type": "message_end", "content": vast, "actions": [], "bronnen": [], **_vast(vast)})
         return vast
