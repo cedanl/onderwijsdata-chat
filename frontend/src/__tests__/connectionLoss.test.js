@@ -290,3 +290,25 @@ describe('useChat: rapport bij verbindingsverlies', () => {
     expect(assistant()).toMatchObject([{ done: true, interrupted: true }])
   })
 })
+
+// #652: een echte beurt schrijft eerst een inleiding en roept dan een tool aan; bij de volgende modelronde schuift die
+// tekst naar de redenering (#393), die op een telefoon dan al dicht is. Viel de verbinding weg vóór het eerste woord
+// van die ronde, dan bleef er een antwoord zonder tekst over: de vraag, "Redenering" en "Verbinding verbroken".
+// De dashboardchat maakt per ronde een eigen bericht en kent geen tussentekst: daar blijft de inleiding gewoon staan.
+describe('useChat: deeltekst bij verbindingsverlies tussen twee modelrondes (#652)', () => {
+  it('houdt de laatst geschreven tekst als deeltekst van het afgebroken antwoord', async () => {
+    const ws = await mount(useChat)
+    await act(async () => { hook.send('Hoe ontwikkelt het mbo zich?') })
+    await act(async () => {
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'Ik zoek eerst de juiste dataset op.' })
+      ws.emit({ type: 'tool_start', name: 'search_catalog', label: 'Catalogus doorzoeken' })
+      ws.emit({ type: 'tool_end', name: 'search_catalog', label: 'Catalogus doorzoeken' })
+      ws.emit({ type: 'message_start' })
+    })
+    await offline()
+    const [antwoord] = assistant()
+    expect(antwoord).toMatchObject({ content: 'Ik zoek eerst de juiste dataset op.', done: true, interrupted: true })
+    expect(antwoord.tussentekst ?? []).toEqual([])
+  })
+})

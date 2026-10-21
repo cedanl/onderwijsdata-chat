@@ -3,7 +3,7 @@ import { chatSocket, checkSession, endSession } from '../auth'
 import { MAX_HISTORY } from '../constants'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
-import { closeWithoutText, withdrawText } from '../turnTrace'
+import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
@@ -178,7 +178,7 @@ export function useChat() {
     function endInterruptedTurn() {
       if (!busyRef.current) return
       if (currentMsgRef.current) {
-        updateCurrentMsg(m => ({ ...m, done: true, interrupted: true }))
+        updateCurrentMsg(m => metDeeltekst({ ...m, done: true, interrupted: true }))
       } else {
         setMessages(prev => [...prev, {
           id: nextId(), role: 'assistant', done: true, isError: true,

@@ -496,6 +496,11 @@ de laatste tag is 1.8.6.
 - Het model gebruikt standaard temperature 0 en een vaste seed (`TEMPERATURE`, `SEED`).
 
 ### Gebruikersinterface
+- Valt de verbinding weg tussen twee stappen van een antwoord, dan blijft de tekst die al geschreven was staan, ook
+  na verversen (#652). Een antwoord begint vaak met een zin als "Ik zoek eerst de juiste dataset op" en roept dan een
+  tool aan; bij de volgende stap schuift die zin naar de redenering, die op een telefoon dan al dicht is. Brak de
+  verbinding vóór het eerste woord van die stap, dan toonde het antwoord alleen de vraag, "Redenering" en "Verbinding
+  verbroken". Nu staat die laatste zin als deeltekst boven "Probeer opnieuw", ook in een gesprek dat al zo bewaard is.
 - De uitleg bij een getal in een tabel (herkomst, #611) wordt niet meer afgeknipt (#657). Sinds tabellen in een
   antwoord zelf scrollen (#626) viel de open uitleg onderaan weg en kreeg de tabel een verticale scrollbalk; nu hangt
   hij buiten de tabel onder het getal en schuift hij mee als je de tabel opzij scrolt.

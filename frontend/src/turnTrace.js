@@ -17,3 +17,12 @@ export function closeWithoutText(msg) {
   if (!msg.tools?.length && !msg.vervangen?.length) return null
   return { ...msg, content: '', done: true }
 }
+
+// An answer cut off between two model rounds (#652): the next round had moved what the model wrote into the
+// reasoning card as interim text (#393), and on a phone that card is closed by then. Without text of its own the
+// answer showed only the question, "Redenering" and the connection line. The last interim text is what the user saw
+// being written, so it comes back as the partial text of the answer.
+export function metDeeltekst(msg) {
+  if (msg.content || !msg.tussentekst?.length) return msg
+  return { ...msg, content: msg.tussentekst.at(-1), tussentekst: msg.tussentekst.slice(0, -1) }
+}

@@ -1,5 +1,6 @@
 import { STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, MAX_CONVERSATIONS } from './constants'
 import { conversationTitle } from './conversationTitle'
+import { metDeeltekst } from './turnTrace'
 
 export function loadConversationHistory() {
   try { return JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS) || '[]') } catch { return [] }
@@ -31,7 +32,11 @@ const showsSomething = m =>
 // answer can be saved empty; those would render as raw JSON or a bubble that keeps typing.
 // An answer still being written when the page went away (a reload during a question) was cut off: it comes back
 // as such, with its text, the "onvolledig" line and "Probeer opnieuw" (#635), and the server closes that turn (#548).
-const afgebrokenBijHerladen = m => (m.role === 'assistant' && m.done === false ? { ...m, done: true, interrupted: true } : m)
+// A cut-off answer without text of its own gets its last interim text back (#652), also one saved before that fix.
+const afgebrokenBijHerladen = m => {
+  if (m.role !== 'assistant' || !(m.done === false || m.interrupted)) return m
+  return metDeeltekst({ ...m, done: true, interrupted: true })
+}
 
 export function restorableMessages(messages) {
   return messages.filter(m => m.role === 'user' || (m.role === 'assistant' && showsSomething(m))).map(afgebrokenBijHerladen)
