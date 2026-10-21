@@ -16,7 +16,7 @@ from core.config import (
 )
 from core.errors import log_interne_fout
 from core.logging_util import tekst_kenmerk
-from tools import LABELS, SCHEMAS, ho_markers
+from tools import LABELS, SCHEMAS, cbs_standaard, ho_markers
 from tools.csv_export import export_key, geen_export_reden
 from tools.schemas import TOOL_CLARIFY_SCOPE
 
@@ -651,10 +651,11 @@ async def run(
     beurt = _beurtcontext(last_user_msg, settings, session.get("turns") or [])
     system = await asyncio.to_thread(build_system, settings, beurt=beurt)
     stop = stop_event or asyncio.Event()
-    # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597).
+    # De tools van deze beurt zien de vraag van de gebruiker: de zoekpoort voor vo-context beslist erop (#597). En
+    # alle vragen van het gesprek: een uitsluiting als "zonder extranei" geldt ook voor een vervolgvraag (#653).
     getalcontrole = _getalcontrole(earlier, said_by_user)
     check = _antwoordcontrole(last_user_msg, earlier, said_by_user, session, getalcontrole)
-    with ho_markers.beurtvraag(_poortvraag(messages, session)):
+    with ho_markers.beurtvraag(_poortvraag(messages, session)), cbs_standaard.gesprek(_vragen(messages)):
         async with timebox(emit, stop, RUN_SLOW_S, RUN_TIMEOUT_S) as box:
             try:
                 async with asyncio.timeout(box.afbreken_s):

@@ -155,3 +155,29 @@ in een andere tekst dan `bron`, een onbekende regelsoort, een ontbrekende `[sent
 `[opleidingsvorm]`, twee correcties op dezelfde kolom van een dataset en een dataset in twee
 herkomstregels. Er is geen terugval op lege regels of standaardwaarden: de tests falen in CI, en
 een image met zo'n bestand start niet.
+
+## CBS: vaste standaardselectie (extranei)
+
+Eén regel over CBS-data staat niet in `domeinregels.toml` maar in code,
+[`tools/cbs_standaard.py`](https://github.com/cedanl/onderwijsdata-chat/blob/main/tools/cbs_standaard.py):
+een soort regel met maar één geval, en hij werkt op de selectie van het model, niet op een DUO-bestand (#653).
+
+In veertien mbo-tabellen van CBS heeft de dimensie `Leerweg` twee totalen: `A025290` "Totaal mbo (incl.
+extranei)" en `A041867` "Totaal mbo (excl. extranei)". Het model koos daar per run een ander totaal, dus
+dezelfde vraag gaf een ander getal (op 85569NED 157.450 of 155.270 mbo-instromers). Nu kiest de code:
+
+| Tabellen | Dimensie | Standaard | Alleen als de gebruiker erom vraagt |
+|---|---|---|---|
+| 83850NED, 83851NED, 83852NED, 83895NED, 83896NED, 83897NED, 85352NED, 85353NED, 85354NED, 85355NED, 85356NED, 85357NED, 85569NED, 85574NED | `Leerweg` | `A025290` Totaal mbo (incl. extranei) | `A041867` Totaal mbo (excl. extranei) |
+
+- Pint het model `Leerweg` op `A041867`, dan laadt `get_cbs_data` `A025290`. Het toolresultaat zegt dat in
+  `standaardselectie`, en het recept, de snippet en de Uitgangspunt-regel tonen de telling die geladen is.
+- De smallere telling blijft staan als een vraag in het gesprek extranei uitsluit: "zonder extranei",
+  "excl. extranei", "exclusief extranei", "geen extranei", "extranei niet …", "bol en bbl". Een uitsluiting
+  in een eerdere vraag geldt ook voor de vervolgvragen.
+- Uitsplitsen (`*`), bol, bbl, extranei of meer codes tegelijk blijven zoals het model ze koos.
+- Buiten de chat (MCP, evals) is er geen gesprek: daar geldt de code die de aanroeper koos.
+- Andere tabellen kennen hooguit één van beide totalen (85701NED alleen excl., 85702NED alleen incl.), vaak in
+  een andere dimensie, en hebben dus niets te kiezen. De lijst is op 21-10-2026 nagegaan tegen alle
+  opvraagbare CBS-tabellen van de catalogus; `tests/test_cbs_standaard.py` controleert dat elke tabel uit de
+  code hier staat.
