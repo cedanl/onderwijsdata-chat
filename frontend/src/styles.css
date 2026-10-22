@@ -1516,6 +1516,11 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .feedback-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .feedback-option { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; font-weight: 400 !important; cursor: pointer; }
 .feedback-scale-label { font-size: .75rem; color: var(--muted-text); }
+.feedback-extra-btn {
+  display: block; width: 100%; margin: 4px 0 16px; padding: 8px 16px; border-radius: 8px;
+  border: 1.5px solid var(--gray-200); background: none; color: var(--gray-700); font-weight: 600; text-align: left;
+}
+.feedback-extra-btn:hover { background: var(--gray-50); }
 .feedback-error { color: #DC2626; font-size: .85rem; margin-bottom: 12px; }
 .feedback-submit { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-600); color: var(--on-color); cursor: pointer; font-weight: 600; }
 .feedback-submit:disabled { opacity: .5; cursor: default; }
@@ -1911,7 +1916,7 @@ html.dark .suggested-btn:hover {
      buttons above, so the steps keep their spacing. The CSV chip sits on the chart and keeps its look: an
      invisible 44px area, as for the figures. */
   .confirm-cancel, .confirm-primary, .confirm-destructive { min-width: var(--tap-min); min-height: var(--tap-min); }
-  .reasoning-toggle, .history-search { min-height: var(--tap-min); }
+  .reasoning-toggle, .history-search, .feedback-extra-btn { min-height: var(--tap-min); }
   .reasoning-step-code summary {
     min-height: var(--tap-min); margin-block: calc((var(--tap-min-aa) - var(--tap-min)) / 2);
   }

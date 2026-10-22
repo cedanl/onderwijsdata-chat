@@ -9,7 +9,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const QUESTIONS = [
   { id: 'nuttig', text: 'Hoe nuttig was dit rapport voor je?', type: 'scale', options: ['1', '2', '3', '4', '5'], labels: ['Niet', 'Zeer'] },
   { id: 'mist', text: 'Mist er iets in dit rapport?', type: 'text' },
-  { id: 'dashboardtool', text: 'Welke dashboardtool gebruiken jullie?', type: 'multi', section: 'Over jouw instelling', options: ['Power BI', 'Tableau', 'Anders', 'Weet ik niet'] },
+  { id: 'dashboardtool', text: 'Welke dashboardtool gebruiken jullie?', type: 'multi', extra: true, section: 'Over jouw instelling', options: ['Power BI', 'Tableau', 'Anders', 'Weet ik niet'] },
+  { id: 'contact', text: 'Wil je contactgegevens achter laten?', type: 'text', extra: true },
 ]
 const WORKBOOK = { id: 'wb-1', type: 'report', title: 'Instroom hbo' }
 
@@ -30,6 +31,19 @@ async function render(props = {}) {
 }
 
 const submitButton = () => container.querySelector('button[type="submit"]')
+// The button that reveals the questions about the institution (#666).
+const extraButton = () => [...container.querySelectorAll('button')].find(b => b.textContent.startsWith('Help ons verder'))
+const headings = () => [...container.querySelectorAll('h3')].map(h => h.textContent)
+const typeText = async (field, text) => {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(field.constructor.prototype, 'value').set.call(field, text)
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+async function revealExtra() {
+  await act(async () => { extraButton().click() })
+}
 
 async function submit() {
   await act(async () => { container.querySelector('form').requestSubmit() })
@@ -100,8 +114,8 @@ describe('FeedbackModal', () => {
   it('shows the heading of a section above its first question', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
     await render()
-    const headings = [...container.querySelectorAll('h3')].map(h => h.textContent)
-    expect(headings).toEqual(['Over jouw instelling'])
+    await revealExtra()
+    expect(headings()).toEqual(['Over jouw instelling'])
   })
 
   it('names the chosen instelling in the section heading, says it is kept, and posts it along', async () => {
@@ -111,7 +125,9 @@ describe('FeedbackModal', () => {
     vi.stubGlobal('fetch', fetch)
     await render({ instelling: '  Hogeschool Utrecht ' })
 
-    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over Hogeschool Utrecht'])
+    expect(extraButton().textContent).toBe('Help ons verder: vragen over Hogeschool Utrecht')
+    await revealExtra()
+    expect(headings()).toEqual(['Over Hogeschool Utrecht'])
     const intro = [...container.querySelectorAll('[role="dialog"] .feedback-intro')].map(p => p.textContent)
     expect(intro[1]).toBe(
       'We bewaren je antwoorden, de titel van het rapport en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.',
@@ -124,14 +140,17 @@ describe('FeedbackModal', () => {
   it.each([undefined, null, '', '   '])('keeps the generic heading when no instelling is chosen (%j)', async instelling => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
     await render({ instelling })
-    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over jouw instelling'])
+    expect(extraButton().textContent).toBe('Help ons verder: vragen over jouw instelling')
+    await revealExtra()
+    expect(headings()).toEqual(['Over jouw instelling'])
   })
 
   it('leaves a section heading without the placeholder phrase alone', async () => {
     const vragen = [{ ...QUESTIONS[2], section: 'Over het onderzoek' }]
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, vragen)))
     await render({ instelling: 'HAN' })
-    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over het onderzoek'])
+    await revealExtra()
+    expect(headings()).toEqual(['Over het onderzoek'])
   })
 
   it('lets a multi question take several options, with free text behind Anders', async () => {
@@ -140,6 +159,7 @@ describe('FeedbackModal', () => {
       .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
     vi.stubGlobal('fetch', fetch)
     await render()
+    await revealExtra()
 
     const box = value => container.querySelector(`input[type="checkbox"][value="${value}"]`)
     expect(container.querySelector('input[aria-label="Anders, welke?"]')).toBeNull()
@@ -147,11 +167,7 @@ describe('FeedbackModal', () => {
     await act(async () => { box('Tableau').click() })
     await act(async () => { box('Tableau').click() })
     await act(async () => { box('Anders').click() })
-    const detail = container.querySelector('input[aria-label="Anders, welke?"]')
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(detail, 'Metabase')
-      detail.dispatchEvent(new Event('input', { bubbles: true }))
-    })
+    await typeText(container.querySelector('input[aria-label="Anders, welke?"]'), 'Metabase')
     expect(submitButton().disabled).toBe(false)
     await submit()
 
@@ -161,10 +177,102 @@ describe('FeedbackModal', () => {
   it('does not count a multi question without a choice as an answer', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
     await render()
+    await revealExtra()
     const box = container.querySelector('input[type="checkbox"][value="Power BI"]')
     await act(async () => { box.click() })
     expect(submitButton().disabled).toBe(false)
     await act(async () => { box.click() })
     expect(submitButton().disabled).toBe(true)
+  })
+
+  // #666: the questions about the institution come only after an explicit choice, below the report questions.
+  describe('questions about the institution', () => {
+    it('are hidden on opening, behind a button that does not submit the form', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+      await render()
+      expect(container.textContent).toContain('Hoe nuttig was dit rapport voor je?')
+      expect(container.textContent).toContain('Mist er iets in dit rapport?')
+      expect(container.textContent).not.toContain('Welke dashboardtool gebruiken jullie?')
+      expect(container.textContent).not.toContain('Wil je contactgegevens achter laten?')
+      expect(container.querySelector('h3')).toBeNull()
+      expect(extraButton().getAttribute('type')).toBe('button')
+      // The button comes after the report questions and before the form buttons.
+      const order = [...container.querySelectorAll('textarea, button')]
+      expect(order.indexOf(extraButton())).toBe(order.indexOf(container.querySelector('textarea')) + 1)
+    })
+
+    it('says in the intro that they are optional and come only after the choice', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+      await render()
+      const intro = [...container.querySelectorAll('[role="dialog"] .feedback-intro')].map(p => p.textContent)
+      expect(intro[2]).toBe(
+        'Na de vragen over het rapport kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die zijn optioneel; we bewaren die antwoorden op dezelfde manier.',
+      )
+    })
+
+    it('leave the button out, and the intro line about them, when the backend flags none', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS.filter(q => !q.extra))))
+      await render()
+      expect(extraButton()).toBeUndefined()
+      expect(container.querySelectorAll('[role="dialog"] .feedback-intro')).toHaveLength(2)
+    })
+
+    it('lets a report answer be sent without ever opening them', async () => {
+      const fetch = vi.fn()
+        .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))
+        .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+      vi.stubGlobal('fetch', fetch)
+      const onSubmitted = vi.fn()
+      await render({ onSubmitted })
+
+      await act(async () => { container.querySelector('input[value="3"]').click() })
+      await submit()
+
+      expect(JSON.parse(fetch.mock.calls[1][1].body).answers).toEqual({ nuttig: '3' })
+      expect(onSubmitted).toHaveBeenCalledOnce()
+    })
+
+    it('appear with their heading after the choice, replace the button and are posted along', async () => {
+      const fetch = vi.fn()
+        .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))
+        .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+      vi.stubGlobal('fetch', fetch)
+      await render()
+
+      await act(async () => { container.querySelector('input[value="5"]').click() })
+      await revealExtra()
+      expect(extraButton()).toBeUndefined()
+      expect(headings()).toEqual(['Over jouw instelling'])
+      expect(container.textContent).toContain('Welke dashboardtool gebruiken jullie?')
+      expect(container.textContent).toContain('Wil je contactgegevens achter laten?')
+      // The report answer given before the choice is kept.
+      expect(container.querySelector('input[value="5"]').checked).toBe(true)
+
+      await act(async () => { container.querySelector('input[type="checkbox"][value="Tableau"]').click() })
+      const textareas = container.querySelectorAll('textarea')
+      await typeText(textareas[textareas.length - 1], 'ik@example.org')
+      await submit()
+
+      expect(JSON.parse(fetch.mock.calls[1][1].body).answers).toEqual({
+        nuttig: '5', dashboardtool: ['Tableau'], contact: 'ik@example.org',
+      })
+    })
+
+    it('move focus to their heading, since the button that had it is gone', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+      await render()
+      extraButton().focus()
+      await revealExtra()
+      expect(document.activeElement).toBe(container.querySelector('h3'))
+    })
+
+    it('enable sending with only one of them answered', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+      await render()
+      await revealExtra()
+      expect(submitButton().disabled).toBe(true)
+      await act(async () => { container.querySelector('input[type="checkbox"][value="Power BI"]').click() })
+      expect(submitButton().disabled).toBe(false)
+    })
   })
 })

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { fetchFeedbackQuestions, postFeedback } from '../api'
 
@@ -8,8 +8,10 @@ const OTHER_PREFIX = `${OTHER}: `
 const isOther = item => item === OTHER || item.startsWith(OTHER_PREFIX)
 
 // The backend names the section generically ("Over jouw instelling"); with a chosen instelling it gets its name.
+// The button that reveals that section (#666) is named the same way.
 const GENERIC_INSTELLING = 'jouw instelling'
 const sectionTitle = (section, instelling) => (instelling ? section.replace(GENERIC_INSTELLING, () => instelling) : section)
+const EXTRA_BUTTON = `Help ons verder: vragen over ${GENERIC_INSTELLING}`
 
 const hasValue = value => (Array.isArray(value) ? value.length > 0 : value.trim() !== '')
 
@@ -88,6 +90,25 @@ function Question({ question, value, onChange }) {
   )
 }
 
+// `headingRef`, if given, goes to the first section heading, which then takes focus from script only.
+function QuestionList({ questions, answers, setAnswer, instelling, headingRef }) {
+  const firstSection = questions.find(q => q.section)
+  return questions.map(q => (
+    <Fragment key={q.id}>
+      {q.section && (
+        <h3
+          className="feedback-section"
+          ref={q === firstSection ? headingRef : undefined}
+          tabIndex={headingRef && q === firstSection ? -1 : undefined}
+        >
+          {sectionTitle(q.section, instelling)}
+        </h3>
+      )}
+      <Question question={q} value={answers[q.id] ?? ''} onChange={v => setAnswer(q.id, v)} />
+    </Fragment>
+  ))
+}
+
 // `instelling` is what the user chose in the app's settings; '' when nothing was chosen (not the page's default).
 export default function FeedbackModal({ workbook, instelling: chosen = '', onClose, onSubmitted }) {
   const instelling = (chosen || '').trim()
@@ -97,6 +118,9 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
   const [answers, setAnswers] = useState({})
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
+  // The questions flagged `extra` (about the institution, #666) stay hidden until the user chooses to answer them.
+  const [showExtra, setShowExtra] = useState(false)
+  const extraHeadingRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -106,7 +130,13 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
     return () => { cancelled = true }
   }, [])
 
+  // The reveal button had focus and is gone: move it to the heading of what appeared.
+  useEffect(() => { if (showExtra) extraHeadingRef.current?.focus() }, [showExtra])
+
   const hasAnswer = Object.values(answers).some(hasValue)
+  const reportQuestions = questions?.filter(q => !q.extra) ?? []
+  const extraQuestions = questions?.filter(q => q.extra) ?? []
+  const setAnswer = (id, value) => setAnswers(prev => ({ ...prev, [id]: value }))
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -146,17 +176,28 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
             ? 'We bewaren je antwoorden, de titel van het rapport en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'
             : 'We bewaren je antwoorden en de titel van het rapport bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'}
         </p>
+        {extraQuestions.length > 0 && (
+          <p className="feedback-intro">
+            Na de vragen over het rapport kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die
+            zijn optioneel; we bewaren die antwoorden op dezelfde manier.
+          </p>
+        )}
         {!questions && !error && <p role="status">Vragen worden geladen…</p>}
-        {questions?.map(q => (
-          <Fragment key={q.id}>
-            {q.section && <h3 className="feedback-section">{sectionTitle(q.section, instelling)}</h3>}
-            <Question
-              question={q}
-              value={answers[q.id] ?? ''}
-              onChange={v => setAnswers(prev => ({ ...prev, [q.id]: v }))}
-            />
-          </Fragment>
-        ))}
+        <QuestionList questions={reportQuestions} answers={answers} setAnswer={setAnswer} instelling={instelling} />
+        {extraQuestions.length > 0 && !showExtra && (
+          <button type="button" className="feedback-extra-btn" onClick={() => setShowExtra(true)}>
+            {sectionTitle(EXTRA_BUTTON, instelling)}
+          </button>
+        )}
+        {showExtra && (
+          <QuestionList
+            questions={extraQuestions}
+            answers={answers}
+            setAnswer={setAnswer}
+            instelling={instelling}
+            headingRef={extraHeadingRef}
+          />
+        )}
         {error && <p role="alert" className="feedback-error">{error}</p>}
         <div className="confirm-actions">
           <button type="button" className="confirm-cancel" onClick={onClose}>Annuleren</button>
