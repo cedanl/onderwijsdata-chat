@@ -124,6 +124,15 @@ def vertaal(waarden: list[str], level: str, laad: Callable[[str], dict]) -> Loca
     return Locaties(gebied.niveau, gevonden, tuple(w for w in waarden if w not in gevonden))
 
 
+def namen(geojson: dict) -> dict[str, str]:
+    """Feature-id → de naam van het gebied (statnaam), voor het label bij een tik op de kaart (#659)."""
+    return {
+        str(f["id"]): naam
+        for f in geojson.get("features", [])
+        if f.get("id") and (naam := (f.get("properties") or {}).get("statnaam"))
+    }
+
+
 def melding_onbekend(locaties: Locaties, totaal: int) -> str:
     """Wat er niet op de kaart staat, voor het model; leeg als alles past."""
     if not locaties.onbekend:
