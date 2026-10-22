@@ -614,6 +614,11 @@ de laatste tag is 1.8.6.
   390×664, nagebootste beurt): het invoerkader houdt een vaste plek van één regel en groeit bij een lange vraag omhoog
   over de berichten, de melding "Verbinding herstellen..." staat erboven in plaats van erin, en de gesprekkenknop in de
   navbar blijft staan als het ⋯-menu verschijnt.
+- Op een telefoon schuift je eigen vraag niet meer opzij als een antwoord klaar is (#661). De herhaalknop naast een
+  vraag bestond alleen als er geen antwoord liep, dus hij verscheen aan het eind van elk antwoord en maakte elke
+  vraag in het gesprek 30 px breder; bij een korte vraag gaf dat CLS 0,38 (nagebootste beurt, 390×844). De knop staat er
+  nu altijd en is tijdens een antwoord alleen verborgen. Het landen van een staafgrafiek kost nu 0,012 en van een kaart
+  0,017–0,018 (was 0,064–0,072 bij een staafgrafiek met een vraag van 28 tekens).
 - Een rapport is op een telefoon leesbaar zonder inzoomen (#571, gemeten op 390 en 375 px, licht en donker):
   een lang woord of een link in de tekst rekt de pagina niet meer op (die werd daardoor uitgezoomd tot 559 px),
   de instellingsbadge staat onder de titel in plaats van ernaast (de titel had nog de halve breedte), een

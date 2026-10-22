@@ -1073,19 +1073,20 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
           {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
           {msg.content}
         </div>
-        {!busy && (
-          <button type="button"
-            className="resend-btn"
-            title="Opnieuw sturen"
-            aria-label="Vraag opnieuw sturen"
-            onClick={() => onSend(msg.content)}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-              <polyline points="1 4 1 10 7 10" />
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-            </svg>
-          </button>
-        )}
+        {/* Altijd aanwezig, tijdens een antwoord verborgen: de knop neemt zijn plek in de rij in, en een knop die pas
+            bij het eind van het antwoord komt, verbreedde elke vraag en schoof de bubbel opzij (#661). */}
+        <button type="button"
+          className="resend-btn"
+          title="Opnieuw sturen"
+          aria-label="Vraag opnieuw sturen"
+          disabled={busy}
+          onClick={() => onSend(msg.content)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </button>
       </div>
     )
   }

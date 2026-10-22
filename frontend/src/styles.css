@@ -563,6 +563,8 @@ html.dark .login-melding { color: var(--accent-text); }
   display: flex; align-items: center; justify-content: center;
 }
 .resend-btn:hover { color: var(--accent-text); background: var(--gray-100); }
+/* Verborgen tijdens een antwoord, maar de plek blijft staan (#661): visibility houdt de breedte vast en haalt de knop uit de tabvolgorde. */
+.resend-btn:disabled { visibility: hidden; }
 .message.user:hover .resend-btn { opacity: 1; }
 .csv-download-btn {
   position: absolute; top: 4px; right: 4px; z-index: 1;
