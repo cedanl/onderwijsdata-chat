@@ -177,6 +177,9 @@ input, textarea { font: inherit; }
   transition: background .15s;
 }
 .navbar-cta:hover { background: var(--blue-700); }
+/* Profielknop (desktop): instelling boven de accountnaam, beide 12,5 px (#663). */
+.navbar-profile-instelling { font-size: 12.5px; font-weight: 600; color: var(--gray-700); line-height: 1.2; }
+.navbar-profile-naam { font-size: 12.5px; color: var(--muted-text); line-height: 1.2; }
 /* Alleen op een telefoon (#596): menu-hamburger en pagina-knoppen in de navbar. */
 .navbar-menu-btn, .navbar-icon-btn, .navbar-pagina { display: none; }
 
@@ -923,7 +926,7 @@ html.dark .message-counter--limit { color: #FCA5A5; }
 }
 .message-retry { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: .82rem; }
 .message-continue:disabled { color: var(--gray-500); cursor: default; text-decoration: none; }
-.chat-disclaimer { text-align: center; font-size: .72rem; color: var(--muted-text); margin-top: 8px; }
+.chat-disclaimer { text-align: center; font-size: 12.5px; color: var(--muted-text); margin-top: 8px; }
 .disclaimer-link, .wb-viewer-fallback-link {
   background: none; border: none; padding: 0; font: inherit;
   color: var(--accent-text); text-decoration: underline; cursor: pointer;
@@ -2097,7 +2100,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
 }
 .navbar-zoek-btn {
   display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm); background: var(--white); color: var(--gray-600); font-size: .8rem;
+  border-radius: var(--radius-sm); background: var(--white); color: var(--gray-600); font-size: 12.5px;
   white-space: nowrap; flex-shrink: 0; /* "Ctrl K" breekt anders op een smalle balk over twee regels */
 }
 .navbar-zoek-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
@@ -2126,7 +2129,11 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
    font-size buiten de variabelen die de herhaalmeting van #639 nog onder de grens vond: zijbalkkoppen, categoriechips,
    "Nieuw gesprek", de gesprekslijst, de accountnaam in het menu en de kop, zoekveld, lege lijst en feedbackregel
    van /rapporten. De derde rij komt uit de meting van #650: "Meer laden", de noot in het ⋯-menu, de homepage
-   (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de nieuw-kaart en de voorbeeldkaarten. */
+   (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de nieuw-kaart en de voorbeeldkaarten.
+   "De accountnaam in het menu" is de menuregel .navbar-menu-sub. De profielknop (instelling en accountnaam), het
+   label "Zoeken" en de disclaimer onder het invoerveld staan alleen op desktop en zijn op elke breedte 12,5 px
+   (#663); de sneltoetshint .navbar-zoek-hint (Ctrl K) blijft bewust .7rem: een toetsaanduiding, op touch verborgen.
+   De scan van #663 op 390 px vond ook de verbindingsmelding (.ws-reconnecting, tot de socket open is). */
 @media (max-width: 600px) {
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
@@ -2138,7 +2145,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   .sidebar-section-title, .suggested-category-btn, .new-chat-btn, .model-picker-provider, .navbar-menu-sub,
   .wb-gallery-sub, .wb-gallery-search-label, .wb-gallery-feedback, .wb-gallery-leeg-tip, .privacy-link, .history-btn-title, .history-btn-date,
   .history-more-btn, .navbar-meer-noot, .section-label, .home-disclaimer, .home-licentie, .sources-link, .wb-new-card small,
-  .wb-builtin-badge, .wb-builtin-instelling {
+  .wb-builtin-badge, .wb-builtin-instelling, .ws-reconnecting {
     font-size: 12.5px;
   }
 }

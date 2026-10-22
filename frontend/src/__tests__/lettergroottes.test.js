@@ -55,3 +55,40 @@ describe('lettergroottes op een telefoon (#613)', () => {
     expect(blok).not.toContain('.wb-card-desc')
   })
 })
+
+// #663: de laatste lagen uit de metingen van #613/#650 zitten alleen op desktop (> 768 px of > 1024 px) en hadden
+// een eigen, kleinere maat: het label "Zoeken" (12 px), de instelling en accountnaam in de profielknop (inline
+// 11,25 en 10,8 px) en de disclaimer onder het invoerveld (10,8 px). Ze krijgen 12,5 px op elke breedte.
+describe('lagen op desktop onder 12,5 px (#663)', () => {
+  const zonderCommentaar = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const regel = (selector) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return zonderCommentaar.match(new RegExp(`\\n${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+  }
+  const nav = readFileSync(join(import.meta.dirname, '..', 'components', 'Nav.jsx'), 'utf8')
+
+  for (const selector of ['.navbar-zoek-btn', '.chat-disclaimer', '.navbar-profile-instelling', '.navbar-profile-naam']) {
+    it(`geeft ${selector} 12,5 px`, () => {
+      expect(regel(selector)).toMatch(/font-size:\s*12\.5px/)
+    })
+  }
+
+  it('houdt kleur, gewicht en regelhoogte van de profielknop gelijk', () => {
+    expect(regel('.navbar-profile-instelling')).toMatch(/font-weight:\s*600/)
+    expect(regel('.navbar-profile-instelling')).toMatch(/color:\s*var\(--gray-700\)/)
+    expect(regel('.navbar-profile-instelling')).toMatch(/line-height:\s*1\.2/)
+    expect(regel('.navbar-profile-naam')).toMatch(/color:\s*var\(--muted-text\)/)
+    expect(regel('.navbar-profile-naam')).toMatch(/line-height:\s*1\.2/)
+  })
+
+  // De scan op 390 px vond ook de verbindingsmelding (10,8 px) zolang de socket nog niet open is.
+  it('brengt de verbindingsmelding op een telefoon op 12,5 px', () => {
+    expect(blok).toContain('.ws-reconnecting')
+  })
+
+  it('zet geen lettergrootte meer inline in de profielknop', () => {
+    expect(nav).not.toMatch(/fontSize:\s*'\.7[25]rem'/)
+    expect(nav).toContain('className="navbar-profile-instelling"')
+    expect(nav).toContain('className="navbar-profile-naam"')
+  })
+})
