@@ -114,6 +114,14 @@ export function getStoredUserInfo() {
   return getUserInfo()
 }
 
+// De naam van de bewaarde sessie, voor als /api/auth/status niet antwoordt (offline, server weg; #670): de app
+// toont zich dan met die sessie en de offline-melding. Zonder token is er niets te tonen en volgt het loginscherm.
+export function bewaardeSessieNaam() {
+  if (!getToken()) return null
+  const info = getStoredUserInfo()
+  return info ? info.name || info.username : 'user'
+}
+
 export async function login(username, password) {
   const res = await fetch("/api/auth/login", {
     method: "POST",

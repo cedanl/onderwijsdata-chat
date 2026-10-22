@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DataSourcesModal from './DataSourcesModal'
+import InstalleerUitleg from './InstalleerUitleg'
 import PrivacyLink from './PrivacyLink'
 import { useEscape } from '../hooks/useEscape'
 import { sneltoetsHint } from '../hooks/useZoekSneltoets'
+import { useInstallatieAanbod, vraagInstallatie } from '../installeerApp'
 
 const BESTEMMINGEN = [
   {
@@ -119,6 +121,8 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [bronnen, setBronnen] = useState(false)
+  const [installeerUitleg, setInstalleerUitleg] = useState(false)
+  const installeerAanbod = useInstallatieAanbod()
   const knopRef = useRef(null)
   const sluit = () => setOpen(false)
   // Escape en een tik op een bestemming geven de focus aan de knop terug, zodat toetsenbord en schermlezer
@@ -166,6 +170,14 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
             <button type="button" className="navbar-menu-item" onClick={kies(() => setBronnen(true))}>
               Gebaseerd op open onderwijsdata
             </button>
+            {installeerAanbod && (
+              <button
+                type="button" className="navbar-menu-item"
+                onClick={kies(installeerAanbod === 'prompt' ? vraagInstallatie : () => setInstalleerUitleg(true))}
+              >
+                Zet op je startscherm
+              </button>
+            )}
             <PrivacyLink className="navbar-menu-item">Privacy-informatie</PrivacyLink>
             {onLogout && (
               <button type="button" className="navbar-menu-item" onClick={kies(onLogout)}>Uitloggen</button>
@@ -174,6 +186,7 @@ function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
         </>
       )}
       {bronnen && <DataSourcesModal onClose={() => setBronnen(false)} />}
+      {installeerUitleg && <InstalleerUitleg onClose={() => setInstalleerUitleg(false)} />}
     </>
   )
 }

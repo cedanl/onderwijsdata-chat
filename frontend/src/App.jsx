@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal'
 import ZoekPalet from './components/ZoekPalet'
 import { useZoekSneltoets } from './hooks/useZoekSneltoets'
 import { wachtOpOpslag } from './gesprekOpslag'
-import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, refreshAuthToken, tokenExpiresAt, logout } from './auth'
+import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
 import { clearLocalSessionData } from './sessionData'
@@ -146,6 +146,11 @@ function AppShell() {
             setUser(null)
           }
         }
+      }).catch(() => {
+        // Zonder antwoord op de statuscheck (offline, server weg) bleef de app op "wordt geladen" staan: Promise.all
+        // viel om en authLoading ging nooit uit. Nu toont de app de bewaarde sessie, of het loginscherm (#670).
+        setAuthRequired(true)
+        setUser(bewaardeSessieNaam())
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
         setDashboardsEnabled(config.dashboards_enabled !== false)
