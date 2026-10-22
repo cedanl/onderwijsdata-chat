@@ -8,6 +8,7 @@ RUN npm ci
 
 COPY frontend/src ./src
 COPY frontend/index.html ./
+COPY frontend/public ./public
 COPY frontend/vite.config.js ./
 COPY frontend/eslint.config.js ./
 

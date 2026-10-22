@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>openEDUdata+</title>
+    <!-- Installeerbaar (#669): naam en icoon op het startscherm; de statusbalk volgt het thema van het apparaat. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="EDUdata+" />
     <!-- Inline so the loading state paints before the JS bundle arrives -->
     <style>
       .app-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 10px;
