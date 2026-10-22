@@ -360,6 +360,9 @@ html.dark .login-melding { color: var(--accent-text); }
 }
 .modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
 .modal-body { padding: 0; }
+.installeer-uitleg { font-size: .9rem; line-height: 1.55; color: var(--gray-700); }
+.installeer-uitleg p { margin: 0 0 12px; }
+.installeer-stappen { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
 .modal-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
 .modal-table th {
   text-align: left; padding: 10px 12px 10px 0;
