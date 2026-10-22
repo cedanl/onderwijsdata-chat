@@ -51,9 +51,11 @@ QUESTIONS: tuple[dict, ...] = (
     },
     {"id": "mist", "text": "Mist er iets in dit rapport?", "type": "text"},
     {"id": "verbeteren", "text": "Wat zou je willen verbeteren?", "type": "text"},
-    # Vragen over de instelling (conferentie): niet over dit rapport, maar wel hier gesteld.
+    # Vragen over de instelling (conferentie): niet over dit rapport, maar wel hier gesteld. Ze dragen "extra": de
+    # frontend toont ze pas na een expliciete keuze van de gebruiker, onder de rapportvragen (#666).
     {
         "id": "poc",
+        "extra": True,
         "section": "Over jouw instelling",
         "text": "Zie je voor komend jaar mogelijkheden om een PoC te doen binnen je instelling?",
         "type": "scale",
@@ -62,12 +64,14 @@ QUESTIONS: tuple[dict, ...] = (
     },
     {
         "id": "dashboardtool",
+        "extra": True,
         "text": "Welke dashboardtool gebruiken jullie? (meerdere antwoorden)",
         "type": "multi",
         "options": ["Power BI", "Tableau", "Qlik", OTHER, "Weet ik niet"],
     },
     {
         "id": "doelgroep",
+        "extra": True,
         "text": "Voor welke doelgroep(en) wil je data inzichtelijk maken? (meerdere antwoorden)",
         "type": "multi",
         "options": [
@@ -80,9 +84,10 @@ QUESTIONS: tuple[dict, ...] = (
             OTHER,
         ],
     },
-    {"id": "ceda_oppakken", "text": "Wat moet CEDA wat jou betreft oppakken?", "type": "text"},
+    {"id": "ceda_oppakken", "extra": True, "text": "Wat moet CEDA wat jou betreft oppakken?", "type": "text"},
     {
         "id": "contact",
+        "extra": True,
         "text": "Wil je contactgegevens achter laten, zodat we je eventueel vervolgvragen kunnen stellen?",
         "type": "text",
     },

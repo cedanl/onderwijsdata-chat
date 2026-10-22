@@ -111,6 +111,16 @@ describe('PrivacyPage', () => {
       expect(server).not.toMatch(/nog geen automatische opschoning|onbepaald|blijft staan tot je al je gegevens/)
     }
   })
+
+  // #666: the questions about the institution in the report feedback come only after the user's own choice.
+  it('says that the questions about the institution are asked only after a choice, in the app and the docs', async () => {
+    await render(createElement(PrivacyPage))
+    for (const tekst of [sectionText('Wat de server bewaart'), oneLine(docsSection('Wat de server bewaart'))]) {
+      expect(tekst).toContain('alleen na een eigen keuze')
+      expect(tekst).toContain('Help ons verder')
+      expect(tekst).toMatch(/zonder die vragen (te )?versturen/)
+    }
+  })
 })
 
 describe('buttons for the privacy information', () => {

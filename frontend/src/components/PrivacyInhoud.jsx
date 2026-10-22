@@ -58,8 +58,10 @@ export default function PrivacyInhoud() {
         </li>
         <li>
           <strong>Feedback</strong>: je antwoorden op de vragen bij een rapport of dashboard, met de titel van het
-          rapport en de instelling die je in de app koos (als je er een koos), en per antwoord je
-          duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder je het gesprek, dan wordt
+          rapport en de instelling die je in de app koos (als je er een koos). De vragen over je instelling krijg je
+          alleen na een eigen keuze (Help ons verder); de vragen over het rapport kun je zonder die vragen versturen.
+          Per antwoord bewaren we je duim met toelichting plus een kopie van vraag, antwoord en stappen. Verwijder
+          je het gesprek, dan wordt
           die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
           de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
           Feedback wordt 90 dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog

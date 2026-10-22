@@ -112,6 +112,24 @@ def test_conferentievragen_staan_in_een_eigen_blok_over_de_instelling():
     assert [q["id"] for q in QUESTIONS if q.get("section")] == ["poc"]
 
 
+_INSTELLINGSVRAGEN = ["poc", "dashboardtool", "doelgroep", "ceda_oppakken", "contact"]
+
+
+def test_instellingsvragen_zijn_gemarkeerd_als_extra(client):
+    """Alleen de vragen over de instelling dragen de vlag; de frontend toont ze pas na een expliciete keuze (#666)."""
+    vragen = client.get("/api/feedback/questions").json()
+    assert [q["id"] for q in vragen if q.get("extra")] == _INSTELLINGSVRAGEN
+    assert all(q["extra"] is True for q in vragen if "extra" in q)
+
+
+@pytest.mark.parametrize("qid", _INSTELLINGSVRAGEN)
+def test_instellingsvragen_blijven_los_te_beantwoorden(qid):
+    """De vlag verandert niets aan de toetsing: een antwoord op alleen een instellingsvraag blijft geldig."""
+    question = next(q for q in QUESTIONS if q["id"] == qid)
+    answer = [question["options"][0]] if question["type"] == "multi" else (question.get("options") or ["iets"])[0]
+    assert validate_answers({qid: answer}) == {qid: answer}
+
+
 def test_validate_multi_keeps_the_chosen_options_as_a_list():
     assert validate_answers({"dashboardtool": ["Power BI", "Tableau"]}) == {"dashboardtool": ["Power BI", "Tableau"]}
 
