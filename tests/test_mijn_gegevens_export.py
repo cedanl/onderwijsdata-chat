@@ -71,7 +71,9 @@ def _vul(gebruiker: str, uniek: str) -> None:
         dashboard_spec={"titel": f"spec-{uniek}"},
         created_at="2026-10-15T10:00:00Z",
     )
-    db.add_feedback(gebruiker, f"{gebruiker}-w1", "report", f"Rapport {uniek}", {"nuttig": f"4-{uniek}"})
+    db.add_feedback(
+        gebruiker, f"{gebruiker}-w1", "report", f"Rapport {uniek}", {"nuttig": f"4-{uniek}"}, f"Instelling {uniek}"
+    )
     db.add_algemene_feedback(gebruiker, "idee", f"algemeen-{uniek}", "/chat")
     db.upsert_answer_feedback(
         gebruiker, f"{gebruiker}-c1", 1, "omlaag", f"toelichting-{uniek}", {"vraag": f"trace-{uniek}"}
@@ -154,6 +156,7 @@ def test_json_kolommen_zijn_ontleed(client):
     assert dashboard["figures"] is None
     assert dashboard["html_content"] is None
     assert data["feedback"][0]["answers"] == {"nuttig": "4-ANNA-UNIEK"}
+    assert data["feedback"][0]["instelling"] == "Instelling ANNA-UNIEK"
     oordeel = data["answer_feedback"][0]
     assert (oordeel["oordeel"], oordeel["toelichting"]) == ("omlaag", "toelichting-ANNA-UNIEK")
     assert oordeel["trace"] == {"vraag": "trace-ANNA-UNIEK"}

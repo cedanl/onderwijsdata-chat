@@ -80,7 +80,7 @@ def workbooks(username: str) -> Iterator[dict]:
 def feedback(username: str) -> Iterator[dict]:
     """De antwoorden op de vragen bij een rapport of dashboard."""
     for row in _rijen(
-        "SELECT id, workbook_id, report_type, report_title, answers, created_at FROM feedback "
+        "SELECT id, workbook_id, report_type, report_title, instelling, answers, created_at FROM feedback "
         "WHERE username = ? ORDER BY created_at, id",
         (username,),
     ):

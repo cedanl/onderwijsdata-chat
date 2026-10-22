@@ -14,6 +14,8 @@ MAX_TEXT_LENGTH = 2000
 # "Anders" in een meerkeuzevraag: kaal, of "Anders: <wat>" met een korte toelichting.
 OTHER = "Anders"
 MAX_OTHER_LENGTH = 200
+# De instelling die de gebruiker in de app koos, bij de inzending bewaard (kolom feedback.instelling).
+MAX_INSTELLING_LENGTH = 200
 
 QUESTIONS: tuple[dict, ...] = (
     {
@@ -87,6 +89,18 @@ QUESTIONS: tuple[dict, ...] = (
 )
 
 _BY_ID = {q["id"]: q for q in QUESTIONS}
+
+
+def clean_instelling(raw: str | None) -> str:
+    """De gekozen instelling als één nette regel; "" als er geen is.
+
+    De waarde komt uit de browser. Ze mag de feedback nooit laten mislukken, dus bijknippen in plaats van
+    weigeren. Stuurtekens en regelafbrekingen gaan eruit: de naam komt later in CSV en terminal terecht.
+    """
+    if not raw:
+        return ""
+    zonder_sturing = "".join(" " if c.isspace() else c for c in raw if c.isspace() or c.isprintable())
+    return " ".join(zonder_sturing.split())[:MAX_INSTELLING_LENGTH].strip()
 
 
 def _validate_multi(qid: str, question: dict, raw: list) -> list[str]:

@@ -6,6 +6,14 @@ de laatste tag is 1.8.6.
 
 ## Niet uitgebracht
 
+### Feedback
+- Het feedbackformulier op een rapport noemt de instelling die je in de app koos: "Over Hogeschool Utrecht" in
+  plaats van "Over jouw instelling". Heb je geen instelling gekozen, dan blijft het formulier zoals het was; de
+  standaardinstelling van de pagina telt niet als keuze. De gekozen instelling wordt met de inzending bewaard in
+  de nieuwe kolom `feedback.instelling` (leeg zonder keuze, hoogstens 200 tekens, 90 dagen zoals de rest van de
+  feedback) en staat in de export van je gegevens. De kolom komt er bij de eerstvolgende start vanzelf bij; oude
+  rijen houden een lege instelling. `onderwijsdata-chat-feedback.sh` (glab-surf) toont haar mee.
+
 ### Bronnen
 - Afhankelijkheden: `pillow` 12.3.0 → 13.0.0 (acht CVE's; alleen transitief via matplotlib, de app importeert PIL niet) en `certifi` 2026.7.22 → 2026.10.19 (PYSEC-2026-4320). `pip-audit` meldt daarna geen bekende kwetsbaarheden meer.
 - Vijf DUO-datasets (`ho_opleidingsoverzicht`, `overzicht-erkenningen-ho`, `mbo_opleidingsaanbod`,

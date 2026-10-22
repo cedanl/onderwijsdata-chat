@@ -65,6 +65,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
       <WorkbookViewer
         workbook={selected}
         instelling={instelling}
+        gekozenInstelling={settings?.instelling?.trim() || ''}
         onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
         onUpdate={handleUpdate}
         backLabel="Dashboards"

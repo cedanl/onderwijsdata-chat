@@ -9,7 +9,8 @@ vi.mock('../components/InlineDashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 vi.mock('../components/FeedbackModal', () => ({
-  default: ({ onSubmitted }) => createElement('button', { className: 'fake-submit', onClick: onSubmitted }, 'verstuur'),
+  default: ({ onSubmitted, instelling }) =>
+    createElement('button', { className: 'fake-submit', 'data-instelling': instelling, onClick: onSubmitted }, 'verstuur'),
 }))
 
 import WorkbookViewer from '../components/WorkbookViewer'
@@ -67,6 +68,20 @@ describe('feedback button in the report viewer', () => {
     await act(async () => { container.querySelector('.fake-submit').click() })
     expect(feedbackButton()).toBeNull()
     expect(givenBadge()).not.toBeNull()
+  })
+
+  it('hands the form the chosen instelling, never the viewer default', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [])))
+    await render({ instelling: 'Hogeschool Utrecht', gekozenInstelling: 'HAN' })
+    await act(async () => { feedbackButton().click() })
+    expect(container.querySelector('.fake-submit').dataset.instelling).toBe('HAN')
+  })
+
+  it('hands the form no instelling when none was chosen, even though the viewer shows a default', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, [])))
+    await render({ instelling: 'Hogeschool Utrecht' })
+    await act(async () => { feedbackButton().click() })
+    expect(container.querySelector('.fake-submit').dataset.instelling).toBe('')
   })
 
   it('keeps the button when the status cannot be loaded', async () => {

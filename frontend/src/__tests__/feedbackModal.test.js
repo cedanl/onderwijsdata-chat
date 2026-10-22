@@ -76,7 +76,7 @@ describe('FeedbackModal', () => {
     const [url, options] = fetch.mock.calls[1]
     expect(url).toBe('/api/feedback')
     expect(JSON.parse(options.body)).toEqual({
-      workbook_id: 'wb-1', report_type: 'report', report_title: 'Instroom hbo', answers: { nuttig: '4' },
+      workbook_id: 'wb-1', report_type: 'report', report_title: 'Instroom hbo', instelling: '', answers: { nuttig: '4' },
     })
     expect(onSubmitted).toHaveBeenCalledOnce()
   })
@@ -102,6 +102,36 @@ describe('FeedbackModal', () => {
     await render()
     const headings = [...container.querySelectorAll('h3')].map(h => h.textContent)
     expect(headings).toEqual(['Over jouw instelling'])
+  })
+
+  it('names the chosen instelling in the section heading, says it is kept, and posts it along', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+    vi.stubGlobal('fetch', fetch)
+    await render({ instelling: '  Hogeschool Utrecht ' })
+
+    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over Hogeschool Utrecht'])
+    const intro = [...container.querySelectorAll('[role="dialog"] .feedback-intro')].map(p => p.textContent)
+    expect(intro[1]).toBe(
+      'We bewaren je antwoorden, de titel van het rapport en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.',
+    )
+    await act(async () => { container.querySelector('input[value="4"]').click() })
+    await submit()
+    expect(JSON.parse(fetch.mock.calls[1][1].body).instelling).toBe('Hogeschool Utrecht')
+  })
+
+  it.each([undefined, null, '', '   '])('keeps the generic heading when no instelling is chosen (%j)', async instelling => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+    await render({ instelling })
+    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over jouw instelling'])
+  })
+
+  it('leaves a section heading without the placeholder phrase alone', async () => {
+    const vragen = [{ ...QUESTIONS[2], section: 'Over het onderzoek' }]
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, vragen)))
+    await render({ instelling: 'HAN' })
+    expect([...container.querySelectorAll('h3')].map(h => h.textContent)).toEqual(['Over het onderzoek'])
   })
 
   it('lets a multi question take several options, with free text behind Anders', async () => {
