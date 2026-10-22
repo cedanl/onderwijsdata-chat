@@ -26,6 +26,15 @@ de laatste tag is 1.8.6.
   feedback) en staat in de export van je gegevens. De kolom komt er bij de eerstvolgende start vanzelf bij; oude
   rijen houden een lege instelling. `onderwijsdata-chat-feedback.sh` (glab-surf) toont haar mee.
 
+### Rapporten (#660)
+- De HTML van rapporten en dashboards (viewer en download) laadt een eigen Plotly-build zonder maplibre: 3,3 MB in
+  plaats van 4,8 MB, dus een gedownload rapport is ongeveer 1,5 MB kleiner. Een kaart in een rapport tekent sinds
+  #642 als SVG en had maplibre niet meer nodig; met maplibre is ook de verwijzing naar `cdn.jsdelivr.net` (de
+  maki-iconen van `scattermap`) uit rapporten en downloads weg. De andere grafieksoorten blijven. `npm run build`
+  maakt het asset (`assets/plotly-rapport.min-<hash>.js`, Vite-plugin in `frontend/src/plotlyRapportBouw.js`); een
+  opgeslagen rapport krijgt het bij het tonen, zonder migratie. De chat houdt de volledige Plotly. Een `scattermap`
+  of `densitymap` in een rapport geeft een lege grafiek (getekend werd hij in de sandbox en vanaf schijf al niet).
+
 ### Bronnen
 - Afhankelijkheden: `pillow` 12.3.0 → 13.0.0 (acht CVE's; alleen transitief via matplotlib, de app importeert PIL niet) en `certifi` 2026.7.22 → 2026.10.19 (PYSEC-2026-4320). `pip-audit` meldt daarna geen bekende kwetsbaarheden meer.
 - Vijf DUO-datasets (`ho_opleidingsoverzicht`, `overzicht-erkenningen-ho`, `mbo_opleidingsaanbod`,

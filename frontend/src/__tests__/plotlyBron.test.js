@@ -31,6 +31,20 @@ describe('plotlyBron (#486)', () => {
     expect(nieuw).toContain('<div id="rp1"></div>')
   })
 
+  it('herschrijft een rapport met de volledige Plotly van een eerdere build naar die zonder maplibre (#660)', () => {
+    expect(PLOTLY_URL).toContain('plotly-rapport')
+    const kaartscript = kaartAlsSvgScript()
+    const naKaart = `<head><script src="/assets/plotly.min-Ab12Cd34.js"></script>${kaartscript}</head><div id="k"></div>`
+    const nieuw = metEigenPlotly(naKaart)
+    expect(nieuw).not.toContain('plotly.min-Ab12Cd34')
+    expect(nieuw).toBe(`<head><script src="${PLOTLY_URL}"></script>${kaartscript}</head><div id="k"></div>`)
+    // Van vóór #642: nog zonder kaartscript; dat komt er één keer achter.
+    const voorKaart = metEigenPlotly('<head><script src="/assets/plotly.min-Ab12Cd34.js"></script></head>')
+    expect(voorKaart).toBe(`<head>${plotlyScript()}</head>`)
+    expect(voorKaart.split(PLOTLY_URL)).toHaveLength(2)
+    expect(voorKaart.split('__kaartAlsSvg=true')).toHaveLength(2)
+  })
+
   it('laat HTML zonder Plotly en HTML van deze build met rust', () => {
     expect(metEigenPlotly('<p>alleen tekst</p>')).toBe('<p>alleen tekst</p>')
     expect(metEigenPlotly(null)).toBeNull()
