@@ -32,6 +32,37 @@ def test_index_html_wordt_altijd_opnieuw_gevraagd(tmp_path):
         assert resp.headers["cache-control"] == "no-cache"
 
 
+def _client_met_pwa(tmp_path) -> TestClient:
+    (tmp_path / "icons").mkdir()
+    (tmp_path / "icons" / "icon-192.png").write_bytes(b"\x89PNG")
+    (tmp_path / "manifest.webmanifest").write_text('{"name": "EDUdata"}')
+    return _client(tmp_path)
+
+
+def test_manifest_heeft_het_manifest_type_en_is_altijd_vers(tmp_path):
+    """#669: zonder de route vangt de catch-all het pad en krijgt de browser index.html."""
+    client = _client_met_pwa(tmp_path)
+    for methode in (client.get, client.head):
+        resp = methode("/manifest.webmanifest")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/manifest+json")
+        assert resp.headers["cache-control"] == "no-cache"
+    assert client.get("/manifest.webmanifest").json() == {"name": "EDUdata"}
+
+
+def test_icoon_blijft_een_week_in_de_cache_maar_is_niet_immutable(tmp_path):
+    resp = _client_met_pwa(tmp_path).get("/icons/icon-192.png")
+    assert resp.status_code == 200
+    assert resp.headers["cache-control"] == "public, max-age=604800"
+
+
+def test_dist_zonder_manifest_en_icons_start_en_geeft_geen_spa_als_manifest(tmp_path):
+    # Een dist van vóór #669: de app start nog, en een browser krijgt geen index.html als manifest.
+    resp = _client(tmp_path).get("/manifest.webmanifest")
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": NIET_GEVONDEN}
+
+
 def test_ontbrekende_asset_is_404_en_niet_de_spa(tmp_path):
     resp = _client(tmp_path).get("/assets/bestaat-niet.js")
     assert resp.status_code == 404
