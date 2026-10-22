@@ -26,6 +26,7 @@ from .aanspreekvorm import in_je_vorm, je_vorm
 from .antwoordtaal import Taal, taal, taalinstructie, verkeerde_antwoordtaal
 from .beweringen import onbeschikbaar_zonder_zoekpad, ongedekte_oorzaak
 from .binding import verkeerd_gebonden
+from .bronkeuze import met_bronregel
 from .bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_bronnensectie, zonder_eigen_bronnen
 from .budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
 from .citaties import citaties
@@ -461,7 +462,8 @@ async def _vroeg_einde(
 
 
 def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronnen: list[str]) -> str:
-    """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling.
+    """De modeltekst in de vorm van de app: zonder eigen Bronnen als de app ze geeft, met Telling en de regel over de
+    bronkeuze van een vaste maat (#667).
 
     Alleen een antwoord dat niet Engels is, krijgt de Nederlandse getalnotatie (#326) en de je-vorm (#536);
     de taal komt van `_antwoordtaal`, net als in de controle. Een eigen Bronnen-sectie die blijft, citeert
@@ -469,7 +471,7 @@ def _antwoordtekst(result: LoopResult, antwoord: str, earlier: list[str], bronne
     tekst = zonder_citaatkop(zonder_toolnamen(zonder_eigen_bronnen(antwoord, bronnen)))
     if _antwoordtaal(antwoord) != "en":
         tekst = buiten_bronnensectie(nl_notatie(tekst, result.steps, earlier), in_je_vorm)
-    return met_telling(tekst, result.tool_results)
+    return met_bronregel(met_telling(tekst, result.tool_results), result.steps)
 
 
 def _vast_antwoord(result: LoopResult, antwoord: str, vraag: str, earlier: list[str], session: dict) -> str | None:

@@ -187,3 +187,44 @@ dezelfde vraag gaf een ander getal (op 85569NED 157.450 of 155.270 mbo-instromer
   een andere dimensie, en hebben dus niets te kiezen. De lijst is op 21-10-2026 nagegaan tegen alle
   opvraagbare CBS-tabellen van de catalogus; `tests/test_cbs_standaard.py` controleert dat elke tabel uit de
   code hier staat.
+
+## CBS: vmbo → mbo, één vaste bron
+
+Dezelfde vraag "hoeveel leerlingen stromen van het vmbo door naar het mbo?" kreeg in verschillende runs een andere
+bron: CBS 85569NED (83.020 in 2025/26) of DUO "Instromende mbo-studenten" (96.629 in 2025). Beide getallen klopten;
+ze tellen iets anders. Nu kiest de code de bron (#667, #191): de vaste maat `doorstroom_vmbo_mbo` in
+[`tools/maten.py`](https://github.com/cedanl/onderwijsdata-chat/blob/main/tools/maten.py). Elk antwoord dat op die
+maat rust, eindigt met een regel uit code, "**Bron en definitie:** …", die de gekozen bron en het alternatief elk met
+hun definitie noemt (`agent/bronkeuze.py`).
+
+**De beslissing is nog open.** Gebouwd is optie A (vaste bron CBS) met optie B (het alternatief als tekstregel), de
+aanbeveling uit #667. Kiest de gebruiker anders, dan verandert alleen het recept `DOORSTROOM_VMBO_MBO`.
+
+**Gekozen: CBS 85569NED**, per schooljaar, landelijk:
+
+| Dimensie | Code |
+|---|---|
+| `MaatschappelijkePositie1JaarEerder` | `A041923` Vmbo-b/k 3-4 totaal + `A041922` Vmbo-g/t 3-4, opgeteld in code |
+| `Leerweg` | de standaard van de tabel (hierboven): `A025290` incl. extranei, `A041867` als het gesprek extranei uitsluit |
+| `Geslacht`, `Niveau`, `Sectorkamer`, `Persoonskenmerken` | het totaal (`T001038`, `T001336`, `T001637`, `T001638`) |
+
+Waarom deze: de vraag gaat over leerlingen die doorstromen, de tabel heeft een gelijke reeks vanaf 2018/19 en de
+eerdere rondes gebruikten haar. CBS telt mbo-instromers die een jaar eerder in vmbo-leerjaar 3-4 zaten, met of zonder
+diploma. Beide codes zijn losse delen van het totaal instromers; het totaal `T001357` telt niet mee. CBS rondt af op
+tientallen, dus de som van de twee kan tot 10 afwijken van een exacte telling. Ontbreekt een van de codes in een jaar,
+dan krijgt dat jaar geen som.
+
+**Alternatief: DUO `instromende-mbo-studenten`**, alleen als de gebruiker erom vraagt (via `get_duo_data`, met de
+gewone gronding). Het recept zoals in #667 nagerekend (22-10-2026, 96.629 voor 2025):
+
+- het bestand "met soorten instroom";
+- rijen met `VOOROPLEIDING VO` die "vmbo" bevat en niet "ongediplomeerd" (de gemengde leerweg telt mee);
+- `INSTROOM MBO` = J en `AANTAL` > 0: de cellen met -1 (1 tot en met 4, onderdrukt) vallen weg;
+- per `INSTROOM VO`: direct (diploma het jaar ervoor) en indirect (eerder diploma of een andere route), samen.
+
+Het DUO-getal is een ondergrens: ongeveer 3.700 vmbo-cellen staan op -1. Het telt instromers met een vmbo-diploma;
+CBS telt wie een jaar eerder in vmbo-leerjaar 3-4 zat. Daarom ligt het DUO-getal hoger (ongeveer 16%). Niet
+nagegaan: de vergelijking met het getal op de DUO-website en andere jaren dan 2025.
+
+`tests/test_doorstroom_vmbo_mbo.py` toetst de maat, de regel en deze sectie; `tests/test_maten_ijk.py` de live
+waarden (83.020 incl. en 82.780 excl. extranei voor 2025/26).

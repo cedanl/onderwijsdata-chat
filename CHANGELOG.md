@@ -205,6 +205,12 @@ de laatste tag is 1.8.6.
   het model noemt de andere telling alleen als de gebruiker erom vraagt, en dan met een citatie. Past de aanroep
   met twee totalen niet in een pagina of weigert de bron hem, dan valt `get_cbs_data` terug op de standaard alleen,
   zonder alternatief.
+- "Vmbo → mbo" heeft één vaste bron (#667). Dezelfde vraag kreeg CBS 85569NED (83.020) of DUO "Instromende
+  mbo-studenten" (96.629): beide juist, met een andere definitie. Nu is het de vaste maat `doorstroom_vmbo_mbo` van
+  `get_maat`: CBS 85569NED, mbo-instromers die een jaar eerder in vmbo-leerjaar 3-4 zaten, met de extranei-standaard
+  van #653. Het antwoord eindigt met een regel uit code, "**Bron en definitie:**", die ook de DUO-telling (met een
+  vmbo-diploma, direct en indirect) en haar definitie noemt. De keuze tussen de opties uit #667 ligt nog bij de
+  gebruiker; gebouwd is optie A met B als tekstregel (`docs/domeinregels.md`).
 - De kaart (`create_choropleth_map`) tekent nu ook met namen: DUO-kolommen als `PROVINCIE INSTELLING` en
   `GEMEENTE INSTELLING` en elke groepering op een naamkolom, in elke spelling (`'S-GRAVENHAGE`, `HENGELO` voor
   Hengelo (O.), een gemeentenummer). Zonder codes in de kolom gaf de kaart eerder een lege figuur met de melding

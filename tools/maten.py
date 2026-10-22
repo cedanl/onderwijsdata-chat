@@ -20,14 +20,14 @@ inschrijvingen (p03) alleen op expliciete vraag, en dan met vermelding.
 import json
 import logging
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, ClassVar
 
 import pandas as pd
 
 from data import instellingen
 
-from . import cbs_selectie, duo, periode, store
+from . import cbs_selectie, cbs_standaard, duo, periode, store
 from .catalog import tabelbestanden
 from .cbs import get_cbs_data
 from .duo import get_duo_data
@@ -102,13 +102,66 @@ class CbsRecept:
     bron: ClassVar[str] = "cbs"
 
 
-Recept = DuoRecept | DuoBreedRecept | CbsRecept
+@dataclass(frozen=True)
+class AlternatieveBron:
+    """Een andere bron voor dezelfde vraag, met een andere definitie: de app noemt haar onder het antwoord (#667)."""
+
+    naam: str
+    dataset: str
+    bestand: str
+    definitie: str
+    gebruik: str
+
+
+@dataclass(frozen=True)
+class CbsSomRecept:
+    """Een landelijke CBS-maat die de som is van vaste codes in één dimensie (#667).
+
+    De codes zijn losse delen van hetzelfde totaal, dus de code telt ze op, niet het model. Elke andere dimensie ligt
+    op een vaste code; een dimensie met een standaardselectie (`cbs_standaard`, #653) volgt die, met de uitsluiting
+    uit het gesprek. De bronkeuze staat in dit ene recept: een andere keuze is een ander recept.
+    """
+
+    naam: str
+    omschrijving: str
+    dataset: str
+    teldefinitie: str
+    onderwerp: str
+    somdimensie: str
+    somcodes: tuple[str, ...]
+    vast: Mapping[str, str]
+    alternatieve_bron: AlternatieveBron
+    sectoren: tuple[str, ...] = ("mbo",)
+    vormen: Mapping[str, str] = field(default_factory=lambda: {ALLE: ALLE})
+    bron: ClassVar[str] = "cbs"
+
+
+Recept = DuoRecept | DuoBreedRecept | CbsRecept | CbsSomRecept
+CbsRecepten = (CbsRecept, CbsSomRecept)
 
 PERSONEN_HO = "ingeschreven_personen_ho"
 INSCHRIJVINGEN_HO = "inschrijvingen_ho"
 EERSTEJAARS_HO = "eerstejaars_ho"
 DEELNEMERS_HO_LANDELIJK = "deelnemers_ho_landelijk"
 MBO_STUDENTEN = "mbo_studenten_instelling"
+DOORSTROOM_VMBO_MBO = "doorstroom_vmbo_mbo"
+
+# Vmbo → mbo (#667): dezelfde vraag kreeg CBS 85569NED (83.020) of DUO "Instromende mbo-studenten" (96.629). Beide
+# klopten, met een andere definitie. De code kiest CBS; DUO komt als alternatief in de regel onder het antwoord.
+_VMBO_3_4 = ("A041923", "A041922")  # Vmbo-b/k 3-4 totaal, Vmbo-g/t 3-4: losse delen, samen het vmbo in leerjaar 3-4
+_DUO_INSTROOM_MBO = AlternatieveBron(
+    naam="DUO 'Instromende mbo-studenten'",
+    dataset="instromende-mbo-studenten",
+    bestand="het bestand met soorten instroom",
+    definitie=(
+        "mbo-instromers met een vmbo-diploma (gemengde leerweg inbegrepen, ongediplomeerden niet), direct na het "
+        "diploma of indirect (later of via een andere route), direct en indirect samen"
+    ),
+    gebruik=(
+        "Alleen als de gebruiker om de DUO-telling of de diplomaroute vraagt: dan get_duo_data op dit bestand, "
+        "met de gewone gronding. De app zet de bron, de definitie en dit alternatief zelf onder het antwoord."
+    ),
+)
 
 MATEN: dict[str, Recept] = {
     PERSONEN_HO: DuoRecept(
@@ -145,6 +198,24 @@ MATEN: dict[str, Recept] = {
         "mbo-studenten-per-instelling",
         "hoofdinschrijvingen op 1 oktober: bol en bbl (bekostigd en niet-bekostigd) en examendeelnemers "
         "(DUO mbo-studenten-per-instelling)",
+    ),
+    DOORSTROOM_VMBO_MBO: CbsSomRecept(
+        DOORSTROOM_VMBO_MBO,
+        "doorstroom vmbo → mbo landelijk, per schooljaar: mbo-instromers uit vmbo-leerjaar 3-4 (CBS)",
+        "85569NED",
+        "mbo-instromers met als positie vmbo-leerjaar 3-4 een jaar eerder (vmbo-b/k en vmbo-g/t, met of zonder "
+        "vmbo-diploma), landelijk; de som van twee door CBS op tientallen afgeronde aantallen",
+        "InstromersTotaal_1",
+        "MaatschappelijkePositie1JaarEerder",
+        _VMBO_3_4,
+        {
+            "Geslacht": "T001038",
+            "Niveau": "T001336",
+            "Leerweg": "A025290",  # de standaard van de tabel (#653): cbs_standaard.keuze beslist per gesprek
+            "Sectorkamer": "T001637",
+            "Persoonskenmerken": "T001638",
+        },
+        _DUO_INSTROOM_MBO,
     ),
 }
 
@@ -191,6 +262,16 @@ def _bestand(dataset: str, woorden: tuple[str, ...]) -> int | None:
     return None
 
 
+def _somplan(recept: CbsSomRecept, instelling, sector, vorm: str, jaren: tuple[int, ...]) -> Plan | str:
+    """Een landelijke maat voor één sector: de sector volgt uit het recept, een instelling is een fout (geen gok)."""
+    if instelling and str(instelling).strip():
+        return f"{recept.naam} is landelijk; per instelling of regio is er geen vaste maat. Laat de instelling weg."
+    sector = str(sector or recept.sectoren[0]).strip().lower()
+    if sector not in recept.sectoren:
+        return f"{recept.naam} geldt voor {'/'.join(recept.sectoren)}, niet voor {sector}."
+    return Plan(recept, sector, vorm, jaren, None, None)
+
+
 def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None) -> Plan | str:
     """Het plan voor een maat en afbakening, of de fout als tekst voor het model. Geen gok."""
     recept = MATEN.get(str(maat or "").strip().lower())
@@ -202,6 +283,8 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None) -> Pla
     jaren = _jaren(schooljaren)
     if isinstance(jaren, str):
         return jaren
+    if isinstance(recept, CbsSomRecept):
+        return _somplan(recept, instelling, sector, vorm, jaren)
     if isinstance(recept, CbsRecept):
         sector = str(sector or "").strip().lower()
         if sector not in recept.sectoren:
@@ -230,7 +313,7 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None) -> Pla
 def filters(p: Plan) -> dict:
     """De query_data-filters van een DUO-plan: instellingscode, vorm (tenzij alle) en schooljaren."""
     recept = p.recept
-    assert not isinstance(recept, CbsRecept) and p.instelling is not None
+    assert not isinstance(recept, CbsRecepten) and p.instelling is not None
     uit: dict[str, Any] = {recept.instellingskolom: p.instelling["instellingscode"]}
     if isinstance(recept, DuoRecept) and p.vorm != ALLE:
         uit[recept.vormkolom] = recept.vormen[p.vorm]
@@ -250,9 +333,16 @@ def aggregate(p: Plan) -> dict[str, str]:
 def selectie(p: Plan) -> dict:
     """De gesloten CBS-selectie van een landelijk plan (#343): elke dimensie gepind."""
     r = p.recept
-    assert isinstance(r, CbsRecept)
+    if isinstance(r, CbsSomRecept):
+        dimensies = {**r.vast, r.somdimensie: list(r.somcodes)}
+        if standaard := cbs_standaard.keuze(r.dataset):
+            dimensie, code, _ = standaard
+            dimensies[dimensie] = code
+    else:
+        assert isinstance(r, CbsRecept)
+        dimensies = {r.sectordimensie: r.sectorcodes[p.sector], r.vormdimensie: r.vormen[p.vorm], **r.vast}
     return {
-        "dimensies": {r.sectordimensie: r.sectorcodes[p.sector], r.vormdimensie: r.vormen[p.vorm], **r.vast},
+        "dimensies": dimensies,
         "periode": [periode.label(j) for j in p.jaren] or cbs_selectie.ALLES,
         "onderwerpen": [r.onderwerp],
         "sector": p.sector,
@@ -292,7 +382,7 @@ def _met_totaal(querykey: str, p: Plan) -> tuple[str, list[dict]]:
 
 def _duo(p: Plan) -> dict | str:
     r = p.recept
-    assert not isinstance(r, CbsRecept)
+    assert not isinstance(r, CbsRecepten)
     geladen = _json(get_duo_data(r.dataset, p.bestand))
     if not isinstance(geladen, dict) or "data_key" not in geladen:
         return _melding(geladen)
@@ -323,13 +413,48 @@ def _duo(p: Plan) -> dict | str:
     return uit
 
 
+def _somlabel(df: pd.DataFrame, r: CbsSomRecept) -> str:
+    """De labels van de opgetelde codes, in de volgorde van het recept; de code zelf als de bron geen label gaf."""
+    labelkolom = f"{r.somdimensie}_label"
+    labels = dict(zip(df[r.somdimensie], df[labelkolom], strict=True)) if labelkolom in df.columns else {}
+    return " + ".join(str(labels.get(code) or code) for code in r.somcodes)
+
+
+def _met_som(querykey: str, p: Plan) -> str | None:
+    """De som van de codes per periode, als eigen key afgeleid van de selectie; None als de bron er een mist.
+
+    Elke andere dimensie ligt vast, dus per periode staat er één rij per code. Ontbreekt een code of zijn waarde, dan
+    geen som van een deel: die periode krijgt geen getal (min_count). Het label noemt de opgetelde codes, zodat de
+    Telling- en Uitgangspunt-regel zeggen wat er opgeteld is.
+    """
+    r = p.recept
+    assert isinstance(r, CbsSomRecept)
+    df = store.get(querykey)
+    labelkolom = f"{r.somdimensie}_label"
+    per = [c for c in df.columns if c not in (r.somdimensie, labelkolom, r.onderwerp)]
+    som = df.groupby(per, dropna=False, sort=True)[r.onderwerp].sum(min_count=len(r.somcodes)).reset_index()
+    som = som.assign(**{r.somdimensie: " + ".join(r.somcodes), labelkolom: _somlabel(df, r)})
+    som = som[[c for c in df.columns if c in som.columns]]
+    if som[r.onderwerp].isna().all():
+        return None
+    key = f"{querykey}:{r.naam}"
+    stap = f"recept {r.naam}: {r.onderwerp} = som van {r.somdimensie} {' + '.join(r.somcodes)}"
+    store.derive(querykey, key, som, stap=stap)
+    return key
+
+
 def _cbs(p: Plan) -> dict | str:
     r = p.recept
-    assert isinstance(r, CbsRecept)
+    assert isinstance(r, CbsRecepten)
     geladen = _json(get_cbs_data(r.dataset, selectie=selectie(p)))
     if not isinstance(geladen, dict) or "data_key" not in geladen:
         return _melding(geladen)
-    key = geladen["data_key"]
+    key: str = geladen["data_key"]
+    if isinstance(r, CbsSomRecept):
+        somkey = _met_som(key, p)
+        if somkey is None:
+            return f"{r.dataset} gaf niet voor elke code van {r.naam} een getal ({', '.join(r.somcodes)}); geen som."
+        key = somkey
     df = store.get(key)
     known = store.meta(key)
     tijd = (known.periodekolom if known else None) or "Perioden"
@@ -342,12 +467,12 @@ def _cbs(p: Plan) -> dict | str:
 
 
 def _periodekolom(p: Plan) -> str:
-    return "Perioden" if isinstance(p.recept, CbsRecept) else p.recept.periodekolom
+    return "Perioden" if isinstance(p.recept, CbsRecepten) else p.recept.periodekolom
 
 
 def _waardekolom(p: Plan) -> str:
     r = p.recept
-    if isinstance(r, CbsRecept):
+    if isinstance(r, CbsRecepten):
         return r.onderwerp
     return AANTAL if isinstance(r, DuoBreedRecept) else r.waardekolom
 
@@ -365,9 +490,20 @@ def _recept(p: Plan) -> dict:
     """Wat de code koos, voor het model en de redeneerkaart: geen gok die onzichtbaar blijft."""
     r = p.recept
     uit: dict[str, Any] = {"bron": r.bron, "dataset": r.dataset}
+    if isinstance(r, CbsSomRecept):
+        return {**uit, "selectie": selectie(p), "som": {r.somdimensie: list(r.somcodes)}}
     if isinstance(r, CbsRecept):
         return {**uit, "selectie": selectie(p)}
     return {**uit, "bestand": p.bestand, "filters": filters(p), "per": r.periodekolom, "som": aggregate(p)}
+
+
+def _teldefinitie(p: Plan) -> str:
+    """De teldefinitie van het recept; bij een som met een standaardselectie ook de telling die geladen is."""
+    r = p.recept
+    if isinstance(r, CbsSomRecept) and (standaard := cbs_standaard.keuze(r.dataset)):
+        dimensie, _, label = standaard
+        return f"{r.teldefinitie}; {dimensie}: {label}"
+    return r.teldefinitie
 
 
 def get_maat(
@@ -381,7 +517,7 @@ def get_maat(
     p = plan(maat, instelling, sector, vorm, schooljaren)
     if isinstance(p, str):
         return p
-    uit = _cbs(p) if isinstance(p.recept, CbsRecept) else _duo(p)
+    uit = _cbs(p) if isinstance(p.recept, CbsRecepten) else _duo(p)
     if isinstance(uit, str):
         return uit
     r = p.recept
@@ -389,7 +525,7 @@ def get_maat(
     result: dict[str, Any] = {
         "data_key": uit.pop("data_key"),
         "maat": r.naam,
-        "teldefinitie": r.teldefinitie,
+        "teldefinitie": _teldefinitie(p),
         **({"instelling": p.instelling} if p.instelling else {"sector": p.sector}),
         "vorm": p.vorm,
         "periodekolom": _periodekolom(p),
@@ -406,4 +542,6 @@ def get_maat(
             "Dit zijn inschrijvingen (hoofd- én neveninschrijvingen), geen personen: zeg dat in het antwoord. "
             f"Voor personen (studenten): {PERSONEN_HO}."
         )
+    if isinstance(r, CbsSomRecept):
+        result["alternatieve_bron"] = asdict(r.alternatieve_bron)
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)

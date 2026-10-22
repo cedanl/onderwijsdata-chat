@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tools import cbs_standaard
 from tools.maten import get_maat
 
 pytestmark = pytest.mark.skipif(not os.getenv("ONDERWIJSDATA_LIVE"), reason="live bronnen: zet ONDERWIJSDATA_LIVE=1")
@@ -60,3 +61,19 @@ def test_hu_inschrijvingen_voltijd(jaar):
 def test_landelijk_cbs(id, sector, vorm, jaar):
     uit = get_maat("deelnemers_ho_landelijk", sector=sector, vorm=vorm, schooljaren=[str(jaar)])
     assert _rij(uit, "Perioden", jaar) == _IJK[id]["waarde"]
+
+
+# Vmbo → mbo (#667): rechtstreeks bij CBS nagerekend op 22-10-2026 (85569NED, 2025SJ00, A041923 + A041922).
+_VMBO_MBO_2025 = {"incl": 39940 + 43080, "excl": 39740 + 43040}
+
+
+def test_doorstroom_vmbo_mbo_inclusief_extranei():
+    with cbs_standaard.gesprek(["Hoeveel leerlingen stromen door van het vmbo naar het mbo?"]):
+        uit = get_maat("doorstroom_vmbo_mbo", schooljaren=["2025/26"])
+    assert _rij(uit, "Perioden", 2025) == _VMBO_MBO_2025["incl"] == 83020
+
+
+def test_doorstroom_vmbo_mbo_zonder_extranei():
+    with cbs_standaard.gesprek(["Hoeveel leerlingen stromen door van het vmbo naar het mbo, zonder extranei?"]):
+        uit = get_maat("doorstroom_vmbo_mbo", schooljaren=["2025/26"])
+    assert _rij(uit, "Perioden", 2025) == _VMBO_MBO_2025["excl"] == 82780

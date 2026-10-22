@@ -269,9 +269,9 @@ per sessie anders, verkeerd schooljaar) is zo een beslissing van code.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling) |
+| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling), `doorstroom_vmbo_mbo` (CBS 85569NED, landelijk) |
 | `instelling` | string | Officiële naam of alias; het register (`data/instellingen.py`) geeft code en sector. Onbekend is een fout, geen gok |
-| `sector` | string | Alleen landelijk: `hbo` of `wo` |
+| `sector` | string | Alleen bij `deelnemers_ho_landelijk`: `hbo` of `wo` |
 | `vorm` | string | `alle` (standaard), `voltijd`, `deeltijd`, `duaal` (ho) of `bol`, `bbl` (mbo) |
 | `schooljaren` | array | `2024/25` of `2024`; weglaten voor alle beschikbare |
 
@@ -280,7 +280,10 @@ vorm (`VT`/`DT`/`DU`, bij CBS `A028666`…), de vaste CBS-totaalcodes (fase, ges
 laadt en selecteert met `get_duo_data`/`get_cbs_data` en `query_data`, dus scopegrens, sentinelmaskering, afronding
 en KeyMeta gelden gewoon. Het resultaat: `data_key` met één rij per studiejaar, `teldefinitie`, `recept` (wat de
 code koos), `periodekolom`/`waardekolom`, en `ontbrekende_schooljaren` als de bron een gevraagd jaar niet heeft.
-Bij mbo is `AANTAL` de som van de leerwegkolommen van de vorm, als eigen key. Een key uit `get_maat` komt na een
+Bij mbo is `AANTAL` de som van de leerwegkolommen van de vorm, als eigen key. `doorstroom_vmbo_mbo` (#667) is de
+som van twee vmbo-posities een jaar eerder (`A041923` + `A041922`) in CBS 85569NED, ook als eigen key; het resultaat
+heeft `alternatieve_bron` (DUO "Instromende mbo-studenten") en het antwoord eindigt met een regel uit code over de
+bron, de definitie en dat alternatief (zie `docs/domeinregels.md`). Een key uit `get_maat` komt na een
 herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snippet is het recept als script.
 
 **Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
