@@ -1,10 +1,11 @@
 // Plotly voor de HTML van rapporten en dashboards komt van de eigen server (#486, privacy M3/L1):
-// de gebundelde plotly.js, door Vite als los asset uitgeleverd (/assets/plotly.min-<hash>.js, een
-// jaar cachebaar). Vóór #486 laadde de opgeslagen HTML het script van cdn.plot.ly, waardoor elke
-// kijker IP, user-agent en referrer naar een Amerikaanse CDN stuurde; en de CDN-versie moest met
-// de hand gelijk blijven aan de gebundelde versie die de figuur-JSON maakt. Oude HTML wordt bij het
-// tonen herschreven (metEigenPlotly); de download krijgt Plotly inline (offlineHtml.js).
-import plotlyUrl from 'plotly.js/dist/plotly.min.js?url'
+// een eigen build van plotly.js zonder maplibre, door Vite als los asset uitgeleverd
+// (/assets/plotly-rapport.min-<hash>.js, een jaar cachebaar; plotlyRapportBouw.js, #660). Vóór #486
+// laadde de opgeslagen HTML het script van cdn.plot.ly, waardoor elke kijker IP, user-agent en
+// referrer naar een Amerikaanse CDN stuurde; en de CDN-versie moest met de hand gelijk blijven aan
+// de gebundelde versie die de figuur-JSON maakt. Oude HTML (CDN of een eerdere eigen build) wordt
+// bij het tonen herschreven (metEigenPlotly); de download krijgt Plotly inline (offlineHtml.js).
+import plotlyUrl from 'virtual:plotly-rapport'
 import { heeftKaartAlsSvg, kaartAlsSvgScript } from './kaartRapport'
 
 export const PLOTLY_URL = plotlyUrl
