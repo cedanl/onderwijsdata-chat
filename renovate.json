@@ -22,6 +22,17 @@
       ]
     },
     {
+      "description": "Python minor-bumps (3.14 -> 3.15) wachten tot de wheels er zijn: fastuuid (via litellm) heeft nog geen cp315-wheel en python:slim heeft geen cc. Patch en digest blijven automatisch. Zie !630.",
+      "enabled": false,
+      "matchDepNames": [
+        "python"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ]
+    },
+    {
       "description": "ESLint major versions blocked: v10 incompatible with eslint-plugin-jsx-a11y@6 (waits for v7). See 9bf3db6 + #28.",
       "enabled": false,
       "matchUpdateTypes": [
