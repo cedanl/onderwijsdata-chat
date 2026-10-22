@@ -12,6 +12,10 @@ const VRAAG_LANG_WOORD = 'Wat betekent dit woord? ' + 'onderwijsdata'.repeat(250
 const VRAAG_URL = 'Waar staat de tabel?'
 const VRAAG_TABEL = 'Zet alles in een tabel.'
 const VRAAG_CIJFERS = 'Hoeveel studenten zijn er per niveau?'
+const VRAAG_TABEL_RIJ = 'Zet de studenten per sector in een tabel.'
+// #661: kort genoeg om op één regel te passen, lang genoeg dat een extra 30 px naast de bubbel hem opzij duwt.
+const VRAAG_KORT = 'Toon de studenten per niveau'
+const VRAAG_WACHT = 'Wacht even.'
 const VRAAG_KOPIEER = 'Geef alleen de getallen.'
 const VRAAG_GRAFIEK = 'Toon de studenten per niveau in een grafiek.'
 
@@ -52,6 +56,16 @@ const CIJFERS = [
   ['489.430', 'hbo, 2022'], ['511.002', 'mbo, 2023'], ['497.001', 'hbo, 2023'],
 ].map(([getal, selectie]) => citatie(getal, selectie))
 
+// Eén getal per tabelrij (#662): de rijen staan dichter op elkaar dan een tikvlak, dus elk getal is gestapeld.
+const TABEL_RIJ_CIJFERS = [
+  ['Economie', '120.450'], ['Techniek', '98.310'], ['Zorg en welzijn', '143.220'], ['Landbouw', '21.004'],
+  ['Gedrag en maatschappij', '33.870'],
+]
+const TABEL_RIJ = [
+  '| Sector | Studenten |', '|---|---|', ...TABEL_RIJ_CIJFERS.map(([sector, getal]) => `| ${sector} | ${getal} |`),
+].join('\n')
+const CIJFERS_RIJ = TABEL_RIJ_CIJFERS.map(([sector, getal]) => citatie(getal, `mbo, ${sector.toLowerCase()}`))
+
 // Een alinea vol getallen: de bovenste regel loopt op desktop onder de kopieerknop van het antwoord door. Op een
 // telefoon hangt die knop in de goot naast de tekstkolom (#623), zodat er geen getal meer onder ligt.
 const KOPIEER_GETALLEN = Array.from({ length: 60 }, (_, i) => `1.${String(i + 1).padStart(3, '0')}`)
@@ -83,6 +97,10 @@ const ANTWOORDEN = {
   [VRAAG_URL]: antwoord(`Je vindt de tabel hier: ${LANGE_URL}\n\nDaar staat ook de toelichting bij de cijfers.`),
   [VRAAG_TABEL]: antwoord(BREDE_TABEL),
   [VRAAG_CIJFERS]: antwoord(CIJFERS_TEKST, { citaties: CIJFERS }),
+  [VRAAG_KORT]: antwoord('Het mbo is het grootst, het hbo volgt kort daarna en het wo is het kleinst.'),
+  // Geen message_end: de app blijft bezig, zoals midden in een antwoord.
+  [VRAAG_WACHT]: [{ type: 'message_start' }, { type: 'text_delta', content: 'Een moment' }],
+  [VRAAG_TABEL_RIJ]: antwoord(TABEL_RIJ, { citaties: CIJFERS_RIJ }),
   [VRAAG_KOPIEER]: antwoord(KOPIEER_GETALLEN.join(' '), { citaties: KOPIEER_GETALLEN.map(g => citatie(g, 'mbo')) }),
   [VRAAG_GRAFIEK]: antwoord(GRAFIEK_TEKST, {
     stap: "df = cbs.get_data('85423NED')\nprint(df.groupby('niveau').sum())", figuur: FIGUUR,
@@ -196,6 +214,45 @@ for (const [naam, apparaat, aanraking] of TOESTELLEN) {
       expect(uitslag.missersBereik).toEqual([])
       // Gestapelde getallen: de bewuste ondergrens is het eigen vak van het getal, onderste helft inbegrepen.
       expect(uitslag.missersEigenVak).toEqual([])
+    })
+
+    // #662: in een tabel met één getal per rij liggen de middens minder dan een tikvlak uit elkaar (op een telefoon 26 px,
+    // een vlak van 44 px). Een punt 20 px onder een getal ligt dan in het eigen vak van het getal eronder en hoort daar
+    // bij; dat is de bewuste ondergrens van #611, geen gemist tikvlak. Wat wel moet: elk punt in het eigen vak, de
+    // zijkanten en de boven- en onderrand inbegrepen, raakt dat getal en niet de cel of rij eromheen.
+    test('een getal in een tabelrij met één getal per rij blijft in zijn eigen vak te raken (#662)', async ({ page }) => {
+      await stuur(page, VRAAG_TABEL_RIJ)
+      await expect(page.locator('.tabel-scroll .citatie-getal')).toHaveCount(CIJFERS_RIJ.length)
+      const uitslag = await page.evaluate(meetCitaten, { bereik, tik: TIK })
+      // Alle getallen zijn gestapeld; zo niet, dan meet deze test niets van wat het issue beschrijft.
+      expect(uitslag.vrij, JSON.stringify(uitslag)).toEqual([])
+      expect(uitslag.gestapeld, JSON.stringify(uitslag)).toHaveLength(CIJFERS_RIJ.length)
+      expect(uitslag.missersEigenVak).toEqual([])
+    })
+
+    // #661: de herhaalknop naast een vraag bestond alleen als er geen antwoord liep. Hij verscheen dus bij het eind van
+    // elk antwoord, verbreedde elke vraag in het gesprek met 30 px en schoof de bubbel opzij (CLS tot 0,38 bij een korte
+    // vraag). Nu staat hij er altijd en is hij tijdens een antwoord alleen verborgen.
+    test('een eerdere vraag verspringt niet als er een antwoord loopt (#661)', async ({ page }) => {
+      await stuur(page, VRAAG_KORT)
+      const eerste = page.locator('.message.user').first()
+      const vakken = () => eerste.evaluate(el => {
+        const rect = e => { const r = e.getBoundingClientRect(); return [r.left, r.width, r.height] }
+        return { bericht: rect(el), bubbel: rect(el.querySelector('.message-bubble')) }
+      })
+      const rust = await vakken()
+      await expect(eerste.locator('.resend-btn')).toBeEnabled()
+
+      const veld = page.locator('textarea.chat-input')
+      await veld.fill(VRAAG_WACHT)
+      await veld.press('Enter')
+      await expect(page.locator('.message.user')).toHaveCount(2)
+      await expect(page.locator('.message-bubble-assistant').last()).toContainText('Een moment')
+      await expect(eerste.locator('.resend-btn')).toBeDisabled()
+      const bezig = await vakken()
+      for (const deel of ['bericht', 'bubbel']) {
+        bezig[deel].forEach((waarde, i) => expect(waarde, `${deel} ${i}: ${JSON.stringify({ rust, bezig })}`).toBeCloseTo(rust[deel][i], 0))
+      }
     })
 
     test('een open herkomst blijft liggen over de getallen eronder (#611)', async ({ page }) => {
