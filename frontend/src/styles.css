@@ -2143,3 +2143,9 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
     font-size: 12.5px;
   }
 }
+
+/* Schermvullend als geïnstalleerde app (#672): met viewport-fit=cover loopt de pagina onder de inkeping in landscape
+   en onder de home-indicator. De zijkanten krijgen de ruimte op de body, de onderkant op het chatvak, zodat het
+   invoerveld erboven blijft. Zonder inkeping is elke waarde 0 en verandert er niets. */
+body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.chat-main { padding-bottom: env(safe-area-inset-bottom, 0px); }

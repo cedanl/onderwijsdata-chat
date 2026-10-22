@@ -8,8 +8,9 @@
 // - Alles onder /api (gesprekken, rapporten, export van persoonsgegevens) gaat altijd rechtstreeks naar het netwerk.
 // - Geen skipWaiting en geen clients.claim: een antwoord duurt minuten, dus een nieuwe worker mag geen open tab
 //   overnemen. De worker wijzigt bovendien niet per deploy; de shell en de assets verversen zichzelf hierboven.
-const SHELL = 'edudata-shell-v1'
-const ASSETS = 'edudata-assets-v1'
+const CACHE_VOORVOEGSEL = 'edudata-'
+const SHELL = `${CACHE_VOORVOEGSEL}shell-v1`
+const ASSETS = `${CACHE_VOORVOEGSEL}assets-v1`
 const SHELL_SLEUTEL = '/__shell'
 const MAX_ASSET_BYTES = 1024 * 1024
 const MAX_ASSETS = 80
@@ -45,7 +46,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(namen => Promise.all(
-      namen.filter(n => n.startsWith('edudata-') && n !== SHELL && n !== ASSETS).map(n => caches.delete(n))
+      namen.filter(n => n.startsWith(CACHE_VOORVOEGSEL) && n !== SHELL && n !== ASSETS).map(n => caches.delete(n))
     ))
   )
 })
