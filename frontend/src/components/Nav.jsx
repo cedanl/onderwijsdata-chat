@@ -74,11 +74,11 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
               title="Instellingen"
             >
               {instelling && (
-                <span style={{ fontSize: '.75rem', fontWeight: 600, color: 'var(--gray-700)', lineHeight: 1.2 }}>
+                <span className="navbar-profile-instelling">
                   {instelling}
                 </span>
               )}
-              <span style={{ fontSize: '.72rem', color: 'var(--muted-text)', lineHeight: 1.2 }}>
+              <span className="navbar-profile-naam">
                 {user}
               </span>
             </button>
