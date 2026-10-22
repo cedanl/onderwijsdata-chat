@@ -6,6 +6,14 @@ de laatste tag is 1.8.6.
 
 ## Niet uitgebracht
 
+### Presentatie
+- Een grafiek in een streamend antwoord verschuift op een telefoon niets meer in beeld (CLS van de landing 0,036 →
+  0,0005 op een staaf- en lijngrafiek, licht en donker, 390 px; #661, naast de herhaalknop uit !641). Het etiket "Antwoord van <model>" onder de
+  bubbel stond er al zodra de grafiek binnenkwam, terwijl de tekst nog stroomde, en schoof bij elke regel en bij de
+  landing van de grafiek mee omlaag. Het komt nu pas als elk bericht van de beurt klaar is. Op een breed scherm
+  verdwijnt dezelfde verschuiving (0,043 → 0,030); wat daar overblijft is de grafiek zelf, die tijdens het
+  streamen meeschuift (#639).
+
 ### Feedback
 - Het feedbackformulier op een rapport noemt de instelling die je in de app koos: "Over Hogeschool Utrecht" in
   plaats van "Over jouw instelling". Heb je geen instelling gekozen, dan blijft het formulier zoals het was; de

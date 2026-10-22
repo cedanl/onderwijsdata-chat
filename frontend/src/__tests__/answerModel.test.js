@@ -31,4 +31,24 @@ describe('answerModels', () => {
   it('falls back to the model id when the model is no longer offered', () => {
     expect(answerModels([{ id: 1, role: 'user', model: 'oud-model' }, { id: 2, role: 'assistant', done: true }], MODELS)).toEqual({ 2: 'oud-model' })
   })
+
+  // #661: a figure arrives as a finished message of its own while the text still streams. The label sits under the
+  // bubble, so it must not show until the whole turn is done, or it moves along with every line that streams in.
+  it('labels nothing while a message of the turn is still coming, also when the last one is done', () => {
+    const vraag = { id: 1, role: 'user', model: 'claude-sonnet' }
+    const tekst = { id: 2, role: 'assistant', done: false, content: 'stroomt nog' }
+    const figuur = { id: 3, role: 'assistant', done: true, figures: [{}] }
+    expect(answerModels([vraag, tekst, figuur], MODELS)).toEqual({})
+    expect(answerModels([vraag, { ...tekst, done: true }, figuur], MODELS)).toEqual({ 3: 'Sonnet' })
+  })
+
+  it('does not let an unfinished message of an earlier turn hold back the label of a later one', () => {
+    const messages = [
+      { id: 1, role: 'user', model: 'claude-sonnet' },
+      { id: 2, role: 'assistant', done: false },
+      { id: 3, role: 'user', model: 'gpt-oss-120b' },
+      { id: 4, role: 'assistant', done: true },
+    ]
+    expect(answerModels(messages, MODELS)).toEqual({ 4: 'gpt-oss' })
+  })
 })
