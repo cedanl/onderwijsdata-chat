@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // #498: a dashboard chat that was open at logout must not write the previous user's
 // messages and figures back after the wipe.
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import useDashboardChat from '../hooks/useDashboardChat'
@@ -146,9 +146,10 @@ describe('a save still pending when the session ends', () => {
   afterEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
 
   it('does not write the previous user\'s chat back', async () => {
+    FakeWebSocket.last = null
     const pending = createRoot(document.createElement('div'))
     pending.render(createElement(LoggingOutHarness))
-    await settle()
+    await vi.waitFor(() => expect(FakeWebSocket.last).not.toBeNull())
     const ws = FakeWebSocket.last
 
     logOutOnCommit = true
@@ -156,11 +157,13 @@ describe('a save still pending when the session ends', () => {
     ws.emit({ type: 'text_delta', content: 'antwoord voor de vorige gebruiker' })
     ws.emit({ type: 'figure', figure_json: { data: [], layout: {} } })
     ws.emit({ type: 'message_end' })
-    await settle()
+    // Wait for the commit that plays the logout, not for a fixed time: on a busy runner the commit took
+    // longer than 20 ms and the test failed without anything being wrong (pipeline of !642).
+    await vi.waitFor(() => expect(logOutOnCommit).toBe(false))
+    // Unmounting makes React run the pending passive effects of that commit first: the saves that must be skipped.
     pending.unmount()
     await settle()
 
-    expect(logOutOnCommit).toBe(false)
     expect(dcKeys()).toEqual([])
   })
 })
