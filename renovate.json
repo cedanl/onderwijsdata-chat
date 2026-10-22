@@ -52,6 +52,13 @@
         "/^eslint$/",
         "/^@eslint/js$/"
       ]
+    },
+    {
+      "description": "to-px blijft op 1.0.1 via de override in frontend/package.json, net als in plotly's eigen package: 1.1.0 raakt document.body bij het laden, en rapporten laden Plotly in de head (3e05d34, #660). Zie !650.",
+      "enabled": false,
+      "matchPackageNames": [
+        "to-px"
+      ]
     }
   ],
   "lockFileMaintenance": {
