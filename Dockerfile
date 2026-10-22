@@ -15,7 +15,7 @@ COPY frontend/eslint.config.js ./
 RUN npm run build
 
 # Stage 2: Python Backend with Frontend
-FROM python:3.14-slim@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
+FROM python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
 
 WORKDIR /app
 
