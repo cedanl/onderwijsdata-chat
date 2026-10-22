@@ -81,6 +81,11 @@ describe('lagen op desktop onder 12,5 px (#663)', () => {
     expect(regel('.navbar-profile-naam')).toMatch(/line-height:\s*1\.2/)
   })
 
+  // De scan op 390 px vond ook de verbindingsmelding (10,8 px) zolang de socket nog niet open is.
+  it('brengt de verbindingsmelding op een telefoon op 12,5 px', () => {
+    expect(blok).toContain('.ws-reconnecting')
+  })
+
   it('zet geen lettergrootte meer inline in de profielknop', () => {
     expect(nav).not.toMatch(/fontSize:\s*'\.7[25]rem'/)
     expect(nav).toContain('className="navbar-profile-instelling"')
