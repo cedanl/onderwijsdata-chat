@@ -4,6 +4,7 @@ import App from './App'
 import '@fontsource-variable/inter'
 import './styles.css'
 import { registreerServiceWorker } from './registreerServiceWorker'
+import { startInstallatieAanbod } from './installeerApp'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -11,4 +12,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 )
 
+startInstallatieAanbod()
 registreerServiceWorker()
