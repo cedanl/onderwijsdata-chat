@@ -7,6 +7,10 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Presentatie
+- Het feedbackformulier op een rapport laat per blok zien hoeveel vragen er zijn en hoeveel je er hebt beantwoord
+  ("Over dit rapport — 2 van 7 vragen beantwoord"). De vragen over het rapport hebben nu een eigen kopje (`section` bij
+  `nuttig` in `core/feedback.py`); de knop "Help ons verder" noemt het aantal vragen erachter. Op een telefoon
+  (390 px) weet je zo na het eerste blok hoeveel er nog komt (#665). Verzenden en de bewaartekst zijn ongewijzigd.
 - Een grafiek in een streamend antwoord verschuift op een telefoon niets meer in beeld (CLS van de landing 0,036 →
   0,0005 op een staaf- en lijngrafiek, licht en donker, 390 px; #661, naast de herhaalknop uit !641). Het etiket "Antwoord van <model>" onder de
   bubbel stond er al zodra de grafiek binnenkwam, terwijl de tekst nog stroomde, en schoof bij elke regel en bij de
