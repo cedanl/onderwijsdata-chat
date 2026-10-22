@@ -12,6 +12,7 @@ const isOther = item => item === OTHER || item.startsWith(OTHER_PREFIX)
 const GENERIC_INSTELLING = 'jouw instelling'
 const sectionTitle = (section, instelling) => (instelling ? section.replace(GENERIC_INSTELLING, () => instelling) : section)
 const EXTRA_BUTTON = `Help ons verder: vragen over ${GENERIC_INSTELLING}`
+const countLabel = n => (n === 1 ? '1 vraag' : `${n} vragen`)
 
 const hasValue = value => (Array.isArray(value) ? value.length > 0 : value.trim() !== '')
 
@@ -90,19 +91,40 @@ function Question({ question, value, onChange }) {
   )
 }
 
+// Per section (#665): the questions from its heading to the next one, and how many of them have an answer, so a
+// long form on a phone says how much is left. Keyed by the question that carries the heading.
+function sectionProgress(questions, answers) {
+  const progress = new Map()
+  let current = null
+  for (const q of questions) {
+    if (q.section) {
+      current = { answered: 0, total: 0 }
+      progress.set(q, current)
+    }
+    if (!current) continue
+    current.total += 1
+    if (hasValue(answers[q.id] ?? '')) current.answered += 1
+  }
+  return progress
+}
+
 // `headingRef`, if given, goes to the first section heading, which then takes focus from script only.
 function QuestionList({ questions, answers, setAnswer, instelling, headingRef }) {
   const firstSection = questions.find(q => q.section)
+  const progress = sectionProgress(questions, answers)
   return questions.map(q => (
     <Fragment key={q.id}>
       {q.section && (
-        <h3
-          className="feedback-section"
-          ref={q === firstSection ? headingRef : undefined}
-          tabIndex={headingRef && q === firstSection ? -1 : undefined}
-        >
-          {sectionTitle(q.section, instelling)}
-        </h3>
+        <>
+          <h3
+            className="feedback-section"
+            ref={q === firstSection ? headingRef : undefined}
+            tabIndex={headingRef && q === firstSection ? -1 : undefined}
+          >
+            {sectionTitle(q.section, instelling)}
+          </h3>
+          <p className="feedback-voortgang">{progress.get(q).answered} van {countLabel(progress.get(q).total)} beantwoord</p>
+        </>
       )}
       <Question question={q} value={answers[q.id] ?? ''} onChange={v => setAnswer(q.id, v)} />
     </Fragment>
@@ -186,7 +208,7 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
         <QuestionList questions={reportQuestions} answers={answers} setAnswer={setAnswer} instelling={instelling} />
         {extraQuestions.length > 0 && !showExtra && (
           <button type="button" className="feedback-extra-btn" onClick={() => setShowExtra(true)}>
-            {sectionTitle(EXTRA_BUTTON, instelling)}
+            {sectionTitle(EXTRA_BUTTON, instelling)} ({countLabel(extraQuestions.length)})
           </button>
         )}
         {showExtra && (

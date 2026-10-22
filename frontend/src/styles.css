@@ -1514,6 +1514,7 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .feedback-dialog { max-width: 520px; max-height: 90vh; overflow-y: auto; }
 .feedback-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
 .feedback-intro { font-size: .85rem; color: var(--muted-text); margin-bottom: 16px; }
+.feedback-voortgang { font-size: var(--font-label); color: var(--muted-text); margin: -6px 0 12px; }
 .feedback-question { border: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 6px; }
 .feedback-question legend, .feedback-question label { font-size: .9rem; font-weight: 600; padding: 0; }
 .feedback-section { font-size: .95rem; font-weight: 700; margin: 20px 0 12px; padding-top: 14px; border-top: 1px solid var(--gray-200); }

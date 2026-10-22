@@ -20,6 +20,7 @@ MAX_INSTELLING_LENGTH = 200
 QUESTIONS: tuple[dict, ...] = (
     {
         "id": "nuttig",
+        "section": "Over dit rapport",
         "text": "Hoe nuttig was dit rapport voor je?",
         "type": "scale",
         "options": _SCALE,

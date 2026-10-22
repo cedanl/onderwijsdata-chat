@@ -109,7 +109,12 @@ def test_conferentievragen_staan_in_een_eigen_blok_over_de_instelling():
     start = ids.index("poc")
     assert QUESTIONS[start]["section"] == "Over jouw instelling"
     assert [q["id"] for q in QUESTIONS[start:]] == ["poc", "dashboardtool", "doelgroep", "ceda_oppakken", "contact"]
-    assert [q["id"] for q in QUESTIONS if q.get("section")] == ["poc"]
+    # Twee blokken met een kopje (#665): de rapportvragen en die over de instelling; de frontend telt per blok.
+    assert [(q["id"], q["section"]) for q in QUESTIONS if q.get("section")] == [
+        ("nuttig", "Over dit rapport"),
+        ("poc", "Over jouw instelling"),
+    ]
+    assert ids.index("nuttig") == 0
 
 
 _INSTELLINGSVRAGEN = ["poc", "dashboardtool", "doelgroep", "ceda_oppakken", "contact"]
