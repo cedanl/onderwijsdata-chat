@@ -6,7 +6,7 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
-from core.feedback import QUESTIONS, validate_answers
+from core.feedback import MAX_INSTELLING_LENGTH, QUESTIONS, clean_instelling, validate_answers
 
 _SCALE = next(q for q in QUESTIONS if q["type"] == "scale")
 _CHOICE = next(q for q in QUESTIONS if q["type"] == "choice")
@@ -195,6 +195,62 @@ def test_post_feedback_stores_it_for_the_user(client):
     assert resp.status_code == 200
     rows = _stored()
     assert [(r["username"], r["workbook_id"]) for r in rows] == [("gast", "wb-1")]
+
+
+# ── Gekozen instelling bij de feedback ───────────────────────────────────────
+
+
+def test_post_feedback_stores_the_chosen_instelling(client):
+    resp = client.post("/api/feedback", json={**_body(), "instelling": "  Hogeschool Utrecht "})
+    assert resp.status_code == 200
+    assert [r["instelling"] for r in _stored()] == ["Hogeschool Utrecht"]
+
+
+@pytest.mark.parametrize("extra", [{}, {"instelling": ""}, {"instelling": "   "}, {"instelling": None}])
+def test_post_feedback_without_a_chosen_instelling_stores_an_empty_one(client, extra):
+    """Geen gekozen instelling is geen fout en geen verzonnen naam: de kolom blijft leeg."""
+    assert client.post("/api/feedback", json={**_body(), **extra}).status_code == 200
+    assert [r["instelling"] for r in _stored()] == [""]
+
+
+def test_post_feedback_never_fails_on_an_odd_instelling(client):
+    """De instelling komt uit de browser; een te lange of vreemde waarde mag de feedback niet laten mislukken."""
+    resp = client.post("/api/feedback", json={**_body(), "instelling": "x" * 5000})
+    assert resp.status_code == 200
+    assert _stored()[0]["instelling"] == "x" * MAX_INSTELLING_LENGTH
+
+
+def test_clean_instelling_strips_control_characters_and_collapses_whitespace():
+    assert clean_instelling("Hogeschool\n\tUtrecht\x00\x1b[31m ") == "Hogeschool Utrecht[31m"
+    assert clean_instelling(None) == ""
+    assert clean_instelling("  ") == ""
+    assert clean_instelling("a" * (MAX_INSTELLING_LENGTH + 10)) == "a" * MAX_INSTELLING_LENGTH
+
+
+def test_add_feedback_defaults_to_no_instelling(db):
+    db.add_feedback("alice", "wb-1", "report", "", {"nuttig": "4"})
+    assert _stored()[0]["instelling"] == ""
+
+
+def test_init_db_adds_the_instelling_column_to_an_existing_feedback_table(tmp_path, monkeypatch):
+    """Een database van vóór deze kolom krijgt hem erbij; bestaande rijen blijven staan met een lege instelling."""
+    path = tmp_path / "oud.db"
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE feedback (id TEXT PRIMARY KEY, username TEXT NOT NULL, workbook_id TEXT NOT NULL, "
+        "report_type TEXT NOT NULL, report_title TEXT NOT NULL DEFAULT '', answers TEXT NOT NULL, created_at TEXT NOT NULL)"
+    )
+    conn.execute("INSERT INTO feedback VALUES ('1', 'alice', 'wb-1', 'report', '', '{}', '2026-10-01T00:00:00+00:00')")
+    conn.commit()
+    conn.close()
+    monkeypatch.setenv("DATABASE_PATH", str(path))
+    from persistence import db
+
+    importlib.reload(db)
+    db.init_db()
+    db.init_db()  # tweede start: geen fout
+    db.add_feedback("alice", "wb-2", "report", "", {"nuttig": "4"}, "HAN")
+    assert [r["instelling"] for r in _stored()] == ["", "HAN"]
 
 
 def test_list_feedback_workbooks_per_user(db):

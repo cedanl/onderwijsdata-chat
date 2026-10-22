@@ -282,9 +282,22 @@ def _migrate(conn: Any) -> None:
             )
             conn.commit()
 
+    _voeg_feedback_instelling_toe(conn)
     _begin_bewaartermijn_werkboeken(conn)
     _run_once(conn, "160_dedupe_legacy_conversations", _dedupe_conversations)
     _run_once(conn, MIGRATIE_FEEDBACK_ZONDER_GESPREK, _ontkoppel_feedback_zonder_gesprek)
+
+
+def _voeg_feedback_instelling_toe(conn: Any) -> None:
+    """Feedback van vóór de kolom `instelling` krijgt een lege waarde; idempotent, dus veilig bij elke start."""
+    if _USE_POSTGRES:
+        cursor = conn.cursor()
+        cursor.execute("ALTER TABLE feedback ADD COLUMN IF NOT EXISTS instelling TEXT NOT NULL DEFAULT ''")
+        conn.commit()
+        cursor.close()
+    elif "instelling" not in {row[1] for row in conn.execute("PRAGMA table_info(feedback)")}:
+        conn.execute("ALTER TABLE feedback ADD COLUMN instelling TEXT NOT NULL DEFAULT ''")
+        conn.commit()
 
 
 def _begin_bewaartermijn_werkboeken(conn: Any) -> None:
@@ -306,7 +319,8 @@ _FEEDBACK_TABLE = """
         report_type  TEXT NOT NULL,
         report_title TEXT NOT NULL DEFAULT '',
         answers      TEXT NOT NULL,
-        created_at   TEXT NOT NULL
+        created_at   TEXT NOT NULL,
+        instelling   TEXT NOT NULL DEFAULT ''
     )
 """
 
@@ -790,12 +804,13 @@ def add_feedback(
     report_type: str,
     report_title: str,
     answers: dict[str, str | list[str]],
+    instelling: str = "",
 ) -> None:
     with _connection() as conn:
         _execute(
             conn,
-            "INSERT INTO feedback (id, username, workbook_id, report_type, report_title, answers, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO feedback (id, username, workbook_id, report_type, report_title, answers, created_at, instelling) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 str(uuid.uuid4()),
                 username,
@@ -804,6 +819,7 @@ def add_feedback(
                 report_title,
                 json.dumps(answers),
                 datetime.now(UTC).isoformat(timespec="seconds"),
+                instelling,
             ),
         )
         conn.commit()

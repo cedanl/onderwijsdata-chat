@@ -12,7 +12,7 @@ from pydantic import BaseModel, StringConstraints
 from core.algemene_feedback import MAX_TEKST, PAGINA_PATROON, Soort
 from core.auth import FALLBACK_USER, get_current_user
 from core.config import FEEDBACK_ENABLED
-from core.feedback import QUESTIONS, validate_answers
+from core.feedback import QUESTIONS, clean_instelling, validate_answers
 from core.rate_limit import RateLimiter
 from persistence import db as persistence_db
 
@@ -34,6 +34,8 @@ class FeedbackIn(BaseModel):
     workbook_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     report_type: _Short
     report_title: _Short = ""
+    # De instelling die de gebruiker in de app koos; leeg als hij er geen koos. Wordt bijgeknipt, niet geweigerd.
+    instelling: str | None = None
     answers: dict[str, object]
 
 
@@ -78,7 +80,14 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
             detail=f"Je hebt net al feedback op dit rapport gegeven. Probeer het over {retry} seconden opnieuw.",
             headers={"Retry-After": str(retry)},
         )
-    persistence_db.add_feedback(username, body.workbook_id, body.report_type, body.report_title, answers)
+    persistence_db.add_feedback(
+        username,
+        body.workbook_id,
+        body.report_type,
+        body.report_title,
+        answers,
+        clean_instelling(body.instelling),
+    )
     return {"ok": True}
 
 

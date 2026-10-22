@@ -7,6 +7,10 @@ const OTHER = 'Anders'
 const OTHER_PREFIX = `${OTHER}: `
 const isOther = item => item === OTHER || item.startsWith(OTHER_PREFIX)
 
+// The backend names the section generically ("Over jouw instelling"); with a chosen instelling it gets its name.
+const GENERIC_INSTELLING = 'jouw instelling'
+const sectionTitle = (section, instelling) => (instelling ? section.replace(GENERIC_INSTELLING, () => instelling) : section)
+
 const hasValue = value => (Array.isArray(value) ? value.length > 0 : value.trim() !== '')
 
 function MultiQuestion({ question, value, onChange }) {
@@ -84,7 +88,9 @@ function Question({ question, value, onChange }) {
   )
 }
 
-export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
+// `instelling` is what the user chose in the app's settings; '' when nothing was chosen (not the page's default).
+export default function FeedbackModal({ workbook, instelling: chosen = '', onClose, onSubmitted }) {
+  const instelling = (chosen || '').trim()
   const dialogRef = useDialog(onClose)
   const titleId = useId()
   const [questions, setQuestions] = useState(null)
@@ -112,6 +118,7 @@ export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
         workbook_id: workbook.id,
         report_type: workbook.type || '',
         report_title: workbook.title || '',
+        instelling,
         answers,
       })
       onSubmitted()
@@ -135,13 +142,14 @@ export default function FeedbackModal({ workbook, onClose, onSubmitted }) {
         <h2 className="feedback-title" id={titleId}>Feedback geven</h2>
         <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de rapporten te verbeteren.</p>
         <p className="feedback-intro">
-          We bewaren je antwoorden en de titel van het rapport bij je account, 90 dagen lang. Het gesprek verwijderen wist
-          deze feedback niet.
+          {instelling
+            ? 'We bewaren je antwoorden, de titel van het rapport en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'
+            : 'We bewaren je antwoorden en de titel van het rapport bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'}
         </p>
         {!questions && !error && <p role="status">Vragen worden geladen…</p>}
         {questions?.map(q => (
           <Fragment key={q.id}>
-            {q.section && <h3 className="feedback-section">{q.section}</h3>}
+            {q.section && <h3 className="feedback-section">{sectionTitle(q.section, instelling)}</h3>}
             <Question
               question={q}
               value={answers[q.id] ?? ''}

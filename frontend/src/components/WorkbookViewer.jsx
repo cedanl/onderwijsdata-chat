@@ -19,7 +19,7 @@ const BUILTIN_COMPONENTS = {
 
 // save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
 // frame follows (#568).
-export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
+export default function WorkbookViewer({ workbook, instelling, gekozenInstelling = '', onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
   const [refreshing, setRefreshing] = useState(false) // false of de lopende modus: 'ververs' | 'reproduceer'
   const [refreshError, setRefreshError] = useState(null)
   const [refreshResult, setRefreshResult] = useState(null) // { melding, veranderingen } van de laatste herhaling
@@ -178,6 +178,7 @@ export default function WorkbookViewer({ workbook, instelling, onBack, onUpdate,
       {showFeedback && (
         <FeedbackModal
           workbook={workbook}
+          instelling={gekozenInstelling}
           onClose={() => setShowFeedback(false)}
           onSubmitted={() => { setShowFeedback(false); setFeedbackGiven(true); setFeedbackThanks(true) }}
         />
