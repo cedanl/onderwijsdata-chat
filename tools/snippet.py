@@ -544,9 +544,13 @@ def _create_choropleth_snippet(args: dict, recept_van: Receptbron | None = None)
         f'    print("Niet op de kaart:", sorted(df.loc[df["kaartcode"].isna(), {location_col!r}].astype(str).unique()))'
     ]
     lines += ['df = df[df["kaartcode"].notna()]']
+    lines += ["# Een tik op een gebied toont de naam uit de GeoJSON, ook als de data codes heeft."]
+    lines += [
+        'df["kaartnaam"] = df["kaartcode"].map({f["id"]: f["properties"]["statnaam"] for f in geojson["features"]})'
+    ]
     lines += [
         f'fig = px.choropleth_map(df, geojson=geojson, locations="kaartcode", featureidkey="id", '
-        f'hover_name={location_col!r}, hover_data={{"kaartcode": False}}, color={value_col!r}, labels={labels!r}, '
+        f'hover_name="kaartnaam", hover_data={{"kaartcode": False}}, color={value_col!r}, labels={labels!r}, '
         f"{opmaak}, title={title!r})",
         f"fig.update_traces(hovertemplate={kaart_hoverlabel(labels[value_col])!r})",
         "fig.update_layout(" + ", ".join(f"{naam}={waarde!r}" for naam, waarde in KAART_GETALLEN.items()) + ")",

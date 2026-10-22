@@ -33,6 +33,18 @@ describe('een kaart in het rapport', () => {
     expect(getekend[0].layout.geo).toMatchObject({ scope: 'world', resolution: 110 })
   })
 
+  // #659: het rapport toont bij een tik dezelfde gebiedsnaam als de chat, niet de CBS-code.
+  it('houdt de gebiedsnaam en het hoverlabel van de kaart', () => {
+    const data = kaart()
+    data[0].hovertext = ['Utrecht']
+    data[0].hovertemplate = '<b>%{hovertext}</b><br>Mbo-studenten: %{z:,}<extra></extra>'
+    window.Plotly.newPlot('k', data, {})
+    expect(getekend[0].data[0]).toMatchObject({
+      type: 'choropleth', locations: ['PV26'], hovertext: ['Utrecht'],
+      hovertemplate: '<b>%{hovertext}</b><br>Mbo-studenten: %{z:,}<extra></extra>',
+    })
+  })
+
   it('werkt ook als de figuur als één object komt (Plotly.react)', () => {
     window.Plotly.react('k', { data: kaart(), layout: {} })
     expect(getekend[0].data[0].type).toBe('choropleth')

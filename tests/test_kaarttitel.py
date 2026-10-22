@@ -5,6 +5,7 @@ kleurenbalk krijgt dezelfde titel als een grafiekas (`kolomlabel`, #418); een ti
 niveauwoord vastzit, krijgt zijn spatie terug, ook in create_plot.
 """
 
+import re
 from unittest.mock import patch
 
 import pandas as pd
@@ -56,6 +57,17 @@ def test_een_tik_op_een_provincie_toont_naam_en_een_nederlands_getal():
     assert fig.data[0].hovertemplate == "<b>%{hovertext}</b><br>Mbo-studenten: %{z:,}<extra></extra>"
     assert fig.layout.separators == ",."
     assert fig.layout.coloraxis.colorbar.tickformat == ","
+
+
+def test_een_tik_op_een_provincie_uit_cbs_codes_toont_de_naam_niet_de_code():
+    # #659: met RegioS-codes in de data toonde het label "PV23 · Mbo-studenten: 39.740". De naam komt uit de
+    # GeoJSON (statnaam); de kaart tekent nog steeds op de code.
+    _, fig = _kaart({"MboStudenten_1": "Mbo-studenten"})
+    assert fig is not None
+    assert list(fig.data[0].hovertext) == ["Groningen", "Utrecht"]
+    assert not any(re.match(r"^(PV|GM|CR)\d", tekst) for tekst in fig.data[0].hovertext)
+    assert list(fig.data[0].locations) == ["PV20", "PV26"]
+    assert [r["RegioS"] for r in fig.layout.meta["data"]] == ["PV20", "PV26"]  # de CSV houdt de codes
 
 
 def test_zonder_titels_uit_de_bron_volgt_de_kleurenbalk_kolomlabel():

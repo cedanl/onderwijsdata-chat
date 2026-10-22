@@ -138,3 +138,21 @@ def test_de_hoverlabel_toont_de_naam_en_de_data_van_de_kaart_houdt_de_namen():
     assert fig is not None
     assert list(fig.data[0].hovertext) == ["Drenthe", "Utrecht"]
     assert [r["LOC"] for r in fig.layout.meta["data"]] == ["Drenthe", "Utrecht"]
+
+
+def test_de_hoverlabel_toont_de_naam_uit_de_geojson_in_elke_spelling_van_de_data():
+    # #659: het label noemt het gebied zoals de kaart het kent; de CSV houdt de spelling van de bron.
+    _, fig = _kaart(["'S-GRAVENHAGE", "HENGELO", "GM0344", 363], level="gemeente")
+    assert fig is not None
+    assert list(fig.data[0].hovertext) == ["'s-Gravenhage", "Hengelo (O.)", "Utrecht", "Amsterdam"]
+    assert [r["LOC"] for r in fig.layout.meta["data"]] == ["'S-GRAVENHAGE", "HENGELO", "GM0344", "363"]
+
+
+def test_een_gebied_zonder_naam_in_de_geojson_houdt_de_waarde_uit_de_data():
+    geojson = _geo({"PV20": "Groningen", "PV26": "Utrecht"})
+    del geojson["features"][1]["properties"]["statnaam"]
+    with patch("tools.plot._load_geojson", return_value=geojson):
+        _, fig = _kaart(["Groningen", "PV26"], level="provincie")
+    assert fig is not None
+    assert list(fig.data[0].hovertext) == ["Groningen", "PV26"]
+    assert list(fig.data[0].locations) == ["PV20", "PV26"]

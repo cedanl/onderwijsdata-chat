@@ -172,6 +172,8 @@ KAART_OPTIES = {
 }
 # De kolom met de feature-id waartegen de kaart tekent; de locatiekolom van de data houdt de namen (#628).
 _KAARTCODE = "kaartcode"
+# De naam van het gebied in de GeoJSON, voor het hoverlabel: "Groningen", niet "PV20" (#659).
+_KAARTNAAM = "kaartnaam"
 
 
 def _is_missing(value) -> bool:
@@ -590,6 +592,17 @@ def kaart_hoverlabel(maat: str) -> str:
     return f"<b>%{{hovertext}}</b><br>{maat}: %{{z:,}}<extra></extra>"
 
 
+def _kaartframe(rows: list[dict], location_col: str, code_van: dict[str, str], namen: dict[str, str]):
+    """De rijen van de kaart met per rij de feature-id en de gebiedsnaam; zonder naam in de GeoJSON de waarde."""
+    import pandas as pd
+
+    df = pd.DataFrame(rows)
+    codes = [code_van[row[location_col]] for row in rows]
+    df[_KAARTCODE] = codes
+    df[_KAARTNAAM] = [namen.get(code, row[location_col]) for code, row in zip(codes, rows, strict=True)]
+    return df
+
+
 def create_choropleth_map(
     data: list[dict] | None = None,
     location_col: str = "",
@@ -635,13 +648,10 @@ def create_choropleth_map(
         return f"Kolom '{value_col}' bevat geen getal-waarden.", None
 
     # Alleen wat op de kaart staat gaat mee; de rest staat in de melding. De kaart tekent op de feature-id,
-    # het hoverlabel en de CSV houden de naam uit de data (#628).
+    # de CSV houdt de waarde uit de data (#628) en het hoverlabel de naam van het gebied (#659).
     cleaned = [row for row in cleaned if row[location_col] in locaties.code_van]
-    import pandas as pd
-
-    df = pd.DataFrame(cleaned)
-    df[_KAARTCODE] = [locaties.code_van[row[location_col]] for row in cleaned]
     geojson = _load_geojson(detected)
+    df = _kaartframe(cleaned, location_col, locaties.code_van, kaartlocaties.namen(geojson))
     known = store.meta(data_key) if data_key else None
     maat = kaartlabel(value_col, known)
 
@@ -651,7 +661,7 @@ def create_choropleth_map(
         df,
         geojson=geojson,
         locations=_KAARTCODE,
-        hover_name=location_col,
+        hover_name=_KAARTNAAM,
         hover_data={_KAARTCODE: False},
         color=value_col,
         # De kleurenbalk en het hoverlabel heten naar de maat, zoals een grafiekas (#418, #640);

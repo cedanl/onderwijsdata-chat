@@ -137,6 +137,31 @@ def test_het_recept_tekent_dezelfde_codes_als_de_app(locaties, level):
     assert list(namespace["fig"].data[0].z) == list(fig_app.data[0].z)
 
 
+@pytest.mark.parametrize(
+    ("locaties", "level"),
+    [
+        (["PV20", "PV26"], "auto"),
+        (["Utrecht", "DRENTHE", "Friesland"], "auto"),
+        (["'S-GRAVENHAGE", "HENGELO", 344], "gemeente"),
+    ],
+)
+def test_het_recept_toont_bij_een_tik_dezelfde_naam_als_de_app(locaties, level):
+    # #659: het label noemt de gebiedsnaam uit de GeoJSON, ook als de data CBS-codes heeft.
+    args = _args(locaties, level)
+    melding, fig_app = _app(args)
+    fig = _recept(args, melding)["fig"]
+    assert list(fig.data[0].hovertext) == list(fig_app.data[0].hovertext)
+    assert not any(str(tekst).startswith(("PV", "GM", "CR")) for tekst in fig.data[0].hovertext)
+
+
+def test_het_recept_zet_de_naam_niet_de_code_in_het_label():
+    args = _args(["PV20", "PV26"])
+    snippet = generate("create_choropleth_map", args, "Kaart 'Kaart' aangemaakt (2 provincies).")
+    assert snippet is not None
+    assert 'hover_name="kaartnaam"' in snippet and "hover_name='LOC'" not in snippet
+    assert 'df["kaartnaam"] = df["kaartcode"].map(' in snippet
+
+
 def test_het_recept_noemt_wat_niet_op_de_kaart_staat(capsys):
     args = _args(["Amsterdam", "Atlantis"], "gemeente")
     melding, _ = _app(args)
