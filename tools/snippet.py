@@ -570,11 +570,16 @@ def _maat_regels(args: dict) -> tuple[list[str], str | None]:
     )
     if isinstance(p, str):
         return [], p
-    if isinstance(p.recept, maten.CbsRecept):
+    if isinstance(p.recept, maten.CbsRecepten):
         params = cbs_selectie.compileer(p.recept.dataset, maten.selectie(p), None)
-        return [
-            *_cbs_laadregels({"dataset_id": p.recept.dataset, "filters": params if isinstance(params, dict) else {}}),
-        ], None
+        lines = _cbs_laadregels({"dataset_id": p.recept.dataset, "filters": params if isinstance(params, dict) else {}})
+        if isinstance(r := p.recept, maten.CbsSomRecept):
+            # Elke andere dimensie ligt vast: per periode één rij per code, en zonder een van de codes geen som (#667).
+            lines.append(f"# {r.onderwerp} = som van {r.somdimensie} {' + '.join(r.somcodes)}")
+            lines.append(
+                f'df = df.groupby("Perioden", as_index=False)[{r.onderwerp!r}].sum(min_count={len(r.somcodes)})'
+            )
+        return lines, None
     lines = _duo_laadregels({"dataset_id": p.recept.dataset, "resource": p.bestand})
     lines += [_filterregel(key, val) for key, val in maten.filters(p).items()]
     lines += _aggregatieregels([p.recept.periodekolom], maten.aggregate(p))

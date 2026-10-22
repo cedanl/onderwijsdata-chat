@@ -9,6 +9,8 @@ alleen staan als de gebruiker extranei in het gesprek uitsluit ("zonder extranei
 
 Het model kiest alleen het totaal van de smallere telling niet meer zelf: uitsplitsen (`*`), bol, bbl, extranei of
 meer codes tegelijk blijven zoals het ze koos.
+
+Een vast recept (`get_maat`, #667) vraagt de code met `keuze`: dezelfde regel, ook buiten de chat.
 """
 
 import contextlib
@@ -87,6 +89,25 @@ def gesprek(vragen: Iterable[str]) -> Generator[None, None, None]:
         _gespreksvragen.reset(token)
 
 
+def _uitgesloten(standaard: Standaard, vragen: Iterable[str]) -> bool:
+    """Koos een vraag in het gesprek de smallere telling?"""
+    return any(standaard.uitsluiting.search(vraag) for vraag in vragen)
+
+
+def keuze(dataset_id: str) -> tuple[str, str, str] | None:
+    """(dimensie, code, label) die een vast recept op deze tabel pint (#667); None als de tabel geen standaard heeft.
+
+    De ruimste telling, of de smallere als een vraag in het gesprek die koos. Een recept is geen keuze van een
+    aanroeper: ook buiten de chat geldt daar de standaard.
+    """
+    standaard = _STANDAARD.get(zonder_cbs_prefix(dataset_id).lower())
+    if standaard is None:
+        return None
+    if _uitgesloten(standaard, _gespreksvragen.get() or ()):
+        return standaard.dimensie, standaard.smaller, standaard.smaller_label
+    return standaard.dimensie, standaard.code, standaard.label
+
+
 def _gepind(waarde) -> str | None:
     """De ene code waarop een dimensie gepind is; None bij `*`, bij meer codes of zonder code."""
     codes = waarde if isinstance(waarde, list) else [waarde]
@@ -106,7 +127,7 @@ def toegepast(dataset_id: str, selectie: dict) -> tuple[dict, Standaard | None]:
         or vragen is None
         or not isinstance(dimensies, dict)
         or _gepind(dimensies.get(standaard.dimensie)) != standaard.smaller
-        or any(standaard.uitsluiting.search(vraag) for vraag in vragen)
+        or _uitgesloten(standaard, vragen)
     ):
         return selectie, None
     return {**selectie, "dimensies": {**dimensies, standaard.dimensie: standaard.code}}, standaard
