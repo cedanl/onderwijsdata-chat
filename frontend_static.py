@@ -5,8 +5,9 @@ nieuwe namen, dus de browser mag ze een jaar bewaren zonder opnieuw te vragen.
 index.html verwijst naar die namen en moet daarom bij elke load vers zijn, anders
 draait een browser na een deploy nog de oude app.
 
-Het manifest en de iconen (frontend/public, #669) maken de app installeerbaar. Ze hebben geen hash in
-hun naam: het manifest is altijd vers, de iconen blijven een week staan.
+Het manifest, de service worker en de iconen (frontend/public, #669, #670) maken de app installeerbaar. Ze
+hebben geen hash in hun naam: manifest en worker zijn altijd vers (een browser vergelijkt de worker bij elke
+start byte voor byte), de iconen blijven een week staan.
 
 Onbekende paden onder /api krijgen een JSON-404 in plaats van index.html (#482):
 een client die een API-pad verkeerd spelt, hoort een fout te zien en geen HTML met 200.
@@ -27,7 +28,11 @@ from core.foutmeldingen import NIET_GEVONDEN
 
 _EEN_JAAR = "public, max-age=31536000, immutable"
 _EEN_WEEK = "public, max-age=604800"
-_MANIFEST = "manifest.webmanifest"
+# Losse bestanden in de root van dist en hun MIME-type; een gewone route, want de catch-all geeft anders index.html.
+_ROOT_BESTANDEN = {
+    "manifest.webmanifest": "application/manifest+json",
+    "sw.js": "text/javascript",
+}
 
 
 class _StatischMetCache(StaticFiles):
@@ -65,16 +70,16 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     if (dist / "icons").is_dir():
         app.mount("/icons", _StatischMetCache(directory=dist / "icons", cache_control=_EEN_WEEK), name="icons")
 
-    @app.api_route("/" + _MANIFEST, methods=["GET", "HEAD"], include_in_schema=False)
-    async def manifest() -> Response:
-        pad = dist / _MANIFEST
-        if not pad.is_file():
-            return JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)
-        return Response(
-            content=pad.read_bytes(),
-            media_type="application/manifest+json",
-            headers={"Cache-Control": "no-cache"},
-        )
+    def root_bestand(naam: str, media_type: str) -> None:
+        @app.api_route("/" + naam, methods=["GET", "HEAD"], include_in_schema=False)
+        async def serveer() -> Response:
+            pad = dist / naam
+            if not pad.is_file():
+                return JSONResponse({"detail": NIET_GEVONDEN}, status_code=404)
+            return Response(content=pad.read_bytes(), media_type=media_type, headers={"Cache-Control": "no-cache"})
+
+    for naam, media_type in _ROOT_BESTANDEN.items():
+        root_bestand(naam, media_type)
 
     @app.get("/api", include_in_schema=False)
     @app.get("/api/{rest:path}", include_in_schema=False)
