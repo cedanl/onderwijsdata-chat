@@ -51,29 +51,29 @@ function rowsToCsv(rows) {
 
 // Wide: one row per distinct x, one column per trace. Traces need not share
 // their x values (one trace per year), so each value is placed by its x.
-function wideCsv(traces, xName, yName) {
+function wideRows(traces, xName, yName) {
   const xVals = [...new Set(traces.flatMap(xsOf))]
   const byX = traces.map(t => new Map(xsOf(t).map((x, i) => [x, ysOf(t)[i]])))
-  const header = [xName, ...traces.map(t => t.name || yName)]
-  return toCsv([header, ...xVals.map(x => [x, ...byX.map(values => values.get(x))])])
+  const kolommen = [xName, ...traces.map(t => t.name || yName)]
+  return { kolommen, rijen: xVals.map(x => [x, ...byX.map(values => values.get(x) ?? null)]), labels: 1 }
 }
 
 // Long: one row per point. Needed when an x label repeats within a trace,
 // where a row per x would have to drop or silently merge values.
-function longCsv(traces, xName, yName) {
+function longRows(traces, xName, yName) {
   const withSeries = traces.length > 1
-  const header = withSeries ? ['reeks', xName, yName] : [xName, yName]
-  const rows = traces.flatMap(t => xsOf(t).map((x, i) => {
+  const kolommen = withSeries ? ['reeks', xName, yName] : [xName, yName]
+  const rijen = traces.flatMap(t => xsOf(t).map((x, i) => {
     const point = [x, ysOf(t)[i]]
     return withSeries ? [t.name || '', ...point] : point
   }))
-  return toCsv([header, ...rows])
+  return { kolommen, rijen, labels: kolommen.length - 1 }
 }
 
 // Why a drawn trace cannot be exported faithfully, or null when it can. A
 // figure that does not add up must not yield a CSV that looks fine next to a
 // broken chart (#217).
-const DISTRIBUTION_TYPES = new Set(['histogram', 'box', 'violin'])
+export const DISTRIBUTION_TYPES = new Set(['histogram', 'box', 'violin'])
 
 function traceProblem(trace) {
   if (DISTRIBUTION_TYPES.has(trace.type)) return null
@@ -101,7 +101,9 @@ export function figureCsvProblem(figure) {
   return hasToolRows(figure) ? null : tracesProblem(figure)
 }
 
-function tracesToCsv(figure) {
+// The drawn traces as columns and rows, or null when they cannot be read as points. `labels` counts the
+// leading label columns (x, and the series in the long form); the rest are values. Also read by figuurTabel.js.
+export function tracesTabel(figure) {
   const traces = figure.data || []
   if (traces.some(hasZ) || !traces.some(t => xsOf(t).length) || tracesProblem(figure)) return null
 
@@ -109,13 +111,18 @@ function tracesToCsv(figure) {
   const [catAxis, valAxis] = traces.every(isHorizontal) ? [layout.yaxis, layout.xaxis] : [layout.xaxis, layout.yaxis]
   const xName = layout.meta?.x || axisTitle(catAxis) || 'categorie'
   const yName = layout.meta?.y || axisTitle(valAxis) || 'waarde'
-  return traces.some(hasRepeatedX) ? longCsv(traces, xName, yName) : wideCsv(traces, xName, yName)
+  return traces.some(hasRepeatedX) ? longRows(traces, xName, yName) : wideRows(traces, xName, yName)
+}
+
+function tracesToCsv(figure) {
+  const tabel = tracesTabel(figure)
+  return tabel && toCsv([tabel.kolommen, ...tabel.rijen])
 }
 
 // A tool row is an object; anything else in a stored meta (null, a list, text) is skipped rather than
-// taking the whole answer down (#642). Also read by KaartTerugval.jsx.
-export const isRij = rij => rij !== null && typeof rij === 'object' && !Array.isArray(rij)
-const toolRows = figure => (Array.isArray(figure.layout?.meta?.data) ? figure.layout.meta.data.filter(isRij) : null)
+// taking the whole answer down (#642). The rows are also read by figuurTabel.js.
+const isRij = rij => rij !== null && typeof rij === 'object' && !Array.isArray(rij)
+export const toolRows = figure => (Array.isArray(figure.layout?.meta?.data) ? figure.layout.meta.data.filter(isRij) : null)
 const hasToolRows = figure => toolRows(figure)?.length > 0
 
 // Source and selections from tools/plot.py, as '#' lines above the header:

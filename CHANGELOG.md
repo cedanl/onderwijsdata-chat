@@ -7,6 +7,13 @@ de laatste tag is 1.8.6.
 ## Niet uitgebracht
 
 ### Presentatie
+- Onder elke grafiek in de chat staat een ingeklapte knop "Toon de waarden" met alle waarden van de grafiek als
+  tabel (#664). Op een telefoon was een tik-tooltip de enige weg naar een waarde; een schermlezer kreeg per reeks alleen
+  de eerste en laatste. De tabel komt uit dezelfde rijen als de CSV (`layout.meta.data`, anders de getekende reeksen),
+  met meer reeksen naast elkaar en getallen in Nederlandse notatie. Gemeten op 390 px (iPhone 14, licht en donker): de
+  knop is 44 px hoog, een grafiek met 12 en een met 3 × 6 punten past zonder zijwaarts scrollen en de pagina loopt niet
+  over. De terugvaltabel van een kaart die niet getekend is (#632) gebruikt dezelfde tabel; dashboards en rapporten
+  blijven zoals ze waren.
 - Het feedbackformulier op een rapport laat per blok zien hoeveel vragen er zijn en hoeveel je er hebt beantwoord
   ("Over dit rapport — 2 van 7 vragen beantwoord"). De vragen over het rapport hebben nu een eigen kopje (`section` bij
   `nuttig` in `core/feedback.py`); de knop "Help ons verder" noemt het aantal vragen erachter. Op een telefoon

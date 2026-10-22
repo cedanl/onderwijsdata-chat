@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import KolomKop from '../components/KolomKop'
 import TabelScroll from '../components/TabelScroll'
 import KaartTerugval from '../components/KaartTerugval'
+import WaardenTabel from '../components/WaardenTabel'
 import CitedNumber from '../components/CitedNumber'
 import { rehypeCitaties } from '../citations'
 import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
@@ -51,6 +52,7 @@ import {
 import { buildReportHtml } from '../reportHtml'
 import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { figuurBeschrijving } from '../figuurBeschrijving'
+import { figuurTabel } from '../figuurTabel'
 import { scheidNoot } from '../figuurNoot'
 import { saveFile } from '../saveFile'
 import DataExport from '../components/DataExport'
@@ -1219,6 +1221,7 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
   const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
+  const tabel = useMemo(() => figuurTabel(figure), [figure])
   const isMap = Boolean(figure && isMapFigure(figure))
   const kaart = useKaartStatus(isMap)
   if (!figure) return null
@@ -1259,6 +1262,8 @@ const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
         />
       </div>
       {noot && <p className="figuur-noot">{noot}</p>}
+      {/* Een kaart die niet getekend is, toont haar tabel al in KaartTerugval. */}
+      {tabel && !kaartMislukt && <WaardenTabel tabel={tabel} />}
     </div>
   )
 })

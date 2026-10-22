@@ -68,6 +68,8 @@ afterEach(() => {
 })
 
 const wrap = () => container.querySelector('.plotly-figure-wrap')
+const tabellen = () => [...wrap().querySelectorAll('table')]
+const alleenWaardentabel = () => tabellen().length === 1 && tabellen()[0].closest('.waarden-details') !== null
 const cellen = () => [...wrap().querySelectorAll('tbody tr')].map(tr => [...tr.cells].map(td => td.textContent))
 
 describe('kaart die niet getekend is (#632)', () => {
@@ -86,6 +88,12 @@ describe('kaart die niet getekend is (#632)', () => {
     expect(wrap().textContent).not.toContain('Kaart aangemaakt')
     expect(wrap().textContent).toContain('Kaart niet getekend')
     expect(wrap().querySelector('.plot-stub').closest('[hidden]')).not.toBeNull()
+  })
+
+  it('toont dan alleen de terugvaltabel, geen tweede waardentabel (#664)', async () => {
+    await render(KAART, props => props.onError(new Error('Map error.')))
+    expect(tabellen()).toHaveLength(1)
+    expect(wrap().querySelector('.waarden-details')).toBeNull()
   })
 
   it('houdt de CSV-knop als er geen kaart is', async () => {
@@ -136,10 +144,11 @@ describe('kaart die niet getekend is (#632)', () => {
 })
 
 describe('kaart die getekend is en gewone grafieken (#632)', () => {
-  it('toont bij een getekende kaart geen melding en geen tabel', async () => {
+  // Sinds #664 staat onder elke grafiek een ingeklapte waardentabel; de terugvaltabel komt er niet bij.
+  it('toont bij een getekende kaart geen melding en alleen de ingeklapte waardentabel', async () => {
     await render(KAART, props => props.onInitialized({}, kaartMet([{ id: 'PV20', layer: { type: 'fill' } }])))
     expect(wrap().querySelector('[role="alert"]')).toBeNull()
-    expect(wrap().querySelector('table')).toBeNull()
+    expect(alleenWaardentabel()).toBe(true)
     expect(wrap().textContent).toContain('Kaart aangemaakt')
     expect(wrap().querySelector('[role="img"]').hidden).toBe(false)
   })
@@ -155,7 +164,7 @@ describe('kaart die getekend is en gewone grafieken (#632)', () => {
   it('laat een gewone grafiek met een fout ongemoeid', async () => {
     await render(STAAF, props => props.onError(new Error('iets')))
     expect(wrap().querySelector('[role="alert"]')).toBeNull()
-    expect(wrap().querySelector('table')).toBeNull()
+    expect(alleenWaardentabel()).toBe(true)
   })
 
   it('meldt niets zolang Plotly geen maplibre-kaart heeft (jsdom)', async () => {

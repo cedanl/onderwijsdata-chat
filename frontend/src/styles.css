@@ -611,10 +611,16 @@ html.dark .login-melding { color: var(--accent-text); }
 }
 /* A map that did not draw (#632): the notice and its numbers as a table, in the place of the empty map. */
 .kaart-mislukt { color: var(--gray-700); border-left: 3px solid var(--amber-500); padding: 2px 0 2px 8px; margin: 4px 0 8px; }
-.kaart-tabel { border-collapse: collapse; min-width: min(100%, 24rem); }
-.kaart-tabel caption { text-align: left; font-weight: 600; margin-bottom: 4px; }
-.kaart-tabel :is(th, td) { padding: 4px 16px 4px 0; border-bottom: 1px solid var(--gray-200); text-align: left; }
-.kaart-tabel :is(th, td):last-child { padding-right: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.figuur-tabel { border-collapse: collapse; min-width: min(100%, 24rem); }
+.figuur-tabel caption { text-align: left; font-weight: 600; margin-bottom: 4px; }
+.figuur-tabel :is(th, td) { padding: 4px 16px 4px 0; border-bottom: 1px solid var(--gray-200); text-align: left; }
+.figuur-tabel :is(th, td):last-child { padding-right: 0; }
+.figuur-tabel .getal { text-align: right; font-variant-numeric: tabular-nums; }
+/* De waarden onder een grafiek (#664), ingeklapt zoals de Telling: op een telefoon de weg naar elke waarde. */
+.waarden-details { margin-top: 6px; font-size: var(--font-klein); color: var(--gray-600); }
+.waarden-details summary { cursor: pointer; width: fit-content; }
+.waarden-details[open] summary { margin-bottom: 4px; }
+.waarden-details .figuur-tabel { color: var(--gray-700); }
 
 .tool-step-wrap { margin: 2px 0; }
 .tool-step {
@@ -1926,6 +1932,8 @@ html.dark .suggested-btn:hover {
      invisible 44px area, as for the figures. */
   .confirm-cancel, .confirm-primary, .confirm-destructive { min-width: var(--tap-min); min-height: var(--tap-min); }
   .reasoning-toggle, .history-search, .feedback-extra-btn { min-height: var(--tap-min); }
+  /* Eén regel: met die regelhoogte blijft het open/dicht-pijltje van de summary staan. */
+  .waarden-details summary { line-height: var(--tap-min); }
   .reasoning-step-code summary {
     min-height: var(--tap-min); margin-block: calc((var(--tap-min-aa) - var(--tap-min)) / 2);
   }

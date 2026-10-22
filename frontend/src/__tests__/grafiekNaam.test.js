@@ -49,13 +49,14 @@ describe('PlotlyFigure: toegankelijke naam (#588)', () => {
     expect(wrap.hasAttribute('aria-label')).toBe(false)
   })
 
-  it('houdt de CSV-knop buiten elke role="img", als enige focusbare element', async () => {
+  it('houdt de CSV-knop en de waardentabel (#664) buiten elke role="img"', async () => {
     await render(STAAF)
     const csv = container.querySelector('.csv-download-btn')
 
     expect(csv).not.toBeNull()
     expect(csv.closest('[role="img"]')).toBeNull()
-    expect(focusbaar(container.querySelector('.plotly-figure-wrap'))).toEqual(['csv-download-btn'])
+    expect(container.querySelector('.waarden-details').closest('[role="img"]')).toBeNull()
+    expect(focusbaar(container.querySelector('.plotly-figure-wrap'))).toEqual(['csv-download-btn', 'tabel-scroll'])
   })
 
   it('geeft een figuur zonder beschrijving geen role', async () => {
