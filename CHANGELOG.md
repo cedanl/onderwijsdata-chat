@@ -806,6 +806,8 @@ de laatste tag is 1.8.6.
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
 
 ### Beheer
+- Renovate stelt geen digest-pin meer voor het eigen image in `charts/onderwijsdata-chat/values.yaml` voor (#656): de
+  lege `tag` is bewust, het chart-appVersion bepaalt de tag.
 - `HEAD` op een pad van de app (`/`, `/login`, `/openapi.json`) antwoordt als `GET`: 200 met `text/html`, zonder
   body (#654). Het gaf een JSON-405, zodat de HEAD-respons `application/json` beloofde voor een pad dat HTML geeft.
   `HEAD` op `/health`, `/ready`, `/version` en alles onder `/api` blijft 405, zoals voorheen.

@@ -33,6 +33,16 @@
       ]
     },
     {
+      "description": "Het eigen image heeft bewust geen tag in charts/onderwijsdata-chat/values.yaml: het chart-appVersion bepaalt de tag. Renovate mag er geen digest-pin voor voorstellen (#656).",
+      "enabled": false,
+      "matchManagers": [
+        "helm-values"
+      ],
+      "matchPackageNames": [
+        "cr.surf.nl/ceda-onderwijsdata-chat/onderwijsdata-chat"
+      ]
+    },
+    {
       "description": "ESLint major versions blocked: v10 incompatible with eslint-plugin-jsx-a11y@6 (waits for v7). See 9bf3db6 + #28.",
       "enabled": false,
       "matchUpdateTypes": [
