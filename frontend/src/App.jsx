@@ -15,6 +15,7 @@ import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './consta
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
+import { wisPwaCaches } from './pwaCaches'
 import { NavSlotContext } from './navSlot'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
@@ -79,6 +80,7 @@ function AppShell() {
   const resetSession = useCallback(() => {
     if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer)
     clearLocalSessionData()
+    wisPwaCaches()
     // The profile belongs to whoever logged out; on a shared device the next person starts fresh.
     localStorage.removeItem(STORAGE_SETTINGS)
     localStorage.removeItem(STORAGE_ONBOARDED)
