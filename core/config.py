@@ -50,6 +50,9 @@ RUN_QUEUE_TIMEOUT_S = float(os.getenv("RUN_QUEUE_TIMEOUT_S", "60"))
 # Gelijktijdige sandboxprocessen van run_analysis: elk laadt pandas en de data, dus het geheugen bepaalt dit.
 MAX_SANDBOX_RUNS = int(os.getenv("MAX_SANDBOX_RUNS", "2"))
 SANDBOX_QUEUE_TIMEOUT_S = float(os.getenv("SANDBOX_QUEUE_TIMEOUT_S", "20"))
+# Grootste HTTP-verzoek en WebSocket-bericht (#682, core/verzoeklimiet.py en --ws-max-size in de Dockerfile). Gemeten
+# op 23-10: het grootste gesprek 163 kB, het grootste werkboek 85 kB; het herstel van een gesprek gaat als één bericht.
+MAX_REQUEST_BYTES = 4 * 1024 * 1024
 # Bovengrens van de datastore in het geheugen (tools/store.py, #13): daarboven gaan de langst niet
 # gebruikte tabellen eruit; een gesprek haalt ze zo nodig uit zijn recept terug (#472). De pod heeft
 # 2 GiB (playground) tot 4 GiB (productie); de catalogus en de modellen delen dat geheugen.

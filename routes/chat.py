@@ -30,6 +30,7 @@ from agent.replay import (
 )
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
+from config import Config
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import (
     CHAT_RATE_LIMIT,
@@ -46,7 +47,9 @@ from core.config import (
 )
 from core.errors import Gebruikersfout, error_event, friendly_error, log_interne_fout
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
+from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
+from core.logging_util import gebruiker_kenmerk
 from core.rate_limit import RateLimiter
 from tools import store
 
@@ -67,6 +70,8 @@ _verbindingen = Verbindingen(per_sleutel=MAX_WS_PER_USER, totaal=MAX_WS_TOTAL)
 _runplaatsen = Runplaatsen(max_tegelijk=MAX_CONCURRENT_RUNS, wacht_s=RUN_QUEUE_TIMEOUT_S)
 # "Try again later" (RFC 6455); de frontend probeert het met zijn gewone terugval opnieuw.
 _TE_VEEL_VERBINDINGEN = 1013
+# De origins die naast de eigen een chatverbinding mogen openen (core/herkomst.py, #682).
+_CORS_ORIGINS = Config.get_parsed_cors_origins()
 _TE_VEEL_MELDING = "Er staan te veel vensters open met deze app. Sluit er een paar en probeer het opnieuw."
 
 
@@ -754,6 +759,12 @@ async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task |
 
 @router.websocket("/api/chat")
 async def chat_websocket(ws: WebSocket) -> None:
+    # Vóór het token: een andere site die de gebruiker open heeft, krijgt geen verbinding, ook zonder login (#682).
+    origin = ws.headers.get("origin")
+    if not origin_toegestaan(origin, ws.headers.get("host"), _CORS_ORIGINS, lokaal=Config.APP_ENV == "local"):
+        logger.warning("VERBINDING geweigerd: origin niet toegestaan")
+        await ws.close(code=4003, reason="Origin niet toegestaan")
+        return
     username = None
     token = token_uit_protocol(ws.headers.get("sec-websocket-protocol"))
     if AUTH_ENABLED:
@@ -765,7 +776,8 @@ async def chat_websocket(ws: WebSocket) -> None:
     # Het subprotocol bevestigen, anders sluit de browser de verbinding (#103).
     await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
     # Elke logregel van deze verbinding, ook uit taken en threads, draagt dit ID (#502).
-    logger.info("VERBINDING open verbinding=%s", nieuwe_verbinding())
+    # Het pseudoniem koppelt de TOKENS-regels van deze verbinding aan een gebruiker, voor de kosten (#678).
+    logger.info("VERBINDING open verbinding=%s gebruiker=%s", nieuwe_verbinding(), gebruiker_kenmerk(username))
 
     # Zonder login heet iedereen "gast": dan telt alleen het totaal (#688).
     sleutel = username if username and username != FALLBACK_USER else None

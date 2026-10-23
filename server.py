@@ -18,6 +18,8 @@ load_dotenv()
 from config import Config, ConfigError
 from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
+from core.config import MAX_REQUEST_BYTES
+from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
@@ -104,8 +106,15 @@ async def security_headers(request, call_next):
         "worker-src 'self' blob:; "
         f"connect-src {_CONNECT_SRC}; "
         "font-src 'self'; "
-        "frame-ancestors 'none';"
+        "frame-ancestors 'none'; "
+        # Een geïnjecteerde <base> of <form> stuurt geen relatieve URL of formulier naar een andere host (#682).
+        "base-uri 'self'; "
+        "form-action 'self';"
     )
+    # Geen API-antwoord in de browsercache of een tussenliggende proxy: ze bevatten gesprekken en werkboeken (#682).
+    # Een route die zelf een Cache-Control zet, houdt die.
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
     return response
 
 
@@ -247,6 +256,7 @@ def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = Non
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(Verzoeklimiet, max_bytes=MAX_REQUEST_BYTES)
     # Bundel, catalogus en API-antwoorden gecomprimeerd: de ingress doet het niet (#110).
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.middleware("http")(security_headers)

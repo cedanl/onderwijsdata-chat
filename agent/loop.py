@@ -32,7 +32,7 @@ from .probleem import controlenamen, herstelbare
 from .ratelimit import acompletion_with_backoff
 from .search_trace import SearchTrace
 from .selectie import data_keys
-from .stream import Emit, StreamResult, accumulate_stream
+from .stream import Emit, StreamResult, Tokens, accumulate_stream
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,8 @@ class LoopResult:
     problems: list[str] = field(default_factory=list)  # check problems left after the correction
     partial_error: str | None = None  # model call failed; kept what was collected
     model_versie: str | None = None  # wat de provider terugmeldde als model, voor het manifest (#345)
+    tokens: Tokens = field(default_factory=Tokens)  # over alle modelaanroepen van deze run (#678)
+    aanroepen: int = 0
 
     @property
     def tool_results(self) -> list[str]:
@@ -224,6 +226,8 @@ class _Loop:
         )
         self.result.text, self.result.finish_reason = sr.text, sr.finish_reason
         self.result.model_versie = sr.model_versie or self.result.model_versie
+        self.result.tokens += sr.tokens
+        self.result.aanroepen += 1
         if self._stopped():
             self.result.aborted = "stream"
             return None
@@ -428,7 +432,23 @@ async def tool_loop(
         if not (keep_partial and keep_partial()):
             raise
         result.partial_error = str(exc)
+    finally:
+        _log_tokens(model, result)
     return result
+
+
+def _log_tokens(model: str, result: LoopResult) -> None:
+    """Wat de run kostte, ook als hij afbrak (#678); het verbindings-ID koppelt de regel aan een gebruiker."""
+    t = result.tokens
+    logger.info(
+        "TOKENS  model=%s  aanroepen=%d  invoer=%d  uitvoer=%d  cache_gelezen=%d  cache_geschreven=%d",
+        model,
+        result.aanroepen,
+        t.invoer,
+        t.uitvoer,
+        t.cache_gelezen,
+        t.cache_geschreven,
+    )
 
 
 def _answered(result: LoopResult) -> bool:

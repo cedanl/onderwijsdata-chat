@@ -86,6 +86,14 @@ kubectl --context testing logs -n services-onderwijsdata-chat deploy/fn-onderwij
 
 Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenmerk.
 
+Tokengebruik: elke run logt `TOKENS  model=…  aanroepen=…  invoer=…  uitvoer=…  cache_gelezen=…  cache_geschreven=…`
+(#678). Per gebruiker optellen gaat via het verbindings-ID: `VERBINDING open verbinding=<id> gebruiker=<pseudoniem>`.
+Het pseudoniem staat er alleen met `LOG_HASH_SECRET`.
+
+```bash
+kubectl --context testing logs -n services-onderwijsdata-chat deploy/fn-onderwijsdata-chat --since=24h | grep TOKENS
+```
+
 **Herstarten**
 
 ```bash
