@@ -118,7 +118,28 @@ def test_csp_wijzigt_naast_worker_src_geen_andere_richtlijn(client):
         "worker-src": "'self' blob:",
         "font-src": "'self'",
         "frame-ancestors": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'self'",
     }
+
+
+# #682: een geïnjecteerde <base href> zou elke relatieve URL (ook /assets voor Plotly) naar een andere host sturen,
+# en een geïnjecteerd <form> kan ingevulde tekst naar buiten posten. default-src dekt geen van beide.
+def test_csp_sluit_base_en_formulieren_naar_buiten_uit(client):
+    csp = _richtlijnen(client.get("/health").headers["Content-Security-Policy"])
+    assert csp["base-uri"] == "'self'"
+    assert csp["form-action"] == "'self'"
+
+
+# #682: API-antwoorden (gesprekken, werkboeken, instellingen) horen niet in de browsercache of een proxy.
+@pytest.mark.parametrize("pad", ["/api/conversations", "/api/workbooks", "/api/bestaat-niet"])
+def test_api_antwoorden_worden_niet_bewaard(client, pad):
+    assert client.get(pad).headers["Cache-Control"] == "no-store"
+
+
+def test_buiten_de_api_geen_no_store(client):
+    """De build en index.html houden hun eigen cachebeleid (frontend_static.py)."""
+    assert "no-store" not in client.get("/health").headers.get("Cache-Control", "")
 
 
 # #636: de app gebruikt geen camera, microfoon, locatie, betalingen of usb; een ingesloten of

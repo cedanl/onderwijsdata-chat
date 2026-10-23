@@ -106,6 +106,7 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 | WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking, dashboard en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
 | Open WebSocket-verbindingen | `MAX_WS_PER_USER` (10) per gebruiker, `MAX_WS_TOTAL` (100) in totaal | Daarboven een melding en close-code 1013 (#688) |
 | Gelijktijdige runs | `MAX_CONCURRENT_RUNS` (8) modelruns, `MAX_SANDBOX_RUNS` (2) sandboxprocessen | Wachtrij; na `RUN_QUEUE_TIMEOUT_S` (60 s) of `SANDBOX_QUEUE_TIMEOUT_S` (20 s) een melding dat het druk is (#688) |
+| Verzoekgrootte | `MAX_REQUEST_BYTES` (4 MiB) per HTTP-verzoek en per WebSocket-bericht | Daarboven HTTP 413; uvicorn sluit een te groot WebSocket-bericht (#682) |
 | LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
 
 ### Input validatie
@@ -118,7 +119,9 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 
 ### HTTP beveiligingsheaders
 
-- `Content-Security-Policy` — alleen de eigen origin voor scripts en styles; Plotly voor rapporten en dashboards komt van de eigen server en niet van een CDN (#486)
+- `Content-Security-Policy` — alleen de eigen origin voor scripts en styles; Plotly voor rapporten en dashboards komt van de eigen server en niet van een CDN (#486); `base-uri` en `form-action` alleen de eigen origin (#682)
+- `Cache-Control: no-store` op `/api/` (#682)
+- WebSocket `/api/chat` alleen vanaf de eigen origin of een origin uit `CORS_ORIGINS`, anders close-code 4003 (#682, `core/herkomst.py`)
 - `X-Frame-Options: DENY` — geen iframe embed
 - `Strict-Transport-Security` — HTTPS forceren
 - `X-Content-Type-Options: nosniff` — MIME-type sniffing voorkomen

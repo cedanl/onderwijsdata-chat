@@ -43,6 +43,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S21 | SRAM-e-mailadres als sleutel van de gebruikersdata; `CHAT_USERS`-wachtwoorden in platte tekst | Laag–Gemiddeld | ℹ️ Bekend, bewust uitgesteld (#487, 19-10-2026) — de SRAM-gebruikerscache is al begrensd; voorwaarde voor productie hieronder |
 | S22 | Opgeslagen rapport-HTML draaide met dialogen en pop-ups in de viewer en ongesandboxt in de download | Gemiddeld | ⚠️ Deels opgelost (#634) — viewer alleen `allow-scripts`, policy in frame en download; de server controleert de HTML niet (restpunt, voorwaarde voor productie hieronder) |
 | S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie uit op playground en productie via `APP_ENV` (#676) |
+| S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; rand (Traefik) en quotum per gebruiker open |
 
 ---
 
@@ -69,7 +70,8 @@ Een bevestigde bevinding komt daarna in dit log.
 
 **Aangetroffen in:** ZAP-scan (16 alerts waaronder CSP, X-Frame-Options, HSTS, X-Content-Type-Options)  
 **Fix:** middleware in `server.py` zet:
-- `Content-Security-Policy` — beperkt script-, style-, img-, worker- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506); `worker-src 'self' blob:` omdat de kaart (maplibre) zijn worker vanaf een `blob:`-URL start (#632). Restpunt `'unsafe-inline'`: zie S13
+- `Content-Security-Policy` — beperkt script-, style-, img-, worker- en font-bronnen; `connect-src` staat alleen de eigen server toe (`'self'` plus de `wss://`-origin uit `SERVER_URL`, #506); `worker-src 'self' blob:` omdat de kaart (maplibre) zijn worker vanaf een `blob:`-URL start (#632); `base-uri 'self'` en `form-action 'self'` (#682). Restpunt `'unsafe-inline'`: zie S13
+- `Cache-Control: no-store` op elk antwoord onder `/api/`, tenzij de route zelf een `Cache-Control` zet (#682, S24)
 - `X-Frame-Options: DENY` en CSP `frame-ancestors 'none'` — voorkomt clickjacking
 - `Strict-Transport-Security` — dwingt HTTPS af
 - `X-Content-Type-Options: nosniff`
@@ -319,6 +321,20 @@ Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `
 
 ---
 
+### S24 — Grootte van verzoeken, Origin van de WebSocket, cache ⚠️ Deels opgelost
+
+**Aangetroffen in:** productie-readiness audit 22-10-2026 (#682)  
+**Probleem:** `PUT /api/conversations/{id}` en `PUT /api/workbooks/{id}` namen elk JSON-lichaam aan (`body: dict`, geen schema, geen grootte) en uvicorn liet WebSocket-berichten tot 16 MiB toe: één ingelogde gebruiker kon het geheugen van de pod en de database vullen. CORS geldt niet voor een WebSocket, en de server controleerde de `Origin` niet; zonder login (lokaal, demo) kon zo elke site die de gebruiker open had een chatverbinding openen. API-antwoorden met gesprekken en werkboeken hadden geen `Cache-Control`.  
+**Fix:**
+- `core/verzoeklimiet.py`: elk HTTP-verzoek boven `MAX_REQUEST_BYTES` (4 MiB, `core/config.py`) krijgt 413, op zijn `Content-Length` of, zonder lengte, zodra er meer binnenkomt. uvicorn start met `--ws-max-size 4194304` (`Dockerfile`), dus een WebSocket-bericht heeft dezelfde grens. Gemeten op 23-10: het grootste gesprek 163 kB, het grootste werkboek 85 kB.
+- `core/herkomst.py`: de chat-WebSocket neemt alleen een verbinding aan zonder `Origin` (geen browser), van de eigen origin (die van `Host`), van een origin uit `CORS_ORIGINS`, of met `APP_ENV=local` van een devserver op `localhost`; anders close-code 4003, vóór het token. `null` (een frame met opake origin, zoals het rapportframe) valt erbuiten.
+- `Cache-Control: no-store` op `/api/` en `base-uri 'self'`, `form-action 'self'` in de CSP (S3).
+
+Tests: `tests/test_verzoeklimiet.py`, `tests/test_websocket_herkomst.py`, `tests/test_security_headers.py`.  
+**Open (voorwaarde voor productie, #682):** een opslagquotum per gebruiker (aantal en totale grootte van gesprekken en werkboeken), en aan de rand een Traefik-`rateLimit` voor ongeauthenticeerde paden en `buffering.maxRequestBodyBytes`, zodat een te groot verzoek de pod niet eens bereikt.
+
+---
+
 ## Aanbevelingen voor volgende stap
 
 1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
@@ -328,4 +344,5 @@ Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `
 5. **S21** — vóór productie: sleutel naar `sub` met e-mail alleen als weergavenaam en een migratie van de bestaande rijen; productie alleen via SRAM of gehashte wachtwoorden (#487). In de demofase bewust niet gebouwd; de SRAM-cache is al begrensd
 6. **S22** — vóór productie: eigen account per gebruiker, of de server bewaart de rapportspec en bouwt de HTML zelf (#634)
 7. **S23** — besluiten of `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` open blijven (#636)
-8. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
+8. **S24** — opslagquotum per gebruiker; `rateLimit` en `maxRequestBodyBytes` in Traefik (#682)
+9. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie
