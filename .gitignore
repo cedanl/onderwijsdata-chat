@@ -40,3 +40,7 @@ test-results/
 
 # Eval-uitvoer hoort in CI-artifacts, niet in git (#208)
 eval_results/
+
+# Dekkingsmeting (pytest-cov, #684)
+.coverage
+.coverage.*

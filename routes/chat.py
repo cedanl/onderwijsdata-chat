@@ -36,11 +36,16 @@ from core.config import (
     CHAT_RATE_WINDOW_S,
     DASHBOARDS_ENABLED,
     HISTORY_MAX_CHARS,
+    MAX_CONCURRENT_RUNS,
     MAX_HISTORY,
     MAX_MESSAGE_CHARS,
+    MAX_WS_PER_USER,
+    MAX_WS_TOTAL,
     MODEL,
+    RUN_QUEUE_TIMEOUT_S,
 )
 from core.errors import Gebruikersfout, error_event, friendly_error, log_interne_fout
+from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.logging_context import nieuwe_verbinding
 from core.rate_limit import RateLimiter
 from tools import store
@@ -56,6 +61,23 @@ router = APIRouter(tags=["chat"])
 # Zonder login heet iedereen "gast": dan per verbinding, zodat een zaal vol gasten elkaar niet blokkeert.
 _berichtlimiter = RateLimiter(max_attempts=CHAT_RATE_LIMIT, window_seconds=CHAT_RATE_WINDOW_S)
 _LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} seconden opnieuw."
+
+# Wat er tegelijk mag (#688): open verbindingen per gebruiker en in totaal, en runs die het model aanroepen.
+_verbindingen = Verbindingen(per_sleutel=MAX_WS_PER_USER, totaal=MAX_WS_TOTAL)
+_runplaatsen = Runplaatsen(max_tegelijk=MAX_CONCURRENT_RUNS, wacht_s=RUN_QUEUE_TIMEOUT_S)
+# "Try again later" (RFC 6455); de frontend probeert het met zijn gewone terugval opnieuw.
+_TE_VEEL_VERBINDINGEN = 1013
+_TE_VEEL_MELDING = "Er staan te veel vensters open met deze app. Sluit er een paar en probeer het opnieuw."
+
+
+async def _in_een_runplaats(start: Callable[[], Awaitable[None]], emit) -> None:
+    """Wacht op een vrije runplaats en start dan pas de run; is het te druk, dan een melding en geen run (#688)."""
+    try:
+        async with _runplaatsen.plaats():
+            await start()
+    except Druk as e:
+        logger.warning("RUNPLAATSEN vol  max=%d  wacht=%ss", MAX_CONCURRENT_RUNS, RUN_QUEUE_TIMEOUT_S)
+        await emit({"type": "error", "message": str(e), "modelafhankelijk": False})
 
 
 def _new_session(username: str | None = None, verbinding: str | None = None) -> dict:
@@ -623,7 +645,7 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
         return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
-    return asyncio.create_task(_process_message(content, session, emit, model))
+    return asyncio.create_task(_in_een_runplaats(lambda: _process_message(content, session, emit, model), emit))
 
 
 async def _handle_clarification(
@@ -641,7 +663,7 @@ async def _handle_clarification(
     session["clarify_rondes"] = session.get("clarify_rondes", 0) + 1
     # Afbakening voor de controle na het antwoord, niet alleen tekst in het gesprek (#246).
     session.setdefault("clarify_keuzes", []).append(choice)
-    return asyncio.create_task(_process_message(choice, session, emit, model))
+    return asyncio.create_task(_in_een_runplaats(lambda: _process_message(choice, session, emit, model), emit))
 
 
 async def _handle_generate_dashboard(
@@ -656,7 +678,7 @@ async def _handle_generate_dashboard(
     if not await _binnen_limiet(session, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
-    return asyncio.create_task(_generate_dashboard(session, emit, model))
+    return asyncio.create_task(_in_een_runplaats(lambda: _generate_dashboard(session, emit, model), emit))
 
 
 async def _handle_generate_report(
@@ -669,7 +691,7 @@ async def _handle_generate_report(
         return current_task
     model = session["chat_settings"].get("model") or None
     author = msg.get("author")
-    return asyncio.create_task(_generate_report(session, emit, model, author=author))
+    return asyncio.create_task(_in_een_runplaats(lambda: _generate_report(session, emit, model, author=author), emit))
 
 
 async def _handle_refresh_dashboard(
@@ -689,7 +711,11 @@ async def _handle_refresh_dashboard(
         await emit({"type": "error", "message": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."})
         return current_task
     model = session["chat_settings"].get("model") or None
-    return asyncio.create_task(_refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model, mode))
+    return asyncio.create_task(
+        _in_een_runplaats(
+            lambda: _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model, mode), emit
+        )
+    )
 
 
 Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]
@@ -740,6 +766,23 @@ async def chat_websocket(ws: WebSocket) -> None:
     await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
     # Elke logregel van deze verbinding, ook uit taken en threads, draagt dit ID (#502).
     logger.info("VERBINDING open verbinding=%s", nieuwe_verbinding())
+
+    # Zonder login heet iedereen "gast": dan telt alleen het totaal (#688).
+    sleutel = username if username and username != FALLBACK_USER else None
+    if not _verbindingen.open(sleutel):
+        # Pas na accept: zo leest de gebruiker waarom, in plaats van een kale 1006.
+        logger.warning("VERBINDINGEN vol  open=%d  max=%d/%d", _verbindingen.aantal, MAX_WS_PER_USER, MAX_WS_TOTAL)
+        await ws.send_text(json.dumps({"type": "error", "message": _TE_VEEL_MELDING, "modelafhankelijk": False}))
+        await ws.close(code=_TE_VEEL_VERBINDINGEN)
+        return
+    try:
+        await _bedien(ws, username)
+    finally:
+        _verbindingen.sluit(sleutel)
+
+
+async def _bedien(ws: WebSocket, username: str | None) -> None:
+    """Eén geaccepteerde chatverbinding, tot de browser hem sluit."""
     session = _new_session(username=username)
 
     async def emit(event: dict) -> None:

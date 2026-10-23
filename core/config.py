@@ -39,6 +39,17 @@ RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
 CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
 CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
+# Wat er tegelijk mag op de pod (#688, core/gelijktijdig.py). Per gebruiker ruim: het gedeelde demo-account opent in
+# een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
+MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))
+MAX_WS_TOTAL = int(os.getenv("MAX_WS_TOTAL", "100"))
+# Runs die het model aanroepen (vraag, verduidelijking, dashboard, rapport, verversen); daarboven wachten, na
+# RUN_QUEUE_TIMEOUT_S een melding dat het druk is.
+MAX_CONCURRENT_RUNS = int(os.getenv("MAX_CONCURRENT_RUNS", "8"))
+RUN_QUEUE_TIMEOUT_S = float(os.getenv("RUN_QUEUE_TIMEOUT_S", "60"))
+# Gelijktijdige sandboxprocessen van run_analysis: elk laadt pandas en de data, dus het geheugen bepaalt dit.
+MAX_SANDBOX_RUNS = int(os.getenv("MAX_SANDBOX_RUNS", "2"))
+SANDBOX_QUEUE_TIMEOUT_S = float(os.getenv("SANDBOX_QUEUE_TIMEOUT_S", "20"))
 # Bovengrens van de datastore in het geheugen (tools/store.py, #13): daarboven gaan de langst niet
 # gebruikte tabellen eruit; een gesprek haalt ze zo nodig uit zijn recept terug (#472). De pod heeft
 # 2 GiB (playground) tot 4 GiB (productie); de catalogus en de modellen delen dat geheugen.
