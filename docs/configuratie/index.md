@@ -40,8 +40,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait. Origins worden exact vergeleken, zonder patronen: een origin met ergens een `*`, ook `https://*.nl`, wordt bij het opstarten geweigerd |
 | `STORE_MAX_MB` | `512` | Bovengrens van de datastore in het geheugen (#13): daarboven gaan de langst niet gebruikte tabellen eruit; een gesprek haalt ze uit zijn recept terug. Houd dit onder het geheugen van de pod |
-| `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait; `*` wordt bij het opstarten geweigerd |
-| `DATABASE_PATH` | `app.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
+| `DATABASE_PATH` | `onderwijsdata.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `true` | Zet op `false` om de dashboardfunctie (pagina en `/api/dashboard/*`) uit te schakelen |
 | `ENABLE_FEEDBACK` | `true` | Zet op `false` om de feedbackknop op rapporten en dashboards, de 👍/👎 per chatantwoord en de link Feedback (en `/api/feedback*`, `/api/answer-feedback`) uit te schakelen. De vragen staan in `core/feedback.py`; antwoorden komen in de tabel `feedback`. Oordelen per antwoord komen met de tool-trace in `answer_feedback`; `python -m scripts.antwoordfeedback` zet ze als markdown op een rij. Na het verwijderen van een gesprek blijven ze staan zonder gebruikersnaam en gesprek-id (#476). Ook de link Feedback (`/api/feedback/algemeen`, #600) hangt eraan: berichten komen in `algemene_feedback`, `python -m scripts.algemene_feedback` zet ze op een rij |
@@ -89,7 +88,7 @@ Formaat: `gebruiker:model1,model2;gebruiker2:model3`. Vereist dat `CHAT_USERS` i
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `CHAT_SECRET` | *(per herstart gegenereerd)* | HMAC-secret voor sessiebeheer. Stel in voor stabiele tokens die herstarts overleven. |
+| `CHAT_SECRET` | *(niet ingesteld)* | HMAC-secret voor de tokens. Verplicht zodra `CHAT_USERS` of `OIDC_PROVIDER` is ingesteld: zonder start de app dan niet (`core/auth.py`). Zonder login gebruikt de app een vaste ontwikkelsleutel |
 | `CHAT_USERS` | *(niet ingesteld)* | Wachtwoord-authenticatie: `user:pass,user2:pass2`. Vereist dat `CHAT_SECRET` is ingesteld. |
 | `SESSION_TTL_HOURS` | `8` | Geldigheid van een token in uren (decimaal mag, bv. `0.5`). Bij wachtwoord-login (geen verversing) moet de gebruiker na deze tijd opnieuw inloggen. |
 | `SESSION_MAX_HOURS` | `24` | Maximale sessieduur in uren vanaf het inloggen: verversen (SRAM) geeft nooit een token dat later verloopt. |

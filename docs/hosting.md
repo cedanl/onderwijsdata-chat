@@ -60,14 +60,16 @@ Beide vereisen `CHAT_SECRET` voor het ondertekenen van tokens.
 
 ### Docker
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY . .
-RUN pip install uv && uv sync --no-dev
-RUN cd frontend && npm ci && npm run build
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+Gebruik de `Dockerfile` in de repo; die bouwt in drie stappen:
+
+1. de frontend (`node:24-alpine`, `npm ci && npm run build`);
+2. de Python-afhankelijkheden (`python:3.14-slim`, uv gepind, `uv sync --frozen --no-dev --extra postgres`), met
+   compiler en git alleen in deze stap;
+3. het runtime-image (`python:3.14-slim`): alleen de `.venv`, de code en de gebouwde frontend, als non-root `appuser`,
+   gestart met `.venv/bin/uvicorn server:app --no-server-header --timeout-graceful-shutdown 45`.
+
+```bash
+docker build -t onderwijsdata-chat .
 ```
 
 Geef omgevingsvariabelen mee via Docker of je platform — nooit in de image zelf:
@@ -110,4 +112,9 @@ az containerapp create \
 - [ ] `CHAT_USERS` ingesteld met sterke wachtwoorden
 - [ ] API keys als secrets in het hostingplatform, niet in code
 - [ ] `AVAILABLE_MODELS` ingesteld als de provider meerdere model-deployments heeft
-- [ ] `app.db` staat in `.gitignore`
+- [ ] `onderwijsdata.db` (SQLite, alleen zonder `POSTGRES_URI`) staat in `.gitignore`
+- [ ] PostgreSQL via `POSTGRES_URI`, met TLS (`sslmode=require` of strenger)
+- [ ] Inloggen via SRAM (OIDC) of gehashte wachtwoorden, geen `CHAT_USERS` in platte tekst (SECURITY.md S21)
+- [ ] `APP_ENV=production`: JSON-logs en geen API-documentatie
+- [ ] `LOG_LEVEL=INFO` (niet `DEBUG`) en `LOG_HASH_SECRET` als secret
+- [ ] Back-ups en een geteste herstelprocedure

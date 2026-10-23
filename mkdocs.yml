@@ -82,6 +82,7 @@ nav:
     - Architecture Decisions: architecture-decisions.md
     - Reproduceerbare analyses: reproducibility.md
   - Operatie:
+    - Operatie & runbook: operatie.md
     - Deployment: deployment.md
     - Promoten naar playground: promoten.md
     - Test Environment: test-environment.md

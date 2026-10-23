@@ -7,8 +7,8 @@ Complete deployment procedure voor onderwijsdata-chat op SDP tenant.
 - GitLab repository: `surf-internal/npuls/ceda/onderwijsdata-chat`
 - SDP tenant: `services-onderwijsdata-chat` namespace
 - CloudNativePG PostgreSQL cluster
-- SURFconext OIDC credentials
-- Anthropic API key
+- SRAM OIDC credentials (SURF Research Access Management)
+- Modelsleutel (Azure AI Foundry en/of Willma)
 - age-key for SOPS encryption
 
 ## Deployment Stages
@@ -67,31 +67,20 @@ Set in GitLab project settings:
 
 ### 5. Release & Deploy
 
-Release workflow:
+De volledige releaseprocedure staat in [Promoten naar playground](promoten.md); de ladder en het runbook in
+[Operatie](operatie.md). Kort:
 
 ```bash
-# GitLab is canonical — develop and tag there.
-git tag v2.0.0
-git push gitlab v2.0.0
-
-# On GitLab:
-# 1. Builds Docker image
-# 2. Pushes to Harbor OCI registry
-# 3. Packages Helm chart
-# 4. Publishes to Harbor Helm repo
-# 5. Flux reconciles new image tag
-# 6. sync:github mirrors main + this tag to GitHub (every tag; no deploy there)
-
-# Flux reconciliation (per environment):
-# - development/test: always sync latest main (push-triggered)
-# - playground: syncs major-version tags only (traefik-external, public) —
-#   the officially designated way of serving the app to users
-#
-# NOTE: this pipeline (.gitlab-ci.yml) has no rule that sets
-# ENVIRONMENT_CLUSTER=production — production exists as a manifests/
-# directory but isn't currently wired to any CI trigger here. Pre-existing
-# gap, not addressed by the playground rollout.
+# GitLab is canoniek. Tag kaal, zonder v, op een groene main-commit:
+git tag 2.5.0 <main-sha> && git push origin 2.5.0
+# De tag-pipeline publiceert alleen de chart en spiegelt de tag naar GitHub; hij deployt niets.
+uv run python scripts/promotie.py promote --version 2.5.0   # op chore/promote-playground, dan een MR
 ```
+
+- **test** volgt elke merge naar `main` (open chartrange); `kubernetes:verify-up` controleert de uitrol.
+- **playground** beweegt alleen via de promotie-MR die de pin in `manifests/playground/helmrelease.yaml` zet.
+- **production** heeft geen CI-pad: `.gitlab-ci.yml` zet nergens `ENVIRONMENT_CLUSTER=production`, en de omgeving is
+  nog niet uitrolbaar (#674).
 
 ## Verification
 
@@ -110,8 +99,9 @@ kubectl get pods -n services-onderwijsdata-chat
 # Check ingress
 kubectl get ingress -n services-onderwijsdata-chat
 
-# Health check
-curl https://onderwijsdata-chat.dev.sdp.surf.nl/health
+# Readiness (database en modelsleutel) en versie
+curl https://onderwijsdata-chat.test.sdp.surf.nl/ready
+curl https://onderwijsdata-chat.test.sdp.surf.nl/version
 
 # Check logs
 kubectl logs -n services-onderwijsdata-chat deploy/fn-onderwijsdata-chat --tail=100
@@ -161,46 +151,30 @@ kubectl get networkpolicy -n services-onderwijsdata-chat
 
 ## Environment-specific Notes
 
-### Development & Test
-- `traefik-internal` ingress (SURF-only)
-- 1 replica, minimal resources
-- Good for testing and development
-
-### Playground
-- `traefik-external` ingress (public internet)
-- 2 replicas, moderate resources
-- Officially designated environment for serving the app to end users
-
-### Production
-- `traefik-external` ingress (public internet)
-- 3–10 replicas with HPA
-- High resource limits
-- Enabled autoscaling
+Alle omgevingen gebruiken `traefik-external` en draaien één pod zonder HPA; resources, quotum en toegang per
+omgeving staan in [Operatie](operatie.md#per-omgeving).
 
 ## Maintenance
 
 ### Update dependencies
 
+Renovate stelt dependency-updates voor als MR (Dependency Dashboard, #656). Met de hand:
+
 ```bash
-# Python dependencies
-uv update
-
-# Frontend dependencies
-cd frontend && npm update
-
-# Commit and tag for release
-git tag v0.2.0
-git push origin v0.2.0
+uv lock --upgrade-package <pakket>          # Python
+cd frontend && npm install <pakket>@<versie> # frontend
 ```
+
+Daarna een gewone MR; een release volgt [Promoten naar playground](promoten.md).
 
 ### Backup PostgreSQL
 
-```bash
-# CloudNativePG handles backups automatically
-# Check backup status
-kubectl get backups -n services-onderwijsdata-chat
+Back-ups regelt het platform (SDP). Met de kubeconfig van het team zijn ze niet te zien: `kubectl get backups` en
+`scheduledbackups` geven *Forbidden* in `services-onderwijsdata-chat`. Schema, retentie, hersteltest en RPO/RTO zijn
+nog niet vastgelegd (#683).
 
-# Manual dump (if needed)
+```bash
+# Handmatige dump, alleen als je bij de databasepod kunt (niet geverifieerd met de team-kubeconfig)
 kubectl exec -it onderwijsdata-chat-rw-0 -n services-onderwijsdata-chat -- \
   pg_dump -U onderwijsdata_chat onderwijsdata_chat > backup.sql
 ```

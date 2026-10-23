@@ -4,16 +4,18 @@ Flux-managed deployment configuration voor onderwijsdata-chat op SDP.
 
 ## Omgeving-specifieke configuratie
 
-| Omgeving | Ingress Class | Replicas | Resources | URL |
-|----------|---------------|----------|-----------|-----|
-| **development** | traefik-external | 1 | 200m CPU / 256Mi RAM | `dev.sdp.surf.nl` |
-| **test** | traefik-external | 1 | 200m CPU / 256Mi RAM | `test.sdp.surf.nl` |
-| **playground** | traefik-external | 2 | 500m CPU / 512Mi RAM | `playground.sdp.surf.nl` |
-| **production** | traefik-external | 3–10 (HPA) | 1000m CPU / 1Gi RAM | `sdp.surf.nl` |
+Elke omgeving draait **één pod** zonder HPA (staat in het geheugen, #421, #677). Resources, quotum, probes en het
+runbook staan in [`docs/operatie.md`](../docs/operatie.md); deze tabel is het overzicht.
 
-`playground` is the officially designated way of serving the app to end users
-(vaste release-pin, door een promotie-MR; public, zie `docs/promoten.md`) — not `test`, which stays internal-only for CI
-verification on every `main` push.
+| Omgeving | Ingress Class | Replicas | Limits (CPU / RAM) | Chartversie | URL |
+|----------|---------------|----------|--------------------|-------------|-----|
+| **development** | traefik-external | 1 | 500m / 1Gi | open range, doet niet mee aan de ladder | `onderwijsdata-chat.dev.sdp.surf.nl` |
+| **test** | traefik-external | 1 | 900m / 3Gi | open range `>=0.0.1-0.0`, volgt `main` | `onderwijsdata-chat.test.sdp.surf.nl` |
+| **playground** | traefik-external | 1 | 900m / 2Gi | vaste release-pin via promotie-MR | `onderwijsdata-chat.playground.sdp.surf.nl` |
+| **production** | traefik-external | 1 | 2000m / 4Gi | **niet uitrolbaar** (#674) | `onderwijsdata-chat.sdp.surf.nl` (resolvet niet) |
+
+`playground` is de omgeving voor gebruikers (vaste release-pin, zie `docs/promoten.md`); `test` volgt elke push naar
+`main` en is ook publiek bereikbaar (allowlist `0.0.0.0/0`).
 
 ## Directorystructuur
 
@@ -24,6 +26,7 @@ manifests/
 │   ├── helmrepo.yaml             # OCI registry (Harbor)
 │   ├── kustomization.yaml        # Kustomize base
 │   ├── kustomizeconfig.yaml      # Kustomize nameReference config
+│   ├── network-policy.yaml       # Ingress-NetworkPolicy (egress staat live, nog niet in git: #674)
 │   └── values-base.yaml          # Shared defaults
 ├── development/
 │   ├── kustomization.yaml        # Dev patches
@@ -37,7 +40,7 @@ manifests/
 │   └── values.yaml               # Playground ingress (traefik-external)
 └── production/
     ├── kustomization.yaml        # Production patches
-    └── values.yaml               # Production ingress + HPA (traefik-external)
+    └── values.yaml               # Production ingress (traefik-external); geen secret, zie #674
 ```
 
 ## Ingress tiers
@@ -74,4 +77,5 @@ sops -d manifests/development/secret.yaml | kubectl apply -f -
    `chore/promote-playground` MR, nadat je de wijziging op test hebt gezien
 3. GitLab CI bouwt en publiceert het image/chart, en synct `main` en alle
    tags door naar GitHub als publieke spiegel
-4. Flux detecteert nieuwe image tag → reconciliatie in de betreffende environment
+4. Flux volgt **chartversies** in Harbor (geen image-tags): een nieuwe chart binnen de range of de pin → reconciliatie
+   in de betreffende environment

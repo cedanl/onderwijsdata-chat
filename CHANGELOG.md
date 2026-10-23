@@ -2,7 +2,9 @@
 
 Alle wijzigingen die voor gebruikers of beheerders van belang zijn. Formaat naar
 [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versienummers volgen de git-tags;
-de laatste tag is 1.8.6.
+de laatste tag is 2.5.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.5.0 beschrijven de
+GitHub-releases; wat sinds 1.8.6 is veranderd staat nog onder "Niet uitgebracht" en krijgt bij de volgende release een
+eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
