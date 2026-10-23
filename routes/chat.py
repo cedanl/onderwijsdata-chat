@@ -49,6 +49,7 @@ from core.errors import Gebruikersfout, error_event, friendly_error, log_interne
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
+from core.logging_util import gebruiker_kenmerk
 from core.rate_limit import RateLimiter
 from tools import store
 
@@ -775,7 +776,8 @@ async def chat_websocket(ws: WebSocket) -> None:
     # Het subprotocol bevestigen, anders sluit de browser de verbinding (#103).
     await ws.accept(subprotocol=WS_SUBPROTOCOL if token else None)
     # Elke logregel van deze verbinding, ook uit taken en threads, draagt dit ID (#502).
-    logger.info("VERBINDING open verbinding=%s", nieuwe_verbinding())
+    # Het pseudoniem koppelt de TOKENS-regels van deze verbinding aan een gebruiker, voor de kosten (#678).
+    logger.info("VERBINDING open verbinding=%s gebruiker=%s", nieuwe_verbinding(), gebruiker_kenmerk(username))
 
     # Zonder login heet iedereen "gast": dan telt alleen het totaal (#688).
     sleutel = username if username and username != FALLBACK_USER else None

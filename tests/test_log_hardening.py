@@ -393,4 +393,5 @@ def test_een_chatverbinding_krijgt_een_verbindings_id_in_het_log(client, caplog)
     with client.websocket_connect("/api/chat") as ws:
         ws.send_text(json.dumps({"action": "ping"}))
     [regel] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("VERBINDING open")]
-    assert re.fullmatch(r"VERBINDING open verbinding=[0-9a-f]{8}", regel)
+    # Zonder login en zonder LOG_HASH_SECRET geen pseudoniem (#678).
+    assert re.fullmatch(r"VERBINDING open verbinding=[0-9a-f]{8} gebruiker=-", regel)

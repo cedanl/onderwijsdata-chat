@@ -33,6 +33,14 @@ def tekst_kenmerk(tekst: str, prefix: str = "") -> str:
     return f"{prefix}len={len(tekst)} {prefix}hash={_digest(tekst)}"
 
 
+def gebruiker_kenmerk(naam: str | None) -> str:
+    """Een vast pseudoniem voor een gebruiker in het log (#678), alleen met LOG_HASH_SECRET; anders ``-``.
+
+    Een gebruikersnaam (een e-mailadres) is te raden, dus een kale SHA-256 ervan is terug te rekenen.
+    """
+    return _digest(naam) if naam and _SECRET else "-"
+
+
 def foutkenmerk(e: BaseException) -> str:
     """Het type van een uitzondering met het kenmerk van haar tekst: ``ValueError fout_len=… fout_hash=…``.
 

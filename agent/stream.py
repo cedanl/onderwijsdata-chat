@@ -3,13 +3,49 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .tekens import normaliseer
 
 # The callback every agent loop uses to send events to the client.
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
+
+
+@dataclass(frozen=True)
+class Tokens:
+    """Wat een modelaanroep aan tokens kostte, zoals de provider het meldt (#678)."""
+
+    invoer: int = 0
+    uitvoer: int = 0
+    # Anthropic rekent gecachete invoer (de systeemprompt) anders dan nieuwe; apart, voor de kosten.
+    cache_gelezen: int = 0
+    cache_geschreven: int = 0
+
+    def __add__(self, ander: Tokens) -> Tokens:
+        return Tokens(
+            self.invoer + ander.invoer,
+            self.uitvoer + ander.uitvoer,
+            self.cache_gelezen + ander.cache_gelezen,
+            self.cache_geschreven + ander.cache_geschreven,
+        )
+
+
+def _tokens(chunk: Any) -> Tokens | None:
+    """Het gebruik op een chunk, als die het draagt.
+
+    Met `stream_options.include_usage` staat het in `usage`; zonder (Anthropic en Azure AI kennen de optie
+    niet, drop_params laat hem vallen) zet LiteLLM het in `_hidden_params["usage"]` van de laatste chunk.
+    """
+    usage = getattr(chunk, "usage", None) or (getattr(chunk, "_hidden_params", None) or {}).get("usage")
+    if usage is None:
+        return None
+    return Tokens(
+        invoer=getattr(usage, "prompt_tokens", 0) or 0,
+        uitvoer=getattr(usage, "completion_tokens", 0) or 0,
+        cache_gelezen=getattr(usage, "cache_read_input_tokens", 0) or 0,
+        cache_geschreven=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+    )
 
 
 @dataclass
@@ -20,6 +56,7 @@ class StreamResult:
     finish_reason: str | None = None
     # Wat de provider terugmeldt als model (vaak een gedateerde versie), voor het manifest (#345).
     model_versie: str | None = None
+    tokens: Tokens = field(default_factory=Tokens)
 
 
 async def accumulate_stream(
@@ -45,12 +82,16 @@ async def accumulate_stream(
     raw_tcs: dict[int, dict] = {}
     finish_reason: str | None = None
     model_versie: str | None = None
+    tokens = Tokens()
 
     async for chunk in stream:
         if stop_event and stop_event.is_set():
             break
 
         model_versie = getattr(chunk, "model", None) or model_versie
+        tokens = _tokens(chunk) or tokens
+        if not chunk.choices:  # alleen gebruik, na de laatste tekst
+            continue
         choice = chunk.choices[0]
         finish_reason = getattr(choice, "finish_reason", None) or finish_reason
         delta = choice.delta
@@ -80,4 +121,5 @@ async def accumulate_stream(
         tool_calls=[raw_tcs[i] for i in sorted(raw_tcs)],
         finish_reason=finish_reason,
         model_versie=model_versie,
+        tokens=tokens,
     )
