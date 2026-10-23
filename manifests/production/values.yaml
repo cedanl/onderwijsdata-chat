@@ -29,6 +29,9 @@ ingress:
           - onderwijsdata-chat.sdp.surf.nl
 
 env:
+  # Omgevingsnaam (#676): JSON-logs op SDP; geen API-documentatie op playground en productie (config.py).
+  - name: APP_ENV
+    value: "production"
   # Platform-provisioned Postgres for this tenant, same pattern as test/development
   # (manifests/test/values.yaml) — the previous POSTGRES_URI/onderwijsdata-chat-secrets
   # reference here was stale and never matched an actual secret key.
