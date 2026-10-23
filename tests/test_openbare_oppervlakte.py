@@ -22,14 +22,14 @@ def productie_app():
     """Een productie-app uit de fabriek, zonder de gebouwde SPA (frontend/dist) en zonder server te herladen."""
     from server import create_app
 
-    return create_app(production=True)
+    return create_app(api_docs=False)
 
 
 @pytest.fixture
 def ontwikkel_app():
     from server import create_app
 
-    return create_app(production=False)
+    return create_app(api_docs=True)
 
 
 # ── API-documentatie ─────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ def test_head_en_get_op_openapi_json_geven_hetzelfde_type(tmp_path, productie):
 
     (tmp_path / "assets").mkdir()
     (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
-    client = TestClient(create_app(production=productie, frontend_dist=tmp_path))
+    client = TestClient(create_app(api_docs=not productie, frontend_dist=tmp_path))
 
     get, head = client.get("/openapi.json"), client.head("/openapi.json")
     assert head.status_code == get.status_code == 200
@@ -119,7 +119,7 @@ def test_de_fabriek_bouwt_dezelfde_app_als_server_app():
     import server
 
     frontend = server._FRONTEND_DIST if server._FRONTEND_DIST.exists() else None
-    app = server.create_app(production=False, frontend_dist=frontend)
+    app = server.create_app(api_docs=True, frontend_dist=frontend)
 
     assert _routes(app.routes) == _routes(server.app.routes)
     assert {"/health", "/ready", "/startup", "/version", "/api/version", "/info"} <= set(app.openapi()["paths"])
@@ -134,7 +134,7 @@ def test_de_fabriek_zet_dezelfde_beveiligingsheaders_als_server_app():
 
     koppen = ("x-content-type-options", "x-frame-options", "strict-transport-security", "referrer-policy")
     koppen += ("permissions-policy", "content-security-policy")
-    for app in (server.create_app(production=True), server.create_app(production=False)):
+    for app in (server.create_app(api_docs=False), server.create_app(api_docs=True)):
         fabriek = TestClient(app).get("/health").headers
         module = TestClient(server.app).get("/health").headers
         assert {k: fabriek.get(k) for k in koppen} == {k: module.get(k) for k in koppen}

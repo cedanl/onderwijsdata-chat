@@ -14,15 +14,14 @@ from fastapi.responses import JSONResponse
 
 load_dotenv()
 
-# Setup structured logging (JSON for production, text for development)
+# JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
 from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
-json_format = Config.is_production()
-setup_logging(level=Config.LOG_LEVEL, json_format=json_format)
+setup_logging(level=Config.LOG_LEVEL, json_format=Config.json_logs())
 logger = logging.getLogger(__name__)
 
 # Validate configuration early
@@ -212,14 +211,14 @@ _ROUTERS = (
 )
 
 
-def create_app(*, production: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
+def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
     """De app met middleware, routes en event handlers; zonder frontend_dist geen SPA.
 
-    production=None volgt Config.is_production(). Tests bouwen zo een productie-app zonder de module te herladen.
+    api_docs=None volgt Config.api_docs(). Tests bouwen zo een app zonder documentatie zonder de module te herladen.
     """
-    # API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
-    # en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
-    docs = not (Config.is_production() if production is None else production)
+    # API-documentatie niet op playground en productie (#636, #676): het schema somt elke route op voor wie niet is
+    # ingelogd, en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+    docs = Config.api_docs() if api_docs is None else api_docs
     app = FastAPI(
         title="Onderwijsdata Chat",
         docs_url="/api/docs" if docs else None,

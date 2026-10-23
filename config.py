@@ -49,7 +49,11 @@ class Config:
     OIDC_CLIENT_SECRET: str | None = os.getenv("OIDC_CLIENT_SECRET")
     SERVER_URL: str | None = os.getenv("SERVER_URL")
     SERVER_REDIRECT: str = os.getenv("SERVER_REDIRECT", "/api/auth/oidc/callback")
-    SESSION_SECRET: str | None = os.getenv("SESSION_SECRET")
+
+    # Waar de app draait (#676): manifests/<omgeving>/values.yaml zet de naam van de omgeving, lokaal staat hij leeg.
+    # Buiten lokaal JSON-logs voor de logaggregatie van SDP; op playground en productie geen API-documentatie.
+    APP_ENV: str = os.getenv("APP_ENV", "local").strip().lower()
+    OMGEVINGEN = ("local", "development", "test", "playground", "production")
 
     @classmethod
     def validate(cls) -> None:
@@ -59,6 +63,10 @@ class Config:
         # Check model is valid format (provider/model-name)
         if not cls.MODEL or "/" not in cls.MODEL:
             errors.append(f"MODEL must be in format 'provider/model-name', got: {cls.MODEL}")
+
+        if cls.APP_ENV not in cls.OMGEVINGEN:
+            # Een tikfout ("prod") zou anders stil als ontwikkelomgeving gelden, met API-documentatie.
+            errors.append(f"APP_ENV moet een van {', '.join(cls.OMGEVINGEN)} zijn, kreeg: {cls.APP_ENV}")
 
         if ongeldig := cls._ongeldige_cors_origins():
             errors.append(
@@ -91,6 +99,11 @@ class Config:
         return [o for o in cls.get_parsed_cors_origins() if "*" in o]
 
     @classmethod
-    def is_production(cls) -> bool:
-        """Check if running in production environment."""
-        return bool(cls.POSTGRES_URI) and bool(cls.SESSION_SECRET)
+    def json_logs(cls) -> bool:
+        """JSON-logs op elke SDP-omgeving, tekst alleen lokaal (#676)."""
+        return cls.APP_ENV != "local"
+
+    @classmethod
+    def api_docs(cls) -> bool:
+        """Swagger UI, ReDoc en het OpenAPI-schema alleen waar ontwikkeld wordt (#636, #676)."""
+        return cls.APP_ENV in ("local", "development", "test")

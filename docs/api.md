@@ -15,7 +15,7 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` en `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk) |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
-| `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen buiten productie; in productie (`POSTGRES_URI` en `SESSION_SECRET` gezet) bestaan ze niet (`SECURITY.md`, S23) |
+| `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen lokaal, op development en op test; met `APP_ENV` `playground` of `production` bestaan ze niet (`SECURITY.md`, S23) |
 
 ---
 
