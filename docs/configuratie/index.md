@@ -31,6 +31,12 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
 | `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
 | `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
+| `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
+| `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
+| `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, dashboard, rapport, verversen). Een volgende wacht op een plaats (#688) |
+| `RUN_QUEUE_TIMEOUT_S` | `60` | Seconden dat een run op een plaats wacht; daarna de melding dat het druk is, en geen run |
+| `MAX_SANDBOX_RUNS` | `2` | Gelijktijdige kindprocessen van `run_analysis`; elk laadt pandas en de data, dus het geheugen van de pod bepaalt dit (#688) |
+| `SANDBOX_QUEUE_TIMEOUT_S` | `20` | Seconden dat een analyse op een vrij proces wacht; daarna krijgt het model de melding dat de analyseomgeving bezet is |
 | `MAX_MESSAGE_CHARS` | `4000` | Maximum aantal tekens per nieuw chatbericht (na het weghalen van witruimte aan begin en eind). Langere berichten weigert de server met een foutmelding; de invoerbalk telt mee vanaf 80%. De invoerbalk krijgt deze waarde via `/api/config` en volgt dus een gewijzigde instelling |
 | `HISTORY_MAX_CHARS` | `MAX_HISTORY × MAX_MESSAGE_CHARS` (160000) | Maximum aantal tekens van de hele aangeleverde gespreksgeschiedenis samen. Daarboven vallen de oudste beurten af, zodat lange gesprekken blijven openen; de historie begint daarna altijd met een gebruikersbeurt. Minimaal 1: een lagere waarde wordt 1 |
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |

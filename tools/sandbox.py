@@ -20,6 +20,8 @@ from typing import Any
 
 import pandas as pd
 
+from core.config import MAX_SANDBOX_RUNS, SANDBOX_QUEUE_TIMEOUT_S
+from core.gelijktijdig import Procesplaatsen
 from core.logging_util import tekst_kenmerk
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,9 @@ logger = logging.getLogger(__name__)
 TIMEOUT_SECONDS = 10
 _KIND = Path(__file__).with_name("sandbox_kind.py")
 _EEN_DRAAD = dict.fromkeys(("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"), "1")
+# Hooguit zoveel kindprocessen tegelijk op de pod (#688); de rest wacht even, daarna een melding voor het model.
+_PROCESSEN = Procesplaatsen(max_tegelijk=MAX_SANDBOX_RUNS, wacht_s=SANDBOX_QUEUE_TIMEOUT_S)
+BEZET = "De analyseomgeving is nu bezet door andere gebruikers. Probeer het over een minuut opnieuw."
 
 
 @dataclass(frozen=True)
@@ -39,6 +44,14 @@ class Uitkomst:
 
 def voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Uitkomst:
     """Draai `code` met `df` en (via store_get) alleen `tabellen` in een afgeschermd proces."""
+    with _PROCESSEN.plaats() as vrij:
+        if not vrij:
+            logger.warning("SANDBOX bezet  max=%d  wacht=%ss", MAX_SANDBOX_RUNS, SANDBOX_QUEUE_TIMEOUT_S)
+            return Uitkomst(fout=BEZET)
+        return _voer_uit(code, df, tabellen)
+
+
+def _voer_uit(code: str, df: pd.DataFrame | None, tabellen: dict[str, Any]) -> Uitkomst:
     invoer = pickle.dumps({"code": code, "df": df, "tabellen": tabellen}, protocol=pickle.HIGHEST_PROTOCOL)
     with tempfile.TemporaryDirectory(prefix="run_analysis-") as werkmap:
         try:
