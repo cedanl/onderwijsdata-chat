@@ -73,6 +73,16 @@ _CONNECT_SRC = connect_src(Config.SERVER_URL)
 PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 
 
+def resource_policy(pad: str) -> str:
+    """Cross-Origin-Resource-Policy (#690): andere origins mogen geen antwoord van de app insluiten.
+
+    Behalve /assets: een rapport draait in een frame met alleen allow-scripts, dus met een eigen, opake origin, en
+    laadt Plotly van /assets (plotlyBron.js). Met same-origin daar bleef elk rapport leeg. Die bestanden zijn de
+    openbare, gehashte build; ze bevatten niets van een gebruiker.
+    """
+    return "cross-origin" if pad.startswith("/assets/") else "same-origin"
+
+
 async def security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -80,6 +90,9 @@ async def security_headers(request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
+    # Geen window-referentie van of naar een andere origin; een bron opent via noopener (rapportSandbox.js, #690).
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = resource_policy(request.url.path)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         # Geen derde partij: Plotly voor rapporten en dashboards komt van de eigen server (#486).

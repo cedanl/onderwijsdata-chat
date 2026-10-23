@@ -63,6 +63,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()` — de app gebruikt die browserfuncties niet, dus ook geen ingesloten frame of geïnjecteerd script mag ze vragen (#636)
+- `Cross-Origin-Opener-Policy: same-origin` en `Cross-Origin-Resource-Policy: same-origin` — geen window-referentie van of naar een andere origin, en geen ander mag een antwoord van de app insluiten (#690). Uitzondering: `/assets/` krijgt `cross-origin`, want een rapportframe met alleen `allow-scripts` heeft een opake origin en laadt Plotly daarvandaan; die bestanden zijn de openbare build. Geen `Cross-Origin-Embedder-Policy`: de app gebruikt geen `SharedArrayBuffer` of andere functie die cross-origin isolatie vraagt, en `require-corp` zou elk ingesloten rapportframe en elke subresource aan dezelfde eis binden zonder dat het iets afschermt wat CSP en CORP nu niet al doen
 - Geen `Server`-header — uvicorn start met `--no-server-header` (`Dockerfile`), dus antwoorden noemen de serversoftware niet. De middleware zet zelf geen lege `Server`-header meer: die kwam naast `Server: uvicorn` te staan in plaats van die te vervangen (#534)
 
 ---

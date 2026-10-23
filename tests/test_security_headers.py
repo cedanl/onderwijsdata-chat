@@ -136,3 +136,28 @@ def test_permissions_policy_zet_ongebruikte_browserfuncties_uit(client):
 
 def test_permissions_policy_staat_ook_op_een_foutantwoord(client):
     assert "Permissions-Policy" in client.get("/api/bestaat-niet").headers
+
+
+# #690: COOP en CORP. Het rapportframe heeft een opake origin (alleen allow-scripts) en laadt Plotly van /assets,
+# dus daar cross-origin; de rest, ook de API en de SPA, alleen voor de eigen origin.
+def test_geen_window_referentie_naar_een_andere_origin(client):
+    assert client.get("/health").headers["Cross-Origin-Opener-Policy"] == "same-origin"
+
+
+@pytest.mark.parametrize("pad", ["/health", "/api/bestaat-niet", "/version"])
+def test_andere_origins_sluiten_geen_antwoord_in(client, pad):
+    assert client.get(pad).headers["Cross-Origin-Resource-Policy"] == "same-origin"
+
+
+def test_het_rapportframe_mag_de_build_onder_assets_laden(tmp_path):
+    from server import create_app
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "plotly-rapport.min-abc.js").write_text("/* plotly */")
+    (tmp_path / "index.html").write_text("<!doctype html><title>EDUdata</title>")
+    client = TestClient(create_app(frontend_dist=tmp_path))
+
+    assert client.get("/assets/plotly-rapport.min-abc.js").headers["Cross-Origin-Resource-Policy"] == "cross-origin"
+    assert client.get("/").headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    # Geen COEP: zie SECURITY.md S3.
+    assert "Cross-Origin-Embedder-Policy" not in client.get("/").headers

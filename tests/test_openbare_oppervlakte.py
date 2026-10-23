@@ -133,7 +133,8 @@ def test_de_fabriek_zet_dezelfde_beveiligingsheaders_als_server_app():
     import server
 
     koppen = ("x-content-type-options", "x-frame-options", "strict-transport-security", "referrer-policy")
-    koppen += ("permissions-policy", "content-security-policy")
+    koppen += ("permissions-policy", "content-security-policy", "cross-origin-opener-policy")
+    koppen += ("cross-origin-resource-policy",)
     for app in (server.create_app(api_docs=False), server.create_app(api_docs=True)):
         fabriek = TestClient(app).get("/health").headers
         module = TestClient(server.app).get("/health").headers
