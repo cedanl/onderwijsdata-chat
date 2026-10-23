@@ -14,8 +14,12 @@ COPY frontend/eslint.config.js ./
 
 RUN npm run build
 
-# Stage 2: Python Backend with Frontend
-FROM python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+# Stage 2: Python-afhankelijkheden. Compiler en git (voor de git-afhankelijkheden riodata en onderwijsdata) staan
+# alleen hier; het runtime-image krijgt alleen de .venv (#681).
+FROM python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1 AS python-builder
+
+# uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
+COPY --from=ghcr.io/astral-sh/uv:0.12.5@sha256:e85be844203885286c60ffad8a858d48afb6c5a5c237ca0e67f12e74b8f174b1 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
@@ -30,9 +34,15 @@ COPY pyproject.toml uv.lock ./
 # --extra postgres: every SDP deployment target (test/playground/production)
 # configures a real POSTGRES_URI; psycopg2-binary needs to be present in the
 # image even though it's an optional extra (kept lean for local/Azure SQLite use).
-# hadolint ignore=DL3013
-RUN pip install --no-cache-dir uv && \
-    uv sync --frozen --no-dev --no-install-project --extra postgres
+# UV_PYTHON_DOWNLOADS=never: de .venv hoort bij de python van dit base-image, dezelfde als in stage 3.
+RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --extra postgres
+
+# Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
+FROM python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+
+WORKDIR /app
+
+COPY --from=python-builder /app/.venv ./.venv
 
 COPY server.py ./
 COPY app.py ./
@@ -65,4 +75,6 @@ USER appuser
 
 EXPOSE 8000
 
-CMD [".venv/bin/uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+# --timeout-graceful-shutdown: lopende HTTP-verzoeken krijgen 45 s na SIGTERM, binnen terminationGracePeriodSeconds
+# van de chart (60 s, #675).
+CMD [".venv/bin/uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--timeout-graceful-shutdown", "45"]
