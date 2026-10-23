@@ -4,7 +4,11 @@ Health check endpoints for Kubernetes liveness and readiness probes.
 
 import asyncio
 import logging
+import os
 import time
+
+from core.config import get_all_api_key_env_vars
+from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
 
@@ -30,22 +34,15 @@ async def check_database_connection() -> bool:
         await asyncio.to_thread(db.ping)
         return True
     except Exception as e:
-        logger.warning(f"Database connection check failed: {e}")
+        # Een driverfout kan host en databasenaam citeren: alleen type en kenmerk (#675).
+        logger.warning("Database connection check failed: %s", foutkenmerk(e))
         return False
 
 
 async def check_llm_configuration() -> bool:
-    """Verify LLM configuration is available."""
-    from config import Config
-
-    return any(
-        [
-            Config.ANTHROPIC_API_KEY,
-            Config.AZURE_AI_API_KEY,
-            Config.OPENAI_API_KEY,
-            Config.GOOGLE_API_KEY,
-        ]
-    )
+    """Is er een sleutel voor een van de providers? Uit de ene lijst in core/config.py, dus ook Willma (#675):
+    /ready is de readiness-probe, en een omgeving met alleen WILLMA_API_KEY zou anders nooit verkeer krijgen."""
+    return any(os.getenv(naam) for naam in get_all_api_key_env_vars())
 
 
 async def health_check() -> dict:
@@ -100,5 +97,6 @@ async def startup_check() -> dict:
                 missing.append("llm")
             return {"status": "startup_incomplete", "missing": missing}
     except Exception as e:
-        logger.error(f"Startup check failed: {e}")
-        return {"status": "startup_failed", "error": str(e)}
+        # Het eindpunt is zonder token bereikbaar: geen fouttekst in het antwoord (S4, #675).
+        logger.error("Startup check failed: %s", foutkenmerk(e))
+        return {"status": "startup_failed"}
