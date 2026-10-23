@@ -117,3 +117,59 @@ def test_cronjob_weigert_zonder_postgres():
     with pytest.raises(subprocess.CalledProcessError) as fout:
         _helm("template", "x", str(_ROOT / "charts/onderwijsdata-chat"), "--set", "opschonen.enabled=true")
     assert "POSTGRES_URI" in fout.value.stderr
+
+
+# ── Chart-hardening (#675) ──
+
+
+def _gerenderd(omgeving: str) -> list[dict]:
+    uitvoer = _helm(
+        "template",
+        "onderwijsdata-chat",
+        str(_ROOT / "charts/onderwijsdata-chat"),
+        "-f",
+        str(_ROOT / "manifests/base/values-base.yaml"),
+        "-f",
+        str(_ROOT / f"manifests/{omgeving}/values.yaml"),
+    )
+    return [d for d in yaml.safe_load_all(uitvoer) if d]
+
+
+def _pods(documenten: list[dict]) -> list[dict]:
+    deployment = next(d for d in documenten if d["kind"] == "Deployment")
+    cronjob = next(d for d in documenten if d["kind"] == "CronJob")
+    return [deployment["spec"]["template"]["spec"], cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]]
+
+
+@pytest.mark.parametrize("omgeving", ["test", "playground"])
+def test_readiness_kijkt_naar_de_database_en_liveness_is_geduldig(omgeving):
+    pod = _pods(_gerenderd(omgeving))[0]
+    container = pod["containers"][0]
+    assert container["readinessProbe"]["httpGet"]["path"] == "/ready"
+    assert container["livenessProbe"]["httpGet"]["path"] == "/health"
+    assert container["livenessProbe"]["timeoutSeconds"] >= 5
+    assert container["startupProbe"]["httpGet"]["path"] == "/health"
+    assert pod["terminationGracePeriodSeconds"] > 45  # ruimer dan --timeout-graceful-shutdown
+
+
+@pytest.mark.parametrize("omgeving", ["test", "playground"])
+def test_alleen_tmp_is_beschrijfbaar(omgeving):
+    for pod in _pods(_gerenderd(omgeving)):
+        container = pod["containers"][0]
+        assert container["securityContext"]["readOnlyRootFilesystem"] is True
+        assert {"name": "tmp", "mountPath": "/tmp"} in container["volumeMounts"]
+        assert any(v["name"] == "tmp" and "emptyDir" in v for v in pod["volumes"])
+
+
+def test_geen_serviceaccount_token_en_geen_nepsleutels_in_de_chart():
+    documenten = _gerenderd("test")
+    account = next(d for d in documenten if d["kind"] == "ServiceAccount")
+    assert account["automountServiceAccountToken"] is False
+    assert not [e for e in _CHART["env"] if e["name"].endswith("_API_KEY")]
+
+
+def test_uvicorn_stopt_binnen_de_termijn_van_kubernetes():
+    cmd = (_ROOT / "Dockerfile").read_text().split("CMD ")[-1]
+    argumenten = yaml.safe_load(cmd)
+    termijn = int(argumenten[argumenten.index("--timeout-graceful-shutdown") + 1])
+    assert termijn < _CHART["terminationGracePeriodSeconds"]

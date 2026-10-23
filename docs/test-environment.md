@@ -7,9 +7,9 @@ Test environment (`test.sdp.surf.nl`) is GitOps-managed via Flux and runs on eve
 **CI Job:** `kubernetes:verify-up` (runs on `main` push)
 - Verifies: HelmRelease reconciliation succeeds
 - Cluster: testing (SDP internal)
-- Ingress: traefik-internal (SURF-only)
-- Replicas: 1
-- Resources: 200m CPU / 256Mi RAM
+- Ingress: traefik-external, publiek via de allowlist `0.0.0.0/0`
+- Replicas: 1 (`strategy: Recreate`, quotum)
+- Resources: limits 900m CPU / 3Gi RAM, requests 500m / 512Mi (zie [Operatie](operatie.md#per-omgeving))
 
 ## Configuration
 
@@ -51,7 +51,7 @@ GitLab CI: build image + chart
   ↓
 Flux watches manifests/test/ (polled every 1m)
   ↓
-HelmRelease reconciles image tag
+HelmRelease reconciles the new chart version (open range >=0.0.1-0.0)
   ↓
 kubernetes:verify-up checks: pod ready within 5min
 ```
@@ -62,21 +62,21 @@ If `kubernetes:verify-up` fails:
 
 ```bash
 # Check Flux source reconciliation
-flux get sources oci -n onderwijsdata-chat
+flux get sources oci -n services-onderwijsdata-chat
 
 # Check HelmRelease
-kubectl get helmrelease -n onderwijsdata-chat
+kubectl get helmrelease -n services-onderwijsdata-chat
 
 # Check pod status
-kubectl get pods -n onderwijsdata-chat
+kubectl get pods -n services-onderwijsdata-chat
 
 # Logs
-kubectl logs -n onderwijsdata-chat -l app=onderwijsdata-chat
+kubectl logs -n services-onderwijsdata-chat -l app.kubernetes.io/name=onderwijsdata-chat
 ```
 
 ## Relationship to Environments
 
-- **Development** → manual; not in CI
+- **Development** → doet niet mee aan de ladder
 - **Test** → auto from `main` push (CI-verified)
-- **Playground** → auto from major tags (public)
-- **Production** → auto from major tags (HPA-enabled)
+- **Playground** → vaste release-pin, alleen via de promotie-MR (`docs/promoten.md`)
+- **Production** → nog niet uitrolbaar (#674)

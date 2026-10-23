@@ -14,15 +14,14 @@ from fastapi.responses import JSONResponse
 
 load_dotenv()
 
-# Setup structured logging (JSON for production, text for development)
+# JSON-logs op SDP, tekst lokaal (Config.json_logs, #676)
 from config import Config, ConfigError
 from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from frontend_static import mount_frontend
 from logging_config import setup_logging
 
-json_format = Config.is_production()
-setup_logging(level=Config.LOG_LEVEL, json_format=json_format)
+setup_logging(level=Config.LOG_LEVEL, json_format=Config.json_logs())
 logger = logging.getLogger(__name__)
 
 # Validate configuration early
@@ -74,6 +73,16 @@ _CONNECT_SRC = connect_src(Config.SERVER_URL)
 PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 
 
+def resource_policy(pad: str) -> str:
+    """Cross-Origin-Resource-Policy (#690): andere origins mogen geen antwoord van de app insluiten.
+
+    Behalve /assets: een rapport draait in een frame met alleen allow-scripts, dus met een eigen, opake origin, en
+    laadt Plotly van /assets (plotlyBron.js). Met same-origin daar bleef elk rapport leeg. Die bestanden zijn de
+    openbare, gehashte build; ze bevatten niets van een gebruiker.
+    """
+    return "cross-origin" if pad.startswith("/assets/") else "same-origin"
+
+
 async def security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -81,6 +90,9 @@ async def security_headers(request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
+    # Geen window-referentie van of naar een andere origin; een bron opent via noopener (rapportSandbox.js, #690).
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = resource_policy(request.url.path)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         # Geen derde partij: Plotly voor rapporten en dashboards komt van de eigen server (#486).
@@ -212,14 +224,14 @@ _ROUTERS = (
 )
 
 
-def create_app(*, production: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
+def create_app(*, api_docs: bool | None = None, frontend_dist: Path | None = None) -> FastAPI:
     """De app met middleware, routes en event handlers; zonder frontend_dist geen SPA.
 
-    production=None volgt Config.is_production(). Tests bouwen zo een productie-app zonder de module te herladen.
+    api_docs=None volgt Config.api_docs(). Tests bouwen zo een app zonder documentatie zonder de module te herladen.
     """
-    # API-documentatie alleen buiten productie (#636): het schema somt elke route op voor wie niet is ingelogd,
-    # en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
-    docs = not (Config.is_production() if production is None else production)
+    # API-documentatie niet op playground en productie (#636, #676): het schema somt elke route op voor wie niet is
+    # ingelogd, en Swagger UI en ReDoc laden hun scripts van cdn.jsdelivr.net.
+    docs = Config.api_docs() if api_docs is None else api_docs
     app = FastAPI(
         title="Onderwijsdata Chat",
         docs_url="/api/docs" if docs else None,

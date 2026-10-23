@@ -13,6 +13,12 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
 
 ## Release maken
 
+0. **Vóór de tag**, in de laatste MR naar `main` (#679, #684):
+   - `version` in `pyproject.toml` (en `uv lock`) en `CITATION.cff` (`version`, `date-released`) op de nieuwe release;
+   - in `CHANGELOG.md` wordt "Niet uitgebracht" de kop `## X.Y.Z — <datum>`, met een nieuwe lege "Niet uitgebracht"
+     erboven, en de kopzin noemt de nieuwe laatste tag;
+   - groen of bewust geaccepteerd: `bron:ping` (`scripts/bronping.py`), `scripts/ijkwaarden.py`, `audit:python` en
+     `audit:npm` in de pipeline.
 1. Wacht tot de pipeline van `main` groen is. Zonder groene pipeline publiceert
    `version:promote` geen chart.
 2. Tag kaal, **zonder `v`**: SDP matcht `^[0-9]+\.` op de ref-naam, dus `v2.1.0`
@@ -62,6 +68,12 @@ git push origin env/playground/2.0.0
 - `test` geen open range meer heeft;
 - `playground` geen vaste `X.Y.Z` pint (een range of rc-build);
 - de gepinde release-tag niet op de remote bestaat (de chart bestaat dan ook niet).
+
+## Jaarlijks
+
+Loop eens per jaar [Operatie](operatie.md), [Deployment](deployment.md), `manifests/README.md` en
+[Test Environment](test-environment.md) na tegen de manifests en het cluster (replica's, resources, ingress, ladder).
+Ze liepen eerder een jaar achter (#679).
 
 ## Nooit
 

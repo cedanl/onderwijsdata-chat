@@ -32,6 +32,12 @@ securityContext:
   runAsUser: 1000
   seccompProfile:
     type: RuntimeDefault
+  # De app schrijft alleen in /tmp (de werkmappen van run_analysis): die krijgt een emptyDir (tmp hieronder, #675).
+  readOnlyRootFilesystem: true
+
+# emptyDir op /tmp voor app en opschoon-CronJob, nodig met readOnlyRootFilesystem. Telt niet mee in limits.ephemeral-storage.
+tmp:
+  sizeLimit: 1Gi
 
 resources:
   limits:
@@ -41,20 +47,37 @@ resources:
     cpu: 200m
     memory: 256Mi
 
+# Probes (#675). Opstarten mag 150 s duren (catalogus en bronnen laden); daarna pas liveness en readiness.
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  periodSeconds: 5
+  failureThreshold: 30
+
+# /health antwoordt zolang het proces leeft. Een time-out van 5 s en drie missers: een drukke event loop
+# (een groot antwoord, een rapport) is geen reden om de pod en elke open chat te herstarten.
 livenessProbe:
   httpGet:
     path: /health
     port: 8000
-  initialDelaySeconds: 15
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 10
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 3
+
+# /ready toetst database en modelsleutel (health.py) en geeft anders 503: zonder database geen verkeer.
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Tijd tussen SIGTERM en kill. Uvicorn wacht tot 45 s op lopende HTTP-verzoeken (--timeout-graceful-shutdown in de
+# Dockerfile). Een chat-WebSocket sluit uvicorn bij het stoppen meteen met 1012, dus een langere termijn redt geen
+# lopend antwoord; dat vraagt een tweede pod of RollingUpdate (#677).
+terminationGracePeriodSeconds: 60
 
 service:
   web:
@@ -84,7 +107,8 @@ autoscaling:
 
 serviceAccount:
   create: true
-  automount: true
+  # De app gebruikt de Kubernetes-API niet (#675).
+  automount: false
   annotations: {}
   name: ""
 
@@ -95,10 +119,8 @@ env:
     value: "INFO"
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
-  - name: ANTHROPIC_API_KEY
-    value: "placeholder-key-for-testing"
-  - name: OPENAI_API_KEY
-    value: "placeholder-key-for-testing"
+  # Geen sleutels: die komen per omgeving uit het SOPS-secret (manifests/<omgeving>/values.yaml). Een nepsleutel
+  # hier maakte de modelcheck van /ready betekenisloos (#675).
 
 # Opschoning na de bewaartermijn (#485): een CronJob die `python -m persistence.opschonen` draait, dezelfde code
 # als het beheerscript. Standaard uit; aan per omgeving in manifests/<omgeving>/values.yaml. Vraagt POSTGRES_URI in

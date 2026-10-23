@@ -40,6 +40,9 @@ opschonen:
   enabled: true
 
 env:
+  # Omgevingsnaam (#676): JSON-logs op SDP; geen API-documentatie op playground en productie (config.py).
+  - name: APP_ENV
+    value: "playground"
   # SRAM OIDC — see GH issue #60. These 3 values are public/known and safe to
   # set now; OIDC_CLIENT_ID/OIDC_CLIENT_SECRET (in secret_orig.yaml) are still
   # placeholders pending a real SRAM application registration. This means the

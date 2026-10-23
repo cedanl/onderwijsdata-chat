@@ -243,3 +243,32 @@ def test_info_logniveau_geeft_geen_waarschuwing(monkeypatch, caplog):
 
         asyncio.run(server.on_startup())
     assert "LOG_LEVEL=DEBUG" not in caplog.text
+
+
+# ── #675: /ready wordt de readiness-probe; /startup lekt geen fouttekst ──
+
+
+@pytest.mark.parametrize("sleutel", ["WILLMA_API_KEY", "AZURE_AI_API_KEY", "ANTHROPIC_API_KEY"])
+def test_llm_check_kent_elke_providersleutel(monkeypatch, sleutel):
+    import asyncio
+
+    import health
+    from core.config import get_all_api_key_env_vars
+
+    for naam in get_all_api_key_env_vars():
+        monkeypatch.delenv(naam, raising=False)
+    assert asyncio.run(health.check_llm_configuration()) is False
+    monkeypatch.setenv(sleutel, "sleutel")
+    assert asyncio.run(health.check_llm_configuration()) is True
+
+
+def test_startup_geeft_bij_een_fout_geen_fouttekst(client, monkeypatch):
+    import health
+
+    async def _stuk() -> bool:
+        raise RuntimeError("postgresql://geheim@db-host/onderwijsdata")
+
+    monkeypatch.setattr(health, "check_database_connection", _stuk)
+    resp = client.get("/startup")
+    assert resp.json() == {"status": "startup_failed"}
+    assert "db-host" not in resp.text

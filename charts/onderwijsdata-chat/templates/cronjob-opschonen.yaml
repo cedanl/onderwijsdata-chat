@@ -64,9 +64,16 @@ spec:
               {{- end }}
               resources:
                 {{- toYaml .Values.opschonen.resources | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
               env:
                 {{- toYaml $env | nindent 16 }}
                 {{- with .Values.opschonen.env }}
                 {{- toYaml . | nindent 16 }}
                 {{- end }}
+          volumes:
+            - name: tmp
+              emptyDir:
+                sizeLimit: {{ .Values.tmp.sizeLimit }}
 {{- end }}

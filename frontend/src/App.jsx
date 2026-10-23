@@ -17,6 +17,7 @@ import { resolveMaxMessageChars } from './messageLength'
 import { applyMode } from './theme'
 import { wisPwaCaches } from './pwaCaches'
 import { NavSlotContext } from './navSlot'
+import SkipLink, { MAIN_ID } from './components/SkipLink'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
 const ChatPage = lazy(() => import('./pages/ChatPage'))
@@ -241,6 +242,7 @@ function AppShell() {
 
   return (
     <>
+      <SkipLink />
       <Nav
         user={user}
         onLogout={authRequired ? handleLogout : null}
@@ -250,7 +252,7 @@ function AppShell() {
         slotRef={setNavSlot}
         onZoek={openZoeken}
       />
-      <main className="page-wrap">
+      <main className="page-wrap" id={MAIN_ID} tabIndex={-1}>
         <NavSlotContext.Provider value={navSlot}>
           <ErrorBoundary key={location.pathname}>
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>

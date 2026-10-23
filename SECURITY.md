@@ -2,6 +2,18 @@
 
 Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quickscan van Alan Berg (30-06-2026) en aanvullende code-review. Op 09-10-2026 nagelopen tegen de code op `main` (#484).
 
+## Een kwetsbaarheid melden
+
+Meld een kwetsbaarheid **niet** in een openbaar issue, een MR of de GitHub-spiegel (die is publiek).
+
+- **Met een account op git.ia.surf.nl:** maak een *confidential* issue in `surf-internal/npuls/ceda/onderwijsdata-chat`
+  met wat je zag, hoe je het naspeelt en wat het raakt.
+- **Zonder account:** open op GitHub (`cedanl/onderwijsdata-chat`) een issue met alleen de vraag om contact, zonder
+  details; het team neemt dan contact met je op.
+
+Het team bevestigt een melding binnen vijf werkdagen en spreekt dan af wanneer en hoe de fix en de bekendmaking komen.
+Een bevestigde bevinding komt daarna in dit log.
+
 ---
 
 ## Status overzicht
@@ -30,7 +42,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 | S20 | `/version` zonder inloggen geeft versie en commit prijs | Laag | ℹ️ Geaccepteerd (#552) — blijft open voor de deploycontrole; restrisico hieronder |
 | S21 | SRAM-e-mailadres als sleutel van de gebruikersdata; `CHAT_USERS`-wachtwoorden in platte tekst | Laag–Gemiddeld | ℹ️ Bekend, bewust uitgesteld (#487, 19-10-2026) — de SRAM-gebruikerscache is al begrensd; voorwaarde voor productie hieronder |
 | S22 | Opgeslagen rapport-HTML draaide met dialogen en pop-ups in de viewer en ongesandboxt in de download | Gemiddeld | ⚠️ Deels opgelost (#634) — viewer alleen `allow-scripts`, policy in frame en download; de server controleert de HTML niet (restpunt, voorwaarde voor productie hieronder) |
-| S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie alleen buiten productie, maar geen omgeving in `manifests/` geldt nu als productie (restpunt hieronder) |
+| S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie uit op playground en productie via `APP_ENV` (#676) |
 
 ---
 
@@ -63,6 +75,7 @@ Overzicht van bekende en mogelijke beveiligingsproblemen. Gebaseerd op de quicks
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()` — de app gebruikt die browserfuncties niet, dus ook geen ingesloten frame of geïnjecteerd script mag ze vragen (#636)
+- `Cross-Origin-Opener-Policy: same-origin` en `Cross-Origin-Resource-Policy: same-origin` — geen window-referentie van of naar een andere origin, en geen ander mag een antwoord van de app insluiten (#690). Uitzondering: `/assets/` krijgt `cross-origin`, want een rapportframe met alleen `allow-scripts` heeft een opake origin en laadt Plotly daarvandaan; die bestanden zijn de openbare build. Geen `Cross-Origin-Embedder-Policy`: de app gebruikt geen `SharedArrayBuffer` of andere functie die cross-origin isolatie vraagt, en `require-corp` zou elk ingesloten rapportframe en elke subresource aan dezelfde eis binden zonder dat het iets afschermt wat CSP en CORP nu niet al doen
 - Geen `Server`-header — uvicorn start met `--no-server-header` (`Dockerfile`), dus antwoorden noemen de serversoftware niet. De middleware zet zelf geen lege `Server`-header meer: die kwam naast `Server: uvicorn` te staan in plaats van die te vervangen (#534)
 
 ---
@@ -295,13 +308,13 @@ Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `w
 - Geen `Permissions-Policy`-header.
 
 **Nu (#636):**
-- De API-documentatie bestaat alleen buiten productie. "Productie" is `Config.is_production()`: `POSTGRES_URI` én `SESSION_SECRET` gezet. Daar geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
+- De API-documentatie bestaat alleen waar ontwikkeld wordt: `Config.api_docs()` is waar voor `APP_ENV` `local`, `development` en `test` (#676; eerst hing het aan `POSTGRES_URI` én een `SESSION_SECRET` die geen omgeving zette). Op playground en productie geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
 - De vijf dashboard-eindpunten vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` dezelfde 403 als `POST /api/dashboard/refresh` (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
 - `Permissions-Policy` op elk antwoord, zie S3.
 - Al gedekt, geen wijziging: het printbericht van een rapport telt alleen als het van de app komt (`event.source === parent`, `PRINT_JS` in `frontend/src/reportHtml.js`; #634, zie S22).
 
 Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `frontend/src/__tests__/dashboardFetch.test.js`.  
-**Restpunt (docs):** geen omgeving in `manifests/` zet `SESSION_SECRET` (de app leest die variabele alleen in `Config.is_production()`), dus test, playground en productie gelden niet als productie en tonen de API-documentatie nog. Pas als een omgeving `SESSION_SECRET` (naast `POSTGRES_URI`) krijgt, gaat de documentatie daar uit; dat is een wijziging in de manifests en de secrets, voor de ontwikkelaar.  
+**Restpunt (docs), opgelost in #676:** elke omgeving in `manifests/` zet `APP_ENV` op haar eigen naam; `tests/test_app_env.py` bewaakt dat, en een onbekende waarde laat de app niet starten.  
 **Bewust open:** `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` blijven zonder token bereikbaar. De app en de loginpagina vragen `/api/instellingen` op vóór het inloggen; over de andere twee wordt later besloten (#636).
 
 ---
@@ -314,5 +327,5 @@ Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `
 4. **S12** — de gele `audit:*`-jobs volgen; een dependency-scan in CI (#506), `nh3` opruimen (S1) en de CORS-validatie (S8) zijn gedaan
 5. **S21** — vóór productie: sleutel naar `sub` met e-mail alleen als weergavenaam en een migratie van de bestaande rijen; productie alleen via SRAM of gehashte wachtwoorden (#487). In de demofase bewust niet gebouwd; de SRAM-cache is al begrensd
 6. **S22** — vóór productie: eigen account per gebruiker, of de server bewaart de rapportspec en bouwt de HTML zelf (#634)
-7. **S23** — `SESSION_SECRET` zetten op de omgevingen die als productie moeten gelden, zodat de API-documentatie daar uit gaat; besluiten of `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` open blijven (#636)
+7. **S23** — besluiten of `/api/instellingen`, `/api/catalog/counts` en `/api/feedback/questions` open blijven (#636)
 8. **Grondiger pentest** (aanbeveling Alan Berg punt 6) — met focus op: WebSocket aanvalsoppervlak, prompt-injection via datapayloads, uitgebreidere ZAP-scan van geauthenticeerde sessie

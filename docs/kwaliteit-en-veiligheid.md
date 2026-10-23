@@ -102,7 +102,7 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 
 | Endpoint | Limiet | Werking |
 |----------|--------|---------|
-| `/api/auth/login` | 5 pogingen/minuut per IP | HTTP 429 met `Retry-After` header |
+| `/api/auth/login` | 5 pogingen/minuut per gebruikersnaam + adres (S5) | HTTP 429 met `Retry-After` header |
 | WebSocket `/api/chat` | `CHAT_RATE_LIMIT` verzoeken per `CHAT_RATE_WINDOW_S` (standaard 30 per 600 s) per gebruiker, zonder login per verbinding | Vraag, verduidelijking, dashboard en rapport tellen mee; daarboven een foutmelding met de wachttijd, geen modelaanroep (#444) |
 | LLM API | Exponential backoff (4 retries) | 2s, 4s, 8s, 16s vertraging bij rate limit errors |
 
@@ -190,7 +190,6 @@ Transparantie over wat nog niet getest is:
 - Multi-turn gesprekken
 - De sandbox van `run_analysis` is geen kernelgrens: een ontsnapping uit Python draait als dezelfde gebruiker als de server (#443)
 - Reference values kunnen verouderen na dataverversing; voor de ijkwaarden maakt `scripts/ijkwaarden.py` dat zichtbaar
-- Geen max-lengte op chat-berichten
 
 ---
 

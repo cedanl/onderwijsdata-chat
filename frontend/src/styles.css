@@ -116,6 +116,15 @@ input, textarea { font: inherit; }
 /* A4 (#517): eigen focusring met gemeten contrast (>= 3:1, WCAG 2.4.11/1.4.11). De ring
    ligt met offset buiten het element, dus ook op blauwe knoppen telt de paginakleur. */
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* Skip-link (#687): buiten beeld tot hij focus krijgt, dan linksboven boven de navigatie. <main> krijgt via de link
+   focus (tabIndex -1); geen ring om de hele pagina, de link zelf liet al zien waar je naartoe ging. */
+.skip-link {
+  position: absolute; left: .5rem; top: -100px; z-index: 1000;
+  padding: .5rem 1rem; border-radius: 6px;
+  background: var(--blue-900); color: #fff; font-weight: 600;
+}
+.skip-link:focus { top: .5rem; }
+#main:focus { outline: none; }
 
 /* ─── Typography ──────────────────────────────────────────── */
 .text-xs   { font-size: .75rem; line-height: 1rem; }
