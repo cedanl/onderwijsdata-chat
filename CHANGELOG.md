@@ -9,6 +9,10 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een foutmelding bij een ontbrekende of ongeldige API-sleutel, een onbekend model of een verbinding die de server met
+  de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
+  "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er
+  speelt en waar te kijken (sleutel in het secret, `MODEL`, `*_API_BASE`).
 - Een foutmelding in de chat houdt zijn knoppen niet meer als de vraag daarna toch is beantwoord (#703). Na een
   limietfout en een geslaagde herhaling bleef de oude melding een werkende "Opnieuw" houden, naast het antwoord op
   dezelfde vraag. De melding blijft als geschiedenis in het gesprek staan, zonder knoppen.
