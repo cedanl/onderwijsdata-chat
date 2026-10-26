@@ -38,6 +38,32 @@ er draait daar geen deploy meer.
 Werk test-first: schrijf de test die het gedrag vastlegt, laat hem falen, en maak hem dan groen.
 Houd functies klein en met één verantwoordelijkheid, en ruim dode code op die je tegenkomt.
 
+## Een antwoordcontrole toevoegen
+
+Het antwoordpad groeit met elke controle (zie [de stroomkaart](docs/anti-hallucination-architecture.md)
+en ADR-007). Een nieuwe controle in `_antwoordcontrole` (`agent/run.py`) of een andere poort in dat pad heeft vier dingen,
+in de MR-beschrijving en waar mogelijk in de docstring:
+
+1. **Foutklasse:** welke fout vangt hij, met een echt voorbeeld (een antwoord, een issue of een evalcase).
+2. **Eigenaar:** de module waar hij thuishoort, en wie hem onderhoudt als de bron of het model verandert.
+3. **Test:** een test die zonder de controle faalt, en een test dat hij een correct antwoord niet afkeurt.
+4. **Heroverwegingscriterium:** wanneer hij weg mag, bijvoorbeeld "het model maakt deze fout niet meer in de eval" of
+   "vuurt een kwartaal lang niet af".
+
+Zet een controle liefst als pure functie (invoer → bevindingen) en houd het streamen en publiceren daarbuiten.
+
+**Kwartaalreview, verwijderen of vereenvoudigen.** Eens per kwartaal kijk je welke controles niet meer afgaan. De logregel
+`CONTROLES` toont per antwoord welke controle wat gaf (CH-01), dus de afvuurfrequentie is te tellen. Een controle zonder
+afgaan én zonder heroverwegingscriterium dat nog geldt, is een kandidaat om te verwijderen; zet daar een issue voor open.
+
+## Taal
+
+- **Documentatie en commentaar:** Nederlands, ook in nieuwe ADR's. Vertaal bestaande Engelse tekst niet in bulk; de regel
+  geldt voor tekst die je nieuw schrijft of herschrijft.
+- **Identifiers:** volg de code om je heen. Het domein (instellingen, schooljaren, bronnen) heeft Nederlandse termen; houd
+  die gelijk aan de termen in de gebruikersinterface en de bron, en maak er geen tweede, Engelse naam naast.
+- **Commits en issues:** Nederlands, zie hieronder.
+
 ## Commits
 
 We gebruiken [Conventional Commits](https://www.conventionalcommits.org/) met een Nederlandse
