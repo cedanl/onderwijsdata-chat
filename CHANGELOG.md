@@ -9,6 +9,9 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een foutmelding in de chat houdt zijn knoppen niet meer als de vraag daarna toch is beantwoord (#703). Na een
+  limietfout en een geslaagde herhaling bleef de oude melding een werkende "Opnieuw" houden, naast het antwoord op
+  dezelfde vraag. De melding blijft als geschiedenis in het gesprek staan, zonder knoppen.
 - Onder elke grafiek in de chat staat een ingeklapte knop "Toon de waarden" met alle waarden van de grafiek als
   tabel (#664). Op een telefoon was een tik-tooltip de enige weg naar een waarde; een schermlezer kreeg per reeks alleen
   de eerste en laatste. De tabel komt uit dezelfde rijen als de CSV (`layout.meta.data`, anders de getekende reeksen),
