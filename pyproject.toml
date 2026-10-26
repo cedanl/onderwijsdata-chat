@@ -57,13 +57,15 @@ package = false
 pythonpath = ["."]
 testpaths = ["tests"]
 
-# Dekking (#684): eerst alleen meten, de CI-job toont het totaal; een ondergrens volgt als de stand bekend is.
+# Dekking (#684, #691): de CI-job toont het totaal en pytest-cov faalt eronder. De stand op main was 94,3% (23-10-2026,
+# 12515 statements, 718 gemist); de drempel gaat alleen omhoog, nooit omlaag om een MR groen te krijgen.
 [tool.coverage.run]
 source = ["."]
 omit = ["tests/*", "demo/*", "scripts/*", ".venv/*", "frontend/*"]
 
 [tool.coverage.report]
 skip_empty = true
+fail_under = 94
 
 [tool.ruff]
 line-length = 120
