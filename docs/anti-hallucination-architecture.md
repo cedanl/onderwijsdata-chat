@@ -6,6 +6,27 @@ Statistiekbureaus (ONS, Statistics Canada) hebben hun RAG-chatbots stilgezet omd
 
 Dit systeem **kan niet uitsluiten** dat een model zoiets probeert. Het zorgt ervoor dat de berekening in code gebeurt en dat een antwoord dat niet bij de data past wordt gevangen, in plaats van dat het de gebruiker bereikt. Op deze pagina staat welke lagen dat doen, en wat ze **niet** dekken.
 
+## Stroomkaart van één beurt
+
+Wat er gebeurt tussen een vraag en een gepubliceerd antwoord, in de volgorde van `run` in `agent/run.py` (#697). De
+laatste kolom zegt wie beslist: **code** (deterministisch) of **model**.
+
+| # | Stap | Waar | Beslist |
+|---|---|---|---|
+| 1 | Vast antwoord vooraf: de betekenis van -1, een vo-school, een po/so/vo-vraag zonder ho-context. Geen kaart en geen model. | `_vast_vooraf` | code |
+| 2 | Open slot (plaats, instelling, maat): een vaste verduidelijkingskaart, hooguit `_MAX_CLARIFY_RONDES` keer. | `scopevraag`, `_vaste_verduidelijking` | code |
+| 3 | Context opbouwen: gesprek inkorten, systeemprompt, eerdere antwoorden en vragen van de gebruiker als bewijs voor de getalcontrole. | `trim`, `build_system`, `_beurtcontext` | code |
+| 4 | Toolloop: het model kiest een tool en formuleert; de tools halen data op, selecteren en rekenen (laag 1 en 2 hieronder). Elke toolstap gaat naar de redeneerkaart. | `tool_loop`, `tools/` | model kiest, code voert uit |
+| 5 | Antwoordcontroles na elke modelronde (laag 3). Een gevonden probleem trekt het antwoord in en geeft het model één correctieronde; blijft een hard probleem staan, dan houdt de loop het antwoord in (#207). | `_antwoordcontrole` (`check`), `tool_loop` | code |
+| 6 | Einde zonder gewoon antwoord: afgebroken, een verduidelijkingskaart, of de loop is uitgeput (dan een vaste tekst met wat al is opgehaald). | `_vroeg_einde` | code |
+| 7 | Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619). | `zonder_ongedekte_zinnen` | code |
+| 8 | Eindtekst: zelfcorrectie naar de redeneerkaart, bronnen en links uit de toolstappen, vaste teleenheidsregel, kopregels (lezing en uitgangspunt). | `_eindtekst`, `_met_kopregels`, `agent/telling.py` | code |
+| 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `_slotbericht` | code (vervolgvragen: model) |
+
+Het model formuleert dus in stap 4 en kiest de vervolgvragen in stap 9; alles waarop een getal, bron of selectie rust,
+komt uit code. Rapporten en dashboards hebben eigen poorten in plaats van stap 5 (`agent/report_checks.py`,
+`_check_number_sourcing` in `agent/dashboard.py`, zie laag 3).
+
 ## Drie lagen
 
 ### 1. Data blijft in code
