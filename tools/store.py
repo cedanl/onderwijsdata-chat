@@ -94,6 +94,9 @@ class KeyMeta:
     # Wanneer een momentopname (UWV, ROA) is genomen, in de woorden van de bron: "peildatum 2023-05-16",
     # "versie v20251218". Een bronregel noemt het achter de titel (#577). Herkomst, geen identiteit.
     peilmoment: str | None = field(default=None, compare=False)
+    # De dag (jjjj-mm-dd) waarop een levend register (RIO) is bevraagd, als `datumGeldigOp` (#718): dezelfde dag geeft
+    # dezelfde stand, dus de snippet zet hem erin. None bij een bron die geen tijdreizen kent. Herkomst, geen identiteit.
+    geldig_op: str | None = field(default=None, compare=False)
 
 
 def _bytes(value) -> int:
