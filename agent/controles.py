@@ -28,7 +28,9 @@ from .selectie import ontbrekende_instellingen, ontbrekende_schooljaren, onvolle
 from .tekens import zonder_citaatkop
 from .zelfcorrectie import zonder_zelfcorrectie
 
-logger = logging.getLogger(__name__)
+# De regel CONTROLES blijft onder de logger van `agent/run.py`: logfilters en tests kennen die bron, en de verhuizing
+# van de code is geen reden om hem te veranderen (#694).
+logger = logging.getLogger("agent.run")
 
 
 def correctie(problems: list[str]) -> str:

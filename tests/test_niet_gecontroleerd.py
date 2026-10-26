@@ -147,7 +147,7 @@ def _chat(monkeypatch, steps: list[StreamResult]):
 
 
 def test_chat_met_een_falende_harde_controle_toont_het_antwoord_als_niet_gecontroleerd(monkeypatch):
-    monkeypatch.setattr(importlib.import_module("agent.run"), "verkeerd_gebonden", _kapot)
+    monkeypatch.setattr(importlib.import_module("agent.controles"), "verkeerd_gebonden", _kapot)
     text, events = _chat(monkeypatch, [StreamResult(text="Er is geen data.", tool_calls=[])])
 
     assert text == "Er is geen data."
