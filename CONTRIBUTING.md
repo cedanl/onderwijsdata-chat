@@ -35,6 +35,10 @@ hoeveel er nog af moet.
 De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en alle tags;
 er draait daar geen deploy meer.
 
+De pipeline faalt als de dekking van `pytest` onder `fail_under` in `pyproject.toml` komt (#691). Dek je nieuwe code
+met tests in plaats van de drempel te verlagen; na een merge die de stand duidelijk verbetert, mag de drempel omhoog
+(afgerond naar beneden op de stand van `main`), nooit omlaag.
+
 Werk test-first: schrijf de test die het gedrag vastlegt, laat hem falen, en maak hem dan groen.
 Houd functies klein en met één verantwoordelijkheid, en ruim dode code op die je tegenkomt.
 
