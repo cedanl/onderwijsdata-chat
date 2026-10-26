@@ -112,7 +112,7 @@ pytest:
     - if: $CI_COMMIT_TAG
   needs: []
   image:
-    name: python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+    name: python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
   variables:
     UV_CACHE_DIR: .uv-cache
   cache:
@@ -212,7 +212,7 @@ bron:ping:
     - if: $CI_PIPELINE_SOURCE == "web" && $BRON_PING == "1"
   needs: []
   image:
-    name: python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+    name: python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
   variables:
     UV_CACHE_DIR: .uv-cache
   cache:
@@ -241,7 +241,7 @@ audit:python:
   needs: []
   allow_failure: true
   image:
-    name: python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+    name: python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
   before_script:
     - pip install --no-cache-dir uv
   script:
@@ -353,7 +353,7 @@ env:promotion-ladder:
     - if: $CI_MERGE_REQUEST_IID
   needs: []
   image:
-    name: python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
+    name: python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
   variables:
     GIT_DEPTH: "0"
   before_script:
@@ -387,7 +387,7 @@ sync:github:
     - if: $CI_COMMIT_TAG
       when: always
   image:
-    name: alpine/git:v2.54.0@sha256:4fac439ee3b9204bec99c712b8a15942999632458f716ae8149fbb97cb760cd4
+    name: alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
     entrypoint: [""]
   variables:
     GIT_STRATEGY: clone
