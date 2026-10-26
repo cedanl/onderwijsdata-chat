@@ -9,6 +9,13 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een RIO-antwoord noemt van welke dag de stand is ("stand van 26-10-2026"), en de snippet vraagt die dag op met
+  `datumGeldigOp` (#718). RIO is een levend register: dezelfde aanroep een week later gaf een andere stand zonder dat iemand
+  het zag. De app zet de dag van de aanroep zelf (dezelfde rijen als zonder filter, gemeten op elf resources); een eigen
+  `datumGeldigOp` blijft staan, en een resource zonder dat filter krijgt in de snippet een opmerking.
+- Het manifest, de logregel `GEPUBLICEERD` en de kop van de CSV-export noemen een `inhoudshash` van de brontabel van een
+  CBS- of RIO-antwoord (#715), te narekenen met `hashlib.sha256(df.to_csv(index=False).encode()).hexdigest()[:12]`. Zo is
+  later vast te stellen of een herlading dezelfde data oplevert. DUO volgt met de hash van de bron zelf (#717).
 - Een foutmelding bij een ontbrekende of ongeldige API-sleutel, een onbekend model of een verbinding die de server met
   de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
   "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er

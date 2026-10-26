@@ -29,6 +29,7 @@ from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
 from tools import store
 from tools.catalog import catalogus_digest, catalogus_laatste_update
+from tools.inhoudshash import hash_van
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,8 @@ def _data_as_of(data_keys) -> list[dict]:
             entry["herladen_op"] = known.herladen_op
         if known.peilmoment:
             entry["peilmoment"] = known.peilmoment
+        if inhoud := hash_van(key):
+            entry["inhoudshash"] = sorted({*entry.get("inhoudshash", ()), inhoud})
     return [per_dataset[sleutel] for sleutel in sorted(per_dataset)]
 
 

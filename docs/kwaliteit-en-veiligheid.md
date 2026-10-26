@@ -15,7 +15,7 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
 - **Herleidbaarheid**: elke toolstap heeft een Python-snippet (`REPRODUCEER` in het log, de redeneerkaart), elk antwoord en
   rapport een manifest met model, prompt-, catalogus-, app- en dataversie (#345), en elk gepubliceerd resultaat (antwoord,
   figuur, CSV-export, rapport) één logregel `GEPUBLICEERD` met per data-key bron, dataset, resource, de key (de digest van de
-  selectie), volledigheid, afronding en herlaaddatum, plus die versies en het tijdstip (#169). Geen vraag- of antwoordtekst;
+  selectie), volledigheid, afronding, herlaaddatum en, voor een CBS- of RIO-bron, de `inhoudshash` van de brontabel (#715), plus die versies en het tijdstip (#169). Geen vraag- of antwoordtekst;
   de selectiestappen in woorden staan op DEBUG.
 - **Bronwaarheid, van buiten**: de evals in `tests/e2e/` toetsen natuurlijke vragen tegen ijkwaarden die rechtstreeks bij
   CBS, DUO en RIO zijn opgehaald (#190), en de CI-job `eval:bronwaarheid` draait ze gepland of met de hand tegen de
