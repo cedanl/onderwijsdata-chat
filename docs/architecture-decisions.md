@@ -209,7 +209,7 @@ blijft het feitenblok staan (fail closed). Dat raakt `agent/grounding.py`, `agen
   aan de repo toegevoegd, ook niet als spike.
 - **Vervangen of aanvullen:** geen van beide; er komt niets bij. De antwoordcontroles van ADR-001
   blijven het enige systeem: `agent/grounding.py` (getallen), `agent/binding.py` (getal bij jaar
-  en instelling) en de andere controlemodules, die `agent/run.py` na elk antwoord draait. Er
+  en instelling) en de andere controlemodules, die `agent/controles.py` na elk antwoord draait (aangeroepen vanuit `agent/run.py`). Er
   staan dus geen twee systemen naast elkaar.
 - **Vraagklassen met een vast plan:** geen. Een vraag naar data blijft vrije verkenning met tools,
   en elk antwoord gaat door dezelfde poorten: de volledigheidspoort vóór het laden (ADR-006) en de

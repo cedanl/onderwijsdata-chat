@@ -53,7 +53,7 @@ Code controleert elk antwoord tegen de opgehaalde data. Vindt de controle iets, 
 
 Een uitzondering in de chat (#619): is het enige harde probleem na de herkansing een getal dat niet in de data staat, dan vervalt alleen de zin of tabelrij met dat getal (`agent/schrappen.py`). De rest wordt opnieuw gecontroleerd en de gebruiker ziet "Zinnen met een getal dat niet in de opgehaalde data staat, zijn weggelaten." Valt er meer dan de helft weg, of blijft de rest hard, dan wordt het antwoord ingehouden zoals hierboven.
 
-Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepast in `agent/run.py` en `agent/report_checks.py`.
+Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepast in `agent/controles.py` en `agent/report_checks.py`.
 
 ### Taal, decimale komma en aanspreekvorm (#326, #536)
 

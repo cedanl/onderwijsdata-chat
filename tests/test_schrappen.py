@@ -5,9 +5,9 @@ import json
 import pytest
 
 from agent.binding import segmenten_met_scheiding
+from agent.controles import antwoordcontrole, maak_getalcontrole
 from agent.loop import LoopResult
 from agent.probleem import Probleem, hard, harde
-from agent.run import _antwoordcontrole, _getalcontrole
 from agent.schrappen import GESCHRAPT, zonder_ongedekte_zinnen
 
 _DATA = [json.dumps({"data_key": "duo:p02:a", "rijen": [{"AANTAL": 5943}, {"AANTAL": 6100}]})]
@@ -15,15 +15,15 @@ _VRAAG = "Hoeveel eerstejaars?"
 
 
 def _resultaat(tekst: str) -> LoopResult:
-    getalcontrole = _getalcontrole([], [])
-    problemen = _antwoordcontrole(_VRAAG, [], [], {}, getalcontrole)(tekst, _DATA)
+    getalcontrole = maak_getalcontrole([], [])
+    problemen = antwoordcontrole(_VRAAG, [], [], [], [], getalcontrole)(tekst, _DATA)
     return LoopResult(text=tekst, steps=[("query_data", _DATA[0])], problems=problemen)
 
 
 def _schrap(tekst: str) -> LoopResult:
-    getalcontrole = _getalcontrole([], [])
+    getalcontrole = maak_getalcontrole([], [])
     return zonder_ongedekte_zinnen(
-        _resultaat(tekst), _antwoordcontrole(_VRAAG, [], [], {}, getalcontrole), getalcontrole
+        _resultaat(tekst), antwoordcontrole(_VRAAG, [], [], [], [], getalcontrole), getalcontrole
     )
 
 
@@ -84,9 +84,9 @@ def test_een_ander_hard_probleem_schrapt_niets():
     tekst = "In 2024 waren er 5.943 eerstejaars. Dat is 70.812 minder. Een derde zin zonder getal. Nog een zin."
     resultaat = _resultaat(tekst)
     resultaat.problems = [*resultaat.problems, *hard([Probleem("Een ander feit klopt niet.")])]
-    getalcontrole = _getalcontrole([], [])
+    getalcontrole = maak_getalcontrole([], [])
 
-    na = zonder_ongedekte_zinnen(resultaat, _antwoordcontrole(_VRAAG, [], [], {}, getalcontrole), getalcontrole)
+    na = zonder_ongedekte_zinnen(resultaat, antwoordcontrole(_VRAAG, [], [], [], [], getalcontrole), getalcontrole)
 
     assert na is resultaat
 
@@ -95,16 +95,16 @@ def test_een_antwoord_zonder_hard_probleem_blijft_zoals_het_was():
     resultaat = _resultaat("In 2024 waren er 5.943 eerstejaars.")
 
     assert not resultaat.problems
-    getalcontrole = _getalcontrole([], [])
+    getalcontrole = maak_getalcontrole([], [])
     assert (
-        zonder_ongedekte_zinnen(resultaat, _antwoordcontrole(_VRAAG, [], [], {}, getalcontrole), getalcontrole)
+        zonder_ongedekte_zinnen(resultaat, antwoordcontrole(_VRAAG, [], [], [], [], getalcontrole), getalcontrole)
         is resultaat
     )
 
 
 def test_blijft_de_rest_hard_door_een_ander_probleem_dan_blijft_het_inhouden():
     tekst = "In 2024 waren er 5.943 eerstejaars. Dat is 70.812 minder. Een derde zin zonder getal. Nog een zin."
-    getalcontrole = _getalcontrole([], [])
+    getalcontrole = maak_getalcontrole([], [])
 
     def check(text, tool_results):
         return hard([Probleem("Ook de rest klopt niet.")])

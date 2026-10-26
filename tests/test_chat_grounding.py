@@ -11,6 +11,7 @@ import json
 import pandas as pd
 import pytest
 
+from agent import controles
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from tools import store
@@ -110,7 +111,7 @@ def test_alleen_de_zin_met_het_ongedekte_getal_vervalt_na_de_herkansing(monkeypa
 
 
 def test_de_herkansing_vraagt_ook_verschillen_en_percentages_uit_de_data():
-    instructie = run_module._correction(["70,8% staat niet in de opgehaalde data."])
+    instructie = controles.correctie(["70,8% staat niet in de opgehaalde data."])
 
     assert "verschillen, percentages en aandelen" in instructie
     assert "compute_kpi" in instructie

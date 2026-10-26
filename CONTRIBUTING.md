@@ -45,7 +45,7 @@ Houd functies klein en met één verantwoordelijkheid, en ruim dode code op die 
 ## Een antwoordcontrole toevoegen
 
 Het antwoordpad groeit met elke controle (zie [de stroomkaart](docs/anti-hallucination-architecture.md)
-en ADR-007). Een nieuwe controle in `_antwoordcontrole` (`agent/run.py`) of een andere poort in dat pad heeft vier dingen,
+en ADR-007). Een nieuwe controle in `antwoordcontrole` (`agent/controles.py`) of een andere poort in dat pad heeft vier dingen,
 in de MR-beschrijving en waar mogelijk in de docstring:
 
 1. **Foutklasse:** welke fout vangt hij, met een echt voorbeeld (een antwoord, een issue of een evalcase).
