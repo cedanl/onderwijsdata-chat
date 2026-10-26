@@ -70,8 +70,10 @@ def test_de_herkomst_reist_mee_over_toolgrenzen(bron_key):
     result, _ = dispatch("query_data", {"data_key": bron_key, "filters": {"OPLEIDINGSVORM": "VT"}})
     afgeleid = _json(result)["data_key"]
 
-    assert store.meta(afgeleid).afgeleid_van == bron_key
-    assert store.meta(afgeleid).bron == "duo"
+    meta = store.meta(afgeleid)
+    assert meta is not None
+    assert meta.afgeleid_van == bron_key
+    assert meta.bron == "duo"
 
 
 @pytest.mark.parametrize("variant", ["DUO:keten", "duo_keten", "duo/keten"])
