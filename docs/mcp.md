@@ -25,6 +25,12 @@ schema of een fout in de tool komt terug als MCP-fout (`isError`), met de parame
 limieten van de chat; dat is stap 2 van [#41](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/41).
 De server levert metadata; de cijfers haal je bij de bron of in de chat-app.
 
+## Stabiliteit
+
+De MCP-server is een stabiele interface: toolnamen, parameters en de envelope van `search_catalog` veranderen niet
+zonder dat de wijziging als breaking change is aangekondigd. Een nieuwe tool of een nieuwe optionele parameter is dat niet.
+Wat stabiel is en wat niet, staat in [API-referentie → Wat is stabiel](api.md#wat-is-stabiel).
+
 ## Starten
 
 De server zit in de optionele extra `mcp`; de MCP-SDK staat niet in het chat-image.

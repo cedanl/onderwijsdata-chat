@@ -4,6 +4,32 @@ De app draait op FastAPI en biedt een REST-API en WebSocket-endpoint voor commun
 
 ---
 
+## Wat is stabiel
+
+Niet elke interface is bedoeld om op te bouwen. De meegeleverde frontend draait altijd op dezelfde release als de server en
+kent dus geen versieverschil; een andere client of een ander team heeft aan een kleiner, vast deel genoeg.
+
+| Interface | Status | Waar je op kunt rekenen | Waar niet |
+|---|---|---|---|
+| `GET /health`, `/ready`, `/startup` | **stabiel** | Pad, methode en statuscode; `/health` geeft `{"status": "ok"}`. Kubernetes en de deploycontrole leunen erop. | Extra velden in de body. |
+| `GET /version` | **stabiel** | De sleutels die bij `/version` hieronder staan; nieuwe sleutels komen erbij, bestaande verdwijnen niet. | Volgorde van sleutels. |
+| MCP-server ([MCP](mcp.md)) | **stabiel** | Toolnamen, parameters en de envelope van `search_catalog` (`status`, `kandidaten`, `melding`, `vervolgstap`). | De inhoud van `kandidaten` en de catalogus zelf: die volgt de bronnen. |
+| Manifest bij een antwoord of rapport | **stabiel** | De bestaande sleutels (model, sampling, prompt-hash, catalogus, dataversie). | Nieuwe sleutels komen erbij zonder aankondiging. |
+| Reproduceerbare snippet ([Reproduceerbare analyses](reproducibility.md)) | **stabiel in doel** | Hij laadt dezelfde bron met dezelfde filters en geeft dezelfde bewerkingen. | De exacte codetekst, en dat een bron later hetzelfde getal geeft (CBS herziet, DUO muteert cellen). |
+| Alle overige `/api/*`-eindpunten en het WebSocket-protocol van `/api/chat` | **intern** | Alleen dat de frontend van dezelfde release werkt. | Alles; kan zonder aankondiging wijzigen. |
+| Toolschema's voor het model (`tools/schemas.py`) en het `data_key`-formaat | **intern contract** | De keten `data_key` → filter → KPI/grafiek, bewaakt door `tests/test_tool_schema_contract.py` en `tests/test_tool_keten_contract.py`. | Het formaat van een `data_key`: behandel hem als ondoorzichtig, ook al ziet hij er leesbaar uit. |
+
+**Wat telt als breaking change** in een stabiele interface: een pad, methode, toolnaam, parameter of sleutel die verdwijnt
+of een andere naam krijgt; een betekenis die verandert; een optionele parameter die verplicht wordt. Een nieuwe tool, een
+nieuwe optionele parameter of een nieuwe sleutel in een antwoord is dat niet.
+
+**Wat je dan doet:** open eerst een issue met het label `breaking change`, houd de oude vorm een tijd naast de nieuwe
+als dat kan, zet een regel in `CHANGELOG.md` en noem hem in de release-omschrijving ([Promoten](promoten.md)).
+Verandert een toolschema of de `data_key`-afspraak bewust, pas dan de twee contracttests mee aan en zeg in het
+changelog wat er anders is.
+
+---
+
 ## Infrastructuur
 
 | Methode | Pad | Beschrijving |
