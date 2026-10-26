@@ -13,6 +13,9 @@ eigen kop (`docs/promoten.md`).
   de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
   "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er
   speelt en waar te kijken (sleutel in het secret, `MODEL`, `*_API_BASE`).
+- Een Python-snippet noemt bovenaan de pakketversies waarmee hij is gemaakt (`onderwijsdata`, `riodata`, appversie) en een
+  `pip install` met dezelfde versies, bij een git-installatie op de exacte commit (#714). Zo geeft een latere run niet
+  stilletjes een andere uitkomst door een nieuwere pakketversie.
 - Een foutmelding in de chat houdt zijn knoppen niet meer als de vraag daarna toch is beantwoord (#703). Na een
   limietfout en een geslaagde herhaling bleef de oude melding een werkende "Opnieuw" houden, naast het antwoord op
   dezelfde vraag. De melding blijft als geschiedenis in het gesprek staan, zonder knoppen.

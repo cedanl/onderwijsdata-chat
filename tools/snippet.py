@@ -25,6 +25,7 @@ from . import cbs_selectie, cbs_standaard, instellingsprovincie, kaartlocaties, 
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
+from .pakketversies import versiekop
 from .periode import STUDIEJAAR_LABEL
 from .plot import (
     GEOJSON_URLS,
@@ -640,6 +641,11 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
         # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
         args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
     snippet = gen(args, recept_van=recept_van)
-    if snippet and (regels := _bewerkingsregels(result)):
-        return "\n".join(["# Databewerking in de app:", *regels, "", snippet])
+    if not snippet:
+        return snippet
+    # De versiekop staat boven de code, onder de databewerking: die blijft het eerste wat een lezer ziet (#4).
+    if kop := versiekop(snippet):
+        snippet = "\n".join([*kop, "", snippet])
+    if regels := _bewerkingsregels(result):
+        snippet = "\n".join(["# Databewerking in de app:", *regels, "", snippet])
     return snippet
