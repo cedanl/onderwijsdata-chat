@@ -18,7 +18,14 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
    - in `CHANGELOG.md` wordt "Niet uitgebracht" de kop `## X.Y.Z — <datum>`, met een nieuwe lege "Niet uitgebracht"
      erboven, en de kopzin noemt de nieuwe laatste tag;
    - groen of bewust geaccepteerd: `bron:ping` (`scripts/bronping.py`), `scripts/ijkwaarden.py`, `audit:python` en
-     `audit:npm` in de pipeline.
+     `audit:npm` in de pipeline;
+   - een recente `eval:bronwaarheid`-run (#692): de uitslag van de bronwaarheid-evals tegen test. De job is
+     informatief (`allow_failure`) en blokkeert dus niets; deze stap is de enige borging. Start hem met "Run pipeline"
+     op `main` (de job staat dan op handmatig en vraagt de CI-variabelen `EVAL_BASE_URL`, `EVAL_USERNAME` en
+     `EVAL_PASSWORD`); het slagingspercentage per model en vraag staat in het artifact
+     `eval_results/slagingspercentage-<datum>.json` (90 dagen bewaard). Zet het totaal in de beschrijving van die laatste
+     MR (of, bij een promotie van een bestaande release, van de promotie-MR). Staat er een rode kritieke vraag (`ijk-*` of `weigering-*`) in, los die dan eerst op of noem in de MR
+     waarom je hem bewust accepteert.
 1. Wacht tot de pipeline van `main` groen is. Zonder groene pipeline publiceert
    `version:promote` geen chart.
 2. Tag kaal, **zonder `v`**: SDP matcht `^[0-9]+\.` op de ref-naam, dus `v2.1.0`
