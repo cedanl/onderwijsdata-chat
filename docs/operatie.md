@@ -86,6 +86,23 @@ kubectl --context testing logs -n services-onderwijsdata-chat deploy/fn-onderwij
 
 Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenmerk.
 
+**Foutmeldingen: wat ziet de gebruiker, wat de beheerder** (#703)
+
+| Categorie | De gebruiker ziet | Knoppen | De beheerder ziet |
+|---|---|---|---|
+| API-sleutel ontbreekt of ongeldig; model onbekend | vaste melding met de verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | niets in het log: controleer `MODEL` en de sleutel in het secret |
+| Limiet, API onbereikbaar | vaste melding: even wachten of de verbinding controleren | Opnieuw, en Opnieuw met een ander model | niets in het log: kijk naar de status van de provider |
+| Overige fout van model of API, time-out | "Fout bij het model of de API" met fout-ID | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API: <type en kenmerk>` op ERROR, de traceback op DEBUG |
+| Fout in onze eigen code | "Er ging intern iets mis" met fout-ID en het verzoek het ID door te geven | alleen Opnieuw (een ander model helpt niet) | `Interne fout <ID> in verwerking: <type en kenmerk>` op ERROR, de traceback op DEBUG |
+| Geen data om een rapport of dashboard van te maken | de tekst van de `Gebruikersfout`, letterlijk | Opnieuw | niets: de gebruiker lost dit zelf op met een vraag |
+| Verbinding weg tijdens een antwoord | "De verbinding viel weg voordat er een antwoord kwam. Stel je vraag opnieuw." | de vraag staat klaar om opnieuw te stellen | `VERBINDING`-regels met het verbindings-ID |
+
+De gebruiker ziet nooit een uitzonderingstekst, bestandspad of traceback: alleen een `Gebruikersfout` (tekst voor de
+gebruiker geschreven) komt letterlijk door, de rest krijgt een vaste melding. Is een vraag na een fout alsnog
+beantwoord, dan blijft de melding als geschiedenis in het gesprek staan, maar zonder knoppen. De teksten staan in
+`tests/e2e/fixtures/foutmeldingen.json`; `tests/test_foutmeldingen_vervolgstap.py` houdt dat bestand gelijk aan
+`core/errors.py` en `tests/e2e/foutmeldingen.spec.js` toetst ze in de browser.
+
 Tokengebruik: elke run logt `TOKENS  model=…  aanroepen=…  invoer=…  uitvoer=…  cache_gelezen=…  cache_geschreven=…`
 (#678). Per gebruiker optellen gaat via het verbindings-ID: `VERBINDING open verbinding=<id> gebruiker=<pseudoniem>`.
 Het pseudoniem staat er alleen met `LOG_HASH_SECRET`.
