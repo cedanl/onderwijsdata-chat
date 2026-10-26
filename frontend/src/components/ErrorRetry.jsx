@@ -5,6 +5,15 @@
 // An error, or a partial answer after the step budget ran out (#405): both get the retry buttons.
 export const offersRetry = msg => !!(msg.isError || msg.partial)
 
+// A failure that a later answer has followed is history (#703): the question got its answer another way, so the
+// buttons would only offer to ask it again. The message itself stays in the conversation.
+const isAnswer = m => m.role === 'assistant' && !m.isError && !!m.done
+export const offersRetryAt = (messages, index) => {
+  const msg = messages[index]
+  if (!offersRetry(msg)) return false
+  return !(msg.isError && messages.slice(index + 1).some(isAnswer))
+}
+
 export function alternativeModel(models, failedModel) {
   return models.find(m => m.id !== failedModel) ?? null
 }

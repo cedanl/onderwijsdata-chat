@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
-import ErrorRetry, { alternativeModel, offersRetry } from '../components/ErrorRetry'
+import ErrorRetry, { alternativeModel, offersRetry, offersRetryAt } from '../components/ErrorRetry'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -120,5 +120,33 @@ describe('offersRetry (#405)', () => {
     expect(offersRetry({ isError: true })).toBe(true)
     expect(offersRetry({ partial: true, content: 'Dit is een deelantwoord.' })).toBe(true)
     expect(offersRetry({ content: 'Het zijn er 36.201.', done: true })).toBe(false)
+  })
+})
+
+describe('offersRetryAt (#703)', () => {
+  const fout = { id: 2, role: 'assistant', isError: true, done: true }
+  const vraag = { id: 1, role: 'user', content: 'Hoeveel?' }
+  const antwoord = { id: 4, role: 'assistant', content: 'Zoveel.', done: true }
+
+  it('biedt herstel zolang de fout het laatste is wat er gebeurde', () => {
+    expect(offersRetryAt([vraag, fout], 1)).toBe(true)
+  })
+
+  it('biedt geen herstel meer als er daarna een antwoord kwam', () => {
+    expect(offersRetryAt([vraag, fout, { ...vraag, id: 3 }, antwoord], 1)).toBe(false)
+  })
+
+  it('blijft herstel bieden als er daarna alleen een nieuwe fout of een onafgemaakt antwoord kwam', () => {
+    expect(offersRetryAt([vraag, fout, { ...vraag, id: 3 }, { ...fout, id: 4 }], 1)).toBe(true)
+    expect(offersRetryAt([vraag, fout, { ...vraag, id: 3 }, { ...antwoord, done: false }], 1)).toBe(true)
+  })
+
+  it('laat een deelantwoord zoals het was', () => {
+    const deel = { id: 2, role: 'assistant', partial: true, content: 'Deel.', done: true }
+    expect(offersRetryAt([vraag, deel, { ...vraag, id: 3 }, antwoord], 1)).toBe(true)
+  })
+
+  it('biedt niets bij een gewoon antwoord', () => {
+    expect(offersRetryAt([vraag, antwoord], 1)).toBe(false)
   })
 })

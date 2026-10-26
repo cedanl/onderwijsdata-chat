@@ -1,0 +1,42 @@
+{
+  "api-sleutel": {
+    "type": "error",
+    "message": "❌ API key ontbreekt of is ongeldig. Controleer je `.env` bestand.",
+    "modelafhankelijk": true
+  },
+  "model-onbekend": {
+    "type": "error",
+    "message": "❌ Model niet gevonden. Controleer de `MODEL` instelling in `.env`.",
+    "modelafhankelijk": true
+  },
+  "limiet": {
+    "type": "error",
+    "message": "❌ Te veel verzoeken naar de API. Wacht even en probeer opnieuw.",
+    "modelafhankelijk": true
+  },
+  "api-onbereikbaar": {
+    "type": "error",
+    "message": "❌ Kan de API niet bereiken. Controleer je internetverbinding.",
+    "modelafhankelijk": true
+  },
+  "modelfout": {
+    "type": "error",
+    "message": "❌ Fout bij het model of de API (fout-ID abcd1234). Probeer het opnieuw of kies een ander model.",
+    "modelafhankelijk": true
+  },
+  "timeout": {
+    "type": "error",
+    "message": "❌ Fout bij het model of de API (fout-ID abcd1234). Probeer het opnieuw of kies een ander model.",
+    "modelafhankelijk": true
+  },
+  "intern": {
+    "type": "error",
+    "message": "❌ Er ging intern iets mis (fout-ID abcd1234). Probeer het opnieuw; blijft het misgaan, geef dit ID dan door.",
+    "modelafhankelijk": false
+  },
+  "gebruikersfout": {
+    "type": "error",
+    "message": "❌ Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.",
+    "modelafhankelijk": false
+  }
+}

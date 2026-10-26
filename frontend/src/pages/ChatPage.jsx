@@ -75,7 +75,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
-import ErrorRetry, { offersRetry } from '../components/ErrorRetry'
+import ErrorRetry, { offersRetryAt } from '../components/ErrorRetry'
 import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import ClarificationButtons from '../components/ClarificationButtons'
@@ -858,7 +858,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 settings={settings} modelLabel={modelLabels[laatsteId] ?? modelLabels[msg.id]}
                 settled={roundSettled(displayMessages, i, busy)}
                 herhaal={msg.role === 'assistant' ? herhaalVoor(i) : null}
-                retry={offersRetry(msg) ? {
+                retry={offersRetryAt(displayMessages, i) ? {
                   question: questionBefore(displayMessages, i),
                   models, selectedModel, onRetry: handleRetry,
                   modelafhankelijk: msg.modelafhankelijk !== false,
