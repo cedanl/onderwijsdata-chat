@@ -7,7 +7,11 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
-    "litellm>=1.40",
+    # <1.106: litellm 1.106.x importeert `mcp` zodra een aanroep tools meegeeft (responses/mcp in main.completion), en
+    # `mcp` zit niet in het runtime-image (extra `mcp`, alleen voor mcp_server.py). Elke chatvraag gaf dan
+    # "Kan de API niet bereiken" (APIConnectionError: No module named 'mcp'). Weg te halen zodra een versie dat
+    # niet meer doet; tests/test_litellm_zonder_mcp.py bewaakt het.
+    "litellm>=1.40,<1.106",
     "plotly>=5.0",
     "python-dotenv>=1.0",
     "onderwijsdata @ git+https://github.com/cedanl/cbs-onderwijsdata.git@v0.2.2",
