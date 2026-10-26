@@ -83,7 +83,7 @@ Is de data het resultaat van een eerdere stap (een selectie, een vaste maat of e
 
 ## Voor onderzoekers
 
-- Export je chat-sessie na elke analyse
+- Export je chat-sessie na elke analyse: per antwoord staat er een blok "Herkomst" in met model, versies en dataversie (#713); bij een teruggezet gesprek ontbreekt dat
 - Voeg snippets toe aan je rapport als "methodologie"
 - Laat collega's ze draaien ter verificatie
 - Archiveer ze met je onderzoeksgegevens

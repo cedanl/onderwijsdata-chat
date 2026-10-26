@@ -4,6 +4,7 @@
 // default: an audit file is about the answer, not about the retries on the way.
 import { conversationTitle } from './conversationTitle'
 import { metBronnen } from './answerBlocks'
+import { manifestRegels } from './manifestRegels'
 
 const failed = step => ['error', 'empty', 'buiten_scope'].includes(step.status)
 
@@ -34,6 +35,14 @@ function answerBlocks(msg, options) {
   if (msg.content) blocks.push('### Antwoord', metBronnen(msg.content, msg.bronnen))
   for (const zin of msg.controle || []) blocks.push(`> Let op: ${zin}`)
   for (const fig of msg.figures || []) blocks.push(`_Grafiek: ${fig.label || 'zonder titel'}_`)
+  // Where the answer came from (#713): the model and versions that made it, and the version of the data behind it.
+  const herkomst = manifestRegels(msg.manifest)
+  if (herkomst) {
+    blocks.push('#### Herkomst', [
+      `Verantwoording: ${herkomst.verantwoording}`,
+      herkomst.dataversie && `Dataversie: ${herkomst.dataversie}`,
+    ].filter(Boolean).join('\n\n'))
+  }
   const steps = stepLines(msg.tools, options, msg.vervangen?.[0]?.naStap)
   if (steps.length) blocks.push('#### Stappen', steps.join('\n').trim())
   return blocks
