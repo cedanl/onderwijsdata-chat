@@ -90,8 +90,8 @@ Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenme
 
 | Categorie | De gebruiker ziet | Knoppen | De beheerder ziet |
 |---|---|---|---|
-| API-sleutel ontbreekt of ongeldig; model onbekend | vaste melding met de verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | niets in het log: controleer `MODEL` en de sleutel in het secret |
-| Limiet, API onbereikbaar | vaste melding: even wachten of de verbinding controleren | Opnieuw, en Opnieuw met een ander model | niets in het log: kijk naar de status van de provider |
+| Limiet | vaste melding: even wachten | Opnieuw, en Opnieuw met een ander model | `Rate limit (poging n/4): provider=… status=…` van `agent.ratelimit`; kijk naar de status van de provider |
+| API-sleutel ontbreekt of ongeldig, model onbekend, API onbereikbaar | "Het model is nu niet beschikbaar" met fout-ID; geen verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API (<wat te controleren>): <type en kenmerk>` op ERROR: sleutel in het secret, `MODEL`/`AVAILABLE_MODELS` of `*_API_BASE` |
 | Overige fout van model of API, time-out | "Fout bij het model of de API" met fout-ID | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API: <type en kenmerk>` op ERROR, de traceback op DEBUG |
 | Fout in onze eigen code | "Er ging intern iets mis" met fout-ID en het verzoek het ID door te geven | alleen Opnieuw (een ander model helpt niet) | `Interne fout <ID> in verwerking: <type en kenmerk>` op ERROR, de traceback op DEBUG |
 | Geen data om een rapport of dashboard van te maken | de tekst van de `Gebruikersfout`, letterlijk | Opnieuw | niets: de gebruiker lost dit zelf op met een vraag |

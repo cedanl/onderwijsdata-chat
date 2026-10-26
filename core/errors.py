@@ -26,13 +26,20 @@ class Gebruikersfout(Exception):
     """
 
 
+# Alleen een limiet is iets wat de gebruiker zelf kan oplossen (even wachten): die houdt een vaste tekst zonder ID.
 _FRIENDLY_ERRORS: list[tuple[type, str | None]] = [
-    (litellm.AuthenticationError, "API key ontbreekt of is ongeldig. Controleer je `.env` bestand."),
-    (litellm.NotFoundError, "Model niet gevonden. Controleer de `MODEL` instelling in `.env`."),
     (litellm.RateLimitError, "Te veel verzoeken naar de API. Wacht even en probeer opnieuw."),
-    (litellm.APIConnectionError, "Kan de API niet bereiken. Controleer je internetverbinding."),
     (litellm.BadRequestError, None),
 ]
+
+# Een ontbrekende of ongeldige sleutel, een onbekend model en een verbinding die de server met de provider niet krijgt
+# zijn beheerderszaken (#712): een gebruiker heeft geen `.env` en zijn eigen internet is het niet. Hij krijgt een melding
+# met fout-ID; wat er speelt (en waar de beheerder kijkt) staat onder dat ID in het log.
+_MODEL_NIET_BESCHIKBAAR = (
+    (litellm.AuthenticationError, "sleutel ontbreekt of is ongeldig: controleer de sleutel in het secret of `.env`"),
+    (litellm.NotFoundError, "model niet gevonden: controleer `MODEL` en `AVAILABLE_MODELS`"),
+    (litellm.APIConnectionError, "de server bereikt de provider niet: controleer de verbinding en `*_API_BASE`"),
+)
 
 # Alle litellm-API-fouten erven van openai.OpenAIError; een budget of timeout hoort ook bij het model.
 _MODELFOUTEN = (openai.OpenAIError, litellm.BudgetExceededError, TimeoutError)
@@ -61,6 +68,13 @@ def friendly_error(exc: Exception) -> str:
             if msg is None:
                 break
             return f"❌ {msg}"
+    for exc_type, waar in _MODEL_NIET_BESCHIKBAAR:
+        if isinstance(exc, exc_type):
+            fout_id = log_interne_fout(exc, f"model/API ({waar})")
+            return (
+                f"❌ Het model is nu niet beschikbaar (fout-ID {fout_id}). Probeer het later opnieuw of kies een ander "
+                "model; blijft het misgaan, geef dit ID dan door aan de beheerder."
+            )
     if modelafhankelijk(exc):
         # Ook een API-fout kan interne details bevatten (#503): vaste tekst, details in het log.
         fout_id = log_interne_fout(exc, "model/API")

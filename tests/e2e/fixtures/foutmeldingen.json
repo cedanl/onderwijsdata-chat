@@ -1,12 +1,12 @@
 {
   "api-sleutel": {
     "type": "error",
-    "message": "❌ API key ontbreekt of is ongeldig. Controleer je `.env` bestand.",
+    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
     "modelafhankelijk": true
   },
   "model-onbekend": {
     "type": "error",
-    "message": "❌ Model niet gevonden. Controleer de `MODEL` instelling in `.env`.",
+    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
     "modelafhankelijk": true
   },
   "limiet": {
@@ -16,7 +16,7 @@
   },
   "api-onbereikbaar": {
     "type": "error",
-    "message": "❌ Kan de API niet bereiken. Controleer je internetverbinding.",
+    "message": "❌ Het model is nu niet beschikbaar (fout-ID abcd1234). Probeer het later opnieuw of kies een ander model; blijft het misgaan, geef dit ID dan door aan de beheerder.",
     "modelafhankelijk": true
   },
   "modelfout": {

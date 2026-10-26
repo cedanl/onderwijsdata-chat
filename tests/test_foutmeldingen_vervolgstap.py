@@ -69,7 +69,7 @@ def test_geen_foutmelding_lekt_technische_details(catalogus):
 
 def test_een_fout_zonder_vaste_tekst_noemt_het_fout_id(catalogus):
     """De beheerder zoekt het ID in het log (docs/operatie.md): modelfout en interne fout moeten het tonen."""
-    for naam in ("modelfout", "timeout", "intern"):
+    for naam in ("api-sleutel", "model-onbekend", "api-onbereikbaar", "modelfout", "timeout", "intern"):
         assert f"fout-ID {_FOUT_ID}" in catalogus[naam]["message"], naam
 
 
@@ -80,3 +80,8 @@ def test_de_browserfixture_is_gelijk_aan_wat_core_errors_maakt(catalogus):
     assert json.loads(FIXTURE.read_text(encoding="utf-8")) == catalogus, (
         "tests/e2e/fixtures/foutmeldingen.json loopt achter; draai met FOUTMELDINGEN_BIJWERKEN=1"
     )
+
+
+def test_geen_foutmelding_stuurt_de_gebruiker_naar_een_bestand_dat_hij_niet_heeft(catalogus):
+    """Een sleutel of model in `.env` is een beheerderszaak (#712); de melding noemt hem niet."""
+    assert not [naam for naam, ev in catalogus.items() if ".env" in ev["message"]]
