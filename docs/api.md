@@ -14,6 +14,7 @@ kent dus geen versieverschil; een andere client of een ander team heeft aan een 
 | `GET /health`, `/ready`, `/startup` | **stabiel** | Pad, methode en statuscode; `/health` geeft `{"status": "ok"}`. Kubernetes en de deploycontrole leunen erop. | Extra velden in de body. |
 | `GET /version` | **stabiel** | De sleutels die bij `/version` hieronder staan; nieuwe sleutels komen erbij, bestaande verdwijnen niet. | Volgorde van sleutels. |
 | MCP-server ([MCP](mcp.md)) | **stabiel** | Toolnamen, parameters en de envelope van `search_catalog` (`status`, `kandidaten`, `melding`, `vervolgstap`). | De inhoud van `kandidaten` en de catalogus zelf: die volgt de bronnen. |
+| Deep link `/chat#vraag=…` ([hieronder](#deep-link-naar-de-chat)) | **stabiel** | Pad en parameter: de vraag staat na het openen, ook na het inloggen, in de invoer van een nieuw gesprek en wordt niet vanzelf verstuurd. | Hoe de app de vraag schoont en de grens van 500 tekens. |
 | Manifest bij een antwoord of rapport | **stabiel** | De bestaande sleutels (model, sampling, prompt-hash, catalogus, dataversie). | Nieuwe sleutels komen erbij zonder aankondiging. |
 | Reproduceerbare snippet ([Reproduceerbare analyses](reproducibility.md)) | **stabiel in doel** | Hij laadt dezelfde bron met dezelfde filters en geeft dezelfde bewerkingen. | De exacte codetekst, en dat een bron later hetzelfde getal geeft (CBS herziet, DUO muteert cellen). |
 | Alle overige `/api/*`-eindpunten en het WebSocket-protocol van `/api/chat` | **intern** | Alleen dat de frontend van dezelfde release werkt. | Alles; kan zonder aankondiging wijzigen. |
@@ -27,6 +28,24 @@ nieuwe optionele parameter of een nieuwe sleutel in een antwoord is dat niet.
 als dat kan, zet een regel in `CHANGELOG.md` en noem hem in de release-omschrijving ([Promoten](promoten.md)).
 Verandert een toolschema of de `data_key`-afspraak bewust, pas dan de twee contracttests mee aan en zeg in het
 changelog wat er anders is.
+
+---
+
+## Deep link naar de chat
+
+`https://<omgeving>/chat#vraag=<tekst>` opent de chat met `<tekst>` in de invoer (#709). Zo verwijst de MCP-server in
+`vervolg` naar de volledige app ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)); elke andere link kan het ook.
+
+- De vraag staat in het fragment (`#`), niet in de query: een browser stuurt het fragment nooit naar een server of
+  proxy, dus de vraag (vaak woorden uit wat de gebruiker elders vroeg) komt niet in een toegangslog; uvicorn en de
+  ingress loggen het pad met de query (#103, #475). `?vraag=` leest de app niet.
+- De app leest de parameter bij het laden, vóór het inloggen, en haalt hem uit het adres en de geschiedenis.
+- De vraag wordt één regel platte tekst: stuur- en opmaaktekens (ook zero-width en bidi) en `<` `>` gaan eruit, en
+  na 500 tekens wordt hij afgekapt.
+- Hij wacht in `sessionStorage` van het tabblad. Zo overleeft hij het inloggen, ook via SRAM, dat na de callback
+  op `/` terugkomt; de app gaat dan door naar `/chat`.
+- De chat neemt de vraag één keer, begint een nieuw gesprek (het gesprek dat open stond gaat eerst naar de server,
+  zoals bij "Nieuw gesprek") en zet hem in de invoer. Hij gaat pas naar het model als de gebruiker op versturen drukt.
 
 ---
 

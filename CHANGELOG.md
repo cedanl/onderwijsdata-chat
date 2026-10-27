@@ -9,6 +9,10 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een link `/chat#vraag=…` opent de chat met die vraag in de invoer van een nieuw gesprek (#709), ook als de
+  gebruiker eerst moet inloggen, via SRAM of met een wachtwoord. De vraag gaat niet vanzelf naar het model; de app
+  haalt hem uit het adres, maakt er één regel platte tekst van en kapt hem af op 500 tekens. Hij staat in het fragment
+  (`#`), niet in de query: zo komt hij niet in de toegangslog van uvicorn of de ingress. Zie `docs/api.md`.
 - Een foutmelding bij een ontbrekende of ongeldige API-sleutel, een onbekend model of een verbinding die de server met
   de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
   "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er
