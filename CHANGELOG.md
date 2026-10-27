@@ -850,6 +850,10 @@ eigen kop (`docs/promoten.md`).
   entiteit), zodat een link of tag uit een beschrijving in de client niet actief wordt; een resultaat in gewone tekst
   staat als `melding` in hetzelfde JSON-object. Toolbeschrijvingen en instructies zeggen: "Noem geen getal dat niet in
   een toolresultaat staat." Nieuwe sleutels, geen breaking change; `APP_URL` kiest de omgeving (standaard playground).
+- `docs/edugenai.md` beschrijft de geplande koppeling met EduGenAI (#710): wat hij wel en niet doet, waarom de
+  betrouwbaarheid lager is dan in de eigen app (het model van EduGenAI schrijft het antwoord en onze controles draaien
+  niet), welke claim we wel en niet doen, concepttekst voor label, beschrijving en persona (af te stemmen met Npuls,
+  #711) en de gegevensstroom met bewaartermijnen voor de DPIA.
 
 ### Beheer
 - Renovate stelt geen digest-pin meer voor het eigen image in `charts/onderwijsdata-chat/values.yaml` voor (#656): de
