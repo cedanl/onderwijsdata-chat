@@ -8,6 +8,7 @@ from riodata import duo as _duo
 from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import (
+    bestandsversie,
     duo_bestandskeuze,
     duo_correcties,
     duo_meta,
@@ -328,14 +329,15 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
                 + (_andere_bestanden(dataset_id, bestanden, resource) or " De dataset bevat alleen documentatie."),
             )
         try:
-            df = instellingsprovincie.met_provincie(
-                periode.met_studiejaarlabel(_duo.load(dataset_id, resource)), dataset_id
-            )
+            geladen = _duo.load(dataset_id, resource)
+            df = instellingsprovincie.met_provincie(periode.met_studiejaarlabel(geladen), dataset_id)
         except Exception as e:
             hint = _andere_bestanden(dataset_id, bestanden, resource)
             return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)
+        # Vóór de bewerkingen gelezen: een merge laat pandas-attrs niet altijd staan (#717).
+        bestand = geladen.attrs.get("bron") or {}
         meta = store.KeyMeta(
             bron="duo",
             dataset=dataset_id,
@@ -347,6 +349,8 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
             instellingen=instelling.dekking(df, codekolom),
             vier_regel=kleine_aantallen.regel_geldt(df),
             laad=("get_duo_data", {"dataset_id": dataset_id, "resource": resource}),
+            peilmoment=bestandsversie.peilmoment(bestand),
+            bronhash=bestandsversie.bronhash(bestand),
         )
         store.put(key, df, meta)
         # put() maskeert een kopie, dus de lokale df is nog ongemaskeerd: schema en

@@ -40,6 +40,8 @@ def _keyregel(key: str) -> str:
         delen.append(f"herladen_op={known.herladen_op}")
     if not known.afgeleid_van and (inhoud := hash_van(key)):
         delen.append(f"inhoudshash={inhoud}")
+    if not known.afgeleid_van and known.bronhash:
+        delen.append(f"bronhash={known.bronhash}")
     df = store.get(key)
     if df is not None and hasattr(df, "shape"):
         delen.append(f"rijen={df.shape[0]}")
