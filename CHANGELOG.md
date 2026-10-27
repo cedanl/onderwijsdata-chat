@@ -843,6 +843,13 @@ eigen kop (`docs/promoten.md`).
   dezelfde schema's en dezelfde uitvoering als in de chat (scopegrens mbo/hbo/wo, bron-ID's, status per
   record). Optionele extra `mcp` (`uv sync --extra mcp`), niet in het image; geen sleutel nodig. De
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
+- Elk resultaat van de MCP-server draagt een `bewijs`-blok (bron, dataset-ID, selectie, peildatum, catalogusversie,
+  verwijzing; `maat` en `waarde` voor de datatools van #708) en een `vervolg` met een link naar de volledige app (#707).
+  Bij een MCP-client schrijft het model van de client het antwoord en draaien de controles van de chat niet; zo blijft
+  elk overgenomen gegeven herleidbaar. Tekst van de bronnen komt ontsmet mee (`[ ]` met een backslash, `< >` als
+  entiteit), zodat een link of tag uit een beschrijving in de client niet actief wordt; een resultaat in gewone tekst
+  staat als `melding` in hetzelfde JSON-object. Toolbeschrijvingen en instructies zeggen: "Noem geen getal dat niet in
+  een toolresultaat staat." Nieuwe sleutels, geen breaking change; `APP_URL` kiest de omgeving (standaard playground).
 
 ### Beheer
 - Renovate stelt geen digest-pin meer voor het eigen image in `charts/onderwijsdata-chat/values.yaml` voor (#656): de

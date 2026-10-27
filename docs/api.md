@@ -13,7 +13,7 @@ kent dus geen versieverschil; een andere client of een ander team heeft aan een 
 |---|---|---|---|
 | `GET /health`, `/ready`, `/startup` | **stabiel** | Pad, methode en statuscode; `/health` geeft `{"status": "ok"}`. Kubernetes en de deploycontrole leunen erop. | Extra velden in de body. |
 | `GET /version` | **stabiel** | De sleutels die bij `/version` hieronder staan; nieuwe sleutels komen erbij, bestaande verdwijnen niet. | Volgorde van sleutels. |
-| MCP-server ([MCP](mcp.md)) | **stabiel** | Toolnamen, parameters en de envelope van `search_catalog` (`status`, `kandidaten`, `melding`, `vervolgstap`). | De inhoud van `kandidaten` en de catalogus zelf: die volgt de bronnen. |
+| MCP-server ([MCP](mcp.md)) | **stabiel** | Toolnamen, parameters, de envelope van `search_catalog` (`status`, `kandidaten`, `melding`, `vervolgstap`) en in elk resultaat de sleutels van `bewijs` en `vervolg` ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)). | De inhoud van `kandidaten` en de catalogus zelf: die volgt de bronnen. |
 | Deep link `/chat#vraag=…` ([hieronder](#deep-link-naar-de-chat)) | **stabiel** | Pad en parameter: de vraag staat na het openen, ook na het inloggen, in de invoer van een nieuw gesprek en wordt niet vanzelf verstuurd. | Hoe de app de vraag schoont en de grens van 500 tekens. |
 | Manifest bij een antwoord of rapport | **stabiel** | De bestaande sleutels (model, sampling, prompt-hash, catalogus, dataversie). | Nieuwe sleutels komen erbij zonder aankondiging. |
 | Reproduceerbare snippet ([Reproduceerbare analyses](reproducibility.md)) | **stabiel in doel** | Hij laadt dezelfde bron met dezelfde filters en geeft dezelfde bewerkingen. | De exacte codetekst, en dat een bron later hetzelfde getal geeft (CBS herziet, DUO muteert cellen). |
