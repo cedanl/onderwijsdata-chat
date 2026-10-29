@@ -1,33 +1,9 @@
 import importlib
-import socket
 
 import pytest
 
-# Dashboard-tests laden live DUO-data. Een hangende verbinding blokkeerde de hele suite
-# (#226): elke socket-bewerking krijgt een bovengrens, dus een trage bron laat een test
-# falen in plaats van de run te laten hangen.
-_NETWORK_TIMEOUT_SECONDS = 20
-
-
-@pytest.fixture(autouse=True)
-def _bounded_network():
-    previous = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(_NETWORK_TIMEOUT_SECONDS)
-    yield
-    socket.setdefaulttimeout(previous)
-
-
-@pytest.fixture(autouse=True)
-def _clear_cache():
-    import data.instellingen as inst
-
-    inst._cache = None
-    inst._alias_lookup = None
-    inst._ADRES_CACHE = None
-    yield
-    inst._cache = None
-    inst._alias_lookup = None
-    inst._ADRES_CACHE = None
+# Register en dashboards draaien op bevroren DUO-bestanden, niet op live DUO (#766).
+pytestmark = pytest.mark.usefixtures("duo_fixtures")
 
 
 # ─── Registry ────────────────────────────────────────────────────────────────

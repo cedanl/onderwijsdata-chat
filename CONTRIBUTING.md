@@ -20,9 +20,15 @@ Draai dit vóór je een merge request opent; de pipeline doet hetzelfde en blokk
 uv run ruff check .                          # lint (backend)
 uv run ruff format --check .                 # opmaak; `uv run ruff format .` herstelt het
 uv run python scripts/ty_baseline.py         # typecheck: faalt alleen op nieuwe ty-diagnostics
-uv run pytest tests/ -q                      # backend; test_instellingen.py laadt live DUO-data en is traag
+uv run pytest tests/ -q                      # backend, zonder netwerk
 cd frontend && npm run lint && npm test      # lint en tests (frontend)
 ```
+
+De backendtests halen niets live op bij DUO of CBS: de pytest-job blokkeert elke MR en mag niet rood
+worden door een storing bij een bron (#766). Het DUO-register en de dashboards draaien op bevroren
+bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py`). Ververs ze met
+`uv run python scripts/duo_testfixtures.py` als een test een ander DUO-bestand of een andere instelling
+nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, wekelijks).
 
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de

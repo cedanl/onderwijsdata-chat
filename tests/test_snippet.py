@@ -385,6 +385,7 @@ def test_selectie_op_een_selectie_herhaalt_beide_stappen(clean_packages, keten):
     assert "pd.DataFrame([" not in snippet
 
 
+@pytest.mark.usefixtures("duo_fixtures")  # get_maat zoekt de instelling op in het DUO-register (#766)
 def test_vaste_maat_met_som_herhaalt_de_bron_en_de_som_van_de_leerwegen():
     """Voorbeeld 1 van #624: de mbo-som is zelf geen query_data-stap, maar het recept is dat wel."""
     args = {"maat": "mbo_studenten_instelling", "instelling": "ROC Mondriaan", "vorm": "bol"}

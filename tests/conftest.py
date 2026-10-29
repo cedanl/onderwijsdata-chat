@@ -1,6 +1,8 @@
 import importlib
+import json
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 
 from agent import recepten
@@ -40,6 +42,40 @@ def geen_cbs_preflight(monkeypatch):
 def geen_adresdownload(monkeypatch):
     """Unittests downloaden geen DUO-adresbestanden voor de instellingsprovincie (#453); tests die hem nodig hebben patchen zelf."""
     monkeypatch.setattr("tools.instellingsprovincie.get_adres_lookup", lambda: {})
+
+
+@pytest.fixture
+def duo_fixtures(monkeypatch):
+    """`duo.load` leest de bevroren DUO-bestanden van `scripts/duo_testfixtures.py`, niet onderwijsdata.duo.nl (#766).
+
+    Voor de instellingenregister- en dashboardtests: de pytest-job blokkeert elke MR en mag niet omvallen
+    op een storing bij DUO. Een bestand zonder fixture faalt met de naam erbij, zodat het script hem krijgt.
+    """
+    from riodata import duo
+
+    import data.dashboard
+    import data.instellingen
+    from scripts.duo_testfixtures import MAP, bestandsnaam
+
+    tekst = json.loads((MAP / "tekstkolommen.json").read_text())
+
+    def load(dataset_id: str, resource: int | str = 0, **kwargs) -> pd.DataFrame:
+        naam = bestandsnaam(dataset_id, resource)
+        if naam not in tekst:
+            raise AssertionError(f"geen DUO-fixture {naam}: voeg hem toe in scripts/duo_testfixtures.py")
+        return pd.read_csv(MAP / naam, dtype=dict.fromkeys(tekst[naam], str))
+
+    def wis_caches():
+        # Het register en de dashboardladers cachen in de module: anders blijft data van een andere test staan.
+        data.instellingen._cache = data.instellingen._alias_lookup = data.instellingen._ADRES_CACHE = None
+        for functie in vars(data.dashboard).values():
+            if hasattr(functie, "cache_clear"):
+                functie.cache_clear()
+
+    monkeypatch.setattr(duo, "load", load)
+    wis_caches()
+    yield
+    wis_caches()
 
 
 @pytest.fixture
