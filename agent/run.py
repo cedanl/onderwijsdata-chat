@@ -35,6 +35,7 @@ from .interpretatie import interpretatie_bij, is_vervolgvraag
 from .loop import LoopResult, ToolCall, tool_loop
 from .metatekst import zonder_toolnamen
 from .models import build_system
+from .niet_meegeteld import met_niet_meegeteld
 from .po_vraag import po_vraag
 from .probleem import INGEHOUDEN, controlenamen, harde, meldingen
 from .publicatie import ANTWOORD, FIGUUR, log_publicatie
@@ -256,12 +257,14 @@ async def _vast_vooraf(vraag: str, messages: list[dict], session: dict) -> str |
 
 
 def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[tuple[str, str]]) -> str:
-    """Boven een antwoord met data, uit code: de lezing van een vaag thema (#514) en de Uitgangspunt-regel (#620).
+    """Boven een antwoord met data, uit code: de lezing van een vaag thema (#514), de Uitgangspunt-regel (#620) en
+    wat de telling niet meetelt (#743).
 
     De lezing beslist op de modeltekst zelf: de regel mag een eigen "Ik ga uit van" van het model niet uit de eerste
     regels duwen. Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545). De regel
     kijkt naar de vraag met de gekozen verduidelijkingsopties: een gekozen instelling of jaar noemde de gebruiker."""
     zin = interpretatie_bij(tekst, _laatste_vraag(messages), steps, session, vervolg=is_vervolgvraag(messages))
+    tekst = met_niet_meegeteld(tekst, [result for _, result in steps])
     tekst = met_uitgangspunt(tekst, _poortvraag(messages, session), steps)
     return f"{zin}\n\n{tekst}" if zin else tekst
 
