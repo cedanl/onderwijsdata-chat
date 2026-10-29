@@ -72,7 +72,7 @@ def verbindingen(fake_psycopg2):
     """Elke verbinding die de driver opende, in volgorde."""
     gemaakt = []
 
-    def connect(uri):
+    def connect(uri, **kwargs):
         conn = FakeConn()
         gemaakt.append(conn)
         return conn
@@ -169,3 +169,22 @@ def test_niet_meer_verbindingen_dan_de_poolgrootte():
     eerste.join()
     tweede.join()
     assert len(gemaakt) == 1
+
+
+# #683: de URI uit het secret noemt geen sslmode, en psycopg2 viel dan stil terug op `prefer`.
+@pytest.mark.parametrize(
+    ("uri", "extra"),
+    [
+        ("postgresql://app@db:5432/app", {"sslmode": "require"}),
+        ("postgresql://app@db:5432/app?sslmode=verify-full", {}),
+        ("postgresql://app@localhost/app?sslmode=disable", {}),
+    ],
+)
+def test_de_verbinding_vraagt_tls_tenzij_de_uri_zelf_een_sslmode_noemt(fake_psycopg2, monkeypatch, uri, extra):
+    gezien = []
+    fake_psycopg2.connect = lambda dsn, **kwargs: gezien.append((dsn, kwargs)) or types.SimpleNamespace()
+    monkeypatch.setenv("POSTGRES_URI", uri)
+
+    db._connect()
+
+    assert gezien == [(uri, extra)]

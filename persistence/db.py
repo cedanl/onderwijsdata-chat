@@ -32,13 +32,24 @@ def _db_path() -> Path:
     return Path(__file__).parent.parent / "onderwijsdata.db"
 
 
+def _tls_verplicht(uri: str) -> dict:
+    """`sslmode=require` als de URI zelf geen sslmode noemt (#683).
+
+    De URI uit het secret noemt er geen, en de default van psycopg2 (`prefer`) valt stil terug op een
+    onversleutelde verbinding. Test en playground praten al TLS 1.3 (gemeten met `pg_stat_ssl`), dus
+    `require` breekt daar niets; een URI met een eigen sslmode (lokaal `sslmode=disable`) houdt die.
+    """
+    return {} if "sslmode=" in uri else {"sslmode": "require"}
+
+
 def _connect() -> Any:
     if _USE_POSTGRES:
         try:
             import psycopg2
             import psycopg2.extras
 
-            conn = psycopg2.connect(os.getenv("POSTGRES_URI"))
+            uri = os.getenv("POSTGRES_URI") or ""
+            conn = psycopg2.connect(uri, **_tls_verplicht(uri))
             conn.autocommit = False
             return conn
         except ImportError:

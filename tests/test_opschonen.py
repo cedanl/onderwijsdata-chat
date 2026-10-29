@@ -442,7 +442,7 @@ def postgres(monkeypatch):
 
     conn = _Conn()
     extras = SimpleNamespace(RealDictCursor=object)
-    psycopg2 = SimpleNamespace(extras=extras, connect=lambda uri: conn)
+    psycopg2 = SimpleNamespace(extras=extras, connect=lambda uri, **kwargs: conn)
     monkeypatch.setitem(sys.modules, "psycopg2", psycopg2)
     monkeypatch.setitem(sys.modules, "psycopg2.extras", extras)
     monkeypatch.setattr(db, "_USE_POSTGRES", True)
