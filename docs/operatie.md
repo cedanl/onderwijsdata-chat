@@ -49,6 +49,7 @@ voor de app, zodat de opschoonpod (100m) er nog bij past.
   uvicorn direct met code 1012; een lopend antwoord gaat bij een deploy verloren.
 - **Bestandssysteem**: read-only, behalve een `emptyDir` op `/tmp` (werkmappen van `run_analysis`).
 - **Image**: non-root `appuser`, base-images op digest, geen compiler of git in het runtime-image (#681).
+- **Login** (#787): buiten `APP_ENV=local` start de app niet zonder login. Is `CHAT_USERS` in het secret leeg of ontbreekt `OIDC_PROVIDER`, dan stopt de pod bij het opstarten met een melding in het log (`start niet zonder login`) in plaats van stil als `gast` te draaien. Voor een bewust openbare demo zet je `ALLOW_ANONYMOUS=true`; het startlog geeft dan een WARNING. Een lege waarde komt voor na een rotatie van het secret: controleer `CHAT_USERS` vóór je uitrolt.
 - **Logs**: JSON op elke SDP-omgeving (`APP_ENV`, #676); vraag- en antwoordtekst alleen als lengte en hash
   (`Agents.md`, "Logs").
 
