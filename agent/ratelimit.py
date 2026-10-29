@@ -75,8 +75,9 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
                 }
             )
             await asyncio.sleep(delay)
-        except (TimeoutError, litellm.APIConnectionError) as exc:
-            # Timeout of verbinding verloren: herprobeert met backoff
+        except (TimeoutError, litellm.Timeout, litellm.APIConnectionError) as exc:
+            # Timeout of verbinding verloren: herprobeert met backoff. Een time-out van de provider is
+            # litellm.Timeout; die erft van openai.APIConnectionError, niet van litellm.APIConnectionError (#799).
             if attempt == _MAX_RETRIES - 1:
                 logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, foutkenmerk(exc))
                 logger.debug("Model timeout na %d pogingen: %r", _MAX_RETRIES, exc)
