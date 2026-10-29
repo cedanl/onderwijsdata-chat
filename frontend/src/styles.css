@@ -1444,10 +1444,11 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
   animation: slideUp .3s ease;
 }
 /* Meerdere meldingen tegelijk (#521) liggen onder elkaar in plaats van op dezelfde plek, en
-   blijven op een smal scherm binnen beeld. */
+   blijven op een smal scherm binnen beeld. Boven een dialoog: waarom een rapport vanuit het veld met de
+   onderzoeksvraag niet start, staat anders achter de grijze laag (#751). */
 .toast-stack {
   position: fixed; right: 24px; bottom: 24px;
-  max-width: calc(100vw - 48px); z-index: 999;
+  max-width: calc(100vw - 48px); z-index: 1001;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
 .toast-stack .toast { position: static; }
@@ -1468,7 +1469,8 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .confirm-dialog { background: var(--white); border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
 .confirm-message { margin-bottom: 20px; font-size: .95rem; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
-.confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--gray-200); background: none; cursor: pointer; }
+/* De tekstkleur van de dialoog: een knop erft die niet vanzelf, en was in het donkere thema donker op donker (#751). */
+.confirm-cancel { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--gray-200); background: none; color: inherit; cursor: pointer; }
 .confirm-destructive { padding: 8px 16px; border-radius: 8px; border: none; background: #DC2626; color: white; cursor: pointer; font-weight: 600; }
 .answer-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .answer-feedback-btn {
@@ -1490,6 +1492,17 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .confirm-primary { padding: 8px 16px; border-radius: 8px; border: none; background: var(--blue-700); color: white; cursor: pointer; font-weight: 600; }
 .export-option { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .85rem; cursor: pointer; }
 .export-option:last-of-type { margin-bottom: 20px; }
+/* De onderzoeksvraag vóór een rapport (#751): breder dan een bevestiging, want de vraag beslaat vaak twee regels. */
+.onderzoeksvraag-dialoog { max-width: 480px; display: flex; flex-direction: column; gap: 8px; }
+.onderzoeksvraag-label { font-weight: 600; font-size: .95rem; }
+.onderzoeksvraag-veld {
+  width: 100%; max-height: 40vh; padding: 8px 12px; resize: none; line-height: 1.5; font-size: .9rem;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius); outline: none;
+  background: var(--white); color: var(--gray-900);
+}
+.onderzoeksvraag-veld:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.onderzoeksvraag-uitleg { margin-bottom: 12px; font-size: .8rem; color: var(--muted-text); }
+.onderzoeksvraag-dialoog .confirm-cancel, .onderzoeksvraag-dialoog .confirm-primary { min-height: var(--tap-min); }
 .export-conversation-btn {
   display: block; padding: 4px 10px;
   background: none; border: none; font-size: .78rem; color: var(--muted-text);
@@ -1959,7 +1972,8 @@ html.dark .suggested-btn:hover {
    The chat input takes line-height 1.5, so one row stays 24px as before (15px x 1.6) in the compact area (#527). */
 @media (pointer: coarse), (max-width: 1024px) {
   .chat-input, .login-input, .instelling-search, .history-search, .dc-textarea, .title-edit-input,
-  .answer-feedback-form textarea, .feedback-question textarea, .feedback-other, .model-picker select { font-size: 16px; }
+  .answer-feedback-form textarea, .feedback-question textarea, .feedback-other, .model-picker select,
+  .onderzoeksvraag-veld { font-size: 16px; }
   .chat-input { line-height: 1.5; }
 }
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // #515: onder een geweigerd rapport maakt "Opnieuw proberen" het rapport opnieuw, zonder de vraag
 // opnieuw te sturen; "Vraag opnieuw stellen" stuurt de vraag. Tijdens een antwoord of rapport: dicht.
+// Ook hier komt eerst het veld met de onderzoeksvraag (#751).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -21,14 +22,15 @@ vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
 const chat = vi.hoisted(() => ({
   messages: [], busy: false, reportBusy: false,
-  send: null, generateReport: null,
+  send: null, generateReport: null, checkReportStart: null,
 }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
     messages: chat.messages, busy: chat.busy, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: chat.reportBusy,
     reportProgress: { steps: 0, label: null }, reportSpec: null, send: chat.send, sendClarification: vi.fn(),
-    sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: chat.generateReport, cancelReport: vi.fn(),
+    sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), checkReportStart: chat.checkReportStart,
+    generateReport: chat.generateReport, cancelReport: vi.fn(),
     clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), addToast: () => {},
   }),
 }))
@@ -62,7 +64,8 @@ beforeEach(() => {
   chat.busy = false
   chat.reportBusy = false
   chat.send = vi.fn(() => true)
-  chat.generateReport = vi.fn()
+  chat.generateReport = vi.fn(() => true)
+  chat.checkReportStart = vi.fn(() => true)
 })
 
 afterEach(async () => {
@@ -90,7 +93,11 @@ describe('herstel na een geweigerd rapport (#515)', () => {
   it('maakt het rapport opnieuw en stuurt de vraag niet opnieuw', async () => {
     await mountChat()
     await act(async () => { knop('Opnieuw proberen').click() })
-    expect(chat.generateReport).toHaveBeenCalledWith('tester')
+    expect(chat.generateReport).not.toHaveBeenCalled()
+
+    const genereer = [...container.querySelectorAll('.onderzoeksvraag-dialoog button')].find(b => b.textContent === 'Genereer')
+    await act(async () => { genereer.click() })
+    expect(chat.generateReport).toHaveBeenCalledWith('tester', VRAAG)
     expect(chat.send).not.toHaveBeenCalled()
   })
 

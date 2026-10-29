@@ -78,6 +78,8 @@ import Composer from '../components/Composer'
 import ErrorRetry, { offersRetryAt } from '../components/ErrorRetry'
 import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
+import OnderzoeksvraagDialoog from '../components/OnderzoeksvraagDialoog'
+import { onderzoeksvraagVoorstel } from '../onderzoeksvraagVoorstel'
 import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
 import { useConversationSearch } from '../hooks/useConversationSearch'
@@ -295,7 +297,7 @@ function MessageContent({ msg, blocks = null }) {
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
@@ -328,6 +330,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // The conversation being fetched to open it (#509); one at a time.
   const [openingId, setOpeningId] = useState(null)
   const [saveError, setSaveError] = useState(null)
+  // Het veld met de onderzoeksvraag vóór een rapport (#751).
+  const [vraagVoorRapport, setVraagVoorRapport] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
@@ -718,9 +722,15 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     return vraag ? () => prefillComposer(vraag) : null
   }
 
+  // Eerst de onderzoeksvraag (#751). Kan er nu geen rapport starten, dan zegt een melding waarom, zonder veld (#648).
   const handleMakeRapport = useCallback(() => {
     setSaveError(null)
-    generateReport(user)
+    if (checkReportStart()) setVraagVoorRapport(true)
+  }, [checkReportStart])
+
+  // Gaat het verzoek niet de deur uit (verbinding net weg), dan blijft het veld open met de tekst erin.
+  const handleGenereer = useCallback(onderzoeksvraag => {
+    if (generateReport(user, onderzoeksvraag)) setVraagVoorRapport(false)
   }, [generateReport, user])
 
   // Save the generated report as a workbook when the spec arrives
@@ -756,7 +766,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   // Op een telefoon staat de knop onder het laatste antwoord, in de berichten (#596); op desktop in de statusrij.
   // Zonder verbinding of tijdens een nieuw gesprek ziet de knop er uit als niet beschikbaar, maar een tik komt
-  // nog aan: generateReport zegt dan waarom het rapport nu niet start (#648). Alleen een lopend rapport zet hem uit.
+  // nog aan: checkReportStart zegt dan waarom het rapport nu niet start (#648). Alleen een lopend rapport zet hem uit.
   const rapportKnop = reportState === 'ready' && (
     <button type="button" className="make-rapport-btn" onClick={handleMakeRapport} disabled={reportBusy}
       aria-disabled={!connected || resetting || undefined}>
@@ -786,6 +796,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           </div>
         ))}
       </div>
+      {vraagVoorRapport && (
+        <OnderzoeksvraagDialoog voorstel={onderzoeksvraagVoorstel(displayMessages)} max={maxMessageChars}
+          onGenereer={handleGenereer} onClose={() => setVraagVoorRapport(false)} />
+      )}
       <div className="chat-layout">
         {/* Sidebar overlay (mobile) */}
         {sidebarOpen && (

@@ -46,8 +46,10 @@ async function open(adres) {
 
 const invoer = () => container.querySelector('textarea.chat-input')
 
+// Tot de vraag in de invoer staat: die komt er een effect na het veld in, en een wachtlus die tussen die twee keek, zag
+// een leeg veld (lokaal ongeveer één run op tien, ook zonder #751).
 async function wachtOpInvoer() {
-  await vi.waitFor(() => expect(invoer()).not.toBeNull(), { timeout: 10000 })
+  await vi.waitFor(() => expect(invoer()?.value).toBe(VRAAG), { timeout: 10000 })
 }
 
 beforeEach(() => {
