@@ -6,8 +6,9 @@ het na te kijken kon niet. De figuur kent haar data_key; de store weet uit welke
 die key komt (#193) en welke schooljaren de getekende rijen dekken; de catalogus kent de titel en
 de documentatie-URL van de dataset. Daaruit maakt de code één regel per grafiek, met dezelfde
 woorden als de chatcitaties (CH-45, #540): bron en titel, dataset-ID, bij meer bestanden het
-bestand, de periode en de CBS-periodestatus van de getekende rijen, en de link. Een figuur zonder
-herleidbare bron krijgt geen regel; het rapport zegt dan dat de bron niet is vastgesteld.
+bestand, de periode en de CBS-periodestatus van de getekende rijen, en de link (bij DUO naar de
+pagina van dat bestand, #737). Een figuur zonder herleidbare bron krijgt geen regel; het rapport
+zegt dan dat de bron niet is vastgesteld.
 """
 
 from tools import store
@@ -50,5 +51,6 @@ def figuurbron(data_key) -> dict | None:
         "bron": known.bron.upper(),
         "dataset": str(known.dataset),
         "tekst": ", ".join(delen),
-        "url": documentatie_url(str(known.dataset)),
+        # Bij DUO de pagina van het geladen bestand (#737): de bronregel noemt het bestand al.
+        "url": documentatie_url(str(known.dataset), known.resource),
     }

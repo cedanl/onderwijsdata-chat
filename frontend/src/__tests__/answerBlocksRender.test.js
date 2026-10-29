@@ -130,7 +130,7 @@ describe('vaste bouwstenen onder een dataantwoord', () => {
 describe('bronregels als link naar de bronpagina', () => {
   const PER_BRON = {
     CBS: [CBS, 'https://opendata.cbs.nl/ODataApi/OData/85423NED'],
-    DUO: [DUO, 'https://onderwijsdata.duo.nl/dataset/p01hoinges'],
+    DUO: [DUO, 'https://onderwijsdata.duo.nl/datasets/p01hoinges'],
     RIO: ['RIO erkenningen, peildatum 2026-10-09', 'https://lod.onderwijsregistratie.nl/api/rio/v2/erkenningen'],
     UWV: ['UWV · UWV Open Match (uwv-open-match-data), peildatum 2023-05-16', 'https://data.overheid.nl/dataset/uwv-open-match-data'],
     ROA: ['ROA · AIS tot 2030 (ais2030), versie v20251218', 'https://doi.org/10.34894/DVQTOG'],
