@@ -77,3 +77,17 @@ def test_doorstroom_vmbo_mbo_zonder_extranei():
     with cbs_standaard.gesprek(["Hoeveel leerlingen stromen door van het vmbo naar het mbo, zonder extranei?"]):
         uit = get_maat("doorstroom_vmbo_mbo", schooljaren=["2025/26"])
     assert _rij(uit, "Perioden", 2025) == _VMBO_MBO_2025["excl"] == 82780
+
+
+# Mbo-studenten landelijk (#805): CBS 85354NED, dezelfde ijkpunten als de eval ijk-mbo-studenten-landelijk.
+@pytest.mark.parametrize(
+    ("vraag", "id"),
+    [
+        ("Hoeveel mbo-studenten waren er in 2024/25?", "cbs-mbo-totaal-2024"),
+        ("Hoeveel mbo-studenten waren er in 2024/25, zonder extranei?", "cbs-mbo-totaal-excl-extranei-2024"),
+    ],
+)
+def test_mbo_studenten_landelijk(vraag, id):
+    with cbs_standaard.gesprek([vraag]):
+        uit = get_maat("mbo_studenten_landelijk", schooljaren=["2024/25"])
+    assert _rij(uit, "Perioden", 2024) == _IJK[id]["waarde"]

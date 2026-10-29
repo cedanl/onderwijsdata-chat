@@ -406,6 +406,26 @@
       }
     },
     {
+      "label": "ijk-mbo-studenten-landelijk",
+      "message": "Hoeveel mbo-studenten waren er in 2024/25?",
+      "description": "#805: één vaste bron via get_maat (CBS 85354NED, incl. extranei); in de functionele test van 29-10 gaf dezelfde vraag DUO 474.963 en CBS 475.460 (85354NED of 85353NED)",
+      "expected": {
+        "kritiek": true,
+        "datasets": ["cbs:85354NED"],
+        "must_contain_tools": ["get_maat"],
+        "max_search_catalog": 3,
+        "must_mention": ["mbo", "Bron en definitie"],
+        "data_points": {
+          "description": "mbo-studenten landelijk incl. extranei, CBS afgerond op 10-tallen",
+          "maat": "mbo",
+          "ijkwaarden": {
+            "2024": "cbs-mbo-totaal-2024"
+          },
+          "tolerance_pct": 0
+        }
+      }
+    },
+    {
       "label": "ijk-aeres-code-vestigingen",
       "message": "Wat is de instellingscode van Aeres Hogeschool en in welke plaatsen heeft zij vestigingen?",
       "description": "Bronwaarheid (#190, audit 7b/8): RIO 30TX met vijf vestigingen; audit 7a koos 30TX ten onrechte als HU",

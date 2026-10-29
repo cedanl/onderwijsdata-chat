@@ -35,6 +35,15 @@ _VOLTIJD, _ALLE_VORMEN = "A028666", "T001228"
 _ALLE_FASEN, _ALLE_GESLACHTEN, _VROUWEN = "A045745", "T001038", "4000"
 # Vaste codes van 85353NED (mbo): niveau, leerweg, studierichting en regio op hun totaal.
 _MBO_TOTALEN = {"Niveau": "T001336", "Leerweg": "A025290", "Studierichting": "T001072", "Regio": "NL01"}
+# Vaste codes van 85354NED (mbo-studenten landelijk, #805): elke dimensie op haar totaal, leerweg incl. extranei.
+_MBO_STUDENTEN = {
+    "Geslacht": "T001038",
+    "Niveau": "T001336",
+    "Leerweg": "A025290",
+    "Herkomstland": "T001040",
+    "GeboortelandOuders": "T001638",
+}
+_EXCL_EXTRANEI = "A041867"
 _HU = "25DW"
 
 
@@ -67,7 +76,7 @@ def _duo(id: str, omschrijving: str, dataset: str, kolom: str, eenheid: str, vor
     return Ijkpunt(id, "duo", omschrijving, eenheid, selectie, f"{jaar}/{(jaar + 1) % 100:02d}")
 
 
-_ONDERWERP = {"85423NED": "TotaalIngeschrevenen_1", "85353NED": "MboStudenten_1"}
+_ONDERWERP = {"85423NED": "TotaalIngeschrevenen_1", "85353NED": "MboStudenten_1", "85354NED": "MboStudenten_1"}
 _HBO_VT = {
     "Onderwijssoort": _HBO,
     "Opleidingsvorm": _VOLTIJD,
@@ -110,6 +119,22 @@ IJKPUNTEN: tuple[Ijkpunt, ...] = (
         "mbo vrouwen landelijk 2024/25 (F-10, #531)",
         "85353NED",
         {**_MBO_TOTALEN, "Geslacht": _VROUWEN},
+        "2024SJ00",
+        "2024/25",
+    ),
+    _cbs(
+        "cbs-mbo-totaal-2024",
+        "mbo-studenten landelijk 2024/25 (#805)",
+        "85354NED",
+        _MBO_STUDENTEN,
+        "2024SJ00",
+        "2024/25",
+    ),
+    _cbs(
+        "cbs-mbo-totaal-excl-extranei-2024",
+        "mbo-studenten landelijk zonder extranei 2024/25 (#805)",
+        "85354NED",
+        {**_MBO_STUDENTEN, "Leerweg": _EXCL_EXTRANEI},
         "2024SJ00",
         "2024/25",
     ),

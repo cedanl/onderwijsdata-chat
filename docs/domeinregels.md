@@ -228,3 +228,41 @@ nagegaan: de vergelijking met het getal op de DUO-website en andere jaren dan 20
 
 `tests/test_doorstroom_vmbo_mbo.py` toetst de maat, de regel en deze sectie; `tests/test_maten_ijk.py` de live
 waarden (83.020 incl. en 82.780 excl. extranei voor 2025/26).
+
+## CBS: mbo-studenten landelijk, één vaste bron
+
+"Hoeveel mbo-studenten waren er in 2024/25?" kreeg in één sessie (functionele test van 29-10-2026) twee getallen:
+DUO 474.963 (de som van het bestand per sectorkamer, leerweg, niveau en woonprovincie) en CBS 475.460 (85354NED, incl.
+extranei); een derde stap gaf hetzelfde CBS-getal uit 85353NED. Alle klopten bij hun eigen definitie, maar de bron koos
+het model. Nu kiest de code (#805, #191): de vaste maat `mbo_studenten_landelijk` in
+[`tools/maten.py`](https://github.com/cedanl/onderwijsdata-chat/blob/main/tools/maten.py), met dezelfde regel
+"**Bron en definitie:** …" onder het antwoord als bij vmbo → mbo (`agent/bronkeuze.py`).
+
+**Gekozen: CBS 85354NED** ("Mbo; studenten naar niveau, leerweg, herkomst"), per studiejaar, landelijk:
+
+| Dimensie | Code |
+|---|---|
+| `Leerweg` | vorm `alle`: de standaard van de tabel (hierboven), `A025290` incl. extranei of `A041867` als het gesprek extranei uitsluit; `bol`: `A041868`; `bbl`: `A025293` |
+| `Geslacht`, `Niveau`, `Herkomstland`, `GeboortelandOuders` | het totaal (`T001038`, `T001336`, `T001040`, `T001638`) |
+
+Waarom deze: de eerdere stappen gebruikten haar al, ze heeft een reeks vanaf 2011/12 en elke andere dimensie heeft
+een totaal. 85353NED geeft hetzelfde totaal met regio en studierichting erbij; één vaste tabel betekent één tabellabel
+in de bronregel. CBS rondt af op tientallen. Een instelling erbij is een fout die naar `mbo_studenten_instelling`
+wijst; een uitsplitsing naar geslacht, niveau of herkomst is geen maat maar `get_cbs_data`.
+
+**Alternatief: DUO `mbo-studenten-per-instelling`**, het bestand per instelling en leerweg, alleen als de gebruiker
+erom vraagt. Het telt hoofdinschrijvingen op 1 oktober per instelling (bol, bbl en examendeelnemers); aantallen van 1
+tot en met 4 staan op -1 en tellen niet mee, dus de som is een ondergrens. Het landelijke DUO-totaal hangt daardoor af
+van het bestand (nagerekend op 29-10-2026, peildatum 1 oktober 2024):
+
+| DUO-bestand | Som | Cellen op -1 |
+|---|---|---|
+| `mbo-studenten-per-instelling`, per instelling en leerweg | 476.079 | 4 |
+| `mbo-studenten-per-instelling`, per instelling en sectorkamer | 476.063 | 10 |
+| `mbo-studenten-per-sectorkamer-en-leerweg`, per sectorkamer, leerweg, niveau en woonprovincie | 474.963 | 574 |
+
+Het alternatief is het eerste bestand: het onderdrukt de minste cellen en is het bestand van
+`mbo_studenten_instelling`. Niet nagegaan: waar het verschil van ongeveer 600 tussen dat DUO-totaal en CBS vandaan komt.
+
+`tests/test_mbo_studenten_landelijk.py` toetst de maat, de regel en deze sectie; `tests/test_maten_ijk.py` de live
+waarden (475.460 incl. en 465.820 excl. extranei voor 2024/25).
