@@ -80,7 +80,8 @@ describe('de rapportbundel (#660)', () => {
     for (const s of ['bar', 'scatter', 'histogram', 'pie', 'heatmap', 'scattergeo', 'choropleth']) expect(sporen).toContain(s)
     for (const s of KAARTSPOREN) expect(sporen).not.toContain(s)
     expect(Plotly.version).toBe(lees(VOLLEDIG).version)
-  })
+    // Twee keer de hele Plotly in jsdom: 1,3 s hier, maar op de CI-runner liep dit tegen de 5 s van vitest (#796).
+  }, 30_000)
 
   it('maakt de download van een rapport met een kaart ruim 1 MB kleiner, zonder cdn.jsdelivr', async () => {
     const html = '<head><script src="/assets/plotly.min-abc.js"></script></head><div id="k"></div>'
