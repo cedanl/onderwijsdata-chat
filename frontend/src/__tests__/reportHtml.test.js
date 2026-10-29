@@ -473,6 +473,13 @@ describe('grafiek op een telefoon (#571)', () => {
     expect(l.xaxis).not.toHaveProperty('tickvals')
   })
 
+  // #740: een veeg over een rapportgrafiek zoomde in waar de lezer wilde scrollen; de chat zette dit al uit (#614).
+  it('zet op een telefoon de sleepzoom uit, zodat een veeg de pagina scrolt', () => {
+    expect(plotted(lijn, 390).layout.dragmode).toBe(false)
+    expect(plotted(staven, 390).layout.dragmode).toBe(false)
+    expect(plotted(lijn, 1024).layout).not.toHaveProperty('dragmode')
+  })
+
   it('verandert niets op een breed scherm', () => {
     const { layout: l, data: d } = plotted(lijn, 1024)
     expect(l.title).toEqual(lijn.layout.title)

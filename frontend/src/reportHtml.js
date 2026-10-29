@@ -106,6 +106,8 @@ function _ng(e,rij){var s=e._fullLayout&&e._fullLayout._size,tekort=s&&s.h>0?Mat
 // eigen hoogte meebrengt (liggende staven) houdt die; de andere krijgen de basishoogte uit de CSS (.plot-auto),
 // op een telefoon hoger, zodat titel, ticklabels en legenda het plotvlak niet opeten (#571).
 // Zonder titel (de kop erboven zegt het al, #579) is boven het plotvlak alleen ruimte nodig voor de bovenste tick.
+// Op een telefoon geen sleepzoom (#740), zoals in de chat (figureLayout.js, #614): een veeg over de grafiek zoomde
+// in waar de lezer wilde scrollen. Zonder dragmode roept Plotly bij een aanraking geen preventDefault aan.
 const TOP_ZONDER_TITEL = 16
 
 function plotlyHtml(figureJson, id, { titelWeg = false } = {}) {
@@ -115,7 +117,7 @@ function plotlyHtml(figureJson, id, { titelWeg = false } = {}) {
   return `<div class="card">${div}</div></div>
     <script>(function(){${DARK_FIGURE_JS}
 ${NARROW_FIGURE_JS}
-var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
+var f=${scriptSafe(figureJson)},_h=document.documentElement.classList,_d=_h.contains('dark')||(!_h.contains('light')&&window.matchMedia('(prefers-color-scheme:dark)').matches),_n=window.innerWidth<=${NARROW_PX},_e=document.getElementById('${id}'),_l=Object.assign({},f.layout,{paper_bgcolor:'transparent',plot_bgcolor:_d?'#111827':'#F9FAFB',margin:{t:${boven},r:24,b:48,l:60},font:{color:_d?'#D1D5DB':'#374151',family:'system-ui,sans-serif',size:12}}),_data=_d?_dd(f.data):f.data,_rij=0;if(_d)_l=_dl(_l);if(_n){var _y=_ny(_nl(_l),_data);_l=_nx(_y.layout,_data,_e.getBoundingClientRect().width||window.innerWidth-32);_l.dragmode=false;_rij=_y.rij;_data=_nd(_data)}var _p=Plotly.newPlot(_e,_data,_l,{responsive:true,displayModeBar:false});if(_n&&_p&&typeof _p.then==='function')_p.then(function(){return _ng(_e,_rij)});})()</script>`
 }
 
 // Afdrukken als PDF (#622): de browser drukt af, het rapport zorgt dat het op A4 past. Licht thema (de
