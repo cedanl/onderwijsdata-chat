@@ -8,6 +8,14 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een dashboard komt niet af zonder dat je het merkt (#792)
+- Een dashboard waarvoor het model binnen het stappenbudget geen antwoord gaf, werd als leeg of half dashboard
+  geleverd. Nu volgt een melding dat het niet af kwam, zoals bij het rapport.
+- Faalt het model halverwege en noemt de tekst die overblijft getallen die niet uit de data komen, dan volgt ook een
+  melding in plaats van een dashboard. Zonder zo'n getal komt het dashboard met de figuren tot dan toe nog door.
+- De melding bij een gedeeltelijk dashboard noemde altijd "rate limit"; nu noemt ze geen foutsoort meer, en staat de
+  fout zelf onder een fout-ID in het log.
+
 ### CI: de GitHub-spiegel springt niet meer terug bij een tag (#769)
 - Een tag-pipeline pushte de getagde commit ook naar GitHub `main`. Was main al verder, dan stond de spiegel terug tot
   de volgende merge. Nu pusht een tag-pipeline alleen de tag.

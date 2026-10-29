@@ -16,6 +16,7 @@ from agent.dashboard import (
     herstel_data,
 )
 from agent.session_data import DATA_WEG
+from agent.stream import StreamResult
 from core.errors import Gebruikersfout
 from tools import store
 from tools.store import KeyMeta
@@ -442,3 +443,104 @@ def test_generate_vraagt_de_ankers_buiten_de_event_loop(monkeypatch):
 
     assert spec.title == "Dashboard"
     assert threads["ankers"] != threads["loop"]
+
+
+# ── Een modelfout halverwege of een uitgeput stappenbudget levert geen ongecontroleerd dashboard (#792) ──
+
+_PLOT = {"id": "p1", "name": "create_plot", "arguments": '{"data_key": "k"}'}
+_RESULTAAT = json.dumps({"rijen": [{"STUDIEJAAR": 2021 + i, "AANTAL": n} for i, n in enumerate([28355, 27904])]})
+_GEDEKT = json.dumps({"title": "Voltijd HU", "narrative": "Het aantal daalde van 28355 naar 27904."})
+_ONGEDEKT = json.dumps({"title": "Voltijd HU", "narrative": "In 2024 waren het er 336800."})
+
+
+def _dashboardrun(monkeypatch, stappen: list, events: list | None = None):
+    """Een dashboardrun met een nepmodel; een Exception in `stappen` is een modelaanroep die faalt."""
+    import plotly.graph_objects as go
+
+    from agent import dashboard as dashboard_module
+    from agent import loop as loop_module
+
+    stappen = list(stappen)
+
+    async def fake_completion(*args, **kwargs):
+        if isinstance(stappen[0], Exception):
+            raise stappen.pop(0)
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return stappen.pop(0)
+
+    async def emit(event: dict) -> None:
+        if events is not None:
+            events.append(event)
+
+    def fake_dispatch(name, args, *rest, **kwargs):
+        return (_RESULTAAT, go.Figure(go.Scatter(x=[2021, 2022], y=[28355, 27904])) if name == "create_plot" else None)
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "dispatch", fake_dispatch)
+    monkeypatch.setattr(dashboard_module, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
+    monkeypatch.setattr(dashboard_module, "_build_system_prompt", lambda context: "")
+
+    return asyncio.run(dashboard_module.generate({}, emit, model="openai/gpt-4o", stop_event=asyncio.Event()))
+
+
+def test_een_uitgeput_stappenbudget_levert_geen_leeg_dashboard(monkeypatch):
+    from agent import dashboard as dashboard_module
+
+    rondes = [
+        StreamResult(text="Ik zoek verder.", tool_calls=[_PLOT]) for _ in range(dashboard_module._MAX_TOOL_ITERATIONS)
+    ]
+
+    with pytest.raises(Gebruikersfout) as fout:
+        _dashboardrun(monkeypatch, rondes)
+
+    assert str(fout.value) == dashboard_module.DASHBOARD_ONAF
+
+
+def test_een_modelfout_na_een_figuur_met_ongedekte_tekst_levert_geen_dashboard(monkeypatch):
+    """De fout trof een ronde vóór het antwoord; de tekst die overbleef noemt een getal dat niet uit de data komt."""
+    from agent import dashboard as dashboard_module
+
+    with pytest.raises(Gebruikersfout) as fout:
+        _dashboardrun(
+            monkeypatch,
+            [StreamResult(text=_ONGEDEKT, tool_calls=[_PLOT]), RuntimeError("verbinding weg")],
+        )
+
+    assert str(fout.value) == dashboard_module.DASHBOARD_DEELS_GEWEIGERD
+
+
+def test_een_modelfout_na_een_figuur_met_gedekte_tekst_geeft_het_dashboard_met_een_melding(monkeypatch, caplog):
+    import logging
+
+    events: list[dict] = []
+
+    with caplog.at_level(logging.DEBUG):
+        spec = _dashboardrun(
+            monkeypatch,
+            [StreamResult(text=_GEDEKT, tool_calls=[_PLOT]), RuntimeError("geheime modeltekst 336800")],
+            events,
+        )
+
+    assert len(spec.figures_json) == 1
+    assert "28355" in spec.narrative
+    toasts = [e["message"] for e in events if e.get("type") == "toast"]
+    assert any("deels" in t for t in toasts)
+    # De toast noemt geen foutsoort die niet optrad, en de fout zelf staat alleen onder een fout-ID in het log.
+    assert not any("rate limit" in t for t in toasts)
+    boven_debug = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any(regel.startswith("Interne fout") for regel in boven_debug)
+    assert not any("336800" in regel for regel in boven_debug)
+
+
+def test_een_afgerond_antwoord_met_ongedekte_tekst_blijft_een_dashboard_zonder_toelichting(monkeypatch):
+    """Zonder modelfout verandert er niets: de bronnencontrole vervangt de toelichting en laat de KPI's weg."""
+    spec = _dashboardrun(
+        monkeypatch, [StreamResult(text="", tool_calls=[_PLOT]), StreamResult(text=_ONGEDEKT, tool_calls=[])]
+    )
+
+    assert spec.narrative.startswith("**Fout in dashboard:**")
+    assert spec.kpis == []
+    assert len(spec.figures_json) == 1

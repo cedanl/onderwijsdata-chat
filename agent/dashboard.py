@@ -60,6 +60,16 @@ logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ITERATIONS = 15
 _MAX_TOOL_RESULT_CHARS = 8000
+# Het model kwam binnen het stappenbudget niet tot een dashboard (#792): er was niets om uit te bouwen.
+DASHBOARD_ONAF = (
+    "Het dashboard kwam niet af binnen het aantal stappen dat het mag zetten, daarom heb ik het niet getoond. "
+    "Probeer het opnieuw."
+)
+# Een modelfout onderbrak het dashboard en de tekst die overbleef noemt getallen die niet uit de data komen (#792).
+DASHBOARD_DEELS_GEWEIGERD = (
+    "Het dashboard werd onderbroken door een fout en de toelichting die overbleef klopte niet met de data, "
+    "daarom heb ik het niet getoond. Probeer het opnieuw."
+)
 
 
 @dataclass
@@ -284,11 +294,25 @@ async def generate(
         keep_partial=lambda: bool(figures),
         recept_van=van_session(session),
     )
+    if result.exhausted:
+        # Geen antwoord, dus geen tekst om een spec uit te bouwen: anders een leeg of half dashboard (#792).
+        logger.error("DASHBOARD GEWEIGERD: stappenbudget op zonder antwoord")
+        raise Gebruikersfout(DASHBOARD_ONAF)
+
+    # De enige controle van het dashboard is de bronnencontrole op de modeltekst (de lus draait er geen).
+    sourcing_error = _check_number_sourcing(result.text, result.tool_results)
+    if sourcing_error and result.partial_error:
+        # Na een modelfout is de tekst die overbleef geen afgerond antwoord: een dashboard gaat alleen door op
+        # tekst die de controle doorstond, anders blijven alleen de al getoonde figuren over (#792).
+        logger.error("DASHBOARD GEWEIGERD: modelfout en tekst met ongedekte getallen")
+        logger.debug("Number sourcing guard rejected partial response: %s", sourcing_error)
+        raise Gebruikersfout(DASHBOARD_DEELS_GEWEIGERD)
     if result.partial_error:
+        # De fout zelf staat onder een fout-ID in het log (agent/loop.py); hier geen soort fout die niet optrad.
         await emit(
             {
                 "type": "toast",
-                "message": "Dashboard deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+                "message": "Dashboard deels gegenereerd door een fout bij het model. Figuren tot nu toe bewaard.",
                 "level": "warning",
             }
         )
@@ -298,7 +322,6 @@ async def generate(
         _parse_spec_from_response, result.text, figures, figure_recipes, context, session, computed_kpis
     )
 
-    sourcing_error = _check_number_sourcing(result.text, result.tool_results)
     if sourcing_error:
         # De melding noemt de getallen uit de modeltekst: op ERROR een kenmerk, de tekst op DEBUG (#502).
         logger.error("Number sourcing guard rejected response: %s", tekst_kenmerk(sourcing_error, "melding_"))
