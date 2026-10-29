@@ -30,6 +30,15 @@ eigen kop (`docs/promoten.md`).
   was, komt uit de woorden van de gebruiker: de bevestigde onderzoeksvraag, anders de laatste vraag die een periode
   noemt. Andere afwijkingen blijven tekst van het model.
 
+### Grafiek en rapport (feedback 28 oktober, #741, #748)
+- `create_plot` kent `y_vanaf_nul` (#741): op verzoek begint de waardeas op 0. Een lijngrafiek begon anders bij het
+  kleinste getal (in het rapport van 28 oktober rond 48.560), en "ik wilde eigenlijk dat de y as op 0 begon, maar dat is
+  niet gelukt". Standaard blijft het bereik vrij; staven beginnen al op 0. De snippet tekent dezelfde as.
+- De auteursregel van een rapport zegt dat het met de tool is gemaakt (#748): "Opgesteld door <naam> met openEDUdata+
+  (AI-assistent)", zonder naam "Opgesteld met openEDUdata+ (AI-assistent)" in plaats van "onbekend".
+- Een definitie van meer zinnen staat in het rapport als opsomming, één zin per punt (#748): "het blok definities mag meer
+  bulletsgewijs".
+
 ### Rapporteval: volgt het rapport de bijsturing? (#752)
 - Een eval over de echte keten (`tests/e2e/rapport-bijsturing.spec.js`) speelt de twee gesprekken uit de
   rapportfeedback van 28 oktober na. Daarna drukt hij op "Genereer rapport" met de onderzoeksvraag die de app voorstelt:
