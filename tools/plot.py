@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from . import cbs_afronding, duo, fouten, kaartlocaties, store
+from .exportnoten import herkomstregels
 from .getal import nl_getal
 from .kolomlabel import kolomlabel, leesbaar, waardelabels
 
@@ -459,7 +460,7 @@ def create_plot(
             "y": y,
             "chart_type": chart_type,
             "color_by": color_by,
-            "herkomst": store.herkomst(data_key) if data_key else [],
+            "herkomst": herkomstregels(data_key) if data_key else [],
             **_dataset_meta(data_key),
             **_noot_meta(data_key),
         }
@@ -688,6 +689,7 @@ def create_choropleth_map(
             "location_col": location_col,
             "value_col": value_col,
             "data": cleaned,
+            "herkomst": herkomstregels(data_key) if data_key else [],
             **_dataset_meta(data_key),
         },
     )
