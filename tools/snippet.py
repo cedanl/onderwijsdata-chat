@@ -266,6 +266,31 @@ def _recept_laad(recept: object) -> tuple[str, dict] | None:
     return (tool, args) if isinstance(tool, str) and isinstance(args, dict) and tool in _LAADREGELS else None
 
 
+def _met_geldig_op(laad: tuple[str, dict], known) -> tuple[dict]:
+    """De argumenten van een RIO-laadaanroep met de dag waarop de app bevroeg (`datumGeldigOp`, #718): zo haalt de
+    snippet dezelfde stand op, ook als het register intussen is veranderd. Een eigen datum van de gebruiker blijft."""
+    tool, args = laad
+    filters = args.get("filters") or {}
+    if tool != "get_rio_data" or known is None or not known.geldig_op or "datumGeldigOp" in filters:
+        return (args,)
+    return ({**args, "filters": {**filters, "datumGeldigOp": known.geldig_op}},)
+
+
+def _rio_zonder_peildag(laad: tuple[str, dict], known) -> list[str]:
+    """Een RIO-resource zonder `datumGeldigOp` kan geen vaste stand opvragen: de snippet zegt dat (#718)."""
+    if (
+        laad[0] != "get_rio_data"
+        or known is None
+        or known.geldig_op
+        or "datumGeldigOp" in (laad[1].get("filters") or {})
+    ):
+        return []
+    return [
+        "# NB: deze RIO-resource kent geen datumGeldigOp: deze code geeft de stand van het moment van draaien,",
+        "# dus de uitkomst kan afwijken van wat de app toonde.",
+    ]
+
+
 def _laadregels(data_key: str, recept_van: Receptbron | None = None, stappen: int = 0) -> list[str]:
     """Regels die `df` zetten voor een key, zonder `store`."""
     recept = recept_van(data_key) if recept_van else None
@@ -285,7 +310,8 @@ def _laadregels(data_key: str, recept_van: Receptbron | None = None, stappen: in
         ]
     laad = known.laad if known and known.laad else _recept_laad(recept) or _bron_van_key(data_key)
     if laad:
-        return _LAADREGELS[laad[0]](laad[1])
+        regels = _LAADREGELS[laad[0]](*_met_geldig_op(laad, known))
+        return [*regels, *_rio_zonder_peildag(laad, known)]
     return [
         "import pandas as pd",
         "",

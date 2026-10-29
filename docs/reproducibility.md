@@ -81,6 +81,15 @@ Boven de code staan twee commentaarregels met de pakketversies waarmee de snippe
 
 Is de data het resultaat van een eerdere stap (een selectie, een vaste maat of een eigen berekening), dan herhaalt de snippet de stappen van die ouder uit het recept dat de sessie bewaart: eerst de laadstap van de bron, dan de filters, kolommen en aggregaties, of het script van de berekening, gevolgd door `df = pd.DataFrame(result)` als overgang naar de volgende stap. Zo ontstaat `df` binnen één snippet en draait de code opnieuw tegen actuele data, hoeveel rijen het resultaat ook heeft (#624). Het script van een eigen berekening kent alleen het geheugen van de sessie die haar maakte; de database bewaart geen script (#472). Zonder bekend recept of script — na een herstart — blijft alleen een kopie van de rijen over, tot 200 rijen, met een opmerking dat die waarden niet meegroeien met de bron. Bij meer rijen laadt de snippet de hele bron met een `# NB:` dat de uitkomst kan afwijken van wat de app toonde. Is voor een key geen laadstap bekend, dan zegt de snippet dat in een opmerking.
 
+## Is het dezelfde data? Peildag en inhoudshash
+
+Een snippet laadt de bron opnieuw, dus de data kan intussen zijn veranderd. Twee dingen laten dat zien:
+
+- **RIO is een levend register** met tijdreizen via `datumGeldigOp` (#718). De app zet voor elke resource die dat filter kent de dag van de aanroep zelf (dezelfde rijen als zonder filter, gemeten op elf resources), en de snippet herhaalt die dag: `fetch("erkenningen", **{'type': 'BEVOEGD_GEZAG', 'datumGeldigOp': '2026-10-26', …})` geeft dezelfde stand, ook als het register veranderd is. Het manifest en de bronregel noemen de dag ("stand van 26-10-2026"). Een eigen `datumGeldigOp` van de gebruiker blijft staan. Een resource zonder dat filter krijgt in de snippet een opmerking dat de uitkomst kan afwijken.
+- **Een inhoudshash van de brontabel** (#715) voor CBS en RIO: het manifest noemt per dataset `inhoudshash`, de logregel `GEPUBLICEERD` noemt hem bij de bronkey en de CSV-export zet hem in de kop. Het is de eerste 12 tekens van de sha256 van de CSV-vorm van de geladen tabel (`df.to_csv(index=False)`), te narekenen met `hashlib.sha256(df.to_csv(index=False).encode()).hexdigest()[:12]`. Alleen de brontabel, niet de selecties erop: die volgen uit bron plus stappen. DUO krijgt zijn hash van de bron zelf (#717); UWV en ROA zijn momentopnamen met een peilmoment.
+
+Wat dit **niet** zegt: dat het frame ná de verwerking van de app (maskering van -1, `STUDIEJAAR_LABEL`, provincie) byte-voor-byte gelijk is aan wat de snippet maakt. Een controleregel in de snippet is een aparte stap.
+
 ## Voor onderzoekers
 
 - Export je chat-sessie na elke analyse: per antwoord staat er een blok "Herkomst" in met model, versies en dataversie (#713); bij een teruggezet gesprek ontbreekt dat
