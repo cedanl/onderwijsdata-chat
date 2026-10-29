@@ -165,10 +165,15 @@ function serverFields(wb) {
 // workbook opened before its PUT lands shows up missing or empty (#189).
 export async function saveWorkbookWithSync(fields) {
   const { workbook } = saveWorkbook(fields)
+  return syncWorkbook(workbook)
+}
+
+// The PUT alone, also for a new try after a failed save (#785). `status` is the HTTP status (413: too large).
+export async function syncWorkbook(workbook) {
   try {
     await putWorkbook(workbook.id, serverFields(workbook))
   } catch (e) {
-    return { ok: false, error: `Opslaan op de server mislukt: ${e.message}`, workbook }
+    return { ok: false, status: e.status, error: `Opslaan op de server mislukt: ${e.message}`, workbook }
   }
   return { ok: true, workbook }
 }

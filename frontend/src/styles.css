@@ -421,6 +421,16 @@ html.dark .login-melding { color: var(--accent-text); }
 /* De statusrij boven het invoerveld (#594): de voortgang tijdens een antwoord, de acties daarna. Een vaste
    minimumhoogte, die van de actierij (een 44px-knop plus 6px), zodat de wissel het invoerveld niet verschuift. */
 /* De voortgang staat links: gecentreerd schoof elk langer staplabel de hele pil opzij. */
+/* Een gesprek of rapport dat de server niet kreeg (#785): blijft staan tot het lukt, boven het invoerveld. */
+.niet-bewaard {
+  margin: 4px 0 0; padding: 6px 12px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;
+  border: 1px solid rgba(220, 38, 38, .4); background: rgba(220, 38, 38, .07); color: var(--gray-700);
+}
+.niet-bewaard-actie {
+  min-height: var(--tap-min-aa); margin-left: 8px; padding: 0 4px;
+  font: inherit; font-weight: 600; color: var(--accent-text);
+  background: none; border: none; text-decoration: underline; cursor: pointer;
+}
 .chat-statusrij { min-height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 /* Bovenaan de rij, niet gecentreerd (#599): de wachtregel komt er tijdens het antwoord onder, en gecentreerd
    schoof de pil dan 8px omhoog. Pil plus regel (44px) passen in de 50px, dus de rij groeit niet. */

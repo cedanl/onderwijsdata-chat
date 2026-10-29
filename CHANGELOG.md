@@ -8,6 +8,16 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een gesprek of rapport dat de server niet kreeg, zegt dat (#785)
+- Mislukte het opslaan van een gesprek (netwerkfout, 5xx), dan was dat niet te zien: het gesprek stond al in de
+  zijbalk. Nu staat boven het invoerveld "Dit gesprek is niet bewaard op de server", met "Opnieuw proberen", tot een
+  opslag lukt. Bij een 413 (groter dan 4 MiB) zegt de melding dat het gesprek te groot is en alleen in deze browser
+  staat.
+- Een rapport dat niet op de server kwam, was na het genereren weg. Nu blijft het staan met "Opnieuw proberen" (dat het
+  rapport opent als het lukt) en "Download als HTML".
+- Gemeten: een gesprek met een gemeentekaart, een provinciekaart en tien grafieken is 0,40 MiB. De limiet van 4 MiB
+  blijft, en de GeoJSON blijft in de opgeslagen figuur (zie #785).
+
 ### Na een herstart of failover van PostgreSQL falen er geen aanvragen meer op dode verbindingen (#764)
 - De vrije verbindingen in de pool waren na een herstart, switchover of failover dood. Tot `POSTGRES_POOL_SIZE` (8)
   aanvragen faalden daarop: een 500, een mislukte WebSocket-handshake, of `/ready` rood, waardoor de enige pod even uit
