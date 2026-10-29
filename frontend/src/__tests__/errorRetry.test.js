@@ -149,4 +149,13 @@ describe('offersRetryAt (#703)', () => {
   it('biedt niets bij een gewoon antwoord', () => {
     expect(offersRetryAt([vraag, antwoord], 1)).toBe(false)
   })
+
+  // #775: de tijdsgrens stopte de vraag; dat is geen keuze van de gebruiker, zoals de stopknop wel is.
+  it('biedt herstel na de tijdsgrens, niet na de stopknop, en niet meer als er daarna een antwoord kwam', () => {
+    const tijd = { id: 2, role: 'assistant', stopped: true, timeout: true, content: 'Half', done: true }
+    const stop = { id: 2, role: 'assistant', stopped: true, content: 'Half', done: true }
+    expect(offersRetryAt([vraag, tijd], 1)).toBe(true)
+    expect(offersRetryAt([vraag, stop], 1)).toBe(false)
+    expect(offersRetryAt([vraag, tijd, { ...vraag, id: 3 }, antwoord], 1)).toBe(false)
+  })
 })

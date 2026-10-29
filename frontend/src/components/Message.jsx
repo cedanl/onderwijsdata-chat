@@ -133,7 +133,12 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
             )}
-            {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
+            {msg.stopped && !msg.timeout && <div className="message-stopped">Genereren gestopt</div>}
+            {/* De tijdsgrens stopte de vraag (#775): de reden blijft staan, met de knoppen hieronder. role="status":
+                ook wie wegkeek of een schermlezer gebruikt, hoort waarom. */}
+            {msg.timeout && (
+              <div className="message-stopped" role="status">{msg.stopreden || 'De vraag is gestopt: de tijd was om.'}</div>
+            )}
             {msg.truncated && (
               <div className="message-stopped">
                 Antwoord afgebroken: de maximale lengte is bereikt.{' '}

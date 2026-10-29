@@ -308,16 +308,19 @@ async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, f
 
 
 async def _vroeg_einde(
-    result: LoopResult, nieuw: list[dict], messages: list[dict], session: dict, emit: Emit
+    result: LoopResult, nieuw: list[dict], messages: list[dict], session: dict, emit: Emit, gestopt: dict
 ) -> str | None:
-    """Het einde van een beurt zonder gewoon antwoord; None als er een gewoon antwoord is."""
+    """Het einde van een beurt zonder gewoon antwoord; None als er een gewoon antwoord is.
+
+    `gestopt` zegt bij een gestopte run of de tijdsgrens het deed (Timebox.einde, #775).
+    """
     if result.aborted == "tools":
         # Stopped while tools ran: close the open message as aborted. No
         # content key, so the client keeps the text it already has.
-        await emit({"type": "message_end", "aborted": True})
+        await emit({"type": "message_end", "aborted": True, **gestopt})
         return ""
     if result.aborted == "stream":
-        await emit({"type": "message_end", "content": result.text, "aborted": True})
+        await emit({"type": "message_end", "content": result.text, "aborted": True, **gestopt})
         return result.text
     if result.halted_on:
         session["_last_turn_tool_calls"] = result.tool_calls
@@ -568,9 +571,11 @@ async def run(
                 raise
     if box.verlopen:
         logger.warning("RUN TIMEOUT na %ss  model=%s", RUN_TIMEOUT_S, chosen_model)
-        await emit(box.melding())
 
-    if (einde := await _vroeg_einde(result, history[initial_history_len:], messages, session, emit)) is not None:
+    gestopt = box.einde()
+    if (
+        einde := await _vroeg_einde(result, history[initial_history_len:], messages, session, emit, gestopt)
+    ) is not None:
         return einde
 
     # Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619).
