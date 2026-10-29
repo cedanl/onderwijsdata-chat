@@ -21,7 +21,16 @@ import json
 from core.config import RIO_PAGE_SIZE
 from core.sentinels import BETEKENIS, SENTINELS, SIGNED_HINTS
 
-from . import cbs_selectie, cbs_standaard, instellingsprovincie, kaartlocaties, maten, scopeprofiel, store
+from . import (
+    cbs_selectie,
+    cbs_standaard,
+    geslacht_opleiding,
+    instellingsprovincie,
+    kaartlocaties,
+    maten,
+    scopeprofiel,
+    store,
+)
 from .canoniek import parse_filter_key
 from .duo import is_prognose
 from .herlaad import Receptbron
@@ -598,9 +607,12 @@ def _maat_regels(args: dict) -> tuple[list[str], str | None]:
         args.get("sector"),
         args.get("vorm", maten.ALLE),
         args.get("schooljaren"),
+        args.get("opleiding_naar_geslacht"),
     )
     if isinstance(p, str):
         return [], p
+    if p.opleiding:
+        return _geslachtregels(p), None
     if isinstance(p.recept, maten.CbsRecepten):
         params = cbs_selectie.compileer(p.recept.dataset, maten.selectie(p), None)
         lines = _cbs_laadregels({"dataset_id": p.recept.dataset, "filters": params if isinstance(params, dict) else {}})
@@ -618,6 +630,52 @@ def _maat_regels(args: dict) -> tuple[list[str], str | None]:
         kolommen = list(p.recept.leerwegen[p.vorm])
         lines.append(f'df["{maten.AANTAL}"] = df[{kolommen!r}].sum(axis=1, min_count=1)')
     return lines, None
+
+
+def _geslachtregels(p: maten.Plan) -> list[str]:
+    """Geslacht per opleiding (#742) als script: dezelfde regel als tools/geslacht_opleiding.py, in pandas."""
+    r = p.recept
+    assert isinstance(r, maten.DuoRecept) and p.bestanden is not None and p.instelling is not None and p.opleiding
+    niveau, geslacht = p.bestanden
+    instelling = f'df[df["{r.instellingskolom}"].astype(str) == {_lit(p.instelling["instellingscode"])}]'
+    jaar = r.periodekolom
+    lines = [
+        *_duo_laadregels({"dataset_id": r.dataset, "resource": niveau}),
+        f"niveau = {instelling}",
+        *_duo_laadregels({"dataset_id": r.dataset, "resource": geslacht})[3:],
+        f"geslacht = {instelling}",
+        "# Geslacht staat in DUO niet per opleiding. Exact is de cel van het geslachtsbestand (de kolommen die beide",
+        "# bestanden delen) waarin de opleiding dat jaar de enige is, zonder -1 en met hetzelfde totaal.",
+        f"waarde = {_lit(r.waardekolom)}",
+        "cel = [k for k in geslacht.columns if k in niveau.columns and k != waarde]",
+        f"gevraagd = {_lit(p.opleiding.lower())}",
+        f'code = niveau["{geslacht_opleiding.CODE}"].astype(str)',
+        f'naam = niveau["{geslacht_opleiding.NAAM}"].astype(str).str.lower()',
+        "if gevraagd.isdigit():",
+        "    passend = code[code == gevraagd]",
+        "elif (naam == gevraagd).any():",
+        "    passend = code[naam == gevraagd]",
+        "else:",
+        "    passend = code[naam.str.contains(gevraagd, regex=False)]",
+        "assert passend.nunique() == 1, sorted(set(passend))",
+        "eigen = niveau[code == passend.iloc[0]]",
+        "cellen = eigen[cel].drop_duplicates()",
+        "in_cel, van_cel = niveau.merge(cellen, on=cel), geslacht.merge(cellen, on=cel)",
+        f'enig = in_cel.groupby("{jaar}")["{geslacht_opleiding.CODE}"].nunique() == 1',
+        f'zonder_min1 = eigen.groupby("{jaar}")[waarde].count().eq(eigen.groupby("{jaar}").size())',
+        f'zonder_min1 &= van_cel.groupby("{jaar}")[waarde].count().eq(van_cel.groupby("{jaar}").size())',
+        "per_cel = eigen.groupby(cel, dropna=False)[waarde].sum()",
+        f'gelijk = per_cel.eq(van_cel.groupby(cel, dropna=False)[waarde].sum()).groupby(level="{jaar}").all()',
+        "exact = (enig & zonder_min1 & gelijk).fillna(False)",
+        f'df = van_cel[van_cel["{jaar}"].isin(exact[exact].index)]',
+    ]
+    if p.jaren:
+        lines.append(f'df = df[df["{jaar}"].isin({list(p.jaren)!r})]')
+    return [
+        *lines,
+        f'df = df.groupby(["{jaar}", "{geslacht_opleiding.GESLACHT}"], as_index=False)[waarde].sum()',
+        f'df["{geslacht_opleiding.AANDEEL}"] = (100 * df[waarde] / df.groupby("{jaar}")[waarde].transform("sum")).round(1)',
+    ]
 
 
 def _get_maat_snippet(args: dict, recept_van: Receptbron | None = None) -> str:

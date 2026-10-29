@@ -15,6 +15,9 @@ komen zo gewoon mee. Het resultaat is een gewone data_key met rijen plus teldefi
 en recept; plot, KPI en rapport werken er zoals altijd mee. Een onbekende instelling, maat of
 vorm is een expliciete fout, geen gok. "Studenten" is standaard personen (p01);
 inschrijvingen (p03) alleen op expliciete vraag, en dan met vermelding.
+
+Geslacht per opleiding (#742) is dezelfde maat met `opleiding_naar_geslacht`: de code legt het niveau- en het
+geslachtsbestand naast elkaar en geeft de verdeling alleen waar die exact is (`geslacht_opleiding`).
 """
 
 import json
@@ -27,7 +30,7 @@ import pandas as pd
 
 from data import instellingen
 
-from . import cbs_selectie, cbs_standaard, duo, periode, store
+from . import cbs_selectie, cbs_standaard, dekking, duo, geslacht_opleiding, periode, store
 from .catalog import tabelbestanden
 from .cbs import get_cbs_data
 from .duo import get_duo_data
@@ -236,6 +239,8 @@ class Plan:
     jaren: tuple[int, ...]  # startjaren; leeg is alle beschikbare
     instelling: dict | None  # naam, instellingscode, sector uit het register; None bij een landelijke maat
     bestand: int | None  # DUO: de index van het bestand
+    opleiding: str | None = None  # geslacht per opleiding (#742): de opleiding zoals het model haar noemde
+    bestanden: tuple[int, int] | None = None  # en dan het niveau- en het geslachtsbestand
 
 
 def _jaren(schooljaren) -> tuple[int, ...] | str:
@@ -272,11 +277,31 @@ def _somplan(recept: CbsSomRecept, instelling, sector, vorm: str, jaren: tuple[i
     return Plan(recept, sector, vorm, jaren, None, None)
 
 
-def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None) -> Plan | str:
+def _geslachtplan(p: Plan, opleiding: str) -> Plan | str:
+    """Geslacht per opleiding (#742): het niveau- en het geslachtsbestand van dezelfde maat en sector."""
+    recept = p.recept
+    assert isinstance(recept, DuoRecept)
+    if p.vorm != ALLE:
+        return "Het geslachtsbestand kent geen opleidingsvorm: laat vorm weg bij opleiding_naar_geslacht."
+    sectorwoord = recept.bestand[p.sector][0]
+    niveau = _bestand(recept.dataset, (sectorwoord, "niveau opleiding"))
+    geslacht = _bestand(recept.dataset, (sectorwoord, "geslacht"))
+    if niveau is None or geslacht is None:
+        return (
+            f"{recept.dataset} heeft voor {p.sector} geen niveau- en geslachtsbestand; geslacht per opleiding kan niet."
+        )
+    return replace(p, opleiding=opleiding, bestanden=(niveau, geslacht))
+
+
+def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None, opleiding_naar_geslacht=None) -> Plan | str:
     """Het plan voor een maat en afbakening, of de fout als tekst voor het model. Geen gok."""
     recept = MATEN.get(str(maat or "").strip().lower())
     if recept is None:
         return f"Onbekende maat {maat!r}. Kies uit: {', '.join(MATEN)}."
+    opleiding = " ".join(str(opleiding_naar_geslacht or "").split()) or None
+    if opleiding and not isinstance(recept, DuoRecept):
+        namen = ", ".join(naam for naam, r in MATEN.items() if isinstance(r, DuoRecept))
+        return f"Geslacht per opleiding kan alleen bij {namen}, met een instelling."
     vorm = str(vorm or ALLE).strip().lower()
     if vorm not in vormen(recept):
         return f"Vorm {vorm!r} past niet bij {recept.naam}; kies uit {', '.join(vormen(recept))}."
@@ -307,7 +332,8 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None) -> Pla
     bestand = _bestand(recept.dataset, recept.bestand[profiel["sector"]])
     if bestand is None:
         return f"Het recept {recept.naam} vindt het bestand voor {profiel['sector']} niet in {recept.dataset}."
-    return Plan(recept, profiel["sector"], vorm, jaren, profiel, bestand)
+    gewoon = Plan(recept, profiel["sector"], vorm, jaren, profiel, bestand)
+    return _geslachtplan(gewoon, opleiding) if opleiding else gewoon
 
 
 def filters(p: Plan) -> dict:
@@ -380,9 +406,64 @@ def _met_totaal(querykey: str, p: Plan) -> tuple[str, list[dict]]:
     return key, _records(store.get(key))
 
 
+def _per_reden(niet: dict[int, str]) -> str:
+    """De jaren zonder exacte verdeling, per reden: "2021/22, 2022/23: reden"."""
+    jaren: dict[str, list[int]] = {}
+    for jaar, reden in sorted(niet.items()):
+        jaren.setdefault(reden, []).append(jaar)
+    return "; ".join(f"{', '.join(periode.labels(j))}: {reden}" for reden, j in jaren.items())
+
+
+def _geslacht(p: Plan) -> dict | str:
+    """Geslacht per opleiding (#742): de verdeling uit het geslachtsbestand in de jaren waarin die exact is."""
+    r = p.recept
+    assert isinstance(r, DuoRecept) and p.instelling is not None and p.bestanden is not None and p.opleiding
+    geladen = [_json(get_duo_data(r.dataset, index)) for index in p.bestanden]
+    for uit in geladen:
+        if not isinstance(uit, dict) or "data_key" not in uit:
+            return _melding(uit)
+    niveaukey, geslachtkey = (str(uit["data_key"]) for uit in geladen)
+    code = p.instelling["instellingscode"]
+    niveau, geslacht = (store.get(k) for k in (niveaukey, geslachtkey))
+    niveau = niveau[niveau[r.instellingskolom] == code]
+    geslacht = geslacht[geslacht[r.instellingskolom] == code]
+    opl = geslacht_opleiding.kies_opleiding(niveau, p.opleiding)
+    if isinstance(opl, str):
+        return f"{opl} (instelling {p.instelling['naam']}, {r.dataset})"
+    v = geslacht_opleiding.verdeling(niveau, geslacht, opl, r.waardekolom, r.periodekolom, r.instellingskolom, p.jaren)
+    if v.rijen.empty:
+        return (
+            f"Geslacht staat in DUO ({r.dataset}) niet per opleiding, en voor {opl.naam} ({opl.code}) bij "
+            f"{p.instelling['naam']} is de verdeling in geen enkel jaar exact af te leiden. {_per_reden(v.niet_af_te_leiden)}. "
+            "Zeg dat in het antwoord, zonder verdeling: schat haar niet uit een groep met andere opleidingen."
+        )
+    jaren = f":{'-'.join(map(str, p.jaren))}" if p.jaren else ""
+    key = f"{geslachtkey}:{r.naam}:geslacht:{code}:{opl.code}{jaren}"
+    stap = (
+        f"recept {r.naam}: geslacht van opleiding {opl.code} uit de cel van het geslachtsbestand waarin zij de enige is"
+    )
+    store.derive(geslachtkey, key, v.rijen, stap=stap, **dekking.van(v.rijen, store.meta(geslachtkey)))
+    uit = {
+        "data_key": key,
+        "rijen": _records(v.rijen),
+        "bestand": geladen[1].get("resource_titel"),
+        "recept": _recept(p),
+        "opleiding": {"code": opl.code, "naam": opl.naam},
+    }
+    if v.niet_af_te_leiden:
+        uit["niet_af_te_leiden"] = [
+            {"schooljaar": periode.label(jaar), "reden": reden} for jaar, reden in sorted(v.niet_af_te_leiden.items())
+        ]
+    if geladen[1].get("beschikbare_schooljaren") is not None:
+        uit["beschikbare_schooljaren"] = geladen[1]["beschikbare_schooljaren"]
+    return uit
+
+
 def _duo(p: Plan) -> dict | str:
     r = p.recept
     assert not isinstance(r, CbsRecepten)
+    if p.opleiding:
+        return _geslacht(p)
     geladen = _json(get_duo_data(r.dataset, p.bestand))
     if not isinstance(geladen, dict) or "data_key" not in geladen:
         return _melding(geladen)
@@ -494,6 +575,14 @@ def _recept(p: Plan) -> dict:
         return {**uit, "selectie": selectie(p), "som": {r.somdimensie: list(r.somcodes)}}
     if isinstance(r, CbsRecept):
         return {**uit, "selectie": selectie(p)}
+    if p.bestanden is not None and p.instelling is not None:
+        niveau, geslacht = p.bestanden
+        return {
+            **uit,
+            "bestanden": {"niveau opleiding": niveau, "geslacht": geslacht},
+            "instelling": p.instelling["instellingscode"],
+            "regel": "de cel van het geslachtsbestand waarin de opleiding de enige is, zonder -1, met gelijke totalen",
+        }
     return {**uit, "bestand": p.bestand, "filters": filters(p), "per": r.periodekolom, "som": aggregate(p)}
 
 
@@ -512,9 +601,10 @@ def get_maat(
     sector: str | None = None,
     vorm: str = ALLE,
     schooljaren: list | None = None,
+    opleiding_naar_geslacht: str | None = None,
 ) -> str:
     """Een vaste maat voor een instelling of landelijk: de code kiest dataset, bestand en codes."""
-    p = plan(maat, instelling, sector, vorm, schooljaren)
+    p = plan(maat, instelling, sector, vorm, schooljaren, opleiding_naar_geslacht)
     if isinstance(p, str):
         return p
     uit = _cbs(p) if isinstance(p.recept, CbsRecepten) else _duo(p)
@@ -541,6 +631,13 @@ def get_maat(
         result["noot"] = (
             "Dit zijn inschrijvingen (hoofd- én neveninschrijvingen), geen personen: zeg dat in het antwoord. "
             f"Voor personen (studenten): {PERSONEN_HO}."
+        )
+    if p.opleiding:
+        result["afleiding"] = (
+            "Geslacht staat in DUO niet per opleiding. Deze verdeling is toch exact: in elk jaar met rijen is de "
+            "opleiding de enige in haar cel van het geslachtsbestand (instelling, vestigingsgemeente, onderdeel en "
+            "subonderdeel), zonder onderdrukte aantallen en met hetzelfde totaal als in het opleidingsbestand. Zeg dat "
+            "zo in het antwoord; het is geen schatting. Een jaar onder niet_af_te_leiden krijgt geen getal."
         )
     if isinstance(r, CbsSomRecept):
         result["alternatieve_bron"] = asdict(r.alternatieve_bron)

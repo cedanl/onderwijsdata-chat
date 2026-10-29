@@ -8,6 +8,18 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Geslacht per opleiding uit code (#742)
+- "Wat is de man-vrouwverhouding bij Luchtvaart van Inholland?" gaf de ene keer een verdeling en de andere keer "niet
+  beschikbaar": of het model het geslachtsbestand van DUO aan de opleiding koppelde, besliste het per run. Nu doet de code
+  het, via `get_maat` met `opleiding_naar_geslacht` (naam of CROHO-code). DUO heeft geslacht niet per opleiding. In een
+  jaar is de verdeling toch exact als de opleiding de enige is in haar cel van het geslachtsbestand (instelling,
+  vestigingsgemeente, onderdeel, subonderdeel en type ho), er niets onderdrukt is en de totalen van beide bestanden gelijk
+  zijn. Anders geeft de tool per jaar de reden, zonder getal; een onderdrukte cel wordt nooit uit een verschil
+  teruggerekend. B Luchtvaarttechnologie van Inholland is in elk jaar exact (2025/26: 140 man, 30 vrouw); HBO-Rechten deelt
+  haar cel met acht andere opleidingen en krijgt de vaste melding. De Uitgangspuntregel noemt de opleiding die de code
+  koos, de snippet rekent hetzelfde uit, en twee evals (`geslacht-opleiding-exact`, `geslacht-opleiding-niet-exact`) toetsen
+  dat de beschikbaarheid per run gelijk blijft.
+
 ### Presentatie
 - Een RIO-antwoord noemt van welke dag de stand is ("stand van 26-10-2026"), en de snippet vraagt die dag op met
   `datumGeldigOp` (#718). RIO is een levend register: dezelfde aanroep een week later gaf een andere stand zonder dat iemand
