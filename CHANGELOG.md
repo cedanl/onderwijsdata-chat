@@ -57,6 +57,25 @@ eigen kop (`docs/promoten.md`).
   verdwijnt dezelfde verschuiving (0,043 → 0,030); wat daar overblijft is de grafiek zelf, die tijdens het
   streamen meeschuift (#639).
 
+### Restpunten audit 29 oktober
+- De bronlink naar DUO opent de dataset weer (#737). De catalogus gaf de CKAN-URL `onderwijsdata.duo.nl/dataset/<id>`,
+  en die belandt in de DUO-portal op een lege pagina "Datasets" (gemeten in een browser). De link is nu
+  `/datasets/<id>`; onder een rapportgrafiek gaat hij naar de pagina van het geladen bestand
+  (`/datasets/<id>/resources/<resource-id>`), het bestand dat de bronregel al noemt. De bronlinks in de chat gaan naar de
+  datasetpagina.
+- Titel en onderwerp van een rapport of dashboard komen uit de eerste vraag van het gesprek, ook na heropenen of na een
+  verduidelijkingskaart (#732, stap 1). Na verversen of terugkeren van /rapporten begon de sessie met lege beurten, en
+  werd de eerste vraag daarna het onderwerp ("Genereer een rapport dat ingaat op je laatste antwoord"); een vraag met
+  een verduidelijkingskaart telde niet, dus werd de gekozen optie het onderwerp. Welke vraag de hoofdvraag is, blijft
+  een besluit in #732.
+- De regel "Dataversie" in rapport en gespreksexport noemt de inhoudshash van een CBS- of RIO-tabel (#715) en de md5 van
+  een DUO-bestand (#717), zodat je kunt narekenen of het dezelfde data is. Ze stonden al in het manifest.
+- De verbinding met Postgres vraagt TLS (`sslmode=require`), tenzij de URI zelf een `sslmode` noemt (#683). Zonder die
+  instelling viel psycopg2 stil terug op `prefer`. Test en playground praten al TLS 1.3 (gemeten met `pg_stat_ssl`).
+- Test geeft `LOG_HASH_SECRET` uit het secret door aan de pod, als optionele sleutel (#678). Zonder die sleutel start de
+  pod zoals nu; met die sleutel staat het pseudoniem `gebruiker=` in het log. Playground gaat mee in de volgende
+  promotie-MR, zodat de pod daar niet buiten de promotie om herstart.
+
 ### Feedback
 - Het feedbackformulier op een rapport noemt de instelling die je in de app koos: "Over Hogeschool Utrecht" in
   plaats van "Over jouw instelling". Heb je geen instelling gekozen, dan blijft het formulier zoals het was; de

@@ -145,7 +145,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | Bron | Link naar |
 |------|-----------|
 | CBS | de tabelpagina op StatLine, bijv. `https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table` (niet de OData-JSON; het ID in de spelling van de catalogus) |
-| DUO | de datasetpagina, bijv. `https://onderwijsdata.duo.nl/dataset/p01hoinges` |
+| DUO | de datasetpagina in de DUO-portal, bijv. `https://onderwijsdata.duo.nl/datasets/p01hoinges`; onder een rapportgrafiek de pagina van het geladen bestand (`…/datasets/p01hoinges/resources/<resource-id>`, #737) |
 | RIO | het register in de RIO-API, ook bij een opzoeking per instelling (`erkenningen`) |
 | UWV | UWV Open Match op data.overheid.nl |
 | ROA | de dataset AIS 2030 (DOI) |

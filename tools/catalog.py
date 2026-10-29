@@ -1230,12 +1230,29 @@ def _statline_url(cbs_id: object) -> str | None:
     return None
 
 
-def documentatie_url(dataset_id: str) -> str | None:
+# De DUO-portal is een app onder /datasets/ (#737). De CKAN-URL /dataset/<id> uit de catalogus belandde op een
+# lege pagina "Datasets"; een dataset staat op /datasets/<id>, een bestand op /datasets/<id>/resources/<resource-id>.
+_DUO_CKAN_URL = re.compile(r"https://onderwijsdata\.duo\.nl/dataset/([^/?#]+)/?")
+_DUO_PORTAAL_URL = "https://onderwijsdata.duo.nl/datasets/{}"
+_RESOURCE_ID = re.compile(r"[0-9a-fA-F-]+")
+
+
+def _duo_portaal_url(naam: str, resources: list, resource: int | str | None) -> str:
+    """De DUO-pagina van het geladen bestand als de catalogus het kent, anders die van de dataset."""
+    url = _DUO_PORTAAL_URL.format(naam)
+    bestand = _kies_resource(resources, resource) if resource is not None else None
+    if bestand and isinstance(rid := bestand.get("id"), str) and _RESOURCE_ID.fullmatch(rid):
+        return f"{url}/resources/{rid}"
+    return url
+
+
+def documentatie_url(dataset_id: str, resource: int | str | None = None) -> str | None:
     """De link naar de open-databron van een dataset, voor de bronregel onder een grafiek (#569) en het bronnenblok (#621).
 
     Een CBS-tabel linkt naar haar StatLine-pagina, met het ID in de spelling van de catalogus (#638); een
-    andere bron naar de documentatie-URL uit de catalogus (de DUO-datasetpagina, de RIO-API). Een
-    catalogus-URL die geen http(s)-adres is geeft geen link, ook bij CBS: de regel komt in HTML terecht.
+    DUO-dataset naar haar pagina in de DUO-portal, met `resource` naar het bestand dat geladen is (#737); een
+    andere bron naar de documentatie-URL uit de catalogus (de RIO-API). Een catalogus-URL die geen
+    http(s)-adres is geeft geen link, ook bij CBS: de regel komt in HTML terecht.
     None als de catalogus de dataset of de link niet kent; dan is er geen link, geen gok.
     """
     entry = _ruw_record(bron_id(dataset_id)) or {}
@@ -1245,7 +1262,18 @@ def documentatie_url(dataset_id: str) -> str | None:
         return None
     if "_cbs_id" in entry:
         return _statline_url(entry["_cbs_id"])
+    if url and (duo := _DUO_CKAN_URL.fullmatch(url)):
+        return _duo_portaal_url(duo.group(1), entry.get("_resources") or [], resource)
     return url
+
+
+def _kies_resource(resources: list, resource: int | str) -> dict | None:
+    """Het bestand zoals het laden het kiest: index (int) of naam-substring (str); None als er geen is."""
+    if isinstance(resource, int):
+        gekozen = resources[resource] if 0 <= resource < len(resources) else None
+    else:
+        gekozen = next((r for r in resources if str(resource).lower() in str(r.get("naam") or "").lower()), None)
+    return gekozen if isinstance(gekozen, dict) else None
 
 
 def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
@@ -1256,18 +1284,8 @@ def resource_titel(dataset_id: str, resource: int | str = 0) -> str | None:
     """
     for entry in _rio_duo():
         if (entry.get("_ckan_id") or entry.get("_rio_resource")) == dataset_id:
-            resources = entry.get("_resources") or []
-            if not resources:
-                return None
-            try:
-                if isinstance(resource, int):
-                    if resource >= len(resources):
-                        return None
-                    return resources[resource].get("naam")
-                matches = [r for r in resources if resource.lower() in (r.get("naam") or "").lower()]
-                return matches[0].get("naam") if matches else None
-            except Exception:
-                return None
+            gekozen = _kies_resource(entry.get("_resources") or [], resource)
+            return gekozen.get("naam") if gekozen else None
     return None
 
 

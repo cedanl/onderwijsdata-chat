@@ -355,7 +355,7 @@ def test_vast_antwoord_over_min_een_heeft_lege_bronnen(monkeypatch):
 # --- de link bij elke bronregel (#621): dezelfde catalogus-URL als onder een rapportgrafiek (#569) ---
 
 _CBS_URL = "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table"
-_DUO_URL = "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+_DUO_URL = "https://onderwijsdata.duo.nl/datasets/p01hoinges"
 
 
 def test_cbs_regel_linkt_naar_de_cbs_tabel():

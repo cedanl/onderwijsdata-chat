@@ -21,6 +21,10 @@ export function manifestRegels(manifest) {
       d.periodestatus?.length ? `status ${d.periodestatus.join('/')}` : '',
       d.herladen_op ? `herladen ${d.herladen_op}` : '',
       d.peilmoment || '',
+      // Om na te rekenen of het dezelfde data is: de inhoudshash van een CBS- of RIO-tabel (#715) en de md5 van een
+      // DUO-bestand (#717), die gelijk is aan de hash die DUO bij het bestand noemt.
+      d.inhoudshash?.length ? `inhoud ${d.inhoudshash.join('/')}` : '',
+      d.bronhash?.length ? `md5 ${d.bronhash.join('/')}` : '',
     ].filter(Boolean).join(', ')
     return `${d.bron.toUpperCase()} ${d.dataset}${extra ? ` (${extra})` : ''}`
   }).join(' · ')
