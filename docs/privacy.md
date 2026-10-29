@@ -69,7 +69,12 @@ is een open punt.
 
 ## Wat je zelf kunt doen
 
-- Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten.
+- Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten. Een gesprek heeft
+  8 s bedenktijd ("Ongedaan maken", #493); pas daarna gaat de verwijdering naar de server. Log je binnen die tijd uit,
+  dan gaat ze meteen, nog met je login, en wordt de login pas daarna ingetrokken (#778). Lukt de verwijdering op de
+  server niet, dan staat het gesprek, rapport of dashboard weer in de lijst, met een melding en "Opnieuw proberen".
+  Sluit je binnen de bedenktijd de tab, dan gaat de verwijdering zonder melding mee met het sluiten; mislukt die, dan
+  staat het gesprek bij je volgende bezoek weer in de lijst.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback
