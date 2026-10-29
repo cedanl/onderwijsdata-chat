@@ -9,6 +9,13 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een RIO-antwoord noemt van welke dag de stand is ("stand van 26-10-2026"), en de snippet vraagt die dag op met
+  `datumGeldigOp` (#718). RIO is een levend register: dezelfde aanroep een week later gaf een andere stand zonder dat iemand
+  het zag. De app zet de dag van de aanroep zelf (dezelfde rijen als zonder filter, gemeten op elf resources); een eigen
+  `datumGeldigOp` blijft staan, en een resource zonder dat filter krijgt in de snippet een opmerking.
+- Het manifest, de logregel `GEPUBLICEERD` en de kop van de CSV-export noemen een `inhoudshash` van de brontabel van een
+  CBS- of RIO-antwoord (#715), te narekenen met `hashlib.sha256(df.to_csv(index=False).encode()).hexdigest()[:12]`. Zo is
+  later vast te stellen of een herlading dezelfde data oplevert. DUO volgt met de hash van de bron zelf (#717).
 - Een link `/chat#vraag=…` opent de chat met die vraag in de invoer van een nieuw gesprek (#709), ook als de
   gebruiker eerst moet inloggen, via SRAM of met een wachtwoord. De vraag gaat niet vanzelf naar het model; de app
   haalt hem uit het adres, maakt er één regel platte tekst van en kapt hem af op 500 tekens. Hij staat in het fragment
@@ -44,6 +51,25 @@ eigen kop (`docs/promoten.md`).
   landing van de grafiek mee omlaag. Het komt nu pas als elk bericht van de beurt klaar is. Op een breed scherm
   verdwijnt dezelfde verschuiving (0,043 → 0,030); wat daar overblijft is de grafiek zelf, die tijdens het
   streamen meeschuift (#639).
+
+### Restpunten audit 29 oktober
+- De bronlink naar DUO opent de dataset weer (#737). De catalogus gaf de CKAN-URL `onderwijsdata.duo.nl/dataset/<id>`,
+  en die belandt in de DUO-portal op een lege pagina "Datasets" (gemeten in een browser). De link is nu
+  `/datasets/<id>`; onder een rapportgrafiek gaat hij naar de pagina van het geladen bestand
+  (`/datasets/<id>/resources/<resource-id>`), het bestand dat de bronregel al noemt. De bronlinks in de chat gaan naar de
+  datasetpagina.
+- Titel en onderwerp van een rapport of dashboard komen uit de eerste vraag van het gesprek, ook na heropenen of na een
+  verduidelijkingskaart (#732, stap 1). Na verversen of terugkeren van /rapporten begon de sessie met lege beurten, en
+  werd de eerste vraag daarna het onderwerp ("Genereer een rapport dat ingaat op je laatste antwoord"); een vraag met
+  een verduidelijkingskaart telde niet, dus werd de gekozen optie het onderwerp. Welke vraag de hoofdvraag is, blijft
+  een besluit in #732.
+- De regel "Dataversie" in rapport en gespreksexport noemt de inhoudshash van een CBS- of RIO-tabel (#715) en de md5 van
+  een DUO-bestand (#717), zodat je kunt narekenen of het dezelfde data is. Ze stonden al in het manifest.
+- De verbinding met Postgres vraagt TLS (`sslmode=require`), tenzij de URI zelf een `sslmode` noemt (#683). Zonder die
+  instelling viel psycopg2 stil terug op `prefer`. Test en playground praten al TLS 1.3 (gemeten met `pg_stat_ssl`).
+- Test geeft `LOG_HASH_SECRET` uit het secret door aan de pod, als optionele sleutel (#678). Zonder die sleutel start de
+  pod zoals nu; met die sleutel staat het pseudoniem `gebruiker=` in het log. Playground gaat mee in de volgende
+  promotie-MR, zodat de pod daar niet buiten de promotie om herstart.
 
 ### Feedback
 - Het feedbackformulier op een rapport noemt de instelling die je in de app koos: "Over Hogeschool Utrecht" in

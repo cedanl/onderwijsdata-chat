@@ -1,6 +1,7 @@
 """De bronregel onder een grafiek in het rapport komt uit code, met een link naar de bron (#569)."""
 
 import asyncio
+import re
 from unittest.mock import patch
 
 import pandas as pd
@@ -18,7 +19,7 @@ from tools.store import KeyMeta
 _TITELS = {"85423NED": "Hoger onderwijs; ingeschrevenen", "p01hoinges": "Ingeschrevenen hoger onderwijs"}
 _URLS = {
     "85423NED": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED/table",
-    "p01hoinges": "https://onderwijsdata.duo.nl/dataset/p01hoinges",
+    "p01hoinges": "https://onderwijsdata.duo.nl/datasets/p01hoinges",
 }
 
 
@@ -27,7 +28,7 @@ def catalogus():
     with (
         patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
         patch("agent.figuurbron.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
-        patch("agent.figuurbron.documentatie_url", side_effect=_URLS.get),
+        patch("agent.figuurbron.documentatie_url", side_effect=lambda dataset, resource=None: _URLS.get(dataset)),
         patch("agent.selectie.tabelbestanden", return_value=[]),
     ):
         yield
@@ -78,7 +79,7 @@ def test_duo_regel_noemt_het_bestand_als_de_dataset_er_meer_heeft(catalogus):
         bron = figuurbron("duo:p01hoinges:3") or {}
 
     assert bron["tekst"] == "DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen wo, 2023/24"
-    assert bron["url"] == "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    assert bron["url"] == "https://onderwijsdata.duo.nl/datasets/p01hoinges"
 
 
 def test_zonder_periode_of_status_alleen_bron_en_id(catalogus):
@@ -112,15 +113,41 @@ def test_een_cbs_tabel_linkt_naar_de_statline_pagina_in_de_spelling_van_de_catal
 @pytest.mark.parametrize(
     ("dataset_id", "url"),
     [
-        ("p01hoinges", "https://onderwijsdata.duo.nl/dataset/p01hoinges"),
+        ("p01hoinges", "https://onderwijsdata.duo.nl/datasets/p01hoinges"),
         ("erkenningen", "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen"),
         ("uwv-open-match-data", "https://data.overheid.nl/dataset/uwv-open-match-data"),
         ("ais2030", "https://doi.org/10.34894/DVQTOG"),
     ],
 )
 def test_de_link_van_een_andere_bron_blijft_de_catalogus_url(dataset_id, url):
-    # DUO, RIO, UWV en ROA: ongewijzigd door #638.
+    # RIO, UWV en ROA: ongewijzigd door #638. DUO: de pagina in de portal onder /datasets/ (#737).
     assert documentatie_url(dataset_id) == url
+
+
+_DUO_BESTAND = re.compile(r"https://onderwijsdata\.duo\.nl/datasets/p02ho1ejrs/resources/[0-9a-f-]{36}")
+
+
+def test_een_duo_bestand_linkt_naar_zijn_eigen_pagina_in_de_portal():
+    # #737: de CKAN-URL /dataset/<id> belandde op een lege pagina "Datasets" (gemeten in een browser); de portal
+    # heeft /datasets/<id> en per bestand /datasets/<id>/resources/<resource-id>.
+    wo, hbo = documentatie_url("p02ho1ejrs", 5), documentatie_url("p02ho1ejrs", 2)
+    assert _DUO_BESTAND.fullmatch(wo or "") and _DUO_BESTAND.fullmatch(hbo or "")
+    assert wo != hbo
+    # Zonder bestand, of met een index die de catalogus niet kent: de datasetpagina, geen gok.
+    assert documentatie_url("p02ho1ejrs") == "https://onderwijsdata.duo.nl/datasets/p02ho1ejrs"
+    assert documentatie_url("p02ho1ejrs", 99) == "https://onderwijsdata.duo.nl/datasets/p02ho1ejrs"
+
+
+def test_de_bronregel_van_een_duo_grafiek_linkt_naar_het_geladen_bestand():
+    store.put(
+        "duo:p02ho1ejrs:5",
+        pd.DataFrame({"STUDIEJAAR": [2025], "AANTAL_EERSTEJAARS_INGESCHREVENEN": [60]}),
+        KeyMeta(bron="duo", dataset="p02ho1ejrs", resource=5, schooljaren=(2025,)),
+    )
+    bron = figuurbron("duo:p02ho1ejrs:5") or {}
+
+    assert bron["url"] == documentatie_url("p02ho1ejrs", 5)
+    assert _DUO_BESTAND.fullmatch(bron["url"])
 
 
 def test_een_onbekend_id_heeft_geen_link():
@@ -200,4 +227,4 @@ def test_de_rapportrun_leest_de_bron_uit_de_create_plot_aanroep(monkeypatch, cat
     bronnen = [v["bron"] or {} for v in spec.visualisaties]
     assert [b["dataset"] for b in bronnen] == ["85423NED", "p01hoinges"]
     assert bronnen[0]["tekst"].startswith("CBS · Hoger onderwijs; ingeschrevenen (85423NED)")
-    assert bronnen[1]["url"] == "https://onderwijsdata.duo.nl/dataset/p01hoinges"
+    assert bronnen[1]["url"] == "https://onderwijsdata.duo.nl/datasets/p01hoinges"

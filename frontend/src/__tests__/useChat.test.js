@@ -535,7 +535,7 @@ describe('useChat stop', () => {
   it('keeps the source links only as a plain object with string values', async () => {
     const ws = FakeWebSocket.last
     const bron = 'DUO · Ingeschrevenen hoger onderwijs, 2024/25 (p01hoinges)'
-    const links = { [bron]: 'https://onderwijsdata.duo.nl/dataset/p01hoinges' }
+    const links = { [bron]: 'https://onderwijsdata.duo.nl/datasets/p01hoinges' }
     const kapot = [[links[bron]], links[bron], null, { [bron]: 42 }]
     await act(async () => {
       for (const bronlinks of [links, ...kapot, undefined]) {

@@ -27,7 +27,7 @@ van de server noemen hem ook, met `bewijs` en `vervolg`.
 
 **Niet beschikbaar** zijn de datatools van de chat (`get_cbs_data`, `get_duo_data`, `get_rio_data`,
 `query_data`, `compute_kpi`, `get_maat`, …). Die werken op een datastore per sessie en horen bij auth en de
-limieten van de chat; dat is stap 2 van [#41](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/41).
+limieten van de chat; stateless datatools voor de EduGenAI-subset zijn [#708](https://git.ia.surf.nl/surf-internal/npuls/ceda/onderwijsdata-chat/-/issues/708).
 De server levert metadata; de cijfers haal je bij de bron of in de chat-app.
 
 ## Bewijs en vervolg

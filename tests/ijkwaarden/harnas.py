@@ -251,7 +251,7 @@ def haal_duo(punt: Ijkpunt) -> dict[str, Any]:
     return {
         "waarde": som,
         "onderdrukte_cellen": onderdrukt,
-        "url": f"https://onderwijsdata.duo.nl/dataset/{s['dataset']}",
+        "url": f"https://onderwijsdata.duo.nl/datasets/{s['dataset']}",
     }
 
 

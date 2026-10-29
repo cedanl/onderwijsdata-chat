@@ -17,7 +17,7 @@ import unicodedata
 
 import pandas as pd
 
-from . import catalog, duo, herlaad, store
+from . import catalog, duo, herlaad, inhoudshash, store
 from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
@@ -123,6 +123,11 @@ ONVOLLEDIG_EXPORT = (
 def _noten(key: str, afronden: bool) -> list[str]:
     noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(key)) else []
     noten += store.herkomst(key)
+    if inhoud := inhoudshash.hash_van(key):
+        noten.append(
+            f"inhoudshash van de brontabel: {inhoud} (sha256 van df.to_csv(index=False), eerste 12 tekens; "
+            "zie docs/reproducibility.md)"
+        )
     known = store.meta(key)
     if known is not None and not known.volledig:
         noten.append(ONVOLLEDIG_EXPORT)

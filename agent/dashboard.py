@@ -180,20 +180,25 @@ def build_dataset_context(session: dict) -> dict:
     settings = session.get("chat_settings") or {}
     instelling = settings.get("instelling", "")
 
-    turns = session.get("turns") or []
-    first_question = ""
-    if turns:
-        first_question = turns[0].get("question", "")
-    elif session.get("messages"):
-        user_msgs = [m for m in session["messages"] if m.get("role") == "user"]
-        if user_msgs:
-            first_question = user_msgs[0].get("content", "")
-
     return {
         "datasets": datasets,
         "instelling": instelling,
-        "topic": first_question,
+        "topic": _eerste_vraag(session),
     }
+
+
+def _eerste_vraag(session: dict) -> str:
+    """De eerste vraag van het gesprek: het onderwerp van rapport en dashboard.
+
+    Uit de berichten, niet uit `turns` (#732). Een heropend gesprek (verversen, terug van /rapporten)
+    begint met lege `turns`, en een vraag die een verduidelijkingskaart kreeg wordt geen beurt: dan was de
+    eerste vraag ná het heropenen, of de gekozen optie, het onderwerp. De berichten bevatten beide.
+    """
+    for m in session.get("messages") or []:
+        if m.get("role") == "user" and isinstance(m.get("content"), str) and m["content"].strip():
+            return m["content"]
+    turns = session.get("turns") or []
+    return turns[0].get("question", "") if turns else ""
 
 
 def _build_system_prompt(context: dict) -> str:

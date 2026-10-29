@@ -289,7 +289,7 @@ describe('bronregel onder een grafiek (#569)', () => {
   const duo = {
     bron: 'DUO', dataset: 'p01hoinges',
     tekst: 'DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24',
-    url: 'https://onderwijsdata.duo.nl/dataset/p01hoinges',
+    url: 'https://onderwijsdata.duo.nl/datasets/p01hoinges',
   }
   const report = (...bronnen) => buildReportHtml({
     ...fullSpec,
@@ -304,7 +304,7 @@ describe('bronregel onder een grafiek (#569)', () => {
     expect(eerste).toContain('Bron: CBS · Hoger onderwijs; ingeschrevenen (85423NED), 2019/20 t/m 2024/25, status Voorlopig')
     expect(eerste).toContain('<a href="https://opendata.cbs.nl/ODataApi/OData/85423NED" target="_blank" rel="noopener noreferrer">Bekijk de bron bij CBS</a>')
     expect(tweede).toContain('Bron: DUO · Ingeschrevenen hoger onderwijs (p01hoinges), bestand Ingeschrevenen hbo, 2023/24')
-    expect(tweede).toContain('href="https://onderwijsdata.duo.nl/dataset/p01hoinges"')
+    expect(tweede).toContain('href="https://onderwijsdata.duo.nl/datasets/p01hoinges"')
     expect(tweede).toContain('Bekijk de bron bij DUO')
   })
 

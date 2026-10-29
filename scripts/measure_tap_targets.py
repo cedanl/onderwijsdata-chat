@@ -67,7 +67,7 @@ BRONNEN = [
     "RIO · onbekend",
 ]
 BRONLINKS = {
-    BRONNEN[0]: "https://onderwijsdata.duo.nl/dataset/p01hoinges",
+    BRONNEN[0]: "https://onderwijsdata.duo.nl/datasets/p01hoinges",
     BRONNEN[1]: "https://opendata.cbs.nl/ODataApi/OData/85423NED",
     BRONNEN[2]: "https://data.overheid.nl/dataset/uwv-open-match-data",
 }

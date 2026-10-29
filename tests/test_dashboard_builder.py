@@ -111,6 +111,30 @@ class TestBuildDatasetContext:
         }
         assert "HU" in build_dataset_context(session)["topic"]
 
+    def test_topic_is_the_first_question_after_reopening(self):
+        """#732: een heropend gesprek begint met lege turns; de vraag erna werd het onderwerp."""
+        session = {
+            "messages": [
+                {"role": "user", "content": "Hoe ontwikkelt het bachelorrendement in het wo zich?"},
+                {"role": "assistant", "content": "Het rendement stijgt."},
+                {"role": "user", "content": "Genereer een rapport dat ingaat op je laatste antwoord"},
+            ],
+            "turns": [{"question": "Genereer een rapport dat ingaat op je laatste antwoord", "tool_calls": []}],
+        }
+        assert build_dataset_context(session)["topic"] == "Hoe ontwikkelt het bachelorrendement in het wo zich?"
+
+    def test_topic_is_the_question_not_the_clarification_choice(self):
+        """#732: een vraag met een verduidelijkingskaart wordt geen beurt; de gekozen optie werd het onderwerp."""
+        session = {
+            "messages": [
+                {"role": "user", "content": "Hoeveel studenten heeft de hogeschool in Utrecht?"},
+                {"role": "assistant", "content": "Welke hogeschool bedoel je?"},
+                {"role": "user", "content": "Hogeschool Utrecht"},
+            ],
+            "turns": [{"question": "Hogeschool Utrecht", "tool_calls": []}],
+        }
+        assert build_dataset_context(session)["topic"] == "Hoeveel studenten heeft de hogeschool in Utrecht?"
+
 
 def _datasets(*keys, herkomst=None):
     return [{"data_key": k, **({"herkomst": herkomst[k]} if herkomst and k in herkomst else {})} for k in keys]

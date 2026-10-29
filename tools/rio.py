@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 import pandas as pd
 from riodata import fetch, filtercontract, valideer_filters
@@ -17,6 +18,25 @@ def rio_filters(resource: str) -> list[str]:
     """De serverfilters van een RIO-resource, uit het filtercontract van riodata; leeg als onbekend."""
     filters = filtercontract()["resources"].get(resource, {}).get("filters", [])
     return [f["naam"] for f in filters]
+
+
+def _peil(resource: str, filters: dict) -> tuple[str | None, str]:
+    """Van welke dag de stand is die deze aanroep ophaalt, en hoe dat in het manifest staat (#718).
+
+    RIO is een levend register met tijdreizen via `datumGeldigOp`. Zonder dat filter krijg je de stand van het moment
+    van de aanroep en geeft dezelfde aanroep later een andere stand. De dag van vandaag geeft dezelfde rijen als geen
+    filter (gemeten op elf resources), dus de aanroep zet hem zelf, en snippet en manifest noemen hem. Een eigen
+    `datumGeldigOp` van de gebruiker blijft staan. Een resource zonder dat filter heeft geen dag: alleen de laaddatum.
+    """
+    gevraagd = filters.get("datumGeldigOp") or (
+        date.today().isoformat() if "datumGeldigOp" in rio_filters(resource) else None
+    )
+    if gevraagd is None:
+        return None, f"opgehaald op {date.today():%d-%m-%Y}"
+    try:
+        return str(gevraagd), f"stand van {date.fromisoformat(str(gevraagd)):%d-%m-%Y}"
+    except ValueError:
+        return str(gevraagd), f"stand van {gevraagd}"
 
 
 def _filter_hint(allowed: list[str]) -> str:
@@ -60,7 +80,13 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
     # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
     # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
     # zou onderstaande slice toch weer afkappen.
-    params = {**(filters or {}), "page": 0, "pageSize": RIO_PAGE_SIZE}
+    geldig_op, peilmoment = _peil(resource, filters or {})
+    params = {
+        **(filters or {}),
+        **({"datumGeldigOp": geldig_op} if geldig_op else {}),
+        "page": 0,
+        "pageSize": RIO_PAGE_SIZE,
+    }
     try:
         results = fetch(resource, **params)
     except Exception as e:
@@ -96,6 +122,8 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
             dataset=resource,
             volledig=not meer_beschikbaar,
             laad=("get_rio_data", {"resource": resource, "filters": filters}),
+            peilmoment=peilmoment,
+            geldig_op=geldig_op,
         ),
     )
     result = {

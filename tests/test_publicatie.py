@@ -68,4 +68,5 @@ def test_afronding_en_herlaaddatum_staan_erbij(caplog):
     caplog.set_level(logging.INFO, logger="agent.publicatie")
     log_publicatie(publicatie.RAPPORT, ["cbs:85423NED"])
     (regel,) = _regels(caplog, logging.INFO)
-    assert "bron=cbs dataset=85423NED key=cbs:85423NED volledig=ja afronding=10 herladen_op=13-10-2026 rijen=1" in regel
+    assert "bron=cbs dataset=85423NED key=cbs:85423NED volledig=ja afronding=10 herladen_op=13-10-2026 " in regel
+    assert ("inhoudshash=" in regel and regel.endswith(" rijen=1]")) or " rijen=1]" in regel

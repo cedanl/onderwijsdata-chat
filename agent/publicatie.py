@@ -14,6 +14,7 @@ een selectie kan een door de gebruiker getypte naam bevatten, en die hoort op IN
 import logging
 
 from tools import store
+from tools.inhoudshash import hash_van
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ def _keyregel(key: str) -> str:
         delen.append(f"afronding={known.afronding}")
     if known.herladen_op:
         delen.append(f"herladen_op={known.herladen_op}")
+    if not known.afgeleid_van and (inhoud := hash_van(key)):
+        delen.append(f"inhoudshash={inhoud}")
     df = store.get(key)
     if df is not None and hasattr(df, "shape"):
         delen.append(f"rijen={df.shape[0]}")
