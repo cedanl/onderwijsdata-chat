@@ -198,7 +198,17 @@ def _adres(row) -> dict:
         "provincie": str(row.get("PROVINCIE") or "").strip() or None,
         "arbeidsmarktregio": arbeidsmarktregio.van_gemeente(row.get("GEMEENTENUMMER")),
         "plaatsnaam": str(row.get("PLAATSNAAM") or "").strip().upper() or None,
+        # Het bestuur: de sleutel naar de Inspectie-oordelen per bevoegd gezag (#749).
+        "bevoegd_gezag": _nummer(row.get("BEVOEGD GEZAG NUMMER")),
     }
+
+
+def _nummer(waarde) -> int | None:
+    try:
+        getal = float(waarde)
+    except (TypeError, ValueError):
+        return None
+    return int(getal) if getal == getal and getal.is_integer() else None
 
 
 def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:

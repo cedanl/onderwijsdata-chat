@@ -4,7 +4,7 @@ Bron-ping: één aanroep per bron door de toollaag van de chat, zonder LLM (#627
 
 Gebruik:
     uv run python scripts/bronping.py                # elke bron één keer; exitcode 1 zodra één bron niet antwoordt
-    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, kaart
+    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart
 
 De CI-job `bron:ping` draait dit gepland op main (.gitlab-ci.yml). Een verwijderde API (RIO v2 gaf op
 19-10-2026 HTTP 410 op elke aanroep), een gewijzigd filtercontract (HTTP 400) of een onbereikbare bron
@@ -28,10 +28,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tests.ijkwaarden import harnas
-from tools import cbs, duo, fouten, plot, rio_instelling
+from tools import cbs, duo, fouten, inspectie, plot, rio_instelling
 
 _MAX_DETAIL = 200
 _PROVINCIES = 12
+# Op 1 oktober 2026 noemden 164 besturen mbo; minder dan dit is een kapot of half bestand (#749).
+_MIN_MBO_BESTUREN = 100
 _AERES = "30TX"  # de instellingscode achter de RIO-ijkwaarde rio-aeres-hogeschool
 
 
@@ -84,6 +86,19 @@ def _kaart() -> dict:
     return plot._load_geojson("provincie")
 
 
+def _inspectie() -> dict:
+    # Dezelfde weg als de chat: overzicht, schooljaarpagina, document, bg-bestand (#749).
+    bestand = inspectie.haal_peilbestand()
+    return {"peildatum": bestand.peildatum, "mbo_besturen": len(inspectie.oordelen_mbo(bestand))}
+
+
+def _inspectie_bewijs(uitkomst: dict) -> str | None:
+    n = uitkomst.get("mbo_besturen", 0)
+    return (
+        None if n >= _MIN_MBO_BESTUREN else f"{n} mbo-besturen in het bg-bestand, minstens {_MIN_MBO_BESTUREN} verwacht"
+    )
+
+
 def _kaart_bewijs(uitkomst: dict) -> str | None:
     n = len(uitkomst.get("features") or [])
     return None if n >= _PROVINCIES else f"{n} vormen in de provincie-GeoJSON, minstens {_PROVINCIES} verwacht"
@@ -98,6 +113,13 @@ PINGS: tuple[Ping, ...] = (
         "Aeres Hogeschool, bestuur en vestigingen (get_rio_instelling)",
         _rio,
         _rio_bewijs,
+    ),
+    Ping(
+        "inspectie-bg",
+        "inspectie",
+        "nieuwste Inspectie-peilbestand per bestuur, mbo (bg.ods)",
+        _inspectie,
+        _inspectie_bewijs,
     ),
     Ping(
         "kaart-provincies",
@@ -147,7 +169,9 @@ def _regel(u: Uitslag) -> str:
 
 def _argumenten(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Eén aanroep per bron door de toollaag van de chat (#627).")
-    parser.add_argument("--alleen", default="", help="komma-gescheiden bronnen: cbs, duo, rio, kaart (standaard alle)")
+    parser.add_argument(
+        "--alleen", default="", help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart (standaard alle)"
+    )
     return parser.parse_args(argv)
 
 

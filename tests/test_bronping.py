@@ -29,7 +29,7 @@ def _ping(id: str = "cbs-test", bron: str = "cbs", uitkomst: str | dict = "", be
 
 
 def test_elke_bron_van_de_chat_heeft_een_ping():
-    assert {p.bron for p in bronping.PINGS} == {"cbs", "duo", "rio", "kaart"}
+    assert {p.bron for p in bronping.PINGS} == {"cbs", "duo", "rio", "inspectie", "kaart"}
     assert len({p.id for p in bronping.PINGS}) == len(bronping.PINGS)
 
 
