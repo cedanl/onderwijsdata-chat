@@ -8,6 +8,13 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### De pytest-gate hangt niet meer af van live DUO en CBS (#766)
+- De register- en dashboardtests draaien op bevroren DUO-bestanden in `tests/fixtures/duo/`, niet op
+  onderwijsdata.duo.nl. Een storing of verbroken verbinding bij DUO maakte de blokkerende pytest-job rood
+  (17 falers op main-pipeline 776057). Die tests duren nu 3,5 s in plaats van 3,5 minuut.
+- `scripts/duo_testfixtures.py` ververst de bestanden. De live CBS-test, die zichzelf bij een storing stil oversloeg,
+  is weg: `test_cbs_laatste_update_tekst.py` toetst hetzelfde zonder netwerk.
+
 ### Verwijderen dat op de server mislukt, zegt dat (#778)
 - Een gesprek, rapport of dashboard verdween van het scherm, ook als de server het niet verwijderde (netwerkfout,
   5xx). Het kwam dan na herladen of op een ander apparaat stil terug. Nu staat het weer in de lijst, met een melding en
