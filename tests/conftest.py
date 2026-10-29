@@ -59,7 +59,7 @@ def duo_fixtures(monkeypatch):
 
     tekst = json.loads((MAP / "tekstkolommen.json").read_text())
 
-    def load(dataset_id: str, resource: int | str = 0, **kwargs) -> pd.DataFrame:
+    def load(dataset_id: str, resource: int = 0, **kwargs) -> pd.DataFrame:
         naam = bestandsnaam(dataset_id, resource)
         if naam not in tekst:
             raise AssertionError(f"geen DUO-fixture {naam}: voeg hem toe in scripts/duo_testfixtures.py")
