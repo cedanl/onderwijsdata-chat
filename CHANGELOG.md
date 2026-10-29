@@ -8,6 +8,16 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een gesprek of rapport dat de server niet kreeg, zegt dat (#785)
+- Mislukte het opslaan van een gesprek (netwerkfout, 5xx), dan was dat niet te zien: het gesprek stond al in de
+  zijbalk. Nu staat boven het invoerveld "Dit gesprek is niet bewaard op de server", met "Opnieuw proberen", tot een
+  opslag lukt. Bij een 413 (groter dan 4 MiB) zegt de melding dat het gesprek te groot is en alleen in deze browser
+  staat.
+- Een rapport dat niet op de server kwam, was na het genereren weg. Nu blijft het staan met "Opnieuw proberen" (dat het
+  rapport opent als het lukt) en "Download als HTML".
+- Gemeten: een gesprek met een gemeentekaart, een provinciekaart en tien grafieken is 0,40 MiB. De limiet van 4 MiB
+  blijft, en de GeoJSON blijft in de opgeslagen figuur (zie #785).
+
 ### De pytest-gate hangt niet meer af van live DUO en CBS (#766)
 - De register- en dashboardtests draaien op bevroren DUO-bestanden in `tests/fixtures/duo/`, niet op
   onderwijsdata.duo.nl. Een storing of verbroken verbinding bij DUO maakte de blokkerende pytest-job rood

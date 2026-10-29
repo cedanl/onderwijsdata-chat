@@ -4,7 +4,7 @@ import { useEscape } from '../hooks/useEscape'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
-import { saveWorkbookWithSync } from '../workbooks'
+import { saveWorkbookWithSync, syncWorkbook } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
@@ -33,6 +33,7 @@ import FeedbackLink from '../components/FeedbackLink'
 import { relatieveDatum } from '../relatieveDatum'
 import { inVolgorde, noteerGesprek, useRecent } from '../recentBekeken'
 import ConfirmModal from '../components/ConfirmModal'
+import { GesprekNietBewaard, RapportNietBewaard } from '../components/NietBewaard'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
@@ -105,7 +106,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false)
   // The conversation being fetched to open it (#509); one at a time.
   const [openingId, setOpeningId] = useState(null)
-  const [saveError, setSaveError] = useState(null)
+  // Het rapport dat de server niet kreeg, met de status van de PUT (#785): het blijft hier tot het lukt of gedownload is.
+  const [rapportNietBewaard, setRapportNietBewaard] = useState(null)
+  // Het gesprek waarvan de laatste PUT mislukte, met de status (#785); null zodra een PUT lukt.
+  const [gesprekNietBewaard, setGesprekNietBewaard] = useState(null)
   // Het veld met de onderzoeksvraag vóór een rapport (#751).
   const [vraagVoorRapport, setVraagVoorRapport] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
@@ -222,7 +226,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Sends the open conversation to the server and returns the updated history list, or null when
-  // there is nothing new. It touches no state, so the unmount save can use it too (#521).
+  // there is nothing new. Of the state it only sets the save status (#785), which after an unmount does nothing,
+  // so the unmount save can use it too (#521).
   // A deleted open conversation also returns null until a new question (#535); savedJsonRef stays
   // as it is then, so after an undo (which resets it) the next save writes the conversation again.
   const putOpenConversation = useCallback(() => {
@@ -236,8 +241,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const vorige = savedJsonRef.current
     savedJsonRef.current = json
     savingRef.current = volgOpslag(putConversation(String(id), { title: record.title, timestamp: record.timestamp, messages: all }))
-      .then(() => { if (!sessionEndedSince(tokenAtMount)) noteerOpgeslagen(id, json) }, () => {
+      .then(() => {
+        if (sessionEndedSince(tokenAtMount)) return
+        noteerOpgeslagen(id, json)
+        setGesprekNietBewaard(prev => (prev?.id === id ? null : prev))
+      }, err => {
         if (savedJsonRef.current === json) savedJsonRef.current = vorige
+        // Na het uitloggen (ook een 401 die de sessie beëindigde) is er niemand meer om het te zeggen.
+        if (!sessionEndedSince(tokenAtMount)) setGesprekNietBewaard({ id, status: err?.status })
       })
     return upsertConversation(loadConversationHistory(), record)
   }, [tokenAtMount])
@@ -547,7 +558,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   // Eerst de onderzoeksvraag (#751). Kan er nu geen rapport starten, dan zegt een melding waarom, zonder veld (#648).
   const handleMakeRapport = useCallback(() => {
-    setSaveError(null)
     if (checkReportStart()) setVraagVoorRapport(true)
   }, [checkReportStart])
 
@@ -569,12 +579,26 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     }).then(result => {
       if (result.ok) {
         openRapport?.(result.workbook)
-      } else {
-        setSaveError(result.error)
+      } else if (!sessionEndedSince(tokenAtMount)) {
+        setRapportNietBewaard(result)
       }
       clearReport()
     })
   }, [reportSpec, settings?.instelling, openRapport, clearReport, tokenAtMount])
+
+  // Een nieuwe poging; lukt die, dan opent het rapport zoals na een geslaagde eerste keer.
+  const bewaarRapportOpnieuw = useCallback(() => {
+    if (!rapportNietBewaard) return
+    syncWorkbook(rapportNietBewaard.workbook).then(result => {
+      if (sessionEndedSince(tokenAtMount)) return
+      if (!result.ok) {
+        setRapportNietBewaard(result)
+        return
+      }
+      setRapportNietBewaard(null)
+      openRapport?.(result.workbook)
+    })
+  }, [rapportNietBewaard, openRapport, tokenAtMount])
 
   const displayMessages = [...restoredMessages, ...messages]
   // Een grafiek staat in de bubbel van zijn antwoord, niet als bericht eronder (#610).
@@ -782,10 +806,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 )}
               </div>
             )}
-            {hasMessages && !busy && saveError && (
-              <p style={{ color: '#DC2626', fontSize: 13, margin: '4px 0 0', textAlign: 'center' }}>
-                Rapport opslaan mislukt: {saveError}
-              </p>
+            {gesprekNietBewaard?.id === conversationId && (
+              <GesprekNietBewaard status={gesprekNietBewaard.status} onOpnieuw={saveConversation} />
+            )}
+            {rapportNietBewaard && (
+              <RapportNietBewaard workbook={rapportNietBewaard.workbook} status={rapportNietBewaard.status}
+                instelling={settings?.instelling} onOpnieuw={bewaarRapportOpnieuw} />
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />
