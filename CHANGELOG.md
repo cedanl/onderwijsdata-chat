@@ -8,6 +8,16 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Herverbinden past bij de reden van sluiten, en zegt het als de app stopt met proberen (#783)
+- Met te veel vensters open (de server sluit met 1013) kwam er elke seconde een nieuwe poging, met elke keer een nieuwe
+  foutmelding. De teller begon bij het openen opnieuw, ook als de server meteen weer sloot. Nu telt een verbinding pas
+  als hersteld als ze 5 s open blijft. Bij 1013 en bij 4003 (origin geweigerd) probeert de app het niet zelf opnieuw:
+  één melding.
+- Na vier mislukte pogingen (ongeveer 15 s) stopte de app stil, terwijl de voettekst "Verbinding herstellen..." bleef
+  zeggen. Nu staat er "Geen verbinding." met de knop "Opnieuw verbinden", ook met het toetsenbord te bedienen. De knop
+  en weer online komen beginnen een nieuwe reeks pogingen. Bij 1013 zegt de status dat er te veel vensters open
+  staan. Geldt voor de chat en de dashboardchat.
+
 ### Een gesprek of rapport dat de server niet kreeg, zegt dat (#785)
 - Mislukte het opslaan van een gesprek (netwerkfout, 5xx), dan was dat niet te zien: het gesprek stond al in de
   zijbalk. Nu staat boven het invoerveld "Dit gesprek is niet bewaard op de server", met "Opnieuw proberen", tot een

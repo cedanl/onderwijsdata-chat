@@ -1039,6 +1039,13 @@ html.dark .send-notice:not(:empty) {
 .ws-reconnecting:empty { position: absolute; }
 .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; flex-shrink: 0; animation: ws-pulse 1.4s ease-in-out infinite; }
 @keyframes ws-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+/* Geen nieuwe pogingen meer (#783): de stip pulseert niet, want er gebeurt niets tot de gebruiker kiest. */
+.ws-dot--stil { background: #DC2626; animation: none; }
+.ws-opnieuw {
+  min-height: var(--tap-min-aa); padding: 0 4px; margin-left: 2px;
+  font: inherit; font-weight: 600; color: var(--accent-text);
+  background: none; border: none; text-decoration: underline; cursor: pointer;
+}
 
 /* Scroll-to-bottom button */
 .scroll-to-bottom-btn {

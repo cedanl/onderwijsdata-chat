@@ -4,7 +4,7 @@ import { MAX_HISTORY } from '../constants'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
-import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
+import { createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
 
@@ -42,6 +42,9 @@ export function useChat() {
   const [slow, setSlow] = useState(false)
   const [toasts, setToasts] = useState([])
   const [connected, setConnected] = useState(false)
+  // Geen eigen pogingen meer (#783): 'weg' na de laatste, 'te_veel' als de server nog een venster weigerde.
+  const [opgegeven, setOpgegeven] = useState(null)
+  const verbindOpnieuwRef = useRef(() => {})
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
   // Steps of the report run, shown while the report is being made (#339).
@@ -372,7 +375,7 @@ export function useChat() {
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
     // until then the user saw a counting pill and no melding (#489).
     const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
-    const retry = createRetry(connect)
+    const retry = createRetry(connect, { opgegeven: () => setOpgegeven('weg') })
 
     // One live socket at a time (#522). A real close() is asynchronous, so the onclose of a
     // socket that was already replaced can come after its successor opened. Only the socket
@@ -400,6 +403,13 @@ export function useChat() {
       }
 
       if (manualCloseRef.current) return
+      // De server wil deze verbinding niet (#783): opnieuw proberen geeft alleen een nieuwe foutmelding.
+      const reden = opgevenBij(code)
+      if (reden) {
+        retry.reset()
+        setOpgegeven(reden)
+        return
+      }
       // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
       if (!opened) checkSession()
       retry.schedule()
@@ -410,6 +420,7 @@ export function useChat() {
       wsRef.current = ws
       opened = false
       ended = false
+      setOpgegeven(null)
 
       ws.onopen = () => {
         if (!isCurrent(ws)) return
@@ -419,7 +430,8 @@ export function useChat() {
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
         setResetting(false)
-        retry.reset()
+        // Not a reset: a socket the server closes right away (1013) must not start the count over (#783).
+        retry.opened()
         endReport()
         reportAbandonedRef.current = false
         setReportSpec(null)
@@ -461,6 +473,14 @@ export function useChat() {
 
     // Offline: the melding may not wait for a socket error (#489).
     const detachNetwork = watchNetwork({ getWs: () => wsRef.current, lost: connectionLost, retry, connect })
+
+    // "Opnieuw verbinden" (#783): de teller begint opnieuw, net als bij online. Een socket die al open is of opent, blijft.
+    verbindOpnieuwRef.current = () => {
+      const state = wsRef.current?.readyState
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return
+      retry.reset()
+      connect()
+    }
 
     return () => {
       manualCloseRef.current = true
@@ -600,5 +620,7 @@ export function useChat() {
     }
   }, [clear])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  const verbindOpnieuw = useCallback(() => verbindOpnieuwRef.current(), [])
+
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }

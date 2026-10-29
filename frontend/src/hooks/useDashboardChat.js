@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { STORAGE_DC_MESSAGES, STORAGE_DC_FIGURES } from '../constants'
 import { chatSocket, checkSession, getToken, sessionEndedSince } from '../auth'
 import { finishStep } from '../toolSteps'
-import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
+import { createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 
 function loadSessionMessages() {
   try { return JSON.parse(localStorage.getItem(STORAGE_DC_MESSAGES) || '[]') } catch { return [] }
@@ -16,6 +16,9 @@ export default function useDashboardChat() {
   const [figures, setFigures] = useState(loadSessionFigures)
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
+  // Zoals in de chat (#783): geen eigen pogingen meer, en waarom.
+  const [opgegeven, setOpgegeven] = useState(null)
+  const verbindOpnieuwRef = useRef(() => {})
   const [generatingDashboard, setGeneratingDashboard] = useState(false)
   const [dashboardSpec, setDashboardSpec] = useState(null)
   const wsRef = useRef(null)
@@ -120,7 +123,7 @@ export default function useDashboardChat() {
     // Same gap as the chat (#489): a silently dead connection fires onclose only
     // after the TCP timeout, so the melding never came.
     const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
-    const retry = createRetry(connect)
+    const retry = createRetry(connect, { opgegeven: () => setOpgegeven('weg') })
 
     // One live socket at a time, as in the chat (#522): a replaced socket is inert, and the
     // loss of the current one is handled once, whichever signal comes first.
@@ -140,7 +143,7 @@ export default function useDashboardChat() {
       currentIdRef.current = null
     }
 
-    function connectionLost(ws) {
+    function connectionLost(ws, code) {
       if (!isCurrent(ws)) return
       ended = true
       heartbeat.stop()
@@ -149,6 +152,12 @@ export default function useDashboardChat() {
       endOpenMessage()
 
       if (manualCloseRef.current) return
+      const reden = opgevenBij(code)
+      if (reden) {
+        retry.reset()
+        setOpgegeven(reden)
+        return
+      }
       // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
       if (!opened) checkSession()
       retry.schedule()
@@ -159,20 +168,21 @@ export default function useDashboardChat() {
       wsRef.current = ws
       opened = false
       ended = false
+      setOpgegeven(null)
 
       ws.onopen = () => {
         if (!isCurrent(ws)) return
         opened = true
         setConnected(true)
         heartbeat.start()
-        retry.reset()
+        retry.opened()
         if (pendingSettingsRef.current) {
           ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
           pendingSettingsRef.current = null
         }
       }
 
-      ws.onclose = () => connectionLost(ws)
+      ws.onclose = (e) => connectionLost(ws, e.code)
 
       ws.onmessage = (e) => {
         if (!isCurrent(ws)) return
@@ -186,6 +196,13 @@ export default function useDashboardChat() {
     connect()
 
     const detachNetwork = watchNetwork({ getWs: () => wsRef.current, lost: connectionLost, retry, connect })
+
+    verbindOpnieuwRef.current = () => {
+      const state = wsRef.current?.readyState
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return
+      retry.reset()
+      connect()
+    }
 
     return () => {
       manualCloseRef.current = true
@@ -243,5 +260,7 @@ export default function useDashboardChat() {
     try { localStorage.removeItem(STORAGE_DC_MESSAGES); localStorage.removeItem(STORAGE_DC_FIGURES) } catch { /* noop */ }
   }, [])
 
-  return { messages, figures, busy, connected, send, sendClarification, sendSettings, reset, generateDashboard, refreshDashboard, generatingDashboard, dashboardSpec }
+  const verbindOpnieuw = useCallback(() => verbindOpnieuwRef.current(), [])
+
+  return { messages, figures, busy, connected, opgegeven, verbindOpnieuw, send, sendClarification, sendSettings, reset, generateDashboard, refreshDashboard, generatingDashboard, dashboardSpec }
 }
