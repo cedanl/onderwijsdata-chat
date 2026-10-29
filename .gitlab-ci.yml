@@ -115,6 +115,11 @@ pytest:
     name: python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
   variables:
     UV_CACHE_DIR: .uv-cache
+    # helm voor tests/test_manifests.py: zonder helm sloegen de chart-tests in CI stil over (#768). Versie en checksum
+    # horen bij elkaar, Renovate volgt ze niet: pas bij een update beide aan (de checksum staat naast de tarball op
+    # get.helm.sh, als helm-<versie>-linux-amd64.tar.gz.sha256sum).
+    HELM_VERSION: v3.16.0
+    HELM_SHA256: 327cfbc7ddc5a3eb644039ceb0cff66394628654c4f5a76bf715ed15b893983b
   cache:
     key:
       files:
@@ -122,9 +127,14 @@ pytest:
     paths:
       - .uv-cache
   before_script:
-    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock
-    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock; curl voor helm hieronder
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
+    # Eén statische binary, gecontroleerd op checksum; geen pakketbron.
+    - curl -fsSL --retry 3 -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+    - echo "${HELM_SHA256}  /tmp/helm.tgz" | sha256sum -c -
+    - tar -xzf /tmp/helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+    - helm version --short
   script:
     # mcp: zonder de extra slaan de protocoltests van tests/test_mcp_server.py over (#41).
     - uv sync --frozen --extra postgres --extra mcp
@@ -135,7 +145,8 @@ pytest:
     - uv run python scripts/ty_baseline.py
     # Dekking: `fail_under` in pyproject.toml laat deze stap falen onder de ondergrens (#691); `coverage` hieronder
     # zet het totaal op de MR en in de pipeline.
-    - uv run pytest tests/ -q --cov --cov-report=term:skip-covered
+    # -rs: de reden van elke skip staat in het log, zodat een stil overgeslagen test opvalt (#768).
+    - uv run pytest tests/ -q -rs --cov --cov-report=term:skip-covered
   coverage: '/^TOTAL.*\s+(\d+(?:\.\d+)?)%/'
 
 # Zelfde image als de frontend-stap in de Dockerfile, zodat Renovate ze samen bijwerkt.

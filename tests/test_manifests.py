@@ -74,10 +74,14 @@ def test_opschonen_past_in_het_quotum_en_heeft_postgres(omgeving):
 
 
 def _helm(*args: str) -> str:
+    import os
     import shutil
     import subprocess
 
     if not shutil.which("helm"):
+        # Lokaal een skip; in CI zou een image zonder helm de chart-tests stil overslaan (#768).
+        if os.environ.get("CI"):
+            pytest.fail("helm ontbreekt in CI: de chart-tests (#675) mogen daar niet worden overgeslagen")
         pytest.skip("helm niet geïnstalleerd")
     return subprocess.run(["helm", *args], capture_output=True, text=True, check=True).stdout
 
@@ -173,3 +177,16 @@ def test_uvicorn_stopt_binnen_de_termijn_van_kubernetes():
     argumenten = yaml.safe_load(cmd)
     termijn = int(argumenten[argumenten.index("--timeout-graceful-shutdown") + 1])
     assert termijn < _CHART["terminationGracePeriodSeconds"]
+
+
+def test_zonder_helm_faalt_ci_en_slaat_lokaal_over(monkeypatch):
+    """Een CI-image zonder helm mag de chart-tests niet stil overslaan (#768); lokaal blijft het een skip."""
+    monkeypatch.setattr("shutil.which", lambda _naam: None)
+
+    monkeypatch.setenv("CI", "true")
+    with pytest.raises(pytest.fail.Exception, match="helm ontbreekt in CI"):
+        _helm("version")
+
+    monkeypatch.delenv("CI")
+    with pytest.raises(pytest.skip.Exception, match="helm niet geïnstalleerd"):
+        _helm("version")
