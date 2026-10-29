@@ -34,12 +34,15 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "Vaste maat uit een vast recept: jij kiest de maat en de afbakening, de code kiest dataset, bestand "
                 "en codes. Gebruik dit vóór search_catalog voor een telling van studenten, inschrijvingen of "
                 "eerstejaars per hbo/wo-instelling, mbo-studenten per instelling, ingeschrevenen hbo/wo landelijk, "
+                "mbo-studenten landelijk (mbo_studenten_landelijk: CBS 85354NED, het totaal of bol/bbl; zonder "
+                "instelling of sector; naar geslacht, niveau of herkomst is get_cbs_data), "
                 "of doorstroom vmbo → mbo landelijk (doorstroom_vmbo_mbo: CBS 85569NED, mbo-instromers uit "
                 "vmbo-leerjaar 3-4; zonder instelling of sector). "
                 "'Studenten' is ingeschreven_personen_ho (personen); inschrijvingen_ho alleen als de gebruiker om "
-                "inschrijvingen vraagt. Bij doorstroom_vmbo_mbo zet de app de bron, de definitie en het "
-                "DUO-alternatief zelf onder het antwoord; de DUO-telling (Instromende mbo-studenten, vmbo-diploma) "
-                "alleen als de gebruiker erom vraagt, via get_duo_data. Geslacht per opleiding bij een hbo/wo-instelling: "
+                "inschrijvingen vraagt. Bij mbo_studenten_landelijk en doorstroom_vmbo_mbo zet de app de bron, de "
+                "definitie en het DUO-alternatief zelf onder het antwoord; de DUO-telling (Mbo-studenten per "
+                "instelling, of Instromende mbo-studenten met een vmbo-diploma) alleen als de gebruiker erom vraagt, "
+                "via get_duo_data. Geslacht per opleiding bij een hbo/wo-instelling: "
                 "opleiding_naar_geslacht. Geeft een data_key met één rij per studiejaar (bij geslacht per opleiding "
                 "één per studiejaar en geslacht), de teldefinitie en het recept; "
                 "query_data, compute_kpi en create_plot werken er gewoon mee. Een onbekende instelling of maat is "
@@ -56,6 +59,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                             "eerstejaars_ho",
                             "deelnemers_ho_landelijk",
                             "mbo_studenten_instelling",
+                            "mbo_studenten_landelijk",
                             "doorstroom_vmbo_mbo",
                         ],
                         "description": "De maat; zie de beschrijving van de tool.",

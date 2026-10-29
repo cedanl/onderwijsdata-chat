@@ -88,24 +88,6 @@ class DuoBreedRecept:
 
 
 @dataclass(frozen=True)
-class CbsRecept:
-    """Een CBS-tabel met vaste totaalcodes; sector en vorm zijn dimensiecodes."""
-
-    naam: str
-    omschrijving: str
-    dataset: str
-    teldefinitie: str
-    onderwerp: str
-    sectoren: tuple[str, ...] = _HO
-    sectordimensie: str = "Onderwijssoort"
-    sectorcodes: Mapping[str, str] = field(default_factory=lambda: dict(SECTORCODES_CBS))
-    vormdimensie: str = "Opleidingsvorm"
-    vormen: Mapping[str, str] = field(default_factory=lambda: dict(VORMEN_HO_CBS))
-    vast: Mapping[str, str] = field(default_factory=lambda: {"Opleidingsfase": "A045745", "Geslacht": "T001038"})
-    bron: ClassVar[str] = "cbs"
-
-
-@dataclass(frozen=True)
 class AlternatieveBron:
     """Een andere bron voor dezelfde vraag, met een andere definitie: de app noemt haar onder het antwoord (#667)."""
 
@@ -114,6 +96,28 @@ class AlternatieveBron:
     bestand: str
     definitie: str
     gebruik: str
+
+
+@dataclass(frozen=True)
+class CbsRecept:
+    """Een landelijke CBS-tabel met vaste totaalcodes; vorm en, als de tabel meer sectoren heeft, sector zijn codes.
+
+    Bij vorm `alle` volgt een dimensie met een standaardselectie (`cbs_standaard`, #653) die standaard.
+    """
+
+    naam: str
+    omschrijving: str
+    dataset: str
+    teldefinitie: str
+    onderwerp: str
+    sectoren: tuple[str, ...] = _HO
+    sectordimensie: str | None = "Onderwijssoort"  # None: de tabel telt één sector
+    sectorcodes: Mapping[str, str] = field(default_factory=lambda: dict(SECTORCODES_CBS))
+    vormdimensie: str = "Opleidingsvorm"
+    vormen: Mapping[str, str] = field(default_factory=lambda: dict(VORMEN_HO_CBS))
+    vast: Mapping[str, str] = field(default_factory=lambda: {"Opleidingsfase": "A045745", "Geslacht": "T001038"})
+    alternatieve_bron: AlternatieveBron | None = None
+    bron: ClassVar[str] = "cbs"
 
 
 @dataclass(frozen=True)
@@ -147,7 +151,28 @@ INSCHRIJVINGEN_HO = "inschrijvingen_ho"
 EERSTEJAARS_HO = "eerstejaars_ho"
 DEELNEMERS_HO_LANDELIJK = "deelnemers_ho_landelijk"
 MBO_STUDENTEN = "mbo_studenten_instelling"
+MBO_STUDENTEN_LANDELIJK = "mbo_studenten_landelijk"
 DOORSTROOM_VMBO_MBO = "doorstroom_vmbo_mbo"
+
+# Mbo-studenten landelijk (#805): dezelfde vraag kreeg in één sessie DUO (474.963, de som van het bestand per
+# sectorkamer, met onderdrukte cellen) en CBS 85354NED (475.460). Beide klopten, met een andere definitie. De code
+# kiest CBS; DUO komt als alternatief in de regel onder het antwoord, zoals bij vmbo → mbo (#667).
+_LEERWEGEN_MBO_CBS = {ALLE: "A025290", "bol": "A041868", "bbl": "A025293"}  # alle: de standaard van de tabel (#653)
+_DUO_MBO_STUDENTEN = AlternatieveBron(
+    naam="DUO 'Mbo-studenten per instelling'",
+    dataset="mbo-studenten-per-instelling",
+    bestand="het bestand per instelling en leerweg",
+    definitie=(
+        "hoofdinschrijvingen op 1 oktober per instelling (bol, bbl en examendeelnemers, bekostigd en niet-bekostigd), "
+        "opgeteld; aantallen van 1 tot en met 4 staan op -1 en tellen niet mee, dus de som is een ondergrens die per "
+        "DUO-bestand verschilt"
+    ),
+    gebruik=(
+        "Alleen als de gebruiker om de DUO-telling vraagt: per instelling get_maat mbo_studenten_instelling, "
+        "landelijk get_duo_data op dit bestand met de gewone gronding. De app zet de bron, de definitie en dit "
+        "alternatief zelf onder het antwoord."
+    ),
+)
 
 # Vmbo → mbo (#667): dezelfde vraag kreeg CBS 85569NED (83.020) of DUO "Instromende mbo-studenten" (96.629). Beide
 # klopten, met een andere definitie. De code kiest CBS; DUO komt als alternatief in de regel onder het antwoord.
@@ -202,6 +227,20 @@ MATEN: dict[str, Recept] = {
         "hoofdinschrijvingen op 1 oktober: bol en bbl (bekostigd en niet-bekostigd) en examendeelnemers "
         "(DUO mbo-studenten-per-instelling)",
     ),
+    MBO_STUDENTEN_LANDELIJK: CbsRecept(
+        MBO_STUDENTEN_LANDELIJK,
+        "mbo-studenten landelijk, per studiejaar, naar leerweg (CBS 85354NED, afgerond op tientallen)",
+        "85354NED",
+        "mbo-studenten landelijk, alle niveaus, geslachten en herkomsten; CBS rondt af op tientallen",
+        "MboStudenten_1",
+        sectoren=("mbo",),
+        sectordimensie=None,
+        sectorcodes={},
+        vormdimensie="Leerweg",
+        vormen=_LEERWEGEN_MBO_CBS,
+        vast={"Geslacht": "T001038", "Niveau": "T001336", "Herkomstland": "T001040", "GeboortelandOuders": "T001638"},
+        alternatieve_bron=_DUO_MBO_STUDENTEN,
+    ),
     DOORSTROOM_VMBO_MBO: CbsSomRecept(
         DOORSTROOM_VMBO_MBO,
         "doorstroom vmbo → mbo landelijk, per schooljaar: mbo-instromers uit vmbo-leerjaar 3-4 (CBS)",
@@ -221,6 +260,8 @@ MATEN: dict[str, Recept] = {
         _DUO_INSTROOM_MBO,
     ),
 }
+# De maat voor één instelling bij een landelijke maat: een instelling erbij is een fout die daarheen wijst.
+_PER_INSTELLING = {DEELNEMERS_HO_LANDELIJK: PERSONEN_HO, MBO_STUDENTEN_LANDELIJK: MBO_STUDENTEN}
 
 
 def vormen(recept: Recept) -> tuple[str, ...]:
@@ -267,11 +308,18 @@ def _bestand(dataset: str, woorden: tuple[str, ...]) -> int | None:
     return None
 
 
-def _somplan(recept: CbsSomRecept, instelling, sector, vorm: str, jaren: tuple[int, ...]) -> Plan | str:
-    """Een landelijke maat voor één sector: de sector volgt uit het recept, een instelling is een fout (geen gok)."""
+def _landelijkplan(
+    recept: CbsRecept | CbsSomRecept, instelling, sector, vorm: str, jaren: tuple[int, ...]
+) -> Plan | str:
+    """Een landelijke maat: een instelling is een fout (geen gok); bij één sector volgt de sector uit het recept."""
     if instelling and str(instelling).strip():
+        if andere := _PER_INSTELLING.get(recept.naam):
+            return f"{recept.naam} is landelijk; per instelling is dat {andere}, met de instelling."
         return f"{recept.naam} is landelijk; per instelling of regio is er geen vaste maat. Laat de instelling weg."
-    sector = str(sector or recept.sectoren[0]).strip().lower()
+    enige = recept.sectoren[0] if len(recept.sectoren) == 1 else ""
+    sector = str(sector or enige).strip().lower()
+    if not sector:
+        return f"Geef voor {recept.naam} de sector: {' of '.join(recept.sectoren)}."
     if sector not in recept.sectoren:
         return f"{recept.naam} geldt voor {'/'.join(recept.sectoren)}, niet voor {sector}."
     return Plan(recept, sector, vorm, jaren, None, None)
@@ -308,13 +356,8 @@ def plan(maat, instelling=None, sector=None, vorm=ALLE, schooljaren=None, opleid
     jaren = _jaren(schooljaren)
     if isinstance(jaren, str):
         return jaren
-    if isinstance(recept, CbsSomRecept):
-        return _somplan(recept, instelling, sector, vorm, jaren)
-    if isinstance(recept, CbsRecept):
-        sector = str(sector or "").strip().lower()
-        if sector not in recept.sectoren:
-            return f"Geef voor {recept.naam} de sector: {' of '.join(recept.sectoren)}."
-        return Plan(recept, sector, vorm, jaren, None, None)
+    if isinstance(recept, CbsRecepten):
+        return _landelijkplan(recept, instelling, sector, vorm, jaren)
     if not instelling or not str(instelling).strip():
         return f"Geef voor {recept.naam} de instelling (officiële naam of alias)."
     profiel = instellingen.instellingsprofiel(str(instelling))
@@ -361,12 +404,13 @@ def selectie(p: Plan) -> dict:
     r = p.recept
     if isinstance(r, CbsSomRecept):
         dimensies = {**r.vast, r.somdimensie: list(r.somcodes)}
-        if standaard := cbs_standaard.keuze(r.dataset):
-            dimensie, code, _ = standaard
-            dimensies[dimensie] = code
     else:
         assert isinstance(r, CbsRecept)
-        dimensies = {r.sectordimensie: r.sectorcodes[p.sector], r.vormdimensie: r.vormen[p.vorm], **r.vast}
+        dimensies = {r.sectordimensie: r.sectorcodes[p.sector]} if r.sectordimensie else {}
+        dimensies |= {r.vormdimensie: r.vormen[p.vorm], **r.vast}
+    if p.vorm == ALLE and (standaard := cbs_standaard.keuze(r.dataset)):
+        dimensie, code, _ = standaard
+        dimensies[dimensie] = code
     return {
         "dimensies": dimensies,
         "periode": [periode.label(j) for j in p.jaren] or cbs_selectie.ALLES,
@@ -587,11 +631,16 @@ def _recept(p: Plan) -> dict:
 
 
 def _teldefinitie(p: Plan) -> str:
-    """De teldefinitie van het recept; bij een som met een standaardselectie ook de telling die geladen is."""
+    """De teldefinitie van het recept, bij CBS met de telling die geladen is: de standaard (vorm alle) of de vorm.
+
+    De regel onder het antwoord (`agent/bronkeuze.py`) noemt haar: een bol-cijfer mag daar niet als alle leerwegen staan.
+    """
     r = p.recept
-    if isinstance(r, CbsSomRecept) and (standaard := cbs_standaard.keuze(r.dataset)):
+    if isinstance(r, CbsRecepten) and p.vorm == ALLE and (standaard := cbs_standaard.keuze(r.dataset)):
         dimensie, _, label = standaard
         return f"{r.teldefinitie}; {dimensie}: {label}"
+    if isinstance(r, CbsRecept) and p.vorm != ALLE:
+        return f"{r.teldefinitie}; {r.vormdimensie}: {p.vorm}"
     return r.teldefinitie
 
 
@@ -639,6 +688,6 @@ def get_maat(
             "subonderdeel), zonder onderdrukte aantallen en met hetzelfde totaal als in het opleidingsbestand. Zeg dat "
             "zo in het antwoord; het is geen schatting. Een jaar onder niet_af_te_leiden krijgt geen getal."
         )
-    if isinstance(r, CbsSomRecept):
+    if isinstance(r, CbsRecepten) and r.alternatieve_bron is not None:
         result["alternatieve_bron"] = asdict(r.alternatieve_bron)
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)

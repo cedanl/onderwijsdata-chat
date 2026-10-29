@@ -1,6 +1,6 @@
 {
   "_doc": "Vastgelegde ijkwaarden voor de bronwaarheid-evals (#190), rechtstreeks bij CBS, DUO en RIO opgehaald door scripts/ijkwaarden.py; niet met de hand bewerken. evaluations.json verwijst per referentiewaarde naar een id hier (data_points.ijkwaarden). `python scripts/ijkwaarden.py` toont elk verschil met de bron; `--schrijf` legt de nieuwe stand vast.",
-  "opgehaald_op": "2026-10-19",
+  "opgehaald_op": "2026-10-29",
   "waarden": {
     "cbs-hbo-totaal-2024": {
       "bron": "cbs",
@@ -64,6 +64,50 @@
       "status": "Voorlopig",
       "bron_gewijzigd": "2026-04-10",
       "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED/TypedDataSet?%24filter=trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Onderwijssoort%29+eq+%27A025294%27+and+trim%28Opleidingsfase%29+eq+%27A045745%27+and+trim%28Opleidingsvorm%29+eq+%27A028666%27+and+trim%28Perioden%29+eq+%272025SJ00%27&%24select=TotaalIngeschrevenen_1"
+    },
+    "cbs-mbo-totaal-2024": {
+      "bron": "cbs",
+      "omschrijving": "mbo-studenten landelijk 2024/25 (#805)",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85354NED",
+        "dimensies": {
+          "Geslacht": "T001038",
+          "Niveau": "T001336",
+          "Leerweg": "A025290",
+          "Herkomstland": "T001040",
+          "GeboortelandOuders": "T001638"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "MboStudenten_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 475460,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-09",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85354NED/TypedDataSet?%24filter=trim%28GeboortelandOuders%29+eq+%27T001638%27+and+trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Herkomstland%29+eq+%27T001040%27+and+trim%28Leerweg%29+eq+%27A025290%27+and+trim%28Niveau%29+eq+%27T001336%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=MboStudenten_1"
+    },
+    "cbs-mbo-totaal-excl-extranei-2024": {
+      "bron": "cbs",
+      "omschrijving": "mbo-studenten landelijk zonder extranei 2024/25 (#805)",
+      "eenheid": "studenten (CBS, afgerond op 10-tallen)",
+      "selectie": {
+        "dataset": "85354NED",
+        "dimensies": {
+          "Geslacht": "T001038",
+          "Niveau": "T001336",
+          "Leerweg": "A041867",
+          "Herkomstland": "T001040",
+          "GeboortelandOuders": "T001638"
+        },
+        "periode": "2024SJ00",
+        "onderwerp": "MboStudenten_1"
+      },
+      "schooljaar": "2024/25",
+      "waarde": 465820,
+      "status": "Definitief",
+      "bron_gewijzigd": "2026-04-09",
+      "url": "https://opendata.cbs.nl/ODataApi/odata/85354NED/TypedDataSet?%24filter=trim%28GeboortelandOuders%29+eq+%27T001638%27+and+trim%28Geslacht%29+eq+%27T001038%27+and+trim%28Herkomstland%29+eq+%27T001040%27+and+trim%28Leerweg%29+eq+%27A041867%27+and+trim%28Niveau%29+eq+%27T001336%27+and+trim%28Perioden%29+eq+%272024SJ00%27&%24select=MboStudenten_1"
     },
     "cbs-mbo-vrouwen-2021": {
       "bron": "cbs",

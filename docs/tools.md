@@ -272,8 +272,8 @@ per sessie anders, verkeerd schooljaar) is zo een beslissing van code.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
-| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling), `doorstroom_vmbo_mbo` (CBS 85569NED, landelijk) |
-| `instelling` | string | Officiële naam of alias; het register (`data/instellingen.py`) geeft code en sector. Onbekend is een fout, geen gok |
+| `maat` | string | `ingeschreven_personen_ho` (p01hoinges), `inschrijvingen_ho` (p03hoinschr), `eerstejaars_ho` (p02ho1ejrs), `deelnemers_ho_landelijk` (CBS 85423NED), `mbo_studenten_instelling` (mbo-studenten-per-instelling), `mbo_studenten_landelijk` (CBS 85354NED), `doorstroom_vmbo_mbo` (CBS 85569NED, landelijk) |
+| `instelling` | string | Officiële naam of alias; het register (`data/instellingen.py`) geeft code en sector. Onbekend is een fout, geen gok; bij een landelijke maat ook een fout (#805) |
 | `sector` | string | Alleen bij `deelnemers_ho_landelijk`: `hbo` of `wo` |
 | `vorm` | string | `alle` (standaard), `voltijd`, `deeltijd`, `duaal` (ho) of `bol`, `bbl` (mbo) |
 | `schooljaren` | array | `2024/25` of `2024`; weglaten voor alle beschikbare |
@@ -287,7 +287,9 @@ code koos), `periodekolom`/`waardekolom`, en `ontbrekende_schooljaren` als de br
 Bij mbo is `AANTAL` de som van de leerwegkolommen van de vorm, als eigen key. `doorstroom_vmbo_mbo` (#667) is de
 som van twee vmbo-posities een jaar eerder (`A041923` + `A041922`) in CBS 85569NED, ook als eigen key; het resultaat
 heeft `alternatieve_bron` (DUO "Instromende mbo-studenten") en het antwoord eindigt met een regel uit code over de
-bron, de definitie en dat alternatief (zie `docs/domeinregels.md`). Een key uit `get_maat` komt na een
+bron, de definitie en dat alternatief (zie `docs/domeinregels.md`). `mbo_studenten_landelijk` (#805) is het
+landelijke totaal uit CBS 85354NED: `Leerweg` volgt bij vorm `alle` de extranei-standaard, `bol`/`bbl` pinnen
+`A041868`/`A025293`; het alternatief is DUO "Mbo-studenten per instelling", met dezelfde regel onder het antwoord. Een key uit `get_maat` komt na een
 herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snippet is het recept als script.
 
 **Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
