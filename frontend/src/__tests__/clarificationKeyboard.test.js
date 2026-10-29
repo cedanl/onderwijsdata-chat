@@ -85,7 +85,7 @@ describe('ClarificationButtons by role and name (#541)', () => {
   }
 
   it.each(LABELS.map((label, i) => [NAMEN[i], label]))('finds "%s" and chooses "%s" once', (naam, label) => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn(() => true)
     render({ onSelect })
     const optie = getByRole(container, 'button', naam)
 

@@ -14,10 +14,10 @@ export default function ClarificationButtons({ options, onSelect, busy, answer =
   const chosen = answer?.answered ? answer.choice : clicked
   const closed = !!(answer?.answered || clicked)
 
+  // Pas dicht als de keuze echt wegging (#774): zonder verbinding bleef de kaart anders op slot tot herladen.
   const handleSelect = (label) => {
     if (busy || closed) return
-    setClicked(label)
-    onSelect(label)
+    if (onSelect(label)) setClicked(label)
   }
 
   return (

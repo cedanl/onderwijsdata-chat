@@ -10,6 +10,7 @@ import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
+import { refusalReason } from '../sendBlockReason'
 import { appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
@@ -471,7 +472,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       handleModelChange(modelId)
       sendSettings(chatSettings(modelId, settings.instelling, settings.functie))
     }
-    if (!send(question)) setRefusal({})
+    verstuur(question)
   }
 
   // De vraag achter het antwoord op index i opnieuw: na een herstart haalt alleen dat de data terug (CH-44).
@@ -527,6 +528,28 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
   const atContextLimit = userTurnCount >= MAX_CHAT_TURNS
   const nearContextLimit = userTurnCount >= WARN_CHAT_TURNS
+
+  // Alles wat buiten de composer om een vraag verstuurt (suggesties, voorbeeldvragen, opnieuw sturen, "Ga verder",
+  // "Stel de laatste vraag opnieuw", "Opnieuw" bij een fout) gaat hierlangs (#774): dezelfde voorwaarden als de
+  // composer, en een weigering staat onder het invoerveld met dezelfde reden (#585). Geeft terug of de vraag wegging.
+  // In de open lade op een telefoon ligt het invoerveld onder de lade: de reden dan als melding erboven (die ligt
+  // boven de lade), niet ook nog onder het invoerveld, anders hoort een schermlezer hem twee keer.
+  const weiger = useCallback(() => {
+    if (!(narrowScreen && sidebarOpen)) return setRefusal({})
+    addToast(refusalReason({ connected, busy, resetting, reporting: reportBusy, atContextLimit }).text, 'warning')
+  }, [narrowScreen, sidebarOpen, addToast, connected, busy, resetting, reportBusy, atContextLimit])
+  const verstuur = useCallback((content) => {
+    if (!atContextLimit && send(content)) return true
+    weiger()
+    return false
+  }, [atContextLimit, send, weiger])
+  // Een verduidelijking maakt een al gestelde vraag af: geen nieuwe vraag, dus geen weigering op de limiet van
+  // MAX_CHAT_TURNS vragen. Anders kwam de laatste vraag van een volle chat nooit af.
+  const verstuurKeuze = useCallback((keuze) => {
+    if (sendClarification(keuze)) return true
+    weiger()
+    return false
+  }, [sendClarification, weiger])
   const reportState = canGenerateReport(messages, restoredMessages, historyDataKeys)
 
   // Op een telefoon staat de knop onder het laatste antwoord, in de berichten (#596); op desktop in de statusrij.
@@ -588,7 +611,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           )}
           <div style={{ marginTop: 20 }}>
             <div className="sidebar-section-title" style={{ marginBottom: 10 }}>Suggestie vragen</div>
-            <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} sector={sector} />
+            <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} />
           </div>
           <ConversationHistory
             history={conversationHistory}
@@ -627,7 +650,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 {/* On phones and tablets the sidebar is a drawer; without this, nobody finds the suggestions. */}
                 {narrowScreen && (
                   <div className="chat-welcome-suggestions">
-                    <SuggestedQuestions onSend={send} busy={busy} instelling={settings.instelling} sector={sector} />
+                    <SuggestedQuestions onSend={verstuur} busy={busy} instelling={settings.instelling} sector={sector} />
                   </div>
                 )}
               </WelcomeScreen>
@@ -642,7 +665,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             {rijen.map(({ msg, index: i, figures, laatsteId }) => (
               <Message
                 key={msg.id} msg={msg} figures={figures} verbinding={connected}
-                onClarification={sendClarification} onSend={send} busy={busy}
+                onClarification={verstuurKeuze} onSend={verstuur} busy={busy}
                 onVervolgvraag={i === vervolgIndex && !atContextLimit ? prefillComposer : null}
                 clarification={msg.clarification ? clarificationAnswer(displayMessages, i) : null}
                 onAndersFormuleren={msg.clarification && !atContextLimit ? andersFormulerenVoor(i) : null}
@@ -725,7 +748,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
                 De data van dit gesprek is niet meer geladen. Stel een vraag om haar opnieuw te laden, dan kun je een rapport genereren.
                 {lastDataQuestion(restoredMessages) && (
                   <button type="button" className="message-continue" disabled={reportBusy}
-                    onClick={() => send(lastDataQuestion(restoredMessages))}>
+                    onClick={() => verstuur(lastDataQuestion(restoredMessages))}>
                     Stel de laatste vraag opnieuw
                   </button>
                 )}

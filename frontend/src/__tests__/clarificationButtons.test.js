@@ -40,13 +40,25 @@ describe('ClarificationButtons (#109)', () => {
   })
 
   it('an open card can be answered once', () => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn(() => true)
     const [, tweede] = render({ onSelect, answer: { answered: false, choice: null } })
     expect(tweede.disabled).toBe(false)
     act(() => tweede.click())
     act(() => tweede.click())
     expect(onSelect).toHaveBeenCalledOnce()
     expect(onSelect).toHaveBeenCalledWith('Alle jaren')
+  })
+
+  // #774: zonder verbinding (of een andere weigering) ging er niets weg, maar de kaart zat op slot tot herladen.
+  it('stays open when the choice could not be sent', () => {
+    const onSelect = vi.fn(() => false)
+    const [eerste, tweede] = render({ onSelect, answer: { answered: false, choice: null } })
+    act(() => tweede.click())
+    expect(tweede.textContent).toBe('Alle jaren — de hele reeks')
+    expect(eerste.disabled).toBe(false)
+    expect(tweede.disabled).toBe(false)
+    act(() => tweede.click())
+    expect(onSelect).toHaveBeenCalledTimes(2)
   })
 })
 
