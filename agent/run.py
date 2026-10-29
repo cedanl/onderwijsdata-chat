@@ -263,6 +263,10 @@ def _met_kopregels(tekst: str, messages: list[dict], session: dict, steps: list[
     De lezing beslist op de modeltekst zelf: de regel mag een eigen "Ik ga uit van" van het model niet uit de eerste
     regels duwen. Op `messages`, niet op de ingekorte history: daar kunnen oude beurten uit zijn (#545). De regel
     kijkt naar de vraag met de gekozen verduidelijkingsopties: een gekozen instelling of jaar noemde de gebruiker."""
+    # Een deelantwoord houdt zijn melding bovenaan: de kopregels horen bij het antwoord eronder.
+    deel = f"{DEELANTWOORD}\n\n"
+    if tekst.startswith(deel):
+        return deel + _met_kopregels(tekst.removeprefix(deel), messages, session, steps)
     zin = interpretatie_bij(tekst, _laatste_vraag(messages), steps, session, vervolg=is_vervolgvraag(messages))
     tekst = met_niet_meegeteld(tekst, [result for _, result in steps])
     tekst = met_uitgangspunt(tekst, _poortvraag(messages, session), steps)

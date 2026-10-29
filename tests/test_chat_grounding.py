@@ -12,10 +12,18 @@ import pandas as pd
 import pytest
 
 from agent import controles
+from agent.niet_meegeteld import KOP as NIET_KOP
+from agent.niet_meegeteld import NIET_MEEGETELD
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
+
+
+def _niet_meegeteld(dataset: str) -> str:
+    """De regel die een DUO-telling vooraan krijgt (#743)."""
+    return f"{NIET_KOP} {NIET_MEEGETELD[dataset]}.\n\n"
+
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -205,7 +213,7 @@ def test_wrong_schooljaar_gets_a_correction_with_the_right_code(monkeypatch):
     )
     store.clear()
 
-    assert text == "In 2025/26 waren het 7.408 deeltijdstudenten."
+    assert text == _niet_meegeteld("p01hoinges") + "In 2025/26 waren het 7.408 deeltijdstudenten."
     correctie = seen[2][-1]["content"]
     assert "2025/26" in correctie and "STUDIEJAAR=2025" in correctie
     assert "controle" not in events[-1]
@@ -318,7 +326,11 @@ def test_other_institution_gets_a_correction_with_the_right_code(monkeypatch):
 
     # "De HU" is de afkorting: de Uitgangspunt-regel noemt de instelling volledig, en alleen de selectie waarop het
     # antwoord rust, niet de vervangen Aeres-selectie (#620).
-    assert text == "**Uitgangspunt:** Hogeschool Utrecht (25DW)\n\nDe HU had 26.370 voltijdstudenten."
+    assert text == (
+        "**Uitgangspunt:** Hogeschool Utrecht (25DW)\n\n"
+        + _niet_meegeteld("p01hoinges")
+        + "De HU had 26.370 voltijdstudenten."
+    )
     correctie = seen[2][-1]["content"]
     assert "Hogeschool Utrecht (25DW)" in correctie and "INSTELLINGSCODE_ACTUEEL=25DW" in correctie
     assert "controle" not in events[-1]
@@ -358,7 +370,7 @@ def test_wrong_label_next_to_a_correct_number_gets_a_correction(monkeypatch):
         ],
     )
 
-    assert text == "Deeltijd (DT): 5.943 eerstejaars."
+    assert text == _niet_meegeteld("p02ho1ejrs") + "Deeltijd (DT): 5.943 eerstejaars."
     assert "message_cancel" in [e["type"] for e in events]
 
 
@@ -419,7 +431,7 @@ def test_duo_answer_gets_the_telling_block_from_code(monkeypatch):
         tool_result=rows,
     )
 
-    assert text.startswith("In totaal 5.943 eerstejaars")
+    assert text.startswith(_niet_meegeteld("p01hoinges") + "In totaal 5.943 eerstejaars")
     assert text.endswith("Ingeschrevenen: hoofdinschrijvingen op de peildatum.")
     assert "**Telling**" in text
     assert events[-1]["type"] == "message_end" and events[-1]["content"] == text

@@ -12,9 +12,17 @@ import pandas as pd
 import pytest
 
 from agent.budget import AFRONDEN, DEELANTWOORD, zonder_antwoord
+from agent.niet_meegeteld import KOP as NIET_KOP
+from agent.niet_meegeteld import NIET_MEEGETELD
 from agent.stream import StreamResult
 from tools import fouten, store
 from tools.store import KeyMeta
+
+
+def _niet_meegeteld(dataset: str) -> str:
+    """De regel die een DUO-telling vooraan krijgt (#743)."""
+    return f"{NIET_KOP} {NIET_MEEGETELD[dataset]}.\n\n"
+
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -98,7 +106,8 @@ def _tools(n: int) -> list[StreamResult]:
 
 def test_afrondronde_geeft_een_deelantwoord(monkeypatch):
     text, events = _chat(monkeypatch, [*_tools(2), StreamResult(text="Er is data geladen.", tool_calls=[])], _geladen())
-    assert text == f"{DEELANTWOORD}\n\nEr is data geladen."
+    # De melding blijft bovenaan; wat de telling niet meetelt, hoort bij het antwoord eronder (#743).
+    assert text == f"{DEELANTWOORD}\n\n{_niet_meegeteld('p01hoinges')}Er is data geladen."
     assert events[-1]["type"] == "message_end"
     assert not any(e["type"] == "error" for e in events)
 

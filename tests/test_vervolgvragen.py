@@ -16,6 +16,8 @@ import pytest
 from agent import vervolgvragen
 from agent.budget import DEELANTWOORD
 from agent.loop import LoopResult
+from agent.niet_meegeteld import KOP as NIET_KOP
+from agent.niet_meegeteld import NIET_MEEGETELD
 from agent.probleem import INGEHOUDEN, Probleem, hard
 from agent.scopevraag import Kaart
 from agent.stream import StreamResult
@@ -23,6 +25,12 @@ from agent.vaste_antwoorden import WEIGER_ANTWOORD
 from tools import catalog, scopeprofiel, store
 from tools.ho_markers import noemt_ho
 from tools.store import KeyMeta
+
+
+def _niet_meegeteld(dataset: str) -> str:
+    """De regel die een DUO-telling vooraan krijgt (#743)."""
+    return f"{NIET_KOP} {NIET_MEEGETELD[dataset]}.\n\n"
+
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -540,7 +548,7 @@ def test_een_data_antwoord_krijgt_vervolgvragen_zonder_dat_het_model_een_tool_ki
     text, events, session = _beurt(monkeypatch, _antwoord(_LAAD))
 
     vragen = _slot(events)["vervolgvragen"]
-    assert text.startswith("Het hbo had veel eerstejaars.")
+    assert text.startswith(f"{_niet_meegeteld('p02ho1ejrs')}Het hbo had veel eerstejaars.")
     assert len(kies_aanroepen) == 1
     _aanbod_uit_de_lijst(vragen, "p02ho1ejrs")
     assert session["vervolgvragen_getoond"] == vragen

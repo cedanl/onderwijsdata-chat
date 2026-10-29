@@ -17,6 +17,8 @@ import pytest
 
 from agent.bronvermelding import bronlinks_van, bronnen_van, buiten_bronnensectie, zonder_eigen_bronnen
 from agent.loop import LoopResult
+from agent.niet_meegeteld import KOP as NIET_KOP
+from agent.niet_meegeteld import NIET_MEEGETELD
 from agent.probleem import INGEHOUDEN
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
@@ -25,6 +27,12 @@ from tools.arbeidsmarkt import DATASET, ROA_ID, UWV_ID
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.store import KeyMeta
+
+
+def _niet_meegeteld(dataset: str) -> str:
+    """De regel die een DUO-telling vooraan krijgt (#743)."""
+    return f"{NIET_KOP} {NIET_MEEGETELD[dataset]}.\n\n"
+
 
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
@@ -293,7 +301,8 @@ def test_dataantwoord_krijgt_de_bronnen_en_verliest_de_eigen_sectie(monkeypatch)
     einde = _slot(monkeypatch, [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=antwoord, tool_calls=[])])
 
     assert einde["bronnen"] == [_DUO]
-    assert "**Bronnen**" not in einde["content"] and einde["content"].startswith(_ANTWOORD)
+    assert "**Bronnen**" not in einde["content"]
+    assert einde["content"].startswith(_niet_meegeteld("p01hoinges") + _ANTWOORD)
 
 
 def test_valt_de_bronnenlijst_uit_dan_blijft_de_eigen_sectie(monkeypatch):
@@ -480,7 +489,7 @@ def test_vallen_de_links_uit_dan_blijven_antwoord_en_bronnen(monkeypatch, caplog
     antwoord = f"{_ANTWOORD}\n\n**Bronnen**\n- DUO p01hoinges"
     einde = _slot(monkeypatch, [StreamResult(text="", tool_calls=[_LAAD]), StreamResult(text=antwoord, tool_calls=[])])
 
-    assert einde["content"] == _ANTWOORD
+    assert einde["content"] == _niet_meegeteld("p01hoinges") + _ANTWOORD
     assert einde["bronnen"] == [_DUO]
     assert "bronlinks" not in einde
     assert any(r.levelno == logging.ERROR and "in bronlinks" in r.getMessage() for r in caplog.records)
