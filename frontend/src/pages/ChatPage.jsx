@@ -72,7 +72,7 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat()
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
@@ -275,7 +275,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [startNewConversation, saveConversation, models, defaultModel, focusNa])
 
   const openConversation = useCallback((conv) => {
-    clear()
     setSidebarOpen(false)
     setConversationId(String(conv.id))
     const restored = conversationMessages(conv)
@@ -284,11 +283,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     setRestoredMessages(restored)
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
-    sendHistory(restored, String(conv.id))
+    // Leeg, naar de server, en tot zijn antwoord geen events meer van een run die nog liep (#761).
+    openInChat(restored, String(conv.id))
     // Naar het gesprek zelf, niet naar het invoerveld: wie een gesprek opent wil eerst lezen, en op een telefoon
     // schoof het toetsenbord er anders overheen. De knop in de lijst was tijdens het openen uitgeschakeld (#776).
     focusNa(GESPREK)
-  }, [clear, sendHistory, models, focusNa])
+  }, [openInChat, models, focusNa])
 
   // The list holds no messages (#509): opening a conversation fetches it. The open conversation is
   // saved first and that save awaited, so reopening what was just asked never races its own PUT.

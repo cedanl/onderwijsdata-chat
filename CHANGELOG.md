@@ -8,6 +8,12 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
+- Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
+  geopende gesprek landen en mee opgeslagen worden. Een half antwoord bleef daarbij open staan en blokkeerde het rapport.
+  Openen werkt nu als "Nieuw gesprek" (#337): tot de server het gesprek kent (`history_data`), komen er geen events van
+  de oude run meer binnen.
+
 ### Een dashboard komt niet af zonder dat je het merkt (#792)
 - Een dashboard waarvoor het model binnen het stappenbudget geen antwoord gaf, werd als leeg of half dashboard
   geleverd. Nu volgt een melding dat het niet af kwam, zoals bij het rapport.
