@@ -4,7 +4,7 @@
 
 Statistiekbureaus (ONS, Statistics Canada) hebben hun RAG-chatbots stilgezet omdat die getallen gaven die niet te controleren waren. Een taalmodel kan een getal verzinnen, afronden, uit een andere selectie halen of bij het verkeerde jaar zetten. Voor instellingen die op cijfers worden afgerekend is dat niet acceptabel.
 
-Dit systeem **kan niet uitsluiten** dat een model zoiets probeert. Het zorgt ervoor dat de berekening in code gebeurt en dat een antwoord dat niet bij de data past wordt gevangen, in plaats van dat het de gebruiker bereikt. Op deze pagina staat welke lagen dat doen, en wat ze **niet** dekken.
+Dit systeem **kan niet uitsluiten** dat een model zoiets probeert. Het zorgt ervoor dat de berekening in code gebeurt en dat een antwoord dat niet bij de data past wordt gevangen en zichtbaar ingetrokken. De tekst stroomt namelijk live naar de gebruiker (`stream_text=True` in `agent/run.py`) en de controles draaien daarna: een getal kan dus kort zichtbaar zijn voor het wordt ingetrokken. Het ingetrokken antwoord blijft als zodanig herkenbaar (`IngetrokkenVersies`). Op deze pagina staat welke lagen dat doen, en wat ze **niet** dekken.
 
 ## Stroomkaart van één beurt
 
@@ -21,9 +21,9 @@ laatste kolom zegt wie beslist: **code** (deterministisch) of **model**.
 | 6 | Einde zonder gewoon antwoord: afgebroken, een verduidelijkingskaart, of de loop is uitgeput (dan een vaste tekst met wat al is opgehaald). | `_vroeg_einde` | code |
 | 7 | Blijven alleen zinnen met een ongedekt getal over, dan vervalt alleen die zin, niet het antwoord (#619). | `zonder_ongedekte_zinnen` | code |
 | 8 | Eindtekst: zelfcorrectie naar de redeneerkaart, bronnen en links uit de toolstappen, vaste teleenheidsregel, kopregels (lezing, uitgangspunt en wat de telling niet meetelt, #743). | `_eindtekst`, `_met_kopregels`, `agent/telling.py` | code |
-| 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `_slotbericht` | code (vervolgvragen: model) |
+| 9 | Herkomst en publicatie: manifest met model, prompt-, catalogus- en dataversie, vervolgvragen, het slotbericht naar de gebruiker. | `manifest.bouw`, `log_publicatie`, `_slotbericht` | code (vervolgvragen: uit de catalogus, `agent/vervolgvragen.py`) |
 
-Het model formuleert dus in stap 4 en kiest de vervolgvragen in stap 9; alles waarop een getal, bron of selectie rust,
+Het model formuleert dus in stap 4; de vervolgvragen in stap 9 kiest code uit de voorbeeldvragen van de catalogus, het model beslist er niets over (#364, #539). Alles waarop een getal, bron of selectie rust,
 komt uit code. Rapporten en dashboards hebben eigen poorten in plaats van stap 5 (`agent/report_checks.py`,
 `_check_number_sourcing` in `agent/dashboard.py`, zie laag 3).
 

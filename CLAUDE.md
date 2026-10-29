@@ -8,7 +8,7 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 
 ## Tech Stack
 
-- **Backend**: FastAPI, WebSocket per sessie, SQLite persistentie
+- **Backend**: FastAPI, WebSocket per sessie, PostgreSQL persistentie (SQLite alleen als lokale terugval zonder `POSTGRES_URI`)
 - **Frontend**: React, WebSocket-connection
 - **Tools**: CBS (StatLine), DUO (onderwijs), RIO (arbeidsmarkt)
 

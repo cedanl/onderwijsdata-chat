@@ -85,12 +85,34 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard` |
+| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `ping`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard`. Een onbekende action of misvormd frame krijgt een `error`-event; de verbinding blijft open |
 | `POST` | `/api/dashboard/refresh` | Ververs een bestaand dashboard via recipe/figure_recipes |
 
 - `reset` ("Nieuw gesprek") laat de server het lopende gesprek vergeten, inclusief geladen data; de server bevestigt met `reset_done`.
-- `history` opent een opgeslagen gesprek: ook dat start een schone sessie, die alleen de tekst van dat gesprek kent.
+- `ping` is de hartslag van de frontend; de server antwoordt met `pong`.
+- `history` (`messages`, optioneel `conv_id`) opent een opgeslagen gesprek: ook dat start een schone sessie. Die kent de tekst van dat gesprek en, met `conv_id`, de data keys uit de recepten van dat gesprek (#472); de server meldt hoeveel met `history_data` (`data_keys`), zodat een rapport op die data kan zonder de vraag opnieuw te stellen.
 - De WebSocket slaat zelf niets op. De frontend bewaart elk gesprek onder één ID via `PUT /api/conversations/{id}` (zie Persistentie).
+
+**Events van de server** (JSON, veld `type`):
+
+| Event | Betekenis |
+|-------|-----------|
+| `message_start`, `text_delta`, `message_end` | Een antwoord: begin, tekst die live binnenstroomt, en het eindresultaat met bronnen en acties. `message_end` met `aborted` of `partial` is een afgebroken of onvolledig antwoord |
+| `message_cancel` | Het open antwoord vervalt (bij een verduidelijkingsvraag, of omdat een controle het intrekt; dan met `reden`). De tekst die al zichtbaar was, trekt de frontend zichtbaar in |
+| `tool_start`, `tool_end`, `figure` | Een toolstap met zijn resultaat, en een grafiek die de stap tekende |
+| `clarification` | Een verduidelijkingsvraag met opties; het antwoord gaat terug als action `clarification_choice` |
+| `starter_questions` | Voorbeeldvragen bij een onderwerp uit de startkaarten ("Verken …") |
+| `history_data` | Het aantal data keys dat bij een geopend gesprek terugkwam (zie `history`) |
+| `dashboard_generating`, `dashboard_ready` | Een dashboard wordt gebouwd, en het klare dashboard (`spec`) |
+| `report_generating`, `report_ready`, `report_error`, `report_cancelled` | Een rapport wordt gemaakt, is klaar, is geweigerd of mislukt (`report_error`, met `herstel: "rapport"` als opnieuw proberen past), of is geannuleerd |
+| `toast` | Een korte melding (`message`, `level`) |
+| `error` | Een fout in gewone woorden; `modelafhankelijk: false` als een ander model niets verandert |
+| `busy` | De vorige vraag loopt nog |
+| `run_slow` | De vraag duurt langer dan verwacht; de chat zegt dat onder de voortgang |
+| `reset_done`, `pong` | Antwoord op `reset` en op `ping` |
+| `system_message` | Een melding over de serverconfiguratie, zoals een ontbrekende API-sleutel |
+
+**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig of ingetrokken; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
 
 ---
 
@@ -123,4 +145,21 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |
 | `GET` | `/api/workbooks` | Lijst van alle workbooks van de ingelogde gebruiker |
 | `PUT` | `/api/workbooks/{id}` | Maak of update een workbook |
+| `GET` | `/api/workbooks/{id}` | Eén workbook met zijn inhoud (de lijst heeft alleen wat een kaart toont, #633); 404 bij onbekend ID of een workbook van een ander. Openen telt als gebruik: de bewaartermijn begint opnieuw (#485) |
 | `DELETE` | `/api/workbooks/{id}` | Verwijder een workbook |
+
+## Gegevens en feedback
+
+| Methode | Pad | Beschrijving |
+|---------|-----|--------------|
+| `GET` | `/api/data/csv` | De tabel achter een antwoord als CSV-bijlage (`key` als query param, met BOM voor Excel). Alleen voor een `key` waar een eigen gesprek een recept van heeft; na een herstart haalt de server de tabel opnieuw op. Een vreemde of verdwenen `key` geeft dezelfde 404; een bronfout 502. De header `X-Data-Herladen` meldt dat de cijfers kunnen afwijken van het eerdere antwoord (#269, #472) |
+| `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback en datarecepten van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
+| `DELETE` | `/api/mijn-gegevens` | Verwijdert al het werk van de ingelogde gebruiker in één transactie en trekt het token in. Body precies `{"bevestig": "verwijder"}`, anders 422; zonder authenticatie 404, want dan is er geen eigen account (#646) |
+| `GET` | `/api/answer-feedback` | De 👍/👎 op de antwoorden van een gesprek (`conversation_id`) |
+| `POST` | `/api/answer-feedback` | 👍/👎 op een antwoord (`conversation_id`, `message_index`, `oordeel` `up` of `down`, `toelichting`); de trace komt uit het eigen opgeslagen gesprek (#248) |
+| `GET` | `/api/feedback/questions` | De vragenlijst voor feedback op een rapport of dashboard (`core/feedback.py`) |
+| `GET` | `/api/feedback/given` | De werkboek-ID's waar de ingelogde gebruiker al feedback op gaf; leeg zonder login |
+| `POST` | `/api/feedback` | Feedback op een eigen rapport of dashboard (#250); beperkt per gebruiker en werkboek, 429 met `Retry-After` |
+| `POST` | `/api/feedback/algemeen` | Algemene feedback via de link Feedback (#600) |
+
+De feedbackroutes geven 404 `Feedback staat uit` als `FEEDBACK_ENABLED` uit staat; `GET /api/config` meldt dat als `feedback_enabled`.
