@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getWorkbooks, getWorkbookType, deleteWorkbook, isVolledig, loadWorkbook, loadWorkbooksFromServer } from '../workbooks'
+import { buurVan, idsInDocument, kiezerMetId } from '../focusNa'
+import { useFocusNaRender } from './useFocusNaRender'
+
+// De kaarten in de galerij, niet die in "Snel terug" (#603): daar staat hetzelfde rapport nog een keer.
+const KAART_ZONDER_ID = '.wb-grid .wb-card'
+const KAART = `${KAART_ZONDER_ID}[data-wb-id]`
 
 export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessage, initialSelected = null }) {
   const [workbooks, setWorkbooks] = useState(() => {
@@ -8,6 +14,7 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
   })
   const [gekozen, setSelected] = useState(initialSelected)
   const [pendingConfirm, setPendingConfirm] = useState(null)
+  const focusNa = useFocusNaRender()
   // The localStorage list can be empty or stale; only the server list may say "nothing saved".
   const [loading, setLoading] = useState(true)
   const [missingId, setMissingId] = useState(null)
@@ -70,13 +77,17 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
     setPendingConfirm({
       message: deleteMessage,
       onConfirm: () => {
+        // Nu de kaart nog in de galerij staat: de kaart erna, of anders de vorige (#776).
+        const buur = buurVan(idsInDocument(KAART, 'data-wb-id'), id)
         deleteWorkbook(id)
         const all = getWorkbooks()
         setWorkbooks(type ? all.filter(w => getWorkbookType(w) === type) : all)
         if (gekozen?.id === id) setSelected(null)
+        // Zonder dit viel de focus op <body>: de verwijderknop is met zijn kaart weg.
+        focusNa(buur && kiezerMetId(KAART_ZONDER_ID, 'data-wb-id', buur), KAART, '.wb-gallery-title')
       },
     })
-  }, [type, deleteMessage, gekozen])
+  }, [type, deleteMessage, gekozen, focusNa])
 
   const selected = openen ? null : gekozen
   return {

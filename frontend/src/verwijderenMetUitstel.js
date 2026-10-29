@@ -3,10 +3,11 @@
 // zet "Ongedaan maken" het terug. Eén gesprek tegelijk: een tweede verwijdering voert de eerste
 // direct uit. De wachttijd is kort en de lijst zonder het gesprek staat al in localStorage, zodat
 // verwijderen echt verwijderen blijft (privacy); het open gesprek wordt pas gewist als de tijd om is.
+// Zolang de melding met "Ongedaan maken" muis of toetsenbord heeft, staat de tijd stil (#776, WCAG 2.2.1).
 export const UITSTEL_MS = 8000
 
-export function uitgesteldeVerwijdering({ voerUit, wacht = UITSTEL_MS, timers = globalThis } = {}) {
-  let lopend = null // { conv, index, timer }
+export function uitgesteldeVerwijdering({ voerUit, wacht = UITSTEL_MS, timers = globalThis, klok = () => Date.now() } = {}) {
+  let lopend = null // { conv, index, timer, eind, rest }: rest is de resterende tijd zolang er gepauzeerd is
 
   function afronden() {
     if (!lopend) return null
@@ -23,7 +24,19 @@ export function uitgesteldeVerwijdering({ voerUit, wacht = UITSTEL_MS, timers = 
     plan(conv, index) {
       afronden()
       const timer = timers.setTimeout(afronden, wacht)
-      lopend = { conv, index, timer }
+      lopend = { conv, index, timer, eind: klok() + wacht, rest: null }
+    },
+    // De tijd stilzetten en later de rest laten lopen; dubbel pauzeren of hervatten telt als één keer.
+    pauzeer() {
+      if (!lopend || lopend.rest !== null) return
+      timers.clearTimeout(lopend.timer)
+      lopend.rest = Math.max(0, lopend.eind - klok())
+    },
+    hervat() {
+      if (!lopend || lopend.rest === null) return
+      lopend.eind = klok() + lopend.rest
+      lopend.timer = timers.setTimeout(afronden, lopend.rest)
+      lopend.rest = null
     },
     // Het geplande gesprek met zijn plaats in de lijst, of null als er niets te herstellen is.
     ongedaan() {
