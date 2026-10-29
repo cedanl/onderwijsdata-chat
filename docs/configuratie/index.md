@@ -58,7 +58,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## Model-picker
 
-De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld. Zonder deze instelling gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze.
+De model-picker verschijnt alleen als `AVAILABLE_MODELS` is ingesteld. Zonder deze instelling gebruikt de app altijd het `MODEL` uit `.env` — geen picker, geen keuze. Het aanbod is ook een grens aan de serverkant: stuurt een client een model dat niet in het aanbod van die gebruiker staat (`USER_MODELS` of anders `AVAILABLE_MODELS`), dan gebruikt de server `MODEL` (#755).
 
 ```dotenv
 AVAILABLE_MODELS=azure_ai/claude-sonnet-4-6,azure_ai/claude-haiku-4-5,azure_ai/gpt-4o
