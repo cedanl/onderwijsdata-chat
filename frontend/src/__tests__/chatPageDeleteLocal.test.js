@@ -42,6 +42,7 @@ vi.mock('../hooks/useChat', () => ({
 import ChatPage from '../pages/ChatPage'
 import { STORAGE_CONVERSATIONS, STORAGE_CURRENT_CHAT, STORAGE_TOKEN } from '../constants'
 import { UITSTEL_MS } from '../verwijderenMetUitstel'
+import { inWachtrij } from '../verwijderWachtrij'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -324,6 +325,28 @@ describe('verwijderd open gesprek komt niet terug op de server of in de lijst (#
     expect(putVoor('c1')).toHaveLength(1)
     expect(putVoor('c1')[0][1].messages.at(-1).content).toBe('heel')
     expect(lijstIds()).toContain('c1')
+  })
+
+  // #801: de wachtrij houdt een mislukte verwijdering vast voor het volgende laden; een gesprek dat daarna verder
+  // ging, hoort daar niet meer in, anders verwijderde het volgende laden wat er nog in gevraagd werd.
+  it('haalt het gesprek uit de verwijderwachtrij als er na een mislukte verwijdering een nieuwe vraag komt', async () => {
+    api.deleteConversationApi.mockRejectedValueOnce(Object.assign(new Error('API 503'), { status: 503 }))
+    await mount()
+    await verwijder('Open gesprek')
+    await bedenktijdVoorbij()
+    expect(inWachtrij()).toEqual(['c1'])
+    api.putConversation.mockClear()
+
+    const nieuweVraag = { id: 3, role: 'user', content: 'Nieuwe vraag', done: true }
+    chatState.busy = true
+    chatState.messages = [nieuweVraag, { id: 4, role: 'assistant', content: 'half', done: false }]
+    await render()
+    chatState.busy = false
+    chatState.messages = [nieuweVraag, { id: 4, role: 'assistant', content: 'heel', done: true }]
+    await render()
+
+    expect(putVoor('c1')).toHaveLength(1)
+    expect(inWachtrij()).toEqual([])
   })
 
   it('stuurt bij unmount geen PUT voor het verwijderde open gesprek en zet het niet terug in de lijst', async () => {
