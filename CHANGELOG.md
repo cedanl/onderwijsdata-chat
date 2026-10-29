@@ -53,6 +53,12 @@ eigen kop (`docs/promoten.md`).
   feedback) en staat in de export van je gegevens. De kolom komt er bij de eerstvolgende start vanzelf bij; oude
   rijen houden een lege instelling. `onderwijsdata-chat-feedback.sh` (glab-surf) toont haar mee.
 
+### Rapporten (feedback 28 oktober)
+- Op een telefoon scrolt een veeg over een rapportgrafiek de pagina, in plaats van in de grafiek in te zoomen (#740).
+  In de chat stond de sleepzoom op een smal scherm al uit (#614); het rapport krijgt dezelfde instelling tot 640 px.
+  Gemeten op 390 px met een aanraking: de pagina scrolt 247 px en het asbereik blijft gelijk, waar de pagina eerst
+  stilstond en de y-as inzoomde. In de chat scrolt dezelfde veeg 194 px.
+
 ### Rapporten (#660)
 - De HTML van rapporten en dashboards (viewer en download) laadt een eigen Plotly-build zonder maplibre: 3,3 MB in
   plaats van 4,8 MB, dus een gedownload rapport is ongeveer 1,5 MB kleiner. Een kaart in een rapport tekent sinds
