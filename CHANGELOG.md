@@ -20,6 +20,16 @@ eigen kop (`docs/promoten.md`).
   of landelijk per hbo en wo met de masters erbij (CBS 85422NED). Noemt de vraag bachelor, master, eerstejaars of een
   opleidingsnaam als "B Informatica", dan komt er geen kaart, en buiten deze vaste gevallen vraagt de app niet extra.
 
+### Een afwijking van de vraag staat vooraan in het rapport (#734)
+- Wijkt een rapport meetbaar af van wat de gebruiker vroeg, dan staat dat als eerste blok, vóór de onderzoeksvraag. Het
+  blok komt uit code (`agent/report_afwijking.py`, veld `afwijkingen` in het rapport). Er zijn twee soorten:
+  - een periode die de grafieken niet dekken, zoals "Gevraagd was de afgelopen 10 jaar; de grafieken tonen 2021/22 t/m
+    2025/26 (5 jaar), meer staat niet in de bron". Dat geldt ook bij "vanaf 2016" en "2016 tot 2025";
+  - een prognosevraag terwijl geen geladen bron een prognose is.
+- "Het veranderen van de onderzoeksvraag had veel prominenter in beeld en als eerste genoemd moeten zijn." Wat gevraagd
+  was, komt uit de woorden van de gebruiker: de bevestigde onderzoeksvraag, anders de laatste vraag die een periode
+  noemt. Andere afwijkingen blijven tekst van het model.
+
 ### Rapporteval: volgt het rapport de bijsturing? (#752)
 - Een eval over de echte keten (`tests/e2e/rapport-bijsturing.spec.js`) speelt de twee gesprekken uit de
   rapportfeedback van 28 oktober na. Daarna drukt hij op "Genereer rapport" met de onderzoeksvraag die de app voorstelt:

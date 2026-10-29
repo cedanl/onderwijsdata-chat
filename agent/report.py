@@ -36,6 +36,7 @@ from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
 from agent.recepten import van_session
+from agent.report_afwijking import afwijkingen
 from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
@@ -116,6 +117,8 @@ class ReportSpec:
     # Herkomst van het rapport: model, prompt-, catalogus- en dataversie (#345). Reist mee
     # in het workbook en de export; geen inhoud, geen persoonsgegevens.
     manifest: dict = field(default_factory=dict)
+    # Waar het rapport meetbaar afwijkt van de vraag (periode, prognose), uit code; vooraan in het rapport (#734).
+    afwijkingen: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -368,6 +371,10 @@ async def generate(
     spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen)
     keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(model or MODEL, keys, model_versie=getattr(result, "model_versie", None))
+    # Wat gevraagd was, in de woorden van de gebruiker: de bevestigde vraag, anders de laatste vraag eerst (#734).
+    onderwerp = str(context.get("topic") or "")
+    vragen = [onderwerp] if context.get("bevestigd") else [*reversed(gebruikersvragen(session)), onderwerp]
+    spec.afwijkingen = afwijkingen(vragen, spec.visualisaties, [*gelezen, *keys])
     log_publicatie(RAPPORT, keys, spec.manifest)
     return spec
 
