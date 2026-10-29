@@ -35,7 +35,7 @@ vi.mock('../hooks/useChat', () => ({
     connected: true, resetting: false, historyDataKeys: 0, toasts: chat.toasts, reportBusy: false,
     reportProgress: null, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
-    clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), addToast,
+    clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), openConversation: vi.fn(), addToast,
   }),
 }))
 

@@ -8,6 +8,12 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
+- Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
+  geopende gesprek landen en mee opgeslagen worden. Een half antwoord bleef daarbij open staan en blokkeerde het rapport.
+  Openen werkt nu als "Nieuw gesprek" (#337): tot de server het gesprek kent (`history_data`), komen er geen events van
+  de oude run meer binnen.
+
 ### Annuleer stopt een rapport ook als het model nog niets terugstuurde; rapport en dashboard hebben een tijdsgrens (#759)
 - Het stopsignaal werd pas gezien tussen rondes en per ontvangen stuk tekst. Hing de modelaanroep (tot 20 min), dan
   meldde de app "Rapport geannuleerd", maar de run liep door. Ze hield een runplaats bezet, en elke nieuwe vraag kreeg

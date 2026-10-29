@@ -207,6 +207,9 @@ export function useChat() {
       },
       history_data(ev) {
         setHistoryDataKeys(ev.data_keys || 0)
+        // The server stopped the old run before it read the history frame: what comes now is this conversation's (#761).
+        resettingRef.current = false
+        setResetting(false)
       },
       // The server refused a question because a run is still going (#145): say so,
       // take the question back out of the transcript and give it back to the input.
@@ -534,10 +537,12 @@ export function useChat() {
 
   // The conversation id lets the server find the data keys this conversation saved (#472). Only on an open
   // connection: ChatPage sends the open conversation on every (re)connect itself (#756).
+  // Returns whether the frame went out.
   const sendHistory = useCallback((msgs, convId = null) => {
     const history = buildHistory(msgs)
-    if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return
+    if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return false
     wsRef.current.send(JSON.stringify({ action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }))
+    return true
   }, [])
 
   const stop = useCallback(() => {
@@ -622,5 +627,16 @@ export function useChat() {
 
   const verbindOpnieuw = useCallback(() => verbindOpnieuwRef.current(), [])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  // Opening a saved conversation leaves the running one as "Nieuw gesprek" does (#761): the server stops the old run
+  // when it reads the history frame, and until its history_data, stream events still belong to that old run. The
+  // server answers only a frame with a conversation id, so only then is there a window to wait for.
+  const openConversation = useCallback((msgs, convId) => {
+    clear()
+    if (sendHistory(msgs, convId) && convId) {
+      resettingRef.current = true
+      setResetting(true)
+    }
+  }, [clear, sendHistory])
+
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

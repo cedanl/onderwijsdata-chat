@@ -657,6 +657,45 @@ describe('useChat new conversation', () => {
     })
     expect(chat.messages).toEqual([])
   })
+
+  // #761: opening a saved conversation is the other way out of a running conversation; the server stops the old
+  // run only when it reads the history frame, and answers with history_data.
+  const gesprekB = [{ role: 'user', content: 'Vraag in B' }, { role: 'assistant', content: 'Antwoord in B', done: true }]
+
+  it('drops stream events of the old run that arrive while a saved conversation opens', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.send('Vraag in A') })
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { chat.openConversation(gesprekB, 'b') })
+    await act(async () => {
+      ws.emit({ type: 'figure', figure: '{}' })
+      ws.emit({ type: 'message_start' })
+      ws.emit({ type: 'text_delta', content: 'oud' })
+      ws.emit({ type: 'history_data', data_keys: 2 })
+    })
+    expect(chat.messages).toEqual([])
+    expect(ws.sent).toContainEqual(expect.objectContaining({ action: 'history', conv_id: 'b' }))
+    let kan
+    await act(async () => { kan = chat.checkReportStart() })
+    expect(kan).toBe(true)
+    expect(chat.historyDataKeys).toBe(2)
+  })
+
+  it('blocks the composer only until history_data when a conversation opens', async () => {
+    const ws = FakeWebSocket.last
+    await act(async () => { chat.openConversation(gesprekB, 'b') })
+    expect(chat.resetting).toBe(true)
+    await act(async () => { ws.emit({ type: 'history_data', data_keys: 0 }) })
+    expect(chat.resetting).toBe(false)
+    let sent
+    await act(async () => { sent = chat.send('Vervolgvraag in B') })
+    expect(sent).toBe(true)
+  })
+
+  it('does not wait for history_data that the server will not send without a conversation id', async () => {
+    await act(async () => { chat.openConversation(gesprekB, null) })
+    expect(chat.resetting).toBe(false)
+  })
 })
 
 describe('useChat connection loss', () => {

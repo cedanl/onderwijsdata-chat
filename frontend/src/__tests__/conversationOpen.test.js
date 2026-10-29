@@ -19,14 +19,15 @@ vi.mock('../api', async importOriginal => ({ ...await importOriginal(), ...api }
 vi.mock('react-plotly.js', () => ({ default: () => null }))
 vi.mock('react-markdown', () => ({ default: ({ children }) => children }))
 
-const chat = vi.hoisted(() => ({ sendHistory: vi.fn(), addToast: vi.fn(), clear: vi.fn() }))
+const chat = vi.hoisted(() => ({ sendHistory: vi.fn(), openConversation: vi.fn(), addToast: vi.fn(), clear: vi.fn() }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
     messages: [], busy: false, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: false,
     reportProgress: null, reportSpec: null, send: vi.fn(() => true), sendClarification: vi.fn(),
     sendSettings: vi.fn(), sendHistory: chat.sendHistory, stop: vi.fn(), generateReport: vi.fn(), cancelReport: vi.fn(),
-    clearReport: vi.fn(), clear: chat.clear, startNewConversation: vi.fn(), addToast: chat.addToast,
+    clearReport: vi.fn(), clear: chat.clear, startNewConversation: vi.fn(), openConversation: chat.openConversation,
+    addToast: chat.addToast,
   }),
 }))
 
@@ -52,6 +53,7 @@ beforeEach(() => {
   api.fetchConversations.mockResolvedValue([rij])
   api.fetchConversation.mockReset()
   chat.sendHistory.mockClear()
+  chat.openConversation.mockClear()
   chat.addToast.mockClear()
 })
 
@@ -130,7 +132,8 @@ describe('een gesprek openen (#509)', () => {
 
     expect(api.fetchConversation).toHaveBeenCalledWith('c1')
     expect(container.textContent).toContain('Hoeveel studenten heeft de HU?')
-    expect(chat.sendHistory).toHaveBeenCalledWith([vraag, antwoord], 'c1')
+    // Via useChat, dat de events van een nog lopende run tegenhoudt tot de server het gesprek kent (#761).
+    expect(chat.openConversation).toHaveBeenCalledWith([vraag, antwoord], 'c1')
     expect(chat.addToast).not.toHaveBeenCalled()
   })
 
@@ -157,7 +160,7 @@ describe('een gesprek openen (#509)', () => {
     await act(async () => { gesprekKnop().click() })
 
     expect(chat.addToast).toHaveBeenCalledWith('Gesprek openen is mislukt. Probeer het opnieuw.', 'error')
-    expect(chat.sendHistory).not.toHaveBeenCalled()
+    expect(chat.openConversation).not.toHaveBeenCalled()
     expect(gesprekKnop().disabled).toBe(false)
   })
 })
