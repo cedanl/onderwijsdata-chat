@@ -482,6 +482,28 @@ buiten het profiel; po/vo/so-instellingen onder een mbo-bestuur tellen niet mee.
 
 ---
 
+## get_inspectieoordeel
+
+Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een mbo-instelling (#749,
+`tools/inspectie.py`).
+- **Route:** de code zoekt de instelling in het register en haar bestuur in DUO's adressenbestand (`BEVOEGD GEZAG
+  NUMMER`). Daarna leest ze het nieuwste peilbestand per bestuur van de Inspectie. Dat vindt ze via de
+  schooljaarpagina, omdat de bestandsnaam elke maand wisselt, en ze haalt het één keer per dag op.
+- **Resultaat:** het eindoordeel, de standaarden op bestuursniveau, de vaststellingsdatum, de peildatum, de sectoren
+  van het bestuur en de bron (CC0 1.0).
+  - Een `noot` volgt bij een gemengd bestuur, dat ook po, vo of ho heeft. Het oordeel geldt dan voor het hele bestuur.
+  - Een `noot` volgt ook als er geen eindoordeel is.
+- **Geen oordeel:** voor hbo en wo komt er een vaste melding (NVAO, niet in de app). Dat geldt ook voor een onbekende
+  instelling en voor een bestuur dat niet in het peilbestand staat.
+- **Bronregel:** de app zet "Onderwijsinspectie · Oordelen per bevoegd gezag, peildatum …" onder het antwoord, met een
+  link naar het bestand.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string | Officiële naam of alias van de mbo-instelling, bijv. `"ROC Midden Nederland"` |
+
+---
+
 ## get_duo_data
 
 Laadt een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en een `data_key` voor vervolgquery's.

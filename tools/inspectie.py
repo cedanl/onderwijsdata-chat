@@ -15,6 +15,7 @@ XML: de standaardbibliotheek leest het, zonder ODF-engine. Het bestuursnummer st
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
 from dataclasses import dataclass, field
@@ -24,7 +25,10 @@ from xml.etree import ElementTree
 
 import httpx
 
+from data import instellingen
 from data.instellingen import get_adres_lookup
+
+from . import fouten
 
 BASIS = "https://www.onderwijsinspectie.nl"
 OVERZICHT = f"{BASIS}/trends-en-ontwikkelingen/onderwijsdata/oordelen"
@@ -215,3 +219,67 @@ def oordeel_voor_instelling(instellingscode: str, bestand: Peilbestand | None = 
     if nummer is None:
         return None
     return oordelen_mbo(bestand or peilbestand()).get(nummer)
+
+
+BRONNAAM = "Onderwijsinspectie"
+BRONTITEL = "Oordelen per bevoegd gezag"
+_GEEN_EINDOORDEEL = {None, "Geen eindoordeel"}
+_SECTORNAMEN = {"PO": "po", "VO": "vo", "MBO": "mbo", "HO": "ho", "SO": "so"}
+
+
+def _uitkomst(inst: dict, o: Oordeel) -> dict:
+    uit: dict = {
+        "instelling": {"naam": inst["naam"], "instellingscode": inst["instellingscode"]},
+        "bestuur": {
+            "naam": o.bestuursnaam,
+            "nummer": o.bestuursnummer,
+            "sectoren": [_SECTORNAMEN.get(s, s) for s in o.sectoren],
+        },
+        "eindoordeel": o.eindoordeel,
+        "vastgesteld": o.vastgesteld,
+        "standaarden": o.standaarden,
+        "peildatum": o.peildatum,
+        "gemengd": o.gemengd,
+        "betekenis": "Het oordeel geldt per bestuur (bevoegd gezag), niet per instelling, vestiging of opleiding.",
+        "bron": {"naam": f"{BRONNAAM}, {BRONTITEL}", "url": o.url, "licentie": LICENTIE, "peildatum": o.peildatum},
+    }
+    noten = []
+    if o.gemengd:
+        andere = ", ".join(_SECTORNAMEN.get(s, s) for s in o.sectoren if s != MBO)
+        noten.append(
+            f"Het bestuur heeft naast mbo ook {andere}: het oordeel geldt voor het hele bestuur, niet alleen voor het "
+            "mbo-deel. Zeg dat in het antwoord."
+        )
+    if o.eindoordeel in _GEEN_EINDOORDEEL:
+        noten.append("De Inspectie gaf dit bestuur (nog) geen eindoordeel: noem geen oordeel en schat er geen.")
+    if noten:
+        uit["noot"] = " ".join(noten)
+    return uit
+
+
+def get_inspectieoordeel(instelling: str) -> str:
+    """Het Inspectie-oordeel van het bestuur van een mbo-instelling, met peildatum en bron (#749)."""
+    profiel = instellingen.instellingsprofiel(str(instelling or ""))
+    if profiel is None:
+        return (
+            f"Onbekende instelling {instelling!r}: het register kent deze naam of alias niet. Geen gok; controleer de "
+            "naam, bijvoorbeeld met get_rio_instelling."
+        )
+    if profiel.get("sector") != "mbo":
+        return (
+            f"{profiel['naam']} is een {profiel.get('sector')}-instelling. De Inspectie geeft het hoger onderwijs geen "
+            "oordeel per bestuur: de kwaliteit van hbo- en wo-opleidingen beoordeelt de NVAO, en die bron zit niet in "
+            "deze app."
+        )
+    try:
+        bestand = peilbestand()
+    except InspectieOnbereikbaar as e:
+        oorzaak = e.__cause__ if isinstance(e.__cause__, Exception) else e
+        return fouten.bronfout(BRONNAAM, oorzaak, f" Instelling '{profiel['naam']}'.")
+    oordeel = oordeel_voor_instelling(profiel["instellingscode"], bestand)
+    if oordeel is None:
+        return (
+            f"Voor {profiel['naam']} ({profiel['instellingscode']}) staat geen bestuur met mbo in het peilbestand van "
+            f"de Inspectie van {bestand.peildatum}. Noem geen oordeel."
+        )
+    return json.dumps(_uitkomst(profiel, oordeel), ensure_ascii=False, separators=(",", ":"))

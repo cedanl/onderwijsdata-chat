@@ -6,13 +6,17 @@ standaardbibliotheek. Het bestuursnummer staat als formuletekst (`="00008"`); DU
 """
 
 import io
+import json
 import zipfile
 
 import httpx
 import pytest
 
+import tools
+from agent.bronvermelding import bronlinks_van, bronnen_van
 from data import instellingen
-from tools import inspectie
+from tools import fouten, inspectie
+from tools.schemas import TOOL_GET_INSPECTIEOORDEEL
 
 _KOP = ["Peildatum", "Bestuursnummer", "Bestuursnaam", "SectorenBijBestuur", "Eindoordeel",
         "VaststellingsdatumEindoordeel", "FinancieelBeheer", "KwaliteitszorgEnAmbitie", "Onderwijsresultaten"]  # fmt: skip
@@ -170,3 +174,88 @@ def test_het_adres_van_een_instelling_kent_haar_bestuur():
     adres = instellingen._adres({"PROVINCIE": "Utrecht", "BEVOEGD GEZAG NUMMER": 34386.0, "PLAATSNAAM": "Zeist"})
     assert adres["bevoegd_gezag"] == 34386
     assert instellingen._adres({"BEVOEGD GEZAG NUMMER": float("nan")})["bevoegd_gezag"] is None
+
+
+# --- de tool get_inspectieoordeel ----------------------------------------------------------------------------
+
+_PROFIELEN = {
+    "soma college": {"naam": "SOMA College", "sector": "mbo", "instellingscode": "04NZ"},
+    "gemengd college": {"naam": "Gemengd College", "sector": "mbo", "instellingscode": "11AA"},
+    "hu": {"naam": "Hogeschool Utrecht", "sector": "hbo", "instellingscode": "25DW"},
+    "los mbo": {"naam": "Los MBO", "sector": "mbo", "instellingscode": "99ZZ"},
+}
+
+
+@pytest.fixture
+def tool(monkeypatch):
+    bestand = inspectie.Peilbestand(_BG, "01-10-2026", inspectie.lees_ods(_ODS))
+    monkeypatch.setattr(inspectie.instellingen, "instellingsprofiel", lambda naam: _PROFIELEN.get(naam.strip().lower()))
+    monkeypatch.setattr(inspectie, "peilbestand", lambda: bestand)
+    monkeypatch.setattr(
+        inspectie, "get_adres_lookup", lambda: {"04NZ": {"bevoegd_gezag": 34386}, "11AA": {"bevoegd_gezag": 40740}}
+    )
+    return inspectie.get_inspectieoordeel
+
+
+def test_het_oordeel_van_het_bestuur_met_peildatum_en_bron(tool):
+    uit = json.loads(tool("SOMA College"))
+
+    assert uit["instelling"] == {"naam": "SOMA College", "instellingscode": "04NZ"}
+    assert uit["bestuur"] == {"naam": "Stichting SOMA College", "nummer": 34386, "sectoren": ["mbo"]}
+    assert (uit["eindoordeel"], uit["vastgesteld"], uit["peildatum"]) == ("Voldoende", "06-09-2023", "01-10-2026")
+    assert uit["gemengd"] is False and "noot" not in uit
+    assert "per bestuur" in uit["betekenis"]
+    assert uit["bron"] == {
+        "naam": "Onderwijsinspectie, Oordelen per bevoegd gezag",
+        "url": _BG,
+        "licentie": inspectie.LICENTIE,
+        "peildatum": "01-10-2026",
+    }
+
+
+def test_een_gemengd_bestuur_krijgt_de_noot_dat_het_oordeel_het_hele_bestuur_betreft(tool):
+    uit = json.loads(tool("Gemengd College"))
+    assert uit["gemengd"] is True and uit["bestuur"]["sectoren"] == ["vo", "mbo"]
+    assert "ook vo" in uit["noot"] and "niet alleen voor het mbo-deel" in uit["noot"]
+
+
+def test_zonder_eindoordeel_een_noot_geen_gok(tool, monkeypatch):
+    rijen = [{**r, "Eindoordeel": ""} if r["Bestuursnummer"] == '="34386"' else r for r in inspectie.lees_ods(_ODS)]
+    monkeypatch.setattr(inspectie, "peilbestand", lambda: inspectie.Peilbestand(_BG, "01-10-2026", rijen))
+    uit = json.loads(tool("SOMA College"))
+    assert uit["eindoordeel"] is None and "geen eindoordeel" in uit["noot"]
+
+
+@pytest.mark.parametrize(
+    ("instelling", "tekst"),
+    [
+        ("Hogeschool Nergens", "Onbekende instelling"),
+        ("HU", "NVAO"),
+        ("Los MBO", "staat geen bestuur met mbo in het peilbestand van de Inspectie van 01-10-2026"),
+    ],
+)
+def test_zonder_oordeel_een_vaste_melding(tool, instelling, tekst):
+    uit = tool(instelling)
+    assert tekst in uit and not uit.startswith("{")
+
+
+def test_een_onbereikbare_inspectie_is_een_gecodeerde_fout(tool, monkeypatch):
+    def kapot():
+        try:
+            raise httpx.ConnectTimeout("te laat")
+        except httpx.ConnectTimeout as e:
+            raise inspectie.InspectieOnbereikbaar("de Inspectie antwoordde niet") from e
+
+    monkeypatch.setattr(inspectie, "peilbestand", kapot)
+    uit = tool("SOMA College")
+    assert fouten.code(uit) == "bron_onbereikbaar" and "Onderwijsinspectie" in uit
+
+
+def test_de_tool_staat_in_de_dispatch_en_de_bron_onder_het_antwoord(tool):
+    uit, _ = tools.dispatch(TOOL_GET_INSPECTIEOORDEEL, {"instelling": "SOMA College"})
+    stap = (TOOL_GET_INSPECTIEOORDEEL, uit)
+
+    regel = "Onderwijsinspectie · Oordelen per bevoegd gezag, peildatum 01-10-2026"
+    assert bronnen_van([stap]) == [regel]
+    assert bronlinks_van([stap]) == {regel: _BG}
+    assert TOOL_GET_INSPECTIEOORDEEL in tools.LABELS

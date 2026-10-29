@@ -6,6 +6,7 @@ from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_telling, dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
 from .duo import get_duo_data
+from .inspectie import get_inspectieoordeel
 from .kpi import compute_kpi
 from .maten import get_maat
 from .outcome import outcome  # noqa: F401
@@ -26,6 +27,7 @@ from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
     TOOL_GET_DUO_DATA,
+    TOOL_GET_INSPECTIEOORDEEL,
     TOOL_GET_MAAT,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
@@ -58,6 +60,7 @@ LABELS = {
     TOOL_CREATE_CHOROPLETH_MAP: "Kaart aangemaakt",
     TOOL_GET_UWV_VACATURES: "UWV vacatures opgehaald",
     TOOL_GET_ROA_BENCHMARK: "ROA benchmark opgehaald",
+    TOOL_GET_INSPECTIEOORDEEL: "Inspectie-oordeel opgehaald",
 }
 
 _HANDLERS = {
@@ -79,6 +82,7 @@ _HANDLERS = {
     TOOL_CREATE_CHOROPLETH_MAP: create_choropleth_map,
     TOOL_GET_UWV_VACATURES: get_uwv_vacatures,
     TOOL_GET_ROA_BENCHMARK: get_roa_benchmark,
+    TOOL_GET_INSPECTIEOORDEEL: get_inspectieoordeel,
 }
 
 
