@@ -46,6 +46,13 @@ eigen kop (`docs/promoten.md`).
   recept voor je terugzette.
 - Na "verwijder al mijn gegevens" blijft ook van deze vlag en van wat je live maakte niets in het geheugen.
 
+### Een misvormd WebSocket-frame sluit de chatverbinding niet meer (#758)
+- Een frame dat geen JSON-object is (geen JSON, een lijst, een tekst, een getal), `settings` dat geen object is en
+  `history` met `messages` dat geen lijst is, worden geweigerd met dezelfde melding als een onbekende actie. De
+  verbinding blijft open, de vorige instellingen en het open gesprek blijven staan. Het log noemt alleen het type.
+- Eindigt de chatverbinding door een andere fout dan een disconnect, dan stopt een lopend antwoord, rapport of
+  dashboard ook. Eerder draaide het door tot de volgende melding naar de browser faalde.
+
 ### Een rapport komt alleen door op tekst die de controle goedkeurde (#754)
 - Liep de herkansing van een rapport op een modelfout (bijvoorbeeld een rate limit), dan kwam het afgekeurde rapport
   toch door, met alleen de melding "deels gegenereerd". Hetzelfde als de fout een ronde vóór het antwoord trof. Nu

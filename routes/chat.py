@@ -576,15 +576,27 @@ async def _handle_ping(msg: dict, session: dict, emit, current_task: asyncio.Tas
 
 
 async def _handle_settings(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
-    session["chat_settings"] = msg.get("settings", {})
+    instellingen = msg.get("settings", {})
+    if not isinstance(instellingen, dict):
+        # Elke lezer van chat_settings verwacht een object (#758): de vorige instellingen blijven staan.
+        logger.warning("Websocket-instellingen genegeerd: %s in plaats van een object", type(instellingen).__name__)
+        await _weiger_frame(emit)
+        return current_task
+    session["chat_settings"] = instellingen
     return current_task
 
 
-async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> None:
+async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
+    berichten = msg.get("messages") or []
+    if not isinstance(berichten, list):
+        # Een getal als historie gaf een TypeError en sloot de verbinding (#758); het open gesprek blijft.
+        logger.warning("Websocket-historie genegeerd: %s in plaats van een lijst", type(berichten).__name__)
+        await _weiger_frame(emit)
+        return current_task
     await _stop_task_and_wait(session, current_task)
     conv_id = msg.get("conv_id")
     data_keys = await asyncio.to_thread(recepten.keys_van_gesprek, session["username"], conv_id)
-    _open_conversation(session, msg.get("messages") or [], data_keys)
+    _open_conversation(session, berichten, data_keys)
     if conv_id is not None:
         # Of een rapport op de data van dit gesprek kan, zonder eerst een vraag opnieuw te stellen (#472).
         await emit({"type": "history_data", "data_keys": len(data_keys)})
@@ -769,6 +781,24 @@ ACTIES: dict[str, Handler] = {
 ONBEKENDE_ACTIE = "Onbekende actie. Ververs de pagina en probeer opnieuw."
 
 
+async def _weiger_frame(emit) -> None:
+    """Hardop weigeren, zoals bij een te lang bericht: anders wacht de client tot zijn time-out. De verbinding blijft."""
+    await emit({"type": "error", "message": ONBEKENDE_ACTIE, "modelafhankelijk": False})
+
+
+def _frame(raw: str) -> dict | None:
+    """Het frame als object; None bij geen JSON of een ander type, dat in het log alleen zijn type noemt (#637, #758)."""
+    try:
+        msg = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Websocket-frame genegeerd: geen JSON (%d tekens)", len(raw))
+        return None
+    if not isinstance(msg, dict):
+        logger.warning("Websocket-frame genegeerd: %s in plaats van een object", type(msg).__name__)
+        return None
+    return msg
+
+
 async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     actie = msg.get("action")
     # Een lijst of object als actie is niet hashbaar: dat gaf een TypeError en sloot de verbinding.
@@ -776,8 +806,7 @@ async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task |
     if handler is None:
         # Type plus een ingekorte repr: de verbinding blijft open, dus een enorme actie niet per frame volledig loggen.
         logger.warning("Onbekende websocket-actie genegeerd: %s %.80r", type(actie).__name__, actie)
-        # Hardop weigeren, zoals bij een te lang bericht: anders wacht de client tot zijn time-out.
-        await emit({"type": "error", "message": ONBEKENDE_ACTIE, "modelafhankelijk": False})
+        await _weiger_frame(emit)
         return current_task
     return await handler(msg, session, emit, current_task)
 
@@ -843,8 +872,13 @@ async def _bedien(ws: WebSocket, username: str | None) -> None:
         # Elke tool van deze verbinding, ook in een taak of thread, kent de keys van het eigen gesprek (#13).
         with store.gesprek(lambda: session.get("data_keys") or []):
             while True:
-                raw = await ws.receive_text()
-                msg = json.loads(raw)
+                msg = _frame(await ws.receive_text())
+                if msg is None:
+                    await _weiger_frame(emit)
+                    continue
                 current_task = await _dispatch(msg, session, emit, current_task)
     except WebSocketDisconnect:
+        pass
+    finally:
+        # Ook als de lus om een andere reden eindigt: een lopende taak draaide anders door tot haar volgende emit (#758).
         _stop_task(session, current_task)
