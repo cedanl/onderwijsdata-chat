@@ -21,10 +21,21 @@ eigen kop (`docs/promoten.md`).
   van het geladen bestand, gelijk aan de hash die DUO erbij vermeldt en na te rekenen met `md5sum`. Voorheen toonde de app
   voor DUO alleen een herlaaddatum. Vraagt `riodata` 0.7.0 (`df.attrs["bron"]` met `last_modified`, `hash`, `etag` en
   `md5`); een datastore-dump zonder datum krijgt alleen de md5.
+- Een link `/chat#vraag=…` opent de chat met die vraag in de invoer van een nieuw gesprek (#709), ook als de
+  gebruiker eerst moet inloggen, via SRAM of met een wachtwoord. De vraag gaat niet vanzelf naar het model; de app
+  haalt hem uit het adres, maakt er één regel platte tekst van en kapt hem af op 500 tekens. Hij staat in het fragment
+  (`#`), niet in de query: zo komt hij niet in de toegangslog van uvicorn of de ingress. Zie `docs/api.md`.
 - Een foutmelding bij een ontbrekende of ongeldige API-sleutel, een onbekend model of een verbinding die de server met
   de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
   "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er
   speelt en waar te kijken (sleutel in het secret, `MODEL`, `*_API_BASE`).
+- De gespreksexport (markdown) zet onder elk antwoord een blok "Herkomst" met het model, de prompt-, catalogus- en
+  appversie en de dataversie achter het antwoord (bijgewerkt, status, herlaaddatum, peilmoment; #713). Het manifest ging al mee
+  met elk chatantwoord, maar bleef onbenut; alleen rapporten toonden het. Een gesprek dat uit de database is teruggezet
+  heeft geen manifest en dus geen blok. Er staat geen vraag- of antwoordtekst in het blok.
+- Een Python-snippet noemt bovenaan de pakketversies waarmee hij is gemaakt (`onderwijsdata`, `riodata`, appversie) en een
+  `pip install` met dezelfde versies, bij een git-installatie op de exacte commit (#714). Zo geeft een latere run niet
+  stilletjes een andere uitkomst door een nieuwere pakketversie.
 - Een foutmelding in de chat houdt zijn knoppen niet meer als de vraag daarna toch is beantwoord (#703). Na een
   limietfout en een geslaagde herhaling bleef de oude melding een werkende "Opnieuw" houden, naast het antwoord op
   dezelfde vraag. De melding blijft als geschiedenis in het gesprek staan, zonder knoppen.
@@ -851,6 +862,17 @@ eigen kop (`docs/promoten.md`).
   dezelfde schema's en dezelfde uitvoering als in de chat (scopegrens mbo/hbo/wo, bron-ID's, status per
   record). Optionele extra `mcp` (`uv sync --extra mcp`), niet in het image; geen sleutel nodig. De
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
+- Elk resultaat van de MCP-server draagt een `bewijs`-blok (bron, dataset-ID, selectie, peildatum, catalogusversie,
+  verwijzing; `maat` en `waarde` voor de datatools van #708) en een `vervolg` met een link naar de volledige app (#707).
+  Bij een MCP-client schrijft het model van de client het antwoord en draaien de controles van de chat niet; zo blijft
+  elk overgenomen gegeven herleidbaar. Tekst van de bronnen komt ontsmet mee (`[ ]` met een backslash, `< >` als
+  entiteit), zodat een link of tag uit een beschrijving in de client niet actief wordt; een resultaat in gewone tekst
+  staat als `melding` in hetzelfde JSON-object. Toolbeschrijvingen en instructies zeggen: "Noem geen getal dat niet in
+  een toolresultaat staat." Nieuwe sleutels, geen breaking change; `APP_URL` kiest de omgeving (standaard playground).
+- `docs/edugenai.md` beschrijft de geplande koppeling met EduGenAI (#710): wat hij wel en niet doet, waarom de
+  betrouwbaarheid lager is dan in de eigen app (het model van EduGenAI schrijft het antwoord en onze controles draaien
+  niet), welke claim we wel en niet doen, concepttekst voor label, beschrijving en persona (af te stemmen met Npuls,
+  #711) en de gegevensstroom met bewaartermijnen voor de DPIA.
 
 ### Beheer
 - Renovate stelt geen digest-pin meer voor het eigen image in `charts/onderwijsdata-chat/values.yaml` voor (#656): de

@@ -75,6 +75,7 @@ nav:
   - Dashboards: dashboards.md
   - API: api.md
   - MCP-server: mcp.md
+  - EduGenAI-koppeling: edugenai.md
   - Kwaliteit & veiligheid: kwaliteit-en-veiligheid.md
   - Privacy: privacy.md
   - Architectuur & ontwerp:

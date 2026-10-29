@@ -144,3 +144,45 @@ describe('conversationMarkdown met bronnen van de server (#416)', () => {
     )
   })
 })
+
+describe('conversationMarkdown: herkomst (#713)', () => {
+  const MANIFEST = {
+    model: 'azure_ai/claude-sonnet-5-5', model_naam: 'Claude Sonnet 5.5', sampling: { seed_toegepast: false },
+    prompt_hash: 'abc123def456', catalogus: 'bd4942907ddd', app: '2.5.0',
+    data_as_of: [
+      { bron: 'cbs', dataset: '85423NED', laatste_update: '2026-09-15', periodestatus: ['Voorlopig'] },
+      { bron: 'duo', dataset: 'p01hoinges', herladen_op: '11-10-2026' },
+    ],
+  }
+  const metManifest = manifest => [
+    { role: 'user', content: 'Hoeveel?' },
+    { role: 'assistant', content: 'Zoveel.', done: true, manifest, tools: [] },
+  ]
+  const export_ = manifest => conversationMarkdown(metManifest(manifest), { datum: '5 oktober 2026' })
+
+  it('zet onder een antwoord met manifest een blok Herkomst met model, versies en dataversie', () => {
+    const tekst = export_(MANIFEST)
+
+    expect(tekst).toContain('#### Herkomst')
+    expect(tekst).toContain('Verantwoording: model Claude Sonnet 5.5 · seed niet toegepast · prompt abc123def456 · catalogus bd4942907ddd · app 2.5.0')
+    expect(tekst).toContain('Dataversie: CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig) · DUO p01hoinges (herladen 11-10-2026)')
+  })
+
+  it('noemt de dataversie niet als er geen data achter het antwoord zit', () => {
+    const tekst = export_({ ...MANIFEST, data_as_of: [] })
+
+    expect(tekst).toContain('Verantwoording:')
+    expect(tekst).not.toContain('Dataversie:')
+  })
+
+  it('heeft geen blok Herkomst zonder manifest, zoals bij een gesprek dat uit de database is teruggezet', () => {
+    expect(export_(undefined)).not.toContain('Herkomst')
+  })
+
+  it('zet geen vraag- of antwoordtekst in het blok: alleen herkomst', () => {
+    const blok = export_(MANIFEST).split('#### Herkomst')[1]
+
+    expect(blok).not.toContain('Zoveel.')
+    expect(blok).not.toContain('Hoeveel?')
+  })
+})
