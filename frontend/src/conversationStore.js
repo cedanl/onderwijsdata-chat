@@ -89,8 +89,11 @@ export function conversationRecord(id, messages) {
 
 // Saving a conversation again replaces its earlier version instead of adding a copy.
 // The list keeps only the summary: the record's messages go to the server, not to the sidebar.
+// A conversation already in the list keeps its title: the record has the automatic one, a rename does not (#757).
 export function upsertConversation(list, record) {
-  return [conversationSummary(record), ...list.filter(c => String(c.id) !== String(record.id))]
+  const known = list.find(c => String(c.id) === String(record.id))
+  const summary = conversationSummary(known ? { ...record, title: known.title } : record)
+  return [summary, ...list.filter(c => String(c.id) !== String(record.id))]
 }
 
 // The server is asked for one more than a page, so a full last page is not mistaken for "more" (#123).

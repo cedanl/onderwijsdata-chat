@@ -585,12 +585,17 @@ def _normalize_ts(timestamp: float) -> int:
 
 
 def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
+    """Bewaar een gesprek; de titel alleen bij het aanmaken.
+
+    Elke opslag na een antwoord stuurt de automatische titel uit de eerste vraag mee. Een bestaand gesprek houdt
+    zijn titel, zodat een hernoeming (rename_conversation) blijft staan, ook vanaf een ander apparaat (#757).
+    """
     with _connection() as conn:
         _execute(
             conn,
             "INSERT INTO conversations (id, username, title, timestamp, messages) "
             "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT (id, username) DO UPDATE SET title=excluded.title, "
+            "ON CONFLICT (id, username) DO UPDATE SET "
             "timestamp=excluded.timestamp, messages=excluded.messages",
             (conv_id, username, title, _normalize_ts(timestamp), json.dumps(messages)),
         )

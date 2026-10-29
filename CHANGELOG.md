@@ -8,6 +8,12 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een hernoemd gesprek houdt zijn titel (#757)
+- Na het hernoemen van het open gesprek zette de volgende vraag de automatische titel terug, in de zijbalk en op de
+  server: elke opslag na een antwoord stuurde de titel uit de eerste vraag mee, en de server nam die over. Nu zet de
+  server de titel alleen bij het aanmaken van een gesprek; hernoemen blijft de enige manier om hem te wijzigen, ook
+  vanaf een ander apparaat. De zijbalk houdt de titel die er al stond.
+
 ### Een rapport komt alleen door op tekst die de controle goedkeurde (#754)
 - Liep de herkansing van een rapport op een modelfout (bijvoorbeeld een rate limit), dan kwam het afgekeurde rapport
   toch door, met alleen de melding "deels gegenereerd". Hetzelfde als de fout een ronde vóór het antwoord trof. Nu
