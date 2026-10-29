@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { fetchFeedbackQuestions, postFeedback } from '../api'
+import { metWoord, rapportWoord } from '../rapportWoord'
 
 // "Anders" in a multi question is stored as 'Anders' or 'Anders: <what>' (core/feedback.py).
 const OTHER = 'Anders'
@@ -13,6 +14,13 @@ const GENERIC_INSTELLING = 'jouw instelling'
 const sectionTitle = (section, instelling) => (instelling ? section.replace(GENERIC_INSTELLING, () => instelling) : section)
 const EXTRA_BUTTON = `Help ons verder: vragen over ${GENERIC_INSTELLING}`
 const countLabel = n => (n === 1 ? '1 vraag' : `${n} vragen`)
+
+// The backend words its questions for a report; a dashboard gets the same questions with its own word (#795).
+const woordInVraag = (q, woord) => ({
+  ...q,
+  text: metWoord(q.text, woord),
+  ...(q.section && { section: metWoord(q.section, woord) }),
+})
 
 const hasValue = value => (Array.isArray(value) ? value.length > 0 : value.trim() !== '')
 
@@ -134,6 +142,7 @@ function QuestionList({ questions, answers, setAnswer, instelling, headingRef })
 // `instelling` is what the user chose in the app's settings; '' when nothing was chosen (not the page's default).
 export default function FeedbackModal({ workbook, instelling: chosen = '', onClose, onSubmitted }) {
   const instelling = (chosen || '').trim()
+  const woord = rapportWoord(workbook)
   const dialogRef = useDialog(onClose)
   const titleId = useId()
   const [questions, setQuestions] = useState(null)
@@ -147,10 +156,10 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
   useEffect(() => {
     let cancelled = false
     fetchFeedbackQuestions()
-      .then(qs => { if (!cancelled) setQuestions(qs) })
+      .then(qs => { if (!cancelled) setQuestions(qs.map(q => woordInVraag(q, woord))) })
       .catch(err => { if (!cancelled) setError(`Vragen niet geladen: ${err.message}`) })
     return () => { cancelled = true }
-  }, [])
+  }, [woord])
 
   // The reveal button had focus and is gone: move it to the heading of what appeared.
   useEffect(() => { if (showExtra) extraHeadingRef.current?.focus() }, [showExtra])
@@ -192,15 +201,15 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
         onSubmit={handleSubmit}
       >
         <h2 className="feedback-title" id={titleId}>Feedback geven</h2>
-        <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de rapporten te verbeteren.</p>
+        <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de {metWoord('rapporten', woord)} te verbeteren.</p>
         <p className="feedback-intro">
           {instelling
-            ? 'We bewaren je antwoorden, de titel van het rapport en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'
-            : 'We bewaren je antwoorden en de titel van het rapport bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.'}
+            ? `We bewaren je antwoorden, de titel van het ${woord} en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.`
+            : `We bewaren je antwoorden en de titel van het ${woord} bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.`}
         </p>
         {extraQuestions.length > 0 && (
           <p className="feedback-intro">
-            Na de vragen over het rapport kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die
+            Na de vragen over het {woord} kun je ervoor kiezen ook vragen over je instelling te beantwoorden. Ook die
             zijn optioneel; we bewaren die antwoorden op dezelfde manier.
           </p>
         )}

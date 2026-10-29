@@ -8,7 +8,7 @@ import { fetchCatalogCounts } from '../api'
 import { heroStats } from '../catalogStats'
 import { useDocumentTitle, APP_NAME } from '../hooks/useDocumentTitle'
 
-export default function HomePage({ dashboardsEnabled = true, feedbackEnabled = false }) {
+export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = false }) {
   useDocumentTitle(APP_NAME)
   const navigate = useNavigate()
   const [showSources, setShowSources] = useState(false)

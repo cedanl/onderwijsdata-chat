@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import WorkbookDownload from './WorkbookDownload'
 import { NavSlot } from '../navSlot'
 import { useEscape } from '../hooks/useEscape'
+import { rapportWoord } from '../rapportWoord'
 
 // De knoppen van een geopend rapport in de navbar op een telefoon (#604): downloaden en feedback passen
 // niet naast een titel van twee regels, dus staan ze — net als bij de chat (#596, ChatNavActies) — in een
@@ -42,7 +43,7 @@ export default function RapportNavActies({ workbook, instelling, save, feedbackE
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  Geef feedback op dit rapport
+                  Geef feedback op dit {rapportWoord(workbook)}
                 </button>
               ))}
             </div>

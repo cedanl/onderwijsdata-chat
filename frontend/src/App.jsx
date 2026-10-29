@@ -66,7 +66,8 @@ function AppShell() {
   // De plek in de navbar waar een pagina op een telefoon zijn knoppen neerzet (#596).
   const [navSlot, setNavSlot] = useState(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
-  const [dashboardsEnabled, setDashboardsEnabled] = useState(true)
+  // Dashboards staan standaard uit (ENABLE_DASHBOARDS, #765): de frontend toont ze pas als de server dat zegt (#793).
+  const [dashboardsEnabled, setDashboardsEnabled] = useState(false)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
   // The server ended the session (#499): the login screen says why. Logout needs no notice.
@@ -157,11 +158,11 @@ function AppShell() {
         setUser(bewaardeSessieNaam())
       }),
       fetch('/api/config').then(r => r.json()).then(config => {
-        setDashboardsEnabled(config.dashboards_enabled !== false)
+        setDashboardsEnabled(config.dashboards_enabled === true)
         setFeedbackEnabled(config.feedback_enabled === true)
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
       }).catch(() => {
-        setDashboardsEnabled(true)
+        setDashboardsEnabled(false)
       }),
       fetch('/api/instellingen').then(r => r.json()).then(setInstellingen).catch(() => {})
     ]).then(() => {

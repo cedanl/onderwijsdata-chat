@@ -73,7 +73,7 @@ const klik = async el => { await act(async () => { el.dispatchEvent(new MouseEve
 const toets = async key => { await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) }) }
 
 const nav = (props = {}) => createElement(MemoryRouter, { initialEntries: ['/chat'] },
-  createElement(Nav, { user: 'tester', onLogout: vi.fn(), onOpenSettings: vi.fn(), instelling: 'HU', ...props }))
+  createElement(Nav, { user: 'tester', onLogout: vi.fn(), onOpenSettings: vi.fn(), instelling: 'HU', dashboardsEnabled: true, ...props }))
 
 describe('menu in de navbar (vervangt de tabbalk)', () => {
   it('is dicht tot je de menuknop gebruikt, en toont dan alle bestemmingen', async () => {
