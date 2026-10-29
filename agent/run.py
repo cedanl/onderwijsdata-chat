@@ -303,7 +303,8 @@ async def _bewaar_stap(session: dict, emit: Emit, call: ToolCall, result: str, f
     record_rekenbewijs(session, result, {"name": call.name, "arguments": call.args})
     if figure is not None:
         # De figuur gaat met haar rijen naar de client (export, #183): herkomst in het log (#169).
-        log_publicatie(FIGUUR, [k for k in ((call.args or {}).get("data_key"),) if isinstance(k, str)])
+        keys = [k for k in ((call.args or {}).get("data_key"),) if isinstance(k, str)]
+        log_publicatie(FIGUUR, keys, username=session.get("username"))
     await _handle_figure(call.name, figure, session, emit)
 
 
@@ -597,10 +598,12 @@ async def run(
     if truncated:
         logger.warning("ANTWOORD AFGEKAPT op outputlimiet  model=%s", chosen_model)
     # Herkomst van dit antwoord: model, prompt-, catalogus- en dataversie (#345).
-    mani = manifest.bouw(chosen_model, data_keys(result.tool_results), model_versie=result.model_versie)
+    mani = manifest.bouw(
+        chosen_model, data_keys(result.tool_results), model_versie=result.model_versie, username=session.get("username")
+    )
     gekozen = await _vervolgvragen(result, text_content, last_user_msg, session)
     if text_content not in _ZONDER_BRONNEN:
-        log_publicatie(ANTWOORD, data_keys(result.tool_results), mani)
+        log_publicatie(ANTWOORD, data_keys(result.tool_results), mani, username=session.get("username"))
     await emit(
         _slotbericht(text_content, result, herzien, truncated, bronnen, bronlinks, manifest=mani, vervolgvragen=gekozen)
     )

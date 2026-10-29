@@ -11,6 +11,8 @@ stap wordt geen script bewaard.
 
 import json
 import logging
+import threading
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
@@ -54,6 +56,14 @@ _MAX_REDEN = 300
 
 Receptbron = Callable[[str], dict | None]
 
+# Per gebruiker en key de dag (dd-mm-jjjj) waarop de data ná zijn eerdere antwoord opnieuw bij de bron is opgehaald
+# (#472): haar cijfers kunnen afwijken van dat antwoord. De store is gedeeld, deze vlag niet (#788): dezelfde data is
+# voor de een herladen en voor een ander, die haar net live opvroeg, de data van zijn antwoord. Een afleiding erft haar
+# niet: wat live op deze data wordt berekend, is wat dat antwoord toont. Begrensd: zonder vlag geen melding.
+_MAX_MARKERINGEN = 5000
+_markeringen: OrderedDict[tuple[str, str], str] = OrderedDict()
+_markeringen_slot = threading.Lock()
+
 
 @dataclass(frozen=True)
 class Herlaadresultaat:
@@ -90,41 +100,77 @@ def recept(key: str, call: dict) -> dict | None:
     return None
 
 
-def herlaad(key: str, recept: dict, recept_van: Receptbron = lambda _key: None) -> Herlaadresultaat:
-    """Zet `key` terug in de store volgens `recept`; ouders eerst, via `recept_van`."""
-    return _herlaad(key, recept, recept_van, 0)
+def herlaad(
+    key: str, recept: dict, recept_van: Receptbron = lambda _key: None, username: str | None = None
+) -> Herlaadresultaat:
+    """Zet `key` terug in de store volgens `recept`; ouders eerst, via `recept_van`. De vlag krijgt `username`."""
+    return _herlaad(key, recept, recept_van, 0, username)
 
 
-def markeer(key: str) -> None:
-    """`key` staat (weer) in de store met data die na het eerdere antwoord bij de bron is opgehaald."""
-    store.markeer_herladen(key, f"{date.today():%d-%m-%Y}")
+def markeer(username: str | None, key: str) -> None:
+    """Voor `username` staat `key` (weer) in de store met data die na zijn eerdere antwoord bij de bron is opgehaald."""
+    if not username:
+        return
+    with _markeringen_slot:
+        _markeringen[username, key] = f"{date.today():%d-%m-%Y}"
+        _markeringen.move_to_end((username, key))
+        while len(_markeringen) > _MAX_MARKERINGEN:
+            _markeringen.popitem(last=False)
 
 
-def notitie(key: str) -> str | None:
+def wis_markering(username: str | None, key: str) -> None:
+    """Een antwoord van `username` rust nu op de data zoals ze is: voor hem is ze niet (meer) herladen."""
+    if username:
+        with _markeringen_slot:
+            _markeringen.pop((username, key), None)
+
+
+def herladen_op(username: str | None, key: str) -> str | None:
+    """De dag waarop `key` voor `username` opnieuw is opgehaald, of None; alleen zolang de store de key heeft."""
+    if not username or store.meta(key) is None:
+        return None
+    with _markeringen_slot:
+        return _markeringen.get((username, key))
+
+
+def vergeet_gebruiker(username: str) -> None:
+    """Na "verwijder al mijn gegevens" (#646) geen vlag van deze gebruiker meer."""
+    with _markeringen_slot:
+        for sleutel in [s for s in _markeringen if s[0] == username]:
+            del _markeringen[sleutel]
+
+
+def wis() -> None:
+    with _markeringen_slot:
+        _markeringen.clear()
+
+
+def notitie(username: str | None, key: str) -> str | None:
     """Wat bij herladen data hoort: de cijfers kunnen afwijken van het eerdere antwoord. None als ze dat niet is.
 
-    Uit de KeyMeta, dus ook bij een latere download van wat een recept terugzette.
+    Per gebruiker, dus ook bij een latere download van wat een recept voor hem terugzette, en nooit voor een ander.
     """
-    known = store.meta(key)
-    if known is None or not known.herladen_op:
+    op = herladen_op(username, key)
+    if op is None:
         return None
-    tekst = f"opnieuw opgehaald op {known.herladen_op}; de bron kan intussen zijn gewijzigd"
-    if known.bron == "cbs" and (update := catalogus_laatste_update(known.dataset)):
+    known = store.meta(key)
+    tekst = f"opnieuw opgehaald op {op}; de bron kan intussen zijn gewijzigd"
+    if known is not None and known.bron == "cbs" and (update := catalogus_laatste_update(known.dataset)):
         tekst += f" (CBS-tabel laatst bijgewerkt op {update})"
     return tekst
 
 
-def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> Herlaadresultaat:
+def _herlaad(key: str, recept: dict, recept_van: Receptbron, stappen: int, username: str | None) -> Herlaadresultaat:
     if store.get(key) is not None:
-        return _terug(key)
+        return _terug(key, username)
     if stappen > _MAX_STAPPEN or not isinstance(recept, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
     if "laad" in recept:
-        return _laad(key, recept["laad"])
+        return _laad(key, recept["laad"], username)
     if recept.get("tool") == TOOL_QUERY_DATA and recept.get("herlaadbaar", True):
-        return _selecteer(key, recept, recept_van, stappen)
+        return _selecteer(key, recept, recept_van, stappen, username)
     if recept.get("tool") == TOOL_GET_MAAT:
-        return _hermaat(key, recept)
+        return _hermaat(key, recept, username)
     return Herlaadresultaat(key, gelukt=False, melding=_onherhaalbaar(key, recept.get("stap")))
 
 
@@ -133,7 +179,7 @@ def _onherhaalbaar(key: str, stap: object) -> str:
     return f"Stap '{stap}' van key {key} wordt niet automatisch opnieuw uitgevoerd."
 
 
-def _laad(key: str, laad: object) -> Herlaadresultaat:
+def _laad(key: str, laad: object, username: str | None) -> Herlaadresultaat:
     tool, args = laad if isinstance(laad, list | tuple) and len(laad) == 2 else (None, None)
     if not isinstance(tool, str) or tool not in _LADERS or not isinstance(args, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} noemt geen bekende laadstap.")
@@ -149,11 +195,11 @@ def _laad(key: str, laad: object) -> Herlaadresultaat:
         return Herlaadresultaat(
             key, gelukt=False, bronfout=True, melding=f"{bron} gaf de data voor key {key} niet opnieuw: {reden}"
         )
-    markeer(key)
-    return _terug(key)
+    markeer(username, key)
+    return _terug(key, username)
 
 
-def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> Herlaadresultaat:
+def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int, username: str | None) -> Herlaadresultaat:
     ouder, args = recept.get("afgeleid_van"), recept.get("args")
     if not isinstance(ouder, str) or not isinstance(args, dict):
         return Herlaadresultaat(key, gelukt=False, melding=f"Het recept van key {key} is onbruikbaar.")
@@ -163,7 +209,7 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
             return Herlaadresultaat(
                 key, gelukt=False, melding=f"Key {key} rust op key {ouder}, en die is niet bewaard."
             )
-        eerst = _herlaad(ouder, ouder_recept, recept_van, stappen + 1)
+        eerst = _herlaad(ouder, ouder_recept, recept_van, stappen + 1, username)
         if not eerst.gelukt:
             return Herlaadresultaat(key, gelukt=False, melding=eerst.melding, bronfout=eerst.bronfout)
     try:
@@ -177,11 +223,11 @@ def _selecteer(key: str, recept: dict, recept_van: Receptbron, stappen: int) -> 
         reden = _reden(uitkomst) or "geen data."
         return Herlaadresultaat(key, gelukt=False, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {reden}")
     # Ook op een ouder die live werd geladen: die is van ná het antwoord waar deze selectie onder stond.
-    markeer(key)
-    return _terug(key)
+    markeer(username, key)
+    return _terug(key, username)
 
 
-def _hermaat(key: str, recept: dict) -> Herlaadresultaat:
+def _hermaat(key: str, recept: dict, username: str | None) -> Herlaadresultaat:
     """Een vaste maat (#188) opnieuw: get_maat laadt de bron en selecteert zelf, met dezelfde key als uitkomst."""
     args = recept.get("args")
     if not isinstance(args, dict):
@@ -197,13 +243,12 @@ def _hermaat(key: str, recept: dict) -> Herlaadresultaat:
         return Herlaadresultaat(
             key, gelukt=False, bronfout=True, melding=f"Stap '{stap}' gaf key {key} niet opnieuw: {_reden(uitkomst)}"
         )
-    markeer(key)
-    return _terug(key)
+    markeer(username, key)
+    return _terug(key, username)
 
 
-def _terug(key: str) -> Herlaadresultaat:
-    known = store.meta(key)
-    return Herlaadresultaat(key, gelukt=True, herladen=bool(known and known.herladen_op))
+def _terug(key: str, username: str | None) -> Herlaadresultaat:
+    return Herlaadresultaat(key, gelukt=True, herladen=herladen_op(username, key) is not None)
 
 
 def _reden(uitkomst: str) -> str:

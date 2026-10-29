@@ -18,6 +18,13 @@ from tools.snippet import Receptbron
 _MAX_WACHTEND = 2000
 _wachtend: OrderedDict[tuple[str, str], dict] = OrderedDict()
 
+# Welke keys een gebruiker in dit proces zelf live maakte (#762). Los van `_wachtend`: daar haalt het verwijderen van een
+# ander gesprek met dezelfde key het recept weg, en de LRU verdringt het, terwijl de data nog die van zijn antwoord is.
+# Alleen "verwijder al mijn gegevens" en een herstart legen dit. Begrensd door eerst keys te laten vallen die de store
+# niet meer heeft: komen die terug, dan zijn ze opnieuw opgehaald en hoort de melding er wel.
+_MAX_LIVE = 5000
+_live: OrderedDict[tuple[str, str], None] = OrderedDict()
+
 
 def van_session(session: dict) -> Receptbron:
     """De receptopzoeker voor de snippets van een sessie (#624): alleen de eigen gebruiker.
@@ -55,6 +62,20 @@ def onthoud(username: str, key: str, recept: dict) -> None:
     _wachtend.move_to_end((username, key))
     while len(_wachtend) > _MAX_WACHTEND:
         _wachtend.popitem(last=False)
+
+
+def live(username: str | None, key: str) -> None:
+    """`username` maakte `key` net zelf: zijn antwoord rust op de data zoals ze nu in de store staat (#472, #762)."""
+    if not username:
+        return
+    herlaad.wis_markering(username, key)
+    _live[username, key] = None
+    _live.move_to_end((username, key))
+    if len(_live) > _MAX_LIVE:
+        for sleutel in [s for s in _live if store.meta(s[1]) is None]:
+            del _live[sleutel]
+    while len(_live) > _MAX_LIVE:
+        _live.popitem(last=False)
 
 
 def voor(username: str | None, key: str) -> dict | None:
@@ -104,6 +125,9 @@ def vergeet_gebruiker(username: str) -> None:
     gesprek: die staan niet in de database, dus `vergeet` met de keys daaruit mist ze."""
     for sleutel in [s for s in list(_wachtend) if s[0] == username]:
         _wachtend.pop(sleutel, None)
+    for sleutel in [s for s in list(_live) if s[0] == username]:
+        _live.pop(sleutel, None)
+    herlaad.vergeet_gebruiker(username)
 
 
 def terughalen(username: str | None, key: str) -> herlaad.Herlaadresultaat | None:
@@ -113,25 +137,26 @@ def terughalen(username: str | None, key: str) -> herlaad.Herlaadresultaat | Non
         return None
     if (recept := voor(username, key)) is None:
         return None
-    return herlaad.herlaad(key, recept, lambda ouder: voor(username, ouder))
+    return herlaad.herlaad(key, recept, lambda ouder: voor(username, ouder), username)
 
 
 def markeer_na_herstart(username: str | None, key: str) -> None:
-    """Markeer `key` als herladen als deze gebruiker hem vóór de laatste herstart maakte.
+    """Markeer `key` voor deze gebruiker als herladen als hij hem vóór de laatste herstart maakte.
 
-    Dan staat zijn recept alleen in de database, niet meer in het geheugen. Wat de store nu onder
-    die key heeft, haalde dit proces op: een recept, of de live vraag van een ander. Het eerdere
-    antwoord van deze gebruiker rust niet op die data.
+    Dan heeft hij er een recept van in de database, maar maakte hij de key in dit proces niet zelf live (#762). Wat de
+    store nu onder die key heeft, haalde dit proces op: een recept, of de live vraag van een ander. Het eerdere
+    antwoord van deze gebruiker rust niet op die data. Een ander merkt hier niets van (#788).
     """
-    known = store.meta(key)
-    if not username or known is None or known.herladen_op or (username, key) in _wachtend:
+    if not username or store.meta(key) is None or (username, key) in _live or herlaad.herladen_op(username, key):
         return
     if db.recipe_for_key(username, key) is not None:
-        herlaad.markeer(key)
+        herlaad.markeer(username, key)
 
 
 def wis() -> None:
     _wachtend.clear()
+    _live.clear()
+    herlaad.wis()
 
 
 def _datakeys(messages: list) -> list[str]:

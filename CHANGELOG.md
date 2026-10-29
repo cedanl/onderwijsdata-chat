@@ -20,6 +20,15 @@ eigen kop (`docs/promoten.md`).
   aanroep eerder elke chatstream en `/health` van de pod. Snippets, events en de weigering van een verlopen of
   ingetrokken token (close 4001, HTTP 401) zijn ongewijzigd.
 
+### De melding "opnieuw opgehaald" geldt per gebruiker, en alleen waar ze klopt (#788, #762)
+- De vlag dat data na een eerder antwoord opnieuw bij de bron is opgehaald, stond in de gedeelde store. Laadde een
+  ander dezelfde dataset live, dan verdween de melding bij jouw volgende rapport of download, of kreeg zijn live
+  antwoord jouw melding. Nu staat de vlag per gebruiker; de store bewaart alleen wat voor iedereen gelijk is.
+- Een ander gesprek met dezelfde data verwijderen, of veel nieuwe data laden zodat een oud recept uit het geheugen
+  valt, gaf live data de melding "opnieuw opgehaald". Nu telt alleen data die je vóór een herstart maakte, of die een
+  recept voor je terugzette.
+- Na "verwijder al mijn gegevens" blijft ook van deze vlag en van wat je live maakte niets in het geheugen.
+
 ### Een rapport komt alleen door op tekst die de controle goedkeurde (#754)
 - Liep de herkansing van een rapport op een modelfout (bijvoorbeeld een rate limit), dan kwam het afgekeurde rapport
   toch door, met alleen de melding "deels gegenereerd". Hetzelfde als de fout een ronde vóór het antwoord trof. Nu

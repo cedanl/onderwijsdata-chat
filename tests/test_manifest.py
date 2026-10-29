@@ -1,12 +1,13 @@
 """Manifest per antwoord en rapport (#345): herkomst, geen inhoud."""
 
+from datetime import date
 from unittest.mock import patch
 
 import pandas as pd
 
 from agent import manifest
 from core.config import SEED, TEMPERATURE
-from tools import store
+from tools import herlaad, store
 
 _VASTE_SLEUTELS = {"model", "model_naam", "sampling", "prompt_hash", "catalogus", "app", "data_as_of", "gemaakt_op"}
 
@@ -36,9 +37,9 @@ def test_onbekende_ondersteuning_is_onbekend_niet_toegepast():
     assert m["sampling"]["temperature_toegepast"] is None
 
 
-def _bouw(keys):
+def _bouw(keys, username=None):
     with patch("agent.manifest.get_supported_openai_params", return_value=[]):
-        return manifest.bouw("m/x", keys)
+        return manifest.bouw("m/x", keys, username=username)
 
 
 def test_data_as_of_per_dataset_met_periodestatus_en_update():
@@ -62,11 +63,12 @@ def test_afgeleide_keys_tellen_als_een_dataset():
     assert len(m["data_as_of"]) == 1
 
 
-def test_herladen_op_reist_mee():
+def test_herladen_op_reist_mee_voor_wie_het_geldt():
+    """De vlag is per gebruiker (#788): het manifest van een ander noemt haar niet."""
     store.put("duo:fx:1", pd.DataFrame({"AANTAL": [1]}), store.KeyMeta(bron="duo", dataset="fx", resource=1))
-    store.markeer_herladen("duo:fx:1", "11-10-2026")
-    m = _bouw(["duo:fx:1"])
-    assert m["data_as_of"][0]["herladen_op"] == "11-10-2026"
+    herlaad.markeer("alice", "duo:fx:1")
+    assert _bouw(["duo:fx:1"], "alice")["data_as_of"][0]["herladen_op"] == f"{date.today():%d-%m-%Y}"
+    assert "herladen_op" not in _bouw(["duo:fx:1"], "bob")["data_as_of"][0]
 
 
 def test_onbekende_key_valt_stil_weg():

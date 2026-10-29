@@ -31,12 +31,12 @@ async def data_csv(key: str, username: str = Depends(get_current_user)) -> Respo
     herladen = await asyncio.to_thread(recepten.terughalen, username, key)
     if herladen is not None and not herladen.gelukt:
         raise HTTPException(502 if herladen.bronfout else 404, f"{_WEG} {herladen.melding} {_OPNIEUW}")
-    csv = naar_csv(key)
+    csv = naar_csv(key, username)
     if csv is None:
         raise HTTPException(404, f"{_WEG} {_OPNIEUW}")
-    log_publicatie(CSV, [key])
+    log_publicatie(CSV, [key], username=username)
     headers = {"Content-Disposition": f'attachment; filename="{bestandsnaam(key)}"'}
-    if notitie := herlaad.notitie(key):
+    if notitie := herlaad.notitie(username, key):
         # De cijfers kunnen afwijken van het eerdere antwoord: de bron kan zijn gewijzigd. Ook in de CSV zelf.
         headers["X-Data-Herladen"] = notitie
     # Met BOM, anders leest Excel é als Ã©.

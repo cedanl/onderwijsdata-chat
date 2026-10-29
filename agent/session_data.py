@@ -46,8 +46,8 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
         if call is not None:
             # Keys are deterministic per selection: the first producer is the real one.
             session.setdefault("data_provenance", {}).setdefault(key, call)
-            # Dit antwoord rust op de data zoals ze nu is: voor deze sessie is ze niet herladen (#472).
-            store.markeer_herladen(key, None)
+            # Dit antwoord rust op de data zoals ze nu is: voor deze gebruiker is ze niet herladen (#472, #788).
+            recepten.live(session.get("username"), key)
             # Buiten het geheugen bewaard bij het opslaan van het gesprek: zo overleeft de key een herstart (#472).
             if session.get("username") and (recept := herlaad.recept(key, call)) is not None:
                 recepten.onthoud(session["username"], key, recept)
@@ -136,7 +136,7 @@ def herstel_data_keys(session: dict, username: str | None) -> Herstel:
             onherstelbaar[key] = ""
         elif not uitkomst.gelukt:
             onherstelbaar[key] = uitkomst.melding
-    notities = (tekst for key in session_data_keys(session) if (tekst := herlaad.notitie(key)))
+    notities = (tekst for key in session_data_keys(session) if (tekst := herlaad.notitie(username, key)))
     return Herstel(tuple(dict.fromkeys(notities)), onherstelbaar)
 
 
