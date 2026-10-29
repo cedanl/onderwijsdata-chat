@@ -56,6 +56,9 @@ dagen verwijdert niets. De serverlogs en de back-ups van de beheerder vallen bui
 - `openEDUdata_recent` (#603): de ID's van de gesprekken en rapporten die deze browser het laatst opende, en van de
   favoriete rapporten; geen titels of inhoud. Blijft na uitloggen staan (`NOT_SESSION_DATA_KEYS`): de chat en
   `/rapporten` tonen een ID alleen als het bij een gesprek of rapport van het ingelogde account hoort.
+- `openEDUdata_te_verwijderen` (#801): de ID's van verwijderde gesprekken waarvan de server de verwijdering nog niet
+  bevestigde; geen titels of inhoud. Hoort bij het account (`SESSION_DATA_KEYS`): uitloggen stuurt die verwijderingen
+  eerst nog met het eigen token, en uitloggen, een nieuwe login en het einde van de sessie wissen de lijst.
 - Een sessie duurt `SESSION_TTL_HOURS` (8 uur) en wordt bij gebruik verlengd tot `SESSION_MAX_HOURS` (24 uur) na het
   inloggen. Tijdens het inloggen met SRAM staat er kort een cookie met de OIDC-state; verder gebruikt de app geen
   cookies en geen analytics.
@@ -73,8 +76,12 @@ is een open punt.
   8 s bedenktijd ("Ongedaan maken", #493); pas daarna gaat de verwijdering naar de server. Log je binnen die tijd uit,
   dan gaat ze meteen, nog met je login, en wordt de login pas daarna ingetrokken (#778). Lukt de verwijdering op de
   server niet, dan staat het gesprek, rapport of dashboard weer in de lijst, met een melding en "Opnieuw proberen".
-  Sluit je binnen de bedenktijd de tab, dan gaat de verwijdering zonder melding mee met het sluiten; mislukt die, dan
-  staat het gesprek bij je volgende bezoek weer in de lijst.
+  Sluit je binnen de bedenktijd de tab, dan gaat de verwijdering zonder melding mee met het sluiten. Tot de server een
+  verwijderd gesprek bevestigt, onthoudt deze browser het ID ervan (#801). Mislukte de verwijdering, dan gaat ze bij je
+  volgende bezoek aan de chat opnieuw, en tot dat gelukt is staat het gesprek niet in de lijst; lukt het dan weer niet,
+  dan volgt dezelfde melding. Stel je na het verwijderen nog een vraag in het gesprek, dan blijft het bewaard. Log je
+  uit, dan gaan ook deze verwijderingen eerst nog met je login. Is je sessie bij je volgende bezoek verlopen, dan is het
+  ID gewist en staat het gesprek na het inloggen weer in de lijst; verwijder het dan opnieuw.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback

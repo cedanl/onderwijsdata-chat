@@ -15,11 +15,12 @@ import { appendPage, clearCurrentChat, conversationMessages, conversationRecord,
 import { getToken, sessionEndedSince } from '../auth'
 import { bijUitloggen, isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst } from '../verwijderenMetUitstel'
+import { haalUitWachtrij, verstuurWachtrij, verwijderGesprek, zetInWachtrij, zonderTeVerwijderen } from '../verwijderWachtrij'
 import { buurVan, focusEerste, idsInDocument, kiezerMetId } from '../focusNa'
 import { useFocusNaRender } from '../hooks/useFocusNaRender'
 import ToastStack from '../components/ToastStack'
 import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
-import { fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
+import { fetchConversation, fetchConversations, putConversation, renameConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
 import { roundSettled } from '../dataExport'
 import { groepeerFiguren } from '../figuurGroep'
@@ -99,7 +100,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const [tokenAtMount] = useState(getToken)
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
-  const [conversationHistory, setConversationHistory] = useState(loadConversationHistory)
+  // Een gesprek in de verwijderwachtrij (#801) staat er ook in de lokale kopie niet in.
+  const [conversationHistory, setConversationHistory] = useState(() => zonderTeVerwijderen(loadConversationHistory()))
   const historySearch = useConversationSearch()
   const { results: zoekResultaten, removeResult, restoreResult } = historySearch
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
@@ -127,6 +129,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const verwijderdRef = useRef(null)
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
   const savingRef = useRef(Promise.resolve())
+  // Lukt een DELETE niet, dan komt het gesprek terug (#778). Via een ref: voerUit en de verwijderwachtrij bij het laden
+  // (#801) zijn van de eerste render.
+  const nietVerwijderdRef = useRef(null)
 
   // Ook de gesprekslijst kan op een vol quotum stuiten (#521). Eén melding per pagina, los
   // van die over het open gesprek; de lijst in het geheugen blijft staan, de server heeft alles.
@@ -145,15 +150,26 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     addToast('Dit gesprek is niet volledig bewaard: grafieken ontbreken na verversen.', 'warning')
   }, [initialChat, addToast])
 
-  // Load conversations from server on mount; migrate localStorage if server is empty
+  // Load conversations from server on mount; migrate localStorage if server is empty.
+  // Wat de server nog niet als verwijderd bevestigde (de wachtrij, #801), gaat nu opnieuw en staat tot dan niet in de
+  // lijst. Lukt het weer niet, dan komt het gesprek terug op zijn plaats, met de melding en "Opnieuw proberen" van #778.
   useEffect(() => {
-    fetchConversations({ limit: HISTORY_FETCH_LIMIT }).then(rows => {
+    let actief = true
+    const rijen = fetchConversations({ limit: HISTORY_FETCH_LIMIT })
+    const nogWeg = verstuurWachtrij(id => rijen.catch(() => []).then(rows => {
+      if (!actief) return
+      const { items } = historyPage(rows)
+      const lijst = items.findIndex(c => String(c.id) === id)
+      nietVerwijderdRef.current(items[lijst] ?? { id }, { lijst, zoek: -1 })
+    }))
+    rijen.then(rows => {
       // Het antwoord kan na uitloggen binnenkomen; dan niets meer opslaan (#507).
       if (sessionEndedSince(tokenAtMount)) return
       if (rows.length > 0) {
         const { items, hasMore } = historyPage(rows)
-        persistHistoryMetMelding(items)
-        setConversationHistory(items)
+        const zichtbaar = zonderTeVerwijderen(items, nogWeg)
+        persistHistoryMetMelding(zichtbaar)
+        setConversationHistory(zichtbaar)
         setHasMoreHistory(hasMore)
       } else {
         // Conversations from before the server copy; a cached list without messages has nothing to migrate (#509).
@@ -165,6 +181,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         }
       }
     }).catch(() => {})
+    return () => { actief = false }
   }, [tokenAtMount, persistHistoryMetMelding])
 
   // The unmount save runs after the last render, so it reads the open conversation from a ref.
@@ -237,6 +254,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const record = conversationRecord(id, all)
     const json = JSON.stringify(all)
     if (!record || json === savedJsonRef.current) return null
+    // Een nieuwe vraag na het verwijderen maakt het weer een gesprek dat blijft (#535). Dan ook uit de verwijderwachtrij:
+    // anders verwijderde het volgende laden wat de gebruiker er daarna nog in vroeg (#801).
+    haalUitWachtrij(id)
     // A failed PUT does not count as saved (#635): the next chance (an answer, the connection back) sends it again.
     const vorige = savedJsonRef.current
     savedJsonRef.current = json
@@ -360,10 +380,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
   const sluitUndoToastRef = useRef(null)
-  // Lukt de DELETE niet, dan komt het gesprek terug (#778). Via een ref: voerUit hieronder is van de eerste render.
-  const nietVerwijderdRef = useRef(null)
   const verwijderOpServer = useCallback((conv, plek) => {
-    volgOpslag(deleteConversationApi(String(conv.id), { keepalive: true })).catch(() => nietVerwijderdRef.current(conv, plek))
+    verwijderGesprek(conv.id).catch(() => nietVerwijderdRef.current(conv, plek))
   }, [])
   const verwijderingRef = useRef(null)
   if (!verwijderingRef.current) {
@@ -415,6 +433,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     sluitUndoToastRef.current?.()
     sluitUndoToastRef.current = null
     if (!hersteld) return
+    haalUitWachtrij(hersteld.conv.id)
     // De focus naar het teruggezette gesprek, als het in de lijst of de zoekresultaten terugkomt (#776).
     focusNa(gespreksKnop(hersteld.conv.id), NIEUW_GESPREK)
     zetTerug(hersteld.conv, hersteld.index)
@@ -454,6 +473,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     // het gesprek niet terug, in welke volgorde de listeners ook lopen (#530).
     if (openVerwijderd) verwijderdRef.current = markeerVerwijderd(conversationId, openChatRef.current.messages)
     removeResult(conv.id)
+    // Het id staat vanaf nu in de wachtrij (#801): sluit de tab of stopt de browser voordat de server de DELETE
+    // bevestigt, dan gaat ze bij het volgende laden alsnog. Ongedaan maken haalt het er weer uit.
+    zetInWachtrij(conv.id)
     verwijderingRef.current.plan(conv, { lijst: index, zoek: zoekIndex })
     sluitUndoToastRef.current?.()
     // De focus gaat naar Ongedaan maken; zolang die focus of de muis heeft, staat de bedenktijd stil. Tab of Escape

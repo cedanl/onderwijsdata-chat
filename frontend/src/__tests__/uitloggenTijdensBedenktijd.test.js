@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from '../App'
-import { STORAGE_TOKEN } from '../constants'
+import { STORAGE_TOKEN, STORAGE_TE_VERWIJDEREN } from '../constants'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
 
@@ -89,5 +89,29 @@ describe('uitloggen binnen de bedenktijd (#778)', APP_TEST, () => {
     await act(async () => { deleteKlaar() })
     await waitFor(() => naar('/api/auth/logout').length === 1)
     expect(naar('/api/auth/logout')[0].auth).toBe('Bearer tok')
+  })
+})
+
+// #801: wat een vorig bezoek niet bevestigd verwijderde, gaat bij het uitloggen eerst nog met het eigen token, ook
+// buiten de chat; daarna is de wachtrij leeg en blijft ze dat.
+describe('uitloggen met een verwijderwachtrij (#801)', APP_TEST, () => {
+  it('stuurt de wachtrij met het oude token, wist haar en trekt het token pas daarna in', async () => {
+    localStorage.setItem(STORAGE_TE_VERWIJDEREN, '["c9"]')
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => { root.render(createElement(App)) })
+    await waitFor(() => knop('Uitloggen'))
+
+    await act(async () => { knop('Uitloggen').click() })
+
+    expect(verzoeken.filter(v => v.method === 'DELETE')).toEqual([{ url: '/api/conversations/c9', method: 'DELETE', auth: 'Bearer tok' }])
+    expect(localStorage.getItem(STORAGE_TE_VERWIJDEREN)).toBeNull()
+    expect(naar('/api/auth/logout')).toEqual([])
+
+    await act(async () => { deleteKlaar() })
+    await waitFor(() => naar('/api/auth/logout').length === 1)
+    expect(naar('/api/auth/logout')[0].auth).toBe('Bearer tok')
+    expect(localStorage.getItem(STORAGE_TE_VERWIJDEREN)).toBeNull()
   })
 })

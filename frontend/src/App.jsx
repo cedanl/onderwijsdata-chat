@@ -9,6 +9,7 @@ import SettingsModal from './components/SettingsModal'
 import ZoekPalet from './components/ZoekPalet'
 import { useZoekSneltoets } from './hooks/useZoekSneltoets'
 import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
+import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
@@ -228,9 +229,11 @@ function AppShell() {
 
   // Logging out is immediate here, but the token is revoked on the server only once a save of the open
   // conversation that is still under way has landed (#635): it carries that token. A delete still in its undo
-  // period goes first, while the token is there, and is waited for like a save (#778).
+  // period goes first, while the token is there, and is waited for like a save (#778); so do the deletes in the queue
+  // that the server has not confirmed yet (#801), before the wipe below empties it.
   const handleLogout = () => {
     rondAfVoorUitloggen()
+    verstuurWachtrij()
     const token = getToken()
     clearToken()
     resetSession()
