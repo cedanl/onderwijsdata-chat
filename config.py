@@ -51,6 +51,9 @@ class Config:
     APP_ENV: str = os.getenv("APP_ENV", "local").strip().lower()
     OMGEVINGEN = ("local", "development", "test", "playground", "production")
 
+    # Een bewust openbare demo buiten lokaal, zonder login (#787). Zonder deze vlag start de app daar niet zonder login.
+    ALLOW_ANONYMOUS: bool = os.getenv("ALLOW_ANONYMOUS", "").strip().lower() == "true"
+
     @classmethod
     def validate(cls) -> None:
         """Validate required configuration at startup."""
@@ -63,6 +66,9 @@ class Config:
         if cls.APP_ENV not in cls.OMGEVINGEN:
             # Een tikfout ("prod") zou anders stil als ontwikkelomgeving gelden, met API-documentatie.
             errors.append(f"APP_ENV moet een van {', '.join(cls.OMGEVINGEN)} zijn, kreeg: {cls.APP_ENV}")
+
+        if fout := cls._login_ontbreekt():
+            errors.append(fout)
 
         if ongeldig := cls._ongeldige_cors_origins():
             errors.append(
@@ -77,6 +83,32 @@ class Config:
 
         logger.info(
             f"Configuration validated. Model: {cls.MODEL}, Database: {'PostgreSQL' if cls.POSTGRES_URI else 'SQLite'}"
+        )
+
+    @classmethod
+    def _login_ontbreekt(cls) -> str | None:
+        """De foutmelding als een omgeving buiten lokaal zonder login zou starten (#787), anders None.
+
+        Zonder CHAT_USERS en OIDC heet elke bezoeker `gast` en delen ze alle gesprekken en rapporten. Dat is lokaal
+        bedoeld, maar een leeg geworden secret mag een uitgerolde omgeving er niet stil in brengen.
+        """
+        if cls.APP_ENV == "local":
+            return None
+        from core import auth  # pas hier: de import eist CHAT_SECRET zodra er een login is
+
+        if auth.AUTH_ENABLED:
+            return None
+        if cls.ALLOW_ANONYMOUS:
+            logger.warning(
+                "ALLOW_ANONYMOUS=true: APP_ENV=%s draait zonder login; elke bezoeker is 'gast' en deelt alle "
+                "gesprekken en rapporten",
+                cls.APP_ENV,
+            )
+            return None
+        return (
+            f"APP_ENV={cls.APP_ENV} start niet zonder login: stel CHAT_USERS of OIDC_PROVIDER in "
+            "(controleer ook of de waarde in het secret niet leeg is), of zet ALLOW_ANONYMOUS=true voor een "
+            "bewust openbare demo"
         )
 
     @classmethod

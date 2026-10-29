@@ -45,6 +45,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie uit op playground en productie via `APP_ENV` (#676) |
 | S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; rand (Traefik) en quotum per gebruiker open |
 | S25 | De server begrensde de modelkeuze uit de chat niet tot het aanbod (`AVAILABLE_MODELS`/`USER_MODELS`) | Gemiddeld | ✅ Opgelost (#755) — `toegestaan_model` valt terug op `MODEL` bij elke naam buiten het aanbod |
+| S26 | Een omgeving buiten lokaal kon stil zonder login starten (`CHAT_USERS` leeg, geen `OIDC_PROVIDER`): elke bezoeker was `gast` en zag alle gesprekken | Gemiddeld | ✅ Opgelost (#787) — `Config.validate` weigert de start buiten `APP_ENV=local`, tenzij `ALLOW_ANONYMOUS=true` |
 
 ---
 
@@ -355,6 +356,20 @@ Tests: `tests/test_verzoeklimiet.py`, `tests/test_websocket_herkomst.py`, `tests
 
 Tests: `tests/test_modelkeuze.py`.  
 **Open:** geen.
+
+---
+
+### S26 — Start zonder login buiten lokaal ✅ Opgelost
+
+**Aangetroffen in:** product-, ontwerp- en samenhangaudit 29-10-2026 (#787)  
+**Probleem:** `AUTH_ENABLED = bool(USERS) or OIDC_ENABLED` (`core/auth.py`), en `Config.validate` eiste geen login. Was `CHAT_USERS` in het secret leeg (bijvoorbeeld na een rotatie) en ontbrak `OIDC_PROVIDER`, dan startte de pod, was `/health` groen en heette elke bezoeker `gast`. Alle gesprekken en rapporten stonden dan onder die ene naam, zichtbaar voor iedereen via `/api/conversations`. Een ontbrekende sleutel in het secret was al veilig (de `secretKeyRef` is niet `optional`, dus de pod start niet); het gat was een lege of misvormde waarde.  
+**Fix:**
+- `Config.validate` (`_login_ontbreekt`) faalt buiten `APP_ENV=local` als `core.auth.AUTH_ENABLED` onwaar is, met een melding die geen waarden noemt.
+- `ALLOW_ANONYMOUS=true` staat een bewust openbare demo toe en geeft bij het opstarten een WARNING.
+- Lokaal blijft de login optioneel.
+
+Tests: `tests/test_login_verplicht.py` (de combinaties lokaal/niet-lokaal × login aan/uit, de uitzondering, en een bewaking dat elk manifest een login zet).  
+**Open:** geen. Controleer vóór een uitrol van development of production dat hun secret een gevulde `CHAT_USERS` heeft (#674).
 
 ---
 
