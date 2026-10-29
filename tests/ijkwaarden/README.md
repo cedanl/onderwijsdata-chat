@@ -61,6 +61,14 @@ nooit uit de repo. De CI-job `eval:bronwaarheid` (`.gitlab-ci.yml`) doet hetzelf
 met `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` als (masked) CI-variabelen, en bewaart
 `eval_results/` 90 dagen als artifact. Elke beurt kost een modelaanroep op die omgeving.
 
+De kritieke set (besluit #693, #753) heeft het veld `expected.kritiek` in `evaluations.json`: de ijk-cases, de
+weigeringen en het #742-paar.
+- **Drempel:** een weigering moet in elke herhaling slagen. Een andere kritieke vraag in een meerderheid (`kritiek.js`).
+- **Uitslag:** de runner schrijft `eval_results/kritiek-<datum>.json`, per vraag met de runs, de drempel en de reden van
+  elke mislukte run, en logt één regel per model: `kritiek …: N van M gehaald; rood: …`. Die regel hoort in de
+  promotie-MR (`docs/promoten.md`).
+- **Zonder run:** een kritieke vraag zonder run telt als rood.
+
 Los daarvan pingt de geplande CI-job `bron:ping` (`scripts/bronping.py`) elke bron één keer door de toollaag van de
 chat, met de selecties van deze ijkpunten en zonder waarden te vergelijken: alleen of de bron nog antwoordt (#627).
 

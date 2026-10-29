@@ -11,4 +11,7 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [['list'], ['json', { outputFile: 'eval_results/playwright-eval.json' }]],
+  // De verslagen komen uit de runs van alle workers samen: Playwright start na een mislukte test een nieuwe (#753).
+  globalSetup: './tests/e2e/eval-setup.js',
+  globalTeardown: './tests/e2e/eval-teardown.js',
 })

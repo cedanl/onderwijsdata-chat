@@ -39,6 +39,19 @@ eigen kop (`docs/promoten.md`).
 - Een definitie van meer zinnen staat in het rapport als opsomming, één zin per punt (#748): "het blok definities mag meer
   bulletsgewijs".
 
+### Kritieke set en drempel voor de bronwaarheid-evals (besluit #693, #753)
+- `expected.kritiek` markeert in `tests/e2e/evaluations.json` de 17 kritieke vragen: de ijk-cases met exacte bronwaarden,
+  de weigeringen en het #742-paar over geslacht per opleiding.
+- Een weigering moet in elke herhaling slagen; een verzonnen getal is de ernstige fout. Een andere kritieke vraag moet in
+  een meerderheid slagen, 2 van 3 bij `TEST_REPEATS=3`.
+- De runner schrijft `eval_results/kritiek-<datum>.json` en logt één regel per model, bijvoorbeeld "kritiek …: 16 van 17
+  gehaald; rood: ijk-hu-deeltijd (1/3)". De promotiechecklist (`docs/promoten.md`) vraagt om die regel in de
+  promotie-MR. De evals blokkeren niets (`allow_failure` blijft); een kritieke vraag zonder run telt als rood.
+- De verslagen van de evals waren onvolledig. Playwright start na een mislukte test een nieuwe worker, en de stand in het
+  geheugen raakte dan kwijt: het slagingspercentage en het rapportverslag (#752) bevatten alleen de vragen van de
+  laatste worker. Nu legt elke run een regel vast in `eval_results/runs.jsonl`, en `eval-teardown.js` bouwt de verslagen
+  na alle workers (`tests/e2e/runlog.js`).
+
 ### Rapporteval: volgt het rapport de bijsturing? (#752)
 - Een eval over de echte keten (`tests/e2e/rapport-bijsturing.spec.js`) speelt de twee gesprekken uit de
   rapportfeedback van 28 oktober na. Daarna drukt hij op "Genereer rapport" met de onderzoeksvraag die de app voorstelt:
