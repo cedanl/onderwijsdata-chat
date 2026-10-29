@@ -8,6 +8,10 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### CI: de GitHub-spiegel springt niet meer terug bij een tag (#769)
+- Een tag-pipeline pushte de getagde commit ook naar GitHub `main`. Was main al verder, dan stond de spiegel terug tot
+  de volgende merge. Nu pusht een tag-pipeline alleen de tag.
+
 ### De pytest-gate hangt niet meer af van live DUO en CBS (#766)
 - De register- en dashboardtests draaien op bevroren DUO-bestanden in `tests/fixtures/duo/`, niet op
   onderwijsdata.duo.nl. Een storing of verbroken verbinding bij DUO maakte de blokkerende pytest-job rood
