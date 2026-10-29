@@ -9,6 +9,10 @@
 // Draait zonder LLM: de chat-socket is nagebootst en speelt een beurt van ongeveer 2,6 s. Niet in CI. Draaien:
 // `npx playwright test mobiel-figuur-cls` (playwright.config.js).
 //
+// #808: de datastap levert een tabel (export_key), zoals een echte CBS-stap. Zonder die tabel bleef deze spec groen
+// terwijl op een telefoon de knop "Download data als CSV" al onder de stromende tekst stond zodra de grafiek binnenkwam,
+// en met elke regel omlaag schoof (CLS 0,073–0,105).
+//
 // De kaart telt alleen tot KAART_VENSTER_MS na de landing. Daarna zet useKaartStatus een kaart die nog niet getekend
 // is even op 'mislukt' (#642, 1 s bevestiging); in een headless browser zonder GPU tekent de kaart traag genoeg dat
 // de melding kort verschijnt en de blokken eronder 49 px op en neer gaan. Dat is een ander verschijnsel dan hier.
@@ -49,7 +53,7 @@ const EIND_MS = 2600
 const beurt = figuur => [
   [0, { type: 'message_start' }],
   [100, { type: 'tool_start', name: 'cbs_query', label: 'CBS-data ophalen' }],
-  [700, { type: 'tool_end', name: 'cbs_query', snippet: "df = cbs.get_data('85423NED')" }],
+  [700, { type: 'tool_end', name: 'cbs_query', snippet: "df = cbs.get_data('85423NED')", export_key: 'cbs:85423NED:0:ab' }],
   [800, { type: 'tool_start', name: 'create_plot', label: 'Grafiek maken' }],
   [1200, { type: 'tool_end', name: 'create_plot', snippet: 'fig' }],
   [1250, { type: 'figure', label: 'Studenten per niveau', figure_json: JSON.stringify(figuur) }],
@@ -105,9 +109,10 @@ for (const kleur of ['light', 'dark']) {
         await page.getByRole('button', { name: 'Verstuur bericht' }).tap()
         const tikMoment = await page.evaluate(() => performance.now())
 
-        // Zolang de tekst stroomt, staat het etiket er nog niet (het schoof er elke regel mee omlaag).
+        // Zolang de tekst stroomt, staan het etiket en de CSV-knop er nog niet (ze schoven elke regel mee omlaag).
         await page.waitForTimeout(EIND_MS - 400)
         await expect(page.locator('.message-model')).toHaveCount(0)
+        await expect(page.locator('.data-export')).toHaveCount(0)
         await expect(page.locator('.plotly-figure-wrap')).toBeVisible({ timeout: 15_000 })
         const grafiekMoment = await page.evaluate(() => performance.now())
         await expect(page.locator('.message-model')).toHaveCount(1)

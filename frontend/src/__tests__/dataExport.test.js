@@ -55,6 +55,22 @@ describe('roundSettled (#399)', () => {
   it('telt een ingeladen gesprek als klaar, ook met done=false', () => {
     expect(roundSettled(turn.slice(0, 2), 1, false)).toBe(true)
   })
+
+  // #808: de grafiek komt als eigen bericht binnen terwijl haar antwoord nog stroomt. Als "volgend bericht" geteld
+  // stond de CSV-knop al onder de stromende tekst en schoof hij bij elke regel omlaag.
+  const grafiek = { role: 'assistant', content: '', figures: [{ label: 'Grafiek aangemaakt', json: '{}' }], done: true }
+
+  it('telt een grafiekbericht niet als volgende ronde: het antwoord ervoor streamt nog', () => {
+    expect(roundSettled([...turn.slice(0, 2), grafiek], 1, true)).toBe(false)
+    expect(roundSettled([...turn.slice(0, 2), grafiek, { ...grafiek }], 1, true)).toBe(false)
+  })
+
+  it('telt het antwoord met grafiek als klaar zodra het af is, niets meer loopt of er een echte volgende ronde is', () => {
+    const lopend = [...turn.slice(0, 2), grafiek]
+    expect(roundSettled([turn[0], { ...turn[1], done: true }, grafiek], 1, true)).toBe(true)
+    expect(roundSettled(lopend, 1, false)).toBe(true)
+    expect(roundSettled([...lopend, turn[2]], 1, true)).toBe(true)
+  })
 })
 
 describe('DataExport', () => {

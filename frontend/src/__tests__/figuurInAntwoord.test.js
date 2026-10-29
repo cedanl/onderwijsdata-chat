@@ -91,10 +91,13 @@ describe('de grafiek in de bubbel van het antwoord', () => {
     scherm.smal = false
   })
 
+  // Een tweede aanroep tekent dezelfde pagina opnieuw, met wat chat dan bevat (een volgende stand van de stream).
   async function render() {
-    container = document.createElement('div')
-    document.body.appendChild(container)
-    root = createRoot(container)
+    if (!root) {
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      root = createRoot(container)
+    }
     const pagina = createElement(MemoryRouter, { initialEntries: ['/chat'] },
       createElement(ChatPage, { user: 'tester', feedbackEnabled: true, openRapport: vi.fn() }))
     await act(async () => { root.render(pagina) })
@@ -133,9 +136,39 @@ describe('de grafiek in de bubbel van het antwoord', () => {
     expect(container.querySelector('.plotly-figure-wrap')).toBeNull()
     chat.messages = [vraag, antwoord, grafiek]
     chat.busy = false
-    await act(async () => { root.render(createElement(MemoryRouter, { initialEntries: ['/chat'] },
-      createElement(ChatPage, { user: 'tester', feedbackEnabled: true, openRapport: vi.fn() }))) })
+    await render()
     expect(container.querySelector('.plotly-figure-wrap')).not.toBeNull()
+  })
+
+  // #808: de grafiek is er al terwijl de tekst nog moet komen. Telde ze als volgend bericht, dan stond de CSV-knop
+  // al in een bubbel zonder tekst; die bubbel sprong 158 px omhoog toen de redenering bij de eerste regel inklapte,
+  // en daarna schoof de knop met elke gestreamde regel omlaag (CLS 0,073–0,105 op 390 px).
+  it('zet op een telefoon niets onder een antwoord dat nog streamt, ook als zijn grafiek er al is', async () => {
+    scherm.smal = true
+    const metTabel = { ...antwoord, tools: [{ ...antwoord.tools[0], exportKey: 'cbs:85354NED:0:ab' }] }
+    const lopend = { ...metTabel, content: '', done: false, bronnen: undefined, citaties: undefined, vervolgvragen: undefined }
+    chat.messages = [vraag, lopend, grafiek]
+    chat.busy = true
+    await render()
+    // Vóór de eerste regel: alleen de redenering, nog geen bubbel die bij het inklappen kan verspringen.
+    expect(container.querySelector('.reasoning-panel')).not.toBeNull()
+    expect(container.querySelector('.message-bubble-assistant')).toBeNull()
+
+    chat.messages = [vraag, { ...lopend, content: 'Er waren' }, grafiek]
+    await render()
+    const bubbel = container.querySelector('.message-bubble-assistant')
+    expect(bubbel.textContent).toContain('Er waren')
+    expect(bubbel.querySelector('.data-export, .answer-blocks, .plotly-figure-wrap')).toBeNull()
+
+    // Klaar: alles landt in één keer onder de tekst, de grafiek eerst.
+    chat.messages = [vraag, metTabel, grafiek]
+    chat.busy = false
+    await render()
+    const kinderen = [...container.querySelector('.message-bubble-assistant').children].map(k => k.className)
+    const grafiekPlek = kinderen.findIndex(c => c.includes('plotly-figure-wrap'))
+    expect(grafiekPlek).toBeGreaterThan(-1)
+    expect(kinderen.findIndex(c => c.includes('answer-blocks'))).toBeGreaterThan(grafiekPlek)
+    expect(container.querySelector('.answer-blocks .data-export')).not.toBeNull()
   })
 
   it('toont de grafiek op een breed scherm al tijdens het antwoord', async () => {
