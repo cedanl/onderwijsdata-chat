@@ -24,7 +24,8 @@ _CBS_PERIODE = re.compile(r"^(20\d{2})(?:SJ|JJ)\d{2}$")
 _PER_PUNT = ("x", "y", "text", "hovertext", "customdata")
 
 
-def _startjaar(waarde) -> int | None:
+def startjaar(waarde) -> int | None:
+    """Het startjaar van een tijdaswaarde (2021, 2021/22, 2021SJ00); None als het geen jaar is."""
     if isinstance(waarde, bool):
         return None
     if isinstance(waarde, int | float):
@@ -38,7 +39,7 @@ def _startjaar(waarde) -> int | None:
 
 def _binnen(waarden: list, bereik: tuple[int, int]) -> list[bool] | None:
     """Per waarde: valt hij in het bereik? None als het geen tijdas is."""
-    jaren = [j for w in waarden if (j := _startjaar(w)) is not None]
+    jaren = [j for w in waarden if (j := startjaar(w)) is not None]
     if not jaren or len(jaren) != len(waarden):
         return None
     return [bereik[0] <= j <= bereik[1] for j in jaren]
@@ -68,7 +69,7 @@ def bijgesneden(figure_json: str, bereik: tuple[int, int]) -> str:
     meta = figuur.get("layout", {}).get("meta")
     if isinstance(meta, dict) and meta.get("x") and isinstance(meta.get("data"), list):
         meta["data"] = [
-            rij for rij in meta["data"] if (j := _startjaar(rij.get(meta["x"]))) is None or bereik[0] <= j <= bereik[1]
+            rij for rij in meta["data"] if (j := startjaar(rij.get(meta["x"]))) is None or bereik[0] <= j <= bereik[1]
         ]
     _kopruimte_opnieuw(figuur)
     return json.dumps(figuur, ensure_ascii=False)

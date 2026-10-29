@@ -54,6 +54,9 @@ const DARK_RULES = [
   ['.vraag', 'background:#1E3A5F;border-left-color:#3B82F6'],
   ['.vraag .vraag-text', 'color:#DBEAFE'],
   ['.vraag .section-label', 'color:#93C5FD'],
+  ['.afwijking', 'background:#3B2A0B;border-left-color:#F59E0B'],
+  ['.afwijking li', 'color:#FDE68A'],
+  ['.afwijking .section-label', 'color:#FCD34D'],
   ['.section-label', 'color:#9CA3AF'],
   ['.def-term,.vis-title,.prose h1,.prose h2,.prose h3,.prose strong', 'color:#F9FAFB'],
   ['.def-desc,.vis-note,.scope-col li,.prose,.bronnen li', 'color:#D1D5DB'],
@@ -162,6 +165,13 @@ export const PRINT_JS = `(function(){
   window.addEventListener('message',function(ev){if(ev.source!==window.parent||ev.data!=='${PRINT_BERICHT}')return;voorbereiden();setTimeout(function(){window.print()},150)});
 })()`
 
+// Waar het rapport meetbaar afwijkt van de vraag, uit code (#734): vóór alles, ook vóór de onderzoeksvraag.
+function afwijkingHtml(afwijkingen) {
+  const regels = (Array.isArray(afwijkingen) ? afwijkingen : []).filter(r => typeof r === 'string' && r.trim())
+  if (!regels.length) return ''
+  return `<div class="afwijking" role="note"><h2 class="section-label">Afwijking van je vraag</h2><ul>${bullets(regels)}</ul></div>`
+}
+
 export function buildReportHtml(spec, { instelling = '' } = {}) {
   const s = spec || {}
   const datum = s.datum || new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -249,6 +259,9 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .body{padding:28px 32px;max-width:1100px;margin:0 auto}
   .card{background:#fff;border-radius:10px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:20px}
   .section-label{font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+  .afwijking{border-left:4px solid #D97706;background:#FFFBEB;border-radius:0 10px 10px 0;padding:16px 24px;margin-bottom:20px}
+  .afwijking ul{margin:0;padding-left:1.1em}
+  .afwijking li{color:#78350F;font-weight:600;line-height:1.5}
   .vraag{border-left:4px solid #2563EB;background:#EFF6FF;border-radius:0 10px 10px 0;padding:20px 24px;margin-bottom:20px}
   .vraag .section-label{color:#1D4ED8;margin-bottom:6px}
   .vraag .vraag-text{font-size:1.05rem;font-weight:700;color:#1E3A8A;line-height:1.5}
@@ -304,6 +317,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   </div>
 </div>
 <div class="body">
+  ${afwijkingHtml(s.afwijkingen)}
   <div class="vraag">
     <h2 class="section-label">Onderzoeksvraag</h2>
     <div class="vraag-text">${escapeHtml(s.onderzoeksvraag || '')}</div>
