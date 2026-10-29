@@ -8,6 +8,9 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+Nieuwe items komen niet hier, maar als fragment in `changelog.d/`: één bestand per MR (`CONTRIBUTING.md`). Bij een
+release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de items die hier nog staan.
+
 ### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
 - Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
   geopende gesprek landen en mee opgeslagen worden. Een half antwoord bleef daarbij open staan en blokkeerde het rapport.

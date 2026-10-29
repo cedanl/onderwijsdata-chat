@@ -15,8 +15,11 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
 
 0. **Vóór de tag**, in de laatste MR naar `main` (#679, #684):
    - `version` in `pyproject.toml` (en `uv lock`) en `CITATION.cff` (`version`, `date-released`) op de nieuwe release;
-   - in `CHANGELOG.md` wordt "Niet uitgebracht" de kop `## X.Y.Z — <datum>`, met een nieuwe lege "Niet uitgebracht"
-     erboven, en de kopzin noemt de nieuwe laatste tag;
+   - `uv run python scripts/changelog.py X.Y.Z` zet de changelog-fragmenten uit `changelog.d/` onder de kop
+     `## X.Y.Z — <datum>` in `CHANGELOG.md`, direct onder "Niet uitgebracht", en verwijdert ze (#797). Items die nog
+     onder "Niet uitgebracht" staan, komen onder de fragmenten mee. Draai het eerst met `--droog`: dat toont de nieuwe
+     versiesectie en schrijft niets. Die sectie (of daarna `git diff <vorige tag>..X.Y.Z -- CHANGELOG.md`) is de bron
+     voor de release-omschrijving op GitHub (stap 3). De kopzin van `CHANGELOG.md` noemt de nieuwe laatste tag;
    - groen of bewust geaccepteerd: `bron:ping` (`scripts/bronping.py`), `scripts/ijkwaarden.py`, `audit:python` en
      `audit:npm` in de pipeline;
    - een recente `eval:bronwaarheid`-run (#692): de uitslag van de bronwaarheid-evals tegen test. De job is

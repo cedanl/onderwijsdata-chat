@@ -25,9 +25,10 @@ of een andere naam krijgt; een betekenis die verandert; een optionele parameter 
 nieuwe optionele parameter of een nieuwe sleutel in een antwoord is dat niet.
 
 **Wat je dan doet:** open eerst een issue met het label `breaking change`, houd de oude vorm een tijd naast de nieuwe
-als dat kan, zet een regel in `CHANGELOG.md` en noem hem in de release-omschrijving ([Promoten](promoten.md)).
+als dat kan, zet een changelog-item in `changelog.d/` (zie `CONTRIBUTING.md`; bij de release komt het in
+`CHANGELOG.md`) en noem het in de release-omschrijving ([Promoten](promoten.md)).
 Verandert een toolschema of de `data_key`-afspraak bewust, pas dan de twee contracttests mee aan en zeg in het
-changelog wat er anders is.
+changelog-item wat er anders is.
 
 ---
 

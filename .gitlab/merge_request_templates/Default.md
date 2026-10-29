@@ -9,6 +9,11 @@
 - [ ] Frontend: `npm run lint` en `npm test` groen (bij frontend-wijzigingen)
 - [ ] Nieuwe antwoordcontrole: foutklasse, eigenaar, test en heroverwegingscriterium staan hierboven (`CONTRIBUTING.md`)
 
+## Changelog
+<!-- Merkt een gebruiker of beheerder dit? Zet het item in een eigen bestand, niet in CHANGELOG.md (`CONTRIBUTING.md`). -->
+
+- [ ] Fragment `changelog.d/<issuenummer>-<onderwerp>.md` toegevoegd (`###`-kopje met bullets), of niet nodig
+
 ## Bewust niet gedaan
 <!-- Wat valt buiten deze MR, en waarom? -->
 
