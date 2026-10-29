@@ -36,10 +36,12 @@ from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
 from agent.recepten import van_session
+from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
 from agent.report_titel import rapporttitel
+from agent.selectie import stapkeys
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
@@ -264,13 +266,18 @@ async def generate(
     figures: list[str] = []
     # Per figuur de bronregel eronder, uit de key die de grafiek tekende (#569).
     figuurbronnen: list[dict | None] = []
+    # De keys die de rapportrun las: haar bevragingen en de grafieken die in het rapport komen (#738).
+    gelezen: list = []
     dataset_context = json.dumps(context, default=str)
 
     async def keep_figure(call: ToolCall, result: str, figure) -> None:
         _log_tool_call(call.name, call.args, result)
+        gelezen.extend(stapkeys(result))
         if figure is not None and len(figures) < _MAX_VISUALISATIES:
             figures.append(pio.to_json(figure))
-            figuurbronnen.append(figuurbron((call.args or {}).get("data_key")))
+            data_key = (call.args or {}).get("data_key")
+            figuurbronnen.append(figuurbron(data_key))
+            gelezen.append(data_key)
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         # De controles oordelen over wat het model schreef, niet over het voorbehoud uit code (#578).
@@ -310,8 +317,10 @@ async def generate(
         logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
         logger.debug("RAPPORT MELDINGEN  %s", result.problems)
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
-    spec = _parse_spec_from_response(result.text, figures, context, author, figuurbronnen)
-    keys = [ds["data_key"] for ds in context["datasets"] if ds.get("data_key")]
+    # Bronnen, definities, voorbehoud en dataversie van wat het rapport gebruikte, niet van het hele gesprek (#738).
+    gebruikt = {**context, "datasets": gebruikte_datasets(context["datasets"], gelezen, bewijs, result.text)}
+    spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen)
+    keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(model or MODEL, keys, model_versie=getattr(result, "model_versie", None))
     log_publicatie(RAPPORT, keys, spec.manifest)
     return spec
