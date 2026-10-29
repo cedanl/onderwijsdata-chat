@@ -1,5 +1,5 @@
 # Stage 1: Build React Frontend
-FROM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS frontend-builder
+FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS frontend-builder
 
 WORKDIR /frontend
 
@@ -16,10 +16,10 @@ RUN npm run build
 
 # Stage 2: Python-afhankelijkheden. Compiler en git (voor de git-afhankelijkheden riodata en onderwijsdata) staan
 # alleen hier; het runtime-image krijgt alleen de .venv (#681).
-FROM python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8 AS python-builder
+FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8 AS python-builder
 
 # uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
-COPY --from=ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
@@ -38,7 +38,7 @@ COPY pyproject.toml uv.lock ./
 RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --extra postgres
 
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
-FROM python:3.14-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
+FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
 
 WORKDIR /app
 
