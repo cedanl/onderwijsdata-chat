@@ -83,6 +83,7 @@ Optionele instellingen:
 | `MAX_MESSAGE_CHARS` | `4000` | Maximum tekens per nieuw chatbericht; langere berichten weigert de server |
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
+| `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport of dashboard aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
 
 ## Starten
 

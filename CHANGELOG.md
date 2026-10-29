@@ -8,6 +8,15 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Annuleer stopt een rapport ook als het model nog niets terugstuurde; rapport en dashboard hebben een tijdsgrens (#759)
+- Het stopsignaal werd pas gezien tussen rondes en per ontvangen stuk tekst. Hing de modelaanroep (tot 20 min), dan
+  meldde de app "Rapport geannuleerd", maar de run liep door. Ze hield een runplaats bezet, en elke nieuwe vraag kreeg
+  "Er loopt nog een antwoord". Nu breekt een stop ook een lopende modelaanroep af, en sluit litellm zijn
+  HTTP-verbinding.
+- Rapport en dashboard stoppen aan de serverkant na `GENEREER_TIMEOUT_S` (standaard 480 s, onder de 10 min van de
+  frontend). Een rapport eindigt dan met een melding en de knop om het opnieuw te proberen.
+- De stop-actie bereikt nu ook een dashboard in aanmaak.
+
 ### Herverbinden past bij de reden van sluiten, en zegt het als de app stopt met proberen (#783)
 - Met te veel vensters open (de server sluit met 1013) kwam er elke seconde een nieuwe poging, met elke keer een nieuwe
   foutmelding. De teller begon bij het openen opnieuw, ook als de server meteen weer sloot. Nu telt een verbinding pas
