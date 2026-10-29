@@ -13,9 +13,8 @@
  */
 import { test, expect } from 'playwright/test'
 import { WebSocket } from 'ws'
-import { BASE_URL, WS_URL, inloggegevens, protocollen } from './chatstream.js'
+import { WS_URL, haalToken, protocollen } from './chatstream.js'
 
-const API = BASE_URL
 const MODELS = (process.env.TEST_MODELS || '').split(',').filter(Boolean)
 const USE_DEFAULT = MODELS.length === 0
 
@@ -41,16 +40,6 @@ const TEST_QUESTIONS = [
     description: 'Zakelijke toon, geen complimenten',
   },
 ]
-
-async function getToken() {
-  const resp = await fetch(`${API}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(inloggegevens()),
-  })
-  const data = await resp.json()
-  return data.token
-}
 
 function chatViaWebSocket(token, message, model, timeoutMs = 120_000) {
   return new Promise((resolve, reject) => {
@@ -108,7 +97,7 @@ test.describe('Model-vergelijking', () => {
   let token
 
   test.beforeAll(async () => {
-    token = await getToken()
+    token = await haalToken()
     expect(token).toBeTruthy()
   })
 

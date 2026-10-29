@@ -8,6 +8,18 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Rapporteval: volgt het rapport de bijsturing? (#752)
+- Een eval over de echte keten (`tests/e2e/rapport-bijsturing.spec.js`) speelt de twee gesprekken uit de
+  rapportfeedback van 28 oktober na. Daarna drukt hij op "Genereer rapport" met de onderzoeksvraag die de app voorstelt:
+  - "alleen universitaire bachelors, geen verwante opleidingen" na een vraag over drie informatica-bachelors. Het
+    rapport mag dan geen grafiek uit het hbo-bestand hebben, en geen hbo- of verwante reeks;
+  - "Genereer een rapport dat ingaat op je laatste antwoord" na twee data-antwoorden. Het rapport moet dan over het
+    tweede antwoord gaan.
+- De controles zijn code: de onderzoeksvraag, de bronregel van elke grafiek en de reeksen erin. Per scenario komen de
+  geslaagde runs en de redenen in `eval_results/rapport-<datum>.json`. De job `eval:bronwaarheid` draait de eval mee,
+  informatief (besluit #693).
+- De runners delen nu één gesprekshulp (`tests/e2e/gesprek.js`, één verbinding per gesprek) en één `haalToken`.
+
 ### Geslacht per opleiding uit code (#742)
 - "Wat is de man-vrouwverhouding bij Luchtvaart van Inholland?" gaf de ene keer een verdeling en de andere keer "niet
   beschikbaar": of het model het geslachtsbestand van DUO aan de opleiding koppelde, besliste het per run. Nu doet de code

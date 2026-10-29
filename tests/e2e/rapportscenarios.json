@@ -1,0 +1,46 @@
+{
+  "_doc": "Scenario's voor de rapporteval (#752), uit de rapportfeedback van 28 okt. Per scenario een gesprek (berichten, in volgorde over één verbinding) en daarna een rapport met de onderzoeksvraag die de app voorstelt (#751). De verwachting toetst wat code vastlegde: de onderzoeksvraag, de bronregel en de reeksen van elke grafiek (rapportscore.js). Patronen zijn regexen zonder hoofdlettergevoeligheid.",
+  "scenarios": [
+    {
+      "label": "rapport-bijsturing-wo",
+      "description": "#733: na 'alleen universitaire bachelors, geen verwante opleidingen' tekende het rapport de wo+hbo-analyse van de eerste vraag",
+      "berichten": [
+        "Hoe is de trend van instroom in B Computing Science, B Informatica en B Computer Science?",
+        "Ik wil het alleen zien voor universitaire bachelor's. Geen verwante opleidingen"
+      ],
+      "verwachting": {
+        "min_visualisaties": 1,
+        "onderzoeksvraag_is_voorstel": true,
+        "onderzoeksvraag_noemt": ["\\bwo\\b|universit|wetenschappelijk"],
+        "bron_niet": ["hoger beroepsonderwijs"],
+        "reeksen_niet": [
+          "\\bhbo\\b",
+          "hogeschool",
+          "HBO-ICT",
+          "Technische Informatica",
+          "Kunstmatige Intelligentie",
+          "Artificial Intelligence",
+          "Data Science",
+          "Informatiekunde",
+          "Bedrijfsinformatica"
+        ]
+      }
+    },
+    {
+      "label": "rapport-laatste-antwoord",
+      "description": "#732: 'Genereer een rapport dat ingaat op je laatste antwoord' werd de titel, en het rapport ging niet over dat antwoord",
+      "berichten": [
+        "Hoeveel studenten had Hogeschool Utrecht in 2024/25?",
+        "Hoe ontwikkelde het aantal eerstejaars bij de Universiteit Utrecht zich sinds 2021/22?",
+        "Genereer een rapport dat ingaat op je laatste antwoord"
+      ],
+      "verwachting": {
+        "min_visualisaties": 1,
+        "onderzoeksvraag_is_voorstel": true,
+        "onderzoeksvraag_noemt": ["Universiteit Utrecht", "eerstejaars"],
+        "onderzoeksvraag_niet": ["Hogeschool Utrecht", "Genereer een rapport"],
+        "bron_wel": ["p02ho1ejrs"]
+      }
+    }
+  ]
+}

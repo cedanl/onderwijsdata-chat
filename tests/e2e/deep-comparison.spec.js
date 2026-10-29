@@ -10,19 +10,9 @@
  */
 import { test, expect } from 'playwright/test'
 import { WebSocket } from 'ws'
-import { BASE_URL, WS_URL, inloggegevens, protocollen } from './chatstream.js'
+import { WS_URL, haalToken, protocollen } from './chatstream.js'
 
-const API = BASE_URL
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
-
-async function getToken() {
-  const resp = await fetch(`${API}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(inloggegevens()),
-  })
-  return (await resp.json()).token
-}
 
 function chatViaWebSocket(token, messages, model, timeoutMs = 180_000) {
   return new Promise((resolve) => {
@@ -102,7 +92,7 @@ function chatViaWebSocket(token, messages, model, timeoutMs = 180_000) {
 
 test.describe('Diepe model-vergelijking', () => {
   let token
-  test.beforeAll(async () => { token = await getToken() })
+  test.beforeAll(async () => { token = await haalToken() })
 
   test('catalog-retrieval: beide modellen vinden dezelfde datasets', async () => {
     test.setTimeout(300_000)
