@@ -8,6 +8,15 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Na een herstart of failover van PostgreSQL falen er geen aanvragen meer op dode verbindingen (#764)
+- De vrije verbindingen in de pool waren na een herstart, switchover of failover dood. Tot `POSTGRES_POOL_SIZE` (8)
+  aanvragen faalden daarop: een 500, een mislukte WebSocket-handshake, of `/ready` rood, waardoor de enige pod even uit
+  de Service viel. Nu vervangt de pool een verbinding waarop het eerste statement faalt omdat ze dicht is, en voert
+  dat statement opnieuw uit. Een SQL-fout gaat zoals altijd naar de aanroeper.
+- Een nieuwe verbinding krijgt `connect_timeout=5` en TCP-keepalives, tenzij `POSTGRES_URI` die zelf zet.
+- Gemeten met PostgreSQL 17: na `pg_ctl restart -m fast` faalden met drie verbindingen in de pool alle drie
+  gelijktijdige aanroepen. Nu slagen ze.
+
 ### Een dashboard komt niet af zonder dat je het merkt (#792)
 - Een dashboard waarvoor het model binnen het stappenbudget geen antwoord gaf, werd als leeg of half dashboard
   geleverd. Nu volgt een melding dat het niet af kwam, zoals bij het rapport.

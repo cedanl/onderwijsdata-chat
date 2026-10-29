@@ -42,6 +42,23 @@ def _tls_verplicht(uri: str) -> dict:
     return {} if "sslmode=" in uri else {"sslmode": "require"}
 
 
+# Wat een nieuwe Postgres-verbinding meekrijgt als de URI het niet zelf zet (#764). Zonder connect_timeout wachtte een
+# aanroep naar een server die niet antwoordt op de TCP-time-out van het OS. Met de keepalives merkt de kernel een
+# verbinding die in de pool ligt en waarvan de server weg is (failover), na een minuut op.
+_VERBINDINGSOPTIES = {
+    "connect_timeout": 5,
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+}
+
+
+def _verbindingsopties(uri: str) -> dict:
+    """De TLS-eis (#683) en de opties uit `_VERBINDINGSOPTIES` die de URI niet zelf noemt."""
+    return {**_tls_verplicht(uri), **{k: v for k, v in _VERBINDINGSOPTIES.items() if f"{k}=" not in uri}}
+
+
 def _connect() -> Any:
     if _USE_POSTGRES:
         try:
@@ -49,7 +66,7 @@ def _connect() -> Any:
             import psycopg2.extras
 
             uri = os.getenv("POSTGRES_URI") or ""
-            conn = psycopg2.connect(uri, **_tls_verplicht(uri))
+            conn = psycopg2.connect(uri, **_verbindingsopties(uri))
             conn.autocommit = False
             return conn
         except ImportError:
@@ -61,13 +78,48 @@ def _connect() -> Any:
         return conn
 
 
+class _Geleend:
+    """Een verbinding uit de pool, voor één aanroep (#764).
+
+    Na een herstart of failover van PostgreSQL zijn de vrije verbindingen in de pool dood, en psycopg2 merkt dat pas
+    bij een statement. Tot `POSTGRES_POOL_SIZE` aanroepen faalden zo (500, een mislukte WebSocket-handshake, /ready
+    rood). Faalt het eerste statement op een hergebruikte verbinding en is die daarna dicht (`closed` geldt ook voor
+    een gebroken verbinding), dan komt er een nieuwe voor in de plaats en gaat dat statement opnieuw. Dat is veilig:
+    vóór het eerste statement liep er in deze aanroep niets, dus er is niets half gecommit. Een SQL-fout laat de
+    verbinding open en gaat zoals altijd naar de aanroeper, net als een fout op een verse verbinding (dan is de
+    database echt weg) of op een later statement. Commit, rollback en cursor gaan naar de verbinding zelf.
+    """
+
+    def __init__(self, conn: Any, connect: Callable[[], Any], hergebruikt: bool) -> None:
+        self.conn = conn
+        self._connect = connect
+        self._mag_opnieuw = hergebruikt
+
+    def uitvoeren(self, sql: str, params: tuple) -> Any:
+        mag_opnieuw, self._mag_opnieuw = self._mag_opnieuw, False
+        try:
+            return _uitvoeren(self.conn, sql, params)
+        except Exception:
+            if not (mag_opnieuw and self.conn.closed):
+                raise
+        logger.warning("Dode verbinding uit de pool vervangen (database herstart of failover?)")
+        with contextlib.suppress(Exception):
+            self.conn.close()
+        self.conn = self._connect()
+        return _uitvoeren(self.conn, sql, params)
+
+    def __getattr__(self, naam: str) -> Any:
+        return getattr(self.conn, naam)
+
+
 class _Pool:
     """Hergebruikt Postgres-verbindingen over aanroepen heen (#508).
 
     Elke aanroep opende een eigen verbinding (TCP, TLS, authenticatie). Een verbinding gaat na
     gebruik met een rollback terug, zodat een leesactie geen transactie open laat staan; na een
     commit is die rollback niets. Een verbinding die niet meer werkt (server herstart, netwerk weg)
-    gaat dicht in plaats van terug. Meer dan `size` aanroepen tegelijk wachten op een vrije.
+    gaat dicht in plaats van terug; een die al dood in de pool lag, vervangt `_Geleend` (#764).
+    Meer dan `size` aanroepen tegelijk wachten op een vrije.
     """
 
     def __init__(self, connect: Callable[[], Any], size: int) -> None:
@@ -77,19 +129,19 @@ class _Pool:
         self._slots = threading.BoundedSemaphore(size)
 
     @contextmanager
-    def connection(self) -> Generator[Any]:
+    def connection(self) -> Generator[_Geleend]:
         with self._slots:
-            conn = self._take()
+            geleend = self._take()
             try:
-                yield conn
+                yield geleend
             finally:
-                self._give_back(conn)
+                self._give_back(geleend.conn)
 
-    def _take(self) -> Any:
+    def _take(self) -> _Geleend:
         with self._lock:
             if self._idle:
-                return self._idle.pop()
-        return self._connect()
+                return _Geleend(self._idle.pop(), self._connect, hergebruikt=True)
+        return _Geleend(self._connect(), self._connect, hergebruikt=False)
 
     def _give_back(self, conn: Any) -> None:
         try:
@@ -158,6 +210,13 @@ def ping() -> None:
 
 
 def _execute(conn: Any, sql: str, params: tuple = ()) -> Any:
+    """Run a query with SQLite '?' placeholders, on either driver; on a pool connection via `_Geleend` (#764)."""
+    if isinstance(conn, _Geleend):
+        return conn.uitvoeren(sql, params)
+    return _uitvoeren(conn, sql, params)
+
+
+def _uitvoeren(conn: Any, sql: str, params: tuple = ()) -> Any:
     """Run a query with SQLite '?' placeholders, on either driver.
 
     sqlite3.Connection has a convenience .execute(); psycopg2 connections
