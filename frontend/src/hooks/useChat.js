@@ -282,6 +282,8 @@ export function useChat() {
             content,
             done: true,
             ...(ev.aborted && { stopped: true }),
+            // Stopped by the time limit, not by the stop button (#775): the reason stays with the message, with retry.
+            ...(ev.timeout && { timeout: true, ...(typeof ev.stopreden === 'string' && { stopreden: ev.stopreden }) }),
             ...(ev.truncated && { truncated: true }),
             // Step budget spent: a partial answer, which another model often completes (#405).
             ...(ev.partial && { partial: true }),

@@ -2,8 +2,9 @@
 // "Maximaal aantal stappen" of een limiet bij één model lukt vaak wél bij een ander.
 // Een interne fout (#404) faalt bij elk model gelijk: dan alleen 'Opnieuw'.
 
-// An error, or a partial answer after the step budget ran out (#405): both get the retry buttons.
-export const offersRetry = msg => !!(msg.isError || msg.partial)
+// An error, a partial answer after the step budget ran out (#405), or a question the time limit stopped (#775):
+// all get the retry buttons. The stop button does not: stopping was the user's own choice.
+export const offersRetry = msg => !!(msg.isError || msg.partial || msg.timeout)
 
 // A failure that a later answer has followed is history (#703): the question got its answer another way, so the
 // buttons would only offer to ask it again. The message itself stays in the conversation.
@@ -11,7 +12,7 @@ const isAnswer = m => m.role === 'assistant' && !m.isError && !!m.done
 export const offersRetryAt = (messages, index) => {
   const msg = messages[index]
   if (!offersRetry(msg)) return false
-  return !(msg.isError && messages.slice(index + 1).some(isAnswer))
+  return !((msg.isError || msg.timeout) && messages.slice(index + 1).some(isAnswer))
 }
 
 export function alternativeModel(models, failedModel) {
