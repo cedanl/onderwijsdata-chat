@@ -1523,6 +1523,12 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .answer-feedback-confirm { font-size: .875rem; font-weight: 500; color: var(--gray-700); }
 .answer-feedback-confirm:not(:empty) { margin-left: 4px; }
 .answer-feedback-bewaard { font-size: .75rem; color: var(--muted-text); line-height: 1.4; }
+/* Na 👍 (#807): de bedankt naast de knoppen, de bewaarzin eronder in dezelfde kolom. Op de basislijn, zodat de knoppen
+   bovenaan blijven staan in plaats van naar het midden van de hogere rij te zakken. De scrollmarge houdt de zin vrij
+   van de knop Scroll naar beneden (36 px, 12 px van de rand). */
+.answer-feedback--bewaard { align-items: baseline; }
+.answer-feedback--bewaard .answer-feedback-confirm { flex: 1 1 12em; scroll-margin-bottom: 56px; }
+.answer-feedback-confirm .answer-feedback-bewaard { display: block; max-width: 480px; margin-top: 2px; font-weight: 400; }
 .answer-feedback-form { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-width: 480px; }
 .answer-feedback-form textarea {
   font: inherit; font-size: .85rem; padding: 6px 8px; resize: vertical;
