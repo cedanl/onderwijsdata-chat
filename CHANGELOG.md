@@ -59,8 +59,14 @@ eigen kop (`docs/promoten.md`).
   prompt; wat de gebruiker zei telt niet als bewijs voor een getal in het rapport (#211).
 - `generate_report` neemt een bevestigde onderzoeksvraag aan (`onderzoeksvraag`, #750). Die wordt titel en onderzoeksvraag
   van het rapport, zonder persoonsgegevens, en het model formuleert haar niet opnieuw. Zonder dat veld blijft het onderwerp de
-  eerste vraag van het gesprek. Het veld in de app volgt in #751. Ook het onderwerp zelf telt niet meer als bewijs: een getal
-  in de vraag van de gebruiker dekte een getal in het rapport.
+  eerste vraag van het gesprek. Ook het onderwerp zelf telt niet meer als bewijs: een getal in de vraag van de gebruiker
+  dekte een getal in het rapport.
+- Bij "Genereer rapport" staat de onderzoeksvraag in een veld, al ingevuld en aan te passen (#751): de regel
+  **Onderzoeksvraag:** uit het laatste antwoord dat er een heeft, anders de eerste vraag. Genereer of Enter stuurt haar mee;
+  wie meteen op Genereer drukt, krijgt het rapport over die vraag. Leeg laten neemt de eerste vraag, Escape of Annuleren
+  sluit zonder rapport. Kan het rapport nu niet starten, dan komt er geen veld maar meteen de melding waarom (#648).
+  Bijvangst: "Annuleren" in een bevestigingsdialoog was in het donkere thema donker op donker; de knop neemt nu de
+  tekstkleur van de dialoog.
 
 ### Restpunten audit 29 oktober
 - De bronlink naar DUO opent de dataset weer (#737). De catalogus gaf de CKAN-URL `onderwijsdata.duo.nl/dataset/<id>`,

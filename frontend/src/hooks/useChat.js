@@ -529,29 +529,34 @@ export function useChat() {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
 
-  // Every tap gives a result (#648): the report starts, or a toast says why it cannot start now. Returns whether
-  // the request went out.
-  const generateReport = useCallback((author) => {
+  // Every tap gives a result (#648): whether a report can start now; when it cannot, a toast says why.
+  const checkReportStart = useCallback(() => {
     const reden = reportBlockReason({
       connected: wsRef.current?.readyState === WebSocket.OPEN,
       open: currentMsgRef.current !== null || busyRef.current,
       reporting: reportingRef.current,
       resetting: resettingRef.current,
     })
-    if (reden) {
-      const nu = Date.now()
-      if ((reasonToastUntilRef.current[reden.key] ?? 0) <= nu) {
-        reasonToastUntilRef.current[reden.key] = nu + REASON_TOAST_MS
-        addToast(reden.text, 'warning', { duur: REASON_TOAST_MS })
-      }
-      return false
+    if (!reden) return true
+    const nu = Date.now()
+    if ((reasonToastUntilRef.current[reden.key] ?? 0) <= nu) {
+      reasonToastUntilRef.current[reden.key] = nu + REASON_TOAST_MS
+      addToast(reden.text, 'warning', { duur: REASON_TOAST_MS })
     }
+    return false
+  }, [addToast])
+
+  // The report starts, or a toast says why it cannot start now. Returns whether the request went out.
+  // onderzoeksvraag: the research question the user confirmed (#751); without it the server takes the first question.
+  const generateReport = useCallback((author, onderzoeksvraag) => {
+    if (!checkReportStart()) return false
     reportingRef.current = true
     reportRequestedRef.current = true
     setReportBusy(true)
     setReportSpec(null)
     setReportProgress(NO_REPORT_PROGRESS)
-    wsRef.current.send(JSON.stringify({ action: 'generate_report', author }))
+    const vraag = onderzoeksvraag?.trim()
+    wsRef.current.send(JSON.stringify({ action: 'generate_report', author, ...(vraag && { onderzoeksvraag: vraag }) }))
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = setTimeout(() => {
       // Stop the server too: a report arriving after this message would contradict it.
@@ -559,7 +564,7 @@ export function useChat() {
       failReport(`Het rapport is na ${REPORT_TIMEOUT_MS / 60000} minuten nog niet klaar en is afgebroken. Probeer het opnieuw.`)
     }, REPORT_TIMEOUT_MS)
     return true
-  }, [abandonReport, addToast, failReport])
+  }, [abandonReport, checkReportStart, failReport])
 
   // The user stops the report (#339): no error, the button is free at once.
   const cancelReport = useCallback(() => {
@@ -601,5 +606,5 @@ export function useChat() {
     }
   }, [clear])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
 }

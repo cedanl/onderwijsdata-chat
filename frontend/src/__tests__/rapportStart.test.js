@@ -259,3 +259,33 @@ describe('de server weigert het rapport (#648)', () => {
     expect(chat.reportBusy).toBe(false)
   })
 })
+
+describe('de onderzoeksvraag gaat mee (#751)', () => {
+  it('de bevestigde vraag gaat mee in het frame, zonder witruimte eromheen', async () => {
+    const ws = await mount()
+    await act(async () => { chat.generateReport('tester', '  Hoe ontwikkelt de instroom in het wo zich?\n') })
+    expect(rapportFrames(ws)).toEqual([
+      { action: 'generate_report', author: 'tester', onderzoeksvraag: 'Hoe ontwikkelt de instroom in het wo zich?' },
+    ])
+  })
+
+  it.each([['leeg', ''], ['alleen witruimte', '  \n '], ['zonder', undefined]])('%s: geen onderzoeksvraag in het frame', async (_naam, vraagtekst) => {
+    const ws = await mount()
+    await act(async () => { chat.generateReport('tester', vraagtekst) })
+    expect(rapportFrames(ws)).toEqual([{ action: 'generate_report', author: 'tester' }])
+  })
+
+  it('checkReportStart zegt of het kan, met de reden als het niet kan, en stuurt niets', async () => {
+    const ws = await mount()
+    let kan
+    await act(async () => { kan = chat.checkReportStart() })
+    expect(kan).toBe(true)
+    expect(chat.toasts).toEqual([])
+
+    await act(async () => { ws.emit({ type: 'message_start' }) })
+    await act(async () => { kan = chat.checkReportStart() })
+    expect(kan).toBe(false)
+    expect(toastTeksten()).toEqual(['Wacht tot het antwoord klaar is'])
+    expect(rapportFrames(ws)).toEqual([])
+  })
+})
