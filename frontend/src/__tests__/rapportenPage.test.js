@@ -8,7 +8,7 @@ const server = vi.hoisted(() => ({ resolve: null, local: [], load: () => new Pro
 vi.mock('../workbooks', () => ({
   getWorkbooks: () => server.local,
   getWorkbookType: (wb) => wb.type,
-  deleteWorkbook: vi.fn(id => { server.local = server.local.filter(wb => wb.id !== id) }),
+  deleteWorkbook: vi.fn(id => { server.local = server.local.filter(wb => wb.id !== id); return Promise.resolve() }),
   isVolledig: (wb) => !wb?.samenvatting,
   loadWorkbook: vi.fn(id => server.load(id)),
   loadWorkbooksFromServer: () => new Promise(r => { server.resolve = r }),

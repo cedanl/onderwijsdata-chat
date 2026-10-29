@@ -40,6 +40,8 @@ function renderIn(element) {
   return act(async () => { root.render(element) })
 }
 
+const knop = tekst => [...container.querySelectorAll('button')].find(b => b.textContent.trim() === tekst)
+
 async function clickDeleteBtn() {
   const btn = container.querySelector('.wb-delete-btn')
   const event = new MouseEvent('click', { bubbles: true, cancelable: true })
@@ -96,6 +98,42 @@ describe('DashboardGallery verwijderknop', () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 })
+// #778: een DELETE die niet lukt, laat het rapport niet stil verdwijnen.
+describe('rapport verwijderen dat op de server mislukt (#778)', () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    fetchWorkbooks.mockResolvedValue([wb])
+    await renderIn(
+      createElement(MemoryRouter, { initialEntries: ['/rapporten'] },
+        createElement(RapportenPage, { settings: {} }))
+    )
+  })
+  const kaarten = () => container.querySelectorAll('.wb-grid .wb-card').length
+  const melding = () => container.querySelector('[role="alert"]')
+
+  it('zet het rapport terug met een melding, en "Opnieuw proberen" verwijdert het alsnog', async () => {
+    deleteWorkbookApi.mockRejectedValueOnce(Object.assign(new Error('API 503'), { status: 503 }))
+    await clickDeleteBtn()
+    await act(async () => { knop('Verwijderen').click() })
+
+    expect(kaarten()).toBe(1)
+    expect(melding().textContent).toContain('"Mijn rapport" verwijderen is niet gelukt. Het staat weer in de lijst.')
+
+    await act(async () => { knop('Opnieuw proberen').click() })
+
+    expect(deleteWorkbookApi).toHaveBeenCalledTimes(2)
+    expect(kaarten()).toBe(0)
+    expect(melding()).toBeNull()
+  })
+
+  it('zegt niets als de DELETE lukt', async () => {
+    await clickDeleteBtn()
+    await act(async () => { knop('Verwijderen').click() })
+    expect(kaarten()).toBe(0)
+    expect(melding()).toBeNull()
+  })
+})
+
 // #776: de verwijderknop verdwijnt met zijn kaart; de focus gaat naar de kaart erna, de vorige, of de kop.
 describe('focus na een rapport verwijderen (#776)', () => {
   const tweede = { ...wb, id: 'wb-2', title: 'Tweede rapport' }

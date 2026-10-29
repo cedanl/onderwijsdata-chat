@@ -1379,6 +1379,12 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
   margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-sm);
   border: 1px solid rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .12); color: var(--gray-700); font-size: .85rem;
 }
+/* "Opnieuw proberen" in de melding van een mislukte verwijdering (#778): een tekstknop met een tikvlak van AA. */
+.wb-gallery-notice-actie {
+  min-height: var(--tap-min-aa); margin-left: 8px; padding: 0 4px;
+  font: inherit; font-weight: 600; color: var(--accent-text);
+  background: none; border: none; text-decoration: underline; cursor: pointer;
+}
 /* A report frame that shows nothing (#541): the notice sits between the bar and the report, never over it. */
 .wb-viewer-fallback-status { flex-shrink: 0; }
 .wb-viewer-fallback { margin: 12px 24px; }

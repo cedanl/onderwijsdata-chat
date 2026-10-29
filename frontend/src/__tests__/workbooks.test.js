@@ -111,6 +111,33 @@ describe('deleteWorkbook', () => {
   })
 })
 
+// #778: weg op het scherm is weg op de server; een DELETE die niet lukt, zet het werkboek terug.
+describe('deleteWorkbook als de server niet meewerkt (#778)', () => {
+  const lijst = [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }, { id: 'c', title: 'C' }]
+  const ids = () => JSON.parse(storage.edudata_workbooks).map(w => w.id)
+
+  it('zet het werkboek op zijn plaats terug en wijst af', async () => {
+    storage.edudata_workbooks = JSON.stringify(lijst)
+    api.deleteWorkbookApi.mockRejectedValueOnce(Object.assign(new Error('API 500'), { status: 500 }))
+    const verwijderd = deleteWorkbook('b')
+    expect(ids()).toEqual(['a', 'c'])
+    await expect(verwijderd).rejects.toThrow('API 500')
+    expect(ids()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('zet niets terug als de gebruiker intussen uitlogde', async () => {
+    storage.edudata_workbooks = JSON.stringify(lijst)
+    storage.edudata_token = 'tok'
+    let faal
+    api.deleteWorkbookApi.mockReturnValueOnce(new Promise((_, reject) => { faal = reject }))
+    const verwijderd = deleteWorkbook('b')
+    delete storage.edudata_token
+    faal(new Error('Failed to fetch'))
+    await expect(verwijderd).rejects.toThrow()
+    expect(ids()).toEqual(['a', 'c'])
+  })
+})
+
 describe('saveWorkbookWithSync', () => {
   // #189: the report opened before its PUT landed; the gallery, which reads the
   // server list, then showed it missing or empty.

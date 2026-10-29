@@ -19,6 +19,8 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
   const [loading, setLoading] = useState(true)
   const [missingId, setMissingId] = useState(null)
   const [openFout, setOpenFout] = useState(null)
+  // Het werkboek waarvan de DELETE niet lukte (#778): het staat weer in de galerij, met een nieuwe poging.
+  const [nietVerwijderd, setNietVerwijderd] = useState(null)
 
   useEffect(() => {
     loadWorkbooksFromServer().then(wbs => {
@@ -73,25 +75,34 @@ export function useWorkbookGallery({ type, pendingId, clearPending, deleteMessag
     setWorkbooks(prev => prev.map(w => w.id === updated.id ? updated : w))
   }, [])
 
-  const handleDelete = useCallback((id) => {
-    setPendingConfirm({
-      message: deleteMessage,
-      onConfirm: () => {
-        // Nu de kaart nog in de galerij staat: de kaart erna, of anders de vorige (#776).
-        const buur = buurVan(idsInDocument(KAART, 'data-wb-id'), id)
-        deleteWorkbook(id)
-        const all = getWorkbooks()
-        setWorkbooks(type ? all.filter(w => getWorkbookType(w) === type) : all)
-        if (gekozen?.id === id) setSelected(null)
-        // Zonder dit viel de focus op <body>: de verwijderknop is met zijn kaart weg.
-        focusNa(buur && kiezerMetId(KAART_ZONDER_ID, 'data-wb-id', buur), KAART, '.wb-gallery-title')
-      },
+  const verwijder = useCallback((id) => {
+    const lijstNu = () => {
+      const all = getWorkbooks()
+      setWorkbooks(type ? all.filter(w => getWorkbookType(w) === type) : all)
+    }
+    // Nu de kaart nog in de galerij staat: de kaart erna, of anders de vorige (#776).
+    const buur = buurVan(idsInDocument(KAART, 'data-wb-id'), id)
+    const titel = workbooks.find(w => w.id === id)?.title
+    setNietVerwijderd(null)
+    deleteWorkbook(id).catch(() => {
+      lijstNu()
+      setNietVerwijderd({ id, titel })
     })
-  }, [type, deleteMessage, gekozen, focusNa])
+    lijstNu()
+    if (gekozen?.id === id) setSelected(null)
+    // Zonder dit viel de focus op <body>: de verwijderknop is met zijn kaart weg.
+    focusNa(buur && kiezerMetId(KAART_ZONDER_ID, 'data-wb-id', buur), KAART, '.wb-gallery-title')
+  }, [type, workbooks, gekozen, focusNa])
+
+  const handleDelete = useCallback((id) => {
+    setPendingConfirm({ message: deleteMessage, onConfirm: () => verwijder(id) })
+  }, [deleteMessage, verwijder])
+
+  const verwijderFout = nietVerwijderd && { titel: nietVerwijderd.titel, opnieuw: () => verwijder(nietVerwijderd.id) }
 
   const selected = openen ? null : gekozen
   return {
     workbooks, setWorkbooks, loading, missingId, openFout, opening: Boolean(openen),
-    selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete,
+    selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete, verwijderFout,
   }
 }

@@ -137,6 +137,46 @@ describe('gesprek verwijderen ongedaan maken (#493)', () => {
   })
 })
 
+// #778: een DELETE die niet lukt, laat het gesprek niet stil verdwijnen.
+describe('gesprek verwijderen dat op de server mislukt (#778)', () => {
+  const fout = Object.assign(new Error('API 500'), { status: 500 })
+  const opgeslagen = () => JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS)).map(c => c.id)
+
+  it('zet het gesprek terug met een melding, en "Opnieuw proberen" verwijdert het alsnog', async () => {
+    api.deleteConversationApi.mockRejectedValueOnce(fout)
+    await mount()
+    await verwijder('Tweede gesprek')
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS) })
+
+    expect(titels()).toEqual(['Eerste gesprek', 'Tweede gesprek', 'Derde gesprek'])
+    expect(opgeslagen()).toEqual(['c1', 'c2', 'c3'])
+    expect(toast().classList.contains('error')).toBe(true)
+    expect(toast().textContent).toContain('Gesprek verwijderen is niet gelukt. Het staat weer in de lijst.')
+
+    await act(async () => { toast().querySelector('.toast-actie').click() })
+
+    expect(api.deleteConversationApi).toHaveBeenCalledTimes(2)
+    expect(api.deleteConversationApi).toHaveBeenLastCalledWith('c2', { keepalive: true })
+    expect(titels()).toEqual(['Eerste gesprek', 'Derde gesprek'])
+    expect(opgeslagen()).toEqual(['c1', 'c3'])
+    expect(toast()).toBeNull()
+  })
+
+  it('zet niets terug in de browser als de gebruiker intussen uitlogde', async () => {
+    let faal
+    api.deleteConversationApi.mockReturnValueOnce(new Promise((_, reject) => { faal = reject }))
+    await mount()
+    await verwijder('Tweede gesprek')
+    await act(async () => { vi.advanceTimersByTime(UITSTEL_MS) })
+    localStorage.removeItem(STORAGE_TOKEN)
+
+    await act(async () => { faal(fout) })
+
+    expect(opgeslagen()).toEqual(['c1', 'c3'])
+    expect(toast()).toBeNull()
+  })
+})
+
 // #513: een rapport is een eigen kopie van het gesprek en blijft staan; de bevestiging zegt dat vooraf.
 describe('rapporten bij gesprek verwijderen (#513)', () => {
   it('zegt in de bevestiging dat een rapport van het gesprek blijft en waar je het verwijdert', async () => {

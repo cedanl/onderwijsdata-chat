@@ -19,8 +19,16 @@ describe('uitgesteldeVerwijdering', () => {
     vi.advanceTimersByTime(UITSTEL_MS - 1)
     expect(voerUit).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(voerUit).toHaveBeenCalledWith(conv('a'))
+    expect(voerUit).toHaveBeenCalledWith(conv('a'), 0)
     expect(v.lopend).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('geeft voerUit de plaats mee, zodat een mislukte DELETE het gesprek terug kan zetten (#778)', () => {
+    const { v, voerUit } = maak()
+    v.plan(conv('a'), { lijst: 2, zoek: -1 })
+    vi.advanceTimersByTime(UITSTEL_MS)
+    expect(voerUit).toHaveBeenCalledWith(conv('a'), { lijst: 2, zoek: -1 })
     vi.useRealTimers()
   })
 
@@ -45,7 +53,7 @@ describe('uitgesteldeVerwijdering', () => {
     vi.advanceTimersByTime(UITSTEL_MS - 3000 - 1)
     expect(voerUit).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    expect(voerUit).toHaveBeenCalledWith(conv('a'))
+    expect(voerUit).toHaveBeenCalledWith(conv('a'), 0)
     vi.useRealTimers()
   })
 
@@ -83,7 +91,7 @@ describe('uitgesteldeVerwijdering', () => {
     v.plan(conv('a'), 0)
     v.plan(conv('b'), 0)
     expect(voerUit).toHaveBeenCalledTimes(1)
-    expect(voerUit).toHaveBeenCalledWith(conv('a'))
+    expect(voerUit).toHaveBeenCalledWith(conv('a'), 0)
     expect(v.lopend.id).toBe('b')
     vi.useRealTimers()
   })
