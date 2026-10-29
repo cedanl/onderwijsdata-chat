@@ -410,7 +410,12 @@ sync:github:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
   script:
-    - git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
+    # Een tag-pipeline pusht alleen de tag: HEAD is dan de getagde commit, vaak al ingehaald door main,
+    # en die zette GitHub main terug tot de volgende merge (#769).
+    - |
+      if [ -z "$CI_COMMIT_TAG" ]; then
+        git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" HEAD:main
+      fi
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
         git push --force "https://x-access-token:${GITHUB_SYNC_TOKEN}@github.com/cedanl/onderwijsdata-chat.git" "refs/tags/$CI_COMMIT_TAG"
