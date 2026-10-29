@@ -150,7 +150,9 @@ async def _execute_tool(call: ToolCall, emit: Emit, recept_van: Receptbron | Non
         "GEHEUGEN  tool=%s  rss_mb=%s  store_mb=%s  store_keys=%d", call.name, rss_mb(), gebruik["mb"], gebruik["keys"]
     )
 
-    snippet = _generate_snippet(call.name, call.args, result, recept_van=recept_van)
+    # Het recept van een key kan alleen nog in de database staan (#763); to_thread neemt de context mee, dus
+    # store.gesprek ziet in de thread dezelfde keys.
+    snippet = await asyncio.to_thread(_generate_snippet, call.name, call.args, result, recept_van=recept_van)
     if snippet:
         # De snippet bevat de toolargumenten, dus tekst uit de vraag: alleen op DEBUG (#475).
         logger.info("REPRODUCEER %-28s %s", call.name, tekst_kenmerk(snippet))

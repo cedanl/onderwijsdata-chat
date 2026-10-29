@@ -14,6 +14,12 @@ eigen kop (`docs/promoten.md`).
   server de titel alleen bij het aanmaken van een gesprek; hernoemen blijft de enige manier om hem te wijzigen, ook
   vanaf een ander apparaat. De zijbalk houdt de titel die er al stond.
 
+### De databasecontrole van een token en het recept achter een snippet houden de chat niet meer stil (#763)
+- De WebSocket-handshake en `POST /api/dashboard/refresh` lezen de denylist van ingetrokken tokens in een thread, en
+  de snippet na elke toolaanroep zoekt het recept daar ook. Op een trage of volle PostgreSQL-pool bevroor zo'n
+  aanroep eerder elke chatstream en `/health` van de pod. Snippets, events en de weigering van een verlopen of
+  ingetrokken token (close 4001, HTTP 401) zijn ongewijzigd.
+
 ### Een rapport komt alleen door op tekst die de controle goedkeurde (#754)
 - Liep de herkansing van een rapport op een modelfout (bijvoorbeeld een rate limit), dan kwam het afgekeurde rapport
   toch door, met alleen de melding "deels gegenereerd". Hetzelfde als de fout een ronde vóór het antwoord trof. Nu
