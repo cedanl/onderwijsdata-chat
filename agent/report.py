@@ -93,13 +93,18 @@ RAPPORT_GEWEIGERD = (
     "De cijfers in het rapport klopten niet met de laatste analyse, daarom heb ik het niet getoond. "
     "Probeer het opnieuw, of stel je vraag opnieuw."
 )
+# Het model kwam binnen het stappenbudget niet tot een rapport (#754): er was niets om te controleren.
+RAPPORT_ONAF = (
+    "Het rapport kwam niet af binnen het aantal stappen dat het mag zetten, daarom heb ik het niet getoond. "
+    "Probeer het opnieuw."
+)
 
 
 class RapportGeweigerd(Gebruikersfout):
     """De controle hield het rapport tegen (#207); wat ze vond, staat alleen in het log (#515)."""
 
-    def __init__(self) -> None:
-        super().__init__(RAPPORT_GEWEIGERD)
+    def __init__(self, melding: str = RAPPORT_GEWEIGERD) -> None:
+        super().__init__(melding)
 
 
 @dataclass
@@ -349,23 +354,33 @@ async def generate(
     )
     if result.aborted:
         raise RapportGeannuleerd
+    if result.exhausted:
+        # Geen antwoord, dus geen tekst die de controle zag: anders een lege schil (#189, #754).
+        logger.error("RAPPORT GEWEIGERD: stappenbudget op zonder antwoord")
+        raise RapportGeweigerd(RAPPORT_ONAF)
+    problems = result.problems
     if result.partial_error:
+        # De modelfout trof de herkansing of een ronde vóór het antwoord: de tekst die overbleef, zag de controle
+        # dan niet (opnieuw). Een rapport gaat alleen door op tekst die zij goedkeurde (#754).
+        problems = check(result.text, result.tool_results)
+    # Alleen een hard probleem houdt het rapport tegen; een zacht wordt een waarschuwing (#207).
+    if harde(problems):
+        logger.error("RAPPORT GEWEIGERD: controles=%s", controlenamen(problems))
+        logger.debug("RAPPORT MELDINGEN  %s", problems)
+        raise RapportGeweigerd
+    if result.partial_error:
+        # De fout zelf staat onder een fout-ID in het log (agent/loop.py); hier geen soort fout die niet optrad.
         await emit(
             {
                 "type": "toast",
-                "message": "Rapport deels gegenereerd (fout: rate limit). Figuren tot nu toe bewaard.",
+                "message": "Rapport deels gegenereerd door een fout bij het model. Figuren tot nu toe bewaard.",
                 "level": "warning",
             }
         )
-    # Alleen een hard probleem houdt het rapport tegen; een zacht wordt een waarschuwing (#207).
-    if harde(result.problems):
-        logger.error("RAPPORT GEWEIGERD: controles=%s", controlenamen(result.problems))
-        logger.debug("RAPPORT MELDINGEN  %s", result.problems)
-        raise RapportGeweigerd
-    if result.problems:
-        logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(result.problems))
-        logger.debug("RAPPORT MELDINGEN  %s", result.problems)
-        await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(result.problems)), "level": "warning"})
+    if problems:
+        logger.warning("RAPPORT MET WAARSCHUWING: controles=%s", controlenamen(problems))
+        logger.debug("RAPPORT MELDINGEN  %s", problems)
+        await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(problems)), "level": "warning"})
     # Bronnen, definities, voorbehoud en dataversie van wat het rapport gebruikte, niet van het hele gesprek (#738).
     gebruikt = {**context, "datasets": gebruikte_datasets(context["datasets"], gelezen, bewijs, result.text)}
     spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen)

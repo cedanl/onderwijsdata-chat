@@ -53,7 +53,7 @@ Na elk chatantwoord draaien deze controles (samengevoegd in `check` in `agent/co
 | Labels | `agent/labels.py` | Opleidingsvorm (VT, DT, DU) en dataset-ID kloppen met de bron. |
 | Binding | `agent/binding.py` | Een getal staat bij het jaar en de instelling van zijn eigen rij, niet bij een ander jaar uit dezelfde selectie. |
 
-Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonder conclusie, reikwijdte of bevinding wordt niet getoond, en tekst die afwezigheid van data claimt naast een gevulde grafiek wordt geweigerd. Voor een dashboard komen KPI-waarden alleen door als ze uit `compute_kpi` komen, en de tekst gaat door dezelfde getalcontrole (`_check_number_sourcing` in `agent/dashboard.py`).
+Voor een rapport geldt hetzelfde via `agent/report_checks.py`: een rapport zonder conclusie, reikwijdte of bevinding wordt niet getoond, en tekst die afwezigheid van data claimt naast een gevulde grafiek wordt geweigerd. Ook als het model halverwege faalt of zijn stappenbudget opmaakt, gaat een rapport alleen door op tekst die de controle goedkeurde (#754). Voor een dashboard komen KPI-waarden alleen door als ze uit `compute_kpi` komen, en de tekst gaat door dezelfde getalcontrole (`_check_number_sourcing` in `agent/dashboard.py`).
 
 ## Wat dit niet dekt
 

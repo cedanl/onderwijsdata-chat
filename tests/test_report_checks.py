@@ -317,3 +317,99 @@ def test_u_in_de_vraag_de_titel_en_de_definities_is_geen_probleem():
         definities=[{"begrip": "Ingeschrevene", "definitie": "Telt u mee als u ingeschreven staat?"}],
     )
     assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []
+
+
+# ── Een modelfout halverwege of een uitgeput stappenbudget laat geen ongecontroleerd rapport door (#754) ──
+
+_PLOT = {"id": "p1", "name": "create_plot", "arguments": '{"data_key": "k"}'}
+_GEDEKT = json.dumps(
+    {
+        "onderzoeksvraag": "Hoeveel voltijdstudenten heeft de HU?",
+        "beantwoordt": ["Voltijdstudenten HU per studiejaar"],
+        "conclusie": "Het aantal daalde van 28.355 in 2021 naar 26.370 in 2025.",
+    }
+)
+
+
+def _rapportrun(monkeypatch, stappen: list, events: list | None = None) -> ReportSpec:
+    """Een rapportrun met een nepmodel; een Exception in `stappen` is een modelaanroep die faalt.
+
+    create_plot levert een figuur, zodat het rapport iets heeft om te bewaren (keep_partial).
+    """
+    stappen = list(stappen)
+
+    async def fake_completion(*args, **kwargs):
+        if isinstance(stappen[0], Exception):
+            raise stappen.pop(0)
+        return object()
+
+    async def fake_accumulate(stream, stop_event=None, emit=None):
+        return stappen.pop(0)
+
+    async def emit(event: dict) -> None:
+        if events is not None:
+            events.append(event)
+
+    def fake_dispatch(name, args):
+        return (_HU_RESULT, go.Figure(go.Scatter(x=[2021], y=[28355])) if name == "create_plot" else None)
+
+    monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
+    monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
+    monkeypatch.setattr(loop_module, "dispatch", fake_dispatch)
+    monkeypatch.setattr(report, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
+    monkeypatch.setattr(report, "_build_system_prompt", lambda context: "")
+
+    return asyncio.run(report.generate({}, emit, model="openai/gpt-4o", stop_event=asyncio.Event()))
+
+
+def test_een_falende_herkansing_levert_het_afgekeurde_rapport_niet(monkeypatch):
+    """De herkansing na een hard probleem loopt op een modelfout: de afgekeurde tekst blijft afgekeurd."""
+    with pytest.raises(RapportGeweigerd):
+        _rapportrun(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_PLOT]),
+                StreamResult(text=_ONGEDEKT, tool_calls=[]),
+                RuntimeError("rate limit"),
+            ],
+        )
+
+
+def test_een_falende_eerste_ronde_na_een_figuur_levert_geen_ongecontroleerd_rapport(monkeypatch):
+    with pytest.raises(RapportGeweigerd):
+        _rapportrun(monkeypatch, [StreamResult(text="", tool_calls=[_PLOT]), RuntimeError("verbinding weg")])
+
+
+def test_een_uitgeput_stappenbudget_levert_geen_lege_schil(monkeypatch):
+    rondes = [StreamResult(text="Ik zoek verder.", tool_calls=[_PLOT]) for _ in range(report._MAX_TOOL_ITERATIONS)]
+
+    with pytest.raises(RapportGeweigerd) as geweigerd:
+        _rapportrun(monkeypatch, rondes)
+
+    assert "stappen" in str(geweigerd.value)
+
+
+def test_een_gedeeltelijke_fout_op_gecontroleerde_tekst_geeft_het_rapport_met_een_melding(monkeypatch, caplog):
+    """Een zacht probleem geeft een herkansing; faalt die, dan gaat de tekst die de controle doorstond toch door."""
+    zacht = json.dumps({**json.loads(_GEDEKT), "conclusie": "Jullie zien het aantal dalen van 28.355 in 2021."})
+    events: list[dict] = []
+
+    with caplog.at_level(logging.DEBUG):
+        spec = _rapportrun(
+            monkeypatch,
+            [
+                StreamResult(text="", tool_calls=[_PLOT]),
+                StreamResult(text=zacht, tool_calls=[]),
+                RuntimeError("geheime modeltekst 336.800"),
+            ],
+            events,
+        )
+
+    assert "28.355" in spec.conclusie and spec.visualisaties
+    toasts = [e["message"] for e in events if e.get("type") == "toast"]
+    assert any("deels" in t for t in toasts)
+    assert not any("rate limit" in t for t in toasts)
+    # De ingeslikte fout staat in het log onder een fout-ID, de tekst alleen op DEBUG (#502).
+    boven_debug = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any(regel.startswith("Interne fout") for regel in boven_debug)
+    assert not any("336.800" in regel for regel in boven_debug)
