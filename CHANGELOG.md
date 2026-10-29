@@ -9,6 +9,10 @@ eigen kop (`docs/promoten.md`).
 ## Niet uitgebracht
 
 ### Presentatie
+- Een link `/chat#vraag=…` opent de chat met die vraag in de invoer van een nieuw gesprek (#709), ook als de
+  gebruiker eerst moet inloggen, via SRAM of met een wachtwoord. De vraag gaat niet vanzelf naar het model; de app
+  haalt hem uit het adres, maakt er één regel platte tekst van en kapt hem af op 500 tekens. Hij staat in het fragment
+  (`#`), niet in de query: zo komt hij niet in de toegangslog van uvicorn of de ingress. Zie `docs/api.md`.
 - Een foutmelding bij een ontbrekende of ongeldige API-sleutel, een onbekend model of een verbinding die de server met
   de provider niet krijgt, stuurt de gebruiker niet meer naar `.env` of naar zijn eigen internetverbinding (#712). Hij leest
   "Het model is nu niet beschikbaar", met een fout-ID om door te geven; de beheerder vindt onder dat ID in het log wat er
@@ -846,6 +850,17 @@ eigen kop (`docs/promoten.md`).
   dezelfde schema's en dezelfde uitvoering als in de chat (scopegrens mbo/hbo/wo, bron-ID's, status per
   record). Optionele extra `mcp` (`uv sync --extra mcp`), niet in het image; geen sleutel nodig. De
   datatools blijven bij de chat (#41, stap 1). Zie `docs/mcp.md`.
+- Elk resultaat van de MCP-server draagt een `bewijs`-blok (bron, dataset-ID, selectie, peildatum, catalogusversie,
+  verwijzing; `maat` en `waarde` voor de datatools van #708) en een `vervolg` met een link naar de volledige app (#707).
+  Bij een MCP-client schrijft het model van de client het antwoord en draaien de controles van de chat niet; zo blijft
+  elk overgenomen gegeven herleidbaar. Tekst van de bronnen komt ontsmet mee (`[ ]` met een backslash, `< >` als
+  entiteit), zodat een link of tag uit een beschrijving in de client niet actief wordt; een resultaat in gewone tekst
+  staat als `melding` in hetzelfde JSON-object. Toolbeschrijvingen en instructies zeggen: "Noem geen getal dat niet in
+  een toolresultaat staat." Nieuwe sleutels, geen breaking change; `APP_URL` kiest de omgeving (standaard playground).
+- `docs/edugenai.md` beschrijft de geplande koppeling met EduGenAI (#710): wat hij wel en niet doet, waarom de
+  betrouwbaarheid lager is dan in de eigen app (het model van EduGenAI schrijft het antwoord en onze controles draaien
+  niet), welke claim we wel en niet doen, concepttekst voor label, beschrijving en persona (af te stemmen met Npuls,
+  #711) en de gegevensstroom met bewaartermijnen voor de DPIA.
 
 ### Beheer
 - Renovate stelt geen digest-pin meer voor het eigen image in `charts/onderwijsdata-chat/values.yaml` voor (#656): de
