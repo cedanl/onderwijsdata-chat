@@ -714,6 +714,34 @@ describe('useChat connection loss', () => {
     expect(assistantMessages()[0].interrupted).toBe(true)
   })
 
+  // #756: elke verbinding is een nieuwe serversessie; zonder de instellingen rekende die met het standaardmodel.
+  it('stuurt de laatste instellingen opnieuw na een herverbinding', async () => {
+    vi.useFakeTimers()
+    const ws = FakeWebSocket.last
+    await act(async () => { ws.onopen() })
+    await act(async () => { chat.sendSettings({ model: 'azure_ai/claude-opus-5-5', instelling: 'HU' }) })
+    await drop(ws)
+
+    await act(async () => { vi.advanceTimersByTime(1000) })
+    const reconnected = FakeWebSocket.last
+    expect(reconnected).not.toBe(ws)
+    await act(async () => { reconnected.onopen() })
+
+    expect(reconnected.sent).toEqual([
+      { action: 'settings', settings: { model: 'azure_ai/claude-opus-5-5', instelling: 'HU' } },
+    ])
+  })
+
+  it('stuurt instellingen van vóór de eerste verbinding één keer', async () => {
+    const ws = FakeWebSocket.last
+    ws.readyState = 0
+    await act(async () => { chat.sendSettings({ model: 'm' }) })
+    expect(ws.sent).toEqual([])
+    ws.readyState = FakeWebSocket.OPEN
+    await act(async () => { ws.onopen() })
+    expect(ws.sent).toEqual([{ action: 'settings', settings: { model: 'm' } }])
+  })
+
   it('refuses to send while the connection is down', async () => {
     const ws = FakeWebSocket.last
     await drop(ws)
