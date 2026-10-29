@@ -151,9 +151,11 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
               /* Zodra de verbinding terug is, zegt de regel dat en licht de knop op (#617): wie in de trein weer
                  bereik heeft, hoeft de knop niet zelf te bedenken. Alleen als er een knop is (een ingeladen gesprek
                  zonder vraag ervoor heeft er geen); geen automatische tweede run (die telt mee in de berichtlimiet,
-                 #444). aria-live: ook voor een schermlezer een melding, geen tweede knop. */
+                 #444). aria-live: ook voor een schermlezer een melding, geen tweede knop. De regel begint met wat er
+                 met het antwoord gebeurde, niet met het goede nieuws over de verbinding (#810); de knop zegt wat er
+                 kan, en beide zinnen zijn even lang, zodat de rij op 390 px niet verspringt. */
               <div className={`message-stopped${verbinding && herhaal ? ' verbinding-terug' : ''}`} role="status" aria-live="polite">
-                {verbinding && herhaal ? 'Verbinding terug — probeer opnieuw' : 'Verbinding verbroken — antwoord onvolledig'}
+                {verbinding && herhaal ? 'Antwoord afgebroken — de verbinding is terug' : 'Verbinding verbroken — antwoord onvolledig'}
                 {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
                 {herhaal && (
                   <>
