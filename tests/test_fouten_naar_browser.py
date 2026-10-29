@@ -39,7 +39,7 @@ def test_dashboardfout_lekt_geen_exceptietekst(monkeypatch, caplog):
 
 
 def test_dashboard_gebruikersfout_bereikt_de_gebruiker(monkeypatch):
-    async def geen_data(session, emit, model=None):
+    async def geen_data(session, emit, model=None, stop_event=None):
         raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
 
     monkeypatch.setattr(chat, "generate_dashboard_spec", geen_data)

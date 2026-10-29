@@ -36,6 +36,7 @@ from core.config import (
     CHAT_RATE_LIMIT,
     CHAT_RATE_WINDOW_S,
     DASHBOARDS_ENABLED,
+    GENEREER_TIMEOUT_S,
     HISTORY_MAX_CHARS,
     MAX_CONCURRENT_RUNS,
     MAX_HISTORY,
@@ -173,11 +174,30 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     session["messages"] = messages
 
 
+# Wat de gebruiker leest als een rapport of dashboard de tijdsgrens haalt (#759); de minuten uit GENEREER_TIMEOUT_S.
+def _over_de_tijdsgrens(wat: str) -> str:
+    return f"{wat} kwam niet binnen {GENEREER_TIMEOUT_S / 60:.0f} minuten af. Probeer het opnieuw, of kies een ander model."
+
+
 async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
     await emit({"type": "dashboard_generating"})
+    # Een eigen stopsignaal, zodat de stop-actie ook een dashboard bereikt (#759).
+    stop_event = asyncio.Event()
+    session["stop_event"] = stop_event
+    grens = asyncio.timeout(GENEREER_TIMEOUT_S)
     try:
-        spec = await generate_dashboard_spec(session, emit, model=model)
+        async with grens:
+            spec = await generate_dashboard_spec(session, emit, model=model, stop_event=stop_event)
+        if stop_event.is_set():
+            await emit({"type": "error", "message": "Het dashboard is gestopt."})
+            return
         await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
+    except TimeoutError as e:
+        if not grens.expired():
+            await emit(error_event(e))
+            return
+        logger.warning("DASHBOARD TIMEOUT na %.0f s", GENEREER_TIMEOUT_S)
+        await emit({"type": "error", "message": _over_de_tijdsgrens("Het dashboard")})
     except Gebruikersfout as e:
         # Alleen tekst die voor de gebruiker is geschreven; elke andere fout
         # krijgt via error_event een vaste melding met fout-ID (#503).
@@ -192,16 +212,29 @@ async def _generate_report(
     await emit({"type": "report_generating"})
     stop_event = asyncio.Event()
     session["stop_event"] = stop_event
+    # Aan de serverkant (#759): een hangende modelaanroep hield anders de runplaats bezet, en elke nieuwe vraag kreeg
+    # "Er loopt nog een antwoord", ook nadat de frontend na 10 min zelf had opgegeven.
+    grens = asyncio.timeout(GENEREER_TIMEOUT_S)
     try:
-        spec = await generate_report_spec(
-            session,
-            emit,
-            model=model,
-            stop_event=stop_event,
-            author=author or session.get("username"),
-            onderzoeksvraag=onderzoeksvraag,
-        )
+        async with grens:
+            spec = await generate_report_spec(
+                session,
+                emit,
+                model=model,
+                stop_event=stop_event,
+                author=author or session.get("username"),
+                onderzoeksvraag=onderzoeksvraag,
+            )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
+    except TimeoutError as e:
+        if not grens.expired():
+            # Een time-out van iets binnen het rapport (een bron), niet de grens: de gewone foutmelding.
+            log_interne_fout(e, "rapport")
+            await emit({"type": "report_error", "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw."})
+            return
+        logger.warning("RAPPORT TIMEOUT na %.0f s", GENEREER_TIMEOUT_S)
+        # `herstel`: de frontend biedt het rapport opnieuw aan, zoals bij een weigering (#515).
+        await emit({"type": "report_error", "message": _over_de_tijdsgrens("Het rapport"), "herstel": "rapport"})
     except RapportGeannuleerd:
         await emit({"type": "report_cancelled"})
     except asyncio.CancelledError:

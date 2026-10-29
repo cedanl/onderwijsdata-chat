@@ -8,6 +8,15 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Annuleer stopt een rapport ook als het model nog niets terugstuurde; rapport en dashboard hebben een tijdsgrens (#759)
+- Het stopsignaal werd pas gezien tussen rondes en per ontvangen stuk tekst. Hing de modelaanroep (tot 20 min), dan
+  meldde de app "Rapport geannuleerd", maar de run liep door. Ze hield een runplaats bezet, en elke nieuwe vraag kreeg
+  "Er loopt nog een antwoord". Nu breekt een stop ook een lopende modelaanroep af, en sluit litellm zijn
+  HTTP-verbinding.
+- Rapport en dashboard stoppen aan de serverkant na `GENEREER_TIMEOUT_S` (standaard 480 s, onder de 10 min van de
+  frontend). Een rapport eindigt dan met een melding en de knop om het opnieuw te proberen.
+- De stop-actie bereikt nu ook een dashboard in aanmaak.
+
 ### De pytest-gate hangt niet meer af van live DUO en CBS (#766)
 - De register- en dashboardtests draaien op bevroren DUO-bestanden in `tests/fixtures/duo/`, niet op
   onderwijsdata.duo.nl. Een storing of verbroken verbinding bij DUO maakte de blokkerende pytest-job rood

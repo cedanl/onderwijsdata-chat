@@ -41,6 +41,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `HISTORY_MAX_CHARS` | `MAX_HISTORY × MAX_MESSAGE_CHARS` (160000) | Maximum aantal tekens van de hele aangeleverde gespreksgeschiedenis samen. Daarboven vallen de oudste beurten af, zodat lange gesprekken blijven openen; de historie begint daarna altijd met een gebruikersbeurt. Minimaal 1: een lagere waarde wordt 1 |
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
+| `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport of dashboard aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
