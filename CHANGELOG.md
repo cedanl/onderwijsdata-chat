@@ -8,6 +8,15 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Na een herstart of failover van PostgreSQL falen er geen aanvragen meer op dode verbindingen (#764)
+- De vrije verbindingen in de pool waren na een herstart, switchover of failover dood. Tot `POSTGRES_POOL_SIZE` (8)
+  aanvragen faalden daarop: een 500, een mislukte WebSocket-handshake, of `/ready` rood, waardoor de enige pod even uit
+  de Service viel. Nu vervangt de pool een verbinding waarop het eerste statement faalt omdat ze dicht is, en voert
+  dat statement opnieuw uit. Een SQL-fout gaat zoals altijd naar de aanroeper.
+- Een nieuwe verbinding krijgt `connect_timeout=5` en TCP-keepalives, tenzij `POSTGRES_URI` die zelf zet.
+- Gemeten met PostgreSQL 17: na `pg_ctl restart -m fast` faalden met drie verbindingen in de pool alle drie
+  gelijktijdige aanroepen. Nu slagen ze.
+
 ### CI: de GitHub-spiegel springt niet meer terug bij een tag (#769)
 - Een tag-pipeline pushte de getagde commit ook naar GitHub `main`. Was main al verder, dan stond de spiegel terug tot
   de volgende merge. Nu pusht een tag-pipeline alleen de tag.
