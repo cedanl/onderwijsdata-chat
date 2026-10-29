@@ -18,85 +18,18 @@ import { scoreRefusal } from './refusal.js'
 import { scoreResult } from './score.js'
 import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
 import { nieuweMatrix, rapport, voegToe } from './matrix.js'
-import { WebSocket } from 'ws'
-import { BASE_URL, WS_URL, inloggegevens, nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
+import { haalToken, poorten } from './chatstream.js'
+import { losseVraag } from './gesprek.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // De referentiewaarden van een bronwaarheid-case komen uit ijkwaarden.json, niet uit de eval zelf (#190).
 const IJK = laadIjkwaarden()
 const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'utf-8')).evaluations.map(ev => metIjkwaarden(ev, IJK))
 
-const API = BASE_URL
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
 const REPEATS = Math.max(1, Number(process.env.TEST_REPEATS) || 1)
 const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
 const MATRIX = nieuweMatrix()
-
-// Na een message_end kan nog een verduidelijkingsvraag volgen (agent/run.py sluit eerst de
-// lopende tekst af); pas als die uitblijft, is het antwoord af.
-const NA_EINDE_MS = 1_000
-
-function chat(token, message, model, timeoutMs = 300_000) {
-  return new Promise((resolve) => {
-    const ws = new WebSocket(WS_URL, protocollen(token))
-    const antwoord = nieuwAntwoord()
-    let resolved = false
-    let naEinde = null
-
-    const finish = (extra = {}) => {
-      if (resolved) return
-      resolved = true
-      clearTimeout(timer)
-      clearTimeout(naEinde)
-      try { ws.close() } catch {}
-      resolve({ ...antwoord, ...extra })
-    }
-    const timer = setTimeout(() => finish({ timeout: true }), timeoutMs)
-
-    ws.on('open', () => {
-      ws.send(JSON.stringify({ action: 'settings', settings: { model } }))
-      setTimeout(() => {
-        ws.send(JSON.stringify({ action: 'message', content: message }))
-      }, 200)
-    })
-
-    ws.on('message', (raw) => {
-      let event
-      try { event = JSON.parse(raw.toString()) } catch { return }
-      verwerk(antwoord, event)
-      if (event.type === 'clarification') {
-        clearTimeout(naEinde)
-        antwoord.einde = null
-        const opties = event.opties || []
-        const keuze = opties.find(o => o.aanbevolen) || opties[0]
-        if (!keuze) return finish()
-        console.log(`  CLARIFY: "${event.vraag}" → "${keuze.label}"`)
-        setTimeout(() => ws.send(JSON.stringify({ action: 'clarification_choice', choice: keuze.label })), 500)
-      }
-      if (event.type === 'error') {
-        console.log(`  ERROR: ${event.message}`)
-        finish()
-      }
-      if (event.type === 'message_end') {
-        clearTimeout(naEinde)
-        naEinde = setTimeout(() => finish(), NA_EINDE_MS)
-      }
-    })
-
-    // Een weigering bij de handshake (4001) of een verbroken verbinding is een fout, geen leeg succes.
-    ws.on('error', (err) => finish({ error: antwoord.error || `verbinding: ${err.message}` }))
-    ws.on('close', (code) => finish(antwoord.einde ? {} : { error: antwoord.error || `verbinding gesloten (${code})` }))
-  })
-}
-
-async function getToken() {
-  const resp = await fetch(`${API}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(inloggegevens()),
-  })
-  return (await resp.json()).token
-}
 
 function geslaagd(ev, scores) {
   const poortenOk = Object.values(scores.poorten).every(Boolean)
@@ -106,7 +39,7 @@ function geslaagd(ev, scores) {
 
 test.describe('Productie-vragen (evaluatie)', () => {
   let token
-  test.beforeAll(async () => { token = await getToken() })
+  test.beforeAll(async () => { token = await haalToken() })
   test.afterAll(() => {
     // Slagingspercentage per model en vraag over alle beurten (#190): naast de losse logs.
     mkdirSync(RESULTATEN, { recursive: true })
@@ -121,7 +54,7 @@ test.describe('Productie-vragen (evaluatie)', () => {
 
       for (const model of MODELS) for (let beurt = 1; beurt <= REPEATS; beurt++) {
         const short = REPEATS > 1 ? `${model.split('/').pop()}#${beurt}` : model.split('/').pop()
-        const r = await chat(token, ev.message, model)
+        const r = await losseVraag(token, ev.message, model)
         const scores = ev.expected.must_refuse ? { ...scoreRefusal(r), poorten: poorten(r) } : scoreResult(r, ev)
         allScores[short] = scores
         voegToe(MATRIX, model, ev.label, geslaagd(ev, scores))

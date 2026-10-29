@@ -63,3 +63,26 @@ met `EVAL_BASE_URL`, `EVAL_USERNAME` en `EVAL_PASSWORD` als (masked) CI-variabel
 
 Los daarvan pingt de geplande CI-job `bron:ping` (`scripts/bronping.py`) elke bron één keer door de toollaag van de
 chat, met de selecties van deze ijkpunten en zonder waarden te vergelijken: alleen of de bron nog antwoordt (#627).
+
+## De rapporteval (#752)
+
+`tests/e2e/rapport-bijsturing.spec.js` toetst of een rapport de bijsturing uit het gesprek volgt. Per scenario
+(`tests/e2e/rapportscenarios.json`) speelt de runner een gesprek over één verbinding (`gesprek.js`): de sessie
+hoort bij de socket. Daarna vraagt hij het rapport op met de onderzoeksvraag die de app voorstelt (#751). Dat gaat
+met dezelfde functie als de app (`frontend/src/onderzoeksvraagVoorstel.js`). De controles lezen wat code vastlegde,
+niet wat het model erover schreef (`rapportscore.js`):
+
+- of de onderzoeksvraag de bevestigde is;
+- wat de onderzoeksvraag noemt;
+- de bronregel van elke grafiek, met dataset en bestand;
+- de reeksnamen en categorieën in elke grafiek.
+
+Per scenario komt het aantal geslaagde runs, met de reden van elke mislukte run, in `eval_results/rapport-<datum>.json`.
+
+```bash
+EVAL_BASE_URL=… EVAL_USERNAME=… EVAL_PASSWORD=… TEST_MODELS=azure_ai/claude-sonnet-5-5 TEST_REPEATS=3 \
+  npx playwright test rapport-bijsturing --config=playwright.eval.config.js
+```
+
+`eval:bronwaarheid` draait hem mee. Per run kost dat twee of drie chatbeurten plus een rapport. De controles zelf
+toetst `node --test tests/e2e/rapport-unit.mjs`, zonder app en zonder model; de job `frontend` draait die test.

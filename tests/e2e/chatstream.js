@@ -25,6 +25,16 @@ export function inloggegevens(env = process.env) {
   return { username: env.EVAL_USERNAME || 'admin', password: env.EVAL_PASSWORD || 'admin' }
 }
 
+/** Het token van /api/auth/login met de inloggegevens uit de omgeving. */
+export async function haalToken(base = BASE_URL) {
+  const resp = await fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inloggegevens()),
+  })
+  return (await resp.json()).token
+}
+
 /** De subprotocollen voor `new WebSocket(WS_URL, protocollen(token))`, zoals de frontend ze stuurt. */
 export function protocollen(token) {
   return ['bearer', token]
