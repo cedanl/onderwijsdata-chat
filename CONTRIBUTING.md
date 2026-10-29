@@ -89,6 +89,27 @@ omschrijving: `fix(agent): teleenheidcontrole slaat niet aan op een ontkenning (
 - Vul de template in: wat verandert er, welke tests heb je gedraaid, wat heb je bewust niet gedaan.
 - Een MR met alleen groene tests en een duidelijke omschrijving is makkelijk te beoordelen. Zet
   auto-merge pas aan als de pipeline draait.
+- Merkt een gebruiker of beheerder de wijziging, zet dan een changelog-item in `changelog.d/` (hieronder).
+
+## Changelog
+
+Een MR zet zijn changelog-item niet in `CHANGELOG.md`, maar in een eigen bestand in `changelog.d/`:
+`changelog.d/<issuenummer>-<onderwerp>.md`, bijvoorbeeld `changelog.d/797-changelog-fragmenten.md`. Zo raken twee
+MR's nooit hetzelfde bestand, en botsen ze niet bij een rebase of in de merge train (#797). Het bestand heeft de vorm
+van een item in `CHANGELOG.md`: een `###`-kopje met het issuenummer, met bullets eronder.
+
+```markdown
+### Een hernoemd gesprek houdt zijn titel (#757)
+- Wat de gebruiker of beheerder merkt, en waarom.
+```
+
+- De naam begint met het issuenummer; raakt de MR meer issues, neem dan het hoofdissue. Daarna kleine letters, cijfers
+  en streepjes.
+- Geen kop van niveau 1 of 2 (`#`, `##`): die zet het releasescript.
+- `tests/test_changelog.py` controleert in elke MR de naam en de vorm van de fragmenten.
+
+Bij een release zet `scripts/changelog.py` de fragmenten onder de versiekop in `CHANGELOG.md`, hoogste issuenummer
+bovenaan, en verwijdert ze ([Promoten](docs/promoten.md), stap 0).
 
 ## Geheimen
 
