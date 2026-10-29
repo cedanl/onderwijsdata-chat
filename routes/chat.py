@@ -69,7 +69,7 @@ _LIMIET_MELDING = "Te veel verzoeken in korte tijd. Probeer het over {wacht} sec
 # Wat er tegelijk mag (#688): open verbindingen per gebruiker en in totaal, en runs die het model aanroepen.
 _verbindingen = Verbindingen(per_sleutel=MAX_WS_PER_USER, totaal=MAX_WS_TOTAL)
 _runplaatsen = Runplaatsen(max_tegelijk=MAX_CONCURRENT_RUNS, wacht_s=RUN_QUEUE_TIMEOUT_S)
-# "Try again later" (RFC 6455); de frontend probeert het met zijn gewone terugval opnieuw.
+# "Try again later" (RFC 6455). De frontend probeert het dan niet zelf opnieuw, maar wacht op "Opnieuw verbinden" (#783).
 _TE_VEEL_VERBINDINGEN = 1013
 # De origins die naast de eigen een chatverbinding mogen openen (core/herkomst.py, #682).
 _CORS_ORIGINS = Config.get_parsed_cors_origins()
