@@ -43,6 +43,16 @@ def geen_adresdownload(monkeypatch):
 
 
 @pytest.fixture
+def dashboards_aan(monkeypatch):
+    """De dashboardvlag staat standaard uit (#765); tests van de dashboardroutes en -acties zetten hem hiermee aan."""
+    import routes.chat
+    import routes.instellingen
+
+    monkeypatch.setattr(routes.chat, "DASHBOARDS_ENABLED", True)
+    monkeypatch.setattr(routes.instellingen, "DASHBOARDS_ENABLED", True)
+
+
+@pytest.fixture
 def zonder_scopegrens():
     """Voor tests van de laad- en metadatamechaniek met test-ID's of vo-bestanden.
 

@@ -106,7 +106,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `GET` | `/api/dashboard/rendement` | Dashboard-rendementsgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/arbeidsmarktmatch` | Dashboard-arbeidsmarktmatch voor een instelling (`instelling` param) |
 
-De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Met `ENABLE_DASHBOARDS=false` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}`, net als `POST /api/dashboard/refresh` (#636).
+De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}`, net als `POST /api/dashboard/refresh` (#636).
 
 ---
 
