@@ -1,13 +1,14 @@
 """Eén logregel per gepubliceerd resultaat (#169): herkomst op INFO, de selectiestappen op DEBUG, geen inhoud."""
 
 import logging
+from datetime import date
 
 import pandas as pd
 import pytest
 
 from agent import publicatie
 from agent.publicatie import ANTWOORD, CSV, log_publicatie
-from tools import store
+from tools import herlaad, store
 from tools.store import KeyMeta
 
 _BRON = "duo:p01hoinges:3"
@@ -63,10 +64,12 @@ def test_afronding_en_herlaaddatum_staan_erbij(caplog):
     store.put(
         "cbs:85423NED",
         pd.DataFrame({"TotaalIngeschrevenen_1": [378490]}),
-        KeyMeta(bron="cbs", dataset="85423NED", afronding=10, herladen_op="13-10-2026"),
+        KeyMeta(bron="cbs", dataset="85423NED", afronding=10),
     )
+    herlaad.markeer("alice", "cbs:85423NED")
     caplog.set_level(logging.INFO, logger="agent.publicatie")
-    log_publicatie(publicatie.RAPPORT, ["cbs:85423NED"])
+    log_publicatie(publicatie.RAPPORT, ["cbs:85423NED"], username="alice")
     (regel,) = _regels(caplog, logging.INFO)
-    assert "bron=cbs dataset=85423NED key=cbs:85423NED volledig=ja afronding=10 herladen_op=13-10-2026 " in regel
+    vandaag = f"{date.today():%d-%m-%Y}"
+    assert f"bron=cbs dataset=85423NED key=cbs:85423NED volledig=ja afronding=10 herladen_op={vandaag} " in regel
     assert ("inhoudshash=" in regel and regel.endswith(" rijen=1]")) or " rijen=1]" in regel

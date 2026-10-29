@@ -27,7 +27,7 @@ from litellm import get_supported_openai_params
 from config import Config
 from core.config import SEED, TEMPERATURE, model_naam
 from core.logging_util import foutkenmerk
-from tools import store
+from tools import herlaad, store
 from tools.catalog import catalogus_digest, catalogus_laatste_update
 from tools.inhoudshash import hash_van
 
@@ -72,7 +72,7 @@ def _sampling(model: str) -> dict:
     }
 
 
-def _data_as_of(data_keys) -> list[dict]:
+def _data_as_of(data_keys, username: str | None = None) -> list[dict]:
     """Per dataset wat er over haar actualiteit bekend is: de catalogusdatum (CBS), de
     CBS-Periodestatus van de geladen rijen (#180), een eventuele herlaaddatum (#472), bij een
     momentopname (UWV, ROA) de peildatum of versie (#577), bij DUO de versie en de md5 van het bestand (#717)
@@ -95,8 +95,8 @@ def _data_as_of(data_keys) -> list[dict]:
         if df is not None and hasattr(df, "columns") and _PERIODESTATUS in df.columns:
             statussen = set(entry.get("periodestatus", ())) | {str(s) for s in df[_PERIODESTATUS].dropna().unique()}
             entry["periodestatus"] = sorted(statussen)
-        if known.herladen_op:
-            entry["herladen_op"] = known.herladen_op
+        if herladen := herlaad.herladen_op(username, key):
+            entry["herladen_op"] = herladen
         if known.peilmoment:
             entry["peilmoment"] = known.peilmoment
         if inhoud := hash_van(key):
@@ -112,11 +112,12 @@ def _catalogus() -> str:
     return catalogus_digest()
 
 
-def bouw(model: str, data_keys, model_versie: str | None = None) -> dict:
+def bouw(model: str, data_keys, model_versie: str | None = None, username: str | None = None) -> dict:
     """Het manifest van één antwoord of rapport.
 
     `model` is wat de app koos, `model_naam` hoe de gebruiker het kent; `model_versie` is wat de
-    provider terugmeldde (bijv. een gedateerde modelnaam) en staat erbij zodra hij afwijkt.
+    provider terugmeldde (bijv. een gedateerde modelnaam) en staat erbij zodra hij afwijkt. Of data herladen is,
+    geldt voor `username` (#788).
     """
     m = {
         "model": model,
@@ -126,7 +127,7 @@ def bouw(model: str, data_keys, model_versie: str | None = None) -> dict:
         "prompt_hash": prompt_hash(),
         "catalogus": _catalogus(),
         "app": app_versie(),
-        "data_as_of": _data_as_of(data_keys),
+        "data_as_of": _data_as_of(data_keys, username),
         "gemaakt_op": f"{date.today():%d-%m-%Y}",
     }
     if model_versie and model_versie != model:

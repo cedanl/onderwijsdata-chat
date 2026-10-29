@@ -223,7 +223,7 @@ def test_recept_haalt_de_tabel_terug_na_een_herstart(bronnen):
     voor = store.get(key)
     store.clear()
 
-    uitkomst = herlaad.herlaad(key, recept)
+    uitkomst = herlaad.herlaad(key, recept, username="alice")
 
     assert uitkomst.gelukt and uitkomst.herladen
     pd.testing.assert_frame_equal(store.get(key), voor)

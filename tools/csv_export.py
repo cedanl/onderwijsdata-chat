@@ -120,8 +120,8 @@ ONVOLLEDIG_EXPORT = (
 )
 
 
-def _noten(key: str, afronden: bool) -> list[str]:
-    noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(key)) else []
+def _noten(key: str, afronden: bool, username: str | None) -> list[str]:
+    noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(username, key)) else []
     noten += store.herkomst(key)
     if inhoud := inhoudshash.hash_van(key):
         noten.append(
@@ -166,14 +166,14 @@ def bestandsnaam(key: str) -> str:
     return f"{naam or 'data'}.csv"
 
 
-def naar_csv(key: str) -> str | None:
+def naar_csv(key: str, username: str | None = None) -> str | None:
     """De tabel onder `key` als CSV, of None als de store hem niet (meer) heeft."""
     df = store.get(key)
     if not isinstance(df, pd.DataFrame):
         return None
     afronden = duo.is_prognose(store.meta(key))
     uit = io.StringIO()
-    for noot in _noten(key, afronden):
+    for noot in _noten(key, afronden, username):
         uit.write(f"# {noot}\n")
     writer = csv.writer(uit, delimiter=";", lineterminator="\n")
     writer.writerow(_veilig(kolom) if isinstance(kolom, str) else kolom for kolom in df.columns)

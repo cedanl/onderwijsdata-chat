@@ -13,7 +13,7 @@ een selectie kan een door de gebruiker getypte naam bevatten, en die hoort op IN
 
 import logging
 
-from tools import store
+from tools import herlaad, store
 from tools.inhoudshash import hash_van
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ ANTWOORD, FIGUUR, CSV, RAPPORT = "antwoord", "figuur", "csv", "rapport"
 _MANIFESTVELDEN = ("model", "prompt_hash", "catalogus", "app")
 
 
-def _keyregel(key: str) -> str:
+def _keyregel(key: str, username: str | None = None) -> str:
     """Eén data-key als veld: bron, dataset, resource, de key, en wat de meta over de data zegt."""
     known = store.meta(key)
     if known is None:
@@ -36,8 +36,8 @@ def _keyregel(key: str) -> str:
     delen.append(f"volledig={'ja' if known.volledig else 'nee'}")
     if known.afronding:
         delen.append(f"afronding={known.afronding}")
-    if known.herladen_op:
-        delen.append(f"herladen_op={known.herladen_op}")
+    if herladen := herlaad.herladen_op(username, key):
+        delen.append(f"herladen_op={herladen}")
     if not known.afgeleid_van and (inhoud := hash_van(key)):
         delen.append(f"inhoudshash={inhoud}")
     if not known.afgeleid_van and known.bronhash:
@@ -48,16 +48,21 @@ def _keyregel(key: str) -> str:
     return "[" + " ".join(delen) + "]"
 
 
-def log_publicatie(soort: str, keys, manifest: dict | None = None) -> None:
+def log_publicatie(soort: str, keys, manifest: dict | None = None, username: str | None = None) -> None:
     """Log dat een resultaat van `soort` naar de gebruiker ging, met de herkomst van zijn data.
 
     `keys` zijn de data-keys waarop het rust, in volgorde en zonder dubbelen; `manifest` het
-    manifest van het antwoord of rapport (#345), waarvan alleen de versievelden meegaan.
+    manifest van het antwoord of rapport (#345), waarvan alleen de versievelden meegaan. Of data herladen is,
+    geldt voor `username` (#788).
     """
     uniek = list(dict.fromkeys(k for k in keys if isinstance(k, str)))
     versies = " ".join(f"{veld}={manifest[veld]}" for veld in _MANIFESTVELDEN if manifest and manifest.get(veld))
     logger.info(
-        "GEPUBLICEERD soort=%s keys=%d %s %s", soort, len(uniek), " ".join(_keyregel(k) for k in uniek), versies
+        "GEPUBLICEERD soort=%s keys=%d %s %s",
+        soort,
+        len(uniek),
+        " ".join(_keyregel(k, username) for k in uniek),
+        versies,
     )
     for key in uniek:
         if stappen := store.herkomst(key):

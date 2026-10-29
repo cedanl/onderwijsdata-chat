@@ -238,7 +238,7 @@ def test_een_selectie_op_een_bron_die_een_ander_live_laadde_draagt_de_melding(cl
         _opslaan("alice", "c1", b)
         _herstart()
         _stap({"username": "bob"}, *_ROOTS["duo"])
-        assert store.get(b) is None and herlaad.notitie(bron) is None
+        assert store.get(b) is None and herlaad.notitie("alice", bron) is None and herlaad.notitie("bob", bron) is None
         resp = _csv(client, b)
 
     assert resp.status_code == 200
@@ -256,7 +256,7 @@ def test_een_tabel_die_een_ander_live_opnieuw_maakte_draagt_de_melding(client):
         _herstart()
         bob = {"username": "bob"}
         _stap(bob, TOOL_QUERY_DATA, {"data_key": _stap(bob, *_ROOTS["duo"]), "filters": {"STUDIEJAAR": 2024}})
-        assert store.get(b) is not None and herlaad.notitie(b) is None
+        assert store.get(b) is not None and herlaad.notitie("bob", b) is None
         resp = _csv(client, b)
 
     assert resp.status_code == 200
@@ -273,7 +273,7 @@ def test_een_live_antwoord_op_herladen_data_draagt_geen_melding(client):
         _opslaan("alice", "c1", a)
         _herstart()
         assert "X-Data-Herladen" in _csv(client, a).headers
-        assert herlaad.notitie(bron) is not None, "de bron is herladen"
+        assert herlaad.notitie("alice", bron) is not None, "de bron is herladen"
 
         bob = {"username": "bob"}
         assert _stap(bob, *_ROOTS["duo"]) == bron, "uit de cache, zonder nieuwe put"
@@ -599,3 +599,90 @@ def test_een_ouder_die_al_terug_is_als_bron_van_een_selectie_telt_niet_als_weg(d
 
     assert herstel.onherstelbaar == {}
     assert store.get(bron) is not None and store.get(selectie) is not None
+
+
+# ── De vlag hoort bij de gebruiker, niet bij de gedeelde store (#788) ──
+
+
+def test_de_vlag_van_de_een_verandert_niets_aan_de_ander(client):
+    """Alice' data is herladen, bob vroeg haar live op: in elke volgorde houdt ieder zijn eigen melding."""
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        _herstart()
+        assert "X-Data-Herladen" in _csv(client, key).headers
+        bob = {"username": "bob", "data_keys": [key]}
+        _stap(bob, *_ROOTS["rio"])
+        rondes = [(_csv(client, key, "bob"), _csv(client, key, "alice")) for _ in range(2)]
+        bob_rapport = herstel_data_keys(bob, "bob")
+
+    for van_bob, van_alice in rondes:
+        assert "X-Data-Herladen" not in van_bob.headers and _NOTITIE not in van_bob.text
+        assert "de bron kan intussen zijn gewijzigd" in van_alice.headers["X-Data-Herladen"]
+    assert bob_rapport.notitie is None
+
+
+# ── Alleen data van vóór een herstart of uit een recept krijgt de melding (#762) ──
+
+
+def test_een_ander_gesprek_verwijderen_maakt_live_data_niet_herladen(client):
+    with _bronnen():
+        session = {"username": "alice"}
+        key = _stap(session, *_ROOTS["rio"])
+        gesprek = {"title": "t", "timestamp": 1, "messages": [{"role": "assistant", "tools": [{"exportKey": key}]}]}
+        for conv_id in ("c1", "c2"):
+            assert client.put(f"/api/conversations/{conv_id}", json=gesprek, headers=_als("alice")).status_code == 200
+        assert client.delete("/api/conversations/c1", headers=_als("alice")).status_code == 200
+
+        session["data_keys"] = [key]
+        herstel = herstel_data_keys(session, "alice")
+        resp = _csv(client, key)
+
+    assert herstel.notitie is None
+    assert resp.status_code == 200 and "X-Data-Herladen" not in resp.headers
+
+
+def test_een_live_key_die_uit_de_wachtrij_viel_krijgt_geen_melding(client, monkeypatch):
+    monkeypatch.setattr(recepten, "_MAX_WACHTEND", 1)
+    with _bronnen():
+        session = {"username": "alice"}
+        eerste = _stap(session, *_ROOTS["rio"])
+        _opslaan("alice", "c1", eerste)
+        _stap(session, *_ROOTS["cbs"])  # verdringt het recept van de eerste uit `_wachtend`
+        assert ("alice", eerste) not in recepten._wachtend
+
+        session["data_keys"] = [eerste]
+        herstel = herstel_data_keys(session, "alice")
+        resp = _csv(client, eerste)
+
+    assert herstel.notitie is None
+    assert resp.status_code == 200 and "X-Data-Herladen" not in resp.headers
+
+
+def test_na_een_herstart_komt_de_melding_er_wel(database):
+    with _bronnen():
+        session = {"username": "alice"}
+        key = _stap(session, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        _herstart()
+        _stap({"username": "bob"}, *_ROOTS["rio"])  # de data is er weer, maar niet van alice' antwoord
+
+        herstel = herstel_data_keys({"username": "alice", "data_keys": [key]}, "alice")
+
+    assert herstel.notitie is not None and "de bron kan intussen zijn gewijzigd" in herstel.notitie
+
+
+def test_verwijder_al_mijn_gegevens_laat_niets_van_de_gebruiker_in_het_geheugen(database):
+    with _bronnen():
+        key = _stap({"username": "alice"}, *_ROOTS["rio"])
+        _opslaan("alice", "c1", key)
+        _herstart()
+        herstel_data_keys({"username": "alice", "data_keys": [key]}, "alice")
+        _stap({"username": "alice"}, *_ROOTS["cbs"])
+        assert herlaad.herladen_op("alice", key) is not None
+
+        recepten.vergeet_gebruiker("alice")
+
+    assert not [s for s in recepten._wachtend if s[0] == "alice"]
+    assert not [s for s in recepten._live if s[0] == "alice"]
+    assert herlaad.herladen_op("alice", key) is None

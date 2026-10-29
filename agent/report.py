@@ -385,12 +385,14 @@ async def generate(
     gebruikt = {**context, "datasets": gebruikte_datasets(context["datasets"], gelezen, bewijs, result.text)}
     spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen)
     keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
-    spec.manifest = manifest.bouw(model or MODEL, keys, model_versie=getattr(result, "model_versie", None))
+    spec.manifest = manifest.bouw(
+        model or MODEL, keys, model_versie=getattr(result, "model_versie", None), username=session.get("username")
+    )
     # Wat gevraagd was, in de woorden van de gebruiker: de bevestigde vraag, anders de laatste vraag eerst (#734).
     onderwerp = str(context.get("topic") or "")
     vragen = [onderwerp] if context.get("bevestigd") else [*reversed(gebruikersvragen(session)), onderwerp]
     spec.afwijkingen = afwijkingen(vragen, spec.visualisaties, [*gelezen, *keys])
-    log_publicatie(RAPPORT, keys, spec.manifest)
+    log_publicatie(RAPPORT, keys, spec.manifest, username=session.get("username"))
     return spec
 
 
