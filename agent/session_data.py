@@ -40,6 +40,9 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
         keys = session.setdefault("data_keys", [])
         if key not in keys:
             keys.append(key)
+        # Bij welke vraag van de gebruiker de key ontstond, zodat het rapport een latere bijsturing ziet (#733).
+        if nummer := len(gebruikersvragen(session)):
+            session.setdefault("data_vraag", {}).setdefault(key, nummer)
         if call is not None:
             # Keys are deterministic per selection: the first producer is the real one.
             session.setdefault("data_provenance", {}).setdefault(key, call)
@@ -48,6 +51,18 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
             # Buiten het geheugen bewaard bij het opslaan van het gesprek: zo overleeft de key een herstart (#472).
             if session.get("username") and (recept := herlaad.recept(key, call)) is not None:
                 recepten.onthoud(session["username"], key, recept)
+
+
+def gebruikersvragen(session: dict) -> list[str]:
+    """De vragen van de gebruiker in dit gesprek, in volgorde: elk gebruikersbericht met tekst.
+
+    Ook na heropenen (de geschiedenis) en met het antwoord op een verduidelijkingskaart (#732, #733).
+    """
+    return [
+        m["content"]
+        for m in session.get("messages") or []
+        if m.get("role") == "user" and isinstance(m.get("content"), str) and m["content"].strip()
+    ]
 
 
 def data_lineage(session: dict, key: str) -> list[dict]:

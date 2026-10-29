@@ -40,9 +40,9 @@ from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
-from agent.report_titel import rapporttitel
+from agent.report_titel import rapporttitel, rapportvraag
 from agent.selectie import stapkeys
-from agent.session_data import rekenbewijs
+from agent.session_data import gebruikersvragen, rekenbewijs
 from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
@@ -182,19 +182,49 @@ def _describe_kaart(kaart: dict | None) -> str:
     return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': argumenten})}"
 
 
+# Per vraag in de prompt; een vraag is hoogstens MAX_MESSAGE_CHARS, de bijsturing staat vooraan (#733).
+_MAX_VRAAG_TEKENS = 600
+
+
+def _describe_vraag(nummer: int | None) -> str:
+    return f"- Ontstaan bij vraag: {nummer}\n" if nummer else ""
+
+
+def _vragen_sectie(vragen: list[str]) -> str:
+    """De vragen van de gebruiker, genummerd zoals `Ontstaan bij vraag` ze telt (#733)."""
+    if not vragen:
+        return ""
+
+    def regel(vraag: str) -> str:
+        tekst = " ".join(vraag.split())
+        return tekst if len(tekst) <= _MAX_VRAAG_TEKENS else tekst[: _MAX_VRAAG_TEKENS - 1] + "…"
+
+    genummerd = "\n".join(f"{i}. {regel(v)}" for i, v in enumerate(vragen, 1))
+    return f"""
+
+## Vragen van de gebruiker in dit gesprek
+
+In volgorde. Een latere vraag kan de afbakening bijsturen; zie de werkwijze.
+
+{genummerd}
+"""
+
+
 def _build_system_prompt(context: dict) -> str:
     """Build the system prompt with injected dataset context.
 
-    `context["kaarten"]` (per data_key) is for the prompt only: `generate` keeps it out of the evidence.
+    `context["kaarten"]` (per data_key), `context["vragen"]` and `context["vraag_per_key"]` are for the prompt only:
+    `generate` keeps them out of the evidence. What the user said is a claim to test, not a source (#211, #733).
     """
     base = _PROMPT_PATH.read_text() if _PROMPT_PATH.exists() else ""
 
     kaarten = context.get("kaarten") or {}
+    vraag_per_key = context.get("vraag_per_key") or {}
     dataset_blocks: list[str] = []
     for ds in context.get("datasets", []):
         cols = "\n".join(f"  - {c['naam']} ({c['type']}): {', '.join(c['voorbeelden'])}" for c in ds["columns"])
         dataset_blocks.append(
-            f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n"
+            f"### {ds['data_key']}\n- Rijen: {ds['row_count']}\n{_describe_vraag(vraag_per_key.get(ds['data_key']))}"
             f"- Herkomst: {_describe_herkomst(ds.get('herkomst') or [])}{_describe_kaart(kaarten.get(ds['data_key']))}\n"
             f"- Kolommen:\n{cols}"
         )
@@ -203,6 +233,9 @@ def _build_system_prompt(context: dict) -> str:
 
     instelling = context.get("instelling", "")
     topic = context.get("topic", "")
+    onderwerp = (
+        "Onderzoeksvraag, bevestigd door de gebruiker" if context.get("bevestigd") else "Onderwerp (onderzoeksvraag)"
+    )
     berekeningen = "\n".join(
         f"- {b['tool']}({json.dumps(b['argumenten'], ensure_ascii=False, default=str)}): "
         f"{b['resultaat'][:_MAX_BEWIJS_TEKENS]}"
@@ -226,11 +259,11 @@ Deze uitkomsten kwamen uit de data; je mag ze in het rapport gebruiken, met deze
 ## Beschikbare datasets in deze sessie
 
 {datasets_section}
-{berekeningen_section}
+{berekeningen_section}{_vragen_sectie(context.get("vragen") or [])}
 
 ## Gebruikerscontext
 - Instelling: {instelling or "niet opgegeven"}
-- Onderwerp (onderzoeksvraag): {topic or "niet opgegeven"}
+- {onderwerp}: {topic or "niet opgegeven"}
 """
     return base + injected
 
@@ -241,14 +274,20 @@ async def generate(
     model: str | None = None,
     stop_event: asyncio.Event | None = None,
     author: str | None = None,
+    onderzoeksvraag: str | None = None,
 ) -> ReportSpec:
     """Generate a report from the loaded session data.
 
     The report must agree with its own data (#175). If it does not, the model
     gets one correction; a report that still contradicts its data is refused.
+    `onderzoeksvraag` is what the user confirmed before generating (#750): it becomes
+    the topic, the title and the research question, instead of the first question.
     """
     await herstel_data(session, emit)
     context = build_dataset_context(session)
+    if onderzoeksvraag:
+        context["topic"] = onderzoeksvraag
+        context["bevestigd"] = True
 
     if not context["datasets"]:
         raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
@@ -256,9 +295,14 @@ async def generate(
     # Een KPI of afgeleid getal uit het gesprek is bewijs, alleen als toolresultaat (#397).
     bewijs = rekenbewijs(session)
     context["berekeningen"] = bewijs
-    # De kaarten uit het gesprek zijn modelaanroepen, geen data: alleen in de prompt, niet in `context`, dat de
-    # controles als bewijs lezen (#211, #648).
-    prompt_context = {**context, "kaarten": _kaarten_in_gesprek(session)}
+    # De kaarten uit het gesprek zijn modelaanroepen, geen data, en de vragen zijn wat de gebruiker zei: alleen in de
+    # prompt, niet in `context`, dat de controles als bewijs lezen (#211, #648, #733).
+    prompt_context = {
+        **context,
+        "kaarten": _kaarten_in_gesprek(session),
+        "vragen": gebruikersvragen(session),
+        "vraag_per_key": dict(session.get("data_vraag") or {}),
+    }
     messages: list[dict] = [
         {"role": "system", "content": _build_system_prompt(prompt_context)},
         {"role": "user", "content": "Stel een professioneel rapport op dat antwoord geeft op de onderzoeksvraag."},
@@ -268,7 +312,9 @@ async def generate(
     figuurbronnen: list[dict | None] = []
     # De keys die de rapportrun las: haar bevragingen en de grafieken die in het rapport komen (#738).
     gelezen: list = []
-    dataset_context = json.dumps(context, default=str)
+    # De vraag van de gebruiker is een bewering om te toetsen, geen bewijs (#211): een getal erin dekt geen getal
+    # in het rapport, ook niet als de gebruiker haar als onderzoeksvraag bevestigde (#750).
+    dataset_context = json.dumps({k: v for k, v in context.items() if k != "topic"}, default=str)
 
     async def keep_figure(call: ToolCall, result: str, figure) -> None:
         _log_tool_call(call.name, call.args, result)
@@ -377,7 +423,11 @@ def _parse_spec_from_response(
 
     bronnen = _sources_from_recipe(recipe)
 
-    onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
+    # Een bevestigde onderzoeksvraag (#750) staat vast; anders formuleert het model haar, met de vraag als terugval.
+    if context.get("bevestigd"):
+        onderzoeksvraag = rapportvraag(topic)
+    else:
+        onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
     # De vraag van de gebruiker, niet een titel van het model: elke run gaf een andere (#416).
     title = rapporttitel(topic, context.get("instelling"))
 

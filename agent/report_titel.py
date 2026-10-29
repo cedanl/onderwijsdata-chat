@@ -14,6 +14,16 @@ _SLOTTEKENS = "?!.: \t\n"
 TITEL_ZONDER_PERSOONSGEGEVENS = "Rapport (persoonsgegevens weggelaten)"
 
 
+# De onderzoeksvraag die de gebruiker bevestigde (#750) staat voluit in het rapport, ook zonder persoonsgegevens.
+VRAAG_ZONDER_PERSOONSGEGEVENS = "Onderzoeksvraag weggelaten: ze bevatte persoonsgegevens."
+
+
+def rapportvraag(vraag: str) -> str:
+    """De bevestigde onderzoeksvraag zoals het rapport haar toont: één regel, zonder BSN, e-mailadres of telefoonnummer."""
+    tekst = " ".join((vraag or "").split())
+    return VRAAG_ZONDER_PERSOONSGEGEVENS if persoonsgegevens.bevat(tekst) else tekst
+
+
 def _ingekort(tekst: str) -> str:
     """Hoogstens _MAX_TEKENS tekens, afgebroken op een woordgrens, met een beletselteken."""
     if len(tekst) <= _MAX_TEKENS:

@@ -468,3 +468,47 @@ def test_een_teken_boven_de_cap_laat_de_oudste_beurten_vallen(monkeypatch):
 
     # 11 + 10 + 10 = 31 > 30: het antwoord op plek 1 past niet meer, de beurt ervoor ook niet.
     assert chat._parse_history(beurten) == beurten[2:]
+
+
+# #750: de onderzoeksvraag die de gebruiker vóór het genereren bevestigde, gaat mee naar het rapport.
+def _rapport_zonder_model(monkeypatch, maximum: int = 4000) -> list[dict]:
+    gevraagd: list[dict] = []
+
+    async def opnemen(session, emit, model, author=None, onderzoeksvraag=None):
+        gevraagd.append({"author": author, "onderzoeksvraag": onderzoeksvraag})
+
+    monkeypatch.setattr(chat, "MAX_MESSAGE_CHARS", maximum)
+    monkeypatch.setattr(chat, "_generate_report", opnemen)
+    return gevraagd
+
+
+def test_generate_report_geeft_de_bevestigde_onderzoeksvraag_gestript_door(monkeypatch):
+    gevraagd = _rapport_zonder_model(monkeypatch)
+
+    terug, events = _run_tot_einde(
+        "generate_report",
+        {"author": "Anne", "onderzoeksvraag": "  Hoe ontwikkelt de wo-instroom zich?\n"},
+        chat._new_session(),
+    )
+
+    assert isinstance(terug, asyncio.Task) and events == []
+    assert gevraagd == [{"author": "Anne", "onderzoeksvraag": "Hoe ontwikkelt de wo-instroom zich?"}]
+
+
+@pytest.mark.parametrize("msg", [{}, {"onderzoeksvraag": "   "}, {"onderzoeksvraag": ["geen tekst"]}])
+def test_generate_report_zonder_onderzoeksvraag_houdt_het_onderwerp_van_het_gesprek(monkeypatch, msg):
+    gevraagd = _rapport_zonder_model(monkeypatch)
+
+    _run_tot_einde("generate_report", msg, chat._new_session())
+
+    assert gevraagd == [{"author": None, "onderzoeksvraag": None}]
+
+
+def test_een_te_lange_onderzoeksvraag_wordt_geweigerd_zonder_rapport(monkeypatch):
+    gevraagd = _rapport_zonder_model(monkeypatch, maximum=10)
+    vorige = _KlaarTaak()
+
+    terug, events = _run("generate_report", {"onderzoeksvraag": "x" * 11}, chat._new_session(), vorige)
+
+    assert terug is vorige and gevraagd == []
+    assert len(events) == 1 and events[0]["type"] == "error" and events[0]["modelafhankelijk"] is False

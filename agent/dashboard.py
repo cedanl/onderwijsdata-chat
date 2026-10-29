@@ -23,7 +23,14 @@ from agent.grounding import unsourced_numbers
 from agent.loop import ToolCall, tool_loop
 from agent.recepten import van_session
 from agent.replay import REPLAYABLE_TOOLS, ankers_van_recipe
-from agent.session_data import DATA_WEG, data_lineage, herstel_data_keys, ontbrekende_data_keys, session_data_keys
+from agent.session_data import (
+    DATA_WEG,
+    data_lineage,
+    gebruikersvragen,
+    herstel_data_keys,
+    ontbrekende_data_keys,
+    session_data_keys,
+)
 from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
@@ -194,9 +201,8 @@ def _eerste_vraag(session: dict) -> str:
     begint met lege `turns`, en een vraag die een verduidelijkingskaart kreeg wordt geen beurt: dan was de
     eerste vraag ná het heropenen, of de gekozen optie, het onderwerp. De berichten bevatten beide.
     """
-    for m in session.get("messages") or []:
-        if m.get("role") == "user" and isinstance(m.get("content"), str) and m["content"].strip():
-            return m["content"]
+    if vragen := gebruikersvragen(session):
+        return vragen[0]
     turns = session.get("turns") or []
     return turns[0].get("question", "") if turns else ""
 
