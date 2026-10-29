@@ -86,6 +86,7 @@ describe('AnswerFeedback', () => {
 describe('AnswerFeedback confirmation', () => {
   const BEDANKT = 'Bedankt voor je feedback!'
   const status = () => container.querySelector('[role="status"]')
+  const bewaardIn = selector => container.querySelector(`${selector} .answer-feedback-bewaard`)?.textContent
 
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
@@ -99,14 +100,49 @@ describe('AnswerFeedback confirmation', () => {
     await act(async () => tekstknop('Verstuur').click())
   }
 
-  it('thanks after a thumbs-up in the live region that was already there', async () => {
+  // #807: a thumbs-up keeps the same trace as a thumbs-down, without a dialog; its thanks says so, in the same
+  // live region, so a screen reader announces both.
+  it('thanks after a thumbs-up in the live region that was already there, with what is kept', async () => {
     await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
     const region = status()
     expect(region.textContent).toBe('')
+    expect(region.children).toHaveLength(0) // empty: no extra line under every answer
     await act(async () => knop('Goed antwoord').click())
     expect(status()).toBe(region)
-    expect(region.textContent).toBe(BEDANKT)
     expect(region.className).toBe('answer-feedback-confirm')
+    const bewaard = bewaardIn('[role="status"]')
+    expect(region.textContent).toBe(`${BEDANKT} ${bewaard}`)
+    expect(bewaard).toContain('de vraag, het antwoord en de stappen')
+    expect(bewaard).toMatch(/verwijder je het gesprek.*zonder je naam/i)
+    expect(bewaard).toContain('Na 90 dagen wordt het verwijderd')
+  })
+
+  it('says after a thumbs-up the same sentence as the thumbs-down dialog', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Goed antwoord').click())
+    const naDuimOmhoog = bewaardIn('[role="status"]')
+    await act(async () => knop('Fout antwoord').click())
+    expect(bewaardIn('[role="status"]')).toBeUndefined()
+    expect(bewaardIn('.answer-feedback-form')).toBe(naDuimOmhoog)
+  })
+
+  // Under the last answer on a phone the sentence would otherwise fall below the edge of the list.
+  it('scrolls the sentence into view after a thumbs-up, not after a thumbs-down', async () => {
+    const scroll = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scroll
+    try {
+      await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+      await act(async () => knop('Fout antwoord').click())
+      await typeAndSend('klopt niet')
+      expect(scroll).not.toHaveBeenCalled()
+      await act(async () => knop('Goed antwoord').click())
+      expect(scroll).toHaveBeenCalledTimes(1)
+      expect(scroll.mock.contexts[0]).toBe(status())
+      expect(scroll.mock.calls[0][0]).toMatchObject({ block: 'nearest' })
+      expect(container.querySelector('.answer-feedback').className).toBe('answer-feedback answer-feedback--bewaard')
+    } finally {
+      delete HTMLElement.prototype.scrollIntoView
+    }
   })
 
   it('thanks after a thumbs-down and Verstuur, and closes the form', async () => {
@@ -116,28 +152,40 @@ describe('AnswerFeedback confirmation', () => {
     await typeAndSend('klopt niet')
     expect(container.querySelector('textarea')).toBeNull()
     expect(status()).toBe(region)
+    // The dialog showed the sentence before Verstuur.
     expect(region.textContent).toBe(BEDANKT)
   })
 
-  it('disappears after 4 seconds and shows again on a new submit', async () => {
+  it('stays 15 seconds after a thumbs-up, long enough to read, and shows again on a new submit', async () => {
     await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
     await act(async () => knop('Goed antwoord').click())
-    await act(async () => { vi.advanceTimersByTime(3999) })
-    expect(status().textContent).toBe(BEDANKT)
+    await act(async () => { vi.advanceTimersByTime(14999) })
+    expect(status().textContent).toContain(BEDANKT)
+    expect(bewaardIn('[role="status"]')).toBeDefined()
     await act(async () => { vi.advanceTimersByTime(1) })
     expect(status().textContent).toBe('')
 
     await act(async () => knop('Goed antwoord').click())
+    expect(bewaardIn('[role="status"]')).toBeDefined()
+  })
+
+  it('disappears 4 seconds after a thumbs-down', async () => {
+    await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
+    await act(async () => knop('Fout antwoord').click())
+    await typeAndSend('klopt niet')
+    await act(async () => { vi.advanceTimersByTime(3999) })
     expect(status().textContent).toBe(BEDANKT)
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(status().textContent).toBe('')
   })
 
   it('restarts the timeout on a new submit', async () => {
     await mount(createElement(AnswerFeedback, { value: null, onSubmit: vi.fn().mockResolvedValue(undefined) }))
     await act(async () => knop('Goed antwoord').click())
-    await act(async () => { vi.advanceTimersByTime(3000) })
+    await act(async () => { vi.advanceTimersByTime(10000) })
     await act(async () => knop('Goed antwoord').click())
-    await act(async () => { vi.advanceTimersByTime(3000) })
-    expect(status().textContent).toBe(BEDANKT)
+    await act(async () => { vi.advanceTimersByTime(10000) })
+    expect(status().textContent).toContain(BEDANKT)
   })
 
   it('hides on the next interaction and stays hidden after Annuleer', async () => {
@@ -162,7 +210,7 @@ describe('AnswerFeedback confirmation', () => {
     const onSubmit = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Serverfout'))
     await mount(createElement(AnswerFeedback, { value: null, onSubmit }))
     await act(async () => knop('Goed antwoord').click())
-    expect(status().textContent).toBe(BEDANKT)
+    expect(status().textContent).toContain(BEDANKT)
     await act(async () => knop('Goed antwoord').click())
     expect(container.querySelector('[role="alert"]')).not.toBeNull()
     expect(status().textContent).toBe('')

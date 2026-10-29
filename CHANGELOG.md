@@ -8,6 +8,13 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Na 👍 staat erbij wat er bewaard wordt (#807)
+- Ook een 👍 bewaart een kopie van vraag, antwoord en stappen voor het team, 90 dagen, ook na het verwijderen van het
+  gesprek. Dat stond alleen in de 👎-dialoog. Nu zegt de bevestiging na 👍 "Bedankt voor je feedback!" met dezelfde
+  bewaarzin, in de live region die er al was, zodat een schermlezer hem voorleest. Ze blijft 15 s staan (na 👎 4 s,
+  daar stond de zin al in de dialoog) en scrolt zo ver als nodig in beeld. Zonder klik staat er niets extra onder een
+  antwoord.
+
 ### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
 - Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
   geopende gesprek landen en mee opgeslagen worden. Een half antwoord bleef daarbij open staan en blokkeerde het rapport.
