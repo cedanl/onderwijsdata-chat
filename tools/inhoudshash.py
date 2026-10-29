@@ -1,7 +1,7 @@
 """Een hash van de brontabel achter een publicatie (#715): was dit dezelfde data?
 
 Alleen de tabel zoals de bron haar leverde (CBS, RIO), niet de selecties erop: een afleiding volgt uit bron plus
-stappen. DUO krijgt zijn hash van de bron zelf (#717). De vorm is sha256 van de CSV-serialisatie
+stappen. DUO heeft de md5 van het bestand zelf (KeyMeta.bronhash, #717). De vorm is sha256 van de CSV-serialisatie
 (`df.to_csv(index=False)`), afgekapt op twaalf tekens: draagbaar, en een onderzoeker rekent hem na met
 `hashlib.sha256(df.to_csv(index=False).encode()).hexdigest()[:12]`. `hash_pandas_object` is niet gegarandeerd stabiel
 tussen pandas-versies. Gemeten op echte DUO-, CBS- en RIO-loads: een tweede keer laden geeft dezelfde hash en de
@@ -14,7 +14,7 @@ import pandas as pd
 
 from . import store
 
-# De bronnen waarvan de app zelf de hash maakt. DUO levert er een (#717); UWV en ROA zijn momentopnamen met een peilmoment.
+# De bronnen waarvan de app zelf de hash maakt. DUO: KeyMeta.bronhash (#717); UWV en ROA zijn momentopnamen met een peilmoment.
 HASH_BRONNEN = frozenset({"cbs", "rio"})
 
 

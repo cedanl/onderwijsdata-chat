@@ -15,7 +15,12 @@ eigen kop (`docs/promoten.md`).
   `datumGeldigOp` blijft staan, en een resource zonder dat filter krijgt in de snippet een opmerking.
 - Het manifest, de logregel `GEPUBLICEERD` en de kop van de CSV-export noemen een `inhoudshash` van de brontabel van een
   CBS- of RIO-antwoord (#715), te narekenen met `hashlib.sha256(df.to_csv(index=False).encode()).hexdigest()[:12]`. Zo is
-  later vast te stellen of een herlading dezelfde data oplevert. DUO volgt met de hash van de bron zelf (#717).
+  later vast te stellen of een herlading dezelfde data oplevert.
+- Een DUO-antwoord noemt van wanneer het bestand is (#717): de bronregel en het manifest zeggen "versie van 10-07-2026", de
+  dag waarop DUO het bestand verving. Het manifest (`bronhash`), de logregel `GEPUBLICEERD` en de CSV-kop noemen de md5
+  van het geladen bestand, gelijk aan de hash die DUO erbij vermeldt en na te rekenen met `md5sum`. Voorheen toonde de app
+  voor DUO alleen een herlaaddatum. Vraagt `riodata` 0.7.0 (`df.attrs["bron"]` met `last_modified`, `hash`, `etag` en
+  `md5`); een datastore-dump zonder datum krijgt alleen de md5.
 - Een link `/chat#vraag=…` opent de chat met die vraag in de invoer van een nieuw gesprek (#709), ook als de
   gebruiker eerst moet inloggen, via SRAM of met een wachtwoord. De vraag gaat niet vanzelf naar het model; de app
   haalt hem uit het adres, maakt er één regel platte tekst van en kapt hem af op 500 tekens. Hij staat in het fragment

@@ -129,6 +129,11 @@ def _noten(key: str, afronden: bool) -> list[str]:
             "zie docs/reproducibility.md)"
         )
     known = store.meta(key)
+    if known is not None and known.bronhash:
+        noten.append(
+            f"md5 van het DUO-bestand: {known.bronhash} (zoals DUO het levert, na te rekenen met md5sum; "
+            "zie docs/reproducibility.md)"
+        )
     if known is not None and not known.volledig:
         noten.append(ONVOLLEDIG_EXPORT)
     noten += duo.sentinel_notes(duo.onderdrukt(key))

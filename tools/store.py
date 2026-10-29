@@ -92,8 +92,12 @@ class KeyMeta:
     # is wat dat antwoord toont. Alleen wat een recept terugzet, krijgt het. Herkomst, geen identiteit.
     herladen_op: str | None = field(default=None, compare=False)
     # Wanneer een momentopname (UWV, ROA) is genomen, in de woorden van de bron: "peildatum 2023-05-16",
-    # "versie v20251218". Een bronregel noemt het achter de titel (#577). Herkomst, geen identiteit.
+    # "versie v20251218"; bij DUO wanneer het bestand is vervangen, "versie van 08-04-2026" (#717). Een bronregel noemt
+    # het achter de titel (#577). Herkomst, geen identiteit.
     peilmoment: str | None = field(default=None, compare=False)
+    # De md5 van het geladen DUO-bestand (#717): gelijk aan de hash die DUO bij het bestand vermeldt, na te rekenen met
+    # md5sum. Vervangt voor DUO de eigen inhoudshash (#715). Herkomst, geen identiteit.
+    bronhash: str | None = field(default=None, compare=False)
     # De dag (jjjj-mm-dd) waarop een levend register (RIO) is bevraagd, als `datumGeldigOp` (#718): dezelfde dag geeft
     # dezelfde stand, dus de snippet zet hem erin. None bij een bron die geen tijdreizen kent. Herkomst, geen identiteit.
     geldig_op: str | None = field(default=None, compare=False)
