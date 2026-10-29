@@ -433,6 +433,32 @@
       "expected": {
         "must_refuse": true
       }
+    },
+    {
+      "label": "geslacht-opleiding-exact",
+      "message": "Wat is de man-vrouw verhouding bij de instroom van de opleiding Luchtvaart, van de Hogeschool Inholland? Geef me een trend over de afgelopen 10 jaar.",
+      "description": "#742: geslacht staat niet per opleiding in DUO, maar B Luchtvaarttechnologie (34278) is elk jaar de enige opleiding in haar cel van het geslachtsbestand van p02ho1ejrs (Inholland, Delft, TECHNIEK) en de totalen zijn gelijk: de verdeling is exact. Elke run dezelfde beschikbaarheid; tien jaar is er niet (vanaf 2021/22).",
+      "expected": {
+        "datasets": ["duo:p02ho1ejrs"],
+        "must_contain_tools": ["get_maat"],
+        "max_search_catalog": 3,
+        "must_mention": ["Luchtvaarttechnologie", "vrouw", "2021/22"],
+        "data_points": {
+          "description": "Aandeel vrouwen onder de eerstejaars B Luchtvaarttechnologie, Inholland: 22 van 174 (2021/22) tot 30 van 170 (2025/26)",
+          "must_be_percentage": true
+        }
+      }
+    },
+    {
+      "label": "geslacht-opleiding-niet-exact",
+      "message": "Wat is de man-vrouwverhouding bij de instroom van HBO-Rechten van Hogeschool Inholland?",
+      "description": "#742: B HBO - Rechten deelt elk jaar haar cel van het geslachtsbestand met andere opleidingen; de verdeling is niet af te leiden, en dat zegt het antwoord elke run, zonder schatting.",
+      "expected": {
+        "datasets": ["duo:p02ho1ejrs"],
+        "must_contain_tools": ["get_maat"],
+        "max_search_catalog": 3,
+        "must_mention": ["Rechten", "niet per opleiding|niet af te leiden|niet beschikbaar"]
+      }
     }
   ]
 }
