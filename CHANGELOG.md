@@ -17,8 +17,14 @@ eigen kop (`docs/promoten.md`).
   getal, gelijk aan DUO's `BEVOEGD GEZAG NUMMER`. De adreslookup van het register kent nu het bestuur van een instelling.
 - Gemeten op het bestand van 1 oktober 2026: 164 besturen noemen mbo, waarvan 126 alleen mbo; dat verklaart de twee
   tellingen uit #722. Alle 55 mbo-instellingen in DUO's adressenbestand vinden via hun bestuur een oordeel.
-- `bron:ping` pingt de Inspectie ook. Zo meet de geplande job of de bron vanaf de CI-runner bereikbaar is. De chattool
-  volgt in een eigen stap.
+- `bron:ping` pingt de Inspectie ook. Zo meet de geplande job of de bron vanaf de CI-runner bereikbaar is.
+- De chattool `get_inspectieoordeel` geeft het oordeel van het bestuur van een mbo-instelling: het eindoordeel, de
+  standaarden, de vaststellingsdatum en de peildatum. Onder het antwoord staat de bronregel "Onderwijsinspectie ·
+  Oordelen per bevoegd gezag, peildatum …", met een link naar het bestand.
+  - Een gemengd bestuur krijgt de noot dat het oordeel het hele bestuur betreft. Zonder eindoordeel noemt het antwoord
+    geen oordeel.
+  - Hbo en wo krijgen een vaste melding: daar beoordeelt de NVAO de opleidingen.
+  - Twee evals toetsen het oordeel van een mbo-instelling en de melding bij een hbo-instelling.
 
 ### Aannames zichtbaar: wat niet meetelt, en een vaste vraag bij instroom (#743)
 - Een antwoord op een DUO-telling die iets uitsluit, krijgt onder het Uitgangspunt één regel "**Niet meegeteld:**"

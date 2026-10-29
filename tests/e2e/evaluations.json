@@ -459,6 +459,26 @@
         "max_search_catalog": 3,
         "must_mention": ["Rechten", "niet per opleiding|niet af te leiden|niet beschikbaar"]
       }
+    },
+    {
+      "label": "inspectie-oordeel-mbo",
+      "message": "Wat is het inspectieoordeel van ROC Midden Nederland?",
+      "description": "#749: het oordeel geldt per bestuur, met peildatum en bron uit code (get_inspectieoordeel)",
+      "expected": {
+        "must_contain_tools": ["get_inspectieoordeel"],
+        "max_search_catalog": 1,
+        "must_mention": ["Voldoende|Goed|Onvoldoende|geen eindoordeel", "bestuur", "peildatum|peil"]
+      }
+    },
+    {
+      "label": "inspectie-oordeel-hbo",
+      "message": "Wat is het inspectieoordeel van Hogeschool Utrecht?",
+      "description": "#749: de Inspectie geeft het hoger onderwijs geen oordeel per bestuur; dat is de NVAO",
+      "expected": {
+        "must_contain_tools": ["get_inspectieoordeel"],
+        "max_search_catalog": 1,
+        "must_mention": ["NVAO"]
+      }
     }
   ]
 }

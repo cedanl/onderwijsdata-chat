@@ -23,6 +23,7 @@ TOOL_RUN_ANALYSIS = "run_analysis"
 TOOL_COMPUTE_KPI = "compute_kpi"
 TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
+TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -273,6 +274,29 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["resource"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_INSPECTIEOORDEEL,
+            "description": (
+                "Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een mbo-instelling: "
+                "eindoordeel, de standaarden op bestuursniveau, de vaststellingsdatum, de peildatum en de bron. Gebruik "
+                "dit bij een vraag naar het inspectieoordeel of de kwaliteit volgens de Inspectie. Het oordeel geldt per "
+                "bestuur, niet per instelling of opleiding; een noot zegt wanneer het bestuur ook po, vo of ho heeft. "
+                "Hbo en wo krijgen geen oordeel per bestuur (NVAO)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de mbo-instelling uit het register.",
+                    },
+                },
+                "required": ["instelling"],
             },
         },
     },

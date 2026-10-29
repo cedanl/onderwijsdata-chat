@@ -136,6 +136,26 @@ Een UWV- of ROA-resultaat is in de chat een dataset zoals elke andere: de tabel 
 
 ---
 
+## Onderwijsinspectie — oordelen per bestuur
+
+De Inspectie publiceert elke maand een peilbestand met het oordeel per bevoegd gezag (`…-oordeel-en-standaard-bg.ods`,
+CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#749).
+- **Per bestuur:** het oordeel geldt per bestuur, niet per instelling, vestiging of opleiding.
+- **Gemengd bestuur:** heeft het bestuur ook po, vo of ho, dan zegt het antwoord dat het oordeel over het hele bestuur
+  gaat. Op 1 oktober 2026 noemden 164 besturen mbo; 126 daarvan hebben alleen mbo.
+- **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar beoordeelt de NVAO de opleidingen, en
+  die bron zit niet in de app.
+- **Bereikbaarheid:** `bron:ping` meet wekelijks of de bron bereikbaar is.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | onderwijsinspectie.nl, open data (CC0 1.0) |
+| Inhoud | Eindoordeel en standaarden per bevoegd gezag |
+| Formaat | ODS, maandelijks peilbestand |
+| Koppeling | Bestuursnummer = DUO `BEVOEGD GEZAG NUMMER` (adressen_mbo) |
+
+---
+
 ## Bronnen onder een antwoord
 
 Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.

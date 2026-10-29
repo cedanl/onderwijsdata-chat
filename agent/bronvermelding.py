@@ -16,8 +16,9 @@ from collections.abc import Callable
 from tools import store
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
+from tools.inspectie import BRONNAAM, BRONTITEL
 from tools.rio_instelling import ERKENNINGEN
-from tools.schemas import TOOL_GET_RIO_INSTELLING
+from tools.schemas import TOOL_GET_INSPECTIEOORDEEL, TOOL_GET_RIO_INSTELLING
 
 from .meetwaarden import meetwaarden
 from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
@@ -81,13 +82,32 @@ def _registerbron(tool: str, result: str) -> list[Bronregel]:
     return [(f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst, ERKENNINGEN)]
 
 
+def _inspectie(tool: str, result: str) -> dict | None:
+    """De bron van een Inspectie-oordeel (#749): het peilbestand per bestuur, met peildatum en link."""
+    if tool != TOOL_GET_INSPECTIEOORDEEL:
+        return None
+    try:
+        parsed = json.loads(result)
+    except (TypeError, ValueError):
+        return None
+    bron = parsed.get("bron") if isinstance(parsed, dict) else None
+    return bron if isinstance(bron, dict) else None
+
+
+def _inspectiebron(tool: str, result: str) -> list[Bronregel]:
+    if (bron := _inspectie(tool, result)) is None:
+        return []
+    tekst = f"{BRONNAAM}{SCHEIDING}{BRONTITEL}"
+    return [(f"{tekst}, peildatum {bron['peildatum']}" if bron.get("peildatum") else tekst, None)]
+
+
 def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     datasets = [bron for key in stapkeys(result) if (bron := _datasetbron(key))]
     # Een UWV- of ROA-resultaat van vóór #577 heeft geen tabel in de store: dan is zijn bron die van zijn
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
     # peildatum of versie, al in `datasets`.
     buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron]
-    return datasets + buiten_de_store + _registerbron(tool, result)
+    return datasets + buiten_de_store + _registerbron(tool, result) + _inspectiebron(tool, result)
 
 
 def _bronregels(steps: list[tuple[str, str]]) -> dict[str, str | None]:
@@ -113,9 +133,15 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
     De link is de documentatie-URL van de dataset in de catalogus, alleen als http(s)-adres. Een regel
     zonder dataset die de catalogus kent, of zonder zo'n link, staat er niet in: die blijft tekst, geen gok.
     """
-    return {
+    links = {
         tekst: url for tekst, dataset in _bronregels(steps).items() if dataset and (url := documentatie_url(dataset))
     }
+    # Het Inspectie-oordeel staat niet in de catalogus: zijn link is het peilbestand zelf (#749).
+    for tool, result in steps:
+        bron, regels = _inspectie(tool, result), _inspectiebron(tool, result)
+        if bron and regels and str(bron.get("url") or "").startswith("https://"):
+            links.setdefault(regels[0][0], str(bron["url"]))
+    return links
 
 
 def zonder_bronnensectie(tekst: str) -> str:
