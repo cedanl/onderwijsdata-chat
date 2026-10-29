@@ -37,6 +37,7 @@ function serve({ oidc = true } = {}) {
     if (url === '/api/auth/status') return response(200, { required: true, oidc_enabled: oidc })
     if (url === '/api/auth/user') return response(200, { name: 'Anna' })
     if (url === '/api/auth/login') return response(200, { token: 'nieuw', user: 'bert' })
+    if (url === '/api/config') return response(200, { dashboards_enabled: true })
     if (url === '/api/instellingen') return response(200, [])
     if (url.startsWith('/api/workbooks')) return response(200, [])
     return response(200, {})

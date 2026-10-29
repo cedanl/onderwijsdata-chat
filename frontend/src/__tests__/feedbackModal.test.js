@@ -75,6 +75,22 @@ describe('FeedbackModal', () => {
     )
   })
 
+  it('names a dashboard a dashboard in the questions, the sections and the intro (#795)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse(200, QUESTIONS)))
+    await render({ workbook: { ...WORKBOOK, type: 'dashboard' } })
+    await revealExtra()
+    expect(container.textContent).toContain('Hoe nuttig was dit dashboard voor je?')
+    expect(container.textContent).toContain('Mist er iets in dit dashboard?')
+    expect(headings()).toEqual(['Over dit dashboard', 'Over jouw instelling'])
+    const intro = [...container.querySelectorAll('[role="dialog"] .feedback-intro')].map(p => p.textContent)
+    expect(intro[0]).toBe('Alle vragen zijn optioneel. Je antwoorden helpen ons de dashboards te verbeteren.')
+    expect(intro[1]).toBe(
+      'We bewaren je antwoorden en de titel van het dashboard bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.',
+    )
+    expect(intro[2]).toContain('Na de vragen over het dashboard kun je')
+    expect(container.textContent).not.toContain('rapport')
+  })
+
   it('posts the answers with the report context and reports success', async () => {
     const fetch = vi.fn()
       .mockResolvedValueOnce(jsonResponse(200, QUESTIONS))

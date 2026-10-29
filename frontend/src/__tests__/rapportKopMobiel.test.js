@@ -105,6 +105,26 @@ describe('geopend rapport op smal scherm (#604)', () => {
   })
 })
 
+describe('geopend dashboard (#795)', () => {
+  const dashboard = { ...rapport, type: 'dashboard', htmlContent: undefined, dashboardSpec: {} }
+
+  it('noemt het dashboard in de knop op desktop', async () => {
+    await renderMetSlot({ workbook: dashboard })
+    const acties = container.querySelector('.wb-viewer-actions')
+    expect(acties.textContent).toContain('Geef feedback op dit dashboard')
+    expect(acties.textContent).not.toContain('dit rapport')
+  })
+
+  it('noemt het dashboard in het ⋯-menu op smal scherm', async () => {
+    smal.aan = true
+    const slot = await renderMetSlot({ workbook: dashboard })
+    await klik(slot.querySelector('button[aria-label="Meer acties"]'))
+    const menu = slot.querySelector('.navbar-meer-menu')
+    expect(menu.textContent).toContain('Geef feedback op dit dashboard')
+    expect(menu.textContent).not.toContain('dit rapport')
+  })
+})
+
 describe('geopend rapport op desktop (#604)', () => {
   it('houdt Download en feedback inline in de kopbalk en het slot leeg', async () => {
     const slot = await renderMetSlot()

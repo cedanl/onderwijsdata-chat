@@ -6,6 +6,7 @@ import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
+import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
 import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
@@ -168,7 +169,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  Geef feedback op dit rapport
+                  Geef feedback op dit {rapportWoord(workbook)}
                 </button>
               )
             )}

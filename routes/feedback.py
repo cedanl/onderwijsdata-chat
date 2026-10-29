@@ -30,6 +30,11 @@ _algemeen_limiter = RateLimiter(max_attempts=10, window_seconds=600)
 _Short = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]
 
 
+def _object(report_type: str) -> str:
+    """Het woord voor wat de gebruiker beoordeelt: een dashboard heet in de melding geen rapport (#795)."""
+    return "dashboard" if report_type == "dashboard" else "rapport"
+
+
 class FeedbackIn(BaseModel):
     workbook_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     report_type: _Short
@@ -71,13 +76,16 @@ def post_feedback(body: FeedbackIn, username: str = Depends(get_current_user)) -
         raise HTTPException(status_code=422, detail=str(exc)) from None
     # Alleen op een eigen werkboek; anders vervuilt de telling per rapport (#389).
     if not persistence_db.workbook_belongs_to(username, body.workbook_id):
-        raise HTTPException(status_code=404, detail="Rapport niet gevonden")
+        raise HTTPException(status_code=404, detail=f"{_object(body.report_type).capitalize()} niet gevonden")
     key = f"{username}|{body.workbook_id}"
     if not _limiter.is_allowed(key):
         retry = _limiter.retry_after(key)
         raise HTTPException(
             status_code=429,
-            detail=f"Je hebt net al feedback op dit rapport gegeven. Probeer het over {retry} seconden opnieuw.",
+            detail=(
+                f"Je hebt net al feedback op dit {_object(body.report_type)} gegeven. "
+                f"Probeer het over {retry} seconden opnieuw."
+            ),
             headers={"Retry-After": str(retry)},
         )
     persistence_db.add_feedback(

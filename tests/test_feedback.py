@@ -319,6 +319,27 @@ def test_post_feedback_is_rate_limited_per_report(client):
     assert client.post("/api/feedback", json=other).status_code == 200
 
 
+@pytest.mark.parametrize(
+    ("report_type", "woord"),
+    [("report", "rapport"), ("dashboard", "dashboard"), ("", "rapport"), ("iets-anders", "rapport")],
+)
+def test_de_ratelimitmelding_noemt_een_dashboard_geen_rapport(client, report_type, woord):
+    body = {**_body(), "report_type": report_type}
+    for _ in range(3):
+        assert client.post("/api/feedback", json=body).status_code == 200
+    detail = client.post("/api/feedback", json=body).json()["detail"]
+    assert f"feedback op dit {woord} gegeven" in detail
+
+
+@pytest.mark.parametrize(
+    ("report_type", "melding"), [("report", "Rapport niet gevonden"), ("dashboard", "Dashboard niet gevonden")]
+)
+def test_de_foutmelding_op_een_vreemd_werkboek_noemt_het_juiste_woord(client, report_type, melding):
+    resp = client.post("/api/feedback", json={**_body(), "workbook_id": "wb-onbekend", "report_type": report_type})
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == melding
+
+
 def test_workbook_belongs_to(db):
     db.upsert_workbook("alice", "wb-1", "Instroom hbo", "")
     assert db.workbook_belongs_to("alice", "wb-1") is True

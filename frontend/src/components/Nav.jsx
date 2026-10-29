@@ -29,7 +29,7 @@ const BESTEMMINGEN = [
 const isActief = (to, pathname) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
 
 // slotRef: de plek in de balk waar een pagina op een telefoon zijn knoppen neerzet (navSlot.jsx).
-export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = true, slotRef, onZoek = null }) {
+export default function Nav({ user, onLogout, onOpenSettings, instelling, dashboardsEnabled = false, slotRef, onZoek = null }) {
   const bestemmingen = BESTEMMINGEN.filter(b => dashboardsEnabled || !b.dashboard)
   return (
     <nav className="navbar">
