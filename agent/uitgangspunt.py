@@ -73,6 +73,9 @@ def _uit_maten(steps: list[tuple[str, str]], per: dict[str, _Afbakening]) -> Non
             afbakening.waarden.append(sector)
         if isinstance(vorm := parsed.get("vorm"), str) and vorm and vorm != ALLE:
             afbakening.waarden.append(vorm)
+        # Geslacht per opleiding (#742): de opleiding die de code bij de naam van het model koos.
+        if isinstance(opl := parsed.get("opleiding"), dict) and opl.get("naam"):
+            afbakening.waarden.append(str(opl["naam"]))
 
 
 def _is_selectie(known: KeyMeta) -> bool:

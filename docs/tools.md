@@ -274,6 +274,7 @@ per sessie anders, verkeerd schooljaar) is zo een beslissing van code.
 | `sector` | string | Alleen bij `deelnemers_ho_landelijk`: `hbo` of `wo` |
 | `vorm` | string | `alle` (standaard), `voltijd`, `deeltijd`, `duaal` (ho) of `bol`, `bbl` (mbo) |
 | `schooljaren` | array | `2024/25` of `2024`; weglaten voor alle beschikbare |
+| `opleiding_naar_geslacht` | string | Geslacht van één opleiding (naam of CROHO-code) bij een hbo/wo-instelling, met `ingeschreven_personen_ho`, `eerstejaars_ho` of `inschrijvingen_ho` en zonder vorm (#742) |
 
 Per maat ligt vast: het DUO-bestand (het opleidingsvorm-bestand per sector, #325), de telkolom, de codes van de
 vorm (`VT`/`DT`/`DU`, bij CBS `A028666`…), de vaste CBS-totaalcodes (fase, geslacht) en de teldefinitie. De tool
@@ -287,6 +288,15 @@ bron, de definitie en dat alternatief (zie `docs/domeinregels.md`). Een key uit 
 herstart terug door het recept opnieuw te draaien (`tools/herlaad.py`); de snippet is het recept als script.
 
 **Standaard:** "studenten" = personen (p01); inschrijvingen (p03) alleen op expliciete vraag, met vermelding.
+
+**Geslacht per opleiding** (#742, `tools/geslacht_opleiding.py`). DUO heeft geslacht niet per opleiding: het
+geslachtsbestand telt per instelling, vestigingsgemeente, onderdeel, subonderdeel en type ho, het niveaubestand in
+dezelfde cellen per opleiding. Met `opleiding_naar_geslacht` legt de code ze naast elkaar. In een jaar is de verdeling
+exact als de opleiding de enige is in haar cel, er geen -1 in die cel staat en de totalen van beide bestanden gelijk
+zijn; dan krijgt dat jaar rijen per geslacht (aantal en `AANDEEL_PROCENT`). Een ander jaar staat onder
+`niet_af_te_leiden` met de reden, zonder getal. Zonder enig exact jaar geeft de tool een vaste melding in plaats van een
+`data_key`. De opleiding wordt bij de instelling gezocht op code, dan op de hele naam, dan op een deel ervan; passen er
+meer, dan noemt de melding ze met hun code. Het resultaat noemt de gekozen `opleiding` en een vaste `afleiding`.
 
 ---
 

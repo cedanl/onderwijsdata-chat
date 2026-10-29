@@ -38,7 +38,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "'Studenten' is ingeschreven_personen_ho (personen); inschrijvingen_ho alleen als de gebruiker om "
                 "inschrijvingen vraagt. Bij doorstroom_vmbo_mbo zet de app de bron, de definitie en het "
                 "DUO-alternatief zelf onder het antwoord; de DUO-telling (Instromende mbo-studenten, vmbo-diploma) "
-                "alleen als de gebruiker erom vraagt, via get_duo_data. Geeft een data_key met één rij per studiejaar, de teldefinitie en het recept; "
+                "alleen als de gebruiker erom vraagt, via get_duo_data. Geslacht per opleiding bij een hbo/wo-instelling: "
+                "opleiding_naar_geslacht. Geeft een data_key met één rij per studiejaar (bij geslacht per opleiding "
+                "één per studiejaar en geslacht), de teldefinitie en het recept; "
                 "query_data, compute_kpi en create_plot werken er gewoon mee. Een onbekende instelling of maat is "
                 "een fout, geen gok."
             ),
@@ -75,6 +77,16 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Schooljaren als 2024/25 (of het startjaar 2024); weglaten voor alle beschikbare.",
+                    },
+                    "opleiding_naar_geslacht": {
+                        "type": "string",
+                        "description": (
+                            "Alleen voor de verdeling naar geslacht (man/vrouw) van één opleiding bij één hbo/wo-"
+                            "instelling: haar naam of CROHO-code, met ingeschreven_personen_ho, eerstejaars_ho of "
+                            "inschrijvingen_ho en zonder vorm. DUO heeft geslacht niet per opleiding; de code geeft de "
+                            "verdeling alleen in de jaren waarin ze exact af te leiden is, en anders de reden. Leid "
+                            "haar nooit zelf af uit het geslachtsbestand."
+                        ),
                     },
                 },
                 "required": ["maat"],
