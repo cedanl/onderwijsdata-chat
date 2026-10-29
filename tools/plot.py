@@ -334,6 +334,7 @@ def create_plot(
     highlight: str | None = None,
     data_key: str | None = None,
     is_share: bool = False,
+    y_vanaf_nul: bool = False,
 ) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
@@ -429,6 +430,10 @@ def create_plot(
             "automargin": _AS_AUTOMARGIN,
             **_AXIS_STYLE,
         }
+        if y_vanaf_nul:
+            # Op verzoek van de gebruiker (#741): een lijn begint anders bij het kleinste getal, wat verschillen
+            # groter laat lijken. Staven beginnen al op 0.
+            waarde_as["rangemode"] = "tozero"
         if liggend:
             # De eerste rij bovenaan, zoals de agent de rijen sorteerde; de namen duwen de marge opzij.
             # Zonder astitel: de namen spreken voor zich, en op een telefoon viel de titel eroverheen.

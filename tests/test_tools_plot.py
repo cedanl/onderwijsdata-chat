@@ -391,3 +391,21 @@ def test_liggende_staven_met_noot_zijn_even_hoog_als_zonder():
     assert met.data[0].orientation == "h"
     assert "afrondingsnoot" in met.layout.meta
     assert met.layout.height == zonder.layout.height
+
+
+def test_y_vanaf_nul_laat_de_waardeas_op_nul_beginnen_alleen_op_verzoek():
+    """#741: "Ik wilde eigenlijk dat de y as op 0 begon, maar dat is niet gelukt." Standaard blijft een lijn vrij."""
+    _, vrij = create_plot(_ROWS, "line", "jaar", "waarde", "T")
+    _, vanaf_nul = create_plot(_ROWS, "line", "jaar", "waarde", "T", y_vanaf_nul=True)
+
+    assert vrij is not None and vanaf_nul is not None
+    assert vrij.layout.yaxis.rangemode is None
+    assert vanaf_nul.layout.yaxis.rangemode == "tozero"
+    # De rest van de as blijft zoals hij was.
+    assert vanaf_nul.layout.yaxis.tickformat == vrij.layout.yaxis.tickformat == ","
+
+
+def test_y_vanaf_nul_bij_liggende_staven_geldt_voor_de_waardeas():
+    rijen = [{"instelling": f"Instelling {i} met een lange naam", "waarde": 100 + i} for i in range(6)]
+    _, fig = create_plot(rijen, "bar", "instelling", "waarde", "T", y_vanaf_nul=True)
+    assert fig is not None and fig.layout.xaxis.rangemode == "tozero"

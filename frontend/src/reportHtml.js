@@ -172,15 +172,33 @@ function afwijkingHtml(afwijkingen) {
   return `<div class="afwijking" role="note"><h2 class="section-label">Afwijking van je vraag</h2><ul>${bullets(regels)}</ul></div>`
 }
 
+// Wie het rapport opstelde, en waarmee (#748): de gebruiker blijft eigenaar, het gebruik van de tool staat erbij.
+export function auteursregel(auteur) {
+  const naam = String(auteur || '').trim()
+  return naam
+    ? `Opgesteld door <b>${escapeHtml(naam)}</b> met openEDUdata+ (AI-assistent)`
+    : 'Opgesteld met openEDUdata+ (AI-assistent)'
+}
+
+// Een definitie van meer zinnen leest sneller als opsomming (#748); een zin begint met een hoofdletter of cijfer.
+export function definitieDelen(tekst) {
+  const schoon = String(tekst || '').replace(/\s+/g, ' ').trim()
+  return schoon.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).map(d => d.trim()).filter(Boolean)
+}
+
+function definitieHtml(tekst) {
+  const delen = definitieDelen(tekst)
+  if (delen.length < 2) return escapeHtml(delen[0] || '')
+  return `<ul class="def-lijst">${delen.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>`
+}
+
 export function buildReportHtml(spec, { instelling = '' } = {}) {
   const s = spec || {}
   const datum = s.datum || new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
-  const auteur = s.auteur || 'onbekend'
-
   const definitionHtml = (s.definities || []).map(d =>
     `<div class="def">
        <span class="def-term">${escapeHtml(d.begrip || '')}</span>
-       <span class="def-desc">${escapeHtml(d.definitie || d || '')}</span>
+       <div class="def-desc">${definitieHtml(d.definitie || d || '')}</div>
      </div>`
   ).join('')
 
@@ -278,6 +296,8 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
   .def:last-child{border-bottom:none}
   .def-term{flex:0 0 34%;font-weight:700;color:#111827;font-size:.92rem}
   .def-desc{flex:1;color:#4B5563;font-size:.9rem;line-height:1.5}
+  .def-lijst{margin:0;padding-left:1.1em}
+  .def-lijst li{margin:0 0 .25em}
   .vis-title{font-size:1.05rem;font-weight:700;color:#111827;margin-bottom:12px}
   .plot-auto{height:360px}
   .vis-noot{margin-top:8px;color:#6B7280;font-size:.8rem;line-height:1.45}
@@ -310,7 +330,7 @@ ${(s.visualisaties || []).length ? plotlyScript() : ''}
       <h1>${escapeHtml(s.title || 'Rapport')}</h1>
       <div class="meta">
         <span class="meta-chip">Gegenereerd op <b>${escapeHtml(datum)}</b></span>
-        <span class="meta-chip">Auteur <b>${escapeHtml(auteur)}</b></span>
+        <span class="meta-chip">${auteursregel(s.auteur)}</span>
       </div>
     </div>
     ${instellingBadge}

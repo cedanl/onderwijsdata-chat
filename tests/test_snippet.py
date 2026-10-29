@@ -859,3 +859,12 @@ def test_get_cbs_data_snippet_toont_het_compilaat_van_een_gesloten_selectie():
     assert 'data("85353NED"' in snippet
     assert "trim(Geslacht) eq '4000'" in snippet and "trim(Perioden) eq '2021SJ00'" in snippet
     assert "selectie" not in snippet
+
+
+def test_create_plot_snippet_zet_de_y_as_op_nul_zoals_de_app():
+    """#741: de snippet tekent de grafiek die de gebruiker zag, ook met de as vanaf 0."""
+    args = {"data_key": "duo:x:y:result", "chart_type": "line", "x": "STUDIEJAAR", "y": "AANTAL", "title": "t"}
+    vrij, vanaf_nul = generate("create_plot", args), generate("create_plot", {**args, "y_vanaf_nul": True})
+    assert vrij is not None and vanaf_nul is not None
+    assert "rangemode" not in vrij
+    assert 'fig.update_yaxes(rangemode="tozero")' in vanaf_nul
