@@ -249,7 +249,12 @@ audit:python:
     # cedanl) staan niet in de PyPI-advisorydatabase en gaan er daarom uit.
     - uv export --frozen --no-dev --no-emit-project --no-hashes --extra postgres -o requirements.txt
     - grep -v " @ git+" requirements.txt > requirements-pypi.txt
-    - uvx pip-audit==2.10.1 -r requirements-pypi.txt --no-deps --disable-pip --progress-spinner off
+    # Bewust genegeerd (SECURITY.md, S12): filelock 3.32.7, fix in 4.2.1, maar litellm (ook 1.106.4) eist filelock<4.0.
+    # 112913 en 112907 gelden alleen op Windows; 112940 zit in ReadWriteLock, dat geen pakket hier gebruikt
+    # (huggingface_hub gebruikt FileLock/SoftFileLock, litellm alleen in zijn proxy-CLI). Weg zodra filelock>=4.2.1 kan.
+    - >-
+      uvx pip-audit==2.10.1 -r requirements-pypi.txt --no-deps --disable-pip --progress-spinner off
+      --ignore-vuln CVE-2026-112913 --ignore-vuln CVE-2026-112907 --ignore-vuln CVE-2026-112940
 
 audit:npm:
   stage: test
