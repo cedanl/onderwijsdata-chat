@@ -13,7 +13,7 @@ import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { refusalReason } from '../sendBlockReason'
 import { appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
-import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
+import { bijUitloggen, isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst } from '../verwijderenMetUitstel'
 import { buurVan, focusEerste, idsInDocument, kiezerMetId } from '../focusNa'
 import { useFocusNaRender } from '../hooks/useFocusNaRender'
@@ -349,17 +349,52 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const conversationIdRef = useRef(conversationId)
   conversationIdRef.current = conversationId
   const sluitUndoToastRef = useRef(null)
+  // Lukt de DELETE niet, dan komt het gesprek terug (#778). Via een ref: voerUit hieronder is van de eerste render.
+  const nietVerwijderdRef = useRef(null)
+  const verwijderOpServer = useCallback((conv, plek) => {
+    volgOpslag(deleteConversationApi(String(conv.id), { keepalive: true })).catch(() => nietVerwijderdRef.current(conv, plek))
+  }, [])
   const verwijderingRef = useRef(null)
   if (!verwijderingRef.current) {
     verwijderingRef.current = uitgesteldeVerwijdering({
-      voerUit: (conv) => {
+      voerUit: (conv, plek) => {
         sluitUndoToastRef.current?.()
         sluitUndoToastRef.current = null
-        deleteConversationApi(String(conv.id), { keepalive: true }).catch(() => {})
+        verwijderOpServer(conv, plek)
         // Het open gesprek: de lokale kopie gaat nu pas weg; wat op het scherm staat blijft tot een nieuw gesprek.
         // Kwam er binnen de bedenktijd een nieuwe vraag, dan is het weer een gesprek dat bewaard blijft (#535).
         const open = String(conv.id) === conversationIdRef.current
         if (open && isVerwijderd(verwijderdRef.current, conv.id, openChatRef.current.messages)) clearCurrentChat()
+      },
+    })
+  }
+
+  // Terug waar het stond: in de lijst en/of in de zoekresultaten (#529); een treffer buiten de lijst blijft eruit.
+  const zetTerug = useCallback((conv, { lijst, zoek }) => {
+    restoreResult(conv, zoek)
+    if (lijst < 0) return
+    const updated = terugInLijst(loadConversationHistory(), conv, lijst)
+    persistHistoryMetMelding(updated)
+    setConversationHistory(updated)
+  }, [restoreResult, persistHistoryMetMelding])
+
+  // De server heeft het gesprek nog: het staat weer in de lijst, met een melding en een nieuwe poging (#778). Niet
+  // na het uitloggen: de lijst van deze gebruiker is dan gewist en hoort niet terug in de browser.
+  nietVerwijderdRef.current = (conv, plek) => {
+    if (sessionEndedSince(tokenAtMount)) return
+    zetTerug(conv, plek)
+    const sluit = addToast('Gesprek verwijderen is niet gelukt. Het staat weer in de lijst.', 'error', {
+      duur: 10000,
+      actie: {
+        label: 'Opnieuw proberen',
+        onClick: () => {
+          sluit()
+          const zonder = loadConversationHistory().filter(c => String(c.id) !== String(conv.id))
+          persistHistoryMetMelding(zonder)
+          setConversationHistory(zonder)
+          removeResult(conv.id)
+          verwijderOpServer(conv, plek)
+        },
       },
     })
   }
@@ -371,14 +406,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     if (!hersteld) return
     // De focus naar het teruggezette gesprek, als het in de lijst of de zoekresultaten terugkomt (#776).
     focusNa(gespreksKnop(hersteld.conv.id), NIEUW_GESPREK)
-    // Terug waar het stond: in de lijst en/of in de zoekresultaten (#529); een treffer buiten de lijst blijft eruit.
-    const { lijst, zoek } = hersteld.index
-    restoreResult(hersteld.conv, zoek)
-    if (lijst >= 0) {
-      const updated = terugInLijst(loadConversationHistory(), hersteld.conv, lijst)
-      persistHistoryMetMelding(updated)
-      setConversationHistory(updated)
-    }
+    zetTerug(hersteld.conv, hersteld.index)
     // Was het het open gesprek, dan mag de volgende save het weer wegschrijven; de lokale kopie meteen (#530).
     if (String(hersteld.conv.id) !== conversationIdRef.current) return
     savedJsonRef.current = ''
@@ -387,7 +415,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const { id, messages: open } = openChatRef.current
     const all = withBufferedText(open)
     if (all.length) persistMetMelding(id, all)
-  }, [persistHistoryMetMelding, restoreResult, persistMetMelding, withBufferedText, tokenAtMount, focusNa])
+  }, [zetTerug, persistMetMelding, withBufferedText, tokenAtMount, focusNa])
 
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
@@ -430,12 +458,15 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     })
   }, [pendingDelete, conversationHistory, zoekResultaten, removeResult, conversationId, addToast, ongedaanMaken, persistHistoryMetMelding])
 
-  // Tab sluiten of weg van deze pagina: een lopende bedenktijd eindigt dan meteen in de DELETE.
+  // Tab sluiten, weg van deze pagina of uitloggen: een lopende bedenktijd eindigt dan meteen in de DELETE. Bij het
+  // uitloggen vóórdat het token weg is (#778): de unmount hieronder komt pas daarna.
   useEffect(() => {
     const nu = () => verwijderingRef.current.nu()
     window.addEventListener('pagehide', nu)
+    const afmelden = bijUitloggen(nu)
     return () => {
       window.removeEventListener('pagehide', nu)
+      afmelden()
       nu()
     }
   }, [])

@@ -28,8 +28,9 @@ export function isOpgeslagen(id, json) {
   }
 }
 
-// De PUT's die nog lopen. Uitloggen trekt het token pas in als ze klaar zijn: een PUT van een groot antwoord
-// (360 kB) liep anders soms nog toen de server het token al niet meer aannam.
+// De PUT's en DELETE's die nog lopen. Uitloggen trekt het token pas in als ze klaar zijn: een PUT van een groot
+// antwoord (360 kB) liep anders soms nog toen de server het token al niet meer aannam, en een verwijdering ging
+// dan stil verloren (#778).
 const lopend = new Set()
 
 export function volgOpslag(opslag) {
@@ -41,4 +42,17 @@ export function volgOpslag(opslag) {
 export function wachtOpOpslag(maxMs = 10000) {
   if (!lopend.size) return Promise.resolve()
   return Promise.race([Promise.allSettled([...lopend]), new Promise(r => setTimeout(r, maxMs))])
+}
+
+// Wat vóór het uitloggen nog moet gebeuren, zolang het token er is: een verwijdering in haar bedenktijd gaat dan
+// meteen (#778). Na het uitloggen zou ze zonder token gaan, een 401 krijgen en het gesprek op de server laten.
+const voorUitloggen = new Set()
+
+export function bijUitloggen(fn) {
+  voorUitloggen.add(fn)
+  return () => { voorUitloggen.delete(fn) }
+}
+
+export function rondAfVoorUitloggen() {
+  voorUitloggen.forEach(fn => fn())
 }

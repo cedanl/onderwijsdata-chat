@@ -6,6 +6,7 @@ import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
+import VerwijderFout from '../components/VerwijderFout'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
@@ -17,7 +18,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
   const pendingId = searchParams.get('id')
   const [showCreator, setShowCreator] = useState(false)
 
-  const { workbooks, setWorkbooks, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks, setWorkbooks, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete, verwijderFout } =
     useWorkbookGallery({
       type: 'dashboard',
       pendingId,
@@ -111,6 +112,7 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
         />
       )}
       {openFout && <div className="wb-gallery-notice" role="alert">{openFout}</div>}
+      <VerwijderFout fout={verwijderFout} />
       <DashboardGallery
         workbooks={all}
         instelling={instelling}

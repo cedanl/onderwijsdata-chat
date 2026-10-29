@@ -1,5 +1,8 @@
 import { STORAGE_WORKBOOKS } from './constants'
 import { fetchWorkbooks, fetchWorkbook, putWorkbook, deleteWorkbookApi } from './api'
+import { getToken, sessionEndedSince } from './auth'
+import { volgOpslag } from './gesprekOpslag'
+import { terugInLijst } from './verwijderenMetUitstel'
 
 export const BUILTIN_MIJN_INSTELLING = {
   id: '__builtin_mijn_instelling__',
@@ -83,10 +86,20 @@ export function saveWorkbook({ title, description, messages, figures, instelling
 const VOLLEDIG_MAX = 30
 const volledig = new Map()
 
+// Weg op het scherm is weg op de server (#778): lukt de DELETE niet, dan staat het werkboek weer op zijn plaats in
+// de lokale lijst en wijst de belofte af. Niet na het uitloggen: de lijst van deze gebruiker hoort dan niet terug.
 export function deleteWorkbook(id) {
   volledig.delete(String(id))
-  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(getWorkbooks().filter(w => w.id !== id))) } catch { /* noop */ }
-  deleteWorkbookApi(id).catch(e => console.warn('Workbook sync failed:', e.message))
+  const lijst = getWorkbooks()
+  const index = lijst.findIndex(w => w.id === id)
+  const token = getToken()
+  try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(lijst.filter(w => w.id !== id))) } catch { /* noop */ }
+  return volgOpslag(deleteWorkbookApi(id)).catch(err => {
+    if (index >= 0 && !sessionEndedSince(token)) {
+      try { localStorage.setItem(STORAGE_WORKBOOKS, JSON.stringify(terugInLijst(getWorkbooks(), lijst[index], index))) } catch { /* noop */ }
+    }
+    throw err
+  })
 }
 
 // The server list holds what a card shows, not the content (#633): with every report's HTML in it, 85

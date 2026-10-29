@@ -8,6 +8,16 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Verwijderen dat op de server mislukt, zegt dat (#778)
+- Een gesprek, rapport of dashboard verdween van het scherm, ook als de server het niet verwijderde (netwerkfout,
+  5xx). Het kwam dan na herladen of op een ander apparaat stil terug. Nu staat het weer in de lijst, met een melding en
+  "Opnieuw proberen". Een 404 telt als verwijderd.
+- Wie een gesprek verwijderde en binnen de bedenktijd van 8 s uitlogde, hield het gesprek op de server: de DELETE ging
+  pas na het wissen van het token en kreeg een 401. Nu gaat ze bij het uitloggen meteen, met het token van vóór het
+  uitloggen, en het token wordt pas ingetrokken als ze klaar is.
+- Sluit je binnen de bedenktijd de tab, dan gaat de DELETE nog steeds zonder melding (`keepalive`). Mislukt die, dan
+  staat het gesprek bij het volgende bezoek weer in de lijst.
+
 ### Na een herverbinding kent de server het gesprek weer (#756)
 - Elke WebSocket is een nieuwe serversessie, maar de app stuurde het gesprek en de instellingen maar één keer per
   pagina mee. Na een verbindingsbreuk, slaapstand of uitrol antwoordde de server daarom zonder eerdere beurten,

@@ -11,16 +11,16 @@ export function uitgesteldeVerwijdering({ voerUit, wacht = UITSTEL_MS, timers = 
 
   function afronden() {
     if (!lopend) return null
-    const { conv, timer } = lopend
+    const { conv, index, timer } = lopend
     timers.clearTimeout(timer)
     lopend = null
-    voerUit(conv)
+    voerUit(conv, index)
     return conv
   }
 
   return {
     // Plan de verwijdering van `conv` dat op `index` stond (een getal, of de plaatsen in meer lijsten);
-    // ongedaan() geeft `index` ongewijzigd terug. Een eerdere verwijdering wordt eerst uitgevoerd.
+    // ongedaan() en voerUit krijgen `index` ongewijzigd terug. Een eerdere verwijdering wordt eerst uitgevoerd.
     plan(conv, index) {
       afronden()
       const timer = timers.setTimeout(afronden, wacht)

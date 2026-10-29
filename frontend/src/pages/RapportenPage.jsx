@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
+import VerwijderFout from '../components/VerwijderFout'
 import FeedbackLink from '../components/FeedbackLink'
 import WorkbookPreview from '../components/WorkbookPreviews'
 import { useWorkbookGallery } from '../hooks/useWorkbookGallery'
@@ -125,7 +126,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
   // setSearchParams/History API calls that can hit Firefox's rate limit.
   const navWorkbook = location.state?.pendingWorkbook ?? null
 
-  const { workbooks: rapporten, loading, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete } =
+  const { workbooks: rapporten, loading, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete, verwijderFout } =
     useWorkbookGallery({
       type: 'report',
       pendingId: navWorkbook ? null : pendingId,
@@ -218,6 +219,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
           </div>
         )}
         {openFout && !missingId && <div className="wb-gallery-notice" role="alert">{openFout}</div>}
+        <VerwijderFout fout={verwijderFout} />
 
         {loading && rapporten.length === 0 ? (
           <div className="wb-gallery-loading" aria-busy="true" role="status">

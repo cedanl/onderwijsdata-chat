@@ -82,9 +82,14 @@ export async function renameConversationApi(id, title) {
   return apiFetch(`/api/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) })
 }
 
+// A delete that finds nothing has its outcome: the item is gone (#778).
+function alWeg(err) {
+  if (err.status !== 404) throw err
+}
+
 // `keepalive`: the request may outlive the page (a deferred delete when the tab closes, #493).
 export async function deleteConversationApi(id, { keepalive = false } = {}) {
-  return apiFetch(`/api/conversations/${id}`, { method: 'DELETE', keepalive })
+  return apiFetch(`/api/conversations/${id}`, { method: 'DELETE', keepalive }).catch(alWeg)
 }
 
 export async function fetchWorkbooks() {
@@ -101,7 +106,7 @@ export async function putWorkbook(id, data) {
 }
 
 export async function deleteWorkbookApi(id) {
-  return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' })
+  return apiFetch(`/api/workbooks/${id}`, { method: 'DELETE' }).catch(alWeg)
 }
 
 export async function fetchCatalogCounts() {
