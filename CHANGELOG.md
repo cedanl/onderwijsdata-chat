@@ -8,6 +8,18 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Inspectie-oordelen per mbo-bestuur: de datalaag (#749)
+- `tools/inspectie.py` haalt het nieuwste peilbestand per bevoegd gezag van de Onderwijsinspectie op (CC0 1.0). De code
+  volgt de pagina's: overzicht, nieuwste schooljaarpagina met een document, nieuwste document, bg-bestand. De
+  bestandsnaam en het document-ID wisselen elke maand.
+- Het ODS-bestand wordt gelezen met de standaardbibliotheek, zonder nieuwe dependency. De code houdt de besturen waarvan
+  de sectoren mbo noemen en markeert een gemengd bestuur (ook po, vo of ho). Het bestuursnummer (`="00008"`) wordt een
+  getal, gelijk aan DUO's `BEVOEGD GEZAG NUMMER`. De adreslookup van het register kent nu het bestuur van een instelling.
+- Gemeten op het bestand van 1 oktober 2026: 164 besturen noemen mbo, waarvan 126 alleen mbo; dat verklaart de twee
+  tellingen uit #722. Alle 55 mbo-instellingen in DUO's adressenbestand vinden via hun bestuur een oordeel.
+- `bron:ping` pingt de Inspectie ook. Zo meet de geplande job of de bron vanaf de CI-runner bereikbaar is. De chattool
+  volgt in een eigen stap.
+
 ### Aannames zichtbaar: wat niet meetelt, en een vaste vraag bij instroom (#743)
 - Een antwoord op een DUO-telling die iets uitsluit, krijgt onder het Uitgangspunt één regel "**Niet meegeteld:**"
   (`agent/niet_meegeteld.py`). Bij de eerstejaars ho (p02ho1ejrs) staat daar dat wie eerder in het hoger onderwijs
