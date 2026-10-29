@@ -181,6 +181,100 @@ def test_onbekende_actie_over_de_websocket_houdt_de_verbinding_open(ws_client):
             assert "bestaat-niet" not in json.dumps(frames)
 
 
+# ─── Misvormde frames sluiten de verbinding niet (#758) ──────────────────────
+
+_FOUT = {"type": "error", "message": chat.ONBEKENDE_ACTIE, "modelafhankelijk": False}
+
+
+def _ruw_tot_pong(ws, raw: str) -> list[dict]:
+    """Als _frames_tot_pong, maar het frame gaat ongewijzigd over de lijn, ook als het geen JSON is."""
+    ws.send_text(raw)
+    ws.send_text(json.dumps({"action": "ping"}))
+    frames: list[dict] = []
+    for _ in range(MAX_FRAMES_TOT_PONG):
+        frame = json.loads(ws.receive_text())
+        if frame["type"] == "system_message":
+            continue
+        frames.append(frame)
+        if frame["type"] == "pong":
+            return frames
+    raise AssertionError(f"geen pong binnen {MAX_FRAMES_TOT_PONG} frames: {frames}")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "niet-json 31337",
+        "[1, 2]",
+        '"tekst 31337"',
+        "5",
+        "null",
+        json.dumps({"action": "settings", "settings": "x"}),
+        json.dumps({"action": "history", "messages": 5}),
+    ],
+    ids=["geen-json", "lijst", "string", "getal", "null", "settings-string", "history-getal"],
+)
+def test_een_misvormd_frame_wordt_geweigerd_en_de_verbinding_blijft(ws_client, raw, caplog):
+    with caplog.at_level(logging.DEBUG), ws_client.websocket_connect("/api/chat") as ws:
+        assert _ruw_tot_pong(ws, raw) == [_FOUT, {"type": "pong"}]
+    # Het log noemt het type, niet de inhoud (#637).
+    assert "31337" not in caplog.text
+
+
+def test_na_settings_zonder_object_werkt_een_volgend_bericht(ws_client, monkeypatch):
+    gevraagd = _zonder_agent(monkeypatch, maximum=1000)
+    with ws_client.websocket_connect("/api/chat") as ws:
+        _frames_tot_pong(ws, {"action": "settings", "settings": {"instelling": "HU"}})
+        assert _frames_tot_pong(ws, {"action": "settings", "settings": "x"}) == [_FOUT, {"type": "pong"}]
+        ws.send_text(json.dumps({"action": "message", "content": "Hoeveel studenten?"}))
+        _frames_tot_pong(ws, {"action": "ping"})
+    assert gevraagd == ["Hoeveel studenten?"]
+
+
+def test_settings_zonder_object_laat_de_vorige_instellingen_staan():
+    session = chat._new_session()
+    session["chat_settings"] = {"instelling": "HU"}
+    taak = object()
+
+    terug, events = _run("settings", {"settings": ["x"]}, session, taak)
+
+    assert session["chat_settings"] == {"instelling": "HU"}
+    assert terug is taak and events == [_FOUT]
+
+
+def test_history_zonder_lijst_laat_het_open_gesprek_en_de_taak_staan():
+    session = chat._new_session()
+    session["messages"] = [{"role": "user", "content": "eerder"}]
+    taak = object()
+
+    terug, events = _run("history", {"messages": 5, "conv_id": "c1"}, session, taak)
+
+    assert session["messages"] == [{"role": "user", "content": "eerder"}]
+    assert terug is taak and events == [_FOUT]
+
+
+def test_een_andere_fout_in_de_lus_stopt_de_lopende_taak(ws_client, monkeypatch):
+    """Eindigt de lus niet door een disconnect, dan draaide een taak door tot haar volgende emit."""
+    gestopt: list = []
+    taak = object()
+    ronde = {"n": 0}
+
+    async def dispatch(msg, session, emit, current_task):
+        ronde["n"] += 1
+        if ronde["n"] == 1:
+            return taak
+        raise RuntimeError("kapot")
+
+    monkeypatch.setattr(chat, "_dispatch", dispatch)
+    monkeypatch.setattr(chat, "_stop_task", lambda session, task: gestopt.append(task))
+    with pytest.raises(RuntimeError), ws_client.websocket_connect("/api/chat") as ws:
+        ws.send_text(json.dumps({"action": "message", "content": "a"}))
+        ws.send_text(json.dumps({"action": "message", "content": "b"}))
+        ws.receive_text()
+        ws.receive_text()
+    assert gestopt == [taak]
+
+
 # ─── Maximale berichtlengte (#481, SECURITY.md S7) ──────────────────────────
 
 
