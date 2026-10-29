@@ -580,7 +580,8 @@ html.dark .login-melding { color: var(--accent-text); }
 .resend-btn:hover { color: var(--accent-text); background: var(--gray-100); }
 /* Verborgen tijdens een antwoord, maar de plek blijft staan (#661): visibility houdt de breedte vast en haalt de knop uit de tabvolgorde. */
 .resend-btn:disabled { visibility: hidden; }
-.message.user:hover .resend-btn { opacity: 1; }
+.message.user:hover .resend-btn,
+.message.user:focus-within .resend-btn { opacity: 1; }
 .csv-download-btn {
   position: absolute; top: 4px; right: 4px; z-index: 1;
   opacity: 0; transition: opacity .15s;
@@ -590,7 +591,8 @@ html.dark .login-melding { color: var(--accent-text); }
   box-shadow: var(--shadow-sm);
 }
 .csv-download-btn:hover { color: var(--accent-text); border-color: var(--blue-300); }
-.plotly-figure-wrap:hover .csv-download-btn { opacity: 1; }
+.plotly-figure-wrap:hover .csv-download-btn,
+.plotly-figure-wrap:focus-within .csv-download-btn { opacity: 1; }
 /* De afrondingsnoot onder een grafiek in chat en dashboard (#651): gewone tekst, selecteerbaar, op een telefoon 12,5 px
    via de variabele; in de figuur was hij een ondertitel van 11 px. */
 .figuur-noot { margin-top: 4px; font-size: var(--font-label); line-height: 1.45; color: var(--gray-500); }
@@ -815,18 +817,30 @@ html.dark .login-melding { color: var(--accent-text); }
 .copy-btn-message { top: 8px; right: 8px; }
 /* Zonder bubbelpadding (#525) hangt de kopieerknop op de rand van de tekstkolom. */
 .message-bubble-assistant .copy-btn-message { top: 0; right: 0; }
-.message-bubble-assistant:hover .copy-btn-message { opacity: 1; }
+.message-bubble-assistant:hover .copy-btn-message,
+.message-bubble-assistant:focus-within .copy-btn-message { opacity: 1; }
 
 /* User message copy button */
 .message.user .message-bubble { position: relative; }
-.message.user .message-bubble:hover .copy-btn-message { opacity: 1; }
+.message.user .message-bubble:hover .copy-btn-message,
+.message.user .message-bubble:focus-within .copy-btn-message { opacity: 1; }
 
 /* Code block copy button */
 .code-block-wrap { position: relative; }
 .copy-btn-code { top: 16px; right: 8px; }
-.code-block-wrap:hover .copy-btn-code { opacity: 1; }
+.code-block-wrap:hover .copy-btn-code,
+.code-block-wrap:focus-within .copy-btn-code { opacity: 1; }
 /* Copied: show the check mark with "Gekopieerd", also without hover (#492). Grows leftward. */
 .copy-btn[data-copied] { opacity: 1; width: auto; padding: 0 8px; gap: 4px; font-size: .75rem; }
+/* Kopiëren, opnieuw sturen en CSV bestaan niet alleen bij hover (#773): met het toetsenbord verschijnen ze zodra
+   de focus in hun bericht, codeblok of figuur staat (regels hierboven); zonder hover en in een smal venster staan ze
+   er altijd, zoals de gespreksacties (#496 F12). Na de basisregels, zodat dit wint. */
+@media (hover: none), (max-width: 768px) {
+  .resend-btn, .csv-download-btn, .copy-btn { opacity: 1; }
+  /* De vaste kopieerknop lag over de eerste regel van een lange vraag (320 px). Een lege float van één regel houdt die
+     regel vrij; de regels eronder houden de volle breedte. Het antwoord heeft hiervoor de goot van #623. */
+  .message.user .message-bubble::before { content: ''; float: right; width: 24px; height: 1lh; }
+}
 
 .clarification-btns { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .clarification-btn {
