@@ -494,6 +494,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                         "type": "boolean",
                         "description": "Zet op true als de grafiek een aandeel of verhouding van een geheel toont (bijv. 'welk percentage van de studenten...'). Werkt alleen bij chart_type='auto' en stuurt de keuze richting pie of bar.",
                     },
+                    "y_vanaf_nul": {
+                        "type": "boolean",
+                        "description": "Alleen als de gebruiker erom vraagt: de waardeas begint op 0 (bij een lijn begint ze anders bij het kleinste getal). Laat het aan bij een aangepaste versie van dezelfde grafiek. Staven beginnen al op 0.",
+                    },
                 },
                 "required": ["data_key", "chart_type", "x", "y", "title"],
             },

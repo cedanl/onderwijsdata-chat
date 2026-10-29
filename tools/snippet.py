@@ -505,14 +505,19 @@ def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
     # Op de x-kolom zelf kleurt create_plot per staaf zonder legenda; px zou er een legenda van maken.
     color_arg = f', color="{color_by}"' if color_by and color_by != x else ""
+    vanaf_nul = bool(args.get("y_vanaf_nul")) and chart_type != "pie"
     if chart_type == "pie":
         lines.append(f'fig = px.pie(df, names="{x}", values="{y}", title="{title}")')
     elif chart_type == "bar" and is_liggend(rows, chart_type, x, data_key):
         lines.append(f'fig = px.bar(df, x="{y}", y="{x}", orientation="h", title="{title}"{color_arg})')
         lines.append('fig.update_yaxes(autorange="reversed")')
+        if vanaf_nul:
+            lines.append('fig.update_xaxes(rangemode="tozero")')
     else:
         px_func = {"line": "px.line", "scatter": "px.scatter", "histogram": "px.histogram"}.get(chart_type, "px.bar")
         lines.append(f'fig = {px_func}(df, x="{x}", y="{y}", title="{title}"{color_arg})')
+        if vanaf_nul:
+            lines.append('fig.update_yaxes(rangemode="tozero")')
     lines.append("fig.show()")
     return "\n".join(lines)
 
