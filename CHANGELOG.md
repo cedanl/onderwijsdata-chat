@@ -8,6 +8,18 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Aannames zichtbaar: wat niet meetelt, en een vaste vraag bij instroom (#743)
+- Een antwoord op een DUO-telling die iets uitsluit, krijgt onder het Uitgangspunt één regel "**Niet meegeteld:**"
+  (`agent/niet_meegeteld.py`). Bij de eerstejaars ho (p02ho1ejrs) staat daar dat wie eerder in het hoger onderwijs
+  stond, niet meetelt: dus ook wie na een Nederlandse bachelor aan een master begint. Hbo-masters en opleidingen aan
+  aangewezen instellingen tellen ook niet. Er zijn regels voor ingeschrevenen (p01) en gediplomeerden (p04). Dat stond
+  wel in de teldefinitie, maar midden in een lange DUO-alinea; na doorvragen bleken de masters te ontbreken. Alleen
+  wat de teldefinitie zelf uitsluit: een test leest het na in de catalogus.
+- Een vraag naar instroom in het hoger onderwijs zonder fase ("Wat is de instroom van de HvA?") krijgt een vaste kaart
+  uit code, vóór het model (`agent/scopevraag.py`). De opties zijn eerstejaars ho per instelling (DUO, zonder masters),
+  of landelijk per hbo en wo met de masters erbij (CBS 85422NED). Noemt de vraag bachelor, master, eerstejaars of een
+  opleidingsnaam als "B Informatica", dan komt er geen kaart, en buiten deze vaste gevallen vraagt de app niet extra.
+
 ### Rapporteval: volgt het rapport de bijsturing? (#752)
 - Een eval over de echte keten (`tests/e2e/rapport-bijsturing.spec.js`) speelt de twee gesprekken uit de
   rapportfeedback van 28 oktober na. Daarna drukt hij op "Genereer rapport" met de onderzoeksvraag die de app voorstelt:

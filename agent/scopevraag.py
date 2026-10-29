@@ -9,6 +9,9 @@ Hier leest code de vraag vóór het model haar ziet, op twee slots:
   of woonplaats, met de instellingen uit het register als opties.
 - **maat**: een kort thema zonder maat ("studentenwelzijn", `interpretatie.is_vaag`): de kaart vraagt
   welke maat, met de catalogusrecords die `search_catalog` bovenaan zet als opties.
+- **fase** (#743): instroom in het hoger onderwijs zonder fase ("de instroom van de HvA"). Eerstejaars ho (DUO)
+  telt wie voor het eerst in het ho staat, dus geen doorstroom naar een master; na doorvragen bleek dat de masters
+  ontbraken. De kaart vraagt welke instroom, met wat elke optie wel en niet kan.
 
 De opties komen uit het register en de catalogus, dus ze zijn altijd geldig; het model formuleert na
 de keuze het antwoord en beslist niet óf de vraag komt. Alleen in de eerste ronde (daarna is
@@ -82,7 +85,7 @@ _MAX_BESCHRIJVING = 140
 class Kaart:
     """Een verduidelijkingskaart uit code, in de vorm die de clarify_scope-tool ook geeft."""
 
-    slot: str  # scope | maat
+    slot: str  # scope | maat | fase
     vraag: str
     opties: list[dict] = field(default_factory=list)
 
@@ -219,6 +222,45 @@ def maatvraag(vraag: str) -> Kaart | None:
     return Kaart("maat", f"Welke maat bedoel je bij '{thema}'?", opties)
 
 
+_INSTROOM = re.compile(r"\b(instroom|instromers?|instromen|instroomcijfers?)\b", re.IGNORECASE)
+_HO = re.compile(r"\b(ho|hbo|wo|hoger onderwijs|universiteit\w*|hogescho(?:ol|len)|hbo-\w+|wo-\w+)\b", re.IGNORECASE)
+# Een fase die de vraag al noemt: bachelor, master, eerstejaars, Ad, of een opleidingsnaam als "B Informatica".
+_FASE = re.compile(
+    r"\b(bachelor\w*|master\w*|eerstejaars\w*|eerste jaar|propedeuse|associate degree|ad-\w+|vervolgopleiding\w*|"
+    r"pre-?master\w*)\b",
+    re.IGNORECASE,
+)
+_OPLEIDINGSNAAM = re.compile(r"(?<!\w)(?:B|M|Ad) [A-Z]")
+# Het model krijgt alleen het label als keuze: de tweede noemt daarom de tabel, die de app dan oppikt (#334).
+_FASE_OPTIES = [
+    {
+        "label": "Eerstejaars ho per instelling (DUO, zonder masters)",
+        "beschrijving": "Wie voor het eerst in het hoger onderwijs staat, per instelling en opleiding. Doorstroom naar "
+        "een master telt niet mee.",
+        "aanbevolen": True,
+    },
+    {
+        "label": "Ook masters: landelijk per hbo en wo (CBS 85422NED)",
+        "beschrijving": "Eerstejaars per opleidingsfase, bachelor en master; niet per instelling of opleiding.",
+    },
+]
+
+
+def _ho_instelling(vraag: str) -> bool:
+    """Noemt de vraag een hbo- of wo-instelling uit het register (naam of afkorting)?"""
+    genoemd = instelling.genoemde_namen(vraag)
+    return bool(genoemd) and any(i["naam"] in genoemd and i.get("type") in ("hbo", "wo") for i in _register())
+
+
+def fasevraag(vraag: str) -> Kaart | None:
+    """De fasekaart voor instroom in het hoger onderwijs zonder fase; anders None."""
+    if not _INSTROOM.search(vraag) or _FASE.search(vraag) or _OPLEIDINGSNAAM.search(vraag):
+        return None
+    if not (_HO.search(vraag) or _ho_instelling(vraag)):
+        return None  # mbo, of geen sector: daar telt instroom zonder masterkwestie
+    return Kaart("fase", "Welke instroom bedoel je?", [dict(optie) for optie in _FASE_OPTIES])
+
+
 def scopevraag(vraag: str, settings: dict | None = None) -> Kaart | None:
     """De vaste eerste stap voor een vraag met een open slot; None als code niets te vragen heeft."""
-    return plaatsvraag(vraag, settings) or maatvraag(vraag)
+    return plaatsvraag(vraag, settings) or maatvraag(vraag) or fasevraag(vraag)
