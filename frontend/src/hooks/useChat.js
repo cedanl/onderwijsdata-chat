@@ -294,6 +294,8 @@ export function useChat() {
             ...(Array.isArray(ev.bronnen) && { bronnen: ev.bronnen }),
             // Source line → link to its source page, from the catalogue (#621); a line without one stays text.
             ...(zijnBronlinks(ev.bronlinks) && { bronlinks: ev.bronlinks }),
+            // Where the answer came from: model, versions, data version (#345). The export of the conversation shows it (#713).
+            ...(ev.manifest?.model && { manifest: ev.manifest }),
             // Questions to ask next; a click puts one in the input box (#364).
             ...(vragen.length && { vervolgvragen: vragen }),
             // A finished turn without text would otherwise render nothing at all.

@@ -5,6 +5,7 @@ import { scriptSafe } from './scriptSafe'
 import { plotlyScript } from './plotlyBron'
 import { DARK_FIGURE_JS } from './darkFigure'
 import { veiligeBronUrl } from './bronLink'
+import { manifestRegels } from './manifestRegels'
 
 export function escapeHtml(str) {
   return String(str)
@@ -317,35 +318,13 @@ ${verantwoording}
 </body></html>`
 }
 
-// Het model zoals de gebruiker het kent (BEV-10): de naam uit het manifest, of bij een ouder
-// rapport zonder model_naam het id zonder provider (azure_ai/claude-sonnet-5-5 -> claude-sonnet-5-5).
-const zonderProvider = id => String(id).split('/').pop()
-const modelNaam = m => m.model_naam || zonderProvider(m.model)
-
 // Herkomst van het rapport (#345), compact onder de bronnen: model, prompt-, catalogus-,
 // app- en dataversie, en of seed/temperature het model echt bereikten.
 function manifestHtml(manifest) {
-  if (!manifest || !manifest.model) return ''
-  const m = manifest
-  const toegepast = v => (v === true ? 'toegepast' : v === false ? 'niet toegepast' : 'onbekend')
-  const delen = [
-    `model ${modelNaam(m)}${m.model_versie ? ` (${zonderProvider(m.model_versie)})` : ''}`,
-    m.sampling ? `seed ${toegepast(m.sampling.seed_toegepast)}` : '',
-    m.prompt_hash ? `prompt ${m.prompt_hash}` : '',
-    m.catalogus ? `catalogus ${m.catalogus}` : '',
-    m.app ? `app ${m.app}` : '',
-  ].filter(Boolean)
-  const data = (m.data_as_of || []).map(d => {
-    const extra = [
-      d.laatste_update ? `bijgewerkt ${d.laatste_update}` : '',
-      d.periodestatus?.length ? `status ${d.periodestatus.join('/')}` : '',
-      d.herladen_op ? `herladen ${d.herladen_op}` : '',
-      d.peilmoment || '',
-    ].filter(Boolean).join(', ')
-    return `${d.bron.toUpperCase()} ${d.dataset}${extra ? ` (${extra})` : ''}`
-  })
+  const regels = manifestRegels(manifest)
+  if (!regels) return ''
   return `<div class="manifest">
-    <div>Verantwoording: ${escapeHtml(delen.join(' · '))}</div>
-    ${data.length ? `<div>Dataversie: ${escapeHtml(data.join(' · '))}</div>` : ''}
+    <div>Verantwoording: ${escapeHtml(regels.verantwoording)}</div>
+    ${regels.dataversie ? `<div>Dataversie: ${escapeHtml(regels.dataversie)}</div>` : ''}
   </div>`
 }
