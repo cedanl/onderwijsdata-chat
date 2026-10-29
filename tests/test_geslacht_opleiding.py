@@ -11,6 +11,7 @@ catalogus is echt, zodat de bestandskeuze op de gepinde titels staat.
 """
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -103,8 +104,8 @@ def _van(df: pd.DataFrame, instelling: str = "27PZ") -> pd.DataFrame:
     return df.assign(**{W: df[W].where(df[W] >= 0)})  # zoals de store: -1 gemaskeerd
 
 
-def _maat(**args) -> dict:
-    return json.loads(get_maat("eerstejaars_ho", "Hogeschool Inholland", **args))
+def _maat(opleiding: str) -> dict:
+    return json.loads(get_maat("eerstejaars_ho", "Hogeschool Inholland", opleiding_naar_geslacht=opleiding))
 
 
 # --- de regel ---------------------------------------------------------------------------------------------------
@@ -180,7 +181,7 @@ def test_een_onbekende_opleiding_noemt_wat_er_wel_is():
 
 
 def test_get_maat_geeft_de_exacte_jaren_met_de_afleiding_en_de_rest_met_de_reden():
-    uit = _maat(opleiding_naar_geslacht="Luchtvaart")
+    uit = _maat("Luchtvaart")
 
     assert [(r["STUDIEJAAR"], r["GESLACHT"], r[W]) for r in uit["rijen"]] == [(2021, "MAN", 152), (2021, "VROUW", 22)]
     assert uit["opleiding"] == {"code": "34278", "naam": "B Luchtvaarttechnologie"}
@@ -213,12 +214,16 @@ def test_een_vorm_of_een_landelijke_maat_is_een_melding(args, tekst):
 
 def test_dezelfde_vraag_geeft_dezelfde_uitkomst():
     """De kern van #742: wel of geen verdeling is geen toeval meer."""
-    eerste, tweede = _maat(opleiding_naar_geslacht="Luchtvaart"), _maat(opleiding_naar_geslacht="Luchtvaart")
+    eerste, tweede = _maat("Luchtvaart"), _maat("Luchtvaart")
     assert eerste == tweede
 
 
 def test_de_key_komt_na_een_herstart_terug_door_het_recept():
-    args = {"maat": "eerstejaars_ho", "instelling": "Hogeschool Inholland", "opleiding_naar_geslacht": "Luchtvaart"}
+    args: dict[str, Any] = {
+        "maat": "eerstejaars_ho",
+        "instelling": "Hogeschool Inholland",
+        "opleiding_naar_geslacht": "Luchtvaart",
+    }
     key = json.loads(get_maat(**args))["data_key"]
     recept = herlaad.recept(key, {"name": TOOL_GET_MAAT, "arguments": args})
     assert recept is not None and recept["tool"] == TOOL_GET_MAAT
