@@ -123,7 +123,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const verwijderdRef = useRef(null)
   // The save in flight: answer feedback waits for it, the server reads the answer from it (#248).
   const savingRef = useRef(Promise.resolve())
-  const initialHistorySentRef = useRef(false)
 
   // Ook de gesprekslijst kan op een vol quotum stuiten (#521). Eén melding per pagina, los
   // van die over het open gesprek; de lijst in het geheugen blijft staan, de server heeft alles.
@@ -141,13 +140,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     onvolledigGemeldRef.current = true
     addToast('Dit gesprek is niet volledig bewaard: grafieken ontbreken na verversen.', 'warning')
   }, [initialChat, addToast])
-
-  // Seed backend with restored history on first connection
-  useEffect(() => {
-    if (!connected || initialHistorySentRef.current || !restoredMessages.length) return
-    initialHistorySentRef.current = true
-    sendHistory(restoredMessages, conversationId)
-  }, [connected, restoredMessages, sendHistory, conversationId])
 
   // Load conversations from server on mount; migrate localStorage if server is empty
   useEffect(() => {
@@ -175,6 +167,14 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   useEffect(() => {
     openChatRef.current = { id: conversationId, messages: [...restoredMessages, ...messages] }
   }, [conversationId, restoredMessages, messages])
+
+  // Elke verbinding is een nieuwe serversessie: bij de eerste en na elke herverbinding krijgt de server het open
+  // gesprek, met zijn id voor de data-keys (#472, #756). Na het effect hierboven, zodat de ref actueel is.
+  useEffect(() => {
+    if (!connected) return
+    const { id, messages: open } = openChatRef.current
+    if (open.length) sendHistory(open, id)
+  }, [connected, sendHistory])
 
   // Een vol quotum faalde stil (#511): meld het één keer; bij de terugval zonder
   // figuren blijft de tekst behouden en weet de gebruiker wat er na verversen mist.

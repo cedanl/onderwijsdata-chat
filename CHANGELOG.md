@@ -8,6 +8,13 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Na een herverbinding kent de server het gesprek weer (#756)
+- Elke WebSocket is een nieuwe serversessie, maar de app stuurde het gesprek en de instellingen maar één keer per
+  pagina mee. Na een verbindingsbreuk, slaapstand of uitrol antwoordde de server daarom zonder eerdere beurten,
+  zonder het profiel en met het standaardmodel, terwijl het antwoord het gekozen model noemde. Ook een rapport
+  vond de data van het gesprek niet meer. Nu krijgt de server bij elke (her)verbinding de instellingen en het open
+  gesprek, met zijn id voor de data-keys (#472).
+
 ### Een hernoemd gesprek houdt zijn titel (#757)
 - Na het hernoemen van het open gesprek zette de volgende vraag de automatische titel terug, in de zijbalk en op de
   server: elke opslag na een antwoord stuurde de titel uit de eerste vraag mee, en de server nam die over. Nu zet de

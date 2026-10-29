@@ -55,12 +55,12 @@ export function useChat() {
   const reportingRef = useRef(false)
   // Asked for, but no report_generating yet: a busy or error in that window is the server refusing the report (#648).
   const reportRequestedRef = useRef(false)
-  const pendingSettingsRef = useRef(null)
+  // De laatste instellingen: elke verbinding is een nieuwe serversessie en krijgt ze bij het openen (#756).
+  const settingsRef = useRef(null)
   // Each question records the model it went out with, so a reopened conversation can resume it (#242).
   const modelRef = useRef(null)
   const idRef = useRef(0)
   const manualCloseRef = useRef(false)
-  const pendingHistoryRef = useRef(null)
   const busyRef = useRef(false)
   const lastSentRef = useRef(null)
   const currentHasTextRef = useRef(false)
@@ -423,16 +423,9 @@ export function useChat() {
         endReport()
         reportAbandonedRef.current = false
         setReportSpec(null)
-        // A new server session knows no data keys until the history below names them again.
+        // A new server session knows no data keys until ChatPage sends the open conversation again (#756).
         setHistoryDataKeys(0)
-        if (pendingHistoryRef.current) {
-          ws.send(JSON.stringify(pendingHistoryRef.current))
-          pendingHistoryRef.current = null
-        }
-        if (pendingSettingsRef.current) {
-          ws.send(JSON.stringify({ action: 'settings', settings: pendingSettingsRef.current }))
-          pendingSettingsRef.current = null
-        }
+        if (settingsRef.current) ws.send(JSON.stringify({ action: 'settings', settings: settingsRef.current }))
       }
 
       ws.onclose = (e) => connectionLost(ws, e.code)
@@ -513,23 +506,18 @@ export function useChat() {
 
   const sendSettings = useCallback((settings) => {
     if (settings.model) modelRef.current = settings.model
+    settingsRef.current = settings
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ action: 'settings', settings }))
-    } else {
-      pendingSettingsRef.current = settings
     }
   }, [])
 
-  // The conversation id lets the server find the data keys this conversation saved (#472).
+  // The conversation id lets the server find the data keys this conversation saved (#472). Only on an open
+  // connection: ChatPage sends the open conversation on every (re)connect itself (#756).
   const sendHistory = useCallback((msgs, convId = null) => {
     const history = buildHistory(msgs)
-    if (!history.length) return
-    const msg = { action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg))
-    } else {
-      pendingHistoryRef.current = msg
-    }
+    if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }))
   }, [])
 
   const stop = useCallback(() => {
@@ -605,7 +593,6 @@ export function useChat() {
   // otherwise the next question is answered with its context (#70).
   const startNewConversation = useCallback(() => {
     clear()
-    pendingHistoryRef.current = null
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       resettingRef.current = true
       setResetting(true)
