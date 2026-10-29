@@ -29,6 +29,7 @@ from tools import (
     store,
 )
 from tools.csv_export import bestandsnaam, export_key, geen_export_reden, naar_csv
+from tools.exportnoten import ONVOLLEDIG_EXPORT
 from tools.query import query_data
 from tools.store import KeyMeta
 
@@ -94,7 +95,7 @@ def test_afgekapte_data_zegt_in_gebruikerstaal_dat_het_bestand_onvolledig_is():
     """De export zegt wat er afgekapt is en wat dat betekent, zonder de aanwijzing voor de tool (BEV-08)."""
     _bron(volledig=False)
     regels = _regels(naar_csv("duo:p01hoinges:0"))
-    assert f"# {csv_export.ONVOLLEDIG_EXPORT}" in regels
+    assert f"# {ONVOLLEDIG_EXPORT}" in regels
     assert not any(store.ONVOLLEDIG in r for r in regels)
     kop = "\n".join(r for r in regels if r.startswith("#")).lower()
     assert "onvolledig" in kop and "eerste deel" in kop and "totalen" in kop
@@ -104,7 +105,7 @@ def test_afgekapte_data_zegt_in_gebruikerstaal_dat_het_bestand_onvolledig_is():
 
 def test_complete_data_heeft_geen_onvolledig_regel():
     _bron()
-    assert not any(csv_export.ONVOLLEDIG_EXPORT in r for r in _regels(naar_csv("duo:p01hoinges:0")))
+    assert not any(ONVOLLEDIG_EXPORT in r for r in _regels(naar_csv("duo:p01hoinges:0")))
 
 
 def test_onderdrukte_cellen_staan_erbij():

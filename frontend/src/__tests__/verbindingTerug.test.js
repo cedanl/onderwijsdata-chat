@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // #617: na een verbindingsbreuk blijft het antwoord bewust onvolledig staan met "Probeer opnieuw". Zodra de
-// verbinding terug is, zegt de regel dat en licht de knop op; er komt geen automatische tweede run.
+// verbinding terug is, zegt de regel dat (na wat er met het antwoord gebeurde, #810) en licht de knop op; er komt
+// geen automatische tweede run.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -39,10 +40,11 @@ describe('een afgebroken antwoord', () => {
     expect(regel.querySelector('.message-continue--licht')).toBeNull()
   })
 
-  it('zegt met de verbinding terug dat opnieuw proberen kan, als melding, en laat de knop oplichten', () => {
+  it('zegt met de verbinding terug eerst dat het antwoord is afgebroken, als melding, en laat de knop oplichten', () => {
     render({ verbinding: false })
     const regel = render({ verbinding: true })
-    expect(regel.textContent).toContain('Verbinding terug — probeer opnieuw')
+    // #810: "Verbinding terug" vooraan las als goed nieuws; wat er met het antwoord gebeurde, komt eerst.
+    expect(regel.textContent).toBe('Antwoord afgebroken — de verbinding is terug Probeer opnieuw')
     expect(regel.getAttribute('aria-live')).toBe('polite')
     expect(regel.classList.contains('verbinding-terug')).toBe(true)
     expect(regel.querySelector('button.message-continue--licht').textContent).toBe('Probeer opnieuw')

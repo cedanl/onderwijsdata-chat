@@ -1230,9 +1230,11 @@ html.dark .send-notice:not(:empty) {
 .wb-gallery-group-title { font-size: .95rem; font-weight: 700; color: var(--gray-900); margin: 0 0 12px; }
 .wb-gallery-group-title span { font-weight: 400; color: var(--muted-text); }
 
+/* Een kaart is minstens 280 px, maar nooit breder dan de galerij: op 320 px liep een kaart anders 8 px buiten beeld
+   (#798, WCAG 1.4.10). Vanaf 390 px verandert er niets. */
 .wb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 20px;
 }
 
@@ -2195,6 +2197,15 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
 @media (max-width: 768px) {
   .navbar-zoek-label, .navbar-zoek-hint { display: none; }
   .navbar-zoek-btn { border: none; padding: 10px; justify-content: center; }
+}
+/* Onder 360 px paste het woordmerk niet naast menu, logo, de knoppen van de pagina en Zoeken: op /chat liep de balk
+   buiten beeld en scrolde de hele pagina horizontaal (#798, WCAG 1.4.10). Dan blijft het logo zichtbaar en de naam
+   voor de schermlezer (als .sr-only). Alleen in de navigatiebalk; de voettekst van Home houdt het woordmerk. */
+@media (max-width: 359px) {
+  .navbar .navbar-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
 }
 /* A keyboard shortcut means nothing on a touch screen, also on a tablet wider than 768px (#650). */
 @media (hover: none), (pointer: coarse) { .navbar-zoek-hint { display: none; } }

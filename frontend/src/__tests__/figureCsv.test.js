@@ -119,6 +119,19 @@ describe('figureToCsv', () => {
     ])
   })
 
+  it('keeps the content hash and the DUO md5 from tools/exportnoten.py above the header (#809)', () => {
+    const herkomst = [
+      'bron: CBS, dataset 85423NED',
+      'inhoudshash van de brontabel: e3e453e72975 (sha256 van df.to_csv(index=False), eerste 12 tekens; zie docs/reproducibility.md)',
+      'md5 van het DUO-bestand: 0123abcd (zoals DUO het levert, na te rekenen met md5sum; zie docs/reproducibility.md)',
+    ]
+    const figure = {
+      data: [{ x: [2024], y: [378490] }],
+      layout: { meta: { x: 'Perioden', y: 'Aantal', data: [{ Perioden: 2024, Aantal: 378490 }], herkomst } },
+    }
+    expect(lines(figureToCsv(figure))).toEqual([...herkomst.map(regel => `# ${regel}`), 'Perioden;Aantal', '2024;378490'])
+  })
+
   it('returns null for a figure without data', () => {
     expect(figureToCsv({ data: [] })).toBeNull()
     expect(figureToCsv({ data: [{ x: [] }] })).toBeNull()

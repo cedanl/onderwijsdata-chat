@@ -17,7 +17,8 @@ import unicodedata
 
 import pandas as pd
 
-from . import catalog, duo, herlaad, inhoudshash, store
+from . import catalog, duo, herlaad, store
+from .exportnoten import herkomstregels
 from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
@@ -112,31 +113,10 @@ def _cel(v, afronden: bool) -> str:
     return _veilig(str(v))
 
 
-# Wat de CSV zegt als de tabel afgekapt is (BEV-08): in de taal van wie het bestand opent, niet de
-# aanwijzing voor de tool (store.ONVOLLEDIG). Een compleet bestand krijgt geen regel: dat is het gewone geval.
-ONVOLLEDIG_EXPORT = (
-    "Onvolledig bestand: de bron levert deze data in delen en dit bestand bevat alleen het eerste deel. "
-    "Aantallen, sommen en totalen die je hieruit berekent, kloppen dus niet."
-)
-
-
 def _noten(key: str, afronden: bool, username: str | None) -> list[str]:
+    """De herkomstregels (dezelfde als bij de grafiek, #809), met de herlaadnotitie en de prognosenoot erbij."""
     noten = [f"let op: {tekst}"] if (tekst := herlaad.notitie(username, key)) else []
-    noten += store.herkomst(key)
-    if inhoud := inhoudshash.hash_van(key):
-        noten.append(
-            f"inhoudshash van de brontabel: {inhoud} (sha256 van df.to_csv(index=False), eerste 12 tekens; "
-            "zie docs/reproducibility.md)"
-        )
-    known = store.meta(key)
-    if known is not None and known.bronhash:
-        noten.append(
-            f"md5 van het DUO-bestand: {known.bronhash} (zoals DUO het levert, na te rekenen met md5sum; "
-            "zie docs/reproducibility.md)"
-        )
-    if known is not None and not known.volledig:
-        noten.append(ONVOLLEDIG_EXPORT)
-    noten += duo.sentinel_notes(duo.onderdrukt(key))
+    noten += herkomstregels(key)
     if afronden:
         noten.append(duo.PROGNOSE_NOOT)
     return noten
