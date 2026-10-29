@@ -223,3 +223,15 @@ def get_available_models_for_user(username: str | None) -> list[tuple[str, str, 
     if username and username in _USER_MODELS:
         return _models_from_ids(_USER_MODELS[username]) or None
     return get_available_models()
+
+
+def toegestaan_model(username: str | None, gevraagd: object) -> str:
+    """Het model voor een beurt: het gevraagde als het in het aanbod van deze gebruiker staat, anders ``MODEL``.
+
+    De picker in de frontend toont alleen het aanbod, maar een eigen WebSocket-client stuurt elke naam
+    mee (#755). Zonder aanbod (geen picker) is alleen ``MODEL`` toegestaan.
+    """
+    aanbod = get_available_models_for_user(username)
+    if isinstance(gevraagd, str) and aanbod and gevraagd in {model_id for model_id, *_ in aanbod}:
+        return gevraagd
+    return MODEL

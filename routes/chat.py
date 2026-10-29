@@ -44,12 +44,13 @@ from core.config import (
     MAX_WS_TOTAL,
     MODEL,
     RUN_QUEUE_TIMEOUT_S,
+    toegestaan_model,
 )
 from core.errors import Gebruikersfout, error_event, friendly_error, log_interne_fout
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
-from core.logging_util import gebruiker_kenmerk
+from core.logging_util import gebruiker_kenmerk, tekst_kenmerk
 from core.rate_limit import RateLimiter
 from tools import store
 
@@ -618,6 +619,17 @@ async def _weiger_te_lang(content: str, emit) -> bool:
     return True
 
 
+def _model(session: dict) -> str:
+    """Het model van deze beurt uit de instellingen van de client, begrensd tot het aanbod (#755)."""
+    instellingen = session.get("chat_settings")
+    gevraagd = instellingen.get("model") if isinstance(instellingen, dict) else None
+    model = toegestaan_model(session.get("username"), gevraagd)
+    if gevraagd and gevraagd != model:
+        # De naam is invoer van de client: alleen een kenmerk in het log (#580).
+        logger.warning("Modelkeuze buiten het aanbod, MODEL gebruikt: %s", tekst_kenmerk(str(gevraagd), "model_"))
+    return model
+
+
 def _limietsleutel(session: dict) -> str:
     username = session.get("username") or FALLBACK_USER
     return username if username != FALLBACK_USER else f"verbinding:{session.get('verbinding')}"
@@ -642,7 +654,7 @@ async def _handle_message(msg: dict, session: dict, emit, current_task: asyncio.
     content = _invoer(msg, "content")
     if not content or await _weiger_te_lang(content, emit):
         return current_task
-    model = session["chat_settings"].get("model") or None
+    model = _model(session)
     session["current_model"] = model
     session["clarify_rondes"] = 0
     session["clarify_keuzes"] = []
@@ -685,7 +697,7 @@ async def _handle_generate_dashboard(
         return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
-    model = session["chat_settings"].get("model") or None
+    model = _model(session)
     return asyncio.create_task(_in_een_runplaats(lambda: _generate_dashboard(session, emit, model), emit))
 
 
@@ -702,7 +714,7 @@ async def _handle_generate_report(
         return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
-    model = session["chat_settings"].get("model") or None
+    model = _model(session)
     author = msg.get("author")
     return asyncio.create_task(
         _in_een_runplaats(
@@ -727,7 +739,7 @@ async def _handle_refresh_dashboard(
     if not geldige_modus(mode):
         await emit({"type": "error", "message": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."})
         return current_task
-    model = session["chat_settings"].get("model") or None
+    model = _model(session)
     return asyncio.create_task(
         _in_een_runplaats(
             lambda: _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model, mode), emit

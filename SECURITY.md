@@ -44,6 +44,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S22 | Opgeslagen rapport-HTML draaide met dialogen en pop-ups in de viewer en ongesandboxt in de download | Gemiddeld | ⚠️ Deels opgelost (#634) — viewer alleen `allow-scripts`, policy in frame en download; de server controleert de HTML niet (restpunt, voorwaarde voor productie hieronder) |
 | S23 | Openbare oppervlakte: API-documentatie en dashboard-data zonder inloggen, geen `Permissions-Policy` | Laag | ⚠️ Deels opgelost (#636) — dashboard-eindpunten achter login en vlag, `Permissions-Policy` gezet; API-documentatie uit op playground en productie via `APP_ENV` (#676) |
 | S24 | Geen grens op verzoekgrootte, geen Origin-controle op de WebSocket, API-antwoorden cachebaar | Gemiddeld | ⚠️ Deels opgelost (#682) — grens in de app, Origin-controle, `no-store`, `base-uri`/`form-action`; rand (Traefik) en quotum per gebruiker open |
+| S25 | De server begrensde de modelkeuze uit de chat niet tot het aanbod (`AVAILABLE_MODELS`/`USER_MODELS`) | Gemiddeld | ✅ Opgelost (#755) — `toegestaan_model` valt terug op `MODEL` bij elke naam buiten het aanbod |
 
 ---
 
@@ -341,6 +342,19 @@ Tests: `tests/test_openbare_oppervlakte.py`, `tests/test_security_headers.py`, `
 
 Tests: `tests/test_verzoeklimiet.py`, `tests/test_websocket_herkomst.py`, `tests/test_security_headers.py`.  
 **Open (voorwaarde voor productie, #682):** een opslagquotum per gebruiker (aantal en totale grootte van gesprekken en werkboeken), en aan de rand een Traefik-`rateLimit` voor ongeauthenticeerde paden en `buffering.maxRequestBodyBytes`, zodat een te groot verzoek de pod niet eens bereikt.
+
+---
+
+### S25 — Modelkeuze uit de chat ✅ Opgelost
+
+**Aangetroffen in:** codebase-audit 29-10-2026 (#755)  
+**Probleem:** de model-picker in de frontend toont alleen het aanbod van de gebruiker (`USER_MODELS` of anders `AVAILABLE_MODELS`), maar de server controleerde de gekozen modelnaam niet. Een eigen WebSocket-client kon in een `settings`-frame elke naam meesturen; die ging via `chat_settings` naar `litellm.acompletion`, met de sleutels van de app. Zo kon een ingelogde gebruiker of gast een duurder model laten aanroepen dan was bedoeld.  
+**Fix:**
+- `core.config.toegestaan_model(username, gevraagd)` geeft het gevraagde model alleen terug als het in `get_available_models_for_user(username)` staat; anders, bij een lege of niet-tekstwaarde en zonder aanbod, `MODEL`.
+- `routes/chat.py` leest de modelkeuze op één plek (`_model(session)`) voor bericht, verduidelijking, dashboard, rapport en dashboard-refresh. Een geweigerde naam valt stil terug op `MODEL`; het log (WARNING) noemt alleen een kenmerk, niet de naam (#580).
+
+Tests: `tests/test_modelkeuze.py`.  
+**Open:** geen.
 
 ---
 
