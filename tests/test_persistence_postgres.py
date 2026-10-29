@@ -1,3 +1,4 @@
+import contextlib
 import sys
 import threading
 import types
@@ -30,6 +31,9 @@ class FakeCursor:
         self.calls = []
 
     def execute(self, sql, params=()):
+        if self.conn.dood:
+            self.conn.closed = 2
+            raise RuntimeError("server closed the connection unexpectedly")
         if self.conn.faalt:
             raise RuntimeError("verbinding weg")
         self.calls.append((sql, params))
@@ -50,6 +54,7 @@ class FakeConn:
         self.rollbacks = 0
         self.commits = 0
         self.faalt = False  # elke query faalt, en de rollback erna ook: de verbinding is kapot
+        self.dood = False  # de server is weg (herstart, failover): de query faalt en psycopg2 zet closed op 2
 
     def cursor(self, cursor_factory=None):
         self._cursor = FakeCursor(self)
@@ -120,6 +125,7 @@ def test_een_leesactie_laat_geen_transactie_open(verbindingen):
 
 
 def test_een_mislukte_aanroep_geeft_de_verbinding_terug(verbindingen):
+    """Een fout waarna de verbinding nog open is (een SQL-fout), gaat naar de aanroeper, zonder herhaling (#764)."""
     db.is_token_revoked("a")
     verbindingen[0].faalt = True
     with pytest.raises(RuntimeError):
@@ -187,4 +193,85 @@ def test_de_verbinding_vraagt_tls_tenzij_de_uri_zelf_een_sslmode_noemt(fake_psyc
 
     db._connect()
 
-    assert gezien == [(uri, extra)]
+    ((dsn, kwargs),) = gezien
+    assert dsn == uri
+    assert {k: v for k, v in kwargs.items() if k == "sslmode"} == extra
+
+
+# ── #764: na een herstart of failover van PostgreSQL lagen er dode verbindingen in de pool ──
+
+
+def _vrije_verbindingen(n):
+    """Zet n verbindingen in de pool: n aanroepen tegelijk, dan geven ze ze terug."""
+    with contextlib.ExitStack() as stapel:
+        for _ in range(n):
+            stapel.enter_context(db._connection())
+
+
+def test_een_dode_vrije_verbinding_wordt_vervangen_voordat_de_aanroeper_iets_merkt(verbindingen):
+    _vrije_verbindingen(3)
+    for conn in verbindingen:
+        conn.dood = True
+
+    assert db.is_token_revoked("a") is False
+    assert len(verbindingen) == 4
+    # Drie aanroepen tegelijk krijgen elk een vrije verbinding: de vervanger en twee dode, die op hun beurt vervangen worden.
+    with contextlib.ExitStack() as stapel:
+        geleend = [stapel.enter_context(db._connection()) for _ in range(3)]
+        for conn in geleend:
+            assert db._execute(conn, "SELECT 1 FROM revoked_tokens WHERE token_hash = ?", ("b",)).fetchone() is None
+
+    assert len(verbindingen) == 6
+    assert all(conn.closed for conn in verbindingen[:3])
+    assert not any(conn.closed for conn in verbindingen[3:])
+
+
+def test_een_verse_verbinding_die_faalt_wordt_niet_herhaald(verbindingen, fake_psycopg2):
+    """Is ook een nieuwe verbinding meteen dood, dan is de database echt weg: dat hoort de aanroeper."""
+
+    def connect(uri, **kwargs):
+        conn = FakeConn()
+        conn.dood = True
+        verbindingen.append(conn)
+        return conn
+
+    fake_psycopg2.connect = connect
+    with pytest.raises(RuntimeError, match="server closed"):
+        db.is_token_revoked("a")
+    assert len(verbindingen) == 1
+
+
+def test_alleen_het_eerste_statement_wordt_herhaald(verbindingen):
+    """Na een geslaagd statement kan er al iets in de transactie staan: dan geen nieuwe poging."""
+    _vrije_verbindingen(1)
+    with pytest.raises(RuntimeError, match="server closed"), db._connection() as conn:
+        db._execute(conn, "SELECT 1")
+        conn.conn.dood = True
+        db._execute(conn, "UPDATE conversations SET title = ?", ("x",))
+    assert len(verbindingen) == 1
+
+
+def test_commit_gaat_naar_de_vervangende_verbinding(verbindingen):
+    _vrije_verbindingen(1)
+    verbindingen[0].dood = True
+    with db._connection() as conn:
+        db._execute(conn, "INSERT INTO revoked_tokens VALUES (?)", ("a",))
+        conn.commit()
+    assert verbindingen[0].commits == 0
+    assert verbindingen[1].commits == 1
+
+
+def test_een_nieuwe_verbinding_krijgt_een_connect_timeout_en_keepalives(fake_psycopg2, monkeypatch):
+    gezien = []
+    fake_psycopg2.connect = lambda dsn, **kwargs: gezien.append(kwargs) or types.SimpleNamespace()
+
+    db._connect()
+    monkeypatch.setenv("POSTGRES_URI", "postgresql://app@db/app?connect_timeout=20")
+    db._connect()
+
+    assert gezien[0]["connect_timeout"] == 5
+    assert gezien[0]["keepalives"] == 1
+    assert gezien[0]["keepalives_idle"] == 30
+    # Wat de URI zelf zet, blijft van de URI.
+    assert "connect_timeout" not in gezien[1]
+    assert gezien[1]["keepalives"] == 1

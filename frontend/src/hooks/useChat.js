@@ -4,7 +4,7 @@ import { MAX_HISTORY } from '../constants'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
-import { createHeartbeat, createRetry, watchNetwork } from '../socketHealth'
+import { createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
 
@@ -42,6 +42,9 @@ export function useChat() {
   const [slow, setSlow] = useState(false)
   const [toasts, setToasts] = useState([])
   const [connected, setConnected] = useState(false)
+  // Geen eigen pogingen meer (#783): 'weg' na de laatste, 'te_veel' als de server nog een venster weigerde.
+  const [opgegeven, setOpgegeven] = useState(null)
+  const verbindOpnieuwRef = useRef(() => {})
   const [reportBusy, setReportBusy] = useState(false)
   const [reportSpec, setReportSpec] = useState(null)
   // Steps of the report run, shown while the report is being made (#339).
@@ -204,6 +207,9 @@ export function useChat() {
       },
       history_data(ev) {
         setHistoryDataKeys(ev.data_keys || 0)
+        // The server stopped the old run before it read the history frame: what comes now is this conversation's (#761).
+        resettingRef.current = false
+        setResetting(false)
       },
       // The server refused a question because a run is still going (#145): say so,
       // take the question back out of the transcript and give it back to the input.
@@ -372,7 +378,7 @@ export function useChat() {
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
     // until then the user saw a counting pill and no melding (#489).
     const heartbeat = createHeartbeat(() => wsRef.current, connectionLost)
-    const retry = createRetry(connect)
+    const retry = createRetry(connect, { opgegeven: () => setOpgegeven('weg') })
 
     // One live socket at a time (#522). A real close() is asynchronous, so the onclose of a
     // socket that was already replaced can come after its successor opened. Only the socket
@@ -400,6 +406,13 @@ export function useChat() {
       }
 
       if (manualCloseRef.current) return
+      // De server wil deze verbinding niet (#783): opnieuw proberen geeft alleen een nieuwe foutmelding.
+      const reden = opgevenBij(code)
+      if (reden) {
+        retry.reset()
+        setOpgegeven(reden)
+        return
+      }
       // A refused handshake (expired token) closes as a bare 1006 before opening (#480).
       if (!opened) checkSession()
       retry.schedule()
@@ -410,6 +423,7 @@ export function useChat() {
       wsRef.current = ws
       opened = false
       ended = false
+      setOpgegeven(null)
 
       ws.onopen = () => {
         if (!isCurrent(ws)) return
@@ -419,7 +433,8 @@ export function useChat() {
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
         setResetting(false)
-        retry.reset()
+        // Not a reset: a socket the server closes right away (1013) must not start the count over (#783).
+        retry.opened()
         endReport()
         reportAbandonedRef.current = false
         setReportSpec(null)
@@ -461,6 +476,14 @@ export function useChat() {
 
     // Offline: the melding may not wait for a socket error (#489).
     const detachNetwork = watchNetwork({ getWs: () => wsRef.current, lost: connectionLost, retry, connect })
+
+    // "Opnieuw verbinden" (#783): de teller begint opnieuw, net als bij online. Een socket die al open is of opent, blijft.
+    verbindOpnieuwRef.current = () => {
+      const state = wsRef.current?.readyState
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return
+      retry.reset()
+      connect()
+    }
 
     return () => {
       manualCloseRef.current = true
@@ -514,10 +537,12 @@ export function useChat() {
 
   // The conversation id lets the server find the data keys this conversation saved (#472). Only on an open
   // connection: ChatPage sends the open conversation on every (re)connect itself (#756).
+  // Returns whether the frame went out.
   const sendHistory = useCallback((msgs, convId = null) => {
     const history = buildHistory(msgs)
-    if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return
+    if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return false
     wsRef.current.send(JSON.stringify({ action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }))
+    return true
   }, [])
 
   const stop = useCallback(() => {
@@ -600,5 +625,18 @@ export function useChat() {
     }
   }, [clear])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast }
+  const verbindOpnieuw = useCallback(() => verbindOpnieuwRef.current(), [])
+
+  // Opening a saved conversation leaves the running one as "Nieuw gesprek" does (#761): the server stops the old run
+  // when it reads the history frame, and until its history_data, stream events still belong to that old run. The
+  // server answers only a frame with a conversation id, so only then is there a window to wait for.
+  const openConversation = useCallback((msgs, convId) => {
+    clear()
+    if (sendHistory(msgs, convId) && convId) {
+      resettingRef.current = true
+      setResetting(true)
+    }
+  }, [clear, sendHistory])
+
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

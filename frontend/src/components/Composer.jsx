@@ -70,10 +70,11 @@ function useComposerExtra(slotRef, wrapRef, active) {
 // onSubmit(question) returns whether the question went out; only then is the draft cleared.
 // connected, busy, resetting, reportBusy, atContextLimit: what decides, besides the draft, whether a question
 // can go out; a tap while one blocks says why (#585).
+// opgegeven, onVerbindOpnieuw: the hook stopped reconnecting by itself; the footer says so, with a button (#783).
 // prefill ({ tekst }): a follow-up question the user picked (#364); it replaces the draft and is not sent.
 // refusal ({}): a question sent from elsewhere ("Opnieuw") was refused; the notice here says why (#585).
 export default function Composer({
-  hasMessages, connected, busy, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
+  hasMessages, connected, opgegeven = null, onVerbindOpnieuw, busy, resetting = false, reportBusy = false, atContextLimit = false, models, selectedModel,
   onModelChange, onStop, onSubmit, max, rejectedDraft, clearRejectedDraft, prefill = null, clearPrefill = NO_PREFILL,
   refusal = null, clearRefusal = NO_PREFILL, compact = false,
 }) {
@@ -176,6 +177,8 @@ export default function Composer({
         <SendNotice text={notice} tap={tap} onExpire={endNotice} />
         <ChatInputFooter
           connected={connected}
+          opgegeven={opgegeven}
+          onVerbindOpnieuw={onVerbindOpnieuw}
           busy={busy}
           models={compact ? NO_MODELS : models}
           selectedModel={selectedModel}

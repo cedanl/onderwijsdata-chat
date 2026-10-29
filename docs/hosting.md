@@ -36,7 +36,7 @@ POSTGRES_URI=postgresql://gebruiker:wachtwoord@host:5432/onderwijsdata_chat
 
 Zonder `POSTGRES_URI` valt de app terug op SQLite (`DATABASE_PATH`, standaard `onderwijsdata.db`).
 
-Postgres-verbindingen worden hergebruikt: het proces houdt er hoogstens `POSTGRES_POOL_SIZE` (standaard 8) tegelijk open en een aanroep daarboven wacht op een vrije. Houd dat onder `max_connections` van de server, maal het aantal pods.
+Postgres-verbindingen worden hergebruikt: het proces houdt er hoogstens `POSTGRES_POOL_SIZE` (standaard 8) tegelijk open en een aanroep daarboven wacht op een vrije. Houd dat onder `max_connections` van de server, maal het aantal pods. Na een herstart of failover van PostgreSQL liggen er dode verbindingen in de pool. Faalt het eerste statement van een aanroep daarop, dan vervangt de app die verbinding en gaat dat statement opnieuw, zonder fout voor de aanvraag (#764; in het log: "Dode verbinding uit de pool vervangen"). Een nieuwe verbinding krijgt `connect_timeout=5` en TCP-keepalives (30 s rust, daarna 3 keer elke 10 s), tenzij `POSTGRES_URI` die zelf zet.
 
 De app maakt de tabellen automatisch aan bij de start (`CREATE TABLE IF NOT EXISTS` in `persistence/db.py`). Alleen de database en de databasegebruiker moeten al bestaan; op een eigen Postgres-server kun je die aanmaken met `scripts/db-init.sql`. Op SURF SDP levert het platform de database en de URI al — zie [Deployment](deployment.md).
 

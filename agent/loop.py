@@ -37,6 +37,37 @@ from .stream import Emit, StreamResult, Tokens, accumulate_stream
 
 logger = logging.getLogger(__name__)
 
+# Zo lang krijgt een geannuleerde modelaanroep om zijn HTTP-verbinding op te ruimen voordat de stop doorgaat (#759).
+_OPRUIMEN_S = 0.5
+
+
+async def _tenzij_gestopt(aanroep: Awaitable[Any], stop_event: asyncio.Event | None) -> tuple[bool, Any]:
+    """`aanroep`, tenzij er eerst een stop komt: (gestopt, uitkomst) (#759).
+
+    Het stopsignaal werd pas gezien tussen rondes en per ontvangen chunk. Tot de eerste byte van het model (tot
+    `request_timeout`, 1200 s) deed Annuleer niets, en hield het rapport zijn runplaats en de verbinding bezet. Wint
+    de stop, dan wordt de aanroep geannuleerd; dat loopt door tot de HTTP-aanroep van litellm, die zijn verbinding
+    sluit. Een afbreken van buitenaf (reset, ander gesprek) neemt de aanroep mee.
+    """
+    if stop_event is None:
+        return False, await aanroep
+    taak = asyncio.ensure_future(aanroep)
+    stop = asyncio.ensure_future(stop_event.wait())
+    try:
+        await asyncio.wait({taak, stop}, return_when=asyncio.FIRST_COMPLETED)
+    except asyncio.CancelledError:
+        taak.cancel()
+        raise
+    finally:
+        stop.cancel()
+    if taak.done():
+        return False, taak.result()
+    taak.cancel()
+    # Een fout uit de opruiming hoort bij een aanroep die niemand meer wil; niet laten rondzweven als "never retrieved".
+    taak.add_done_callback(lambda t: t.cancelled() or t.exception())
+    await asyncio.wait({taak}, timeout=_OPRUIMEN_S)
+    return True, None
+
 
 # What a tool_end event carries of the output; the full result stays in the loop.
 _EVENT_OUTPUT_CHARS = 2000
@@ -209,17 +240,24 @@ class _Loop:
         return bool(self.stop_event and self.stop_event.is_set())
 
     async def _ask(self, **extra: Any) -> StreamResult | None:
-        """One model call; None when a stop landed during the stream."""
-        stream = await acompletion_with_backoff(
-            self.emit,
-            model=self.model,
-            max_tokens=clamp_max_tokens(self.model, MAX_TOKENS),
-            messages=[*self.system, *self.messages],
-            tools=self.tools,
-            stream=True,
-            **extra,
-            **litellm_kwargs(self.model),
+        """One model call; None when a stop landed before or during the stream."""
+        gestopt, stream = await _tenzij_gestopt(
+            acompletion_with_backoff(
+                self.emit,
+                model=self.model,
+                max_tokens=clamp_max_tokens(self.model, MAX_TOKENS),
+                messages=[*self.system, *self.messages],
+                tools=self.tools,
+                stream=True,
+                **extra,
+                **litellm_kwargs(self.model),
+            ),
+            self.stop_event,
         )
+        if gestopt:
+            # Nog geen tekst van deze ronde: wat er stond, blijft zoals bij een stop tussen rondes.
+            self.result.aborted = "stream"
+            return None
         if self.on_llm_start:
             await self.on_llm_start()
         sr = await accumulate_stream(

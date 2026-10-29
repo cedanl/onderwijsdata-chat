@@ -34,6 +34,9 @@ HISTORY_MAX_CHARS = max(1, int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * 
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))
 RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
+# Tijdsgrens aan de serverkant voor een rapport of dashboard (#759), ruim onder de 10 minuten waarna de frontend zelf
+# stopt (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats tot 20 min per aanroep bezet.
+GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
 # Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen, dashboards en rapporten per
 # gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.

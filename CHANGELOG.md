@@ -8,6 +8,50 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
+- Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
+  geopende gesprek landen en mee opgeslagen worden. Een half antwoord bleef daarbij open staan en blokkeerde het rapport.
+  Openen werkt nu als "Nieuw gesprek" (#337): tot de server het gesprek kent (`history_data`), komen er geen events van
+  de oude run meer binnen.
+
+### Annuleer stopt een rapport ook als het model nog niets terugstuurde; rapport en dashboard hebben een tijdsgrens (#759)
+- Het stopsignaal werd pas gezien tussen rondes en per ontvangen stuk tekst. Hing de modelaanroep (tot 20 min), dan
+  meldde de app "Rapport geannuleerd", maar de run liep door. Ze hield een runplaats bezet, en elke nieuwe vraag kreeg
+  "Er loopt nog een antwoord". Nu breekt een stop ook een lopende modelaanroep af, en sluit litellm zijn
+  HTTP-verbinding.
+- Rapport en dashboard stoppen aan de serverkant na `GENEREER_TIMEOUT_S` (standaard 480 s, onder de 10 min van de
+  frontend). Een rapport eindigt dan met een melding en de knop om het opnieuw te proberen.
+- De stop-actie bereikt nu ook een dashboard in aanmaak.
+
+### Herverbinden past bij de reden van sluiten, en zegt het als de app stopt met proberen (#783)
+- Met te veel vensters open (de server sluit met 1013) kwam er elke seconde een nieuwe poging, met elke keer een nieuwe
+  foutmelding. De teller begon bij het openen opnieuw, ook als de server meteen weer sloot. Nu telt een verbinding pas
+  als hersteld als ze 5 s open blijft. Bij 1013 en bij 4003 (origin geweigerd) probeert de app het niet zelf opnieuw:
+  één melding.
+- Na vier mislukte pogingen (ongeveer 15 s) stopte de app stil, terwijl de voettekst "Verbinding herstellen..." bleef
+  zeggen. Nu staat er "Geen verbinding." met de knop "Opnieuw verbinden", ook met het toetsenbord te bedienen. De knop
+  en weer online komen beginnen een nieuwe reeks pogingen. Bij 1013 zegt de status dat er te veel vensters open
+  staan. Geldt voor de chat en de dashboardchat.
+
+### Een gesprek of rapport dat de server niet kreeg, zegt dat (#785)
+- Mislukte het opslaan van een gesprek (netwerkfout, 5xx), dan was dat niet te zien: het gesprek stond al in de
+  zijbalk. Nu staat boven het invoerveld "Dit gesprek is niet bewaard op de server", met "Opnieuw proberen", tot een
+  opslag lukt. Bij een 413 (groter dan 4 MiB) zegt de melding dat het gesprek te groot is en alleen in deze browser
+  staat.
+- Een rapport dat niet op de server kwam, was na het genereren weg. Nu blijft het staan met "Opnieuw proberen" (dat het
+  rapport opent als het lukt) en "Download als HTML".
+- Gemeten: een gesprek met een gemeentekaart, een provinciekaart en tien grafieken is 0,40 MiB. De limiet van 4 MiB
+  blijft, en de GeoJSON blijft in de opgeslagen figuur (zie #785).
+
+### Na een herstart of failover van PostgreSQL falen er geen aanvragen meer op dode verbindingen (#764)
+- De vrije verbindingen in de pool waren na een herstart, switchover of failover dood. Tot `POSTGRES_POOL_SIZE` (8)
+  aanvragen faalden daarop: een 500, een mislukte WebSocket-handshake, of `/ready` rood, waardoor de enige pod even uit
+  de Service viel. Nu vervangt de pool een verbinding waarop het eerste statement faalt omdat ze dicht is, en voert
+  dat statement opnieuw uit. Een SQL-fout gaat zoals altijd naar de aanroeper.
+- Een nieuwe verbinding krijgt `connect_timeout=5` en TCP-keepalives, tenzij `POSTGRES_URI` die zelf zet.
+- Gemeten met PostgreSQL 17: na `pg_ctl restart -m fast` faalden met drie verbindingen in de pool alle drie
+  gelijktijdige aanroepen. Nu slagen ze.
+
 ### Een dashboard komt niet af zonder dat je het merkt (#792)
 - Een dashboard waarvoor het model binnen het stappenbudget geen antwoord gaf, werd als leeg of half dashboard
   geleverd. Nu volgt een melding dat het niet af kwam, zoals bij het rapport.
