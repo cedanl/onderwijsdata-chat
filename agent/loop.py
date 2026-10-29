@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.config import MAX_TOKENS
+from core.errors import log_interne_fout
 from core.geheugen import rss_mb
 from core.logging_util import tekst_kenmerk
 from tools import LABELS, dispatch, fouten, outcome, store
@@ -431,6 +432,8 @@ async def tool_loop(
     except Exception as exc:
         if not (keep_partial and keep_partial()):
             raise
+        # Ingeslikt, dus hier gelogd: het type en een kenmerk onder een fout-ID, de tekst alleen op DEBUG (#502, #754).
+        log_interne_fout(exc, "toolloop, deels bewaard")
         result.partial_error = str(exc)
     finally:
         _log_tokens(model, result)

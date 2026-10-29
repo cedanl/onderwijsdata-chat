@@ -8,6 +8,16 @@ eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
+### Een rapport komt alleen door op tekst die de controle goedkeurde (#754)
+- Liep de herkansing van een rapport op een modelfout (bijvoorbeeld een rate limit), dan kwam het afgekeurde rapport
+  toch door, met alleen de melding "deels gegenereerd". Hetzelfde als de fout een ronde vóór het antwoord trof. Nu
+  controleert `report.generate` de tekst die overblijft opnieuw en weigert het rapport bij een hard probleem; de
+  frontend biedt het rapport dan opnieuw aan, zoals bij elke weigering (#515).
+- Een rapport waarvoor het model binnen het stappenbudget geen antwoord gaf, werd als lege schil geleverd. Nu volgt
+  een weigering met de melding dat het rapport niet af kwam.
+- De melding bij een gedeeltelijk rapport noemt geen "rate limit" meer als het een andere fout was; de fout zelf staat
+  onder een fout-ID in het log.
+
 ### Inspectie-oordelen per mbo-bestuur: de datalaag (#749)
 - `tools/inspectie.py` haalt het nieuwste peilbestand per bevoegd gezag van de Onderwijsinspectie op (CC0 1.0). De code
   volgt de pagina's: overzicht, nieuwste schooljaarpagina met een document, nieuwste document, bg-bestand. De

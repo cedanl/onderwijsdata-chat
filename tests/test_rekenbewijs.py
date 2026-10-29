@@ -99,7 +99,7 @@ def test_de_rapportfase_krijgt_het_rekenbewijs_van_de_sessie(monkeypatch):
     async def eenmaal_controleren(messages, *, check, **_):
         gezien["prompt"] = messages[0]["content"]
         check("{}", [])
-        return SimpleNamespace(aborted=None, partial_error=None, problems=[], text="{}")
+        return SimpleNamespace(aborted=None, exhausted=False, partial_error=None, problems=[], text="{}")
 
     async def emit(_):
         pass
