@@ -20,6 +20,15 @@ eigen kop (`docs/promoten.md`).
 - Een tag-pipeline pushte de getagde commit ook naar GitHub `main`. Was main al verder, dan stond de spiegel terug tot
   de volgende merge. Nu pusht een tag-pipeline alleen de tag.
 
+### Kleine restpunten in de chatserver (#790)
+- Zonder API-sleutel kreeg een eindgebruiker de instructie een omgevingsvariabele te zetten en de app te herstarten.
+  Nu krijgt hij dezelfde soort melding als bij een onbeschikbaar model (#712); welke sleutel ontbreekt, staat in het
+  log.
+- De eigen SIGTERM-handler in `server.py` is weg. uvicorn zet tijdens het serveren zijn eigen handlers, dus hij draaide
+  niet; deed hij dat wel, dan brak zijn `sys.exit` de nette afsluiting af (grace 60 s, #675).
+- `session["figures"]` werd per figuur aangevuld en nooit gelezen; de lijst groeide per verbinding buiten het
+  `STORE_MAX_MB`-budget (#546). Een figuur gaat nu alleen bij de beurt (`turn_figures`).
+
 ### De pytest-gate hangt niet meer af van live DUO en CBS (#766)
 - De register- en dashboardtests draaien op bevroren DUO-bestanden in `tests/fixtures/duo/`, niet op
   onderwijsdata.duo.nl. Een storing of verbroken verbinding bij DUO maakte de blokkerende pytest-job rood

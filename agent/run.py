@@ -102,13 +102,14 @@ if MODEL.startswith(("ollama_chat/", "ollama/")):
 
 
 async def _handle_figure(name: str, figure, session: dict, emit: Emit) -> None:
-    """Store *figure* in the session and emit a figure event."""
+    """Store *figure* with the current turn and emit a figure event.
+
+    Alleen bij de beurt: een lijst van alle figuren van de verbinding werd nooit gelezen en groeide buiten het
+    STORE_MAX_MB-budget (#546, #790).
+    """
     if figure is None:
         return
-    for key in ("figures", "turn_figures"):
-        figs = session.get(key, [])
-        figs.append(figure)
-        session[key] = figs
+    session.setdefault("turn_figures", []).append(figure)
     await emit(
         {
             "type": "figure",

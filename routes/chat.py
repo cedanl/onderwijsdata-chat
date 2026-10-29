@@ -46,7 +46,7 @@ from core.config import (
     RUN_QUEUE_TIMEOUT_S,
     toegestaan_model,
 )
-from core.errors import Gebruikersfout, error_event, friendly_error, log_interne_fout
+from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, error_event, friendly_error, log_interne_fout
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
@@ -89,7 +89,6 @@ async def _in_een_runplaats(start: Callable[[], Awaitable[None]], emit) -> None:
 def _new_session(username: str | None = None, verbinding: str | None = None) -> dict:
     return {
         "messages": [],
-        "figures": [],
         "turns": [],
         "turn_figures": [],
         "chat_settings": {},
@@ -858,13 +857,14 @@ async def _bedien(ws: WebSocket, username: str | None) -> None:
     from core.config import get_all_api_key_env_vars
 
     is_ollama = MODEL.startswith(("ollama_chat/", "ollama/"))
-    if not is_ollama and not any(os.getenv(k) for k in get_all_api_key_env_vars()):
-        await emit(
-            {
-                "type": "system_message",
-                "message": "Geen API key gevonden. Stel een omgevingsvariabele in (bijv. ANTHROPIC_API_KEY) en herstart de app.",
-            }
+    sleutels = get_all_api_key_env_vars()
+    if not is_ollama and not any(os.getenv(k) for k in sleutels):
+        # Een beheerderszaak (#712, #790): de namen in het log, de gebruiker een melding zonder `.env`. WARNING: per
+        # verbinding herhaald, en /ready geeft dan al 503.
+        logger.warning(
+            "Geen API-sleutel gezet: verwacht een van %s in het secret of `.env`", ", ".join(sorted(sleutels))
         )
+        await emit({"type": "system_message", "message": MODEL_ZONDER_SLEUTEL})
 
     current_task: asyncio.Task | None = None
 
