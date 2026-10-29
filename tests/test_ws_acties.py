@@ -606,3 +606,72 @@ def test_een_te_lange_onderzoeksvraag_wordt_geweigerd_zonder_rapport(monkeypatch
 
     assert terug is vorige and gevraagd == []
     assert len(events) == 1 and events[0]["type"] == "error" and events[0]["modelafhankelijk"] is False
+
+
+# ─── Restpunten chatserver (#790) ────────────────────────────────────────────
+
+
+def test_zonder_sleutel_krijgt_de_gebruiker_geen_beheerdersinstructie(ws_client, monkeypatch, caplog):
+    """Een eindgebruiker heeft geen `.env` (#712): de melding zegt wat er speelt, de sleutelnamen staan in het log."""
+    from core import config as core_config
+    from core.errors import MODEL_ZONDER_SLEUTEL
+
+    monkeypatch.setattr(core_config, "get_all_api_key_env_vars", lambda: ["ANTHROPIC_API_KEY"])
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(chat, "MODEL", "anthropic/claude-sonnet-5-5")
+    with caplog.at_level(logging.WARNING), ws_client.websocket_connect("/api/chat") as ws:
+        eerste = json.loads(ws.receive_text())
+
+    assert eerste == {"type": "system_message", "message": MODEL_ZONDER_SLEUTEL}
+    assert not any(w in MODEL_ZONDER_SLEUTEL for w in (".env", "omgevingsvariabele", "API_KEY", "herstart", "secret"))
+    assert "ANTHROPIC_API_KEY" in caplog.text
+
+
+def test_met_sleutel_volgt_geen_melding_over_de_sleutel(ws_client, monkeypatch):
+    from core import config as core_config
+
+    monkeypatch.setattr(core_config, "get_all_api_key_env_vars", lambda: ["ANTHROPIC_API_KEY"])
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-sleutel")
+    monkeypatch.setattr(chat, "MODEL", "anthropic/claude-sonnet-5-5")
+    with ws_client.websocket_connect("/api/chat") as ws:
+        ws.send_text(json.dumps({"action": "ping"}))
+        assert json.loads(ws.receive_text()) == {"type": "pong"}
+
+
+def test_een_figuur_gaat_alleen_bij_de_beurt():
+    """De lijst van alle figuren van een verbinding werd nooit gelezen en groeide buiten het store-budget."""
+    import plotly.graph_objects as go
+
+    run = importlib.import_module("agent.run")  # `agent.run` is ook een functie in agent/__init__
+    session = chat._new_session()
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    asyncio.run(run._handle_figure("create_plot", go.Figure(), session, emit))
+
+    assert "figures" not in session
+    assert len(session["turn_figures"]) == 1
+    assert [e["type"] for e in events] == ["figure"]
+
+
+def test_de_server_zet_geen_eigen_sigterm_handler():
+    """uvicorn installeert zijn eigen handlers; een sys.exit in een eigen handler brak de nette afsluiting af (#675).
+
+    In een eigen proces: wat een import van server aan handlers zet, blijft hier anders hangen of is al gezet.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    code = "import signal, server; print(signal.getsignal(signal.SIGTERM) is signal.SIG_DFL)"
+    uit = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=Path(__file__).resolve().parent.parent,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert uit.returncode == 0, uit.stderr[-2000:]
+    assert uit.stdout.strip().splitlines()[-1] == "True"

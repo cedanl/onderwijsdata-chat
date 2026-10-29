@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import signal
 import sys
 import tomllib
 from pathlib import Path
@@ -206,16 +205,6 @@ async def on_shutdown() -> None:
     except Exception as e:
         logger.warning(f"Error during shutdown cleanup: {e}")
     logger.info("Application shutdown completed")
-
-
-# Handle SIGTERM for container termination
-def _handle_sigterm(signum, frame):
-    """Handle SIGTERM signal for graceful shutdown."""
-    logger.info("SIGTERM received, initiating graceful shutdown")
-    sys.exit(0)
-
-
-signal.signal(signal.SIGTERM, _handle_sigterm)
 
 
 # ─── App ─────────────────────────────────────────────────────────────────────

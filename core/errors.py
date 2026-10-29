@@ -41,6 +41,12 @@ _MODEL_NIET_BESCHIKBAAR = (
     (litellm.APIConnectionError, "de server bereikt de provider niet: controleer de verbinding en `*_API_BASE`"),
 )
 
+# Zonder sleutel antwoordt geen enkel model (#790): dezelfde soort melding als hierboven, zonder `.env` of omgevingsvariabele.
+# Welke sleutel ontbreekt, staat in het log.
+MODEL_ZONDER_SLEUTEL = (
+    "Het model is nu niet beschikbaar. Probeer het later opnieuw; blijft het misgaan, meld het dan aan de beheerder."
+)
+
 # Alle litellm-API-fouten erven van openai.OpenAIError; een budget of timeout hoort ook bij het model.
 _MODELFOUTEN = (openai.OpenAIError, litellm.BudgetExceededError, TimeoutError)
 
