@@ -13,7 +13,10 @@ import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
-import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
+import { uitgesteldeVerwijdering, terugInLijst } from '../verwijderenMetUitstel'
+import { buurVan, focusEerste, idsInDocument, kiezerMetId } from '../focusNa'
+import { useFocusNaRender } from '../hooks/useFocusNaRender'
+import ToastStack from '../components/ToastStack'
 import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
 import { fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
@@ -60,6 +63,12 @@ function lastAnswerText(messages) {
   return last?.role === 'assistant' && last.done ? platteTekst(last.content) : ''
 }
 
+// Plekken waar de focus heen kan als het element dat hem had verdwijnt (#776).
+const GESPREKSKNOP = '.history-btn[data-conv-id]'
+const gespreksKnop = id => kiezerMetId('.history-btn', 'data-conv-id', id)
+const NIEUW_GESPREK = '.new-chat-btn'
+const GESPREK = '.chat-messages'
+
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
   const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, addToast } = useChat()
@@ -80,6 +89,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   // Below the breakpoint the sidebar is a drawer: closed, it is out of reach (inert), and the
   // welcome block carries the suggestions instead, so they are never in the page twice (#341).
   const narrowScreen = useMediaQuery(NARROW_SCREEN)
+  const focusNa = useFocusNaRender()
   const [initialChat] = useState(loadCurrentChat)
   // Uitloggen en sessie-einde wissen de opslag vóór deze pagina unmount. Een save of
   // fetch-resultaat dat React daarna nog uitvoert, mag het gesprek van de vorige
@@ -259,7 +269,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     // A new conversation starts on the user's own choice, not on the model of the one just open.
     setSelectedModel(pickModel(models, loadModelChoice(), defaultModel))
     startNewConversation()
-  }, [startNewConversation, saveConversation, models, defaultModel])
+    // Op een telefoon is de lade met de knop nu dicht en inert: de focus naar waar je een vraag typt (#776).
+    focusNa('.chat-input', GESPREK)
+  }, [startNewConversation, saveConversation, models, defaultModel, focusNa])
 
   const openConversation = useCallback((conv) => {
     clear()
@@ -272,7 +284,10 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     // A follow-up continues on the model the conversation used, not on whatever the picker showed (#242).
     setSelectedModel(current => pickModel(models, conversationModel(restored), current))
     sendHistory(restored, String(conv.id))
-  }, [clear, sendHistory, models])
+    // Naar het gesprek zelf, niet naar het invoerveld: wie een gesprek opent wil eerst lezen, en op een telefoon
+    // schoof het toetsenbord er anders overheen. De knop in de lijst was tijdens het openen uitgeschakeld (#776).
+    focusNa(GESPREK)
+  }, [clear, sendHistory, models, focusNa])
 
   // The list holds no messages (#509): opening a conversation fetches it. The open conversation is
   // saved first and that save awaited, so reopening what was just asked never races its own PUT.
@@ -353,6 +368,8 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     sluitUndoToastRef.current?.()
     sluitUndoToastRef.current = null
     if (!hersteld) return
+    // De focus naar het teruggezette gesprek, als het in de lijst of de zoekresultaten terugkomt (#776).
+    focusNa(gespreksKnop(hersteld.conv.id), NIEUW_GESPREK)
     // Terug waar het stond: in de lijst en/of in de zoekresultaten (#529); een treffer buiten de lijst blijft eruit.
     const { lijst, zoek } = hersteld.index
     restoreResult(hersteld.conv, zoek)
@@ -369,10 +386,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     const { id, messages: open } = openChatRef.current
     const all = withBufferedText(open)
     if (all.length) persistMetMelding(id, all)
-  }, [persistHistoryMetMelding, restoreResult, persistMetMelding, withBufferedText, tokenAtMount])
+  }, [persistHistoryMetMelding, restoreResult, persistMetMelding, withBufferedText, tokenAtMount, focusNa])
 
   const confirmDeleteConversation = useCallback(() => {
     if (!pendingDelete) return
+    // Nu de rij nog in de lijst staat: het gesprek dat erna komt, of anders het vorige (#776).
+    const buur = buurVan(idsInDocument(GESPREKSKNOP, 'data-conv-id'), pendingDelete)
     const index = conversationHistory.findIndex(c => c.id === pendingDelete)
     // Een zoektreffer hoeft niet in de geladen lijst te staan (#529): dan komt het gesprek uit de zoekresultaten.
     const zoekIndex = zoekResultaten?.findIndex(c => String(c.id) === String(pendingDelete)) ?? -1
@@ -397,9 +416,16 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     removeResult(conv.id)
     verwijderingRef.current.plan(conv, { lijst: index, zoek: zoekIndex })
     sluitUndoToastRef.current?.()
+    // De focus gaat naar Ongedaan maken; zolang die focus of de muis heeft, staat de bedenktijd stil. Tab of Escape
+    // zet de focus op het gesprek naast het verwijderde, en dan loopt de tijd verder (#776). De melding sluit als
+    // de verwijdering doorgaat (voerUit) of ongedaan wordt gemaakt, niet op een eigen klok.
     sluitUndoToastRef.current = addToast('Gesprek verwijderd.', 'info', {
-      duur: UITSTEL_MS,
+      duur: null,
       actie: { label: 'Ongedaan maken', onClick: ongedaanMaken },
+      focus: true,
+      pauzeer: () => verwijderingRef.current.pauzeer(),
+      hervat: () => verwijderingRef.current.hervat(),
+      verlaat: () => focusEerste(buur && gespreksKnop(buur), GESPREKSKNOP, NIEUW_GESPREK, '.chat-input'),
     })
   }, [pendingDelete, conversationHistory, zoekResultaten, removeResult, conversationId, addToast, ongedaanMaken, persistHistoryMetMelding])
 
@@ -551,16 +577,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
   return (
     <>
-      <div className="toast-stack">
-        {toasts.map(t => (
-          <div key={t.id} className={`toast ${t.level}`} role="status">
-            {t.message}
-            {t.actie && (
-              <button type="button" className="toast-actie" onClick={t.actie.onClick}>{t.actie.label}</button>
-            )}
-          </div>
-        ))}
-      </div>
+      <ToastStack toasts={toasts} />
       {vraagVoorRapport && (
         <OnderzoeksvraagDialoog voorstel={onderzoeksvraagVoorstel(displayMessages)} max={maxMessageChars}
           onGenereer={handleGenereer} onClose={() => setVraagVoorRapport(false)} />
@@ -615,7 +632,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           />
 
           <div className="sr-only" aria-live="polite">{busy ? '' : lastAnswerText(displayMessages)}</div>
-          <div className="chat-messages" ref={messagesContainerRef}>
+          <div className="chat-messages" ref={messagesContainerRef} role="region" aria-label="Gesprek" tabIndex={-1}>
             {!hasMessages && (
               <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
                 {/* The conversation this browser opened last (#603), only if it is one of this account. */}
@@ -861,6 +878,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
             <div className="history-item-row">
               <button type="button"
                 className="history-btn"
+                data-conv-id={conv.id}
                 onClick={() => onLoad(conv)}
                 disabled={openingId !== null}
                 aria-busy={openingId === conv.id}

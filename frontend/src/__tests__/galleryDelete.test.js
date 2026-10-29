@@ -96,3 +96,43 @@ describe('DashboardGallery verwijderknop', () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 })
+// #776: de verwijderknop verdwijnt met zijn kaart; de focus gaat naar de kaart erna, de vorige, of de kop.
+describe('focus na een rapport verwijderen (#776)', () => {
+  const tweede = { ...wb, id: 'wb-2', title: 'Tweede rapport' }
+
+  async function verwijderEnBevestig(titel) {
+    const knop = container.querySelector(`[aria-label="Verwijder rapport ${titel}"]`)
+    await act(async () => { knop.focus(); knop.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })) })
+    await act(async () => {
+      [...container.querySelectorAll('button')].find(b => b.textContent.trim() === 'Verwijderen').click()
+    })
+  }
+
+  async function toon(rapporten) {
+    fetchWorkbooks.mockResolvedValue(rapporten)
+    await renderIn(
+      createElement(MemoryRouter, { initialEntries: ['/rapporten'] },
+        createElement(RapportenPage, { settings: {} }))
+    )
+  }
+
+  it('gaat naar de kaart die erna stond', async () => {
+    await toon([wb, tweede])
+    const volgorde = [...container.querySelectorAll('.wb-grid .wb-card')].map(k => k.dataset.wbId)
+    await verwijderEnBevestig(volgorde[0] === 'wb-1' ? 'Mijn rapport' : 'Tweede rapport')
+    expect(document.activeElement.dataset.wbId).toBe(volgorde[1])
+  })
+
+  it('gaat naar de kaart ervoor als het laatste rapport weg is', async () => {
+    await toon([wb, tweede])
+    const volgorde = [...container.querySelectorAll('.wb-grid .wb-card')].map(k => k.dataset.wbId)
+    await verwijderEnBevestig(volgorde[1] === 'wb-1' ? 'Mijn rapport' : 'Tweede rapport')
+    expect(document.activeElement.dataset.wbId).toBe(volgorde[0])
+  })
+
+  it('gaat naar de kop als er geen rapport over is', async () => {
+    await toon([wb])
+    await verwijderEnBevestig('Mijn rapport')
+    expect(document.activeElement).toBe(container.querySelector('.wb-gallery-title'))
+  })
+})

@@ -52,6 +52,7 @@ function RapportCard({ wb, onOpen, onDelete, mode, favoriet = false }) {
     <a
       href={`/rapporten?id=${encodeURIComponent(wb.id)}`}
       className="wb-card"
+      data-wb-id={wb.id}
       onClick={e => { e.preventDefault(); onOpen() }}
     >
       <div className="wb-card-thumb">
@@ -191,7 +192,7 @@ export default function RapportenPage({ settings, feedbackEnabled = false }) {
       <div className="wb-gallery-page">
         <div className="wb-gallery-header">
           <div>
-            <h1 className="wb-gallery-title">Rapporten</h1>
+            <h1 className="wb-gallery-title" tabIndex={-1}>Rapporten</h1>
             {/* A live region only during a search: a screen reader hears the number of hits while the user
                 types, but not the total once when the list loads. */}
             <div className="wb-gallery-sub" role={zoekt ? 'status' : undefined}>

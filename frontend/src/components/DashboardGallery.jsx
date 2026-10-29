@@ -9,7 +9,7 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
     <div className="wb-gallery-page">
       <div className="wb-gallery-header">
         <div>
-          <div className="wb-gallery-title">Dashboards</div>
+          <div className="wb-gallery-title" tabIndex={-1}>Dashboards</div>
           <div className="wb-gallery-sub">{workbooks.length} dashboard{workbooks.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
@@ -20,6 +20,7 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
             key={wb.id}
             href={`/dashboards?id=${encodeURIComponent(wb.id)}`}
             className="wb-card"
+            data-wb-id={wb.id}
             onClick={e => { e.preventDefault(); onSelect(wb) }}
           >
             <div className="wb-card-thumb">

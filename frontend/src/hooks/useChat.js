@@ -122,12 +122,15 @@ export function useChat() {
   }, [endReport])
 
   // `opties.actie` ({ label, onClick }) zet een knop in de toast, `opties.duur` de tijd in ms (#493).
-  // Geeft een functie terug die de toast eerder weghaalt.
+  // `duur: null` sluit hem niet vanzelf: dat doet de aanroeper, zoals de melding van een verwijdering
+  // als de bedenktijd om is (die kan stilstaan, #776). `focus`, `pauzeer`, `hervat` en `verlaat` zijn
+  // voor de ToastStack. Geeft een functie terug die de toast eerder weghaalt.
   const addToast = useCallback((message, level = 'info', opties = {}) => {
     const id = nextId()
     const weg = () => setToasts(t => t.filter(x => x.id !== id))
-    setToasts(t => [...t, { id, message, level, actie: opties.actie || null }])
-    setTimeout(weg, opties.duur || 4000)
+    const { focus = false, pauzeer = null, hervat = null, verlaat = null } = opties
+    setToasts(t => [...t, { id, message, level, actie: opties.actie || null, focus, pauzeer, hervat, verlaat }])
+    if (opties.duur !== null) setTimeout(weg, opties.duur || 4000)
     return weg
   }, [])
 
