@@ -1,34 +1,7 @@
-import { memo, useId, useLayoutEffect, useMemo, useRef, useEffect, useState, useCallback } from 'react'
-import Plot from '../components/LazyPlot'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import KolomKop from '../components/KolomKop'
-import TabelScroll from '../components/TabelScroll'
-import KaartTerugval from '../components/KaartTerugval'
-import WaardenTabel from '../components/WaardenTabel'
-import CitedNumber from '../components/CitedNumber'
-import { rehypeCitaties } from '../citations'
-import { chatFigureLayout, figureHeight, isMapFigure } from '../figureLayout'
-import { KAART_HOOGTE } from '../kaartBeeld'
-import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
-import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
-import sql from 'react-syntax-highlighter/dist/esm/languages/prism/sql'
-import json from 'react-syntax-highlighter/dist/esm/languages/prism/json'
-import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash'
-import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
-SyntaxHighlighter.registerLanguage('python', python)
-SyntaxHighlighter.registerLanguage('sql', sql)
-SyntaxHighlighter.registerLanguage('json', json)
-SyntaxHighlighter.registerLanguage('bash', bash)
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
-import { useDarkMode } from '../hooks/useDarkMode'
-import { useElementWidth } from '../hooks/useElementWidth'
-import { useKaartStatus } from '../hooks/useKaartStatus'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
-import ReasoningStep from '../components/ReasoningStep'
-import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
 import { saveWorkbookWithSync } from '../workbooks'
@@ -37,34 +10,18 @@ import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
 import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
-import {
-  appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage,
-  loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory,
-  persistCurrentChat, upsertConversation,
-} from '../conversationStore'
+import { appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst, UITSTEL_MS } from '../verwijderenMetUitstel'
 import { isVerwijderd, markeerVerwijderd } from '../verwijderdGesprek'
-import {
-  fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig,
-} from '../api'
+import { fetchConversation, fetchConversations, putConversation, renameConversationApi, deleteConversationApi, fetchSettingsConfig } from '../api'
 import { buildReportHtml } from '../reportHtml'
-import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
-import { figuurBeschrijving } from '../figuurBeschrijving'
-import { figuurTabel } from '../figuurTabel'
-import { scheidNoot } from '../figuurNoot'
-import { saveFile } from '../saveFile'
-import DataExport from '../components/DataExport'
-import AnswerBlocks from '../components/AnswerBlocks'
-import IngetrokkenVersies from '../components/IngetrokkenVersies'
-import { hasExport, roundSettled } from '../dataExport'
+import { roundSettled } from '../dataExport'
 import { groepeerFiguren } from '../figuurGroep'
 import ConversationExport from '../components/ConversationExport'
 import ChatNavActies from '../components/ChatNavActies'
 import ModelPicker from '../components/ModelPicker'
-import AnswerFeedback from '../components/AnswerFeedback'
-import CopyButton from '../components/CopyButton'
 import { useAnswerFeedback } from '../hooks/useAnswerFeedback'
 import DataSourcesModal from '../components/DataSourcesModal'
 import PrivacyLink from '../components/PrivacyLink'
@@ -75,50 +32,20 @@ import ConfirmModal from '../components/ConfirmModal'
 import ScrollToBottom from '../components/ScrollToBottom'
 import useAutoScroll from '../hooks/useAutoScroll'
 import Composer from '../components/Composer'
-import ErrorRetry, { offersRetryAt } from '../components/ErrorRetry'
+import { offersRetryAt } from '../components/ErrorRetry'
 import RunProgress, { countRunSteps, currentRunStep, heavyRun } from '../components/RunProgress'
 import ReportProgress from '../components/ReportProgress'
 import OnderzoeksvraagDialoog from '../components/OnderzoeksvraagDialoog'
 import { onderzoeksvraagVoorstel } from '../onderzoeksvraagVoorstel'
-import ClarificationButtons from '../components/ClarificationButtons'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
 import { useConversationSearch } from '../hooks/useConversationSearch'
-import { splitsTelling } from '../telling'
-import { answerBlocks, metBronnen } from '../answerBlocks'
-import { vervolgvragenTekst } from '../vervolgvragen'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
 import { neemVoorgevuldeVraag } from '../voorgevuldeVraag'
+import { Message } from '../components/Message'
 
-function codeTheme() {
-  return document.documentElement.classList.contains('dark') ? oneDark : oneLight
-}
-
-function CodeBlock({ className, children }) {
-  const language = /language-(\w+)/.exec(className || '')?.[1]
-  if (!language) return <code className={className}>{children}</code>
-  const code = String(children).replace(/\n$/, '')
-  return (
-    <div className="code-block-wrap">
-      <CopyButton text={code} className="copy-btn-code" />
-      <SyntaxHighlighter
-        language={language}
-        style={codeTheme()}
-        customStyle={{ borderRadius: 6, fontSize: '0.8125rem', margin: '8px 0' }}
-      >
-        {code}
-      </SyntaxHighlighter>
-    </div>
-  )
-}
-
-const MARKDOWN_COMPONENTS = {
-  pre({ children }) { return <>{children}</> },
-  code: CodeBlock,
-  table: TabelScroll,
-  th: KolomKop,
-  span: CitedNumber,
-}
+// De berichtweergave staat in components/ (#696); bestaande imports van Message uit deze pagina blijven werken.
+export { Message } from '../components/Message'
 
 // The answer of the last turn, which carries its follow-up questions (#364). A chart arrives as a
 // message of its own after the answer (shown inside the answer, figuurGroep.js), so it does not count.
@@ -131,168 +58,6 @@ function lastAnswerIndex(messages) {
 function lastAnswerText(messages) {
   const last = messages.findLast(m => m.role !== 'assistant' || m.content)
   return last?.role === 'assistant' && last.done ? platteTekst(last.content) : ''
-}
-
-// The code of one step, behind "Bekijk code" (#595): one tap away, without filling the phone screen before the
-// answer. Long lines wrap instead of scrolling sideways.
-function StapCode({ code }) {
-  const thema = codeTheme()
-  return (
-    <details className="reasoning-step-code">
-      <summary>Bekijk code</summary>
-      <SyntaxHighlighter
-        language="python"
-        style={thema}
-        wrapLongLines
-        // The theme sets white-space: pre on the code element, which beats wrapLongLines.
-        codeTagProps={{ style: { ...thema['code[class*="language-"]'], whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } }}
-        customStyle={{ margin: '4px 0 0', padding: 8, fontSize: 'var(--font-code)', background: 'var(--white)', border: '1px solid var(--gray-200)', borderRadius: 6 }}
-      >
-        {code}
-      </SyntaxHighlighter>
-    </details>
-  )
-}
-
-// De hoogte van de open stappenlijst als de kop van de kaart in beeld staat (#609); 0 als de kaart boven of onder
-// het beeld ligt, of als er niets te meten is (jsdom). Met de kop in beeld verankert de browser de scroll aan de kop
-// en niet aan wat eronder wegvalt, dus dan compenseert ReasoningPanel zelf.
-function zichtbareKaarthoogte(panel) {
-  const content = panel?.querySelector('.reasoning-content')
-  const scroller = panel?.closest('.chat-messages')
-  if (!content || !scroller) return 0
-  const kop = panel.getBoundingClientRect()
-  const zicht = scroller.getBoundingClientRect()
-  const inBeeld = kop.top >= zicht.top && kop.top < zicht.bottom
-  return inBeeld ? content.getBoundingClientRect().height : 0
-}
-
-function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false }) {
-  const [open, setOpen] = useState(!isDone) // Auto-open while tools are running
-  // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
-  // screen before the answer. A wide screen keeps the block.
-  const codePerStap = useMediaQuery(NARROW_SCREEN)
-  const panelRef = useRef(null)
-  // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
-  // die vanzelf openging bij het wachten.
-  const handmatig = useRef(false)
-  // Op een telefoon klapt de kaart in zodra het antwoord begint (#609, #639): open bleef hij 380–430 px hoog en begon
-  // het antwoord onder de vouw. Desktop ongewijzigd. Staat de kaart in beeld, dan zou het antwoord eronder omhoog
-  // springen (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar
-  // de dichte kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
-  // (de lezer is al bij het eind), dan houdt de scroll-verankering van de browser alles op zijn plek.
-  // Bij de eerste antwoordtekst en niet pas bij `done` (#639): in een kort gesprek staat de scroll op 0 en valt er
-  // niets te compenseren, en dan schoof bij `done` het hele antwoord omhoog (CLS 0,05). Bij de eerste regel is de
-  // bubbel nog klein. Tekst waarna toch weer een stap start, was tussentekst (#393): dan gaat de kaart weer open.
-  const compensatie = useRef(0)
-  const stapLoopt = !!tools?.some(t => !t.done)
-  const antwoordBegonnen = isDone || (heeftTekst && !stapLoopt)
-  useLayoutEffect(() => {
-    if (!codePerStap || handmatig.current) return
-    if (antwoordBegonnen && open) {
-      compensatie.current = zichtbareKaarthoogte(panelRef.current)
-      setOpen(false)
-    } else if (!antwoordBegonnen && stapLoopt && !open) {
-      setOpen(true)
-    }
-  }, [antwoordBegonnen, stapLoopt, codePerStap, open])
-  useLayoutEffect(() => {
-    if (open || !compensatie.current) return
-    const scroller = panelRef.current?.closest('.chat-messages')
-    if (scroller) {
-      scroller.scrollTop -= compensatie.current
-      panelRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    }
-    compensatie.current = 0
-  }, [open])
-  if (!tools?.length) return null
-  const hasSnippets = tools.some(t => t.snippet)
-  const toggle = () => { handmatig.current = true; setOpen(o => !o) }
-
-  return (
-    <div className="reasoning-panel" ref={panelRef}>
-      <button type="button" className="reasoning-toggle" onClick={toggle} aria-expanded={open}>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-        <span>Redenering ({tools.length} {tools.length === 1 ? 'stap' : 'stappen'})</span>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', transform: open ? 'rotate(180deg)' : '' }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {open && (
-        <div className="reasoning-content">
-          {markRecovered(tools).map((t, i) => (
-            <ReasoningStep key={`${t.name}-${i}`} tool={t}>
-              {codePerStap && t.snippet && <StapCode code={t.snippet} />}
-            </ReasoningStep>
-          ))}
-          {/* What the model wrote between tool rounds: worth a look, but no answer (#393). */}
-          {tussentekst?.map((tekst, i) => (
-            <p key={i} className="reasoning-tussentekst">{tekst}</p>
-          ))}
-          {hasSnippets && !codePerStap && (
-            <div className="reasoning-snippets">
-              {tools.map((t, i) => (
-                t.snippet && (
-                  <div key={`${t.name}-${i}`} className="reasoning-snippet-block">
-                    <div className="reasoning-snippet-label">{t.label}</div>
-                    <SyntaxHighlighter
-                      language="python"
-                      style={codeTheme()}
-                      customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
-                    >
-                      {t.snippet}
-                    </SyntaxHighlighter>
-                  </div>
-                )
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Parsing markdown is the costly part of a message; props are stable while a message is unchanged.
-const Markdown = memo(function Markdown({ text, citaties }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeCitaties(citaties)]}
-      components={MARKDOWN_COMPONENTS}
-    >
-      {text}
-    </ReactMarkdown>
-  )
-})
-
-// Het Telling-blok van de backend: de eerste zin, de rest uitklapbaar (#402). Onder de vaste
-// bouwstenen (#416) staat het label er al naast; dan zonder eigen kop.
-function TellingDetails({ msg, kop = true }) {
-  const { telling, samenvatting } = splitsTelling(msg.content)
-  if (!telling) return null
-  return (
-    <details className="telling">
-      <summary>{kop ? <><strong>Telling</strong> {samenvatting}</> : samenvatting || 'Toon de telling'}</summary>
-      <Markdown text={telling} citaties={msg.citaties} />
-    </details>
-  )
-}
-
-function MessageContent({ msg, blocks = null }) {
-  if (isAwaitingFirstToken(msg)) return <div className="ai-typing"><span /><span /><span /></div>
-  if (!msg.content && !msg.figures?.length && !msg.clarification && !msg.starterQuestions) return null
-  const { antwoord, telling } = splitsTelling(msg.content)
-  if (!telling) return <Markdown text={msg.content} citaties={msg.citaties} />
-  return (
-    <>
-      <Markdown text={antwoord} citaties={msg.citaties} />
-      {/* Met de vaste bouwstenen staat de Telling daar, op een vaste plek (#416). */}
-      {!blocks && <TellingDetails msg={msg} />}
-    </>
-  )
 }
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
@@ -1005,7 +770,6 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   )
 }
 
-
 function WelcomeScreen({ instelling, functie, children }) {
   const greeting = instelling
     ? `Wat wil je weten over ${instelling}?`
@@ -1022,51 +786,6 @@ function WelcomeScreen({ instelling, functie, children }) {
       {children}
     </div>
   )
-}
-
-function userInitials(settings) {
-  if (settings.instelling) {
-    const words = settings.instelling.trim().split(/\s+/)
-    return words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : words[0].slice(0, 2).toUpperCase()
-  }
-  if (settings.functie) return settings.functie.slice(0, 2).toUpperCase()
-  return '?'
-}
-
-// Questions to click under a message. The "Verken …" starters send one at once (onPick = send); a
-// follow-up question goes into the input box (#364). `label` names the group; with `kop` it also
-// stands above the buttons.
-function QuestionButtons({ questions, onPick, busy, label, kop = false }) {
-  const kopId = useId()
-  if (!questions?.length) return null
-  const naam = kop ? { 'aria-labelledby': kopId } : { 'aria-label': label }
-  return (
-    <div className="clarification-btns question-buttons" role="group" {...naam}>
-      {kop && <div id={kopId} className="question-buttons-kop">{label}</div>}
-      {questions.map(q => (
-        <button type="button" key={q} className="suggested-btn" onClick={() => !busy && onPick(q)}>{q}</button>
-      ))}
-    </div>
-  )
-}
-
-function hasAssistantContent(msg) {
-  return !!(
-    msg.content ||
-    msg.figures?.length ||
-    msg.clarification ||
-    msg.starterQuestions ||
-    msg.stopped ||
-    msg.interrupted ||
-    msg.empty
-  )
-}
-
-// Started but nothing to show yet: render the typing dots instead of a bare avatar.
-function isAwaitingFirstToken(msg) {
-  return !msg.done && !msg.content && !msg.tools?.length && !msg.figures?.length
 }
 
 function chatSettings(model, instelling, functie) {
@@ -1087,212 +806,10 @@ function questionBefore(messages, i) {
 // What the server can judge: a finished answer with text (core/answer_feedback.py).
 const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content && !msg.isError
 
-// onVervolgvraag: only the last answer gets it; its follow-up questions then show while nothing runs (#364).
-// onAndersFormuleren: a clarification card whose question is known gets it, also while something runs (#494).
-// figures: de grafieken in deze bubbel; zonder opgave die van het bericht zelf (#610, figuurGroep.js).
-// verbinding: of de chat nu verbonden is; een afgebroken antwoord zegt dan dat opnieuw proberen kan (#617).
-export function Message({ msg, figures = null, verbinding = false, onClarification, onSend, busy, settled = true, settings = {}, retry = null, herhaal = null, modelLabel = null, clarification = null, feedback = null, onVervolgvraag = null, onAndersFormuleren = null }) {
-  const smal = useMediaQuery(NARROW_SCREEN)
-  if (msg.role === 'user') {
-    return (
-      <div className="message user">
-        <div className="message-avatar">{userInitials(settings)}</div>
-        <div className="message-bubble">
-          {msg.content && <CopyButton text={msg.content} className="copy-btn-message" />}
-          {msg.content}
-        </div>
-        {/* Altijd aanwezig, tijdens een antwoord verborgen: de knop neemt zijn plek in de rij in, en een knop die pas
-            bij het eind van het antwoord komt, verbreedde elke vraag en schoof de bubbel opzij (#661). */}
-        <button type="button"
-          className="resend-btn"
-          title="Opnieuw sturen"
-          aria-label="Vraag opnieuw sturen"
-          disabled={busy}
-          onClick={() => onSend(msg.content)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-            <polyline points="1 4 1 10 7 10" />
-            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-          </svg>
-        </button>
-      </div>
-    )
-  }
-
-  const awaiting = isAwaitingFirstToken(msg)
-  // Een grafiek komt binnen zodra create_plot draait, vóór de eindtekst; in de bubbel staat ze onder de tekst, dus
-  // op een telefoon duwde elke gestreamde regel haar omlaag (CLS 0,096, #639). Daar verschijnt ze pas als het
-  // antwoord compleet is. Op een breed scherm zijn het weinig regels (0,016), en later tonen kostte er meer (0,054).
-  const figuren = !smal || msg.done || !busy ? (figures ?? msg.figures ?? []) : []
-  const inhoud = hasAssistantContent(msg) || figuren.length > 0
-  // A round with only data steps has no text, but its tables can still be downloaded.
-  const exportable = settled && hasExport(msg)
-  // A data answer gets its fixed building blocks; any other message renders as before (#416).
-  const blocks = answerBlocks(msg, { settled })
-  const dataExport = (
-    <DataExport tools={msg.tools} citaties={msg.citaties} settled={settled} onHerhaal={herhaal || null} busy={busy} />
-  )
-  if (!awaiting && !msg.tools?.length && !msg.vervangen?.length && !inhoud) return null
-
-  return (
-    <div className="message assistant">
-      <div className="message-avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-        <ReasoningPanel tools={msg.tools} tussentekst={msg.tussentekst} isDone={msg.done} heeftTekst={!!msg.content} />
-        <IngetrokkenVersies versies={msg.vervangen} eindtekst={msg.content || ''} />
-        {(awaiting || exportable || inhoud) && (
-          <div className={`message-bubble message-bubble-assistant${msg.isError ? ' message-bubble-error' : ''}`}>
-            {msg.content && <CopyButton text={metBronnen(msg.content, msg.bronnen)} className="copy-btn-message" />}
-            <MessageContent msg={msg} blocks={blocks} />
-            {/* Direct onder de tekst (#429): een ingehouden antwoord zegt "Hieronder staat wat er
-                niet klopte", en grafieken met hun knoppen mogen daar niet tussen staan. */}
-            {msg.controle?.map(zin => <div key={zin} className="message-controle">Let op: {zin}</div>)}
-            {/* Vóór de blokken en de vervolgvragen: wat na de grafiek landt, verschuift hem niet (#610). */}
-            {figuren.map((fig, i) => (
-              <PlotlyFigure key={fig.label || i} figureJson={fig.json} label={fig.label} />
-            ))}
-            {blocks
-              ? <AnswerBlocks blocks={blocks} msg={msg} telling={<TellingDetails msg={msg} kop={false} />} dataExport={dataExport} />
-              : dataExport}
-            <ClarificationButtons options={msg.clarification} onSelect={onClarification} busy={busy} answer={clarification} onAndersFormuleren={onAndersFormuleren}
-              vraag={typeof msg.content === 'string' ? msg.content : null} />
-            <QuestionButtons questions={msg.starterQuestions} onPick={onSend} busy={busy} label="Voorbeeldvragen" />
-            {onVervolgvraag && !busy && (
-              <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
-            )}
-            {msg.stopped && <div className="message-stopped">Genereren gestopt</div>}
-            {msg.truncated && (
-              <div className="message-stopped">
-                Antwoord afgebroken: de maximale lengte is bereikt.{' '}
-                <button type="button" className="message-continue" onClick={() => onSend('Ga verder waar je gebleven was.')} disabled={busy}>
-                  Ga verder
-                </button>
-              </div>
-            )}
-            {msg.interrupted && (
-              /* Zodra de verbinding terug is, zegt de regel dat en licht de knop op (#617): wie in de trein weer
-                 bereik heeft, hoeft de knop niet zelf te bedenken. Alleen als er een knop is (een ingeladen gesprek
-                 zonder vraag ervoor heeft er geen); geen automatische tweede run (die telt mee in de berichtlimiet,
-                 #444). aria-live: ook voor een schermlezer een melding, geen tweede knop. */
-              <div className={`message-stopped${verbinding && herhaal ? ' verbinding-terug' : ''}`} role="status" aria-live="polite">
-                {verbinding && herhaal ? 'Verbinding terug — probeer opnieuw' : 'Verbinding verbroken — antwoord onvolledig'}
-                {/* Herstel bij de fout (#547, WCAG 3.3.3): de vraag ervoor opnieuw, zonder ander model. */}
-                {herhaal && (
-                  <>
-                    {' '}
-                    <button type="button" className={`message-continue${verbinding ? ' message-continue--licht' : ''}`} onClick={herhaal} disabled={busy}>
-                      Probeer opnieuw
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            {msg.empty && <div className="message-stopped">Geen antwoord ontvangen — stuur je vraag opnieuw</div>}
-            {retry && (
-              <ErrorRetry
-                question={retry.question?.content}
-                failedModel={retry.question?.model || retry.selectedModel}
-                models={retry.models}
-                modelafhankelijk={retry.modelafhankelijk}
-                busy={busy || !!retry.reportBusy}
-                onRetry={retry.onRetry}
-                herstel={retry.herstel}
-                onRapport={retry.onRapport}
-              />
-            )}
-          </div>
-        )}
-        {modelLabel && <div className="message-model">Antwoord van {modelLabel}</div>}
-        {feedback && <AnswerFeedback value={feedback.value} onSubmit={feedback.onSubmit} />}
-      </div>
-    </div>
-  )
-}
-
 // Een rapport is een eigen kopie van het gesprek en blijft staan als het gesprek weg is (#513, besluit:
 // informeren, niet meeverwijderen); wie dat niet wil, verwijdert het los op de rapportenpagina.
 const GESPREK_VERWIJDEREN = 'Weet je zeker dat je dit gesprek wilt verwijderen? Een rapport dat je van dit gesprek ' +
   'hebt gemaakt, blijft bewaard; dat verwijder je los via Rapporten.'
-
-function downloadCsv(csv, filename) {
-  saveFile(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename)
-}
-
-function parseFigure(figureJson) {
-  try {
-    return typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
-  } catch {
-    return null
-  }
-}
-
-const NO_TRACES = []
-const PLOT_CONFIG = { responsive: true, displayModeBar: false }
-// The chart's width in steps of 16 px: its title is broken again when a phone turns (#587), not
-// for every pixel.
-const WIDTH_STEP = 16
-
-// react-plotly redraws when data, layout or config change by reference, and a redraw is costly. So
-// everything handed to <Plot> is derived once per figure, theme and width step, not once per render.
-const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
-  const dark = useDarkMode()
-  const [wrapRef, width] = useElementWidth(WIDTH_STEP)
-  // De afrondingsnoot als tekstregel onder de grafiek, niet in de figuur (#651).
-  const { figure, noot } = useMemo(() => scheidNoot(parseFigure(figureJson)), [figureJson])
-  const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
-  const csv = useMemo(() => figure && figureToCsv(figure), [figure])
-  const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])
-  const beschrijving = useMemo(() => figure && figuurBeschrijving(figure), [figure])
-  const tabel = useMemo(() => figuurTabel(figure), [figure])
-  const isMap = Boolean(figure && isMapFigure(figure))
-  const kaart = useKaartStatus(isMap)
-  if (!figure) return null
-  // Een kaart die niet getekend is, heet niet "Kaart aangemaakt" (#632): de melding en de tabel nemen haar plaats in.
-  const kaartMislukt = isMap && kaart.status === 'mislukt'
-  return (
-    <div ref={wrapRef} style={{ margin: '8px 0', position: 'relative' }} className="plotly-figure-wrap">
-      {label && <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginBottom: 4 }}>{kaartMislukt ? 'Kaart niet getekend' : label}</div>}
-      {kaartMislukt && <KaartTerugval figure={figure} />}
-      {csvProblem && (
-        <div role="alert" style={{ fontSize: 'var(--font-klein)', color: 'var(--danger, #b42318)', marginBottom: 4 }}>
-          Deze grafiek is niet te exporteren: {csvProblem}. Controleer de cijfers in het antwoord.
-        </div>
-      )}
-      {csv && (
-        <button type="button"
-          className="csv-download-btn"
-          title="Download als CSV"
-          onClick={() => downloadCsv(csv, figureCsvFilename(figure, label || 'data'))}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          CSV
-        </button>
-      )}
-      {/* The chart's accessible name (#588), on the chart only: role="img" makes its children
-          presentational, and the CSV button above must stay a button. */}
-      <div hidden={kaartMislukt} {...(beschrijving && { role: 'img', 'aria-label': beschrijving })}>
-        <Plot
-          data={figure.data || NO_TRACES}
-          layout={layout}
-          config={PLOT_CONFIG}
-          useResizeHandler
-          onInitialized={kaart.onInitialized}
-          onError={kaart.onError}
-          style={{ width: '100%', height: isMap ? KAART_HOOGTE : figureHeight(figure.layout, 340) }}
-        />
-      </div>
-      {noot && <p className="figuur-noot">{noot}</p>}
-      {/* Een kaart die niet getekend is, toont haar tabel al in KaartTerugval. */}
-      {tabel && !kaartMislukt && <WaardenTabel tabel={tabel} />}
-    </div>
-  )
-})
 
 export function ConversationHistory({ history, hasMore = false, loadingMore = false, openingId = null, onLoadMore, onLoad, onDelete, onRename, search = null }) {
   const [editingId, setEditingId] = useState(null)
