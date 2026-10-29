@@ -33,6 +33,14 @@ describe('upsertConversation', () => {
     expect(list.map(c => c.id)).toEqual(['conv-a', 'conv-b'])
   })
 
+  // #757: elke opslag na een antwoord heeft de automatische titel; een gekozen titel in de lijst blijft staan.
+  it('keeps the title a conversation already has in the list', () => {
+    const renamed = { id: 'conv-a', title: 'Analyse instroom', timestamp: 1 }
+    const record = conversationRecord('conv-a', [question, answer])
+    const [first] = upsertConversation([renamed], record)
+    expect(first).toEqual({ id: 'conv-a', title: 'Analyse instroom', timestamp: record.timestamp })
+  })
+
   it('matches legacy numeric ids against their string form', () => {
     const legacy = { id: 1727000000000, title: 'Oud', timestamp: 1, messages: [question] }
     const list = upsertConversation([legacy], conversationRecord('1727000000000', [question, answer]))

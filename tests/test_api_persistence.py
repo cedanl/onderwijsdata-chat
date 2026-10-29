@@ -132,6 +132,26 @@ def test_patch_conversation_title_only(client):
     assert client.get("/api/conversations/c1").json()["messages"] == body["messages"]
 
 
+def test_een_hernoemd_gesprek_houdt_zijn_titel_bij_de_volgende_opslag(client):
+    """#757: elke opslag na een antwoord stuurt de automatische titel mee; die mag een gekozen titel niet overschrijven."""
+    vraag = [{"role": "user", "content": "Hoeveel studenten?"}]
+    client.put("/api/conversations/c1", json={"title": "Hoeveel studenten?", "timestamp": 1000, "messages": vraag})
+    client.patch("/api/conversations/c1", json={"title": "Analyse instroom"})
+
+    verder = [*vraag, {"role": "assistant", "content": "Zoveel."}, {"role": "user", "content": "En in 2022?"}]
+    client.put("/api/conversations/c1", json={"title": "Hoeveel studenten?", "timestamp": 2000, "messages": verder})
+
+    [conv] = client.get("/api/conversations").json()
+    assert conv["title"] == "Analyse instroom"
+    assert conv["timestamp"] == 2000
+    assert client.get("/api/conversations/c1").json()["messages"] == verder
+
+
+def test_de_eerste_opslag_zet_de_titel(client):
+    client.put("/api/conversations/c1", json={"title": "Hoeveel studenten?", "timestamp": 1000, "messages": []})
+    assert client.get("/api/conversations").json()[0]["title"] == "Hoeveel studenten?"
+
+
 def test_patch_conversation_strips_title(client):
     client.put("/api/conversations/c1", json={"title": "Oud", "timestamp": 1, "messages": []})
     client.patch("/api/conversations/c1", json={"title": "  Nieuw  "})

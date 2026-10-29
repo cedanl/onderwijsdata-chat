@@ -61,7 +61,9 @@ def test_upsert_conversation_is_idempotent(db):
 
     result = db.list_conversations("alice")
     assert len(result) == 1
-    assert result[0]["title"] == "Titel update"
+    # De titel van een bestaand gesprek blijft: alleen hernoemen wijzigt hem (#757).
+    assert result[0]["title"] == "Titel"
+    assert result[0]["timestamp"] == 2000
     assert db.get_conversation("alice", "c1")["messages"] == msgs2
 
 
