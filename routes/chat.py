@@ -452,7 +452,8 @@ async def refresh_dashboard_endpoint(request: Request):
     if AUTH_ENABLED:
         auth = request.headers.get("authorization", "")
         token = auth.removeprefix("Bearer ").strip()
-        if not verify_token(token):
+        # De denylist staat in de database: in een thread, niet op de event loop (#763).
+        if not await asyncio.to_thread(verify_token, token):
             return JSONResponse({"error": "Niet geautoriseerd"}, status_code=401)
 
     body = await request.json()
@@ -792,7 +793,8 @@ async def chat_websocket(ws: WebSocket) -> None:
     username = None
     token = token_uit_protocol(ws.headers.get("sec-websocket-protocol"))
     if AUTH_ENABLED:
-        username = verify_token(token or "")
+        # De denylist staat in de database: een trage of volle pool bevroor anders elke chatstream (#763).
+        username = await asyncio.to_thread(verify_token, token or "")
         if not username:
             await ws.close(code=4001, reason="Niet geautoriseerd")
             return
