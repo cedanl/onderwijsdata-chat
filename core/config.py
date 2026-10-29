@@ -62,8 +62,10 @@ SEARCH_CATALOG_LIMIT = 3
 # Wat het model van één toolresultaat ziet (agent/loop.py kapt daarboven af, #395). search_catalog blijft er
 # zelf onder door hele treffers weg te laten met een melding, zodat het model geldige JSON leest (#358).
 TOOL_RESULT_MAX_CHARS = int(os.getenv("TOOL_RESULT_MAX_CHARS", "12000"))
-# Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234).
-DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "true").lower() != "false"
+# Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234). Standaard uit:
+# de dashboardbouwer heeft een eigen chatclient die achterloopt op useChat (#765), dus alleen aan waar
+# de omgeving hem bewust aanzet (manifests/<omgeving>/values.yaml).
+DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("dashboards_aan")
+
 SOCKET_HEALTH_JS = Path(__file__).resolve().parent.parent / "frontend" / "src" / "socketHealth.js"
 
 

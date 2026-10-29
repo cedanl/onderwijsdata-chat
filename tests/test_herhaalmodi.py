@@ -28,6 +28,8 @@ from routes import chat
 from tools import cbs, store
 from tools.store import KeyMeta
 
+pytestmark = pytest.mark.usefixtures("dashboards_aan")
+
 KEY = "cbs:85423NED"
 
 RECEPT = {

@@ -319,7 +319,7 @@ def test_load_dashboard_not_found_has_suggestions():
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, dashboards_aan):
     monkeypatch.delenv("CHAT_USERS", raising=False)
     monkeypatch.delenv("CHAT_SECRET", raising=False)
     from core import auth
