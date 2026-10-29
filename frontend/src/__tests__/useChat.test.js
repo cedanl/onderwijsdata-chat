@@ -548,6 +548,19 @@ describe('useChat stop', () => {
     expect(berichten.map(m => m.bronnen)).toEqual(Array(6).fill([bron]))
   })
 
+  // #713: where an answer came from stays with it, so the conversation export can show it.
+  it('keeps the manifest of an answer, and drops one without a model', async () => {
+    const ws = FakeWebSocket.last
+    const manifest = { model: 'azure_ai/claude-sonnet-5-5', model_naam: 'Claude Sonnet', app: '2.5.0', data_as_of: [] }
+    await act(async () => {
+      for (const m of [manifest, {}, 'kapot', undefined]) {
+        ws.emit({ type: 'message_start' })
+        ws.emit({ type: 'message_end', content: 'Het zijn er 36.201.', manifest: m })
+      }
+    })
+    expect(assistantMessages().map(m => m.manifest)).toEqual([manifest, undefined, undefined, undefined])
+  })
+
   it('drops the unchecked answer when the server withdraws it for a correction', async () => {
     const ws = FakeWebSocket.last
     await act(async () => {

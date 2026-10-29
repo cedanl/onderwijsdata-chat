@@ -177,6 +177,15 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 
 Beide staan op `allow_failure: true`: een nieuwe CVE kleurt de job geel maar blokkeert geen MR die er niets mee te maken heeft. Renovate (`renovate.json`) stelt de update voor. Bij het invoeren (13-10-2026) vonden beide niets.
 
+**Bewust genegeerd** (`--ignore-vuln` in `audit:python`), zodat de job groen is en een nieuwe CVE opvalt:
+
+| CVE | Pakket | Waarom niet van toepassing | Weg wanneer |
+|---|---|---|---|
+| CVE-2026-112913, CVE-2026-112907 | filelock 3.32.7 (fix 4.2.1) | Alleen op Windows (SQLite-zijbestanden van `ReadWriteLock`; oplocks bij soft locks); het image draait Linux | filelock ≥ 4.2.1 mag: litellm eist tot en met 1.106.4 `filelock<4.0` |
+| CVE-2026-112940 | filelock 3.32.7 (fix 4.2.1) | Zit in `ReadWriteLock`/`AsyncReadWriteLock`; geen pakket in de image gebruikt die. huggingface_hub gebruikt `FileLock`/`SoftFileLock` (alleen bij downloads naar de HF-cache, die de app niet doet), litellm alleen in zijn proxy-CLI | idem |
+
+Gezien op 27-10-2026: de job was op `main` rood op deze drie (allow_failure, dus onopgemerkt).
+
 ---
 
 ### S13 — CSP staat `'unsafe-inline'` toe ⚠️ Deels opgelost

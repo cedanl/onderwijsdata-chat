@@ -77,6 +77,8 @@ Dit getal matcht precies wat de app rapporteerde. Geen gissing, geen "zwarte doo
 
 Een snippet begint altijd met de echte laadstap van zijn bron (bron-ID, resource en filters) via de publieke pakketten `onderwijsdata` en `riodata`. Het gebruikt dus nooit iets dat alleen in de app bestaat. Voor DUO-data met een `STUDIEJAAR` voegt de snippet ook `STUDIEJAAR_LABEL` toe (2021 → 2021/2022), zoals de app dat doet.
 
+Boven de code staan twee commentaarregels met de pakketversies waarmee de snippet is gemaakt (`onderwijsdata`, `riodata`, en de appversie als die bekend is) en een `pip install` met dezelfde versies, bij een git-installatie op de exacte commit (#714). Wie de snippet later draait, installeert dus wat de app toen gebruikte, niet wat dan actueel is. De versies komen uit het geïnstalleerde pakket, dus een versiebump verandert de regels vanzelf.
+
 Is de data het resultaat van een eerdere stap (een selectie, een vaste maat of een eigen berekening), dan herhaalt de snippet de stappen van die ouder uit het recept dat de sessie bewaart: eerst de laadstap van de bron, dan de filters, kolommen en aggregaties, of het script van de berekening, gevolgd door `df = pd.DataFrame(result)` als overgang naar de volgende stap. Zo ontstaat `df` binnen één snippet en draait de code opnieuw tegen actuele data, hoeveel rijen het resultaat ook heeft (#624). Het script van een eigen berekening kent alleen het geheugen van de sessie die haar maakte; de database bewaart geen script (#472). Zonder bekend recept of script — na een herstart — blijft alleen een kopie van de rijen over, tot 200 rijen, met een opmerking dat die waarden niet meegroeien met de bron. Bij meer rijen laadt de snippet de hele bron met een `# NB:` dat de uitkomst kan afwijken van wat de app toonde. Is voor een key geen laadstap bekend, dan zegt de snippet dat in een opmerking.
 
 ## Is het dezelfde data? Peildag en inhoudshash
@@ -90,7 +92,7 @@ Wat dit **niet** zegt: dat het frame ná de verwerking van de app (maskering van
 
 ## Voor onderzoekers
 
-- Export je chat-sessie na elke analyse
+- Export je chat-sessie na elke analyse: per antwoord staat er een blok "Herkomst" in met model, versies en dataversie (#713); bij een teruggezet gesprek ontbreekt dat
 - Voeg snippets toe aan je rapport als "methodologie"
 - Laat collega's ze draaien ter verificatie
 - Archiveer ze met je onderzoeksgegevens

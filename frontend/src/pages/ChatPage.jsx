@@ -86,6 +86,7 @@ import { answerBlocks, metBronnen } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
+import { neemVoorgevuldeVraag } from '../voorgevuldeVraag'
 
 function codeTheme() {
   return document.documentElement.classList.contains('dark') ? oneDark : oneLight
@@ -528,6 +529,17 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     onGesprekGeopend?.()
     handleLoadRef.current({ id: teOpenenGesprek })
   }, [teOpenenGesprek, onGesprekGeopend])
+
+  // A question from a link into the app (#709) starts a new conversation and waits in the box, unsent. The
+  // conversation that was open is saved first, as with "Nieuw gesprek".
+  const handleClearRef = useRef(handleClear)
+  useEffect(() => { handleClearRef.current = handleClear })
+  useEffect(() => {
+    const vraag = neemVoorgevuldeVraag()
+    if (!vraag) return
+    if (openChatRef.current.messages.length) handleClearRef.current()
+    prefillComposer(vraag)
+  }, [prefillComposer])
 
   // Older conversations stay on the server until asked for (#123).
   const handleLoadMoreHistory = useCallback(() => {
