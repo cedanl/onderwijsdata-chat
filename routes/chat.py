@@ -185,7 +185,9 @@ async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
         await emit(error_event(e))
 
 
-async def _generate_report(session: dict, emit, model: str | None, author: str | None = None) -> None:
+async def _generate_report(
+    session: dict, emit, model: str | None, author: str | None = None, onderzoeksvraag: str | None = None
+) -> None:
     await emit({"type": "report_generating"})
     stop_event = asyncio.Event()
     session["stop_event"] = stop_event
@@ -196,6 +198,7 @@ async def _generate_report(session: dict, emit, model: str | None, author: str |
             model=model,
             stop_event=stop_event,
             author=author or session.get("username"),
+            onderzoeksvraag=onderzoeksvraag,
         )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
     except RapportGeannuleerd:
@@ -692,11 +695,20 @@ async def _handle_generate_report(
     if _task_busy(current_task):
         await _reject_busy(emit)
         return current_task
+    # De onderzoeksvraag die de gebruiker vóór het genereren bevestigde (#750): nieuwe invoer, dus dezelfde grens als
+    # een bericht. Zonder (oudere client, API) blijft het onderwerp de eerste vraag van het gesprek.
+    onderzoeksvraag = _invoer(msg, "onderzoeksvraag")
+    if await _weiger_te_lang(onderzoeksvraag, emit):
+        return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
     model = session["chat_settings"].get("model") or None
     author = msg.get("author")
-    return asyncio.create_task(_in_een_runplaats(lambda: _generate_report(session, emit, model, author=author), emit))
+    return asyncio.create_task(
+        _in_een_runplaats(
+            lambda: _generate_report(session, emit, model, author=author, onderzoeksvraag=onderzoeksvraag or None), emit
+        )
+    )
 
 
 async def _handle_refresh_dashboard(

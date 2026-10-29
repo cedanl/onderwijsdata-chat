@@ -40,7 +40,7 @@ from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
-from agent.report_titel import rapporttitel
+from agent.report_titel import rapporttitel, rapportvraag
 from agent.selectie import stapkeys
 from agent.session_data import rekenbewijs
 from agent.stream import Emit
@@ -203,6 +203,9 @@ def _build_system_prompt(context: dict) -> str:
 
     instelling = context.get("instelling", "")
     topic = context.get("topic", "")
+    onderwerp = (
+        "Onderzoeksvraag, bevestigd door de gebruiker" if context.get("bevestigd") else "Onderwerp (onderzoeksvraag)"
+    )
     berekeningen = "\n".join(
         f"- {b['tool']}({json.dumps(b['argumenten'], ensure_ascii=False, default=str)}): "
         f"{b['resultaat'][:_MAX_BEWIJS_TEKENS]}"
@@ -230,7 +233,7 @@ Deze uitkomsten kwamen uit de data; je mag ze in het rapport gebruiken, met deze
 
 ## Gebruikerscontext
 - Instelling: {instelling or "niet opgegeven"}
-- Onderwerp (onderzoeksvraag): {topic or "niet opgegeven"}
+- {onderwerp}: {topic or "niet opgegeven"}
 """
     return base + injected
 
@@ -241,14 +244,20 @@ async def generate(
     model: str | None = None,
     stop_event: asyncio.Event | None = None,
     author: str | None = None,
+    onderzoeksvraag: str | None = None,
 ) -> ReportSpec:
     """Generate a report from the loaded session data.
 
     The report must agree with its own data (#175). If it does not, the model
     gets one correction; a report that still contradicts its data is refused.
+    `onderzoeksvraag` is what the user confirmed before generating (#750): it becomes
+    the topic, the title and the research question, instead of the first question.
     """
     await herstel_data(session, emit)
     context = build_dataset_context(session)
+    if onderzoeksvraag:
+        context["topic"] = onderzoeksvraag
+        context["bevestigd"] = True
 
     if not context["datasets"]:
         raise Gebruikersfout("Geen datasets geladen. Stel eerst een vraag waarvoor data wordt opgehaald.")
@@ -268,7 +277,9 @@ async def generate(
     figuurbronnen: list[dict | None] = []
     # De keys die de rapportrun las: haar bevragingen en de grafieken die in het rapport komen (#738).
     gelezen: list = []
-    dataset_context = json.dumps(context, default=str)
+    # De vraag van de gebruiker is een bewering om te toetsen, geen bewijs (#211): een getal erin dekt geen getal
+    # in het rapport, ook niet als de gebruiker haar als onderzoeksvraag bevestigde (#750).
+    dataset_context = json.dumps({k: v for k, v in context.items() if k != "topic"}, default=str)
 
     async def keep_figure(call: ToolCall, result: str, figure) -> None:
         _log_tool_call(call.name, call.args, result)
@@ -377,7 +388,11 @@ def _parse_spec_from_response(
 
     bronnen = _sources_from_recipe(recipe)
 
-    onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
+    # Een bevestigde onderzoeksvraag (#750) staat vast; anders formuleert het model haar, met de vraag als terugval.
+    if context.get("bevestigd"):
+        onderzoeksvraag = rapportvraag(topic)
+    else:
+        onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
     # De vraag van de gebruiker, niet een titel van het model: elke run gaf een andere (#416).
     title = rapporttitel(topic, context.get("instelling"))
 
