@@ -493,8 +493,9 @@ export function useChat() {
     return true
   }, [canSend])
 
+  // Zegt net als send() of de keuze wegging, zodat de kaart pas dan dichtgaat (#774).
   const sendClarification = useCallback((choice) => {
-    if (!canSend()) return
+    if (!canSend()) return false
     busyRef.current = true
     setBusy(true)
     setSlow(false)
@@ -502,6 +503,7 @@ export function useChat() {
     lastSentRef.current = { id, content: choice, draft: false }
     setMessages(prev => [...prev, { id, role: 'user', content: choice, done: true, model: modelRef.current }])
     wsRef.current.send(JSON.stringify({ action: 'clarification_choice', choice }))
+    return true
   }, [canSend])
 
   const sendSettings = useCallback((settings) => {
