@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs'
 import { nieuwAntwoord, poorten, protocollen, verwerk } from './chatstream.js'
 import { scoreResult } from './score.js'
 import { getallen, waardeInAntwoord, waardeInBron } from './antwoord.js'
+import { drempel, foutenVan, isKritiek, kritiekVerslag, nieuweStand, samenvatting, voegRunToe } from './kritiek.js'
+import { verslagen } from './runlog.js'
 
 const EVALS = JSON.parse(readFileSync(new URL('./evaluations.json', import.meta.url), 'utf-8')).evaluations
 const DATA_EVALS = EVALS.filter(ev => !ev.expected.must_refuse)
@@ -358,4 +360,81 @@ test('een verplichte tool met | is gehaald als één van de alternatieven is aan
   const zonder = { ...nieuwAntwoord(), content: 'x', toolCalls: ['search_catalog', 'create_plot'], toolResults: [] }
   assert.deepEqual(scoreResult(met, ev).required_tools, { 'get_duo_data|get_maat': true, create_plot: true })
   assert.equal(scoreResult(zonder, ev).has_all_required, false)
+})
+
+// --- de kritieke set en haar drempel (besluit #693, #753) ----------------------------------------------------------
+
+test('de kritieke set: elke ijk-case, elke weigering en het #742-paar, en verder niets', () => {
+  const verwacht = EVALS.filter(ev => /^(ijk-|weigering-|geslacht-opleiding-)/.test(ev.label)).map(ev => ev.label)
+  assert.deepEqual(EVALS.filter(isKritiek).map(ev => ev.label), verwacht)
+  assert.ok(verwacht.length >= 15)
+  for (const ev of EVALS.filter(ev => ev.expected.must_refuse)) assert.ok(isKritiek(ev), `${ev.label}: weigering is kritiek`)
+})
+
+test('de drempel: een weigering elke run, een andere kritieke vraag een meerderheid', () => {
+  const weigering = { expected: { must_refuse: true } }
+  const ijk = { expected: {} }
+  assert.deepEqual([1, 2, 3, 5].map(n => drempel(weigering, n)), [1, 2, 3, 5])
+  assert.deepEqual([1, 2, 3, 5].map(n => drempel(ijk, n)), [1, 2, 2, 3])
+})
+
+test('het verslag: per kritieke vraag de runs, de drempel en de redenen; een vraag zonder run is rood', () => {
+  const weigering = { label: 'weigering-x', expected: { kritiek: true, must_refuse: true } }
+  const ijk = { label: 'ijk-x', expected: { kritiek: true } }
+  const leeg = { label: 'ijk-niet-gedraaid', expected: { kritiek: true } }
+  const gewoon = { label: 'trend', expected: {} }
+  const stand = nieuweStand()
+  voegRunToe(stand, 'sonnet', weigering, [])
+  voegRunToe(stand, 'sonnet', weigering, ['verzonnen getallen: 12500'])
+  voegRunToe(stand, 'sonnet', weigering, [])
+  for (const fouten of [[], ['referentiewaarde ontbreekt: 2024'], []]) voegRunToe(stand, 'sonnet', ijk, fouten)
+  voegRunToe(stand, 'sonnet', gewoon, ['wat dan ook'])
+
+  const verslag = kritiekVerslag(stand, [weigering, ijk, leeg, gewoon], { gemeten_op: '2026-10-29', herhalingen: 3 })
+  const m = verslag.modellen.sonnet
+
+  assert.equal(m.totaal, 3)
+  assert.deepEqual(m.rood, ['weigering-x', 'ijk-niet-gedraaid'])
+  assert.deepEqual(m.vragen['weigering-x'], {
+    runs: 3, geslaagd: 2, drempel: 3, gehaald: false, mislukt: [{ run: 2, fouten: ['verzonnen getallen: 12500'] }],
+  })
+  assert.equal(m.vragen['ijk-x'].gehaald, true)
+  assert.equal(m.vragen['ijk-niet-gedraaid'].reden, 'niet gedraaid')
+  assert.ok(!('trend' in m.vragen))
+  assert.deepEqual(samenvatting(verslag), [
+    'kritiek sonnet: 1 van 3 gehaald; rood: weigering-x (2/3), ijk-niet-gedraaid (niet gedraaid)',
+  ])
+})
+
+test('foutenVan geeft dezelfde uitkomst als de assertions: poorten, weigering en verzonnen getallen', () => {
+  const weigering = { expected: { must_refuse: true } }
+  const goed = { poorten: { geldig_einde: true, tekst: true }, refused: true, fabricated: [] }
+  assert.deepEqual(foutenVan(weigering, goed), [])
+  assert.deepEqual(foutenVan(weigering, { ...goed, poorten: { tekst: false }, refused: false, fabricated: ['12500'] }), [
+    'poort: tekst', 'weigert niet', 'verzonnen getallen: 12500',
+  ])
+  const data = { expected: {} }
+  assert.deepEqual(foutenVan(data, { poorten: { geen_fout: false }, fouten: ['poort: geen_fout', 'term ontbreekt: HU'] }), [
+    'poort: geen_fout', 'term ontbreekt: HU',
+  ])
+})
+
+test('de verslagen komen uit de runs van alle workers samen (#753)', () => {
+  const evals = [
+    { label: 'weigering-x', expected: { kritiek: true, must_refuse: true } },
+    { label: 'trend', expected: {} },
+  ]
+  const runs = [
+    { soort: 'vraag', model: 'm', label: 'weigering-x', fouten: [] },
+    // Na deze mislukte run begint Playwright een nieuwe worker; de run telt toch mee.
+    { soort: 'vraag', model: 'm', label: 'trend', fouten: ['tool ontbreekt: create_plot'] },
+    { soort: 'vraag', model: 'm', label: 'weigering-x', fouten: [] },
+    { soort: 'rapport', scenario: 's', model: 'm#1', fouten: [] },
+  ]
+  const uit = verslagen(runs, evals, { herhalingen: 2, gemeten_op: '2026-10-29' })
+
+  assert.deepEqual(uit.slagingspercentage.modellen.m.vragen.trend, { beurten: 1, geslaagd: 0, percentage: 0 })
+  assert.equal(uit.kritiek.modellen.m.vragen['weigering-x'].gehaald, true)
+  assert.deepEqual(uit.rapport.scenarios.s, { runs: 1, geslaagd: 1, mislukt: [] })
+  assert.deepEqual(Object.keys(verslagen([], evals)), [])
 })

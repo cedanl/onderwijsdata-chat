@@ -8,16 +8,19 @@
  *
  * Run: TEST_MODELS=azure_ai/claude-haiku-4-5,openai/gpt-oss-120b npx playwright test real-questions
  * Herhaling: TEST_REPEATS=3 laat elke vraag drie keer per model lopen; één fout telt (#190). Het
- * slagingspercentage per model en vraag gaat als JSON naar eval_results/slagingspercentage-<datum>.json.
+ * slagingspercentage per model en vraag gaat als JSON naar eval_results/slagingspercentage-<datum>.json, de kritieke
+ * set met haar drempel (besluit #693) naar eval_results/kritiek-<datum>.json, met één regel per model in de log
+ * ("kritiek …: 14 van 15 gehaald; rood: …"); eval-teardown.js schrijft ze uit de runs van alle workers (runlog.js).
  */
 import { test, expect } from 'playwright/test'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
 import { scoreRefusal } from './refusal.js'
 import { scoreResult } from './score.js'
 import { laadIjkwaarden, metIjkwaarden } from './ijkwaarden.js'
-import { nieuweMatrix, rapport, voegToe } from './matrix.js'
+import { foutenVan } from './kritiek.js'
+import { legVast } from './runlog.js'
 import { haalToken, poorten } from './chatstream.js'
 import { losseVraag } from './gesprek.js'
 
@@ -28,24 +31,10 @@ const EVALS = JSON.parse(readFileSync(resolve(__dirname, 'evaluations.json'), 'u
 
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-haiku-4-5,openai/gpt-oss-120b').split(',').filter(Boolean)
 const REPEATS = Math.max(1, Number(process.env.TEST_REPEATS) || 1)
-const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
-const MATRIX = nieuweMatrix()
-
-function geslaagd(ev, scores) {
-  const poortenOk = Object.values(scores.poorten).every(Boolean)
-  if (ev.expected.must_refuse) return poortenOk && scores.refused && scores.fabricated.length === 0
-  return poortenOk && scores.fouten.length === 0
-}
 
 test.describe('Productie-vragen (evaluatie)', () => {
   let token
   test.beforeAll(async () => { token = await haalToken() })
-  test.afterAll(() => {
-    // Slagingspercentage per model en vraag over alle beurten (#190): naast de losse logs.
-    mkdirSync(RESULTATEN, { recursive: true })
-    const verslag = rapport(MATRIX, { herhalingen: REPEATS })
-    writeFileSync(resolve(RESULTATEN, `slagingspercentage-${verslag.gemeten_op}.json`), JSON.stringify(verslag, null, 2) + '\n')
-  })
 
   for (const ev of EVALS) {
     test(`${ev.label}: ${ev.description}`, async () => {
@@ -57,7 +46,8 @@ test.describe('Productie-vragen (evaluatie)', () => {
         const r = await losseVraag(token, ev.message, model)
         const scores = ev.expected.must_refuse ? { ...scoreRefusal(r), poorten: poorten(r) } : scoreResult(r, ev)
         allScores[short] = scores
-        voegToe(MATRIX, model, ev.label, geslaagd(ev, scores))
+        // Op schijf, niet in het geheugen: na een mislukte test begint een nieuwe worker (#753).
+        legVast({ soort: 'vraag', model, label: ev.label, fouten: foutenVan(ev, scores) })
 
         console.log(`\n${'─'.repeat(60)}`)
         console.log(`[${short}] ${ev.label}`)

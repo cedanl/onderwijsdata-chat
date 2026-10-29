@@ -8,19 +8,18 @@
  * Per scenario het aantal geslaagde runs, met de reden van elke mislukte, gaat naar eval_results/rapport-<datum>.json.
  */
 import { test, expect } from 'playwright/test'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
 import { haalToken } from './chatstream.js'
 import { RAPPORT_TIMEOUT_MS, VRAAG_TIMEOUT_MS, verbind } from './gesprek.js'
-import { gesprekFouten, rapportFouten, rapportVerslag, reekslabels, voorstel } from './rapportscore.js'
+import { gesprekFouten, rapportFouten, reekslabels, voorstel } from './rapportscore.js'
+import { legVast } from './runlog.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SCENARIOS = JSON.parse(readFileSync(resolve(__dirname, 'rapportscenarios.json'), 'utf-8')).scenarios
 const MODELS = (process.env.TEST_MODELS || 'azure_ai/claude-sonnet-5-5').split(',').filter(Boolean)
 const REPEATS = Math.max(1, Number(process.env.TEST_REPEATS) || 1)
-const RESULTATEN = resolve(__dirname, '..', '..', 'eval_results')
-const RUNS = []
 
 async function speel(token, scenario, model) {
   const gesprek = await verbind(token, model)
@@ -41,11 +40,6 @@ async function speel(token, scenario, model) {
 test.describe('Rapport volgt de bijsturing (evaluatie)', () => {
   let token
   test.beforeAll(async () => { token = await haalToken() })
-  test.afterAll(() => {
-    mkdirSync(RESULTATEN, { recursive: true })
-    const verslag = rapportVerslag(RUNS, { herhalingen: REPEATS })
-    writeFileSync(resolve(RESULTATEN, `rapport-${verslag.gemeten_op}.json`), JSON.stringify(verslag, null, 2) + '\n')
-  })
 
   for (const scenario of SCENARIOS) {
     test(`${scenario.label}: ${scenario.description}`, async () => {
@@ -56,7 +50,7 @@ test.describe('Rapport volgt de bijsturing (evaluatie)', () => {
       for (const model of MODELS) for (let beurt = 1; beurt <= REPEATS; beurt++) {
         const kort = REPEATS > 1 ? `${model.split('/').pop()}#${beurt}` : model.split('/').pop()
         const r = await speel(token, scenario, model)
-        RUNS.push({ scenario: scenario.label, model: kort, fouten: r.fouten })
+        legVast({ soort: 'rapport', scenario: scenario.label, model: kort, fouten: r.fouten })
         if (r.fouten.length) mislukt.push(`${kort}: ${r.fouten.join('; ')}`)
 
         console.log(`\n${'─'.repeat(60)}`)

@@ -24,8 +24,14 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
      op `main` (de job staat dan op handmatig en vraagt de CI-variabelen `EVAL_BASE_URL`, `EVAL_USERNAME` en
      `EVAL_PASSWORD`); het slagingspercentage per model en vraag staat in het artifact
      `eval_results/slagingspercentage-<datum>.json` (90 dagen bewaard). Zet het totaal in de beschrijving van die laatste
-     MR (of, bij een promotie van een bestaande release, van de promotie-MR). Staat er een rode kritieke vraag (`ijk-*` of `weigering-*`) in, los die dan eerst op of noem in de MR
-     waarom je hem bewust accepteert.
+     MR (of, bij een promotie van een bestaande release, van de promotie-MR). Zet er de regel
+     `kritiek …: N van M gehaald; rood: …` uit de joblog bij (besluit #693, #753). Kritiek zijn de ijk-cases, de weigeringen en het
+     #742-paar (`expected.kritiek` in `tests/e2e/evaluations.json`):
+     - een weigering moet in elke herhaling slagen;
+     - een andere kritieke vraag in een meerderheid (2 van 3 bij `TEST_REPEATS=3`).
+
+     De details per vraag, met de reden van elke mislukte run, staan in `eval_results/kritiek-<datum>.json`. Is er een
+     kritieke vraag rood, dan wacht de promotie. Of de MR zegt waarom ze toch doorgaat.
 1. Wacht tot de pipeline van `main` groen is. Zonder groene pipeline publiceert
    `version:promote` geen chart.
 2. Tag kaal, **zonder `v`**: SDP matcht `^[0-9]+\.` op de ref-naam, dus `v2.1.0`
