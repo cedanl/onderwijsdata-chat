@@ -52,6 +52,16 @@ eigen kop (`docs/promoten.md`).
   verdwijnt dezelfde verschuiving (0,043 → 0,030); wat daar overblijft is de grafiek zelf, die tijdens het
   streamen meeschuift (#639).
 
+### Rapport volgt de vraag zoals die in het gesprek groeide (#732)
+- Het rapportmodel ziet de vragen van het gesprek, genummerd, en per dataset bij welke vraag hij ontstond (#733). Een
+  latere bijsturing gaat voor: na "Ik wil het alleen zien voor universitaire bachelor's. Geen verwante opleidingen" tekende
+  het rapport de wo+hbo-analyse van de eerste vraag, omdat het alleen die eerste vraag kreeg. De vragen staan alleen in de
+  prompt; wat de gebruiker zei telt niet als bewijs voor een getal in het rapport (#211).
+- `generate_report` neemt een bevestigde onderzoeksvraag aan (`onderzoeksvraag`, #750). Die wordt titel en onderzoeksvraag
+  van het rapport, zonder persoonsgegevens, en het model formuleert haar niet opnieuw. Zonder dat veld blijft het onderwerp de
+  eerste vraag van het gesprek. Het veld in de app volgt in #751. Ook het onderwerp zelf telt niet meer als bewijs: een getal
+  in de vraag van de gebruiker dekte een getal in het rapport.
+
 ### Restpunten audit 29 oktober
 - De bronlink naar DUO opent de dataset weer (#737). De catalogus gaf de CKAN-URL `onderwijsdata.duo.nl/dataset/<id>`,
   en die belandt in de DUO-portal op een lege pagina "Datasets" (gemeten in een browser). De link is nu

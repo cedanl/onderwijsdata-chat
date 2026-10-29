@@ -8,7 +8,7 @@ Stel een compact professioneel rapport op dat de onderzoeksvraag beantwoordt. Fo
 
 Het rapport heeft ALTIJD deze structuur:
 
-1. **Onderzoeksvraag** — bovenaan en centraal: herhaal de onderzoeksvraag (bijna) letterlijk
+1. **Onderzoeksvraag** — bovenaan en centraal: herhaal de onderzoeksvraag (bijna) letterlijk, met de afbakening uit een latere bijsturing; is ze bevestigd door de gebruiker, dan letterlijk
 2. **Reikwijdte** — maak expliciet wat dit rapport wel en niet beantwoordt. De definities (wat een bron telt, wat de opleidingsvormcodes betekenen) voegt de code uit de bron toe: schrijf geen definities
 3. **1 of 2 visualisaties met toelichting** — maximaal twee grafieken, elk met een duidelijke inhoudelijke toelichting
 4. **Conclusie** — kopje "Conclusie" met de kernbevindingen en het antwoord op de onderzoeksvraag
@@ -18,6 +18,7 @@ Het rapport heeft ALTIJD deze structuur:
 1. Bekijk de beschikbare datasets (kolommen, types, voorbeeldwaarden en **herkomst**)
 2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie komt uit het gesprek en beantwoordt de onderzoeksvraag. De chatcontroles dekken niet alles, en dit rapport wordt na afloop op eigen controles getoetst (getallen, opleidingsvorm, dataset-ID, jaar en instelling per rij):
    - Gebruik voor de getallen van de onderzoeksvraag de afgeleide dataset uit het gesprek zoals hij is.
+   - Stuurde de gebruiker na de eerste vraag bij (zie "Vragen van de gebruiker": alleen wo of hbo, een niveau of fase, een instelling, geen verwante opleidingen, of "je laatste antwoord"), dan gaat die bijsturing voor. Gebruik de dataset die bij of na die vraag ontstond ("Ontstaan bij vraag"), niet een eerdere selectie die zij verving, en neem de afbakening op in de onderzoeksvraag. Een vervolgvraag die niets afbakent, verandert de onderzoeksvraag niet.
    - Filter een brondataset alleen opnieuw voor iets wat het gesprek niet deed, en neem dan de filters en codes uit de herkomst letterlijk over. Kies geen andere codes, perioden of definities.
    - Getallen, codes, statussen (zoals `Periodestatus`) en definities in het rapport komen uit deze data, niet uit eigen kennis.
 3. Haal per visualisatie de data op via `query_data`
