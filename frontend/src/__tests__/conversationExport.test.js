@@ -168,6 +168,19 @@ describe('conversationMarkdown: herkomst (#713)', () => {
     expect(tekst).toContain('Dataversie: CBS 85423NED (bijgewerkt 2026-09-15, status Voorlopig) · DUO p01hoinges (herladen 11-10-2026)')
   })
 
+  // #715/#717: de hashes stonden in het manifest, maar niet in de leesregel van export en rapport.
+  it('noemt de inhoudshash van een CBS-tabel en de md5 van een DUO-bestand in de dataversie', () => {
+    const tekst = export_({
+      ...MANIFEST,
+      data_as_of: [
+        { bron: 'cbs', dataset: '85423NED', inhoudshash: ['3f2a9c01be77'] },
+        { bron: 'duo', dataset: 'p01hoinges', bronhash: ['9e107d9d372bb6826bd81d3542a419d6'] },
+      ],
+    })
+
+    expect(tekst).toContain('Dataversie: CBS 85423NED (inhoud 3f2a9c01be77) · DUO p01hoinges (md5 9e107d9d372bb6826bd81d3542a419d6)')
+  })
+
   it('noemt de dataversie niet als er geen data achter het antwoord zit', () => {
     const tekst = export_({ ...MANIFEST, data_as_of: [] })
 
