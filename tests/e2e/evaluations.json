@@ -510,6 +510,26 @@
         "max_search_catalog": 1,
         "must_mention": ["NVAO"]
       }
+    },
+    {
+      "label": "mbo-indicatoren-jr-dr",
+      "message": "Hoe presteert ROC Midden Nederland op jaar- en diplomaresultaat?",
+      "description": "#727: jaar- en diplomaresultaat per instelling naast de vergelijkingsgroep, afronding en verschil uit code (get_mbo_indicatoren); editie 2026, 2024/25: 70,1% en 70,6% tegen 71,8% en 72,4%",
+      "expected": {
+        "must_contain_tools": ["get_mbo_indicatoren"],
+        "max_search_catalog": 1,
+        "must_mention": ["jaarresultaat", "diplomaresultaat", "vergelijkingsgroep|roc's|ROC's"]
+      }
+    },
+    {
+      "label": "mbo-indicatoren-vsv",
+      "message": "Hoeveel procent nieuwe voortijdig schoolverlaters heeft ROC Midden Nederland?",
+      "description": "#727: vsv per mbo-instelling komt van DUO's indicatoren, niet van CBS; het laatste jaar is voorlopig",
+      "expected": {
+        "must_contain_tools": ["get_mbo_indicatoren"],
+        "max_search_catalog": 1,
+        "must_mention": ["voorlopig"]
+      }
     }
   ]
 }

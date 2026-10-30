@@ -28,12 +28,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tests.ijkwaarden import harnas
-from tools import cbs, duo, fouten, inspectie, plot, rio_instelling
+from tools import cbs, duo, fouten, inspectie, mbo_indicatoren, plot, rio_instelling
 
 _MAX_DETAIL = 200
 _PROVINCIES = 12
 # Op 1 oktober 2026 noemden 164 besturen mbo; minder dan dit is een kapot of half bestand (#749).
 _MIN_MBO_BESTUREN = 100
+# De editie 2026 heeft 54 mbo-instellingen; minder dan dit is een kapot of half bestand (#727).
+_MIN_MBO_INSTELLINGEN = 40
 _AERES = "30TX"  # de instellingscode achter de RIO-ijkwaarde rio-aeres-hogeschool
 
 
@@ -99,6 +101,17 @@ def _inspectie_bewijs(uitkomst: dict) -> str | None:
     )
 
 
+def _mbo_indicatoren() -> dict:
+    # Dezelfde weg als de chat: indicatorenpagina, nieuwste xlsx-editie, de koppen en regels van de tool (#727).
+    gelezen = mbo_indicatoren.haal_editie()
+    return {"editie": gelezen.jaar, "instellingen": len(gelezen.instellingen)}
+
+
+def _mbo_indicatoren_bewijs(uitkomst: dict) -> str | None:
+    n = uitkomst.get("instellingen", 0)
+    return None if n >= _MIN_MBO_INSTELLINGEN else f"{n} instellingen, minstens {_MIN_MBO_INSTELLINGEN} verwacht"
+
+
 def _kaart_bewijs(uitkomst: dict) -> str | None:
     n = len(uitkomst.get("features") or [])
     return None if n >= _PROVINCIES else f"{n} vormen in de provincie-GeoJSON, minstens {_PROVINCIES} verwacht"
@@ -120,6 +133,13 @@ PINGS: tuple[Ping, ...] = (
         "nieuwste Inspectie-peilbestand per bestuur, mbo (bg.ods)",
         _inspectie,
         _inspectie_bewijs,
+    ),
+    Ping(
+        "duo-indicatoren",
+        "duo",
+        "nieuwste editie indicatoren per mbo-instelling (xlsx)",
+        _mbo_indicatoren,
+        _mbo_indicatoren_bewijs,
     ),
     Ping(
         "kaart-provincies",

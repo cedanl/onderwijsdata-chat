@@ -9,6 +9,7 @@ from .duo import get_duo_data
 from .inspectie import get_inspectieoordeel
 from .kpi import compute_kpi
 from .maten import get_maat
+from .mbo_indicatoren import get_mbo_indicatoren
 from .outcome import outcome  # noqa: F401
 from .plot import create_choropleth_map, create_plot
 from .profiel import dataset_profiel
@@ -29,6 +30,7 @@ from .schemas import (
     TOOL_GET_DUO_DATA,
     TOOL_GET_INSPECTIEOORDEEL,
     TOOL_GET_MAAT,
+    TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_DATA,
     TOOL_GET_RIO_INSTELLING,
     TOOL_GET_ROA_BENCHMARK,
@@ -61,6 +63,7 @@ LABELS = {
     TOOL_GET_UWV_VACATURES: "UWV vacatures opgehaald",
     TOOL_GET_ROA_BENCHMARK: "ROA benchmark opgehaald",
     TOOL_GET_INSPECTIEOORDEEL: "Inspectie-oordeel opgehaald",
+    TOOL_GET_MBO_INDICATOREN: "Mbo-indicatoren opgehaald",
 }
 
 _HANDLERS = {
@@ -83,6 +86,7 @@ _HANDLERS = {
     TOOL_GET_UWV_VACATURES: get_uwv_vacatures,
     TOOL_GET_ROA_BENCHMARK: get_roa_benchmark,
     TOOL_GET_INSPECTIEOORDEEL: get_inspectieoordeel,
+    TOOL_GET_MBO_INDICATOREN: get_mbo_indicatoren,
 }
 
 

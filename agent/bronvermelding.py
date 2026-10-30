@@ -13,12 +13,11 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import store
+from tools import inspectie, mbo_indicatoren, store
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
-from tools.inspectie import BRONNAAM, BRONTITEL
 from tools.rio_instelling import ERKENNINGEN
-from tools.schemas import TOOL_GET_INSPECTIEOORDEEL, TOOL_GET_RIO_INSTELLING
+from tools.schemas import TOOL_GET_INSPECTIEOORDEEL, TOOL_GET_MBO_INDICATOREN, TOOL_GET_RIO_INSTELLING
 
 from .meetwaarden import meetwaarden
 from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
@@ -82,9 +81,16 @@ def _registerbron(tool: str, result: str) -> list[Bronregel]:
     return [(f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst, ERKENNINGEN)]
 
 
-def _inspectie(tool: str, result: str) -> dict | None:
-    """De bron van een Inspectie-oordeel (#749): het peilbestand per bestuur, met peildatum en link."""
-    if tool != TOOL_GET_INSPECTIEOORDEEL:
+# Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749) en de mbo-indicatoren van DUO (#727).
+_BESTANDSBRONNEN = {
+    TOOL_GET_INSPECTIEOORDEEL: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie.BRONTITEL}",
+    TOOL_GET_MBO_INDICATOREN: f"{mbo_indicatoren.BRONNAAM}{SCHEIDING}{mbo_indicatoren.BRONTITEL}",
+}
+
+
+def _bestand(tool: str, result: str) -> dict | None:
+    """De `bron` van een tool die een bestand leest, met editie, peildatum en link naar het bestand."""
+    if tool not in _BESTANDSBRONNEN:
         return None
     try:
         parsed = json.loads(result)
@@ -94,11 +100,12 @@ def _inspectie(tool: str, result: str) -> dict | None:
     return bron if isinstance(bron, dict) else None
 
 
-def _inspectiebron(tool: str, result: str) -> list[Bronregel]:
-    if (bron := _inspectie(tool, result)) is None:
+def _bestandsbron(tool: str, result: str) -> list[Bronregel]:
+    if (bron := _bestand(tool, result)) is None:
         return []
-    tekst = f"{BRONNAAM}{SCHEIDING}{BRONTITEL}"
-    return [(f"{tekst}, peildatum {bron['peildatum']}" if bron.get("peildatum") else tekst, None)]
+    delen = [_BESTANDSBRONNEN[tool]]
+    delen += [f"{veld} {bron[veld]}" for veld in ("editie", "peildatum") if bron.get(veld)]
+    return [(", ".join(delen), None)]
 
 
 def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
@@ -107,7 +114,7 @@ def _stapbronnen(tool: str, result: str) -> list[Bronregel]:
     # citaties (agent/meetwaarden.py), en zijn dataset die van de tool. Met een data_key staat de bron, met
     # peildatum of versie, al in `datasets`.
     buiten_de_store = [(w.bron, DATASET.get(tool)) for w in meetwaarden(result, tool) if w.bron]
-    return datasets + buiten_de_store + _registerbron(tool, result) + _inspectiebron(tool, result)
+    return datasets + buiten_de_store + _registerbron(tool, result) + _bestandsbron(tool, result)
 
 
 def _bronregels(steps: list[tuple[str, str]]) -> dict[str, str | None]:
@@ -136,9 +143,9 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
     links = {
         tekst: url for tekst, dataset in _bronregels(steps).items() if dataset and (url := documentatie_url(dataset))
     }
-    # Het Inspectie-oordeel staat niet in de catalogus: zijn link is het peilbestand zelf (#749).
+    # Het Inspectie-oordeel en de mbo-indicatoren staan niet in de catalogus: hun link is het bestand zelf (#749, #727).
     for tool, result in steps:
-        bron, regels = _inspectie(tool, result), _inspectiebron(tool, result)
+        bron, regels = _bestand(tool, result), _bestandsbron(tool, result)
         if bron and regels and str(bron.get("url") or "").startswith("https://"):
             links.setdefault(regels[0][0], str(bron["url"]))
     return links

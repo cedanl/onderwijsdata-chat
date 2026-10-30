@@ -506,6 +506,30 @@ Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een m
 
 ---
 
+## get_mbo_indicatoren
+
+Jaarresultaat, diplomaresultaat en nieuwe vsv'ers van een mbo-instelling, elk met de waarde van de vergelijkingsgroep,
+uit DUO's indicatoren per instelling (#727, `tools/mbo_indicatoren.py`).
+- **Route:** de code zoekt de instelling in het register en haar instellingscode (BRIN) in de nieuwste editie. Die
+  vindt ze via `indicatoren.jsp`, en ze haalt het bestand één keer per dag op. Alleen de sheets `JR en DR` en `VSV`.
+- **Resultaat:** per indicator (`jaarresultaat`, `diplomaresultaat`, `nieuwe_vsv`) per schooljaar de instelling en de
+  vergelijkingsgroep in procenten op één decimaal, en `verschil_procentpunt`. Verder de vergelijkingsgroep (ROC of
+  BER), de definities en de bron (DUO, editie, peildatum, URL).
+  - Het laatste vsv-jaar heeft `voorlopig: true`.
+  - Een lege cel of een 0 in het bestand wordt `null` met `uitleg: "geen cijfer"`, zonder verschil.
+  - Een `noot` zegt wat voorlopig is, wat null betekent, en of het bestand dezelfde naam ook onder een andere BRIN
+    heeft (niet optellen).
+- **Geen cijfers:** voor hbo en wo komt er een vaste melding; ook voor een onbekende instelling en voor een instelling
+  die niet in het bestand staat. Wijkt het bestand af van de bekende opbouw, dan volgt een foutmelding zonder cijfers.
+- **Bronregel:** de app zet "DUO · Indicatoren per instelling (jaardocument mbo), editie …, peildatum …" onder het
+  antwoord, met een link naar het bestand.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string | Officiële naam of alias van de mbo-instelling, bijv. `"ROC Midden Nederland"` |
+
+---
+
 ## get_duo_data
 
 Laadt een DUO open dataset. Retourneert kolomschema, voorbeeldwaarden en een `data_key` voor vervolgquery's.
