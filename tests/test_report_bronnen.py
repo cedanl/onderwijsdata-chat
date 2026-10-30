@@ -15,6 +15,7 @@ import pytest
 from agent import report
 from agent.loop import LoopResult, ToolCall
 from agent.report_bronnen import gebruikte_datasets
+from agent.report_vergelijken import BEGRIP
 from tools import store
 from tools.schemas import TOOL_COMPUTE_KPI, TOOL_CREATE_PLOT, TOOL_GET_CBS_DATA, TOOL_GET_DUO_DATA, TOOL_QUERY_DATA
 from tools.store import KeyMeta
@@ -102,7 +103,9 @@ def test_de_definitie_en_dataversie_van_een_gebruikte_bron_blijven(sessie, monke
     assert any("p01hoinges" in b for b in spec.bronnen)
     assert not any("83282NED" in b for b in spec.bronnen)
     assert _datasets_in(spec) == {"83285NED", "p01hoinges"}
-    assert spec.definities == [{"begrip": "Telling (p01hoinges)", "definitie": _TELDEFINITIE}]
+    assert spec.definities[0] == {"begrip": "Telling (p01hoinges)", "definitie": _TELDEFINITIE}
+    # Het blok over vergelijken met eigen cijfers (#736) volgt dezelfde gebruikte bronnen.
+    assert [d["begrip"] for d in spec.definities[1:]] == [f"{BEGRIP} (p01hoinges)", BEGRIP]
 
 
 def test_een_selectie_uit_het_rapport_telt_voor_haar_laadkey(sessie, monkeypatch):
