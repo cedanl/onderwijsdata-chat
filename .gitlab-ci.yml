@@ -214,7 +214,7 @@ eval:bronwaarheid:
 
 # Eén aanroep per bron door de toollaag van de chat (CBS, DUO, RIO en de GeoJSON van de kaart), zonder LLM
 # en zonder testomgeving (#627): RIO verwijderde API v2 op 19-10-2026 en dat viel pas op in een chatbeurt,
-# want pytest mockt de bronnen en /health toetst er geen. Gepland (wekelijks op main; het schema zet
+# want pytest mockt de bronnen en /health toetst er geen. Gepland (dagelijks op main; het schema zet
 # BRON_PING=1, SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via "Run pipeline" met
 # BRON_PING=1. Faalt zodra één bron niet antwoordt: de melding van de mislukte geplande pipeline is het signaal.
 bron:ping:

@@ -137,7 +137,7 @@ Nodig na een gewijzigd secret: Flux past het secret aan, maar de pod leest de va
 
 **Bron weg of gewijzigd**
 
-`bron:ping` draait wekelijks op `main` (maandag 07:15) en is rood als CBS, DUO, RIO of de kaart niet antwoordt
+`bron:ping` draait dagelijks op `main` (rond 07:15) en is rood als CBS, DUO, RIO of de kaart niet antwoordt
 (`scripts/bronping.py`). Handmatig: `python scripts/bronping.py`.
 
 ## Onderhoud
