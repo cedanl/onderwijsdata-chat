@@ -231,6 +231,7 @@ def test_zonder_eindoordeel_een_noot_geen_gok(tool, monkeypatch):
     [
         ("Hogeschool Nergens", "Onbekende instelling"),
         ("HU", "NVAO"),
+        ("HU", "get_accreditatie"),  # de accreditatiedatums per opleiding (#726)
         ("Los MBO", "staat geen bestuur met mbo in het peilbestand van de Inspectie van 01-10-2026"),
     ],
 )

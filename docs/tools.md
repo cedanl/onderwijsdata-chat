@@ -495,8 +495,9 @@ Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een m
   van het bestuur en de bron (CC0 1.0).
   - Een `noot` volgt bij een gemengd bestuur, dat ook po, vo of ho heeft. Het oordeel geldt dan voor het hele bestuur.
   - Een `noot` volgt ook als er geen eindoordeel is.
-- **Geen oordeel:** voor hbo en wo komt er een vaste melding (NVAO, niet in de app). Dat geldt ook voor een onbekende
-  instelling en voor een bestuur dat niet in het peilbestand staat.
+- **Geen oordeel:** voor hbo en wo komt er een vaste melding: daar accrediteert de NVAO de opleidingen. De
+  accreditatiedatums per opleiding staan in `get_accreditatie`; de NVAO-oordelen zitten (nog) niet in de app. Een
+  vaste melding komt er ook voor een onbekende instelling en voor een bestuur dat niet in het peilbestand staat.
 - **Bronregel:** de app zet "Onderwijsinspectie · Oordelen per bevoegd gezag, peildatum …" onder het antwoord, met een
   link naar het bestand.
 
@@ -527,6 +528,36 @@ uit DUO's indicatoren per instelling (#727, `tools/mbo_indicatoren.py`).
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
 | `instelling` | string | Officiële naam of alias van de mbo-instelling, bijv. `"ROC Midden Nederland"` |
+
+---
+
+## get_accreditatie
+
+De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit DUO's Overzicht Erkenningen ho (#726 stap A,
+`tools/accreditatie.py`).
+- **Route:** de code zoekt de instelling in het register en laadt het erkenningenbestand via `get_duo_data`
+  (`overzicht-erkenningen-ho`, bestand 0; CC-BY, dagelijks bijgewerkt). De opleiding zoekt ze op CROHO-code (vijf
+  cijfers met voorloopnullen: `4181` is `04181`) of op naam, met dezelfde resolutie als geslacht per opleiding
+  (`tools/geslacht_opleiding.py`). Passen er meer opleidingen, dan noemt de melding ze met niveau en code.
+- **Resultaat:** per datum die DUO registreert de datum en zijn betekenis, uit code:
+  - `besluitdatum`: het besluit of de melding van de NVAO; `begindatum`: begin van de geldigheid.
+  - `uiterste_indiening_volgende_beoordeling` (`ACCREDITATIE_INLEVERDATUM`): de uiterste indiening van het
+    visitatierapport. Nooit een einddatum; ligt hij in het verleden, dan zegt een `noot` dat de accreditatie daarmee
+    niet verlopen is.
+  - `uiterste_indiening_voorwaarden`, `verlengd_tot` (met de WHW-grond), `intrekking` en `afbouw`, als DUO ze vult.
+  - `vervaldatum_nieuwe_opleiding`: alleen met de uitleg dat hij bij de termijn van een nieuwe opleiding hoort.
+  - Verder: niveau en vormen, of de erkenning actueel of toekomstig is, `geen_oordeel` (er zit geen NVAO-oordeel in)
+    en de bron met peilmoment.
+- **Geen datums:** een vaste melding voor een onbekende instelling, een mbo-instelling, een onbekende opleiding, een
+  opleiding die alleen nog historisch geregistreerd staat, verschillende datums per vestiging of vorm, en een bestand
+  waarin een verplichte kolom ontbreekt.
+- **Bronregel:** "DUO · Overzicht Erkenningen ho, versie van …" onder het antwoord, met een link naar de datasetpagina,
+  zoals bij elke DUO-dataset.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `instelling` | string | Officiële naam of alias van de hbo- of wo-instelling, bijv. `"Hogeschool Utrecht"` |
+| `opleiding` | string | Naam of CROHO-code van de opleiding, bijv. `"34035"` |
 
 ---
 
