@@ -51,13 +51,16 @@ export const MAX_TEXTAREA_HEIGHT = 120
 export const DEFAULT_INSTELLING = 'Hogeschool Utrecht'
 
 // ─── Chat context limits ──────────────────────────────────────────────────────
-// MAX_HISTORY must match backend core/config.py MAX_HISTORY (default 40 = 20 turns)
+// Fallbacks only (#789): the server publishes core/config.py MAX_HISTORY (messages the model sees) and
+// MAX_CHAT_TURNS (questions per conversation, MAX_HISTORY // 2) via /api/config. Equal to the backend defaults.
 export const MAX_HISTORY = 40
 export const MAX_CHAT_TURNS = 20
 // Characters per new chat message (#481). Fallback only: the server publishes the real value of
 // core/config.py MAX_MESSAGE_CHARS via /api/config (#501). Equals the backend default.
 export const MAX_MESSAGE_CHARS = 4000
-export const WARN_CHAT_TURNS = 16
+// Characters of general feedback (#600). A code constant on both sides, not a setting: it must equal
+// core/algemene_feedback.py MAX_TEKST, and a test checks that (#789).
+export const MAX_FEEDBACK_CHARS = 2000
 
 // ─── Suggested questions ──────────────────────────────────────────────────────
 // Each question must be answerable with the connected sources (#446): vacancies are a UWV

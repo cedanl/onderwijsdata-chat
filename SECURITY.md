@@ -226,7 +226,7 @@ Test: `tests/test_token_intrekking.py`.
 
 **Locatie:** `routes/chat.py` (`_parse_history`), `core/config.py` (`HISTORY_MAX_CHARS`)  
 **Probleem:** zie S7. De actie nam tot `MAX_HISTORY` (40) door de client aangeleverde beurten van willekeurige lengte aan; die gingen bij de volgende vraag naar het model. Een handgemaakte client kon zo de kostenaanval uitvoeren die S7 moest sluiten.  
-**Fix (#500):** de hele aangeleverde historie is begrensd op `HISTORY_MAX_CHARS` tekens (standaard `MAX_HISTORY × MAX_MESSAGE_CHARS` = 160.000). Boven de cap vallen de oudste beurten af — dezelfde strategie als `MAX_HISTORY` — en een enkele beurt groter dan de cap wordt afgekapt in plaats van geweigerd, zodat bestaande gesprekken blijven openen.
+**Fix (#500):** de hele aangeleverde historie is begrensd op `HISTORY_MAX_CHARS` tekens (standaard `MAX_HISTORY × MAX_MESSAGE_CHARS` = 160.000). Boven de cap vallen de oudste beurten af (het aantal kort sinds #789 in zoals het live gesprek, met behoud van de eerste vraag; de tekencap laat daarna de oudste vallen) en een enkele beurt groter dan de cap wordt afgekapt in plaats van geweigerd, zodat bestaande gesprekken blijven openen.
 
 ---
 

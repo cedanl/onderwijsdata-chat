@@ -95,7 +95,7 @@ De AST-controle en de audit hook draaien in Python zelf. De pod draait als niet-
 |--------|--------|-------|
 | `search_catalog` per vraag | 5 | Voorkomt oneindige zoeklussen |
 | `MAX_TOOL_ITERATIONS` | 25 | Breekt de agent-loop af bij te veel stappen |
-| `MAX_HISTORY` | 40 | Beheert context window grootte |
+| `MAX_HISTORY` | 40 | Beheert context window grootte; de eerste vraag blijft altijd staan (#789). De helft is het aantal vragen per gesprek |
 | Tool-resultaat grootte | 12.000 karakters | Voorkomt oversized responses |
 
 ### Rate limiting

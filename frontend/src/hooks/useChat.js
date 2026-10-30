@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { chatSocket, checkSession, endSession } from '../auth'
-import { MAX_HISTORY } from '../constants'
+import { trimHistory } from '../contextLimits'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
 import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
@@ -19,8 +19,9 @@ export const REASON_TOAST_MS = 4000
 // without text: the server then closes that turn, so the next question does not continue it (#548).
 const afgebroken = m => !!(m.interrupted || m.stopped)
 
-export function buildHistory(messages) {
-  return messages
+// Cut like the server (#789): at most maxHistory messages, the first question stays.
+export function buildHistory(messages, maxHistory) {
+  const history = messages
     .filter(m =>
       (m.role === 'user' || m.role === 'assistant') &&
       (m.content || afgebroken(m)) &&
@@ -29,12 +30,13 @@ export function buildHistory(messages) {
       !m.starterQuestions
     )
     .map(m => ({ role: m.role, content: m.content || '', ...(afgebroken(m) && { afgebroken: true }) }))
-    .slice(-MAX_HISTORY)
+  return trimHistory(history, maxHistory)
 }
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
 
-export function useChat() {
+// maxHistory: the server's MAX_HISTORY from /api/config (#789); without it the constant.
+export function useChat({ maxHistory } = {}) {
   const [messages, setMessages] = useState([])
   const [busy, setBusy] = useState(false)
   const [thinking, setThinking] = useState(false)
@@ -60,6 +62,9 @@ export function useChat() {
   const reportRequestedRef = useRef(false)
   // De laatste instellingen: elke verbinding is een nieuwe serversessie en krijgt ze bij het openen (#756).
   const settingsRef = useRef(null)
+  // Via a ref, so sendHistory stays the same function: a new one would send the open conversation again.
+  const maxHistoryRef = useRef(maxHistory)
+  useEffect(() => { maxHistoryRef.current = maxHistory })
   // Each question records the model it went out with, so a reopened conversation can resume it (#242).
   const modelRef = useRef(null)
   const idRef = useRef(0)
@@ -539,7 +544,7 @@ export function useChat() {
   // connection: ChatPage sends the open conversation on every (re)connect itself (#756).
   // Returns whether the frame went out.
   const sendHistory = useCallback((msgs, convId = null) => {
-    const history = buildHistory(msgs)
+    const history = buildHistory(msgs, maxHistoryRef.current)
     if (!history.length || wsRef.current?.readyState !== WebSocket.OPEN) return false
     wsRef.current.send(JSON.stringify({ action: 'history', messages: history, ...(convId ? { conv_id: String(convId) } : {}) }))
     return true

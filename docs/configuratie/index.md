@@ -28,7 +28,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `TEMPERATURE` | `0` | Sampling-temperatuur van het model; 0 voor herhaalbare analyses |
 | `SEED` | `42` | Vaste seed voor providers die dat ondersteunen; de rest negeert hem |
 | `MAX_TOOL_ITERATIONS` | `25` | Maximum tool-aanroepen per vraag |
-| `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis |
+| `MAX_HISTORY` | `40` | Maximum aantal berichten in gespreksgeschiedenis die het model ziet. Daarboven vallen de oudste berichten af, maar de eerste vraag blijft staan: live, bij een heropend gesprek en in de browser op dezelfde manier (#789). Bepaalt ook het aantal vragen per gesprek: `MAX_HISTORY // 2` (een vraag en zijn antwoord), minimaal 1; daarna neemt de chat geen nieuwe vraag meer aan. De frontend krijgt beide via `/api/config` en volgt dus een gewijzigde instelling |
 | `CHAT_RATE_LIMIT` | `30` | Verzoeken die het model kosten (vraag, verduidelijking, dashboard, rapport) per gebruiker per venster; zonder login per verbinding. Daarboven een melding met de wachttijd (#444) |
 | `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |

@@ -346,3 +346,38 @@ describe('ChatPage: elke weigering zegt waarom (#585)', () => {
     expect(notice().textContent).toBe('Even wachten: probeer het zo opnieuw')
   })
 })
+
+// #789: de melding telt vragen en zegt dat ook; de grens komt van de server (max_chat_turns via /api/config).
+describe('ChatPage: de melding over een volle chat (#789)', () => {
+  const vragen = n => Array.from({ length: n }, (_, i) => [
+    { id: 2 * i, role: 'user', content: `Vraag ${i}`, done: true },
+    { id: 2 * i + 1, role: 'assistant', content: `Antwoord ${i}.`, tools: [], done: true },
+  ]).flat()
+  const banner = () => container.querySelector('.context-limit-banner')?.textContent ?? null
+
+  it('zegt bij een volle chat hoeveel vragen er passen, met de grens van de server', async () => {
+    chat.messages = vragen(5)
+    await mount(createElement(ChatPage, { settings: {}, user: 'gast', maxChatTurns: 5 }))
+    expect(banner()).toBe('Chat is vol (5 vragen). Begin een nieuw gesprek om door te gaan.')
+  })
+
+  it('waarschuwt vanaf 80% van de grens en telt vragen, geen berichten', async () => {
+    chat.messages = vragen(4)
+    await mount(createElement(ChatPage, { settings: {}, user: 'gast', maxChatTurns: 5 }))
+    expect(banner()).toBe('Chat raakt vol (4/5 vragen). Overweeg een nieuw gesprek te starten.')
+  })
+
+  it('weigert een nieuwe vraag op de grens van de server', async () => {
+    chat.messages = vragen(5)
+    await mount(createElement(ChatPage, { settings: {}, user: 'gast', maxChatTurns: 5 }))
+    await typ('Nog een vraag')
+    await tik()
+    expect(chat.send).not.toHaveBeenCalled()
+  })
+
+  it('valt zonder prop terug op MAX_CHAT_TURNS', async () => {
+    chat.messages = vragen(MAX_CHAT_TURNS)
+    await mount(createElement(ChatPage, { settings: {}, user: 'gast' }))
+    expect(banner()).toBe(`Chat is vol (${MAX_CHAT_TURNS} vragen). Begin een nieuw gesprek om door te gaan.`)
+  })
+})

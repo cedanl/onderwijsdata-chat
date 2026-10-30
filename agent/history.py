@@ -2,6 +2,12 @@ from core.config import MAX_HISTORY
 
 
 def trim(history: list[dict]) -> tuple[list[dict], bool]:
+    """Hoogstens MAX_HISTORY berichten, met de eerste gebruikersvraag altijd vooraan.
+
+    De enige manier van inkorten (#789): het live gesprek en een heropend gesprek
+    (routes/chat._parse_history) gebruiken deze functie, de client spiegelt haar in
+    frontend/src/contextLimits.js trimHistory. Geeft ook terug of er iets afviel.
+    """
     if len(history) <= MAX_HISTORY:
         return history, False
     first_user = next((m for m in history if m["role"] == "user"), None)

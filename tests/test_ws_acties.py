@@ -11,6 +11,7 @@ import logging
 
 import pytest
 
+from agent import history
 from core import config
 from routes import chat
 
@@ -484,6 +485,21 @@ def test_een_enkel_bericht_groter_dan_de_cap_wordt_afgekapt(monkeypatch):
 
     assert len(berichten) == 1
     assert len(berichten[0]["content"]) == 100
+
+
+def test_een_heropend_lang_gesprek_houdt_zijn_eerste_vraag(monkeypatch):
+    """#789: heropenen kort in zoals het live gesprek (agent/history.trim), niet door de oudste te laten vallen.
+
+    De eerste vraag is het onderwerp van rapport en dashboard; een lang heropend gesprek raakte die kwijt.
+    """
+    monkeypatch.setattr(history, "MAX_HISTORY", 6)
+    beurten = [{"role": r, "content": f"{r} {i}"} for i in range(6) for r in ("user", "assistant")]
+
+    berichten = chat._parse_history(beurten)
+
+    assert berichten[0] == {"role": "user", "content": "user 0"}
+    assert berichten == [beurten[0], *beurten[-5:]]
+    assert berichten == history.trim(beurten)[0]
 
 
 def test_een_gewoon_gesprek_blijft_volledig_openen():

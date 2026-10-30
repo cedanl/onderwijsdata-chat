@@ -12,9 +12,10 @@ import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
 import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
-import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS } from './constants'
+import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
+import { resolveMaxChatTurns, resolveMaxHistory } from './contextLimits'
 import { applyMode } from './theme'
 import { wisPwaCaches } from './pwaCaches'
 import { NavSlotContext } from './navSlot'
@@ -71,6 +72,9 @@ function AppShell() {
   const [dashboardsEnabled, setDashboardsEnabled] = useState(false)
   const [feedbackEnabled, setFeedbackEnabled] = useState(false)
   const [maxMessageChars, setMaxMessageChars] = useState(MAX_MESSAGE_CHARS)
+  // The context limits of the server (#789): questions per conversation and messages the model sees.
+  const [maxChatTurns, setMaxChatTurns] = useState(MAX_CHAT_TURNS)
+  const [maxHistory, setMaxHistory] = useState(MAX_HISTORY)
   // The server ended the session (#499): the login screen says why. Logout needs no notice.
   const [sessionExpired, setSessionExpired] = useState(false)
   // The user erased all their data (#646): the login screen confirms it.
@@ -162,6 +166,8 @@ function AppShell() {
         setDashboardsEnabled(config.dashboards_enabled === true)
         setFeedbackEnabled(config.feedback_enabled === true)
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
+        setMaxChatTurns(resolveMaxChatTurns(config.max_chat_turns))
+        setMaxHistory(resolveMaxHistory(config.max_history))
       }).catch(() => {
         setDashboardsEnabled(false)
       }),
@@ -272,7 +278,7 @@ function AppShell() {
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
               <Routes>
                 <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
-                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
+                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
                 <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
                 <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />

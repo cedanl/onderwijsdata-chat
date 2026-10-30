@@ -59,7 +59,7 @@ changelog-item wat er anders is.
 | `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
 | `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`; bij `onderwijsdata` onder `manifest` ook de meegebouwde CBS-catalogus: `catalogusrevisie`, `consistent`, `aantal`, `laatste_succesvolle_controle` en `versheid`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download. Bewust zonder inloggen bereikbaar, voor de controle na een deploy (`SECURITY.md`, S20) |
 | `GET` | `/info` | Naam en of OIDC aan staat |
-| `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled` en `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk) |
+| `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled`, `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk), `max_chat_turns` (maximum vragen per gesprek) en `max_history` (maximum berichten die het model ziet) |
 | `GET` | `/api/catalog/counts` | Aantal datasets per bron (CBS, DUO, RIO) uit de catalogus die de app doorzoekt |
 | `GET` | `/api/docs`, `/redoc`, `/api/openapi.json` | API-documentatie (Swagger UI, ReDoc) en het OpenAPI-schema. Alleen lokaal, op development en op test; met `APP_ENV` `playground` of `production` bestaan ze niet (`SECURITY.md`, S23) |
 

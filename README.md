@@ -79,7 +79,7 @@ Optionele instellingen:
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
-| `MAX_HISTORY` | `40` | Maximum berichten in chat-geschiedenis |
+| `MAX_HISTORY` | `40` | Maximum berichten in chat-geschiedenis (de eerste vraag blijft); de helft is het maximum aantal vragen per gesprek |
 | `MAX_MESSAGE_CHARS` | `4000` | Maximum tekens per nieuw chatbericht; langere berichten weigert de server |
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |

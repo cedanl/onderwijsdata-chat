@@ -3,9 +3,9 @@ import { useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDialog } from '../hooks/useDialog'
 import { postAlgemeneFeedback } from '../api'
+import { MAX_FEEDBACK_CHARS } from '../constants'
 
 const SOORTEN = [['idee', 'Idee'], ['probleem', 'Probleem'], ['compliment', 'Compliment']]
-const MAX_TEKST = 2000
 // What the team gets (#600): the same pattern as the feedback per answer (AnswerFeedback).
 const BEWAARD = 'Het team krijgt je bericht met je accountnaam en de pagina waar je was, en bewaart het 90 dagen. ' +
   'Zet er geen persoonsgegevens in.'
@@ -73,7 +73,7 @@ export default function AlgemeneFeedbackModal({ onClose }) {
             <p className="feedback-intro">Een idee, iets dat niet werkt of een compliment: laat het ons weten.</p>
             <div className="feedback-question">
               <label htmlFor={`${titleId}-tekst`}>Wat wil je ons laten weten?</label>
-              <textarea id={`${titleId}-tekst`} rows={4} maxLength={MAX_TEKST} value={tekst} aria-describedby={bewaardId}
+              <textarea id={`${titleId}-tekst`} rows={4} maxLength={MAX_FEEDBACK_CHARS} value={tekst} aria-describedby={bewaardId}
                 onChange={e => setTekst(e.target.value)} />
             </div>
             <fieldset className="feedback-question">
