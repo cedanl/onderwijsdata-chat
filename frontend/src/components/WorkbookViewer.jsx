@@ -8,6 +8,7 @@ import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
+import WorkbookMarkdown from './WorkbookMarkdown'
 import WorkbookPrint, { ruimPrintframeOp } from './WorkbookPrint'
 import RapportNavActies from './RapportNavActies'
 import ReportFrameFallback from './ReportFrameFallback'
@@ -155,6 +156,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
         ) : (
           <div className="wb-viewer-actions">
             <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+            <WorkbookMarkdown workbook={workbook} save={save} />
             <WorkbookPrint html={reportFrame.printDoc} />
             {feedbackEnabled && (
               feedbackGiven ? (
