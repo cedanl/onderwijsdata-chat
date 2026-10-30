@@ -24,8 +24,9 @@ export function persistConversationHistory(list) {
 
 export const newConversationId = () => crypto.randomUUID()
 
+// An answer stopped because the user left before it said anything still shows that line (#772).
 const showsSomething = m =>
-  !!(m.content || m.figures?.length || m.tools?.length || m.clarification || m.vervangen?.length)
+  !!(m.content || m.figures?.length || m.tools?.length || m.clarification || m.vervangen?.length || m.weggegaan)
 
 // A reopened conversation shows what the chat showed (#109). Records from the old server copy
 // also hold tool messages ('OK', catalogue JSON) and tool calls without text, and a stopped

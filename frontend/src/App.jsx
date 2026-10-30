@@ -22,6 +22,7 @@ import { wisPwaCaches } from './pwaCaches'
 import { NavSlotContext } from './navSlot'
 import SkipLink, { MAIN_ID } from './components/SkipLink'
 import { useVraagUitLink, wachtVoorgevuldeVraag } from './voorgevuldeVraag'
+import { RunBewaking, useBewaak } from './runBewaking'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
 const ChatPage = lazy(() => import('./pages/ChatPage'))
@@ -35,7 +36,10 @@ function loadSettings() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      {/* Weggaan tijdens een antwoord of rapport vraagt eerst om bevestiging (#772). */}
+      <RunBewaking>
+        <AppShell />
+      </RunBewaking>
     </BrowserRouter>
   )
 }
@@ -226,9 +230,10 @@ function AppShell() {
     setTeOpenenGesprek(id)
     navigate('/chat')
   }
+  const bewaak = useBewaak()
   const openRapportUitZoeken = (id) => {
     setZoekOpen(false)
-    navigate(`/rapporten?id=${encodeURIComponent(id)}`)
+    bewaak(() => navigate(`/rapporten?id=${encodeURIComponent(id)}`))
   }
   const gesprekGeopend = useCallback(() => setTeOpenenGesprek(null), [])
 

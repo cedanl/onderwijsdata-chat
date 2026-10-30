@@ -7,6 +7,7 @@ import { closeWithoutText, metDeeltekst, withdrawText } from '../turnTrace'
 import { createHeartbeat, createRetry, opgevenBij, watchNetwork } from '../socketHealth'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { reportBlockReason } from '../reportBlockReason'
+import { markeerWeggegaan } from '../weggegaan'
 
 // A report without report_ready after this long counts as failed (#219). Reports take
 // around five minutes (#417); the server has no limit of its own, so the wait ends here.
@@ -98,6 +99,8 @@ export function useChat({ maxHistory } = {}) {
   }, [])
   // A report run that was stopped but not yet ended by the server: what it still sends is dropped.
   const reportAbandonedRef = useRef(false)
+  // The same for a chat run the user left (#772), until it ends: its last events belong to the conversation left behind.
+  const runVerlatenRef = useRef(false)
   // Per reason, until when its toast shows: quick taps during an outage stacked identical toasts (#648).
   const reasonToastUntilRef = useRef({})
   const nextId = () => ++idRef.current
@@ -214,6 +217,7 @@ export function useChat({ maxHistory } = {}) {
         setHistoryDataKeys(ev.data_keys || 0)
         // The server stopped the old run before it read the history frame: what comes now is this conversation's (#761).
         resettingRef.current = false
+        runVerlatenRef.current = false
         setResetting(false)
       },
       // The server refused a question because a run is still going (#145): say so,
@@ -340,6 +344,7 @@ export function useChat({ maxHistory } = {}) {
       },
       reset_done() {
         resettingRef.current = false
+        runVerlatenRef.current = false
         setResetting(false)
       },
       report_generating() {
@@ -378,6 +383,7 @@ export function useChat({ maxHistory } = {}) {
       'tool_end', 'figure', 'message_end', 'clarification', 'starter_questions', 'error', 'run_slow',
     ])
     const reportEndEvents = new Set(['report_ready', 'report_error', 'report_cancelled'])
+    const runEndEvents = new Set(['message_end', 'clarification', 'starter_questions', 'error'])
     const reportRefusals = new Set(['busy', 'error'])
 
     // A silently dead connection (wifi drop) fires onclose only after the TCP timeout;
@@ -447,6 +453,7 @@ export function useChat({ maxHistory } = {}) {
         heartbeat.start()
         // A new connection is a new server session, so a pending reset is moot.
         resettingRef.current = false
+        runVerlatenRef.current = false
         setResetting(false)
         // Not a reset: a socket the server closes right away (1013) must not start the count over (#783).
         retry.opened()
@@ -469,6 +476,10 @@ export function useChat({ maxHistory } = {}) {
         if (reportAbandonedRef.current) {
           if (reportEndEvents.has(event.type)) reportAbandonedRef.current = false
           if (reportEndEvents.has(event.type) || chatStreamEvents.has(event.type)) return
+        }
+        if (runVerlatenRef.current && chatStreamEvents.has(event.type)) {
+          if (runEndEvents.has(event.type)) runVerlatenRef.current = false
+          return
         }
         if (reportRequestedRef.current && reportRefusals.has(event.type)) {
           refuseReport(event)
@@ -564,6 +575,30 @@ export function useChat({ maxHistory } = {}) {
     wsRef.current?.send(JSON.stringify({ action: 'stop' }))
   }, [])
 
+  // The user leaves while an answer or a report runs (#772): it stops cleanly, as with the stop button, and is marked as
+  // stopped because they left, not as a broken connection. At once, without waiting for the server: the page or the
+  // conversation is about to go.
+  const verlaat = useCallback(() => {
+    const rapport = reportingRef.current
+    if (!rapport && !busyRef.current) return
+    const deeltekst = deltaBufferRef.current
+    deltaBufferRef.current = ''
+    cancelDeltaFrame()
+    if (rapport) {
+      abandonReport()
+    } else {
+      if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ action: 'stop' }))
+      runVerlatenRef.current = true
+    }
+    const id = nextId()
+    setMessages(prev => markeerWeggegaan(prev, { rapport, id, deeltekst }))
+    currentMsgRef.current = null
+    lastSentRef.current = null
+    busyRef.current = false
+    setBusy(false)
+    setThinking(false)
+  }, [abandonReport, cancelDeltaFrame])
+
   // Every tap gives a result (#648): whether a report can start now; when it cannot, a toast says why.
   const checkReportStart = useCallback(() => {
     const reden = reportBlockReason({
@@ -653,5 +688,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

@@ -50,6 +50,8 @@ import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
 import { neemVoorgevuldeVraag, useVraagUitLink } from '../voorgevuldeVraag'
 import { Message } from '../components/Message'
+import { useBewaak, useLopendeRun } from '../runBewaking'
+import { eindigtWeggegaan, markeerWeggegaan } from '../weggegaan'
 
 // De berichtweergave staat in components/ (#696); bestaande imports van Message uit deze pagina blijven werken.
 export { Message } from '../components/Message'
@@ -75,7 +77,13 @@ const GESPREK = '.chat-messages'
 
 export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
+  // Weggaan tijdens een antwoord of rapport (#772): eerst een bevestiging, dan stopt de run netjes (runBewaking.jsx).
+  const bewaak = useBewaak()
+  const runSoort = reportBusy ? 'rapport' : busy ? 'antwoord' : null
+  useLopendeRun(runSoort, verlaat)
+  const runSoortRef = useRef(runSoort)
+  useEffect(() => { runSoortRef.current = runSoort })
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
@@ -338,14 +346,18 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       .finally(() => setOpeningId(null))
   }, [openingId, saveConversation, openConversation, addToast, tokenAtMount])
 
+  // Een ander of nieuw gesprek stopt een lopende run: via de bevestiging (#772).
+  const laadGesprek = useCallback(conv => bewaak(() => handleLoad(conv)), [bewaak, handleLoad])
+  const nieuwGesprek = useCallback(() => bewaak(handleClear), [bewaak, handleClear])
+
   // A conversation picked in the search palette (#602) opens here, once; App forgets it straight away.
   const handleLoadRef = useRef(handleLoad)
   useEffect(() => { handleLoadRef.current = handleLoad })
   useEffect(() => {
     if (!teOpenenGesprek) return
     onGesprekGeopend?.()
-    handleLoadRef.current({ id: teOpenenGesprek })
-  }, [teOpenenGesprek, onGesprekGeopend])
+    bewaak(() => handleLoadRef.current({ id: teOpenenGesprek }))
+  }, [teOpenenGesprek, onGesprekGeopend, bewaak])
 
   // A question from a link into the app (#709) starts a new conversation and waits in the box, unsent. The
   // conversation that was open is saved first, as with "Nieuw gesprek". A link that arrives while an answer or a
@@ -528,11 +540,20 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     // Logging out unmounts this page after App cleared the stored history;
     // saving here would write the conversation straight back.
     if (sessionEndedSince(tokenAtMount)) return
+    // Weg zonder de bevestiging (de terugknop van de browser) terwijl er iets liep: ook dan gestopt omdat je wegging (#772).
+    const soort = runSoortRef.current
+    if (soort) {
+      const { id, messages: open } = openChatRef.current
+      openChatRef.current = { id, messages: markeerWeggegaan(open, { rapport: soort === 'rapport' }) }
+    }
     // No toast or state here: both live in the page that is going away. A full storage
     // was already reported by the save after each finished answer (#521).
     const updated = putOpenConversation()
     if (updated) persistConversationHistory(updated)
-    clearCurrentChat()
+    // Wie wegging terwijl er iets liep, vindt bij terugkeer hetzelfde gesprek terug (#772); anders begint /chat leeg.
+    const { id, messages: open } = openChatRef.current
+    if (eindigtWeggegaan(open) && !isVerwijderd(verwijderdRef.current, id, open)) persistCurrentChat(id, open)
+    else clearCurrentChat()
   }, [putOpenConversation, tokenAtMount])
 
   const handleModelChange = useCallback((id) => {
@@ -696,7 +717,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
 
         {/* Sidebar */}
         <aside className={`chat-sidebar${sidebarOpen ? ' open' : ''}`} inert={narrowScreen && !sidebarOpen}>
-          <button type="button" className="new-chat-btn" onClick={handleClear}>
+          <button type="button" className="new-chat-btn" onClick={nieuwGesprek}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -719,7 +740,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             loadingMore={loadingMoreHistory}
             openingId={openingId}
             onLoadMore={handleLoadMoreHistory}
-            onLoad={handleLoad}
+            onLoad={laadGesprek}
             onDelete={handleDeleteConversation}
             onRename={handleRenameConversation}
             search={historySearch}
@@ -743,7 +764,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
               <WelcomeScreen instelling={settings.instelling} functie={settings.functie}>
                 {/* The conversation this browser opened last (#603), only if it is one of this account. */}
                 {gaVerder && (
-                  <button type="button" className="ga-verder-chip" onClick={() => handleLoad(gaVerder)} disabled={!!openingId}>
+                  <button type="button" className="ga-verder-chip" onClick={() => laadGesprek(gaVerder)} disabled={!!openingId}>
                     Ga verder met <span className="ga-verder-titel">{gaVerder.title}</span>
                   </button>
                 )}

@@ -89,6 +89,8 @@ describe('de grafiek in de bubbel van het antwoord', () => {
     chat.messages = []
     chat.busy = false
     scherm.smal = false
+    // Een unmount tijdens een antwoord bewaart het gesprek voor de terugkeer (#772); de volgende test begint leeg.
+    localStorage.clear()
   })
 
   // Een tweede aanroep tekent dezelfde pagina opnieuw, met wat chat dan bevat (een volgende stand van de stream).
