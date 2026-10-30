@@ -53,37 +53,50 @@ def _cellen(df: pd.DataFrame, sleutel: list[str]) -> pd.DataFrame:
     return df.assign(**{k: df[k].map(_tekst) for k in sleutel})
 
 
-def kies_opleiding(niveau: pd.DataFrame, gevraagd: str) -> Opleiding | str:
-    """De opleiding in de rijen van één instelling, op CROHO-code of naam; de fout als tekst. Geen gok.
+def zoek(opleidingen: pd.DataFrame, gevraagd: str) -> pd.DataFrame:
+    """De opleidingen (CODE, NAAM) die bij `gevraagd` passen: op code, anders op naam, anders op deel van een naam.
 
-    Een naam telt als hij gelijk is (hoofdletters niet), anders als deel van een naam ("Luchtvaart"). Meer dan één
-    opleiding is een keuze voor het model, met de codes erbij.
+    Een naam telt als hij gelijk is (hoofdletters niet), anders als deel van een naam ("Luchtvaart").
+    """
+    tekst = " ".join(str(gevraagd or "").split()).lower()
+    if tekst.isdigit():
+        return opleidingen[opleidingen[CODE] == tekst]
+    namen = opleidingen[NAAM].astype(str).str.lower()
+    if (namen == tekst).any():
+        return opleidingen[namen == tekst]
+    return opleidingen[namen.str.contains(tekst, regex=False)]
+
+
+def kies_uit(opleidingen: pd.DataFrame, gevraagd: str) -> Opleiding | str:
+    """De ene opleiding (CODE, NAAM) die bij `gevraagd` past; de fout als tekst. Geen gok.
+
+    Meer dan één opleiding is een keuze voor het model, met de codes erbij. Ook de accreditatietool kiest
+    hiermee (#726).
     """
     tekst = " ".join(str(gevraagd or "").split())
     if not tekst:
         return "Geef de opleiding: haar naam of CROHO-code."
-    opleidingen = (
-        niveau.assign(**{CODE: niveau[CODE].map(_tekst)})
-        .sort_values("STUDIEJAAR")
-        .drop_duplicates(CODE, keep="last")[[CODE, NAAM]]
-    )
-    namen = opleidingen[NAAM].astype(str).str.lower()
-    if tekst.isdigit():
-        gevonden = opleidingen[opleidingen[CODE] == tekst]
-    elif (namen == tekst.lower()).any():
-        gevonden = opleidingen[namen == tekst.lower()]
-    else:
-        gevonden = opleidingen[namen.str.contains(tekst.lower(), regex=False)]
+    gevonden = zoek(opleidingen, tekst)
     if len(gevonden) == 1:
         return Opleiding(gevonden[CODE].iloc[0], str(gevonden[NAAM].iloc[0]))
     if len(gevonden) > 1:
-        keuzes = "; ".join(f"{naam} ({code})" for code, naam in gevonden.itertuples(index=False))
+        keuzes = "; ".join(f"{naam} ({code})" for code, naam in gevonden[[CODE, NAAM]].itertuples(index=False))
         return f"Meer opleidingen passen bij {tekst!r}: {keuzes}. Geef de CROHO-code van de bedoelde."
     voorstellen = difflib.get_close_matches(
         tekst, opleidingen[NAAM].astype(str).tolist(), n=_MAX_VOORSTELLEN, cutoff=0.4
     )
     hint = f" Bedoel je een van deze: {'; '.join(voorstellen)}?" if voorstellen else ""
     return f"Geen opleiding {tekst!r} bij deze instelling in het bestand.{hint}"
+
+
+def kies_opleiding(niveau: pd.DataFrame, gevraagd: str) -> Opleiding | str:
+    """De opleiding in de rijen van één instelling, op CROHO-code of naam; de fout als tekst. Geen gok."""
+    opleidingen = (
+        niveau.assign(**{CODE: niveau[CODE].map(_tekst)})
+        .sort_values("STUDIEJAAR")
+        .drop_duplicates(CODE, keep="last")[[CODE, NAAM]]
+    )
+    return kies_uit(opleidingen, gevraagd)
 
 
 def _reden(eigen: pd.DataFrame, in_cellen: pd.DataFrame, geslacht: pd.DataFrame, sleutel, waarde, opl) -> str | None:
