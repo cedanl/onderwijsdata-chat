@@ -25,6 +25,7 @@ TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
 TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
+TOOL_GET_ACCREDITATIE = "get_accreditatie"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -291,7 +292,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "eindoordeel, de standaarden op bestuursniveau, de vaststellingsdatum, de peildatum en de bron. Gebruik "
                 "dit bij een vraag naar het inspectieoordeel of de kwaliteit volgens de Inspectie. Het oordeel geldt per "
                 "bestuur, niet per instelling of opleiding; een noot zegt wanneer het bestuur ook po, vo of ho heeft. "
-                "Hbo en wo krijgen geen oordeel per bestuur (NVAO)."
+                "Hbo en wo krijgen geen oordeel per bestuur: daar accrediteert de NVAO de opleidingen. De "
+                f"accreditatiedatums per opleiding staan in {TOOL_GET_ACCREDITATIE}; NVAO-oordelen zitten (nog) niet in "
+                "de app."
             ),
             "parameters": {
                 "type": "object",
@@ -327,6 +330,35 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["instelling"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_ACCREDITATIE,
+            "description": (
+                "De accreditatie van één hbo- of wo-opleiding bij één instelling, uit DUO's Overzicht Erkenningen ho "
+                "(dagelijks bijgewerkt): de besluitdatum van de NVAO, de begindatum, de uiterste indiening voor de "
+                "volgende beoordeling, en waar van toepassing voorwaarden, verlenging, intrekking, afbouw en de "
+                "vervaldatum van een nieuwe opleiding, elk met zijn betekenis, plus peilmoment en bron. Gebruik dit "
+                "bij een vraag naar de accreditatie van een opleiding. Neem de betekenis per datum over: de uiterste "
+                "indiening is geen einddatum. Er zit geen NVAO-oordeel in (voldoende, goed): noem er geen. Eén "
+                "opleiding per aanroep, geen ranglijst."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de hbo- of wo-instelling uit het register.",
+                    },
+                    "opleiding": {
+                        "type": "string",
+                        "description": "Naam of CROHO-code van de opleiding, bijv. 'Bedrijfskunde' of '34035'.",
+                    },
+                },
+                "required": ["instelling", "opleiding"],
             },
         },
     },
