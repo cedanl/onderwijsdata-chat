@@ -4,8 +4,8 @@ import { terugInLijst } from '../verwijderenMetUitstel'
 
 // Waiting for a pause in typing keeps it to one request per search, not one per key.
 export const SEARCH_DELAY_MS = 300
-// One page of hits; the server searches all of the user's conversations (#124).
-const SEARCH_LIMIT = 50
+// One page of hits, the server's maximum; the server searches all of the user's conversations (#124), newest first.
+export const SEARCH_LIMIT = 50
 
 // Search in the conversation history (#124). Lives in the page, not in the sidebar, so the
 // query and its results survive closing and opening the mobile drawer.
@@ -14,6 +14,8 @@ export function useConversationSearch() {
   const [results, setResults] = useState(null)
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState(false)
+  // A full page: older hits may be missing, and the list says so (#779).
+  const [full, setFull] = useState(false)
   const latestRef = useRef('')
   // Hits deleted while their undo is pending (#529): id -> the query they were removed from.
   const hiddenRef = useRef(new Map())
@@ -23,6 +25,7 @@ export function useConversationSearch() {
   useEffect(() => {
     latestRef.current = term
     setError(false)
+    setFull(false)
     if (!term) {
       setResults(null)
       setSearching(false)
@@ -33,6 +36,7 @@ export function useConversationSearch() {
       fetchConversations({ q: term, limit: SEARCH_LIMIT })
         .then(rows => {
           if (latestRef.current !== term) return
+          setFull(rows.length >= SEARCH_LIMIT)
           setResults(rows.filter(c => !hiddenRef.current.has(String(c.id))))
         })
         .catch(() => {
@@ -61,5 +65,5 @@ export function useConversationSearch() {
     setResults(rows => rows && terugInLijst(rows, conv, index))
   }, [])
 
-  return { query, setQuery, results, searching, error, removeResult, restoreResult }
+  return { query, setQuery, results, searching, error, full, removeResult, restoreResult }
 }

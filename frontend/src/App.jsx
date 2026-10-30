@@ -19,7 +19,7 @@ import { applyMode } from './theme'
 import { wisPwaCaches } from './pwaCaches'
 import { NavSlotContext } from './navSlot'
 import SkipLink, { MAIN_ID } from './components/SkipLink'
-import { wachtVoorgevuldeVraag } from './voorgevuldeVraag'
+import { useVraagUitLink, wachtVoorgevuldeVraag } from './voorgevuldeVraag'
 
 // Plotly and syntax highlighting are most of the bundle; the login and home routes do not need them (#110).
 const ChatPage = lazy(() => import('./pages/ChatPage'))
@@ -214,10 +214,11 @@ function AppShell() {
   const gesprekGeopend = useCallback(() => setTeOpenenGesprek(null), [])
 
   // A question from a link (#709) waits through the login; once in, the chat takes it. SRAM lands back on /.
+  const vraagUitLink = useVraagUitLink()
   useEffect(() => {
     if (authLoading || (authRequired && !user)) return
     if (location.pathname !== '/chat' && wachtVoorgevuldeVraag()) navigate('/chat', { replace: true })
-  }, [authLoading, authRequired, user, location.pathname, navigate])
+  }, [authLoading, authRequired, user, location.pathname, navigate, vraagUitLink])
 
   if (authLoading) return <div className="app-loading" role="status">openEDUdata+ wordt geladen…</div>
 

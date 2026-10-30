@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client'
 vi.mock('../api', () => ({ fetchConversations: vi.fn() }))
 
 import { fetchConversations } from '../api'
-import { useConversationSearch, SEARCH_DELAY_MS } from '../hooks/useConversationSearch'
+import { useConversationSearch, SEARCH_DELAY_MS, SEARCH_LIMIT } from '../hooks/useConversationSearch'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -133,5 +133,21 @@ describe('useConversationSearch remove and restore', () => {
 
     await searchFor('uitval')
     expect(search.results.map(c => c.id)).toEqual(['c1', 'c2', 'c3'])
+  })
+
+  // #779: de server geeft hoogstens één pagina; was die vol, dan kunnen oudere treffers ontbreken.
+  it('says whether the page of hits was full', async () => {
+    const rij = i => ({ id: `c${i}`, title: `Gesprek ${i}`, timestamp: i })
+    fetchConversations.mockResolvedValueOnce(Array.from({ length: SEARCH_LIMIT }, (_, i) => rij(i)))
+    await act(async () => { search.setQuery('hbo') })
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
+    expect(fetchConversations).toHaveBeenCalledWith(expect.objectContaining({ limit: SEARCH_LIMIT }))
+    expect(search.full).toBe(true)
+
+    fetchConversations.mockResolvedValueOnce([rij(1), rij(2)])
+    await act(async () => { search.setQuery('hbo uitval') })
+    expect(search.full).toBe(false)
+    await act(async () => { vi.advanceTimersByTime(SEARCH_DELAY_MS) })
+    expect(search.full).toBe(false)
   })
 })

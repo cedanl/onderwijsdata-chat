@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // #709: a link /chat#vraag=… carries a question into the app. It is read once, cleaned and bounded, and leaves the
 // address bar; in sessionStorage it survives the login, also the round trip via SRAM.
-import { describe, it, expect, beforeEach } from 'vitest'
-import { MAX_VOORGEVULDE_VRAAG, bewaarVraagUitUrl, neemVoorgevuldeVraag, schoonVraag, wachtVoorgevuldeVraag } from '../voorgevuldeVraag'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { MAX_VOORGEVULDE_VRAAG, bewaarVraagUitUrl, luisterNaarVraagInUrl, neemVoorgevuldeVraag, schoonVraag, wachtVoorgevuldeVraag } from '../voorgevuldeVraag'
 import { STORAGE_VOORGEVULDE_VRAAG } from '../constants'
 import { clearLocalSessionData } from '../sessionData'
 
@@ -90,6 +90,39 @@ describe('bewaarVraagUitUrl', () => {
     bewaarVraagUitUrl()
     expect(window.location.hash).toBe('#token=abc')
     expect(sessionStorage.getItem(STORAGE_VOORGEVULDE_VRAAG)).toBe('van de login')
+  })
+})
+
+describe('bewaarVraagUitUrl, return value', () => {
+  it('is true only when a question now waits', () => {
+    window.history.replaceState({}, '', '/chat#vraag=hbo')
+    expect(bewaarVraagUitUrl()).toBe(true)
+    window.history.replaceState({}, '', '/chat#vraag=%20')
+    expect(bewaarVraagUitUrl()).toBe(false)
+    window.history.replaceState({}, '', '/chat#deel=2')
+    expect(bewaarVraagUitUrl()).toBe(false)
+  })
+})
+
+describe('luisterNaarVraagInUrl (#806)', () => {
+  it('reads a question that arrives by a hashchange and tells the open app', () => {
+    const gehoord = vi.fn()
+    window.addEventListener('openedudata:voorgevulde-vraag', gehoord)
+    const stop = luisterNaarVraagInUrl()
+
+    window.history.replaceState({}, '', '/chat#vraag=wo%20instroom')
+    window.dispatchEvent(new Event('hashchange'))
+    window.history.replaceState({}, '', '/chat#deel=2')
+    window.dispatchEvent(new Event('hashchange'))
+
+    expect(sessionStorage.getItem(STORAGE_VOORGEVULDE_VRAAG)).toBe('wo instroom')
+    expect(gehoord).toHaveBeenCalledTimes(1)
+
+    stop()
+    window.history.replaceState({}, '', '/chat#vraag=mbo')
+    window.dispatchEvent(new Event('hashchange'))
+    expect(gehoord).toHaveBeenCalledTimes(1)
+    window.removeEventListener('openedudata:voorgevulde-vraag', gehoord)
   })
 })
 

@@ -99,4 +99,70 @@ describe('conversation history: search', () => {
     await renderHistory({ search: zoek({ query: 'xyz', error: true }) })
     expect(container.textContent).toContain('Zoeken lukt nu niet')
   })
+
+  // #779: de server geeft hoogstens 50 treffers, nieuwste eerst; zonder melding leek dat alles.
+  it('says when older hits may be missing behind a full page', async () => {
+    const results = [{ id: 'c9', title: 'Uitval hbo', timestamp: Date.now() }]
+    await renderHistory({ search: zoek({ query: 'hbo', results, full: true }) })
+    expect(container.querySelector('.history-search-note').textContent)
+      .toBe('De 50 nieuwste treffers staan hier. Maak je zoekterm preciezer om oudere te vinden.')
+  })
+
+  it('says nothing extra when the page was not full', async () => {
+    const results = [{ id: 'c9', title: 'Uitval hbo', timestamp: Date.now() }]
+    await renderHistory({ search: zoek({ query: 'hbo', results, full: false }) })
+    expect(container.querySelector('.history-search-note')).toBeNull()
+  })
+})
+
+// #779: het hernoemveld stond binnen de gespreksknop; een <input> in een <button> is ongeldige HTML.
+describe('conversation history: rename', () => {
+  const hernoemKnop = () => container.querySelector('[aria-label="Hernoem gesprek Studenten HU"]')
+  const veld = () => container.querySelector('.title-edit-input')
+  const gespreksKnop = () => container.querySelector('.history-btn[data-conv-id="c1"]')
+
+  async function typ(waarde) {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    await act(async () => {
+      set.call(veld(), waarde)
+      veld().dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+  const toets = key => act(async () => { veld().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
+
+  it('shows the field outside any button, with a name, and focuses it', async () => {
+    await renderHistory()
+    await act(async () => { hernoemKnop().click() })
+    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
+
+    expect(veld()).not.toBeNull()
+    expect(veld().closest('button')).toBeNull()
+    expect(veld().getAttribute('aria-label')).toBe('Nieuwe naam voor gesprek Studenten HU')
+    expect(document.activeElement).toBe(veld())
+    expect(gespreksKnop()).toBeNull()
+  })
+
+  it('saves on Enter and puts the focus back on the conversation', async () => {
+    const onRename = vi.fn()
+    await renderHistory({ onRename })
+    await act(async () => { hernoemKnop().click() })
+    await typ('Studenten HU 2024')
+    await toets('Enter')
+
+    expect(onRename).toHaveBeenCalledWith('c1', 'Studenten HU 2024')
+    expect(veld()).toBeNull()
+    expect(document.activeElement).toBe(gespreksKnop())
+  })
+
+  it('drops the edit on Escape and puts the focus back on the conversation', async () => {
+    const onRename = vi.fn()
+    await renderHistory({ onRename })
+    await act(async () => { hernoemKnop().click() })
+    await typ('Iets anders')
+    await toets('Escape')
+
+    expect(onRename).not.toHaveBeenCalled()
+    expect(veld()).toBeNull()
+    expect(document.activeElement).toBe(gespreksKnop())
+  })
 })

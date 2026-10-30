@@ -61,8 +61,10 @@ const NAMED = [
 ]
 
 // Targets as wide as their row or text, that were too low on phones (#612): the height is what they lack.
-// "Genereer rapport" (#639): 162x33 on a phone. "Help ons verder" in the report feedback (#666).
-const TALL = ['.reasoning-toggle', '.history-search', '.reasoning-step-code summary', '.make-rapport-btn', '.feedback-extra-btn']
+// "Genereer rapport" (#639): 162x33 on a phone. "Help ons verder" in the report feedback (#666). The field for a new
+// conversation name: 24 px high, with autofocus, while typing (#779).
+const TALL = ['.reasoning-toggle', '.history-search', '.reasoning-step-code summary', '.make-rapport-btn', '.feedback-extra-btn',
+  '.history-btn-bewerken .title-edit-input']
 
 describe('tap target tokens', () => {
   it('defines the AA minimum and the touch minimum in :root', () => {

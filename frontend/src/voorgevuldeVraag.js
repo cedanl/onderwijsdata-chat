@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { STORAGE_VOORGEVULDE_VRAAG } from './constants'
 
 // A link into the app can carry a question (#709): /chat#vraag=…, for example from the catalogue MCP server (#707).
@@ -20,9 +21,10 @@ export function schoonVraag(ruw) {
 
 // At startup, before the router and the login screen: the parameter leaves the address bar and history, and the
 // question waits in sessionStorage. That survives the round trip via SRAM in this tab, which lands back on /.
+// True when a question is now waiting.
 export function bewaarVraagUitUrl() {
   const params = new URLSearchParams(window.location.hash.slice(1))
-  if (!params.has(VRAAG_PARAM)) return
+  if (!params.has(VRAAG_PARAM)) return false
   const vraag = schoonVraag(params.get(VRAAG_PARAM))
   params.delete(VRAAG_PARAM)
   const rest = params.toString()
@@ -30,7 +32,29 @@ export function bewaarVraagUitUrl() {
   try {
     if (vraag) sessionStorage.setItem(STORAGE_VOORGEVULDE_VRAAG, vraag)
     else sessionStorage.removeItem(STORAGE_VOORGEVULDE_VRAAG)
-  } catch { /* storage blocked: the link opens the app without the question */ }
+  } catch { /* storage blocked: the link opens the app without the question */ return false }
+  return vraag !== null
+}
+
+// A link opened in a tab where the app already runs only changes the fragment: no reload, so startup never sees it
+// (#806). The same path then, and the open app hears that a question is waiting.
+const VRAAG_GEBEURTENIS = 'openedudata:voorgevulde-vraag'
+
+export function luisterNaarVraagInUrl() {
+  const bijWissel = () => { if (bewaarVraagUitUrl()) window.dispatchEvent(new Event(VRAAG_GEBEURTENIS)) }
+  window.addEventListener('hashchange', bijWissel)
+  return () => window.removeEventListener('hashchange', bijWissel)
+}
+
+// Counts the questions that arrived while the app was open; an effect that takes the question depends on it.
+export function useVraagUitLink() {
+  const [aantal, setAantal] = useState(0)
+  useEffect(() => {
+    const op = () => setAantal(n => n + 1)
+    window.addEventListener(VRAAG_GEBEURTENIS, op)
+    return () => window.removeEventListener(VRAAG_GEBEURTENIS, op)
+  }, [])
+  return aantal
 }
 
 export function wachtVoorgevuldeVraag() {
