@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import WorkbookDownload from './WorkbookDownload'
+import WorkbookMarkdown from './WorkbookMarkdown'
 import { NavSlot } from '../navSlot'
 import { useEscape } from '../hooks/useEscape'
 import { rapportWoord } from '../rapportWoord'
@@ -30,6 +31,7 @@ export default function RapportNavActies({ workbook, instelling, save, feedbackE
             <div className="navbar-menu-overlay" onClick={() => setOpen(false)} aria-hidden="true" />
             <div className="navbar-meer-menu" id="navbar-meer-rapport">
               <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+              <WorkbookMarkdown workbook={workbook} save={save} />
               {afdrukken}
               {feedbackEnabled && (feedbackGiven ? (
                 <span className="navbar-menu-item" role="status">

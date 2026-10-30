@@ -251,6 +251,45 @@ blijft het feitenblok staan (fail closed). Dat raakt `agent/grounding.py`, `agen
 
 ---
 
+## ADR-008: Plotly inline in het rapport, voor een rapport dat offline werkt
+
+**Date:** 2026-10-30  
+**Status:** Decided  
+**Issue:** #812 (restpunt van #689; raakt #642, #660, #796)
+
+### Problem
+Een rapport tekent zijn grafieken met Plotly. In het rapportframe van de viewer laadt het de eigen build zonder
+maplibre (`plotly-rapport`, #660, `frontend/src/plotlyBron.js`), ongeveer 1,1 MB gzip bovenop de route. De download
+krijgt Plotly inline (`frontend/src/offlineHtml.js`), zodat het bestand zonder app en zonder netwerk opent; die
+weegt ongeveer 3,4 MB (gemeten 29-10: 3.376.438 B, vóór #660 4.895.353 B). Op een geknepen 3G-verbinding of een
+databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41).
+
+### Decision
+- **Accepteren:** ongeveer 1,1 MB gzip in het rapportframe en 3,4 MB in de download zijn de bewuste prijs voor
+  een rapport dat offline werkt en als los bestand te delen is.
+- **De rem is het budget:** `npm run budget` (`frontend/scripts/bundleBudget.js`) houdt `plotly-rapport` op
+  1.150.000 B gzip. Groei daarboven is een besluit, geen ongeluk; het budget gaat niet omhoog zonder nieuw besluit.
+- **Niet gekozen:** een Plotly-bundel op maat met alleen de traces die `tools/plot.py` maakt (elk nieuw grafiektype
+  moet dan in de bundel, met een test die de dekking bewaakt), en een download die naar een gecachet asset
+  verwijst (dan werkt het rapport niet meer als los, offline bestand, wat #642 en #660 juist wilden).
+
+### Rationale
+- **Offline en deelbaar:** een rapport is iets om door te sturen en later te openen; de download moet zonder app,
+  netwerk of CDN werken (#486, #642).
+- **Eén bron:** dezelfde build tekent in de viewer, in de download en in "Opslaan als PDF"; geen tweede bundel om
+  gelijk te houden met de grafiektypen van `tools/plot.py`.
+- **Gecachet in de viewer:** het frame laadt het asset onder een gehashte naam en de browser bewaart het een jaar;
+  alleen het eerste rapport na een nieuwe build betaalt de 1,1 MB.
+
+### Trade-off(s)
+- Op een trage mobiele verbinding duurt de eerste rapportweergave lang, en een download is groot voor een mailbijlage.
+- **Heroverwegen** zodra een van deze zich voordoet:
+    - er komen klachten over laadtijd of downloadgrootte op mobiel;
+    - `npm run budget` faalt op `plotly-rapport` en de groei is niet terug te dringen;
+    - een .docx- of andere export vraagt toch statische grafieken (#746).
+
+---
+
 ## How to add a new ADR
 
 1. Increment the number (ADR-008, etc.)
