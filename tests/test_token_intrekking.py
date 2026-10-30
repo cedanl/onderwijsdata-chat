@@ -438,8 +438,8 @@ def test_is_token_revoked(database):
 
     db.revoke_token_hash("h", int(time.time()) + 100)
 
-    assert db.is_token_revoked("h") is True
-    assert db.is_token_revoked("ander") is False
+    assert db.is_token_revoked("h", "u", 0) is True
+    assert db.is_token_revoked("ander", "u", 0) is False
 
 
 def test_bestaande_database_krijgt_de_tabel_zonder_dataverlies(database):
@@ -498,6 +498,8 @@ def test_init_db_maakt_de_tabel_ook_in_postgres(monkeypatch):
     assert any(s.startswith("CREATE TABLE IF NOT EXISTS revoked_tokens") for s in sql)
     assert any("ON revoked_tokens(expires_at)" in s for s in sql)
     assert "DELETE FROM revoked_tokens WHERE expires_at < %s" in sql
+    assert any(s.startswith("CREATE TABLE IF NOT EXISTS revoked_users") for s in sql)
+    assert "DELETE FROM revoked_users WHERE expires_at < %s" in sql
 
 
 # ── Criterium 10: geen token of hash in logs ─────────────────────────────────
@@ -528,7 +530,7 @@ def test_geen_token_of_hash_in_logs(oidc_client, client, caplog):
 def test_databasestoring_geeft_500_en_geen_401(client, monkeypatch):
     from persistence import db
 
-    def storing(token_hash):
+    def storing(token_hash, user_hash, start):
         raise sqlite3.OperationalError("database is locked")
 
     monkeypatch.setattr(db, "is_token_revoked", storing)

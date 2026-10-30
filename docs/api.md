@@ -113,7 +113,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `reset_done`, `pong` | Antwoord op `reset` en op `ping` |
 | `system_message` | Een melding over de serverconfiguratie, zoals een ontbrekende API-sleutel |
 
-**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig of ingetrokken; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
+**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig, verlopen of ingetrokken: bij het verbinden, en vóór elke actie die een run start (`message`, `clarification_choice`, `generate_dashboard`, `generate_report`, `refresh_dashboard`; #786), dan zonder run. De andere acties, ook `ping`, toetsen het token niet opnieuw; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
 
 ---
 
@@ -155,7 +155,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 |---------|-----|--------------|
 | `GET` | `/api/data/csv` | De tabel achter een antwoord als CSV-bijlage (`key` als query param, met BOM voor Excel). Alleen voor een `key` waar een eigen gesprek een recept van heeft; na een herstart haalt de server de tabel opnieuw op. Een vreemde of verdwenen `key` geeft dezelfde 404; een bronfout 502. De header `X-Data-Herladen` meldt dat de cijfers kunnen afwijken van het eerdere antwoord (#269, #472) |
 | `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback en datarecepten van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
-| `DELETE` | `/api/mijn-gegevens` | Verwijdert al het werk van de ingelogde gebruiker in één transactie en trekt het token in. Body precies `{"bevestig": "verwijder"}`, anders 422; zonder authenticatie 404, want dan is er geen eigen account (#646) |
+| `DELETE` | `/api/mijn-gegevens` | Verwijdert al het werk van de ingelogde gebruiker in één transactie en trekt alle tokens van het account in, ook die van een ander apparaat (#786). Body precies `{"bevestig": "verwijder"}`, anders 422; zonder authenticatie 404, want dan is er geen eigen account (#646) |
 | `GET` | `/api/answer-feedback` | De 👍/👎 op de antwoorden van een gesprek (`conversation_id`) |
 | `POST` | `/api/answer-feedback` | 👍/👎 op een antwoord (`conversation_id`, `message_index`, `oordeel` `up` of `down`, `toelichting`); de trace komt uit het eigen opgeslagen gesprek (#248) |
 | `GET` | `/api/feedback/questions` | De vragenlijst voor feedback op een rapport of dashboard (`core/feedback.py`) |

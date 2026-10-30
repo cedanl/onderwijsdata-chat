@@ -36,6 +36,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
+| Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
 Inloggen: met `CHAT_USERS` (gebruikersnaam en wachtwoord) bewaart de server alleen de gebruikersnaam bij de
 gegevens. Met SURF SRAM is het e-mailadres de accountnaam, ook als auteur van een rapport (#487); naam,
@@ -92,10 +93,12 @@ is een open punt.
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
   (gesprekken, rapporten en dashboards, al je feedback, ook `answer_feedback` met de `trace`, en datarecepten), en
-  ook de kopie in deze browser; je wordt uitgelogd en het token wordt ingetrokken. Wat blijft: de serverlogs (zonder
-  gesprekstekst, #475) en de back-ups van de beheerder, de hash van je sessie in `revoked_tokens` tot zij verloopt,
-  feedback die al eerder van een verwijderd gesprek is losgekoppeld (`verwijderd`, #476) en niet meer aan je account
-  hangt, en de kopie op een ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
+  ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
+  (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
+  back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash
+  van een sessie waarmee je uitlogde in `revoked_tokens` tot zij verloopt, feedback die al eerder van een verwijderd
+  gesprek is losgekoppeld (`verwijderd`, #476) en niet meer aan je account hangt, en de kopie in de browser van een
+  ander apparaat tot je daar uitlogt. Gebruik je een gedeeld account (zoals `demo` of een
   teamaccount in `CHAT_USERS`), dan verdwijnt ook het werk van de anderen. Zonder eigen login (iedereen is dan
   `gast`) kan het niet: de knop ontbreekt en de server antwoordt 404.
 

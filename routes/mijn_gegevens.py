@@ -8,7 +8,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -64,18 +64,17 @@ class Bevestiging(BaseModel):
 def verwijder_mijn_gegevens(
     bevestiging: Bevestiging,
     username: Annotated[str, Depends(eigen_account)],
-    authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Verwijder al mijn gegevens (#646, AVG art. 17): alle rijen van dit account, in één transactie.
 
-    Daarna vergeet het geheugen de gebruiker (wachtende recepten, SRAM-gegevens) en wordt dit token ingetrokken,
-    zoals bij uitloggen (#479). Faalt de transactie, dan blijft alles staan en blijft het token geldig, zodat
-    opnieuw proberen kan; een tweede keer geeft nul rijen. Andere tokens van het account (een ander apparaat)
-    blijven geldig tot ze verlopen. Antwoord en log noemen alleen aantallen, nooit inhoud of de naam (#475).
+    Daarna vergeet het geheugen de gebruiker (wachtende recepten, SRAM-gegevens) en worden alle tokens van het account
+    ingetrokken, ook die van een ander apparaat (#786): een open sessie daar kan dan geen gesprek meer terugzetten en
+    sluit bij de volgende vraag. Faalt de transactie, dan blijft alles staan en blijven de tokens geldig, zodat
+    opnieuw proberen kan. Antwoord en log noemen alleen aantallen, nooit inhoud of de naam (#475).
     """
     aantallen = verwijderen.verwijder_alles(username)
     logger.info("verwijder mijn gegevens: %s", ", ".join(f"{soort}={n}" for soort, n in aantallen.items()))
     recepten.vergeet_gebruiker(username)
     vergeet_oidc_gebruiker(username)
-    auth.revoke_token(auth.bearer_token(authorization))
+    auth.revoke_all_tokens(username)
     return {"ok": True, "verwijderd": aantallen}

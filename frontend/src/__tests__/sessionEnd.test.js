@@ -307,6 +307,34 @@ describe('useChat close code 4001', () => {
     expect(fetch).not.toHaveBeenCalled()
     act(() => root.unmount())
   })
+
+  // De server toetst het token van de socket vóór elke vraag opnieuw (#786). Ververste de app het intussen (OIDC),
+  // dan is de sessie niet voorbij: opnieuw verbinden met het nieuwe token.
+  it('reconnects with a token refreshed since the socket opened, and ends the session when that one is refused too', async () => {
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    vi.stubGlobal('fetch', vi.fn())
+    logIn('oud')
+    function Harness() {
+      useChat()
+      return null
+    }
+    const root = createRoot(document.createElement('div'))
+    await act(async () => { root.render(createElement(Harness)) })
+    const eerste = FakeWebSocket.last
+    localStorage.setItem(STORAGE_TOKEN, 'ververst')
+
+    await act(async () => { eerste.onclose({ code: 4001 }) })
+
+    expect(FakeWebSocket.last).not.toBe(eerste)
+    expect(localStorage.getItem(STORAGE_TOKEN)).toBe('ververst')
+    expect(ended).not.toHaveBeenCalled()
+
+    await act(async () => { FakeWebSocket.last.onclose({ code: 4001 }) })
+
+    expect(loggedOut()).toBe(true)
+    expect(ended).toHaveBeenCalledTimes(1)
+    act(() => root.unmount())
+  })
 })
 
 describe('App', () => {

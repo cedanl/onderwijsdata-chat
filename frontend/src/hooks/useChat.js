@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { chatSocket, checkSession, endSession } from '../auth'
+import { chatSocket, checkSession, endSession, getToken } from '../auth'
 import { trimHistory } from '../contextLimits'
 import { zijnBronlinks } from '../bronLink'
 import { finishStep } from '../toolSteps'
@@ -390,6 +390,8 @@ export function useChat({ maxHistory } = {}) {
     // in wsRef counts, and only until its loss has been handled.
     let opened = false
     let ended = false
+    // Het token waarmee de huidige socket opende: de server toetst het vóór elke vraag opnieuw (#786).
+    let socketToken = null
     const isCurrent = (ws) => wsRef.current === ws && !ended
 
     // Offline, heartbeat death or onclose, whichever comes first: the server session is gone
@@ -406,6 +408,13 @@ export function useChat({ maxHistory } = {}) {
       }
 
       if (code === 4001) {
+        // Het token van deze socket geldt niet meer (#786). Is het intussen ververst (OIDC), dan geldt het nieuwe
+        // misschien wel: opnieuw verbinden met dat token. Weigert de server ook dat, dan eindigt de sessie bij die socket.
+        const huidig = getToken()
+        if (huidig && huidig !== socketToken) {
+          connect()
+          return
+        }
         endSession()
         return
       }
@@ -424,6 +433,7 @@ export function useChat({ maxHistory } = {}) {
     }
 
     function connect() {
+      socketToken = getToken()
       const ws = chatSocket()
       wsRef.current = ws
       opened = false
