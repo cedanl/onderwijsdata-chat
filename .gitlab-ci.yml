@@ -74,7 +74,9 @@ include:
       cluster: ${ENVIRONMENT_CLUSTER}
 
 variables:
-  CHART_PATH: $CI_PROJECT_DIR/charts/onderwijsdata-chat
+  # De waarde die de pipeline altijd al gebruikte: een gelijknamige projectvariabele ging voor deze regel. Die
+  # projectvariabele verdwijnt (#685), zodat het pad alleen hier staat en niet buiten de review om te wijzigen is.
+  CHART_PATH: charts/onderwijsdata-chat
   CI_PROJECT_NAME: onderwijsdata-chat
 
 # Een geplande pipeline (schedule) op main bouwt en rolt niets uit: elke regel op main sluit haar uit, zodat
