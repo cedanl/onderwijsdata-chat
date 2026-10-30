@@ -19,6 +19,7 @@ export const ROUTE_BUDGETS = {
 }
 
 // Measured on 23-10-2026: react-plotly with full Plotly 1417 kB, the report Plotly 1086 kB (3.3 MB raw).
+// The report Plotly is the accepted price of a report that works offline; this budget is the brake (ADR-008, #812).
 export const PLOTLY_BUDGETS = {
   'node_modules/react-plotly.js/dist/index.mjs': 1_500_000,
   'plotly-rapport': 1_150_000,
