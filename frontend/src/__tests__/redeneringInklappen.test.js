@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // #609: na een compleet antwoord bleef de kaart "Redenering (N stappen)" open, 380–430 px hoog; op een telefoon
 // begon het antwoord daardoor onder de vouw. Op een telefoon klapt de kaart nu in zodra het antwoord begint (#639:
-// bij `done` schoof het hele antwoord omhoog); wie hem zelf opende of sloot, houdt zijn stand; desktop blijft zoals
-// het was.
+// bij `done` schoof het hele antwoord omhoog); wie hem zelf opende of sloot, houdt zijn stand. Sinds #747 geldt dat
+// ook op desktop: daar bleef de kaart open met alle code uitgeklapt.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -35,6 +35,7 @@ const stappen = [
 const wachtend = { id: 2, role: 'assistant', content: '', tools: stappen, done: false }
 const lopend = { ...wachtend, content: 'Er waren' }
 const klaar = { ...lopend, content: 'Er waren 475.460 studenten.', done: true, bronnen: [] }
+const metCode = msg => ({ ...msg, tools: msg.tools.map(t => ({ ...t, snippet: 'import cbsodata' })) })
 
 function render(msg) {
   if (!root) {
@@ -78,10 +79,32 @@ describe('de Redenering-kaart na een compleet antwoord', () => {
     expect(container.querySelectorAll('.reasoning-step')).toHaveLength(3)
   })
 
-  it('blijft op desktop open zoals voorheen', () => {
+  it('klapt ook op desktop in zodra de antwoordtekst begint, zonder code in beeld (#747)', () => {
+    render(metCode(wachtend))
+    expect(open()).toBe(true)
+    expect(container.querySelector('.reasoning-snippets').textContent).toContain('import cbsodata')
+    render(metCode(lopend))
+    expect(open()).toBe(false)
+    render(metCode(klaar))
+    expect(open()).toBe(false)
+    expect(container.querySelector('.reasoning-snippets')).toBeNull()
+  })
+
+  it('respecteert ook op desktop wie de kaart zelf openhield (#747)', () => {
+    render(wachtend)
+    act(() => toggle().click())
+    act(() => toggle().click())
     render(lopend)
     render(klaar)
     expect(open()).toBe(true)
+  })
+
+  it('laat de kaart op desktop na het inklappen weer openen, met de code (#747)', () => {
+    render(metCode(lopend))
+    render(metCode(klaar))
+    act(() => toggle().click())
+    expect(open()).toBe(true)
+    expect(container.querySelector('.reasoning-snippets').textContent).toContain('import cbsodata')
   })
 
   it('respecteert wie de kaart zelf bediende: dicht en weer open blijft open', () => {

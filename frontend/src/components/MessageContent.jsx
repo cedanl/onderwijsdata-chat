@@ -98,10 +98,11 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
   // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
   // die vanzelf openging bij het wachten.
   const handmatig = useRef(false)
-  // Op een telefoon klapt de kaart in zodra het antwoord begint (#609, #639): open bleef hij 380–430 px hoog en begon
-  // het antwoord onder de vouw. Desktop ongewijzigd. Staat de kaart in beeld, dan zou het antwoord eronder omhoog
-  // springen (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar
-  // de dichte kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
+  // De kaart klapt in zodra het antwoord begint (#609, #639): op een telefoon bleef hij open 380–430 px hoog en begon
+  // het antwoord onder de vouw. Sinds #747 ook op desktop: de code is een controlemiddel, geen leesinhoud, en wie
+  // hem wil zien klapt de kaart open. Staat de kaart in beeld, dan zou het antwoord eronder omhoog springen
+  // (layout-shift, #594): de scroller compenseert de weggevallen hoogte en schuift daarna vloeiend naar de dichte
+  // kop, zodat het begin van het antwoord in beeld komt zonder sprong. Ligt de kaart boven het beeld
   // (de lezer is al bij het eind), dan houdt de scroll-verankering van de browser alles op zijn plek.
   // Bij de eerste antwoordtekst en niet pas bij `done` (#639): in een kort gesprek staat de scroll op 0 en valt er
   // niets te compenseren, en dan schoof bij `done` het hele antwoord omhoog (CLS 0,05). Bij de eerste regel is de
@@ -110,14 +111,14 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
   const stapLoopt = !!tools?.some(t => !t.done)
   const antwoordBegonnen = isDone || (heeftTekst && !stapLoopt)
   useLayoutEffect(() => {
-    if (!codePerStap || handmatig.current) return
+    if (handmatig.current) return
     if (antwoordBegonnen && open) {
       compensatie.current = zichtbareKaarthoogte(panelRef.current)
       setOpen(false)
     } else if (!antwoordBegonnen && stapLoopt && !open) {
       setOpen(true)
     }
-  }, [antwoordBegonnen, stapLoopt, codePerStap, open])
+  }, [antwoordBegonnen, stapLoopt, open])
   useLayoutEffect(() => {
     if (open || !compensatie.current) return
     const scroller = panelRef.current?.closest('.chat-messages')
