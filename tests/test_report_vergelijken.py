@@ -33,11 +33,19 @@ def _leeg():
     store.clear()
 
 
+def _teldefinitie(dataset: str) -> str:
+    """De teldefinitie van DUO uit de catalogus; een dataset zonder teldefinitie faalt hier, niet verderop."""
+    teldefinitie = duo_meta.teldefinitie(duo_meta.record(dataset))
+    assert teldefinitie, dataset
+    return teldefinitie
+
+
 def _duo(dataset: str, key: str | None = None) -> dict:
     """Een geladen DUO-key met de echte teldefinitie uit de catalogus."""
     key = key or f"duo:{dataset}:1"
-    teldefinitie = duo_meta.teldefinitie(duo_meta.record(dataset))
-    store.put(key, pd.DataFrame({"AANTAL": [10]}), KeyMeta(bron="duo", dataset=dataset, teldefinitie=teldefinitie))
+    store.put(
+        key, pd.DataFrame({"AANTAL": [10]}), KeyMeta(bron="duo", dataset=dataset, teldefinitie=_teldefinitie(dataset))
+    )
     return {"data_key": key}
 
 
@@ -56,21 +64,21 @@ def _zinnen(item: dict) -> str:
 
 @pytest.mark.parametrize("dataset", ["p01hoinges", "p02ho1ejrs", "p03hoinschr", "p04hogdipl"])
 def test_de_peildatum_alleen_als_duo_hem_noemt(dataset):
-    teldefinitie = duo_meta.teldefinitie(duo_meta.record(dataset))
+    teldefinitie = _teldefinitie(dataset)
     [item, _slot] = vergelijken([_duo(dataset)])
     assert (PEILDATUM in _zinnen(item)) == ("peildatum 1 oktober" in teldefinitie)
 
 
 def test_ingeschrevenen_en_eerstejaars_tellen_personen():
     for dataset in ("p01hoinges", "p02ho1ejrs"):
-        assert "natuurlijke personen" in duo_meta.teldefinitie(duo_meta.record(dataset))
+        assert "natuurlijke personen" in _teldefinitie(dataset)
         store.clear()
         [item, _slot] = vergelijken([_duo(dataset)])
         assert PERSONEN in _zinnen(item) and INSCHRIJVINGEN not in _zinnen(item)
 
 
 def test_inschrijvingen_tellen_ook_neveninschrijvingen():
-    assert "neveninschrijvingen meegeteld" in duo_meta.teldefinitie(duo_meta.record("p03hoinschr"))
+    assert "neveninschrijvingen meegeteld" in _teldefinitie("p03hoinschr")
     [item, _slot] = vergelijken([_duo("p03hoinschr")])
     assert INSCHRIJVINGEN in _zinnen(item) and PERSONEN not in _zinnen(item)
 
