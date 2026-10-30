@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -57,6 +58,8 @@ class StreamResult:
     # Wat de provider terugmeldt als model (vaak een gedateerde versie), voor het manifest (#345).
     model_versie: str | None = None
     tokens: Tokens = field(default_factory=Tokens)
+    # time.monotonic() of the first chunk, None when none came: how long a model takes to start (#800).
+    eerste_chunk: float | None = None
 
 
 async def accumulate_stream(
@@ -83,8 +86,11 @@ async def accumulate_stream(
     finish_reason: str | None = None
     model_versie: str | None = None
     tokens = Tokens()
+    eerste_chunk: float | None = None
 
     async for chunk in stream:
+        if eerste_chunk is None:
+            eerste_chunk = time.monotonic()
         if stop_event and stop_event.is_set():
             break
 
@@ -122,4 +128,5 @@ async def accumulate_stream(
         finish_reason=finish_reason,
         model_versie=model_versie,
         tokens=tokens,
+        eerste_chunk=eerste_chunk,
     )

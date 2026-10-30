@@ -145,7 +145,7 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
   gaat. Op 1 oktober 2026 noemden 164 besturen mbo; 126 daarvan hebben alleen mbo.
 - **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar beoordeelt de NVAO de opleidingen, en
   die bron zit niet in de app.
-- **Bereikbaarheid:** `bron:ping` meet wekelijks of de bron bereikbaar is.
+- **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
 
 | Eigenschap | Details |
 |------------|---------|

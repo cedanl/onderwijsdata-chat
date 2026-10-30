@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 
 import litellm
 
@@ -59,6 +60,7 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
         kwargs["request_timeout"] = _REQUEST_TIMEOUT
 
     for attempt in range(_MAX_RETRIES):
+        poging_start = time.monotonic()
         try:
             return await litellm.acompletion(**kwargs)
         except litellm.RateLimitError as exc:
@@ -78,15 +80,20 @@ async def acompletion_with_backoff(emit: Emit, **kwargs):
         except (TimeoutError, litellm.Timeout, litellm.APIConnectionError) as exc:
             # Timeout of verbinding verloren: herprobeert met backoff. Een time-out van de provider is
             # litellm.Timeout; die erft van openai.APIConnectionError, niet van litellm.APIConnectionError (#799).
+            # Hoe lang de poging liep voor ze afbrak: met MODELAANROEP de meting achter de time-out (#800).
+            duur = time.monotonic() - poging_start
             if attempt == _MAX_RETRIES - 1:
-                logger.error("Model timeout na %d pogingen (%s)", _MAX_RETRIES, foutkenmerk(exc))
+                logger.error(
+                    "Model timeout na %d pogingen (%s), laatste na %.0fs", _MAX_RETRIES, foutkenmerk(exc), duur
+                )
                 logger.debug("Model timeout na %d pogingen: %r", _MAX_RETRIES, exc)
                 raise
             delay = min(_BASE_DELAY * (2**attempt), _MAX_DELAY)
             logger.warning(
-                "Model timeout (poging %d/%d): wacht %d seconden",
+                "Model timeout (poging %d/%d) na %.0fs: wacht %d seconden",
                 attempt + 1,
                 _MAX_RETRIES,
+                duur,
                 delay,
             )
             await emit(
