@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useState, useEffect, useCallback } from 'react'
+import { Component, Suspense, lazy, useState, useEffect, useCallback, useMemo } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Nav from './components/Nav'
 import HomePage from './pages/HomePage'
@@ -12,6 +12,7 @@ import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
 import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
+import { effectiefProfiel, zonderProfiel } from './profiel'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
 import { clearLocalSessionData } from './sessionData'
 import { resolveMaxMessageChars } from './messageLength'
@@ -177,15 +178,27 @@ function AppShell() {
     })
   }, [])
 
+  // Only use the SRAM identity as instelling when it matches a known
+  // instelling in the list we provide; otherwise ignore it so the user
+  // picks (or keeps) their own value.
+  const sramInstelling = userInfo ? matchKnownInstelling([userInfo.org, userInfo.institution, userInfo.email_domein, userInfo.email], instellingen) : null
+  // What the kop shows is what the chat uses (#777): a recognised SRAM instelling until the user chooses one.
+  const profiel = useMemo(() => effectiefProfiel(settings, sramInstelling), [settings, sramInstelling])
+
+  // The onboarding opens while there is no profile yet (#777), after the password form and after SRAM alike.
+  // Closing it counts as seen until logout.
+  const geenProfiel = zonderProfiel(profiel)
+  useEffect(() => {
+    if (authLoading || !authRequired || !user || !geenProfiel || localStorage.getItem(STORAGE_ONBOARDED)) return
+    setIsOnboarding(true)
+    setShowSettings(true)
+  }, [authLoading, authRequired, user, geenProfiel])
+
   const handleLogin = (u) => {
     clearLocalSessionData()
     setSessionExpired(false)
     setGegevensVerwijderd(false)
     setUser(u)
-    if (!localStorage.getItem(STORAGE_ONBOARDED)) {
-      setIsOnboarding(true)
-      setShowSettings(true)
-    }
   }
 
   const handleSaveSettings = (newSettings) => {
@@ -255,11 +268,6 @@ function AppShell() {
     setGegevensVerwijderd(true)
   }
 
-  // Only use the SRAM identity as instelling when it matches a known
-  // instelling in the list we provide; otherwise ignore it so the user
-  // picks (or keeps) their own value.
-  const sramInstelling = userInfo ? matchKnownInstelling([userInfo.org, userInfo.institution, userInfo.email_domein, userInfo.email], instellingen) : null
-
   return (
     <>
       <SkipLink />
@@ -267,7 +275,7 @@ function AppShell() {
         user={user}
         onLogout={authRequired ? handleLogout : null}
         onOpenSettings={() => { setIsOnboarding(false); setShowSettings(true) }}
-        instelling={sramInstelling || settings.instelling}
+        instelling={profiel.instelling}
         dashboardsEnabled={dashboardsEnabled}
         slotRef={setNavSlot}
         onZoek={openZoeken}
@@ -278,9 +286,9 @@ function AppShell() {
             <Suspense fallback={<div className="app-loading" role="status">Pagina wordt geladen…</div>}>
               <Routes>
                 <Route path="/" element={<HomePage dashboardsEnabled={dashboardsEnabled} feedbackEnabled={feedbackEnabled} />} />
-                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={settings} sector={instellingType(settings.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
-                <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={settings} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
-                <Route path="/rapporten" element={<RapportenPage settings={settings} feedbackEnabled={feedbackEnabled} />} />
+                <Route path="/chat" element={<ChatPage openRapport={openRapport} settings={profiel} sector={instellingType(profiel.instelling, instellingen)} user={user} feedbackEnabled={feedbackEnabled} maxMessageChars={maxMessageChars} maxChatTurns={maxChatTurns} maxHistory={maxHistory} teOpenenGesprek={teOpenenGesprek} onGesprekGeopend={gesprekGeopend} />} />
+                <Route path="/dashboards" element={dashboardsEnabled ? <DashboardPage settings={profiel} feedbackEnabled={feedbackEnabled} /> : <NotFoundPage unavailable />} />
+                <Route path="/rapporten" element={<RapportenPage settings={profiel} feedbackEnabled={feedbackEnabled} />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

@@ -29,7 +29,8 @@ export default function PrivacyInhoud() {
       <ul>
         <li>
           Je vraag, de eerdere berichten van het gesprek, je instelling en functie uit je profiel en de opgehaalde
-          data gaan naar een externe AI-dienst die het antwoord formuleert. Welke dienst en welk model dat is, staat
+          data gaan naar een externe AI-dienst die het antwoord formuleert. Koos je zelf geen instelling, dan is dat
+          de instelling die je SRAM-account opgeeft, als de app die kent; de kop toont welke het is. Welke dienst en welk model dat is, staat
           onder het invoerveld; op de omgevingen van SURF is dat Microsoft Azure AI Foundry met een Claude-model.
         </li>
         <li>

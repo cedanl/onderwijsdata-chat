@@ -10,7 +10,8 @@ blijven.
 ## Wat naar de AI-dienst gaat
 
 - Je vraag, de eerdere berichten van het gesprek, je instelling en functie uit je profiel en de opgehaalde data
-  gaan naar een externe AI-dienst die het antwoord formuleert. Welke dienst en welk model dat is, staat onder het
+  gaan naar een externe AI-dienst die het antwoord formuleert. Koos je zelf geen instelling, dan is dat de
+  instelling die je SRAM-account opgeeft, als de app die kent; de kop toont welke het is (#777). Welke dienst en welk model dat is, staat onder het
   invoerveld; op de omgevingen van SURF is dat Microsoft Azure AI Foundry met een Claude-model (`MODEL` in
   `manifests/<omgeving>/values.yaml`).
 - De cijfers zelf komen van open bronnen (CBS, DUO en RIO). Daarheen gaat alleen de opvraag (welke tabel, welke
@@ -30,7 +31,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 |---|---|---|
 | Gesprekken: vraag, antwoord, toolstappen, titel | `conversations` | 90 dagen na het laatste bericht in het gesprek; eerder als de gebruiker het gesprek of al zijn gegevens verwijdert |
 | Rapporten en dashboards (werkboeken) | `workbooks` | 365 dagen nadat het werkboek voor het laatst is opgeslagen of geopend; eerder als de gebruiker het onder Rapporten of al zijn gegevens verwijdert. Het verwijderen van een gesprek laat ze staan (#513) |
-| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de in de app gekozen instelling (naam, kolom `instelling`; leeg als er geen is gekozen) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
+| Feedback op rapporten en dashboards, inclusief de antwoorden over de eigen instelling, de instelling uit het profiel in de app (naam, kolom `instelling`: de gekozen instelling of anders die van het SRAM-account, #777; leeg als er geen is) en eventueel achtergelaten contactgegevens (vrije tekst). De vragen over de eigen instelling worden alleen na een eigen keuze van de gebruiker gesteld (knop Help ons verder); de rapportvragen zijn zonder die vragen te versturen (#666) | `feedback` | 90 dagen na het geven; eerder als de gebruiker al zijn gegevens verwijdert |
 | Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | 90 dagen na het geven, maar niet zolang het gesprek nog bestaat; eerder als de gebruiker al zijn gegevens verwijdert. Bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), daarna tot 90 dagen na het geven |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |

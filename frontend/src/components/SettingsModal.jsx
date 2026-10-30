@@ -6,6 +6,7 @@ import MijnGegevensExport from './MijnGegevensExport'
 import MijnGegevensVerwijderen from './MijnGegevensVerwijderen'
 import { useDialog } from '../hooks/useDialog'
 import { FUNCTIES, isFunctie } from '../functies'
+import { effectieveInstelling } from '../profiel'
 
 const MODES = [
   { id: 'system', label: 'Systeem' },
@@ -37,7 +38,8 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
   const pollutedSaved = (sramIdentity || []).includes(settings.instelling)
-  const [instelling, setInstelling] = useState(pollutedSaved ? '' : (settings.instelling || sramInstelling || ''))
+  // The picker starts on the instelling the app works with (#777): a cleared choice stays cleared.
+  const [instelling, setInstelling] = useState(pollutedSaved ? '' : effectieveInstelling(settings, sramInstelling))
   // A stored role that is not in the list (an older value) shows as no choice, and is saved as none (#591).
   const [functie, setFunctie] = useState(isFunctie(settings.functie) ? settings.functie : '')
   const [mode, setMode] = useState(settings.mode || 'system')
