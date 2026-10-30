@@ -156,6 +156,40 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
 
 ---
 
+## DUO — indicatoren per mbo-instelling
+
+DUO publiceert elk voorjaar de indicatoren van het geïntegreerd jaardocument mbo
+(`…/images/{editie}-indicatoren-per-instelling.xlsx`, vindbaar via
+[indicatoren.jsp](https://duo.nl/open_onderwijsdata/middelbaar-beroepsonderwijs/indicatoren/indicatoren.jsp)). In de
+chat via `get_mbo_indicatoren`, alleen voor mbo-instellingen (#727).
+- **Inhoud:** jaarresultaat, diplomaresultaat en het percentage nieuwe vsv'ers, drie schooljaren, elk naast de waarde
+  van de vergelijkingsgroep: alle roc's (ROC) of alle beroepscolleges (BER), een gewogen gemiddelde op
+  deelnemersaantallen. De code rondt af op één decimaal en berekent het verschil in procentpunt.
+- **Alleen de nieuwste editie:** edities mengen geeft andere cijfers voor hetzelfde schooljaar. DUO herberekent na een
+  fusie, en het laatste vsv-jaar is voorlopig (zo gelabeld in het resultaat). Oudere edities (2021 en 2022 als `.xls`,
+  met andere vergelijkingsgroepen) leest de app niet.
+- **Geen financiën:** de sheet `Financieel` (per bestuur, afgeleid van XBRL) leest de app niet; die hoort bij #725.
+- **Geen cijfer:** een lege cel en een exacte 0 zijn "geen cijfer", tot DUO uitsluitsel geeft. In de editie 2026 staat
+  0 bij de vsv van Talland College en Drenthe College Terra over 2023/24 en 2024/25.
+- **Per instelling:** de cijfers gelden per BRIN, niet per opleiding, vestiging of bestuur. Eén organisatie kan twee
+  BRIN's met verschillende vergelijkingsgroepen hebben (Curio: 21CY BER, 25LX ROC); de app telt of middelt nooit over
+  BRIN's. De naam komt uit het register, want de namen in het bestand zijn afgekapt.
+- **Niet vergelijkbaar met CBS:** het landelijke vsv-cijfer van CBS (85368NED) heeft een andere definitie en populatie.
+- **Weigeren in plaats van gokken:** de kolommen komen uit de koppen. Een onbekende kop, sheet, BRIN of
+  vergelijkingsgroep, een percentage buiten 0–1, of een groepswaarde die binnen een groep verschilt (verwisselde
+  kolommen) geeft een foutmelding zonder cijfers. Een HTML-foutpagina met HTTP 200 (soft 404) ook.
+- **Licentie:** DUO vermeldt geen licentie bij dit bestand; navraag loopt. De bronvermelding noemt DUO en de URL.
+- **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | duo.nl, open onderwijsdata (licentie nog niet bevestigd) |
+| Inhoud | Jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling, met vergelijkingsgroep |
+| Formaat | xlsx, één editie per jaar, één keer per dag opgehaald |
+| Koppeling | Instellingscode (BRIN) uit het register |
+
+---
+
 ## Bronnen onder een antwoord
 
 Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.
@@ -169,6 +203,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | RIO | het register in de RIO-API, ook bij een opzoeking per instelling (`erkenningen`) |
 | UWV | UWV Open Match op data.overheid.nl |
 | ROA | de dataset AIS 2030 (DOI) |
+| Onderwijsinspectie, DUO-indicatoren mbo | het gelezen bestand zelf (#749, #727) |
 
 Een regel heeft bewust geen link:
 

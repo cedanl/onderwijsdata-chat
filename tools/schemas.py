@@ -24,6 +24,7 @@ TOOL_COMPUTE_KPI = "compute_kpi"
 TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
+TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -291,6 +292,31 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "dit bij een vraag naar het inspectieoordeel of de kwaliteit volgens de Inspectie. Het oordeel geldt per "
                 "bestuur, niet per instelling of opleiding; een noot zegt wanneer het bestuur ook po, vo of ho heeft. "
                 "Hbo en wo krijgen geen oordeel per bestuur (NVAO)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "instelling": {
+                        "type": "string",
+                        "description": "Officiële naam of alias van de mbo-instelling uit het register.",
+                    },
+                },
+                "required": ["instelling"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_MBO_INDICATOREN,
+            "description": (
+                "Jaarresultaat, diplomaresultaat en het percentage nieuwe voortijdig schoolverlaters (vsv) van één "
+                "mbo-instelling, per schooljaar naast de waarde van haar vergelijkingsgroep (alle roc's of alle "
+                "beroepscolleges), uit DUO's indicatoren per instelling (geïntegreerd jaardocument, nieuwste editie). "
+                "Gebruik dit bij een vraag naar het jaar- of diplomaresultaat, het rendement of de vsv van een "
+                "mbo-instelling. De code rondt af en berekent het verschil in procentpunt: neem die getallen letterlijk "
+                "over. Cijfers per instelling, niet per opleiding of vestiging; vsv landelijk komt van CBS en is niet "
+                "vergelijkbaar."
             ),
             "parameters": {
                 "type": "object",
