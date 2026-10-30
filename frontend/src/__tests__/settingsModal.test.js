@@ -100,3 +100,18 @@ describe('SettingsModal tap targets', () => {
     expect(container.querySelector('[role="dialog"]').classList.contains('settings-modal')).toBe(true)
   })
 })
+
+describe('SettingsModal weergave (#779)', () => {
+  const button = text => [...container.querySelectorAll('button')].find(b => b.textContent === text)
+
+  it('zegt met aria-pressed welk thema gekozen is, zoals bij de functies', async () => {
+    await render({ settings: { mode: 'dark' } })
+    expect(button('Donker').getAttribute('aria-pressed')).toBe('true')
+    expect(button('Licht').getAttribute('aria-pressed')).toBe('false')
+    expect(button('Systeem').getAttribute('aria-pressed')).toBe('false')
+
+    await act(async () => { button('Licht').click() })
+    expect(button('Licht').getAttribute('aria-pressed')).toBe('true')
+    expect(button('Donker').getAttribute('aria-pressed')).toBe('false')
+  })
+})

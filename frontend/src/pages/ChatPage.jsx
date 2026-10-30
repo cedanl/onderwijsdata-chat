@@ -44,7 +44,7 @@ import ReportProgress from '../components/ReportProgress'
 import OnderzoeksvraagDialoog from '../components/OnderzoeksvraagDialoog'
 import { onderzoeksvraagVoorstel } from '../onderzoeksvraagVoorstel'
 import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../clarificationState'
-import { useConversationSearch } from '../hooks/useConversationSearch'
+import { SEARCH_LIMIT, useConversationSearch } from '../hooks/useConversationSearch'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
 import { neemVoorgevuldeVraag, useVraagUitLink } from '../voorgevuldeVraag'
@@ -936,10 +936,19 @@ const canJudge = msg => msg.role === 'assistant' && msg.done && !!msg.content &&
 const GESPREK_VERWIJDEREN = 'Weet je zeker dat je dit gesprek wilt verwijderen? Een rapport dat je van dit gesprek ' +
   'hebt gemaakt, blijft bewaard; dat verwijder je los via Rapporten.'
 
+function GesprekIcoon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 export function ConversationHistory({ history, hasMore = false, loadingMore = false, openingId = null, onLoadMore, onLoad, onDelete, onRename, search = null }) {
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState('')
   const titleInputRef = useRef(null)
+  const focusNa = useFocusNaRender()
 
   if (history.length === 0) return null
 
@@ -950,12 +959,18 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
     setTimeout(() => titleInputRef.current?.focus(), 0)
   }
 
+  // Back on the conversation's button when the field goes, not on <body> (#776).
+  const stopEditing = (id) => {
+    setEditingId(null)
+    focusNa(gespreksKnop(id))
+  }
+
   const saveEdit = (id) => {
     const trimmed = editDraft.trim()
     if (trimmed && trimmed !== history.find(c => c.id === id)?.title) {
       onRename(id, trimmed)
     }
-    setEditingId(null)
+    stopEditing(id)
   }
 
   // While there is a query, the hits replace the list (#124); they come from the server in one page.
@@ -965,6 +980,7 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
   if (searchActive && search.error) searchNote = 'Zoeken lukt nu niet. Probeer het zo opnieuw.'
   else if (searchActive && search.searching && !search.results) searchNote = 'Zoeken…'
   else if (searchActive && !shown.length) searchNote = 'Geen gesprekken gevonden'
+  else if (searchActive && search.full) searchNote = `De ${SEARCH_LIMIT} nieuwste treffers staan hier. Maak je zoekterm preciezer om oudere te vinden.`
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -984,36 +1000,42 @@ export function ConversationHistory({ history, hasMore = false, loadingMore = fa
         {shown.map(conv => (
           <div key={conv.id} className="history-item">
             <div className="history-item-row">
-              <button type="button"
-                className="history-btn"
-                data-conv-id={conv.id}
-                onClick={() => onLoad(conv)}
-                disabled={openingId !== null}
-                aria-busy={openingId === conv.id}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, flexShrink: 0, opacity: .45 }}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                <div className="history-btn-content">
-                  {editingId === conv.id ? (
+              {editingId === conv.id ? (
+                // While renaming the row is no button: an input inside a <button> is invalid HTML, and browsers
+                // handle its focus and keys differently (#779).
+                <div className="history-btn history-btn-bewerken">
+                  <GesprekIcoon />
+                  <div className="history-btn-content">
                     <input
                       ref={titleInputRef}
                       className="title-edit-input"
+                      aria-label={`Nieuwe naam voor gesprek ${conv.title}`}
                       value={editDraft}
                       onChange={e => setEditDraft(e.target.value)}
                       onBlur={() => saveEdit(conv.id)}
                       onKeyDown={e => {
                         if (e.key === 'Enter') saveEdit(conv.id)
-                        if (e.key === 'Escape') setEditingId(null)
+                        if (e.key === 'Escape') stopEditing(conv.id)
                       }}
-                      onClick={e => e.stopPropagation()}
                     />
-                  ) : (
-                    <span className="history-btn-title" title={conv.title}>{conv.title}</span>
-                  )}
-                  <span className="history-btn-date">{openingId === conv.id ? 'Openen…' : relatieveDatum(conv.timestamp)}</span>
+                    <span className="history-btn-date">{relatieveDatum(conv.timestamp)}</span>
+                  </div>
                 </div>
-              </button>
+              ) : (
+                <button type="button"
+                  className="history-btn"
+                  data-conv-id={conv.id}
+                  onClick={() => onLoad(conv)}
+                  disabled={openingId !== null}
+                  aria-busy={openingId === conv.id}
+                >
+                  <GesprekIcoon />
+                  <div className="history-btn-content">
+                    <span className="history-btn-title" title={conv.title}>{conv.title}</span>
+                    <span className="history-btn-date">{openingId === conv.id ? 'Openen…' : relatieveDatum(conv.timestamp)}</span>
+                  </div>
+                </button>
+              )}
               <div className="history-item-actions">
                 <button type="button"
                   className="history-action-icon"

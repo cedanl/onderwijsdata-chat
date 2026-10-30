@@ -508,6 +508,7 @@ html.dark .login-melding { color: var(--accent-text); }
 .history-action-restart:hover { background: var(--gray-50); border-color: var(--gray-300); color: var(--gray-700); }
 .history-item-row { display: flex; align-items: flex-start; gap: 0; position: relative; }
 .history-item-row .history-btn { flex: 1; min-width: 0; }
+.history-btn-bewerken, .history-btn-bewerken:hover { cursor: default; border-color: var(--gray-200); background: var(--gray-50); }
 /* Hidden with opacity, not display: the buttons stay focusable, so keyboard users can reach
    them and a dialog opened from one can hand focus back when it closes. */
 .history-item-actions {
@@ -1962,7 +1963,8 @@ html.dark .suggested-btn:hover {
     min-width: var(--tap-min); min-height: var(--tap-min);
   }
   .suggested-category-btn, .navbar-cta, .wb-back-btn, .wb-download-btn, .wb-feedback-btn,
-  .sources-link, .export-conversation-btn, .make-rapport-btn, .model-picker select, .answer-bronnen a { min-height: var(--tap-min); }
+  .sources-link, .export-conversation-btn, .make-rapport-btn, .model-picker select, .answer-bronnen a,
+  .history-btn-bewerken .title-edit-input { min-height: var(--tap-min); }
 
   .disclaimer-link, .message-continue, .instelling-clear-filter, .wb-viewer-fallback-link, .privacy-link {
     min-height: var(--tap-min); margin-block: min(0px, (1lh - var(--tap-min)) / 2);
@@ -2230,7 +2232,8 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
    "De accountnaam in het menu" is de menuregel .navbar-menu-sub. De profielknop (instelling en accountnaam), het
    label "Zoeken" en de disclaimer onder het invoerveld staan alleen op desktop en zijn op elke breedte 12,5 px
    (#663); de sneltoetshint .navbar-zoek-hint (Ctrl K) blijft bewust .7rem: een toetsaanduiding, op touch verborgen.
-   De scan van #663 op 390 px vond ook de verbindingsmelding (.ws-reconnecting, tot de socket open is). */
+   De scan van #663 op 390 px vond ook de verbindingsmelding (.ws-reconnecting, tot de socket open is); de UI/UX-audit
+   van 29-10 de melding "Ingeladen gesprek" (.restored-banner, #779). */
 @media (max-width: 600px) {
   :root { --font-klein: 12.5px; --font-label: 12.5px; --font-code: 11px; }
   .message-bubble { font-size: 16px; line-height: 1.55; }
@@ -2242,7 +2245,7 @@ html.dark .mijn-gegevens-verwijderen-fout { color: #FCA5A5; }
   .sidebar-section-title, .suggested-category-btn, .new-chat-btn, .model-picker-provider, .navbar-menu-sub,
   .wb-gallery-sub, .wb-gallery-search-label, .wb-gallery-feedback, .wb-gallery-leeg-tip, .privacy-link, .history-btn-title, .history-btn-date,
   .history-more-btn, .navbar-meer-noot, .section-label, .home-disclaimer, .home-licentie, .sources-link, .wb-new-card small,
-  .wb-builtin-badge, .wb-builtin-instelling, .ws-reconnecting {
+  .wb-builtin-badge, .wb-builtin-instelling, .ws-reconnecting, .restored-banner {
     font-size: 12.5px;
   }
 }

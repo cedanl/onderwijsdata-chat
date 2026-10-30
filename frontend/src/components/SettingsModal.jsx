@@ -149,6 +149,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
               {MODES.map(m => (
                 <button type="button"
                   key={m.id}
+                  aria-pressed={mode === m.id}
                   onClick={() => setMode(m.id)}
                   style={{
                     padding: '10px 8px', borderRadius: 'var(--radius-sm)',

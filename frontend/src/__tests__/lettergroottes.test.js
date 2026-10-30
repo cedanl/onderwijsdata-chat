@@ -42,6 +42,11 @@ describe('lettergroottes op een telefoon (#613)', () => {
     }
   })
 
+  // #779: de melding "Ingeladen gesprek" stond op .78rem, met de kleinere basismaat op een telefoon 11,7 px.
+  it('brengt de melding "Ingeladen gesprek" op 12,5 px (#779)', () => {
+    expect(blok).toContain('.restored-banner')
+  })
+
   it('verbergt de Ctrl K-hint op een aanraakscherm, ook breder dan 768 px (#650)', () => {
     expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\)\s*{\s*\.navbar-zoek-hint\s*{\s*display:\s*none/)
   })
