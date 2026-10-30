@@ -47,7 +47,7 @@ import { clarificationAnswer, hasOpenClarification, originalQuestion } from '../
 import { useConversationSearch } from '../hooks/useConversationSearch'
 import { platteTekst } from '../platteTekst'
 import { welkomstSub } from '../functies'
-import { neemVoorgevuldeVraag } from '../voorgevuldeVraag'
+import { neemVoorgevuldeVraag, useVraagUitLink } from '../voorgevuldeVraag'
 import { Message } from '../components/Message'
 
 // De berichtweergave staat in components/ (#696); bestaande imports van Message uit deze pagina blijven werken.
@@ -347,15 +347,19 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   }, [teOpenenGesprek, onGesprekGeopend])
 
   // A question from a link into the app (#709) starts a new conversation and waits in the box, unsent. The
-  // conversation that was open is saved first, as with "Nieuw gesprek".
+  // conversation that was open is saved first, as with "Nieuw gesprek". A link that arrives while an answer or a
+  // report is under way does not break it off: the question waits until the run is done (#806).
   const handleClearRef = useRef(handleClear)
   useEffect(() => { handleClearRef.current = handleClear })
+  const vraagUitLink = useVraagUitLink()
+  const runLoopt = busy || reportBusy
   useEffect(() => {
+    if (runLoopt) return
     const vraag = neemVoorgevuldeVraag()
     if (!vraag) return
     if (openChatRef.current.messages.length) handleClearRef.current()
     prefillComposer(vraag)
-  }, [prefillComposer])
+  }, [prefillComposer, vraagUitLink, runLoopt])
 
   // Older conversations stay on the server until asked for (#123).
   const handleLoadMoreHistory = useCallback(() => {
