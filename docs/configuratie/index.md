@@ -42,6 +42,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
 | `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport of dashboard aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
+| `LITELLM_REQUEST_TIMEOUT` | `1200` | Seconden per modelaanroep (#431). Ligt boven `RUN_TIMEOUT_S`, dus een nieuwe poging na een time-out past nu niet in een run; de waarde volgt uit de meting van #800 (logregel `MODELAANROEP`) |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |

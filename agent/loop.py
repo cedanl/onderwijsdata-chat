@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -241,6 +242,19 @@ class _Loop:
 
     async def _ask(self, **extra: Any) -> StreamResult | None:
         """One model call; None when a stop landed before or during the stream."""
+        start = time.monotonic()
+        meting = _Aanroepmeting(start)
+        try:
+            sr = await self._ask_gemeten(meting, **extra)
+            meting.uitkomst = "gestopt" if sr is None else "ok"
+            return sr
+        except Exception as exc:
+            meting.uitkomst = type(exc).__name__
+            raise
+        finally:
+            _log_aanroep(self.model, meting)
+
+    async def _ask_gemeten(self, meting: _Aanroepmeting, **extra: Any) -> StreamResult | None:
         gestopt, stream = await _tenzij_gestopt(
             acompletion_with_backoff(
                 self.emit,
@@ -254,6 +268,7 @@ class _Loop:
             ),
             self.stop_event,
         )
+        meting.open = time.monotonic()
         if gestopt:
             # Nog geen tekst van deze ronde: wat er stond, blijft zoals bij een stop tussen rondes.
             self.result.aborted = "stream"
@@ -269,6 +284,7 @@ class _Loop:
         self.result.model_versie = sr.model_versie or self.result.model_versie
         self.result.tokens += sr.tokens
         self.result.aanroepen += 1
+        meting.eerste_chunk, meting.uitvoer = sr.eerste_chunk, sr.tokens.uitvoer
         if self._stopped():
             self.result.aborted = "stream"
             return None
@@ -491,6 +507,39 @@ def _log_tokens(model: str, result: LoopResult) -> None:
         t.uitvoer,
         t.cache_gelezen,
         t.cache_geschreven,
+    )
+
+
+@dataclass
+class _Aanroepmeting:
+    """The timings of one model call, all time.monotonic() (#800)."""
+
+    start: float
+    open: float | None = None
+    eerste_chunk: float | None = None
+    uitvoer: int = 0
+    uitkomst: str = "ok"
+
+
+def _sec(moment: float | None, start: float) -> str:
+    return "-" if moment is None else f"{moment - start:.1f}s"
+
+
+def _log_aanroep(model: str, m: _Aanroepmeting) -> None:
+    """One line per model call, without user text, to choose LITELLM_REQUEST_TIMEOUT by measurement (#800).
+
+    open: until the provider answered the request, including the waits of acompletion_with_backoff after a rate limit
+    or time-out (each logged on its own); eerste_chunk: until the first chunk of the stream; totaal: until the stream
+    ended, or the stop or error. uitkomst is ok, gestopt or the type of the error.
+    """
+    logger.info(
+        "MODELAANROEP  model=%s  uitkomst=%s  open=%s  eerste_chunk=%s  totaal=%s  uitvoer=%d",
+        model,
+        m.uitkomst,
+        _sec(m.open, m.start),
+        _sec(m.eerste_chunk, m.start),
+        _sec(time.monotonic(), m.start),
+        m.uitvoer,
     )
 
 

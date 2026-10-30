@@ -22,7 +22,7 @@ Een regel in de systeemprompt is een verzoek aan het model, geen garantie. Meetb
   testomgeving (`EVAL_BASE_URL`, `EVAL_USERNAME`, `EVAL_PASSWORD`), los van `/health` en `/ready`: dat de server draait
   zegt niets over de juistheid van een antwoord. Het slagingspercentage per model en vraag komt als artifact in
   `eval_results/`.
-- **Bronnen, gepland**: de CI-job `bron:ping` doet wekelijks één aanroep per bron door de toollaag van de chat (CBS,
+- **Bronnen, gepland**: de CI-job `bron:ping` doet dagelijks één aanroep per bron door de toollaag van de chat (CBS,
   DUO, RIO en de GeoJSON van de kaart; `scripts/bronping.py`, zonder LLM en zonder testomgeving) en faalt zodra één
   bron niet antwoordt. Een verwijderde API of een gewijzigd filtercontract (RIO v2 → v3 op 19 oktober 2026, #627) komt
   zo bij de beheerder binnen in plaats van via een gebruiker: pytest mockt de bronnen en `/health` toetst er geen.
@@ -205,5 +205,5 @@ Transparantie over wat nog niet getest is:
 - **Reproduceerbaarheid:** bij elke tool-aanroep wordt een Python-snippet gelogd voor debugging
 - **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
 - **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
-- **Tokengebruik:** per run (vraag, rapport, dashboard) één regel `TOKENS` (INFO) met model, aantal modelaanroepen, invoer, uitvoer en gelezen en geschreven cache (#678). De regel draagt het verbindings-ID; `VERBINDING open` noemt bij dat ID het pseudoniem `gebruiker=` (een HMAC met `LOG_HASH_SECRET`; zonder dat geheim `-`, want een kale hash van een e-mailadres is terug te rekenen)
+- **Tokengebruik:** per run (vraag, rapport, dashboard) één regel `TOKENS` (INFO) met model, aantal modelaanroepen, invoer, uitvoer en gelezen en geschreven cache (#678). De regel draagt het verbindings-ID; `VERBINDING open` noemt bij dat ID het pseudoniem `gebruiker=` (een HMAC met `LOG_HASH_SECRET`; zonder dat geheim `-`, want een kale hash van een e-mailadres is terug te rekenen). Per modelaanroep één regel `MODELAANROEP` (INFO), zonder gebruikerstekst: model, uitkomst (`ok`, `gestopt` of het fouttype), de seconden tot de provider antwoordde (`open`, inclusief wachten na een rate limit of time-out), tot de eerste chunk en tot het einde, en de uitvoertokens. Daarop kiest #800 `LITELLM_REQUEST_TIMEOUT`
 - **Herkomstlog:** per gepubliceerd resultaat één regel `GEPUBLICEERD` (INFO) met soort, data-keys en versies; de selectiestappen op DEBUG (#169)
