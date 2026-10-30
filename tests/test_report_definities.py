@@ -7,6 +7,7 @@ import pytest
 
 from agent.report import _parse_spec_from_response
 from agent.report_definities import definities_uit_bron
+from agent.report_vergelijken import vergelijken
 from tools import store
 from tools.store import KeyMeta
 
@@ -59,7 +60,8 @@ def test_twente_rapport_zonder_opleidingsvorm_toont_alleen_de_telling():
         conclusie="Het aantal ingeschrevenen bij de Universiteit Twente daalde.",
     )
 
-    assert spec.definities == [{"begrip": "Telling (p01hoinges)", "definitie": _TELLING}]
+    # Na de telling volgt het vaste blok over vergelijken met eigen cijfers (#736), ook uit code.
+    assert spec.definities == [{"begrip": "Telling (p01hoinges)", "definitie": _TELLING}, *vergelijken(_datasets())]
 
 
 def test_het_model_schrijft_geen_definities_meer():

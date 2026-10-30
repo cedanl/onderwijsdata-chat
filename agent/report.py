@@ -42,6 +42,7 @@ from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
 from agent.report_periode import bijgesneden, gevraagd_bereik
 from agent.report_titel import rapporttitel, rapportvraag
+from agent.report_vergelijken import vergelijken
 from agent.selectie import stapkeys
 from agent.session_data import gebruikersvragen, rekenbewijs
 from agent.stream import Emit
@@ -495,7 +496,11 @@ def _parse_spec_from_response(
     return ReportSpec(
         title=title,
         onderzoeksvraag=onderzoeksvraag,
-        definities=definities_uit_bron(context.get("datasets", []), rapporttekst),
+        # Na de teldefinities: wat een verschil met eigen cijfers kan verklaren, ook uit code (#736).
+        definities=[
+            *definities_uit_bron(context.get("datasets", []), rapporttekst),
+            *vergelijken(context.get("datasets", [])),
+        ],
         beantwoordt=beantwoordt,
         beantwoordt_niet=beantwoordt_niet,
         conclusie=conclusie,

@@ -12,6 +12,7 @@ from agent import dashboard, report
 from agent.afkapping import afkappingsregels
 from agent.report import RapportGeweigerd
 from agent.report_definities import definities_uit_bron
+from agent.report_vergelijken import vergelijken
 from agent.stream import StreamResult
 from tools import store
 from tools.store import KeyMeta
@@ -208,7 +209,7 @@ def test_de_regel_bepaalt_niet_welke_definities_erbij_komen():
 
     assert spec.beantwoordt_niet == [regel]
     assert any(d["begrip"] == "Opleidingsvorm" for d in definities_uit_bron(datasets, regel))
-    assert spec.definities == definities_uit_bron(datasets, "")
+    assert spec.definities == [*definities_uit_bron(datasets, ""), *vergelijken(datasets)]
 
 
 # ── Dashboard: na de bronnen ────────────────────────────────────────────────────────────
