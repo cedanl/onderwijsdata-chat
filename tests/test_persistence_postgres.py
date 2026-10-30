@@ -111,36 +111,36 @@ def test_execute_uses_realdict_cursor(fake_psycopg2):
 
 
 def test_opeenvolgende_aanroepen_hergebruiken_een_verbinding(verbindingen):
-    db.is_token_revoked("a")
-    db.is_token_revoked("b")
+    db.is_token_revoked("a", "u", 0)
+    db.is_token_revoked("b", "u", 0)
     db.list_conversations("alice")
     assert len(verbindingen) == 1
 
 
 def test_een_leesactie_laat_geen_transactie_open(verbindingen):
     """psycopg2 opent bij de eerste query een transactie; die gaat met een rollback dicht vóór hergebruik."""
-    db.is_token_revoked("a")
+    db.is_token_revoked("a", "u", 0)
     assert verbindingen[0].rollbacks == 1
     assert verbindingen[0].closed == 0
 
 
 def test_een_mislukte_aanroep_geeft_de_verbinding_terug(verbindingen):
     """Een fout waarna de verbinding nog open is (een SQL-fout), gaat naar de aanroeper, zonder herhaling (#764)."""
-    db.is_token_revoked("a")
+    db.is_token_revoked("a", "u", 0)
     verbindingen[0].faalt = True
     with pytest.raises(RuntimeError):
-        db.is_token_revoked("b")
+        db.is_token_revoked("b", "u", 0)
     # Kapot: dicht en niet hergebruikt; de volgende aanroep krijgt een nieuwe.
     assert verbindingen[0].closed == 1
-    db.is_token_revoked("c")
+    db.is_token_revoked("c", "u", 0)
     assert len(verbindingen) == 2
 
 
 def test_close_sluit_de_open_verbindingen(verbindingen):
-    db.is_token_revoked("a")
+    db.is_token_revoked("a", "u", 0)
     db.close()
     assert verbindingen[0].closed == 1
-    db.is_token_revoked("b")
+    db.is_token_revoked("b", "u", 0)
     assert len(verbindingen) == 2
 
 
@@ -213,7 +213,7 @@ def test_een_dode_vrije_verbinding_wordt_vervangen_voordat_de_aanroeper_iets_mer
     for conn in verbindingen:
         conn.dood = True
 
-    assert db.is_token_revoked("a") is False
+    assert db.is_token_revoked("a", "u", 0) is False
     assert len(verbindingen) == 4
     # Drie aanroepen tegelijk krijgen elk een vrije verbinding: de vervanger en twee dode, die op hun beurt vervangen worden.
     with contextlib.ExitStack() as stapel:
@@ -237,7 +237,7 @@ def test_een_verse_verbinding_die_faalt_wordt_niet_herhaald(verbindingen, fake_p
 
     fake_psycopg2.connect = connect
     with pytest.raises(RuntimeError, match="server closed"):
-        db.is_token_revoked("a")
+        db.is_token_revoked("a", "u", 0)
     assert len(verbindingen) == 1
 
 

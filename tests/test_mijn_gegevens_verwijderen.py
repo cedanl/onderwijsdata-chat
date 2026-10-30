@@ -1,8 +1,8 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
 Twee accounts in CHAT_USERS, elk met rijen van alle zes soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
-nergens nog een rij, staan die van Bert en de losgekoppelde feedback (`verwijderd`, #476) er ongewijzigd, is haar
-token ingetrokken en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
+nergens nog een rij, staan die van Bert en de losgekoppelde feedback (`verwijderd`, #476) er ongewijzigd, zijn al
+haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
 """
 
@@ -110,8 +110,12 @@ def _rijen(gebruiker: str) -> dict[str, list[tuple]]:
 
 
 def _ingetrokken() -> int:
+    """Intrekkingen van één token (uitloggen) plus die van alle tokens van een account (#786)."""
     with db._connection() as conn:
-        return db._execute(conn, "SELECT COUNT(*) AS n FROM revoked_tokens").fetchone()["n"]
+        return sum(
+            db._execute(conn, f"SELECT COUNT(*) AS n FROM {tabel}").fetchone()["n"]
+            for tabel in ("revoked_tokens", "revoked_users")
+        )
 
 
 def _maak_losgekoppelde_feedback() -> None:
@@ -190,23 +194,23 @@ def test_een_ingetrokken_token_401_en_niets_weg(client):
     assert _aantallen("anna") == _ANNA
 
 
-# ── 3. Token ingetrokken, tweede token idempotent ────────────────────────────
+# ── 3. Alle tokens van het account ingetrokken (#786) ─────────────────────
 
 
-def test_het_eigen_token_is_daarna_ingetrokken_een_ander_token_werkt_en_is_idempotent(client):
+def test_alle_tokens_van_het_account_zijn_daarna_ingetrokken_die_van_een_ander_niet(client):
     _vul_anna()
     token = _token("anna")
     ander_apparaat = _token("anna", start=int(time.time()) - 60)
+    bert = _token("bert")
     assert token != ander_apparaat
 
     assert _verwijder(client, token).status_code == 200
 
     assert not _werkt(client, token)
+    assert not _werkt(client, ander_apparaat)
+    assert _werkt(client, bert)
     assert _ingetrokken() == 1
-    assert _werkt(client, ander_apparaat)
-    tweede = _verwijder(client, ander_apparaat)
-    assert tweede.status_code == 200
-    assert tweede.json() == {"ok": True, "verwijderd": _ZESMAAL_NUL}
+    assert _verwijder(client, ander_apparaat).status_code == 401
 
 
 # ── 4. Het geheugen vergeet de gebruiker ─────────────────────────────────────

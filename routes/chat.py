@@ -831,6 +831,25 @@ def _frame(raw: str) -> dict | None:
     return msg
 
 
+# Acties die een run starten (model of tools): daarvoor geldt het token opnieuw, niet alleen bij het verbinden (#786).
+RUN_ACTIES = frozenset(
+    {"message", "clarification_choice", "generate_dashboard", "generate_report", "refresh_dashboard"}
+)
+
+
+async def _token_geldt_nog(msg: dict, token: str | None) -> bool:
+    """Toets vóór elke run het token van de handshake opnieuw (#786, besluit A).
+
+    Uitloggen in een ander tabblad, het verlopen van het token en "verwijder al mijn gegevens" raken zo ook een open
+    verbinding. Eén DB-lookup in een thread (#763), gedeeld door alle pods (#677). De hartslag en de andere acties
+    starten niets dat kost, en lezen de database dus niet bij elk frame.
+    """
+    actie = msg.get("action")
+    if not AUTH_ENABLED or not isinstance(actie, str) or actie not in RUN_ACTIES:
+        return True
+    return bool(await asyncio.to_thread(verify_token, token or ""))
+
+
 async def _dispatch(msg: dict, session: dict, emit, current_task: asyncio.Task | None) -> asyncio.Task | None:
     actie = msg.get("action")
     # Een lijst of object als actie is niet hashbaar: dat gaf een TypeError en sloot de verbinding.
@@ -875,13 +894,13 @@ async def chat_websocket(ws: WebSocket) -> None:
         await ws.close(code=_TE_VEEL_VERBINDINGEN)
         return
     try:
-        await _bedien(ws, username)
+        await _bedien(ws, username, token)
     finally:
         _verbindingen.sluit(sleutel)
 
 
-async def _bedien(ws: WebSocket, username: str | None) -> None:
-    """Eén geaccepteerde chatverbinding, tot de browser hem sluit."""
+async def _bedien(ws: WebSocket, username: str | None, token: str | None) -> None:
+    """Eén geaccepteerde chatverbinding, tot de browser hem sluit of het token niet meer geldt (#786)."""
     session = _new_session(username=username)
 
     async def emit(event: dict) -> None:
@@ -909,6 +928,18 @@ async def _bedien(ws: WebSocket, username: str | None) -> None:
                 if msg is None:
                     await _weiger_frame(emit)
                     continue
+                try:
+                    geldig = await _token_geldt_nog(msg, token)
+                except Exception as e:
+                    # Een storing is geen "sessie voorbij" (zie verify_token): geen 4001, maar ook geen run.
+                    await emit(error_event(e))
+                    continue
+                if not geldig:
+                    # Bij 4001 beëindigt de client de sessie, of verbindt opnieuw met een intussen ververst token
+                    # (useChat.js). De finally stopt een lopende taak.
+                    logger.info("VERBINDING dicht: token geldt niet meer")
+                    await ws.close(code=4001, reason="Niet geautoriseerd")
+                    return
                 current_task = await _dispatch(msg, session, emit, current_task)
     except WebSocketDisconnect:
         pass

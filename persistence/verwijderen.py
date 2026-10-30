@@ -6,8 +6,9 @@ een tweede keer verwijdert nul rijen.
 
 Ook de feedback per antwoord gaat weg, met zijn `trace`: die kan persoonsgegevens bevatten. Niet hier: feedback
 die al bij het verwijderen van een gesprek is losgekoppeld (`verwijderd`, #476) hangt aan niemand meer en blijft;
-een account dat toevallig zo heet, wist die dus niet. Ingetrokken tokens (`revoked_tokens`) hebben geen
-gebruikersnaam en vervallen vanzelf.
+een account dat toevallig zo heet, wist die dus niet. Ingetrokken tokens (`revoked_tokens`, `revoked_users`) hebben
+geen gebruikersnaam, alleen een hash, en vervallen vanzelf; de route zet er hierna een rij voor alle tokens van het
+account bij (#786).
 """
 
 from typing import Any

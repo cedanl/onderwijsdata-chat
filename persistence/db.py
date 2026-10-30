@@ -451,6 +451,18 @@ _REVOKED_TOKENS_TABLE = """
 """
 _REVOKED_TOKENS_INDEX = "CREATE INDEX IF NOT EXISTS idx_revoked_expires ON revoked_tokens(expires_at)"
 
+# Alle tokens van een account ingetrokken, bij "verwijder al mijn gegevens" (#786): elk token met een sessiestart
+# op of vóór revoked_before geldt niet meer, ook een ververst token. De server houdt geen lijst van uitgegeven tokens
+# bij, dus zo per account. Alleen sha256(gebruikersnaam), zodat na het verwijderen de naam nergens meer staat; tot
+# expires_at, daarna is elk van die tokens toch verlopen.
+_REVOKED_USERS_TABLE = """
+    CREATE TABLE IF NOT EXISTS revoked_users (
+        user_hash      TEXT    PRIMARY KEY,
+        revoked_before INTEGER NOT NULL,
+        expires_at     INTEGER NOT NULL
+    )
+"""
+
 
 def init_db() -> None:
     with _connection() as conn:
@@ -492,6 +504,7 @@ def init_db() -> None:
             cursor.execute(_DATA_RECIPES_INDEX)
             cursor.execute(_REVOKED_TOKENS_TABLE)
             cursor.execute(_REVOKED_TOKENS_INDEX)
+            cursor.execute(_REVOKED_USERS_TABLE)
             cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
             conn.commit()
             cursor.close()
@@ -532,6 +545,7 @@ def init_db() -> None:
             conn.execute(_DATA_RECIPES_INDEX)
             conn.execute(_REVOKED_TOKENS_TABLE)
             conn.execute(_REVOKED_TOKENS_INDEX)
+            conn.execute(_REVOKED_USERS_TABLE)
 
         _migrate(conn)
         purge_expired_revocations(conn)
@@ -540,7 +554,9 @@ def init_db() -> None:
 
 def purge_expired_revocations(conn: Any) -> None:
     """Drop denylist rows whose token has expired: verification rejects such a token on its own."""
-    _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (int(time.time()),))
+    nu = int(time.time())
+    _execute(conn, "DELETE FROM revoked_tokens WHERE expires_at < ?", (nu,))
+    _execute(conn, "DELETE FROM revoked_users WHERE expires_at < ?", (nu,))
 
 
 def revoke_token_hash(token_hash: str, expires_at: int) -> None:
@@ -555,9 +571,32 @@ def revoke_token_hash(token_hash: str, expires_at: int) -> None:
         conn.commit()
 
 
-def is_token_revoked(token_hash: str) -> bool:
+def revoke_user_tokens(user_hash: str, revoked_before: int, expires_at: int) -> None:
+    """Revoke every token of this account whose session started at or before revoked_before (#786).
+
+    A later revocation replaces an earlier one: it covers at least as many tokens and lasts as long.
+    """
     with _connection() as conn:
-        row = _execute(conn, "SELECT 1 FROM revoked_tokens WHERE token_hash = ?", (token_hash,)).fetchone()
+        _execute(
+            conn,
+            "INSERT INTO revoked_users (user_hash, revoked_before, expires_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (user_hash) DO UPDATE SET revoked_before = excluded.revoked_before, "
+            "expires_at = excluded.expires_at",
+            (user_hash, revoked_before, expires_at),
+        )
+        purge_expired_revocations(conn)
+        conn.commit()
+
+
+def is_token_revoked(token_hash: str, user_hash: str, start: int) -> bool:
+    """Revoked on its own (logout) or with all tokens of its account (#786); one query for both."""
+    with _connection() as conn:
+        row = _execute(
+            conn,
+            "SELECT 1 FROM revoked_tokens WHERE token_hash = ? "
+            "UNION ALL SELECT 1 FROM revoked_users WHERE user_hash = ? AND revoked_before >= ?",
+            (token_hash, user_hash, start),
+        ).fetchone()
     return row is not None
 
 

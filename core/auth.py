@@ -111,14 +111,23 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _gebruiker_hash(username: str) -> str:
+    return hashlib.sha256(username.encode()).hexdigest()
+
+
+def _ingetrokken(token: str, claims: tuple[str, int, int]) -> bool:
+    user, start, _ = claims
+    return db.is_token_revoked(_token_hash(token), _gebruiker_hash(user), start)
+
+
 def verify_token(token: str) -> str | None:
     """De gebruiker bij een ondertekend, niet verlopen en niet ingetrokken token, anders None.
 
-    Een databasefout bij de denylist gaat als uitzondering door (500), niet als None (401):
-    een storing is geen "sessie voorbij".
+    Ingetrokken: zelf (uitloggen, #479) of met alle tokens van het account (#786). Een databasefout bij de denylist
+    gaat als uitzondering door (500), niet als None (401): een storing is geen "sessie voorbij".
     """
     claims = _geldige_claims(token)
-    if claims is None or db.is_token_revoked(_token_hash(token)):
+    if claims is None or _ingetrokken(token, claims):
         return None
     return claims[0]
 
@@ -137,9 +146,21 @@ def revoke_token(token: str) -> None:
     if not AUTH_ENABLED:
         return
     claims = _geldige_claims(token)
-    token_hash = _token_hash(token)
-    if claims and not db.is_token_revoked(token_hash):
-        db.revoke_token_hash(token_hash, claims[2])
+    if claims and not _ingetrokken(token, claims):
+        db.revoke_token_hash(_token_hash(token), claims[2])
+
+
+def revoke_all_tokens(username: str) -> None:
+    """Trek elk token van dit account in dat tot nu is uitgegeven, ook op een ander apparaat of ververst (#786).
+
+    Elk token draagt zijn sessiestart in seconden, en verversen houdt die: alles met een start tot en met deze seconde
+    geldt niet meer, een login daarna wel. De rij blijft tot elk van die tokens toch verlopen is (ook een oud token,
+    dat 24 uur gold). Zonder login gebeurt er niets.
+    """
+    if not AUTH_ENABLED:
+        return
+    nu = int(time.time())
+    db.revoke_user_tokens(_gebruiker_hash(username), nu, nu + max(SESSION_MAX, _OUDE_TTL))
 
 
 USERS = parse_users(os.getenv("CHAT_USERS", ""))

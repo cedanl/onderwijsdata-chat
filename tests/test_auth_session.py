@@ -126,7 +126,7 @@ def test_wachtwoordmodus_heeft_nog_steeds_geen_gebruikers_of_ververs_route(clien
 def test_databasestoring_geeft_500_en_geen_401(client, monkeypatch):
     from persistence import db
 
-    def storing(token_hash):
+    def storing(token_hash, user_hash, start):
         raise sqlite3.OperationalError("database is locked")
 
     monkeypatch.setattr(db, "is_token_revoked", storing)

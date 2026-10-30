@@ -129,9 +129,11 @@ export default function PrivacyInhoud() {
           nadat je het woord &ldquo;verwijder&rdquo; hebt getypt. Dat kan niet ongedaan worden gemaakt; exporteer
           eerst. Dan verdwijnt alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, al
           je feedback, ook de kopie bij de feedback per antwoord, en de datarecepten), en ook de kopie in deze
-          browser; je wordt uitgelogd. Wat blijft: de serverlogs (zonder gesprekstekst) en de back-ups van de
-          beheerder, een hash van je sessie tot zij verloopt, feedback die al eerder van een verwijderd gesprek is
-          losgekoppeld en niet meer aan je account hangt, en de kopie op een ander apparaat tot je daar uitlogt.
+          browser; je wordt uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en
+          de back-ups van de beheerder, een hash van je accountnaam tot je laatste sessie verlopen is, een hash van
+          een sessie waarmee je uitlogde tot zij verloopt, feedback die al eerder van een verwijderd gesprek is
+          losgekoppeld en niet meer aan je account hangt, en de kopie in de browser van een ander apparaat tot je daar
+          uitlogt.
           Gebruik je een gedeeld account, dan verdwijnt ook het werk van de anderen. Zonder eigen login kan het niet.
         </li>
       </ul>

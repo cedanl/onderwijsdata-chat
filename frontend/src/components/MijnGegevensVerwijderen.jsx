@@ -116,8 +116,8 @@ function VerwijderDialoog({ onClose, onVerwijderd, verwijder }) {
             <strong>Dit kan niet ongedaan worden gemaakt.</strong>
           </p>
           <p>
-            Ook de kopie in deze browser gaat weg en je wordt uitgelogd. Op een ander apparaat blijft de kopie staan
-            tot je daar uitlogt.
+            Ook de kopie in deze browser gaat weg en je wordt uitgelogd. Je login op een ander apparaat vervalt ook;
+            de kopie in die browser blijft staan tot je daar uitlogt.
           </p>
           <p>Gebruik je dit account samen met anderen? Dan verdwijnt hun werk ook.</p>
         </div>
