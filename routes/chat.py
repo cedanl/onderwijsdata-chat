@@ -14,7 +14,7 @@ from agent import run as agent_run
 from agent.dashboard import DashboardSpec
 from agent.dashboard import generate as generate_dashboard_spec
 from agent.figuurverschil import figuur_verschillen
-from agent.history import afgebroken_beurt
+from agent.history import afgebroken_beurt, trim
 from agent.replay import (
     MODE_REPRODUCEER,
     MODE_VERVERS,
@@ -39,7 +39,6 @@ from core.config import (
     GENEREER_TIMEOUT_S,
     HISTORY_MAX_CHARS,
     MAX_CONCURRENT_RUNS,
-    MAX_HISTORY,
     MAX_MESSAGE_CHARS,
     MAX_WS_PER_USER,
     MAX_WS_TOTAL,
@@ -511,9 +510,10 @@ def _parse_history(raw: list) -> list[dict]:
 
     Capped at MAX_HISTORY beurten en HISTORY_MAX_CHARS tekens in totaal (#500, S15):
     de historie komt van de client en ging zonder tekencap integraal naar het model.
-    Boven de cap vallen de oudste beurten af — dezelfde strategie als MAX_HISTORY —
-    zodat een bestaand lang gesprek blijft openen. De historie begint na het afvallen altijd
-    met een gebruikersbeurt en bevat nooit een beurt zonder tekst.
+    Het aantal kort agent/history.trim in, zoals in het live gesprek: de eerste vraag blijft,
+    want die is het onderwerp van rapport en dashboard (#789). Boven de tekencap vallen daarna
+    de oudste beurten af, zodat een bestaand lang gesprek blijft openen. De historie begint na
+    het afvallen altijd met een gebruikersbeurt en bevat nooit een beurt zonder tekst.
 
     Een antwoord dat de browser als afgebroken bewaarde (`afgebroken`) krijgt zijn markering terug,
     ook als er geen tekst van was: anders stond de vraag ervóór weer open (#548).
@@ -530,7 +530,7 @@ def _parse_history(raw: list) -> list[dict]:
             result.append({"role": m["role"], "content": content})
     kept: list[dict] = []
     totaal = 0
-    for m in reversed(result[-MAX_HISTORY:]):
+    for m in reversed(trim(result)[0]):
         content = m["content"]
         if not kept and len(content) > HISTORY_MAX_CHARS:
             # Zelfs de jongste beurt is groter dan de hele cap: afkappen, niet weigeren.

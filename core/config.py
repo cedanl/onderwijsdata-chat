@@ -20,6 +20,10 @@ CBS_ROW_LIMIT = int(os.getenv("CBS_ROW_LIMIT", "5000"))
 RIO_PAGE_SIZE = int(os.getenv("RIO_PAGE_SIZE", "50"))
 DUO_ROW_LIMIT = int(os.getenv("DUO_ROW_LIMIT", "500"))
 MAX_HISTORY = int(os.getenv("MAX_HISTORY", "40"))
+# Vragen per gesprek (#789): een vraag met zijn antwoord is twee berichten, dus zo past een vol gesprek
+# ongeveer in MAX_HISTORY. Een UI-limiet: de chat krijgt hem via /api/config en neemt daarna geen nieuwe
+# vraag meer aan; de server dwingt hem zelf niet af en kapt pas af bij MAX_HISTORY (#774).
+MAX_CHAT_TURNS = max(1, MAX_HISTORY // 2)
 # Maximale lengte van een nieuw chatbericht in tekens, na strip() (#481, SECURITY.md S7).
 # De composer krijgt de echte waarde via /api/config (#501); frontend/src/constants.js MAX_MESSAGE_CHARS
 # is alleen de terugvalwaarde en gelijk aan deze standaard.

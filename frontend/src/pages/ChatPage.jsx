@@ -3,7 +3,8 @@ import { useChat } from '../hooks/useChat'
 import { useEscape } from '../hooks/useEscape'
 import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
-import { MAX_CHAT_TURNS, WARN_CHAT_TURNS, MAX_MESSAGE_CHARS } from '../constants'
+import { MAX_CHAT_TURNS, MAX_HISTORY, MAX_MESSAGE_CHARS } from '../constants'
+import { warnChatTurns } from '../contextLimits'
 import { saveWorkbookWithSync, syncWorkbook } from '../workbooks'
 import { pickModel, loadModelChoice, saveModelChoice, conversationModel } from '../modelChoice'
 import { canGenerateReport, lastDataQuestion } from '../reportEligibility'
@@ -72,9 +73,9 @@ const gespreksKnop = id => kiezerMetId('.history-btn', 'data-conv-id', id)
 const NIEUW_GESPREK = '.new-chat-btn'
 const GESPREK = '.chat-messages'
 
-export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, teOpenenGesprek = null, onGesprekGeopend }) {
+export default function ChatPage({ openRapport, settings = {}, sector = null, user, feedbackEnabled = false, maxMessageChars = MAX_MESSAGE_CHARS, maxChatTurns = MAX_CHAT_TURNS, maxHistory = MAX_HISTORY, teOpenenGesprek = null, onGesprekGeopend }) {
   useDocumentTitle(pageTitle('Chat'))
-  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat()
+  const { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, toasts, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, checkReportStart, generateReport, cancelReport, clearReport, startNewConversation, openConversation: openInChat, addToast } = useChat({ maxHistory })
   // A question on its way into the input box, not sent: a follow-up question picked under the last
   // answer (#364), or the question behind a clarification card ("Anders formuleren", #494).
   const [prefill, setPrefill] = useState(null)
@@ -633,8 +634,9 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const modelLabels = answerModels(displayMessages, models)
   const hasMessages = displayMessages.length > 0
   const userTurnCount = displayMessages.filter(m => m.role === 'user' && !m.isError).length
-  const atContextLimit = userTurnCount >= MAX_CHAT_TURNS
-  const nearContextLimit = userTurnCount >= WARN_CHAT_TURNS
+  // Both limits come from the server via /api/config (#789); the banners count questions, not messages.
+  const atContextLimit = userTurnCount >= maxChatTurns
+  const nearContextLimit = userTurnCount >= warnChatTurns(maxChatTurns)
 
   // Alles wat buiten de composer om een vraag verstuurt (suggesties, voorbeeldvragen, opnieuw sturen, "Ga verder",
   // "Stel de laatste vraag opnieuw", "Opnieuw" bij een fout) gaat hierlangs (#774): dezelfde voorwaarden als de
@@ -651,7 +653,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     return false
   }, [atContextLimit, send, weiger])
   // Een verduidelijking maakt een al gestelde vraag af: geen nieuwe vraag, dus geen weigering op de limiet van
-  // MAX_CHAT_TURNS vragen. Anders kwam de laatste vraag van een volle chat nooit af.
+  // maxChatTurns vragen. Anders kwam de laatste vraag van een volle chat nooit af.
   const verstuurKeuze = useCallback((keuze) => {
     if (sendClarification(keuze)) return true
     weiger()
@@ -808,12 +810,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
           <div className="chat-input-area">
             {atContextLimit && (
               <div className="context-limit-banner context-limit-banner--full">
-                Chat is vol ({MAX_CHAT_TURNS} berichten). Begin een nieuw gesprek om door te gaan.
+                Chat is vol ({maxChatTurns} vragen). Begin een nieuw gesprek om door te gaan.
               </div>
             )}
             {!atContextLimit && nearContextLimit && (
               <div className="context-limit-banner context-limit-banner--warn">
-                Chat raakt vol ({userTurnCount}/{MAX_CHAT_TURNS} berichten). Overweeg een nieuw gesprek te starten.
+                Chat raakt vol ({userTurnCount}/{maxChatTurns} vragen). Overweeg een nieuw gesprek te starten.
               </div>
             )}
             {/* Eén vaste statusrij (#594): tijdens een antwoord de voortgang, daarna de acties, op dezelfde
