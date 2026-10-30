@@ -12,6 +12,7 @@ import { answerBlocks, metBronnen } from '../answerBlocks'
 import { vervolgvragenTekst } from '../vervolgvragen'
 import { ReasoningPanel, TellingDetails, MessageContent, isAwaitingFirstToken } from './MessageContent'
 import { PlotlyFigure } from './PlotlyFigure'
+import { WEGGEGAAN } from '../weggegaan'
 
 // De bubbel van één bericht: vraag, antwoord, grafieken, verduidelijking en de knoppen eronder. Uit ChatPage.jsx
 // gehaald (#696); ChatPage exporteert Message opnieuw, zodat bestaande imports blijven werken.
@@ -133,7 +134,20 @@ export function Message({ msg, figures = null, verbinding = false, onClarificati
             {onVervolgvraag && !busy && (
               <QuestionButtons questions={vervolgvragenTekst(msg.vervolgvragen)} onPick={onVervolgvraag} busy={busy} label="Vervolgvragen" kop />
             )}
-            {msg.stopped && !msg.timeout && <div className="message-stopped">Genereren gestopt</div>}
+            {msg.stopped && !msg.timeout && !msg.weggegaan && <div className="message-stopped">Genereren gestopt</div>}
+            {/* De gebruiker ging zelf weg tijdens het antwoord (#772): geen "Verbinding verbroken". Wie terugkomt, kan de
+                vraag met één klik opnieuw stellen, zoals na een afgebroken antwoord. */}
+            {msg.weggegaan && !msg.isError && (
+              <div className="message-stopped" role="status">
+                {WEGGEGAAN}
+                {herhaal && (
+                  <>
+                    {' '}
+                    <button type="button" className="message-continue" onClick={herhaal} disabled={busy}>Probeer opnieuw</button>
+                  </>
+                )}
+              </div>
+            )}
             {/* De tijdsgrens stopte de vraag (#775): de reden blijft staan, met de knoppen hieronder. role="status":
                 ook wie wegkeek of een schermlezer gebruikt, hoort waarom. */}
             {msg.timeout && (

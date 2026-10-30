@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import DataSourcesModal from './DataSourcesModal'
 import InstalleerUitleg from './InstalleerUitleg'
 import PrivacyLink from './PrivacyLink'
 import { useEscape } from '../hooks/useEscape'
 import { sneltoetsHint } from '../hooks/useZoekSneltoets'
 import { useInstallatieAanbod, vraagInstallatie } from '../installeerApp'
+import { useBewaakteNavigatie } from '../runBewaking'
 
 const BESTEMMINGEN = [
   {
@@ -96,8 +97,9 @@ export default function Nav({ user, onLogout, onOpenSettings, instelling, dashbo
   )
 }
 
+// Een lopend antwoord of rapport stopt bij een andere pagina: eerst de bevestiging (#772).
 function NavBtn({ to, label, children }) {
-  const navigate = useNavigate()
+  const navigate = useBewaakteNavigatie()
   const location = useLocation()
   return (
     <a
@@ -117,7 +119,7 @@ function NavBtn({ to, label, children }) {
 // instellingen en de links die de chat niet meer onder het invoerveld toont (bronnen, privacy). De tabbalk
 // nam 58 px van de chat. Hij verschijnt alleen onder de breakpoint (CSS); op desktop staat de navigatie in de balk.
 function NavMenu({ bestemmingen, user, instelling, onLogout, onOpenSettings }) {
-  const navigate = useNavigate()
+  const navigate = useBewaakteNavigatie()
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [bronnen, setBronnen] = useState(false)

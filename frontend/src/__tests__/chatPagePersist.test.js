@@ -323,6 +323,23 @@ describe('opslaan bij unmount (#521)', () => {
   }
 
   it('schrijft de lijst, wist het open gesprek en meldt niets', async () => {
+    await mountChat()
+    chatState.messages = [...chatState.messages, { id: 2, role: 'assistant', content: 'laatste woord', done: true }]
+    await render()
+    api.putConversation.mockClear()
+    const fout = vi.spyOn(console, 'error')
+
+    await act(async () => root.unmount())
+    root = null
+
+    expect(JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS))).toHaveLength(1)
+    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+    expect(meldingen).toEqual([])
+    expect(fout).not.toHaveBeenCalled()
+  })
+
+  // Weg tijdens het antwoord (#772): gestopt omdat je wegging, en het gesprek blijft voor de terugkeer naar /chat.
+  it('bewaart een antwoord dat nog liep als gestopt omdat je wegging, houdt het gesprek vast en meldt niets', async () => {
     await nieuwAntwoordNietOpgeslagen()
     const fout = vi.spyOn(console, 'error')
 
@@ -331,9 +348,9 @@ describe('opslaan bij unmount (#521)', () => {
 
     expect(JSON.parse(localStorage.getItem(STORAGE_CONVERSATIONS))).toHaveLength(1)
     expect(api.putConversation).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
-      messages: expect.arrayContaining([expect.objectContaining({ content: 'laatste woord' })]),
+      messages: expect.arrayContaining([expect.objectContaining({ content: 'laatste woord', done: true, weggegaan: true })]),
     }))
-    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT)).messages.at(-1)).toMatchObject({ content: 'laatste woord', weggegaan: true })
     expect(meldingen).toEqual([])
     expect(fout).not.toHaveBeenCalled()
   })
@@ -346,7 +363,7 @@ describe('opslaan bij unmount (#521)', () => {
     await act(async () => root.unmount())
     root = null
 
-    expect(localStorage.getItem(STORAGE_CURRENT_CHAT)).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT)).messages.at(-1).weggegaan).toBe(true)
     expect(meldingen).toEqual([])
     expect(fout).not.toHaveBeenCalled()
   })
