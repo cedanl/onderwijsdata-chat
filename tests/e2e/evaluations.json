@@ -530,6 +530,26 @@
         "max_search_catalog": 1,
         "must_mention": ["voorlopig"]
       }
+    },
+    {
+      "label": "accreditatie-hbo",
+      "message": "Wanneer heeft de NVAO de bachelor Bedrijfskunde van Hogeschool Utrecht voor het laatst geaccrediteerd?",
+      "description": "#726: accreditatiedatums per opleiding uit DUO (get_accreditatie), met besluitdatum en bron; de uiterste indiening is geen einddatum en er is geen NVAO-oordeel",
+      "expected": {
+        "must_contain_tools": ["get_accreditatie"],
+        "max_search_catalog": 1,
+        "must_mention": ["Bedrijfskunde", "DUO|Overzicht Erkenningen", "besluit"]
+      }
+    },
+    {
+      "label": "accreditatie-wo",
+      "message": "Is de master Geneeskunde van de Universiteit Utrecht geaccrediteerd, en tot wanneer?",
+      "description": "#726: accreditatie van een wo-opleiding uit DUO (get_accreditatie); de vraag 'tot wanneer' lokt een einddatum uit die de inleverdatum niet is",
+      "expected": {
+        "must_contain_tools": ["get_accreditatie"],
+        "max_search_catalog": 1,
+        "must_mention": ["Geneeskunde", "DUO|Overzicht Erkenningen", "indien|visitatie"]
+      }
     }
   ]
 }

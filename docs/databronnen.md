@@ -143,8 +143,9 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
 - **Per bestuur:** het oordeel geldt per bestuur, niet per instelling, vestiging of opleiding.
 - **Gemengd bestuur:** heeft het bestuur ook po, vo of ho, dan zegt het antwoord dat het oordeel over het hele bestuur
   gaat. Op 1 oktober 2026 noemden 164 besturen mbo; 126 daarvan hebben alleen mbo.
-- **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar beoordeelt de NVAO de opleidingen, en
-  die bron zit niet in de app.
+- **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar accrediteert de NVAO de opleidingen.
+  De accreditatiedatums per opleiding staan in `get_accreditatie` (zie hieronder); de NVAO-oordelen zitten (nog) niet
+  in de app.
 - **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
 
 | Eigenschap | Details |
@@ -187,6 +188,27 @@ chat via `get_mbo_indicatoren`, alleen voor mbo-instellingen (#727).
 | Inhoud | Jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling, met vergelijkingsgroep |
 | Formaat | xlsx, één editie per jaar, één keer per dag opgehaald |
 | Koppeling | Instellingscode (BRIN) uit het register |
+
+---
+
+## Accreditatie per ho-opleiding — DUO, Overzicht Erkenningen ho
+
+DUO publiceert dagelijks de erkende ho-opleidingen per instelling (`overzicht-erkenningen-ho`, CC-BY), met de datums
+die de NVAO of de minister over de accreditatie vastlegt (toelichting v1.8). In de chat via `get_accreditatie`, per
+hbo- of wo-opleiding (#726, stap A).
+- **Geen oordeel:** het overzicht bevat geen NVAO-oordeel (voldoende, goed, excellent), geen besluittekst en geen
+  rapport. De NVAO publiceert die zelf; of de app ze mag ophalen, wacht op toestemming van de NVAO (#726, stap B).
+- **Inleverdatum:** `ACCREDITATIE_INLEVERDATUM` is de uiterste indiening van het visitatierapport voor de volgende
+  beoordeling, geen einddatum. De tool noemt hem zo en zegt het erbij.
+- **Vervaldatum:** `ACCREDITATIE_VERVALDATUM` geldt alleen voor de termijn van een nieuwe opleiding.
+- **Per opleiding:** de datums zeggen niets over kwaliteit; de tool geeft één opleiding per aanroep, geen ranglijst.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | onderwijsdata.duo.nl, open data (CC-BY), via het gewone DUO-laadpad |
+| Inhoud | Erkenning en accreditatiedatums per instelling en opleiding (CROHO) |
+| Formaat | CSV, dagelijks bijgewerkt |
+| Koppeling | `INSTELLINGSCODE` = instellingscode uit het register; `ERKENDEOPLEIDINGSCODE` = CROHO, vijf cijfers |
 
 ---
 

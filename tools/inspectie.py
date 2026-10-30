@@ -268,8 +268,8 @@ def get_inspectieoordeel(instelling: str) -> str:
     if profiel.get("sector") != "mbo":
         return (
             f"{profiel['naam']} is een {profiel.get('sector')}-instelling. De Inspectie geeft het hoger onderwijs geen "
-            "oordeel per bestuur: de kwaliteit van hbo- en wo-opleidingen beoordeelt de NVAO, en die bron zit niet in "
-            "deze app."
+            "oordeel per bestuur: de kwaliteit van hbo- en wo-opleidingen beoordeelt de NVAO. De accreditatiedatums per "
+            "opleiding staan in get_accreditatie (DUO); de NVAO-oordelen zelf zitten (nog) niet in deze app."
         )
     try:
         bestand = peilbestand()
