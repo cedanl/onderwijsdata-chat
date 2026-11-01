@@ -802,6 +802,12 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     return result
 
 
+def _beschikbare_instellingen(df_ho: pd.DataFrame, df_mbo: pd.DataFrame) -> list[str]:
+    """De suggesties bij een onbekende instelling: ho- en mbo-namen samen, gesorteerd, hooguit _MAX_SUGGESTIONS."""
+    namen = set(df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna()) | set(df_mbo["INSTELLINGSNAAM"].dropna())
+    return sorted(namen)[:_MAX_SUGGESTIONS]
+
+
 def load_dashboard_regio(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
@@ -820,14 +826,7 @@ def load_dashboard_regio(instelling: str) -> dict:
 
     try:
         df_ho, _, _ = _load_ho_full()
-        df_mbo = _load_mbo_studenten()
-        alle = sorted(
-            set(
-                df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
-                + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
-            )
-        )
-        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(df_ho, _load_mbo_studenten())
     except Exception:
         logger.warning("load_dashboard_regio: beschikbare instellingen niet laden", exc_info=True)
 
@@ -970,15 +969,7 @@ def load_dashboard(instelling: str) -> dict:
         return result
 
     try:
-        df_ho = _load_ho(instelling)
-        df_mbo = _load_mbo_studenten()
-        alle = sorted(
-            set(
-                df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
-                + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
-            )
-        )
-        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(_load_ho(instelling), _load_mbo_studenten())
     except Exception:
         logger.warning("load_dashboard: beschikbare instellingen niet laden", exc_info=True)
 
@@ -1165,9 +1156,7 @@ def _sector_rendement_ho(
     return out
 
 
-def _ho_peer_rendement(
-    df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str, inst_col: str, code: str
-) -> dict[int, float]:
+def _ho_peer_rendement(df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str, code: str) -> dict[int, float]:
     p_ej = df_ej[df_ej[code_col] == code]
     if p_ej.empty:
         return {}
@@ -1222,7 +1211,7 @@ def _rendement_ho(instelling: str) -> dict | None:
     peer_rend_lists: list[dict[int, float]] = []
     if ctx:
         for code in ctx.peer_codes:
-            rend = _ho_peer_rendement(df_ej, df_dipl, code_col, inst_col, code)
+            rend = _ho_peer_rendement(df_ej, df_dipl, code_col, code)
             if rend:
                 naam = df_ej[df_ej[code_col] == code][inst_col].iloc[0]
                 peers_rendement[naam] = rend
