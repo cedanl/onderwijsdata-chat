@@ -38,8 +38,9 @@ De baseline krimpt per kwartaal naar nul (`AFBOUWPLAN` in `scripts/ty_baseline.p
 ≤100 eind 2026, ≤70 eind Q1 2027, ≤40 eind Q2 en 0 eind Q3 2027. Het script meldt bij elke run
 hoeveel er nog af moet.
 
-De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en alle tags;
-er draait daar geen deploy meer.
+De poorten draaien alleen in GitLab CI (`.gitlab-ci.yml`). GitLab blijft de bron: GitHub spiegelt `main` en alle
+tags. Op GitHub draait alleen de docs-workflow (`.github/workflows/docs.yml`: `mkdocs build --strict` en publicatie
+naar Pages); er draait daar geen test en geen deploy.
 
 De pipeline faalt als de dekking van `pytest` onder `fail_under` in `pyproject.toml` komt (#691). Dek je nieuwe code
 met tests in plaats van de drempel te verlagen; na een merge die de stand duidelijk verbetert, mag de drempel omhoog
