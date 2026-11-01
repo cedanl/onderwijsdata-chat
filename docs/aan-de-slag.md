@@ -68,21 +68,23 @@ frontend stuurt `/api` door naar de backend. Open de frontend:
 
 ## Chatgeschiedenis inschakelen (optioneel)
 
-Standaard werkt de app zonder login en zonder opgeslagen gespreksgeschiedenis. Schakel het in door twee variabelen toe te voegen aan `.env`:
+Standaard werkt de app lokaal zonder login. Gesprekken worden dan wel bewaard, maar allemaal onder één gedeelde gebruiker
+(`gast`). Een eigen geschiedenis per gebruiker krijg je met een login. Voeg daarvoor twee variabelen toe aan `.env`:
 
 ```dotenv
 CHAT_USERS=gebruikersnaam:wachtwoord
 CHAT_SECRET=<willekeurige lange string>
 ```
 
-`CHAT_SECRET` is het HMAC-secret voor sessiebeheer. Zonder dit wordt er per herstart een nieuw secret gegenereerd en verlopen bestaande tokens.
+`CHAT_SECRET` is het HMAC-secret voor sessiebeheer. Met een login is het verplicht: zonder `CHAT_SECRET` start de app
+niet en noemt de melding hoe je een waarde maakt (`python -c "import secrets; print(secrets.token_hex(32))"`).
 
 Meerdere gebruikers zijn mogelijk als kommalijst: `CHAT_USERS=alice:ww1,bob:ww2`.
 
 Na een herstart verschijnt het loginscherm en wordt elk gesprek automatisch opgeslagen — lokaal in het SQLite-bestand `onderwijsdata.db`, of in PostgreSQL als `POSTGRES_URI` is ingesteld. Eerdere gesprekken zijn terug te vinden in de linkerzijbalk, of met **Ctrl+K** (⌘K op een Mac) of de zoekknop in de kop: dat zoekt in één keer in je gesprekken (titel en tekst) en rapporten (titel).
 
 !!! tip "Uitschakelen"
-    Verwijder `CHAT_USERS` uit `.env` om terug te gaan naar de anonieme modus.
+    Verwijder `CHAT_USERS` uit `.env` om terug te gaan naar de modus zonder login, met de gedeelde gebruiker `gast`.
 
 ---
 
