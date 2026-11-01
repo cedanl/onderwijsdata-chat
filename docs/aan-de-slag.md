@@ -49,21 +49,19 @@ De app herstart automatisch bij bestandswijzigingen. Open vervolgens je browser 
 
 ### Bereikbaarheid vanuit de browser
 
-=== "VS Code devcontainer"
-    Poorten worden automatisch doorgestuurd — open:
+`make dev` start de frontend (Vite) op poort 5173 (`FRONTEND_PORT`) en de backend op 8000 (`BACKEND_PORT`); de
+frontend stuurt `/api` door naar de backend. Open de frontend:
+
+=== "Lokaal of met doorgestuurde poorten"
     ```
-    http://localhost:8000
+    http://localhost:5173
     ```
 
-=== "devcontainer-cli (plain Docker)"
-    `forwardPorts` in `devcontainer.json` werkt niet zonder VS Code. Gebruik het container-bridge-IP:
+=== "Container zonder doorgestuurde poorten"
+    Komen de poorten van de container niet op de host (bijvoorbeeld met devcontainer-cli zonder VS Code), gebruik dan
+    het IP van de container:
     ```bash
-    make url   # print de juiste URL, bijv. http://172.17.0.2:8000
-    ```
-
-=== "Lokaal (geen container)"
-    ```
-    http://localhost:8000
+    make url   # print de juiste URL, bijv. http://172.17.0.2:5173
     ```
 
 ---

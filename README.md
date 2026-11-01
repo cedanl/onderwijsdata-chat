@@ -95,18 +95,13 @@ De app herstart automatisch bij bestandswijzigingen.
 
 ### Bereikbaarheid vanuit de host-browser
 
-**VS Code devcontainer** — poorten worden automatisch doorgestuurd, open gewoon:
-```
-http://localhost:8000
-```
-
-**devcontainer-cli (plain Docker, geen VS Code)** — `forwardPorts` in `devcontainer.json` werkt niet zonder VS Code. Gebruik het container-bridge-IP:
+`make dev` start de frontend op poort 5173 (`FRONTEND_PORT`) en de backend op 8000 (`BACKEND_PORT`); open de
+frontend, lokaal op `http://localhost:5173`. Komen de poorten van de container niet op de host (bijvoorbeeld met
+devcontainer-cli zonder VS Code), gebruik dan het IP van de container:
 
 ```bash
-make url   # print de juiste URL, bijv. http://172.17.0.2:8000
+make url   # print de juiste URL, bijv. http://172.17.0.2:5173
 ```
-
-Open die URL in je host-browser.
 
 ## MCP-server
 
