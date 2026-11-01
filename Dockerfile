@@ -33,7 +33,7 @@ COPY pyproject.toml uv.lock ./
 
 # --extra postgres: every SDP deployment target (test/playground/production)
 # configures a real POSTGRES_URI; psycopg2-binary needs to be present in the
-# image even though it's an optional extra (kept lean for local/Azure SQLite use).
+# image even though it's an optional extra (lokaal draait de app zonder POSTGRES_URI op SQLite).
 # UV_PYTHON_DOWNLOADS=never: de .venv hoort bij de python van dit base-image, dezelfde als in stage 3.
 RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --extra postgres
 
