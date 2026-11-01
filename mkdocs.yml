@@ -87,5 +87,4 @@ nav:
     - Deployment: deployment.md
     - Promoten naar playground: promoten.md
     - Test Environment: test-environment.md
-  - Voorbeelden: voorbeelden/index.md
   - Hosting: hosting.md
