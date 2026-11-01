@@ -186,13 +186,17 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 - **Catalog-flow:** `search_catalog` → `dataset_details` (two-stage retrieval)
 - **Toon-check:** zakelijke toon, geen fluff of complimenten (regex-detectie)
 - **Cross-model vergelijking:** beide modellen vinden dezelfde datasets en vergelijkbare getallen
+- **Weigeringen:** vragen zonder open data, buiten de reeks, over een niet-bestaande opleiding of instelling of over een
+  toekomstig jaar moeten geweigerd worden, zonder getal dat niet uit een tool komt (`expected.must_refuse` in
+  `tests/e2e/evaluations.json`, gescoord door `refusal.js`). Ze zijn kritiek: een weigering moet in elke herhaling
+  slagen ([Promoten](promoten.md), stap 0)
 
 ### Bekende beperkingen
 
 Transparantie over wat nog niet getest is:
 
-- Negatieve gevragen (model moet "nee" zeggen bij niet-bestaande instellingen of toekomstige jaren)
-- Multi-turn gesprekken
+- Multi-turn gesprekken buiten het rapport: alleen de rapporteval (`rapport-bijsturing.spec.js`, #752) speelt een gesprek
+  van meer beurten, als opmaat naar een rapport
 - De sandbox van `run_analysis` is geen kernelgrens: een ontsnapping uit Python draait als dezelfde gebruiker als de server (#443)
 - Reference values kunnen verouderen na dataverversing; voor de ijkwaarden maakt `scripts/ijkwaarden.py` dat zichtbaar
 
