@@ -139,6 +139,18 @@ def get_all_api_key_env_vars() -> list[str]:
     return [k for k in _PROVIDER_API_KEYS.values() if k is not None] + list(_SLEUTELS_ZONDER_PREFIX)
 
 
+def llm_sleutel_aanwezig(model: str) -> bool:
+    """Kan de app dit model aanroepen, wat sleutels betreft? Eén check voor de chat en /ready (#815).
+
+    Een provider zonder sleutel (Ollama) kan altijd; anders moet een van de sleutels uit
+    `get_all_api_key_env_vars()` gezet zijn, dus ook alleen WILLMA_API_KEY (#675).
+    """
+    provider = (model or "").split("/")[0].lower()
+    if provider in _PROVIDER_API_KEYS and _PROVIDER_API_KEYS[provider] is None:
+        return True
+    return any(os.getenv(naam) for naam in get_all_api_key_env_vars())
+
+
 # Wie het model draait: de modelkiezer noemt die partij in een bijschrift "Via …" (#496, F10).
 _ANTHROPIC = "Anthropic"
 _FOUNDRY = "Microsoft Azure AI Foundry"
