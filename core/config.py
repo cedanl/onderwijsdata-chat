@@ -103,10 +103,12 @@ _PROVIDER_API_KEYS: dict[str, str] = {
     "azure": "AZURE_API_KEY",
     "openai": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
-    "willma": "WILLMA_API_KEY",
     "ollama": None,  # Ollama doesn't require API key
     "ollama_chat": None,
 }
+# Sleutels zonder eigen prefix (#829): Willma loopt via openai/ met WILLMA_API_KEY (agent/models.py), maar een omgeving
+# met alleen die sleutel moet /ready halen (#675).
+_SLEUTELS_ZONDER_PREFIX = ("WILLMA_API_KEY",)
 
 
 def get_required_api_key_env_var(model_id: str) -> str | None:
@@ -134,7 +136,7 @@ def get_all_api_key_env_vars() -> list[str]:
     Used to check if ANY API key is configured (for startup checks).
     Filters out None values (providers that don't need keys).
     """
-    return [k for k in _PROVIDER_API_KEYS.values() if k is not None]
+    return [k for k in _PROVIDER_API_KEYS.values() if k is not None] + list(_SLEUTELS_ZONDER_PREFIX)
 
 
 # Wie het model draait: de modelkiezer noemt die partij in een bijschrift "Via …" (#496, F10).

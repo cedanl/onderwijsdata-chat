@@ -18,7 +18,6 @@ class TestProviderApiKeyMapping:
         assert get_required_api_key_env_var("azure_ai/claude") == "AZURE_AI_API_KEY"
         assert get_required_api_key_env_var("azure/gpt") == "AZURE_API_KEY"
         assert get_required_api_key_env_var("gemini/model") == "GEMINI_API_KEY"
-        assert get_required_api_key_env_var("willma/llama") == "WILLMA_API_KEY"
 
     def test_ollama_does_not_require_key(self):
         """Ollama models don't require API keys."""
