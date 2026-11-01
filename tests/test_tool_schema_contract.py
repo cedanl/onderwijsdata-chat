@@ -72,9 +72,8 @@ class TestChartTypeContract:
     def test_elke_uitkomst_van_de_beslisboom_is_ook_expliciet_kiesbaar(self):
         toegestaan = set(_params(TOOL_CREATE_PLOT)["properties"]["chart_type"]["enum"])
         uitkomsten = {
-            _infer_chart_type(x, "AANTAL", kleur, groepen, aandeel)
+            _infer_chart_type(x, groepen, aandeel)
             for x in ("JAAR", "INSTELLING")
-            for kleur in (None, "GESLACHT")
             for groepen in (1, 3, 9)
             for aandeel in (False, True)
         }

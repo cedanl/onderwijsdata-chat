@@ -502,7 +502,7 @@ def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> st
 
     df = store.get(data_key) if data_key else None
     rows = df.to_dict(orient="records") if df is not None else args.get("data") or []
-    chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, y, color_by, args.get("is_share", False))
+    chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, color_by, args.get("is_share", False))
     # Op de x-kolom zelf kleurt create_plot per staaf zonder legenda; px zou er een legenda van maken.
     color_arg = f', color="{color_by}"' if color_by and color_by != x else ""
     vanaf_nul = bool(args.get("y_vanaf_nul")) and chart_type != "pie"
