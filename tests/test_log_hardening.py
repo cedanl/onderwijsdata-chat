@@ -369,23 +369,8 @@ def test_setup_logging_zet_het_filter_op_de_handler():
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    from fastapi.testclient import TestClient
-
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 def test_een_chatverbinding_krijgt_een_verbindings_id_in_het_log(client, caplog):

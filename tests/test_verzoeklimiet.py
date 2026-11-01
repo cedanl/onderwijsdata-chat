@@ -5,7 +5,6 @@ en uvicorn liet WebSocket-berichten tot 16 MiB toe. Eén ingelogde gebruiker kon
 en de database vullen. Gemeten op 23-10: het grootste gesprek 163 kB, het grootste werkboek 85 kB.
 """
 
-import importlib
 import json
 from pathlib import Path
 
@@ -57,21 +56,8 @@ def test_een_te_groot_verzoek_zonder_lengte_krijgt_ook_413():
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 @pytest.mark.parametrize("pad", ["/api/conversations/g1", "/api/workbooks/w1"])

@@ -1,5 +1,3 @@
-import importlib
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -8,39 +6,15 @@ from core.persoonsgegevens import GESPREKSTITEL_ZONDER_PERSOONSGEGEVENS, MAX_GES
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 @pytest.fixture
-def authed_client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "testuser:testpass")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
+def authed_client(app_client):
+    c = app_client(users="testuser:testpass")
     from core import auth
 
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    c = TestClient(server.app)
     # Een echt token zonder de login-route: de login-limiet geldt voor de hele testrun.
     c.headers["Authorization"] = f"Bearer {auth.make_token('testuser')}"
     return c

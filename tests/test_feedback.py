@@ -32,36 +32,17 @@ def db(tmp_path, monkeypatch):
     return db
 
 
-def _client(tmp_path, monkeypatch, enabled: str = "true") -> TestClient:
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("ENABLE_FEEDBACK", enabled)
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth, config
+# ENABLE_FEEDBACK wordt bij het importeren gelezen; daarom herladen config en de routes (server doet app_client zelf).
+_HERLAAD = ("core.auth", "core.config", "persistence.db", "routes.config", "routes.feedback", "routes")
 
-    importlib.reload(auth)
-    importlib.reload(config)
-    from persistence import db
 
-    importlib.reload(db)
-    db.init_db()
-    from routes import config as config_route
-    from routes import feedback as feedback_route
-
-    importlib.reload(config_route)
-    importlib.reload(feedback_route)
-    import routes
-
-    importlib.reload(routes)
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def _client(app_client, enabled: str = "true") -> TestClient:
+    return app_client(env={"ENABLE_FEEDBACK": enabled}, herlaad=_HERLAAD)
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    client = _client(tmp_path, monkeypatch)
+def client(app_client):
+    client = _client(app_client)
     from persistence import db
 
     # Feedback mag alleen op een eigen werkboek (#389); zonder login heet iedereen "gast".
@@ -356,8 +337,8 @@ def test_post_feedback_on_someone_elses_workbook_is_refused(client):
     assert _stored() == []
 
 
-def test_feedback_disabled(tmp_path, monkeypatch):
-    client = _client(tmp_path, monkeypatch, enabled="false")
+def test_feedback_disabled(app_client):
+    client = _client(app_client, enabled="false")
     assert client.get("/api/config").json()["feedback_enabled"] is False
     assert client.get("/api/feedback/questions").status_code == 404
     assert client.post("/api/feedback", json=_body()).status_code == 404

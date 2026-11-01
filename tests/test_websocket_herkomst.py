@@ -5,8 +5,6 @@ token is het eerste slot; zonder login (lokaal, demo) is dit het enige, en ander
 gebruiker open had een chatverbinding naar de app openen.
 """
 
-import importlib
-
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
@@ -42,23 +40,8 @@ def test_lokaal_mag_de_vite_devserver(origin):
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    from fastapi.testclient import TestClient
-
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 def test_de_chat_weigert_een_verbinding_van_een_andere_site(client):

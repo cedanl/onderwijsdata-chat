@@ -1,27 +1,11 @@
 """Zoeken in de gespreksgeschiedenis, op titel en inhoud (#124)."""
 
-import importlib
-
 import pytest
-from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    c = TestClient(server.app)
+def client(app_client):
+    c = app_client()
     gesprekken = [
         ("c1", "Instroom mbo", 1000, [{"role": "user", "content": "Hoeveel studenten bij ROC Tilburg?"}]),
         ("c2", "Uitval hbo", 2000, [{"role": "assistant", "content": "Eén op de vijf stopt in het eerste jaar."}]),

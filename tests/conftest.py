@@ -116,3 +116,47 @@ def zonder_scopekaart(monkeypatch):
     # agent/__init__ exporteert run(), dat het module-attribuut agent.run overschaduwt.
     run_module = importlib.import_module("agent.run")
     monkeypatch.setattr(run_module, "scopevraag", lambda vraag, settings: None)
+
+
+TEST_SECRET = "test-secret-for-tests"
+
+
+@pytest.fixture
+def app_client(tmp_path, monkeypatch):
+    """Factory voor een TestClient op een verse app met een eigen SQLite-bestand (#840).
+
+    `maak()` zet `DATABASE_PATH` op `tmp_path/test.db`. Met `users` staat login aan (`CHAT_USERS` en een vast
+    `CHAT_SECRET`), zonder `users` zijn beide gewist en is iedereen `gast`. `env` zet extra variabelen. Daarna herlaadt
+    hij de modules in `herlaad`, in die volgorde (ze lezen hun env bij het importeren), roept `init_db()` aan als
+    `init_db` waar is, en herlaadt als laatste `server`.
+    """
+    from fastapi.testclient import TestClient
+
+    def maak(
+        *,
+        users: str | None = None,
+        env: dict[str, str] | None = None,
+        herlaad: tuple[str, ...] = ("core.auth", "persistence.db"),
+        init_db: bool = True,
+    ) -> TestClient:
+        monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
+        if users is None:
+            monkeypatch.delenv("CHAT_USERS", raising=False)
+            monkeypatch.delenv("CHAT_SECRET", raising=False)
+        else:
+            monkeypatch.setenv("CHAT_USERS", users)
+            monkeypatch.setenv("CHAT_SECRET", TEST_SECRET)
+        for naam, waarde in (env or {}).items():
+            monkeypatch.setenv(naam, waarde)
+        for module in herlaad:
+            importlib.reload(importlib.import_module(module))
+        if init_db:
+            from persistence import db
+
+            db.init_db()
+        import server
+
+        importlib.reload(server)
+        return TestClient(server.app)
+
+    return maak
