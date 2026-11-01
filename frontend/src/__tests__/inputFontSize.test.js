@@ -1,37 +1,12 @@
 // #590: Safari on an iPhone zooms the page in when a field under 16px gets focus. The root is 15px, so
 // 1rem is 15px and does not help: on a phone every field needs an explicit px size of at least 16.
-// jsdom does no layout, so this pins the CSS agreement (same parsing approach as tapTargets.test.js).
+// jsdom does no layout, so this pins the CSS agreement (same parser as tapTargets.test.js, helpers/cssRegels.js).
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parseRules } from './helpers/cssRegels'
 
 const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-
-// Top-level rules and @media blocks in file order: { media, selectors, body, index }.
-function parseRules(text) {
-  const rules = []
-  let i = 0
-  while (i < text.length) {
-    const open = text.indexOf('{', i)
-    if (open === -1) break
-    const prelude = text.slice(i, open).trim()
-    let depth = 1
-    let j = open + 1
-    while (depth > 0 && j < text.length) {
-      if (text[j] === '{') depth++
-      else if (text[j] === '}') depth--
-      j++
-    }
-    const inner = text.slice(open + 1, j - 1)
-    if (prelude.startsWith('@media')) {
-      for (const rule of parseRules(inner)) rules.push({ ...rule, media: prelude, index: rules.length })
-    } else if (!prelude.startsWith('@')) {
-      rules.push({ media: null, selectors: prelude.split(',').map(s => s.trim()), body: inner, index: rules.length })
-    }
-    i = j
-  }
-  return rules
-}
 
 const rules = parseRules(css)
 const PHONE_WIDTH = 390
