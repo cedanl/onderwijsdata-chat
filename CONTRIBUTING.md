@@ -28,7 +28,7 @@ De backendtests halen niets live op bij DUO of CBS: de pytest-job blokkeert elke
 worden door een storing bij een bron (#766). Het DUO-register en de dashboards draaien op bevroren
 bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py`). Ververs ze met
 `uv run python scripts/duo_testfixtures.py` als een test een ander DUO-bestand of een andere instelling
-nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, wekelijks).
+nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, dagelijks).
 
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
