@@ -11,6 +11,7 @@ import { useZoekSneltoets } from './hooks/useZoekSneltoets'
 import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
 import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
+import { zetTermijnen } from './termijnen'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { effectiefProfiel, zonderProfiel } from './profiel'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
@@ -173,6 +174,7 @@ function AppShell() {
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
         setMaxChatTurns(resolveMaxChatTurns(config.max_chat_turns))
         setMaxHistory(resolveMaxHistory(config.max_history))
+        zetTermijnen(config)
       }).catch(() => {
         setDashboardsEnabled(false)
       }),
