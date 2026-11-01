@@ -464,88 +464,67 @@ _REVOKED_USERS_TABLE = """
 """
 
 
+_CONVERSATIONS_TABLE = """
+    CREATE TABLE IF NOT EXISTS conversations (
+        id        TEXT    NOT NULL,
+        username  TEXT    NOT NULL,
+        title     TEXT    NOT NULL,
+        timestamp INTEGER NOT NULL,
+        messages  TEXT    NOT NULL,
+        PRIMARY KEY (id, username)
+    )
+"""
+_CONVERSATIONS_INDEX = "CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)"
+
+_WORKBOOKS_TABLE = """
+    CREATE TABLE IF NOT EXISTS workbooks (
+        id             TEXT NOT NULL,
+        username       TEXT NOT NULL,
+        title          TEXT NOT NULL,
+        description    TEXT NOT NULL DEFAULT '',
+        messages       TEXT,
+        figures        TEXT,
+        instelling     TEXT,
+        html_content   TEXT,
+        dashboard_spec TEXT,
+        created_at     TEXT NOT NULL,
+        laatst_gebruikt BIGINT,
+        PRIMARY KEY (id, username)
+    )
+"""
+_WORKBOOKS_INDEX = "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
+
+_SCHEMA_MIGRATIONS_TABLE = "CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)"
+
+# Het hele schema, voor Postgres en SQLite dezelfde DDL (#825); _migrate werkt een bestaande database daarna bij.
+_SCHEMA = (
+    _CONVERSATIONS_TABLE,
+    _CONVERSATIONS_INDEX,
+    _WORKBOOKS_TABLE,
+    _WORKBOOKS_INDEX,
+    _FEEDBACK_TABLE,
+    _ANSWER_FEEDBACK_TABLE,
+    _ALGEMENE_FEEDBACK_TABLE,
+    _DATA_RECIPES_TABLE,
+    _DATA_RECIPES_INDEX,
+    _REVOKED_TOKENS_TABLE,
+    _REVOKED_TOKENS_INDEX,
+    _REVOKED_USERS_TABLE,
+    _SCHEMA_MIGRATIONS_TABLE,
+)
+
+
 def init_db() -> None:
     with _connection() as conn:
-        cursor = conn.cursor()
-
         if _USE_POSTGRES:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id        TEXT    NOT NULL,
-                    username  TEXT    NOT NULL,
-                    title     TEXT    NOT NULL,
-                    timestamp INTEGER NOT NULL,
-                    messages  TEXT    NOT NULL,
-                    PRIMARY KEY (id, username)
-                )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS workbooks (
-                    id             TEXT NOT NULL,
-                    username       TEXT NOT NULL,
-                    title          TEXT NOT NULL,
-                    description    TEXT NOT NULL DEFAULT '',
-                    messages       TEXT,
-                    figures        TEXT,
-                    instelling     TEXT,
-                    html_content   TEXT,
-                    dashboard_spec TEXT,
-                    created_at     TEXT NOT NULL,
-                    laatst_gebruikt BIGINT,
-                    PRIMARY KEY (id, username)
-                )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
-            cursor.execute(_FEEDBACK_TABLE)
-            cursor.execute(_ANSWER_FEEDBACK_TABLE)
-            cursor.execute(_ALGEMENE_FEEDBACK_TABLE)
-            cursor.execute(_DATA_RECIPES_TABLE)
-            cursor.execute(_DATA_RECIPES_INDEX)
-            cursor.execute(_REVOKED_TOKENS_TABLE)
-            cursor.execute(_REVOKED_TOKENS_INDEX)
-            cursor.execute(_REVOKED_USERS_TABLE)
-            cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
+            cursor = conn.cursor()
+            for ddl in _SCHEMA:
+                cursor.execute(ddl)
             conn.commit()
             cursor.close()
         else:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id        TEXT    NOT NULL,
-                    username  TEXT    NOT NULL,
-                    title     TEXT    NOT NULL,
-                    timestamp INTEGER NOT NULL,
-                    messages  TEXT    NOT NULL,
-                    PRIMARY KEY (id, username)
-                );
-                CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
-
-                CREATE TABLE IF NOT EXISTS workbooks (
-                    id             TEXT NOT NULL,
-                    username       TEXT NOT NULL,
-                    title          TEXT NOT NULL,
-                    description    TEXT NOT NULL DEFAULT '',
-                    messages       TEXT,
-                    figures        TEXT,
-                    instelling     TEXT,
-                    html_content   TEXT,
-                    dashboard_spec TEXT,
-                    created_at     TEXT NOT NULL,
-                    laatst_gebruikt BIGINT,
-                    PRIMARY KEY (id, username)
-                );
-                CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
-
-                CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
-            """)
-            conn.execute(_FEEDBACK_TABLE)
-            conn.execute(_ANSWER_FEEDBACK_TABLE)
-            conn.execute(_ALGEMENE_FEEDBACK_TABLE)
-            conn.execute(_DATA_RECIPES_TABLE)
-            conn.execute(_DATA_RECIPES_INDEX)
-            conn.execute(_REVOKED_TOKENS_TABLE)
-            conn.execute(_REVOKED_TOKENS_INDEX)
-            conn.execute(_REVOKED_USERS_TABLE)
+            for ddl in _SCHEMA:
+                conn.execute(ddl)
 
         _migrate(conn)
         purge_expired_revocations(conn)
