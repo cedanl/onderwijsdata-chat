@@ -1,8 +1,5 @@
 import WorkbookPreview from './WorkbookPreviews'
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+import { korteDatum } from '../relatieveDatum'
 
 export default function DashboardGallery({ workbooks, instelling, onSelect, onDelete, onNew }) {
   return (
@@ -41,7 +38,7 @@ export default function DashboardGallery({ workbooks, instelling, onSelect, onDe
               <div className="wb-card-title">{wb.title}</div>
               <div className="wb-card-desc">{wb.description}</div>
               <div className="wb-card-footer">
-                {!wb.builtin && <span className="wb-card-date">{formatDate(wb.createdAt)}</span>}
+                {!wb.builtin && <span className="wb-card-date">{korteDatum(wb.createdAt)}</span>}
                 {!wb.builtin && (
                   <button type="button"
                     className="wb-delete-btn"

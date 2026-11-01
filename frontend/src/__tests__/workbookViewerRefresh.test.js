@@ -13,7 +13,7 @@ vi.mock('../components/GeneratedDashboard', async () => {
     ),
   }
 })
-vi.mock('../components/InlineDashboards', () => ({
+vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 vi.mock('../api', () => ({ refreshDashboard: vi.fn(), fetchFeedbackGiven: vi.fn().mockResolvedValue([]) }))

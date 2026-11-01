@@ -16,12 +16,12 @@ let root
 let container
 
 async function render(props = {}) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => INSTELLINGEN }))
+  vi.stubGlobal('fetch', vi.fn())
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root.render(createElement(InstellingPicker, { inputId: 'inst', value: '', onChange: vi.fn(), ...props }))
+    root.render(createElement(InstellingPicker, { inputId: 'inst', value: '', onChange: vi.fn(), instellingen: INSTELLINGEN, ...props }))
   })
 }
 
@@ -114,5 +114,14 @@ describe('InstellingPicker closing', () => {
     await act(async () => { options()[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true })) })
     expect(onChange).toHaveBeenLastCalledWith('Universiteit Leiden')
     expect(options()).toHaveLength(0)
+  })
+})
+
+describe('InstellingPicker lijst (#836)', () => {
+  it('haalt /api/instellingen niet zelf op: de lijst komt van App', async () => {
+    await render()
+    await type('Utrecht')
+    expect(options().map(o => o.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Hogeschool Utrecht')]))
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

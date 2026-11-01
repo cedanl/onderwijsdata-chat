@@ -2,6 +2,7 @@ import Plot from './LazyPlot'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { figureHeight, legendBelow, legendRepeatsAxis } from '../figureLayout'
 import { scheidNoot } from '../figuurNoot'
+import { leesFiguur } from '../figuurJson'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import KolomKop from './KolomKop'
@@ -40,12 +41,8 @@ function KpiCard({ kpi, index }) {
 
 function ChartCard({ figureJson }) {
   const dark = useDarkMode()
-  let parsed
-  try {
-    parsed = typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
-  } catch {
-    return null
-  }
+  const parsed = leesFiguur(figureJson)
+  if (parsed === null) return null
   // De afrondingsnoot als tekstregel onder de grafiek, niet in de figuur (#651).
   const { figure, noot } = scheidNoot(parsed)
 

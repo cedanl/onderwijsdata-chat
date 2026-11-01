@@ -176,7 +176,12 @@ function AppShell() {
       }).catch(() => {
         setDashboardsEnabled(false)
       }),
-      fetch('/api/instellingen').then(r => r.json()).then(setInstellingen).catch(() => {})
+      // Eén keer per paginalading; ook de keuzelijst in de instellingen gebruikt deze lijst (#836). Zonder lijst
+      // blijft de keuzelijst leeg.
+      fetch('/api/instellingen').then(r => {
+        if (!r.ok) throw new Error(`instellingen: ${r.status}`)
+        return r.json()
+      }).then(setInstellingen).catch(() => {})
     ]).then(() => {
       setAuthLoading(false)
     })
@@ -316,6 +321,7 @@ function AppShell() {
           sramName={userInfo?.name || null}
           sramInstelling={sramInstelling || null}
           sramIdentity={userInfo ? [userInfo.org, userInfo.institution, userInfo.email_domein].filter(Boolean) : []}
+          instellingen={instellingen}
         />
       )}
     </>

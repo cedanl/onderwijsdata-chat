@@ -3,7 +3,7 @@ import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../
 import { useReportFrame } from '../hooks/useReportFrame'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
-import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './InlineDashboards'
+import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './dashboards'
 import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'

@@ -11,7 +11,7 @@ import { join } from 'node:path'
 
 // Dashboards pull in Plotly, which jsdom cannot load.
 vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
-vi.mock('../components/InlineDashboards', () => ({
+vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 vi.mock('../api', async importOriginal => ({
