@@ -22,9 +22,12 @@ Achter de schermen roept de app functies aan, bijvoorbeeld:
 - `get_duo_data` — laadt het DUO-bestand met eerstejaars hbo (`p02ho1ejrs`, bestand 0)
 - `query_data` — filtert op `STUDIEJAAR` 2024 en telt `AANTAL_EERSTEJAARS_INGESCHREVENEN` op per `TYPE_HOGER_ONDERWIJS`
 
-### 3. Exporteer als code
+### 3. De code per stap
 
-Elke tool-aanroep genereert Python-snippet. Het app verzamelt ze in één reproduceerbaar script:
+Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat staat die bij de stap, onder "Redenering".
+"Exporteer gesprek" zet het hele gesprek in één Markdown-bestand: per antwoord de stappen, elk met zijn snippet als
+`python`-codeblok (`frontend/src/conversationExport.js`, #366). Een los `.py`-bestand levert de app niet; je kopieert de
+code van de stap die je wilt herhalen.
 
 Dit is de snippet die de app voor de `query_data`-stap hierboven maakt; de commentaarkop over de databewerking en de
 pakketversies is weggelaten:
