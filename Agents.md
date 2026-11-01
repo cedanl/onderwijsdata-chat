@@ -75,8 +75,12 @@ Aparte, kleine commits houden de geschiedenis leesbaar en een revert eenvoudig.
 | `git tag X.Y.Z` (bare, no `v`) | geen | publiceert alleen de chart + GitHub-spiegel |
 | MR `chore/promote-playground` | playground | wijzigt de pin in `manifests/playground/helmrelease.yaml`; Flux installeert die versie |
 
-**Een release in vier stappen** (elke stap is een eigen beslissing; een tag deployt niets):
+**Een release in vijf stappen** (elke stap is een eigen beslissing; een tag deployt niets; volgorde en details in
+`docs/promoten.md`):
 
+0. **Voorbereiden** in de laatste MR naar `main`: `version` in `pyproject.toml` en `CITATION.cff`, de changelog met
+   `scripts/changelog.py X.Y.Z`, `bron:ping`, `scripts/ijkwaarden.py`, `audit:python` en `audit:npm` groen of bewust
+   geaccepteerd, en een recente `eval:bronwaarheid`-run met de uitslag in de MR (`docs/promoten.md`, stap 0).
 1. **Test bekijken.** Merge naar `main`, wacht tot de pipeline van die commit groen is en kijk op test. Ontwikkel hier vrij; playground beweegt niet mee.
 2. **Taggen** op precies die groene `main`-commit, kaal `X.Y.Z` (zonder `v`; SDP matcht `^[0-9]+\.`). Een volgende merge annuleert de vorige main-pipeline (auto_cancel), dus tag de commit die `origin/main` ná het wachten is. Zonder groene pipeline publiceert `version:promote` geen chart en faalt de promotie.
 3. **Promoveren** via MR `chore/promote-playground` (auto-merge aan). Na de merge installeert Flux de pin binnen ~1 minuut.
@@ -110,7 +114,7 @@ See `manifests/README.md` and `docs/test-environment.md` for details.
 
 **When you're done:**
 - For bugfixes/features: Push to `main` → test volgt vanzelf; playground blijft staan tot een promotie
-- For release: see test, tag `X.Y.Z` on the green `main` commit, promote playground via MR, `mark`, verify `/version`, GitHub release (`docs/promoten.md`)
+- For release: prepare the last MR (version, changelog, eval), see test, tag `X.Y.Z` on the green `main` commit, promote playground via MR, `mark`, verify `/version`, GitHub release (`docs/promoten.md`)
 
 ## Git commands
 
