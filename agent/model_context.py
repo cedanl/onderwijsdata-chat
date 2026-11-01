@@ -10,13 +10,16 @@ import logging
 
 import litellm
 
+from core.logging_util import foutkenmerk
+
 logger = logging.getLogger(__name__)
 
 # Models not in LiteLLM's mapping — add context window manually.
 # Format: "provider/model-name" → max_tokens for that model.
 # Sources & native context lengths:
 #   - gpt-oss-120b: https://huggingface.co/openai/gpt-oss-120b
-#     (OpenAI OSS 120B; model card doesn't specify context, using conservative 4k default)
+#     (config.json: max_position_embeddings 131072, YaRN vanaf 4096). Willma noemt het model openai/gpt-oss-120b;
+#     met het openai/-prefix van litellm is de ID in core/config.py dus openai/openai/gpt-oss-120b (#818).
 #   - Qwen2.5-VL-32B: https://huggingface.co/Qwen/Qwen2.5-VL-32B-Instruct-AWQ
 #     (Vision-language model; 32k native context)
 #   - Qwen2.5-Coder-32B: https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ
@@ -26,8 +29,7 @@ logger = logging.getLogger(__name__)
 #   - Devstral-Small-2-24B: https://huggingface.co/mistralai/Devstral-Small-2-24B-Instruct-2512
 #     (Development model; 256k context window)
 _MODEL_CONTEXT_OVERRIDES: dict[str, int] = {
-    "openai/gpt-oss-120b": 4096,
-    "openai/gpt-oss-120b-instruct": 4096,
+    "openai/openai/gpt-oss-120b": 131072,
     "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ": 32768,
     "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": 131072,  # 128k full capacity via YaRN
     "openai/Qwen/Qwen2.5-Coder-7B-Instruct": 32768,
@@ -60,7 +62,8 @@ def get_max_context(model: str) -> int:
             logger.debug("Model context (litellm): %s → %d tokens", model, ctx)
             return ctx
     except Exception as e:
-        logger.warning("litellm.get_max_tokens(%s) failed: %s", model, e)
+        logger.warning("litellm.get_max_tokens(%s) failed: %s", model, foutkenmerk(e))
+        logger.debug("litellm.get_max_tokens(%s) failed", model, exc_info=True)
 
     # Fallback: conservative default
     logger.warning("Model context unknown for %s, using 4096", model)

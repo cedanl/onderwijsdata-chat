@@ -83,7 +83,7 @@ BEWAARTERMIJN_GESPREKKEN_DAGEN = os.getenv("BEWAARTERMIJN_GESPREKKEN_DAGEN", "90
 BEWAARTERMIJN_RAPPORTEN_DAGEN = os.getenv("BEWAARTERMIJN_RAPPORTEN_DAGEN", "365")
 
 # Willma AI-Hub (SURF) — optioneel. Zet WILLMA_API_KEY om via Willma te draaien.
-# Zet MODEL naar bijv. "openai/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
+# Zet MODEL naar bijv. "openai/Qwen/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
 WILLMA_API_KEY = os.getenv("WILLMA_API_KEY")
 WILLMA_BASE_URL = os.getenv("WILLMA_BASE_URL", "")
 
