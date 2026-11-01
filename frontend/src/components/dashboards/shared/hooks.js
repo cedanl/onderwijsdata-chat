@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useDarkMode } from '../../../hooks/useDarkMode'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
 import { benchmarkColor, buildIndexChartOpts } from './chart-opts'
@@ -9,17 +10,8 @@ import {
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
-export function useDarkMode() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
-  useEffect(() => {
-    const obs = new MutationObserver(() =>
-      setDark(document.documentElement.classList.contains('dark'))
-    )
-    obs.observe(document.documentElement, { attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return dark
-}
+// Eén implementatie voor de hele app (#834); hier opnieuw geëxporteerd voor de dashboards.
+export { useDarkMode }
 
 export function fmt(n) {
   if (n == null) return '—'
