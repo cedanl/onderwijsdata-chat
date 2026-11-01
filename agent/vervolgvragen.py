@@ -101,11 +101,6 @@ def _beantwoordbaar(dataset_id: str) -> tuple[str, ...]:
         )
 
 
-def beantwoordbare_vragen() -> dict[str, tuple[str, ...]]:
-    """Per dataset die de chat kan ophalen: de voorbeeldvragen die hij kan beantwoorden."""
-    return {dataset_id: vragen for dataset_id in catalog.voorbeeldvragen() if (vragen := _beantwoordbaar(dataset_id))}
-
-
 def datasets_van(steps: list[tuple[str, str]]) -> list[str]:
     """De datasets waarop de stappen van een beurt rusten, in de volgorde waarin ze voor het eerst gebruikt zijn."""
     datasets: list[str] = []

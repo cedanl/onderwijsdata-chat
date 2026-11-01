@@ -38,6 +38,14 @@ loop_module = importlib.import_module("agent.loop")
 _TOETS = vervolgvragen._beantwoordbaar
 
 
+def beantwoordbare_vragen() -> dict[str, tuple[str, ...]]:
+    """Per dataset in de catalogus: de voorbeeldvragen die `kies` als vervolgvraag zou aanbieden (#828).
+
+    Dezelfde toets als `kies` per geladen dataset doet (`vervolgvragen._beantwoordbaar`), over de hele catalogus.
+    """
+    return {d: vragen for d in catalog.voorbeeldvragen() if (vragen := vervolgvragen._beantwoordbaar(d))}
+
+
 @pytest.fixture(autouse=True)
 def _zonder_instellingsregister(monkeypatch):
     # Het register bouwt uit DUO-downloads; een vraag die een instelling noemt, zoekt anders eerst in RIO (#334).
@@ -127,7 +135,7 @@ def eigen_catalogus(monkeypatch):
 
 
 def test_een_gewone_vraag_over_de_eigen_dataset_blijft(eigen_catalogus):
-    assert vervolgvragen.beantwoordbare_vragen()["90001NED"] == (
+    assert beantwoordbare_vragen()["90001NED"] == (
         _GOED,
         "Hoe verschilt het aantal gediplomeerden per geslacht?",
     )
@@ -138,7 +146,7 @@ def test_een_gewone_vraag_over_de_eigen_dataset_blijft(eigen_catalogus):
     ["Hoeveel gediplomeerden zijn er in mijn regio?", "Hoeveel gediplomeerden heeft onze instelling?"],
 )
 def test_een_vraag_in_de_eerste_persoon_valt_af(eigen_catalogus, vraag):
-    assert vraag not in vervolgvragen.beantwoordbare_vragen()["90001NED"]
+    assert vraag not in beantwoordbare_vragen()["90001NED"]
 
 
 @pytest.mark.parametrize(
@@ -150,7 +158,7 @@ def test_een_vraag_in_de_eerste_persoon_valt_af(eigen_catalogus, vraag):
     ],
 )
 def test_een_vraag_met_een_ruwe_veldnaam_valt_af(eigen_catalogus, vraag):
-    assert vraag not in vervolgvragen.beantwoordbare_vragen()["90001NED"]
+    assert vraag not in beantwoordbare_vragen()["90001NED"]
 
 
 @pytest.mark.parametrize(
@@ -189,7 +197,7 @@ def test_een_dataset_id_dat_een_gewoon_woord_is_telt_niet():
 
 
 def test_een_vraag_over_po_so_of_vo_valt_af(eigen_catalogus):
-    vragen = vervolgvragen.beantwoordbare_vragen()
+    vragen = beantwoordbare_vragen()
     assert "Hoeveel hbo-gediplomeerden hadden een havo-diploma?" not in vragen["90001NED"]
     assert vragen["duo-eerstejaars"] == ("Welke instellingen trekken de meeste eerstejaars?",)
 
@@ -225,14 +233,14 @@ def test_een_contextrecord_houdt_een_vo_vraag_die_ho_noemt(contextcatalogus):
     assert scopeprofiel.is_ho_context(contextcatalogus)
     assert scopeprofiel.PO_SO_VO.search(_HO_VRAAG) and noemt_ho(_HO_VRAAG)
 
-    assert vervolgvragen.beantwoordbare_vragen()[contextcatalogus] == (_HO_VRAAG,)
+    assert beantwoordbare_vragen()[contextcatalogus] == (_HO_VRAAG,)
 
 
 def test_een_contextrecord_laat_een_vo_vraag_zonder_ho_marker_vallen(contextcatalogus):
     assert scopeprofiel.PO_SO_VO.search(_ZONDER_HO) and not noemt_ho(_ZONDER_HO)
 
     assert not vervolgvragen._leesbaar(_ZONDER_HO, contextcatalogus)
-    assert _ZONDER_HO not in vervolgvragen.beantwoordbare_vragen().get(contextcatalogus, ())
+    assert _ZONDER_HO not in beantwoordbare_vragen().get(contextcatalogus, ())
 
 
 def test_een_contextrecord_maakt_een_andere_vraag_niet_leesbaar(contextcatalogus):
@@ -247,12 +255,12 @@ def test_buiten_de_contextrecords_blijft_een_vo_vraag_met_ho_marker_vallen(conte
 
     assert not vervolgvragen._leesbaar(vraag)
     assert not vervolgvragen._leesbaar(vraag, "90001NED")
-    assert vraag not in vervolgvragen.beantwoordbare_vragen()["90001NED"]
+    assert vraag not in beantwoordbare_vragen()["90001NED"]
 
 
 def test_een_aantal_uit_een_rio_register_valt_af(eigen_catalogus):
     # get_rio_data levert één pagina en geen totaal (#170).
-    assert vervolgvragen.beantwoordbare_vragen()["aangeboden-opleidingen"] == (
+    assert beantwoordbare_vragen()["aangeboden-opleidingen"] == (
         "Welke instellingen bieden een opleiding verpleegkunde aan?",
     )
 
@@ -262,11 +270,11 @@ def test_een_vraag_die_haar_dataset_niet_terugvindt_valt_af(eigen_catalogus):
     treffers = [t.get("_cbs_id") for t in json.loads(catalog.search_catalog(vraag))["kandidaten"]]
     assert "90002NED" in treffers and "70001ned" not in treffers
 
-    assert "70001ned" not in vervolgvragen.beantwoordbare_vragen()
+    assert "70001ned" not in beantwoordbare_vragen()
 
 
 def test_alleen_datasets_die_de_chat_kan_ophalen(eigen_catalogus):
-    datasets = vervolgvragen.beantwoordbare_vragen()
+    datasets = beantwoordbare_vragen()
     assert {"sbb-kwalificaties", "duo-changelog", "po-leerlingen"}.isdisjoint(datasets)
     assert not catalog.opvraagbaar("sbb-kwalificaties")
     assert not catalog.opvraagbaar("duo-changelog")
@@ -276,7 +284,7 @@ def test_alleen_datasets_die_de_chat_kan_ophalen(eigen_catalogus):
 
 def test_toetsen_laat_geen_zoekregels_in_het_log(eigen_catalogus, caplog):
     with caplog.at_level(logging.DEBUG, logger="tools.catalog"):
-        vervolgvragen.beantwoordbare_vragen()
+        beantwoordbare_vragen()
         assert not [r for r in caplog.records if r.name == "tools.catalog"]
 
         catalog.search_catalog("promoties vakgebied")  # een zoekactie van het model logt wel
@@ -720,7 +728,7 @@ def test_elk_gewoon_antwoord_logt_het_aanbod_ook_zonder_vragen(monkeypatch, capl
 
 def test_elke_vervolgvraag_uit_de_catalogus_is_beantwoordbaar():
     """Elke getoetste (dataset, vraag): binnen het profiel, op te halen en vindbaar met search_catalog."""
-    lijst = vervolgvragen.beantwoordbare_vragen()
+    lijst = beantwoordbare_vragen()
 
     assert lijst, "geen enkele beantwoordbare vervolgvraag: de toets is dan leeg"
     for dataset_id, vragen in lijst.items():
