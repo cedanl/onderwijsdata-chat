@@ -185,12 +185,11 @@ async def on_startup() -> None:
         # Op DEBUG staat vraag- en antwoordtekst in het log (#475), en dus eventuele
         # persoonsgegevens in de logaggregatie. Niet stil laten gebeuren (#516).
         logger.warning("LOG_LEVEL=DEBUG: vraag- en antwoordtekst komt in het log; niet gebruiken met echte gebruikers")
+    # In de berichttekst: de JSONFormatter neemt geen extra-velden over (#816).
     logger.info(
-        "Application startup completed",
-        extra={
-            "oidc_enabled": is_oidc_configured(),
-            "database": "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
-        },
+        "Application startup completed: oidc_enabled=%s database=%s",
+        is_oidc_configured(),
+        "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
     )
 
 
