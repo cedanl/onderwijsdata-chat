@@ -62,8 +62,9 @@ export const SECTOR_LABELS = {
   LANDBOUW_EN_NATUURLIJKE_OMGEVING: 'Landbouw',
   SECTOROVERSTIJGEND: 'Sectoroverstijgend',
 }
-// Semantic: each color is fixed to a named sector (Economie→blauw, Gezondheidszorg→teal, …).
-// Not a generic sequential palette, so not replaced by CHART_COLORS.
+// Palet voor de sector-, leerweg- en sectorkamergrafieken (charts-sector.jsx). De kleur hangt aan de positie in de
+// reeks (`i % SECTOR_COLORS.length`), niet aan een sectorcode: met 8 kleuren voor 10 sectoren delen sommige sectoren een
+// kleur, en een sector kan per grafiek een andere kleur krijgen.
 export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
 
 export function horizontalBarOpts(dark, tooltipSuffix = '') {
