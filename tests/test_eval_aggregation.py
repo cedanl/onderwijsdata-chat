@@ -5,8 +5,15 @@ en controleert:
 1. De LLM gebruikt query_data met group_by/aggregate OF run_analysis
 2. De gerapporteerde getallen matchen met de pandas ground truth
 
-Vereist: werkende API key (ANTHROPIC_API_KEY of WILLMA_API_KEY in .env).
-Draai met: uv run pytest tests/test_eval_aggregation.py -v -s
+Live-test (marker `live`): roept het geconfigureerde MODEL aan en haalt DUO live op. `uv run pytest tests/` slaat hem
+over (`addopts` in pyproject.toml, #831). Draai hem met:
+
+    uv run --env-file .env pytest -m live tests/test_eval_aggregation.py -v -s
+
+De test laadt zelf geen `.env`: MODEL en de sleutel komen uit de omgeving, want `core.config` leest MODEL bij het
+importeren. Vereist is de sleutel die `get_required_api_key_env_var(MODEL)` noemt; dat volgt het prefix van MODEL:
+`anthropic/` vraagt ANTHROPIC_API_KEY, `azure_ai/` AZURE_AI_API_KEY en `openai/` OPENAI_API_KEY, ook als het model
+via Willma loopt. Ontbreekt die sleutel, dan slaat de test over.
 """
 
 import asyncio
@@ -14,7 +21,6 @@ import json
 import os
 
 import pytest
-from dotenv import load_dotenv
 from riodata import duo
 
 from core.config import MODEL, get_required_api_key_env_var
@@ -37,19 +43,13 @@ def _ground_truth() -> dict[int, int]:
     return {int(k): int(v) for k, v in sums.items()}
 
 
-load_dotenv()
-
-# Bepaal welke API key dit MODEL nodig heeft via centrale config mapping (zie #53).
-# Dit voorkomt drift: provider→key mapping staat nu op één plaats.
-_required_key = get_required_api_key_env_var(MODEL)
-_has_required_key = _required_key is None or os.getenv(_required_key)
-
-
-@pytest.mark.skipif(
-    not _has_required_key,
-    reason=f"Ontbrekende API key voor {MODEL}: {_required_key or 'geen key required'}",
-)
+@pytest.mark.live
 def test_vu_eerstejaars_uses_aggregation_and_correct_numbers():
+    # Welke API key dit MODEL nodig heeft, komt uit de centrale mapping (#53).
+    required_key = get_required_api_key_env_var(MODEL)
+    if required_key and not os.getenv(required_key):
+        pytest.skip(f"Ontbrekende API key voor {MODEL}: {required_key}")
+
     from agent.run import run
 
     events: list[dict] = []

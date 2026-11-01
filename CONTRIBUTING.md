@@ -24,6 +24,9 @@ uv run pytest tests/ -q                      # backend, zonder netwerk
 cd frontend && npm run lint && npm test      # lint en tests (frontend)
 ```
 
+Tests met de marker `live` praten met het echte model en de bronnen; `pytest tests/` slaat ze over (`addopts` in
+`pyproject.toml`, #831). Draai ze apart: `uv run --env-file .env pytest -m live tests/`.
+
 De backendtests halen niets live op bij DUO of CBS: de pytest-job blokkeert elke MR en mag niet rood
 worden door een storing bij een bron (#766). Het DUO-register en de dashboards draaien op bevroren
 bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py`). Ververs ze met

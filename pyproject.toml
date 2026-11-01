@@ -60,6 +60,10 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# Live-tests praten met het echte model en de bronnen; `pytest tests/` (ook in CI) draait zonder netwerk (#766, #831).
+# Draai ze expliciet met `-m live`: een latere -m op de opdrachtregel gaat voor deze.
+addopts = ["-m", "not live"]
+markers = ["live: roept het echte model en live bronnen aan; alleen met -m live"]
 
 # Dekking (#684, #691): de CI-job toont het totaal en pytest-cov faalt eronder. De stand op main was 94,3% (23-10-2026,
 # 12515 statements, 718 gemist); de drempel gaat alleen omhoog, nooit omlaag om een MR groen te krijgen.
