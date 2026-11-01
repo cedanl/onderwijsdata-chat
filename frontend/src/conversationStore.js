@@ -88,6 +88,13 @@ export function conversationRecord(id, messages) {
   return { id, title: conversationTitle(firstQuestion.content), timestamp: Date.now(), messages }
 }
 
+// Weigert de server een opslag omdat een ander tabblad het gesprek intussen bijwerkte (409, #760), dan gaat deze
+// versie verder onder een nieuw id, met een titel waaraan je de afsplitsing herkent. Er gaat niets verloren.
+export function afsplitsing(id, messages, titel) {
+  const record = conversationRecord(id, messages)
+  return record && { ...record, title: `${titel || record.title} (afsplitsing)` }
+}
+
 // Saving a conversation again replaces its earlier version instead of adding a copy.
 // The list keeps only the summary: the record's messages go to the server, not to the sidebar.
 // A conversation already in the list keeps its title: the record has the automatic one, a rename does not (#757).

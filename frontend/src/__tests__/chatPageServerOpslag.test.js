@@ -153,3 +153,61 @@ describe('een gewoon gesprek', () => {
     expect(puts()).toHaveLength(2)
   })
 })
+
+// #760: twee tabbladen met hetzelfde gesprek. De server weigert een opslag die beurten van het andere tabblad zou
+// weggooien (409); dit tabblad bewaart zijn versie dan onder een nieuw id en zegt dat.
+describe('een gesprek dat intussen in een ander tabblad is bijgewerkt', () => {
+  const conflict = () => Object.assign(new Error('Dit gesprek is intussen bijgewerkt'), { status: 409 })
+  const gedeeld = () => localStorage.setItem(STORAGE_CURRENT_CHAT, JSON.stringify({ id: 'c-gedeeld', messages: [] }))
+
+  it('bewaart deze versie als afsplitsing onder een nieuw id, met een melding', async () => {
+    const meldingen = []
+    chatState.addToast = (msg, soort) => meldingen.push({ msg, soort })
+    gedeeld()
+    api.putConversation.mockRejectedValueOnce(conflict())
+    chatState.messages = [vraag, antwoord]
+    await mountChat()
+    await act(async () => {})
+
+    expect(puts()).toHaveLength(2)
+    expect(puts()[0][0]).toBe('c-gedeeld')
+    const [nieuwId, body] = puts()[1]
+    expect(nieuwId).not.toBe('c-gedeeld')
+    expect(body.title).toBe('Hoeveel studenten? (afsplitsing)')
+    expect(body.messages.map(m => m.content)).toEqual([vraag.content, antwoord.content])
+    expect(meldingen).toEqual([expect.objectContaining({ soort: 'warning', msg: expect.stringContaining('ander tabblad') })])
+    // Het open gesprek gaat verder onder het nieuwe id, ook na herladen; geen "niet bewaard"-melding.
+    expect(JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT)).id).toBe(nieuwId)
+    expect(JSON.parse(localStorage.getItem(STORAGE_SAVED_CHAT)).id).toBe(nieuwId)
+    expect(container.textContent).not.toContain('niet bewaard')
+  })
+
+  it('stuurt de volgende beurt naar de afsplitsing, niet naar het gesprek van het andere tabblad', async () => {
+    gedeeld()
+    api.putConversation.mockRejectedValueOnce(conflict())
+    chatState.messages = [vraag, antwoord]
+    await mountChat()
+    await act(async () => {})
+    const nieuwId = puts()[1][0]
+
+    chatState.busy = true
+    chatState.messages = [vraag, antwoord, { id: 3, role: 'user', content: 'En in 2023?', done: true }]
+    await render()
+    chatState.busy = false
+    chatState.messages = [...chatState.messages, { id: 4, role: 'assistant', content: 'Meer.', done: true }]
+    await render()
+
+    expect(puts()).toHaveLength(3)
+    expect(puts()[2][0]).toBe(nieuwId)
+  })
+
+  it('splitst niet af bij een andere mislukte opslag', async () => {
+    gedeeld()
+    api.putConversation.mockRejectedValueOnce(Object.assign(new Error('API 500'), { status: 500 }))
+    chatState.messages = [vraag, antwoord]
+    await mountChat()
+    await act(async () => {})
+    expect(puts()).toHaveLength(1)
+    expect(JSON.parse(localStorage.getItem(STORAGE_CURRENT_CHAT)).id).toBe('c-gedeeld')
+  })
+})
