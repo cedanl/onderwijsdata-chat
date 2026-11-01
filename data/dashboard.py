@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 20
 _MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
-_UWV_PEILDATUM = "mei 2023 (momentopname)"
-_ROA_BRON = (
-    "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling"
-)
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
 # Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
@@ -691,20 +687,6 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     result["arbeidsmarkt_prognose"] = _roa_prognose("ho")
     ho_sectoren = tuple(sorted(result.get("sectoren", {}).keys()))
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
-    result["methodologie"] = {
-        "benchmark": (
-            "Ongewogen gemiddelde per jaar over alle HO-instellingen in dezelfde "
-            f"{ctx.regio_type if ctx else 'provincie'}, exclusief eigen instelling"
-        ),
-        "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
-        "datasets": {
-            "ingeschrevenen": "DUO p01hoinges partities 0 (HBO) en 1 (WO)",
-            "eerstejaars": "DUO p02ho1ejrs partities 0 (HBO) en 1 (WO)",
-            "gediplomeerden": "DUO p04hogdipl partities 0 (HBO) en 1 (WO)",
-        },
-        "uwv_peildatum": _UWV_PEILDATUM,
-        "roa_bron": _ROA_BRON,
-    }
     return result
 
 
@@ -817,17 +799,6 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
-    regio_type = ctx.regio_type if ctx else "provincie"
-    result["methodologie"] = {
-        "benchmark": f"Ongewogen gemiddelde per jaar over alle MBO-instellingen in dezelfde {regio_type}, exclusief eigen instelling",
-        "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
-        "datasets": {
-            "ingeschrevenen": "DUO mbo-studenten-per-instelling",
-            "gediplomeerden": "DUO gediplomeerde-mbo-studenten",
-        },
-        "uwv_peildatum": _UWV_PEILDATUM,
-        "roa_bron": _ROA_BRON,
-    }
     return result
 
 
