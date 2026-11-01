@@ -12,16 +12,6 @@ from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
 
-# Track app startup time for liveness probe
-_startup_time: float | None = None
-
-
-def record_startup() -> None:
-    """Record application startup time."""
-    global _startup_time
-    _startup_time = time.time()
-    logger.info("Application startup recorded")
-
 
 async def check_database_connection() -> bool:
     """Test database connection. Returns True if healthy.

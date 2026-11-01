@@ -180,8 +180,7 @@ async def info() -> dict:
 
 
 async def on_startup() -> None:
-    """Initialize application and record startup time."""
-    health.record_startup()
+    """Meld de start in het log, met een waarschuwing bij LOG_LEVEL=DEBUG."""
     if Config.LOG_LEVEL == "DEBUG":
         # Op DEBUG staat vraag- en antwoordtekst in het log (#475), en dus eventuele
         # persoonsgegevens in de logaggregatie. Niet stil laten gebeuren (#516).
