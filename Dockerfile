@@ -45,7 +45,6 @@ WORKDIR /app
 COPY --from=python-builder /app/.venv ./.venv
 
 COPY server.py ./
-COPY app.py ./
 COPY config.py ./
 COPY health.py ./
 COPY frontend_static.py ./
