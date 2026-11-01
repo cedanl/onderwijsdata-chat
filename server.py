@@ -136,12 +136,6 @@ async def ready_endpoint() -> JSONResponse:
     return JSONResponse(content=result, status_code=status_code)
 
 
-@_routes.get("/startup", tags=["health"])
-async def startup_endpoint() -> dict:
-    """Startup verification: checks if initialization completed successfully."""
-    return await health.startup_check()
-
-
 _PYPROJECT = Path(__file__).parent / "pyproject.toml"
 
 

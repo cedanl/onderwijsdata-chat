@@ -76,27 +76,3 @@ async def readiness_check() -> dict:
         "checks": checks,
         "timestamp": time.time(),
     }, http_status
-
-
-async def startup_check() -> dict:
-    """
-    Verification endpoint for startup success.
-    Checks database and configuration without detailed diagnostics.
-    """
-    try:
-        db_ok = await check_database_connection()
-        llm_ok = await check_llm_configuration()
-
-        if db_ok and llm_ok:
-            return {"status": "startup_ok"}
-        else:
-            missing = []
-            if not db_ok:
-                missing.append("database")
-            if not llm_ok:
-                missing.append("llm")
-            return {"status": "startup_incomplete", "missing": missing}
-    except Exception as e:
-        # Het eindpunt is zonder token bereikbaar: geen fouttekst in het antwoord (S4, #675).
-        logger.error("Startup check failed: %s", foutkenmerk(e))
-        return {"status": "startup_failed"}

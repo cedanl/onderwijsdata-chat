@@ -122,7 +122,7 @@ def test_de_fabriek_bouwt_dezelfde_app_als_server_app():
     app = server.create_app(api_docs=True, frontend_dist=frontend)
 
     assert _routes(app.routes) == _routes(server.app.routes)
-    assert {"/health", "/ready", "/startup", "/version", "/api/version", "/info"} <= set(app.openapi()["paths"])
+    assert {"/health", "/ready", "/version", "/api/version", "/info"} <= set(app.openapi()["paths"])
     assert [(m.cls, m.kwargs) for m in app.user_middleware] == [(m.cls, m.kwargs) for m in server.app.user_middleware]
     assert app.exception_handlers.keys() == server.app.exception_handlers.keys()
     assert app.router.on_startup == server.app.router.on_startup == [server.on_startup]
