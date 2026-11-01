@@ -113,8 +113,8 @@ serviceAccount:
   name: ""
 
 env:
-  - name: MODEL
-    value: "willma/default"
+  # Geen MODEL: dan geldt de default uit core/config.py. "willma/default" was geen prefix dat de app routeert (Willma
+  # loopt via openai/ met WILLMA_API_KEY); elke omgeving zet MODEL zelf in manifests/<omgeving>/values.yaml (#829).
   - name: LOG_LEVEL
     value: "INFO"
   - name: CORS_ORIGINS
