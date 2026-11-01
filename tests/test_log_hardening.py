@@ -414,3 +414,19 @@ def test_startregel_noemt_oidc_en_database_in_het_json_log(caplog, monkeypatch):
     bericht = json.loads(logging_config.JSONFormatter().format(record))["message"]
     assert "oidc_enabled=True" in bericht
     assert "database=SQLite" in bericht
+
+
+def test_een_fout_bij_afsluiten_logt_type_en_kenmerk(caplog, monkeypatch):
+    """#817: een driverfout kan host of databasenaam citeren; op WARNING alleen type en kenmerk."""
+    import asyncio
+
+    import server
+
+    def faal():
+        raise RuntimeError("verbinding met db-geheim.intern verbroken")
+
+    monkeypatch.setattr(server.persistence_db, "close", faal)
+    with caplog.at_level("WARNING", logger="server"):
+        asyncio.run(server.on_shutdown())
+    assert "db-geheim" not in caplog.text
+    assert "RuntimeError fout_len=" in caplog.text
