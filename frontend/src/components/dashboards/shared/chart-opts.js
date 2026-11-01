@@ -8,28 +8,6 @@ export function darkColors(dark) {
   }
 }
 
-function compactNum(n) {
-  const abs = Math.abs(n)
-  if (abs >= 1_000_000) return (n / 1_000_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'M'
-  if (abs >= 10_000) return (n / 1_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'K'
-  return n.toLocaleString('nl-NL')
-}
-
-export function chartOpts(dark) {
-  const { tick, grid } = darkColors(dark)
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label || ''}: ${compactNum(ctx.parsed.y ?? ctx.parsed)}` } },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: { grid: { color: grid }, ticks: { color: tick, callback: v => compactNum(v) } },
-    },
-  }
-}
-
 export function buildIndexChartOpts(dark) {
   const { tick, grid, label } = darkColors(dark)
   return {

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
-import { benchmarkColor, chartOpts, buildIndexChartOpts } from './chart-opts'
+import { benchmarkColor, buildIndexChartOpts } from './chart-opts'
 import {
   sortedEntries, yearOverYearDelta,
-  buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData, buildSectorChartData,
+  buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData,
 } from './chart-builders'
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
@@ -99,7 +99,6 @@ export function useRegioComputed(data, instelling) {
 
     return {
       dark, bmColor, bm, bmLabel, hasPeers,
-      opts: chartOpts(dark),
       indexOpts: buildIndexChartOpts(dark),
       peerOpts: buildPeerLinesOpts(dark, instelling),
       ingesEntries,
@@ -119,8 +118,6 @@ export function useRegioComputed(data, instelling) {
       ingesLineData,
       ejLineData: buildBenchmarkLineData(data?.eerstejaars, bm.eerstejaars, instelling, bmLabel, CHART_COLORS[2], bmColor),
       diplLineData: buildBenchmarkLineData(data?.gediplomeerden, bm.gediplomeerden, instelling, bmLabel, CHART_COLORS[5], bmColor),
-      sectorData: buildSectorChartData(data?.sectoren),
-      geslachtTrend: data?.geslacht_trend || null,
     }
   }, [data, instelling, dark])
 }

@@ -1,27 +1,13 @@
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
-  ArcElement, Tooltip, Legend, Filler,
+  Tooltip, Legend, Filler,
 } from 'chart.js'
-import { SECTOR_LABELS, SECTOR_COLORS, buildIndexChartOpts } from './chart-opts'
+import { SECTOR_LABELS, buildIndexChartOpts } from './chart-opts'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend, Filler)
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend, Filler)
 
 // ─── Chart data builders ────────────────────────────────────────────────────
-
-export function buildSectorChartData(sectoren, { type = 'doughnut' } = {}) {
-  if (!sectoren) return null
-  const entries = Object.entries(sectoren).sort((a, b) => b[1] - a[1]).slice(0, 7)
-  const dataset = { data: entries.map(([, v]) => v), backgroundColor: SECTOR_COLORS, borderWidth: 0 }
-  if (type === 'bar') {
-    dataset.label = 'Ingeschrevenen'
-    dataset.borderRadius = 6
-  }
-  return {
-    labels: entries.map(([k]) => SECTOR_LABELS[k] || k),
-    datasets: [dataset],
-  }
-}
 
 // Diplomas vs. vacancies per sector. The backend counts a UWV cluster shared by several sectors
 // pro rata (#455), so the vacancy series is its per-sector count, not a sum over clusters.
