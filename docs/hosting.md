@@ -84,23 +84,10 @@ docker run -p 8000:8000 \
   onderwijsdata-chat
 ```
 
-### Azure Container Apps
-
-```bash
-az containerapp create \
-  --name onderwijsdata-chat \
-  --resource-group mijn-rg \
-  --image ghcr.io/cedanl/onderwijsdata-chat:latest \
-  --env-vars \
-      CHAT_SECRET=secretref:chat-secret \
-      CHAT_USERS=secretref:chat-users \
-      AZURE_AI_API_KEY=secretref:api-key \
-  --ingress external --target-port 8000
-```
-
 ### SURF Research Cloud
 
-1. Maak een component aan met het Docker-image
+1. Maak een component aan met het Docker-image dat je hierboven bouwt (de pipeline pusht alleen naar de eigen
+   Harbor-registry van SDP; er is geen openbaar image)
 2. Koppel een managed PostgreSQL-instantie
 3. Stel omgevingsvariabelen in via de SURF-interface
 
