@@ -129,7 +129,7 @@ function AppShell() {
         }
 
         // Fetch user info from server (SDP/OIDC only)
-        // GitHub version (basic auth) will skip this and use localStorage
+        // Zonder OIDC (wachtwoordlogin of geen login) geeft het endpoint 404 en valt dit terug op localStorage
         try {
           const userInfo = await fetchUserInfo(token)
           if (!getToken()) return  // The server refused the token: the session has ended
@@ -139,20 +139,20 @@ function AppShell() {
             // Start token refresh timer (refresh 5 min before expiration)
             startTokenRefreshTimer(token)
           } else {
-            // Endpoint doesn't exist (GitHub version) or the server failed
+            // Geen OIDC (het endpoint bestaat niet) of de server faalde
             // Fallback to localStorage if available
             const stored = getStoredUserInfo()
             if (stored) {
               setUserInfo(stored)
               setUser(stored.name || stored.username)
             } else {
-              // GitHub version: just use token as username
+              // Niets bewaard: toon een algemene gebruikersnaam
               setUser(token ? 'user' : null)
             }
           }
         } catch (err) {
-          console.warn('Failed to fetch user info (expected on GitHub version):', err)
-          // Fallback: try localStorage (GitHub version path)
+          console.warn('Failed to fetch user info:', err)
+          // Terugval: localStorage, net als zonder OIDC
           const stored = getStoredUserInfo()
           if (stored) {
             setUserInfo(stored)

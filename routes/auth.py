@@ -127,15 +127,15 @@ def vergeet_oidc_gebruiker(username: str) -> None:
     _oidc_user_cache.pop(username, None)
 
 
-# Only add user info + refresh endpoints if OIDC is configured
-# GitHub version (basic auth) doesn't need these
+# Only add user info + refresh endpoints if OIDC is configured; zonder OIDC (wachtwoordlogin of geen login)
+# bestaan ze niet.
 if is_oidc_configured():
 
     @router.get("/user")
     async def get_current_user_info(username: str = Depends(get_current_user)) -> dict:
         """
         Get current user's info. Server-side source of truth.
-        Only available with OIDC. GitHub version uses localStorage.
+        Only available with OIDC; zonder OIDC houdt de frontend de gebruiker in localStorage.
         The token comes in the Authorization header, never in the URL (#103).
         """
 
