@@ -6,7 +6,7 @@ De ladder heeft twee sporten: **test** en **playground**. `development` en
 | Omgeving | Beweegt wanneer | Pin in `helmrelease.yaml` |
 |---|---|---|
 | `test` | elke push naar `main`, vanzelf | open range `>=0.0.1-0.0` |
-| `playground` | alleen door jouw promotie-MR | vaste release, bijv. `"2.0.0"` |
+| `playground` | alleen door jouw promotie-MR | vaste release `"X.Y.Z"` |
 
 Eerst zie je een wijziging op test; pas als jij het goed vindt, promoveer je naar
 playground. Een tag deployt zelf niets: de pin is de deploy.
@@ -42,9 +42,9 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
 
    ```bash
    git checkout main && git pull
-   git tag 2.0.0 && git push origin 2.0.0
+   git tag X.Y.Z && git push origin X.Y.Z
    ```
-3. De tag-pipeline publiceert de schone chart `2.0.0` en `sync:github` spiegelt
+3. De tag-pipeline publiceert de schone chart `X.Y.Z` en `sync:github` spiegelt
    de tag naar GitHub. Maak daar daarna de GitHub-release.
 
 ## Naar playground promoveren
@@ -53,8 +53,8 @@ playground. Een tag deployt zelf niets: de pin is de deploy.
 git checkout main && git pull
 git checkout -b chore/promote-playground
 uv run python scripts/promotie.py promote              # nieuwste release-tag
-uv run python scripts/promotie.py promote --version 2.0.0   # of een specifieke
-git commit -am "chore: promote playground to 2.0.0"
+uv run python scripts/promotie.py promote --version X.Y.Z   # of een specifieke
+git commit -am "chore: promote playground to X.Y.Z"
 git push -u origin chore/promote-playground
 glab mr create --fill
 ```
@@ -74,7 +74,7 @@ Leg het vast met een marker; die start geen pipeline:
 
 ```bash
 uv run python scripts/promotie.py mark
-git push origin env/playground/2.0.0
+git push origin env/playground/X.Y.Z
 ```
 
 ## De poort in CI
@@ -94,5 +94,6 @@ Ze liepen eerder een jaar achter (#679).
 ## Nooit
 
 - Playground niet terugzetten op een range: dan volgt het weer elke main-build.
+- Niet pinnen op `2.0.0`: die tag heeft geen chart. `promotie.py promote` weigert hem.
 - Geen `v`-prefix op release-tags.
 - Niet taggen voordat `main` groen is.

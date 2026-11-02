@@ -23,8 +23,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# PostgreSQL is only used by the GitLab SDP deployment. Local and Azure run on
-# SQLite, so psycopg2 stays opt-in — install with `uv sync --extra postgres`.
+# PostgreSQL is voor een deploy met POSTGRES_URI, zoals de SDP-omgevingen. Lokaal draait de app
+# zonder POSTGRES_URI op SQLite, dus psycopg2 blijft opt-in — install met `uv sync --extra postgres`.
 postgres = ["psycopg2-binary>=2.9"]
 # MCP-server voor de catalogus (mcp_server.py, #41): alleen nodig wie de catalogus vanuit een
 # MCP-client gebruikt, niet voor de chat zelf — install met `uv sync --extra mcp`.

@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import json
 import logging
-import os
 import uuid
 from collections.abc import Awaitable, Callable
 
@@ -906,11 +905,10 @@ async def _bedien(ws: WebSocket, username: str | None, token: str | None) -> Non
     async def emit(event: dict) -> None:
         await ws.send_text(json.dumps(event))
 
-    from core.config import get_all_api_key_env_vars
+    from core.config import get_all_api_key_env_vars, llm_sleutel_aanwezig
 
-    is_ollama = MODEL.startswith(("ollama_chat/", "ollama/"))
-    sleutels = get_all_api_key_env_vars()
-    if not is_ollama and not any(os.getenv(k) for k in sleutels):
+    if not llm_sleutel_aanwezig(MODEL):
+        sleutels = get_all_api_key_env_vars()
         # Een beheerderszaak (#712, #790): de namen in het log, de gebruiker een melding zonder `.env`. WARNING: per
         # verbinding herhaald, en /ready geeft dan al 503.
         logger.warning(

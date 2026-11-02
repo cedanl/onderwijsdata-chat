@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { useDialog } from '../hooks/useDialog'
 import { fetchFeedbackQuestions, postFeedback } from '../api'
 import { metWoord, rapportWoord } from '../rapportWoord'
+import { useTermijnen, getal } from '../termijnen'
 
 // "Anders" in a multi question is stored as 'Anders' or 'Anders: <what>' (core/feedback.py).
 const OTHER = 'Anders'
@@ -143,6 +144,8 @@ function QuestionList({ questions, answers, setAnswer, instelling, headingRef })
 export default function FeedbackModal({ workbook, instelling: chosen = '', onClose, onSubmitted }) {
   const instelling = (chosen || '').trim()
   const woord = rapportWoord(workbook)
+  // De feedback volgt de termijn van de gesprekken (#835).
+  const { gesprekkenDagen } = useTermijnen()
   const dialogRef = useDialog(onClose)
   const titleId = useId()
   const [questions, setQuestions] = useState(null)
@@ -204,8 +207,8 @@ export default function FeedbackModal({ workbook, instelling: chosen = '', onClo
         <p className="feedback-intro">Alle vragen zijn optioneel. Je antwoorden helpen ons de {metWoord('rapporten', woord)} te verbeteren.</p>
         <p className="feedback-intro">
           {instelling
-            ? `We bewaren je antwoorden, de titel van het ${woord} en je gekozen instelling bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.`
-            : `We bewaren je antwoorden en de titel van het ${woord} bij je account, 90 dagen lang. Het gesprek verwijderen wist deze feedback niet.`}
+            ? `We bewaren je antwoorden, de titel van het ${woord} en je gekozen instelling bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`
+            : `We bewaren je antwoorden en de titel van het ${woord} bij je account, ${getal(gesprekkenDagen)} dagen lang. Het gesprek verwijderen wist deze feedback niet.`}
         </p>
         {extraQuestions.length > 0 && (
           <p className="feedback-intro">

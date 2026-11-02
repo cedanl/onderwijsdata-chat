@@ -1,7 +1,7 @@
 // "Vandaag", "Gisteren" or a short date in a list; with the time, two conversations of one day can be told apart
 // (#654). Local `new Date(y, m, d, h, min)` timestamps, so the tests do not depend on the time zone.
 import { describe, it, expect } from 'vitest'
-import { relatieveDatum, relatieveDatumTijd } from '../relatieveDatum'
+import { relatieveDatum, relatieveDatumTijd, korteDatum } from '../relatieveDatum'
 
 const NU = new Date(2026, 9, 21, 10, 0).getTime()
 const ms = (d, h, min) => new Date(2026, 9, d, h, min).getTime()
@@ -33,5 +33,12 @@ describe('relatieveDatumTijd', () => {
     const tweede = relatieveDatumTijd(ms(21, 9, 10), NU)
     expect(eerste).not.toBe(tweede)
     expect([eerste, tweede]).toEqual(['Vandaag 09:00', 'Vandaag 09:10'])
+  })
+})
+
+describe('korteDatum (#836)', () => {
+  it('geeft dag, korte maand en jaar, voor de dashboard- en de rapportgalerij', () => {
+    expect(korteDatum('2026-10-03T12:00:00Z')).toBe(new Date('2026-10-03T12:00:00Z').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }))
+    expect(korteDatum('2026-10-03T12:00:00Z')).toMatch(/2026/)
   })
 })

@@ -11,20 +11,13 @@ import { figureToCsv, figureCsvProblem, figureCsvFilename } from '../figureCsv'
 import { figuurBeschrijving } from '../figuurBeschrijving'
 import { figuurTabel } from '../figuurTabel'
 import { scheidNoot } from '../figuurNoot'
+import { leesFiguur } from '../figuurJson'
 import { saveFile } from '../saveFile'
 
 // Een grafiek in een antwoord, met haar CSV-download en de tabel als alternatief. Uit ChatPage.jsx gehaald (#696).
 
 function downloadCsv(csv, filename) {
   saveFile(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), filename)
-}
-
-function parseFigure(figureJson) {
-  try {
-    return typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
-  } catch {
-    return null
-  }
 }
 
 const NO_TRACES = []
@@ -41,7 +34,7 @@ export const PlotlyFigure = memo(function PlotlyFigure({ figureJson, label }) {
   const dark = useDarkMode()
   const [wrapRef, width] = useElementWidth(WIDTH_STEP)
   // De afrondingsnoot als tekstregel onder de grafiek, niet in de figuur (#651).
-  const { figure, noot } = useMemo(() => scheidNoot(parseFigure(figureJson)), [figureJson])
+  const { figure, noot } = useMemo(() => scheidNoot(leesFiguur(figureJson)), [figureJson])
   const layout = useMemo(() => figure && chatFigureLayout(figure, dark, width), [figure, dark, width])
   const csv = useMemo(() => figure && figureToCsv(figure), [figure])
   const csvProblem = useMemo(() => figure && figureCsvProblem(figure), [figure])

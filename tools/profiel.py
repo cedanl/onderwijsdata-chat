@@ -22,6 +22,7 @@ from typing import Any
 import pandas as pd
 
 from . import fouten, store
+from .kolomprofiel import json_getal
 
 TOP = 5  # zoveel vaakst voorkomende waarden per kolom
 MAX_SLEUTELKOLOMMEN = 6  # kandidaten voor de korrel; meer combinaties kosten op 50k rijen te veel
@@ -101,14 +102,6 @@ def _pct(deel: int, geheel: int) -> float:
     return round(100 * deel / geheel, 1) if geheel else 0.0
 
 
-def _getal(v):
-    """Een numpy-getal als JSON-getal, een datum als ISO-dag; 4147.0 is een telling (#222)."""
-    if isinstance(v, pd.Timestamp):
-        return v.isoformat()[:10]
-    v = v.item() if hasattr(v, "item") else v
-    return int(v) if isinstance(v, float) and v.is_integer() else v
-
-
 def _hashbaar(frame: pd.DataFrame) -> pd.DataFrame:
     """Een cel met een lijst of dict (RIO) als tekst, zodat nunique en duplicated erop werken."""
     objecten = [c for c in frame.columns if frame[c].dtype == object]
@@ -154,8 +147,8 @@ def _kolom(naam: str, reeks: pd.Series) -> Kolom:
     if waarden.empty:
         return kolom
     if soort in (GETAL, JAAR, DATUM):
-        kwartielen = tuple(_getal(q) for q in waarden.quantile([0.25, 0.5, 0.75])) if soort == GETAL else None
-        kolom = replace(kolom, min=_getal(waarden.min()), max=_getal(waarden.max()), kwartielen=kwartielen)
+        kwartielen = tuple(json_getal(q) for q in waarden.quantile([0.25, 0.5, 0.75])) if soort == GETAL else None
+        kolom = replace(kolom, min=json_getal(waarden.min()), max=json_getal(waarden.max()), kwartielen=kwartielen)
     if soort != GETAL:
         top = waarden.astype(str).value_counts().head(TOP)
         kolom = replace(kolom, top=tuple((str(waarde), int(aantal)) for waarde, aantal in top.items()))

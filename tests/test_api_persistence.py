@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -119,6 +121,91 @@ def test_een_hernoemd_gesprek_houdt_zijn_titel_bij_de_volgende_opslag(client):
     assert conv["title"] == "Analyse instroom"
     assert conv["timestamp"] == 2000
     assert client.get("/api/conversations/c1").json()["messages"] == verder
+
+
+def _beurt(vraag: str, antwoord: str) -> list[dict]:
+    return [{"role": "user", "content": vraag}, {"role": "assistant", "content": antwoord}]
+
+
+def _put(c, messages, conv_id="c1"):
+    return c.put(f"/api/conversations/{conv_id}", json={"title": "v1", "timestamp": 1000, "messages": messages})
+
+
+def test_een_tweede_tabblad_overschrijft_de_beurten_van_het_eerste_niet(client):
+    """#760: tabblad 2 bewaarde vraag B; tabblad 1, dat B niet kent, krijgt 409 en B blijft staan."""
+    basis = _beurt("v1", "a1")
+    assert _put(client, [*basis, *_beurt("vB", "aB")]).status_code == 200
+
+    resp = _put(client, [*basis, *_beurt("vA", "aA")])
+
+    assert resp.status_code == 409
+    assert "ander tabblad" in resp.json()["detail"]
+    assert client.get("/api/conversations/c1").json()["messages"] == [*basis, *_beurt("vB", "aB")]
+
+
+def test_een_verouderde_opslag_met_minder_vragen_krijgt_409(client):
+    """Een tabblad dat achterloopt en alleen een antwoord wijzigt, zou vraag 2 weggooien."""
+    _put(client, [*_beurt("v1", "a1"), *_beurt("v2", "a2")])
+
+    assert _put(client, _beurt("v1", "a1 anders")).status_code == 409
+
+
+def test_een_verlengd_gesprek_en_een_gewijzigd_antwoord_worden_bewaard(client):
+    """Eén tabblad: elke opslag verlengt de vragen of wijzigt een antwoord (#548/#635); dat blijft werken."""
+    _put(client, _beurt("v1", "a1"))
+    verlengd = [*_beurt("v1", "a1"), *_beurt("v2", "a2")]
+    assert _put(client, verlengd).status_code == 200
+    gewijzigd = [*_beurt("v1", "a1"), *_beurt("v2", "a2, nu volledig")]
+    assert _put(client, gewijzigd).status_code == 200
+    assert _put(client, gewijzigd).status_code == 200
+
+    assert client.get("/api/conversations/c1").json()["messages"] == gewijzigd
+
+
+def test_de_controle_op_vragen_kijkt_alleen_naar_het_gesprek_van_dezelfde_gebruiker(authed_client):
+    """Isolatie per gebruiker (ON CONFLICT (id, username)): een gesprek van een ander met hetzelfde id telt niet mee."""
+    from persistence import db
+
+    db.upsert_conversation("iemand-anders", "c1", "Geheim", 1000, [*_beurt("v1", "a1"), *_beurt("vB", "aB")])
+
+    assert _put(authed_client, [*_beurt("v1", "a1"), *_beurt("vA", "aA")]).status_code == 200
+    assert authed_client.get("/api/conversations/c1").json()["messages"][-2]["content"] == "vA"
+    anders = db.get_conversation("iemand-anders", "c1")
+    assert anders is not None
+    assert anders["messages"][-2]["content"] == "vB"
+
+
+def test_twee_schrijvers_tegelijk_de_tweede_overschrijft_niet(client, monkeypatch):
+    """Tabblad 2 schrijft nadat tabblad 1 de bewaarde versie las, maar vóór het zijn versie schrijft.
+
+    De vergelijking zag nog de oude versie; het schrijven mag dan niet slagen, anders is vraag B weg.
+    """
+    from persistence import db
+
+    _put(client, _beurt("v1", "a1"))
+    tabblad_2 = [*_beurt("v1", "a1"), *_beurt("vB", "aB")]
+    origineel = db._execute
+    gelezen = []
+
+    def tussendoor(conn, sql, params=()):
+        resultaat = origineel(conn, sql, params)
+        if sql.startswith("SELECT messages FROM conversations") and not gelezen:
+            gelezen.append(True)
+            with db._connection() as ander:
+                origineel(
+                    ander,
+                    "UPDATE conversations SET messages = ? WHERE id = ? AND username = ?",
+                    (json.dumps(tabblad_2), *params),
+                )
+                ander.commit()
+        return resultaat
+
+    monkeypatch.setattr(db, "_execute", tussendoor)
+    resp = _put(client, [*_beurt("v1", "a1"), *_beurt("vA", "aA")])
+    monkeypatch.setattr(db, "_execute", origineel)
+
+    assert resp.status_code == 409
+    assert client.get("/api/conversations/c1").json()["messages"] == tabblad_2
 
 
 def test_de_eerste_opslag_zet_de_titel(client):

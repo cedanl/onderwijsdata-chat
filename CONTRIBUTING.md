@@ -31,7 +31,7 @@ De backendtests halen niets live op bij DUO of CBS: de pytest-job blokkeert elke
 worden door een storing bij een bron (#766). Het DUO-register en de dashboards draaien op bevroren
 bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py`). Ververs ze met
 `uv run python scripts/duo_testfixtures.py` als een test een ander DUO-bestand of een andere instelling
-nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, wekelijks).
+nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, dagelijks).
 
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
@@ -41,8 +41,9 @@ De baseline krimpt per kwartaal naar nul (`AFBOUWPLAN` in `scripts/ty_baseline.p
 ≤100 eind 2026, ≤70 eind Q1 2027, ≤40 eind Q2 en 0 eind Q3 2027. Het script meldt bij elke run
 hoeveel er nog af moet.
 
-De GitHub-workflow draait dezelfde poorten. GitLab blijft de bron: GitHub spiegelt `main` en alle tags;
-er draait daar geen deploy meer.
+De poorten draaien alleen in GitLab CI (`.gitlab-ci.yml`). GitLab blijft de bron: GitHub spiegelt `main` en alle
+tags. Op GitHub draait alleen de docs-workflow (`.github/workflows/docs.yml`: `mkdocs build --strict` en publicatie
+naar Pages); er draait daar geen test en geen deploy.
 
 De pipeline faalt als de dekking van `pytest` onder `fail_under` in `pyproject.toml` komt (#691). Dek je nieuwe code
 met tests in plaats van de drempel te verlagen; na een merge die de stand duidelijk verbetert, mag de drempel omhoog

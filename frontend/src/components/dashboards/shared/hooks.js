@@ -1,25 +1,17 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useDarkMode } from '../../../hooks/useDarkMode'
 import { fetchDashboardData } from '../../../api'
 import { CHART_COLORS } from '../../../constants'
-import { benchmarkColor, chartOpts, buildIndexChartOpts } from './chart-opts'
+import { benchmarkColor, buildIndexChartOpts } from './chart-opts'
 import {
   sortedEntries, yearOverYearDelta,
-  buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData, buildSectorChartData,
+  buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData,
 } from './chart-builders'
 
 // ─── Hooks ──────────────────────────────────────────────────────────────────
 
-export function useDarkMode() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
-  useEffect(() => {
-    const obs = new MutationObserver(() =>
-      setDark(document.documentElement.classList.contains('dark'))
-    )
-    obs.observe(document.documentElement, { attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return dark
-}
+// Eén implementatie voor de hele app (#834); hier opnieuw geëxporteerd voor de dashboards.
+export { useDarkMode }
 
 export function fmt(n) {
   if (n == null) return '—'
@@ -99,7 +91,6 @@ export function useRegioComputed(data, instelling) {
 
     return {
       dark, bmColor, bm, bmLabel, hasPeers,
-      opts: chartOpts(dark),
       indexOpts: buildIndexChartOpts(dark),
       peerOpts: buildPeerLinesOpts(dark, instelling),
       ingesEntries,
@@ -119,8 +110,6 @@ export function useRegioComputed(data, instelling) {
       ingesLineData,
       ejLineData: buildBenchmarkLineData(data?.eerstejaars, bm.eerstejaars, instelling, bmLabel, CHART_COLORS[2], bmColor),
       diplLineData: buildBenchmarkLineData(data?.gediplomeerden, bm.gediplomeerden, instelling, bmLabel, CHART_COLORS[5], bmColor),
-      sectorData: buildSectorChartData(data?.sectoren),
-      geslachtTrend: data?.geslacht_trend || null,
     }
   }, [data, instelling, dark])
 }

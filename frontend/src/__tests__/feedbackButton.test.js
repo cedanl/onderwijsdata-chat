@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 
 // Dashboards pull in Plotly, which jsdom cannot load; this test is about the bar only.
 vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
-vi.mock('../components/InlineDashboards', () => ({
+vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 vi.mock('../components/FeedbackModal', () => ({

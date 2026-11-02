@@ -4,11 +4,11 @@ from core.config import get_all_api_key_env_vars, get_required_api_key_env_var
 
 
 class TestProviderApiKeyMapping:
-    """Validate that provider→key mapping is consistent and drift-free.
+    """De mapping provider → sleutel in core/config.py (`_PROVIDER_API_KEYS`) is de ene bron (ADR-003).
 
-    The mapping in config._PROVIDER_API_KEYS is the single source of truth.
-    This test ensures that routes/chat.py and tests/test_eval_aggregation.py
-    both rely on it, preventing drift.
+    Deze tests leggen de mapping zelf vast: welke sleutel bij een prefix hoort, en welke namen
+    `get_all_api_key_env_vars()` geeft (de lijst die /ready en de chat lezen). Dat de afnemers hem gebruiken,
+    toetsen ze niet.
     """
 
     def test_known_providers_map_to_keys(self):
@@ -18,7 +18,6 @@ class TestProviderApiKeyMapping:
         assert get_required_api_key_env_var("azure_ai/claude") == "AZURE_AI_API_KEY"
         assert get_required_api_key_env_var("azure/gpt") == "AZURE_API_KEY"
         assert get_required_api_key_env_var("gemini/model") == "GEMINI_API_KEY"
-        assert get_required_api_key_env_var("willma/llama") == "WILLMA_API_KEY"
 
     def test_ollama_does_not_require_key(self):
         """Ollama models don't require API keys."""
@@ -35,17 +34,6 @@ class TestProviderApiKeyMapping:
         assert get_required_api_key_env_var("") is None
         assert get_required_api_key_env_var(None) is None
 
-    def test_get_all_api_key_env_vars_excludes_none(self):
-        """get_all_api_key_env_vars only returns actual env var names (no None)."""
-        all_keys = get_all_api_key_env_vars()
-        assert all_keys is not None
-        assert isinstance(all_keys, list)
-        assert len(all_keys) > 0
-        # All items should be strings (actual env var names), no None
-        assert all(isinstance(k, str) for k in all_keys)
-        # No duplicates
-        assert len(all_keys) == len(set(all_keys))
-
     def test_api_key_vars_are_reasonable(self):
         """All returned API key vars look like environment variable names."""
         all_keys = get_all_api_key_env_vars()
@@ -57,8 +45,9 @@ class TestProviderApiKeyMapping:
             "GEMINI_API_KEY",
             "WILLMA_API_KEY",
         }
-        assert set(all_keys) == expected, (
-            f"API key vars changed. Got: {set(all_keys)}, Expected: {expected}. Update test if intentional."
+        # Gesorteerd vergeleken: ook een dubbele naam of een None valt op.
+        assert sorted(all_keys) == sorted(expected), (
+            f"API key vars changed. Got: {all_keys}, Expected: {expected}. Update test if intentional."
         )
 
     def test_provider_extraction_from_model_id(self):

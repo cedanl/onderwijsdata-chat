@@ -145,7 +145,7 @@ def _niet_opvraagbaar(entry: dict) -> dict | None:
 
 _DETAIL_FIELDS = frozenset({"_kolommen", "_kolomtypes", "_kolomdefinities"})
 
-# F1: Nederlandse stopwoorden + vraagwoorden die ruis veroorzaken
+# Nederlandse stopwoorden + vraagwoorden die ruis veroorzaken
 _STOPWOORDEN = frozenset(
     {
         "de",
@@ -188,7 +188,7 @@ _STOPWOORDEN = frozenset(
         "krijgen",
         "heeft",
         "hebben",
-        "dar",
+        "daar",
         "door",
         "tot",
         "over",
@@ -197,7 +197,7 @@ _STOPWOORDEN = frozenset(
     }
 )
 
-# F3: Log-damping coefficient — scales penalty for oversized entries
+# Log-damping coefficient — scales penalty for oversized entries
 # Balances large-dataset bias without over-penalizing; see _length_damping_factor
 _DAMPING_SCALE = 0.2
 
@@ -453,7 +453,7 @@ _SYNONYMS: dict[str, list[str]] = {
     "vsv": ["voortijdig", "schoolverlaters", "uitval"],
     "schoolverlaters": ["vsv", "voortijdig", "uitval"],
     "prognose": ["prognoses", "verwachting", "raming"],
-    # F4: Aangevuld — deze woorden staan niet in metadata maar worden veel gezocht
+    # Aangevuld — deze woorden staan niet in metadata maar worden veel gezocht
     "voltijd": ["vt", "volledig", "fulltijd", "opleidingsvorm"],
     "deeltijd": ["dt", "part-time", "parttijd", "opleidingsvorm"],
     "duaal": ["du", "duale", "leerlingplek", "opleidingsvorm"],
@@ -497,7 +497,7 @@ def _filter_stopwoorden(words: list[str]) -> list[str]:
 def _expand_query(words: list[str]) -> list[tuple[str, float]]:
     """Expand query with synonyms, weighted differently.
 
-    F5: User words get full weight (1.0), synonyms get lower weight (0.35).
+    User words get full weight (1.0), synonyms get lower weight (0.35).
     This prevents synonyms from overfitting results.
     Example: "ingeschrevenen wo" shouldn't match "Ho-cohorten" equally well.
     """
@@ -512,7 +512,7 @@ def _expand_query(words: list[str]) -> list[tuple[str, float]]:
 
 
 def _word_match(word: str, text: str) -> bool:
-    """F2: Word boundary matching.
+    """Word boundary matching.
 
     Short terms (≤3 chars) need word boundaries to avoid noise (vo, po, ho, etc).
     Longer terms use prefix matching (query="instel", match="instelling").
@@ -526,7 +526,7 @@ def _word_match(word: str, text: str) -> bool:
 
 
 def _entry_size(entry: dict) -> int:
-    """F3: Calculate total text length of an entry for length normalization."""
+    """Calculate total text length of an entry for length normalization."""
     size = 0
     for key, val in entry.items():
         if key.startswith("_"):
@@ -541,7 +541,7 @@ def _entry_size(entry: dict) -> int:
 
 
 def _length_damping_factor(entry: dict, reference_size: int = 5000) -> float:
-    """F3: Log-damping for large entries.
+    """Log-damping for large entries.
 
     Large entries (RIO registers) have more text, thus more random matches.
     Apply logarithmic dampening: log(size/ref) to penalize oversized entries.
@@ -551,7 +551,7 @@ def _length_damping_factor(entry: dict, reference_size: int = 5000) -> float:
     if size <= reference_size:
         return 1.0
     # Gentle log damping: avoid over-penalizing large datasets
-    # Example: 47x larger → log(47) ≈ 3.85 → divide by ~1.77 → 56% penalty
+    # Voorbeeld: 47x zo groot → ln(47) ≈ 3,85 → factor 1 / (1 + 3,85 × 0,2) ≈ 0,57, dus ongeveer 43% straf
     return 1.0 / (1.0 + math.log(size / reference_size) * _DAMPING_SCALE)
 
 
@@ -589,10 +589,10 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
             text = str(val)
         text = text.lower()
 
-        # F5: Weight word by its user/synonym weight, multiplied by field weight
+        # Weight word by its user/synonym weight, multiplied by field weight
         total += sum(field_weight * word_weight for w, word_weight in weighted_words if _word_match(w, text))
 
-    # F3: Apply length damping factor
+    # Apply length damping factor
     damping = _length_damping_factor(entry)
     return total * damping
 
@@ -888,7 +888,7 @@ def _kandidaat(hit: dict, termen: list[str]) -> dict:
 def _zoek(query: str, source: str, top_n: int, geo_niveau: str | None) -> str:
     t0 = time.perf_counter()
     query_words = _woorden(query)
-    # F1: Filter stopwoorden
+    # Filter stopwoorden
     filtered_words = _filter_stopwoorden(query_words)
     hint = _volzin_hint(query, query_words, filtered_words)
     termen, nodig = _drempel(query, query_words, filtered_words)

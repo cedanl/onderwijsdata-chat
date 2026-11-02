@@ -464,88 +464,67 @@ _REVOKED_USERS_TABLE = """
 """
 
 
+_CONVERSATIONS_TABLE = """
+    CREATE TABLE IF NOT EXISTS conversations (
+        id        TEXT    NOT NULL,
+        username  TEXT    NOT NULL,
+        title     TEXT    NOT NULL,
+        timestamp INTEGER NOT NULL,
+        messages  TEXT    NOT NULL,
+        PRIMARY KEY (id, username)
+    )
+"""
+_CONVERSATIONS_INDEX = "CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)"
+
+_WORKBOOKS_TABLE = """
+    CREATE TABLE IF NOT EXISTS workbooks (
+        id             TEXT NOT NULL,
+        username       TEXT NOT NULL,
+        title          TEXT NOT NULL,
+        description    TEXT NOT NULL DEFAULT '',
+        messages       TEXT,
+        figures        TEXT,
+        instelling     TEXT,
+        html_content   TEXT,
+        dashboard_spec TEXT,
+        created_at     TEXT NOT NULL,
+        laatst_gebruikt BIGINT,
+        PRIMARY KEY (id, username)
+    )
+"""
+_WORKBOOKS_INDEX = "CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)"
+
+_SCHEMA_MIGRATIONS_TABLE = "CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)"
+
+# Het hele schema, voor Postgres en SQLite dezelfde DDL (#825); _migrate werkt een bestaande database daarna bij.
+_SCHEMA = (
+    _CONVERSATIONS_TABLE,
+    _CONVERSATIONS_INDEX,
+    _WORKBOOKS_TABLE,
+    _WORKBOOKS_INDEX,
+    _FEEDBACK_TABLE,
+    _ANSWER_FEEDBACK_TABLE,
+    _ALGEMENE_FEEDBACK_TABLE,
+    _DATA_RECIPES_TABLE,
+    _DATA_RECIPES_INDEX,
+    _REVOKED_TOKENS_TABLE,
+    _REVOKED_TOKENS_INDEX,
+    _REVOKED_USERS_TABLE,
+    _SCHEMA_MIGRATIONS_TABLE,
+)
+
+
 def init_db() -> None:
     with _connection() as conn:
-        cursor = conn.cursor()
-
         if _USE_POSTGRES:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id        TEXT    NOT NULL,
-                    username  TEXT    NOT NULL,
-                    title     TEXT    NOT NULL,
-                    timestamp INTEGER NOT NULL,
-                    messages  TEXT    NOT NULL,
-                    PRIMARY KEY (id, username)
-                )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC)")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS workbooks (
-                    id             TEXT NOT NULL,
-                    username       TEXT NOT NULL,
-                    title          TEXT NOT NULL,
-                    description    TEXT NOT NULL DEFAULT '',
-                    messages       TEXT,
-                    figures        TEXT,
-                    instelling     TEXT,
-                    html_content   TEXT,
-                    dashboard_spec TEXT,
-                    created_at     TEXT NOT NULL,
-                    laatst_gebruikt BIGINT,
-                    PRIMARY KEY (id, username)
-                )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC)")
-            cursor.execute(_FEEDBACK_TABLE)
-            cursor.execute(_ANSWER_FEEDBACK_TABLE)
-            cursor.execute(_ALGEMENE_FEEDBACK_TABLE)
-            cursor.execute(_DATA_RECIPES_TABLE)
-            cursor.execute(_DATA_RECIPES_INDEX)
-            cursor.execute(_REVOKED_TOKENS_TABLE)
-            cursor.execute(_REVOKED_TOKENS_INDEX)
-            cursor.execute(_REVOKED_USERS_TABLE)
-            cursor.execute("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY)")
+            cursor = conn.cursor()
+            for ddl in _SCHEMA:
+                cursor.execute(ddl)
             conn.commit()
             cursor.close()
         else:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id        TEXT    NOT NULL,
-                    username  TEXT    NOT NULL,
-                    title     TEXT    NOT NULL,
-                    timestamp INTEGER NOT NULL,
-                    messages  TEXT    NOT NULL,
-                    PRIMARY KEY (id, username)
-                );
-                CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
-
-                CREATE TABLE IF NOT EXISTS workbooks (
-                    id             TEXT NOT NULL,
-                    username       TEXT NOT NULL,
-                    title          TEXT NOT NULL,
-                    description    TEXT NOT NULL DEFAULT '',
-                    messages       TEXT,
-                    figures        TEXT,
-                    instelling     TEXT,
-                    html_content   TEXT,
-                    dashboard_spec TEXT,
-                    created_at     TEXT NOT NULL,
-                    laatst_gebruikt BIGINT,
-                    PRIMARY KEY (id, username)
-                );
-                CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
-
-                CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
-            """)
-            conn.execute(_FEEDBACK_TABLE)
-            conn.execute(_ANSWER_FEEDBACK_TABLE)
-            conn.execute(_ALGEMENE_FEEDBACK_TABLE)
-            conn.execute(_DATA_RECIPES_TABLE)
-            conn.execute(_DATA_RECIPES_INDEX)
-            conn.execute(_REVOKED_TOKENS_TABLE)
-            conn.execute(_REVOKED_TOKENS_INDEX)
-            conn.execute(_REVOKED_USERS_TABLE)
+            for ddl in _SCHEMA:
+                conn.execute(ddl)
 
         _migrate(conn)
         purge_expired_revocations(conn)
@@ -682,21 +661,52 @@ def _normalize_ts(timestamp: float) -> int:
     return min(seconds, int(time.time()))
 
 
+class GesprekEldersGewijzigd(Exception):
+    """De opslag zou vragen weggooien die al bewaard zijn: een ander tabblad of apparaat schreef ertussen (#760)."""
+
+
+def _vragen(messages: list) -> list:
+    return [m.get("content") for m in messages if isinstance(m, dict) and m.get("role") == "user"]
+
+
 def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
     """Bewaar een gesprek; de titel alleen bij het aanmaken.
 
     Elke opslag na een antwoord stuurt de automatische titel uit de eerste vraag mee. Een bestaand gesprek houdt
     zijn titel, zodat een hernoeming (rename_conversation) blijft staan, ook vanaf een ander apparaat (#757).
+
+    De nieuwe versie moet beginnen met de vragen die al bewaard zijn, anders `GesprekEldersGewijzigd` (#760): twee
+    tabbladen met hetzelfde gesprek overschreven elkaars beurten zonder melding. Alleen de vragen tellen; een antwoord
+    mag veranderen (een afgebroken antwoord dat later volledig is, #548/#635). Het schrijven slaagt alleen op de
+    versie die gelezen is, zodat een schrijver die er tussen lezen en schrijven doorheen komt ook niet verloren gaat.
+    In Python en zonder databasespecifieke JSON-functies, zodat SQLite en PostgreSQL hetzelfde doen.
     """
+    nieuw = json.dumps(messages)
     with _connection() as conn:
-        _execute(
+        rij = _execute(
             conn,
-            "INSERT INTO conversations (id, username, title, timestamp, messages) "
-            "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT (id, username) DO UPDATE SET "
-            "timestamp=excluded.timestamp, messages=excluded.messages",
-            (conv_id, username, title, _normalize_ts(timestamp), json.dumps(messages)),
-        )
+            "SELECT messages FROM conversations WHERE id = ? AND username = ?",
+            (conv_id, username),
+        ).fetchone()
+        if rij is None:
+            cursor = _execute(
+                conn,
+                "INSERT INTO conversations (id, username, title, timestamp, messages) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT (id, username) DO NOTHING",
+                (conv_id, username, title, _normalize_ts(timestamp), nieuw),
+            )
+        else:
+            bewaard = rij["messages"]
+            vragen = _vragen(json.loads(bewaard))
+            if _vragen(messages)[: len(vragen)] != vragen:
+                raise GesprekEldersGewijzigd(conv_id)
+            cursor = _execute(
+                conn,
+                "UPDATE conversations SET timestamp = ?, messages = ? WHERE id = ? AND username = ? AND messages = ?",
+                (_normalize_ts(timestamp), nieuw, conv_id, username, bewaard),
+            )
+        if cursor.rowcount == 0:
+            raise GesprekEldersGewijzigd(conv_id)
         conn.commit()
 
 

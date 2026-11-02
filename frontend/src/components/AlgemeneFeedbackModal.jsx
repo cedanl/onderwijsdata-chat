@@ -4,10 +4,12 @@ import { createPortal } from 'react-dom'
 import { useDialog } from '../hooks/useDialog'
 import { postAlgemeneFeedback } from '../api'
 import { MAX_FEEDBACK_CHARS } from '../constants'
+import { useTermijnen, getal } from '../termijnen'
 
 const SOORTEN = [['idee', 'Idee'], ['probleem', 'Probleem'], ['compliment', 'Compliment']]
 // What the team gets (#600): the same pattern as the feedback per answer (AnswerFeedback).
-const BEWAARD = 'Het team krijgt je bericht met je accountnaam en de pagina waar je was, en bewaart het 90 dagen. ' +
+const bewaard = dagen =>
+  `Het team krijgt je bericht met je accountnaam en de pagina waar je was, en bewaart het ${getal(dagen)} dagen. ` +
   'Zet er geen persoonsgegevens in.'
 
 // The route the user was on, as the server accepts it (core/algemene_feedback.PAGINA_PATROON): never a query
@@ -22,6 +24,7 @@ export default function AlgemeneFeedbackModal({ onClose }) {
   const dialogRef = useDialog(onClose)
   const titleId = useId()
   const bewaardId = useId()
+  const BEWAARD = bewaard(useTermijnen().gesprekkenDagen)
   const [tekst, setTekst] = useState('')
   const [soort, setSoort] = useState(null)
   const [sending, setSending] = useState(false)

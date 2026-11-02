@@ -33,7 +33,7 @@ function ModeIcon({ id }) {
   )
 }
 
-export default function SettingsModal({ settings, onSave, onClose, onLogout, onGegevensVerwijderd = null, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity }) {
+export default function SettingsModal({ settings, onSave, onClose, onLogout, onGegevensVerwijderd = null, isOnboarding, feedbackEnabled = false, sramName, sramInstelling, sramIdentity, instellingen = [] }) {
   // A saved instelling that is exactly the raw SRAM org/institution string is
   // leftover pollution from an earlier build that forced SRAM values into the
   // profile — reset it so the picker starts clean and the user can choose.
@@ -111,7 +111,7 @@ export default function SettingsModal({ settings, onSave, onClose, onLogout, onG
             <label htmlFor="settings-instelling" style={{ fontSize: 'var(--font-label)', fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
               Onderwijsinstelling
             </label>
-            <InstellingPicker inputId="settings-instelling" value={instelling} onChange={setInstelling} />
+            <InstellingPicker inputId="settings-instelling" value={instelling} onChange={setInstelling} instellingen={instellingen} />
             {sramInstelling && (
               <div style={{ fontSize: 'var(--font-klein)', color: 'var(--gray-500)', marginTop: 6 }}>
                 {sramInstelling} gevonden via je SRAM-account{sramName ? ` (${sramName})` : ''} — je kunt dit hieronder aanpassen.

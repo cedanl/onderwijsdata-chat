@@ -13,8 +13,13 @@ import pandas as pd
 MAX_WAARDEN = 12
 
 
-def _getal(v):
-    """Een numpy-getal als JSON-getal; 4147.0 na de -1-maskering is een telling (#222)."""
+def json_getal(v):
+    """Een numpy-getal als JSON-getal, een datum als ISO-dag; 4147.0 na de -1-maskering is een telling (#222).
+
+    Ook voor `tools/profiel.py` (#823); hier, omdat deze module alleen pandas nodig heeft.
+    """
+    if isinstance(v, pd.Timestamp):
+        return v.isoformat()[:10]
     v = v.item() if hasattr(v, "item") else v
     return int(v) if isinstance(v, float) and v.is_integer() else v
 
@@ -24,7 +29,7 @@ def _kolom(reeks: pd.Series, min1: int) -> dict:
     profiel: dict = {}
     if pd.api.types.is_numeric_dtype(reeks) and not pd.api.types.is_bool_dtype(reeks):
         if not waarden.empty:
-            profiel["bereik"] = [_getal(waarden.min()), _getal(waarden.max())]
+            profiel["bereik"] = [json_getal(waarden.min()), json_getal(waarden.max())]
     else:
         uniek = waarden.unique()
         profiel["uniek"] = len(uniek)

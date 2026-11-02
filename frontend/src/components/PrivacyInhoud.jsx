@@ -6,6 +6,8 @@
 // besloten (#485): persistence/opschonen.py. De verwerkingsverantwoordelijke is besloten (#553): de
 // deelnemende instelling.
 
+import { useTermijnen, getal } from '../termijnen'
+
 export const PRIVACY_KOPJES = [
   'Wat naar de AI-dienst gaat',
   'Wat de server bewaart',
@@ -17,6 +19,9 @@ export const PRIVACY_KOPJES = [
 ]
 
 export default function PrivacyInhoud() {
+  // De termijnen die de backend toepast (#835), in de standaardinstelling 90 en 365 dagen, 8 en 24 uur.
+  const { gesprekkenDagen, rapportenDagen, sessieUren, sessieMaxUren } = useTermijnen()
+  const [gesprek, rapport, sessie, sessieMax] = [gesprekkenDagen, rapportenDagen, sessieUren, sessieMaxUren].map(getal)
   return (
     <div className="privacy-text">
       <h1>Privacy-informatie</h1>
@@ -49,12 +54,12 @@ export default function PrivacyInhoud() {
       <h2>{PRIVACY_KOPJES[1]}</h2>
       <ul>
         <li>
-          <strong>Gesprekken</strong>: vraag, antwoord, toolstappen en titel, per account, tot 90 dagen na je laatste
+          <strong>Gesprekken</strong>: vraag, antwoord, toolstappen en titel, per account, tot {gesprek} dagen na je laatste
           bericht in het gesprek, of tot je het eerder verwijdert.
         </li>
         <li>
           <strong>Rapporten en dashboards</strong>: blijven bewaard als je het gesprek verwijdert (de
-          verwijderdialoog zegt dat); verwijder ze apart onder Rapporten. Een rapport of dashboard dat je 365 dagen
+          verwijderdialoog zegt dat); verwijder ze apart onder Rapporten. Een rapport of dashboard dat je {rapport} dagen
           niet hebt geopend of gewijzigd, wordt verwijderd.
         </li>
         <li>
@@ -65,7 +70,7 @@ export default function PrivacyInhoud() {
           je het gesprek, dan wordt
           die kopie losgekoppeld van je account en het gesprek, maar blijft zij voor het team bewaard. Wat je via
           de link Feedback stuurt, bewaren we met je accountnaam, de soort die je koos en de pagina waar je was.
-          Feedback wordt 90 dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog
+          Feedback wordt {gesprek} dagen nadat je hem gaf verwijderd (feedback op een antwoord niet zolang het gesprek nog
           bestaat), of eerder als je al je gegevens verwijdert.
         </li>
         <li>
@@ -76,13 +81,13 @@ export default function PrivacyInhoud() {
           <strong>Inloggen</strong>: met een gebruikersnaam en wachtwoord bewaart de server alleen je
           gebruikersnaam bij je gegevens. Met SURF SRAM is je e-mailadres je accountnaam, ook als auteur van een
           rapport; je naam, organisatie en instelling staan tijdens je sessie in het geheugen van de server (ten
-          hoogste 24 uur). Een ingetrokken sessie wordt als hash bewaard tot zij verloopt.
+          hoogste {sessieMax} uur). Een ingetrokken sessie wordt als hash bewaard tot zij verloopt.
         </li>
         <li>
-          <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is: je gesprekken
-          90 dagen na je laatste bericht erin, je feedback 90 dagen nadat je hem gaf, en rapporten en dashboards 365
-          dagen nadat je ze voor het laatst opende of wijzigde. Eerder verwijderen kan altijd zelf, één voor één of
-          alles tegelijk.
+          <strong>Bewaartermijn</strong>: elke nacht verwijdert de server wat over zijn termijn is: je
+          gesprekken {gesprek} dagen na je laatste bericht erin, je feedback {gesprek} dagen nadat je hem gaf, en
+          rapporten en dashboards {rapport} dagen nadat je ze voor het laatst opende of wijzigde. Eerder verwijderen
+          kan altijd zelf, één voor één of alles tegelijk.
         </li>
       </ul>
 
@@ -100,7 +105,7 @@ export default function PrivacyInhoud() {
           hetzelfde account zien ze niet.
         </li>
         <li>
-          Een sessie duurt 8 uur en wordt bij gebruik verlengd tot ten hoogste 24 uur na het inloggen. Tijdens het
+          Een sessie duurt {sessie} uur en wordt bij gebruik verlengd tot ten hoogste {sessieMax} uur na het inloggen. Tijdens het
           inloggen met SRAM staat er kort een cookie voor de beveiliging van die stap; verder gebruikt de app geen
           cookies en geen analytics.
         </li>

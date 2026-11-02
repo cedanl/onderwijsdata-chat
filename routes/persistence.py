@@ -17,6 +17,10 @@ from persistence import db as persistence_db
 
 router = APIRouter(tags=["persistence"])
 
+GESPREK_ELDERS_GEWIJZIGD = (
+    "Dit gesprek is intussen in een ander tabblad of op een ander apparaat bijgewerkt. Het is niet overschreven."
+)
+
 
 class ConversationTitle(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -53,13 +57,17 @@ def get_conversation(conv_id: str, username: str = Depends(get_current_user)) ->
 @router.put("/api/conversations/{conv_id}")
 def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_current_user)) -> dict:
     # Geen BSN, e-mailadres of telefoonnummer in de titel, ook niet van een andere client (#552).
-    persistence_db.upsert_conversation(
-        username,
-        conv_id,
-        veilige_gesprekstitel(body["title"]),
-        body["timestamp"],
-        body["messages"],
-    )
+    try:
+        persistence_db.upsert_conversation(
+            username,
+            conv_id,
+            veilige_gesprekstitel(body["title"]),
+            body["timestamp"],
+            body["messages"],
+        )
+    except persistence_db.GesprekEldersGewijzigd:
+        # Twee tabbladen met hetzelfde gesprek (#760): niets overschrijven; de client bewaart zijn versie apart.
+        raise HTTPException(status_code=409, detail=GESPREK_ELDERS_GEWIJZIGD) from None
     # De recepten achter de tabellen van dit gesprek: zo overleven ze een herstart (#472).
     recepten.bewaar(username, conv_id, body["messages"])
     return {"ok": True}
