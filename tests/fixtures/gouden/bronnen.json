@@ -1,0 +1,80 @@
+{
+ "cbs-85354NED.json.gz": {
+  "filter": "de rijen die get_maat opvraagt bij {\"maat\": \"mbo_studenten_landelijk\", \"vorm\": \"alle\"}; {\"maat\": \"mbo_studenten_landelijk\", \"vorm\": \"bol\"}; {\"maat\": \"mbo_studenten_landelijk\", \"vorm\": \"bbl\"}",
+  "opgehaald": "2026-11-02",
+  "rijen": 45,
+  "url": "https://opendata.cbs.nl/ODataApi/odata/85354NED"
+ },
+ "cbs-85423NED.json.gz": {
+  "filter": "de rijen die get_maat opvraagt bij {\"maat\": \"deelnemers_ho_landelijk\", \"sector\": \"hbo\", \"vorm\": \"alle\"}; {\"maat\": \"deelnemers_ho_landelijk\", \"sector\": \"hbo\", \"vorm\": \"voltijd\"}; {\"maat\": \"deelnemers_ho_landelijk\", \"sector\": \"wo\", \"vorm\": \"alle\"}; {\"maat\": \"deelnemers_ho_landelijk\", \"sector\": \"wo\", \"vorm\": \"voltijd\"}",
+  "opgehaald": "2026-11-02",
+  "rijen": 60,
+  "url": "https://opendata.cbs.nl/ODataApi/odata/85423NED"
+ },
+ "cbs-85569NED.json.gz": {
+  "filter": "de rijen die get_maat opvraagt bij {\"maat\": \"doorstroom_vmbo_mbo\"}",
+  "opgehaald": "2026-11-02",
+  "rijen": 16,
+  "url": "https://opendata.cbs.nl/ODataApi/odata/85569NED"
+ },
+ "duo-mbo-studenten-per-instelling_0.csv.gz": {
+  "bijgewerkt": "2026-02-02T09:51:41.957480",
+  "filter": "INSTELLINGSCODE in ['00GT', '23JA', '24ZZ', '25LH', '25LP', '25PJ', '27GZ']",
+  "opgehaald": "2026-11-02",
+  "rijen": 35,
+  "url": "https://onderwijsdata.duo.nl/dataset/63c2b502-5675-4110-83a0-a111c3f46332/resource/0f1fba7c-5003-459d-8845-20ff055b9dc1/download/2021-2025-01-studenten-per-instelling-bevoegd-gezag-plaats-gemeente-provincie-van-de-instelling-.csv"
+ },
+ "duo-overzicht-erkenningen-ho_0.csv.gz": {
+  "bijgewerkt": "2026-11-02T03:03:36.925249",
+  "filter": "INSTELLINGSCODE in ['21PD']",
+  "opgehaald": "2026-11-02",
+  "rijen": 1121,
+  "url": "https://onderwijsdata.duo.nl/dataset/bb07cc6e-00fe-4100-9528-a0c5fd27d2fb/resource/28a4d89b-c223-4dbc-8deb-9d02a533f215/download/ho_erkenningen_rio.csv"
+ },
+ "duo-p01hoinges_4.csv.gz": {
+  "bijgewerkt": "2026-04-08T12:53:10.293743",
+  "filter": "INSTELLINGSCODE_ACTUEEL in ['21PD']",
+  "opgehaald": "2026-11-02",
+  "rijen": 115,
+  "url": "https://onderwijsdata.duo.nl/dataset/978f900e-088e-4d27-804f-2d897c161c70/resource/f9a16992-8f11-4579-809c-bcdbc93c9d2b/download/ingeschrevenenoplvwo.csv"
+ },
+ "duo-p02ho1ejrs_4.csv.gz": {
+  "bijgewerkt": "2026-04-08T12:57:17.564010",
+  "filter": "INSTELLINGSCODE_ACTUEEL in ['21PD']",
+  "opgehaald": "2026-11-02",
+  "rijen": 41,
+  "url": "https://onderwijsdata.duo.nl/dataset/eec8c988-66a6-4b06-9bcf-4038d016f2a1/resource/5639a642-bf6a-4fad-a8ab-d4bf62010c0c/download/eerstejaarsingeschrevenenoplvwo.csv"
+ },
+ "duo-p03hoinschr_4.csv.gz": {
+  "bijgewerkt": "2026-04-08T12:59:43.538991",
+  "filter": "INSTELLINGSCODE_ACTUEEL in ['21PD']",
+  "opgehaald": "2026-11-02",
+  "rijen": 115,
+  "url": "https://onderwijsdata.duo.nl/dataset/3638ab93-ed1f-4df2-ad2b-164e31b792bb/resource/2a95ae4e-3d9b-49cf-bebd-5a3e5a289e52/download/inschrijvingenoplvwo.csv"
+ },
+ "inspectie-bg.ods": {
+  "filter": "Bestuursnummer in [40597, 67237]",
+  "opgehaald": "2026-11-02",
+  "rijen": 2,
+  "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2026/10/02/oordelen-1-oktober-2026/20261001-oordeel-en-standaard-bg.ods"
+ },
+ "mbo-indicatoren.xlsx": {
+  "editie": 2026,
+  "filter": "geen",
+  "opgehaald": "2026-11-02",
+  "peildatum": "1 oktober 2025",
+  "url": "https://duo.nl/open_onderwijsdata/images/2026-indicatoren-per-instelling.xlsx"
+ },
+ "roa-ais2030.csv.gz": {
+  "filter": "Nederland, opleidingsniveau, de indicatoren van get_roa_benchmark",
+  "opgehaald": "2026-11-02",
+  "rijen": 30,
+  "url": "riodata roa.load('ais2030', 'arbeidsmarkt') (ROA AIS 2030)"
+ },
+ "uwv-vacatures.csv.gz": {
+  "filter": "PROVINCIE = Flevoland; kolommen PEILDATUM, PROVINCIE, GEMEENTE, BEROEPENCLUSTER, AANTAL",
+  "opgehaald": "2026-11-02",
+  "rijen": 2927,
+  "url": "riodata uwv.load('latest', rec_type='Vacature') (UWV Open Match)"
+ }
+}

@@ -79,6 +79,16 @@ def duo_fixtures(monkeypatch):
 
 
 @pytest.fixture
+def gouden(duo_fixtures, monkeypatch):
+    """De bevroren bronnen van de gouden tests (`tests/gouden.py`, #870), met het netwerk dicht."""
+    from tests import gouden
+
+    gouden.zet_klaar(monkeypatch)
+    yield
+    gouden.wis_caches()
+
+
+@pytest.fixture
 def dashboards_aan(monkeypatch):
     """De dashboardvlag staat standaard uit (#765); tests van de dashboardroutes en -acties zetten hem hiermee aan."""
     import routes.chat
