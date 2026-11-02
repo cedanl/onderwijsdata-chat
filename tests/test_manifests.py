@@ -190,3 +190,28 @@ def test_zonder_helm_faalt_ci_en_slaat_lokaal_over(monkeypatch):
     monkeypatch.delenv("CI")
     with pytest.raises(pytest.skip.Exception, match="helm niet geïnstalleerd"):
         _helm("version")
+
+
+# ── Het sjabloon voor de secret noemt wat de omgeving leest (#856) ──
+
+_SECRET = "onderwijsdata-chat-secrets"
+
+
+def _secretsleutels(omgeving: Path) -> set[str]:
+    """De sleutels die values.yaml met secretKeyRef uit onderwijsdata-chat-secrets leest."""
+    return {
+        ref["key"]
+        for var in _values(omgeving).get("env") or []
+        if (ref := (var.get("valueFrom") or {}).get("secretKeyRef")) and ref.get("name") == _SECRET
+    }
+
+
+@pytest.mark.parametrize(
+    "omgeving", [p.parent for p in sorted(_ROOT.glob("manifests/*/secret.yaml.example"))], ids=lambda p: p.name
+)
+def test_secret_sjabloon_noemt_de_sleutels_die_values_lezen(omgeving):
+    # Alleen het sjabloon met placeholders; de versleutelde secret.yaml blijft dicht.
+    sjabloon = yaml.safe_load((omgeving / "secret.yaml.example").read_text())
+    assert sjabloon["metadata"]["name"] == _SECRET
+    assert set(sjabloon["stringData"]) == _secretsleutels(omgeving)
+    assert set(sjabloon["stringData"].values()) == {"..."}
