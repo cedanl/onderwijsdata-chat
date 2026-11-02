@@ -53,9 +53,9 @@
   "url": "https://onderwijsdata.duo.nl/dataset/3638ab93-ed1f-4df2-ad2b-164e31b792bb/resource/2a95ae4e-3d9b-49cf-bebd-5a3e5a289e52/download/inschrijvingenoplvwo.csv"
  },
  "inspectie-bg.ods": {
-  "filter": "Bestuursnummer in [40597, 67237]",
+  "filter": "Bestuursnummer in [31121, 40597, 40870, 67237]",
   "opgehaald": "2026-11-02",
-  "rijen": 2,
+  "rijen": 4,
   "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2026/10/02/oordelen-1-oktober-2026/20261001-oordeel-en-standaard-bg.ods"
  },
  "mbo-indicatoren.xlsx": {

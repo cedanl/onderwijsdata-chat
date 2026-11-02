@@ -18,14 +18,42 @@ from data import instellingen
 from tools import fouten, inspectie
 from tools.schemas import TOOL_GET_INSPECTIEOORDEEL
 
+# De kolommen van het echte bg-bestand, in dezelfde volgorde (peilbestand 01-10-2026).
 _KOP = ["Peildatum", "Bestuursnummer", "Bestuursnaam", "SectorenBijBestuur", "Eindoordeel",
-        "VaststellingsdatumEindoordeel", "FinancieelBeheer", "KwaliteitszorgEnAmbitie", "Onderwijsresultaten"]  # fmt: skip
+        "VaststellingsdatumEindoordeel", "PublicatiedatumEindoordeel", "OnderzoeksnummerEindoordeel",
+        "TypeOnderzoekCodeEindoordeel", "FinancieelBeheer", "FinancielePositie", "VaststellingsdatumFinancieel",
+        "PublicatiedatumFinancieel", "OnderzoeksnummerFinancieel", "TypeOnderzoekCodeFinancieel",
+        "KwaliteitszorgEnAmbitie", "VaststellingsdatumKwAmb", "PublicatiedatumKwAmb", "OnderzoeksnummerKwAmb",
+        "TypeOnderzoekCodeKwAmb", "Onderwijsresultaten", "VaststellingsdatumOnderwijsres",
+        "PublicatiedatumOnderwijsres", "OnderzoeksnummerOnderwijsres", "TypeOnderzoekCodeOnderwijsres", "Kader",
+        "OR1", "RPO1", "RPO2", "RPO3", "KA1", "KA2", "KA3", "FB1", "FB2", "FB3", "BKA1", "BKA2", "BKA3"]  # fmt: skip
+
+
+def _rij(**velden: str) -> list[str]:
+    onbekend = set(velden) - set(_KOP)
+    assert not onbekend, onbekend
+    return [velden.get(kolom, "") for kolom in _KOP]
+
+
 _RIJEN = [
-    ["01-10-2026", '="00008"', "Rijksuniversiteit Groningen", "HO", "", "", "", "", ""],
-    ["01-10-2026", '="34386"', "Stichting SOMA College", "MBO", "Voldoende", "20230906", "", "", ""],
-    ["01-10-2026", '="40740"', "Stichting Gemengd", "VO-MBO", "Goed", "20250115", "Goed", "Voldoende", "Goed"],
-    ["01-10-2026", '="12345"', "Basisschoolbestuur", "PO", "Voldoende", "20240101", "", "", ""],
-]
+    _rij(Peildatum="01-10-2026", Bestuursnummer='="00008"', Bestuursnaam="Rijksuniversiteit Groningen",
+         SectorenBijBestuur="HO"),
+    # Onderzoekskader 2021: de standaarden in BKA1-3, geen kwaliteitsgebieden.
+    _rij(Peildatum="01-10-2026", Bestuursnummer='="34386"', Bestuursnaam="Stichting SOMA College",
+         SectorenBijBestuur="MBO", Eindoordeel="Voldoende", VaststellingsdatumEindoordeel="20230906", Kader="BST2021",
+         BKA1="Voldoende", BKA2="Goed", BKA3="Voldoende"),
+    # Onderzoekskader 2017: oordelen per kwaliteitsgebied en de standaarden KA1-3 en FB1-3 eronder.
+    _rij(Peildatum="01-10-2026", Bestuursnummer='="40740"', Bestuursnaam="Stichting Gemengd",
+         SectorenBijBestuur="VO-MBO", Eindoordeel="Goed", VaststellingsdatumEindoordeel="20250115",
+         FinancieelBeheer="Voldoende", KwaliteitszorgEnAmbitie="Goed", Kader="BST2017", KA1="Voldoende", KA2="Goed",
+         KA3="Voldoende", FB1="Voldoende", FB2="Geen oordeel", FB3="Voldoende"),
+    # Onderzoekskader 2021 in de versie van 2025: dezelfde standaarden.
+    _rij(Peildatum="01-10-2026", Bestuursnummer='="40800"', Bestuursnaam="Stichting Versie 2025",
+         SectorenBijBestuur="MBO", Eindoordeel="Onvoldoende", VaststellingsdatumEindoordeel="20260911",
+         Kader="BST21_V25", BKA1="Voldoende", BKA2="Onvoldoende", BKA3="Onvoldoende"),
+    _rij(Peildatum="01-10-2026", Bestuursnummer='="12345"', Bestuursnaam="Basisschoolbestuur", SectorenBijBestuur="PO",
+         Eindoordeel="Voldoende", VaststellingsdatumEindoordeel="20240101", Kader="BST2021", BKA1="Voldoende"),
+]  # fmt: skip
 
 
 def _cel(waarde: str) -> str:
@@ -97,7 +125,7 @@ def _standaard_site(**anders) -> httpx.Client:
 
 def test_het_ods_bestand_wordt_gelezen_zonder_odf_engine():
     rijen = inspectie.lees_ods(_ODS)
-    assert len(rijen) == 4
+    assert len(rijen) == 5
     assert rijen[1]["Bestuursnummer"] == '="34386"' and rijen[1]["Eindoordeel"] == "Voldoende"
     assert rijen[0]["Eindoordeel"] == ""
 
@@ -112,25 +140,83 @@ def test_geen_bestuursnummer_geeft_none(waarde):
     assert inspectie.bestuursnummer(waarde) is None
 
 
-def test_alleen_besturen_met_mbo_met_hun_oordeel_en_of_ze_gemengd_zijn():
-    bestand = inspectie.Peilbestand(_BG, "01-10-2026", inspectie.lees_ods(_ODS))
-    oordelen = inspectie.oordelen_mbo(bestand)
+def _oordelen(rijen: list[dict] | None = None) -> dict[int, inspectie.Oordeel]:
+    return inspectie.oordelen_mbo(inspectie.Peilbestand(_BG, "01-10-2026", rijen or inspectie.lees_ods(_ODS)))
 
-    assert set(oordelen) == {34386, 40740}
+
+def _met(nummer: str, **velden: str) -> list[dict]:
+    """De rijen van het testbestand, met andere waarden bij één bestuur."""
+    return [{**r, **velden} if r["Bestuursnummer"] == f'="{nummer}"' else r for r in inspectie.lees_ods(_ODS)]
+
+
+def test_alleen_besturen_met_mbo_met_hun_oordeel_en_of_ze_gemengd_zijn():
+    oordelen = _oordelen()
+
+    assert set(oordelen) == {34386, 40740, 40800}
     soma, gemengd = oordelen[34386], oordelen[40740]
-    assert (soma.eindoordeel, soma.vastgesteld, soma.gemengd, soma.standaarden) == (
-        "Voldoende",
-        "06-09-2023",
-        False,
-        {},
-    )
+    assert (soma.eindoordeel, soma.vastgesteld, soma.gemengd) == ("Voldoende", "06-09-2023", False)
     assert gemengd.gemengd and gemengd.sectoren == ("VO", "MBO")
-    assert gemengd.standaarden == {
-        "Financieel beheer": "Goed",
-        "Kwaliteitszorg en ambitie": "Voldoende",
-        "Onderwijsresultaten": "Goed",
-    }
     assert soma.peildatum == "01-10-2026" and soma.url == _BG
+
+
+def test_kader_2021_geeft_de_drie_standaarden_bka1_tot_en_met_3_met_hun_naam():
+    """#874: de standaarden van het kader 2021 staan in BKA1-3; eerder kreeg zo'n bestuur `standaarden: {}`."""
+    soma = _oordelen()[34386]
+
+    assert soma.kader == "BST2021"
+    assert soma.standaarden == {
+        "Visie, ambities en doelen": "Voldoende",
+        "Uitvoering en kwaliteitscultuur": "Goed",
+        "Evaluatie, verantwoording en dialoog": "Voldoende",
+    }
+    assert soma.kwaliteitsgebieden == {}
+
+
+def test_kader_2021_versie_2025_heeft_dezelfde_standaarden():
+    versie = _oordelen()[40800]
+
+    assert versie.kader == "BST21_V25"
+    assert versie.standaarden == {
+        "Visie, ambities en doelen": "Voldoende",
+        "Uitvoering en kwaliteitscultuur": "Onvoldoende",
+        "Evaluatie, verantwoording en dialoog": "Onvoldoende",
+    }
+
+
+def test_kader_2017_geeft_de_kwaliteitsgebieden_en_hun_standaarden():
+    gemengd = _oordelen()[40740]
+
+    assert gemengd.kader == "BST2017"
+    assert gemengd.kwaliteitsgebieden == {"Financieel beheer": "Voldoende", "Kwaliteitszorg en ambitie": "Goed"}
+    assert gemengd.standaarden == {
+        "Kwaliteitszorg": "Voldoende",
+        "Kwaliteitscultuur": "Goed",
+        "Verantwoording en dialoog": "Voldoende",
+        "Continuïteit": "Voldoende",
+        "Doelmatigheid": "Geen oordeel",
+        "Rechtmatigheid": "Voldoende",
+    }
+
+
+def test_een_kader_leest_alleen_zijn_eigen_kolommen():
+    """Een kader-2021-bestuur met (onverwacht) een waarde in KA1 krijgt die niet bij zijn standaarden."""
+    assert "Kwaliteitszorg" not in _oordelen(_met("34386", KA1="Goed"))[34386].standaarden
+
+
+def test_zonder_kader_geen_standaarden_wel_de_kwaliteitsgebieden():
+    """Een leeg Kader zijn oudere onderzoeken (voor 2021), volgens de toelichting van de Inspectie."""
+    rijen = _met("34386", Kader="", BKA1="", BKA2="", BKA3="", FinancieelBeheer="Geen samenvattend oordeel")
+    soma = _oordelen(rijen)[34386]
+
+    assert (soma.kader, soma.standaarden) == (None, {})
+    assert soma.kwaliteitsgebieden == {"Financieel beheer": "Geen samenvattend oordeel"}
+
+
+def test_elk_kader_noemt_alleen_kolommen_die_de_app_kent():
+    for code, kader in inspectie.KADERS.items():
+        assert set(kader.standaarden) <= inspectie.BEKENDE_KOLOMMEN, code
+    assert set(inspectie.KWALITEITSGEBIEDEN) <= inspectie.BEKENDE_KOLOMMEN
+    assert set(_KOP) == inspectie.BEKENDE_KOLOMMEN  # de kop van het echte bestand van 01-10-2026
 
 
 def test_een_ongeldig_bestand_is_een_melding_geen_crash():
@@ -145,7 +231,30 @@ def test_de_code_volgt_de_paginas_naar_het_nieuwste_bg_bestand():
     bestand = inspectie.haal_peilbestand(_standaard_site())
     assert bestand.url == _BG
     assert bestand.peildatum == "01-10-2026"
-    assert len(bestand.rijen) == 4
+    assert len(bestand.rijen) == 5
+
+
+def test_een_bekend_bestand_geeft_geen_melding(caplog):
+    with caplog.at_level("WARNING", logger=inspectie.logger.name):
+        inspectie.haal_peilbestand(_standaard_site())
+    assert "INSPECTIE_KADER_ONBEKEND" not in caplog.text
+
+
+def test_een_onbekend_kader_of_een_nieuwe_kolom_wordt_gemeld_niet_stil_leeg_gelaten(caplog):
+    """#874: een nieuw kader of een nieuwe kolom bij de Inspectie valt op in het log."""
+    kop = [*_KOP, "BKA4"]
+    rijen = [[*r, ""] for r in _RIJEN]
+    rijen[1][kop.index("Kader")] = "BST2027"  # SOMA, mbo
+    rijen[4][kop.index("Kader")] = "BSTPO2027"  # po-bestuur: hoort niet bij deze tool, geen melding
+    site = _standaard_site(**{_BG: (200, _ods([kop, *rijen]))})
+
+    with caplog.at_level("WARNING", logger=inspectie.logger.name):
+        bestand = inspectie.haal_peilbestand(site)
+
+    meldingen = [r.getMessage() for r in caplog.records if r.getMessage().startswith("INSPECTIE_KADER_ONBEKEND")]
+    assert meldingen == ["INSPECTIE_KADER_ONBEKEND kolommen=BKA4", "INSPECTIE_KADER_ONBEKEND kader=BST2027 besturen=1"]
+    soma = inspectie.oordelen_mbo(bestand)[34386]
+    assert (soma.kader, soma.standaarden) == ("BST2027", {})
 
 
 def test_zonder_bg_bestand_of_bij_een_fout_van_de_site_een_melding():
@@ -211,6 +320,40 @@ def test_het_oordeel_van_het_bestuur_met_peildatum_en_bron(tool):
         "licentie": inspectie.LICENTIE,
         "peildatum": "01-10-2026",
     }
+
+
+def test_de_uitkomst_noemt_het_kader_en_dat_kaders_niet_te_vergelijken_zijn(tool):
+    uit = json.loads(tool("SOMA College"))
+
+    assert (uit["kader"]["code"], uit["kader"]["naam"]) == ("BST2021", "Onderzoekskader 2021")
+    assert "Onderzoekskader 2021" in uit["kader"]["betekenis"] and "niet met elkaar" in uit["kader"]["betekenis"]
+    assert uit["standaarden"]["Uitvoering en kwaliteitscultuur"] == "Goed"
+    assert uit["kwaliteitsgebieden"] == {}
+
+
+def test_kader_2017_in_de_uitkomst_met_kwaliteitsgebieden(tool):
+    uit = json.loads(tool("Gemengd College"))
+
+    assert uit["kader"]["naam"] == "Onderzoekskader 2017"
+    assert uit["kwaliteitsgebieden"] == {"Financieel beheer": "Voldoende", "Kwaliteitszorg en ambitie": "Goed"}
+    assert len(uit["standaarden"]) == 6
+
+
+def test_een_onbekend_kader_in_de_uitkomst_is_een_noot_geen_gok(tool, monkeypatch):
+    rijen = _met("34386", Kader="BST2027")
+    monkeypatch.setattr(inspectie, "peilbestand", lambda: inspectie.Peilbestand(_BG, "01-10-2026", rijen))
+    uit = json.loads(tool("SOMA College"))
+
+    assert uit["kader"] == {"code": "BST2027", "naam": None}
+    assert uit["standaarden"] == {} and "BST2027" in uit["noot"] and "kent deze app niet" in uit["noot"]
+
+
+def test_zonder_kader_is_het_kaderveld_leeg_en_volgt_geen_noot(tool, monkeypatch):
+    rijen = _met("34386", Kader="")
+    monkeypatch.setattr(inspectie, "peilbestand", lambda: inspectie.Peilbestand(_BG, "01-10-2026", rijen))
+    uit = json.loads(tool("SOMA College"))
+
+    assert uit["kader"] is None and uit["standaarden"] == {} and "noot" not in uit
 
 
 def test_een_gemengd_bestuur_krijgt_de_noot_dat_het_oordeel_het_hele_bestuur_betreft(tool):

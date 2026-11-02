@@ -363,8 +363,13 @@ Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een m
 - **Route:** de code zoekt de instelling in het register en haar bestuur in DUO's adressenbestand (`BEVOEGD GEZAG
   NUMMER`). Daarna leest ze het nieuwste peilbestand per bestuur van de Inspectie. Dat vindt ze via de
   schooljaarpagina, omdat de bestandsnaam elke maand wisselt, en ze haalt het één keer per dag op.
-- **Resultaat:** het eindoordeel, de standaarden op bestuursniveau, de vaststellingsdatum, de peildatum, de sectoren
-  van het bestuur en de bron (CC0 1.0).
+- **Resultaat:** het eindoordeel, het onderzoekskader (`kader`), de standaarden met hun naam, de vaststellingsdatum, de
+  peildatum, de sectoren van het bestuur en de bron (CC0 1.0).
+  - Welke kolommen de standaarden zijn, hangt af van het kader (#874): bij het onderzoekskader 2021 (`BST2021`,
+    `BST21_V25`) BKA1-3, bij het kader 2017 (`BST2017`) KA1-3 en FB1-3, met daarnaast het oordeel per kwaliteitsgebied
+    (`kwaliteitsgebieden`). Standaarden uit verschillende kaders zijn niet te vergelijken; dat staat in de uitkomst.
+  - Een onbekend kader of een nieuwe kolom in het bestand komt als `INSPECTIE_KADER_ONBEKEND` in het log, en een
+    bestuur met een onbekend kader krijgt een `noot` in plaats van standaarden.
   - Een `noot` volgt bij een gemengd bestuur, dat ook po, vo of ho heeft. Het oordeel geldt dan voor het hele bestuur.
   - Een `noot` volgt ook als er geen eindoordeel is.
 - **Geen oordeel:** voor hbo en wo komt er een vaste melding: daar accrediteert de NVAO de opleidingen. De

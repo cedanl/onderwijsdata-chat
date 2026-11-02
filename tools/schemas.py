@@ -289,10 +289,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "name": TOOL_GET_INSPECTIEOORDEEL,
             "description": (
                 "Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een mbo-instelling: "
-                "eindoordeel, de standaarden op bestuursniveau, de vaststellingsdatum, de peildatum en de bron. Gebruik "
-                "dit bij een vraag naar het inspectieoordeel of de kwaliteit volgens de Inspectie. Het oordeel geldt per "
-                "bestuur, niet per instelling of opleiding; een noot zegt wanneer het bestuur ook po, vo of ho heeft. "
-                "Hbo en wo krijgen geen oordeel per bestuur: daar accrediteert de NVAO de opleidingen. De "
+                "eindoordeel, het onderzoekskader met zijn standaarden, de vaststellingsdatum, de peildatum en de bron. "
+                "Gebruik dit bij een vraag naar het inspectieoordeel of de kwaliteit volgens de Inspectie. Het oordeel "
+                "geldt per bestuur, niet per instelling of opleiding; een noot zegt wanneer het bestuur ook po, vo of ho "
+                "heeft. Hbo en wo krijgen geen oordeel per bestuur: daar accrediteert de NVAO de opleidingen. De "
                 f"accreditatiedatums per opleiding staan in {TOOL_GET_ACCREDITATIE}; NVAO-oordelen zitten (nog) niet in "
                 "de app."
             ),

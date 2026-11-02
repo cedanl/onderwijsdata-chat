@@ -38,8 +38,11 @@ TEKSTKOLOMMEN = MAP / "tekstkolommen.json"
 UU = "21PD"  # Universiteit Utrecht: de ho-recepten, accreditatie en de KPI-reeks
 MONDRIAAN = "27GZ"  # ROC Mondriaan: mbo-studenten per instelling en de mbo-indicatoren
 INSPECTIE_INSTELLINGEN = {
-    "25LH": 40597,  # ROC Midden Nederland: alleen mbo
-    "23JA": 67237,  # Grafisch Lyceum Rotterdam: bestuur met vo en mbo (gemengd)
+    "25LH": 40597,  # ROC Midden Nederland: alleen mbo, onderzoekskader 2021 (BST2021)
+    "23JA": 67237,  # Grafisch Lyceum Rotterdam: bestuur met vo en mbo (gemengd), BST2021
+    # Niet in het register van de gouden tests (alleen in DUO's adressenbestand): getest op bestuursniveau (#874).
+    "25PV": 40870,  # Scalda: onderzoekskader 2017 (BST2017), kwaliteitsgebieden en KA/FB-standaarden
+    "23KG": 31121,  # Grafisch Lyceum Utrecht: kader 2021 in de versie van 2025 (BST21_V25), eindoordeel Onvoldoende
 }
 UWV_PROVINCIE = "Flevoland"  # de kleinste provincie in rijen, zodat het bestand klein blijft
 UWV_KOLOMMEN = ["PEILDATUM", "PROVINCIE", "GEMEENTE", "BEROEPENCLUSTER", "AANTAL"]
