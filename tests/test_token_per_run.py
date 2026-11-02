@@ -277,10 +277,13 @@ def test_een_ververst_token_van_voor_het_verwijderen_geldt_ook_niet_meer(client,
 def test_een_login_na_het_verwijderen_geldt_weer(client):
     from core import auth
 
-    nu = int(time.time())
-    assert _verwijder(client, _token("anna", start=nu - 60)).status_code == 200
+    assert _verwijder(client, _token("anna", start=int(time.time()) - 60)).status_code == 200
 
-    assert auth.verify_token(_token("anna", start=nu + 1)) == "anna"
+    # De server trekt in tot en met de hele seconde waarin hij het verwijderen verwerkte. Die seconde ligt
+    # niet na een klokstand die ná het verwijderen is gelezen, dus een login één seconde daarna telt zeker
+    # als nieuw. Met een klokstand van vóór het verwijderen stond de test op een secondegrens soms rood.
+    na_verwijderen = int(time.time())
+    assert auth.verify_token(_token("anna", start=na_verwijderen + 1)) == "anna"
 
 
 # ── De tabel revoked_users ───────────────────────────────────────────────────
