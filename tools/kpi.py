@@ -11,7 +11,7 @@ import json
 
 import pandas as pd
 
-from . import cbs_afronding, fouten, periode, store
+from . import cbs_afronding, fouten, optelbaar, periode, store
 from .cbs import check_aggregation
 from .getal import nl_getal
 
@@ -249,6 +249,8 @@ def compute_kpi(
     if not store.volledig(data_key):
         return _error(store.ONVOLLEDIG)
     if fout := _invoerfout(df, value_column, sort_column):
+        return _error(fout)
+    if metric == "sum" and (fout := optelbaar.somfout(data_key, value_column)):
         return _error(fout)
 
     known = store.meta(data_key)

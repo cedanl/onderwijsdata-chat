@@ -24,6 +24,7 @@ from . import (
     fouten,
     instelling,
     kleine_aantallen,
+    optelbaar,
     periode,
     store,
 )
@@ -228,27 +229,37 @@ def _empty_melding(data_key: str, complete: bool) -> str:
 _ONDERDRUKT = " (onderdrukte cellen)"
 
 
-def _groepsnoot(bron: str) -> str:
-    return (
-        f"Een rij met '<kolom>{_ONDERDRUKT}' bevat in die groep onderdrukte cellen ({duo.celteken(bron)}): alleen dat "
-        "totaal is een ondergrens, de andere totalen zijn exact. Noem niet elke groep een ondergrens."
-    )
+def _groepsnoten(gemarkeerd: set[str], maten: dict[str, str], bron: str) -> list[str]:
+    """Wat een gemarkeerde rij betekent: bij een som een ondergrens, bij een andere maat niet (#866)."""
+    teken = duo.celteken(bron)
+    noten = []
+    if any(maten.get(kolom, "sum") == "sum" for kolom in gemarkeerd):
+        noten.append(
+            f"Een rij met '<kolom>{_ONDERDRUKT}' bevat in die groep onderdrukte cellen ({teken}): alleen dat "
+            "totaal is een ondergrens, de andere totalen zijn exact. Noem niet elke groep een ondergrens."
+        )
+    if any(maten.get(kolom, "sum") != "sum" for kolom in gemarkeerd):
+        noten.append(
+            f"Een rij met '<kolom>{_ONDERDRUKT}' bij een gemiddelde, minimum, maximum of telling: die waarde is "
+            f"berekend zonder de onderdrukte cellen ({teken}) in die groep. Dat is geen ondergrens."
+        )
+    return noten
 
 
-def _met_onderdrukte_cellen(rows: list[dict], df: pd.DataFrame, cells: pd.DataFrame) -> bool:
-    """Zet bij elk groepstotaal met onderdrukte cellen het aantal ernaast (CH-07); True als er een was.
+def _met_onderdrukte_cellen(rows: list[dict], df: pd.DataFrame, cells: pd.DataFrame) -> set[str]:
+    """Zet bij elk groepstotaal met onderdrukte cellen het aantal ernaast (CH-07); de kolommen waar dat gebeurde.
 
     Zonder dit zei de melding 'totalen' en noemde het antwoord elke groep een ondergrens.
     Alleen in de tool-output: de store houdt de tabel van de bron.
     """
-    gemarkeerd = False
+    gemarkeerd: set[str] = set()
     for row, index in zip(rows, df.index, strict=True):
         if index not in cells.index:
             continue
         for kolom, n in cells.loc[index].items():
             if n:
                 row[f"{kolom}{_ONDERDRUKT}"] = int(n)
-                gemarkeerd = True
+                gemarkeerd.add(str(kolom))
     return gemarkeerd
 
 
@@ -272,6 +283,13 @@ class _Selectie:
     vier: pd.DataFrame | None
     vier_totaal: int | None
     notes: list[str] = field(default_factory=list)
+    maten: dict[str, str] = field(default_factory=dict)  # kolom -> aggregatie, na een groepering (#866)
+
+    def ondergrenscellen(self) -> pd.DataFrame:
+        """De cellen die een waarde tot ondergrens maken: na een groepering alleen die van een som (#866)."""
+        if not self.maten or self.cells.empty:
+            return self.cells
+        return self.cells[[c for c in self.cells.columns if self.maten.get(c) == "sum"]]
 
 
 def _leeg_resultaat(data_key: str, complete: bool, origineel: pd.DataFrame, filters: dict) -> str:
@@ -331,11 +349,14 @@ def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggreg
     """De groepering, met de cellen die meegaan naar elke groep; een foutmelding als ze niet kan."""
     if err := _validate_aggregation(sel.df, group_by, aggregate):
         return err
+    if err := next((f for c, fn in aggregate.items() if fn == "sum" and (f := optelbaar.somfout(data_key, c))), None):
+        return err
     group_by = group_by or []  # na de validatie niet leeg: group_by en aggregate komen samen
     agg = _apply_aggregation(sel.df, group_by, aggregate)
     # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
-    # leest, en onderdrukte cellen in de selectie maken dat totaal een ondergrens.
-    notes = duo.sentinel_notes(duo.count_cells(sel.cells), duo.bron_van(data_key))
+    # leest, en onderdrukte cellen in de selectie maken een totaal een ondergrens;
+    # een gemiddelde, minimum of telling is alleen zonder die cellen berekend (#866).
+    notes = _onderdrukkingsnoten(duo.count_cells(sel.cells), aggregate, duo.bron_van(data_key))
     notes += _lege_groepen_noten(agg, group_by, aggregate)
     if noot := cbs_afronding.van_key(data_key):
         notes.append(noot)
@@ -344,7 +365,14 @@ def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggreg
         notes += kleine_aantallen.noten({str(c): int(n) for c, n in vier.sum().items() if n})
         vier = duo.aggregate_cells(vier, sel.df, group_by, agg)
     cells = duo.aggregate_cells(sel.cells, sel.df, group_by, agg)
-    return _Selectie(df=agg, cells=cells, vier=vier, vier_totaal=sel.vier_totaal, notes=notes)
+    return _Selectie(df=agg, cells=cells, vier=vier, vier_totaal=sel.vier_totaal, notes=notes, maten=dict(aggregate))
+
+
+def _onderdrukkingsnoten(tellingen: dict[str, int], aggregate: dict[str, str], bron: str) -> list[str]:
+    """Per kolom de noot bij haar maat: een som (of een groepeerkolom) is een ondergrens, een andere maat niet."""
+    anders = {kolom: n for kolom, n in tellingen.items() if aggregate.get(kolom, "sum") != "sum"}
+    som = {kolom: n for kolom, n in tellingen.items() if kolom not in anders}
+    return duo.sentinel_notes(som, bron) + duo.zonder_cellen_noten(anders, aggregate, bron)
 
 
 def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate, gedekt: dict) -> str:
@@ -366,8 +394,9 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
         **gedekt,
     )
     # De afgeleide data is al gemaskeerd, dus put() vindt hier niets. De cellen
-    # van de selectie reizen wel mee: het totaal blijft een ondergrens.
-    duo.record_sentinel_cells(result_key, sel.cells, groepen=bool(group_by or aggregate))
+    # van de selectie reizen wel mee: het totaal blijft een ondergrens. Een gemiddelde
+    # is geen ondergrens, dus die cellen niet: het Telling-blok leest ze hier (#866).
+    duo.record_sentinel_cells(result_key, sel.ondergrenscellen(), groepen=bool(group_by or aggregate))
     store.alias(canoniek.legacy_selectie_key(data_key, filters, columns, group_by, aggregate), result_key)
     return result_key
 
@@ -381,8 +410,8 @@ def _rijen(sel: _Selectie, known, maximum: int, gegroepeerd: bool, bron: str) ->
     rows = [{k: duo.json_waarde(v, afronden) for k, v in row.items()} for row in getoond.to_dict(orient="records")]
     if sel.vier is not None and sel.vier_totaal and gegroepeerd:
         _met_ondergrens(rows, getoond, sel.vier)
-    if gegroepeerd and _met_onderdrukte_cellen(rows, getoond, sel.cells):
-        sel.notes.append(_groepsnoot(bron))
+    if gegroepeerd and (gemarkeerd := _met_onderdrukte_cellen(rows, getoond, sel.cells)):
+        sel.notes += _groepsnoten(gemarkeerd, sel.maten, bron)
     return rows
 
 

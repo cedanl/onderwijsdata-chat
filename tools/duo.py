@@ -253,6 +253,28 @@ def json_waarde(v, afronden: bool = False):
     return v
 
 
+# Hoe een noot een maat noemt die over onderdrukte cellen heen rekent zonder ondergrens te zijn (#866).
+# `size` telt rijen, ook lege: daar valt geen cel weg.
+_MAAT_ZONDER_CELLEN = {
+    "mean": "het gemiddelde",
+    "min": "het minimum",
+    "max": "het maximum",
+    "count": "de telling",
+    "nunique": "het aantal verschillende waarden",
+}
+
+
+def zonder_cellen_noten(counts: dict[str, int], maten: dict[str, str], bron: str = "duo") -> list[str]:
+    """De noot bij een gemiddelde (of minimum, maximum, telling) over onderdrukte cellen: geen ondergrens (#866)."""
+    cellen, _, betekenis = _cellen(bron)
+    return [
+        f"{n} {cellen} in '{col}' uitgesloten ({betekenis}) — {_MAAT_ZONDER_CELLEN[maten[col]]} is berekend "
+        "zonder die cellen; dat is geen ondergrens"
+        for col, n in counts.items()
+        if maten.get(col) in _MAAT_ZONDER_CELLEN
+    ]
+
+
 def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:
     """Melding voor get_duo_data: telling over de hele resource, niet over een selectie.
 
