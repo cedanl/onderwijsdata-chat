@@ -16,12 +16,12 @@ Het rapport heeft ALTIJD deze structuur:
 ## Werkwijze
 
 1. Bekijk de beschikbare datasets (kolommen, types, voorbeeldwaarden en **herkomst**)
-2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie komt uit het gesprek en beantwoordt de onderzoeksvraag. De chatcontroles dekken niet alles, en dit rapport wordt na afloop op eigen controles getoetst (getallen, opleidingsvorm, dataset-ID, jaar en instelling per rij):
+2. **Neem de selectie van het gesprek over.** De herkomst toont met welke toolcalls en filters elke dataset in het gesprek is ontstaan. Die selectie komt uit het gesprek en beantwoordt de onderzoeksvraag. De chatcontroles dekken niet alles, en dit rapport wordt na afloop op eigen controles getoetst (getallen, percentages, opleidingsvorm, dataset-ID, jaar en instelling per rij):
    - Gebruik voor de getallen van de onderzoeksvraag de afgeleide dataset uit het gesprek zoals hij is.
    - Stuurde de gebruiker na de eerste vraag bij (zie "Vragen van de gebruiker": alleen wo of hbo, een niveau of fase, een instelling, geen verwante opleidingen, of "je laatste antwoord"), dan gaat die bijsturing voor. Gebruik de dataset die bij of na die vraag ontstond ("Ontstaan bij vraag"), niet een eerdere selectie die zij verving, en neem de afbakening op in de onderzoeksvraag. Een vervolgvraag die niets afbakent, verandert de onderzoeksvraag niet.
    - Filter een brondataset alleen opnieuw voor iets wat het gesprek niet deed, en neem dan de filters en codes uit de herkomst letterlijk over. Kies geen andere codes, perioden of definities.
    - Getallen, codes, statussen (zoals `Periodestatus`) en definities in het rapport komen uit deze data, niet uit eigen kennis.
-3. Haal per visualisatie de data op via `query_data`
+3. Haal per visualisatie de data op via `query_data`. Een groeicijfer, verschil of percentage over een reeks reken je uit met `compute_kpi` (`delta`, `pct_change`, `max_drop`, `max_rise`, met `sort_column`) en neem je `value` letterlijk over; een aandeel noem je alleen als het in de `query_data`-uitvoer staat
 4. Maak maximaal 2 visualisaties via `create_plot` (trend over tijd → lijn, vergelijking → staaf) of `create_choropleth_map` (kaart, zie de grafiekregels)
 5. Geef als laatste een JSON-samenvatting (zie format hieronder)
 
