@@ -144,10 +144,33 @@ def test_de_ping_draait_alleen_gepland_of_met_de_hand_met_de_variabele(ci):
     assert job.get("allow_failure") is not True  # een rode ping is het signaal
 
 
+def test_de_ping_draait_de_sweep_en_bewaart_het_rapport(ci):
+    """#869: de sweep over elke dataset, met de bevindingen als artefact, ook als de ping rood is."""
+    job = ci["bron:ping"]
+    assert "--sweep --rapport bronping-sweep.json" in " ".join(job["script"])
+    assert job["artifacts"]["paths"] == ["bronping-sweep.json"]
+    assert job["artifacts"]["when"] == "always"
+
+
+def test_de_ijkwaardenjob_draait_alleen_gepland_of_met_de_hand_met_zijn_eigen_variabele(ci):
+    """#869: een eigen schema met IJKWAARDEN_VERVERS=1, los van de dagelijkse ping; een verschil is geel, niet rood."""
+    job = ci["ijkwaarden:ververs"]
+    voorwaarden = [r["if"] for r in _regels(job)]
+    assert voorwaarden, "ijkwaarden:ververs heeft rules nodig"
+    for voorwaarde in voorwaarden:
+        assert '$IJKWAARDEN_VERVERS == "1"' in voorwaarde
+        assert "$BRON_PING" not in voorwaarde
+        assert '$CI_PIPELINE_SOURCE == "schedule"' in voorwaarde or '$CI_PIPELINE_SOURCE == "web"' in voorwaarde
+    assert "scripts/ijkwaarden.py" in " ".join(job["script"])
+    assert "--schrijf" not in " ".join(job["script"])  # vastleggen gaat via een MR
+    assert job["allow_failure"] is True
+
+
 def test_geen_andere_job_draait_in_een_geplande_pipeline(ci):
-    """Een schedule op main mag niets bouwen of uitrollen: alleen de ping (en de evals met EVAL_BASE_URL)."""
+    """Een schedule op main mag niets bouwen of uitrollen: alleen de ping, de ijkwaarden en de evals."""
+    gepland = ("workflow", "bron:ping", "ijkwaarden:ververs", "eval:bronwaarheid")
     for naam, job in ci.items():
-        if naam in ("workflow", "bron:ping", "eval:bronwaarheid") or not isinstance(job, dict) or "rules" not in job:
+        if naam in gepland or not isinstance(job, dict) or "rules" not in job:
             continue
         regels = _regels(job)
         sluit_uit = any(

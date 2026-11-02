@@ -24,6 +24,13 @@ sys.path.insert(0, str(ROOT))
 
 from tests.ijkwaarden import harnas
 
+# Voor wie het verschil in de log van de geplande job ijkwaarden:ververs ziet (#869).
+_AANWIJZING = (
+    "\nAanwijzing: open een issue (label data-chain) met de verschillen hierboven. Is het een herziening of een nieuwe"
+    "\nlevering van de bron, leg de nieuwe stand dan vast met `scripts/ijkwaarden.py --schrijf` in een MR en verantwoord"
+    "\nhet verschil daar (tests/ijkwaarden/README.md); anders zit de fout in de bron of in de chat."
+)
+
 
 def _argumenten(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="IJkwaarden rechtstreeks uit de bronnen (#190).")
@@ -63,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n{len(verschillen)} verschil(len) met de vastgelegde stand:")
         for v in verschillen:
             print(harnas.regel(v))
+        if not args.schrijf:
+            print(_AANWIJZING)
     else:
         print("\nGeen verschil met de vastgelegde stand.")
 

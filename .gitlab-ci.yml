@@ -80,7 +80,8 @@ variables:
   CI_PROJECT_NAME: onderwijsdata-chat
 
 # Een geplande pipeline (schedule) op main bouwt en rolt niets uit: elke regel op main sluit haar uit, zodat
-# alleen bron:ping (met BRON_PING=1) en eval:bronwaarheid (met EVAL_BASE_URL) in zo'n pipeline draaien (#627).
+# alleen bron:ping (met BRON_PING=1), ijkwaarden:ververs (met IJKWAARDEN_VERVERS=1, #869) en eval:bronwaarheid (met
+# EVAL_BASE_URL) in zo'n pipeline draaien (#627).
 # De SAST- en secret-detectionjobs van de securitycomponent zet het schema zelf uit (SAST_DISABLED=1,
 # SECRET_DETECTION_DISABLED=1): hun regels staan in de component.
 stages:
@@ -214,16 +215,9 @@ eval:bronwaarheid:
     paths:
       - eval_results/
 
-# Eén aanroep per bron door de toollaag van de chat (CBS, DUO, RIO en de GeoJSON van de kaart), zonder LLM
-# en zonder testomgeving (#627): RIO verwijderde API v2 op 19-10-2026 en dat viel pas op in een chatbeurt,
-# want pytest mockt de bronnen en /health toetst er geen. Gepland (dagelijks op main; het schema zet
-# BRON_PING=1, SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via "Run pipeline" met
-# BRON_PING=1. Faalt zodra één bron niet antwoordt: de melding van de mislukte geplande pipeline is het signaal.
-bron:ping:
+# Python met de bronpakketten, zonder LLM en zonder testomgeving: de basis van bron:ping en ijkwaarden:ververs.
+.bronnen-python:
   stage: test
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $BRON_PING == "1"
-    - if: $CI_PIPELINE_SOURCE == "web" && $BRON_PING == "1"
   needs: []
   image:
     name: python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
@@ -239,9 +233,42 @@ bron:ping:
     # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock
     - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
-  script:
     - uv sync --frozen
-    - uv run python scripts/bronping.py
+
+# Eén aanroep per bron door de toollaag van de chat (CBS, DUO, RIO en de GeoJSON van de kaart), zonder LLM
+# en zonder testomgeving (#627): RIO verwijderde API v2 op 19-10-2026 en dat viel pas op in een chatbeurt,
+# want pytest mockt de bronnen en /health toetst er geen. Gepland (dagelijks op main; het schema zet
+# BRON_PING=1, SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via "Run pipeline" met
+# BRON_PING=1. Faalt zodra één bron niet antwoordt: de melding van de mislukte geplande pipeline is het signaal.
+# Daarna de sweep over elke CBS-, DUO- en RIO-dataset in het profiel (#869): een afwijking (een tabel die CBS
+# bijwerkte, een DUO-kolom die verschoof) staat in de log en in bronping-sweep.json, maar maakt de job niet rood.
+bron:ping:
+  extends: .bronnen-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $BRON_PING == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $BRON_PING == "1"
+  script:
+    - uv run python scripts/bronping.py --sweep --rapport bronping-sweep.json
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - bronping-sweep.json
+
+# De ijkwaarden van de bronwaarheid-evals (tests/e2e/ijkwaarden.json) opnieuw uit CBS, DUO en RIO, met elk verschil
+# met de vastgelegde stand in de log (#869). Gepland (maandelijks op main; het schema zet IJKWAARDEN_VERVERS=1,
+# SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via "Run pipeline" met IJKWAARDEN_VERVERS=1. Schrijft
+# niets terug: een verschil vastleggen gaat met `scripts/ijkwaarden.py --schrijf` in een MR. Informatief
+# (allow_failure): een verschil is een herziening of een nieuwe levering van de bron, geen fout van de code; de gele
+# job en de aanwijzing in de log zijn het signaal.
+ijkwaarden:ververs:
+  extends: .bronnen-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $IJKWAARDEN_VERVERS == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $IJKWAARDEN_VERVERS == "1"
+  allow_failure: true
+  script:
+    - uv run python scripts/ijkwaarden.py
 
 # Bekende kwetsbaarheden in de dependencies (#506, SECURITY.md S12): de SDP-securitycomponent
 # draait alleen secret detection en SAST, geen dependency-scan. Informatief, zoals de oude

@@ -64,6 +64,21 @@ def test_zonder_fouten_en_zonder_verschil_blijft_het_groen(fixture, monkeypatch)
     assert script.main([]) == 0
 
 
+def test_een_verschil_geeft_een_aanwijzing_voor_een_issue_in_de_log(fixture, monkeypatch, capsys):
+    """De geplande job ijkwaarden:ververs schrijft niets terug: de log zegt wat te doen met een verschil (#869)."""
+    _live(monkeypatch, {"cbs-a": _waarde("cbs", 11), "duo-a": _waarde("duo", 20), "rio-a": _waarde("rio", 30)})
+    assert script.main([]) == 1
+    uit = capsys.readouterr().out
+    assert "Aanwijzing: open een issue" in uit
+    assert "--schrijf" in uit
+
+
+def test_zonder_verschil_geen_aanwijzing(fixture, monkeypatch, capsys):
+    _live(monkeypatch, {"cbs-a": _waarde("cbs", 10), "duo-a": _waarde("duo", 20), "rio-a": _waarde("rio", 30)})
+    assert script.main([]) == 0
+    assert "Aanwijzing" not in capsys.readouterr().out
+
+
 def test_schrijf_bewaart_de_vastgelegde_waarde_van_wat_niet_antwoordde(fixture, monkeypatch, capsys):
     _live(
         monkeypatch,

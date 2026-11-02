@@ -137,8 +137,49 @@ Nodig na een gewijzigd secret: Flux past het secret aan, maar de pod leest de va
 
 **Bron weg of gewijzigd**
 
-`bron:ping` draait dagelijks op `main` (rond 07:15) en is rood als CBS, DUO, RIO of de kaart niet antwoordt
-(`scripts/bronping.py`). Handmatig: `python scripts/bronping.py`.
+Twee geplande jobs op `main` bewaken de bronnen, zonder LLM en zonder testomgeving. Een geplande pipeline bouwt en
+rolt niets uit; welke job draait, bepaalt de variabele van het schema (CI/CD → Schedules).
+
+| Job | Schema | Variabelen van het schema | Bewaakt | Signaal |
+|---|---|---|---|---|
+| `bron:ping` | dagelijks, rond 07:15 | `BRON_PING=1`, `SAST_DISABLED=1`, `SECRET_DETECTION_DISABLED=1` | bereikbaarheid en vorm van elke bron, plus de sweep | rood als een ping faalt; de sweep alleen als waarschuwing |
+| `ijkwaarden:ververs` | maandelijks, bijv. de 1e om 07:45 | `IJKWAARDEN_VERVERS=1`, `SAST_DISABLED=1`, `SECRET_DETECTION_DISABLED=1` | de 23 ijkwaarden van de bronwaarheid-evals | geel bij een verschil (`allow_failure`) |
+
+Zet in zo'n schema geen `EVAL_BASE_URL`: dan draait ook `eval:bronwaarheid`, met een modelaanroep per beurt. Beide
+jobs zijn ook met de hand te starten via "Run pipeline" op `main` met dezelfde variabele.
+
+*`bron:ping`* (`scripts/bronping.py --sweep`) doet eerst één echte aanroep per bron door de toollaag van de chat
+(CBS, DUO, RIO, Inspectie, de DUO-indicatoren en de kaart-GeoJSON). Faalt er één, dan is de job rood en komt de
+melding van de mislukte pipeline binnen. Daarna volgt de sweep over elke dataset die de chat kan opvragen
+(`scripts/bronsweep.py`, #869), parallel en binnen een halve minuut (gemeten 02-11-2026: 13 s voor 226 controles):
+
+- *CBS*: per tabel één `TableInfos`. `Modified … catalogus …: CBS werkte de tabel bij` betekent dat de cijfers na de
+  catalogusbuild zijn herzien of aangevuld; de chat meldt die datum al per aanroep, maar de catalogus (en
+  `_laatste_update` in zoekresultaten) loopt achter tot `onderwijsdata` een nieuwe versie uitbrengt. Een HTTP-status
+  betekent dat de tabel weg of verhuisd is.
+- *DUO*: per dataset de bestandenlijst en per CSV alleen de kopregel, naast de schema-snapshot van `riodata`.
+  `kolomdrift` noemt de ontbrekende en nieuwe kolommen; `nieuw bestand` en `staat niet meer bij DUO` betekenen dat DUO
+  een bestand verving. Dan leest `riodata` de codekolommen van dat bestand niet meer als tekst: een nieuwe snapshot in
+  `riodata` is nodig.
+- *RIO*: per register één record.
+
+Een afwijking in de sweep is informatie, geen fout van de code: de job blijft groen, de afwijkingen staan met `!` in
+de log en alle bevindingen in het artefact `bronping-sweep.json` (90 dagen). Handmatig:
+`python scripts/bronping.py` (alleen de pings) of `python scripts/bronping.py --sweep`.
+
+*`ijkwaarden:ververs`* (`scripts/ijkwaarden.py`) haalt de ijkwaarden opnieuw uit de bronnen en toont elk verschil met
+`tests/e2e/ijkwaarden.json`. Het schrijft niets terug. Bij een verschil staat er een aanwijzing in de log: open een
+issue, en is het een herziening of nieuwe levering van de bron, leg de nieuwe stand dan vast met
+`scripts/ijkwaarden.py --schrijf` in een MR (`tests/ijkwaarden/README.md`).
+
+In het log van de app wijzen deze regels op een bron die hapert of verandert:
+
+- `BRON_RETRY bron=… poging=… reden=…`: een tijdelijke fout (5xx, 429, verbinding) die de chat opnieuw probeerde
+  (#867). Af en toe is normaal; veel achter elkaar betekent een storing bij de bron. Een blijvende fout gaat na twee
+  herhalingen als bronfout naar de gebruiker.
+- `DUO_ENCODING`: een DUO-bestand was geen UTF-8 en is als cp1252 gelezen (#868).
+- `DUO_SCHEMA_DRIFT`: de kolommen van een geladen DUO-bestand wijken af van de snapshot; het model krijgt een
+  waarschuwing bij het resultaat (#868).
 
 ## Onderhoud
 
