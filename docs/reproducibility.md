@@ -39,18 +39,22 @@ from riodata import duo
 df = duo.load("p02ho1ejrs", 0)
 # DUO-sentinel -1 = onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde. De app sluit ze uit.
 # Totalen over een selectie met zulke cellen zijn een ondergrens.
-for kolom in df.select_dtypes('number').columns:
-    if not any(h in str(kolom).upper() for h in ('MUTATIE', 'SALDO', 'VERSCHIL', 'GROEI', 'DELTA')):
+for kolom in df.select_dtypes("number").columns:
+    if not any(h in str(kolom).upper() for h in ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")):
         df[kolom] = df[kolom].mask(df[kolom].isin([-1]))
 if "STUDIEJAAR" in df.columns:
     df["STUDIEJAAR_LABEL"] = df["STUDIEJAAR"].map(lambda j: f"{j}/{j + 1}")
-_kolom = df['STUDIEJAAR'].astype(str)
-_exact = _kolom.str.lower().isin(['2024'])
-df = df[_exact] if _exact.any() else df[_kolom.str.isdigit() & _kolom.str.lstrip('0').replace('', '0').isin(['2024'])]
-group_by = ['TYPE_HOGER_ONDERWIJS']
-for kolom in ['AANTAL_EERSTEJAARS_INGESCHREVENEN']:
+_kolom = df["STUDIEJAAR"].astype(str)
+_exact = _kolom.str.lower().isin(["2024"])
+df = df[_exact] if _exact.any() else df[_kolom.str.isdigit() & _kolom.str.lstrip("0").replace("", "0").isin(["2024"])]
+group_by = ["TYPE_HOGER_ONDERWIJS"]
+for kolom in ["AANTAL_EERSTEJAARS_INGESCHREVENEN"]:
     df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
-df = df.groupby(group_by, dropna=False).agg({'AANTAL_EERSTEJAARS_INGESCHREVENEN': lambda s: s.sum(min_count=1)}).reset_index()
+df = (
+    df.groupby(group_by, dropna=False)
+    .agg({"AANTAL_EERSTEJAARS_INGESCHREVENEN": lambda s: s.sum(min_count=1)})
+    .reset_index()
+)
 print(df)
 ```
 
