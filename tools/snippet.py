@@ -45,6 +45,7 @@ from .plot import (
     kaartlabel,
     resolve_chart_type,
     schone_titel,
+    waardeas_vanaf_nul,
 )
 from .query import NUMERIEKE_AGG
 from .schemas import (
@@ -505,7 +506,7 @@ def _create_plot_snippet(args: dict, recept_van: Receptbron | None = None) -> st
     chart_type = resolve_chart_type(rows, args.get("chart_type", "auto"), x, color_by, args.get("is_share", False))
     # Op de x-kolom zelf kleurt create_plot per staaf zonder legenda; px zou er een legenda van maken.
     color_arg = f', color="{color_by}"' if color_by and color_by != x else ""
-    vanaf_nul = bool(args.get("y_vanaf_nul")) and chart_type != "pie"
+    vanaf_nul = chart_type != "pie" and waardeas_vanaf_nul(chart_type, y, data_key, args.get("y_vanaf_nul"))
     if chart_type == "pie":
         lines.append(f'fig = px.pie(df, names="{x}", values="{y}", title="{title}")')
     elif chart_type == "bar" and is_liggend(rows, chart_type, x, data_key):

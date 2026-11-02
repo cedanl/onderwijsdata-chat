@@ -2,7 +2,7 @@
 // Explicit named exports keep the surface intentional and prevent private
 // helpers from leaking when new symbols are added to submodules.
 
-export { darkColors, buildIndexChartOpts, benchmarkColor, SECTOR_LABELS, SECTOR_COLORS, horizontalBarOpts } from './chart-opts'
+export { darkColors, buildIndexChartOpts, benchmarkColor, SECTOR_LABELS, SECTOR_COLORS, horizontalBarOpts, tellingAs, afgekapteAs } from './chart-opts'
 export { buildSupplyDemandData, sortedEntries, yearOverYearDelta, buildPeerLinesData, buildPeerLinesOpts, buildBenchmarkLineData } from './chart-builders'
 export { useDarkMode, fmt, useRegioDashboardData, useNationaalDashboardData, useRendementDashboardData, useArbeidsmarktmatchDashboardData, useRegioComputed } from './hooks'
 export { DashboardShell, Sparkline, SectionHeader, ChartCard, RegioBadges, DashboardSources, BRONNEN_HO, BRONNEN_MBO, BRONNEN_NATIONAAL, BRONNEN_ARBEIDSMARKT } from './shell'

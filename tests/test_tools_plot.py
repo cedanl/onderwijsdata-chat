@@ -6,7 +6,7 @@ import plotly.io as pio
 import pytest
 
 from tools import cbs_afronding, store
-from tools.plot import create_plot
+from tools.plot import AS_NIET_BIJ_NUL, create_plot
 
 _ROWS = [
     {"jaar": "2020", "waarde": 100},
@@ -393,9 +393,9 @@ def test_liggende_staven_met_noot_zijn_even_hoog_als_zonder():
     assert met.layout.height == zonder.layout.height
 
 
-def test_y_vanaf_nul_laat_de_waardeas_op_nul_beginnen_alleen_op_verzoek():
-    """#741: "Ik wilde eigenlijk dat de y as op 0 begon, maar dat is niet gelukt." Standaard blijft een lijn vrij."""
-    _, vrij = create_plot(_ROWS, "line", "jaar", "waarde", "T")
+def test_y_vanaf_nul_true_zet_de_waardeas_op_nul():
+    """#741: "Ik wilde eigenlijk dat de y as op 0 begon, maar dat is niet gelukt." Een keuze van de gebruiker telt."""
+    _, vrij = create_plot(_ROWS, "line", "jaar", "waarde", "T", y_vanaf_nul=False)
     _, vanaf_nul = create_plot(_ROWS, "line", "jaar", "waarde", "T", y_vanaf_nul=True)
 
     assert vrij is not None and vanaf_nul is not None
@@ -403,6 +403,76 @@ def test_y_vanaf_nul_laat_de_waardeas_op_nul_beginnen_alleen_op_verzoek():
     assert vanaf_nul.layout.yaxis.rangemode == "tozero"
     # De rest van de as blijft zoals hij was.
     assert vanaf_nul.layout.yaxis.tickformat == vrij.layout.yaxis.tickformat == ","
+
+
+# ── De asbasis van een lijn volgt de eenheid, niet het model (#871) ──
+# 85382NED noemt Examenkandidaten_1 'aantal' en GediplomeerdenRelatief_3 '%' (CBS-contract in onderwijsdata).
+_CBS_LIJN = [
+    {"Perioden": "2021", "Examenkandidaten_1": 900, "GediplomeerdenRelatief_3": 71.5},
+    {"Perioden": "2022", "Examenkandidaten_1": 940, "GediplomeerdenRelatief_3": 70.1},
+    {"Perioden": "2023", "Examenkandidaten_1": 915, "GediplomeerdenRelatief_3": 72.8},
+]
+
+
+def _cbs_lijn(kolom: str, rijen: list[dict] = _CBS_LIJN, **kwargs) -> go.Figure:
+    store.put("cbs:85382NED", pd.DataFrame(rijen), store.KeyMeta(bron="cbs", dataset="85382NED"))
+    _, fig = create_plot(data_key="cbs:85382NED", chart_type="line", x="Perioden", y=kolom, title="T", **kwargs)
+    assert fig is not None
+    return fig
+
+
+def _astitel(fig: go.Figure) -> str:
+    return fig.layout.yaxis.title.text or ""
+
+
+def test_lijn_met_een_telling_begint_standaard_op_nul():
+    fig = _cbs_lijn("Examenkandidaten_1")
+    assert fig.layout.yaxis.rangemode == "tozero"
+    assert AS_NIET_BIJ_NUL not in _astitel(fig)
+
+
+def test_lijn_met_een_percentage_is_afgekapt_en_zegt_dat_op_de_as():
+    fig = _cbs_lijn("GediplomeerdenRelatief_3")
+    assert fig.layout.yaxis.rangemode is None
+    assert AS_NIET_BIJ_NUL in _astitel(fig)
+
+
+def test_lijn_zonder_eenheid_begint_standaard_op_nul():
+    """Rijen zonder bron, een DUO-telling of een eigen rekenkolom: geen eenheid, dus de veilige basis."""
+    _, fig = create_plot(_ROWS, "line", "jaar", "waarde", "T")
+    assert fig is not None
+    assert fig.layout.yaxis.rangemode == "tozero"
+    assert AS_NIET_BIJ_NUL not in _astitel(fig)
+
+
+def test_y_vanaf_nul_false_blijft_een_keuze_maar_staat_op_de_as():
+    fig = _cbs_lijn("Examenkandidaten_1", y_vanaf_nul=False)
+    assert fig.layout.yaxis.rangemode is None
+    assert AS_NIET_BIJ_NUL in _astitel(fig)
+
+
+def test_y_vanaf_nul_true_zet_ook_een_percentage_op_nul_zonder_aantekening():
+    fig = _cbs_lijn("GediplomeerdenRelatief_3", y_vanaf_nul=True)
+    assert fig.layout.yaxis.rangemode == "tozero"
+    assert AS_NIET_BIJ_NUL not in _astitel(fig)
+
+
+def test_een_lijn_door_nul_of_eronder_krijgt_geen_aantekening():
+    """De as loopt dan al door 0: er valt niets af te kappen."""
+    rijen = [
+        {**rij, "GediplomeerdenRelatief_3": waarde} for rij, waarde in zip(_CBS_LIJN, (-1.5, 0.4, 2.0), strict=True)
+    ]
+    fig = _cbs_lijn("GediplomeerdenRelatief_3", rijen)
+    assert AS_NIET_BIJ_NUL not in _astitel(fig)
+
+
+def test_staven_en_spreiding_houden_hun_as_zonder_keuze():
+    """Staven beginnen in Plotly al op 0; een spreidingsdiagram toont een verband, geen niveau."""
+    _, staaf = create_plot(_ROWS, "bar", "jaar", "waarde", "T")
+    _, spreiding = create_plot([{"a": 1, "b": 5}, {"a": 2, "b": 7}, {"a": 3, "b": 6}], "scatter", "a", "b", "T")
+    assert staaf is not None and spreiding is not None
+    assert staaf.layout.yaxis.rangemode is None and spreiding.layout.yaxis.rangemode is None
+    assert AS_NIET_BIJ_NUL not in _astitel(staaf) + _astitel(spreiding)
 
 
 def test_y_vanaf_nul_bij_liggende_staven_geldt_voor_de_waardeas():

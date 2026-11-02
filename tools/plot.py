@@ -7,7 +7,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import cbs_afronding, duo, fouten, kaartlocaties, store
+from . import cbs_afronding, cbs_meta, duo, fouten, kaartlocaties, store
 from .exportnoten import herkomstregels
 from .getal import nl_getal
 from .kolomlabel import kolomlabel, leesbaar, waardelabels
@@ -86,6 +86,13 @@ _MAX_HOOGTE = 1200
 # (op een plotvlak van 160 px, een telefoon, ruim 20 px: de hoogte van een label). Naar binnen wijzende
 # randlabels botsten op een telefoon met hun buurlabel, vandaar mag een lijnlabel buiten het plotvlak staan.
 _LABEL_KOPRUIMTE = 0.15
+
+# De asbasis van een lijn volgt de eenheid van de waardekolom, niet de keuze van het model (#871, #191). Een telling
+# begint op 0: een daling van 2 % oogt anders als een klif. CBS schrijft tellingen als 'aantal', 'absoluut' of in
+# duizendtallen; een kolom zonder eenheid (DUO, een eigen rekenkolom) krijgt dezelfde, veilige basis. Een percentage,
+# index of bedrag mag afgekapt, maar dan staat dat op de as, zodat de lezer het ziet zonder de tool-output te kennen.
+_TELEENHEDEN = frozenset({"aantal", "absoluut", "x 1 000", "x 1000", "aantal x 1 000"})
+AS_NIET_BIJ_NUL = "as begint niet bij 0"
 
 _TIME_KEYWORDS = {
     "JAAR",
@@ -303,6 +310,42 @@ def _astitel(tekst: str) -> dict:
     return {"text": tekst, "standoff": _AS_STANDOFF}
 
 
+def kolomeenheid(data_key: str | None, kolom: str) -> str | None:
+    """De eenheid die de bron voor deze kolom noemt; None als ze er geen noemt (alleen CBS doet dat per kolom)."""
+    known = store.meta(data_key) if data_key else None
+    if known is None or known.bron != "cbs":
+        return None
+    return cbs_meta.eenheden(known.dataset).get(kolom)
+
+
+def waardeas_vanaf_nul(chart_type: str, y: str, data_key: str | None = None, keuze: bool | None = None) -> bool:
+    """Begint de waardeas op 0? Een keuze van de gebruiker gaat voor (#741). Anders begint een lijn op 0 bij een
+    telling of een kolom zonder eenheid (#871); staven doen dat in Plotly al, en een spreidingsdiagram toont een
+    verband, geen niveau."""
+    if keuze is not None:
+        return keuze
+    if chart_type != "line":
+        return False
+    eenheid = kolomeenheid(data_key, y)
+    return eenheid is None or " ".join(eenheid.casefold().split()) in _TELEENHEDEN
+
+
+def _boven_nul(fig: go.Figure) -> bool:
+    """Liggen alle getekende waarden boven 0? Dan begint een vrije as niet bij 0; anders loopt ze er al door."""
+    waarden = [
+        v
+        for t in fig.data
+        for v in (t.y if t.y is not None else ())
+        if isinstance(v, int | float) and not isinstance(v, bool) and not _is_missing(v)
+    ]
+    return bool(waarden) and min(waarden) > 0
+
+
+def _afgekapte_astitel(tekst: str) -> str:
+    """De astitel met op een tweede regel dat de as niet bij 0 begint (#871)."""
+    return f"{tekst}<br>({AS_NIET_BIJ_NUL})"
+
+
 def create_plot(
     data: list[dict] | None = None,
     chart_type: str = "auto",
@@ -313,7 +356,7 @@ def create_plot(
     highlight: str | None = None,
     data_key: str | None = None,
     is_share: bool = False,
-    y_vanaf_nul: bool = False,
+    y_vanaf_nul: bool | None = None,
 ) -> tuple[str, go.Figure | None]:
     if data_key:
         df = store.get(data_key)
@@ -409,10 +452,10 @@ def create_plot(
             "automargin": _AS_AUTOMARGIN,
             **_AXIS_STYLE,
         }
-        if y_vanaf_nul:
-            # Op verzoek van de gebruiker (#741): een lijn begint anders bij het kleinste getal, wat verschillen
-            # groter laat lijken. Staven beginnen al op 0.
+        if waardeas_vanaf_nul(chart_type, y, data_key, y_vanaf_nul):
             waarde_as["rangemode"] = "tozero"
+        elif chart_type == "line" and _boven_nul(fig):
+            waarde_as["title"] = _astitel(_afgekapte_astitel(kolomlabel(y, titels)))
         if liggend:
             # De eerste rij bovenaan, zoals de agent de rijen sorteerde; de namen duwen de marge opzij.
             # Zonder astitel: de namen spreken voor zich, en op een telefoon viel de titel eroverheen.

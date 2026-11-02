@@ -14,21 +14,39 @@ De assistent heeft toegang tot CBS, RIO en DUO via tool calling en genereert ant
 
 **Elke analyse exporteert zichzelf als draaibare Python-code.** Dit is cruciaal voor onderzoeksinstellingen:
 
-1. **Stel een vraag**: "Hoeveel HBO-studenten volgen Informatica?"
+1. **Stel een vraag**: "Hoeveel eerstejaars hbo-studenten kozen per studiejaar voor techniek?"
 2. **De app genereert**: Charts, KPI's, aggregaties
 3. **Exporteer als Python**: De app genereert het exacte script dat je gebruikte — tool-aanroepen, filters, aggregaties — zodat je het resultaat kunt nazien en aanpassen
 4. **Reproducibiliteit**: Perfect voor rapport, archief, of audit — iedereen kan je analyse opnieuw runnen
 
-Voorbeeld:
-```python
-from riodata import duo
-import pandas as pd
+Voorbeeld: het script dat de app voor die vraag maakt (DUO `p02ho1ejrs`, resource 0: eerstejaars hbo). `ONDERDEEL` is
+de sector van de opleiding, geen opleidingsnaam. Boven het script zet de app nog twee regels met de riodata-versie
+waarmee het gemaakt is; `tests/test_readme_voorbeeld.py` draait dit voorbeeld tegen een bevroren kopie van het bestand.
 
-df = duo.load("p02ho1ejrs", "...")
-df = df[df["ONDERDEEL"] == "Informatica"]
-df = df[df["OPLEIDINGSVORM"] == "VT"]
-hbo = df.groupby("STUDIEJAAR")["AANTAL_INGESCHREVENEN"].sum()
-print(hbo)
+```python
+import pandas as pd
+from riodata import duo
+
+df = duo.load("p02ho1ejrs", 0)
+# DUO-sentinel -1 = onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde. De app sluit ze uit.
+# Totalen over een selectie met zulke cellen zijn een ondergrens.
+for kolom in df.select_dtypes("number").columns:
+    if not any(h in str(kolom).upper() for h in ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")):
+        df[kolom] = df[kolom].mask(df[kolom].isin([-1]))
+if "STUDIEJAAR" in df.columns:
+    df["STUDIEJAAR_LABEL"] = df["STUDIEJAAR"].map(lambda j: f"{j}/{j + 1}")
+df = df[df["ONDERDEEL"].astype(str).str.lower().isin(["techniek"])]
+group_by = ["STUDIEJAAR"]
+if "STUDIEJAAR_LABEL" in df.columns and "STUDIEJAAR_LABEL" not in group_by:
+    group_by.append("STUDIEJAAR_LABEL")
+for kolom in ["AANTAL_EERSTEJAARS_INGESCHREVENEN"]:
+    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
+df = (
+    df.groupby(group_by, dropna=False)
+    .agg({"AANTAL_EERSTEJAARS_INGESCHREVENEN": lambda s: s.sum(min_count=1)})
+    .reset_index()
+)
+print(df)
 ```
 
 Zie [reproducibility.md](docs/reproducibility.md) voor details.

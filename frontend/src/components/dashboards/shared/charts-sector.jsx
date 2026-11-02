@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
-import { SECTOR_LABELS, SECTOR_COLORS, darkColors, horizontalBarOpts } from './chart-opts'
+import { SECTOR_LABELS, SECTOR_COLORS, darkColors, horizontalBarOpts, tellingAs } from './chart-opts'
 import { ChartCard } from './shell'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
@@ -76,12 +76,12 @@ function _stackedAreaOpts(dark, proportional = false) {
     },
     scales: {
       x: { grid: { display: false }, ticks: { color: tick }, stacked: true },
-      y: {
+      y: tellingAs({
         grid: { color: grid },
         ticks: { color: tick, ...(proportional ? { callback: v => `${v}%` } : {}) },
         stacked: true,
         ...(proportional ? { min: 0, max: 100 } : {}),
-      },
+      }),
     },
   }
 }

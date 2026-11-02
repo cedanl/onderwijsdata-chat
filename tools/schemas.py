@@ -582,7 +582,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                     "y_vanaf_nul": {
                         "type": "boolean",
-                        "description": "Alleen als de gebruiker erom vraagt: de waardeas begint op 0 (bij een lijn begint ze anders bij het kleinste getal). Laat het aan bij een aangepaste versie van dezelfde grafiek. Staven beginnen al op 0.",
+                        "description": "Laat weg: de app kiest de asbasis uit de eenheid (een lijn met aantallen begint op 0; bij een percentage of index niet, en dan staat dat op de as). Alleen als de gebruiker erom vraagt: true laat de waardeas op 0 beginnen, false laat hem vrij. Houd die keuze aan bij een aangepaste versie van dezelfde grafiek. Staven beginnen al op 0.",
                     },
                 },
                 "required": ["data_key", "chart_type", "x", "y", "title"],
