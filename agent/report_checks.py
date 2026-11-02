@@ -4,6 +4,7 @@ Het rapport is door een model geschreven. Of dat klopt met zijn eigen data en
 grafieken, is met code te controleren, voor elk model gelijk:
 - het rapport heeft inhoud: reikwijdte, conclusie en een getal of grafiek (#189);
 - elk groot getal in de tekst komt uit de data van het rapport;
+- elk percentage dat het model schreef ook, als waarde of fractie, bijvoorbeeld uit compute_kpi (#872);
 - de tekst claimt geen afwezigheid van data naast een gevulde grafiek;
 - opleidingsvorm en dataset-ID in de tekst kloppen met de bron (#196);
 - een getal staat bij het jaar en de instelling van zijn eigen rij (#197);
@@ -21,7 +22,7 @@ from agent.aanspreekcontrole import overgebleven_u_vorm
 from agent.beweringen import ongedekte_oorzaak
 from agent.binding import verkeerd_gebonden
 from agent.dimensielabels import verkeerde_dimensielabels
-from agent.grounding import unsourced_numbers
+from agent.grounding import unsourced_numbers, unsourced_percentages
 from agent.kenmerken import verkeerde_kenmerken
 from agent.kpi_periode import verkeerde_kpi_periodes
 from agent.labels import (
@@ -103,6 +104,22 @@ def ongedekte_getallen(text: str, sources: list[str]) -> list[str]:
     return [f"Deze getallen staan niet in de opgehaalde data: {getallen}."]
 
 
+def ongedekte_percentages(text: str, sources: list[str]) -> list[Probleem]:
+    """De percentages in de tekst die niet in de data van het rapport staan, in één melding (#872).
+
+    Dezelfde regel als in de chat (agent/grounding.py): een groeicijfer of verschil rekent compute_kpi uit.
+    """
+    ongedekt = unsourced_percentages(text, sources)
+    if not ongedekt:
+        return []
+    return [
+        Probleem(
+            f"Deze percentages staan niet in de opgehaalde data: {', '.join(ongedekt)}.",
+            "Reken een groeicijfer of verschil uit met compute_kpi en neem de waarde letterlijk over.",
+        )
+    ]
+
+
 def afwezigheid_naast_grafiek(spec: ReportSpec, figures_json: list[str]) -> list[str]:
     """Een bewering dat er geen data is, terwijl een grafiek van het rapport waarden heeft."""
     if not any(_has_values(f) for f in figures_json):
@@ -136,6 +153,8 @@ def report_problems(spec: ReportSpec, figures_json: list[str], sources: list[str
     # Hard (#207): een leeg rapport, of een getal of feit dat niet bij de data hoort.
     problems: list[str] = [*hard(veilig(ontbrekende_onderdelen, spec))]
     problems += hard(veilig(ongedekte_getallen, text, sources))
+    # Alleen wat het model schreef: de definities citeren de bron (#422), daar rekent het model niets.
+    problems += hard(veilig(ongedekte_percentages, _modeltekst(spec), sources))
     problems += hard(veilig(afwezigheid_naast_grafiek, spec, figures_json))
     problems += veilig(resource_verwijzing, text)
     problems += veilig(verkeerde_opleidingsvormen, text, sources)

@@ -5,6 +5,7 @@ import asyncio
 import importlib
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -17,7 +18,9 @@ from agent.probleem import Probleem, controlenamen, harde
 from agent.report import RapportGeweigerd, ReportSpec
 from agent.report_checks import report_problems
 from agent.stream import StreamResult
-from tools import store
+from tools import dispatch, store
+from tools.kpi import compute_kpi
+from tools.schemas import TOOL_COMPUTE_KPI
 from tools.store import KeyMeta
 
 loop_module = importlib.import_module("agent.loop")
@@ -63,6 +66,44 @@ def test_getal_dat_niet_uit_de_data_komt():
     [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
 
     assert "336.800" in probleem
+
+
+# ── Percentages in de modeltekst komen uit de data of uit compute_kpi (#872) ──
+
+_GROEI_KEY = "duo_groei_872"
+
+
+def _groei_kpi() -> str:
+    """Een echte compute_kpi-uitkomst: +8,0% van 2021/22 tot 2025/26."""
+    store.put(
+        _GROEI_KEY,
+        pd.DataFrame({"STUDIEJAAR": [2021, 2022, 2023, 2024, 2025], "AANTAL": [25000, 25500, 26000, 26500, 27000]}),
+        KeyMeta(bron="duo", dataset="p01hoinges"),
+    )
+    return compute_kpi(_GROEI_KEY, "AANTAL", "pct_change", "STUDIEJAAR")
+
+
+def test_percentage_dat_niet_in_de_data_staat_houdt_het_rapport_tegen():
+    spec = _spec(conclusie="Het aantal groeide met +8 % van 2021/22 tot 2025/26.")
+
+    [probleem] = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
+
+    assert isinstance(probleem, Probleem)
+    assert probleem.controle == "ongedekte_percentages" and probleem.hard
+    assert "8 %" in probleem.melding
+
+
+def test_percentage_uit_compute_kpi_is_gedekt():
+    spec = _spec(conclusie="Het aantal groeide met +8 % van 2021/22 tot 2025/26.")
+
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT, _groei_kpi()]) == []
+
+
+def test_percentage_in_een_definitie_uit_de_bron_wordt_niet_getoetst():
+    """De definities citeren de bron, niet het model (#422): daar staat geen berekening van het model."""
+    spec = _spec(definities=[{"begrip": "Telling", "definitie": "Telt mee bij een studielast van 50 % of meer."}])
+
+    assert report_problems(spec, [_HU_FIGURE], [_HU_RESULT]) == []
 
 
 def test_afwezigheid_in_beantwoordt_niet_is_toegestaan():
@@ -163,12 +204,20 @@ def test_controle_die_faalt_vervangt_het_rapport_niet(monkeypatch, caplog):
 
 # ── Elke rapportcontrole heeft een naam, voor het log en de afvuurfrequentie (CH-01) ──
 
-_INLINE = ["ontbrekende_onderdelen", "ongedekte_getallen", "afwezigheid_naast_grafiek", "resource_verwijzing"]
+_INLINE = [
+    "ontbrekende_onderdelen",
+    "ongedekte_getallen",
+    "ongedekte_percentages",
+    "afwezigheid_naast_grafiek",
+    "resource_verwijzing",
+]
 
 
 def test_elk_rapportprobleem_noemt_zijn_controle():
     """Het log zei `controles=['None']` bij een rapportcontrole zonder naam: die herkansing was niet te tellen."""
-    spec = _spec(conclusie="", beantwoordt=["Er zijn geen data over 336.800 studenten in p99xxxyyy; zie resource 3."])
+    spec = _spec(
+        conclusie="", beantwoordt=["Er zijn geen data over 336.800 studenten (7 %) in p99xxxyyy; zie resource 3."]
+    )
 
     problemen = report_problems(spec, [_HU_FIGURE], [_HU_RESULT])
 
@@ -206,6 +255,18 @@ def test_een_falende_rapportcontrole_noemt_ook_haar_naam(monkeypatch):
             "ongedekte_getallen",
             True,
             [("Deze getallen staan niet in de opgehaalde data: 336.800, 1.234.567.",) * 2],
+        ),
+        (
+            {"conclusie": "Het aantal daalde met 7 % en daarna met 3,5%."},
+            "ongedekte_percentages",
+            True,
+            [
+                (
+                    "Deze percentages staan niet in de opgehaalde data: 7 %, 3,5%. "
+                    "Reken een groeicijfer of verschil uit met compute_kpi en neem de waarde letterlijk over.",
+                    "Deze percentages staan niet in de opgehaalde data: 7 %, 3,5%.",
+                )
+            ],
         ),
         (
             {"conclusie": "p01hoinges bevat geen rijen met INSTELLINGSCODE_ACTUEEL = 25DW."},
@@ -331,7 +392,7 @@ _GEDEKT = json.dumps(
 )
 
 
-def _rapportrun(monkeypatch, stappen: list, events: list | None = None) -> ReportSpec:
+def _rapportrun(monkeypatch, stappen: list, events: list | None = None, dispatch=None) -> ReportSpec:
     """Een rapportrun met een nepmodel; een Exception in `stappen` is een modelaanroep die faalt.
 
     create_plot levert een figuur, zodat het rapport iets heeft om te bewaren (keep_partial).
@@ -355,7 +416,7 @@ def _rapportrun(monkeypatch, stappen: list, events: list | None = None) -> Repor
 
     monkeypatch.setattr(loop_module, "acompletion_with_backoff", fake_completion)
     monkeypatch.setattr(loop_module, "accumulate_stream", fake_accumulate)
-    monkeypatch.setattr(loop_module, "dispatch", fake_dispatch)
+    monkeypatch.setattr(loop_module, "dispatch", dispatch or fake_dispatch)
     monkeypatch.setattr(report, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
     monkeypatch.setattr(report, "_build_system_prompt", lambda context: "")
 
@@ -413,3 +474,60 @@ def test_een_gedeeltelijke_fout_op_gecontroleerde_tekst_geeft_het_rapport_met_ee
     boven_debug = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
     assert any(regel.startswith("Interne fout") for regel in boven_debug)
     assert not any("336.800" in regel for regel in boven_debug)
+
+
+# ── Een groeicijfer in het rapport komt uit compute_kpi (#872) ──
+
+_GROEI = json.dumps(
+    {
+        "onderzoeksvraag": "Hoe groeide de instroom?",
+        "beantwoordt": ["Instroom per studiejaar"],
+        "conclusie": "Het aantal groeide met +8 % van 2021/22 tot 2025/26.",
+    }
+)
+
+
+def test_de_rapportrun_heeft_compute_kpi_en_de_prompt_noemt_hem():
+    namen = [s["function"]["name"] for s in report._REPORT_TOOLS]
+    prompt = (Path(report.__file__).parent.parent / "prompts" / "report.md").read_text()
+
+    assert TOOL_COMPUTE_KPI in namen
+    assert f"`{TOOL_COMPUTE_KPI}`" in prompt
+
+
+def test_een_groeicijfer_uit_compute_kpi_komt_door_de_rapportcontrole(monkeypatch):
+    _groei_kpi()
+    kpi = {
+        "id": "k1",
+        "name": TOOL_COMPUTE_KPI,
+        "arguments": json.dumps(
+            {"data_key": _GROEI_KEY, "value_column": "AANTAL", "metric": "pct_change", "sort_column": "STUDIEJAAR"}
+        ),
+    }
+
+    def met_echte_kpi(name, args):
+        if name == TOOL_COMPUTE_KPI:
+            return dispatch(name, args)
+        return (_HU_RESULT, go.Figure(go.Scatter(x=[2021], y=[28355])) if name == "create_plot" else None)
+
+    stappen = [
+        StreamResult(text="", tool_calls=[_PLOT, kpi]),
+        StreamResult(text=_GROEI, tool_calls=[]),
+    ]
+    spec = _rapportrun(monkeypatch, stappen, dispatch=met_echte_kpi)
+
+    assert "+8 %" in spec.conclusie
+
+
+def test_hetzelfde_groeicijfer_zonder_compute_kpi_wordt_geweigerd(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    stappen = [
+        StreamResult(text="", tool_calls=[_PLOT]),
+        StreamResult(text=_GROEI, tool_calls=[]),
+        StreamResult(text=_GROEI, tool_calls=[]),
+    ]
+
+    with pytest.raises(RapportGeweigerd):
+        _rapportrun(monkeypatch, stappen)
+
+    assert "RAPPORT GEWEIGERD: controles=['ongedekte_percentages']" in [r.getMessage() for r in caplog.records]

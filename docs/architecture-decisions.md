@@ -4,7 +4,7 @@ This document captures major architectural decisions and their rationale. Each d
 
 ## ADR-001: Anti-hallucinatie via server-side compute
 
-**Date:** 2026-09-22 (revised 2026-10-02: limits stated)  
+**Date:** 2026-09-22 (revised 2026-10-02: limits stated; 2026-11-02: percentages in reports)  
 **Status:** Decided  
 **Issue:** #39, #8
 
@@ -17,7 +17,7 @@ The server loads and computes; the model selects and phrases. Four layers:
 1. **data_key** — No data rows in context; the model gets a key, the schema and a short preview.
 2. **Compute in code** — `query_data` (aggregation) and `compute_kpi` (difference, percentage, index, largest drop/rise) return the numbers; the model copies them.
 3. **run_analysis guard** — An AST check rejects a script with a literal data structure of six or more numbers (retyped data) or one that reads no data.
-4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Dashboards use `_check_number_sourcing` in `agent/dashboard.py`, reports `agent/report_checks.py`.
+4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Dashboards use `_check_number_sourcing` in `agent/dashboard.py`, reports `agent/report_checks.py`. The report run has `compute_kpi` too, and checks every percentage the model wrote with the same rule as the chat (`unsourced_percentages` in `agent/grounding.py`, #872).
 
 ### Rationale
 - **Auditable:** each number can be traced to the tool call that produced it.
@@ -27,7 +27,7 @@ The server loads and computes; the model selects and phrases. Four layers:
 ### Trade-off and limits
 More orchestration, and the checks reduce the risk; they do not eliminate it. Known gaps, described in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md#wat-dit-niet-dekt):
 
-- Numbers under four digits and years are not checked; percentages are matched as value or fraction.
+- Numbers under four digits and years are not checked; percentages are matched as value or fraction, in chat answers and in the model text of a report (not in the definitions a report quotes from the source). A percentage that matches some value in the data counts as sourced, whatever that value measures, and its sign is not checked.
 - Binding only works when a sentence names exactly one year and one institution.
 - Numbers from earlier assistant messages in the conversation count as sourced. Numbers the user gave do not (#211): they are a claim to test, not evidence (`agent/controles.py`, `agent/grounding.py`). The assistant turns come from the history the client stores and sends back, so they count as covered without the server having written them; whether the server should write its own turns is open in #784.
 - `run_analysis` executes model-written Python in a separate process (AST check, resource limits, audit hook blocking network, writes and subprocesses; #62). That sandbox limits damage but is not a kernel-level security boundary (#443).

@@ -49,13 +49,22 @@ from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
-from tools.schemas import TOOL_CREATE_CHOROPLETH_MAP, TOOL_CREATE_PLOT, TOOL_QUERY_DATA, TOOL_SCHEMAS
+from tools.schemas import (
+    TOOL_COMPUTE_KPI,
+    TOOL_CREATE_CHOROPLETH_MAP,
+    TOOL_CREATE_PLOT,
+    TOOL_QUERY_DATA,
+    TOOL_SCHEMAS,
+)
 
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "report.md"
 
-# Met de kaarttool: het rapport van een kaartvraag toont de kaart (#648).
+# Met de kaarttool: het rapport van een kaartvraag toont de kaart (#648). Met compute_kpi: een groeicijfer of
+# verschil komt uit code, niet uit het model; de rapportcontrole toetst elk percentage (#872).
 _REPORT_TOOLS = [
-    s for s in TOOL_SCHEMAS if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP)
+    s
+    for s in TOOL_SCHEMAS
+    if s["function"]["name"] in (TOOL_QUERY_DATA, TOOL_COMPUTE_KPI, TOOL_CREATE_PLOT, TOOL_CREATE_CHOROPLETH_MAP)
 ]
 
 logger = logging.getLogger(__name__)

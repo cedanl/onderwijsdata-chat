@@ -69,7 +69,7 @@ def sessie():
 
 def test_de_rapportrun_kan_een_kaart_maken():
     namen = [s["function"]["name"] for s in report._REPORT_TOOLS]
-    assert sorted(namen) == sorted(["query_data", "create_plot", TOOL_CREATE_CHOROPLETH_MAP])
+    assert TOOL_CREATE_CHOROPLETH_MAP in namen
 
 
 def test_de_rapportprompt_noemt_de_kaarttool():

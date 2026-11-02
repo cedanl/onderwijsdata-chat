@@ -2,7 +2,7 @@
 
 import json
 
-from agent.grounding import afgeleide_verschillen, unsourced_numbers, unverified
+from agent.grounding import afgeleide_verschillen, unsourced_numbers, unsourced_percentages, unverified
 
 _CBS_RESULT = json.dumps(
     {
@@ -90,6 +90,20 @@ def test_percentage_zonder_toolgetal_wordt_gevonden():
 
 def test_nul_en_honderd_procent_zijn_geen_berekening():
     assert unverified("Van 0% naar 100% dekking.", []) == []
+
+
+def test_unsourced_percentages_volgt_de_percentageregel_van_de_chat():
+    """Het rapport toetst percentages met dezelfde regel als de chat, niet met een kopie (#872)."""
+    data = [json.dumps({"value": 9.55, "aandeel": 0.124})]
+    tekst = "Een stijging van 9,6%, een aandeel van 12,4 % en +8 % groei; 8 % blijft 8 %."
+
+    assert unsourced_percentages(tekst, data) == ["8 %"]
+    assert unsourced_percentages(tekst, data) == [p for p in unverified(tekst, data) if "%" in p]
+
+
+def test_unsourced_percentages_negeert_grote_getallen():
+    # Grote getallen zijn de zaak van unsourced_numbers; deze functie gaat alleen over percentages.
+    assert unsourced_percentages("Het waren er 336.800.", []) == []
 
 
 def test_afgerond_getal_telt_als_ongedekt():
