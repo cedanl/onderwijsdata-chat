@@ -2,8 +2,8 @@
 
 Eén tool voor CBS, DUO en RIO: de data_key uit get_cbs_data, get_duo_data of
 get_rio_data wijst naar een DataFrame in de store. Bronspecifieke controles
-komen van de bronmodules zelf: de CBS-dimensiecontrole (#162) en de DUO-
-sentinelcellen die met de selectie meereizen (#171).
+komen van de bronmodules zelf: de CBS-dimensiecontrole (#162) en de onderdrukte
+cellen (DUO -1, CBS '.') die met de selectie meereizen (#171, #862).
 """
 
 import difflib
@@ -226,10 +226,13 @@ def _empty_melding(data_key: str, complete: bool) -> str:
 
 
 _ONDERDRUKT = " (onderdrukte cellen)"
-_GROEPSNOOT = (
-    f"Een rij met '<kolom>{_ONDERDRUKT}' bevat in die groep cellen met -1: alleen dat totaal is een ondergrens, "
-    "de andere totalen zijn exact. Noem niet elke groep een ondergrens."
-)
+
+
+def _groepsnoot(bron: str) -> str:
+    return (
+        f"Een rij met '<kolom>{_ONDERDRUKT}' bevat in die groep onderdrukte cellen ({duo.celteken(bron)}): alleen dat "
+        "totaal is een ondergrens, de andere totalen zijn exact. Noem niet elke groep een ondergrens."
+    )
 
 
 def _met_onderdrukte_cellen(rows: list[dict], df: pd.DataFrame, cells: pd.DataFrame) -> bool:
@@ -332,7 +335,8 @@ def _aggregeer(sel: _Selectie, data_key: str, group_by: list[str] | None, aggreg
     agg = _apply_aggregation(sel.df, group_by, aggregate)
     # Juist hier telt de melding: dit is waar het getal ontstaat dat de gebruiker
     # leest, en onderdrukte cellen in de selectie maken dat totaal een ondergrens.
-    notes = duo.sentinel_notes(duo.count_cells(sel.cells)) + _lege_groepen_noten(agg, group_by, aggregate)
+    notes = duo.sentinel_notes(duo.count_cells(sel.cells), duo.bron_van(data_key))
+    notes += _lege_groepen_noten(agg, group_by, aggregate)
     if noot := cbs_afronding.van_key(data_key):
         notes.append(noot)
     vier = sel.vier
@@ -368,7 +372,7 @@ def _bewaar(data_key: str, sel: _Selectie, filters, columns, group_by, aggregate
     return result_key
 
 
-def _rijen(sel: _Selectie, known, maximum: int, gegroepeerd: bool) -> list[dict]:
+def _rijen(sel: _Selectie, known, maximum: int, gegroepeerd: bool, bron: str) -> list[dict]:
     """De rijen voor het model, met de grenzen per groep ernaast; de noten erbij in `sel`."""
     afronden = duo.is_prognose(known)
     if afronden:
@@ -378,7 +382,7 @@ def _rijen(sel: _Selectie, known, maximum: int, gegroepeerd: bool) -> list[dict]
     if sel.vier is not None and sel.vier_totaal and gegroepeerd:
         _met_ondergrens(rows, getoond, sel.vier)
     if gegroepeerd and _met_onderdrukte_cellen(rows, getoond, sel.cells):
-        sel.notes.append(_GROEPSNOOT)
+        sel.notes.append(_groepsnoot(bron))
     return rows
 
 
@@ -396,7 +400,7 @@ def _resultaat(result_key: str, sel: _Selectie, known, labels, complete: bool, m
     n_cols = len(sel.df.columns)
     maximum = max(30, min(max_rows, 2000 // max(n_cols, 1)))
     total = len(sel.df)
-    rows = _rijen(sel, known, maximum, gegroepeerd)
+    rows = _rijen(sel, known, maximum, gegroepeerd, duo.bron_van(result_key))
     result: dict = {"data_key": result_key, **store.rijtelling(total, complete), "rijen": rows}
     if known and known.scriptconstanten:
         # Een eigen berekening maakte deze getallen; ook hier zijn ze geen bron (CH-27, #456).
@@ -464,7 +468,7 @@ def query_data(
         if isinstance(geaggregeerd, str):
             return geaggregeerd
         sel = geaggregeerd
-    sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "")
+    sel.notes += lezingen + cellen_noot + duo.periode_noot(per_jaar, kolom or "", duo.bron_van(data_key))
 
     result_key = _bewaar(data_key, sel, filters, columns, group_by, aggregate, gedekt)
     return _resultaat(result_key, sel, known, labels, complete, max_rows, gegroepeerd)

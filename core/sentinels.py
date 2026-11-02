@@ -1,4 +1,4 @@
-"""DUO-sentinels: -1 is een onderdrukte cel, geen telwaarde.
+"""Onderdrukte cellen: DUO -1 en een lege CBS-cel ('.') zijn geen telwaarde.
 
 Eén plek voor de regel, omdat drie consumenten hem nodig hebben: de store
 (chat-tools), de dashboards en de code-snippets. Toen alleen de store maskeerde,
@@ -22,6 +22,10 @@ BETEKENIS = _REGEL.betekenis
 
 # Kolommen waarin -1 een geldige meetwaarde kan zijn in plaats van een onderdrukte cel.
 SIGNED_HINTS = _REGEL.uitgezonderd_als_kolom_bevat
+
+# Wat een lege CBS-cel betekent (#862). CBS publiceert een onderdrukte of ontbrekende cel als '.', en OData
+# levert die als null: een som waarin zo'n cel valt, is net als bij DUO -1 een ondergrens.
+CBS_BETEKENIS = "CBS publiceert hier geen cijfer: onbekend, onvoldoende betrouwbaar of geheim, geen 0"
 
 EMPTY_CELLS = pd.DataFrame()
 
@@ -59,3 +63,18 @@ def mask_sentinels(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         out.loc[mask, col] = pd.NA
     cells = pd.DataFrame(masks).astype(int)
     return out, cells[cells.any(axis=1)]
+
+
+def lege_cellen(df: pd.DataFrame) -> pd.DataFrame:
+    """Per rij de lege cellen (null) in de maskeerbare kolommen van een CBS-tabel (#862).
+
+    Dezelfde vorm als de cellen van mask_sentinels: de index van df, alleen rijen met minstens één
+    lege cel, per kolom 0/1. Er valt niets te maskeren, de cel is al leeg; de telling maakt een totaal
+    erover een ondergrens. Kolommen met een teken (SIGNED_HINTS) en tekstkolommen tellen niet: daar is
+    leeg geen onderdrukte telwaarde.
+    """
+    masks = {col: mask for col in df.columns if is_maskable(df, col) and (mask := df[col].isna()).any()}
+    if not masks:
+        return EMPTY_CELLS
+    cells = pd.DataFrame(masks).astype(int)
+    return cells[cells.any(axis=1)]

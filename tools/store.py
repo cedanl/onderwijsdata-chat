@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 
 from core.config import STORE_MAX_MB
-from core.sentinels import mask_sentinels
+from core.sentinels import lege_cellen, mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
 from .scopeprofiel import bronetiket
@@ -31,6 +31,7 @@ _MAX_BYTES = STORE_MAX_MB * 1024 * 1024
 _slot = threading.RLock()
 
 _DUO_PREFIX = "duo:"
+_CBS_PREFIX = "cbs:"
 
 # Welke keys het gesprek van deze context zelf maakte (#13): de store is gedeeld over alle sessies,
 # maar wat een tool over beschikbare data zegt, gaat alleen over het eigen gesprek. De chatroute zet
@@ -158,6 +159,12 @@ def put(key: str, value, meta: KeyMeta | None = None) -> None:
 
         value, cells = mask_sentinels(value)
         duo.record_sentinel_cells(key, cells)
+    elif key.startswith(_CBS_PREFIX) and not (meta and meta.afgeleid_van):
+        # Een geladen CBS-tabel: haar lege cellen ('.') zijn onderdrukt, net als DUO -1 (#862). Een afgeleide key
+        # krijgt de cellen van zijn selectie van wie hem afleidt (query_data); een leeg groepstotaal is geen broncel.
+        from . import duo
+
+        duo.record_sentinel_cells(key, lege_cellen(value))
     with _slot:
         _cache[key] = value
         _cache.move_to_end(key)

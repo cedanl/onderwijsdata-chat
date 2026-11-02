@@ -1,14 +1,14 @@
 """Wat de getallen tellen, wanneer ze een ondergrens zijn en hoe ze afgerond zijn, uit code (#321, #352).
 
 DUO-bestanden tellen personen of inschrijvingen en onderdrukken kleine aantallen
-als -1. Beide staan in de metadata van de selectie, dus de app zet ze zelf onder
+als -1; CBS laat zulke cellen leeg ('.', #862). Beide staan in de metadata van de selectie, dus de app zet ze zelf onder
 het antwoord. Het model formuleerde ze eerder zelf en kreeg er vals alarm van een
 regex achteraf (#239): elke parafrase van de DUO-tekst gold als een fout.
 """
 
 import re
 
-from core.sentinels import BETEKENIS
+from core.sentinels import BETEKENIS, CBS_BETEKENIS
 from tools import cbs_afronding, duo, duo_bestandskeuze, periode, store
 from tools.catalog import bron_naam
 
@@ -47,8 +47,14 @@ def _bovengrens(key: str) -> bool:
     return bool(known and known.afgeleid_van and known.vier_cellen)
 
 
-# (dataset, resource): het bestand bepaalt welke cellen onderdrukt zijn (#325).
-_Bestand = tuple[str, str | int | None]
+# (bron, dataset, resource): het bestand bepaalt welke cellen onderdrukt zijn (#325), de bron hoe (#862).
+_Bestand = tuple[str, str, str | int | None]
+
+# Per bron hoe de Ondergrens-regel de uitgesloten cellen noemt.
+_UITGESLOTEN = {
+    "duo": f"cellen met -1 uitgesloten ({BETEKENIS})",
+    "cbs": f"lege cellen ('.') uitgesloten ({CBS_BETEKENIS})",
+}
 
 
 def _grenzen(keys: list[str]) -> tuple[set[_Bestand], set[_Bestand]]:
@@ -56,12 +62,12 @@ def _grenzen(keys: list[str]) -> tuple[set[_Bestand], set[_Bestand]]:
     onder, boven = set(), set()
     for key in keys:
         known = store.meta(key)
-        if known is None or known.bron != "duo":
+        if known is None or known.bron not in _UITGESLOTEN:
             continue
         if _ondergrens(key):
-            onder.add((known.dataset, known.resource))
-        if _bovengrens(key):
-            boven.add((known.dataset, known.resource))
+            onder.add((known.bron, known.dataset, known.resource))
+        if known.bron == "duo" and _bovengrens(key):
+            boven.add((known.bron, known.dataset, known.resource))
     return onder, boven
 
 
@@ -137,7 +143,23 @@ def _historienoten(tool_results: list[str]) -> dict[str, str]:
 
 
 def _datasets(bestanden: set[_Bestand]) -> str:
-    return ", ".join(sorted({dataset for dataset, _ in bestanden}))
+    return ", ".join(sorted({dataset for _, dataset, _ in bestanden}))
+
+
+def _ondergrensregels(ondergrens: set[_Bestand]) -> list[str]:
+    """Per bron één Ondergrens-regel, met de woorden van die bron; bij DUO de noot over het gekozen bestand."""
+    regels = [
+        f"- Ondergrens: in de gekozen selectie van {_datasets(bestanden)} zijn {uitgesloten}; "
+        "de totalen zijn daardoor een ondergrens."
+        for bron, uitgesloten in _UITGESLOTEN.items()
+        if (bestanden := {b for b in ondergrens if b[0] == bron})
+    ]
+    # Een ander bestand van dezelfde dataset onderdrukt andere cellen en telt anders (#325).
+    return regels + [
+        f"- {bron_naam(dataset)}: {noot}"
+        for bron, dataset, resource in sorted(ondergrens, key=str)
+        if bron == "duo" and (noot := duo_bestandskeuze.noot(dataset, resource))
+    ]
 
 
 def _teldefinities(tool_results: list[str]) -> dict[str, str]:
@@ -174,17 +196,7 @@ def telling_blok(tool_results: list[str], tekst: str = "") -> str:
     ]
     regels += [f"- {bron_naam(dataset)}: {noot}" for dataset, noot in _historienoten(tool_results).items()]
     regels += selectie_regels(tool_results)
-    if ondergrens:
-        regels.append(
-            f"- Ondergrens: in de gekozen selectie van {_datasets(ondergrens)} zijn cellen met -1 uitgesloten "
-            f"({BETEKENIS}); de totalen zijn daardoor een ondergrens."
-        )
-        # Een ander bestand van dezelfde dataset onderdrukt andere cellen en telt anders (#325).
-        regels += [
-            f"- {bron_naam(dataset)}: {noot}"
-            for dataset, resource in sorted(ondergrens, key=str)
-            if (noot := duo_bestandskeuze.noot(dataset, resource))
-        ]
+    regels += _ondergrensregels(ondergrens)
     if bovengrens:
         regels.append(
             f"- Bovengrens: in de gekozen selectie van {_datasets(bovengrens)} zijn kleine aantallen (1 t/m 4) als 4 "
