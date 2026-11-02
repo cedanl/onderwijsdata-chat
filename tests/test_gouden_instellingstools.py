@@ -11,6 +11,7 @@ import httpx
 import pytest
 
 from tests.gouden import NetwerkInGoudenTest
+from tools import inspectie
 from tools.accreditatie import get_accreditatie
 from tools.inspectie import get_inspectieoordeel
 from tools.mbo_indicatoren import get_mbo_indicatoren
@@ -63,31 +64,71 @@ def test_mbo_indicatoren_roc_mondriaan():
 
 # --- get_inspectieoordeel -------------------------------------------------------------------------------------------
 # Bron: Onderwijsinspectie, 20261001-oordeel-en-standaard-bg.ods (peildatum 01-10-2026), opgehaald 02-11-2026,
-# gefilterd op de besturen 40597 en 67237. Nagelezen in content.xml van het bevroren bestand:
-#   ="40597" | Stichting ROC Midden Nederland      | MBO    | Goed      | 20230130
-#   ="67237" | Stichting Grafisch Lyceum Rotterdam | VO-MBO | Voldoende | 20230414
-# Het bestuursnummer komt uit DUO's adressenbestand (tests/fixtures/duo): 25LH → 40597, 23JA → 67237.
-# De kolommen FinancieelBeheer, KwaliteitszorgEnAmbitie en Onderwijsresultaten zijn bij beide leeg (kader BST2021
-# zet de standaarden in BKA1-3), dus `standaarden` is leeg.
+# gefilterd op de besturen 31121, 40597, 40870 en 67237. Nagelezen in content.xml van het bevroren bestand (Kader en
+# de standaardkolommen; FinancieelBeheer = FB, KwaliteitszorgEnAmbitie = KwA, de rest leeg):
+#   ="40597" | Stichting ROC Midden Nederland      | MBO    | Goed        | 20230130 | BST2021   | BKA1-3 Goed, Goed,
+#                                                                                                 Voldoende
+#   ="67237" | Stichting Grafisch Lyceum Rotterdam | VO-MBO | Voldoende   | 20230414 | BST2021   | BKA1-3 Voldoende (3x)
+#   ="31121" | Stichting Grafisch Lyceum Utrecht   | MBO    | Onvoldoende | 20260916 | BST21_V25 | BKA1-3 Voldoende,
+#                                                                                                 Voldoende, Onvoldoende
+#   ="40870" | Scalda Stichting                    | MBO    | (leeg)      | (leeg)   | BST2017   | FB Voldoende, KwA Goed,
+#                                                   KA1-3 Voldoende, Goed, Voldoende; FB1 Voldoende, FB2 leeg, FB3 Voldoende
+# Het bestuursnummer komt uit DUO's adressenbestand (tests/fixtures/duo): 25LH → 40597, 23JA → 67237, 23KG → 31121,
+# 25PV → 40870. Tot #874 las de tool BKA1-3 niet en kregen de kader-2021-besturen `standaarden: {}`.
+_BKA = ("Visie, ambities en doelen", "Uitvoering en kwaliteitscultuur", "Evaluatie, verantwoording en dialoog")
 
 
 @pytest.mark.parametrize(
-    ("instelling", "bestuur", "nummer", "sectoren", "oordeel", "vastgesteld", "gemengd"),
+    ("instelling", "bestuur", "nummer", "sectoren", "oordeel", "vastgesteld", "gemengd", "bka"),
     [
-        ("ROC Midden Nederland", "Stichting ROC Midden Nederland", 40597, ["mbo"], "Goed", "30-01-2023", False),
+        ("ROC Midden Nederland", "Stichting ROC Midden Nederland", 40597, ["mbo"], "Goed", "30-01-2023", False,
+         ("Goed", "Goed", "Voldoende")),
         ("Grafisch Lyceum R'dam", "Stichting Grafisch Lyceum Rotterdam", 67237, ["vo", "mbo"], "Voldoende",
-         "14-04-2023", True),
+         "14-04-2023", True, ("Voldoende", "Voldoende", "Voldoende")),
     ],
 )  # fmt: skip
-def test_inspectieoordeel_per_bestuur(instelling, bestuur, nummer, sectoren, oordeel, vastgesteld, gemengd):
+def test_inspectieoordeel_per_bestuur(instelling, bestuur, nummer, sectoren, oordeel, vastgesteld, gemengd, bka):
     uit = _json(get_inspectieoordeel(instelling))
 
     assert uit["bestuur"] == {"naam": bestuur, "nummer": nummer, "sectoren": sectoren}
     assert (uit["eindoordeel"], uit["vastgesteld"], uit["gemengd"]) == (oordeel, vastgesteld, gemengd)
-    assert uit["standaarden"] == {}
+    assert uit["standaarden"] == dict(zip(_BKA, bka, strict=True))
+    assert uit["kwaliteitsgebieden"] == {}
+    assert (uit["kader"]["code"], uit["kader"]["naam"]) == ("BST2021", "Onderzoekskader 2021")
     assert uit["peildatum"] == uit["bron"]["peildatum"] == "01-10-2026"
     assert uit["bron"]["url"].endswith("20261001-oordeel-en-standaard-bg.ods")
     assert ("noot" in uit) is gemengd  # de noot over het hele bestuur, alleen bij vo naast mbo
+
+
+def _oordeel(instellingscode: str) -> inspectie.Oordeel:
+    """Het oordeel via het adressenbestand: Scalda en het GLU staan niet in het register van de gouden tests."""
+    oordeel = inspectie.oordeel_voor_instelling(instellingscode, inspectie.peilbestand())
+    assert oordeel is not None, instellingscode
+    return oordeel
+
+
+def test_inspectieoordeel_kader_2017_kwaliteitsgebieden_en_de_oude_standaarden():
+    scalda = _oordeel("25PV")
+
+    assert (scalda.bestuursnummer, scalda.bestuursnaam) == (40870, "Scalda Stichting")
+    assert (scalda.kader, scalda.eindoordeel) == ("BST2017", None)  # het kader 2017 kende geen eindoordeel per bestuur
+    assert scalda.kwaliteitsgebieden == {"Financieel beheer": "Voldoende", "Kwaliteitszorg en ambitie": "Goed"}
+    assert scalda.standaarden == {"Kwaliteitszorg": "Voldoende", "Kwaliteitscultuur": "Goed",
+                                  "Verantwoording en dialoog": "Voldoende", "Continuïteit": "Voldoende",
+                                  "Rechtmatigheid": "Voldoende"}  # fmt: skip
+
+
+def test_inspectieoordeel_kader_2021_versie_2025():
+    glu = _oordeel("23KG")
+
+    assert (glu.bestuursnummer, glu.kader, glu.eindoordeel, glu.vastgesteld) == (
+        31121,
+        "BST21_V25",
+        "Onvoldoende",
+        "16-09-2026",
+    )
+    assert glu.standaarden == dict(zip(_BKA, ("Voldoende", "Voldoende", "Onvoldoende"), strict=True))
+    assert glu.kwaliteitsgebieden == {}
 
 
 # --- get_accreditatie -----------------------------------------------------------------------------------------------
