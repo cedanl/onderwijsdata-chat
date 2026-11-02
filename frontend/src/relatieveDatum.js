@@ -21,3 +21,8 @@ export function relatieveDatumTijd(ts, nu = Date.now()) {
   const tijd = new Date(naarMs(ts)).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
   return `${relatieveDatum(ts, nu)} ${tijd}`
 }
+
+// Een korte datum met jaar, "3 okt 2026", voor de kaarten in de dashboard- en rapportgalerij.
+export function korteDatum(iso) {
+  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+}

@@ -378,7 +378,7 @@ Tests: `tests/test_login_verplicht.py` (de combinaties lokaal/niet-lokaal × log
 
 ## Aanbevelingen voor volgende stap
 
-1. **S5** — berichtlimiet voor de chat per verbinding of gebruiker (#444); het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten zodat de limiter het echte client-adres ziet (restrisico #504)
+1. **S5** — het ingress-subnet vaststellen en `FORWARDED_ALLOW_IPS` zetten, zodat de login-limiter het echte client-adres ziet (restrisico #504); de berichtlimiet voor de chat (#444) is gedaan
 2. **S13** — `'unsafe-inline'` vervangen door nonces of hashes; CDN-hosts (#486) en `connect-src` (#506) zijn gedaan
 3. **S16** — de open punten van #553 (verwerkersovereenkomst en regio van de AI-aanbieder, DPIA); privacy-informatie in app en docs (#477) en geen browseropslag na uitloggen (#507) zijn gedaan
 4. **S12** — de gele `audit:*`-jobs volgen; een dependency-scan in CI (#506), `nh3` opruimen (S1) en de CORS-validatie (S8) zijn gedaan

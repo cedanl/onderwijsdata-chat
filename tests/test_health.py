@@ -260,3 +260,36 @@ def test_llm_check_kent_elke_providersleutel(monkeypatch, sleutel):
     assert asyncio.run(health.check_llm_configuration()) is False
     monkeypatch.setenv(sleutel, "sleutel")
     assert asyncio.run(health.check_llm_configuration()) is True
+
+
+# ── #815: /ready en de chat delen één sleutelcheck, met de uitzondering voor Ollama ──
+
+
+def test_ready_is_voor_het_llm_deel_groen_met_ollama_zonder_sleutels(client, monkeypatch):
+    import health
+    from core.config import get_all_api_key_env_vars
+
+    for naam in get_all_api_key_env_vars():
+        monkeypatch.delenv(naam, raising=False)
+    monkeypatch.setattr(health, "MODEL", "ollama/mistral")
+    assert client.get("/ready").json()["checks"]["llm"] is True
+
+
+@pytest.mark.parametrize(
+    ("model", "sleutel", "verwacht"),
+    [
+        ("ollama/mistral", None, True),
+        ("ollama_chat/llama3", None, True),
+        ("anthropic/claude-sonnet-4-6", None, False),
+        ("anthropic/claude-sonnet-4-6", "ANTHROPIC_API_KEY", True),
+        ("openai/openai/gpt-oss-120b", "WILLMA_API_KEY", True),
+    ],
+)
+def test_llm_sleutel_aanwezig(monkeypatch, model, sleutel, verwacht):
+    from core.config import get_all_api_key_env_vars, llm_sleutel_aanwezig
+
+    for naam in get_all_api_key_env_vars():
+        monkeypatch.delenv(naam, raising=False)
+    if sleutel:
+        monkeypatch.setenv(sleutel, "sleutel")
+    assert llm_sleutel_aanwezig(model) is verwacht

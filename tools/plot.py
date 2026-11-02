@@ -106,38 +106,17 @@ def _is_time_axis(col_name: str) -> bool:
     return col_name.upper().removesuffix("_LABEL") in _TIME_KEYWORDS
 
 
-def _infer_chart_type(
-    x: str,
-    y: str,
-    color_by: str | None,
-    num_groups: int = 1,
-    is_share: bool = False,
-) -> str:
-    """Infer chart type from data structure and intent.
+def _infer_chart_type(x: str, num_groups: int = 1, is_share: bool = False) -> str:
+    """Het grafiektype bij chart_type="auto".
 
-    Decision tree:
-    - Multiple groups + time axis → line (trend comparison)
-    - Time axis only → line (trend)
-    - Shares/proportions → pie (if ≤5 groups) else bar
-    - Many groups → bar (comparison)
-    - Default → bar
+    - tijd-as, met of zonder groepen → line (trend);
+    - aandeel → pie bij hooguit 5 groepen, anders bar;
+    - anders → bar (vergelijking).
     """
-    has_color = color_by is not None
-    is_time = _is_time_axis(x)
-
-    # Trend: time axis with or without groups
-    if is_time:
+    if _is_time_axis(x):
         return "line"
-
-    # Shares: proportions should be pie (if small) or bar (if many)
     if is_share:
         return "pie" if num_groups <= 5 else "bar"
-
-    # Multiple groups → bar (categorical comparison)
-    if has_color and num_groups > 1:
-        return "bar"
-
-    # Default for single series
     return "bar"
 
 
@@ -145,7 +124,6 @@ def resolve_chart_type(
     data: list[dict],
     chart_type: str,
     x: str,
-    y: str,
     color_by: str | None = None,
     is_share: bool = False,
 ) -> str:
@@ -153,7 +131,7 @@ def resolve_chart_type(
     if chart_type != "auto":
         return chart_type
     num_groups = len({row.get(color_by) for row in data}) if color_by else 1
-    return _infer_chart_type(x, y, color_by, num_groups, is_share)
+    return _infer_chart_type(x, num_groups, is_share)
 
 
 GEOJSON_URLS = {
@@ -363,7 +341,7 @@ def create_plot(
             "Noem de waarde in je antwoord."
         ), None
 
-    chart_type = resolve_chart_type(data, chart_type, x, y, color_by, is_share)
+    chart_type = resolve_chart_type(data, chart_type, x, color_by, is_share)
 
     # Titels en woorden uit de bron in plaats van kolomnamen en codes (#418); de rijen in
     # meta blijven zoals de bron ze geeft, voor de export.

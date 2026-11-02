@@ -1,17 +1,14 @@
 import { useMemo } from 'react'
 import Plot from '../../LazyPlot'
 import { SectionHeader } from './shell'
+import { leesFiguur } from '../../../figuurJson'
 
 // ─── Kaart ───────────────────────────────────────────────────────────────────
 
 export function KaartSection({ figureJson }) {
   const figure = useMemo(() => {
     if (!figureJson) return null
-    try {
-      return typeof figureJson === 'string' ? JSON.parse(figureJson) : figureJson
-    } catch {
-      return null
-    }
+    return leesFiguur(figureJson)
   }, [figureJson])
 
   if (!figure) return null

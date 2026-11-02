@@ -7,7 +7,7 @@ import { buildReportHtml } from '../reportHtml'
 import WorkbookMarkdown from '../components/WorkbookMarkdown'
 
 vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
-vi.mock('../components/InlineDashboards', () => ({
+vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 

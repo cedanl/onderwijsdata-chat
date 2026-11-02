@@ -1,62 +1,31 @@
--- PostgreSQL initialization script for onderwijsdata-chat
--- Run this after CloudNativePG cluster is ready
+-- PostgreSQL: de applicatiegebruiker en de database voor onderwijsdata-chat, op een zelf beheerde server.
+-- Op SURF SDP levert het platform beide; dit script is daar niet nodig (docs/deployment.md).
+--
+-- De tabellen maakt de app zelf bij de start (persistence/db.py, init_db); dit script maakt er geen (#825).
+-- Draai het als superuser, met het wachtwoord als psql-variabele, niet in het bestand:
+--
+--   psql -U postgres -v wachtwoord='<sterk wachtwoord>' -f scripts/db-init.sql
 
--- Create application user (if not exists)
-DO $$
-BEGIN
-  CREATE USER onderwijsdata_chat WITH PASSWORD 'change_me_in_production';
-EXCEPTION WHEN DUPLICATE_OBJECT THEN
-  NULL;
-END
-$$;
+\set ON_ERROR_STOP on
 
--- Create database
-CREATE DATABASE onderwijsdata_chat OWNER onderwijsdata_chat;
+\if :{?wachtwoord}
+\else
+  \echo 'Geef het wachtwoord mee: psql -v wachtwoord=... -f scripts/db-init.sql'
+  \quit
+\endif
 
--- Grant privileges
+-- De applicatiegebruiker, als die nog niet bestaat
+SELECT format('CREATE ROLE onderwijsdata_chat LOGIN PASSWORD %L', :'wachtwoord')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'onderwijsdata_chat')
+\gexec
+
+-- De database, als die nog niet bestaat
+SELECT 'CREATE DATABASE onderwijsdata_chat OWNER onderwijsdata_chat'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'onderwijsdata_chat')
+\gexec
+
 GRANT CREATE ON DATABASE onderwijsdata_chat TO onderwijsdata_chat;
 
--- Connect to the database and create tables
+-- Het schema public van de gebruiker, zodat de app er haar tabellen in kan maken (PostgreSQL 15+)
 \c onderwijsdata_chat
-
--- Ensure schema ownership
 ALTER SCHEMA public OWNER TO onderwijsdata_chat;
-
--- Create tables
-CREATE TABLE IF NOT EXISTS conversations (
-  id        TEXT    NOT NULL,
-  username  TEXT    NOT NULL,
-  title     TEXT    NOT NULL,
-  timestamp INTEGER NOT NULL,
-  messages  TEXT    NOT NULL,
-  PRIMARY KEY (id, username)
-);
-
-CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(username, timestamp DESC);
-
-CREATE TABLE IF NOT EXISTS workbooks (
-  id             TEXT NOT NULL,
-  username       TEXT NOT NULL,
-  title          TEXT NOT NULL,
-  description    TEXT NOT NULL DEFAULT '',
-  messages       TEXT,
-  figures        TEXT,
-  instelling     TEXT,
-  html_content   TEXT,
-  dashboard_spec TEXT,
-  created_at     TEXT NOT NULL,
-  PRIMARY KEY (id, username)
-);
-
-CREATE INDEX IF NOT EXISTS idx_wb_user ON workbooks(username, created_at DESC);
-
--- Set ownership
-ALTER TABLE conversations OWNER TO onderwijsdata_chat;
-ALTER TABLE workbooks OWNER TO onderwijsdata_chat;
-ALTER INDEX idx_conv_user OWNER TO onderwijsdata_chat;
-ALTER INDEX idx_wb_user OWNER TO onderwijsdata_chat;
-
--- Grant table permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON conversations TO onderwijsdata_chat;
-GRANT SELECT, INSERT, UPDATE, DELETE ON workbooks TO onderwijsdata_chat;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO onderwijsdata_chat;

@@ -38,7 +38,7 @@ Zonder `POSTGRES_URI` valt de app terug op SQLite (`DATABASE_PATH`, standaard `o
 
 Postgres-verbindingen worden hergebruikt: het proces houdt er hoogstens `POSTGRES_POOL_SIZE` (standaard 8) tegelijk open en een aanroep daarboven wacht op een vrije. Houd dat onder `max_connections` van de server, maal het aantal pods. Na een herstart of failover van PostgreSQL liggen er dode verbindingen in de pool. Faalt het eerste statement van een aanroep daarop, dan vervangt de app die verbinding en gaat dat statement opnieuw, zonder fout voor de aanvraag (#764; in het log: "Dode verbinding uit de pool vervangen"). Een nieuwe verbinding krijgt `connect_timeout=5` en TCP-keepalives (30 s rust, daarna 3 keer elke 10 s), tenzij `POSTGRES_URI` die zelf zet.
 
-De app maakt de tabellen automatisch aan bij de start (`CREATE TABLE IF NOT EXISTS` in `persistence/db.py`). Alleen de database en de databasegebruiker moeten al bestaan; op een eigen Postgres-server kun je die aanmaken met `scripts/db-init.sql`. Op SURF SDP levert het platform de database en de URI al — zie [Deployment](deployment.md).
+De app maakt de tabellen automatisch aan bij de start (`CREATE TABLE IF NOT EXISTS` in `persistence/db.py`). Alleen de database en de databasegebruiker moeten al bestaan; op een eigen Postgres-server kun je die aanmaken met `scripts/db-init.sql` (als superuser, met het wachtwoord als variabele: `psql -U postgres -v wachtwoord='…' -f scripts/db-init.sql`). Op SURF SDP levert het platform de database en de URI al — zie [Deployment](deployment.md).
 
 !!! warning "Nooit `onderwijsdata.db` committen"
     Het SQLite-bestand staat in `.gitignore`. Houd dat zo — databasebestanden horen niet in de repo.
@@ -84,23 +84,10 @@ docker run -p 8000:8000 \
   onderwijsdata-chat
 ```
 
-### Azure Container Apps
-
-```bash
-az containerapp create \
-  --name onderwijsdata-chat \
-  --resource-group mijn-rg \
-  --image ghcr.io/cedanl/onderwijsdata-chat:latest \
-  --env-vars \
-      CHAT_SECRET=secretref:chat-secret \
-      CHAT_USERS=secretref:chat-users \
-      AZURE_AI_API_KEY=secretref:api-key \
-  --ingress external --target-port 8000
-```
-
 ### SURF Research Cloud
 
-1. Maak een component aan met het Docker-image
+1. Maak een component aan met het Docker-image dat je hierboven bouwt (de pipeline pusht alleen naar de eigen
+   Harbor-registry van SDP; er is geen openbaar image)
 2. Koppel een managed PostgreSQL-instantie
 3. Stel omgevingsvariabelen in via de SURF-interface
 

@@ -12,7 +12,7 @@ import { answerModels } from '../answerModel'
 import { personalizeQuestion, suggestionsFor } from '../suggestions'
 import { PERSOONSGEGEVENS_WAARSCHUWING } from '../persoonsgegevens'
 import { refusalReason } from '../sendBlockReason'
-import { appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
+import { afsplitsing, appendPage, clearCurrentChat, conversationMessages, conversationRecord, HISTORY_FETCH_LIMIT, historyPage, loadConversationHistory, loadCurrentChat, newConversationId, nextPageQuery, persistConversationHistory, persistCurrentChat, upsertConversation } from '../conversationStore'
 import { getToken, sessionEndedSince } from '../auth'
 import { bijUitloggen, isOpgeslagen, noteerOpgeslagen, volgOpslag } from '../gesprekOpslag'
 import { uitgesteldeVerwijdering, terugInLijst } from '../verwijderenMetUitstel'
@@ -186,7 +186,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         if (local.length > 0) {
           Promise.allSettled(local.map(c =>
             putConversation(String(c.id), { title: c.title, timestamp: c.timestamp, messages: c.messages })
-          )).catch(() => {})
+          ))
         }
       }
     }).catch(() => {})
@@ -250,6 +250,37 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
     }
   }, [tokenAtMount, persistMetMelding, withBufferedText])
 
+  // Een ander tabblad (of apparaat) bewaarde intussen vragen die dit tabblad niet kent; de server weigerde de opslag
+  // met 409, zodat die vragen blijven staan (#760). Deze versie gaat dan verder als nieuw gesprek, met een titel
+  // waaraan je de afsplitsing herkent, en een melding zegt waar het staat. Is het gesprek niet meer open (een ander
+  // gesprek gekozen), dan wordt de afsplitsing toch bewaard, maar blijft het open gesprek staan.
+  const afsplitsen = useCallback((id, verstuurd) => {
+    const open = openChatRef.current.id === id
+    const all = open ? openChatRef.current.messages : verstuurd
+    const titel = loadConversationHistory().find(c => String(c.id) === String(id))?.title
+    const record = afsplitsing(newConversationId(), all, titel)
+    if (!record) return
+    const json = JSON.stringify(all)
+    if (open) {
+      openChatRef.current = { id: record.id, messages: all }
+      savedJsonRef.current = json
+      setConversationId(record.id)
+    }
+    const lijst = upsertConversation(loadConversationHistory(), record)
+    persistHistoryMetMelding(lijst)
+    setConversationHistory(lijst)
+    addToast(`Dit gesprek is intussen in een ander tabblad of op een ander apparaat bijgewerkt. Om niets te overschrijven staat jouw versie nu apart: "${record.title}".`, 'warning')
+    savingRef.current = volgOpslag(putConversation(String(record.id), { title: record.title, timestamp: record.timestamp, messages: all }))
+      .then(() => {
+        if (sessionEndedSince(tokenAtMount) || !open) return
+        noteerOpgeslagen(record.id, json)
+      }, err => {
+        // Mislukt ook deze opslag, dan gaat hij bij de volgende kans opnieuw, net als elke andere (#635).
+        if (savedJsonRef.current === json) savedJsonRef.current = ''
+        if (!sessionEndedSince(tokenAtMount)) setGesprekNietBewaard({ id: record.id, status: err?.status })
+      })
+  }, [tokenAtMount, addToast, persistHistoryMetMelding])
+
   // One record per conversation: each save overwrites it, and an unchanged conversation is not written again.
   // Sends the open conversation to the server and returns the updated history list, or null when
   // there is nothing new. Of the state it only sets the save status (#785), which after an unmount does nothing,
@@ -277,10 +308,12 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
       }, err => {
         if (savedJsonRef.current === json) savedJsonRef.current = vorige
         // Na het uitloggen (ook een 401 die de sessie beëindigde) is er niemand meer om het te zeggen.
-        if (!sessionEndedSince(tokenAtMount)) setGesprekNietBewaard({ id, status: err?.status })
+        if (sessionEndedSince(tokenAtMount)) return
+        if (err?.status === 409) afsplitsen(id, all)
+        else setGesprekNietBewaard({ id, status: err?.status })
       })
     return upsertConversation(loadConversationHistory(), record)
-  }, [tokenAtMount])
+  }, [tokenAtMount, afsplitsen])
 
   // Returns the save in flight, so a caller can wait until the server has the conversation.
   const saveConversation = useCallback(() => {

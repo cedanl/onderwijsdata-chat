@@ -56,7 +56,8 @@ def test_upsert_conversation_is_idempotent(db):
     msgs = [{"role": "user", "content": "v1"}]
     db.upsert_conversation("alice", "c1", "Titel", 1000, msgs)
 
-    msgs2 = [{"role": "user", "content": "v2"}]
+    # Een volgende opslag verlengt de vragen; een andere eerste vraag zou 409 geven (#760).
+    msgs2 = [*msgs, {"role": "assistant", "content": "a1"}, {"role": "user", "content": "v2"}]
     db.upsert_conversation("alice", "c1", "Titel update", 2000, msgs2)
 
     result = db.list_conversations("alice")

@@ -18,6 +18,7 @@ from config import Config, ConfigError
 from core import foutmeldingen
 from core.catalogusversie import arbeidsmarktversie, catalogusversie
 from core.config import MAX_REQUEST_BYTES
+from core.logging_util import foutkenmerk
 from core.verzoeklimiet import Verzoeklimiet
 from frontend_static import mount_frontend
 from logging_config import setup_logging
@@ -29,7 +30,9 @@ logger = logging.getLogger(__name__)
 try:
     Config.validate()
 except ConfigError as e:
-    logger.error(f"Configuration validation failed: {e}")
+    # Bewust leesbaar: een ConfigError bevat alleen tekst uit config.py (de foutregels van Config.validate, met de
+    # configwaarde erbij), geen gebruikerstekst; zonder die tekst is een verkeerde configuratie niet te vinden.
+    logger.error("Configuration validation failed: %s", e)
     sys.exit(1)
 
 import health
@@ -52,7 +55,9 @@ try:
     persistence_db.init_db()
     logger.info("Database initialized successfully")
 except Exception as e:
-    logger.error(f"Failed to initialize database: {e}")
+    # Een driverfout kan host en databasenaam citeren: op ERROR alleen type en kenmerk, de tekst op DEBUG (#817).
+    logger.error("Failed to initialize database: %s", foutkenmerk(e))
+    logger.debug("Failed to initialize database", exc_info=True)
     sys.exit(1)
 
 
@@ -174,18 +179,16 @@ async def info() -> dict:
 
 
 async def on_startup() -> None:
-    """Initialize application and record startup time."""
-    health.record_startup()
+    """Meld de start in het log, met een waarschuwing bij LOG_LEVEL=DEBUG."""
     if Config.LOG_LEVEL == "DEBUG":
         # Op DEBUG staat vraag- en antwoordtekst in het log (#475), en dus eventuele
         # persoonsgegevens in de logaggregatie. Niet stil laten gebeuren (#516).
         logger.warning("LOG_LEVEL=DEBUG: vraag- en antwoordtekst komt in het log; niet gebruiken met echte gebruikers")
+    # In de berichttekst: de JSONFormatter neemt geen extra-velden over (#816).
     logger.info(
-        "Application startup completed",
-        extra={
-            "oidc_enabled": is_oidc_configured(),
-            "database": "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
-        },
+        "Application startup completed: oidc_enabled=%s database=%s",
+        is_oidc_configured(),
+        "PostgreSQL" if Config.POSTGRES_URI else "SQLite",
     )
 
 
@@ -193,11 +196,10 @@ async def on_shutdown() -> None:
     """Graceful shutdown: close connections and cleanup."""
     logger.info("Application shutdown initiated")
     try:
-        # Cleanup database connections
-        if hasattr(persistence_db, "close"):
-            persistence_db.close()
+        persistence_db.close()
     except Exception as e:
-        logger.warning(f"Error during shutdown cleanup: {e}")
+        logger.warning("Error during shutdown cleanup: %s", foutkenmerk(e))
+        logger.debug("Error during shutdown cleanup", exc_info=True)
     logger.info("Application shutdown completed")
 
 

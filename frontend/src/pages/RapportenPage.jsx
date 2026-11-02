@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DEFAULT_INSTELLING } from '../constants'
+import { korteDatum } from '../relatieveDatum'
 import WorkbookViewer from '../components/WorkbookViewer'
 import ConfirmModal from '../components/ConfirmModal'
 import VerwijderFout from '../components/VerwijderFout'
@@ -11,10 +12,6 @@ import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 import { groupByMonth } from '../workbookGroups'
 import { filterWorkbooks } from '../workbookFilter'
 import { inVolgorde, noteerRapport, useRecent, wisselFavoriet } from '../recentBekeken'
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
-}
 
 // A star to mark a favourite (#603): kept in this browser only, like "recent bekeken".
 function FavorietKnop({ wb, aan }) {
@@ -63,7 +60,7 @@ function RapportCard({ wb, onOpen, onDelete, mode, favoriet = false }) {
         <div className="wb-card-title">{wb.title}</div>
         <div className="wb-card-desc">{wb.description}</div>
         <div className="wb-card-footer">
-          <span className="wb-card-date">{formatDate(wb.createdAt)}</span>
+          <span className="wb-card-date">{korteDatum(wb.createdAt)}</span>
           <FavorietKnop wb={wb} aan={favoriet} />
           <button type="button"
             className="wb-delete-btn"

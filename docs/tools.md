@@ -51,107 +51,12 @@ flowchart TD
 
 ---
 
-## Tool Calling Patterns
+## Volgorde van de tools
 
-Aanbevolen tool-sequenties (chains) voor verschillende soorten vragen. Het LLM kiest idealiter deze volgorde:
+De volgorde staat in de systeemprompt (`prompts/system.md`, "Werkwijze — volg dit altijd"). Daaruit volgen drie
+routes; het model slaat een stap over die niet nodig is.
 
-### Pattern 1: Data Verkenning (Discovery)
-
-**Gebruik:** Onbekende vraag, weten niet welke data beschikbaar is.
-
-**Ideale volgorde:**
-1. `search_catalog` — Zoek relevante datasets
-2. `dataset_details` — Inspecteer beschikbare kolommen en filters
-3. `get_*_data` — Haal de geselecteerde data op
-
-**Voorbeeld:** "Hoeveel MBO-instellingen zijn er in Utrecht?"
-- search_catalog → "MBO instellingen" → RIO-dataset gevonden
-- dataset_details → RIO-dataset → type, organisatorischeEenheidcode, etc.
-- get_rio_data → Filter op plaats='Utrecht' en soort=MBO
-
-#### Flowchart
-
-```mermaid
-flowchart LR
-    Q["❓ Onduidelijke vraag"] --> SC["🔍 search_catalog"]
-    SC --> DD["📋 dataset_details"]
-    DD --> GET["📥 get_*_data<br/>CBS/RIO/DUO"]
-    GET --> ANSWER["✓ Antwoord"]
-    
-    style SC fill:#e3f2fd
-    style DD fill:#bbdefb
-    style GET fill:#90caf9
-    style ANSWER fill:#81c784
-```
-
----
-
-### Pattern 2: Analyse met Visualisatie
-
-**Gebruik:** Data beschikbaar, nu analyseren en visualiseren.
-
-**Ideale volgorde:**
-1. `get_*_data` — Laad volledige dataset
-2. `query_data` — Filter, groepeer, aggregeer indien nodig
-3. `run_analysis` — Voer berekeningen, transformaties uit (pandas/numpy)
-4. `create_plot` — Maak interactieve grafiek
-
-**Voorbeeld:** "Toon MBO-inschrijvingen per jaar als line chart"
-- get_duo_data → studentprognoses-mbo
-- query_data → Group by Jaar, sum Aantal
-- run_analysis → (optioneel: extra berekeningen)
-- create_plot → line chart
-
-#### Flowchart
-
-```mermaid
-flowchart LR
-    DATA["📥 get_*_data"] --> FILTER["🔎 query_data<br/>Filter/Group/Agg"]
-    FILTER --> ANALYSIS["⚙️ run_analysis<br/>pandas/numpy"]
-    ANALYSIS --> PLOT["📊 create_plot<br/>bar/line/scatter"]
-    PLOT --> ANSWER["✓ Grafiek + antwoord"]
-    
-    style DATA fill:#bbdefb
-    style FILTER fill:#90caf9
-    style ANALYSIS fill:#64b5f6
-    style PLOT fill:#42a5f5
-    style ANSWER fill:#81c784
-```
-
----
-
-### Pattern 3: Geografische Analyse
-
-**Gebruik:** Geografische vraag, visualiseer op kaart van Nederland.
-
-**Ideale volgorde:**
-1. `get_*_data` — Laad data met locatie-kolom
-2. `query_data` — (Optioneel) filter indien nodig
-3. `create_choropleth_map` — Maak provincie/gemeente/COROP kaart
-
-**Voorbeeld:** "MBO-inschrijvingen per provincie als kaart"
-- get_rio_data → MBO-instellingen per provincie
-- create_choropleth_map → niveau="provincie"
-
-#### Flowchart
-
-```mermaid
-flowchart LR
-    DATA["📥 get_*_data<br/>met locatie-kolom"] --> FILTER["🔎 query_data<br/>(optioneel)"]
-    FILTER --> MAP["🗺️ create_choropleth_map<br/>auto/prov/gem/corop"]
-    MAP --> ANSWER["✓ Kaart + antwoord"]
-    
-    style DATA fill:#bbdefb
-    style FILTER fill:#90caf9,stroke:#999,stroke-dasharray: 5 5
-    style MAP fill:#ff9800
-    style ANSWER fill:#81c784
-```
-
----
-
-### Pattern 4: Scopeverduidelijking + Analyse
-
-**Gebruik:** Vraag is ambigue, eerst verduidelijken dan analyseren.
+### Vóór de route: verduidelijking
 
 Drie open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scopevraag.py`, #348):
 - een telling bij een plaats die in meer dan één instellingsnaam uit het register zit ("Hoeveel studenten heeft
@@ -161,90 +66,57 @@ Drie open slots herkent de app zelf, vóór het model de vraag ziet (`agent/scop
 - instroom in het hoger onderwijs zonder fase ("de instroom van de HvA", #743): een kaart met twee opties. De eerste is
   eerstejaars ho per instelling (DUO, zonder doorstroom naar een master). De tweede is landelijk per hbo en wo, met de
   masters erbij (CBS 85422NED). Dezelfde vraag geeft zo altijd dezelfde eerste stap; de opties zijn
-altijd geldig. Noemt de vraag een instelling, of bepaalt het profiel haar, dan komt er geen kaart. Na de
-keuze formuleert het model het antwoord; `clarify_scope` is dan weg (#75).
+  altijd geldig. Noemt de vraag een instelling, of bepaalt het profiel haar, dan komt er geen kaart.
 
-**Ideale volgorde:**
-1. `clarify_scope` — Toon keuzes aan gebruiker
-2. (Wacht op keuze) — Gebruiker selecteert optie
-3. (LLM formuleert nieuwe vraag met context)
-4. `get_*_data` → `query_data` → `create_plot` — Analyseer met gekozen scope
+Is een vraag op een andere manier dubbelzinnig, dan stelt het model zelf één vraag met `clarify_scope`. Na de keuze
+volgt een van de routes hieronder; `clarify_scope` is dan weg (#75).
 
-**Voorbeeld:** "Hoeveel studenten in MBO?"
-- clarify_scope → "Bedoel je ingeschrevenen, afgestudeerden, of dropout?"
-- Gebruiker kiest "ingeschrevenen"
-- get_duo_data → query_data → create_plot
+### Route 1: een vaste maat
 
-#### Flowchart
+**Gebruik:** een telling van studenten, inschrijvingen of eerstejaars per hbo/wo-instelling, mbo-studenten per
+instelling of landelijk, ingeschrevenen hbo/wo landelijk, doorstroom vmbo → mbo, of het geslacht van één opleiding.
 
-```mermaid
-flowchart LR
-    Q["❓ Ambigue vraag"] --> CLARIFY["❔ clarify_scope"]
-    CLARIFY --> CHOOSE["👤 Gebruiker kiest"]
-    CHOOSE --> REFORMULATE["🤖 LLM formuleert<br/>nieuwe vraag"]
-    REFORMULATE --> GET["📥 get_*_data"]
-    GET --> QUERY["🔎 query_data"]
-    QUERY --> VIZ["📊 create_plot"]
-    VIZ --> ANSWER["✓ Antwoord"]
-    
-    style CLARIFY fill:#fff9c4
-    style CHOOSE fill:#ffeb3b
-    style REFORMULATE fill:#fdd835
-    style GET fill:#bbdefb
-    style QUERY fill:#90caf9
-    style VIZ fill:#42a5f5
-    style ANSWER fill:#81c784
-```
+1. `get_maat` — het model kiest maat, instelling of sector, vorm en schooljaren; de code kiest dataset, bestand en
+   codes en geeft één rij per studiejaar.
+2. `compute_kpi` — alleen voor een verschil, een procentuele verandering of de grootste daling of stijging.
+3. `create_plot` — bij een verloop over meer jaren, met `chart_type="auto"`.
 
----
+**Voorbeeld:** "Hoeveel studenten had de Hogeschool Utrecht de afgelopen jaren?"
+- `get_maat` → `maat="ingeschreven_personen_ho"`, `instelling="Hogeschool Utrecht"`
+- `create_plot` → de tijd-as maakt er een lijn van
 
-### Pattern 5: Complexe Analyse (Multi-Source)
+Past geen maat, of weigert `get_maat` (bijvoorbeeld een onbekende instelling), dan volgt route 2.
 
-**Gebruik:** Combineer data uit meerdere bronnen, voer geavanceerde analyses uit.
+### Route 2: zoeken, controleren, laden
 
-**Ideale volgorde:**
-1. `search_catalog` — Vind relevante datasets
-2. `get_cbs_data` + `get_duo_data` + `get_rio_data` — Laad meerdere datasets (parallel)
-3. `query_data` — Filter en selecteer kolommen per dataset
-4. `run_analysis` — Voer pandas join/merge uit op meerdere datasets
-5. `create_plot` — Visualiseer gekombineerde analyse
+1. `search_catalog` — hooguit `SEARCH_CATALOG_LIMIT` (3) keer per vraag; bij een regionale vraag met `geo_niveau`.
+2. `dataset_details` — verplicht vóór het laden, voor de 1-3 beste kandidaten.
+3. `get_cbs_dimension` — bij CBS voor elke dimensie die in de selectie komt.
+4. `get_cbs_data` (met `selectie`), `get_duo_data` (met `resource` als de dataset meer bestanden heeft) of
+   `get_rio_data` — geeft een schema, een preview en een `data_key`, geen rijen.
+5. `dataset_profiel` — als de korrel van de tabel niet zeker is, vóór een som of telling.
+6. `query_data` — filteren en aggregeren (`group_by`, `aggregate`); `compute_kpi` voor een verschil of percentage,
+   `run_analysis` alleen voor wat daar niet mee kan.
+7. `create_plot` (`chart_type="auto"`) of `create_choropleth_map` voor een kaart per provincie, gemeente of COROP.
 
-**Voorbeeld:** "Vergelijk MBO-inschrijvingen (DUO) met bevolking (CBS) per regio"
-- search_catalog → Vind beide datasets
-- get_duo_data + get_cbs_data (parallel)
-- run_analysis → Merge op regio
-- create_plot → Duo-axis chart
+**Voorbeeld:** "Instroom in het hbo per provincie, als kaart"
+- `search_catalog` → met `geo_niveau="provincie"`
+- `dataset_details` → de beste kandidaten
+- `get_cbs_dimension` → per dimensie de codes
+- `get_cbs_data` → `selectie` met de regio op `"*"` en de andere dimensies op hun totaalcode
+- `create_choropleth_map` → `level="provincie"`
 
-#### Flowchart
+### Route 3: twee bronnen naast elkaar
 
-```mermaid
-flowchart LR
-    SEARCH["🔍 search_catalog"] --> GET1["📥 get_duo_data"]
-    SEARCH --> GET2["📥 get_cbs_data"]
-    SEARCH --> GET3["📥 get_rio_data (optioneel)"]
-    
-    GET1 --> Q1["🔎 query_data"]
-    GET2 --> Q2["🔎 query_data"]
-    GET3 --> Q3["🔎 query_data"]
-    
-    Q1 --> MERGE["⚙️ run_analysis<br/>merge/join"]
-    Q2 --> MERGE
-    Q3 --> MERGE
-    
-    MERGE --> PLOT["📊 create_plot"]
-    PLOT --> ANSWER["✓ Multi-source antwoord"]
-    
-    style SEARCH fill:#e3f2fd
-    style GET1 fill:#90caf9
-    style GET2 fill:#90caf9
-    style GET3 fill:#90caf9
-    style Q1 fill:#64b5f6
-    style Q2 fill:#64b5f6
-    style Q3 fill:#64b5f6
-    style MERGE fill:#42a5f5
-    style PLOT fill:#2196f3
-    style ANSWER fill:#81c784
-```
+1. Laad elke bron via route 1 of 2.
+2. `relatie(data_key, andere_key)` — welke kolommen dezelfde sleutel dragen, hoe de waarden vertalen
+   (GM0344 ↔ 344, 2021SJ00 ↔ 2021) en hoe groot de overlap is.
+3. Alleen met een gedeelde sleutel: `run_analysis` met `df` en `store_get('<key>')` voor de koppeling. Zonder gedeelde
+   sleutel koppelt het model niet en antwoordt het per bron apart.
+4. `create_plot` op de `data_key` van het resultaat; één y-as, `color_by` voor groepen.
+
+Arbeidsmarkt-context (`get_uwv_vacatures`, `get_roa_benchmark`) komt als tekst bij een onderwijsantwoord, niet als
+eigen grafiek, en gaat nooit over één instelling.
 
 ---
 
@@ -558,6 +430,50 @@ De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit D
 |-----------|------|-------------|
 | `instelling` | string | Officiële naam of alias van de hbo- of wo-instelling, bijv. `"Hogeschool Utrecht"` |
 | `opleiding` | string | Naam of CROHO-code van de opleiding, bijv. `"34035"` |
+
+---
+
+## get_uwv_vacatures
+
+Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een
+onderwijsvraag (#441, `tools/arbeidsmarkt.py`). Een momentopname: de peildatum komt uit de data, niet uit tekst. Geen
+reeks, niet per instelling en zonder opleidingsniveau: UWV legt dat bij vacatures niet vast (#449).
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `provincie` | string | Provincienaam, bijv. `"Utrecht"` |
+| `gemeente` | string | Optioneel: een gemeente in die provincie, bijv. `"Amersfoort"` |
+| `sector` | string | Optioneel: een onderwijssector uit `SECTOR_CLUSTER_MAP` (`data/arbeidsmarkt.py`); de beroepenclusters van die sector tellen mee |
+
+- **Resultaat:** `peildatum`, `totaal_vacatures` en de 15 grootste beroepenclusters (`clusters_getoond` zegt het als
+  er meer zijn).
+- **Met `sector`** staan drie lagen apart (#460): `uwv_broncijfer` (de ongewogen aantallen van UWV),
+  `lokale_classificatie` (welke clusters bij de sector horen: een indeling van deze app, gemaakt met een taalmodel) en
+  `gewogen_aandeel` (het sectorgetal; een cluster dat de sector met andere deelt, telt naar rato mee).
+- **`data_key`:** de tabel met alle beroepenclusters (`BEROEPENCLUSTER`, `VACATURES`), voor `query_data` en
+  `create_plot` (#577).
+- Een onbekende provincie, gemeente of sector geeft een melding met de keuzes die wel bestaan.
+
+---
+
+## get_roa_benchmark
+
+Cijfers van ROA (AIS 2030) als arbeidsmarkt-context (#441, `tools/arbeidsmarkt.py`): de schoolverlatersinformatie (SIS
+2024: werkloosheid, vast dienstverband, werk buiten de vakrichting; alleen landelijk) en de prognose tot 2030
+(landelijk, of per arbeidsmarktregio of provincie). Per opleidingsniveau (mbo 2-4, bachelor, master) of voor één
+opleidingssector; niet per instelling.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `sector` | string | Optioneel: een ROA-opleidingssector, bijv. `"Mbo4 - techniek en ict"`; zonder sector alle mbo/hbo/wo-niveaus |
+| `regio` | string | Optioneel: een arbeidsmarktregio (bijv. `"Midden-Utrecht"`) of provincie; zonder regio landelijk |
+
+- **Resultaat:** `versie`, `regio`, `schoolverlaters_sis_2024` en `prognose_tot_2030`.
+- **Met een regio** ook `regiotype` en per onderdeel `herkomst`. Heeft ROA voor die regio geen cijfers voor een
+  onderdeel (de schoolverlaters zijn er alleen landelijk), dan staan daar de landelijke cijfers en zegt `terugval` dat.
+- **`data_key`:** de tabel met elk cijfer als rij (`ONDERDEEL`, `REGIO`, `OPLEIDING`, `INDICATOR`, `PERCENTAGE`,
+  `AANTAL`, `TYPERING`), voor `query_data` en `create_plot` (#577).
+- Een onbekende sector of regio geeft een melding met de keuzes die wel bestaan.
 
 ---
 

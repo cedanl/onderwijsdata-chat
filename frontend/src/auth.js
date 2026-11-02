@@ -50,7 +50,7 @@ export async function fetchAuthStatus() {
 }
 
 // Fetch user info from server (OIDC only, server is source of truth)
-// GitHub version (basic auth) doesn't have this endpoint
+// Zonder OIDC (wachtwoordlogin of geen login) bestaat het endpoint niet: 404, geen fout.
 export async function fetchUserInfo(token) {
   try {
     const res = await fetch('/api/auth/user', { headers: { Authorization: `Bearer ${token}` } })
@@ -58,17 +58,17 @@ export async function fetchUserInfo(token) {
       endSessionIfCurrent(token)
       return null
     }
-    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
+    if (res.status === 404) return null  // Geen OIDC: het endpoint bestaat niet
     if (!res.ok) throw new Error(`User info fetch failed: ${res.status}`)
     return res.json()
   } catch (err) {
-    console.warn('fetchUserInfo failed (expected on GitHub/basic-auth version):', err)
+    console.warn('fetchUserInfo failed:', err)
     return null
   }
 }
 
 // Refresh auth token before expiration (OIDC only)
-// GitHub version (basic auth) doesn't support this
+// Zonder OIDC bestaat het endpoint niet; App.jsx start de verversing alleen als fetchUserInfo een OIDC-gebruiker gaf.
 export async function refreshAuthToken(token) {
   try {
     const res = await fetch("/api/auth/refresh", {
@@ -80,7 +80,7 @@ export async function refreshAuthToken(token) {
       endSessionIfCurrent(token)
       return null
     }
-    if (res.status === 404) return null  // Endpoint doesn't exist (GitHub version)
+    if (res.status === 404) return null  // Geen OIDC: het endpoint bestaat niet
     if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`)
     const { token: newToken, user } = await res.json()
     // The session ended (logout, a 401 elsewhere) while this refresh was under way: storing the
@@ -90,7 +90,7 @@ export async function refreshAuthToken(token) {
     if (user) setUserInfo(user)
     return { newToken, user }
   } catch (err) {
-    console.warn('refreshAuthToken failed (expected on GitHub/basic-auth version):', err)
+    console.warn('refreshAuthToken failed:', err)
     return null
   }
 }

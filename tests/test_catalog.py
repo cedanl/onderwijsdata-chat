@@ -1151,3 +1151,10 @@ def test_dataset_details_draagt_de_documentatielink():
     for dataset_id in ("p01hoinges", "85423NED", "aangeboden-opleidingen"):
         details = json.loads(dataset_details(dataset_id))
         assert details["documentatie"]["url"].startswith("https://"), dataset_id
+
+
+def test_daar_is_een_stopwoord():
+    """#838: "dar" in de stopwoordenlijst was een tikfout voor "daar"; "daar" telde mee als zoekterm."""
+    from tools.catalog import _filter_stopwoorden
+
+    assert _filter_stopwoorden(["studenten", "daar"]) == ["studenten"]

@@ -83,7 +83,7 @@ BEWAARTERMIJN_GESPREKKEN_DAGEN = os.getenv("BEWAARTERMIJN_GESPREKKEN_DAGEN", "90
 BEWAARTERMIJN_RAPPORTEN_DAGEN = os.getenv("BEWAARTERMIJN_RAPPORTEN_DAGEN", "365")
 
 # Willma AI-Hub (SURF) — optioneel. Zet WILLMA_API_KEY om via Willma te draaien.
-# Zet MODEL naar bijv. "openai/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
+# Zet MODEL naar bijv. "openai/Qwen/Qwen2.5-Coder-7B-Instruct" om een specifiek Willma-model te kiezen.
 WILLMA_API_KEY = os.getenv("WILLMA_API_KEY")
 WILLMA_BASE_URL = os.getenv("WILLMA_BASE_URL", "")
 
@@ -103,10 +103,12 @@ _PROVIDER_API_KEYS: dict[str, str] = {
     "azure": "AZURE_API_KEY",
     "openai": "OPENAI_API_KEY",
     "gemini": "GEMINI_API_KEY",
-    "willma": "WILLMA_API_KEY",
     "ollama": None,  # Ollama doesn't require API key
     "ollama_chat": None,
 }
+# Sleutels zonder eigen prefix (#829): Willma loopt via openai/ met WILLMA_API_KEY (agent/models.py), maar een omgeving
+# met alleen die sleutel moet /ready halen (#675).
+_SLEUTELS_ZONDER_PREFIX = ("WILLMA_API_KEY",)
 
 
 def get_required_api_key_env_var(model_id: str) -> str | None:
@@ -134,7 +136,19 @@ def get_all_api_key_env_vars() -> list[str]:
     Used to check if ANY API key is configured (for startup checks).
     Filters out None values (providers that don't need keys).
     """
-    return [k for k in _PROVIDER_API_KEYS.values() if k is not None]
+    return [k for k in _PROVIDER_API_KEYS.values() if k is not None] + list(_SLEUTELS_ZONDER_PREFIX)
+
+
+def llm_sleutel_aanwezig(model: str) -> bool:
+    """Kan de app dit model aanroepen, wat sleutels betreft? Eén check voor de chat en /ready (#815).
+
+    Een provider zonder sleutel (Ollama) kan altijd; anders moet een van de sleutels uit
+    `get_all_api_key_env_vars()` gezet zijn, dus ook alleen WILLMA_API_KEY (#675).
+    """
+    provider = (model or "").split("/")[0].lower()
+    if provider in _PROVIDER_API_KEYS and _PROVIDER_API_KEYS[provider] is None:
+        return True
+    return any(os.getenv(naam) for naam in get_all_api_key_env_vars())
 
 
 # Wie het model draait: de modelkiezer noemt die partij in een bijschrift "Via …" (#496, F10).

@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { scrollGedrag } from '../hooks/useMediaQuery'
+import { useTermijnen, getal } from '../termijnen'
 
 // Same text and duration as the report feedback toast (WorkbookViewer).
 const THANKS = 'Bedankt voor je feedback!'
 const THANKS_MS = 4000
 // What every judgement keeps, 👍 and 👎 (#476): the trace goes to the team and stays when the conversation is
-// deleted, without the user's name, until 90 days after it was given (#485, persistence/opschonen.py).
-const BEWAARD = 'Het team krijgt je oordeel met de vraag, het antwoord en de stappen erbij. ' +
-  'Verwijder je het gesprek, dan blijft dit bewaard, maar zonder je naam. Na 90 dagen wordt het verwijderd.'
+// deleted, without the user's name, until the feedback term after it was given (#485, persistence/opschonen.py;
+// de termijn uit /api/config, #835).
+const bewaard = dagen => 'Het team krijgt je oordeel met de vraag, het antwoord en de stappen erbij. ' +
+  `Verwijder je het gesprek, dan blijft dit bewaard, maar zonder je naam. Na ${getal(dagen)} dagen wordt het verwijderd.`
 // A thumbs-up shows no dialog, so its thanks carries BEWAARD (#807): 36 words, readable in 15 s also at
 // 150 words a minute. A thumbs-down keeps THANKS_MS: its dialog showed the sentence before Verstuur.
 const BEWAARD_MS = 15000
@@ -26,6 +28,7 @@ export default function AnswerFeedback({ value, onSubmit }) {
   const statusRef = useRef(null)
   const bewaardId = useId()
   const toontBewaard = thanks > 0 && metBewaard
+  const BEWAARD = bewaard(useTermijnen().gesprekkenDagen)
 
   useEffect(() => {
     if (explaining) fieldRef.current?.focus()
