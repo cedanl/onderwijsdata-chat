@@ -186,7 +186,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
         if (local.length > 0) {
           Promise.allSettled(local.map(c =>
             putConversation(String(c.id), { title: c.title, timestamp: c.timestamp, messages: c.messages })
-          )).catch(() => {})
+          ))
         }
       }
     }).catch(() => {})

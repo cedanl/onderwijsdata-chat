@@ -14,6 +14,7 @@ import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/pris
 import ReasoningStep from './ReasoningStep'
 import { markRecovered } from '../toolSteps'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
+import { useDarkMode } from '../hooks/useDarkMode'
 import CopyButton from './CopyButton'
 import { splitsTelling } from '../telling'
 
@@ -25,11 +26,13 @@ SyntaxHighlighter.registerLanguage('bash', bash)
 // De inhoud van een bericht: markdown met codeblokken en citaties, het redeneerpaneel met de stappen, en het
 // Telling-blok. Uit ChatPage.jsx gehaald (#696); de pagina zelf houdt geen weergave van één bericht.
 
-function codeTheme() {
-  return document.documentElement.classList.contains('dark') ? oneDark : oneLight
+// Volgt een themawissel: de codeblokken tekenen opnieuw, ook in een gememoiseerd bericht.
+function useCodeTheme() {
+  return useDarkMode() ? oneDark : oneLight
 }
 
 function CodeBlock({ className, children }) {
+  const thema = useCodeTheme()
   const language = /language-(\w+)/.exec(className || '')?.[1]
   if (!language) return <code className={className}>{children}</code>
   const code = String(children).replace(/\n$/, '')
@@ -38,7 +41,7 @@ function CodeBlock({ className, children }) {
       <CopyButton text={code} className="copy-btn-code" />
       <SyntaxHighlighter
         language={language}
-        style={codeTheme()}
+        style={thema}
         customStyle={{ borderRadius: 6, fontSize: '0.8125rem', margin: '8px 0' }}
       >
         {code}
@@ -58,7 +61,7 @@ const MARKDOWN_COMPONENTS = {
 // The code of one step, behind "Bekijk code" (#595): one tap away, without filling the phone screen before the
 // answer. Long lines wrap instead of scrolling sideways.
 function StapCode({ code }) {
-  const thema = codeTheme()
+  const thema = useCodeTheme()
   return (
     <details className="reasoning-step-code">
       <summary>Bekijk code</summary>
@@ -94,6 +97,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
   // On a phone the code sits under its own step, folded (#595); in one block under the steps it filled the
   // screen before the answer. A wide screen keeps the block.
   const codePerStap = useMediaQuery(NARROW_SCREEN)
+  const codeThema = useCodeTheme()
   const panelRef = useRef(null)
   // Wie de kaart zelf open- of dichtdeed, houdt die stand (#609): het inklappen hieronder is alleen voor de kaart
   // die vanzelf openging bij het wachten.
@@ -162,7 +166,7 @@ export function ReasoningPanel({ tools, tussentekst, isDone, heeftTekst = false 
                     <div className="reasoning-snippet-label">{t.label}</div>
                     <SyntaxHighlighter
                       language="python"
-                      style={codeTheme()}
+                      style={codeThema}
                       customStyle={{ margin: 0, background: 'transparent', padding: 0, fontSize: 'var(--font-code)' }}
                     >
                       {t.snippet}

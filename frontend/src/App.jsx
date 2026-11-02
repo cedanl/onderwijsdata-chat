@@ -11,6 +11,7 @@ import { useZoekSneltoets } from './hooks/useZoekSneltoets'
 import { rondAfVoorUitloggen, wachtOpOpslag } from './gesprekOpslag'
 import { verstuurWachtrij } from './verwijderWachtrij'
 import { fetchAuthStatus, getToken, clearToken, onSessionEnded, consumeTokenFromUrl, getStoredUserInfo, fetchUserInfo, bewaardeSessieNaam, refreshAuthToken, tokenExpiresAt, logout } from './auth'
+import { zetTermijnen } from './termijnen'
 import { matchKnownInstelling, instellingType } from './instellingenMatch'
 import { effectiefProfiel, zonderProfiel } from './profiel'
 import { STORAGE_SETTINGS, STORAGE_ONBOARDED, MAX_MESSAGE_CHARS, MAX_CHAT_TURNS, MAX_HISTORY } from './constants'
@@ -129,7 +130,7 @@ function AppShell() {
         }
 
         // Fetch user info from server (SDP/OIDC only)
-        // GitHub version (basic auth) will skip this and use localStorage
+        // Zonder OIDC (wachtwoordlogin of geen login) geeft het endpoint 404 en valt dit terug op localStorage
         try {
           const userInfo = await fetchUserInfo(token)
           if (!getToken()) return  // The server refused the token: the session has ended
@@ -139,20 +140,20 @@ function AppShell() {
             // Start token refresh timer (refresh 5 min before expiration)
             startTokenRefreshTimer(token)
           } else {
-            // Endpoint doesn't exist (GitHub version) or the server failed
+            // Geen OIDC (het endpoint bestaat niet) of de server faalde
             // Fallback to localStorage if available
             const stored = getStoredUserInfo()
             if (stored) {
               setUserInfo(stored)
               setUser(stored.name || stored.username)
             } else {
-              // GitHub version: just use token as username
+              // Niets bewaard: toon een algemene gebruikersnaam
               setUser(token ? 'user' : null)
             }
           }
         } catch (err) {
-          console.warn('Failed to fetch user info (expected on GitHub version):', err)
-          // Fallback: try localStorage (GitHub version path)
+          console.warn('Failed to fetch user info:', err)
+          // Terugval: localStorage, net als zonder OIDC
           const stored = getStoredUserInfo()
           if (stored) {
             setUserInfo(stored)
@@ -173,10 +174,16 @@ function AppShell() {
         setMaxMessageChars(resolveMaxMessageChars(config.max_message_chars))
         setMaxChatTurns(resolveMaxChatTurns(config.max_chat_turns))
         setMaxHistory(resolveMaxHistory(config.max_history))
+        zetTermijnen(config)
       }).catch(() => {
         setDashboardsEnabled(false)
       }),
-      fetch('/api/instellingen').then(r => r.json()).then(setInstellingen).catch(() => {})
+      // Eén keer per paginalading; ook de keuzelijst in de instellingen gebruikt deze lijst (#836). Zonder lijst
+      // blijft de keuzelijst leeg.
+      fetch('/api/instellingen').then(r => {
+        if (!r.ok) throw new Error(`instellingen: ${r.status}`)
+        return r.json()
+      }).then(setInstellingen).catch(() => {})
     ]).then(() => {
       setAuthLoading(false)
     })
@@ -316,6 +323,7 @@ function AppShell() {
           sramName={userInfo?.name || null}
           sramInstelling={sramInstelling || null}
           sramIdentity={userInfo ? [userInfo.org, userInfo.institution, userInfo.email_domein].filter(Boolean) : []}
+          instellingen={instellingen}
         />
       )}
     </>

@@ -6,7 +6,7 @@ import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 
 vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
-vi.mock('../components/InlineDashboards', () => ({
+vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
 

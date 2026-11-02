@@ -50,3 +50,30 @@ def test_a_chat_turn_is_two_messages(monkeypatch, max_history, max_chat_turns):
     finally:
         monkeypatch.undo()
         importlib.reload(config)
+
+
+def test_config_publishes_retention_and_session_terms(client):
+    """#835: de frontend noemt de bewaartermijnen en de sessieduur die de backend toepast, niet vaste getallen."""
+    body = client.get("/api/config").json()
+    assert body["bewaartermijn_gesprekken_dagen"] == int(config.BEWAARTERMIJN_GESPREKKEN_DAGEN)
+    assert body["bewaartermijn_rapporten_dagen"] == int(config.BEWAARTERMIJN_RAPPORTEN_DAGEN)
+    assert body["sessie_uren"] == 8
+    assert body["sessie_max_uren"] == 24
+
+
+def test_config_follows_overridden_terms(client, monkeypatch):
+    monkeypatch.setattr(config, "BEWAARTERMIJN_GESPREKKEN_DAGEN", "30")
+    monkeypatch.setattr(config, "BEWAARTERMIJN_RAPPORTEN_DAGEN", "180")
+    monkeypatch.setattr(config_route, "SESSION_TTL", 2 * 3600)
+    monkeypatch.setattr(config_route, "SESSION_MAX", 12 * 3600)
+    body = client.get("/api/config").json()
+    assert (body["bewaartermijn_gesprekken_dagen"], body["bewaartermijn_rapporten_dagen"]) == (30, 180)
+    assert (body["sessie_uren"], body["sessie_max_uren"]) == (2, 12)
+
+
+def test_config_gives_no_retention_term_the_cleanup_rejects(client, monkeypatch):
+    """Een termijn die persistence/opschonen.py weigert (die verwijdert dan niets), komt niet als getal mee."""
+    monkeypatch.setattr(config, "BEWAARTERMIJN_GESPREKKEN_DAGEN", "3")
+    body = client.get("/api/config").json()
+    assert body["bewaartermijn_gesprekken_dagen"] is None
+    assert body["bewaartermijn_rapporten_dagen"] is None

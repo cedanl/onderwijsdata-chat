@@ -7,19 +7,8 @@ const NIVEAUS = [
   { id: 'mbo', label: 'MBO' },
 ]
 
-function useInstellingen() {
-  const [list, setList] = useState([])
-  useEffect(() => {
-    fetch('/api/instellingen')
-      .then(r => r.json())
-      .then(setList)
-      .catch(() => {})
-  }, [])
-  return list
-}
-
-export default function InstellingPicker({ inputId, value, onChange }) {
-  const allInstellingen = useInstellingen()
+// De lijst komt van App, die /api/instellingen één keer per paginalading ophaalt (#836).
+export default function InstellingPicker({ inputId, value, onChange, instellingen: allInstellingen = [] }) {
   const [query, setQuery] = useState(value || '')
   const [niveauFilter, setNiveauFilter] = useState(new Set())
   const [open, setOpen] = useState(false)

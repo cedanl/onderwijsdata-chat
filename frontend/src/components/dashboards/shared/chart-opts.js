@@ -8,28 +8,6 @@ export function darkColors(dark) {
   }
 }
 
-function compactNum(n) {
-  const abs = Math.abs(n)
-  if (abs >= 1_000_000) return (n / 1_000_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'M'
-  if (abs >= 10_000) return (n / 1_000).toLocaleString('nl-NL', { maximumFractionDigits: 1 }) + 'K'
-  return n.toLocaleString('nl-NL')
-}
-
-export function chartOpts(dark) {
-  const { tick, grid } = darkColors(dark)
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label || ''}: ${compactNum(ctx.parsed.y ?? ctx.parsed)}` } },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: tick } },
-      y: { grid: { color: grid }, ticks: { color: tick, callback: v => compactNum(v) } },
-    },
-  }
-}
-
 export function buildIndexChartOpts(dark) {
   const { tick, grid, label } = darkColors(dark)
   return {
@@ -84,8 +62,9 @@ export const SECTOR_LABELS = {
   LANDBOUW_EN_NATUURLIJKE_OMGEVING: 'Landbouw',
   SECTOROVERSTIJGEND: 'Sectoroverstijgend',
 }
-// Semantic: each color is fixed to a named sector (Economie→blauw, Gezondheidszorg→teal, …).
-// Not a generic sequential palette, so not replaced by CHART_COLORS.
+// Palet voor de sector-, leerweg- en sectorkamergrafieken (charts-sector.jsx). De kleur hangt aan de positie in de
+// reeks (`i % SECTOR_COLORS.length`), niet aan een sectorcode: met 8 kleuren voor 10 sectoren delen sommige sectoren een
+// kleur, en een sector kan per grafiek een andere kleur krijgen.
 export const SECTOR_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#94A3B8', '#EF4444']
 
 export function horizontalBarOpts(dark, tooltipSuffix = '') {
