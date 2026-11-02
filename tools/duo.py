@@ -9,6 +9,7 @@ from core.sentinels import BETEKENIS, EMPTY_CELLS
 
 from . import (
     bestandsversie,
+    bronretry,
     duo_bestandskeuze,
     duo_correcties,
     duo_meta,
@@ -329,7 +330,7 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
                 + (_andere_bestanden(dataset_id, bestanden, resource) or " De dataset bevat alleen documentatie."),
             )
         try:
-            geladen = _duo.load(dataset_id, resource)
+            geladen = bronretry.haal_op_met_retry("DUO", lambda: _duo.load(dataset_id, resource))
             df = instellingsprovincie.met_provincie(periode.met_studiejaarlabel(geladen), dataset_id)
         except Exception as e:
             hint = _andere_bestanden(dataset_id, bestanden, resource)

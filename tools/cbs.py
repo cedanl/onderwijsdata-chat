@@ -15,6 +15,7 @@ from core.config import CBS_ROW_LIMIT
 from core.logging_util import foutkenmerk
 
 from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, cbs_standaard, fouten, periode, scopeprofiel, store
+from .bronretry import haal_op_met_retry
 from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
@@ -358,7 +359,7 @@ def _haal(dataset_id: str, filters: dict | None) -> _Opgehaald | str:
     if sectorselectie:
         params = sectorselectie.params
     try:
-        opgehaald = data(dataset_id, **params)
+        opgehaald = haal_op_met_retry("CBS", lambda: data(dataset_id, **params))
     except Exception as e:
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
     rows = sectorselectie.rijen(opgehaald) if sectorselectie else opgehaald

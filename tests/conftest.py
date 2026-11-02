@@ -39,6 +39,14 @@ def geen_cbs_preflight(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def bronretry_zonder_wachten(monkeypatch):
+    """Een bronfout die de code opnieuw probeert (#867), wacht in de tests niet echt; het aantal pogingen blijft."""
+    from tools import bronretry
+
+    monkeypatch.setattr(bronretry, "STANDAARD", bronretry.Beleid(slaap=lambda s: None))
+
+
+@pytest.fixture(autouse=True)
 def geen_adresdownload(monkeypatch):
     """Unittests downloaden geen DUO-adresbestanden voor de instellingsprovincie (#453); tests die hem nodig hebben patchen zelf."""
     monkeypatch.setattr("tools.instellingsprovincie.get_adres_lookup", lambda: {})
