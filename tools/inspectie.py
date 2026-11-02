@@ -10,12 +10,16 @@ De bestandsnaam en het document-ID wisselen per maand. Daarom volgt de code de p
 schooljaarpagina met een document, het nieuwste document, en daarin het bg-bestand. Een ODS-bestand is een zip met
 XML: de standaardbibliotheek leest het, zonder ODF-engine. Het bestuursnummer staat als formuletekst met nullen
 (`="00008"`); DUO's `BEVOEGD GEZAG NUMMER` is een getal. Beide gaan naar int.
+
+Welke kolommen de standaarden van een bestuur zijn, hangt af van het onderzoekskader in de kolom `Kader` (#874): zie
+`KADERS` hieronder, met de bron van de namen.
 """
 
 from __future__ import annotations
 
 import io
 import json
+import logging
 import re
 import zipfile
 from dataclasses import dataclass, field
@@ -29,6 +33,8 @@ from data import instellingen
 from data.instellingen import get_adres_lookup
 
 from . import fouten
+
+logger = logging.getLogger(__name__)
 
 BASIS = "https://www.onderwijsinspectie.nl"
 OVERZICHT = f"{BASIS}/trends-en-ontwikkelingen/onderwijsdata/oordelen"
@@ -48,12 +54,82 @@ _ODS_TEKST = "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}p"
 _MAX_HERHALING = 1000
 
 MBO = "MBO"
-# De standaarden op bestuursniveau, met hun kolom in het bestand.
-STANDAARDEN = {
-    "Financieel beheer": "FinancieelBeheer",
-    "Kwaliteitszorg en ambitie": "KwaliteitszorgEnAmbitie",
+
+# Welke kolommen bij welk onderzoekskader horen, en hoe de standaarden heten (#874). De namen komen uit de variabelenlijst
+# van het bg-bestand in de "Toelichting open data oordelen en standaarden 2025/2026" van de Inspectie (september 2025,
+# p. 12-13), geraadpleegd op 02-11-2026:
+# https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2025/09/02/toelichting-open-data-oordelen-en-standaarden-2025-2026/Toelichting_open_data_oordelen_en_standaarden_2025_2026.pdf
+# BKA1-3 staan met dezelfde namen in het Onderzoekskader 2021 voor het mbo, versie 2026, p. 29, geraadpleegd op
+# 02-11-2026:
+# https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2021/07/01/onderzoekskader-2021-middelbaar-beroepsonderwijs/kader-mbo-2026.pdf
+#
+# - FinancieelBeheer, KwaliteitszorgEnAmbitie en Onderwijsresultaten zijn oordelen per kwaliteitsgebied (toelichting
+#   p. 11-12); Onderwijsresultaten krijgen alleen samenwerkingsverbanden passend onderwijs.
+# - BST2017 (onderzoekskader 2017): de standaarden KA1-3 onder Kwaliteitszorg en ambitie en FB1-3 onder Financieel
+#   beheer. Dat de BST-sets uit de kaders 2017 en 2021 komen, staat in de "Toelichting open data standaarden schooljaar
+#   2021/2022" (p. 12); in het peilbestand van 01-10-2026 zijn alle BST2017-vaststellingen van 17-11-2017 tot
+#   21-09-2021.
+# - BST2021 (onderzoekskader 2021): één kwaliteitsgebied, Besturing, kwaliteitszorg en ambitie, met BKA1-3; het
+#   financieel beheer valt daaronder (kader mbo, p. 28). Het eindoordeel staat in Eindoordeel.
+# - BST21_V25: de toelichting noemt de code niet. Het is het kader 2021 in de jaarversie van 2025: dezelfde kolommen
+#   BKA1-3, en in het peilbestand van 01-10-2026 zijn alle 86 vaststellingen van 10-11-2025 of later (de versie 2025
+#   gold vanaf 1 augustus 2025; vergelijk PO2021_V23 in de toelichting).
+# - OR1 en RPO1-3 zijn standaarden van samenwerkingsverbanden (BSTSWV2021), geen mbo-besturen.
+# - Een leeg Kader zijn "oudere onderzoeken (voor 2021)" (toelichting p. 12): geen standaarden, wel kwaliteitsgebieden.
+KWALITEITSGEBIEDEN = {  # kolom → naam van het kwaliteitsgebied
+    "FinancieelBeheer": "Financieel beheer",
+    "KwaliteitszorgEnAmbitie": "Kwaliteitszorg en ambitie",
     "Onderwijsresultaten": "Onderwijsresultaten",
 }
+
+
+@dataclass(frozen=True)
+class Kader:
+    naam: str
+    standaarden: dict[str, str]  # kolom → naam van de standaard
+
+
+_KADER_2017 = Kader(
+    "Onderzoekskader 2017",
+    {
+        "KA1": "Kwaliteitszorg",
+        "KA2": "Kwaliteitscultuur",
+        "KA3": "Verantwoording en dialoog",
+        "FB1": "Continuïteit",
+        "FB2": "Doelmatigheid",
+        "FB3": "Rechtmatigheid",
+    },
+)
+_KADER_2021 = Kader(
+    "Onderzoekskader 2021",
+    {
+        "BKA1": "Visie, ambities en doelen",
+        "BKA2": "Uitvoering en kwaliteitscultuur",
+        "BKA3": "Evaluatie, verantwoording en dialoog",
+    },
+)
+# De waarden van de kolom Kader bij mbo-besturen.
+KADERS = {"BST2017": _KADER_2017, "BST2021": _KADER_2021, "BST21_V25": _KADER_2021}
+
+# Elke kolom van het bg-bestand (toelichting p. 10-13, kop van het peilbestand van 01-10-2026). Een kolom die hier niet
+# staat, is nieuw bij de Inspectie: misschien een nieuwe standaard die de tool nog niet leest.
+_SWV_STANDAARDEN = {"OR1", "RPO1", "RPO2", "RPO3"}
+_GEGEVENS = {"Peildatum", "Bestuursnummer", "Bestuursnaam", "SectorenBijBestuur", "Eindoordeel", "Kader"}
+_FINANCIEEL = {"FinancielePositie"}
+# Bij elk oordeel (eind, financieel, kwaliteitszorg en ambitie, onderwijsresultaten) vier kolommen over het onderzoek.
+_ONDERZOEK = {
+    f"{veld}{oordeel}"
+    for veld in ("Vaststellingsdatum", "Publicatiedatum", "Onderzoeksnummer", "TypeOnderzoekCode")
+    for oordeel in ("Eindoordeel", "Financieel", "KwAmb", "Onderwijsres")
+}
+BEKENDE_KOLOMMEN = frozenset(
+    _GEGEVENS
+    | _FINANCIEEL
+    | _ONDERZOEK
+    | set(KWALITEITSGEBIEDEN)
+    | {kolom for kader in KADERS.values() for kolom in kader.standaarden}
+    | _SWV_STANDAARDEN
+)
 
 
 class InspectieOnbereikbaar(RuntimeError):
@@ -74,6 +150,8 @@ class Oordeel:
     sectoren: tuple[str, ...]
     eindoordeel: str | None
     vastgesteld: str | None
+    kader: str | None  # de code uit de kolom Kader, bijvoorbeeld BST2021; None bij een leeg Kader
+    kwaliteitsgebieden: dict[str, str]
     standaarden: dict[str, str]
     peildatum: str
     url: str
@@ -173,8 +251,33 @@ def haal_peilbestand(client: httpx.Client | None = None) -> Peilbestand:
     finally:
         if eigen:
             client.close()
+    meld_onbekend(rijen)
     peildatum = str(next((r["Peildatum"] for r in rijen if r.get("Peildatum")), ""))
     return Peilbestand(url, peildatum, rijen)
+
+
+def _is_mbo(rij: dict) -> bool:
+    return MBO in sectoren(rij.get("SectorenBijBestuur"))
+
+
+def _kadercode(rij: dict) -> str | None:
+    return str(rij.get("Kader") or "").strip() or None
+
+
+def meld_onbekend(rijen: list[dict]) -> None:
+    """Log een nieuwe kolom of een onbekend kader bij een mbo-bestuur, in plaats van die stil over te slaan (#874).
+
+    Eén keer per opgehaald bestand (dus per dag): de standaarden van zo'n kader toont de tool niet, en wie het log leest,
+    weet dan dat `KADERS` of `BEKENDE_KOLOMMEN` bij moet.
+    """
+    if nieuw := sorted(set(rijen[0] if rijen else ()) - BEKENDE_KOLOMMEN):
+        logger.warning("INSPECTIE_KADER_ONBEKEND kolommen=%s", ",".join(nieuw))
+    onbekend: dict[str, int] = {}
+    for rij in rijen:
+        if _is_mbo(rij) and (code := _kadercode(rij)) is not None and code not in KADERS:
+            onbekend[code] = onbekend.get(code, 0) + 1
+    for code, aantal in sorted(onbekend.items()):
+        logger.warning("INSPECTIE_KADER_ONBEKEND kader=%s besturen=%d", code, aantal)
 
 
 @lru_cache(maxsize=1)
@@ -187,21 +290,33 @@ def peilbestand() -> Peilbestand:
     return _peilbestand_van(date.today().isoformat())
 
 
+def _gevuld(rij: dict, namen_per_kolom: dict[str, str]) -> dict[str, str]:
+    """{naam: waarde} voor de kolommen die in deze rij een waarde hebben."""
+    return {naam: w for kolom, naam in namen_per_kolom.items() if (w := str(rij.get(kolom) or "").strip())}
+
+
+def _standaarden_van(rij: dict) -> dict[str, str]:
+    """De standaarden van het kader van deze rij, met hun naam; leeg bij een leeg of onbekend kader."""
+    kader = KADERS.get(_kadercode(rij) or "")
+    return _gevuld(rij, kader.standaarden) if kader else {}
+
+
 def oordelen_mbo(bestand: Peilbestand) -> dict[int, Oordeel]:
     """Per bestuursnummer het oordeel van de besturen waarvan de sectoren MBO noemen."""
     uit: dict[int, Oordeel] = {}
     for rij in bestand.rijen:
         nummer = bestuursnummer(rij.get("Bestuursnummer"))
-        sector = sectoren(rij.get("SectorenBijBestuur"))
-        if nummer is None or MBO not in sector:
+        if nummer is None or not _is_mbo(rij):
             continue
         uit[nummer] = Oordeel(
             bestuursnummer=nummer,
             bestuursnaam=str(rij.get("Bestuursnaam") or "").strip(),
-            sectoren=sector,
+            sectoren=sectoren(rij.get("SectorenBijBestuur")),
             eindoordeel=str(rij.get("Eindoordeel") or "").strip() or None,
             vastgesteld=datum(rij.get("VaststellingsdatumEindoordeel")),
-            standaarden={naam: w for naam, kolom in STANDAARDEN.items() if (w := str(rij.get(kolom) or "").strip())},
+            kader=_kadercode(rij),
+            kwaliteitsgebieden=_gevuld(rij, KWALITEITSGEBIEDEN),
+            standaarden=_standaarden_van(rij),
             peildatum=str(rij.get("Peildatum") or bestand.peildatum),
             url=bestand.url,
         )
@@ -227,6 +342,20 @@ _GEEN_EINDOORDEEL = {None, "Geen eindoordeel"}
 _SECTORNAMEN = {"PO": "po", "VO": "vo", "MBO": "mbo", "HO": "ho", "SO": "so"}
 
 
+def _kader(code: str | None) -> dict | None:
+    """Het onderzoekskader in de uitkomst: standaarden uit verschillende kaders zijn niet te vergelijken (#874)."""
+    if code is None:
+        return None
+    if (kader := KADERS.get(code)) is None:
+        return {"code": code, "naam": None}
+    return {
+        "code": code,
+        "naam": kader.naam,
+        "betekenis": f"Beoordeeld volgens het {kader.naam}. Standaarden uit verschillende onderzoekskaders zijn niet "
+        "met elkaar te vergelijken.",
+    }
+
+
 def _uitkomst(inst: dict, o: Oordeel) -> dict:
     uit: dict = {
         "instelling": {"naam": inst["naam"], "instellingscode": inst["instellingscode"]},
@@ -237,6 +366,8 @@ def _uitkomst(inst: dict, o: Oordeel) -> dict:
         },
         "eindoordeel": o.eindoordeel,
         "vastgesteld": o.vastgesteld,
+        "kader": _kader(o.kader),
+        "kwaliteitsgebieden": o.kwaliteitsgebieden,
         "standaarden": o.standaarden,
         "peildatum": o.peildatum,
         "gemengd": o.gemengd,
@@ -252,6 +383,11 @@ def _uitkomst(inst: dict, o: Oordeel) -> dict:
         )
     if o.eindoordeel in _GEEN_EINDOORDEEL:
         noten.append("De Inspectie gaf dit bestuur (nog) geen eindoordeel: noem geen oordeel en schat er geen.")
+    if o.kader is not None and o.kader not in KADERS:
+        noten.append(
+            f"Het onderzoekskader {o.kader} kent deze app niet: de standaarden van dit bestuur zijn niet getoond. Noem "
+            "geen standaarden en schat er geen."
+        )
     if noten:
         uit["noot"] = " ".join(noten)
     return uit

@@ -146,6 +146,11 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
 - **Hoger onderwijs:** het hoger onderwijs heeft geen oordeel per bestuur. Daar accrediteert de NVAO de opleidingen.
   De accreditatiedatums per opleiding staan in `get_accreditatie` (zie hieronder); de NVAO-oordelen zitten (nog) niet
   in de app.
+- **Onderzoekskader:** de standaarden staan per kader in andere kolommen (#874). Onder het kader 2021 (`Kader` =
+  `BST2021` of `BST21_V25`) zijn dat BKA1-3, onder het kader 2017 (`BST2017`) KA1-3 en FB1-3 met daarnaast een oordeel
+  per kwaliteitsgebied. De namen komen uit de [toelichting open data oordelen en standaarden
+  2025/2026](https://www.onderwijsinspectie.nl/documenten/2025/09/02/toelichting-open-data-oordelen-en-standaarden-2025-2026).
+  Op 1 oktober 2026 hadden 25 van de 164 mbo-besturen geen kader: oudere onderzoeken, van voor 2021.
 - **Bereikbaarheid:** `bron:ping` meet dagelijks of de bron bereikbaar is.
 
 | Eigenschap | Details |
