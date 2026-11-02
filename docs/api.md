@@ -11,7 +11,7 @@ kent dus geen versieverschil; een andere client of een ander team heeft aan een 
 
 | Interface | Status | Waar je op kunt rekenen | Waar niet |
 |---|---|---|---|
-| `GET /health`, `/ready`, `/startup` | **stabiel** | Pad, methode en statuscode; `/health` geeft `{"status": "ok"}`. Kubernetes en de deploycontrole leunen erop. | Extra velden in de body. |
+| `GET /health`, `/ready` | **stabiel** | Pad, methode en statuscode; `/health` geeft `{"status": "ok"}`. Kubernetes en de deploycontrole leunen erop. | Extra velden in de body. |
 | `GET /version` | **stabiel** | De sleutels die bij `/version` hieronder staan; nieuwe sleutels komen erbij, bestaande verdwijnen niet. | Volgorde van sleutels. |
 | MCP-server ([MCP](mcp.md)) | **stabiel** | Toolnamen, parameters, de envelope van `search_catalog` (`status`, `kandidaten`, `melding`, `vervolgstap`) en in elk resultaat de sleutels van `bewijs` en `vervolg` ([Bewijs en vervolg](mcp.md#bewijs-en-vervolg)). | De inhoud van `kandidaten` en de catalogus zelf: die volgt de bronnen. |
 | Deep link `/chat#vraag=…` ([hieronder](#deep-link-naar-de-chat)) | **stabiel** | Pad en parameter: de vraag staat na het openen, ook na het inloggen, in de invoer van een nieuw gesprek en wordt niet vanzelf verstuurd. | Hoe de app de vraag schoont en de grens van 500 tekens. |
@@ -56,7 +56,6 @@ changelog-item wat er anders is.
 |---------|-----|--------------|
 | `GET` | `/health` | Gezondheidscontrole — retourneert `{"status": "ok"}` |
 | `GET` | `/ready` | Readiness-check (o.a. database); gebruikt door Kubernetes |
-| `GET` | `/startup` | Startup-check; gebruikt door Kubernetes |
 | `GET` | `/version` | Versienummer uit `pyproject.toml`, de app-commit van het image, onder `catalogus` per catalogus-package de meegebouwde versie en commit (CBS = package `onderwijsdata`, DUO en RIO = package `riodata`; bij `onderwijsdata` onder `manifest` ook de meegebouwde CBS-catalogus: `catalogusrevisie`, `consistent`, `aantal`, `laatste_succesvolle_controle` en `versheid`), en onder `arbeidsmarkt` de dataversie van UWV en ROA (`bron`, `dataset`, `periode`), uit de statische catalogus van riodata en zonder download. Bewust zonder inloggen bereikbaar, voor de controle na een deploy (`SECURITY.md`, S20) |
 | `GET` | `/info` | Naam en of OIDC aan staat |
 | `GET` | `/api/config` | Publieke frontendconfiguratie, o.a. `dashboards_enabled`, `max_message_chars` (maximum tekens per chatbericht, voor de invoerbalk), `max_chat_turns` (maximum vragen per gesprek) en `max_history` (maximum berichten die het model ziet) |

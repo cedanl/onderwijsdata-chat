@@ -245,7 +245,7 @@ def test_info_logniveau_geeft_geen_waarschuwing(monkeypatch, caplog):
     assert "LOG_LEVEL=DEBUG" not in caplog.text
 
 
-# ── #675: /ready wordt de readiness-probe; /startup lekt geen fouttekst ──
+# ── #675: /ready wordt de readiness-probe ──
 
 
 @pytest.mark.parametrize("sleutel", ["WILLMA_API_KEY", "AZURE_AI_API_KEY", "ANTHROPIC_API_KEY"])
@@ -260,18 +260,6 @@ def test_llm_check_kent_elke_providersleutel(monkeypatch, sleutel):
     assert asyncio.run(health.check_llm_configuration()) is False
     monkeypatch.setenv(sleutel, "sleutel")
     assert asyncio.run(health.check_llm_configuration()) is True
-
-
-def test_startup_geeft_bij_een_fout_geen_fouttekst(client, monkeypatch):
-    import health
-
-    async def _stuk() -> bool:
-        raise RuntimeError("postgresql://geheim@db-host/onderwijsdata")
-
-    monkeypatch.setattr(health, "check_database_connection", _stuk)
-    resp = client.get("/startup")
-    assert resp.json() == {"status": "startup_failed"}
-    assert "db-host" not in resp.text
 
 
 # ── #815: /ready en de chat delen één sleutelcheck, met de uitzondering voor Ollama ──
