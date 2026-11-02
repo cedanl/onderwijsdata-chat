@@ -186,13 +186,17 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 - **Catalog-flow:** `search_catalog` → `dataset_details` (two-stage retrieval)
 - **Toon-check:** zakelijke toon, geen fluff of complimenten (regex-detectie)
 - **Cross-model vergelijking:** beide modellen vinden dezelfde datasets en vergelijkbare getallen
+- **Weigeringen:** vragen zonder open data, buiten de reeks, over een niet-bestaande opleiding of instelling of over een
+  toekomstig jaar moeten geweigerd worden, zonder getal dat niet uit een tool komt (`expected.must_refuse` in
+  `tests/e2e/evaluations.json`, gescoord door `refusal.js`). Ze zijn kritiek: een weigering moet in elke herhaling
+  slagen ([Promoten](promoten.md), stap 0)
 
 ### Bekende beperkingen
 
 Transparantie over wat nog niet getest is:
 
-- Negatieve gevragen (model moet "nee" zeggen bij niet-bestaande instellingen of toekomstige jaren)
-- Multi-turn gesprekken
+- Multi-turn gesprekken buiten het rapport: alleen de rapporteval (`rapport-bijsturing.spec.js`, #752) speelt een gesprek
+  van meer beurten, als opmaat naar een rapport
 - De sandbox van `run_analysis` is geen kernelgrens: een ontsnapping uit Python draait als dezelfde gebruiker als de server (#443)
 - Reference values kunnen verouderen na dataverversing; voor de ijkwaarden maakt `scripts/ijkwaarden.py` dat zichtbaar
 
@@ -201,8 +205,12 @@ Transparantie over wat nog niet getest is:
 ## Productiemonitoring
 
 - **Health check:** `GET /health` retourneert `{"status":"ok"}`
-- **Logging:** gestructureerde logging op INFO-niveau, tool-calls gelogd met argumenten en executietijden
-- **Reproduceerbaarheid:** bij elke tool-aanroep wordt een Python-snippet gelogd voor debugging
+- **Logging:** gestructureerde logging op INFO-niveau. Per tool-aanroep staan op INFO `GEHEUGEN` (toolnaam, geheugen van
+  proces en datastore) en `REPRODUCEER` (toolnaam met alleen lengte en hash van de snippet, `tekst_kenmerk`). De
+  argumenten (`TOOL CALL`), het resultaat (`TOOL RESULT`) en de snippet zelf staan alleen op DEBUG, want ze bevatten
+  tekst uit de vraag (#475; `Agents.md`, "Logs: geen gebruikerstekst op INFO+")
+- **Reproduceerbaarheid:** de Python-snippet van elke tool-aanroep staat in de chat en in de export, niet in het log op
+  INFO
 - **Eval resultaten:** uitvoer van evalruns komt lokaal in `eval_results/` (niet in git, zie `.gitignore`); de CI-job `eval:bronwaarheid` bewaart ze 90 dagen als artifact (#169)
 - **Bron-ping:** de geplande CI-job `bron:ping` (schema op `main` met `BRON_PING=1`, ook met de hand via "Run pipeline") roept elke bron één keer aan door de toollaag; een rode geplande pipeline is het signaal (#627)
 - **Tokengebruik:** per run (vraag, rapport, dashboard) één regel `TOKENS` (INFO) met model, aantal modelaanroepen, invoer, uitvoer en gelezen en geschreven cache (#678). De regel draagt het verbindings-ID; `VERBINDING open` noemt bij dat ID het pseudoniem `gebruiker=` (een HMAC met `LOG_HASH_SECRET`; zonder dat geheim `-`, want een kale hash van een e-mailadres is terug te rekenen). Per modelaanroep één regel `MODELAANROEP` (INFO), zonder gebruikerstekst: model, uitkomst (`ok`, `gestopt` of het fouttype), de seconden tot de provider antwoordde (`open`, inclusief wachten na een rate limit of time-out), tot de eerste chunk en tot het einde, en de uitvoertokens. Daarop kiest #800 `LITELLM_REQUEST_TIMEOUT`

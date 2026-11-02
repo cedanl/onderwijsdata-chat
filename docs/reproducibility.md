@@ -13,52 +13,68 @@ Onderzoeksinstellingen moeten kunnen aantonen HOE zij tot hun bevindingen zijn g
 
 ### 1. Stel een vraag
 ```
-"Hoeveel eerstejaars hadden HBO opleidingen in 2023?"
+"Hoeveel eerstejaars had het hbo in 2024/25, per type opleiding?"
 ```
 
 ### 2. De app gebruikt tools
 
-Achter de schermen roept de app functies aan:
-- `get_duo_data()` — Laadt DUO dataset
-- `query_data()` — Filtert op OPLEIDINGSVORM="VT", JAAR=2023
-- `compute_kpi()` — Telt totaal eerstejaars
+Achter de schermen roept de app functies aan, bijvoorbeeld:
+- `get_duo_data` — laadt het DUO-bestand met eerstejaars hbo (`p02ho1ejrs`, bestand 0)
+- `query_data` — filtert op `STUDIEJAAR` 2024 en telt `AANTAL_EERSTEJAARS_INGESCHREVENEN` op per `TYPE_HOGER_ONDERWIJS`
 
-### 3. Exporteer als code
+### 3. De code per stap
 
-Elke tool-aanroep genereert Python-snippet. Het app verzamelt ze in één reproduceerbaar script:
+Elke tool-aanroep krijgt een Python-snippet (`tools/snippet.py`). In de chat staat die bij de stap, onder "Redenering".
+"Exporteer gesprek" zet het hele gesprek in één Markdown-bestand: per antwoord de stappen, elk met zijn snippet als
+`python`-codeblok (`frontend/src/conversationExport.js`, #366). Een los `.py`-bestand levert de app niet; je kopieert de
+code van de stap die je wilt herhalen.
+
+Dit is de snippet die de app voor de `query_data`-stap hierboven maakt; de commentaarkop over de databewerking en de
+pakketversies is weggelaten:
 
 ```python
-# Laad DUO eerstejaars HBO 2023
-from riodata import duo
 import pandas as pd
+from riodata import duo
 
-# Dataset laden
-df = duo.load("p02ho1ejrs", "Eerstejaarsingeschrevenen hoger onderwijs")
-
-# Filter op HBO (ONDERDEEL="HBO")
-df = df[df["ONDERDEEL"] == "HBO"]
-
-# Filter op 2023 (STUDIEJAAR=2023)
-df = df[df["STUDIEJAAR"] == 2023]
-
-# Aggregatie: som eerstejaars
-totaal = df["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum()
-print(f"HBO eerstejaars 2023: {totaal}")
+df = duo.load("p02ho1ejrs", 0)
+# DUO-sentinel -1 = onderdrukte cel: DUO publiceert kleine aantallen niet, geen telwaarde. De app sluit ze uit.
+# Totalen over een selectie met zulke cellen zijn een ondergrens.
+for kolom in df.select_dtypes("number").columns:
+    if not any(h in str(kolom).upper() for h in ("MUTATIE", "SALDO", "VERSCHIL", "GROEI", "DELTA")):
+        df[kolom] = df[kolom].mask(df[kolom].isin([-1]))
+if "STUDIEJAAR" in df.columns:
+    df["STUDIEJAAR_LABEL"] = df["STUDIEJAAR"].map(lambda j: f"{j}/{j + 1}")
+_kolom = df["STUDIEJAAR"].astype(str)
+_exact = _kolom.str.lower().isin(["2024"])
+df = df[_exact] if _exact.any() else df[_kolom.str.isdigit() & _kolom.str.lstrip("0").replace("", "0").isin(["2024"])]
+group_by = ["TYPE_HOGER_ONDERWIJS"]
+for kolom in ["AANTAL_EERSTEJAARS_INGESCHREVENEN"]:
+    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
+df = (
+    df.groupby(group_by, dropna=False)
+    .agg({"AANTAL_EERSTEJAARS_INGESCHREVENEN": lambda s: s.sum(min_count=1)})
+    .reset_index()
+)
+print(df)
 ```
 
 ### 4. Jij voert het uit
 
-Run het script zelf:
+Zet de code in een bestand, bijvoorbeeld `analyse.py`, en draai het:
 ```bash
 python analyse.py
 ```
 
-Resultaat:
+Resultaat, gedraaid op 1 november 2026 tegen het DUO-bestand met versie van 08-04-2026:
 ```
-HBO eerstejaars 2023: 42583
+  TYPE_HOGER_ONDERWIJS  AANTAL_EERSTEJAARS_INGESCHREVENEN
+0     associate degree                             6839.0
+1             bachelor                            83013.0
 ```
 
-Dit getal matcht precies wat de app rapporteerde. Geen gissing, geen "zwarte doos" — pure reproducibiliteit.
+Dezelfde getallen gaf `query_data` in de app voor die selectie. Vervangt DUO het bestand, dan kan de uitkomst
+verschuiven; de bestandsversie en de md5 laten dat zien (zie "Is het dezelfde data?" hieronder). Beide totalen zijn een
+ondergrens: in die selectie vallen onderdrukte cellen (-1).
 
 ## Tools die snippets genereren
 
@@ -104,19 +120,13 @@ Vraag naar het snippet — de app levert het direct:
 
 > "Toon me de code voor het studentenaantal per opleiding"
 
-Geen ambiguïteit, geen achteraf geknutsel. Het is het óf-of-code dat je gebruiker daadwerkelijk hebt gerund.
+Het is de code die de stappen van dat antwoord herhaalt: dezelfde bron, dezelfde filters en dezelfde aggregaties.
 
-## Anti-hallucinatie control
+## Anti-hallucinatie
 
-Omdat snippets altijd data-tools gebruiken, kan het model nooit een getal verzinnen:
-
-```
-❌ NIET MOGELIJK:
-    "Het aantal studenten was 50.000"     ← Getal niet uit tool
-    
-✓ ALTIJD UIT DATA:
-    df.groupby("JAAR")["AANTAL"].sum()    ← Uit data
-    compute_kpi(metric="sum", ...)        ← Uit tool
-```
+Een snippet maakt een getal controleerbaar, maar voorkomt niet dat het model een getal verzint. Daarvoor zijn de
+controles na elk antwoord (ADR-001): een getal van vier of meer cijfers of een percentage dat niet in de toolresultaten
+staat, levert een correctieronde op. Die controles verkleinen het risico; ze nemen het niet weg. Wat ze niet dekken,
+staat in [Anti-hallucinatie architectuur](anti-hallucination-architecture.md#wat-dit-niet-dekt).
 
 Zie [architecture-decisions.md](architecture-decisions.md) voor details.

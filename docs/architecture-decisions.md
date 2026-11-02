@@ -49,7 +49,9 @@ Every tool call automatically generates a Python snippet. Users can export and r
 
 ### Implementation
 - `tools/snippet.py` generates code for each tool type (query_data, compute_kpi, create_plot, etc.)
-- Users download `.py` file alongside the answer
+- Gebruikers zien de snippet bij elke stap in de chat en exporteren het gesprek als Markdown ("Exporteer gesprek"): per
+  antwoord de stappen, elk met zijn snippet als `python`-codeblok (`frontend/src/conversationExport.js`, #366). Een
+  los `.py`-bestand is er niet
 - Code matches what the model actually called
 
 ### Rationale
