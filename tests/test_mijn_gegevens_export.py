@@ -5,7 +5,6 @@ De export van Anna bevat precies haar rijen; geen tekst die alleen van Bert is, 
 direct gemaakt, niet via de login: de login-limiter telt over de hele testrun mee.
 """
 
-import importlib
 import json
 import logging
 import re
@@ -21,18 +20,8 @@ _EXPORT = "/api/mijn-gegevens/export"
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "anna:wachtwoord-a,bert:wachtwoord-b,leeg:wachtwoord-c")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    from core import auth
-
-    importlib.reload(auth)
-    import server
-
-    importlib.reload(server)
-    db.init_db()
-    return TestClient(server.app)
+def client(app_client):
+    return app_client(users="anna:wachtwoord-a,bert:wachtwoord-b,leeg:wachtwoord-c", herlaad=("core.auth",))
 
 
 def _als(client: TestClient, gebruiker: str) -> TestClient:

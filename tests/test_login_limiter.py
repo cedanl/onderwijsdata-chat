@@ -5,27 +5,13 @@ IP als sleutel deelden alle wachtwoordgebruikers één budget van 5 pogingen per
 minuut, en kon iemand zonder inloggegevens de login voor iedereen blokkeren.
 """
 
-import importlib
-
 import pytest
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "anna:pw1,bob:pw2")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    from core import auth, config
-
-    importlib.reload(config)
-    importlib.reload(auth)
-    import routes.auth
-    import server
-
-    importlib.reload(routes.auth)
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client(users="anna:pw1,bob:pw2", herlaad=("core.config", "core.auth", "routes.auth"), init_db=False)
 
 
 def _login(client, user, pw):

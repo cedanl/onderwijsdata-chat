@@ -5,11 +5,9 @@ verzoek: zo hoort een 👎 altijd bij een echt antwoord, en kan niemand feedback
 bij andermans gesprek opslaan.
 """
 
-import importlib
 import json
 
 import pytest
-from fastapi.testclient import TestClient
 
 from core.answer_feedback import als_markdown, antwoord_trace
 
@@ -122,30 +120,19 @@ def test_leeg_overzicht():
 # ── Endpoint ─────────────────────────────────────────────────────────────────
 
 
-def _client(tmp_path, monkeypatch, users="anna:pw1,bob:pw2", enabled="true"):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", users)
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    monkeypatch.setenv("ENABLE_FEEDBACK", enabled)
-    from core import auth, config
-
-    importlib.reload(config)
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import routes.answer_feedback
-    import server
-
-    importlib.reload(routes.answer_feedback)
-    importlib.reload(server)
+def _client(app_client, monkeypatch, users="anna:pw1,bob:pw2", enabled="true"):
+    client = app_client(
+        users=users,
+        env={"ENABLE_FEEDBACK": enabled},
+        herlaad=("core.config", "core.auth", "persistence.db", "routes.answer_feedback"),
+    )
     # Elke test logt in; de loginlimiet (5 per minuut per IP) hoort niet bij wat hier getest wordt.
     import routes.auth
     from core.rate_limit import RateLimiter
+    from persistence import db
 
     monkeypatch.setattr(routes.auth, "_login_limiter", RateLimiter(max_attempts=1000, window_seconds=60))
-    return TestClient(server.app), db
+    return client, db
 
 
 def _als(client, user, pw):
@@ -155,8 +142,8 @@ def _als(client, user, pw):
 
 
 @pytest.fixture
-def app(tmp_path, monkeypatch):
-    client, db = _client(tmp_path, monkeypatch)
+def app(app_client, monkeypatch):
+    client, db = _client(app_client, monkeypatch)
     db.upsert_conversation("anna", "c1", "HU", 1_700_000_000, GESPREK)
     return client, db
 
@@ -229,8 +216,8 @@ def test_toelichting_is_begrensd(app):
     assert resp.status_code == 422
 
 
-def test_uitgeschakeld_zonder_endpoint(tmp_path, monkeypatch):
-    client, _ = _client(tmp_path, monkeypatch, enabled="false")
+def test_uitgeschakeld_zonder_endpoint(app_client, monkeypatch):
+    client, _ = _client(app_client, monkeypatch, enabled="false")
     _als(client, "anna", "pw1")
     assert client.get("/api/answer-feedback", params={"conversation_id": "c1"}).status_code == 404
 

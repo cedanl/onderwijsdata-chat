@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parseRules } from './helpers/cssRegels'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import Composer from '../components/Composer'
@@ -16,29 +17,6 @@ import { MAX_MESSAGE_CHARS } from '../constants'
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-
-// Top-level rules and @media blocks in file order: { media, selectors, body }.
-function parseRules(text, media = null) {
-  const rules = []
-  let i = 0
-  while (i < text.length) {
-    const open = text.indexOf('{', i)
-    if (open === -1) break
-    const prelude = text.slice(i, open).trim()
-    let depth = 1
-    let j = open + 1
-    while (depth > 0 && j < text.length) {
-      if (text[j] === '{') depth++
-      else if (text[j] === '}') depth--
-      j++
-    }
-    const inner = text.slice(open + 1, j - 1)
-    if (prelude.startsWith('@media')) rules.push(...parseRules(inner, prelude))
-    else if (!prelude.startsWith('@')) rules.push({ media, selectors: prelude.split(',').map(s => s.trim()), body: inner })
-    i = j
-  }
-  return rules
-}
 
 const rules = parseRules(css)
 const COMPACT = '@media (max-width: 1024px)'

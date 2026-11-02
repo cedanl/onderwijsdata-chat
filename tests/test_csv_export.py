@@ -13,7 +13,6 @@ import json
 
 import pandas as pd
 import pytest
-from fastapi.testclient import TestClient
 
 from agent import loop as loop_module
 from agent import recepten
@@ -407,17 +406,8 @@ def test_tool_end_event_draagt_de_exportkey(monkeypatch):
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "testuser:testpass")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    from core import auth
-
-    importlib.reload(auth)
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client(users="testuser:testpass", herlaad=("core.auth",), init_db=False)
 
 
 def _login(client):

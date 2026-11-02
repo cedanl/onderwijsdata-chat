@@ -1,7 +1,6 @@
 """The WebSocket session: what it keeps between messages, and what it leaves to the frontend."""
 
 import contextlib
-import importlib
 import json
 import re
 from pathlib import Path
@@ -14,23 +13,8 @@ SOCKET_HEALTH_JS = Path(__file__).resolve().parent.parent / "frontend" / "src" /
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    from fastapi.testclient import TestClient
-
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 def test_websocket_leaves_saving_to_the_frontend(client):

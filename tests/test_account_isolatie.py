@@ -6,8 +6,6 @@ CSV-export. Een vreemde key of een vreemd gesprek krijgt dezelfde 404 als een on
 bevestigt niet dat het bestaat.
 """
 
-import importlib
-
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -18,18 +16,10 @@ from tools.store import KeyMeta
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("CHAT_USERS", "anna:wachtwoord-a,bert:wachtwoord-b")
-    monkeypatch.setenv("CHAT_SECRET", "test-secret-for-tests")
-    from core import auth
-
-    importlib.reload(auth)
-    import server
-
-    importlib.reload(server)
+def client(app_client):
+    c = app_client(users="anna:wachtwoord-a,bert:wachtwoord-b", herlaad=("core.auth",), init_db=False)
     store.clear()
-    yield TestClient(server.app)
+    yield c
     store.clear()
 
 

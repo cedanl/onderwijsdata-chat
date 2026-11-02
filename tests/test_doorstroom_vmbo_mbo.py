@@ -20,6 +20,7 @@ from agent.bronkeuze import KOP, bronregel, met_bronregel
 from agent.grounding import checked_numbers
 from agent.loop import LoopResult
 from agent.uitgangspunt import uitgangspunt
+from tests.cbs_feed import maak_feed
 from tools import cbs_standaard, herlaad, maten, snippet, store
 from tools.maten import DOORSTROOM_VMBO_MBO, MATEN, get_maat, plan
 from tools.query import query_data
@@ -73,18 +74,7 @@ _RIJEN = [
 ]
 
 
-def _feed(dataset_id, **params):
-    """De CBS-feed in het klein: elke `and`-clausule moet kloppen, een `(… or …)`-groep op één van haar delen."""
-    clausules = [c for c in str(params.get("$filter") or "").split(" and ") if c]
-
-    def klopt_een(rij, clausule):
-        kolom, _, waarde = clausule.strip("() ").partition(" eq ")
-        return str(rij[kolom.removeprefix("trim(").removesuffix(")")]) == waarde.strip("'")
-
-    def klopt(rij, clausule):
-        return any(klopt_een(rij, deel) for deel in clausule.split(" or "))
-
-    return [dict(r) for r in _RIJEN if all(klopt(r, c) for c in clausules)]
+_feed = maak_feed(_RIJEN)
 
 
 @pytest.fixture

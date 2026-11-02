@@ -7,12 +7,10 @@ en `cbs:85423NED` kende geen enkele tool. Hier: één ID-spelling aan de toolgre
 contractvelden in dataset_details en het catalogusmanifest in /version.
 """
 
-import importlib
 import json
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from core import catalogusversie
 from tools import canoniek, cbs_meta
@@ -132,21 +130,8 @@ def test_alleen_wat_het_contract_vastlegt():
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 def test_version_noemt_het_manifest_van_de_meegebouwde_cbs_catalogus(client):

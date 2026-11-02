@@ -4,7 +4,6 @@ De CSP stond `cdn.plot.ly` en `cdn.jsdelivr.net` toe in `script-src`; Plotly voo
 en dashboards komt nu van de eigen server, dus er hoort geen derde partij meer in.
 """
 
-import importlib
 import json
 from pathlib import Path
 
@@ -15,21 +14,8 @@ DOCKERFILE = Path(__file__).parent.parent / "Dockerfile"
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "test.db"))
-    monkeypatch.delenv("CHAT_USERS", raising=False)
-    monkeypatch.delenv("CHAT_SECRET", raising=False)
-    from core import auth
-
-    importlib.reload(auth)
-    from persistence import db
-
-    importlib.reload(db)
-    db.init_db()
-    import server
-
-    importlib.reload(server)
-    return TestClient(server.app)
+def client(app_client):
+    return app_client()
 
 
 def _richtlijnen(csp: str) -> dict[str, str]:

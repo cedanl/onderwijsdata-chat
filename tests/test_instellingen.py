@@ -1,9 +1,28 @@
 import importlib
 
+import pandas as pd
 import pytest
 
 # Register en dashboards draaien op bevroren DUO-bestanden, niet op live DUO (#766).
 pytestmark = pytest.mark.usefixtures("duo_fixtures")
+
+# De waardetests (#824) rekenen elk getal met pandas na uit dezelfde fixtures, los van data/dashboard.py.
+_HU = "Hogeschool Utrecht"
+_INST = "INSTELLINGSNAAM_ACTUEEL"
+
+
+def _duo_ho(dataset_id: str, waardekolom: str) -> pd.DataFrame:
+    """Beide resources van een HO-bestand uit de fixtures; DUO's -1 (onderdrukt) telt als 0, zoals het dashboard."""
+    from riodata import duo
+
+    df = pd.concat([duo.load(dataset_id, 0), duo.load(dataset_id, 1)], ignore_index=True)
+    df[waardekolom] = df[waardekolom].where(df[waardekolom] >= 0, 0)
+    return df
+
+
+def _som_per_jaar(df: pd.DataFrame, jaarkolom: str, waardekolom: str, instelling: str = _HU) -> dict[int, int]:
+    rijen = df[df[_INST] == instelling]
+    return {int(j): int(v) for j, v in rijen.groupby(jaarkolom)[waardekolom].sum().items()}
 
 
 # ─── Registry ────────────────────────────────────────────────────────────────
@@ -145,7 +164,33 @@ def test_dashboard_ho_found():
     assert "laatste_jaar" in result
     assert "sectoren" in result
     assert isinstance(result["ingeschrevenen"], dict)
+    assert result["ingeschrevenen"]
     assert all(isinstance(k, (int, str)) for k in result["ingeschrevenen"])
+
+
+def test_dashboard_ho_telt_zoals_de_fixture():
+    from data.dashboard import load_dashboard_ho
+
+    ins = _duo_ho("p01hoinges", "AANTAL_INGESCHREVENEN")
+    result = load_dashboard_ho(_HU)
+    assert result is not None
+
+    verwacht = _som_per_jaar(ins, "STUDIEJAAR", "AANTAL_INGESCHREVENEN")
+    assert verwacht[2025] == 35058  # ijkpunt: HU 2025 in de bevroren fixture
+    assert result["ingeschrevenen"] == verwacht
+    assert result["laatste_jaar"] == max(verwacht) == 2025
+
+    laatste = ins[(ins[_INST] == _HU) & (ins["STUDIEJAAR"] == 2025)]
+    per_sector = laatste.groupby("ONDERDEEL")["AANTAL_INGESCHREVENEN"].sum()
+    assert len(per_sector) > 1
+    assert result["sectoren"] == {k: int(v) for k, v in per_sector.items()}
+    per_geslacht = laatste.groupby("GESLACHT")["AANTAL_INGESCHREVENEN"].sum()
+    assert result["geslacht"] == {k: int(v) for k, v in per_geslacht.items()}
+
+    ej = _duo_ho("p02ho1ejrs", "AANTAL_EERSTEJAARS_INGESCHREVENEN")
+    assert result["eerstejaars"] == _som_per_jaar(ej, "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN")
+    dipl = _duo_ho("p04hogdipl", "AANTAL_GEDIPLOMEERDEN")
+    assert result["gediplomeerden"] == _som_per_jaar(dipl, "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN")
 
 
 def test_dashboard_ho_wo_found():
@@ -321,8 +366,8 @@ def test_api_instellingen_filter_by_type(client):
     resp = client.get("/api/instellingen?type=wo")
     assert resp.status_code == 200
     data = resp.json()
-    assert all(i["type"] == "wo" for i in data)
     assert len(data) > 0
+    assert all(i["type"] == "wo" for i in data)
 
 
 def test_api_instellingen_filter_multiple_types(client):
@@ -440,6 +485,7 @@ def test_dashboard_nationaal_ho():
     assert len(sl) > 0
     for _onderdeel, trend in sl.items():
         assert isinstance(trend, dict)
+        assert trend
         assert all(isinstance(v, int) for v in trend.values())
 
     # eigen_sectoren: {onderdeel: {jaar: int}}
@@ -462,7 +508,42 @@ def test_dashboard_nationaal_ho():
     assert "eigen_positie" in result
     ep = result["eigen_positie"]
     assert isinstance(ep, dict)
+    assert ep
     assert all(isinstance(v, int) and v >= 1 for v in ep.values())
+
+
+def test_dashboard_nationaal_telt_en_rangschikt_zoals_de_fixture():
+    from data.dashboard import load_dashboard_nationaal
+
+    ins = _duo_ho("p01hoinges", "AANTAL_INGESCHREVENEN")
+    result = load_dashboard_nationaal(_HU)
+
+    landelijk = ins.groupby(["ONDERDEEL", "STUDIEJAAR"])["AANTAL_INGESCHREVENEN"].sum()
+    verwacht_landelijk: dict[str, dict[int, int]] = {}
+    for (onderdeel, jaar), waarde in landelijk.items():
+        verwacht_landelijk.setdefault(onderdeel, {})[int(jaar)] = int(waarde)
+    assert verwacht_landelijk
+    assert result["sectoren_landelijk"] == verwacht_landelijk
+    assert result["laatste_jaar"] == 2025
+
+    laatste = ins[ins["STUDIEJAAR"] == 2025]
+    per_inst = laatste.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
+    assert int(per_inst[_HU]) == 35058  # ijkpunt, gelijk aan load_dashboard_ho
+    alle = result["alle_instellingen"]
+    assert {i["naam"]: i["ingeschrevenen"] for i in alle} == {k: int(v) for k, v in per_inst.items()}
+    aantallen = [i["ingeschrevenen"] for i in alle]
+    assert aantallen == sorted(aantallen, reverse=True)
+
+    # Positie per onderdeel: 1 + het aantal instellingen met meer ingeschrevenen in dat onderdeel. Bij een gelijke
+    # stand met HU is de volgorde niet bepaald; die onderdelen slaat de test over.
+    verwacht_positie = {}
+    for onderdeel, groep in laatste.groupby("ONDERDEEL"):
+        sommen = groep.groupby(_INST)["AANTAL_INGESCHREVENEN"].sum()
+        if _HU not in sommen.index or (sommen == sommen[_HU]).sum() > 1:
+            continue
+        verwacht_positie[onderdeel] = 1 + int((sommen > sommen[_HU]).sum())
+    assert verwacht_positie
+    assert {o: p for o, p in result["eigen_positie"].items() if o in verwacht_positie} == verwacht_positie
 
 
 def test_dashboard_nationaal_endpoint(client):
@@ -522,6 +603,28 @@ def test_dashboard_rendement_ho():
     assert isinstance(pr, dict)
 
 
+def test_dashboard_rendement_ho_rekent_de_cohorten_zoals_de_fixture():
+    from data.dashboard import load_dashboard_rendement
+
+    ej = _som_per_jaar(
+        _duo_ho("p02ho1ejrs", "AANTAL_EERSTEJAARS_INGESCHREVENEN"), "STUDIEJAAR", "AANTAL_EERSTEJAARS_INGESCHREVENEN"
+    )
+    dipl = _som_per_jaar(_duo_ho("p04hogdipl", "AANTAL_GEDIPLOMEERDEN"), "DIPLOMAJAAR", "AANTAL_GEDIPLOMEERDEN")
+    result = load_dashboard_rendement(_HU)
+
+    cohorten = {c["instroom_jaar"]: c for c in result["pseudo_cohorten"]}
+    assert cohorten
+    assert {j: c["instroom"] for j, c in cohorten.items()} == ej
+    for jaar, cohort in cohorten.items():
+        for t in (3, 4, 5):
+            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t, 0), (jaar, t)
+
+    # Rendement na 3 jaar: gediplomeerden in jaar+3 gedeeld door de instroom, alleen als dat niet boven 1 komt.
+    verwacht = {j: round(dipl[j + 3] / ej[j], 4) for j in ej if 0 < dipl.get(j + 3, 0) <= ej[j]}
+    assert verwacht == {2021: round(6438 / 7108, 4)}  # ijkpunt: instroom 2021, diploma's 2024
+    assert result["rendement_per_jaar"] == verwacht
+
+
 def test_dashboard_rendement_endpoint(client):
     resp = client.get("/api/dashboard/rendement?instelling=Hogeschool+Utrecht")
     assert resp.status_code == 200
@@ -557,6 +660,7 @@ def test_dashboard_arbeidsmarktmatch():
 
     # vacatures_per_sector: {onderdeel: int}, gedeelde clusters naar rato (#455)
     vps = result["vacatures_per_sector"]
+    assert vps
     assert set(vps) <= set(gps)
     assert all(isinstance(v, int) for v in vps.values())
 
@@ -573,6 +677,7 @@ def test_dashboard_arbeidsmarktmatch():
     ms = result["match_score"]
     assert isinstance(ms, dict)
     valid_scores = {"schaarste", "evenwicht", "overaanbod", None}
+    assert ms
     assert all(v in valid_scores for v in ms.values())
 
 
