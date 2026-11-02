@@ -33,6 +33,12 @@ bestanden in `tests/fixtures/duo/` (fixture `duo_fixtures` in `tests/conftest.py
 `uv run python scripts/duo_testfixtures.py` als een test een ander DUO-bestand of een andere instelling
 nodig heeft. Of de bronnen zelf nog antwoorden, controleert `bron:ping` (`scripts/bronping.py`, dagelijks).
 
+De rekenende tools (get_maat, get_mbo_indicatoren, get_accreditatie, get_inspectieoordeel, UWV/ROA en compute_kpi)
+hebben gouden tests met verwachte getallen in `tests/test_gouden_*.py`, op bevroren bronnen in
+`tests/fixtures/gouden/` (fixture `gouden`, die ook het netwerk dichtzet; #870). `bronnen.json` noemt per bestand de
+bron en de ophaaldatum. Ververs ze met `uv run python scripts/gouden_testfixtures.py` en reken de verwachte waarden
+daarna opnieuw na met pandas op de nieuwe bestanden (de berekening staat bij elke test).
+
 `ty-baseline.txt` bevat de ty-diagnostics die er al waren. Los je er een paar op, draai dan
 `uv run python scripts/ty_baseline.py --update` en commit de kleinere baseline mee. Werk de
 baseline niet bij om een nieuwe diagnostic weg te krijgen; los die op.
