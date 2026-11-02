@@ -33,22 +33,38 @@ _LABEL_SUFFIX = "_label"
 # Dimensiekolommen per CBS-dataset-ID, vastgelegd bij get_cbs_data. Per dataset en
 # niet per key, zodat afgeleide keys (cbs:<id>:<hash>) ze zonder netwerk vinden.
 _dimensies: dict[str, list[str]] = {}
+# De eenheid per onderwerpkolom (DataProperties.Unit: 'aantal', '%', 'x 1000'), op dezelfde manier vastgelegd:
+# een som over een %-kolom weigert query_data ook op een afgeleide key (#866).
+_eenheden: dict[str, dict[str, str]] = {}
 
 
 def register_dimensions(dataset_id: str, columns: list[str]) -> None:
     _dimensies[dataset_id] = list(columns)
 
 
+def register_units(dataset_id: str, units: dict[str, str]) -> None:
+    _eenheden[dataset_id] = dict(units)
+
+
 def clear_dimensions() -> None:
+    """Vergeet de dimensies en eenheden van elke dataset; hoort bij store.clear()."""
     _dimensies.clear()
+    _eenheden.clear()
+
+
+def _dataset_van(data_key: str) -> str | None:
+    parts = data_key.split(":")
+    return parts[1] if parts[0] == "cbs" and len(parts) >= 2 else None
 
 
 def dimension_columns(data_key: str) -> list[str]:
     """Dimensiekolommen voor een `cbs:`-key; leeg als ze niet bekend zijn."""
-    parts = data_key.split(":")
-    if parts[0] != "cbs" or len(parts) < 2:
-        return []
-    return _dimensies.get(parts[1], [])
+    return _dimensies.get(_dataset_van(data_key) or "", [])
+
+
+def column_unit(data_key: str, column: str) -> str | None:
+    """De CBS-eenheid van `column` in een `cbs:`-key ('%', 'aantal'); None als ze niet bekend is."""
+    return _eenheden.get(_dataset_van(data_key) or "", {}).get(column)
 
 
 def _guarded_columns(data_key: str) -> list[str]:
@@ -112,6 +128,16 @@ def check_dimensions_known(data_key: str) -> str | None:
         "dus niet te controleren of een som totaalrijen meetelt. Aggregeer niet: laad de data "
         "opnieuw met get_cbs_data, of toon de rijen zonder aggregatie."
     )
+
+
+def check_aggregation(data_key: str, df: pd.DataFrame, keep: list[str]) -> str | None:
+    """De dimensiecontrole vóór elke berekening over rijen: query_data en compute_kpi delen haar (#863).
+
+    Eerst of de dimensies bekend zijn (#313), dan of elke dimensie buiten `keep` vastligt (#162). Zo
+    geeft een KPI over een open dimensie dezelfde fout als een som in query_data, en weet het model
+    dat het eerst moet filteren of groeperen.
+    """
+    return check_dimensions_known(data_key) or check_dimensions_pinned(data_key, df, keep)
 
 
 def _ophalen_mislukt(wat: str, dataset_id: str, e: Exception) -> None:
@@ -470,6 +496,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
         register_dimensions(dataset_id, dims)
+        register_units(dataset_id, {col: d["unit"] for col, d in col_defs.items() if d.get("unit")})
     schema = [
         {
             "kolom": col,

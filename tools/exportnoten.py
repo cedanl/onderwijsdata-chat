@@ -31,4 +31,4 @@ def herkomstregels(key: str) -> list[str]:
         )
     if known is not None and not known.volledig:
         regels.append(ONVOLLEDIG_EXPORT)
-    return regels + duo.sentinel_notes(duo.onderdrukt(key))
+    return regels + duo.sentinel_notes(duo.onderdrukt(key), duo.bron_van(key))

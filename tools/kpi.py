@@ -11,7 +11,8 @@ import json
 
 import pandas as pd
 
-from . import cbs_afronding, fouten, periode, store
+from . import cbs_afronding, fouten, optelbaar, periode, store
+from .cbs import check_aggregation
 from .getal import nl_getal
 
 # Toegestane maten. Gesloten set: een onbekende maat is een fout, geen
@@ -42,6 +43,10 @@ _TREND_METRICS = frozenset({"delta", "pct_change", "max_drop", "max_rise"})
 # Maten over een reeks: met één waarde is er geen verandering te berekenen. "0,0%" over één jaar
 # las als "geen verandering" (audit 19-10, #631); dat is een fout, geen uitkomst.
 _REEKS_METRICS = frozenset({"delta", "pct_change", "index", "max_drop", "max_rise"})
+
+# Maten die één waarde per periode lezen: met meer rijen per periode (per instelling, per geslacht) is
+# niet te zeggen welke de eerste of laatste is (#863). Een som of maximum over die rijen kan wel.
+_PER_PERIODE_METRICS = _REEKS_METRICS | {"first", "last"}
 
 # Maten met een relatieve uitkomst worden op één decimaal getoond.
 _DECIMAL_METRICS = frozenset({"pct_change", "index", "mean"})
@@ -151,6 +156,26 @@ def _reeks(
     return df.sort_values(sort_column) if sort_column else df
 
 
+def _reeksfout(data_key: str, reeks: pd.DataFrame, value_column: str, sort_column: str | None, metric: str):
+    """Rijen waarover de maat niet eenduidig is (#863): een open CBS-dimensie, of meer rijen per periode.
+
+    Eén rij per periode is eenduidig: dan ligt elke andere dimensie vast. Anders geldt de controle van
+    query_data (cbs.check_aggregation) met de periodekolom als wat behouden blijft, en daarna voor een
+    bron zonder dimensieregistratie (DUO) de toets op meer rijen per periode.
+    """
+    if sort_column and not reeks[sort_column].duplicated().any():
+        return None
+    if fout := check_aggregation(data_key, reeks, [sort_column] if sort_column else []):
+        return fout
+    if metric in _PER_PERIODE_METRICS and sort_column:
+        return (
+            f"'{metric}' leest één waarde per periode, maar deze data heeft meer dan één rij per periode in "
+            f"'{sort_column}'. Groepeer eerst met query_data (group_by=['{sort_column}'], "
+            f"aggregate={{'{value_column}': 'sum'}}) of filter op één categorie, en reken op die data_key."
+        )
+    return None
+
+
 def _rekenfout(metric: str, value_column: str, series: pd.Series, step) -> str | None:
     """Een maat die over deze reeks niet bestaat: één waarde, geen stap die kant op, of delen door een eerste 0."""
     if metric in _REEKS_METRICS and series.size < 2:
@@ -225,12 +250,16 @@ def compute_kpi(
         return _error(store.ONVOLLEDIG)
     if fout := _invoerfout(df, value_column, sort_column):
         return _error(fout)
+    if metric == "sum" and (fout := optelbaar.somfout(data_key, value_column)):
+        return _error(fout)
 
     known = store.meta(data_key)
     bron = known.bron if known else ""
     reeks = _reeks(df, sort_column, van, tot, bron)
     if isinstance(reeks, str):
         return _error(reeks)
+    if fout := _reeksfout(data_key, reeks, value_column, sort_column, metric):
+        return _error(fout)
 
     series = pd.to_numeric(reeks[value_column], errors="coerce").dropna()
     if series.empty:

@@ -5,7 +5,7 @@ from collections import Counter
 import pandas as pd
 from riodata import duo as _duo
 
-from core.sentinels import BETEKENIS, EMPTY_CELLS
+from core.sentinels import BETEKENIS, CBS_BETEKENIS, EMPTY_CELLS
 
 from . import (
     bestandsversie,
@@ -63,11 +63,36 @@ def column_definitions(columns: list[str], dataset_id: str) -> dict[str, str]:
 # dezelfde filter/selectie/groupby als de data kan meenemen: de melding hoort bij de
 # geselecteerde rijen, niet bij de hele dataset (#171). Na maskering is het aantal
 # niet meer uit de data af te leiden: de -1'en zijn dan weg. Het maskeren zelf staat
-# in core.sentinels en gebeurt in store.put() voor elke `duo:`-key.
+# in core.sentinels en gebeurt in store.put() voor elke `duo:`-key. Een geladen CBS-tabel
+# legt hier op dezelfde manier haar lege cellen ('.') vast (#862): de telling, de noten en
+# de ondergrens werken voor beide bronnen hetzelfde, alleen de woorden verschillen.
 _sentinel_cells: dict[str, pd.DataFrame] = {}
 # Keys waarvan elke rij een groepstotaal is (query_data met group_by/aggregate): daar zijn de
 # cellen per rij de onderdrukte broncellen van die groep (CH-07).
 _groepen: set[str] = set()
+
+
+# Hoe de noten een onderdrukte cel noemen, per bron (#862).
+_CELLEN = {
+    "duo": ("cellen met DUO-sentinel -1", "-1", BETEKENIS),
+    "cbs": ("lege CBS-cellen ('.')", "'.'", CBS_BETEKENIS),
+}
+
+
+def bron_van(key: str) -> str:
+    """De bron van een store-key (duo, cbs, rio): uit de meta, anders het voorvoegsel van de key."""
+    known = store.meta(key)
+    return known.bron if known else key.split(":", 1)[0]
+
+
+def _cellen(bron: str) -> tuple[str, str, str]:
+    """(hoe de cellen heten, hun teken, wat ze betekenen) in de woorden van de bron; DUO als de bron er geen kent."""
+    return _CELLEN.get(bron, _CELLEN["duo"])
+
+
+def celteken(bron: str) -> str:
+    """Hoe de bron een onderdrukte cel schrijft: DUO -1, CBS '.'."""
+    return _cellen(bron)[1]
 
 
 def count_cells(cells: pd.DataFrame | None) -> dict[str, int]:
@@ -173,22 +198,22 @@ def per_periode(cells: pd.DataFrame | None, periodes: pd.Series, bron: str) -> d
     return dict(sorted(uit.items()))
 
 
-def periode_noot(per_periode: dict[str, int], kolom: str) -> list[str]:
+def periode_noot(per_periode: dict[str, int], kolom: str, bron: str = "duo") -> list[str]:
     """De telling per jaar voor de tool-output: het model kiest dan geen bestandsbreed getal (CH-07)."""
     if not per_periode:
         return []
     telling = ", ".join(f"{p}: {n}" for p, n in per_periode.items())
     return [
-        f"Onderdrukte cellen (-1) in deze selectie per jaar ({kolom}): {telling}. Noem bij een antwoord over "
-        "één jaar alleen het getal van dat jaar; een telling over het hele bestand hoort niet bij deze selectie."
+        f"Onderdrukte cellen ({celteken(bron)}) in deze selectie per jaar ({kolom}): {telling}. "
+        "Noem bij een antwoord over één jaar alleen het getal van dat jaar; een telling over het hele bestand hoort niet bij deze selectie."
     ]
 
 
-def sentinel_notes(counts: dict[str, int]) -> list[str]:
-    """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output."""
+def sentinel_notes(counts: dict[str, int], bron: str = "duo") -> list[str]:
+    """Leesbare melding per kolom met onderdrukte cellen, voor in de tool-output; DUO -1 of CBS '.' (#862)."""
+    cellen, _, betekenis = _cellen(bron)
     return [
-        f"{n} cellen met DUO-sentinel -1 in '{col}' uitgesloten ({BETEKENIS}) — een totaal waarin zo'n cel valt, "
-        "is daardoor een ondergrens"
+        f"{n} {cellen} in '{col}' uitgesloten ({betekenis}) — een totaal waarin zo'n cel valt, is daardoor een ondergrens"
         for col, n in counts.items()
     ]
 
@@ -227,6 +252,28 @@ def json_waarde(v, afronden: bool = False):
         if afronden or v.is_integer():
             return round(v)
     return v
+
+
+# Hoe een noot een maat noemt die over onderdrukte cellen heen rekent zonder ondergrens te zijn (#866).
+# `size` telt rijen, ook lege: daar valt geen cel weg.
+_MAAT_ZONDER_CELLEN = {
+    "mean": "het gemiddelde",
+    "min": "het minimum",
+    "max": "het maximum",
+    "count": "de telling",
+    "nunique": "het aantal verschillende waarden",
+}
+
+
+def zonder_cellen_noten(counts: dict[str, int], maten: dict[str, str], bron: str = "duo") -> list[str]:
+    """De noot bij een gemiddelde (of minimum, maximum, telling) over onderdrukte cellen: geen ondergrens (#866)."""
+    cellen, _, betekenis = _cellen(bron)
+    return [
+        f"{n} {cellen} in '{col}' uitgesloten ({betekenis}) — {_MAAT_ZONDER_CELLEN[maten[col]]} is berekend "
+        "zonder die cellen; dat is geen ondergrens"
+        for col, n in counts.items()
+        if maten.get(col) in _MAAT_ZONDER_CELLEN
+    ]
 
 
 def resource_sentinel_notes(counts: dict[str, int]) -> list[str]:

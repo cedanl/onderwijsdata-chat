@@ -1,0 +1,109 @@
+{
+ "bron": "CBS OData 85525NED, opgehaald 2026-11-02: eerste zes rijen (Nederland, 2013-2018), ingekort tot Bevolking_1 (x 1000) en k_3HboWo_4 (%)",
+ "definitions": {
+  "Geslacht": {
+   "title": "Geslacht",
+   "description": "",
+   "unit": "",
+   "type": "Dimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Leeftijd": {
+   "title": "Leeftijd",
+   "description": "",
+   "unit": "",
+   "type": "Dimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "RegioS": {
+   "title": "Regio's",
+   "description": "",
+   "unit": "",
+   "type": "GeoDimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Perioden": {
+   "title": "Perioden",
+   "description": "",
+   "unit": "",
+   "type": "TimeDimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Bevolking_1": {
+   "title": "Bevolking",
+   "description": "",
+   "unit": "aantal",
+   "type": "Topic",
+   "datatype": "Long",
+   "decimals": 0
+  },
+  "k_3HboWo_4": {
+   "title": "3 Hbo, wo",
+   "description": "Het behaalde onderwijsniveau omvat de hbo- en wo-opleidingen (inclusief die leidend tot de doctorsgraad).",
+   "unit": "%",
+   "type": "Topic",
+   "datatype": "Double",
+   "decimals": 1
+  }
+ },
+ "rows": [
+  {
+   "ID": 0,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2013JJ00",
+   "Bevolking_1": 12724000,
+   "k_3HboWo_4": 26.7
+  },
+  {
+   "ID": 1,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2014JJ00",
+   "Bevolking_1": 12782300,
+   "k_3HboWo_4": 27.3
+  },
+  {
+   "ID": 2,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2015JJ00",
+   "Bevolking_1": 12849400,
+   "k_3HboWo_4": 27.8
+  },
+  {
+   "ID": 3,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2016JJ00",
+   "Bevolking_1": 12939500,
+   "k_3HboWo_4": 28.1
+  },
+  {
+   "ID": 4,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2017JJ00",
+   "Bevolking_1": 13028400,
+   "k_3HboWo_4": 28.7
+  },
+  {
+   "ID": 5,
+   "Geslacht": "T001038",
+   "Leeftijd": "52052",
+   "RegioS": "NL01",
+   "Perioden": "2018JJ00",
+   "Bevolking_1": 13115700,
+   "k_3HboWo_4": 29.6
+  }
+ ]
+}

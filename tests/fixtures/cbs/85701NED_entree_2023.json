@@ -1,0 +1,143 @@
+{
+ "bron": "CBS OData 85701NED, opgehaald 2026-11-02: entreeopleiding 2023/'24, vier gemeenten, drie geslachtscodes; GM0738 en GM0366 zijn '.' (null)",
+ "definitions": {
+  "Geslacht": {
+   "title": "Geslacht",
+   "description": "",
+   "unit": "",
+   "type": "Dimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Onderwijssoort": {
+   "title": "Onderwijssoort",
+   "description": "",
+   "unit": "",
+   "type": "Dimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Regiokenmerken": {
+   "title": "Regiokenmerken",
+   "description": "",
+   "unit": "",
+   "type": "GeoDimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "Perioden": {
+   "title": "Perioden",
+   "description": "",
+   "unit": "",
+   "type": "TimeDimension",
+   "datatype": "",
+   "decimals": null
+  },
+  "LeerlingenStudenten_1": {
+   "title": "Leerlingen/studenten",
+   "description": "",
+   "unit": "aantal",
+   "type": "Topic",
+   "datatype": "Long",
+   "decimals": 0
+  }
+ },
+ "rows": [
+  {
+   "ID": 138612,
+   "Geslacht": "T001038",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM1680",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 10
+  },
+  {
+   "ID": 138627,
+   "Geslacht": "T001038",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0738",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  },
+  {
+   "ID": 138642,
+   "Geslacht": "T001038",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0358",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 40
+  },
+  {
+   "ID": 138867,
+   "Geslacht": "T001038",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0366",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  },
+  {
+   "ID": 322212,
+   "Geslacht": "3000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM1680",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 10
+  },
+  {
+   "ID": 322227,
+   "Geslacht": "3000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0738",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  },
+  {
+   "ID": 322242,
+   "Geslacht": "3000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0358",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 20
+  },
+  {
+   "ID": 322467,
+   "Geslacht": "3000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0366",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  },
+  {
+   "ID": 505812,
+   "Geslacht": "4000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM1680",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 10
+  },
+  {
+   "ID": 505827,
+   "Geslacht": "4000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0738",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  },
+  {
+   "ID": 505842,
+   "Geslacht": "4000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0358",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": 10
+  },
+  {
+   "ID": 506067,
+   "Geslacht": "4000",
+   "Onderwijssoort": "A042650",
+   "Regiokenmerken": "GM0366",
+   "Perioden": "2023SJ00",
+   "LeerlingenStudenten_1": null
+  }
+ ]
+}

@@ -36,7 +36,7 @@ Daarnaast per soort:
 |---|---|---|---|
 | `sentinel` | `waarden` | lijst van gehele getallen | Celwaarden die een onderdrukte cel zijn, bijv. `[-1]`. |
 | | `betekenis` | tekst | Wat zo'n cel is, zoals de tool-output en snippets het zeggen. |
-| | `uitgezonderd_als_kolom_bevat` | lijst van teksten | Een kolom waarvan de naam een van deze delen bevat, blijft ongemaskeerd (daar kan −1 een echte waarde zijn). In hoofdletters. |
+| | `uitgezonderd_als_kolom_bevat` | lijst van teksten | Een kolom waarvan de naam een van deze delen bevat, blijft ongemaskeerd (daar kan −1 een echte waarde zijn), een lege CBS-cel telt er niet als onderdrukt (#862), en `query_data` en `compute_kpi` weigeren er een som over (#866). In hoofdletters. |
 | `opleidingsvorm` | `datasets` | lijst van dataset-ID's | De bestanden waarvan de DUO-beschrijving de codes noemt. |
 | | `codes` | tabel `CODE = "woord"` | Bijv. `{ VT = "voltijd", DT = "deeltijd", DU = "duaal" }`. Losse woorden, geen leestekens. |
 | `kolomcorrectie` | `datasets` | lijst van dataset-ID's | De bestanden waarin de kolom deze betekenis heeft. |
