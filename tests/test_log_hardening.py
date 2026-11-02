@@ -395,3 +395,38 @@ def test_een_chatverbinding_krijgt_een_verbindings_id_in_het_log(client, caplog)
     [regel] = [r.getMessage() for r in caplog.records if r.getMessage().startswith("VERBINDING open")]
     # Zonder login en zonder LOG_HASH_SECRET geen pseudoniem (#678).
     assert re.fullmatch(r"VERBINDING open verbinding=[0-9a-f]{8} gebruiker=-", regel)
+
+
+def test_startregel_noemt_oidc_en_database_in_het_json_log(caplog, monkeypatch):
+    """#816: de JSONFormatter neemt geen extra-velden over; OIDC-status en databasesoort staan in de berichttekst."""
+    import asyncio
+
+    import logging_config
+    import server
+    from config import Config
+
+    monkeypatch.setattr(Config, "LOG_LEVEL", "INFO")
+    monkeypatch.setattr(Config, "POSTGRES_URI", None)
+    monkeypatch.setattr(server, "is_oidc_configured", lambda: True)
+    with caplog.at_level("INFO", logger="server"):
+        asyncio.run(server.on_startup())
+    [record] = [r for r in caplog.records if r.getMessage().startswith("Application startup completed")]
+    bericht = json.loads(logging_config.JSONFormatter().format(record))["message"]
+    assert "oidc_enabled=True" in bericht
+    assert "database=SQLite" in bericht
+
+
+def test_een_fout_bij_afsluiten_logt_type_en_kenmerk(caplog, monkeypatch):
+    """#817: een driverfout kan host of databasenaam citeren; op WARNING alleen type en kenmerk."""
+    import asyncio
+
+    import server
+
+    def faal():
+        raise RuntimeError("verbinding met db-geheim.intern verbroken")
+
+    monkeypatch.setattr(server.persistence_db, "close", faal)
+    with caplog.at_level("WARNING", logger="server"):
+        asyncio.run(server.on_shutdown())
+    assert "db-geheim" not in caplog.text
+    assert "RuntimeError fout_len=" in caplog.text

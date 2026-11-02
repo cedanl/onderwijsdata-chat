@@ -29,14 +29,8 @@ class JSONFormatter(logging.Formatter):
         if (verbinding := getattr(record, "verbinding", GEEN)) != GEEN:
             log_obj["verbinding"] = verbinding
 
-        # Add exception info if present
         if record.exc_info:
             log_obj["exception"] = self.formatException(record.exc_info)
-
-        # Add extra fields if provided
-        if hasattr(record, "extra_fields"):
-            log_obj.update(record.extra_fields)
-
         return json.dumps(log_obj, default=str)
 
 
@@ -51,11 +45,9 @@ def setup_logging(level: str = "INFO", json_format: bool = True) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(level.upper())
 
-    # Remove existing handlers
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level.upper())
 
