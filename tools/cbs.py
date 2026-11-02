@@ -113,6 +113,16 @@ def check_dimensions_known(data_key: str) -> str | None:
     )
 
 
+def check_aggregation(data_key: str, df: pd.DataFrame, keep: list[str]) -> str | None:
+    """De dimensiecontrole vóór elke berekening over rijen: query_data en compute_kpi delen haar (#863).
+
+    Eerst of de dimensies bekend zijn (#313), dan of elke dimensie buiten `keep` vastligt (#162). Zo
+    geeft een KPI over een open dimensie dezelfde fout als een som in query_data, en weet het model
+    dat het eerst moet filteren of groeperen.
+    """
+    return check_dimensions_known(data_key) or check_dimensions_pinned(data_key, df, keep)
+
+
 def _ophalen_mislukt(wat: str, dataset_id: str, e: Exception) -> None:
     """Een mislukte CBS-call in het log.
 

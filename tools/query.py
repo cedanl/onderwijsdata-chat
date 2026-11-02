@@ -29,7 +29,7 @@ from . import (
 )
 from .canoniek import parse_filter_key
 from .catalog import resources_met_kolom
-from .cbs import check_dimensions_known, check_dimensions_pinned
+from .cbs import check_aggregation, check_dimensions_pinned
 from .rio import rio_filters
 
 logger = logging.getLogger(__name__)
@@ -301,10 +301,10 @@ def _kolomfout(data_key: str, df: pd.DataFrame, columns, group_by, aggregate) ->
     daarna zijn weggeselecteerde dimensies onzichtbaar."""
     if columns and (missing := [c for c in columns if c not in df.columns]):
         return f"Kolommen niet gevonden: {missing}. Beschikbaar: {list(df.columns)}"
-    if aggregate and (err := check_dimensions_known(data_key)):
-        return err
-    if aggregate or columns:
-        return check_dimensions_pinned(data_key, df, keep=(group_by or []) if aggregate else columns)
+    if aggregate:
+        return check_aggregation(data_key, df, keep=group_by or [])
+    if columns:
+        return check_dimensions_pinned(data_key, df, keep=columns)
     return None
 
 
