@@ -13,7 +13,7 @@ from core.config import STORE_MAX_MB
 from core.sentinels import mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
-from .scopeprofiel import bronetiket
+from .catalog import bronetiketten
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,7 @@ def herkomst(key: str) -> list[str]:
     if known is None:
         return []
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
-    if etiket := bronetiket(known.dataset):
+    if etiket := bronetiketten(known.dataset):
         bron += f", {etiket}"
     if known.resource is not None:
         bron += f", resource {known.resource}"

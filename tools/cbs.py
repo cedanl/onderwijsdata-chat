@@ -17,7 +17,7 @@ from core.logging_util import foutkenmerk
 
 from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, cbs_standaard, fouten, periode, scopeprofiel, store
 from .bronretry import haal_op_met_retry
-from .catalog import bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
+from .catalog import archief, bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
 from .definitie import met_voorbeeldstatus
 
@@ -499,6 +499,8 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     result = {
         "data_key": key,
         "catalogus_titel": bron_titel(dataset_id),
+        # Een tabel die CBS niet meer bijwerkt, zegt dat zelf (#865): het model kan het noemen of een opvolger zoeken.
+        **(archief(dataset_id) or {}),
         **store.rijtelling(len(df), not truncated),
         "kolommen": schema,
         "preview": preview,

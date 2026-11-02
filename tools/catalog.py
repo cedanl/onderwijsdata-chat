@@ -247,6 +247,7 @@ _SEARCH_PUBLIC_FIELDS = frozenset(
         "filters",
         "sub_resources",
         "context",
+        "archief",
     }
 )
 # Eén korte tekst per hit: de samenvatting, anders de beschrijving of het doel, afgekapt.
@@ -662,6 +663,12 @@ def _context(entry: dict) -> dict:
     return {"context": scopeprofiel.HO_CONTEXT_ETIKET} if scopeprofiel.is_ho_context(entry) else {}
 
 
+def _archief(entry: dict) -> dict:
+    """Het archiefetiket voor een treffer (#865), zodat het model een lopende opvolger kan verkiezen; zoals `_context`
+    op de treffer, nooit op het gecachete catalogusrecord."""
+    return {"archief": etiket} if (etiket := _archiefetiket(entry)) else {}
+
+
 def _verzamel(
     words: list[tuple[str, float]], source: str, termen: list[str], nodig: int, *, ho_vraag: bool
 ) -> tuple[list, list, list]:
@@ -675,7 +682,7 @@ def _verzamel(
 
     if source in ("cbs", "both"):
         treffers += [
-            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry, **_context(entry)})
+            (s, entry, {"bron": "CBS", "status": STATUS_OPVRAAGBAAR, **entry, **_context(entry), **_archief(entry)})
             for entry in _cbs()
             if _zoekbaar(entry, ho_vraag) and (s := _score(entry, words))
         ]
@@ -1193,15 +1200,53 @@ def catalogus_titel(dataset_id: str) -> str:
     return dataset_id
 
 
+def _cbs_record(dataset_id: str) -> dict | None:
+    """Het CBS-record binnen het profiel, in elke spelling van het ID; None buiten de CBS-catalogus."""
+    kaal = bron_id(dataset_id)
+    return next((e for e in _cbs() if e.get("_cbs_id") == kaal), None)
+
+
+def _laatste_periode(entry: dict) -> str | None:
+    """De laatste periode in de tabel volgens de catalogus ("2016/'17"); None als de catalogus haar niet kent."""
+    waarden = entry.get("_periode_waarden") or []
+    return str(waarden[-1]) if waarden else None
+
+
+def _archiefetiket(entry: dict) -> str | None:
+    """'gearchiveerd, laatste periode 2016/'17' voor een tabel die CBS niet meer bijwerkt (#865); anders None."""
+    if not entry.get("_archief"):
+        return None
+    laatste = _laatste_periode(entry)
+    return f"gearchiveerd, laatste periode {laatste}" if laatste else "gearchiveerd"
+
+
+def archief(dataset_id: str) -> dict | None:
+    """`gearchiveerd: true` en de laatste periode van een gearchiveerde CBS-tabel, voor het toolresultaat (#865)."""
+    entry = _cbs_record(dataset_id)
+    if entry is None or not entry.get("_archief"):
+        return None
+    laatste = _laatste_periode(entry)
+    return {"gearchiveerd": True, **({"laatste_periode": laatste} if laatste else {})}
+
+
+def bronetiketten(dataset_id: str) -> str | None:
+    """Wat een bronregel achter de titel zet: het geladen deel of 'vo-context voor ho' (scopeprofiel.bronetiket) en
+    bij een gearchiveerde CBS-tabel het archief met de laatste periode (#865); None als er niets bij hoort."""
+    kaal = bron_id(dataset_id)
+    entry = _cbs_record(kaal)
+    etiketten = [e for e in (scopeprofiel.bronetiket(kaal), _archiefetiket(entry) if entry else None) if e]
+    return ", ".join(etiketten) or None
+
+
 def bron_titel(dataset_id: str) -> str:
-    """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45), of
-    'vo-context voor ho' (#557). Elke spelling van het ID (`cbs:85566ned`) vindt dezelfde titel;
-    net als catalogus_titel het ID zelf als de catalogus de dataset niet kent."""
+    """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45), 'vo-context voor ho'
+    (#557) of het archief (#865). Elke spelling van het ID (`cbs:85566ned`) vindt dezelfde titel; net als
+    catalogus_titel het ID zelf als de catalogus de dataset niet kent."""
     kaal = bron_id(dataset_id)
     titel = catalogus_titel(kaal)
     if titel == kaal:
         return dataset_id
-    etiket = scopeprofiel.bronetiket(kaal)
+    etiket = bronetiketten(kaal)
     return f"{titel}, {etiket}" if etiket else titel
 
 
