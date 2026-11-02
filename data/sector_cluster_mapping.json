@@ -4,7 +4,13 @@
     "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
     "script": "scripts/refresh_sector_mapping.py",
     "herkomst": "LLM-classificatie, niet van UWV",
-    "model": "onbekend"
+    "model": "onbekend",
+    "prompt": "onbekend",
+    "validatie": {
+      "status": "open",
+      "steekproef": "docs/sector-cluster-steekproef.csv",
+      "toelichting": "30 clusters uit de snapshot (seed 873, scripts/steekproef_sector_mapping.py) wachten op handmatige beoordeling; het aantal juist en onjuist volgt daarna (#873)."
+    }
   },
   "_indelingen": {
     "hbo/wo": [
@@ -39,6 +45,33 @@
       "Zorg en welzijn"
     ]
   },
+  "_niet_toegewezen": [
+    "Architecten bouw",
+    "Bedrijfsleiders slachterijen en vleeswarenindustrie",
+    "Bloemen- en plantentelers",
+    "Boomkwekers",
+    "Controleurs textiel",
+    "Demonstrateurs",
+    "Inspecteurs verkeer en vervoer",
+    "Landmeters",
+    "Leidinggevenden brandweer",
+    "Leidinggevenden zeevaart",
+    "Medewerkers grafisch bedrijfsbureau",
+    "Medewerkers slachterijen en vleesbewerkers",
+    "Medewerkers uitvaartverzorging",
+    "Medewerkers zaadteelt en veredeling",
+    "Metaalschilders en spuiters",
+    "Officieren",
+    "Ondersteuners museumbeheer",
+    "Onderzoekers bedrijfs- en economische wetenschappen",
+    "Paardenhouders en manegemedewerkers",
+    "Piloten",
+    "Slagers",
+    "Stedenbouwkundigen en planologen",
+    "Veevoortplantingsdeskundigen",
+    "Visbewerkers",
+    "Wasserijmedewerkers"
+  ],
   "ECONOMIE": [
     "Accountants, controllers en belastinginspecteurs",
     "Accountmanagers",

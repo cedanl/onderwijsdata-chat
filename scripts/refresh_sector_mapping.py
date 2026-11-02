@@ -10,14 +10,17 @@ Het script:
   2. Vraagt de LLM (via litellm) per indeling (hbo/wo-onderdelen en mbo-sectoren) welke clusters bij
      welke sector passen: één aanroep per indeling, met alle sectoren van die indeling in de prompt
   3. Schrijft het resultaat naar data/sector_cluster_mapping.json: in `_manifest` de datum, de herkomst
-     (een LLM-classificatie, niet van UWV) en het model (#460), in `_indelingen` welke sector bij welke
-     indeling hoort, en elke sector, ook zonder clusters (#455)
+     (een LLM-classificatie, niet van UWV), het model (#460), de prompt als sha256 en de validatie, die bij een
+     nieuwe mapping openstaat (#873); in `_indelingen` welke sector bij welke indeling hoort, elke sector, ook
+     zonder clusters (#455), en in `_niet_toegewezen` de clusters die het model bij geen enkele sector zette (#873)
 
-Draai dit opnieuw als UWV een nieuw snapshot publiceert.
+Draai dit opnieuw als UWV een nieuw snapshot publiceert, na scripts/uwv_testfixture.py, en trek daarna een nieuwe
+steekproef met scripts/steekproef_sector_mapping.py.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from datetime import date
@@ -109,11 +112,11 @@ def lees_antwoord(raw: str) -> dict[str, list[str]]:
     return json.loads(raw.strip())
 
 
-def classificeer_via_llm(indeling: str, sectoren: dict[str, str], clusters: list[str]) -> dict[str, list[str]]:
+def classificeer_via_llm(indeling: str, prompt: str) -> dict[str, list[str]]:
     print(f"LLM classificeert clusters voor {indeling}...", flush=True)
     response = litellm.completion(
         model=MODEL,
-        messages=[{"role": "user", "content": _prompt(indeling, sectoren, clusters)}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=16000,
     )
     inhoud = response.choices[0].message.content
@@ -134,39 +137,50 @@ def onbekende_clusters(per_indeling: dict[str, dict[str, list[str]]], clusters: 
 
 
 def bouw_mapping(
-    kop: dict[str, str], per_indeling: dict[str, dict[str, list[str]]], clusters: list[str]
+    kop: dict[str, Any], per_indeling: dict[str, dict[str, list[str]]], clusters: list[str]
 ) -> dict[str, Any]:
-    """Het mappingbestand: `_manifest`, `_indelingen` en elke sector, een lege lijst als het model er
-    niets bij zette. Onbekende sectoren en clusters die UWV niet kent, vallen weg."""
+    """Het mappingbestand: `_manifest`, `_indelingen`, elke sector (een lege lijst als het model er niets bij zette)
+    en `_niet_toegewezen`: de clusters zonder sector, zodat elk cluster van de snapshot een plaats heeft (#873).
+    Onbekende sectoren en clusters die UWV niet kent, vallen weg."""
     bekend = set(clusters)
     per_sector = {
         sector: [c for c in per_indeling.get(indeling, {}).get(sector, []) if c in bekend]
         for indeling, sectoren in SECTOREN.items()
         for sector in sectoren
     }
-    return {"_manifest": kop, "_indelingen": {i: list(s) for i, s in SECTOREN.items()}, **per_sector}
+    toegewezen = {c for cs in per_sector.values() for c in cs}
+    return {
+        "_manifest": kop,
+        "_indelingen": {i: list(s) for i, s in SECTOREN.items()},
+        "_niet_toegewezen": sorted(bekend - toegewezen),
+        **per_sector,
+    }
 
 
-def manifest() -> dict[str, str]:
-    """Wanneer, waarvan en door welk model de mapping gemaakt is; de tool toont herkomst, versie en model."""
+def manifest(prompts: list[str]) -> dict[str, Any]:
+    """Wanneer, waarvan, door welk model en met welke prompt de mapping gemaakt is; de tool toont herkomst, versie
+    en model. Een nieuwe mapping is niet gevalideerd: dat doet een mens met een steekproef (#873)."""
     return {
         "bijgewerkt": date.today().isoformat(),
         "bron": "UWV Open Match, momentopname mei 2023 (BEROEPENCLUSTER)",
         "script": "scripts/refresh_sector_mapping.py",
         "herkomst": MAPPING_HERKOMST,
         "model": MODEL,
+        "prompt": "sha256 " + hashlib.sha256("\n".join(prompts).encode()).hexdigest()[:12],
+        "validatie": {"status": "open"},
     }
 
 
 def main(output: Path = OUTPUT) -> None:
     clusters = laad_clusters()
-    per_indeling = {i: classificeer_via_llm(i, s, clusters) for i, s in SECTOREN.items()}
+    prompts = {i: _prompt(i, s, clusters) for i, s in SECTOREN.items()}
+    per_indeling = {i: classificeer_via_llm(i, prompts[i]) for i in SECTOREN}
     if onbekend := onbekende_sectoren(per_indeling):
         print(f"  Waarschuwing: onbekende sectoren genegeerd: {onbekend}", flush=True)
     if onbekend := onbekende_clusters(per_indeling, clusters):
         print(f"  Waarschuwing: onbekende clusters genegeerd: {onbekend}", flush=True)
 
-    mapping = bouw_mapping(manifest(), per_indeling, clusters)
+    mapping = bouw_mapping(manifest(list(prompts.values())), per_indeling, clusters)
     output.write_text(json.dumps(mapping, indent=2, ensure_ascii=False))
     print(f"\nGeschreven naar {output}", flush=True)
     for indeling, sectoren in SECTOREN.items():

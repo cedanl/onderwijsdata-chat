@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import threading
+from datetime import datetime, timedelta
 
 from riodata import duo
 
+from core import actualiteit
 from data import arbeidsmarktregio
 
 logger = logging.getLogger(__name__)
@@ -165,8 +168,16 @@ DOMEINEN: dict[str, list[str]] = {
 }
 
 
+# Het register, gebouwd uit live DUO-bestanden: na actualiteit.TTL opnieuw (#873), zodat een nieuwe, gefuseerde of
+# hernoemde instelling niet pas na een herstart bekend is. `_opgehaald_op` is het moment van de laatste opbouw waarin
+# elke bron laadde; None zolang er alleen een onvolledige was. `_geprobeerd_op` is de laatste poging: mislukt het
+# herladen, dan blijft het oude register staan en volgt pas na _HERPOGING een nieuwe poging, niet bij elke aanroep.
 _cache: list[dict] | None = None
 _alias_lookup: dict[str, str] | None = None
+_opgehaald_op: datetime | None = None
+_geprobeerd_op: datetime | None = None
+_HERPOGING = timedelta(hours=1)
+_opbouw = threading.Lock()
 
 
 def get_adres_lookup() -> dict[str, dict]:
@@ -236,9 +247,11 @@ def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:
     return result
 
 
-def _build_registry() -> list[dict]:
+def _build_registry() -> tuple[list[dict], list[str]]:
+    """Het register, en de DUO-bestanden die niet laadden (leeg als het volledig is)."""
     adres = _build_adres_lookup()
     result: dict[str, dict] = {}
+    mislukt: list[str] = []
 
     try:
         df_hbo = duo.load("p01hoinges", 0)
@@ -256,6 +269,7 @@ def _build_registry() -> list[dict]:
                 "domeinen": [],
             }
     except Exception:
+        mislukt.append("p01hoinges/0")
         logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
 
     try:
@@ -275,6 +289,7 @@ def _build_registry() -> list[dict]:
                     "domeinen": [],
                 }
     except Exception:
+        mislukt.append("p01hoinges/1")
         logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
 
     try:
@@ -294,24 +309,61 @@ def _build_registry() -> list[dict]:
                     "domeinen": [],
                 }
     except Exception:
+        mislukt.append("mbo-studenten-per-instelling/0")
         logger.warning("registry: MBO-instellingen niet beschikbaar", exc_info=True)
 
     _apply_sram_mappings(result)
-    return sorted(result.values(), key=lambda x: x["naam"].lower())
+    return sorted(result.values(), key=lambda x: x["naam"].lower()), mislukt
+
+
+def _herladen_nodig() -> bool:
+    """Is het register er niet, of ouder dan de TTL (of onvolledig) en de laatste poging lang genoeg geleden?"""
+    if _cache is None:
+        return True
+    oud = _opgehaald_op is None or actualiteit.verlopen(_opgehaald_op)
+    return oud and (_geprobeerd_op is None or actualiteit.nu() - _geprobeerd_op >= _HERPOGING)
+
+
+def _herlaad() -> None:
+    """Bouw het register opnieuw op; laadt een bron niet, dan blijft een bestaand register staan (#873)."""
+    global _cache, _alias_lookup, _opgehaald_op, _geprobeerd_op
+    instellingen, mislukt = _build_registry()
+    _geprobeerd_op = actualiteit.nu()
+    if _cache is not None and mislukt:
+        logger.warning(
+            "registry: herladen mislukt voor %s; het register van %s blijft staan, nieuwe poging over %s",
+            ", ".join(mislukt),
+            _opgehaald_op.isoformat(timespec="minutes") if _opgehaald_op else "een onvolledige opbouw",
+            _HERPOGING,
+        )
+        return
+    _cache, _alias_lookup = instellingen, None
+    _opgehaald_op = None if mislukt else _geprobeerd_op
 
 
 def get_all() -> list[dict]:
-    global _cache
-    if _cache is None:
-        _cache = _build_registry()
-    return _cache
+    """Alle instellingen uit DUO, alfabetisch; na actualiteit.TTL opnieuw opgebouwd (#873).
+
+    Herlaadt een andere aanroep al, dan krijgt deze het bestaande register in plaats van te wachten.
+    """
+    if not _herladen_nodig():
+        return _cache or []
+    if not _opbouw.acquire(blocking=_cache is None):
+        return _cache or []
+    try:
+        if _herladen_nodig():  # een andere aanroep kan net klaar zijn
+            _herlaad()
+    finally:
+        _opbouw.release()
+    return _cache or []
 
 
 def _get_alias_lookup() -> dict[str, str]:
     global _alias_lookup
+    instellingen = get_all()  # herlaadt het register na de TTL, en leegt dan ook deze lookup (#873)
     if _alias_lookup is None:
         lookup: dict[str, str] = {}
-        for inst in get_all():
+        for inst in instellingen:
             lookup[inst["naam"].lower()] = inst["naam"]
             for alias in inst["aliassen"]:
                 lookup[alias.lower()] = inst["naam"]
