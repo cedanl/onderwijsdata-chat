@@ -661,21 +661,52 @@ def _normalize_ts(timestamp: float) -> int:
     return min(seconds, int(time.time()))
 
 
+class GesprekEldersGewijzigd(Exception):
+    """De opslag zou vragen weggooien die al bewaard zijn: een ander tabblad of apparaat schreef ertussen (#760)."""
+
+
+def _vragen(messages: list) -> list:
+    return [m.get("content") for m in messages if isinstance(m, dict) and m.get("role") == "user"]
+
+
 def upsert_conversation(username: str, conv_id: str, title: str, timestamp: int, messages: list[dict]) -> None:
     """Bewaar een gesprek; de titel alleen bij het aanmaken.
 
     Elke opslag na een antwoord stuurt de automatische titel uit de eerste vraag mee. Een bestaand gesprek houdt
     zijn titel, zodat een hernoeming (rename_conversation) blijft staan, ook vanaf een ander apparaat (#757).
+
+    De nieuwe versie moet beginnen met de vragen die al bewaard zijn, anders `GesprekEldersGewijzigd` (#760): twee
+    tabbladen met hetzelfde gesprek overschreven elkaars beurten zonder melding. Alleen de vragen tellen; een antwoord
+    mag veranderen (een afgebroken antwoord dat later volledig is, #548/#635). Het schrijven slaagt alleen op de
+    versie die gelezen is, zodat een schrijver die er tussen lezen en schrijven doorheen komt ook niet verloren gaat.
+    In Python en zonder databasespecifieke JSON-functies, zodat SQLite en PostgreSQL hetzelfde doen.
     """
+    nieuw = json.dumps(messages)
     with _connection() as conn:
-        _execute(
+        rij = _execute(
             conn,
-            "INSERT INTO conversations (id, username, title, timestamp, messages) "
-            "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT (id, username) DO UPDATE SET "
-            "timestamp=excluded.timestamp, messages=excluded.messages",
-            (conv_id, username, title, _normalize_ts(timestamp), json.dumps(messages)),
-        )
+            "SELECT messages FROM conversations WHERE id = ? AND username = ?",
+            (conv_id, username),
+        ).fetchone()
+        if rij is None:
+            cursor = _execute(
+                conn,
+                "INSERT INTO conversations (id, username, title, timestamp, messages) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT (id, username) DO NOTHING",
+                (conv_id, username, title, _normalize_ts(timestamp), nieuw),
+            )
+        else:
+            bewaard = rij["messages"]
+            vragen = _vragen(json.loads(bewaard))
+            if _vragen(messages)[: len(vragen)] != vragen:
+                raise GesprekEldersGewijzigd(conv_id)
+            cursor = _execute(
+                conn,
+                "UPDATE conversations SET timestamp = ?, messages = ? WHERE id = ? AND username = ? AND messages = ?",
+                (_normalize_ts(timestamp), nieuw, conv_id, username, bewaard),
+            )
+        if cursor.rowcount == 0:
+            raise GesprekEldersGewijzigd(conv_id)
         conn.commit()
 
 
