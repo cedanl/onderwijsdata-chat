@@ -5,8 +5,9 @@ is per model anders, maar met code te controleren: elk getal van vier of meer
 cijfers in de tekst moet ergens in de toolresultaten van dezelfde run staan.
 Jaartallen en kleinere getallen vallen buiten de controle.
 
-Voor chatantwoorden (#185) geldt dat ook voor percentages: een percentage is
-bijna altijd een berekening, en die hoort in een tool, niet in het model.
+Voor chatantwoorden (#185) en rapporten (#872) geldt dat ook voor percentages: een
+percentage is bijna altijd een berekening, en die hoort in een tool, niet in het model.
+De chat (unverified) en het rapport (unsourced_percentages) delen daarvoor één regel.
 
 Een uitzondering is het verschil van twee getallen die het antwoord zelf noemt en
 die uit de data komen (#409): "van 478.660 naar 475.460, 3.200 minder" is na te
@@ -15,6 +16,7 @@ rekenen zonder tool. Dat getal staat niet in de data, maar is niet verzonnen.
 
 import json
 import re
+from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from itertools import combinations
 
@@ -126,6 +128,28 @@ def _percentage_sourced(percentage: Decimal, tool_decimals: set[Decimal]) -> boo
     )
 
 
+def _percentage_bewijs(tool_results: list[str], conversation: Sequence[str] = ()) -> set[Decimal]:
+    """De decimalen waartegen een percentage telt: uit de toolresultaten en de percentages in `conversation`."""
+    return {d for r in tool_results for d in _bewijs_decimalen(r)} | {
+        Decimal(m.group(1).replace(",", ".")) for said in conversation for m in _TEXT_PERCENT.finditer(said)
+    }
+
+
+def _ongedekte_percentages(text: str, bewijs: set[Decimal]) -> list[tuple[int, str]]:
+    """(positie, zoals geschreven) van elk percentage in `text` dat niet in `bewijs` staat."""
+    return [
+        (m.start(), m.group(0))
+        for m in _TEXT_PERCENT.finditer(text)
+        if not _percentage_sourced(Decimal(m.group(1).replace(",", ".")), bewijs)
+    ]
+
+
+def unsourced_percentages(text: str, tool_results: list[str]) -> list[str]:
+    """Percentages uit `text`, zoals geschreven, die afgerond op hun eigen decimalen als waarde noch als fractie
+    in een toolresultaat staan."""
+    return list(dict.fromkeys(shown for _, shown in _ongedekte_percentages(text, _percentage_bewijs(tool_results))))
+
+
 def unverified(text: str, tool_results: list[str], conversation: list[str] = ()) -> list[str]:
     """Getallen en percentages uit `text` die niet gedekt zijn, zoals ze in de tekst staan.
 
@@ -138,16 +162,8 @@ def unverified(text: str, tool_results: list[str], conversation: list[str] = ())
     integers = _tool_integers(tool_results) | {
         _digits(m.group(1)) for said in conversation for m in _TEXT_NUMBER.finditer(said)
     }
-    decimals = {d for r in tool_results for d in _bewijs_decimalen(r)} | {
-        Decimal(m.group(1).replace(",", ".")) for said in conversation for m in _TEXT_PERCENT.finditer(said)
-    }
-
-    found: list[tuple[int, str]] = []
-    percent_spans = []
-    for m in _TEXT_PERCENT.finditer(text):
-        percent_spans.append(m.span())
-        if not _percentage_sourced(Decimal(m.group(1).replace(",", ".")), decimals):
-            found.append((m.start(), m.group(0)))
+    found = _ongedekte_percentages(text, _percentage_bewijs(tool_results, conversation))
+    percent_spans = [m.span() for m in _TEXT_PERCENT.finditer(text)]
     for m in _TEXT_NUMBER.finditer(text):
         if any(start <= m.start() < end for start, end in percent_spans):
             continue
