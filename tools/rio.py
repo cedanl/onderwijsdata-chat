@@ -6,7 +6,7 @@ from riodata import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 
-from . import fouten, scopeprofiel, store
+from . import bronretry, fouten, scopeprofiel, store
 from .catalog import bron_id, catalogus_titel, scope_blokkade
 from .columns import sample_values
 
@@ -88,7 +88,7 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
         "pageSize": RIO_PAGE_SIZE,
     }
     try:
-        results = fetch(resource, **params)
+        results = bronretry.haal_op_met_retry("RIO", lambda: fetch(resource, **params))
     except Exception as e:
         uitleg = f" Resource '{resource}' met filters {filters or {}}.{_filter_hint(rio_filters(resource))}"
         return fouten.bronfout("RIO", e, uitleg)

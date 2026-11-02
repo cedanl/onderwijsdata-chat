@@ -5,6 +5,8 @@ Bron-ping: één aanroep per bron door de toollaag van de chat, zonder LLM (#627
 Gebruik:
     uv run python scripts/bronping.py                # elke bron één keer; exitcode 1 zodra één bron niet antwoordt
     uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart
+    uv run python scripts/bronping.py --sweep --rapport bronping-sweep.json
+                                                     # plus de sweep over elke CBS-, DUO- en RIO-dataset (#869)
 
 De CI-job `bron:ping` draait dit gepland op main (.gitlab-ci.yml). Een verwijderde API (RIO v2 gaf op
 19-10-2026 HTTP 410 op elke aanroep), een gewijzigd filtercontract (HTTP 400) of een onbereikbare bron
@@ -12,6 +14,9 @@ komt zo bij de beheerder binnen in plaats van via een gebruiker: pytest mockt de
 toetst er geen. Dezelfde code als de chat (tools.cbs, tools.duo, tools.rio_instelling en de GeoJSON van
 de kaart), met de selecties van de ijkwaarden (tests/ijkwaarden/harnas.py). Waarden vergelijkt dit niet:
 dat doet scripts/ijkwaarden.py.
+
+Met --sweep volgt een goedkope controle van elke dataset die de chat kan opvragen (scripts/bronsweep.py, #869): een
+afwijking daar is een waarschuwing in de log en het rapport, de exitcode blijft die van de pings.
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from scripts import bronsweep
 from tests.ijkwaarden import harnas
 from tools import cbs, duo, fouten, inspectie, mbo_indicatoren, plot, rio_instelling
 
@@ -192,7 +198,23 @@ def _argumenten(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--alleen", default="", help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart (standaard alle)"
     )
+    parser.add_argument("--sweep", action="store_true", help="controleer ook elke CBS-, DUO- en RIO-dataset (#869)")
+    parser.add_argument("--rapport", type=Path, help="schrijf de bevindingen van de sweep als JSON naar dit pad")
     return parser.parse_args(argv)
+
+
+def _sweep(gekozen: set[str], rapport: Path | None) -> None:
+    """De sweep over de gekozen bronnen, als tabel in de log en desgewenst als JSON; raakt de exitcode niet."""
+    bronnen = [b for b in bronsweep.BRONNEN if not gekozen or b in gekozen]
+    start = time.monotonic()
+    bevindingen = bronsweep.voer_uit(bronsweep.controles(bronnen))
+    duur = time.monotonic() - start
+    print(f"\nSweep over elke dataset die de chat kan opvragen ({duur:.0f} s; een afwijking is een waarschuwing):")
+    for b in bevindingen:
+        print(bronsweep.regel(b))
+    print(bronsweep.samenvatting(bevindingen))
+    if rapport:
+        rapport.write_text(json.dumps(bronsweep.rapport(bevindingen, duur), ensure_ascii=False, indent=2) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -205,6 +227,8 @@ def main(argv: list[str] | None = None) -> int:
     print("Bron-ping, één aanroep per bron door de toollaag van de chat:")
     for u in uitslagen:
         print(_regel(u))
+    if args.sweep:
+        _sweep(gekozen, args.rapport)
     fout = [u for u in uitslagen if not u.ok]
     if fout:
         print(f"\n{len(fout)} van {len(uitslagen)} bronnen antwoordt niet: {', '.join(u.ping.bron for u in fout)}.")

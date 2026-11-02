@@ -412,18 +412,21 @@ def catalogus_digest() -> str:
     return hashlib.sha256(inhoud.encode()).hexdigest()[:12]
 
 
-def dataset_counts() -> dict[str, int]:
-    """Datasets per bron die de chat kan opvragen; bron voor startpagina, databronnenvenster en README.
+def opvraagbare_ids(bron: str) -> list[str]:
+    """De ID's van de datasets van één chatbron (CBS, DUO, RIO) die de chat kan opvragen.
 
     CBS telt ook gearchiveerde tabellen mee: search_catalog valt daarop terug. Een record binnen het
     profiel dat de chat toch niet kan laden (een RIO-register zonder lijst-endpoint, #627) telt niet mee.
+    De telling hieronder en de sweep van de bron-ping (#869) lopen dezelfde lijst langs.
     """
-    rio_duo = [e for e in _rio_duo() if _niet_opvraagbaar(e) is None]
-    return {
-        "CBS": len(_cbs()),
-        "DUO": sum(1 for e in rio_duo if e.get("leverancier") == "DUO"),
-        "RIO": sum(1 for e in rio_duo if e.get("leverancier") == "RIO"),
-    }
+    if bron == "CBS":
+        return [_dataset_id(e) for e in _cbs()]
+    return [_dataset_id(e) for e in _rio_duo() if e.get("leverancier") == bron and _niet_opvraagbaar(e) is None]
+
+
+def dataset_counts() -> dict[str, int]:
+    """Datasets per bron die de chat kan opvragen; bron voor startpagina, databronnenvenster en README."""
+    return {bron: len(opvraagbare_ids(bron)) for bron in CHAT_BRONNEN}
 
 
 def catalogus_telling() -> str:

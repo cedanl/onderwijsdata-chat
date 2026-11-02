@@ -11,6 +11,7 @@ from . import (
     bestandsversie,
     duo_bestandskeuze,
     duo_correcties,
+    duo_laden,
     duo_meta,
     fouten,
     instelling,
@@ -319,6 +320,7 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
     key = f"duo:{dataset_id}:{resource}"
 
     df = store.get(key)
+    drift = None
     if df is None:
         bestanden = tabelbestanden(dataset_id)
         if isinstance(resource, int) and is_documentbestand(dataset_id, resource):
@@ -329,11 +331,12 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
                 + (_andere_bestanden(dataset_id, bestanden, resource) or " De dataset bevat alleen documentatie."),
             )
         try:
-            geladen = _duo.load(dataset_id, resource)
+            geladen = duo_laden.laad(dataset_id, resource)
             df = instellingsprovincie.met_provincie(periode.met_studiejaarlabel(geladen), dataset_id)
         except Exception as e:
             hint = _andere_bestanden(dataset_id, bestanden, resource)
             return fouten.bronfout("DUO", e, f" Dataset '{dataset_id}', resource {resource}.{hint}")
+        drift = duo_laden.controleer(dataset_id, geladen)
         kolom = periode.duo_periodekolom(df.columns)
         codekolom = instelling.codekolom(df.columns)
         # Vóór de bewerkingen gelezen: een merge laat pandas-attrs niet altijd staan (#717).
@@ -386,6 +389,8 @@ def get_duo_data(dataset_id: str, resource: int | str | None = None) -> str:
         "preview": preview,
     }
     known = store.meta(key)
+    if drift := drift or duo_laden.eerdere_drift(known.bronhash if known else None):
+        result["waarschuwing"] = drift.tekst()
     profiel = kleine_aantallen.waargenomen(df, min1)
     result.update(duo_meta.metadata(duo_meta.record(dataset_id), profiel, geladen=True))
     if known and known.schooljaren:

@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 import httpx
 from riodata import fetch, get, related
 
-from . import fouten, scopeprofiel
+from . import bronretry, fouten, scopeprofiel
 from .catalog import catalogus_titel
 
 # De RIO-dataset van het register; ook de bron van de regel onder het antwoord (agent/bronvermelding.py, #621).
@@ -68,7 +68,9 @@ def _geldig(item: dict, peildatum: str) -> bool:
 
 def _zoek(naam: str, soort: str, peildatum: str) -> list[dict]:
     # RIO v3: het typefilter heet `type` (v2: erkenningtype; die versie is op 19-10-2026 verwijderd, #627).
-    gevonden = fetch(ERKENNINGEN, volledigeNaam=naam, type=soort, datumGeldigOp=peildatum)
+    gevonden = bronretry.haal_op_met_retry(
+        "RIO", lambda: fetch(ERKENNINGEN, volledigeNaam=naam, type=soort, datumGeldigOp=peildatum)
+    )
     return [e for e in gevonden if e.get("type") == soort and _geldig(e, peildatum)]
 
 
@@ -77,7 +79,7 @@ def _relaties(code: str, peildatum: str) -> list[tuple[str, str]]:
     return [
         (_relatiecode(r, "van"), _relatiecode(r, "naar"))
         # Dit endpoint pagineert niet en weigert page/pageSize (HTTP 400): related, niet fetch.
-        for r in related(ERKENNINGEN, code, "instellingsrelaties")
+        for r in bronretry.haal_op_met_retry("RIO", lambda: related(ERKENNINGEN, code, "instellingsrelaties"))
         if r.get("soort") == _HIERARCHISCH and _geldig(r, peildatum)
     ]
 
@@ -116,7 +118,7 @@ def _lees(codes: list[str]) -> tuple[dict[str, dict], list[str]]:
 
     def een(code: str) -> tuple[str, dict | None]:
         try:
-            return code, get(ERKENNINGEN, code)
+            return code, bronretry.haal_op_met_retry("RIO", lambda: get(ERKENNINGEN, code))
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return code, None
