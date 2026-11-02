@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
-import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
+import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts, afgekapteAs } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten.at(-1)
@@ -96,7 +96,7 @@ function RendementTrendChart({ rendementPerJaar, benchmarkRendement, peersRendem
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: tick } },
-            y: { grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
+            y: afgekapteAs({ grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } }, chartData.datasets, tick),
           },
         }} />
       </div>

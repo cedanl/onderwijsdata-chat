@@ -146,3 +146,12 @@ def test_version_noemt_het_manifest_van_de_meegebouwde_cbs_catalogus(client):
 def test_version_blijft_werken_zonder_manifest():
     with patch("onderwijsdata.catalog_manifest", side_effect=RuntimeError("geen artefact")):
         assert catalogusversie._cbs_manifest() is None
+
+
+def test_eenheden_per_meetkolom_uit_het_contract():
+    """De eenheid die CBS per meetkolom noemt, offline uit het contract: create_plot kiest er de asbasis mee (#871)."""
+    eenheden = cbs_meta.eenheden("85382NED")
+    assert eenheden["Examenkandidaten_1"] == "aantal"
+    assert eenheden["GediplomeerdenRelatief_3"] == "%"
+    assert cbs_meta.eenheden("85382ned") == eenheden  # de spelling van het id doet er niet toe
+    assert cbs_meta.eenheden("00000NED") == {}

@@ -61,6 +61,18 @@ def _sectoren(scopeprofiel: dict) -> list[str]:
     return [sector for sector, status in scopeprofiel.items() if status == _SUPPORTED]
 
 
+def eenheden(dataset_id: str) -> dict[str, str]:
+    """Meetkolom → eenheid zoals CBS hem noemt ('aantal', '%', 'x 1 000'), offline uit het contract.
+
+    Leeg buiten het contract; een kolom zonder eenheid in de bron ontbreekt.
+    """
+    try:
+        record = _contract.get_dataset(dataset_id)
+    except _contract.DatasetNietGevonden:
+        return {}
+    return {m["key"]: m["unit"] for m in record.get("meetwaarden") or [] if m.get("key") and m.get("unit")}
+
+
 def metadata(dataset_id: str) -> dict:
     """De velden die dataset_details voor een CBS-tabel meegeeft; leeg buiten het contract."""
     try:

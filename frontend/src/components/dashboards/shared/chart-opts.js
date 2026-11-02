@@ -8,6 +8,24 @@ export function darkColors(dark) {
   }
 }
 
+// De waardeas van een lijn volgt de eenheid, zoals create_plot in tools/plot.py (#871): een telling begint op 0, anders
+// oogt een daling van 2 % als een klif. Een percentage mag afgekapt, maar dan staat dat op de as.
+export const AS_NIET_BIJ_NUL = 'as begint niet bij 0'
+
+export function tellingAs(as) {
+  return { ...as, beginAtZero: true }
+}
+
+// Chart.js laat een verborgen reeks buiten het asbereik; alleen wat bij het openen te zien is telt.
+export function afgekapteAs(as, datasets, kleur) {
+  const waarden = datasets
+    .filter(d => !d.hidden)
+    .flatMap(d => d.data)
+    .filter(v => typeof v === 'number' && Number.isFinite(v))
+  if (!waarden.length || Math.min(...waarden) <= 0) return as
+  return { ...as, title: { display: true, text: AS_NIET_BIJ_NUL, color: kleur, font: { size: 10 } } }
+}
+
 export function buildIndexChartOpts(dark) {
   const { tick, grid, label } = darkColors(dark)
   return {

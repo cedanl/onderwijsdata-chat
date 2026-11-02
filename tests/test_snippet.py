@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 
 from agent import loop as loop_module
-from tools import store
+from tools import cbs_meta, store
 from tools.kpi import compute_kpi
 from tools.query import query_data
 from tools.snippet import generate
@@ -244,6 +244,9 @@ def clean_packages(monkeypatch):
     monkeypatch.setitem(sys.modules, "riodata", riodata)
     monkeypatch.setitem(sys.modules, "riodata.duo", duo_module)
     monkeypatch.setitem(sys.modules, "onderwijsdata", onderwijsdata)
+    # De app leest de eenheid van een CBS-kolom uit het contract in de echte package (#871); hier is die package
+    # vervangen, en dataset "x" staat er toch niet in.
+    monkeypatch.setattr(cbs_meta, "eenheden", lambda dataset_id: {})
     monkeypatch.setattr(go.Figure, "show", lambda self, *a, **k: None)
     store.clear()
     yield calls
@@ -863,9 +866,10 @@ def test_get_cbs_data_snippet_toont_het_compilaat_van_een_gesloten_selectie():
 
 
 def test_create_plot_snippet_zet_de_y_as_op_nul_zoals_de_app():
-    """#741: de snippet tekent de grafiek die de gebruiker zag, ook met de as vanaf 0."""
+    """#741, #871: de snippet tekent de as die de gebruiker zag. Een lijn zonder eenheid (een DUO-telling) begint
+    op 0; een expliciete keuze gaat voor."""
     args = {"data_key": "duo:x:y:result", "chart_type": "line", "x": "STUDIEJAAR", "y": "AANTAL", "title": "t"}
-    vrij, vanaf_nul = generate("create_plot", args), generate("create_plot", {**args, "y_vanaf_nul": True})
-    assert vrij is not None and vanaf_nul is not None
+    standaard, vrij = generate("create_plot", args), generate("create_plot", {**args, "y_vanaf_nul": False})
+    assert standaard is not None and vrij is not None
+    assert 'fig.update_yaxes(rangemode="tozero")' in standaard
     assert "rangemode" not in vrij
-    assert 'fig.update_yaxes(rangemode="tozero")' in vanaf_nul

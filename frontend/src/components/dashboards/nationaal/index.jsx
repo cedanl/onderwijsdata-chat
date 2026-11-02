@@ -3,7 +3,7 @@ import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
-  SECTOR_LABELS, darkColors, horizontalBarOpts, ChartCard,
+  SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard,
   DashboardSources, BRONNEN_NATIONAAL,
 } from '../shared/index'
 
@@ -109,7 +109,7 @@ function SectorTrendChart({ eigenSectoren, dark }) {
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: tick } },
-            y: { grid: { color: grid }, ticks: { color: tick } },
+            y: tellingAs({ grid: { color: grid }, ticks: { color: tick } }),
           },
         }} />
       </div>
