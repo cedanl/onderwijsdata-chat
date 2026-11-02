@@ -18,6 +18,7 @@ from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import TOOL_GET_INSPECTIEOORDEEL, TOOL_GET_MBO_INDICATOREN, TOOL_GET_RIO_INSTELLING
+from tools.store import KeyMeta
 
 from .meetwaarden import meetwaarden
 from .selectie import SCHEIDING, laadkey, selectie_in_woorden, stapkeys
@@ -57,13 +58,28 @@ def _zonder_sectie(sectie: re.Match[str]) -> str:
     return "\n" if len(volgt) == 2 and volgt[0] == "\n" and volgt[1] != "\n" else ""
 
 
+def _dag(iso: str) -> str:
+    """jjjj-mm-dd als dd-mm-jjjj, zoals de andere data in een bronregel ("versie van 08-04-2026")."""
+    jaar, maand, dag = iso[:10].split("-")
+    return f"{dag}-{maand}-{jaar}"
+
+
+def _actualiteit(known: KeyMeta) -> str:
+    """Hoe actueel een CBS-tabel is: wanneer CBS hem bijwerkte en wanneer de app hem ophaalde (#864)."""
+    if known.bron != "cbs":
+        return ""
+    bijgewerkt = f"bijgewerkt door CBS op {_dag(known.bijgewerkt_op)}, " if known.bijgewerkt_op else ""
+    return f", {bijgewerkt}opgehaald op {known.opgehaald_op.astimezone():%d-%m-%Y}"
+
+
 def _datasetbron(key: str) -> Bronregel | None:
     """De geladen dataset achter een key in woorden, met zijn ID; None als hij onbekend is (CH-30)."""
     geladen = laadkey(key)
     if not (known := store.meta(geladen)) or not (tekst := selectie_in_woorden(geladen)):
         return None
     # Zonder catalogustitel is de titel het ID al.
-    return (tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"), str(known.dataset)
+    tekst = tekst if known.dataset in tekst else f"{tekst} ({known.dataset})"
+    return tekst + _actualiteit(known), str(known.dataset)
 
 
 def _registerbron(tool: str, result: str) -> list[Bronregel]:

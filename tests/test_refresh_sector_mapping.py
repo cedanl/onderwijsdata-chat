@@ -55,7 +55,9 @@ def test_het_script_houdt_alle_sectoren_en_de_indelingen(ververst):
 
     assert _sectoren(ruw) == _sectoren(_vastgelegd())
     assert ruw["_indelingen"] == _vastgelegd()["_indelingen"]
-    assert set(ruw["_manifest"]) == set(script.manifest())
+    assert set(ruw["_manifest"]) == set(script.manifest([]))
+    assert ruw["_manifest"]["validatie"] == {"status": "open"}
+    assert ruw["_manifest"]["prompt"].startswith("sha256 ")
 
 
 def test_het_resultaat_voldoet_aan_de_mappingregels(ververst):

@@ -6,19 +6,22 @@ from collections import OrderedDict
 from collections.abc import Callable, Generator, Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 
+from core import actualiteit
 from core.config import STORE_MAX_MB
 from core.sentinels import lege_cellen, mask_sentinels
 
 from .canoniek import sleutel as _canonieke_sleutel
-from .scopeprofiel import bronetiket
+from .catalog import bronetiketten
 
 logger = logging.getLogger(__name__)
 
 # Process-wide cache shared across all sessions — intentional, dataset loading is expensive
 # and datasets are read-only (the model boundary reads a copy, #209). Not suitable for
 # per-user mutable state. Bounded (#13): the keys in use order, least recently used first;
-# above STORE_MAX_MB the oldest go, with their meta and sentinel cells. A conversation
+# above STORE_MAX_MB the oldest go, with their meta and sentinel cells. Bounded in time too (#864):
+# a key fetched longer than actualiteit.TTL ago goes when it is read. A conversation
 # whose key went gets it back from its recipe (#472), as after a restart.
 _cache: OrderedDict = OrderedDict()
 # What is known about the data behind a key. Describes the source, not a session,
@@ -98,6 +101,12 @@ class KeyMeta:
     # De dag (jjjj-mm-dd) waarop een levend register (RIO) is bevraagd, als `datumGeldigOp` (#718): dezelfde dag geeft
     # dezelfde stand, dus de snippet zet hem erin. None bij een bron die geen tijdreizen kent. Herkomst, geen identiteit.
     geldig_op: str | None = field(default=None, compare=False)
+    # Wanneer de app de data bij de bron ophaalde (#864): een afgeleide key erft het van zijn ouder, want zijn data is
+    # even oud. Na actualiteit.TTL verdwijnt de key bij het lezen en haalt het gesprek hem uit zijn recept opnieuw op.
+    opgehaald_op: datetime = field(default_factory=lambda: actualiteit.nu(), compare=False)
+    # De dag (jjjj-mm-dd) waarop de bron de tabel het laatst bijwerkte: bij CBS TableInfos.Modified, live gevraagd
+    # bij het ophalen en anders uit de catalogus (#864). Herkomst, geen identiteit.
+    bijgewerkt_op: str | None = field(default=None, compare=False)
 
 
 def _bytes(value) -> int:
@@ -191,10 +200,23 @@ def derive(parent: str, key: str, value, **changes) -> None:
     )
 
 
+def _verlopen(key: str) -> bool:
+    """Is de data achter `key` langer dan de TTL geleden opgehaald? Een key zonder meta heeft geen ophaalmoment."""
+    known = _meta.get(key)
+    return known is not None and actualiteit.verlopen(known.opgehaald_op)
+
+
 def get(key: str):
-    """De data achter `key`; lezen maakt de key weer de jongste, zodat wat in gebruik is niet als eerste verdwijnt."""
+    """De data achter `key`; lezen maakt de key weer de jongste, zodat wat in gebruik is niet als eerste verdwijnt.
+
+    Een key die langer dan de TTL geleden is opgehaald, gaat eruit en geeft None (#864): zoals na verdringing haalt het
+    gesprek hem uit zijn recept terug, nu met wat de bron vandaag zegt.
+    """
     with _slot:
         value = _cache.get(key)
+        if value is not None and _verlopen(key):
+            _verwijder(key, "leeftijd")
+            return None
         if value is not None:
             _cache.move_to_end(key)
         return value
@@ -224,7 +246,7 @@ def herkomst(key: str) -> list[str]:
     if known is None:
         return []
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
-    if etiket := bronetiket(known.dataset):
+    if etiket := bronetiketten(known.dataset):
         bron += f", {etiket}"
     if known.resource is not None:
         bron += f", resource {known.resource}"

@@ -217,7 +217,7 @@ def test_refresh_script_schrijft_herkomst_en_model_in_het_manifest(tmp_path):
     from core.config import MODEL
     from scripts.refresh_sector_mapping import manifest
 
-    geschreven = manifest()
+    geschreven = manifest(["prompt"])
     bestand = tmp_path / "sector_cluster_mapping.json"
     bestand.write_text(json.dumps({"_manifest": geschreven, "TECHNIEK": ["ICT"]}))
 
