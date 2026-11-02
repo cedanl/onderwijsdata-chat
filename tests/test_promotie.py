@@ -1,3 +1,5 @@
+import pytest
+
 import scripts.promotie as promotie
 from scripts.promotie import fouten, release_tags, schrijf_pin
 
@@ -40,3 +42,16 @@ def test_schrijf_pin_raakt_alleen_de_versieregel(tmp_path, monkeypatch):
     assert (env / "helmrelease.yaml").read_text() == (
         'spec:\n  chart:\n    spec:\n      chart: x\n      # let op\n      version: "2.0.0"\n  interval: 1m\n'
     )
+
+
+def test_promote_weigert_release_zonder_chart(tmp_path, monkeypatch):
+    # De tag 2.0.0 bestaat, maar heeft geen chart (Agents.md); een pin erop laat Flux falen (#844).
+    env = tmp_path / "playground"
+    env.mkdir()
+    origineel = 'spec:\n  chart:\n    spec:\n      chart: x\n      version: "2.2.0"\n'
+    (env / "helmrelease.yaml").write_text(origineel)
+    monkeypatch.setattr(promotie, "MANIFESTS", tmp_path)
+    monkeypatch.setattr(promotie, "remote_tags", lambda: ["2.0.0", "2.2.0"])
+    with pytest.raises(SystemExit, match="geen chart"):
+        promotie.promote("2.0.0")
+    assert (env / "helmrelease.yaml").read_text() == origineel

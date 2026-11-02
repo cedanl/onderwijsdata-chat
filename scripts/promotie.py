@@ -2,7 +2,7 @@
 
     uv run python scripts/promotie.py check               # CI-poort
     uv run python scripts/promotie.py promote             # playground <- nieuwste release-tag
-    uv run python scripts/promotie.py promote --version 2.0.0
+    uv run python scripts/promotie.py promote --version X.Y.Z
     uv run python scripts/promotie.py mark                # record: env/playground/<versie>
 
 De pin in `manifests/playground/helmrelease.yaml` ís de deploy: Flux installeert
@@ -26,6 +26,8 @@ REMOTE = "origin"
 RELEASE_RE = re.compile(r"^\d+\.\d+\.\d+$")
 RANGE_RE = re.compile(r"^>=\d+\.\d+\.\d+-\d+(\.\d+)?$")
 VERSION_LINE_RE = re.compile(r"(?P<head>  chart:\n    spec:\n(?:.*\n)*?)(?P<line>      version:[^\n]*)\n")
+# Release-tags die wel bestaan maar geen chart hebben: een pin erop laat Flux falen (Agents.md, #844).
+ZONDER_CHART = frozenset({"2.0.0"})
 
 
 def helmrelease(env: str) -> Path:
@@ -86,6 +88,8 @@ def promote(versie: str | None) -> int:
         versie = tags[-1]
     if versie not in tags:
         raise SystemExit(f"{versie!r} is geen bestaande release-tag (kaal X.Y.Z, zonder v)")
+    if versie in ZONDER_CHART:
+        raise SystemExit(f"{versie} heeft geen chart; kies een andere release")
     huidig = lees_pin("playground")
     if huidig == versie:
         print(f"playground pint al {versie}")

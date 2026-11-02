@@ -34,22 +34,21 @@ De app maakt de tabellen zelf aan bij de start (`persistence/db.py`, `CREATE TAB
 
 ### 3. Secrets Configuration
 
-Secrets zijn SOPS-encrypted. Per environment:
+Secrets zijn SOPS-encrypted. Dit doet de developer, buiten een LLM-sessie (Agents.md, "Secrets & Security"). Per
+omgeving, hier development:
 
 ```bash
-# Development (example)
-cat manifests/development/secret.yaml.example | sed \
-  -e "s|<password>|$DB_PASSWORD|g" \
-  -e "s|sk-ant-...|$ANTHROPIC_API_KEY|g" \
-  > manifests/development/secret_orig.yaml
-
-# Encrypt with SOPS
-sops --encrypt manifests/development/secret_orig.yaml > manifests/development/secret.yaml
-
-# Commit encrypted file (but not _orig)
+cp manifests/development/secret.yaml.example manifests/development/secret_orig.yaml
+# vul de waarden in secret_orig.yaml in met een editor (het bestand staat in .gitignore)
+cp manifests/development/secret_orig.yaml manifests/development/secret.yaml
+sops encrypt --in-place manifests/development/secret.yaml   # .sops.yaml matcht alleen secret.yaml
 git add manifests/development/secret.yaml
-git rm manifests/development/secret_orig.yaml
 ```
+
+De app leest uit de secret `onderwijsdata-chat-secrets` de sleutels die `manifests/<omgeving>/values.yaml` met
+`secretKeyRef` noemt: overal `CHAT_SECRET`, `CHAT_USERS`, `WILLMA_API_KEY`, `AZURE_AI_API_KEY` en `AZURE_AI_API_BASE`;
+op test en playground ook `OIDC_CLIENT_ID` en `OIDC_CLIENT_SECRET`, op test ook `LOG_HASH_SECRET`. `POSTGRES_URI`
+komt uit de secret `onderwijsdata-chat-app` van het platform (zie hierboven).
 
 ### 4. GitLab CI/CD Variables
 

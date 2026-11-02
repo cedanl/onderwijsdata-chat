@@ -29,17 +29,33 @@ manifests/
 │   ├── network-policy.yaml       # Ingress-NetworkPolicy (egress staat live, nog niet in git: #674)
 │   └── values-base.yaml          # Shared defaults
 ├── development/
+│   ├── helmrelease.yaml          # HelmRelease met de chartversie van deze omgeving
+│   ├── helmrepo.yaml             # OCI registry (Harbor)
 │   ├── kustomization.yaml        # Dev patches
-│   ├── values.yaml               # Dev ingress (traefik-external)
-│   └── secret.yaml               # SOPS-encrypted secrets (niet in git)
+│   ├── middleware.yaml           # Traefik-allowlist
+│   ├── secret.yaml               # SOPS-versleutelde secrets (in git)
+│   ├── secret.yaml.example       # sjabloon voor secret_orig.yaml (docs/deployment.md)
+│   └── values.yaml               # Dev ingress (traefik-external)
 ├── test/
+│   ├── helmrelease.yaml          # open range >=0.0.1-0.0
+│   ├── helmrepo.yaml
 │   ├── kustomization.yaml        # Test patches
+│   ├── middleware.yaml
+│   ├── secret.yaml               # SOPS-versleuteld (in git)
 │   └── values.yaml               # Test ingress (traefik-external)
 ├── playground/
+│   ├── helmrelease.yaml          # vaste release-pin (docs/promoten.md)
+│   ├── helmrepo.yaml
 │   ├── kustomization.yaml        # Playground patches
+│   ├── middleware.yaml
+│   ├── secret.yaml               # SOPS-versleuteld (in git)
+│   ├── secret.yaml.example
 │   └── values.yaml               # Playground ingress (traefik-external)
 └── production/
+    ├── helmrelease.yaml
+    ├── helmrepo.yaml
     ├── kustomization.yaml        # Production patches
+    ├── middleware.yaml
     └── values.yaml               # Production ingress (traefik-external); geen secret, zie #674
 ```
 
@@ -50,25 +66,13 @@ manifests/
 
 ## Flux deployment
 
-Flux reconciles HelmRelease per environment:
-
-```bash
-# Development
-kustomize build manifests/development | kubectl apply -f -
-
-# Production
-kustomize build manifests/production | kubectl apply -f -
-```
+Flux reconcilet de HelmRelease per omgeving uit `main`; er is geen handmatige `kubectl apply`. Een wijziging gaat via
+een MR, een release via de promotie-MR (`docs/promoten.md`). Production is niet uitrolbaar zolang #674 open is.
 
 ## Secrets management
 
-Secrets zijn SOPS-encrypted (`manifests/*/secret.yaml`):
-
-```bash
-# Decryptie via Flux (SOPS_AGE_KEY env var in GitLab CI)
-# Of handmatig:
-sops -d manifests/development/secret.yaml | kubectl apply -f -
-```
+Secrets zijn SOPS-versleuteld (`manifests/*/secret.yaml`). Flux ontsleutelt ze in het cluster met de age-key van de
+tenant (`docs/operatie.md`). Een secret bewerken en versleutelen: `docs/deployment.md`, stap 3.
 
 ## Rollout strategie
 
