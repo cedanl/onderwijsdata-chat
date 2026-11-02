@@ -4,10 +4,9 @@ Health check endpoints for Kubernetes liveness and readiness probes.
 
 import asyncio
 import logging
-import os
 import time
 
-from core.config import get_all_api_key_env_vars
+from core.config import MODEL, llm_sleutel_aanwezig
 from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
@@ -30,9 +29,9 @@ async def check_database_connection() -> bool:
 
 
 async def check_llm_configuration() -> bool:
-    """Is er een sleutel voor een van de providers? Uit de ene lijst in core/config.py, dus ook Willma (#675):
-    /ready is de readiness-probe, en een omgeving met alleen WILLMA_API_KEY zou anders nooit verkeer krijgen."""
-    return any(os.getenv(naam) for naam in get_all_api_key_env_vars())
+    """Kan de app het geconfigureerde model aanroepen? Dezelfde check als de chat (`llm_sleutel_aanwezig`, #815):
+    met Ollama zonder sleutel, anders met een van de providersleutels, dus ook alleen WILLMA_API_KEY (#675)."""
+    return llm_sleutel_aanwezig(MODEL)
 
 
 async def health_check() -> dict:

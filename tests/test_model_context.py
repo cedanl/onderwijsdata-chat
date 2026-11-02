@@ -7,9 +7,8 @@ class TestModelContextResolution:
     """Test context window resolution for different model families."""
 
     def test_gpt_oss_120b_context(self):
-        """gpt-oss-120b should have 4k context (conservative default)."""
-        assert get_max_context("openai/gpt-oss-120b") == 4096
-        assert get_max_context("openai/gpt-oss-120b-instruct") == 4096
+        """gpt-oss-120b via Willma: 131072 tokens volgens config.json van de modelkaart (#818)."""
+        assert get_max_context("openai/openai/gpt-oss-120b") == 131072
 
     def test_qwen25_vl_context(self):
         """Qwen 2.5 VL should have 32k native context."""
@@ -41,8 +40,8 @@ class TestOutputClamp:
 
     def test_clamp_small_model_below_limit(self):
         """Small models should clamp to their actual context."""
-        # gpt-oss-120b has 4k context, should clamp 40960 → 4096
-        assert clamp_max_tokens("openai/gpt-oss-120b", 40960) == 4096
+        # An unknown model falls back to 4k, so 40960 → 4096
+        assert clamp_max_tokens("unknown/model-xyz", 40960) == 4096
 
     def test_clamp_medium_model_no_change(self):
         """Medium models should not be clamped if under limit."""
@@ -58,16 +57,16 @@ class TestOutputClamp:
     def test_clamp_respects_requested_value(self):
         """Clamp should return min(requested, context)."""
         # Request 1000 tokens for small model with 4k context
-        assert clamp_max_tokens("openai/gpt-oss-120b", 1000) == 1000
+        assert clamp_max_tokens("unknown/model-xyz", 1000) == 1000
         # Request 5000 tokens for small model with 4k context
-        assert clamp_max_tokens("openai/gpt-oss-120b", 5000) == 4096
+        assert clamp_max_tokens("unknown/model-xyz", 5000) == 4096
 
     def test_prevents_exceeding_context(self):
         """Clamp should prevent max_tokens from exceeding model context."""
         # Even with large requested value, should not exceed model context
         requested = 1_000_000
-        model_context = get_max_context("openai/gpt-oss-120b")
-        clamped = clamp_max_tokens("openai/gpt-oss-120b", requested)
+        model_context = get_max_context("openai/openai/gpt-oss-120b")
+        clamped = clamp_max_tokens("openai/openai/gpt-oss-120b", requested)
         assert clamped <= model_context
         assert clamped == model_context
 
@@ -78,7 +77,7 @@ class TestAcceptanceCriteria:
     def test_all_willma_models_have_valid_context(self):
         """All configured Willma models should have valid max_tokens."""
         willma_models = [
-            "openai/gpt-oss-120b",
+            "openai/openai/gpt-oss-120b",
             "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
             "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
             "openai/Qwen/Qwen3.6-27B-FP8",
@@ -93,7 +92,7 @@ class TestAcceptanceCriteria:
         from core.config import MAX_TOKENS
 
         willma_models = [
-            "openai/gpt-oss-120b",
+            "openai/openai/gpt-oss-120b",
             "openai/Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
             "openai/Qwen/Qwen2.5-Coder-32B-Instruct-AWQ",
         ]
@@ -102,3 +101,24 @@ class TestAcceptanceCriteria:
             context = get_max_context(model)
             clamped = clamp_max_tokens(model, MAX_TOKENS)
             assert clamped <= context, f"{model} clamping failed: {clamped} > {context}"
+
+
+def test_geen_model_uit_de_modellijst_valt_terug_op_4096():
+    """#818: de overrides moeten de model-ID's dragen die core/config.py gebruikt (Willma: openai/openai/...)."""
+    from core.config import _KNOWN_NAMES
+
+    assert not [m for m in _KNOWN_NAMES if get_max_context(m) == 4096]
+
+
+def test_een_falende_litellm_lookup_logt_geen_fouttekst(caplog, monkeypatch):
+    """#818: de logregel van Agents.md: op WARNING alleen type en kenmerk van de uitzondering."""
+    import litellm
+
+    def faal(model):
+        raise ValueError(f"onbekend model {model} met geheime-tekst")
+
+    monkeypatch.setattr(litellm, "get_max_tokens", faal)
+    with caplog.at_level("WARNING", logger="agent.model_context"):
+        assert get_max_context("unknown/model-xyz") == 4096
+    assert "geheime-tekst" not in caplog.text
+    assert "ValueError fout_len=" in caplog.text
