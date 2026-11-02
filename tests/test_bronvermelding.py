@@ -10,6 +10,7 @@ import importlib
 import json
 import logging
 import time
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pandas as pd
@@ -37,6 +38,8 @@ def _niet_meegeteld(dataset: str) -> str:
 run_module = importlib.import_module("agent.run")
 loop_module = importlib.import_module("agent.loop")
 
+# Midden op de dag, zodat de ophaaldag in elke tijdzone van de server dezelfde is (#864).
+_OPGEHAALD = datetime(2026, 11, 2, 12, tzinfo=UTC)
 _TITELS = {"p01hoinges": "Ingeschrevenen hoger onderwijs", "85423NED": "Hoger onderwijs; ingeschrevenen"}
 
 _UWV = json.dumps(
@@ -68,7 +71,11 @@ def _data(monkeypatch):
         KeyMeta(bron="duo", dataset="p01hoinges", schooljaren=(2019, 2020, 2021, 2022, 2023)),
     )
     store.derive("duo:p01hoinges:0", "duo:p01hoinges:0:sel", pd.DataFrame({"AANTAL": [26370]}), schooljaren=(2023,))
-    store.put("cbs:85423NED", pd.DataFrame({"AANTAL": [341720]}), KeyMeta(bron="cbs", dataset="85423NED"))
+    store.put(
+        "cbs:85423NED",
+        pd.DataFrame({"AANTAL": [341720]}),
+        KeyMeta(bron="cbs", dataset="85423NED", opgehaald_op=_OPGEHAALD, bijgewerkt_op="2026-04-10"),
+    )
 
 
 def _stap(tool: str, **velden) -> tuple[str, str]:
@@ -76,7 +83,7 @@ def _stap(tool: str, **velden) -> tuple[str, str]:
 
 
 _DUO = "DUO · Ingeschrevenen hoger onderwijs, 2019/20 t/m 2023/24 (p01hoinges)"
-_CBS = "CBS · Hoger onderwijs; ingeschrevenen (85423NED)"
+_CBS = "CBS · Hoger onderwijs; ingeschrevenen (85423NED), bijgewerkt door CBS op 10-04-2026, opgehaald op 02-11-2026"
 
 
 def test_een_dataset_met_meer_bestanden_noemt_het_bestand(monkeypatch):

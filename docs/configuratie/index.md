@@ -47,7 +47,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
 | `DUO_ROW_LIMIT` | `500` | Maximum rijen uit DUO-datasets |
 | `CORS_ORIGINS` | *(leeg)* | Komma-gescheiden lijst van origins die de API cross-origin mogen aanroepen. Leeg is genoeg zolang de frontend via dezelfde origin draait. Origins worden exact vergeleken, zonder patronen: een origin met ergens een `*`, ook `https://*.nl`, wordt bij het opstarten geweigerd |
-| `STORE_MAX_MB` | `512` | Bovengrens van de datastore in het geheugen (#13): daarboven gaan de langst niet gebruikte tabellen eruit; een gesprek haalt ze uit zijn recept terug. Houd dit onder het geheugen van de pod |
+| `STORE_MAX_MB` | `512` | Bovengrens van de datastore in het geheugen (#13): daarboven gaan de langst niet gebruikte tabellen eruit; een gesprek haalt ze uit zijn recept terug. Een tabel die langer dan 24 uur geleden is opgehaald, gaat er ook uit (#864, `core/actualiteit.py`). Houd dit onder het geheugen van de pod |
 | `DATABASE_PATH` | `onderwijsdata.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
 | `ENABLE_DASHBOARDS` | `false` | Zet op `true` om de dashboardfunctie (pagina en `/api/dashboard/*`) aan te zetten. Standaard uit, omdat de dashboardbouwer een eigen chatclient heeft die achterloopt op de chat (#765); `manifests/test/values.yaml` zet hem aan, playground en productie houden hem uit |

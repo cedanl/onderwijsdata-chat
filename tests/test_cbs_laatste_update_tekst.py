@@ -1,8 +1,9 @@
 """De CBS-datum in een antwoord is de dag van de laatste bijwerking, niet het einde van de cijfers (#496, F-03).
 
 Het model schreef "Deze dataset is actueel tot 9 april 2026": die zin stond in de systeemprompt. De datum
-is `laatste_update` uit `get_cbs_data`, de `_laatste_update` van de catalogus (TableInfos.Modified van CBS
-bij de build van de package). Welke jaren de cijfers beslaan, staat in de perioden van de data.
+is `laatste_update` uit `get_cbs_data`: de live TableInfos.Modified van CBS (#864), en als CBS die niet geeft de
+`_laatste_update` van de catalogus (dezelfde datum bij de build van de package). Welke jaren de cijfers beslaan,
+staat in de perioden van de data.
 """
 
 import json
@@ -20,22 +21,25 @@ _DEFS = {
     "Studenten_1": {"type": "Topic"},
 }
 _ROWS = [{"Perioden": "2024SJ00", "Studenten_1": 500000}]
-# Een live TableInfos.Modified die afwijkt van de catalogus: de chatdatum komt er niet uit.
+# Een live TableInfos.Modified die afwijkt van de catalogus: die geldt (#864).
 _LIVE_MODIFIED = "2026-10-01T00:00:00"
 
 
-def _get(dataset_id, endpoint, **params):
-    if endpoint == "TableInfos":
-        return [{"Description": "", "Modified": _LIVE_MODIFIED}]
-    return []
+def _get(modified: str | None):
+    def get(dataset_id, endpoint, **params):
+        if endpoint == "TableInfos":
+            return [{"Description": "", **({"Modified": modified} if modified else {})}]
+        return []
+
+    return get
 
 
-def _load(dataset_id: str) -> dict:
+def _load(dataset_id: str, modified: str | None = _LIVE_MODIFIED) -> dict:
     """get_cbs_data zonder netwerk: data, metadata en TableInfos staan vast, de catalogus is de echte."""
     with (
         patch("tools.cbs.data", return_value=_ROWS),
         patch("tools.cbs.definitions", return_value=_DEFS),
-        patch("tools.cbs.get", side_effect=_get),
+        patch("tools.cbs.get", side_effect=_get(modified)),
     ):
         return json.loads(get_cbs_data(dataset_id))
 
@@ -45,10 +49,15 @@ def _cbs_datumregel() -> str:
 
 
 @pytest.mark.parametrize("dataset_id", ["85352NED", "85353NED", "85354NED"])
-def test_laatste_update_is_de_catalogusdatum(dataset_id):
+def test_laatste_update_is_de_live_datum_van_cbs(dataset_id):
+    assert _load(dataset_id)["laatste_update"] == "2026-10-01"
+
+
+@pytest.mark.parametrize("dataset_id", ["85352NED", "85353NED", "85354NED"])
+def test_zonder_live_datum_is_laatste_update_de_catalogusdatum(dataset_id):
     verwacht = catalogus_laatste_update(dataset_id)
     assert verwacht and re.fullmatch(r"\d{4}-\d{2}-\d{2}", verwacht)
-    assert _load(dataset_id)["laatste_update"] == verwacht
+    assert _load(dataset_id, modified=None)["laatste_update"] == verwacht
 
 
 def test_zonder_catalogusdatum_geen_laatste_update():

@@ -216,6 +216,8 @@ hbo- of wo-opleiding (#726, stap A).
 
 Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.
 
+Een CBS-regel eindigt met de dag waarop CBS de tabel het laatst bijwerkte en de dag waarop de app hem ophaalde: "…, bijgewerkt door CBS op 20-10-2026, opgehaald op 02-11-2026" (#864). De eerste datum vraagt de app bij het laden live aan CBS (`TableInfos.Modified`), met de catalogus als terugval. Een opgehaalde tabel en de CBS-metadata gelden 24 uur; daarna haalt een gesprek dat ze nog gebruikt ze opnieuw op.
+
 Elke regel is een link naar de bronpagina van die dataset (#621), die in een nieuw tabblad opent. Het is dezelfde link als onder een grafiek in een rapport: voor CBS de StatLine-tabelpagina (#638), voor de andere bronnen de documentatie-URL uit de catalogus. Op een telefoon is de hele regel aan te tikken.
 
 | Bron | Link naar |

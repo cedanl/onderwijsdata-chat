@@ -155,7 +155,11 @@ def notitie(username: str | None, key: str) -> str | None:
         return None
     known = store.meta(key)
     tekst = f"opnieuw opgehaald op {op}; de bron kan intussen zijn gewijzigd"
-    if known is not None and known.bron == "cbs" and (update := catalogus_laatste_update(known.dataset)):
+    if (
+        known is not None
+        and known.bron == "cbs"
+        and (update := known.bijgewerkt_op or catalogus_laatste_update(known.dataset))
+    ):
         tekst += f" (CBS-tabel laatst bijgewerkt op {update})"
     return tekst
 

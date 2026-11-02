@@ -11,6 +11,7 @@ import pandas as pd
 from onderwijsdata import data, definitions
 from onderwijsdata.client import get
 
+from core import actualiteit
 from core.config import CBS_ROW_LIMIT
 from core.logging_util import foutkenmerk
 
@@ -199,6 +200,14 @@ def _tabelbeschrijving(dataset_id: str) -> str:
     """TableInfos.Description: daar zet CBS publicatieregels zoals de afronding (#352)."""
     rows = get(dataset_id, "TableInfos")
     return (rows[0].get("Description") or "") if rows else ""
+
+
+# De metadata hierboven en de kolomdefinities van de package (ook een lru_cache) zijn na de TTL weer van de bron
+# (#864): anders bleef een revisie of een nieuwe periode bij CBS onzichtbaar tot de pod herstartte. Een lambda voor
+# `definitions`, zodat een test die de functie vervangt ook de vervanging leegt.
+_metadata = actualiteit.Verversing(
+    lambda: definitions.cache_clear(), _dimension_rows.cache_clear, _tabelbeschrijving.cache_clear
+)
 
 
 def bron_laatste_update(dataset_id: str) -> str | None:
@@ -411,6 +420,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    _metadata.actueel()
     standaard = None
     alternatief: _Alternatief | None = None
     if selectie is not None:
@@ -454,6 +464,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
     eenheid, afronding_bekend = _afronding(dataset_id)
+    # De dag waarop CBS de tabel het laatst bijwerkte (TableInfos.Modified), niet het einde van de cijfers: dat zijn de
+    # perioden (#496, F-03). Live gevraagd (#864); antwoordt CBS niet, dan de catalogus, een momentopname van de package.
+    bijgewerkt_op = bron_laatste_update(dataset_id) or catalogus_laatste_update(dataset_id)
     store_meta = store.KeyMeta(
         bron="cbs",
         dataset=dataset_id,
@@ -463,6 +476,7 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
         afronding=eenheid,
         laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
         kolomtitels=kolomtitels(col_defs, schooljaren),
+        bijgewerkt_op=bijgewerkt_op,
     )
     store.put(key, df, store_meta)
     store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
@@ -493,11 +507,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     if schooljaren:
         result["beschikbare_schooljaren"] = periode.labels(schooljaren)
 
-    # De dag waarop CBS de tabel het laatst bijwerkte (TableInfos.Modified uit de catalogus, een
-    # momentopname van de package), niet het einde van de cijfers: dat zijn de perioden (#496, F-03).
-    laatste_update = catalogus_laatste_update(dataset_id)
-    if laatste_update:
-        result["laatste_update"] = laatste_update
+    if bijgewerkt_op:
+        result["laatste_update"] = bijgewerkt_op
+    result["opgehaald_op"] = f"{store_meta.opgehaald_op.astimezone():%Y-%m-%d}"
 
     if loaded_defs is None:
         result["metadata_ontbreekt"] = (
@@ -531,6 +543,7 @@ def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     dataset_id = cbs_bron_id(dataset_id)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
+    _metadata.actueel()
     try:
         rows = _dimension_rows(dataset_id, dimension_name)
     except Exception as e:

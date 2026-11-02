@@ -46,7 +46,9 @@ _RIO_ROWS = [{"code": "30TX", "naam": "Aeres"}, {"code": "25DW", "naam": "HU"}]
 
 
 def _cbs_get(dataset_id, endpoint, **params):
-    return [{"Description": "De cijfers zijn afgerond op tientallen."}] if endpoint == "TableInfos" else []
+    if endpoint == "TableInfos":
+        return [{"Description": "De cijfers zijn afgerond op tientallen.", "Modified": "2026-04-14T02:00:00"}]
+    return []
 
 
 @contextmanager
@@ -59,7 +61,6 @@ def _bronnen(cbs_data=None):
         patch("tools.duo._duo.load", side_effect=lambda *_: _DUO_DF.copy()),
         patch("tools.duo_meta.teldefinitie", return_value="natuurlijke personen"),
         patch("tools.rio.fetch", return_value=_RIO_ROWS),
-        patch("tools.herlaad.catalogus_laatste_update", return_value="2026-04-14"),
     ):
         yield
 
