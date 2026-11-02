@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 20
 _MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
-_UWV_PEILDATUM = "mei 2023 (momentopname)"
-_ROA_BRON = (
-    "ROA AIS2030 Schoolverlatersinformatie 2024 — nationale gemiddelden per opleidingsniveau, niet per instelling"
-)
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
 # Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
@@ -691,20 +687,6 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     result["arbeidsmarkt_prognose"] = _roa_prognose("ho")
     ho_sectoren = tuple(sorted(result.get("sectoren", {}).keys()))
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie, ho_sectoren) if provincie else {}
-    result["methodologie"] = {
-        "benchmark": (
-            "Ongewogen gemiddelde per jaar over alle HO-instellingen in dezelfde "
-            f"{ctx.regio_type if ctx else 'provincie'}, exclusief eigen instelling"
-        ),
-        "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
-        "datasets": {
-            "ingeschrevenen": "DUO p01hoinges partities 0 (HBO) en 1 (WO)",
-            "eerstejaars": "DUO p02ho1ejrs partities 0 (HBO) en 1 (WO)",
-            "gediplomeerden": "DUO p04hogdipl partities 0 (HBO) en 1 (WO)",
-        },
-        "uwv_peildatum": _UWV_PEILDATUM,
-        "roa_bron": _ROA_BRON,
-    }
     return result
 
 
@@ -817,18 +799,13 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     result["arbeidsmarkt_roa"] = _roa_schoolverlaters("mbo")
     result["arbeidsmarkt_prognose"] = _roa_prognose("mbo")
     result["vacatureaanbod"] = _uwv_vacatures_provincie(provincie) if provincie else {}
-    regio_type = ctx.regio_type if ctx else "provincie"
-    result["methodologie"] = {
-        "benchmark": f"Ongewogen gemiddelde per jaar over alle MBO-instellingen in dezelfde {regio_type}, exclusief eigen instelling",
-        "indexering": "% verandering t.o.v. het eerste beschikbare jaar (basisjaar = 0%)",
-        "datasets": {
-            "ingeschrevenen": "DUO mbo-studenten-per-instelling",
-            "gediplomeerden": "DUO gediplomeerde-mbo-studenten",
-        },
-        "uwv_peildatum": _UWV_PEILDATUM,
-        "roa_bron": _ROA_BRON,
-    }
     return result
+
+
+def _beschikbare_instellingen(df_ho: pd.DataFrame, df_mbo: pd.DataFrame) -> list[str]:
+    """De suggesties bij een onbekende instelling: ho- en mbo-namen samen, gesorteerd, hooguit _MAX_SUGGESTIONS."""
+    namen = set(df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna()) | set(df_mbo["INSTELLINGSNAAM"].dropna())
+    return sorted(namen)[:_MAX_SUGGESTIONS]
 
 
 def load_dashboard_regio(instelling: str) -> dict:
@@ -849,14 +826,7 @@ def load_dashboard_regio(instelling: str) -> dict:
 
     try:
         df_ho, _, _ = _load_ho_full()
-        df_mbo = _load_mbo_studenten()
-        alle = sorted(
-            set(
-                df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
-                + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
-            )
-        )
-        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(df_ho, _load_mbo_studenten())
     except Exception:
         logger.warning("load_dashboard_regio: beschikbare instellingen niet laden", exc_info=True)
 
@@ -999,15 +969,7 @@ def load_dashboard(instelling: str) -> dict:
         return result
 
     try:
-        df_ho = _load_ho(instelling)
-        df_mbo = _load_mbo_studenten()
-        alle = sorted(
-            set(
-                df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna().unique().tolist()
-                + df_mbo["INSTELLINGSNAAM"].dropna().unique().tolist()
-            )
-        )
-        result["beschikbare_instellingen"] = alle[:_MAX_SUGGESTIONS]
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(_load_ho(instelling), _load_mbo_studenten())
     except Exception:
         logger.warning("load_dashboard: beschikbare instellingen niet laden", exc_info=True)
 
@@ -1194,9 +1156,7 @@ def _sector_rendement_ho(
     return out
 
 
-def _ho_peer_rendement(
-    df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str, inst_col: str, code: str
-) -> dict[int, float]:
+def _ho_peer_rendement(df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str, code: str) -> dict[int, float]:
     p_ej = df_ej[df_ej[code_col] == code]
     if p_ej.empty:
         return {}
@@ -1251,7 +1211,7 @@ def _rendement_ho(instelling: str) -> dict | None:
     peer_rend_lists: list[dict[int, float]] = []
     if ctx:
         for code in ctx.peer_codes:
-            rend = _ho_peer_rendement(df_ej, df_dipl, code_col, inst_col, code)
+            rend = _ho_peer_rendement(df_ej, df_dipl, code_col, code)
             if rend:
                 naam = df_ej[df_ej[code_col] == code][inst_col].iloc[0]
                 peers_rendement[naam] = rend
