@@ -49,6 +49,11 @@ GOED = [
     # Ho-doorstroom (#559), gemeten op 15 oktober 2026: vo-context voor vervolgonderwijs (#554) achter de zoekpoort (#557).
     # Alleen vragen uit de ontwikkelreeks van tests/retrieval_baseline; de testreeks blijft buiten de gouden set.
     (_VOOROPLEIDING, "85422NED", 1),
+    # Doorstroom uit het vo (#882), gemeten op 3 november 2026: een vo-schoolsoort raakt het onderwijstype VO van een
+    # vo-contextrecord. Ontwikkelvragen mbo-27, hbo-29 en wo-26 met hun zoekinput.
+    ("doorstroom vmbo mbo", "85566NED", 4),
+    ("havo doorstroom vervolgonderwijs", "85566NED", 2),
+    ("doorstroom vwo wo", "85566NED", 4),
 ]
 
 # Ho-doorstroom met de vraag van de gebruiker erbij (#597): de zoekterm van het model scoort, de vraag opent
@@ -83,8 +88,9 @@ BEKENDE_MISSERS = [
     # Metadata-audit CHAT-10 (#360): 'unieke' en 'open' vinden de bron niet (niet in de top 15).
     ("Hoeveel unieke hbo-studenten zijn er?", "p01hoinges", 5, None),
     ("Open mbo-cohorten", "aangeboden-opleiding-cohorten", 5, None),
-    # Ho-doorstroom (#559): 85566NED (vo-doorstroom) staat bij geen enkele doorstroomvraag in de top 15.
-    # Termweging, niet afgesteld; vervolg buiten #559.
+    # Ho-doorstroom (#559): 85566NED (vo-doorstroom) staat bij deze doorstroomvragen niet in de top 15. Sinds #882
+    # vindt hij de trefwoorden ("doorstroom vwo wo", in GOED), maar een volzin laat elke term volstaan, en
+    # "vwo-leerlingen" en "stromen door" raken hem niet (3 november 2026: rang 32 en 28).
     ("Hoeveel vwo-leerlingen stromen door naar het wo?", "85566NED", 5, None),
     ("Hoeveel havo-leerlingen stromen door naar het hbo?", "85566NED", 5, None),
 ]

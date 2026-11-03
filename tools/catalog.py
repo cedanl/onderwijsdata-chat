@@ -573,6 +573,23 @@ _DEFAULT_WEIGHT = 1
 # Blijft zichtbaar in het resultaat, maar scoort niet: "Niet geschikt voor gemeente" is geen treffer voor "gemeente" (#350).
 _NIET_ZOEKBAAR = frozenset({"niet_geschikt_voor"})
 _HISTORISCH = frozenset({"historisch", "historische", "archief", "gearchiveerd", "gearchiveerde"})
+# Het onderwijstype VO van een vo-contextrecord dekt de schoolsoorten (#882): de catalogus zegt "VO", een
+# doorstroomvraag "vmbo", "havo" of "vwo". Alleen bij VO_CONTEXT, dat achter de zoekpoort staat (#557, #877); een
+# tabel over vo en mbo laadt buiten een vo-vraag alleen haar mbo-deel (#879) en krijgt de schoolsoorten dus niet.
+_VO_SCHOOLSOORTEN = "vmbo havo vwo"
+
+
+def _veldtekst(entry: dict, key: str, val) -> str:
+    """De doorzoekbare tekst van één veld, in kleine letters."""
+    if isinstance(val, list):
+        text = " ".join(val)
+    elif isinstance(val, dict):
+        text = json.dumps(val, ensure_ascii=False)
+    else:
+        text = str(val)
+    if key == "onderwijstype" and scopeprofiel.is_vo_context(entry):
+        text = f"{text} {_VO_SCHOOLSOORTEN}"
+    return text.lower()
 
 
 def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
@@ -583,15 +600,7 @@ def _score(entry: dict, weighted_words: list[tuple[str, float]]) -> float:
 
         # Determine field weight: explicit weight or default
         field_weight = _FIELD_WEIGHTS.get(key, _DEFAULT_WEIGHT)
-
-        # Convert to text
-        if isinstance(val, list):
-            text = " ".join(val)
-        elif isinstance(val, dict):
-            text = json.dumps(val, ensure_ascii=False)
-        else:
-            text = str(val)
-        text = text.lower()
+        text = _veldtekst(entry, key, val)
 
         # Weight word by its user/synonym weight, multiplied by field weight
         total += sum(field_weight * word_weight for w, word_weight in weighted_words if _word_match(w, text))

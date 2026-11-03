@@ -210,6 +210,43 @@ Gemeten op 3 november 2026, catalogus `e4b886252be0`: rang 4 met `zoekinput` ("v
 mbo/ontwikkel verschuift: recall@5 0.89 → 0.90 (+0.01), MRR 0.79 → 0.76 (-0.03). `kritiek_falend` is ongewijzigd (hbo-09,
 hbo-10, wo-11, wo-25). Niet bijgesteld (#597).
 
+## Een vo-schoolsoort raakt een vo-contextrecord (#882)
+
+85566NED raakte bij mbo-27 ("doorstroom vmbo mbo") en hbo-29 ("havo doorstroom vervolgonderwijs") alleen "doorstroom":
+de catalogus noemt zijn onderwijstype "VO", niet de schoolsoorten. Bij drie trefwoorden moet een treffer er twee raken
+(`_drempel`, #351), dus viel hij als te zwak af, met een score (16) die hem op rang 4 en 2 had gezet. Sinds #882 dekt
+het onderwijstype VO van een vo-contextrecord vmbo, havo en vwo (`catalog._veldtekst`, gewicht van `onderwijstype`).
+Alleen bij `scopeprofiel.VO_CONTEXT`, dat achter de zoekpoort staat; een tabel over vo en mbo (85368NED, 85859NED,
+`aangeboden-opleidingen`) krijgt de schoolsoorten niet. Afgesteld op de ontwikkelreeks.
+
+Gemeten op 3 november 2026, catalogus `e4b886252be0` (rang in de top 15 met `zoekinput`; met `vraag` bewoog niets):
+
+| Vraag | Reeks | Geaccepteerd | Rang vóór | Rang na |
+|---|---|---|---|---|
+| mbo-27 | ontwikkel | 85566NED | niet in de top 15 | 4 |
+| hbo-29 | ontwikkel | 85566NED, 85534NED | niet in de top 15 | 2 (85566NED; 85534NED raakt alleen havo) |
+| wo-26 | ontwikkel | 85566NED | niet in de top 15 | 4 |
+| hbo-28 | test | 85566NED | niet in de top 15 | 2 |
+
+Verder bewoog geen rang van een geaccepteerde dataset; in de top 5 van mbo-28, hbo-26, hbo-30 en wo-27 schuift een
+vo-contextrecord achteraan bij. `kritiek_falend` is ongewijzigd (hbo-09, hbo-10, wo-11, wo-25), en de lektests van
+`test_vo_context_poort.py` blijven groen: de regel geldt alleen voor records die de poort al doorlaat. De cellen:
+
+| Cel | recall@5 | MRR |
+|---|---|---|
+| mbo/ontwikkel | 0.90 → 0.95 (+0.05) | 0.76 → 0.77 (+0.01) |
+| mbo/test | 0.89 → 0.89 (+0.00) | 0.81 → 0.81 (+0.00) |
+| hbo/ontwikkel | 0.82 → 0.88 (+0.06) | 0.63 → 0.66 (+0.03) |
+| hbo/test | 0.80 → 0.90 (+0.10) | 0.67 → 0.72 (+0.05) |
+| wo/ontwikkel | 0.82 → 0.88 (+0.06) | 0.80 → 0.82 (+0.01) |
+| wo/test | 0.78 → 0.78 (+0.00) | 0.69 → 0.69 (+0.00) |
+| totaal/ontwikkel | 0.85 → 0.91 (+0.06) | 0.73 → 0.75 (+0.02) |
+| totaal/test | 0.82 → 0.86 (+0.04) | 0.72 → 0.74 (+0.02) |
+
+De volzinnen blijven missen: "vmbo-leerlingen" en "stromen door" raken 85566NED niet, en een volzin laat elke term
+volstaan. De gouden set houdt de twee missers uit #559 daarom als strict xfail bij, en zet de trefwoorden van mbo-27,
+hbo-29 en wo-26 onder de rangen die moeten blijven.
+
 ## Draaien
 
 ```bash
