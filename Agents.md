@@ -46,6 +46,12 @@ Use **TDD + modularity** when building features (e.g., #37 toon _laatste_update)
    result["field"] = get_metadata_field(dataset_id)
    ```
 
+   **Waar broncode hoort:** ophalen en de bronlogica (clients, kolommen, catalogus, bronversies) horen in `packages/`
+   (`onderwijsdata`, `riodata`), het beleid (scope, poorten, etiketten, wat de gebruiker te zien krijgt) in `tools/`.
+   Een pakket importeert de chat en het andere pakket nooit, en de chat gebruikt alleen de publieke API van een pakket
+   (geen pad met underscore); `tests/test_importgrens.py` bewaakt dat en maakt de pipeline rood. De tests van een
+   pakket staan in `packages/<naam>/tests` en draaien mee in de CI-job `pytest`.
+
 3. **Verify tests pass**: `uv run pytest tests/test_feature.py -v`
 
 4. **Commit once, with narrative**: Explain what & why

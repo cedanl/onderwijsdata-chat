@@ -117,7 +117,9 @@ pytest:
   image:
     name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
   variables:
-    UV_CACHE_DIR: .uv-cache
+    # Absoluut: test_release van de pakketten draait `uv build` in packages/<naam>, en een relatief pad landt dan in
+    # die map; uv neemt de cache dan op in de sdist en die faalt ("Invalid tar file", #886).
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
     # helm voor tests/test_manifests.py: zonder helm sloegen de chart-tests in CI stil over (#768). Versie en checksum
     # horen bij elkaar, Renovate volgt ze niet: pas bij een update beide aan (de checksum staat naast de tarball op
     # get.helm.sh, als helm-<versie>-linux-amd64.tar.gz.sha256sum).
@@ -147,9 +149,17 @@ pytest:
     - uv run ruff format --check .
     # ty kent geen baseline; het script faalt alleen op diagnostics die nog niet in ty-baseline.txt staan (#230).
     - uv run python scripts/ty_baseline.py
+    # De eigen tests van de bronpakketten (#886), elk in de map van het pakket met zijn eigen pytest-config: in één run
+    # botsen de modulenamen (beide hebben tests/__init__.py). Tests met netwerk staan achter RIODATA_LIVE=1 en slaan
+    # over (-rs toont ze), zoals in de pakketrepo's; test_release bouwt wheel en sdist met uv. De dekking van het pakket
+    # staat in het log maar telt niet mee in de poort. Deze stappen staan VOOR de chattests: GitLab neemt de laatste
+    # `TOTAL`-regel voor `coverage` hieronder, en dat moet die van de chat zijn.
+    - uv run --frozen --no-sync --directory packages/onderwijsdata pytest -q -rs --cov=onderwijsdata --cov-report=term
+    - uv run --frozen --no-sync --directory packages/riodata pytest -q -rs --cov=riodata --cov-report=term
     # Dekking: `fail_under` in pyproject.toml laat deze stap falen onder de ondergrens (#691); `coverage` hieronder
     # zet het totaal op de MR en in de pipeline.
     # -rs: de reden van elke skip staat in het log, zodat een stil overgeslagen test opvalt (#768).
+    # De importgrens tussen pakket en chat (tests/test_importgrens.py, #886) draait hier mee.
     - uv run pytest tests/ -q -rs --cov --cov-report=term:skip-covered
   coverage: '/^TOTAL.*\s+(\d+(?:\.\d+)?)%/'
 
