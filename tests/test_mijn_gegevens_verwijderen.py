@@ -14,7 +14,7 @@ from collections import OrderedDict
 import pytest
 from fastapi.testclient import TestClient
 
-from agent import recepten
+from agent import beurtbewijs, recepten
 from core import foutmeldingen
 from persistence import db, export, verwijderen
 from tests.test_mijn_gegevens_export import _vul
@@ -231,13 +231,15 @@ def test_alle_tokens_van_het_account_zijn_daarna_ingetrokken_die_van_een_ander_n
 # ── 4. Het geheugen vergeet de gebruiker ─────────────────────────────────────
 
 
-def test_het_geheugen_vergeet_recepten_en_sram_gegevens_van_alleen_deze_gebruiker(client):
+def test_het_geheugen_vergeet_recepten_bewijsrijen_en_sram_gegevens_van_alleen_deze_gebruiker(client):
     import routes.auth
 
     _vul_anna()
     recepten.onthoud("anna", "key-ANNA-UNIEK", {"laad": ["query_data", {"id": "ANNA-UNIEK"}]})
     recepten.onthoud("anna", "nooit-bewaard", {"laad": ["get_cbs_data", {"dataset_id": "85423NED"}]})
     recepten.onthoud("bert", "key-bert", {"laad": ["get_duo_data", {"id": "b"}]})
+    for gebruiker in ("anna", "bert"):  # een antwoord dat nog niet is opgeslagen (ADR-009)
+        beurtbewijs._klaar[gebruiker, "hash-nooit-bewaard"] = {}
     routes.auth._store_oidc_user("anna", {"name": "Anna"})
     routes.auth._store_oidc_user("bert", {"name": "Bert"})
 
@@ -245,6 +247,7 @@ def test_het_geheugen_vergeet_recepten_en_sram_gegevens_van_alleen_deze_gebruike
 
     assert [sleutel for sleutel in recepten._wachtend if sleutel[0] == "anna"] == []
     assert ("bert", "key-bert") in recepten._wachtend
+    assert list(beurtbewijs._klaar) == [("bert", "hash-nooit-bewaard")]
     assert "anna" not in routes.auth._oidc_user_cache
     assert routes.auth._get_oidc_user("bert") == {"name": "Bert"}
 

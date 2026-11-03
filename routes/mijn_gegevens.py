@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agent import recepten
+from agent import beurtbewijs, recepten
 from core import auth
 from core.auth import get_current_user
 from persistence import export, verwijderen
@@ -67,7 +67,7 @@ def verwijder_mijn_gegevens(
 ) -> dict:
     """Verwijder al mijn gegevens (#646, AVG art. 17): alle rijen van dit account, in één transactie.
 
-    Daarna vergeet het geheugen de gebruiker (wachtende recepten, SRAM-gegevens) en worden alle tokens van het account
+    Daarna vergeet het geheugen de gebruiker (wachtende recepten en bewijsrijen, SRAM-gegevens) en worden alle tokens van het account
     ingetrokken, ook die van een ander apparaat (#786): een open sessie daar kan dan geen gesprek meer terugzetten en
     sluit bij de volgende vraag. Faalt de transactie, dan blijft alles staan en blijven de tokens geldig, zodat
     opnieuw proberen kan. Antwoord en log noemen alleen aantallen, nooit inhoud of de naam (#475).
@@ -75,6 +75,7 @@ def verwijder_mijn_gegevens(
     aantallen = verwijderen.verwijder_alles(username)
     logger.info("verwijder mijn gegevens: %s", ", ".join(f"{soort}={n}" for soort, n in aantallen.items()))
     recepten.vergeet_gebruiker(username)
+    beurtbewijs.vergeet_gebruiker(username)
     vergeet_oidc_gebruiker(username)
     auth.revoke_all_tokens(username)
     return {"ok": True, "verwijderd": aantallen}
