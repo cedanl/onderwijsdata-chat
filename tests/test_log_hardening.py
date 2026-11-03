@@ -7,11 +7,13 @@ Elke logregel van een chatverbinding draagt een kort verbindings-ID, zodat regel
 verbinding te koppelen zijn zonder gebruikersnaam of gespreks-ID.
 """
 
+import ast
 import contextvars
 import importlib
 import json
 import logging
 import re
+from pathlib import Path
 from unittest.mock import patch
 
 import litellm
@@ -415,3 +417,185 @@ def test_een_fout_bij_afsluiten_logt_type_en_kenmerk(caplog, monkeypatch):
         asyncio.run(server.on_shutdown())
     assert "db-geheim" not in caplog.text
     assert "RuntimeError fout_len=" in caplog.text
+
+
+# --- de laatste restpunten (#819): data/, de OIDC-callback en het zoekpad; en een regel die het vastlegt ---
+
+
+def test_een_dashboardonderdeel_dat_niet_laadt_logt_type_en_kenmerk(caplog, monkeypatch):
+    from data import arbeidsmarkt
+    from data import dashboard as data_dashboard
+
+    def faal(*_args):
+        raise RuntimeError(f"https://bron.example/?q={MARKER}")
+
+    monkeypatch.setattr(arbeidsmarkt, "vacatures_per_sector", faal)
+    caplog.set_level(logging.DEBUG, logger="data.dashboard")
+    assert data_dashboard._uwv_vacatures_per_sector("Utrecht", ("zorg",)) == {}
+    assert not _lekt_op_warning(caplog)
+    [warning] = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert re.fullmatch(rf"uwv: vacatures per sector voor Utrecht niet beschikbaar: RuntimeError {_KENMERK}", warning)
+    [debug] = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    assert debug.exc_info is not None and MARKER in _volledig(debug)
+
+
+def test_een_onleesbare_sectormapping_logt_type_en_kenmerk(caplog, tmp_path):
+    from data import arbeidsmarkt
+
+    pad = tmp_path / "sector_cluster_mapping.json"
+    pad.write_text(f"{{{MARKER}")
+    caplog.set_level(logging.DEBUG, logger="data.arbeidsmarkt")
+    assert arbeidsmarkt.load_sector_cluster_map(pad) == {}
+    assert not _lekt_op_warning(caplog)
+    assert any("onleesbaar: JSONDecodeError fout_len=" in r for r in _regels(caplog, logging.WARNING))
+    assert any(r.exc_info for r in caplog.records if r.levelno == logging.DEBUG)
+
+
+def test_een_mislukte_oidc_uitwisseling_logt_type_en_kenmerk(caplog, monkeypatch):
+    import asyncio
+
+    from starlette.requests import Request
+
+    from routes import auth as auth_routes
+
+    async def faal(_code):
+        raise RuntimeError(f"token-endpoint antwoordde {MARKER}")
+
+    monkeypatch.setattr(auth_routes, "is_oidc_configured", lambda: True)
+    monkeypatch.setattr(auth_routes, "exchange_code_for_user", faal)
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/oidc/callback",
+            "query_string": b"code=c&state=s",
+            "headers": [(b"cookie", b"oidc_state=s")],
+        }
+    )
+    caplog.set_level(logging.DEBUG, logger="routes.auth")
+    response = asyncio.run(auth_routes.oidc_callback(request))
+    assert response.headers["location"] == "/?oidc_error=1"
+    assert not _lekt_op_warning(caplog)
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert error.exc_info is None
+    assert re.fullmatch(rf"OIDC code exchange failed: RuntimeError {_KENMERK}", error.getMessage())
+    assert any(r.exc_info for r in caplog.records if r.levelno == logging.DEBUG)
+
+
+@pytest.mark.parametrize("exc", [OSError, RuntimeError])
+def test_een_fout_in_search_catalog_logt_type_en_kenmerk(caplog, monkeypatch, exc):
+    from tools import catalog
+
+    def faal(*_args):
+        raise exc(f"pad /data/{MARKER}")
+
+    monkeypatch.setattr(catalog, "_zoek", faal)
+    caplog.set_level(logging.DEBUG, logger="tools.catalog")
+    uitkomst = json.loads(catalog.search_catalog(f"instroom {MARKER}"))
+    assert MARKER not in json.dumps(uitkomst)
+    assert not _lekt_op_warning(caplog)
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert error.exc_info is None
+    assert re.search(rf"query_len=\d+ query_hash=[0-9a-f]{{8}}: {exc.__name__} {_KENMERK}$", error.getMessage())
+    assert any(r.exc_info for r in caplog.records if r.levelno == logging.DEBUG)
+
+
+_ROOT = Path(__file__).parent.parent
+_NIVEAUS_INFO_PLUS = {"info", "warning", "error", "critical"}
+
+# Bewuste uitzonderingen op de logregel: (bestand, functie, bericht); functie "" is moduleniveau.
+_BEWUST = {
+    # Een ConfigError bevat alleen tekst uit config.py; zonder die tekst is een verkeerde configuratie niet te vinden.
+    ("server.py", "", "Configuration validation failed: %s"),
+    # POST /api/dashboard/refresh gaat met de dashboardbouwer weg (#765); haal deze regel dan mee weg.
+    ("routes/chat.py", "refresh_dashboard_endpoint", "Dashboard refresh failed"),
+}
+
+
+def _productiecode() -> list[Path]:
+    mappen = [
+        d for d in _ROOT.iterdir() if d.is_dir() and not d.name.startswith(".") and d.name not in {"tests", "frontend"}
+    ]
+    return sorted([*_ROOT.glob("*.py"), *(p for d in mappen for p in d.rglob("*.py"))])
+
+
+class _Logregels(ast.NodeVisitor):
+    """Logaanroepen op INFO+ met een traceback of met de uitzondering zelf (niet via foutkenmerk of type)."""
+
+    def __init__(self, bestand: str):
+        self.bestand, self.functie, self.namen, self.fout = bestand, [""], [], []
+
+    def visit_FunctionDef(self, node):
+        self.functie.append(node.name)
+        self.generic_visit(node)
+        self.functie.pop()
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ExceptHandler(self, node):
+        self.namen.append(node.name)
+        self.generic_visit(node)
+        self.namen.pop()
+
+    def visit_Call(self, node):
+        if self._overtreedt(node):
+            bericht = node.args[0].value if node.args and isinstance(node.args[0], ast.Constant) else ""
+            self.fout.append((self.bestand, self.functie[-1], bericht, node.lineno, ast.unparse(node)))
+        self.generic_visit(node)
+
+    def _overtreedt(self, node: ast.Call) -> bool:
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id in {"logger", "logging"}):
+            return False
+        if f.attr == "exception":
+            return True
+        traceback = any(k.arg == "exc_info" for k in node.keywords)
+        return f.attr in _NIVEAUS_INFO_PLUS and (traceback or self._noemt_de_uitzondering(node))
+
+    def _noemt_de_uitzondering(self, node: ast.Call) -> bool:
+        namen = {n for n in self.namen if n}
+        veilig = {
+            id(sub)
+            for a in node.args
+            for c in ast.walk(a)
+            if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id in {"foutkenmerk", "type"}
+            for sub in ast.walk(c)
+        }
+        return any(
+            isinstance(sub, ast.Name) and sub.id in namen and id(sub) not in veilig
+            for a in node.args
+            for sub in ast.walk(a)
+        )
+
+
+def test_geen_traceback_of_fouttekst_op_info_en_hoger_buiten_de_bewuste_uitzonderingen():
+    """De logregel van Agents.md als test (#819): geen exc_info of logger.exception op INFO+, geen `%s` met de fout."""
+    gevonden = []
+    for pad in _productiecode():
+        bezoeker = _Logregels(pad.relative_to(_ROOT).as_posix())
+        bezoeker.visit(ast.parse(pad.read_text()))
+        gevonden += bezoeker.fout
+    assert [g for g in gevonden if g[:3] not in _BEWUST] == []
+
+
+def test_de_regel_vangt_een_traceback_en_een_fouttekst_op_warning():
+    bron = """
+try:
+    pass
+except Exception as e:
+    logger.warning("a", exc_info=True)
+    logger.exception("b")
+    logger.error("c: %s", e)
+    logger.warning(f"d: {e}")
+    logger.warning("e: %s", foutkenmerk(e))
+    logger.warning("f: %s", type(e).__name__)
+    logger.debug("g", exc_info=True)
+"""
+    bezoeker = _Logregels("x.py")
+    bezoeker.visit(ast.parse(bron))
+    assert [regel for *_, regel in bezoeker.fout] == [
+        "logger.warning('a', exc_info=True)",
+        "logger.exception('b')",
+        "logger.error('c: %s', e)",
+        "logger.warning(f'd: {e}')",
+    ]
