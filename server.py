@@ -156,9 +156,10 @@ async def version() -> dict:
 
     return {
         "version": Config.APP_VERSION or await asyncio.to_thread(_read),
-        "commit": Config.GIT_COMMIT or "onbekend",
-        # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361).
-        "catalogus": catalogusversie(),
+        # GIT_COMMIT is volledig (de installatieregel van een snippet heeft dat nodig, #888); hier de korte vorm.
+        "commit": Config.GIT_COMMIT[:8] if Config.GIT_COMMIT else "onbekend",
+        # Meegebouwde catalogusrevisies, niet de actuele GitHub-HEAD (#361); per pakket de commit waaruit het komt (#888).
+        "catalogus": catalogusversie(Config.GIT_COMMIT),
         # Periode uit de statische riodata-records, zonder download (CH-46).
         "arbeidsmarkt": arbeidsmarktversie(),
     }

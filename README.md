@@ -20,8 +20,8 @@ De assistent heeft toegang tot CBS, RIO en DUO via tool calling en genereert ant
 4. **Reproducibiliteit**: Perfect voor rapport, archief, of audit — iedereen kan je analyse opnieuw runnen
 
 Voorbeeld: het script dat de app voor die vraag maakt (DUO `p02ho1ejrs`, resource 0: eerstejaars hbo). `ONDERDEEL` is
-de sector van de opleiding, geen opleidingsnaam. Boven het script zet de app nog twee regels met de riodata-versie
-waarmee het gemaakt is; `tests/test_readme_voorbeeld.py` draait dit voorbeeld tegen een bevroren kopie van het bestand.
+de sector van de opleiding, geen opleidingsnaam. Boven het script zet de app nog twee regels met de riodata-versie en
+commit waarmee het gemaakt is, en een `pip install` die precies die code ophaalt; `tests/test_readme_voorbeeld.py` draait dit voorbeeld tegen een bevroren kopie van het bestand.
 
 ```python
 import pandas as pd
