@@ -91,3 +91,17 @@ def _kopruimte_opnieuw(figuur: dict) -> None:
 def gevraagd_bereik(*teksten: str) -> tuple[int, int] | None:
     """Het eerste periodebereik dat een van de teksten noemt, in volgorde van voorrang."""
     return next((b for t in teksten if t and (b := periode.genoemd_bereik(t))), None)
+
+
+def titelperiode(figuurperioden: list[tuple[int, int] | None], onderzoeksvraag: str) -> tuple[int, int] | None:
+    """De periode die de rapporttitel noemt (#893): wat de figuren samen dekken (startjaren), begrensd tot het bereik
+    van de onderzoeksvraag als die er een noemt, want de grafieken worden daarop bijgesneden (#385).
+    None als geen figuur haar periode kent."""
+    bekend = [p for p in figuurperioden if p]
+    if not bekend:
+        return None
+    data = (min(p[0] for p in bekend), max(p[1] for p in bekend))
+    if not (gevraagd := gevraagd_bereik(onderzoeksvraag)):
+        return data
+    begrensd = (max(data[0], gevraagd[0]), min(data[1], gevraagd[1]))
+    return begrensd if begrensd[0] <= begrensd[1] else data
