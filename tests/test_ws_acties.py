@@ -38,6 +38,7 @@ def test_elke_actie_van_de_frontend_heeft_een_handler():
         "message",
         "clarification_choice",
         "generate_report",
+        "report_checklist",
     }
 
 
@@ -582,7 +583,7 @@ def test_een_teken_boven_de_cap_laat_de_oudste_beurten_vallen(monkeypatch):
 def _rapport_zonder_model(monkeypatch, maximum: int = 4000) -> list[dict]:
     gevraagd: list[dict] = []
 
-    async def opnemen(session, emit, model, author=None, onderzoeksvraag=None):
+    async def opnemen(session, emit, model, author=None, onderzoeksvraag=None, beurten=None):
         gevraagd.append({"author": author, "onderzoeksvraag": onderzoeksvraag})
 
     monkeypatch.setattr(chat, "MAX_MESSAGE_CHARS", maximum)

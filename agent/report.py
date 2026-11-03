@@ -20,7 +20,7 @@ from pathlib import Path
 
 import plotly.io as pio
 
-from agent import manifest
+from agent import manifest, rapportselectie
 from agent.aanspreekvorm import in_je_vorm
 from agent.afkapping import afkappingsregels
 from agent.antwoordtaal import taal
@@ -45,6 +45,7 @@ from agent.stream import Emit
 from core.config import MODEL
 from core.errors import Gebruikersfout
 from core.logging_util import tekst_kenmerk
+from tools import store
 from tools.schemas import (
     TOOL_COMPUTE_KPI,
     TOOL_CREATE_CHOROPLETH_MAP,
@@ -250,6 +251,7 @@ async def generate(
     stop_event: asyncio.Event | None = None,
     author: str | None = None,
     onderzoeksvraag: str | None = None,
+    beurten: frozenset[int] | None = None,
 ) -> ReportSpec:
     """Generate a report from the loaded session data.
 
@@ -257,7 +259,26 @@ async def generate(
     gets one correction; a report that still contradicts its data is refused.
     `onderzoeksvraag` is what the user confirmed before generating (#750): it becomes
     the topic, the title and the research question, instead of the first question.
+    `beurten` are the turns with data the user kept (`rapportselectie.kies`, #908); None is the whole conversation.
+    The report then rests on a view of the conversation without the others, so nothing of them reaches it.
     """
+    if beurten is None:
+        return await _genereer(session, emit, model, stop_event, author, onderzoeksvraag)
+    uitgave = rapportselectie.beperk(session, beurten)
+    logger.info("RAPPORT selectie  beurten=%d  keys=%d", len(beurten), len(uitgave["data_keys"]))
+    # Ook wat een tool over "beschikbare data" zegt (tools/fouten.py) gaat alleen over wat in het rapport mag.
+    with store.gesprek(lambda: uitgave["data_keys"]):
+        return await _genereer(uitgave, emit, model, stop_event, author, onderzoeksvraag)
+
+
+async def _genereer(
+    session: dict,
+    emit: Emit,
+    model: str | None,
+    stop_event: asyncio.Event | None,
+    author: str | None,
+    onderzoeksvraag: str | None,
+) -> ReportSpec:
     await herstel_data(session, emit)
     context = build_dataset_context(session)
     if onderzoeksvraag:

@@ -63,16 +63,19 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
                 recepten.onthoud(session["username"], key, recept)
 
 
+def is_vraag(bericht: dict) -> bool:
+    """Is dit bericht een vraag van de gebruiker: een gebruikersbericht met tekst."""
+    return (
+        bericht.get("role") == "user" and isinstance(bericht.get("content"), str) and bool(bericht["content"].strip())
+    )
+
+
 def gebruikersvragen(session: dict) -> list[str]:
     """De vragen van de gebruiker in dit gesprek, in volgorde: elk gebruikersbericht met tekst.
 
     Ook na heropenen (de geschiedenis) en met het antwoord op een verduidelijkingskaart (#732, #733).
     """
-    return [
-        m["content"]
-        for m in session.get("messages") or []
-        if m.get("role") == "user" and isinstance(m.get("content"), str) and m["content"].strip()
-    ]
+    return [m["content"] for m in session.get("messages") or [] if is_vraag(m)]
 
 
 def data_lineage(session: dict, key: str) -> list[dict]:

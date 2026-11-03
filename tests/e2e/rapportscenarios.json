@@ -1,5 +1,5 @@
 {
-  "_doc": "Scenario's voor de rapporteval (#752), uit de rapportfeedback van 28 okt. Per scenario een gesprek (berichten, in volgorde over één verbinding) en daarna een rapport met de onderzoeksvraag die de app voorstelt (#751). De verwachting toetst wat code vastlegde: de onderzoeksvraag, de bronregel en de reeksen van elke grafiek (rapportscore.js). Patronen zijn regexen zonder hoofdlettergevoeligheid.",
+  "_doc": "Scenario's voor de rapporteval (#752), uit de rapportfeedback van 28 okt. Per scenario een gesprek (berichten, in volgorde over één verbinding) en daarna een rapport met de onderzoeksvraag die de app voorstelt (#751). De verwachting toetst wat code vastlegde: de onderzoeksvraag, de bronregel en de reeksen van elke grafiek (rapportscore.js). Patronen zijn regexen zonder hoofdlettergevoeligheid. Een scenario met `uitzetten` (patronen op de vraag) zet bij Genereer rapport die beurten uit in de checklist (#908); met `onderzoeksvraag` vult de gebruiker het veld zelf in. `spec_niet` is wat nergens in het rapport mag staan.",
   "scenarios": [
     {
       "label": "rapport-bijsturing-wo",
@@ -40,6 +40,24 @@
         "onderzoeksvraag_noemt": ["Universiteit Utrecht", "eerstejaars"],
         "onderzoeksvraag_niet": ["Hogeschool Utrecht", "Genereer een rapport"],
         "bron_wel": ["p02ho1ejrs"]
+      }
+    },
+    {
+      "label": "rapport-zijsprong-uit",
+      "description": "#908: een zijsprong naar een andere instelling en bron staat uit in de checklist; het rapport noemt haar nergens, ook niet in de bronnen",
+      "berichten": [
+        "Hoe ontwikkelde het aantal eerstejaars bij de Universiteit Utrecht zich sinds 2021/22?",
+        "Even iets anders: hoeveel studenten had Hogeschool Utrecht in 2024/25?"
+      ],
+      "uitzetten": ["Hogeschool Utrecht"],
+      "onderzoeksvraag": "Hoe ontwikkelde het aantal eerstejaars bij de Universiteit Utrecht zich sinds 2021/22?",
+      "verwachting": {
+        "min_visualisaties": 1,
+        "onderzoeksvraag_is_voorstel": true,
+        "onderzoeksvraag_noemt": ["Universiteit Utrecht", "eerstejaars"],
+        "bron_wel": ["p02ho1ejrs"],
+        "bron_niet": ["p01hoinges"],
+        "spec_niet": ["p01hoinges", "Hogeschool Utrecht"]
       }
     }
   ]

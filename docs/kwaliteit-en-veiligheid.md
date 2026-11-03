@@ -55,6 +55,17 @@ Een uitzondering in de chat (#619): is het enige harde probleem na de herkansing
 
 Welke controle hard is, staat in code: `hard()` in `agent/probleem.py`, toegepast in `agent/controles.py` en `agent/report_checks.py`.
 
+### Welke beurten in het rapport komen (#908)
+
+Bij "Genereer rapport" toont de app boven het veld met de onderzoeksvraag een checklist van de beurten met data: per beurt de vraag van de gebruiker (ingekort) en de bronregels van haar data. Alles staat standaard aan; het veld blijft van de gebruiker en wordt niet uit de keuze herschreven. De lijst en het filter zijn code (`agent/rapportselectie.py`), geen model, en er wordt niets op een gok aan- of uitgezet.
+
+- **Een beurt** is een vraag van de gebruiker waarbij minstens één dataset ontstond (`session["data_vraag"]`, #733). Een beurt die alleen data van een eerdere beurt hergebruikt, heeft geen eigen regel.
+- **De server filtert.** Het rapportverzoek (`generate_report`) kan `beurten` meesturen. De server controleert die tegen het gesprek en bouwt een weergave zonder de uitgezette beurten: hun vraag, datasets, rekenbewijs en kaarten. Bronnen, definities, dataversie (#738), de getal- en percentage-controle (#754, #872), de afwijkingen (#734) en wat een tool "beschikbare data" noemt volgen uit die weergave, dus een uitgezette beurt komt nergens terug. De overgebleven vragen krijgen opnieuw een nummer, en zonder bevestigde onderzoeksvraag is de eerste overgebleven vraag het onderwerp.
+- **Zonder selectie, of met alles aan,** is het rapport hetzelfde als vroeger. Een lege selectie, een onbekend nummer of een selectie bij een gesprek zonder checklist wordt geweigerd met een melding, vóór er een run start; onbekende nummers negeren zou stil een ander rapport geven dan de gebruiker op zijn scherm kiest. De UI laat alles uit niet toe.
+- **Eén uitzondering:** de herkomst van een gekozen dataset blijft tot zijn laadaanroep. Bouwt een beurt voort op de data van een uitgezette beurt, dan staat de bron van die laadaanroep in het rapport, want de data komt daar vandaan. De checklist zegt dat bij de beurt ("Bouwt voort op … Die bron blijft vermeld").
+- **Geen checklist** zonder bewijs per beurt: heeft een dataset van het gesprek geen vraagnummer (een gesprek van vóór #875, of een antwoord dat de geschiedenis niet meer haalt), of is er één beurt met data, dan toont de app alleen het veld en rust het rapport op het hele gesprek. Een heropend gesprek met bewijs per beurt (`beurtbewijs`, ADR-009) geeft dezelfde lijst als een levend gesprek.
+- **Privacy:** de selectie wordt nergens bewaard; ze reist mee in het rapportverzoek. De vragen in de checklist komen uit het gesprek van de gebruiker zelf en staan niet in het log (alleen aantallen).
+
 ### Taal, decimale komma en aanspreekvorm (#326, #536)
 
 Besluit van de product owner (#326, 14 oktober 2026): het antwoord is in de taal van de vraag, een Nederlands antwoord schrijft decimalen met een komma, en de app spreekt de gebruiker aan met je/jij, nooit met u. De code dwingt dat af; de regels in `prompts/system.md` en `prompts/report.md` zijn een hulpmiddel, geen garantie.
@@ -186,6 +197,9 @@ keer per model en schrijft de runner het slagingspercentage per model en vraag n
 - **Catalog-flow:** `search_catalog` → `dataset_details` (two-stage retrieval)
 - **Toon-check:** zakelijke toon, geen fluff of complimenten (regex-detectie)
 - **Cross-model vergelijking:** beide modellen vinden dezelfde datasets en vergelijkbare getallen
+- **Rapport volgt de keuze:** de rapporteval (`rapport-bijsturing.spec.js`, #752) speelt ook een gesprek waarin de gebruiker bij
+  Genereer rapport een zijsprong uitzet (`rapport-zijsprong-uit`, #908): het rapport noemt die nergens, ook niet in de
+  bronnen of de dataversie (`spec_niet` in `tests/e2e/rapportscenarios.json`)
 - **Weigeringen:** vragen zonder open data, buiten de reeks, over een niet-bestaande opleiding of instelling of over een
   toekomstig jaar moeten geweigerd worden, zonder getal dat niet uit een tool komt (`expected.must_refuse` in
   `tests/e2e/evaluations.json`, gescoord door `refusal.js`). Ze zijn kritiek: een weigering moet in elke herhaling

@@ -77,10 +77,22 @@ export function verbind(token, model, url = WS_URL) {
         return { ...antwoord, ...extra }
       },
 
-      /** Het rapport: { spec } bij report_ready, anders { error } of { timeout }. */
-      rapport({ onderzoeksvraag, auteur = 'eval' } = {}, timeoutMs = RAPPORT_TIMEOUT_MS) {
+      /** De beurten met data die de app bij "Genereer rapport" als checklist toont (#908): { items }, anders { error } of { timeout }. */
+      checklist(timeoutMs = 10_000) {
+        ws.send(JSON.stringify({ action: 'report_checklist' }))
+        return wacht(timeoutMs, (event, rond) => {
+          if (event.type === 'verbroken') return rond({ error: verbroken })
+          if (event.type === 'report_checklist') return rond({ items: event.items || [] })
+          if (event.type === 'error') return rond({ error: event.message || event.type })
+        })
+      },
+
+      /** Het rapport: { spec } bij report_ready, anders { error } of { timeout }. `beurten`: de beurten die aanstaan (#908). */
+      rapport({ onderzoeksvraag, auteur = 'eval', beurten } = {}, timeoutMs = RAPPORT_TIMEOUT_MS) {
         const vraag = (onderzoeksvraag || '').trim()
-        ws.send(JSON.stringify({ action: 'generate_report', author: auteur, ...(vraag && { onderzoeksvraag: vraag }) }))
+        ws.send(JSON.stringify({
+          action: 'generate_report', author: auteur, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
+        }))
         return wacht(timeoutMs, (event, rond) => {
           if (event.type === 'verbroken') return rond({ error: verbroken })
           if (event.type === 'report_ready') return rond({ spec: event.spec })

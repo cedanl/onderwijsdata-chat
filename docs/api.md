@@ -85,11 +85,13 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `ping`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`. Een onbekende action of misvormd frame krijgt een `error`-event; de verbinding blijft open. `generate_dashboard` en `refresh_dashboard` zijn weg met de dashboardbouwer (#765), net als `POST /api/dashboard/refresh` |
+| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `ping`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`, `report_checklist`. Een onbekende action of misvormd frame krijgt een `error`-event; de verbinding blijft open. `generate_dashboard` en `refresh_dashboard` zijn weg met de dashboardbouwer (#765), net als `POST /api/dashboard/refresh` |
 
 - `reset` ("Nieuw gesprek") laat de server het lopende gesprek vergeten, inclusief geladen data; de server bevestigt met `reset_done`.
 - `ping` is de hartslag van de frontend; de server antwoordt met `pong`.
 - `history` (`messages`, optioneel `conv_id`) opent een opgeslagen gesprek: ook dat start een schone sessie. Die kent de tekst van dat gesprek en, met `conv_id`, de data keys uit de recepten van dat gesprek (#472) en het bewijs van de antwoorden in het frame (herkomst van de data, rekenbewijs en kaarten, uit de tabel `beurtbewijs` en het geheugen, ADR-009); het formaat van het frame blijft gelijk. De server meldt hoeveel met `history_data` (`data_keys`), zodat een rapport op die data kan zonder de vraag opnieuw te stellen.
+- `generate_report` (`author`, optioneel `onderzoeksvraag` en `beurten`) maakt het rapport. `onderzoeksvraag` is de tekst die de gebruiker bevestigde (#750). `beurten` is de lijst nummers uit `report_checklist` die in het rapport horen (#908): de server controleert ze tegen het gesprek en rapporteert alleen over die beurten. Zonder `beurten`, of met alle, rust het rapport op het hele gesprek; een lege lijst, een onbekend nummer of iets dat geen lijst getallen is geeft een `error` (`modelafhankelijk: false`) en geen rapport.
+- `report_checklist` vraagt de beurten met data van het open gesprek (alleen lezen, geen model, geen berichtlimiet) en krijgt het event `report_checklist` terug, met `items`: per beurt `beurt` (het nummer), `vraag` (ingekort), `bronnen` (de bronregels van de data van die beurt) en `bouwt_voort_op` (nummers van eerdere beurten waarvan de data ze gebruiken). De lijst is leeg zonder data, en bij een gesprek zonder bewijs per beurt (van vóór #875).
 - De WebSocket slaat zelf niets op. De frontend bewaart elk gesprek onder één ID via `PUT /api/conversations/{id}` (zie Persistentie).
 
 **Events van de server** (JSON, veld `type`):
@@ -102,6 +104,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `clarification` | Een verduidelijkingsvraag met opties; het antwoord gaat terug als action `clarification_choice` |
 | `starter_questions` | Voorbeeldvragen bij een onderwerp uit de startkaarten ("Verken …") |
 | `history_data` | Het aantal data keys dat bij een geopend gesprek terugkwam (zie `history`) |
+| `report_checklist` | De beurten met data van het open gesprek, het antwoord op de action `report_checklist` (`items`, zie hierboven) |
 | `report_generating`, `report_ready`, `report_error`, `report_cancelled` | Een rapport wordt gemaakt, is klaar, is geweigerd of mislukt (`report_error`, met `herstel: "rapport"` als opnieuw proberen past), of is geannuleerd |
 | `toast` | Een korte melding (`message`, `level`) |
 | `error` | Een fout in gewone woorden; `modelafhankelijk: false` als een ander model niets verandert |
