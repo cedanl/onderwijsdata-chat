@@ -1,5 +1,5 @@
 {
-  "catalogus_digest": "2a7dfb99b280",
+  "catalogus_digest": "e4b886252be0",
   "catalogusversie": [
     {
       "pakket": "onderwijsdata",
@@ -22,12 +22,12 @@
     },
     {
       "pakket": "riodata",
-      "versie": "0.6.0",
-      "commit": "9931ce3fc61a9f9133a068319d951bb383f12208"
+      "versie": "0.7.0",
+      "commit": "21c37577fccb8bf2586eeb069b5925fbb2257d40"
     }
   ],
   "dataset_counts": {
-    "CBS": 125,
+    "CBS": 130,
     "DUO": 15,
     "RIO": 8
   },
@@ -120,6 +120,8 @@
     "84553NED",
     "85124NED",
     "85125NED",
+    "85328NED",
+    "85329NED",
     "85352NED",
     "85353NED",
     "85354NED",
@@ -128,6 +130,7 @@
     "85357NED",
     "85367NED",
     "85368NED",
+    "85379NED",
     "85380NED",
     "85381NED",
     "85382NED",
@@ -137,6 +140,7 @@
     "85424NED",
     "85425NED",
     "85519NED",
+    "85534NED",
     "85566NED",
     "85569NED",
     "85574NED",
@@ -155,6 +159,7 @@
     "85861NED",
     "85862NED",
     "85907NED",
+    "85948NED",
     "86238NED",
     "86240NED",
     "aangeboden-opleiding-cohorten",
@@ -185,23 +190,23 @@
     "uwv-open-match-data",
     "voprognoses"
   ],
-  "gemeten_op": "2026-10-21",
+  "gemeten_op": "2026-11-03",
   "metingen": {
     "mbo/ontwikkel": {
-      "n": 18,
-      "n_beantwoordbaar": 16,
-      "recall_at_5": 0.9375,
+      "n": 21,
+      "n_beantwoordbaar": 19,
+      "recall_at_5": 0.8947,
       "recall_at_5_95": [
-        0.7167,
-        0.9889
+        0.6861,
+        0.9706
       ],
-      "mrr": 0.8099,
+      "mrr": 0.7873,
       "mrr_95": [
-        0.6588,
-        0.9375
+        0.6162,
+        0.9276
       ],
-      "recall_at_5_vraag": 0.75,
-      "mrr_vraag": 0.6792,
+      "recall_at_5_vraag": 0.7368,
+      "mrr_vraag": 0.6509,
       "onbeantwoordbaar_geslaagd": [
         1,
         2
@@ -212,20 +217,20 @@
       ]
     },
     "mbo/test": {
-      "n": 8,
-      "n_beantwoordbaar": 7,
-      "recall_at_5": 0.8571,
+      "n": 10,
+      "n_beantwoordbaar": 9,
+      "recall_at_5": 0.8889,
       "recall_at_5_95": [
-        0.4869,
-        0.9743
+        0.565,
+        0.9801
       ],
-      "mrr": 0.75,
+      "mrr": 0.8056,
       "mrr_95": [
-        0.4643,
+        0.5278,
         1.0
       ],
-      "recall_at_5_vraag": 0.8571,
-      "mrr_vraag": 0.5595,
+      "recall_at_5_vraag": 0.7778,
+      "mrr_vraag": 0.5463,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -236,20 +241,20 @@
       ]
     },
     "hbo/ontwikkel": {
-      "n": 18,
-      "n_beantwoordbaar": 16,
-      "recall_at_5": 0.875,
+      "n": 19,
+      "n_beantwoordbaar": 17,
+      "recall_at_5": 0.8235,
       "recall_at_5_95": [
-        0.6398,
-        0.965
+        0.5897,
+        0.9381
       ],
-      "mrr": 0.6687,
+      "mrr": 0.6294,
       "mrr_95": [
-        0.4781,
-        0.8562
+        0.4382,
+        0.8235
       ],
-      "recall_at_5_vraag": 0.75,
-      "mrr_vraag": 0.5672,
+      "recall_at_5_vraag": 0.7059,
+      "mrr_vraag": 0.5515,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -260,20 +265,20 @@
       ]
     },
     "hbo/test": {
-      "n": 10,
-      "n_beantwoordbaar": 9,
-      "recall_at_5": 0.7778,
+      "n": 11,
+      "n_beantwoordbaar": 10,
+      "recall_at_5": 0.8,
       "recall_at_5_95": [
-        0.4526,
-        0.9368
+        0.4902,
+        0.9433
       ],
-      "mrr": 0.6333,
+      "mrr": 0.67,
       "mrr_95": [
-        0.3333,
-        0.8889
+        0.4,
+        0.9
       ],
-      "recall_at_5_vraag": 0.4444,
-      "mrr_vraag": 0.4557,
+      "recall_at_5_vraag": 0.5,
+      "mrr_vraag": 0.4601,
       "onbeantwoordbaar_geslaagd": [
         0,
         1
@@ -284,20 +289,20 @@
       ]
     },
     "wo/ontwikkel": {
-      "n": 18,
-      "n_beantwoordbaar": 16,
-      "recall_at_5": 0.8125,
+      "n": 19,
+      "n_beantwoordbaar": 17,
+      "recall_at_5": 0.8235,
       "recall_at_5_95": [
-        0.5699,
-        0.9341
+        0.5897,
+        0.9381
       ],
-      "mrr": 0.7891,
+      "mrr": 0.8015,
       "mrr_95": [
-        0.5938,
-        0.9453
+        0.6103,
+        0.9485
       ],
-      "recall_at_5_vraag": 0.75,
-      "mrr_vraag": 0.5854,
+      "recall_at_5_vraag": 0.7647,
+      "mrr_vraag": 0.5706,
       "onbeantwoordbaar_geslaagd": [
         0,
         2
@@ -321,7 +326,7 @@
         0.9444
       ],
       "recall_at_5_vraag": 0.6667,
-      "mrr_vraag": 0.6204,
+      "mrr_vraag": 0.6111,
       "onbeantwoordbaar_geslaagd": [
         1,
         1
@@ -332,20 +337,20 @@
       ]
     },
     "totaal/ontwikkel": {
-      "n": 54,
-      "n_beantwoordbaar": 48,
-      "recall_at_5": 0.875,
+      "n": 59,
+      "n_beantwoordbaar": 53,
+      "recall_at_5": 0.8491,
       "recall_at_5_95": [
-        0.753,
-        0.9414
+        0.7295,
+        0.9215
       ],
-      "mrr": 0.7559,
+      "mrr": 0.7412,
       "mrr_95": [
-        0.6483,
-        0.8531
+        0.6336,
+        0.8403
       ],
-      "recall_at_5_vraag": 0.75,
-      "mrr_vraag": 0.6106,
+      "recall_at_5_vraag": 0.7358,
+      "mrr_vraag": 0.5932,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
@@ -356,20 +361,20 @@
       ]
     },
     "totaal/test": {
-      "n": 28,
-      "n_beantwoordbaar": 25,
-      "recall_at_5": 0.8,
+      "n": 31,
+      "n_beantwoordbaar": 28,
+      "recall_at_5": 0.8214,
       "recall_at_5_95": [
-        0.6087,
-        0.9114
+        0.6441,
+        0.9212
       ],
-      "mrr": 0.6847,
+      "mrr": 0.7185,
       "mrr_95": [
-        0.516,
-        0.8467
+        0.5631,
+        0.8631
       ],
-      "recall_at_5_vraag": 0.64,
-      "mrr_vraag": 0.544,
+      "recall_at_5_vraag": 0.6429,
+      "mrr_vraag": 0.5364,
       "onbeantwoordbaar_geslaagd": [
         1,
         3
@@ -380,7 +385,7 @@
       ]
     },
     "buiten_profiel": {
-      "n": 6,
+      "n": 7,
       "n_beantwoordbaar": 0,
       "recall_at_5": null,
       "recall_at_5_95": [
@@ -396,11 +401,11 @@
       "mrr_vraag": null,
       "onbeantwoordbaar_geslaagd": [
         0,
-        6
+        7
       ],
       "kritiek_geslaagd": [
-        6,
-        6
+        7,
+        7
       ]
     }
   },

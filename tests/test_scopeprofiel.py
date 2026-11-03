@@ -129,11 +129,11 @@ _CBS_VO_CONTEXT_RECORDS = [
     {**_CBS_VO_LEERLINGEN, "_cbs_id": "85381NED", "bron": "Vo; examenkandidaten en gediplomeerden, onderwijssoort"},
     {**_CBS_VO_LEERLINGEN, "_cbs_id": "85382NED", "bron": "Vo; examenkandidaten en gediplomeerden, woonregio"},
 ]
-# Vo-leerlingen naar woonregio, niet in VO_CONTEXT: dezelfde woorden als 85380NED, maar blijft erbuiten.
+# Een gearchiveerde vo-reeks, niet in VO_CONTEXT: dezelfde woorden als 85380NED, maar blijft erbuiten (#877).
 _CBS_VO_DETAIL = {
     "leverancier": "CBS",
-    "_cbs_id": "85379NED",
-    "bron": "Vo; leerlingen, onderwijssoort in detail, leerjaar, herkomst",
+    "_cbs_id": "80041ned",
+    "bron": "Vo; leerlingen, onderwijssoort, leerjaar, leeftijd",
     "beschrijving": "Vo-leerlingen per niveau, leerjaar en provincie; doorstroom naar hbo en wo.",
     "onderwijstype": ["VO"],
 }
@@ -230,7 +230,7 @@ def test_een_vo_bestand_is_geen_kandidaat_bij_een_mbo_vraag(catalogus):
 
 
 def test_de_telling_volgt_de_grens(catalogus):
-    """De vijf vo-contextbronnen tellen mee (#557): vier CBS-tabellen en voprognoses."""
+    """De vo-contextbronnen in de testcatalogus tellen mee (#557): vier CBS-tabellen en voprognoses."""
     assert dataset_counts() == {"CBS": 8, "DUO": 3, "RIO": 1}
 
 
@@ -676,7 +676,8 @@ def test_in_de_echte_catalogus_valt_geen_gemengde_of_po_vo_cbs_tabel_binnen_de_g
     # of als vo-context voor vervolgonderwijs (VO_CONTEXT, #557).
     gemengd = {i for i, e in cbs.items() if not set(e.get("onderwijstype") or []) <= scopeprofiel.SECTOREN}
     assert gemengd <= set(scopeprofiel.CBS_SECTORFILTER) | {"71229ned"} | set(scopeprofiel.VO_CONTEXT)
-    assert not {"80040ned", "85379NED", "85534NED"} & set(cbs)  # andere vo-tabellen blijven erbuiten
+    # De gearchiveerde vo-reeksen blijven erbuiten (#877): pas mee bij een echte vraag.
+    assert not {"80040ned", "80041ned", "80042ned", "80043ned", "71215ned"} & set(cbs)
     assert {"85701NED", "85702NED"} <= gemengd  # Assen-replay: toegelaten, met de sectorselectie (#473)
     assert {"85353NED", "85422NED", "85423NED"} <= set(cbs)  # tabellen die de code zelf noemt
     assert {"85367NED", "84312NED"} <= set(cbs)  # package v0.2.1: VSV naar leeftijd (filter) en Caribisch NL mbo
@@ -723,13 +724,28 @@ def test_een_gesloten_selectie_met_een_vo_code_wordt_niet_opgehaald(catalogus):
 # vraag over het ho of over doorstroom uit het vo (ho_markers.opent_vo_context), en elke treffer en bronregel
 # zegt "vo-context voor vervolgonderwijs".
 
-_VO_CONTEXT_IDS = ("85566NED", "85381NED", "85382NED", "85380NED", "voprognoses")
-_ETIKET = "vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs, geen mbo- of ho-studenten"
+# De eerste set van #877: lopende CBS-tabellen en recente DUO-bestanden.
+_VO_CONTEXT_IDS = (
+    "85566NED",
+    "85381NED",
+    "85382NED",
+    "85380NED",
+    "85379NED",
+    "85534NED",
+    "85328NED",
+    "85329NED",
+    "85948NED",
+    "voprognoses",
+)
+_ETIKET = (
+    "vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs (ook vavo en vsv), "
+    "geen mbo- of ho-studenten"
+)
 # Andere vo-, po- en so-records: geen ho-marker opent ze.
 _ANDERE_VO = [_CBS_VO, _CBS_VO_DETAIL, _VO_VESTIGING, _VO_INSTELLING, _GEMENGD]
 
 
-def test_de_ho_contextlijst_noemt_precies_de_vijf_vo_bronnen():
+def test_de_vo_contextlijst_noemt_precies_de_eerste_set():
     assert set(scopeprofiel.VO_CONTEXT) == set(_VO_CONTEXT_IDS)
 
 
@@ -802,14 +818,14 @@ def test_elke_ho_contextbron_bestaat_in_de_echte_catalogus():
     assert {i.lower() for i in scopeprofiel.VO_CONTEXT} <= echt
 
 
-def test_in_de_echte_catalogus_vallen_precies_de_vijf_vo_contextbronnen_binnen_de_grens():
-    """Een record alleen over po/so/vo valt erbuiten, behalve de vijf uit VO_CONTEXT."""
+def test_in_de_echte_catalogus_vallen_precies_de_vo_contextbronnen_binnen_de_grens():
+    """Een record alleen over po/so/vo valt erbuiten, behalve die uit VO_CONTEXT; 85948NED is VO+MBO."""
     po_so_vo = {"PO", "SO", "VO"}
     vo = {
         i for i, e in _echt().items() if set(e.get("onderwijstype") or ["?"]) <= po_so_vo and scopeprofiel.in_scope(e)
     }
 
-    assert vo == set(_VO_CONTEXT_IDS)
+    assert vo == set(_VO_CONTEXT_IDS) - {"85948NED"}
 
 
 # De zoekpoort (#557)
@@ -910,6 +926,59 @@ def test_een_doorstroomvraag_uit_het_vo_vindt_de_vo_contextbron_met_etiket(catal
     with beurtvraag(vraag):
         treffer = next(t for t in _treffers(search_catalog(zoekterm)) if scopeprofiel.dataset_id(t) == verwacht)
     assert treffer["context"] == _ETIKET
+
+
+# Per richting (#877): een doorstroomvraag vindt een vo-bron met etiket; dezelfde zoekterm bij een losse vo-vraag
+# niet. Tegen de echte catalogus, offline, met de zoekterm die het model stuurt en de vraag van de gebruiker.
+_RICHTINGEN = {
+    "vmbo-mbo": (
+        "Hoeveel vmbo-leerlingen zitten er per leerweg in het examenjaar, als instroom in het mbo?",
+        "Hoeveel vmbo-leerlingen zitten er per leerweg?",
+        "vmbo leerlingen leerweg leerjaar",
+        "85379NED",
+    ),
+    "havo-hbo": (
+        "Waar gaan havo-leerlingen heen na hun diploma?",
+        "Hoeveel havo-leerlingen halen hun diploma?",
+        "havo leerlingen diploma",
+        "85534NED",
+    ),
+    "vwo-wo": (
+        "Welk diploma halen vwo-leerlingen uiteindelijk, en hoeveel gaan door naar het wo?",
+        "Welk diploma halen vwo-leerlingen uiteindelijk?",
+        "vo cohort hoogst behaald diploma",
+        "85534NED",
+    ),
+    "vavo": (
+        "Hoeveel deelnemers volgen het vavo als tweede kans op een vervolgopleiding?",
+        "Hoeveel deelnemers volgen het vavo?",
+        "vavo studenten onderwijssoort",
+        "85329NED",
+    ),
+    "vsv-terugkeer": (
+        "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?",
+        "Hoeveel voortijdig schoolverlaters zijn er?",
+        "vsv terugkeer onderwijs",
+        "85948NED",
+    ),
+}
+
+
+def _echte_treffers(vraag: str, zoekterm: str) -> list[dict]:
+    from tests.retrieval_baseline import harnas
+
+    with harnas.zonder_netwerk(), harnas.zonder_instellingsregister(), beurtvraag(vraag):
+        return _treffers(search_catalog(zoekterm))
+
+
+@pytest.mark.parametrize("richting", sorted(_RICHTINGEN))
+def test_een_doorstroomvraag_per_richting_vindt_een_vo_bron_en_een_losse_vo_vraag_niet(richting):
+    open_, dicht, zoekterm, verwacht = _RICHTINGEN[richting]
+    assert opent_vo_context(open_) and not opent_vo_context(dicht)
+
+    treffer = next((t for t in _echte_treffers(open_, zoekterm) if scopeprofiel.dataset_id(t) == verwacht), None)
+    assert treffer is not None and treffer["context"] == scopeprofiel.VO_CONTEXT_ETIKET
+    assert not [t for t in _echte_treffers(dicht, zoekterm) if scopeprofiel.is_vo_context(t) or "context" in t]
 
 
 # De poort beslist op de vraag van de gebruiker, niet op de zoekterm van het model (#597).
@@ -1049,7 +1118,8 @@ def test_een_vo_contexttreffer_draagt_het_etiket_en_het_catalogusrecord_niet(cat
 
 
 @pytest.mark.parametrize("dataset_id", [*_VO_CONTEXT_IDS, "cbs:85566ned", "85380ned", "duo:voprognoses"])
-def test_de_bronregel_van_een_vo_contextbron_zegt_vo_context_voor_ho(catalogus, dataset_id):
+def test_de_bronregel_van_een_vo_contextbron_zegt_vo_context_voor_vervolgonderwijs(dataset_id):
+    """Tegen de echte catalogus: elke bron uit de eerste set (#877) heeft een titel en het etiket."""
     from tools.catalog import bron_naam, bron_titel
 
     assert bron_titel(dataset_id).endswith(", vo-context voor vervolgonderwijs")
@@ -1087,6 +1157,28 @@ def test_elke_bronregel_van_een_geladen_vo_contexttabel_noemt_vo_context(catalog
 
     data.assert_called_once()  # een directe ID zonder ho-marker passeert de scopegrens
     regels = _bronregels(result, "85566NED", "CBS", "get_cbs_data")
+    assert all("vo-context voor vervolgonderwijs" in regel for regel in regels), regels
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "meetwaarde"),
+    [
+        ("85379NED", "AantalLeerlingen_1"),
+        ("85534NED", "LeerlingenAantal_1"),
+        ("85328NED", "GediplomeerdenVavo_1"),
+        ("85329NED", "VavoStudenten_1"),
+        ("85948NED", "VoortijdigSchoolverlatersVo_2"),
+    ],
+)
+def test_elke_bronregel_van_een_nieuwe_vo_contexttabel_noemt_vo_context(dataset_id, meetwaarde):
+    """De CBS-tabellen uit de eerste set van #877, tegen de echte catalogus: een directe ID laadt, en de
+    bronregel, de Bronnen, de rapportgrafiek en de kop van de CSV zeggen dat het vo-context is."""
+    rijen = [{"Perioden": "2021SJ00", meetwaarde: 10}]
+    with patch("tools.cbs.data", return_value=rijen) as data, patch("tools.cbs.definitions", return_value={}):
+        result = json.loads(get_cbs_data(dataset_id))
+
+    data.assert_called_once()
+    regels = _bronregels(result, dataset_id, "CBS", "get_cbs_data")
     assert all("vo-context voor vervolgonderwijs" in regel for regel in regels), regels
 
 

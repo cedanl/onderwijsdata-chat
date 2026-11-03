@@ -240,12 +240,23 @@ VO_CONTEXT: dict[str, str] = {
     "het gaat om vo-leerlingen, geen studenten",
     "85380NED": "Huidige vo-leerlingen naar onderwijssoort, leerjaar en woonregio als context voor de toekomstige "
     "instroom in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85379NED": "Huidige vo-leerlingen naar onderwijssoort in detail (vmbo-leerweg, havo, vwo), leerjaar en herkomst "
+    "als context voor de toekomstige instroom in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85534NED": "Vo-cohorten met hun hoogst behaalde diploma en onderwijspositie op een later peilmoment: waar een "
+    "vo-cohort uitkomt, ook in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85328NED": "Vavo-gediplomeerden naar onderwijssoort: een vo-diploma via het vavo als opstap naar mbo of ho; "
+    "het gaat om vavo-deelnemers, geen mbo- of ho-studenten",
+    "85329NED": "Vavo-deelnemers naar onderwijssoort: de tweedekansroute naar een vo-diploma en daarmee naar "
+    "vervolgonderwijs; CBS noemt ze studenten, maar het zijn geen mbo- of ho-studenten",
+    "85948NED": "Terugkeer in het onderwijs van voortijdig schoolverlaters uit vo en mbo: de route terug naar "
+    "vervolgonderwijs; het gaat om schoolverlaters, geen ingeschreven studenten",
     "voprognoses": "Prognoses van leerlingaantallen in het vo als context voor de toekomstige instroom in mbo en "
     "ho; het gaat om vo-leerlingen, geen studenten",
 }
 # Het veld `context` op elke zoektreffer uit VO_CONTEXT, en het deel achter de titel in een bronregel.
 VO_CONTEXT_ETIKET = (
-    "vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs, geen mbo- of ho-studenten"
+    "vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs (ook vavo en vsv), "
+    "geen mbo- of ho-studenten"
 )
 VO_CONTEXT_DEEL = "vo-context voor vervolgonderwijs"
 _VO_CONTEXT_SLEUTELS = frozenset(i.lower() for i in VO_CONTEXT)
