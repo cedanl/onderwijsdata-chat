@@ -14,6 +14,8 @@ import { markeerWeggegaan } from '../weggegaan'
 export const REPORT_TIMEOUT_MS = 10 * 60 * 1000
 // How long the toast with the reason a report cannot start stays up (#648).
 export const REASON_TOAST_MS = 4000
+// How long the dialog waits for the checklist of turns with data before it goes on without (#908).
+export const CHECKLIST_TIMEOUT_MS = 5000
 
 // A clarification question stays in: without it a restored choice ("2023/24") answers nothing (#109).
 // An answer that was stopped or cut off by a dropped connection goes along marked `afgebroken`, even
@@ -35,6 +37,9 @@ export function buildHistory(messages, maxHistory) {
 }
 
 const NO_REPORT_PROGRESS = { steps: 0, label: null }
+// The checklist of turns with data for "Genereer rapport" (#908): not asked yet, or 'laden', 'klaar' (with the items) or 'fout'.
+const GEEN_CHECKLIST = null
+const itemsUit = ev => (Array.isArray(ev.items) ? ev.items.filter(i => Number.isInteger(i?.beurt) && typeof i.vraag === 'string') : null)
 
 // maxHistory: the server's MAX_HISTORY from /api/config (#789); without it the constant.
 export function useChat({ maxHistory } = {}) {
@@ -56,6 +61,8 @@ export function useChat({ maxHistory } = {}) {
   const [rejectedDraft, setRejectedDraft] = useState(null)
   // How many data keys the server restored for a reopened conversation (#472): its report can be made then.
   const [historyDataKeys, setHistoryDataKeys] = useState(0)
+  const [reportChecklist, setReportChecklist] = useState(GEEN_CHECKLIST)
+  const checklistTimeoutRef = useRef(null)
   const wsRef = useRef(null)
   const currentMsgRef = useRef(null)
   const reportingRef = useRef(false)
@@ -356,6 +363,12 @@ export function useChat({ maxHistory } = {}) {
       report_cancelled() {
         if (reportingRef.current) endReport()
       },
+      // The turns with data the report can rest on (#908). Only an answer to a request still waiting counts.
+      report_checklist(ev) {
+        const items = itemsUit(ev)
+        clearTimeout(checklistTimeoutRef.current)
+        setReportChecklist(c => (c?.status !== 'laden' ? c : items ? { status: 'klaar', items } : { status: 'fout', items: [] }))
+      },
       // Not waiting any more (timed out, see generateReport): the user has been told already.
       report_ready(ev) {
         if (!reportingRef.current) return
@@ -616,9 +629,25 @@ export function useChat({ maxHistory } = {}) {
     return false
   }, [addToast])
 
+  // Asks the server which turns with data the report can rest on, for the checklist in the dialog (#908). The answer
+  // arrives as report_checklist; without one in time, or without a connection, the dialog goes on with the field alone.
+  const requestReportChecklist = useCallback(() => {
+    clearTimeout(checklistTimeoutRef.current)
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      setReportChecklist({ status: 'fout', items: [] })
+      return
+    }
+    setReportChecklist({ status: 'laden', items: [] })
+    wsRef.current.send(JSON.stringify({ action: 'report_checklist' }))
+    checklistTimeoutRef.current = setTimeout(() => {
+      setReportChecklist(c => (c?.status === 'laden' ? { status: 'fout', items: [] } : c))
+    }, CHECKLIST_TIMEOUT_MS)
+  }, [])
+
   // The report starts, or a toast says why it cannot start now. Returns whether the request went out.
   // onderzoeksvraag: the research question the user confirmed (#751); without it the server takes the first question.
-  const generateReport = useCallback((author, onderzoeksvraag) => {
+  // beurten: the numbers of the turns with data the user kept (#908); without them the report rests on the whole conversation.
+  const generateReport = useCallback((author, onderzoeksvraag, beurten) => {
     if (!checkReportStart()) return false
     reportingRef.current = true
     reportRequestedRef.current = true
@@ -626,7 +655,9 @@ export function useChat({ maxHistory } = {}) {
     setReportSpec(null)
     setReportProgress(NO_REPORT_PROGRESS)
     const vraag = onderzoeksvraag?.trim()
-    wsRef.current.send(JSON.stringify({ action: 'generate_report', author, ...(vraag && { onderzoeksvraag: vraag }) }))
+    wsRef.current.send(JSON.stringify({
+      action: 'generate_report', author, ...(vraag && { onderzoeksvraag: vraag }), ...(Array.isArray(beurten) && { beurten }),
+    }))
     clearTimeout(reportTimeoutRef.current)
     reportTimeoutRef.current = setTimeout(() => {
       // Stop the server too: a report arriving after this message would contradict it.
@@ -660,6 +691,8 @@ export function useChat({ maxHistory } = {}) {
     setBusy(false)
     setThinking(false)
     setHistoryDataKeys(0)
+    clearTimeout(checklistTimeoutRef.current)
+    setReportChecklist(GEEN_CHECKLIST)
     currentMsgRef.current = null
     lastSentRef.current = null
   }, [cancelDeltaFrame])
@@ -688,5 +721,5 @@ export function useChat({ maxHistory } = {}) {
     }
   }, [clear, sendHistory])
 
-  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
+  return { messages, withBufferedText, busy, slow, rejectedDraft, clearRejectedDraft, thinking, toasts, connected, opgegeven, verbindOpnieuw, resetting, historyDataKeys, reportBusy, reportProgress, reportSpec, reportChecklist, send, sendClarification, sendSettings, sendHistory, stop, verlaat, checkReportStart, requestReportChecklist, generateReport, cancelReport, clearReport, clear, startNewConversation, openConversation, addToast }
 }

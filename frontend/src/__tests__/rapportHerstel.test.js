@@ -29,7 +29,7 @@ vi.mock('../hooks/useChat', () => ({
     messages: chat.messages, busy: chat.busy, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [], reportBusy: chat.reportBusy,
     reportProgress: { steps: 0, label: null }, reportSpec: null, send: chat.send, sendClarification: vi.fn(),
-    sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), checkReportStart: chat.checkReportStart,
+    sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(), checkReportStart: chat.checkReportStart, requestReportChecklist: vi.fn(),
     generateReport: chat.generateReport, cancelReport: vi.fn(),
     clearReport: vi.fn(), clear: vi.fn(), startNewConversation: vi.fn(), addToast: () => {},
   }),

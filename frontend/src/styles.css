@@ -1415,6 +1415,24 @@ span.wb-viewer-title { display: inline-flex; align-items: center; gap: 6px; }
 .onderzoeksvraag-veld:focus { border-color: var(--focus-ring); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 .onderzoeksvraag-uitleg { margin-bottom: 12px; font-size: .8rem; color: var(--muted-text); }
 .onderzoeksvraag-dialoog .confirm-cancel, .onderzoeksvraag-dialoog .confirm-primary { min-height: var(--tap-min); }
+.onderzoeksvraag-dialoog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.onderzoeksvraag-dialoog .confirm-primary[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+
+/* De vragen met data vóór het veld (#908): welke beurten het rapport dragen. Op een telefoon begint de lijst ingeklapt
+   (open={!klein} in OnderzoeksvraagDialoog, 600px), zodat het veld in beeld blijft; de samenvatting is dan de knop. */
+.rapport-keuze { border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 0 12px; }
+.rapport-keuze-samenvatting {
+  display: flex; align-items: center; min-height: var(--tap-min); cursor: pointer;
+  font-weight: 600; font-size: .95rem;
+}
+.rapport-keuze-set { border: 0; margin: 0; padding: 0 0 8px; min-width: 0; }
+.rapport-keuze-legend { padding: 0; margin-bottom: 4px; font-size: .8rem; color: var(--muted-text); }
+.rapport-keuze-lijst { list-style: none; margin: 0; padding: 0; max-height: 30vh; overflow-y: auto; }
+.rapport-keuze-lijst label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; min-height: var(--tap-min); cursor: pointer; }
+.rapport-keuze-lijst input[type="checkbox"] { flex: none; width: 20px; height: 20px; margin: 2px 0 0; }
+.rapport-keuze-vraag { display: block; font-size: .9rem; overflow-wrap: anywhere; }
+.rapport-keuze-bron { display: block; margin-top: 2px; font-size: .78rem; color: var(--muted-text); overflow-wrap: anywhere; }
+.rapport-keuze-fout { margin: 0; padding-left: 8px; border-left: 3px solid #DC2626; font-size: .85rem; font-weight: 600; }
 .export-conversation-btn {
   display: block; padding: 4px 10px;
   background: none; border: none; font-size: .78rem; color: var(--muted-text);

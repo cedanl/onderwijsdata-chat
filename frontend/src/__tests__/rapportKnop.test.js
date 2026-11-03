@@ -30,14 +30,14 @@ const MET_DATA = [
   },
 ]
 
-const chat = vi.hoisted(() => ({ staat: {}, generateReport: null, checkReportStart: null }))
+const chat = vi.hoisted(() => ({ staat: {}, generateReport: null, checkReportStart: null, requestReportChecklist: null }))
 vi.mock('../hooks/useChat', () => ({
   useChat: () => ({
     messages: MET_DATA, busy: false, rejectedDraft: null, clearRejectedDraft: () => {},
     thinking: false, connected: true, resetting: false, historyDataKeys: 0, toasts: [],
     reportBusy: false, reportProgress: { steps: 0, label: null }, reportSpec: null, send: vi.fn(),
     sendClarification: vi.fn(), sendSettings: vi.fn(), sendHistory: vi.fn(), stop: vi.fn(),
-    checkReportStart: chat.checkReportStart, generateReport: chat.generateReport, cancelReport: vi.fn(), clearReport: vi.fn(), clear: vi.fn(),
+    checkReportStart: chat.checkReportStart, requestReportChecklist: chat.requestReportChecklist, generateReport: chat.generateReport, cancelReport: vi.fn(), clearReport: vi.fn(), clear: vi.fn(),
     startNewConversation: vi.fn(), addToast: () => {}, withBufferedText: m => m,
     ...chat.staat,
   }),
@@ -59,6 +59,7 @@ beforeEach(() => {
   chat.staat = {}
   chat.checkReportStart = vi.fn(() => true)
   chat.generateReport = vi.fn(() => true)
+  chat.requestReportChecklist = vi.fn()
 })
 
 afterEach(async () => {
@@ -210,5 +211,49 @@ describe('het veld met de onderzoeksvraag (#751)', () => {
     await act(async () => { dialoogKnop('Genereer').click() })
     expect(chat.generateReport).toHaveBeenCalledTimes(1)
     expect(veld().value).toBe('Alleen voltijd')
+  })
+})
+
+describe('de checklist van beurten met data (#908)', () => {
+  const KLAAR = {
+    status: 'klaar',
+    items: [
+      { beurt: 1, vraag: VRAAG, bronnen: ['DUO — Ingeschrevenen (p01hoinges)'], bouwt_voort_op: [] },
+      { beurt: 2, vraag: 'En het rendement?', bronnen: ['CBS — Rendement (83285NED)'], bouwt_voort_op: [] },
+    ],
+  }
+
+  it('wordt niet gevraagd als het rapport niet kan starten', async () => {
+    chat.checkReportStart = vi.fn(() => false)
+    await mountChat({ messages: BIJGESTUURD })
+    await act(async () => { knop().click() })
+    expect(chat.requestReportChecklist).not.toHaveBeenCalled()
+  })
+
+  it('wordt gevraagd zodra het veld opent', async () => {
+    await mountChat({ messages: BIJGESTUURD })
+    await act(async () => { knop().click() })
+    expect(chat.requestReportChecklist).toHaveBeenCalledTimes(1)
+  })
+
+  it('staat boven het veld, en Genereer geeft de gekozen beurten door', async () => {
+    await mountChat({ messages: BIJGESTUURD, reportChecklist: KLAAR })
+    await act(async () => { knop().click() })
+    const vakjes = dialoog().querySelectorAll('input[type="checkbox"]')
+    expect(vakjes).toHaveLength(2)
+    expect([...vakjes].every(v => v.checked)).toBe(true)
+
+    await act(async () => { vakjes[0].click() })
+    await act(async () => { dialoogKnop('Genereer').click() })
+
+    expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO, [2])
+  })
+
+  it('zonder beurten met data is het veld alles wat er is', async () => {
+    await mountChat({ messages: BIJGESTUURD, reportChecklist: { status: 'klaar', items: [] } })
+    await act(async () => { knop().click() })
+    expect(dialoog().querySelector('fieldset')).toBeNull()
+    await act(async () => { dialoogKnop('Genereer').click() })
+    expect(chat.generateReport).toHaveBeenCalledExactlyOnceWith('tester', WO)
   })
 })
