@@ -13,6 +13,23 @@ release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de it
 
 ## 2.5.3 — 2026-11-03
 
+### Vo- en vavo-typen in RIO bij een doorstroomvraag (#880)
+- Bij een doorstroomvraag die zelf het vo noemt ("Welke vavo-opleidingen bieden roc's in Utrecht aan?") haalt de chat
+  ook de vo- en vavo-typen op uit `aangeboden-opleidingen`, `opleidingen`, `opleidingserkenningen` en
+  `onderwijslicenties`, met de bronregel "…, vo-context voor vervolgonderwijs".
+- Zonder zo'n vraag, en buiten de chat, blijven die typen dicht, net als de po- en (v)so-typen en de registers zonder
+  typefilter.
+
+### Vo-rijen van de gemengde CBS-tabellen bij een doorstroomvraag (#879)
+- Een doorstroomvraag die zelf het vo noemt ("Hoeveel vo-leerlingen worden voortijdig schoolverlater en hoeveel
+  daarvan in het mbo?") laadt nu ook de vo- en vavo-rijen van de VSV-tabellen (`85368NED`, `85367NED`) en de
+  woonregiotabellen (`85701NED`, `85702NED`). De totalen over vo en mbo samen en de po- en (v)so-rijen blijven weg.
+- Een mbo-vraag, een hbo-vraag zonder vo-niveau en een aanroep buiten de chat laden zoals voorheen alleen de
+  mbo/hbo/wo-rijen.
+- De bronregel zegt welk deel geladen is: "…, alleen mbo en vo (vo-context voor vervolgonderwijs)", ook in de Bronnen,
+  onder een rapportgrafiek, in de kop van een CSV-export en in de snippet. Dat staat per lading vast: een eerdere
+  bronregel verandert niet door een latere beurt, en herladen geeft dezelfde rijen terug.
+
 ### Vo-cijfers als context bij doorstroom naar vervolgonderwijs (#877)
 - Besluit A van 03-11: een vraag over doorstroom uit het vo krijgt vo-bronnen als context, ook zonder het hoger
   onderwijs te noemen en ook naar het mbo ("Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan
