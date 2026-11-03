@@ -101,10 +101,9 @@ env:
     value: "INFO"
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.playground.sdp.surf.nl"
-  # Temporary disable of the dashboards feature (flag added in 47e7727f).
-  # Set to "true" (or remove this entry) to re-enable.
+  # Dashboards staan op playground weer aan (vlag uit 47e7727f), net als op test; production houdt ze uit.
   - name: ENABLE_DASHBOARDS
-    value: "false"
+    value: "true"
   # Azure AI Foundry — optioneel naast Willma.
   # AZURE_AI_API_KEY + AZURE_AI_API_BASE moeten in onderwijsdata-chat-secrets staan.
   - name: AZURE_AI_API_KEY

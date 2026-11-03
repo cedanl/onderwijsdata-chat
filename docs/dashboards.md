@@ -7,7 +7,7 @@ De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arb
 
 ## Vaste dashboards
 
-Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test staat hij aan, op playground en productie uit):
+Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit):
 
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
@@ -28,5 +28,5 @@ Een dashboard dat iemand met de verwijderde dashboardbouwer opsloeg, blijft op d
 gegevens weg omdat een functie verdwijnt. Het opent niet meer. Op `/dashboards` staat het onder de vaste dashboards in
 een lijst met titel en datum, om het los te verwijderen; een oude link (`/dashboards?id=…`) zegt dat het niet meer opent.
 Het zit in de export van "mijn gegevens", gaat mee met "al mijn gegevens verwijderen" en valt onder de gewone
-bewaartermijn van werkboeken (365 dagen, [Privacy](privacy.md)). Met `ENABLE_DASHBOARDS=false` (playground en productie)
+bewaartermijn van werkboeken (365 dagen, [Privacy](privacy.md)). Met `ENABLE_DASHBOARDS=false` (productie)
 is de pagina er niet en zie je ze dus ook niet.
