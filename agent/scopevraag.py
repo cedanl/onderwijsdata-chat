@@ -213,7 +213,7 @@ def maatvraag(vraag: str) -> Kaart | None:
     opties = []
     for record in records:
         # Een vo-contextbron noemt het deel, zoals in een bronregel en een suggestie (#557, #597).
-        label = f"{record['titel']}, {scopeprofiel.HO_CONTEXT_DEEL}" if "context" in record else record["titel"]
+        label = f"{record['titel']}, {scopeprofiel.VO_CONTEXT_DEEL}" if "context" in record else record["titel"]
         optie: dict = {"label": label}
         if beschrijving := _beschrijving(record):
             optie["beschrijving"] = beschrijving

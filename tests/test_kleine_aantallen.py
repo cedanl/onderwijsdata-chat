@@ -108,7 +108,7 @@ def test_voprognoses_krijgt_geen_bovengrens(aantallen):
     assert "Bovengrens" not in telling_blok([json.dumps({"data_key": result["data_key"]})])
 
 
-@pytest.mark.parametrize("dataset", sorted(i for i in scopeprofiel.HO_CONTEXT if i.upper().endswith("NED")))
+@pytest.mark.parametrize("dataset", sorted(i for i in scopeprofiel.VO_CONTEXT if i.upper().endswith("NED")))
 def test_een_cbs_key_van_een_contextrecord_krijgt_nooit_de_vier_noot(dataset):
     # Ook met 4-cellen en zonder 1-3 in een aantalkolom: de regel komt alleen uit get_duo_data.
     df = pd.DataFrame(

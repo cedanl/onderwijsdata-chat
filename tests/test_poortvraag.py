@@ -18,7 +18,7 @@ def _poort_tijdens_de_loop(messages, session=None, zoekterm="vwo leerlingen hbo"
     gezien: dict = {}
 
     async def nep_loop(history, **kwargs):
-        gezien["poort"] = await asyncio.to_thread(ho_markers.ho_poort, zoekterm)
+        gezien["poort"] = await asyncio.to_thread(ho_markers.vo_context_poort, zoekterm)
         gezien["vraag"] = ho_markers._beurtvraag.get()
         return LoopResult(aborted="stream", text="Klaar.")
 
@@ -69,6 +69,28 @@ def test_een_nieuwe_vraag_neemt_de_vorige_niet_mee():
     ]
 
     assert _poort_tijdens_de_loop(messages)["poort"] is False
+
+
+def test_een_doorstroomvraag_zonder_ho_woord_opent_de_poort_en_een_vervolgvraag_niet():
+    """Doorstroom uit het vo opent de poort (#877); "En voor het vwo?" daarna noemt zelf niets (#597)."""
+    vraag = "Waar gaan havo-leerlingen heen na hun diploma?"
+    assert _poort_tijdens_de_loop([{"role": "user", "content": vraag}], zoekterm="havo")["poort"] is True
+
+    messages = [
+        {"role": "user", "content": vraag},
+        {"role": "assistant", "content": "Van de havisten gaat het grootste deel naar het hbo."},
+        {"role": "user", "content": "En voor het vwo?"},
+    ]
+    assert _poort_tijdens_de_loop(messages, zoekterm="doorstroom vwo")["poort"] is False
+
+
+def test_een_keuze_na_een_doorstroomvraag_telt_met_die_vraag():
+    messages = [
+        {"role": "user", "content": "Hoeveel vmbo-leerlingen stromen door?"},
+        {"role": "assistant", "content": "Welk schooljaar bedoel je?"},
+        {"role": "user", "content": "2023/24"},
+    ]
+    assert _poort_tijdens_de_loop(messages, session={"clarify_rondes": 1}, zoekterm="vmbo")["poort"] is True
 
 
 def test_na_de_beurt_is_er_geen_beurtvraag_meer():

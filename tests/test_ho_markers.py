@@ -1,11 +1,12 @@
-"""noemt_ho: gaat een vraag aantoonbaar over hoger onderwijs? (#556, epic #554). ho_poort: op welke vraag (#597)."""
+"""noemt_ho: gaat een vraag aantoonbaar over hoger onderwijs? (#556, epic #554). noemt_vo_doorstroom: over doorstroom
+uit het vo naar vervolgonderwijs (#877)? vo_context_poort: op welke vraag (#597)."""
 
 import ast
 from pathlib import Path
 
 import pytest
 
-from tools.ho_markers import beurtvraag, ho_poort, noemt_ho
+from tools.ho_markers import beurtvraag, noemt_ho, noemt_vo_doorstroom, opent_vo_context, vo_context_poort
 
 _MODULE = Path(__file__).resolve().parent.parent / "tools" / "ho_markers.py"
 
@@ -73,24 +74,99 @@ def test_lege_vraag_is_geen_ho():
 # De poort kijkt naar de vraag van de gebruiker, niet naar de zoekterm van het model (#597).
 def test_buiten_een_beurt_beslist_de_zoekterm():
     """MCP en evals kennen geen gebruikersvraag: daar blijft de zoekterm de toets."""
-    assert ho_poort("instroom hbo") is True
-    assert ho_poort("vwo leerlingen") is False
+    assert vo_context_poort("instroom hbo") is True
+    assert vo_context_poort("doorstroom vmbo mbo") is True
+    assert vo_context_poort("vwo leerlingen") is False
 
 
 def test_het_model_opent_de_poort_niet_door_hbo_toe_te_voegen():
     with beurtvraag("Hoeveel leerlingen zitten er op het vwo?"):
-        assert ho_poort("vwo leerlingen hbo") is False
+        assert vo_context_poort("vwo leerlingen hbo") is False
+        assert vo_context_poort("doorstroom vwo mbo") is False
 
 
 def test_het_model_sluit_de_poort_niet_door_hbo_weg_te_laten():
     with beurtvraag("Hoeveel vwo-leerlingen stromen door naar het wo?"):
-        assert ho_poort("doorstroom vwo") is True
+        assert vo_context_poort("doorstroom vwo") is True
 
 
 def test_na_de_beurt_beslist_de_zoekterm_weer():
     with beurtvraag("doorstroom vwo naar wo"):
         pass
-    assert ho_poort("vwo leerlingen") is False
+    assert vo_context_poort("vwo leerlingen") is False
+
+
+# Doorstroom uit het vo naar vervolgonderwijs (#877, besluit A): een vo-niveau met het mbo of een doorstroomwoord.
+_DOORSTROOM = {
+    # vmbo → mbo
+    "Hoeveel vmbo-leerlingen stromen door naar het mbo?",
+    "Hoeveel vmbo'ers gaan naar een roc?",
+    "instroom in het mbo vanuit het vmbo",
+    "doorstroom vmbo per leerweg",
+    # havo → hbo en vwo → wo, zonder ho-woord
+    "Waar gaan havo-leerlingen heen na hun diploma?",
+    "Waar gaan havisten heen na hun diploma?",
+    "Wat doen vwo-leerlingen na het examen?",
+    "Hoeveel vwo'ers kiezen een vervolgopleiding?",
+    "Welk vervolgonderwijs volgen leerlingen uit het voortgezet onderwijs?",
+    "Wat doen leerlingen na de middelbare school?",
+    "uitstroom uit het vo naar onderwijssoort",
+    "Hoeveel havisten stromen er door na het behalen van hun diploma?",
+    # vavo
+    "Hoeveel vavo-deelnemers stromen door naar vervolgonderwijs?",
+    "Hoeveel mensen halen via het vavo een diploma en gaan daarna naar het mbo?",
+    # vsv-terugkeer: geen vo-niveau, wel terugkeer in het onderwijs
+    "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?",
+    "terugkeer vsv'ers onderwijs",
+    "Hoeveel vsv'ers komen na een jaar terug?",
+}
+# Geen doorstroom: een losse vo-vraag, doorstroom of mbo zonder vo-niveau, vsv zonder terugkeer, of po/(v)so erbij.
+_GEEN_DOORSTROOM = {
+    "",
+    "Hoeveel leerlingen zitten er op het vwo in Utrecht?",
+    "Hoeveel mbo-studenten per instelling?",
+    "doorstroom binnen het mbo per niveau",
+    "doorstroom",
+    "Hoeveel vmbo-leerlingen halen hun diploma?",
+    "slagingspercentage op havo en vwo",
+    "Hoeveel havisten zakken voor het examen?",
+    "prognoses vo per instelling",
+    "Hoeveel voortijdig schoolverlaters zijn er in het mbo?",
+    "vsv per gemeente",
+    "Hoeveel leerlingen zitten er vooral in de bovenbouw?",
+    "doorstroom van de basisschool naar het vwo",
+    "Hoeveel leerlingen gaan na groep 8 naar de havo en daarna naar het mbo?",
+    "doorstroom van het vso naar het mbo",
+    # Doorstroom binnen het vo is geen vervolgonderwijs.
+    "doorstroom van het vmbo naar de havo",
+    "Hoeveel havisten stromen door naar het vwo?",
+    "Hoeveel vo-leerlingen stromen door naar de bovenbouw?",
+}
+
+
+@pytest.mark.parametrize("vraag", sorted(_DOORSTROOM))
+def test_een_doorstroomvraag_uit_het_vo_opent_de_vo_context(vraag):
+    assert noemt_vo_doorstroom(vraag) is True
+    assert opent_vo_context(vraag) is True
+
+
+@pytest.mark.parametrize("vraag", sorted(_GEEN_DOORSTROOM))
+def test_een_vraag_zonder_doorstroom_uit_het_vo_opent_niets(vraag):
+    assert noemt_vo_doorstroom(vraag) is False
+    assert opent_vo_context(vraag) is False
+
+
+def test_een_ho_vraag_opent_de_vo_context_zoals_voorheen():
+    """noemt_ho blijft een eigen weg (epic #554): ook zonder vo-niveau of doorstroomwoord."""
+    assert opent_vo_context("Hoeveel eerstejaars heeft de universiteit?") is True
+    assert noemt_vo_doorstroom("Hoeveel eerstejaars heeft de universiteit?") is False
+
+
+def test_de_poort_volgt_de_doorstroomvraag_van_de_beurt():
+    with beurtvraag("Waar gaan havisten heen na hun diploma?"):
+        assert vo_context_poort("havo diploma") is True
+    with beurtvraag("En voor het vwo?"):  # een vervolgvraag zonder doorstroomwoord blijft dicht (#597)
+        assert vo_context_poort("doorstroom vwo") is False
 
 
 def test_module_kent_alleen_strings():

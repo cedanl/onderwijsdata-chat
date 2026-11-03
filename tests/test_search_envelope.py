@@ -164,7 +164,7 @@ def test_vo_context_blijft_verborgen_zonder_ho_vraag_en_draagt_dan_het_etiket():
     with ho_markers.beurtvraag("Hoeveel vwo-leerlingen stromen door naar het hbo?"):
         met = envelop(_zoek("doorstroom vo", cbs=_VO_CONTEXT, source="cbs"))
     (kandidaat,) = met["kandidaten"]
-    assert kandidaat["dataset_id"] == "85566NED" and kandidaat["context"] == scopeprofiel.HO_CONTEXT_ETIKET
+    assert kandidaat["dataset_id"] == "85566NED" and kandidaat["context"] == scopeprofiel.VO_CONTEXT_ETIKET
 
 
 # ── Herstelopties bij een onbekend dataset-ID (#358) ──────────────────────────

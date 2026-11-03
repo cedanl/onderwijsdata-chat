@@ -316,6 +316,66 @@
       "toelichting": "Gearchiveerde CBS-tabellen 'MBO; deelnemers, ...' 1990-2016: 71796ned, 71824ned, 71798ned en 71825ned. Verboden: 37220 (Leerlingen en studenten; onderwijssoort, vanaf 1900) en 71450ned (onderwijssoort, woonregio) gaan over alle onderwijssoorten zonder sectorselectie en vallen buiten het profiel."
     },
     {
+      "id": "mbo-27",
+      "sector": "mbo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel vmbo-leerlingen stromen door naar het mbo?",
+      "zoekinput": "doorstroom vmbo mbo",
+      "geaccepteerd": ["85566NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Doorstroom vmbo → mbo (#877): vmbo en mbo openen de zoekpoort zonder ho-woord. 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.VO_CONTEXT."
+    },
+    {
+      "id": "mbo-28",
+      "sector": "mbo",
+      "reeks": "test",
+      "vraag": "Hoeveel vmbo-leerlingen zitten er per leerweg in het examenjaar, als toekomstige instroom in het mbo?",
+      "zoekinput": "vmbo leerlingen leerweg leerjaar",
+      "geaccepteerd": ["85379NED", "85380NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Doorstroom vmbo → mbo (#877): de huidige vmbo-bovenbouw is de toekomstige mbo-instroom. 85379NED: vo-leerlingen naar Onderwijssoort in detail en Leerjaar; 85380NED: leerlingen per onderwijssoort, leerjaar en woonregio; beide scopeprofiel.VO_CONTEXT."
+    },
+    {
+      "id": "mbo-29",
+      "sector": "mbo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?",
+      "zoekinput": "vsv terugkeer onderwijs",
+      "geaccepteerd": ["85948NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Vsv-terugkeer (#877): voortijdig schoolverlaters en terugkeer openen de zoekpoort. 85948NED: 'Voortijdig schoolverlaters (VSV); terugkeer in onderwijs na schoolverlaten' (VO+MBO), tags vsv, terugkeer, herinstroom; scopeprofiel.VO_CONTEXT."
+    },
+    {
+      "id": "mbo-30",
+      "sector": "mbo",
+      "reeks": "test",
+      "vraag": "Hoeveel vsv'ers komen terug in het onderwijs en halen alsnog een startkwalificatie?",
+      "zoekinput": "voortijdig schoolverlaters terugkeer startkwalificatie",
+      "geaccepteerd": ["85948NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Vsv-terugkeer (#877): 85948NED heeft de dimensies Onderwijspositie en Startkwalificatie op peilmoment, tags startkwalificatie en rebound; scopeprofiel.VO_CONTEXT."
+    },
+    {
+      "id": "mbo-31",
+      "sector": "mbo",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel deelnemers volgen het vavo als tweede kans op een vervolgopleiding?",
+      "zoekinput": "vavo studenten onderwijssoort",
+      "geaccepteerd": ["85329NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Vavo (#877): vavo en vervolgopleiding openen de zoekpoort. 85329NED: 'Vavo-studenten; onderwijssoort, geslacht, leeftijd', tags vavo en tweede-kans; scopeprofiel.VO_CONTEXT."
+    },
+    {
       "id": "hbo-01",
       "sector": "hbo",
       "reeks": "ontwikkel",
@@ -615,7 +675,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom; de vraag noemt het hbo, want havo of vwo alleen opent de zoekpoort niet (#597). 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85381NED heeft geen regio."
+      "toelichting": "Ho-doorstroom (#559): havo-geslaagden zijn de potentiële hbo-instroom; de vraag noemt het hbo, want havo of vwo alleen opent de zoekpoort niet (#597). 85382NED: gediplomeerden per onderwijssoort (Havo) en woonregio (landsdeel, provincie, gemeente); vo-context voor ho (scopeprofiel.VO_CONTEXT). 85381NED heeft geen regio."
     },
     {
       "id": "hbo-26",
@@ -627,7 +687,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): de huidige havo-bovenbouw is de toekomstige hbo-instroom. 85380NED: leerlingen per onderwijssoort (Havo 3-5), leerjaar en woonregio (provincie), samenvatting 'instroomanalyses'; vo-context voor ho (scopeprofiel.HO_CONTEXT)."
+      "toelichting": "Ho-doorstroom (#559): de huidige havo-bovenbouw is de toekomstige hbo-instroom. 85380NED: leerlingen per onderwijssoort (Havo 3-5), leerjaar en woonregio (provincie), samenvatting 'instroomanalyses'; vo-context voor ho (scopeprofiel.VO_CONTEXT)."
     },
     {
       "id": "hbo-27",
@@ -639,7 +699,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): 85381NED: examenkandidaten en gediplomeerden per onderwijssoort in detail met Herkomstland en Geboorteland (ouders), tags herkomst en kansengelijkheid; vo-context voor de potentiële instroom in het ho (scopeprofiel.HO_CONTEXT). 85382NED heeft geen herkomst."
+      "toelichting": "Ho-doorstroom (#559): 85381NED: examenkandidaten en gediplomeerden per onderwijssoort in detail met Herkomstland en Geboorteland (ouders), tags herkomst en kansengelijkheid; vo-context voor de potentiële instroom in het ho (scopeprofiel.VO_CONTEXT). 85382NED heeft geen herkomst."
     },
     {
       "id": "hbo-28",
@@ -651,7 +711,31 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.HO_CONTEXT noemt het context voor de instroom in het ho."
+      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.VO_CONTEXT noemt het context voor de instroom in het ho."
+    },
+    {
+      "id": "hbo-29",
+      "sector": "hbo",
+      "reeks": "ontwikkel",
+      "vraag": "Waar gaan havo-leerlingen heen na hun diploma?",
+      "zoekinput": "havo doorstroom vervolgonderwijs",
+      "geaccepteerd": ["85566NED", "85534NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Doorstroom havo → hbo zonder ho-woord (#877): havo en 'na hun diploma' openen de zoekpoort. 85566NED: positie in het volgende schooljaar; 85534NED: vo-cohorten naar Diploma en Onderwijspositie op peilmoment; beide scopeprofiel.VO_CONTEXT."
+    },
+    {
+      "id": "hbo-30",
+      "sector": "hbo",
+      "reeks": "test",
+      "vraag": "Hoeveel mensen halen via het vavo een havo-diploma, als opstap naar het hbo?",
+      "zoekinput": "vavo gediplomeerden havo",
+      "geaccepteerd": ["85328NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Vavo (#877): 85328NED: 'Vavo-gediplomeerden; onderwijssoort, geslacht, leeftijd', voorbeeldvraag 'Hoeveel mensen behalen via VAVO alsnog een HAVO- of VWO-diploma?'; scopeprofiel.VO_CONTEXT."
     },
     {
       "id": "wo-01",
@@ -964,7 +1048,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.HO_CONTEXT noemt het context voor de instroom in het ho. 85422NED (eerstejaars naar vooropleiding) telt vanuit het ho en staat in wo-09."
+      "toelichting": "Ho-doorstroom (#559): 85566NED: doorstroom en uitstroom van vo-leerlingen naar hun positie in het volgende schooljaar (Onderwijs positie basisjaar/volgend schooljaar), tags doorstroom en uitstroom; scopeprofiel.VO_CONTEXT noemt het context voor de instroom in het ho. 85422NED (eerstejaars naar vooropleiding) telt vanuit het ho en staat in wo-09."
     },
     {
       "id": "wo-27",
@@ -976,7 +1060,7 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): de vwo-leerlingen van straks zijn de toekomstige wo-instroom; de vraag noemt het wo, want havo of vwo alleen opent de zoekpoort niet (#597). voprognoses: PROGNOSEAANTALLEN per ONDERWIJSNIVEAU (VWO_) en JAAR (2024-2043); vo-context voor ho (scopeprofiel.HO_CONTEXT). 85380NED telt alleen huidige leerlingen."
+      "toelichting": "Ho-doorstroom (#559): de vwo-leerlingen van straks zijn de toekomstige wo-instroom; de vraag noemt het wo, want havo of vwo alleen opent de zoekpoort niet (#597). voprognoses: PROGNOSEAANTALLEN per ONDERWIJSNIVEAU (VWO_) en JAAR (2024-2043); vo-context voor ho (scopeprofiel.VO_CONTEXT). 85380NED telt alleen huidige leerlingen."
     },
     {
       "id": "wo-28",
@@ -988,7 +1072,19 @@
       "beantwoordbaar": true,
       "verboden": [],
       "kritiek": false,
-      "toelichting": "Ho-doorstroom (#559): 85382NED: gediplomeerden per onderwijssoort (Vwo) en woonregio (landsdeel, provincie, gemeente); vo-context voor de regionale instroom in het ho (scopeprofiel.HO_CONTEXT)."
+      "toelichting": "Ho-doorstroom (#559): 85382NED: gediplomeerden per onderwijssoort (Vwo) en woonregio (landsdeel, provincie, gemeente); vo-context voor de regionale instroom in het ho (scopeprofiel.VO_CONTEXT)."
+    },
+    {
+      "id": "wo-29",
+      "sector": "wo",
+      "reeks": "ontwikkel",
+      "vraag": "Welk diploma halen vwo-leerlingen uiteindelijk, naar schooladvies, en hoeveel gaan door naar het wo?",
+      "zoekinput": "vo cohort hoogst behaald diploma schooladvies",
+      "geaccepteerd": ["85534NED"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Doorstroom vwo → wo (#877): 85534NED: 'Vo-cohorten; hoogst behaald diploma, achtergrondkenmerken' met Definitief schooladvies en Onderwijspositie op peilmoment; scopeprofiel.VO_CONTEXT."
     },
     {
       "id": "bp-01",
@@ -1061,6 +1157,18 @@
       "verboden": ["poleerlingen-v1"],
       "kritiek": true,
       "toelichting": "Po valt buiten het profiel (#355). Verboden: poleerlingen-v1 (Leerlingen po per vestiging)."
+    },
+    {
+      "id": "bp-07",
+      "sector": "buiten_profiel",
+      "reeks": "ontwikkel",
+      "vraag": "Hoeveel leerlingen zitten er op het vwo in Utrecht?",
+      "zoekinput": "vwo leerlingen gemeente",
+      "geaccepteerd": [],
+      "beantwoordbaar": false,
+      "verboden": ["85380NED", "85379NED", "02voins-v1"],
+      "kritiek": true,
+      "toelichting": "Een losse vo-vraag blijft dicht (#877, besluit A): geen ho-woord en geen doorstroom, dus geen vo-context. 85380NED en 85379NED zijn vo-context voor vervolgonderwijs en alleen achter de zoekpoort vindbaar; 02voins-v1 valt buiten het profiel."
     }
   ]
 }

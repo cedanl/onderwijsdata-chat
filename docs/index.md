@@ -21,9 +21,9 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 
 | Bron | Inhoud | Catalogus |
 |------|--------|-----------|
-| **CBS** | 125 datasets met onderwijsstatistieken over mbo, hbo en wo; vier daarvan zijn vo-tabellen, alleen als vo-context voor ho | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
+| **CBS** | 130 datasets met onderwijsstatistieken over mbo, hbo en wo; negen daarvan gaan over het vo, alleen als vo-context voor vervolgonderwijs | [cedanl.github.io/cbs-onderwijsdata](https://cedanl.github.io/cbs-onderwijsdata/) |
 | **RIO** | Register van onderwijsinstellingen en opleidingen, met sectorfilter op mbo/hbo/wo (8 resources) | [cedanl.github.io/rio-onderwijsdata](https://cedanl.github.io/rio-onderwijsdata/) |
-| **DUO** | 15 open datasets over mbo, hbo en wo: prognoses, diplomering, instroom, adressen; één daarvan (`voprognoses`) is alleen vo-context voor ho | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
+| **DUO** | 15 open datasets over mbo, hbo en wo: prognoses, diplomering, instroom, adressen; één daarvan (`voprognoses`) is alleen vo-context voor vervolgonderwijs | [onderwijsdata.duo.nl](https://onderwijsdata.duo.nl) |
 | **ROA** | Arbeidsmarkt-prognoses per opleidingsniveau en -sector (AIS 2030, schoolverlaters SIS 2024); in de chat via `get_roa_benchmark` en in de dashboards | — |
 | **UWV** | Open match vacatures (momentopname mei 2023); in de chat via `get_uwv_vacatures` en in de dashboards | — |
 

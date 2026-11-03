@@ -46,7 +46,7 @@ GOED = [
     ("leerlingen en studenten onderwijssoort woonregio", "85701NED", 1),
     ("studenten hoger onderwijs per woongemeente", "85701NED", 1),
     ("woonplaats studenten hoger onderwijs", "85701NED", 2),
-    # Ho-doorstroom (#559), gemeten op 15 oktober 2026: vo-context voor ho (#554) achter de zoekpoort (#557).
+    # Ho-doorstroom (#559), gemeten op 15 oktober 2026: vo-context voor vervolgonderwijs (#554) achter de zoekpoort (#557).
     # Alleen vragen uit de ontwikkelreeks van tests/retrieval_baseline; de testreeks blijft buiten de gouden set.
     (_VOOROPLEIDING, "85422NED", 1),
 ]

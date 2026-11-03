@@ -26,6 +26,9 @@ C2 = "Hoeveel leerlingen zitten er in groep 8?"
 C2B = "Ja, geef het totaal basisonderwijs 2022/23"
 C11 = "Hoeveel kinderen zitten er op de basisschool in Utrecht?"
 VWO = "Hoeveel leerlingen zitten er op het vwo?"
+VWO_UTRECHT = "Hoeveel leerlingen zitten er op het vwo in Utrecht?"
+# Doorstroom uit het vo zonder mbo- of ho-woord (#877): de vraag zoekt de vo-context voor vervolgonderwijs.
+HAVO_NA_DIPLOMA = "Waar gaan havo-leerlingen heen na hun diploma?"
 # Wat het model na C2 aanbood (audit 20 okt): het totaal basisonderwijs uit de woonregiotabel.
 _AANBOD = "Ik kan het totaal aantal leerlingen in het basisonderwijs uit CBS-tabel 85701NED voor je ophalen."
 
@@ -39,7 +42,20 @@ def register(monkeypatch):
 # --- de functie ------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("vraag", [C2, C2B, C11, VWO])
+@pytest.mark.parametrize(
+    "vraag",
+    [
+        C2,
+        C2B,
+        C11,
+        VWO,
+        VWO_UTRECHT,
+        # Een losse vo-vraag met examen of diploma, maar zonder vervolgdoel (#877).
+        "Hoeveel vmbo-leerlingen halen hun diploma?",
+        # Po blijft dicht, ook met een doorstroomwoord (#877).
+        "Wat is de doorstroom van de basisschool naar het vwo?",
+    ],
+)
 def test_een_po_of_vo_vraag_krijgt_de_scope_uitleg(vraag):
     assert po_vraag(vraag) == SCOPE_UITLEG
 
@@ -58,6 +74,12 @@ def test_ook_na_een_vorige_po_vraag():
         ("Wat is de doorstroom van havo naar hbo?", ""),
         ("Hoeveel leerlingen met een vwo-diploma gaan naar het hoger onderwijs?", ""),
         ("Hoeveel havisten kiezen een opleiding aan een van de hogescholen na de havo?", ""),
+        # Doorstroom uit het vo zonder mbo- of ho-woord (#877).
+        (HAVO_NA_DIPLOMA, ""),
+        ("Wat doen vwo-leerlingen na het examen?", ""),
+        ("Welk vervolgonderwijs kiezen vmbo-leerlingen?", ""),
+        ("Hoeveel vavo-deelnemers stromen door naar vervolgonderwijs?", ""),
+        ("En de havo?", "Hoeveel vwo-leerlingen stromen door na hun diploma?"),
         # De bredere guard van de vo-schooluitleg: eerstejaars, studenten, mbo, roc, universiteit, hogeschool.
         ("Hoeveel eerstejaars hadden het vwo als vooropleiding?", ""),
         ("Hoeveel mbo-studenten komen van het vmbo?", ""),
@@ -214,6 +236,7 @@ def test_de_uitleg_komt_voor_de_plaatskaart(monkeypatch):
         [_vraag("Hoeveel eerstejaars hadden het vwo als vooropleiding?")],
         [_vraag("Hoeveel mbo-studenten komen van het vmbo?")],
         [_vraag("Hoeveel studenten van het vwo gaan naar de UvA?")],
+        [_vraag(HAVO_NA_DIPLOMA)],
         [
             _vraag("Hoeveel hbo-studenten zijn er?"),
             {"role": "assistant", "content": "Dat zoek ik op."},

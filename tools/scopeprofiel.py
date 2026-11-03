@@ -12,9 +12,10 @@ Al het andere valt erbuiten: po/so/vo, gemengde tabellen en bestanden zonder vei
 sectorselectie, en een record zonder besluit. Voor CBS en DUO geldt dezelfde regel.
 De bronpackages mogen een bredere inventaris houden.
 
-Eén uitzondering (#554): de vo-bronnen in `HO_CONTEXT` geven een ho-vraag context. Ze vallen
-binnen het profiel, maar `catalog.search_catalog` toont ze alleen als de vraag van de gebruiker ho
-noemt (`ho_markers.ho_poort`, #597), en elke treffer, bronregel en maatkaartoptie noemt ze "vo-context voor ho".
+Eén uitzondering (#554, #877): de vo-bronnen in `VO_CONTEXT` geven een vraag over vervolgonderwijs context.
+Ze vallen binnen het profiel, maar `catalog.search_catalog` toont ze alleen als de vraag van de gebruiker het ho
+noemt of de doorstroom uit het vo (`ho_markers.vo_context_poort`, #597), en elke treffer, bronregel en
+maatkaartoptie noemt ze "vo-context voor vervolgonderwijs".
 
 Een RIO-register over alle sectoren is alleen toegelaten als een filter de sector
 vastlegt (`SECTORFILTER`); die toets doet `sectorfilter_ontbreekt` vóór elke aanroep.
@@ -225,25 +226,40 @@ TOEGELATEN: dict[str, str] = {
     "uwv-open-match-data": "UWV-vacatures; arbeidsmarktkant van het chatprofiel",
 }
 
-# Vo-bronnen die een ho-vraag van context voorzien: wie er van het vo naar het ho kan instromen (#554).
-# Een aparte categorie naast TOEGELATEN: in_scope laat ze toe, maar de zoekpoort in catalog._verzamel
-# toont ze alleen bij een vraag die ho noemt (#557), en elke treffer en bronregel draagt het etiket hieronder.
-HO_CONTEXT: dict[str, str] = {
-    "85566NED": "Doorstroom en uitstroom uit het vo en vso als context voor de instroom in het ho; het gaat om "
+# Vo-bronnen die een vraag over vervolgonderwijs van context voorzien: wie er van het vo naar het mbo of het ho kan
+# doorstromen (#554, besluit A van #877). Een aparte categorie naast TOEGELATEN: in_scope laat ze toe, maar de
+# zoekpoort in catalog._verzamel toont ze alleen bij een vraag over het ho of over doorstroom uit het vo
+# (ho_markers.opent_vo_context), en elke treffer en bronregel draagt het etiket hieronder. Alleen lopende tabellen
+# en recente bestanden; gearchiveerde CBS-reeksen en de DUO-bestanden t/m 2019 pas bij een echte vraag (#877).
+VO_CONTEXT: dict[str, str] = {
+    "85566NED": "Doorstroom en uitstroom uit het vo en vso als context voor de instroom in mbo en ho; het gaat om "
     "vo- en vso-leerlingen, geen studenten",
-    "85381NED": "Vo-gediplomeerden naar onderwijssoort als context voor de potentiële instroom in het ho; "
+    "85381NED": "Vo-gediplomeerden naar onderwijssoort als context voor de potentiële instroom in mbo en ho; "
     "het gaat om vo-leerlingen, geen studenten",
-    "85382NED": "Vo-gediplomeerden naar woonregio als context voor de regionale instroom in het ho; "
+    "85382NED": "Vo-gediplomeerden naar woonregio als context voor de regionale instroom in mbo en ho; "
     "het gaat om vo-leerlingen, geen studenten",
     "85380NED": "Huidige vo-leerlingen naar onderwijssoort, leerjaar en woonregio als context voor de toekomstige "
-    "instroom in het ho; het gaat om vo-leerlingen, geen studenten",
-    "voprognoses": "Prognoses van leerlingaantallen in het vo als context voor de toekomstige instroom in het ho; "
-    "het gaat om vo-leerlingen, geen studenten",
+    "instroom in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85379NED": "Huidige vo-leerlingen naar onderwijssoort in detail (vmbo-leerweg, havo, vwo), leerjaar en herkomst "
+    "als context voor de toekomstige instroom in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85534NED": "Vo-cohorten met hun hoogst behaalde diploma en onderwijspositie op een later peilmoment: waar een "
+    "vo-cohort uitkomt, ook in mbo en ho; het gaat om vo-leerlingen, geen studenten",
+    "85328NED": "Vavo-gediplomeerden naar onderwijssoort: een vo-diploma via het vavo als opstap naar mbo of ho; "
+    "het gaat om vavo-deelnemers, geen mbo- of ho-studenten",
+    "85329NED": "Vavo-deelnemers naar onderwijssoort: de tweedekansroute naar een vo-diploma en daarmee naar "
+    "vervolgonderwijs; CBS noemt ze studenten, maar het zijn geen mbo- of ho-studenten",
+    "85948NED": "Terugkeer in het onderwijs van voortijdig schoolverlaters uit vo en mbo: de route terug naar "
+    "vervolgonderwijs; het gaat om schoolverlaters, geen ingeschreven studenten",
+    "voprognoses": "Prognoses van leerlingaantallen in het vo als context voor de toekomstige instroom in mbo en "
+    "ho; het gaat om vo-leerlingen, geen studenten",
 }
-# Het veld `context` op elke zoektreffer uit HO_CONTEXT, en het deel achter de titel in een bronregel.
-HO_CONTEXT_ETIKET = "vo-context voor ho: leerlingen in het voortgezet onderwijs, geen studenten"
-HO_CONTEXT_DEEL = "vo-context voor ho"
-_HO_CONTEXT_SLEUTELS = frozenset(i.lower() for i in HO_CONTEXT)
+# Het veld `context` op elke zoektreffer uit VO_CONTEXT, en het deel achter de titel in een bronregel.
+VO_CONTEXT_ETIKET = (
+    "vo-context voor vervolgonderwijs: leerlingen in het voortgezet onderwijs (ook vavo en vsv), "
+    "geen mbo- of ho-studenten"
+)
+VO_CONTEXT_DEEL = "vo-context voor vervolgonderwijs"
+_VO_CONTEXT_SLEUTELS = frozenset(i.lower() for i in VO_CONTEXT)
 
 MELDING = (
     "Deze dataset valt buiten het profiel van de chat: die werkt alleen voor mbo, hbo en wo. "
@@ -263,17 +279,17 @@ def dataset_id(entry: dict) -> str | None:
     return entry.get("_cbs_id") or entry.get("_ckan_id") or entry.get("_rio_resource") or entry.get("_roa_id")
 
 
-def is_ho_context(entry_or_id: dict | str) -> bool:
-    """Of een record of ID in HO_CONTEXT staat; hoofdletterongevoelig en zonder bron-voorvoegsel,
+def is_vo_context(entry_or_id: dict | str) -> bool:
+    """Of een record of ID in VO_CONTEXT staat; hoofdletterongevoelig en zonder bron-voorvoegsel,
     zoals `catalog.bron_id` het ID terugvindt (`cbs:85566ned` is `85566NED`)."""
     ruw = dataset_id(entry_or_id) if isinstance(entry_or_id, dict) else entry_or_id
-    return bool(ruw) and zonder_bronprefix(ruw).lower() in _HO_CONTEXT_SLEUTELS
+    return bool(ruw) and zonder_bronprefix(ruw).lower() in _VO_CONTEXT_SLEUTELS
 
 
 def in_scope(entry: dict) -> bool:
     if scope.buiten_scope(entry):
         return False
-    if dataset_id(entry) in TOEGELATEN or is_ho_context(entry):
+    if dataset_id(entry) in TOEGELATEN or is_vo_context(entry):
         return True
     typen = set(entry.get("onderwijstype") or [])
     return bool(typen) and typen <= SECTOREN
@@ -364,8 +380,9 @@ def cbs_sectordeel(dataset_id: str) -> str | None:
 
 
 def bronetiket(dataset_id: str) -> str | None:
-    """Wat een bronregel achter de titel zet: het geladen deel (`alleen mbo`) of `vo-context voor ho`; anders None."""
-    return cbs_sectordeel(dataset_id) or (HO_CONTEXT_DEEL if is_ho_context(dataset_id) else None)
+    """Wat een bronregel achter de titel zet: het geladen deel (`alleen mbo`) of `vo-context voor vervolgonderwijs`;
+    anders None."""
+    return cbs_sectordeel(dataset_id) or (VO_CONTEXT_DEEL if is_vo_context(dataset_id) else None)
 
 
 def buiten_scope(bron: str, *, register: bool = False) -> dict:

@@ -23,7 +23,7 @@ from agent.scopevraag import Kaart
 from agent.stream import StreamResult
 from agent.vaste_antwoorden import WEIGER_ANTWOORD
 from tools import catalog, scopeprofiel, store
-from tools.ho_markers import noemt_ho
+from tools.ho_markers import noemt_ho, opent_vo_context
 from tools.store import KeyMeta
 
 
@@ -202,9 +202,11 @@ def test_een_vraag_over_po_so_of_vo_valt_af(eigen_catalogus):
     assert vragen["duo-eerstejaars"] == ("Welke instellingen trekken de meeste eerstejaars?",)
 
 
-# Een vo-contextrecord (epic #554) laat een vraag over vo toe als ze ook hoger onderwijs noemt (#558).
+# Een vo-contextrecord (epic #554) laat een vraag over vo toe als ze ook hoger onderwijs noemt (#558) of over
+# doorstroom uit het vo naar vervolgonderwijs gaat (#877).
 _HO_VRAAG = "Verschilt de doorstroom van HAVO naar hbo naar herkomst?"  # hbo is de ho-marker; havo niet (#597)
-_ZONDER_HO = "Hoeveel VO-leerlingen stromen door naar een hoger niveau?"
+_DOORSTROOMVRAAG = "Waar gaan havo-leerlingen heen na hun diploma?"
+_ZONDER_HO = "Hoeveel VO-leerlingen stromen door naar de havo?"  # doorstroom binnen het vo
 
 
 def _contextrecord(dataset_id: str) -> dict:
@@ -214,11 +216,11 @@ def _contextrecord(dataset_id: str) -> dict:
         "_cbs_id" if cbs else "_ckan_id": dataset_id,
         "leverancier": "CBS" if cbs else "DUO",
         "bron": "Slagingspercentage vo naar herkomst en doorstroom",
-        "voorbeeldvragen": [_HO_VRAAG, _ZONDER_HO],
+        "voorbeeldvragen": [_HO_VRAAG, _DOORSTROOMVRAAG, _ZONDER_HO],
     }
 
 
-@pytest.fixture(params=sorted(scopeprofiel.HO_CONTEXT))
+@pytest.fixture(params=sorted(scopeprofiel.VO_CONTEXT))
 def contextcatalogus(request, monkeypatch) -> str:
     """De eigen catalogus plus één vo-contextrecord; geeft zijn ID."""
     record = _contextrecord(request.param)
@@ -230,14 +232,15 @@ def contextcatalogus(request, monkeypatch) -> str:
 
 
 def test_een_contextrecord_houdt_een_vo_vraag_die_ho_noemt(contextcatalogus):
-    assert scopeprofiel.is_ho_context(contextcatalogus)
+    assert scopeprofiel.is_vo_context(contextcatalogus)
     assert scopeprofiel.PO_SO_VO.search(_HO_VRAAG) and noemt_ho(_HO_VRAAG)
+    assert scopeprofiel.PO_SO_VO.search(_DOORSTROOMVRAAG) and not noemt_ho(_DOORSTROOMVRAAG)
 
-    assert beantwoordbare_vragen()[contextcatalogus] == (_HO_VRAAG,)
+    assert beantwoordbare_vragen()[contextcatalogus] == (_HO_VRAAG, _DOORSTROOMVRAAG)
 
 
 def test_een_contextrecord_laat_een_vo_vraag_zonder_ho_marker_vallen(contextcatalogus):
-    assert scopeprofiel.PO_SO_VO.search(_ZONDER_HO) and not noemt_ho(_ZONDER_HO)
+    assert scopeprofiel.PO_SO_VO.search(_ZONDER_HO) and not opent_vo_context(_ZONDER_HO)
 
     assert not vervolgvragen._leesbaar(_ZONDER_HO, contextcatalogus)
     assert _ZONDER_HO not in beantwoordbare_vragen().get(contextcatalogus, ())
@@ -251,7 +254,7 @@ def test_een_contextrecord_maakt_een_andere_vraag_niet_leesbaar(contextcatalogus
 
 def test_buiten_de_contextrecords_blijft_een_vo_vraag_met_ho_marker_vallen(contextcatalogus):
     vraag = "Hoeveel hbo-gediplomeerden hadden een havo-diploma?"
-    assert noemt_ho(vraag) and not scopeprofiel.is_ho_context("90001NED")
+    assert noemt_ho(vraag) and not scopeprofiel.is_vo_context("90001NED")
 
     assert not vervolgvragen._leesbaar(vraag)
     assert not vervolgvragen._leesbaar(vraag, "90001NED")

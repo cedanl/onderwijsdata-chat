@@ -17,6 +17,7 @@ import re
 
 from core.sentinels import BETEKENIS
 from tools import scopeprofiel
+from tools.ho_markers import noemt_vo_doorstroom
 
 from .selectie import data_keys
 
@@ -77,9 +78,11 @@ VO_ANTWOORD = (
 SCOPE_UITLEG = (
     "Deze chat beantwoordt alleen vragen over het mbo, hbo en wo. Het primair, speciaal en voortgezet onderwijs "
     "(po, so en vo, zoals de basisschool en de middelbare school) behandelt de chat niet, dus daar geeft hij "
-    "geen cijfers over.\n\n"
-    "Een vraag die wel kan:\n"
-    "- Hoeveel eerstejaars had de Hogeschool Utrecht in 2024/25?"
+    "geen cijfers over. Alleen bij een vraag over de doorstroom van het vo naar het mbo, hbo of wo gebruikt hij "
+    "vo-cijfers als context.\n\n"
+    "Vragen die wel kunnen:\n"
+    "- Hoeveel eerstejaars had de Hogeschool Utrecht in 2024/25?\n"
+    "- Hoeveel vmbo-leerlingen stromen door naar het mbo?"
 )
 
 # Tooltaal in het antwoord: "De tool weigerde mijn selectie", "de selectie werd geweigerd".
@@ -108,11 +111,12 @@ def _scopegrens(result: str) -> bool:
 def scope_uitleg(tekst: str, tool_results: list[str], vraag: str) -> str | None:
     """De vaste scope-uitleg als de beurt zonder data op de scopegrens stuitte; anders None.
 
-    Code beslist (#191): heeft een stap data geladen, of noemt de vraag mbo, hbo of wo, dan blijft het
-    antwoord van het model; het model kan na een po/so/vo-tabel een passende bron gevonden hebben (#563).
+    Code beslist (#191): heeft een stap data geladen, of noemt de vraag mbo, hbo of wo of de doorstroom uit het vo
+    (#877), dan blijft het antwoord van het model; het model kan na een po/so/vo-tabel een passende bron gevonden
+    hebben (#563).
     Anders is het de uitleg als een tool de data buiten de scope legde (`buiten_scope`), of als het
     antwoord tooltaal doorgeeft op een vraag die po, so of vo noemt."""
-    if data_keys(tool_results) or _MBO_HBO_WO.search(vraag):
+    if data_keys(tool_results) or _MBO_HBO_WO.search(vraag) or noemt_vo_doorstroom(vraag):
         return None
     if any(_scopegrens(result) for result in tool_results):
         return SCOPE_UITLEG

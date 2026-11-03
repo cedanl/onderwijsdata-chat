@@ -10,8 +10,8 @@ chat ze kan beantwoorden. Een voorbeeldvraag valt af als ze
   code C0001, sub-resource), of een dataset bij zijn ID (aangeboden-opleidingen, 85423NED);
 - naar het antwoord ervoor wijst ("hoe verhoudt dit zich …", "de data"): als knop zegt ze dan niets;
 - over po, so of vo gaat ("BO-opleidingen", vmbo, havo): buiten de scope van de chat (#355). Een vo-contextrecord
-  (`scopeprofiel.HO_CONTEXT`) houdt zo'n vraag als ze ook hoger onderwijs noemt (`noemt_ho`): dezelfde regel als
-  de zoekpoort voor die records (#557, #558);
+  (`scopeprofiel.VO_CONTEXT`) houdt zo'n vraag als ze over vervolgonderwijs gaat (`opent_vo_context`: het ho, of
+  doorstroom uit het vo): dezelfde regel als de zoekpoort voor die records (#557, #558, #877);
 - om een aantal uit een RIO-register vraagt: get_rio_data levert één pagina en geen totalen (#170);
 - haar eigen dataset niet terugvindt met search_catalog: dan vindt het model hem ook niet.
 
@@ -30,7 +30,7 @@ from functools import cache
 from itertools import chain, zip_longest
 
 from tools import catalog, periode, scopeprofiel, store
-from tools.ho_markers import noemt_ho
+from tools.ho_markers import opent_vo_context
 
 from .citaties import citaties
 from .selectie import SCHEIDING, laadkey, stapkeys
@@ -54,10 +54,10 @@ def _noemt_dataset_id(vraag: str) -> bool:
 
 
 def _buiten_scope(vraag: str, dataset_id: str | None) -> bool:
-    """Gaat de vraag over po, so of vo? Bij een vo-contextrecord niet als ze ook hoger onderwijs noemt (#558)."""
+    """Gaat de vraag over po, so of vo? Bij een vo-contextrecord niet als ze over vervolgonderwijs gaat (#558, #877)."""
     if not scopeprofiel.PO_SO_VO.search(vraag):
         return False
-    return not (dataset_id and scopeprofiel.is_ho_context(dataset_id) and noemt_ho(vraag))
+    return not (dataset_id and scopeprofiel.is_vo_context(dataset_id) and opent_vo_context(vraag))
 
 
 def _leesbaar(vraag: str, dataset_id: str | None = None) -> bool:
