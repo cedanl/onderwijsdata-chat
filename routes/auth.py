@@ -23,6 +23,7 @@ from core.auth import (
     session_start,
     verify_token,
 )
+from core.logging_util import foutkenmerk
 from core.rate_limit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -249,8 +250,10 @@ async def oidc_callback(request: Request) -> RedirectResponse:
 
     try:
         userinfo = await exchange_code_for_user(code)
-    except Exception:
-        logger.exception("OIDC code exchange failed")
+    except Exception as e:
+        # De fout van de provider kan de token-URL of het antwoord citeren: op ERROR type en kenmerk (#819).
+        logger.error("OIDC code exchange failed: %s", foutkenmerk(e))
+        logger.debug("OIDC code exchange failed", exc_info=True)
         return RedirectResponse("/?oidc_error=1", status_code=302)
 
     username = userinfo.get("email") or userinfo.get("sub")

@@ -11,6 +11,7 @@ _BOL_DEELTIJD = "BOL deeltijd"
 import pandas as pd
 from riodata import duo
 
+from core.logging_util import foutkenmerk
 from core.sentinels import mask_sentinels
 
 from . import arbeidsmarkt
@@ -18,6 +19,16 @@ from .instellingen import get_adres_lookup, resolve_alias
 from .instellingen import get_all as get_all_instellingen
 
 logger = logging.getLogger(__name__)
+
+
+def _niet_beschikbaar(e: Exception, bericht: str, *args) -> None:
+    """Een onderdeel dat niet laadt: op WARNING het type en een kenmerk, de traceback op DEBUG (#819).
+
+    De fouttekst van httpx citeert de request-URL, een traceback de waarden in de aanroep (#502).
+    """
+    logger.warning(bericht + ": %s", *args, foutkenmerk(e))
+    logger.debug(bericht, *args, exc_info=e)
+
 
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 20
@@ -437,8 +448,8 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
             },
         )
         return pio.to_json(fig)
-    except Exception:
-        logger.warning("kaart-figure: kon Plotly-kaart niet bouwen", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "kaart-figure: kon Plotly-kaart niet bouwen")
         return None
 
 
@@ -468,8 +479,8 @@ def _load_instromende_mbo_historisch() -> pd.DataFrame:
     for i in [1, 3, 5, 7]:
         try:
             dfs.append(_duo_load("instromende-mbo-studenten", i))
-        except Exception:
-            logger.warning("instromende-mbo: partitie %d niet beschikbaar", i, exc_info=True)
+        except Exception as e:
+            _niet_beschikbaar(e, "instromende-mbo: partitie %d niet beschikbaar", i)
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 
@@ -488,8 +499,8 @@ def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
             return {}
         counts = rows.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().sort_values(ascending=False)
         return {str(k): int(v) for k, v in counts.items() if v > 0}
-    except Exception:
-        logger.warning("mbo-sectorkamers: niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "mbo-sectorkamers: niet beschikbaar")
         return {}
 
 
@@ -516,8 +527,8 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     """
     try:
         stand = arbeidsmarkt.uwv_stand(provincie)
-    except Exception:
-        logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie)
         return {}
     if not stand:
         return {}
@@ -545,16 +556,16 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
 def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
     try:
         return arbeidsmarkt.clusters_voor_sectoren(provincie, sectoren)
-    except Exception:
-        logger.warning("uwv: vacatureclusters voor %s niet beschikbaar", provincie, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie)
         return {}
 
 
 def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str, int]:
     try:
         return arbeidsmarkt.vacatures_per_sector(provincie, sectoren)
-    except Exception:
-        logger.warning("uwv: vacatures per sector voor %s niet beschikbaar", provincie, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "uwv: vacatures per sector voor %s niet beschikbaar", provincie)
         return {}
 
 
@@ -563,8 +574,8 @@ def _roa_prognose(onderwijs_type: str) -> dict:
     """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau (typering), landelijk."""
     try:
         waarden = arbeidsmarkt.roa_prognose(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
-    except Exception:
-        logger.warning("roa: prognose %s niet beschikbaar", onderwijs_type, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "roa: prognose %s niet beschikbaar", onderwijs_type)
         return {}
     uit = {n: {o: w["typering"] for o, w in ow.items() if "typering" in w} for n, ow in waarden.items()}
     return {n: ow for n, ow in uit.items() if ow}
@@ -575,8 +586,8 @@ def _roa_schoolverlaters(onderwijs_type: str) -> dict:
     """ROA-schoolverlatersinformatie (SIS 2024) per opleidingsniveau, in hele procenten, landelijk."""
     try:
         waarden = arbeidsmarkt.roa_schoolverlaters(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
-    except Exception:
-        logger.warning("roa: schoolverlaters %s niet beschikbaar", onderwijs_type, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "roa: schoolverlaters %s niet beschikbaar", onderwijs_type)
         return {}
     uit = {n: {o: round(w["perc"]) for o, w in ow.items() if "perc" in w} for n, ow in waarden.items()}
     return {n: ow for n, ow in uit.items() if ow}
@@ -585,8 +596,8 @@ def _roa_schoolverlaters(onderwijs_type: str) -> dict:
 def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
-    except Exception:
-        logger.warning("regio-ho: data laden mislukt voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "regio-ho: data laden mislukt voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -719,8 +730,8 @@ def _mbo_load_gediplomeerden(inst_col: str, instelling: str) -> tuple[pd.DataFra
     try:
         df = _load_mbo_gediplomeerden()
         return df, _mbo_dipl_per_jaar(df, inst_col, instelling)
-    except Exception:
-        logger.warning("regio-mbo: gediplomeerden niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "regio-mbo: gediplomeerden niet beschikbaar")
         return None, {}
 
 
@@ -728,16 +739,16 @@ def _mbo_load_eerstejaars(self_code: str) -> tuple[pd.DataFrame | None, dict[int
     try:
         df = _load_instromende_mbo_historisch()
         return df, _mbo_eerstejaars_from_df(df, self_code)
-    except Exception:
-        logger.warning("regio-mbo: eerstejaars niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "regio-mbo: eerstejaars niet beschikbaar")
         return None, {}
 
 
 def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
-    except Exception:
-        logger.warning("regio-mbo: data laden mislukt voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "regio-mbo: data laden mislukt voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -827,8 +838,8 @@ def load_dashboard_regio(instelling: str) -> dict:
     try:
         df_ho, _, _ = _load_ho_full()
         result["beschikbare_instellingen"] = _beschikbare_instellingen(df_ho, _load_mbo_studenten())
-    except Exception:
-        logger.warning("load_dashboard_regio: beschikbare instellingen niet laden", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "load_dashboard_regio: beschikbare instellingen niet laden")
 
     return result
 
@@ -854,8 +865,8 @@ def _ho_load_eerstejaars(instelling: str) -> dict[int, int] | None:
         if hu1.empty:
             return None
         return hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum().sort_index().to_dict()
-    except Exception:
-        logger.warning("dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling)
         return None
 
 
@@ -866,8 +877,8 @@ def _ho_load_gediplomeerden(instelling: str) -> dict[int, int] | None:
         if hud.empty:
             return None
         return hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum().sort_index().to_dict()
-    except Exception:
-        logger.warning("dashboard-ho: gediplomeerden niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "dashboard-ho: gediplomeerden niet beschikbaar voor %s", instelling)
         return None
 
 
@@ -877,8 +888,8 @@ def load_dashboard_ho(instelling: str) -> dict | None:
         hu = _filter_ho(df_inges, instelling)
         if hu.empty:
             return None
-    except Exception:
-        logger.warning("dashboard-ho: data laden mislukt voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "dashboard-ho: data laden mislukt voor %s", instelling)
         return None
 
     result: dict = {}
@@ -910,8 +921,8 @@ def load_dashboard_ho(instelling: str) -> dict | None:
 def load_dashboard_mbo(instelling: str) -> dict | None:
     try:
         df = _load_mbo_studenten()
-    except Exception:
-        logger.warning("dashboard-mbo: data laden mislukt voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "dashboard-mbo: data laden mislukt voor %s", instelling)
         return None
 
     rows = df[df["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
@@ -946,8 +957,8 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
                 jaar = int(col[-4:])
                 gediplomeerden[jaar] = gediplomeerden.get(jaar, 0) + int(dipl_rows[col].sum())
             result["gediplomeerden"] = dict(sorted(gediplomeerden.items()))
-    except Exception:
-        logger.warning("dashboard-mbo: gediplomeerden niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "dashboard-mbo: gediplomeerden niet beschikbaar voor %s", instelling)
 
     return result
 
@@ -970,8 +981,8 @@ def load_dashboard(instelling: str) -> dict:
 
     try:
         result["beschikbare_instellingen"] = _beschikbare_instellingen(_load_ho(instelling), _load_mbo_studenten())
-    except Exception:
-        logger.warning("load_dashboard: beschikbare instellingen niet laden", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "load_dashboard: beschikbare instellingen niet laden")
 
     return result
 
@@ -982,8 +993,8 @@ def load_dashboard(instelling: str) -> dict:
 def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     try:
         df_inges, _, _ = _load_ho_full()
-    except Exception:
-        logger.warning("nationaal-ho: ranking niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1031,8 +1042,8 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
 def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
-    except Exception:
-        logger.warning("nationaal-mbo: ranking niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "nationaal-mbo: ranking niet beschikbaar voor %s", instelling)
         return None
 
     inst_col_mbo = "INSTELLINGSNAAM"
@@ -1177,8 +1188,8 @@ def _ho_peer_rendement(df_ej: pd.DataFrame, df_dipl: pd.DataFrame, code_col: str
 def _rendement_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
-    except Exception:
-        logger.warning("rendement-ho: niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "rendement-ho: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1246,8 +1257,8 @@ def _mbo_peers_rendement(ctx, df_mbo, df_dipl_mbo, inst_col, code_col):
         return {}, []
     try:
         df_instromende_all = _load_instromende_mbo_historisch()
-    except Exception:
-        logger.warning("rendement-mbo: peer rendement niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "rendement-mbo: peer rendement niet beschikbaar")
         return {}, []
     peers_rendement: dict[str, dict[int, float]] = {}
     peer_rend_lists: list[dict[int, float]] = []
@@ -1270,8 +1281,8 @@ def _rendement_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
         df_dipl_mbo = _load_mbo_gediplomeerden()
-    except Exception:
-        logger.warning("rendement-mbo: niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "rendement-mbo: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -1293,8 +1304,8 @@ def _rendement_mbo(instelling: str) -> dict | None:
                 (df_instromende["INSTELLINGSCODE"] == self_code) & (df_instromende[_INSTROOM_MBO] == "J")
             ]
             instroom_per_jaar = self_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
-    except Exception:
-        logger.warning("rendement-mbo: instroom per jaar niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "rendement-mbo: instroom per jaar niet beschikbaar")
 
     dipl_per_jaar = _mbo_dipl_per_jaar(df_dipl_mbo, inst_col, instelling) if df_dipl_mbo is not None else {}
 
@@ -1317,8 +1328,8 @@ def _rendement_mbo(instelling: str) -> dict | None:
 def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     try:
         df_inges, _, df_dipl = _load_ho_full()
-    except Exception:
-        logger.warning("arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1350,8 +1361,8 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
 def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
-    except Exception:
-        logger.warning("arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling, exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling)
         return None
 
     rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
@@ -1368,8 +1379,8 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
         snap = df_snapshot[df_snapshot["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
         if not snap.empty:
             gps = {str(k): int(v) for k, v in snap.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().items() if v > 0}
-    except Exception:
-        logger.warning("arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar", exc_info=True)
+    except Exception as e:
+        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar")
 
     return {
         "type": "mbo",

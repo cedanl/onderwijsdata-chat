@@ -154,11 +154,10 @@ Hetzelfde geldt voor fouttekst en tracebacks, want die kunnen zulke tekst citere
 request-URL, een traceback uit de sandbox de modelcode): op INFO en hoger het type en een kenmerk
 (`core.logging_util.foutkenmerk`, `fout_len=… fout_hash=…`), de tekst en de traceback alleen op DEBUG (#502). Geen
 `exc_info` en geen `%s` met de uitzondering zelf op INFO+. Een interne fout houdt haar fout-ID: `log_interne_fout()`
-zet ID, type en kenmerk op ERROR en de traceback onder hetzelfde ID op DEBUG. Nog niet overal zo; de restpunten staan
-in #819: `exc_info=True` op WARNING in `data/dashboard.py`, `data/instellingen.py` en `data/arbeidsmarkt.py`,
-`logger.exception` in `routes/auth.py`, `routes/chat.py` en `tools/catalog.py`, en `%s` met de uitzondering in
-`agent/model_context.py` (#818). Bewust wel leesbaar: de `ConfigError`-regel in `server.py`, die alleen tekst uit
-`config.py` bevat.
+zet ID, type en kenmerk op ERROR en de traceback onder hetzelfde ID op DEBUG. Een test in `tests/test_log_hardening.py`
+houdt de productiecode hieraan; een bewuste uitzondering staat daar in `_BEWUST`, met de reden. Bewust wel leesbaar: de
+`ConfigError`-regel in `server.py`, die alleen tekst uit `config.py` bevat. Nog één restpunt: `logger.exception` in
+`POST /api/dashboard/refresh` (`routes/chat.py`), dat met de dashboardbouwer verdwijnt (#765).
 
 ### Rollen
 
