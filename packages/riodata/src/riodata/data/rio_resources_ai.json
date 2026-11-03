@@ -1,0 +1,682 @@
+[
+  {
+    "leverancier": "RIO",
+    "bron": "Organisatorische eenheden",
+    "beschrijving": "Alle onderwijsbesturen, -instellingen en -aanbieders geregistreerd in RIO",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Het volledige register van ~20.700 organisatorische eenheden in het Nederlandse onderwijs. Filterable op type: ONDERWIJSBESTUUR (juridische entiteit), ONDERWIJSINSTELLING (school/instelling) of ONDERWIJSAANBIEDER (locatieniveau). Bevat naam, code, in/uitbedrijfdatum en HATEOAS-links naar contactadressen, locaties en opleidingen.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — organisatorische-eenheden",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/organisatorische-eenheden"
+    },
+    "filters": [
+      "type",
+      "onderwijslocatiegebruikId",
+      "aangebodenOpleidingId",
+      "instellingserkenningId",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "aangeboden-opleidingen",
+      "contactadressen",
+      "erkenningen",
+      "onderwijslocatiegebruiken",
+      "organisatierelaties"
+    ],
+    "voorbeeldvragen": [
+      "Hoeveel actieve MBO-instellingen zijn er in Nederland?",
+      "Welke onderwijsaanbieders zijn gevestigd in Rotterdam?",
+      "Welke instellingen zijn na 2020 opgeheven (hebben een uitbedrijfdatum)?"
+    ],
+    "tags": [
+      "instellingen",
+      "besturen",
+      "aanbieders",
+      "register",
+      "alle-niveaus",
+      "po",
+      "vo",
+      "mbo",
+      "ho"
+    ],
+    "combineerbaar_met": [
+      "CBS 03753 (Onderwijsinstellingen; grootte, soort, grondslag)",
+      "CBS 85353NED (Mbo studenten per regio)"
+    ],
+    "_rio_resource": "organisatorische-eenheden",
+    "_thema": "Instellingen",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Erkenningen",
+    "beschrijving": "Erkende onderwijsorganisaties op bestuursniveau, inclusief bekostigingscode en wet",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Formele erkenningen van onderwijsorganisaties met volledigeNaam, type, bekostigingscode, toepasselijke wet (WVO, WPO, WHW, WEB, etc.), grondslag en vrijheid van onderwijs. Doorzoekbaar op naam en plaatsnaam. Gelinkt aan organisatorische eenheden, licenties en locatiegebruiken.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — erkenningen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen"
+    },
+    "filters": [
+      "type",
+      "volledigeNaam",
+      "plaatsnaam",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "examenlicenties",
+      "financieringsbesluiten",
+      "instellingsrelaties",
+      "onderwijslicenties",
+      "onderwijslocatiegebruiken",
+      "organisatorische-eenheden"
+    ],
+    "voorbeeldvragen": [
+      "Welke instellingen vallen onder de WHW (Wet op het hoger onderwijs)?",
+      "Hoeveel bijzondere vs. openbare scholen zijn er erkend in Amsterdam?",
+      "Welke instellingen zijn op basis van religieuze grondslag erkend?"
+    ],
+    "tags": [
+      "erkenning",
+      "wet",
+      "bekostiging",
+      "grondslag",
+      "denominatie",
+      "alle-niveaus"
+    ],
+    "combineerbaar_met": [
+      "CBS 03753 (Onderwijsinstellingen; grootte, soort, grondslag)"
+    ],
+    "_rio_resource": "erkenningen",
+    "_thema": "Instellingen",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Contactadressen",
+    "beschrijving": "Contactgegevens (adres, e-mail, telefoon, web) van organisatorische eenheden",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Contactinformatie per organisatorische eenheid: plaatsnaam, straatnaam, postcode, e-mailadres, telefoonnummer, webadres en contacttype. Bevat genest nederlandsAdres met plaatsnaam en postcode. Geschikt om instellingen geografisch te lokaliseren zonder GPS-coördinaten te gebruiken. Filterable op contactadrestype.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — contactadressen (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": [
+      "datumGeldigOp"
+    ],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "In welke steden zitten de meeste onderwijsaanbieders?",
+      "Wat zijn de contactgegevens van alle MBO-scholen in Utrecht?",
+      "Welke instellingen hebben geen webadres geregistreerd?"
+    ],
+    "tags": [
+      "adres",
+      "plaatsnaam",
+      "postcode",
+      "contact",
+      "locatie",
+      "alle-niveaus"
+    ],
+    "combineerbaar_met": [
+      "rio onderwijslocaties (GPS-coördinaten)",
+      "rio organisatorische-eenheden"
+    ],
+    "_rio_resource": "contactadressen",
+    "_thema": "Instellingen",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslocaties",
+    "beschrijving": "Fysieke locaties van onderwijsinstellingen met adres en GPS-coördinaten",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Register van ~13.500 fysieke onderwijslocaties in Nederland. Elk record bevat plaatsnaam, straatnaam, huisnummer, postcode, gpsLatitude en gpsLongitude. Locatiecode heeft formaat 999X999. Ideaal voor geografische analyses, kaartvisualisaties en het bepalen van spreiding van onderwijsaanbod.",
+    "frequentie": "Dagelijks",
+    "categorie": "Locaties",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslocaties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/onderwijslocaties"
+    },
+    "filters": [
+      "aangebodenOpleidingId",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "onderwijslocatiegebruiken"
+    ],
+    "voorbeeldvragen": [
+      "In welke steden staan de meeste onderwijslocaties?",
+      "Wat zijn de GPS-coördinaten van alle scholen in Friesland?",
+      "Hoeveel onderwijslocaties zijn er per postcode in Amsterdam?"
+    ],
+    "tags": [
+      "locatie",
+      "gps",
+      "kaart",
+      "plaatsnaam",
+      "postcode",
+      "geografie",
+      "alle-niveaus"
+    ],
+    "combineerbaar_met": [
+      "CBS 85489NED (PO leerlingen per woonregio)",
+      "CBS 85353NED (MBO studenten per regio)",
+      "rio contactadressen"
+    ],
+    "_rio_resource": "onderwijslocaties",
+    "_thema": "Locaties",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslocatiegebruiken",
+    "beschrijving": "Koppeling tussen onderwijslocaties en de organisaties die ze gebruiken",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Legt vast welke organisatorische eenheid (onderwijsbestuur) een onderwijslocatie gebruikt en in welke periode. Sleutelresource om locaties aan instellingen te koppelen. Filter op onderwijslocatieId (999X999 formaat) of onderwijsbestuurId (999B999 formaat).",
+    "frequentie": "Dagelijks",
+    "categorie": "Locaties",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslocatiegebruiken (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": [
+      "datumGeldigOp"
+    ],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke scholen gebruiken dezelfde locatie?",
+      "Welke locaties worden door bestuur 999B001 gebruikt?",
+      "Zijn er locaties die door meerdere besturen gedeeld worden?"
+    ],
+    "tags": [
+      "locatie",
+      "koppeling",
+      "bestuur",
+      "gebruik",
+      "alle-niveaus",
+      "gemeente"
+    ],
+    "combineerbaar_met": [
+      "rio onderwijslocaties",
+      "rio organisatorische-eenheden",
+      "rio erkenningen"
+    ],
+    "_rio_resource": "onderwijslocatiegebruiken",
+    "_thema": "Locaties",
+    "_geo_niveau": [
+      "gemeente"
+    ]
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Aangeboden opleidingen",
+    "beschrijving": "Concreet opleidingsaanbod per instelling en locatie, met startdata en type",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "PO",
+      "VO",
+      "MBO",
+      "HBO",
+      "WO"
+    ],
+    "doel": "Alle aangeboden opleidingen per instelling en locatie: type (MBO, HBO, WO, etc.), startdatum, eersteInstroomdatum, eigennaam en opleidingscode. Te filteren op onderwijslocatieId voor een specifieke locatie. Gelinkt aan organisatorische eenheden, opleidingen en cohorten. Bruikbaar voor aanbodanalyses per regio of instelling.",
+    "frequentie": "Dagelijks",
+    "categorie": "Aanbod",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — aangeboden-opleidingen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/aangeboden-opleidingen"
+    },
+    "filters": [
+      "type",
+      "onderwijslocatieId",
+      "datumGeldigOp",
+      "opleidingseenheidcode",
+      "organisatorischeEenheidcode"
+    ],
+    "sub_resources": [
+      "aangeboden-opleiding-cohorten",
+      "onderwijslocatie",
+      "opleiding",
+      "opleidingsfase",
+      "opleidingsgroep",
+      "opleidingsonderdeel",
+      "organisatorische-eenheid"
+    ],
+    "voorbeeldvragen": [
+      "Welke MBO-opleidingen worden aangeboden in Eindhoven?",
+      "Welke instelling biedt de opleiding met CREBO-code 25604 aan?",
+      "Op hoeveel locaties wordt een specifieke HBO-opleiding aangeboden?"
+    ],
+    "tags": [
+      "aanbod",
+      "opleiding",
+      "locatie",
+      "instelling",
+      "mbo",
+      "hbo",
+      "wo",
+      "po",
+      "vo"
+    ],
+    "combineerbaar_met": [
+      "CBS 85353NED (MBO studenten regio)",
+      "CBS 85421NED (HO ingeschrevenen)",
+      "rio onderwijslocaties",
+      "rio organisatorische-eenheden"
+    ],
+    "_rio_resource": "aangeboden-opleidingen",
+    "_thema": "Aanbod",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Aangeboden opleidingscohorten",
+    "beschrijving": "Instroomcohorten per aangeboden opleiding, met aanmeld- en instroomperiodes",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "MBO",
+      "HBO",
+      "WO"
+    ],
+    "doel": "Instroomcohorten van MBO-, HBO- en particuliere aangeboden opleidingen: aanmeldperiode, beginAanmeldperiode, eindeAanmeldperiode en cohorttype. Relevant voor analyses van instroomroosters, aanmeldstromen en flexibele instroom. Alleen beschikbaar voor HO, MBO en particuliere aanbieders.",
+    "frequentie": "Dagelijks",
+    "categorie": "Aanbod",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — aangeboden-opleiding-cohorten (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": [
+      "aanmeldperiode"
+    ],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke MBO-opleidingen bieden flexibele instroom aan?",
+      "Hoeveel cohorten start er per kwartaal bij HBO-instellingen?",
+      "Welke opleidingen hebben de vroegste aanmelddeadline?"
+    ],
+    "tags": [
+      "cohort",
+      "instroom",
+      "aanmelding",
+      "flexibel",
+      "mbo",
+      "hbo",
+      "wo"
+    ],
+    "combineerbaar_met": [
+      "rio aangeboden-opleidingen",
+      "CBS 85569NED (Instromers MBO positie eerder)"
+    ],
+    "_rio_resource": "aangeboden-opleiding-cohorten",
+    "_thema": "Aanbod",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingen",
+    "beschrijving": "Officieel register van opleidingen met CREBO/CROHO-codes",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Het officiële register van erkende opleidingen in Nederland met formele codes: CREBO voor MBO-kwalificaties, CROHO voor HO-opleidingen. Basislaag voor alle aanbod- en erkenningsdata in RIO. Gelinkt aan opleidingsfasen, -groepen, -onderdelen en aangeboden opleidingen.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingen"
+    },
+    "filters": [
+      "datumGeldigOp",
+      "type"
+    ],
+    "sub_resources": ["aangeboden-opleidingen", "opleidingserkenningen", "opleidingsrelaties"],
+    "voorbeeldvragen": [
+      "Welke opleidingen hebben een geldig CREBO-code?",
+      "Hoeveel erkende HBO-opleidingen zijn er in Nederland?",
+      "Welke opleidingen zijn per 2024 nieuw toegevoegd aan het register?"
+    ],
+    "tags": [
+      "opleiding",
+      "crebo",
+      "croho",
+      "register",
+      "kwalificatie",
+      "mbo",
+      "hbo",
+      "wo"
+    ],
+    "combineerbaar_met": [
+      "rio aangeboden-opleidingen",
+      "rio opleidingserkenningen",
+      "CBS 85353NED (MBO studenten studierichting)"
+    ],
+    "_rio_resource": "opleidingen",
+    "_thema": "Opleidingsstructuur",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsfasen",
+    "beschrijving": "Fases van opleidingen (bijv. propedeuse, bachelor, master) in het HO",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "HBO",
+      "WO"
+    ],
+    "doel": "Beschrijft de formele fases binnen een HO-opleiding: propedeuse, bachelor, master, etc. Filterbaar op opleidingseenheidtype. Gelinkt aan aangeboden opleidingen, opleidingserkenningen en opleidingsrelaties. Relevant voor analyses van de structuur van het Nederlandse hoger onderwijs.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsfasen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsfasen"
+    },
+    "filters": [
+      "type",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "aangeboden-opleidingen",
+      "opleidingserkenningen",
+      "opleidingsrelaties"
+    ],
+    "voorbeeldvragen": [
+      "Hoeveel bachelor-opleidingen zijn er per HO-instelling?",
+      "Welke instellingen bieden zowel propedeuse als master aan in dezelfde opleiding?",
+      "Welke masterprogramma's zijn per 2023 nieuw erkend?"
+    ],
+    "tags": [
+      "fase",
+      "bachelor",
+      "master",
+      "propedeuse",
+      "hbo",
+      "wo",
+      "structuur"
+    ],
+    "combineerbaar_met": [
+      "CBS 85421NED (HO ingeschrevenen)",
+      "CBS 83282NED (HO-cohorten diploma's)",
+      "rio aangeboden-opleidingen"
+    ],
+    "_rio_resource": "opleidingsfasen",
+    "_thema": "Opleidingsstructuur",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsgroepen",
+    "beschrijving": "Clusters van verwante opleidingen binnen een instelling of sector",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "MBO",
+      "HBO",
+      "WO"
+    ],
+    "doel": "Groepeert verwante opleidingen in clusters per instelling of sector. Filterbaar op opleidingseenheidtype. Gelinkt aan opleidingen, aangeboden opleidingen en opleidingserkenningen. Nuttig voor analyses op sectoraal of domein-niveau (bijv. techniek, zorg, economie).",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsgroepen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsgroepen"
+    },
+    "filters": [
+      "type",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "aangeboden-opleidingen",
+      "opleidingserkenning",
+      "opleidingsrelaties"
+    ],
+    "voorbeeldvragen": [
+      "Welke opleidingsgroepen (domeinen) biedt een instelling aan?",
+      "Hoeveel techniekopleidingen zijn er gegroepeerd per MBO-school?",
+      "Welke sectorkamers hebben de meeste opleidingsgroepen?"
+    ],
+    "tags": [
+      "groep",
+      "cluster",
+      "domein",
+      "sector",
+      "mbo",
+      "hbo",
+      "wo",
+      "structuur"
+    ],
+    "combineerbaar_met": [
+      "CBS 85353NED (MBO studenten studierichting)",
+      "CBS 85421NED (HO studenten studierichting)",
+      "rio opleidingen"
+    ],
+    "_rio_resource": "opleidingsgroepen",
+    "_thema": "Opleidingsstructuur",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsonderdelen",
+    "beschrijving": "Afzonderlijke onderdelen of modules binnen een opleiding",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "MBO",
+      "HBO",
+      "WO"
+    ],
+    "doel": "Het meest gedetailleerde niveau van de opleidingsstructuur in RIO: afzonderlijke modules of onderdelen binnen een opleiding. Filterbaar op opleidingseenheidtype. Gelinkt aan aangeboden opleidingen en opleidingserkenningen. Nuttig voor gedetailleerde curriculum-analyses.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsonderdelen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsonderdelen"
+    },
+    "filters": [
+      "type",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "aangeboden-opleidingen",
+      "opleidingserkenningen",
+      "opleidingsrelaties"
+    ],
+    "voorbeeldvragen": [
+      "Hoeveel onderdelen heeft een specifieke MBO-kwalificatie?",
+      "Welke keuzedelen worden aangeboden bij een bepaalde basisopleiding?",
+      "Welke onderdelen zijn gedeeld tussen meerdere opleidingen?"
+    ],
+    "tags": [
+      "onderdeel",
+      "module",
+      "keuzedeel",
+      "curriculum",
+      "mbo",
+      "hbo",
+      "wo",
+      "detail"
+    ],
+    "combineerbaar_met": [
+      "rio opleidingen",
+      "rio opleidingsgroepen",
+      "rio aangeboden-opleidingen"
+    ],
+    "_rio_resource": "opleidingsonderdelen",
+    "_thema": "Opleidingsstructuur",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingserkenningen",
+    "beschrijving": "Formele erkenningen van opleidingen door een erkennende instantie",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Legt vast welke opleidingen formeel erkend zijn, door wie en met welke erkende opleidingscode. Te filteren op erkenningtype en erkendeopleidingscode. Gelinkt aan examenlicenties, onderwijslicenties en financieringsbesluiten. Kernresource voor compliance en accreditatie-analyses.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingserkenningen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingserkenningen"
+    },
+    "filters": [
+      "type",
+      "erkendeopleidingscode",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "examenlicenties",
+      "financieringsbesluiten",
+      "onderwijslicenties",
+      "opleiding",
+      "opleidingsfase",
+      "opleidingsgroep",
+      "opleidingsonderdeel"
+    ],
+    "voorbeeldvragen": [
+      "Welke opleidingen hebben zowel een onderwijs- als examenlicentie?",
+      "Hoeveel opleidingen zijn erkend per MBO-instelling?",
+      "Welke erkende opleidingscodes lopen per 2025 af?"
+    ],
+    "tags": [
+      "erkenning",
+      "licentie",
+      "accreditatie",
+      "compliance",
+      "alle-niveaus",
+      "crebo",
+      "croho"
+    ],
+    "combineerbaar_met": [
+      "rio onderwijslicenties",
+      "rio examenlicenties",
+      "rio opleidingen",
+      "CBS 85356NED (MBO gediplomeerden)"
+    ],
+    "_rio_resource": "opleidingserkenningen",
+    "_thema": "Licenties en erkenningen",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslicenties",
+    "beschrijving": "Licenties die instellingen het recht geven onderwijs aan te bieden",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Licenties per opleiding waarmee instellingen zijn gemachtigd onderwijs te verzorgen. Te filteren op licentietype en datumGeldigOp. Gelinkt aan opleidingserkenningen. Essentieel voor analyses van welke instellingen welke opleidingen mogen aanbieden en of licenties nog geldig zijn.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslicenties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/onderwijslicenties"
+    },
+    "filters": [
+      "type",
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "opleidingserkenning"
+    ],
+    "voorbeeldvragen": [
+      "Welke instellingen hebben een onderwijslicentie voor verpleegkunde?",
+      "Hoeveel onderwijslicenties lopen dit jaar af?",
+      "Welke MBO-scholen mogen niveau-4 techniek aanbieden?"
+    ],
+    "tags": [
+      "licentie",
+      "onderwijs",
+      "recht",
+      "bekostiging",
+      "compliance",
+      "alle-niveaus"
+    ],
+    "combineerbaar_met": [
+      "rio opleidingserkenningen",
+      "rio examenlicenties",
+      "rio aangeboden-opleidingen"
+    ],
+    "_rio_resource": "onderwijslicenties",
+    "_thema": "Licenties en erkenningen",
+    "_geo_niveau": []
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Examenlicenties",
+    "beschrijving": "Licenties die instellingen het recht geven examens af te nemen",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Licenties per opleiding waarmee instellingen examens mogen afnemen en kwalificaties mogen verstrekken. Gelinkt aan opleidingserkenningen. Relevant voor analyses van exameninstellingen, kwalificatiestructuren en het onderscheid tussen aanbied- en exameninstellingen.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — examenlicenties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/examenlicenties"
+    },
+    "filters": [
+      "datumGeldigOp"
+    ],
+    "sub_resources": [
+      "opleidingserkenning"
+    ],
+    "voorbeeldvragen": [
+      "Welke instellingen mogen het MBO-diploma verpleegkunde verstrekken?",
+      "Zijn er instellingen die wel onderwijs mogen geven maar geen examens mogen afnemen?",
+      "Hoeveel examenlicenties zijn er per onderwijssector?"
+    ],
+    "tags": [
+      "examen",
+      "licentie",
+      "diploma",
+      "kwalificatie",
+      "compliance",
+      "alle-niveaus"
+    ],
+    "combineerbaar_met": [
+      "rio onderwijslicenties",
+      "rio opleidingserkenningen",
+      "CBS 85356NED (MBO gediplomeerden)"
+    ],
+    "_rio_resource": "examenlicenties",
+    "_thema": "Licenties en erkenningen",
+    "_geo_niveau": []
+  }
+]

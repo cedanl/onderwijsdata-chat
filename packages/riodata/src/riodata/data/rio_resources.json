@@ -1,0 +1,268 @@
+[
+  {
+    "leverancier": "RIO",
+    "bron": "Organisatorische eenheden",
+    "beschrijving": "Alle onderwijsbesturen, -instellingen en -aanbieders geregistreerd in RIO",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Bevat het volledige register van organisatorische eenheden in het Nederlandse onderwijs: besturen, instellingen en aanbieders. Filterable op type (ONDERWIJSBESTUUR, ONDERWIJSINSTELLING, ONDERWIJSAANBIEDER, etc.) en geldigheid op datum. ~20.700 actieve records.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — organisatorische-eenheden",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/organisatorische-eenheden"
+    },
+    "filters": ["type", "onderwijslocatiegebruikId", "aangebodenOpleidingId", "instellingserkenningId", "datumGeldigOp"],
+    "sub_resources": ["aangeboden-opleidingen", "contactadressen", "erkenningen", "onderwijslocatiegebruiken", "organisatierelaties"],
+    "_rio_resource": "organisatorische-eenheden",
+    "_thema": "Instellingen"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Erkenningen",
+    "beschrijving": "Erkende onderwijsorganisaties op bestuursniveau, inclusief bekostigingscode en wet",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Bevat de formele erkenningen van onderwijsorganisaties: volledigeNaam, type, bekostigingscode, wet (WVO, WPO, WHW, WEB, etc.), en grondslag. Te doorzoeken op naam en plaatsnaam. Gelinkt aan organisatorische eenheden, opleidingserkenningen en locatiegebruiken.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — erkenningen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/erkenningen"
+    },
+    "filters": ["type", "volledigeNaam", "plaatsnaam", "datumGeldigOp"],
+    "sub_resources": ["examenlicenties", "financieringsbesluiten", "instellingsrelaties", "onderwijslicenties", "onderwijslocatiegebruiken", "organisatorische-eenheden"],
+    "_rio_resource": "erkenningen",
+    "_thema": "Instellingen"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Contactadressen",
+    "beschrijving": "Contactgegevens (adres, e-mail, telefoon, web) van organisatorische eenheden",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Bevat contactinformatie per organisatorische eenheid: plaatsnaam, straatnaam, postcode, e-mailadres, telefoonnummer, webadres en contacttype (ALGEMEEN, CORRESPONDENTIE, etc.). Bevat genest nederlandsAdres met plaatsnaam en postcode. Geschikt om instellingen geografisch te lokaliseren.",
+    "frequentie": "Dagelijks",
+    "categorie": "Instellingen",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — contactadressen (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": ["datumGeldigOp"],
+    "sub_resources": [],
+    "_rio_resource": "contactadressen",
+    "_thema": "Instellingen"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslocaties",
+    "beschrijving": "Fysieke locaties van onderwijsinstellingen met adres en GPS-coördinaten",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Register van alle fysieke onderwijslocaties in Nederland. Elk record bevat plaatsnaam, straatnaam, huisnummer, postcode, gpsLatitude en gpsLongitude. Locatiecode heeft formaat 999X999. ~13.500 locaties. Ideaal voor geografische analyses en kaartvisualisaties.",
+    "frequentie": "Dagelijks",
+    "categorie": "Locaties",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslocaties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/onderwijslocaties"
+    },
+    "filters": ["aangebodenOpleidingId", "datumGeldigOp"],
+    "sub_resources": ["onderwijslocatiegebruiken"],
+    "_rio_resource": "onderwijslocaties",
+    "_thema": "Locaties"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslocatiegebruiken",
+    "beschrijving": "Koppeling tussen onderwijslocaties en de organisaties die ze gebruiken",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Legt vast welke organisatorische eenheid (onderwijsbestuur) een onderwijslocatie gebruikt, inclusief geldigheidsperiode. Sleutelresource om locaties aan instellingen te koppelen. Filter op onderwijslocatieId (999X999) of onderwijsbestuurId (999B999).",
+    "frequentie": "Dagelijks",
+    "categorie": "Locaties",
+    "sectie": "Institutionele Registers",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslocatiegebruiken (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": ["datumGeldigOp"],
+    "sub_resources": [],
+    "_rio_resource": "onderwijslocatiegebruiken",
+    "_thema": "Locaties"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Aangeboden opleidingen",
+    "beschrijving": "Concreet opleidingsaanbod per instelling en locatie, met startdata en cohorten",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["PO", "VO", "MBO", "HBO", "WO"],
+    "doel": "Bevat alle aangeboden opleidingen per instelling en locatie: type (MBO, HBO, etc.), startdatum, eersteInstroomdatum, eigennaam en opleidingscode. Te filteren op type, onderwijslocatieId en opleidingseenheidcode. Gelinkt aan organisatorische eenheden, opleidingen en cohorten.",
+    "frequentie": "Dagelijks",
+    "categorie": "Aanbod",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — aangeboden-opleidingen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/aangeboden-opleidingen"
+    },
+    "filters": ["type", "onderwijslocatieId", "datumGeldigOp", "opleidingseenheidcode", "organisatorischeEenheidcode"],
+    "sub_resources": ["aangeboden-opleiding-cohorten", "onderwijslocatie", "opleiding", "opleidingsfase", "opleidingsgroep", "opleidingsonderdeel", "organisatorische-eenheid"],
+    "_rio_resource": "aangeboden-opleidingen",
+    "_thema": "Aanbod"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Aangeboden opleidingscohorten",
+    "beschrijving": "Instroomcohorten per aangeboden opleiding, met aanmeld- en instroomperiodes",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["MBO", "HBO", "WO"],
+    "doel": "Bevat de instroomcohorten van MBO-, HBO- en particuliere aangeboden opleidingen: aanmeldperiode, beginAanmeldperiode, eindeAanmeldperiode en cohorttype. Relevant voor analyses van instroomroosters en aanmeldstromen. Alleen beschikbaar voor HO, MBO en particuliere aanbieders.",
+    "frequentie": "Dagelijks",
+    "categorie": "Aanbod",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — aangeboden-opleiding-cohorten (alleen als sub-resource)",
+      "url": "https://lod.onderwijsregistratie.nl/rio-api"
+    },
+    "filters": ["aanmeldperiode"],
+    "sub_resources": [],
+    "_rio_resource": "aangeboden-opleiding-cohorten",
+    "_thema": "Aanbod"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingen",
+    "beschrijving": "Officieel register van opleidingen met CREBO/CROHO-codes",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Het officiële register van erkende opleidingen in Nederland. Bevat de formele opleidingsdefinities met codes (CREBO voor MBO, CROHO voor HO). Gelinkt aan opleidingsfasen, -groepen en -onderdelen. Basislaag voor alle aanbod- en erkenningsdata.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingen"
+    },
+    "filters": ["datumGeldigOp", "type"],
+    "sub_resources": ["aangeboden-opleidingen", "opleidingserkenningen", "opleidingsrelaties"],
+    "_rio_resource": "opleidingen",
+    "_thema": "Opleidingsstructuur"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsfasen",
+    "beschrijving": "Fases van opleidingen (bijv. propedeuse, bachelor, master)",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["HBO", "WO"],
+    "doel": "Beschrijft de formele fases binnen een opleiding: propedeuse, bachelor, master, etc. Filterbaar op opleidingseenheidtype. Gelinkt aan aangeboden opleidingen, opleidingserkenningen en opleidingsrelaties. Relevant voor analyses van de HO-structuur.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsfasen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsfasen"
+    },
+    "filters": ["type", "datumGeldigOp"],
+    "sub_resources": ["aangeboden-opleidingen", "opleidingserkenningen", "opleidingsrelaties"],
+    "_rio_resource": "opleidingsfasen",
+    "_thema": "Opleidingsstructuur"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsgroepen",
+    "beschrijving": "Clusters van verwante opleidingen binnen een instelling of sector",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["MBO", "HBO", "WO"],
+    "doel": "Groepeert verwante opleidingen in clusters per instelling of sector. Filterbaar op opleidingseenheidtype. Gelinkt aan opleidingen, aangeboden opleidingen en opleidingserkenningen. Nuttig voor analyses op sectoraal of domein-niveau.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsgroepen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsgroepen"
+    },
+    "filters": ["type", "datumGeldigOp"],
+    "sub_resources": ["aangeboden-opleidingen", "opleidingserkenning", "opleidingsrelaties"],
+    "_rio_resource": "opleidingsgroepen",
+    "_thema": "Opleidingsstructuur"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingsonderdelen",
+    "beschrijving": "Afzonderlijke onderdelen of modules binnen een opleiding",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["MBO", "HBO", "WO"],
+    "doel": "Gedetailleerde onderdelen of modules van opleidingen. Filterbaar op opleidingseenheidtype. Gelinkt aan aangeboden opleidingen en opleidingserkenningen. Het meest gedetailleerde niveau van de opleidingsstructuur in RIO.",
+    "frequentie": "Dagelijks",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingsonderdelen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingsonderdelen"
+    },
+    "filters": ["type", "datumGeldigOp"],
+    "sub_resources": ["aangeboden-opleidingen", "opleidingserkenningen", "opleidingsrelaties"],
+    "_rio_resource": "opleidingsonderdelen",
+    "_thema": "Opleidingsstructuur"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Opleidingserkenningen",
+    "beschrijving": "Formele erkenningen van opleidingen door een erkennende instantie",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Legt vast welke opleidingen formeel erkend zijn en door wie, inclusief erkende opleidingscode en geldigheidsperiode. Te filteren op erkenningtype en erkendeopleidingscode. Gelinkt aan examenlicenties, onderwijslicenties en financieringsbesluiten.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — opleidingserkenningen",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/opleidingserkenningen"
+    },
+    "filters": ["type", "erkendeopleidingscode", "datumGeldigOp"],
+    "sub_resources": ["examenlicenties", "financieringsbesluiten", "onderwijslicenties", "opleiding", "opleidingsfase", "opleidingsgroep", "opleidingsonderdeel"],
+    "_rio_resource": "opleidingserkenningen",
+    "_thema": "Licenties en erkenningen"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Onderwijslicenties",
+    "beschrijving": "Licenties die instellingen het recht geven onderwijs aan te bieden",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Bevat licenties per opleiding waarmee instellingen zijn gemachtigd onderwijs te verzorgen. Te filteren op licentietype en datumGeldigOp. Gelinkt aan opleidingserkenningen. Essentieel voor compliance-analyses en accreditatieoverzichten.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — onderwijslicenties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/onderwijslicenties"
+    },
+    "filters": ["type", "datumGeldigOp"],
+    "sub_resources": ["opleidingserkenning"],
+    "_rio_resource": "onderwijslicenties",
+    "_thema": "Licenties en erkenningen"
+  },
+  {
+    "leverancier": "RIO",
+    "bron": "Examenlicenties",
+    "beschrijving": "Licenties die instellingen het recht geven examens af te nemen",
+    "periode": "actueel (dagelijks bijgewerkt om 05:30)",
+    "onderwijstype": ["Allen"],
+    "doel": "Bevat licenties per opleiding waarmee instellingen examens mogen afnemen. Gelinkt aan opleidingserkenningen. Relevant voor analyses van exameninstellingen en kwalificatiestructuren.",
+    "frequentie": "Dagelijks",
+    "categorie": "Licenties en erkenningen",
+    "sectie": "Opleidingsregisters",
+    "documentatie": {
+      "tekst": "RIO LOD API v3 — examenlicenties",
+      "url": "https://lod.onderwijsregistratie.nl/api/rio/v3/examenlicenties"
+    },
+    "filters": ["datumGeldigOp"],
+    "sub_resources": ["opleidingserkenning"],
+    "_rio_resource": "examenlicenties",
+    "_thema": "Licenties en erkenningen"
+  }
+]

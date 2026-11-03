@@ -1,0 +1,125 @@
+[
+  {
+    "leverancier": "SBB",
+    "bron": "CREBO-codelijst",
+    "beschrijving": "Officiële lijst van erkende MBO-kwalificaties met CREBO-codes, namen, niveaus, prijsfactor, soort opleiding en leerweg per kwalificatie; einddata staan per dossier in het werkblad Vervallen. Gepubliceerd door SBB (Samenwerkingsorganisatie Beroepsonderwijs Bedrijfsleven). Per cohort gepubliceerd (1-2x per jaar).",
+    "periode": "Edities april 2025, oktober 2025 en april 2026 (nieuwste: april 2026, geldig vanaf 2026-08-01)",
+    "onderwijstype": ["MBO"],
+    "doel": "Bevat alle erkende MBO-kwalificaties met CREBO-codes, namen, niveaus en geldigheidsperiodes. Basis voor elke MBO-analyse waarbij opleidingscodes gekoppeld moeten worden aan namen of niveaus. RIO gebruikt CREBO-codes; SBB geeft de leesbare namen erbij.",
+    "frequentie": "Per cohort (1-2x per jaar)",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "SBB / kwalificatie-mijn.s-bb.nl",
+    "documentatie": {
+      "tekst": "SBB Kwalificatieregister — Downloads",
+      "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke MBO-kwalificaties zijn erkend voor cohort 2025 en wat zijn hun CREBO-codes?",
+      "Welke kwalificaties zijn van niveau 4 in de sector Techniek?",
+      "Wat is de naam van de opleiding bij CREBO-code 25604?"
+    ],
+    "tags": [
+      "sbb",
+      "crebo",
+      "mbo",
+      "kwalificaties",
+      "codelijst",
+      "opleidingscodes",
+      "niveaus",
+      "cohort"
+    ],
+    "combineerbaar_met": [
+      "RIO aangeboden-opleidingen (via CREBO-code)",
+      "DUO MBO-gediplomeerden (via CREBO-code)",
+      "ROA AIS (arbeidsmarktprognoses per opleiding)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_sbb_id": "crebolijst",
+    "_resources": [
+      {
+        "naam": "codelijst_2025_april",
+        "output_id": 58905,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/58905",
+        "format": "XLSX"
+      },
+      {
+        "naam": "codelijst_2025_oktober",
+        "output_id": 58907,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/58907",
+        "format": "XLSX"
+      },
+      {
+        "naam": "codelijst_2026_april",
+        "output_id": 58909,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/58909",
+        "format": "XLSX"
+      }
+    ],
+    "_thema": "Opleidingsstructuur"
+  },
+  {
+    "leverancier": "SBB",
+    "bron": "Kwalificatiedossiers XML",
+    "beschrijving": "Volledige kwalificatiestructuur MBO in XML-formaat: alle kwalificatiedossiers met kerntaken, werkprocessen en competenties per kwalificatie. Inclusief keuzedelen, cross-over kwalificaties en een speciale export voor DUO.",
+    "periode": "Dossiers geldig vanaf 2015 (lopend); Herziening dossiers 2026",
+    "onderwijstype": ["MBO"],
+    "doel": "Geeft de volledige inhoudelijke structuur van alle MBO-kwalificatiedossiers: kerntaken, werkprocessen en competenties. RIO en DUO bevatten alleen CREBO-codes; SBB geeft de daadwerkelijke inhoud van opleidingen. Essentieel voor curricula-analyses en vergelijkend onderwijsonderzoek.",
+    "frequentie": "Per revisie kwalificatiestructuur",
+    "categorie": "Opleidingsstructuur",
+    "sectie": "SBB / kwalificatie-mijn.s-bb.nl",
+    "documentatie": {
+      "tekst": "SBB Kwalificatieregister — XML downloads",
+      "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Groep/10"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke kerntaken en werkprocessen horen bij kwalificatie 25604?",
+      "Welke MBO-kwalificaties bevatten competenties rondom 'duurzaamheid'?",
+      "Hoe verschilt de competentiestructuur tussen kwalificaties op niveau 2 en niveau 4?"
+    ],
+    "tags": [
+      "sbb",
+      "mbo",
+      "kwalificatiedossiers",
+      "xml",
+      "kerntaken",
+      "werkprocessen",
+      "competenties",
+      "crebo",
+      "keuzedelen"
+    ],
+    "combineerbaar_met": [
+      "SBB CREBO-codelijst (voor codering en naamgeving)",
+      "RIO aangeboden-opleidingen (via CREBO-code)",
+      "DUO MBO-gediplomeerden (via CREBO-code)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_sbb_id": "kwalificatiedossiers-xml",
+    "_resources": [
+      {
+        "naam": "dossiers_vanaf_2015",
+        "output_id": 53725,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/53725",
+        "format": "XML"
+      },
+      {
+        "naam": "herziening_dossiers_2026",
+        "output_id": 58836,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/58836",
+        "format": "XML"
+      },
+      {
+        "naam": "duo_export",
+        "output_id": 58864,
+        "url": "https://kwalificatie-mijn.s-bb.nl/Lijsten/Output/58864",
+        "format": "XML"
+      }
+    ],
+    "_thema": "Opleidingsstructuur"
+  }
+]

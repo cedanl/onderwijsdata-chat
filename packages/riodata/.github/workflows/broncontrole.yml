@@ -1,0 +1,51 @@
+name: Broncontrole
+
+# Wekelijks: vergelijkt DUO CKAN en de RIO-spec met de catalogus. Bij verschillen komt er een
+# issue met de meldingen. De catalogus wordt hier niet automatisch aangepast. Wijzigingen worden
+# gemeld ten opzichte van de vorige geslaagde controle.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+jobs:
+  controle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+
+      # Het vorige manifest bewaren we in de Actions-cache; de cache wordt alleen bijgewerkt als de
+      # job slaagt, dus een mislukte controle laat de laatst-goede snapshot staan.
+      - uses: actions/cache@v4
+        with:
+          path: catalogus/bronmanifest.json
+          key: bronmanifest-${{ github.run_id }}
+          restore-keys: bronmanifest-
+
+      - name: Controleer bronnen
+        id: controle
+        run: |
+          set +e
+          python catalogus/broncontrole.py --manifest catalogus/bronmanifest.json --schrijf > meldingen.txt
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat meldingen.txt
+
+      - name: Controle mislukt
+        if: steps.controle.outputs.code == '1'
+        run: exit 1
+
+      - name: Issue bij reviewmeldingen
+        if: steps.controle.outputs.code == '10'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Broncontrole: review nodig ($(date +%F))" \
+            --label "broncontrole" --body-file meldingen.txt || \
+          gh issue create --title "Broncontrole: review nodig ($(date +%F))" --body-file meldingen.txt

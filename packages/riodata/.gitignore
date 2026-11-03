@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+dist/
+.batch_id
+*.egg-info/
+
+# Data — raw en output niet committen, prepared wel
+data/01-raw/*
+data/03-output/*
+!data/01-raw/demo/
+!data/03-output/demo/
