@@ -116,6 +116,60 @@ See `manifests/README.md` and `docs/test-environment.md` for details.
 - For bugfixes/features: Push to `main` → test volgt vanzelf; playground blijft staan tot een promotie
 - For release: prepare the last MR (version, changelog, eval), see test, tag `X.Y.Z` on the green `main` commit, promote playground via MR, `mark`, verify `/version`, GitHub release (`docs/promoten.md`)
 
+## Harbor-onderhoud
+
+Image en chart staan in Harbor-project `ceda-onderwijsdata-chat` op `cr.surf.nl` (quotum 100 GiB). Elke pipeline,
+ook elke MR-pipeline, pusht een image van ~350 MB. Het SDP-retentiebeleid bewaart elk image 31 dagen, omdat de scan
+vlak na de push als pull telt. Zonder onderhoud loopt het quotum dus vol en faalt `docker:docker-build` met
+`will exceed the configured upper limit of 100.0 GiB`. Handmatig opruimen in de UI heeft op 02-11 release 2.5.0
+weggehaald terwijl playground die pinde, met een uitval van playground tot gevolg.
+
+**Twee doelen:** het quotum blijft onder 80 %, en een image of chart die een omgeving gebruikt gaat nooit weg.
+
+Regels:
+- **Verwijder nooit met de hand**, niet in de Harbor-UI en niet met `harbor artifact delete`. Opruimen gaat alleen
+  met `scripts/harbor_onderhoud.py`. Dat script herleidt per omgeving wat Flux volgt (de pin, of de hoogste chart
+  binnen de range) en het image daarachter, en verwijdert niets als het een omgeving niet kan herleiden.
+- **Draai het op een checkout van `origin/main`**: de pins komen uit `manifests/<env>/helmrelease.yaml`.
+- **Eerst de dry-run lezen**, dan pas `--uitvoeren`. Klopt de regel "Omgevingen" niet met `/version` van test en
+  playground, dan niet uitvoeren.
+- **Release-tags (`X.Y.Z`) zijn immutable** via een regel in Harbor (*Policy → Tag Immutability*, repositories
+  matching `**`, tags matching het patroon hieronder). Een immutable artifact is ook niet met de hand te verwijderen.
+  Gebruik geen `*` in het patroon: `[0-9]*.[0-9]*.[0-9]*` matcht ook `2.5.4-rc.…` en `0.0.1-build.…`, en dan kan het
+  script geen enkele build meer opruimen. Zet de regel nooit uit zonder besluit van de gebruiker; oude releases
+  opruimen is zo'n besluit.
+
+  ```text
+  {[0-9],[0-9][0-9],[0-9][0-9][0-9]}.{[0-9],[0-9][0-9],[0-9][0-9][0-9]}.{[0-9],[0-9][0-9],[0-9][0-9][0-9]}
+  ```
+- **Laat het SDP-retentiebeleid staan.** Het script werkt ernaast. Het beleid aanpassen is een vraag aan SDP.
+- **Rode `docker:docker-build` met "upper limit"** is geen codefout: `opruimen --uitvoeren`, daarna alleen die job
+  opnieuw starten.
+
+Wat blijft altijd staan: release-tags, `latest`, wat elke omgeving volgt, de 10 nieuwste main-builds (rollbackruimte
+voor test), de 20 nieuwste MR-builds, alles van de laatste 24 uur en elke tag die het script niet herkent. Een chart
+gaat alleen weg samen met zijn image.
+
+```bash
+python scripts/harbor_onderhoud.py status                 # quotum, omgevingen, immutability; exit 1 bij een probleem
+python scripts/harbor_onderhoud.py opruimen               # dry-run
+python scripts/harbor_onderhoud.py opruimen --uitvoeren   # echt verwijderen
+```
+
+**Toegang.** Lokaal via harbor-cli (`harbor login cr.surf.nl`) met robot `robot$ceda-onderwijsdata-chat+beheer`. De
+gebruiker logt zelf in. Vraag of toon het secret nooit, en laat het nooit via `!` of een pipe in het gesprek lopen.
+harbor-cli opent zonder `-o json` een interactief scherm; het script geeft dat altijd mee. Zonder PyYAML lokaal:
+`uv run --no-project --python python3 --with pyyaml python scripts/harbor_onderhoud.py …`.
+
+**Elke nacht** draait job `harbor:onderhoud` (schema op `main` met `HARBOR_ONDERHOUD=1`, `SAST_DISABLED=1` en
+`SECRET_DETECTION_DISABLED=1`). Die doet `opruimen --uitvoeren` en daarna `status`, met robot
+`robot$ceda-onderwijsdata-chat+ci-opruimen` uit de protected, masked variabelen `HARBOR_ROBOT_USER` en
+`HARBOR_ROBOT_PASSWORD`. Een rode job betekent een fout in een omgeving, een quotum boven 80 % of een ontbrekende
+immutability-regel; de log zegt welke.
+
+Agents: draai `status` aan het begin van een sessie waarin je MR's maakt. Staat het quotum boven 70 %, draai dan
+`opruimen` (dry-run, controleren, `--uitvoeren`) voordat je pusht.
+
 ## Git commands
 
 ```bash

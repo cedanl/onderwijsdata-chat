@@ -270,6 +270,38 @@ ijkwaarden:ververs:
   script:
     - uv run python scripts/ijkwaarden.py
 
+# Harbor-onderhoud (Agents.md): elke nacht de oude main- en MR-builds uit Harbor, zodat het quotum (100 GiB) niet
+# volloopt en docker:docker-build niet faalt op "upper limit". Releases, latest en wat een omgeving volgt blijven.
+# Gepland op main met HARBOR_ONDERHOUD=1 (plus SAST_DISABLED=1 en SECRET_DETECTION_DISABLED=1) of met de hand via
+# "Run pipeline". De robot staat in de protected, masked variabelen HARBOR_ROBOT_USER en HARBOR_ROBOT_PASSWORD.
+# Rood bij een omgeving die niet te herleiden is, een quotum boven 80 % of een ontbrekende immutability-regel.
+harbor:onderhoud:
+  stage: test
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $HARBOR_ONDERHOUD == "1"
+    - if: $CI_PIPELINE_SOURCE == "web" && $HARBOR_ONDERHOUD == "1"
+  image:
+    name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
+  variables:
+    HARBOR_CLI_VERSIE: "0.0.27"
+    HARBOR_CLI_SHA256: "9375f9c862aeb314ef070cd9345fd7a305596d7916c31551667a186019b8943b"
+  before_script:
+    - |
+      if [ -z "$HARBOR_ROBOT_USER" ] || [ -z "$HARBOR_ROBOT_PASSWORD" ]; then
+        echo "HARBOR_ROBOT_USER of HARBOR_ROBOT_PASSWORD ontbreekt (Agents.md, Harbor-onderhoud)" >&2
+        exit 1
+      fi
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+    - curl -fsSLo /tmp/harbor.tgz "https://github.com/goharbor/harbor-cli/releases/download/v${HARBOR_CLI_VERSIE}/harbor-cli_${HARBOR_CLI_VERSIE}_linux_amd64.tar.gz"
+    - echo "${HARBOR_CLI_SHA256}  /tmp/harbor.tgz" | sha256sum -c -
+    - tar -xzf /tmp/harbor.tgz -C /tmp ./harbor-cli && install -m 755 /tmp/harbor-cli /usr/local/bin/harbor
+    - pip install --no-cache-dir pyyaml
+    - harbor login "$HARBOR_HOST" -u "$HARBOR_ROBOT_USER" -p "$HARBOR_ROBOT_PASSWORD"
+  script:
+    - python scripts/harbor_onderhoud.py opruimen --uitvoeren
+    - python scripts/harbor_onderhoud.py status
+
 # Bekende kwetsbaarheden in de dependencies (#506, SECURITY.md S12): de SDP-securitycomponent
 # draait alleen secret detection en SAST, geen dependency-scan. Informatief, zoals de oude
 # GitHub-stap: een nieuwe CVE mag een MR die er niets mee te maken heeft niet blokkeren;
