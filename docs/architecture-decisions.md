@@ -17,7 +17,7 @@ The server loads and computes; the model selects and phrases. Four layers:
 1. **data_key** — No data rows in context; the model gets a key, the schema and a short preview.
 2. **Compute in code** — `query_data` (aggregation) and `compute_kpi` (difference, percentage, index, largest drop/rise) return the numbers; the model copies them.
 3. **run_analysis guard** — An AST check rejects a script with a literal data structure of six or more numbers (retyped data) or one that reads no data.
-4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Dashboards use `_check_number_sourcing` in `agent/dashboard.py`, reports `agent/report_checks.py`. The report run has `compute_kpi` too, and checks every percentage the model wrote with the same rule as the chat (`unsourced_percentages` in `agent/grounding.py`, #872).
+4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Reports use `agent/report_checks.py`. The report run has `compute_kpi` too, and checks every percentage the model wrote with the same rule as the chat (`unsourced_percentages` in `agent/grounding.py`, #872).
 
 ### Rationale
 - **Auditable:** each number can be traced to the tool call that produced it.

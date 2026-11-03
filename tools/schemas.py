@@ -523,8 +523,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_COMPUTE_KPI,
             "description": (
-                "Bereken één KPI-waarde over data die al in de store staat. Gebruik dit voor ELK getal dat als KPI "
-                "in een dashboard komt, inclusief verschillen en percentages. Reken zelf nooit een trend uit: geef "
+                "Bereken één KPI-waarde over data die al in de store staat. Gebruik dit voor ELK verschil, percentage of "
+                "index over een reeks in een antwoord of rapport. Reken zelf nooit een trend uit: geef "
                 "de data_key en de maat op en neem de teruggegeven `value` en `trend` letterlijk over."
             ),
             "parameters": {
