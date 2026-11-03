@@ -18,13 +18,29 @@ eigen tests, maar ze delen met de chat één `uv.lock` en één `.venv`: `uv syn
 wijziging in `packages/` is direct zichtbaar in de chat. Draai na een pull die `pyproject.toml`, `uv.lock` of
 `packages/` raakt opnieuw `uv sync`. Een `.venv` van vóór #885 heeft de pakketten nog als git-installatie.
 
-De tests van een pakket draai je in de map van dat pakket:
+De tests van een pakket draai je in de map van dat pakket, elk pakket apart (beide hebben een `tests/__init__.py`,
+dus in één run botsen de modulenamen):
 
 ```bash
-cd packages/riodata && ../../.venv/bin/python -m pytest -q
+uv run --directory packages/onderwijsdata pytest -q -rs
+uv run --directory packages/riodata pytest -q -rs
 ```
 
-Ruff, ty en de dekking van de chat slaan `packages/` over; de pakkettests in CI volgen in #886.
+Dezelfde twee regels staan in de CI-job `pytest`, vóór de chattests (#886). Tests die het netwerk raken staan achter
+`RIODATA_LIVE=1` en slaan over, zoals in de pakketrepo's; zet die variabele alleen lokaal, bijvoorbeeld voor
+`RIODATA_LIVE=1 uv run --directory packages/riodata pytest tests/test_rio_live.py`.
+
+**De grens tussen pakket en chat** bewaakt `tests/test_importgrens.py` (draait mee met `pytest tests/`): een pakket
+importeert de chat (`tools`, `agent`, `core`, `routes`, `persistence`, …) en het andere pakket niet, en de chat
+importeert alleen de publieke API van een pakket, dus niets met een underscore in het pad (`riodata.duo` wel,
+`riodata._catalog` niet). Ophalen en bronlogica horen in `packages/`, beleid (scope, poorten, etiketten) in `tools/`.
+
+**Ruff en ty slaan `packages/` over, bewust.** De pakketten hadden als losse repo's geen lint of typecontrole: ruff
+geeft er 248 bevindingen en wil 93 bestanden anders opmaken, ty geeft 93 diagnostics. Opnemen zou `ty-baseline.txt`
+(nu 78) boven het plafond van het afbouwplan (≤100 eind 2026, #391) tillen en de `git blame` van de pakketten
+overschrijven met een opmaakcommit. De dekking van de chat (`fail_under`) telt de pakketregels ook niet mee; de
+pakkettests laten hun eigen dekking zien in het log. Wil je een pakket opruimen, doe dat per pakket in een eigen MR
+(ruim eerst de bevindingen op, haal het pakket dan uit `extend-exclude` en `[tool.ty.src]` in `pyproject.toml`).
 
 ## Testen en linten
 
