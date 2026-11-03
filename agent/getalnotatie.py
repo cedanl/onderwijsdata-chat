@@ -76,14 +76,14 @@ _ENGELS_GETAL = re.compile(r"(?<![\w.,/#])(?P<geheel>\d{1,3}(?:,\d{3})+|\d+)(?:\
 _TABELTEKENS = " \t\r|:-"
 
 
-def _tabelscheiding(regel: str) -> bool:
+def tabelscheiding(regel: str) -> bool:
     """|---|---:|: alleen pijpen, streepjes, dubbelepunten en witruimte, met een pijp en een streepje."""
     return "|" in regel and "-" in regel and not regel.strip(_TABELTEKENS)
 
 
 def heeft_tabel(tekst: str) -> bool:
     """Staat er een markdowntabel in de tekst (een kopregel met een scheidingsregel eronder)?"""
-    return any(_tabelscheiding(regel) for regel in tekst.split("\n"))
+    return any(tabelscheiding(regel) for regel in tekst.split("\n"))
 
 
 def _geen_hoeveelheid(m: re.Match, cijfers: str, codes: frozenset[str]) -> bool:
@@ -176,7 +176,7 @@ def nl_notatie(tekst: str, stappen: Iterable[tuple[str, str]] = (), eerder: Iter
             continue
         if "|" not in regel:
             codekolommen = None
-        elif i + 1 < len(regels) and _tabelscheiding(regels[i + 1]):
+        elif i + 1 < len(regels) and tabelscheiding(regels[i + 1]):
             codekolommen = _codekolommen(regel)
         uit.append(_tabelrij(regel, codekolommen, codes) if codekolommen is not None else _in_tekst(regel, codes))
     return "\n".join(uit)
