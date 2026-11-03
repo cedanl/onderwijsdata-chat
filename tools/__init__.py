@@ -1,6 +1,6 @@
 from typing import Any
 
-from . import fouten, store
+from . import argumenten, fouten, store
 from .accreditatie import get_accreditatie
 from .analysis import run_analysis
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
@@ -109,6 +109,8 @@ def dispatch(name: str, tool_input: dict) -> tuple[str, Any]:
     if isinstance(key := tool_input.get("data_key"), str):
         # cbs_85353NED en CBS:85353ned vonden niets en kostten een ronde per variant (#331).
         tool_input = {**tool_input, "data_key": store.canoniek(key)}
+    if melding := argumenten.onbekende_argumenten(name, handler, tool_input):
+        return melding, None
     try:
         result = handler(**tool_input)
         if isinstance(result, tuple):
