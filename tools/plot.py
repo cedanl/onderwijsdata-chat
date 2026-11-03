@@ -7,7 +7,7 @@ import urllib.request
 import plotly.express as px
 import plotly.graph_objects as go
 
-from . import cbs_afronding, cbs_meta, duo, fouten, kaartlocaties, store
+from . import cbs_afronding, cbs_meta, duo, fouten, kaartlocaties, periode, store
 from .exportnoten import herkomstregels
 from .getal import nl_getal
 from .kolomlabel import kolomlabel, leesbaar, waardelabels
@@ -93,6 +93,18 @@ _LABEL_KOPRUIMTE = 0.15
 # index of bedrag mag afgekapt, maar dan staat dat op de as, zodat de lezer het ziet zonder de tool-output te kennen.
 _TELEENHEDEN = frozenset({"aantal", "absoluut", "x 1 000", "x 1000", "aantal x 1 000"})
 AS_NIET_BIJ_NUL = "as begint niet bij 0"
+
+# Een staafgrafiek over één meetwaarde is een ranglijst: aflopend op waarde (#894). Categorieën met een eigen volgorde
+# (jaren, leeftijdsgroepen, getallen) houden die, en een nul daarin is een waarde, geen lege rij.
+_EIGEN_VOLGORDE_KOLOM = re.compile(r"leeftijd|jaar|periode|cohort|kwartaal|maand", re.IGNORECASE)
+_EIGEN_VOLGORDE_NAAM = re.compile(
+    r"\d+\s*(?:jaar|jr)\b|\bjaar\b|\b(?:jonger|ouder)\b|\d+\s*(?:tot|t/m|-|–)\s*\d+", re.IGNORECASE
+)
+_JAARTAL = re.compile(r"(?:19|20)\d{2}")
+
+# Een categorienaam tot dit aantal tekens staat er voluit; langer wordt op een woordgrens afgekapt, met de volledige
+# naam in de hover (#895). De marge groeit mee met de langste naam, dus dit is de grens waar de staven te smal worden.
+_MAX_NAAM_TEKENS = 60
 
 _TIME_KEYWORDS = {
     "JAAR",
@@ -220,6 +232,52 @@ def _liggend(chart_type: str, x: str, categorieen: list) -> bool:
     return len(namen) > _MAX_STAANDE_CATEGORIEEN or max(len(c) for c in namen) > _MAX_STAAND_LABEL
 
 
+def _heeft_eigen_volgorde(x: str, namen: list) -> bool:
+    """Hebben deze categorieën een volgorde die de lezer verwacht: getallen, jaren, leeftijdsgroepen?"""
+    if _is_time_axis(x) or _EIGEN_VOLGORDE_KOLOM.search(x) or not all(_is_naam(n) for n in namen):
+        return True
+    if all(_JAARTAL.fullmatch(n.strip()) or periode.startjaar_van_spelling(n) is not None for n in namen):
+        return True
+    return any(_EIGEN_VOLGORDE_NAAM.search(n) for n in namen)
+
+
+def _ranglijst(
+    data: list[dict], x: str, y: str, chart_type: str, groepkolom: str | None, labels
+) -> tuple[list[dict], list]:
+    """(rijen om te tekenen, namen van de weggelaten categorieën) (#894).
+
+    Een staafgrafiek over één meetwaarde staat aflopend op waarde en tekent geen categorie met 0 of zonder waarde:
+    die staat in de uitkomst. Gegroepeerde staven, een tijdas en categorieën met een eigen volgorde blijven zoals ze
+    zijn. Zijn alle waarden 0, dan blijft alles staan.
+    """
+    if chart_type != "bar" or groepkolom:
+        return data, []
+    namen = [n for n in dict.fromkeys(row.get(x) for row in data) if not _is_missing(n)]
+    if _heeft_eigen_volgorde(x, namen):
+        return data, []
+    gevuld = [row for row in data if not _is_missing(row.get(y)) and row.get(y) != 0]
+    if not gevuld:
+        return data, []
+    weggelaten = leesbaar([row.get(x) for row in data if _is_missing(row.get(y)) or row.get(y) == 0], labels)
+    return sorted(gevuld, key=lambda row: -row[y]), weggelaten
+
+
+def _kort(naam: str) -> str:
+    """De naam tot hoogstens _MAX_NAAM_TEKENS tekens, afgekapt op een woordgrens."""
+    kop = naam[:_MAX_NAAM_TEKENS]
+    if naam[_MAX_NAAM_TEKENS] not in " ,;" and " " in kop:
+        kop = kop.rsplit(" ", 1)[0]
+    return kop.rstrip(" ,;-") + "…"
+
+
+def _korte_namen(namen: list) -> dict[str, str]:
+    """Naam → afgekapte naam voor elke naam boven de grens (#895). Een afkapping waardoor twee namen één label
+    krijgen, of één naam een andere naam wordt, blijft achterwege: een categorie-as voegt gelijke labels samen."""
+    lang = {n: _kort(n) for n in dict.fromkeys(namen) if isinstance(n, str) and len(n) > _MAX_NAAM_TEKENS}
+    alle = [lang.get(n, n) for n in dict.fromkeys(namen)]
+    return {n: k for n, k in lang.items() if alle.count(k) == 1}
+
+
 def is_liggend(rows: list[dict], chart_type: str, x: str, data_key: str | None = None) -> bool:
     """Of create_plot deze staven liggend tekent; de snippet leest het hier ook, zodat ze niet uiteenlopen (#245)."""
     known = store.meta(data_key) if data_key else None
@@ -269,14 +327,27 @@ def _add_trace(
     name: str | None = None,
     text: list[str] | None = None,
     liggend: bool = False,
+    kort: dict[str, str] | None = None,
 ) -> None:
-    """Add a single trace to the figure based on *chart_type*."""
+    """Add a single trace to the figure based on *chart_type*. `kort` zet de volledige naam van een staaf om in
+    de afgekapte op de as (#895); de volledige naam staat dan in de hover."""
     common = {"name": name} if name else {}
     if chart_type == "bar":
+        if kort:
+            common |= _hover_volledig(x_vals, y_vals, name, kort)
+            x_vals = [kort.get(v, v) if isinstance(v, str) else v for v in x_vals]
         # Liggend staat het getal in de staaf als het past, anders erachter: buiten de staaf viel
         # het getal van de langste staaf op een smal scherm van de figuur af.
         assen = (
-            {"x": y_vals, "y": x_vals, "orientation": "h", "cliponaxis": False, "insidetextanchor": "end"}
+            {
+                "x": y_vals,
+                "y": x_vals,
+                "orientation": "h",
+                "cliponaxis": False,
+                "insidetextanchor": "end",
+                # Een korte staaf kantelde het getal in de staaf; horizontaal past het erin of komt erachter (#895).
+                "textangle": 0,
+            }
             if liggend
             else {"x": x_vals, "y": y_vals}
         )
@@ -302,6 +373,15 @@ def _add_trace(
         fig.add_trace(go.Histogram(x=x_vals, marker_color=color, opacity=0.7 if name else 0.85, **common))
     elif chart_type == "pie" and not name:
         fig.add_trace(go.Pie(labels=x_vals, values=y_vals, marker={"colors": _PALETTE}, hole=0.3))
+
+
+def _hover_volledig(x_vals: list, y_vals: list, reeks: str | None, kort: dict[str, str]) -> dict:
+    """De hover van een staaf met een afgekapte naam: de volledige naam en de waarde, per staaf."""
+    voor = f"{reeks} – " if reeks else ""
+    regels = [
+        f"{voor}{naam}" + ("" if _is_missing(v) else f": {nl_getal(v)}") for naam, v in zip(x_vals, y_vals, strict=True)
+    ]
+    return {"hovertext": regels, "hoverinfo": "text"}
 
 
 def _astitel(tekst: str) -> dict:
@@ -394,16 +474,19 @@ def create_plot(
     x_labels = waardelabels(x, dataset)
 
     fig = go.Figure()
-    show_labels = chart_type in ("bar", "line") and len(data) <= _MAX_LABELED_POINTS
-    x_ruw = [row.get(x) for row in data]
-    x_vals = leesbaar(x_ruw, x_labels)
-    liggend = _liggend(chart_type, x, x_vals)
     # color_by op de x-kolom zelf (alleen om één staaf uit te lichten) gaf een reeks per staaf
     # en een legenda die de as herhaalt: dat is één reeks met een kleur per staaf.
     groepkolom = color_by if color_by != x else None
+    # De rijen om te tekenen; `data` blijft heel, voor de exportrijen in meta.
+    getekend, weggelaten = _ranglijst(data, x, y, chart_type, groepkolom, x_labels)
+    show_labels = chart_type in ("bar", "line") and len(getekend) <= _MAX_LABELED_POINTS
+    x_ruw = [row.get(x) for row in getekend]
+    x_vals = leesbaar(x_ruw, x_labels)
+    liggend = _liggend(chart_type, x, x_vals)
+    kort = _korte_namen(x_vals) if chart_type == "bar" else {}
 
     if groepkolom:
-        groups = _group_by_color(data, x, y, groepkolom)
+        groups = _group_by_color(getekend, x, y, groepkolom)
         groep_labels = waardelabels(groepkolom, dataset)
         for i, (name, vals) in enumerate(groups.items()):
             if highlight:
@@ -419,6 +502,7 @@ def create_plot(
                 name=groep_labels.get(name, name),
                 text=_value_labels(vals["y"], show_labels),
                 liggend=liggend,
+                kort=kort,
             )
 
         if chart_type == "bar":
@@ -427,10 +511,12 @@ def create_plot(
             fig.update_layout(barmode="overlay")
 
     else:
-        y_vals = [row.get(y) for row in data]
+        y_vals = [row.get(y) for row in getekend]
         uitlichten = highlight and chart_type == "bar"
         kleur = _accentkleuren(x_ruw, x_vals, highlight) if uitlichten else _PALETTE[0]
-        _add_trace(fig, chart_type, x_vals, y_vals, kleur, text=_value_labels(y_vals, show_labels), liggend=liggend)
+        _add_trace(
+            fig, chart_type, x_vals, y_vals, kleur, text=_value_labels(y_vals, show_labels), liggend=liggend, kort=kort
+        )
 
     layout = {
         **_LAYOUT_BASE,
@@ -488,7 +574,13 @@ def create_plot(
     )
 
     chart_label = _CHART_TYPE_LABELS.get(chart_type, "Grafiek")
-    return f"{chart_label} '{title}' aangemaakt ({len(data)} datapunten).", fig
+    uitkomst = f"{chart_label} '{title}' aangemaakt ({len(getekend)} datapunten)."
+    if weggelaten:
+        uitkomst += (
+            f" Op waarde gesorteerd, aflopend. Weggelaten (waarde 0 of leeg): {', '.join(map(str, weggelaten))}."
+            " Ze staan wel in de data en in de export."
+        )
+    return uitkomst, fig
 
 
 def _dataset_meta(data_key: str | None) -> dict:
