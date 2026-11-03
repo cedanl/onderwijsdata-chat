@@ -1,0 +1,204 @@
+{
+  "bron": {
+    "_archief": false,
+    "_cbs_id": "85368NED",
+    "_dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Herkomstland",
+      "Perioden"
+    ],
+    "_geo_niveau": [],
+    "_laatste_update": "2026-05-29",
+    "_meetwaarden": [
+      "Leerlingen_1",
+      "VoortijdigSchoolverlaters_2",
+      "NietVoortijdigSchoolverlaters_3",
+      "VoortijdigSchoolverlatersPercentage_4"
+    ],
+    "_meetwaarden_details": {
+      "Leerlingen_1": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "Leerlingen die op 1 oktober van een schooljaar staan ingeschreven in het voortgezet onderwijs, het middelbaar beroepsonderwijs en het voortgezet algemeen volwassenenonderwijs én die op dat moment en op 1 oktober van het volgend schooljaar staan ingeschreven in de Gemeentelijke Basis Administratie (GBA).\r\n\r\nLet op, door te kiezen voor leerlingen die op beide momenten staan ingeschreven in de GBA, wijkt het aantal leerlingen in de onderzoekspopulatie af van het totaal aantal leerlingen in het voortgezet onderwijs, het middelbaar beroepsonderwijs en het voortgezet algemeen volwassenenonderwijs.",
+        "title": "Leerlingen",
+        "unit": "aantal"
+      },
+      "NietVoortijdigSchoolverlaters_3": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "Aantal leerlingen dat op 1 oktober van het volgend schooljaar onderwijs volgt of dat geen onderwijs meer volgt, maar in het bezit is van een startkwalificatie (een havo- of vwo-diploma, of een diploma op mbo niveau 2 of hoger).",
+        "title": "Niet-voortijdig schoolverlaters",
+        "unit": "aantal"
+      },
+      "VoortijdigSchoolverlatersPercentage_4": {
+        "datatype": "Integer",
+        "decimals": 0,
+        "description": "Percentage leerlingen dat op 1 oktober van het volgend schooljaar het onderwijs heeft verlaten zonder startkwalificatie (een havo- of vwo-diploma, of een diploma op mbo niveau 2 of hoger). \r\nEr is gepercenteerd op het totaal aantal leerlingen in de betreffende (sub)groep van het totaal aantal leerlingen.",
+        "title": "Voortijdig schoolverlaters (percentage)",
+        "unit": "%"
+      },
+      "VoortijdigSchoolverlaters_2": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "Leerlingen die in een gegeven jaar het onderwijs verlaten zonder startkwalificatie. Het gaat hierbij dus om de jaarlijkse aanwas. De periode 2016/’17, bijvoorbeeld, beschrijft leerlingen die op 1 oktober 2016 staan ingeschreven in het voortgezet onderwijs, middelbaar beroepsonderwijs of voortgezet algemeen volwassenenonderwijs en op 1 oktober 2017 het onderwijs zonder startkwalificatie hebben verlaten. Een leerling beschikt over een startkwalificatie met een havo- of vwo-diploma of met een mbo-2 diploma. Een vmbo-diploma of een mbo-1 diploma volstaat niet als startkwalificatie. Een in Nederland gangbare leeftijdsgrens is 23 jaar bij schoolverlaten. Dat wil zeggen dat personen die bij schoolverlaten 23 jaar of ouder zijn en niet beschikken over een startkwalificatie niet tot de voortijdig schoolverlaters worden gerekend. In deze StatLinetabel is de leeftijdsgrens van 23 jaar gehanteerd bij de definitie van voortijdig schoolverlaters. \r\nDe Europese definitie van voortijdig schoolverlaters gaat uit van het totale volume in plaats van de jaarlijkse aanwas. Bij de Europese doelstelling om het aantal schoolverlaters terug te dringen wordt gekeken naar het totaal aantal niet-onderwijsvolgende personen van 18 tot 25 jaar zonder startkwalificatie.",
+        "title": "Voortijdig schoolverlaters",
+        "unit": "aantal"
+      }
+    },
+    "_periode_waarden": [
+      "2012/'13",
+      "2024/'25"
+    ],
+    "_perioden_formaat": [
+      "SJ"
+    ],
+    "_thema": "Onderwijs",
+    "_verrijking": {
+      "inputhash": "6bf071c851ed13a4",
+      "versie": 1
+    },
+    "bron": "Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst",
+    "categorie": "Voortijdig schoolverlaten",
+    "documentatie": {
+      "tekst": "CBS Open Data 85368NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85368NED"
+    },
+    "frequentie": "Jaarlijks",
+    "leverancier": "CBS",
+    "onderwijstype": [
+      "VO",
+      "MBO"
+    ],
+    "periode": "2012/'13 - 2023/'24",
+    "publieke_producten": [],
+    "repositories": [],
+    "samenvatting": "Voortijdig schoolverlaters (VSV) naar geslacht, onderwijssoort en herkomstland. Meetwaarden: aantal VSV.",
+    "sectie": "Studentgegevens & Onderwijs"
+  },
+  "verwacht": {
+    "aliases": [
+      "85368NED"
+    ],
+    "archief": {
+      "gearchiveerd": false,
+      "opvolger": {
+        "reden": "opvolger niet vastgelegd",
+        "status": "unknown"
+      }
+    },
+    "bron_url": "https://opendata.cbs.nl/ODataApi/OData/85368NED",
+    "capabilities": {
+      "data": true,
+      "definitions": true,
+      "dimension": true,
+      "properties": true,
+      "validate_selection": true
+    },
+    "dataset_id": "cbs:85368NED",
+    "dimensie_sleutels": {
+      "reden": "dimensiesleutels niet vastgelegd; alleen live te bepalen",
+      "status": "unknown"
+    },
+    "dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Herkomstland",
+      "Perioden"
+    ],
+    "geografie": {
+      "dekking": "Nederland",
+      "niveaus": [
+        "landelijk"
+      ],
+      "regionale_uitsplitsing": false,
+      "status": "supported"
+    },
+    "herkomst": {
+      "afgeleide_velden": {
+        "geografie": "afgeleid uit CBS-regiodimensie; zonder regiodimensie = Nederland-totaal",
+        "meetwaarden": "bron (DataProperties)",
+        "scopeprofiel": "afgeleid uit gecureerde onderwijstype"
+      },
+      "broncheck": null,
+      "catalogusbouw": null,
+      "gecontroleerd_op": null,
+      "inputhash": "6bf071c851ed13a4",
+      "laatste_update": "2026-05-29",
+      "metadata_modified": null,
+      "verrijkingsversie": 1
+    },
+    "instellingseenheden": {
+      "reden": "instellingseenheden niet vastgelegd",
+      "status": "unknown"
+    },
+    "meetwaarden": [
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "Leerlingen_1",
+        "title": "Leerlingen",
+        "unit": "aantal"
+      },
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "VoortijdigSchoolverlaters_2",
+        "title": "Voortijdig schoolverlaters",
+        "unit": "aantal"
+      },
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "NietVoortijdigSchoolverlaters_3",
+        "title": "Niet-voortijdig schoolverlaters",
+        "unit": "aantal"
+      },
+      {
+        "datatype": "Integer",
+        "decimals": 0,
+        "key": "VoortijdigSchoolverlatersPercentage_4",
+        "title": "Voortijdig schoolverlaters (percentage)",
+        "unit": "%"
+      }
+    ],
+    "methodiek": {
+      "reden": "TableInfos niet vastgelegd",
+      "status": "unknown"
+    },
+    "onderwijssectoren": [
+      "VO",
+      "MBO"
+    ],
+    "perioden": {
+      "codes": {
+        "reden": "periodecodes en hiaten niet vastgelegd",
+        "status": "unknown"
+      },
+      "eerste": "2012/'13",
+      "formaat": [
+        "SJ"
+      ],
+      "frequentie": "Jaarlijks",
+      "laatste": "2024/'25",
+      "status": "supported",
+      "tekst": "2012/'13 - 2023/'24"
+    },
+    "populatie": {
+      "reden": "populatie niet vastgelegd",
+      "status": "unknown"
+    },
+    "provider": "CBS",
+    "schema_version": 1,
+    "scopeprofiel": {
+      "hbo": "unsupported",
+      "mbo": "unknown",
+      "wo": "unsupported"
+    },
+    "teldefinitie": {
+      "reden": "teldefinitie niet vastgelegd",
+      "status": "unknown"
+    },
+    "titel": "Voortijdig schoolverlaters; geslacht, onderwijssoort en herkomst"
+  }
+}

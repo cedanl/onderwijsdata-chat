@@ -1,7 +1,8 @@
 """Welke catalogusdata een omgeving draait (#361).
 
-De chat installeert de CBS- en RIO/DUO-catalogus als git-dependencies; uv.lock bepaalt de
-commit. /version noemde alleen de app-commit (#231), zodat niet te zien was dat playground
+De CBS- en RIO/DUO-catalogus komen uit de packages `onderwijsdata` en `riodata`. Die waren git-dependencies, met
+de commit uit uv.lock; sinds #885 zijn het workspace-leden (packages/), die uit dezelfde commit komen als de app,
+dus `commit` is voor hen leeg. /version noemde alleen de app-commit (#231), zodat niet te zien was dat playground
 een catalogus-commit achter liep. Dit leest de gebouwde revisie uit de geïnstalleerde
 package-metadata: geen netwerk, geen GitHub-HEAD.
 

@@ -63,8 +63,9 @@ Beide vereisen `CHAT_SECRET` voor het ondertekenen van tokens.
 Gebruik de `Dockerfile` in de repo; die bouwt in drie stappen:
 
 1. de frontend (`node:24-alpine`, `npm ci && npm run build`);
-2. de Python-afhankelijkheden (`python:3.14-slim`, uv gepind, `uv sync --frozen --no-dev --extra postgres`), met
-   compiler en git alleen in deze stap;
+2. de Python-afhankelijkheden (`python:3.14-slim`, uv gepind, `uv sync --frozen --no-dev --no-editable --extra
+   postgres`), met de compiler alleen in deze stap. De bronpakketten uit `packages/` worden eerst gekopieerd en komen als
+   gewone (niet-editable) pakketten in de `.venv`, inclusief hun catalogusdata;
 3. het runtime-image (`python:3.14-slim`): alleen de `.venv`, de code en de gebouwde frontend, als non-root `appuser`,
    gestart met `.venv/bin/uvicorn server:app --no-server-header --timeout-graceful-shutdown 45`.
 

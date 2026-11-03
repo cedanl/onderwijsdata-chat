@@ -14,8 +14,9 @@ COPY frontend/eslint.config.js ./
 
 RUN npm run build
 
-# Stage 2: Python-afhankelijkheden. Compiler en git (voor de git-afhankelijkheden riodata en onderwijsdata) staan
-# alleen hier; het runtime-image krijgt alleen de .venv (#681).
+# Stage 2: Python-afhankelijkheden. De compiler staat alleen hier; het runtime-image krijgt alleen de .venv (#681).
+# git is er niet meer bij nodig: de bronpakketten onderwijsdata en riodata staan als workspace-leden in packages/ en
+# komen niet meer als git-afhankelijkheid van GitHub (#885).
 FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS python-builder
 
 # uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
@@ -26,16 +27,20 @@ WORKDIR /app
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./
+# De workspace-leden vóór uv sync: zonder packages/ vindt uv de leden uit uv.lock niet. De catalogusdata (±14 MB JSON en
+# YAML) zit in src/ van elk pakket en gaat met de wheel de .venv in.
+COPY packages/ ./packages/
 
 # --extra postgres: every SDP deployment target (test/playground/production)
 # configures a real POSTGRES_URI; psycopg2-binary needs to be present in the
 # image even though it's an optional extra (lokaal draait de app zonder POSTGRES_URI op SQLite).
 # UV_PYTHON_DOWNLOADS=never: de .venv hoort bij de python van dit base-image, dezelfde als in stage 3.
-RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --extra postgres
+# --no-editable: de workspace-leden komen als gewone pakketten in de .venv. Editable zou naar /app/packages wijzen, en
+# stage 3 neemt alleen de .venv mee, niet packages/ (#885).
+RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --no-editable --extra postgres
 
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
 FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966

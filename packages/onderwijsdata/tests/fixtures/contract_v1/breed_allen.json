@@ -1,0 +1,166 @@
+{
+  "bron": {
+    "_archief": false,
+    "_cbs_id": "85702NED",
+    "_dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Regiokenmerken",
+      "Perioden"
+    ],
+    "_geo_niveau": [
+      "landelijk",
+      "corop",
+      "provincie",
+      "gemeente",
+      "landsdeel"
+    ],
+    "_laatste_update": "2026-04-14",
+    "_meetwaarden": [
+      "Gediplomeerden_1"
+    ],
+    "_meetwaarden_details": {
+      "Gediplomeerden_1": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "Mensen die met goed gevolg een afsluitend examen voor een bepaalde onderwijssoort hebben afgelegd.",
+        "title": "Gediplomeerden",
+        "unit": "aantal"
+      }
+    },
+    "_periode_waarden": [
+      "2011/'12",
+      "2024/'25"
+    ],
+    "_perioden_formaat": [
+      "SJ"
+    ],
+    "_thema": "Onderwijs",
+    "_verrijking": {
+      "inputhash": "704eecf8ef398521",
+      "versie": 1
+    },
+    "bron": "Gediplomeerden; onderwijssoort, woonregio",
+    "categorie": "Algemene data overzichten",
+    "documentatie": {
+      "tekst": "CBS Open Data 85702NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85702NED"
+    },
+    "frequentie": "Jaarlijks",
+    "leverancier": "CBS",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "periode": "2011/'12-2023/'24",
+    "publieke_producten": [],
+    "repositories": [],
+    "samenvatting": "Toont het aantal gediplomeerden per onderwijssoort en woonregio, uitgesplitst naar geslacht. Geschikt voor instellingen die regionale diplomastromen en man/vrouw-verhouding bij uitstroom willen monitoren.",
+    "sectie": "Algemene Data Overzichten"
+  },
+  "verwacht": {
+    "aliases": [
+      "85702NED"
+    ],
+    "archief": {
+      "gearchiveerd": false,
+      "opvolger": {
+        "reden": "opvolger niet vastgelegd",
+        "status": "unknown"
+      }
+    },
+    "bron_url": "https://opendata.cbs.nl/ODataApi/OData/85702NED",
+    "capabilities": {
+      "data": true,
+      "definitions": true,
+      "dimension": true,
+      "properties": true,
+      "validate_selection": true
+    },
+    "dataset_id": "cbs:85702NED",
+    "dimensie_sleutels": {
+      "reden": "dimensiesleutels niet vastgelegd; alleen live te bepalen",
+      "status": "unknown"
+    },
+    "dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Regiokenmerken",
+      "Perioden"
+    ],
+    "geografie": {
+      "niveaus": [
+        "landelijk",
+        "corop",
+        "provincie",
+        "gemeente",
+        "landsdeel"
+      ],
+      "regionale_uitsplitsing": true,
+      "status": "supported"
+    },
+    "herkomst": {
+      "afgeleide_velden": {
+        "geografie": "afgeleid uit CBS-regiodimensie; zonder regiodimensie = Nederland-totaal",
+        "meetwaarden": "bron (DataProperties)",
+        "scopeprofiel": "afgeleid uit gecureerde onderwijstype"
+      },
+      "broncheck": null,
+      "catalogusbouw": null,
+      "gecontroleerd_op": null,
+      "inputhash": "704eecf8ef398521",
+      "laatste_update": "2026-04-14",
+      "metadata_modified": null,
+      "verrijkingsversie": 1
+    },
+    "instellingseenheden": {
+      "reden": "instellingseenheden niet vastgelegd",
+      "status": "unknown"
+    },
+    "meetwaarden": [
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "Gediplomeerden_1",
+        "title": "Gediplomeerden",
+        "unit": "aantal"
+      }
+    ],
+    "methodiek": {
+      "reden": "TableInfos niet vastgelegd",
+      "status": "unknown"
+    },
+    "onderwijssectoren": [
+      "Allen"
+    ],
+    "perioden": {
+      "codes": {
+        "reden": "periodecodes en hiaten niet vastgelegd",
+        "status": "unknown"
+      },
+      "eerste": "2011/'12",
+      "formaat": [
+        "SJ"
+      ],
+      "frequentie": "Jaarlijks",
+      "laatste": "2024/'25",
+      "status": "supported",
+      "tekst": "2011/'12-2023/'24"
+    },
+    "populatie": {
+      "reden": "populatie niet vastgelegd",
+      "status": "unknown"
+    },
+    "provider": "CBS",
+    "schema_version": 1,
+    "scopeprofiel": {
+      "hbo": "unknown",
+      "mbo": "unknown",
+      "wo": "unknown"
+    },
+    "teldefinitie": {
+      "reden": "teldefinitie niet vastgelegd",
+      "status": "unknown"
+    },
+    "titel": "Gediplomeerden; onderwijssoort, woonregio"
+  }
+}

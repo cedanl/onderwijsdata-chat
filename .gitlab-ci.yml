@@ -130,8 +130,9 @@ pytest:
     paths:
       - .uv-cache
   before_script:
-    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock; curl voor helm hieronder
-    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates && rm -rf /var/lib/apt/lists/*
+    # curl voor helm hieronder. git hoeft niet meer: riodata en onderwijsdata zijn workspace-leden (packages/) en
+    # geen git-dependency meer (#885).
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
     # Eén statische binary, gecontroleerd op checksum; geen pakketbron.
     - curl -fsSL --retry 3 -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
@@ -230,8 +231,7 @@ eval:bronwaarheid:
     paths:
       - .uv-cache
   before_script:
-    # git is nodig omdat riodata en onderwijsdata als git-dependency staan in uv.lock
-    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    # Geen git meer nodig: riodata en onderwijsdata komen uit packages/ (workspace-leden), niet van GitHub (#885).
     - pip install --no-cache-dir uv
     - uv sync --frozen
 
@@ -318,10 +318,10 @@ audit:python:
   before_script:
     - pip install --no-cache-dir uv
   script:
-    # De gelockte versies, zonder installatie. riodata en onderwijsdata (git-dependencies van
-    # cedanl) staan niet in de PyPI-advisorydatabase en gaan er daarom uit.
-    - uv export --frozen --no-dev --no-emit-project --no-hashes --extra postgres -o requirements.txt
-    - grep -v " @ git+" requirements.txt > requirements-pypi.txt
+    # De gelockte versies, zonder installatie. riodata en onderwijsdata (workspace-leden uit packages/) staan niet in
+    # de PyPI-advisorydatabase en gaan er daarom uit (--no-emit-workspace; anders staan er `-e ./packages/…`-regels in
+    # die pip-audit niet leest). Hun eigen afhankelijkheden (httpx, pandas, …) zitten wel in de export: dezelfde 92 als vóór #885.
+    - uv export --frozen --no-dev --no-emit-project --no-emit-workspace --no-hashes --extra postgres -o requirements-pypi.txt
     # Bewust genegeerd (SECURITY.md, S12): filelock 3.32.7, fix in 4.2.1, maar litellm (ook 1.106.4) eist filelock<4.0.
     # 112913 en 112907 gelden alleen op Windows; 112940 zit in ReadWriteLock, dat geen pakket hier gebruikt
     # (huggingface_hub gebruikt FileLock/SoftFileLock, litellm alleen in zijn proxy-CLI). Weg zodra filelock>=4.2.1 kan.

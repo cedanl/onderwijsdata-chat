@@ -85,7 +85,10 @@ def test_version_noemt_de_meegebouwde_catalogusrevisies(client):
     catalogus = client.get("/version").json()["catalogus"]
     assert [p["pakket"] for p in catalogus] == ["onderwijsdata", "riodata"]
     assert all(p["versie"] for p in catalogus)
-    assert all(len(p["commit"] or "") == 40 for p in catalogus)  # git-dependency: de commit uit uv.lock
+    # Sinds #885 zijn de pakketten workspace-leden: geen vcs-commit in hun metadata. Ze komen uit dezelfde commit als de
+    # app (`commit` bovenaan /version). Wat /version per pakket noemt, regelt #888.
+    assert all(p["commit"] is None for p in catalogus)
+    assert catalogus[0]["manifest"]["catalogusrevisie"] and catalogus[0]["manifest"]["aantal"] > 0
 
 
 def test_catalogusversie_zonder_package_geeft_geen_fout():

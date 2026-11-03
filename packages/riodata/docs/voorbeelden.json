@@ -1,0 +1,29 @@
+[
+  {
+    "id": "rio_onderwijslocaties",
+    "titel": "Top 25 steden naar aantal onderwijslocaties",
+    "vraag": "In welke steden staan de meeste geregistreerde onderwijslocaties?",
+    "datasets": ["onderwijslocaties"],
+    "plot": "rio_onderwijslocaties.png",
+    "interpretatie": "rio_onderwijslocaties_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "duo_ho_ingeschrevenen_regio",
+    "titel": "HBO ingeschrevenen per provincie en geslacht",
+    "vraag": "Hoe zijn HBO-ingeschrevenen verdeeld over provincies, en wat is de M/V-verhouding?",
+    "datasets": ["p01hoinges"],
+    "plot": "duo_ho_ingeschrevenen_regio.png",
+    "interpretatie": "duo_ho_ingeschrevenen_regio_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "duo_wo_ingeschrevenen",
+    "titel": "WO ingeschrevenen per universiteit 2021–2025",
+    "vraag": "Hoe ontwikkelen studentenaantallen bij Nederlandse universiteiten zich, en welke verschillen zijn er in omvang, groei en genderverhouding?",
+    "datasets": ["p01hoinges"],
+    "plot": "duo_wo_ingeschrevenen/01_totaal_per_uni.png",
+    "interpretatie": "duo_wo_ingeschrevenen/INTERPRETATIE.md",
+    "status": "experimenteel"
+  }
+]

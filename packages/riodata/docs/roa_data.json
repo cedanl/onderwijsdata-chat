@@ -1,0 +1,873 @@
+[
+  {
+    "leverancier": "ROA",
+    "bron": "AIS tot 2030",
+    "beschrijving": "ROA Arbeidsmarktinformatiesysteem: middellange-termijn arbeidsmarktprognoses per opleiding en beroep tot 2030, plus kerncijfers schoolverlatersonderzoeken.",
+    "samenvatting": "Arbeidsmarktinformatie en -prognoses tot 2030 naar bedrijfssector, beroep en opleidingscategorie (ONR2019: opleidingsniveau, -sector, -subsector, -type), voor Nederland, provincies en arbeidsmarktregio's (48 regio's). Daarnaast landelijke arbeidsmarktuitkomsten per opleiding en kerncijfers schoolverlatersonderzoeken. Nooit per instelling.",
+    "periode": "Edities 2025 en 2026 (2026 is de nieuwste; DataverseNL-release 2026-09-18). Prognoses tot 2030.",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Arbeidsmarktprognoses en schoolverlatersonderzoek per opleiding en beroep",
+    "frequentie": "Jaarlijks",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "ROA / DataverseNL",
+    "documentatie": {
+      "tekst": "AIS tot 2030",
+      "url": "https://doi.org/10.34894/DVQTOG"
+    },
+    "filters": [
+      "opleiding",
+      "beroep",
+      "regio"
+    ],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Wat zijn de arbeidsmarktperspectieven tot 2030 voor mbo-4-opleidingen in de techniek?",
+      "Welke opleidingscategorieën hebben de beste arbeidsmarktkansen in de regio Rijnmond?",
+      "Wat is de actuele arbeidsmarktsituatie voor hbo-bachelors in Noord-Brabant?",
+      "Hoeveel procent van de schoolverlaters met een mbo-diploma heeft anderhalf jaar later een vaste baan?"
+    ],
+    "tags": [
+      "roa",
+      "arbeidsmarkt",
+      "prognose",
+      "schoolverlaters",
+      "opleiding",
+      "beroep",
+      "werkloosheid",
+      "vast dienstverband",
+      "baankansen"
+    ],
+    "niet_geschikt_voor": "Instellingsspecifieke vragen: geen instellingscode, dus niet 'hoe doen onze alumni het?'. Opleidingen zijn ROA-opleidingscategorieën (ONR2019), geen individuele CROHO/CREBO-opleidingen van een instelling. Regionale uitsplitsing (provincie, arbeidsmarktregio) bestaat alleen in de arbeidsmarktbestanden; uitkomsten en schoolverlaters zijn landelijk. Lege cellen zijn cijfers op te weinig waarnemingen, geen nul.",
+    "kolomtoelichting": {
+      "regionaam": "Nederland, provincie of arbeidsmarktregio (48 waarden in editie 2025/2026).",
+      "indeling": "1 bedrijfssector, 2 beroep of 3 opleiding.",
+      "aggregatieniveau": "Niveau binnen de indeling, bijv. 'opleidingsniveau (ONR2019)', 'opleidingssector (ONR2019)', 'beroepsgroep (BRC2014-Editie 2025)'.",
+      "detailniveau": "Categorie op dat aggregatieniveau, bijv. 'Mbo4' of een beroepsgroep.",
+      "thema": "Onderdeel van het AIS, bijv. 'Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering' of 'Schoolverlatersinformatie (SIS 2025)'.",
+      "onderwerp": "De gemeten indicator, bijv. 'werkenden', 'gemiddelde leeftijd'.",
+      "perc": "Percentage voor de indicator in deze regio en categorie (decimale komma in de bron).",
+      "aantal": "Aantal voor de indicator (decimale komma in de bron); lege cel = te weinig waarnemingen."
+    },
+    "combineerbaar_met": [
+      "DUO (diplomering per opleiding)",
+      "CBS (arbeidsdeelname naar onderwijsniveau)",
+      "RIO (aangeboden opleidingen)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_roa_id": "ais2030",
+    "_resources": [
+      {
+        "naam": "arbeidsmarkt",
+        "file_id": 572235,
+        "url": "https://dataverse.nl/api/access/datafile/572235",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktinformatie_editie2025.csv",
+          "editie": "2025",
+          "dataverse_sha1": "4ba004702dc882494c957b382319d3826f92889f",
+          "grootte": 44055479,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 232949,
+          "kolommen": [
+            "waarderegionaam",
+            "regionaam",
+            "indeling",
+            "aggregatieniveau",
+            "waarde",
+            "detailniveau",
+            "waardetopic",
+            "thema",
+            "waardevariabel",
+            "onderwerp",
+            "waardebelang",
+            "naamonderwerp",
+            "aantal",
+            "perc",
+            "totaal6jrperc",
+            "gemjaarlijksperc",
+            "indicator",
+            "typering",
+            "sorteerdummy",
+            "versie"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "arbeidsmarkt",
+          "granulariteit": "regio × indeling (bedrijfssector/beroep/opleiding) × aggregatieniveau × onderwerp",
+          "beperkingen": [
+            {
+              "tekst": "Lege cellen: cijfers op minder dan 80 ongewogen EBB-waarnemingen worden niet gepubliceerd.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "EBB-cijfers zijn het gemiddelde van twee jaren (bijv. 2024 en 2025).",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Deelnemers en gediplomeerden zijn afgerond op tientallen; blanco = onder de publicatiegrens of onbekend.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Niet per onderwijsinstelling.",
+              "bron": "kolommen (geen instellingscode)"
+            }
+          ],
+          "uitsplitsingen": {
+            "regio": {
+              "aantal": 48,
+              "voorbeelden": [
+                "Nederland",
+                "Groningen",
+                "Friesland",
+                "Drenthe",
+                "Regio Zwolle"
+              ],
+              "landelijk": true
+            },
+            "indeling": [
+              "1 bedrijfssector",
+              "2 beroep",
+              "3 opleiding"
+            ],
+            "aggregatieniveau": [
+              "bedrijfssector (SBI08)",
+              "beroepsgroep (BRC2014)",
+              "beroepsklasse (BRC2014)",
+              "beroepssegment (BRC2014)",
+              "opleidingsniveau (ONR2019)",
+              "opleidingssector (ONR2019)",
+              "opleidingssubsector (ONR2019)",
+              "opleidingstype (ONR2019)"
+            ]
+          },
+          "themas": [
+            "Actuele arbeidsmarktsituatie 2023-2024",
+            "Belangrijkste 'onderwerp' per 'aggregatieniveau' 2023-2024",
+            "Deelnemers en gediplomeerden 2024",
+            "Kernvaardigheden 2023",
+            "Risicoindicatoren en arbeidsmarktprognoses tot 2030",
+            "Schoolverlatersinformatie (SIS 2024)"
+          ],
+          "prognosehorizon": 2030,
+          "versie_in_bestand": [
+            "v20251218"
+          ],
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "toelichting",
+        "file_id": 565548,
+        "url": "https://dataverse.nl/api/access/datafile/565548",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktinformatie_editie2025_toelichting.csv",
+          "editie": "2025",
+          "dataverse_sha1": "dfe04d908ab1d7ef4952bdf9bb711df665b31aa9",
+          "grootte": 32894,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 143,
+          "kolommen": [
+            "thema",
+            "variabel",
+            "bron",
+            "toelichting"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "toelichting",
+          "granulariteit": "documentatie per variabele (geen data)",
+          "beperkingen": [
+            {
+              "tekst": "Bevat HTML-fragmenten en afgebroken regels; alleen als naslag gebruiken.",
+              "bron": "data"
+            }
+          ],
+          "encoding": "latin-1",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "uitkomsten",
+        "file_id": 566770,
+        "url": "https://dataverse.nl/api/access/datafile/566770",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktuitkomsten.csv",
+          "editie": "2025",
+          "dataverse_sha1": "fe98834fe3ca0c3d9c2b151c61c2b13618f311ba",
+          "grootte": 238462,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 1527,
+          "kolommen": [
+            "oplcode",
+            "opleiding",
+            "niveau",
+            "labniveau",
+            "richting",
+            "labrichting",
+            "SECM",
+            "labSECM",
+            "amount_2017",
+            "aandeel_2017",
+            "amount_2021",
+            "aandeel_2021"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "uitkomsten",
+          "granulariteit": "opleiding (ROA-opleidingscode) × sociaaleconomische positie (SECM), landelijk",
+          "beperkingen": [
+            {
+              "tekst": "Landelijk: geen regio- of instellingskolom.",
+              "bron": "kolommen"
+            },
+            {
+              "tekst": "De waarde -9 komt veel voor in amount_/aandeel_-kolommen; de betekenis staat niet in de toelichting. Niet als getal gebruiken zonder bevestiging van ROA.",
+              "bron": "data"
+            }
+          ],
+          "meetjaren": [
+            2017,
+            2021
+          ],
+          "sentinels": {
+            "-9": {
+              "aantal": 1400,
+              "betekenis": "niet gedocumenteerd"
+            }
+          },
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "schoolverlaters",
+        "file_id": 565551,
+        "url": "https://dataverse.nl/api/access/datafile/565551",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Kerncijfers_Schoolverlatersonderzoeken_2024.csv",
+          "editie": "2025",
+          "dataverse_sha1": "c797a538c776c56aa5e2d40c36764c896a770ca4",
+          "grootte": 24097355,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 95088,
+          "kolommen": [
+            "SISCODEniveau",
+            "SISCODEsubniveau",
+            "SISCODEsector",
+            "SISCODEtype",
+            "SISCODElabniveau",
+            "SISCODElabsubniveau",
+            "SISCODElabsector",
+            "SISCODElabtype",
+            "SISCODE",
+            "labSISCODE",
+            "crcode",
+            "labcrcode",
+            "sort",
+            "thema",
+            "labivar",
+            "2017 - 2018",
+            "2018 - 2019",
+            "2019 - 2020",
+            "2020 - 2021",
+            "2021 - 2022",
+            "2022 - 2023",
+            "totaal"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "schoolverlaters",
+          "granulariteit": "opleiding (SIS-code, centraal-registercode) × indicator, landelijk; schooljaren als kolommen",
+          "beperkingen": [
+            {
+              "tekst": "Alleen cijfers op minimaal 20 respondenten.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Landelijk: geen regio- of instellingskolom.",
+              "bron": "kolommen"
+            }
+          ],
+          "schooljaren": [
+            "2017 - 2018",
+            "2018 - 2019",
+            "2019 - 2020",
+            "2020 - 2021",
+            "2021 - 2022",
+            "2022 - 2023"
+          ],
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "arbeidsmarkt_editie2026",
+        "file_id": 674144,
+        "url": "https://dataverse.nl/api/access/datafile/674144",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktinformatie_editie2026.csv",
+          "editie": "2026",
+          "dataverse_sha1": "8eca6102c3f5fd1bea8b8cfaf19e41b06c638876",
+          "grootte": 45082372,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 230419,
+          "kolommen": [
+            "waarderegionaam",
+            "regionaam",
+            "indeling",
+            "aggregatieniveau",
+            "waarde",
+            "detailniveau",
+            "waardetopic",
+            "thema",
+            "waardevariabel",
+            "onderwerp",
+            "waardebelang",
+            "naamonderwerp",
+            "aantal",
+            "perc",
+            "totaal6jrperc",
+            "gemjaarlijksperc",
+            "indicator",
+            "typering",
+            "sorteerdummy",
+            "versie"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "arbeidsmarkt",
+          "granulariteit": "regio × indeling (bedrijfssector/beroep/opleiding) × aggregatieniveau × onderwerp",
+          "beperkingen": [
+            {
+              "tekst": "Lege cellen: cijfers op minder dan 80 ongewogen EBB-waarnemingen worden niet gepubliceerd.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "EBB-cijfers zijn het gemiddelde van twee jaren (bijv. 2024 en 2025).",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Deelnemers en gediplomeerden zijn afgerond op tientallen; blanco = onder de publicatiegrens of onbekend.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Niet per onderwijsinstelling.",
+              "bron": "kolommen (geen instellingscode)"
+            }
+          ],
+          "uitsplitsingen": {
+            "regio": {
+              "aantal": 48,
+              "voorbeelden": [
+                "Nederland",
+                "Groningen",
+                "Friesland",
+                "Drenthe",
+                "Regio Zwolle"
+              ],
+              "landelijk": true
+            },
+            "indeling": [
+              "1 bedrijfssector",
+              "2 beroep",
+              "3 opleiding"
+            ],
+            "aggregatieniveau": [
+              "bedrijfssector (SBI08)",
+              "beroepsgroep (BRC2014-Editie 2025)",
+              "beroepsklasse (BRC2014-Editie 2025)",
+              "beroepssegment (BRC2014-Editie 2025)",
+              "opleidingsniveau (ONR2019)",
+              "opleidingssector (ONR2019)",
+              "opleidingssubsector (ONR2019)",
+              "opleidingstype (ONR2019)"
+            ]
+          },
+          "themas": [
+            "Actuele arbeidsmarktsituatie 2024-2025",
+            "Belangrijkste 'onderwerp' per 'aggregatieniveau' 2024-2025",
+            "Deelnemers en gediplomeerden 2025",
+            "Kernvaardigheden 2023",
+            "Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering",
+            "Schoolverlatersinformatie (SIS 2025)"
+          ],
+          "prognosehorizon": 2030,
+          "versie_in_bestand": [
+            "v20260901"
+          ],
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": true
+        }
+      },
+      {
+        "naam": "toelichting_editie2026",
+        "file_id": 674140,
+        "url": "https://dataverse.nl/api/access/datafile/674140",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktinformatie_editie2026_toelichting.csv",
+          "editie": "2026",
+          "dataverse_sha1": "e6593f8dd617a519a64ceb67ff5dfc8aef3344d5",
+          "grootte": 32894,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 143,
+          "kolommen": [
+            "thema",
+            "variabel",
+            "bron",
+            "toelichting"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "toelichting",
+          "granulariteit": "documentatie per variabele (geen data)",
+          "beperkingen": [
+            {
+              "tekst": "Bevat HTML-fragmenten en afgebroken regels; alleen als naslag gebruiken.",
+              "bron": "data"
+            }
+          ],
+          "encoding": "latin-1",
+          "meest_recente_editie": true
+        }
+      },
+      {
+        "naam": "uitkomsten_editie2026",
+        "file_id": 674142,
+        "url": "https://dataverse.nl/api/access/datafile/674142",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Arbeidsmarktuitkomsten_editie2026.csv",
+          "editie": "2026",
+          "dataverse_sha1": "59eb61aa0599c5bbb555a9a1aca987dafa3158c3",
+          "grootte": 236123,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 1513,
+          "kolommen": [
+            "oplcode",
+            "opleiding",
+            "niveau",
+            "labniveau",
+            "richting",
+            "labrichting",
+            "SECM",
+            "labSECM",
+            "amount_2018",
+            "aandeel_2018",
+            "amount_2022",
+            "aandeel_2022"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "uitkomsten",
+          "granulariteit": "opleiding (ROA-opleidingscode) × sociaaleconomische positie (SECM), landelijk",
+          "beperkingen": [
+            {
+              "tekst": "Landelijk: geen regio- of instellingskolom.",
+              "bron": "kolommen"
+            },
+            {
+              "tekst": "De waarde -9 komt veel voor in amount_/aandeel_-kolommen; de betekenis staat niet in de toelichting. Niet als getal gebruiken zonder bevestiging van ROA.",
+              "bron": "data"
+            }
+          ],
+          "meetjaren": [
+            2018,
+            2022
+          ],
+          "sentinels": {
+            "-9": {
+              "aantal": 1313,
+              "betekenis": "niet gedocumenteerd"
+            }
+          },
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": true
+        }
+      },
+      {
+        "naam": "schoolverlaters_editie2026",
+        "file_id": 674141,
+        "url": "https://dataverse.nl/api/access/datafile/674141",
+        "schema": {
+          "bestandsnaam": "AIStot2030_Kerncijfers_Schoolverlatersonderzoeken_2025.csv",
+          "editie": "2026",
+          "dataverse_sha1": "cbe0f06b1ca183a0f550679ae82651495bdc62a7",
+          "grootte": 23510264,
+          "dataverse_release": "2026-09-18T10:29:22Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 93379,
+          "kolommen": [
+            "SISCODEniveau",
+            "SISCODEsubniveau",
+            "SISCODEsector",
+            "SISCODEtype",
+            "SISCODElabniveau",
+            "SISCODElabsubniveau",
+            "SISCODElabsector",
+            "SISCODElabtype",
+            "SISCODE",
+            "labSISCODE",
+            "crcode",
+            "labcrcode",
+            "sort",
+            "thema",
+            "labivar",
+            "2018 - 2019",
+            "2019 - 2020",
+            "2020 - 2021",
+            "2021 - 2022",
+            "2022 - 2023",
+            "2023 - 2024",
+            "totaal"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "schoolverlaters",
+          "granulariteit": "opleiding (SIS-code, centraal-registercode) × indicator, landelijk; schooljaren als kolommen",
+          "beperkingen": [
+            {
+              "tekst": "Alleen cijfers op minimaal 20 respondenten.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Landelijk: geen regio- of instellingskolom.",
+              "bron": "kolommen"
+            }
+          ],
+          "schooljaren": [
+            "2018 - 2019",
+            "2019 - 2020",
+            "2020 - 2021",
+            "2021 - 2022",
+            "2022 - 2023",
+            "2023 - 2024"
+          ],
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": true
+        }
+      }
+    ],
+    "_thema": "Arbeidsmarkt"
+  },
+  {
+    "leverancier": "ROA",
+    "bron": "AIS tot 2028",
+    "beschrijving": "ROA Arbeidsmarktinformatiesysteem editie 2023 en 2024: prognoses per opleiding en beroep tot 2028.",
+    "samenvatting": "Oudere editie van de ROA arbeidsmarktprognoses (tot 2028). Gebruik AIS tot 2030 voor de meest recente data.",
+    "periode": "Edities 2023 en 2024 (2024 is de nieuwste van deze reeks). Prognoses tot 2028.",
+    "onderwijstype": [
+      "Allen"
+    ],
+    "doel": "Arbeidsmarktprognoses en schoolverlatersonderzoek per opleiding en beroep",
+    "frequentie": "Jaarlijks",
+    "categorie": "Arbeidsmarkt",
+    "sectie": "ROA / DataverseNL",
+    "documentatie": {
+      "tekst": "AIS tot 2028",
+      "url": "https://doi.org/10.34894/UIQHCI"
+    },
+    "filters": [
+      "opleiding",
+      "beroep",
+      "regio"
+    ],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Hoe zagen de arbeidsmarktprognoses tot 2028 eruit voor mbo-4-opleidingen?",
+      "Welke opleidingscategorieën hadden in editie 2024 de beste arbeidsmarktkansen per regio?"
+    ],
+    "tags": [
+      "roa",
+      "arbeidsmarkt",
+      "prognose",
+      "schoolverlaters",
+      "opleiding",
+      "beroep"
+    ],
+    "niet_geschikt_voor": "Meest actuele prognoses: gebruik AIS tot 2030. Geen instellingsspecifieke data. Regionale uitsplitsing (36 regio's) alleen in de arbeidsmarktbestanden; opleidingen zijn ROA-categorieën (ONR2019).",
+    "kolomtoelichting": {
+      "regionaam": "Nederland, provincie of arbeidsmarktregio (36 waarden in editie 2023/2024).",
+      "indeling": "1 bedrijfssector, 2 beroep of 3 opleiding.",
+      "aggregatieniveau": "Niveau binnen de indeling, bijv. 'opleidingsniveau (ONR2019)', 'opleidingssector (ONR2019)', 'beroepsgroep (BRC2014-Editie 2025)'.",
+      "detailniveau": "Categorie op dat aggregatieniveau, bijv. 'Mbo4' of een beroepsgroep.",
+      "thema": "Onderdeel van het AIS, bijv. 'Risicoindicatoren en arbeidsmarktprognoses tot 2030, actualisering' of 'Schoolverlatersinformatie (SIS 2025)'.",
+      "onderwerp": "De gemeten indicator, bijv. 'werkenden', 'gemiddelde leeftijd'.",
+      "perc": "Percentage voor de indicator in deze regio en categorie (decimale komma in de bron).",
+      "aantal": "Aantal voor de indicator (decimale komma in de bron); lege cel = te weinig waarnemingen."
+    },
+    "combineerbaar_met": [
+      "DUO (diplomering per opleiding)",
+      "CBS (arbeidsdeelname naar onderwijsniveau)",
+      "RIO (aangeboden opleidingen)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_roa_id": "ais2028",
+    "_resources": [
+      {
+        "naam": "arbeidsmarkt_2023",
+        "file_id": 425745,
+        "url": "https://dataverse.nl/api/access/datafile/425745",
+        "schema": {
+          "bestandsnaam": "AIStot2028_Arbeidsmarktinformatie_editie2023_v20240612.csv",
+          "editie": "2023",
+          "dataverse_sha1": "91063771c3f19964ee5f84a0a3e58266a59c9f52",
+          "grootte": 23036923,
+          "dataverse_release": "2024-08-19T12:01:13Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 129055,
+          "kolommen": [
+            "waarderegionaam",
+            "regionaam",
+            "indeling",
+            "aggregatieniveau",
+            "waarde",
+            "detailniveau",
+            "waardetopic",
+            "thema",
+            "waardevariabel",
+            "onderwerp",
+            "waardebelang",
+            "naamonderwerp",
+            "aantal",
+            "perc",
+            "totaal6jrperc",
+            "gemjaarlijksperc",
+            "indicator",
+            "typering",
+            "sorteerdummy"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "arbeidsmarkt",
+          "granulariteit": "regio × indeling (bedrijfssector/beroep/opleiding) × aggregatieniveau × onderwerp",
+          "beperkingen": [
+            {
+              "tekst": "Lege cellen: cijfers op minder dan 80 ongewogen EBB-waarnemingen worden niet gepubliceerd.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "EBB-cijfers zijn het gemiddelde van twee jaren (bijv. 2024 en 2025).",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Deelnemers en gediplomeerden zijn afgerond op tientallen; blanco = onder de publicatiegrens of onbekend.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Niet per onderwijsinstelling.",
+              "bron": "kolommen (geen instellingscode)"
+            }
+          ],
+          "uitsplitsingen": {
+            "regio": {
+              "aantal": 36,
+              "voorbeelden": [
+                "Nederland",
+                "Groningen",
+                "Friesland",
+                "Drenthe",
+                "Regio Zwolle"
+              ],
+              "landelijk": true
+            },
+            "indeling": [
+              "1 bedrijfssector",
+              "2 beroep",
+              "3 opleiding"
+            ],
+            "aggregatieniveau": [
+              "bedrijfssector (SBI08)",
+              "beroepsgroep (BRC2014)",
+              "beroepsklasse (BRC2014)",
+              "beroepssegment (BRC2014)",
+              "opleidingsniveau (ONR2019)",
+              "opleidingssector (ONR2019)",
+              "opleidingssubsector (ONR2019)",
+              "opleidingstype (ONR2019)"
+            ]
+          },
+          "themas": [
+            "Actuele arbeidsmarktsituatie 2021-2022",
+            "Belangrijkste 'onderwerp' per 'aggregatieniveau' 2021-2022",
+            "Deelnemers en gediplomeerden 2022",
+            "Kernvaardigheden 2012",
+            "Risicoindicatoren en arbeidsmarktprognoses tot 2028",
+            "Schoolverlatersinformatie (SIS 2022)"
+          ],
+          "prognosehorizon": 2028,
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "arbeidsmarkt_2024",
+        "file_id": 425747,
+        "url": "https://dataverse.nl/api/access/datafile/425747",
+        "schema": {
+          "bestandsnaam": "AIStot2028_Arbeidsmarktinformatie_editie2024_v20240612.csv",
+          "editie": "2024",
+          "dataverse_sha1": "78a75d5ee8f6a2a0bcd2715333c3ef9d3219ed58",
+          "grootte": 17529830,
+          "dataverse_release": "2024-08-19T12:01:13Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 100528,
+          "kolommen": [
+            "waarderegionaam",
+            "regionaam",
+            "indeling",
+            "aggregatieniveau",
+            "waarde",
+            "detailniveau",
+            "waardetopic",
+            "thema",
+            "waardevariabel",
+            "onderwerp",
+            "waardebelang",
+            "naamonderwerp",
+            "aantal",
+            "perc",
+            "totaal6jrperc",
+            "gemjaarlijksperc",
+            "indicator",
+            "typering",
+            "sorteerdummy"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "arbeidsmarkt",
+          "granulariteit": "regio × indeling (bedrijfssector/beroep/opleiding) × aggregatieniveau × onderwerp",
+          "beperkingen": [
+            {
+              "tekst": "Lege cellen: cijfers op minder dan 80 ongewogen EBB-waarnemingen worden niet gepubliceerd.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "EBB-cijfers zijn het gemiddelde van twee jaren (bijv. 2024 en 2025).",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Deelnemers en gediplomeerden zijn afgerond op tientallen; blanco = onder de publicatiegrens of onbekend.",
+              "bron": "Toelichting ArbeidsmarktInformatieSysteem (AIS), versie V20260826"
+            },
+            {
+              "tekst": "Niet per onderwijsinstelling.",
+              "bron": "kolommen (geen instellingscode)"
+            }
+          ],
+          "uitsplitsingen": {
+            "regio": {
+              "aantal": 36,
+              "voorbeelden": [
+                "Nederland",
+                "Groningen",
+                "Friesland",
+                "Drenthe",
+                "Regio Zwolle"
+              ],
+              "landelijk": true
+            },
+            "indeling": [
+              "1 bedrijfssector",
+              "2 beroep",
+              "3 opleiding"
+            ],
+            "aggregatieniveau": [
+              "bedrijfssector (SBI08)",
+              "beroepsgroep (BRC2014)",
+              "beroepsklasse (BRC2014)",
+              "beroepssegment (BRC2014)",
+              "opleidingsniveau (ONR2019)",
+              "opleidingssector (ONR2019)",
+              "opleidingssubsector (ONR2019)",
+              "opleidingstype (ONR2019)"
+            ]
+          },
+          "themas": [
+            "Actuele arbeidsmarktsituatie 2022-2023",
+            "Belangrijkste 'onderwerp' per 'aggregatieniveau' 2022-2023",
+            "Deelnemers en gediplomeerden 2023",
+            "Risicoindicatoren en arbeidsmarktprognoses tot 2028, actualisering"
+          ],
+          "prognosehorizon": 2028,
+          "encoding": "utf-8-sig",
+          "meest_recente_editie": true
+        }
+      },
+      {
+        "naam": "toelichting_2023",
+        "file_id": 425746,
+        "url": "https://dataverse.nl/api/access/datafile/425746",
+        "schema": {
+          "bestandsnaam": "AIStot2028_Arbeidsmarktinformatie_toelichting_editie2023_v20240612.csv",
+          "editie": "2023",
+          "dataverse_sha1": "0059d9b6c77e25fb16dbe5a3fca3f9d278d68884",
+          "grootte": 16880,
+          "dataverse_release": "2024-08-19T12:01:13Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 80,
+          "kolommen": [
+            "thema",
+            "variabel",
+            "bron",
+            "toelichting"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "toelichting",
+          "granulariteit": "documentatie per variabele (geen data)",
+          "beperkingen": [
+            {
+              "tekst": "Bevat HTML-fragmenten en afgebroken regels; alleen als naslag gebruiken.",
+              "bron": "data"
+            }
+          ],
+          "encoding": "latin-1",
+          "meest_recente_editie": false
+        }
+      },
+      {
+        "naam": "toelichting_2024",
+        "file_id": 425742,
+        "url": "https://dataverse.nl/api/access/datafile/425742",
+        "schema": {
+          "bestandsnaam": "AIStot2028_Arbeidsmarktinformatie_toelichting_editie2024_v20240612.csv",
+          "editie": "2024",
+          "dataverse_sha1": "b39af54d1208c7eec53718b14e91351f38ce2580",
+          "grootte": 8407,
+          "dataverse_release": "2024-08-19T12:01:13Z",
+          "gecontroleerd_op": "2026-10-05",
+          "aantal_rijen": 44,
+          "kolommen": [
+            "thema",
+            "variabel",
+            "bron",
+            "toelichting"
+          ],
+          "separator": ";",
+          "decimaal": ",",
+          "soort": "toelichting",
+          "granulariteit": "documentatie per variabele (geen data)",
+          "beperkingen": [
+            {
+              "tekst": "Bevat HTML-fragmenten en afgebroken regels; alleen als naslag gebruiken.",
+              "bron": "data"
+            }
+          ],
+          "encoding": "latin-1",
+          "meest_recente_editie": true
+        }
+      }
+    ],
+    "_thema": "Arbeidsmarkt"
+  }
+]

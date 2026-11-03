@@ -1,0 +1,92 @@
+[
+  {
+    "id": "mbo_deelnemers",
+    "titel": "MBO Nederland — Studenten 2015–2026",
+    "vraag": "Hoe ontwikkelt MBO-deelname zich per niveau, leerweg, regio en geslacht?",
+    "datasets": ["85353NED"],
+    "plot": "mbo_analyse.png",
+    "interpretatie": null,
+    "status": "experimenteel"
+  },
+  {
+    "id": "ho_ingeschrevenen",
+    "titel": "Hoger Onderwijs — Ingeschrevenen 2011–2026",
+    "vraag": "Hoe ontwikkelen HBO- en WO-inschrijvingen zich over tijd naar opleidingsvorm en geslacht?",
+    "datasets": ["85423NED"],
+    "plot": "onderwijsdata_analyse.png",
+    "interpretatie": null,
+    "status": "experimenteel"
+  },
+  {
+    "id": "mbo_arbeidsmarkt",
+    "titel": "MBO-uitstromers en de arbeidsmarkt",
+    "vraag": "Welke arbeidsmarktpositie, bedrijfstakken en uurlonen bereiken MBO-uitstromers na verlaten onderwijs?",
+    "datasets": ["85696NED", "85699NED", "83832NED"],
+    "plot": "mbo_arbeidsmarkt.png",
+    "interpretatie": null,
+    "status": "experimenteel"
+  },
+  {
+    "id": "mbo_zij_instroom",
+    "titel": "MBO zij-instroom: wie, vanwaar, welke sectoren?",
+    "vraag": "Welke sectorkamers zijn afhankelijk van zij-instroom, en vanuit welke maatschappelijke positie komen die instromers?",
+    "datasets": ["85574NED", "85569NED"],
+    "plot": "mbo_zij_instroom.png",
+    "interpretatie": "mbo_zij_instroom_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "almere_vo_herkomst",
+    "titel": "VO-leerlingen Almere-regio naar herkomst",
+    "vraag": "Hoe verhouden de herkomstpatronen van VO-leerlingen in de Almere-regio zich tot het landelijke beeld?",
+    "datasets": ["85380NED", "85379NED"],
+    "plot": "almere_vo_herkomst.png",
+    "interpretatie": "almere_vo_herkomst_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "vwo4_amsterdam",
+    "titel": "VWO leerjaar 4 — Amsterdam",
+    "vraag": "Hoe groot is VWO leerjaar 4 in Amsterdam en hoe ontwikkelt dit zich?",
+    "datasets": ["85380NED"],
+    "plot": "vwo4_amsterdam.png",
+    "interpretatie": "vwo4_amsterdam_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "vwo4_g4",
+    "titel": "VWO leerjaar 4 — G4 vergelijking",
+    "vraag": "Hoe verhoudt VWO-deelname in de G4-steden zich tot elkaar?",
+    "datasets": ["85380NED"],
+    "plot": "vwo4_g4.png",
+    "interpretatie": "vwo4_g4_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "vwo_examen_herkomst",
+    "titel": "VWO-examenprestaties naar herkomst 2011–2025",
+    "vraag": "Hoe ontwikkelen VWO-examenprestaties zich naar herkomst over de afgelopen 15 jaar?",
+    "datasets": ["85381NED"],
+    "plot": "vwo_examen_herkomst.png",
+    "interpretatie": "vwo_examen_herkomst_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "mbo_diploma_trend",
+    "titel": "MBO-gediplomeerden 2011–2025: trend per niveau en leerweg",
+    "vraag": "Hoe heeft het aantal MBO-gediplomeerden zich ontwikkeld per niveau en leerweg, en wat zegt dat over studentsucces?",
+    "datasets": ["85357NED", "85354NED"],
+    "plot": "mbo_diploma_trend.png",
+    "interpretatie": "mbo_diploma_trend_INTERPRETATIE.md",
+    "status": "experimenteel"
+  },
+  {
+    "id": "havo_slagingspercentage_rotterdam",
+    "titel": "HAVO slagingspercentage: Rotterdam vs. Nederland",
+    "vraag": "Hoe verhoudt het HAVO-slagingspercentage in Rotterdam zich tot het landelijk gemiddelde?",
+    "datasets": ["85382NED"],
+    "plot": "havo_slagingspercentage_rotterdam.png",
+    "interpretatie": "havo_slagingspercentage_rotterdam_INTERPRETATIE.md",
+    "status": "experimenteel"
+  }
+]

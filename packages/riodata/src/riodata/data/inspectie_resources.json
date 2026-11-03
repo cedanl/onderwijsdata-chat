@@ -1,0 +1,120 @@
+[
+  {
+    "leverancier": "Inspectie van het Onderwijs",
+    "bron": "Oordelen per school",
+    "beschrijving": "Maandelijks bijgewerkte inspectie-oordelen per school (PO, SO, VO) en per onderwijsbestuur. Bevat het eindoordeel en oordelen per standaard (kwaliteitszorg, onderwijsproces, schoolklimaat) op BRIN-niveau.",
+    "periode": "September 2024 – heden (maandelijks bijgewerkt)",
+    "onderwijstype": ["PO", "SO", "VO"],
+    "doel": "Geeft het officiële kwaliteitsoordeel van de Inspectie per school en per bestuur. Enige publieke bron voor schoolniveau-kwaliteitsdata in Nederland. Combineerbaar met RIO en DUO via BRIN-code.",
+    "frequentie": "Maandelijks",
+    "categorie": "Kwaliteit",
+    "sectie": "Inspectie van het Onderwijs",
+    "documentatie": {
+      "tekst": "Oordelen 2024-2025 — Inspectie van het Onderwijs",
+      "url": "https://www.onderwijsinspectie.nl/trends-en-ontwikkelingen/onderwijsdata/oordelen/oordelen-2024-2025"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke PO-scholen in Noord-Holland hebben een onvoldoende eindoordeel?",
+      "Hoeveel VO-besturen scoren onvoldoende op kwaliteitszorg?",
+      "Hoe ontwikkelen inspectie-oordelen zich over de jaren per sector?"
+    ],
+    "tags": [
+      "inspectie",
+      "oordelen",
+      "kwaliteit",
+      "po",
+      "so",
+      "vo",
+      "besturen",
+      "brin",
+      "scholen",
+      "toezicht"
+    ],
+    "combineerbaar_met": [
+      "RIO organisatorische-eenheden (via BRIN-code)",
+      "RIO onderwijslocaties (via BRIN-code)",
+      "DUO leerlingenaantallen (via BRIN-code)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_inspectie_id": "oordelen",
+    "_resources": [
+      {
+        "naam": "oordelen_scholen_aug2025",
+        "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2025/08/04/oordelen-1-augustus-2025/20250804_Oordeel_en_standaard_PO_SO_VO.ods",
+        "format": "ODS"
+      },
+      {
+        "naam": "oordelen_besturen_aug2025",
+        "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2025/08/04/oordelen-1-augustus-2025/20250804_Oordeel_en_standaard_BG.ods",
+        "format": "ODS"
+      }
+    ],
+    "_thema": "Kwaliteit",
+    "_scope": {
+      "mbo_hbo_wo": "buiten_scope",
+      "reden": "Beschrijft PO/SO/VO, niet mbo/hbo/wo.",
+      "besluit": "scopebesluit RIO-05 (issue #18)"
+    }
+  },
+  {
+    "leverancier": "Inspectie van het Onderwijs",
+    "bron": "Schorsingen en verwijderingen",
+    "beschrijving": "Jaarlijks overzicht van schorsingen en verwijderingen per school en per reden in het primair en voortgezet onderwijs. Twee bestanden: aantallen per school en uitsplitsing naar reden.",
+    "periode": "Schooljaar 2024-2025 (jaarlijks bijgewerkt)",
+    "onderwijstype": ["PO", "SO", "VO"],
+    "doel": "Inzicht in de omvang en redenen van schorsingen en verwijderingen per school. Nuttig voor analyses van schoolveiligheid en sociale veiligheid. Historische data beschikbaar vanaf 2017-2018.",
+    "frequentie": "Jaarlijks",
+    "categorie": "Kwaliteit",
+    "sectie": "Inspectie van het Onderwijs",
+    "documentatie": {
+      "tekst": "Schorsingen en verwijderingen — Inspectie van het Onderwijs",
+      "url": "https://www.onderwijsinspectie.nl/trends-en-ontwikkelingen/onderwijsdata/schorsingen-en-verwijderingen"
+    },
+    "filters": [],
+    "sub_resources": [],
+    "voorbeeldvragen": [
+      "Welke scholen hebben relatief het meeste schorsingen per leerling?",
+      "Wat zijn de meest voorkomende redenen voor verwijdering uit het VO?",
+      "Is het aantal schorsingen gestegen of gedaald ten opzichte van vorig schooljaar?"
+    ],
+    "tags": [
+      "inspectie",
+      "schorsingen",
+      "verwijderingen",
+      "veiligheid",
+      "po",
+      "so",
+      "vo",
+      "brin",
+      "scholen"
+    ],
+    "combineerbaar_met": [
+      "RIO organisatorische-eenheden (via BRIN-code)",
+      "DUO leerlingenaantallen (voor relatieve cijfers per school)"
+    ],
+    "_rio_resource": null,
+    "_ckan_id": null,
+    "_inspectie_id": "schorsingen",
+    "_resources": [
+      {
+        "naam": "schorsingen_scholen_2024_2025",
+        "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2025/10/22/schorsingen-en-verwijderingen-schooljaar-2024-2025/OD005a+Schorsing+en+verwijdering.ods",
+        "format": "ODS"
+      },
+      {
+        "naam": "schorsingen_redenen_2024_2025",
+        "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2025/10/22/schorsingen-en-verwijderingen-schooljaar-2024-2025/OD005b+Schorsing+en+verwijdering+Redenen.ods",
+        "format": "ODS"
+      }
+    ],
+    "_thema": "Kwaliteit",
+    "_scope": {
+      "mbo_hbo_wo": "buiten_scope",
+      "reden": "Beschrijft PO/SO/VO, niet mbo/hbo/wo.",
+      "besluit": "scopebesluit RIO-05 (issue #18)"
+    }
+  }
+]

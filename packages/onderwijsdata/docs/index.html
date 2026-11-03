@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS Onderwijsdata Catalogus</title>
+  <style>
+    :root {
+      --primary: #1a56db;
+      --bg: #f9fafb;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+    header { background: #1e3a5f; color: white; padding: 2rem; }
+    header h1 { font-size: 1.5rem; font-weight: 700; }
+    header p { margin-top: 0.4rem; color: #93c5fd; font-size: 0.9rem; }
+
+    .controls {
+      padding: 1.25rem 2rem;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .search {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .search:focus { border-color: var(--primary); }
+
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+    .filter-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .chip {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.12s;
+    }
+    .chip:hover { border-color: var(--primary); color: var(--primary); }
+    .chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.25rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      transition: box-shadow 0.15s;
+    }
+    .card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .card-title { font-weight: 600; font-size: 0.92rem; line-height: 1.45; }
+    .badge-historisch { background: #eee; color: #555; border: 1px solid #bbb; }
+    .card-periode { font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+    .badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-po    { background: #dcfce7; color: #166534; }
+    .badge-vo    { background: #fce7f3; color: #9d174d; }
+    .badge-mbo   { background: #fef3c7; color: #92400e; }
+    .badge-ho    { background: #ede9fe; color: #5b21b6; }
+    .badge-allen { background: #f3f4f6; color: #4b5563; }
+
+    .card-doel { font-size: 0.84rem; color: #374151; line-height: 1.55; }
+
+    details.card-vragen { font-size: 0.8rem; }
+    details.card-vragen summary {
+      cursor: pointer;
+      color: var(--primary);
+      list-style: none;
+      user-select: none;
+    }
+    details.card-vragen summary::-webkit-details-marker { display: none; }
+    details.card-vragen ol {
+      margin-top: 0.5rem;
+      padding-left: 1.25rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .tag {
+      padding: 0.15rem 0.55rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .tag:hover { background: #dbeafe; }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 0.6rem;
+      border-top: 1px solid var(--border);
+    }
+    .card-meta { font-size: 0.72rem; color: var(--muted); }
+    .card-links { display: flex; gap: 0.75rem; align-items: center; }
+    .card-link { font-size: 0.78rem; color: var(--primary); text-decoration: none; font-weight: 500; }
+    .card-link:hover { text-decoration: underline; }
+
+    /* Voorbeeld-badge op kaart */
+    .voorbeeld-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.6rem;
+      background: #fefce8;
+      border: 1px solid #fde047;
+      color: #854d0e;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .voorbeeld-btn:hover { background: #fef08a; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-y: auto;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 760px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      background: #1e3a5f;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .modal-header-left { display: flex; flex-direction: column; gap: 0.4rem; }
+    .modal-exp-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      background: #fde047;
+      color: #713f12;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      width: fit-content;
+    }
+    .modal-titel { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    .modal-vraag { font-size: 0.85rem; color: #93c5fd; font-style: italic; line-height: 1.4; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .modal-close:hover { opacity: 1; }
+
+    .modal-datasets {
+      padding: 0.75rem 1.5rem;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .modal-ds-chip {
+      padding: 0.2rem 0.6rem;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: monospace;
+      color: #374151;
+    }
+
+    .modal-plot {
+      padding: 1.5rem;
+      background: #f9fafb;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .modal-plot img {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .modal-interpretatie {
+      padding: 1.5rem;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .modal-interpretatie-placeholder {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-style: italic;
+      padding: 1.5rem;
+    }
+
+    /* Simpele markdown rendering in modal */
+    .md h1 { font-size: 1.1rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #111; }
+    .md h2 { font-size: 1rem; font-weight: 700; margin: 1rem 0 0.4rem; color: #1e3a5f; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+    .md h3 { font-size: 0.9rem; font-weight: 700; margin: 0.75rem 0 0.3rem; color: #374151; }
+    .md p { font-size: 0.85rem; line-height: 1.6; margin-bottom: 0.6rem; color: #374151; }
+    .md strong { font-weight: 700; color: #111; }
+    .md ul, .md ol { padding-left: 1.25rem; margin-bottom: 0.6rem; }
+    .md li { font-size: 0.85rem; line-height: 1.6; color: #374151; }
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+    .md blockquote { border-left: 3px solid var(--border); padding-left: 0.75rem; color: var(--muted); font-style: italic; }
+    .md table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 0.75rem; }
+    .md th { background: #f3f4f6; text-align: left; padding: 0.4rem 0.6rem; font-weight: 600; border: 1px solid var(--border); }
+    .md td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); }
+    .md tr:nth-child(even) td { background: #f9fafb; }
+
+    .empty { text-align: center; padding: 4rem; color: var(--muted); font-size: 0.95rem; }
+
+    @media (max-width: 640px) {
+      header { padding: 1.25rem 1rem; }
+      .controls { padding: 1rem; }
+      main { padding: 1rem; }
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal { border-radius: 16px 16px 0 0; max-height: 92vh; overflow-y: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CBS Onderwijsdata Catalogus</h1>
+  <p>Brede catalogus van publieke CBS-datasets over het Nederlandse onderwijs — doorzoekbaar op trefwoord, niveau, status en tag. Historische (gearchiveerde) tabellen blijven zichtbaar en zijn gemarkeerd. Deze catalogus is breder dan het mbo/hbo/wo-profiel van de chat; gebruik het filter <em>Alleen mbo/hbo/wo</em> voor de scope.</p>
+</header>
+
+<div class="controls">
+  <input class="search" type="text" id="search" placeholder="Zoek op titel, trefwoord, voorbeeldvraag, tag…">
+  <div class="filter-row">
+    <span class="filter-label">Niveau</span>
+    <div id="type-filters" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Status</span>
+    <div id="status-filters" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">Tag</span>
+    <div id="tag-filters" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+  </div>
+</div>
+
+<main>
+  <div class="count" id="count"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-exp-badge">Experimenteel voorbeeld</span>
+        <div class="modal-titel" id="modal-titel"></div>
+        <div class="modal-vraag" id="modal-vraag"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-datasets" id="modal-datasets"></div>
+    <div class="modal-plot" id="modal-plot"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const TYPE_LABEL = { PO: 'PO', MBO: 'MBO', HBO: 'HBO', WO: 'WO', Allen: 'Alle niveaus' };
+const TYPE_CLASS = { PO: 'badge-po', MBO: 'badge-mbo', HBO: 'badge-ho', WO: 'badge-ho', Allen: 'badge-allen' };
+
+let data = [];
+let voorbeelden = [];
+let voorbeeldenByDataset = {};   // cbs_id → [voorbeeld, ...]
+let activeTypes = new Set();
+let activeTags = new Set();
+let activeStatus = new Set();
+let query = '';
+
+async function init() {
+  const [dataRes, vbRes] = await Promise.all([
+    fetch('data.json'),
+    fetch('voorbeelden.json').catch(() => null)
+  ]);
+  data = await dataRes.json();
+  if (vbRes?.ok) {
+    voorbeelden = await vbRes.json();
+    voorbeelden.forEach(vb => {
+      vb.datasets.forEach(id => {
+        if (!voorbeeldenByDataset[id]) voorbeeldenByDataset[id] = [];
+        voorbeeldenByDataset[id].push(vb);
+      });
+    });
+  }
+  buildFilters();
+  render();
+}
+
+function buildFilters() {
+  const types = [...new Set(data.flatMap(d => d.onderwijstype))].sort();
+  const typeRow = document.getElementById('type-filters');
+  types.forEach(t => {
+    typeRow.appendChild(chip(TYPE_LABEL[t] || t, () => toggle(activeTypes, t, btn)));
+    const btn = typeRow.lastChild;
+  });
+  // redo cleanly
+  typeRow.innerHTML = '';
+  types.forEach(t => {
+    const btn = chip(TYPE_LABEL[t] || t, () => toggle(activeTypes, t, btn));
+    typeRow.appendChild(btn);
+  });
+
+  const statusRow = document.getElementById('status-filters');
+  [['actueel', 'Actueel'], ['historisch', 'Historisch (archief)'], ['scope', 'Alleen mbo/hbo/wo']].forEach(([v, label]) => {
+    const btn = chip(label, () => toggle(activeStatus, v, btn));
+    statusRow.appendChild(btn);
+  });
+
+  const tagCount = {};
+  data.forEach(d => (d.tags || []).forEach(t => tagCount[t] = (tagCount[t] || 0) + 1));
+  const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 20).map(e => e[0]);
+  const tagRow = document.getElementById('tag-filters');
+  topTags.forEach(t => {
+    const btn = chip(t, () => toggle(activeTags, t, btn), t);
+    tagRow.appendChild(btn);
+  });
+}
+
+function chip(label, onClick, dataValue) {
+  const btn = document.createElement('button');
+  btn.className = 'chip';
+  btn.textContent = label;
+  if (dataValue) btn.dataset.value = dataValue;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+function toggle(set, value, btn) {
+  if (set.has(value)) { set.delete(value); btn.classList.remove('active'); }
+  else { set.add(value); btn.classList.add('active'); }
+  render();
+}
+
+window.addTagFilter = function(tag) {
+  if (activeTags.has(tag)) return;
+  activeTags.add(tag);
+  const btn = document.querySelector(`#tag-filters [data-value="${tag}"]`);
+  if (btn) btn.classList.add('active');
+  render();
+};
+
+const SCOPE_TYPES = ['MBO', 'HBO', 'WO'];
+const isHistorisch = d => !!d._archief;
+const isScope = d => d.onderwijstype.length > 0 && d.onderwijstype.every(t => SCOPE_TYPES.includes(t));
+
+function matches(d) {
+  if (activeStatus.has('actueel') && !activeStatus.has('historisch') && isHistorisch(d)) return false;
+  if (activeStatus.has('historisch') && !activeStatus.has('actueel') && !isHistorisch(d)) return false;
+  if (activeStatus.has('scope') && !isScope(d)) return false;
+  if (activeTypes.size && !d.onderwijstype.some(t => activeTypes.has(t))) return false;
+  if (activeTags.size && ![...activeTags].every(t => (d.tags || []).includes(t))) return false;
+  if (query) {
+    const q = query.toLowerCase();
+    const hay = [isHistorisch(d) ? 'historisch archief gearchiveerd' : 'actueel', d.bron, d.doel, ...(d.tags||[]), ...(d.voorbeeldvragen||[]), d._thema, d._cbs_id].join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+function render() {
+  const filtered = data.filter(matches);
+  document.getElementById('count').textContent = `${filtered.length} van ${data.length} datasets`;
+  const grid = document.getElementById('grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">Geen datasets gevonden voor deze zoekopdracht.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(d => {
+    const badges = d.onderwijstype.map(t =>
+      `<span class="badge ${TYPE_CLASS[t]||'badge-allen'}">${TYPE_LABEL[t]||t}</span>`
+    ).join('') + (isHistorisch(d) ? '<span class="badge badge-historisch" title="Tabel wordt niet meer bijgewerkt; gebruik niet voor actuele cijfers">Historisch</span>' : '');
+    const tags = (d.tags||[]).map(t =>
+      `<span class="tag" onclick="addTagFilter('${t}')">${t}</span>`
+    ).join('');
+    const vragen = d.voorbeeldvragen?.length ? `
+      <details class="card-vragen">
+        <summary>▸ ${d.voorbeeldvragen.length} voorbeeldvragen</summary>
+        <ol>${d.voorbeeldvragen.map(v => `<li>${v}</li>`).join('')}</ol>
+      </details>` : '';
+
+    const vbs = voorbeeldenByDataset[d._cbs_id] || [];
+    const vbBtns = vbs.map(vb =>
+      `<button class="voorbeeld-btn" onclick="openModal('${vb.id}')">▶ Voorbeeld</button>`
+    ).join('');
+
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div class="card-title">${d.bron}</div>
+          <div class="card-periode">${d.periode}</div>
+        </div>
+        <div class="badges">${badges}</div>
+        <div class="card-doel">${d.doel}</div>
+        ${vragen}
+        ${vbBtns ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">${vbBtns}</div>` : ''}
+        <div class="card-tags">${tags}</div>
+        <div class="card-footer">
+          <span class="card-meta">${d.frequentie} · ${d._cbs_id}${d._laatste_update ? ' · bron bijgewerkt ' + d._laatste_update : ''}</span>
+          <a class="card-link" href="${d.documentatie.url}" target="_blank" rel="noopener">CBS Open Data →</a>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+
+window.openModal = async function(id) {
+  const vb = voorbeelden.find(v => v.id === id);
+  if (!vb) return;
+
+  document.getElementById('modal-titel').textContent = vb.titel;
+  document.getElementById('modal-vraag').textContent = vb.vraag;
+
+  // Dataset chips
+  const dsContainer = document.getElementById('modal-datasets');
+  dsContainer.innerHTML = '<span style="margin-right:0.25rem">Datasets:</span>' +
+    vb.datasets.map(id => `<span class="modal-ds-chip">${id}</span>`).join('');
+
+  // Plot
+  document.getElementById('modal-plot').innerHTML =
+    `<img src="voorbeelden/${vb.plot}" alt="${vb.titel}" loading="lazy">`;
+
+  // Interpretatie
+  const body = document.getElementById('modal-body');
+  if (vb.interpretatie) {
+    body.innerHTML = '<div class="modal-interpretatie"><em style="font-size:0.8rem;color:#9ca3af">Interpretatie laden…</em></div>';
+    try {
+      const res = await fetch(`voorbeelden/${vb.interpretatie}`);
+      const md = await res.text();
+      body.innerHTML = `<div class="modal-interpretatie md">${renderMd(md)}</div>`;
+    } catch {
+      body.innerHTML = '<div class="modal-interpretatie-placeholder">Interpretatie niet beschikbaar.</div>';
+    }
+  } else {
+    body.innerHTML = '<div class="modal-interpretatie-placeholder">Geen interpretatie beschikbaar voor dit voorbeeld.</div>';
+  }
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeModal = function() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+};
+
+window.closeModalOnOverlay = function(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+};
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Mini markdown renderer ─────────────────────────────────────────────────
+
+function renderMd(md) {
+  const lines = md.split('\n');
+  let html = '';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Headings
+    if (line.startsWith('### ')) { html += `<h3>${inline(line.slice(4))}</h3>`; i++; continue; }
+    if (line.startsWith('## '))  { html += `<h2>${inline(line.slice(3))}</h2>`; i++; continue; }
+    if (line.startsWith('# '))   { html += `<h1>${inline(line.slice(2))}</h1>`; i++; continue; }
+
+    // HR
+    if (/^---+$/.test(line.trim())) { html += '<hr>'; i++; continue; }
+
+    // Table
+    if (line.startsWith('|')) {
+      const rows = [];
+      while (i < lines.length && lines[i].startsWith('|')) {
+        rows.push(lines[i]);
+        i++;
+      }
+      html += renderTable(rows);
+      continue;
+    }
+
+    // List
+    if (/^[-*] /.test(line)) {
+      html += '<ul>';
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        html += `<li>${inline(lines[i].slice(2))}</li>`;
+        i++;
+      }
+      html += '</ul>';
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\. /.test(line)) {
+      html += '<ol>';
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        html += `<li>${inline(lines[i].replace(/^\d+\. /, ''))}</li>`;
+        i++;
+      }
+      html += '</ol>';
+      continue;
+    }
+
+    // Blank line
+    if (line.trim() === '') { i++; continue; }
+
+    // Paragraph
+    html += `<p>${inline(line)}</p>`;
+    i++;
+  }
+  return html;
+}
+
+function renderTable(rows) {
+  const isSeperator = r => /^\|[-| :]+\|$/.test(r.replace(/ /g, ''));
+  let html = '<table>';
+  let headerDone = false;
+  for (const row of rows) {
+    if (isSeperator(row)) { html += '</thead><tbody>'; headerDone = true; continue; }
+    const cells = row.split('|').slice(1, -1).map(c => c.trim());
+    if (!headerDone) {
+      html += '<thead><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr>';
+    } else {
+      html += '<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>';
+    }
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function inline(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+
+document.getElementById('search').addEventListener('input', e => {
+  query = e.target.value.trim();
+  render();
+});
+
+init();
+</script>
+</body>
+</html>
