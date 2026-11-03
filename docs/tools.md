@@ -438,6 +438,29 @@ De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit D
 
 ---
 
+## get_collegegeld
+
+Het wettelijk collegegeld van één studiejaar, uit artikel 9 van de Regeling financiën hoger onderwijs (BWBR0024005;
+#729, `tools/collegegeld.py`).
+- **Route:** geen bronaanroep. De bedragen staan in een vaste tabel in de code, per studiejaar met de versie van de
+  regeling waarin ze zijn nagelezen en de dag van dat nalezen (zie [Databronnen](databronnen.md)). Het model kiest
+  alleen het studiejaar; zonder studiejaar is het het lopende (vanaf 1 september het nieuwe).
+- **Resultaat:** precies één bedragenpaar: `voltijd.bedrag_euro` (volledig wettelijk collegegeld) en
+  `deeltijd_en_duaal` met `minimum_euro` en `maximum_euro` (gedeeltelijk wettelijk collegegeld; de instelling kiest
+  het bedrag ertussen), elk met zijn betekenis en wetsartikel. Verder `geen_open_bron` en de bron.
+  - Een `noot` volgt bij een vastgestelde wijziging die nog niet geldt, en bij 2023/2024 (verlaagd collegegeld voor
+    eerstejaars, niet in de tabel).
+- **Geen bedrag:** voor een studiejaar dat niet in de tabel staat, en voor iets wat geen studiejaar is. Het
+  instellingscollegegeld is geen open data: de tool zegt dat in elk antwoord, ook als de vraag erover gaat.
+- **Bronregel:** "wetten.nl · Regeling financiën hoger onderwijs (BWBR0024005), artikel 9, versie van …, opgehaald
+  op …" onder het antwoord, met een link naar dat artikel in die versie.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `studiejaar` | integer, optioneel | Startjaar van het studiejaar, bijv. `2026` voor 2026/2027 |
+
+---
+
 ## get_uwv_vacatures
 
 Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een

@@ -91,6 +91,13 @@ Loop eens per jaar [Operatie](operatie.md), [Deployment](deployment.md), `manife
 [Test Environment](test-environment.md) na tegen de manifests en het cluster (replica's, resources, ingress, ladder).
 Ze liepen eerder een jaar achter (#679).
 
+Rond 1 september: lees de tabel met het wettelijk collegegeld (`tools/collegegeld.py`, #729) na tegen artikel 9 van
+de [Regeling financiën hoger onderwijs](https://wetten.overheid.nl/BWBR0024005), in de geldende versie en in een
+aangekondigde wijziging (`https://wetten.overheid.nl/BWBR0024005/<datum>`). Voeg het nieuwe studiejaar toe met zijn
+versie en ophaaldatum, zet de ophaaldatum van de nagelezen jaren bij, en werk de tabel in
+[Databronnen](databronnen.md) en `tests/test_collegegeld.py` mee bij. Neem alleen bedragen op die in de wettekst
+staan. `bron:ping` wordt rood zodra het lopende studiejaar ontbreekt.
+
 ## Nooit
 
 - Playground niet terugzetten op een range: dan volgt het weer elke main-build.

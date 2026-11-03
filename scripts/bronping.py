@@ -4,7 +4,7 @@ Bron-ping: één aanroep per bron door de toollaag van de chat, zonder LLM (#627
 
 Gebruik:
     uv run python scripts/bronping.py                # elke bron één keer; exitcode 1 zodra één bron niet antwoordt
-    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart
+    uv run python scripts/bronping.py --alleen rio   # komma-gescheiden: cbs, duo, rio, inspectie, kaart, collegegeld
     uv run python scripts/bronping.py --sweep --rapport bronping-sweep.json
                                                      # plus de sweep over elke CBS-, DUO- en RIO-dataset (#869)
 
@@ -14,6 +14,10 @@ komt zo bij de beheerder binnen in plaats van via een gebruiker: pytest mockt de
 toetst er geen. Dezelfde code als de chat (tools.cbs, tools.duo, tools.rio_instelling en de GeoJSON van
 de kaart), met de selecties van de ijkwaarden (tests/ijkwaarden/harnas.py). Waarden vergelijkt dit niet:
 dat doet scripts/ijkwaarden.py.
+
+De tabel met het wettelijk collegegeld (tools/collegegeld.py, #729) haalt de chat niet bij een bron op: haar ping
+vraagt het lopende studiejaar door de tool en wordt rood zodra dat er niet in staat. Zo komt rond 1 september de
+jaarlijkse controle tegen de wettekst (docs/promoten.md, "Jaarlijks") vanzelf binnen.
 
 Met --sweep volgt een goedkope controle van elke dataset die de chat kan opvragen (scripts/bronsweep.py, #869): een
 afwijking daar is een waarschuwing in de log en het rapport, de exitcode blijft die van de pings.
@@ -34,7 +38,7 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import bronsweep
 from tests.ijkwaarden import harnas
-from tools import cbs, duo, fouten, inspectie, mbo_indicatoren, plot, rio_instelling
+from tools import cbs, collegegeld, duo, fouten, inspectie, mbo_indicatoren, plot, rio_instelling
 
 _MAX_DETAIL = 200
 _PROVINCIES = 12
@@ -118,6 +122,10 @@ def _mbo_indicatoren_bewijs(uitkomst: dict) -> str | None:
     return None if n >= _MIN_MBO_INSTELLINGEN else f"{n} instellingen, minstens {_MIN_MBO_INSTELLINGEN} verwacht"
 
 
+def _collegegeld_bewijs(uitkomst: dict) -> str | None:
+    return None if "voltijd" in uitkomst else "geen bedrag voor het lopende studiejaar"
+
+
 def _kaart_bewijs(uitkomst: dict) -> str | None:
     n = len(uitkomst.get("features") or [])
     return None if n >= _PROVINCIES else f"{n} vormen in de provincie-GeoJSON, minstens {_PROVINCIES} verwacht"
@@ -146,6 +154,13 @@ PINGS: tuple[Ping, ...] = (
         "nieuwste editie indicatoren per mbo-instelling (xlsx)",
         _mbo_indicatoren,
         _mbo_indicatoren_bewijs,
+    ),
+    Ping(
+        "collegegeld-tabel",
+        "collegegeld",
+        "wettelijk collegegeld van het lopende studiejaar in de tabel (get_collegegeld)",
+        collegegeld.get_collegegeld,
+        _collegegeld_bewijs,
     ),
     Ping(
         "kaart-provincies",
@@ -196,7 +211,9 @@ def _regel(u: Uitslag) -> str:
 def _argumenten(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Eén aanroep per bron door de toollaag van de chat (#627).")
     parser.add_argument(
-        "--alleen", default="", help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart (standaard alle)"
+        "--alleen",
+        default="",
+        help="komma-gescheiden bronnen: cbs, duo, rio, inspectie, kaart, collegegeld (standaard alle)",
     )
     parser.add_argument("--sweep", action="store_true", help="controleer ook elke CBS-, DUO- en RIO-dataset (#869)")
     parser.add_argument("--rapport", type=Path, help="schrijf de bevindingen van de sweep als JSON naar dit pad")
