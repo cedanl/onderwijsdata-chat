@@ -1,12 +1,20 @@
 """noemt_ho: gaat een vraag aantoonbaar over hoger onderwijs? (#556, epic #554). noemt_vo_doorstroom: over doorstroom
-uit het vo naar vervolgonderwijs (#877)? vo_context_poort: op welke vraag (#597)."""
+uit het vo naar vervolgonderwijs (#877)? vo_context_poort: op welke vraag (#597). vo_deel_poort: laadt een bron over meer
+onderwijssoorten haar vo-deel (#879, #880)?"""
 
 import ast
 from pathlib import Path
 
 import pytest
 
-from tools.ho_markers import beurtvraag, noemt_ho, noemt_vo_doorstroom, opent_vo_context, vo_context_poort
+from tools.ho_markers import (
+    beurtvraag,
+    noemt_ho,
+    noemt_vo_doorstroom,
+    opent_vo_context,
+    vo_context_poort,
+    vo_deel_poort,
+)
 
 _MODULE = Path(__file__).resolve().parent.parent / "tools" / "ho_markers.py"
 
@@ -167,6 +175,40 @@ def test_de_poort_volgt_de_doorstroomvraag_van_de_beurt():
         assert vo_context_poort("havo diploma") is True
     with beurtvraag("En voor het vwo?"):  # een vervolgvraag zonder doorstroomwoord blijft dicht (#597)
         assert vo_context_poort("doorstroom vwo") is False
+
+
+# Het vo-deel van een bron over meer onderwijssoorten (#879, #880): de vo-context open én het vo zelf genoemd.
+_VO_DEEL_OPEN = {
+    "Hoeveel vo-leerlingen worden voortijdig schoolverlater en hoeveel daarvan in het mbo?",
+    "Hoeveel havisten en vwo'ers in Utrecht stromen door naar het hbo?",
+    "Welke vavo-opleidingen bieden roc's in Utrecht aan?",
+    "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?",
+    "Hoeveel vmbo-leerlingen stromen door naar het mbo?",
+}
+_VO_DEEL_DICHT = {
+    "Hoeveel hbo-studenten wonen er in Utrecht?",  # opent de zoekpoort, maar noemt geen vo-niveau
+    "Hoeveel eerstejaars heeft de universiteit?",
+    "Hoeveel mbo-studenten verlaten voortijdig de school?",
+    "Hoeveel leerlingen zitten er op het vwo in Utrecht?",  # een losse vo-vraag
+    "Hoeveel leerlingen gaan van de basisschool via het vwo naar de universiteit?",  # po erbij
+}
+
+
+@pytest.mark.parametrize("vraag", sorted(_VO_DEEL_OPEN))
+def test_een_doorstroomvraag_die_het_vo_noemt_opent_het_vo_deel(vraag):
+    with beurtvraag(vraag):
+        assert vo_deel_poort() is True
+
+
+@pytest.mark.parametrize("vraag", sorted(_VO_DEEL_DICHT))
+def test_zonder_vo_niveau_of_zonder_doorstroom_blijft_het_vo_deel_dicht(vraag):
+    with beurtvraag(vraag):
+        assert vo_deel_poort() is False
+
+
+def test_buiten_een_beurt_blijft_het_vo_deel_dicht():
+    """MCP en evals: geen vraag, dus geen vo-deel; een herlaadrecept geeft het zelf mee."""
+    assert vo_deel_poort() is False
 
 
 def test_module_kent_alleen_strings():

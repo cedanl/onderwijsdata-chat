@@ -22,6 +22,11 @@ vastlegt (`SECTORFILTER`); die toets doet `sectorfilter_ontbreekt` vóór elke a
 Een CBS-tabel die ook over andere onderwijssoorten gaat, krijgt de selectie op mbo, hbo of wo
 van de code zelf (`CBS_SECTORFILTER`): in de aanroep en nog eens op de ontvangen rijen
 (`cbs_sectorselectie`).
+
+Bij een doorstroomvraag uit het vo (`ho_markers.vo_deel_poort`, #879, #880) laten beide ook hun vo-deel toe: de
+vo-codes van een CBS-tabel (`CbsSectorfilter.vo_codes`) en de vo- en vavo-typen van een RIO-register
+(`SECTORFILTER_VO_CONTEXT`). De aanroeper geeft de poort mee; de lading houdt haar vast (`KeyMeta.vo_context`), en
+elke bronregel van die lading noemt het vo-deel als vo-context voor vervolgonderwijs (`bronetiket`).
 """
 
 import re
@@ -89,6 +94,35 @@ SECTORFILTER: dict[str, tuple[str, frozenset[str]]] = {
         frozenset({"HOONDERWIJSLICENTIE", "MBOONDERWIJSLICENTIE", "EXAMENLICENTIE"}),
     ),
 }
+# Per register de vo- en vavo-typen op hetzelfde filter (#880): alleen toegelaten als de poort open is
+# (`sectorfilter_ontbreekt(..., vo_context=True)`), en een pagina ervan draagt het etiket van de vo-context.
+# Uit het riodata-contract (filter `type`, gemeten 03-11-2026); test_scopeprofiel toetst de namen. Po en (v)so blijven
+# dicht, net als de registers zonder typefilter.
+SECTORFILTER_VO_CONTEXT: dict[str, frozenset[str]] = {
+    "aangeboden-opleidingen": frozenset({"AANGEBODENVOOPLEIDING", "AANGEBODENVAVOOPLEIDING"}),
+    "opleidingen": frozenset(
+        {
+            "VOOPLEIDING",
+            "VOOPLEIDINGSFASE",
+            "VOGROEP",
+            "VOVAK",
+            "VOSTAGE",
+            "VAVOOPLEIDING",
+            "VAVOOPLEIDINGSFASE",
+            "VAVOGROEP",
+        }
+    ),
+    "opleidingserkenningen": frozenset(
+        {
+            "VOOPLEIDINGSERKENNING",
+            "VOGROEPSERKENNING",
+            "VOVAKERKENNING",
+            "VAVOOPLEIDINGSERKENNING",
+            "VAVOGROEPSERKENNING",
+        }
+    ),
+    "onderwijslicenties": frozenset({"VOONDERWIJSLICENTIE", "VAVOONDERWIJSLICENTIE"}),
+}
 
 
 @dataclass(frozen=True)
@@ -97,18 +131,32 @@ class CbsSectorfilter:
 
     `deel` zegt in woorden welk deel dat is ('mbo'; 'mbo, hbo en wo'): elke bronregel en
     melding noemt het, zodat een antwoord de tabel niet breder voorstelt dan wat geladen is.
+    `vo_codes` zijn de vo- en vavo-rijen, alleen bij een doorstroomvraag uit het vo (#879); geen totaal over
+    vo en mbo samen, en geen po of (v)so.
     """
 
     dimensie: str
     codes: frozenset[str]
     deel: str
+    vo_codes: frozenset[str] = frozenset()
 
-    def geen_rijen(self, dataset_id: str) -> str:
+    def toegelaten(self, vo_context: bool) -> frozenset[str]:
+        """De codes die de chat laadt: met de vo-codes alleen als de poort open is."""
+        return self.codes | self.vo_codes if vo_context else self.codes
+
+    def deel_voor(self, vo_context: bool) -> str:
+        """Het deel in woorden: 'mbo', of met het vo erbij 'mbo en vo (vo-context voor vervolgonderwijs)'."""
+        if not (vo_context and self.vo_codes):
+            return self.deel
+        return f"{self.deel.replace(' en ', ', ')} en vo ({VO_CONTEXT_DEEL})"
+
+    def geen_rijen(self, dataset_id: str, vo_context: bool) -> str:
         """De melding als de selectie geen rijen in het profiel bevat."""
+        deel = self.deel_voor(vo_context)
         return (
             f"Dataset '{dataset_id}' gaat ook over andere onderwijssoorten; de chat laadt alleen de rijen voor "
-            f"{self.deel}, en deze selectie bevat er geen. Filter in $filter op {self.dimensie} met een code "
-            f"voor {self.deel}: {sorted(self.codes)}."
+            f"{deel}, en deze selectie bevat er geen. Filter in $filter op {self.dimensie} met een code "
+            f"voor {deel}: {sorted(self.toegelaten(vo_context))}."
         )
 
 
@@ -118,7 +166,8 @@ class CbsSectorfilter:
 # verbreden (CH-03). De CBS-feed gebruikt bij twee clausules op dezelfde dimensie alleen
 # de eerste: op "(vo-code) and (mbo-codes)" kwamen de vo-rijen. De sectorselectie staat
 # daarom vooraan. Het filter van het model komt erachter zonder haakjes: zie _als_term.
-# Codes uit de dimensie zelf.
+# Codes uit de dimensie zelf; de vo-codes opnieuw gecontroleerd op 03-11-2026 (#879), zonder de totalen over vo en mbo
+# samen ('Totaal onderwijs') en zonder po en (v)so.
 _VSV_MBO = frozenset({"T001336", "A041868", "A025293", "A041773"})  # mbo totaal, bol, bbl, extranei
 CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
     # Voortijdig schoolverlaten (VSV): mbo en vo.
@@ -154,9 +203,22 @@ CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
             }
         ),
         "mbo",
+        frozenset(
+            {
+                "A042781",  # Totaal vmbo/havo/vwo
+                "A028733",  # leerjaar 1 en 2
+                "A042824",
+                "A049228",  # vmbo 3-4 zonder, met diploma
+                "A042798",  # havo 3-5/vwo 3-6
+                "A025300",  # Totaal vavo
+                "A043030",
+                "A043031",  # vavo vmbo-t zonder, met diploma
+                "A043038",  # vavo havo/vwo
+            }
+        ),
     ),
-    # Dezelfde VSV, naar leeftijd; de dimensie kent alleen totalen: mbo is A025290 (vo is A042781, vavo A025300).
-    "85367NED": CbsSectorfilter("Onderwijssoort", frozenset({"A025290"}), "mbo"),
+    # Dezelfde VSV, naar leeftijd; de dimensie kent alleen totalen: mbo is A025290, vo A042781 en vavo A025300.
+    "85367NED": CbsSectorfilter("Onderwijssoort", frozenset({"A025290"}), "mbo", frozenset({"A042781", "A025300"})),
     "85859NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
     "85860NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
     "85861NED": CbsSectorfilter("Onderwijssoort", _VSV_MBO, "mbo"),
@@ -179,6 +241,21 @@ CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
             }
         ),
         "mbo, hbo en wo",
+        frozenset(
+            {
+                "T001345",  # Totaal voortgezet onderwijs
+                "A041919",  # vo algemene leerjaren 1-3
+                "A041920",
+                "A041921",  # vwo 3-6, havo 3-5
+                "A041922",
+                "A041923",  # vmbo-g/t, vmbo-b/k 3-4
+                "A025289",  # praktijkonderwijs
+                "A025300",  # Totaal vavo
+                "A043035",
+                "A043032",
+                "A043029",  # vavo vwo, havo, vmbo-t
+            }
+        ),
     ),
     "85702NED": CbsSectorfilter(
         "Onderwijssoort",
@@ -197,6 +274,20 @@ CBS_SECTORFILTER: dict[str, CbsSectorfilter] = {
             }
         ),
         "mbo, hbo en wo",
+        frozenset(
+            {
+                "T001345",  # Totaal voortgezet onderwijs
+                "A025284",
+                "A025285",  # vwo, havo
+                "A025288",
+                "A042836",
+                "A042842",  # vmbo g/t, -k, -b
+                "A025300",  # Totaal vavo
+                "A043035",
+                "A043032",
+                "A043029",  # vavo vwo, havo, vmbo-t
+            }
+        ),
     ),
 }
 
@@ -213,6 +304,7 @@ TOEGELATEN: dict[str, str] = {
     # CBS-tabellen over meer onderwijssoorten: alleen met de codes uit CBS_SECTORFILTER.
     **{
         tabel: f"CBS-tabel over meer onderwijssoorten; get_cbs_data selecteert alleen {filter_.deel}"
+        + (", bij een doorstroomvraag uit het vo ook het vo" if filter_.vo_codes else "")
         for tabel, filter_ in CBS_SECTORFILTER.items()
     },
     # RIO-registers over alle sectoren: alleen met een sectorfilter (SECTORFILTER).
@@ -295,17 +387,27 @@ def in_scope(entry: dict) -> bool:
     return bool(typen) and typen <= SECTOREN
 
 
-def sectorfilter_ontbreekt(resource: str, filters: dict) -> str | None:
-    """Waarom een RIO-aanroep de sector niet vastlegt; None als het filter goed staat."""
+def sectorfilter_ontbreekt(resource: str, filters: dict, *, vo_context: bool) -> str | None:
+    """Waarom een RIO-aanroep de sector niet vastlegt; None als het filter goed staat.
+
+    `vo_context` is de poort van de beurt (`ho_markers.vo_deel_poort`) of het recept van de lading: alleen dan mag het
+    filter ook een vo- of vavo-type zijn (#880)."""
     if resource not in SECTORFILTER:
         return None
     naam, waarden = SECTORFILTER[resource]
-    if filters.get(naam) in waarden:
+    vo_waarden = SECTORFILTER_VO_CONTEXT[resource] if vo_context else frozenset()
+    if filters.get(naam) in waarden | vo_waarden:
         return None
+    vo = f", of als vo-context voor vervolgonderwijs op een vo-waarde: {sorted(vo_waarden)}" if vo_waarden else ""
     return (
         f"RIO-register '{resource}' bevat alle onderwijssectoren; de chat haalt het alleen op met "
-        f"filter '{naam}' op een mbo/hbo/wo-waarde: {sorted(waarden)}."
+        f"filter '{naam}' op een mbo/hbo/wo-waarde: {sorted(waarden)}{vo}."
     )
+
+
+def rio_vo_context(resource: str, filters: dict) -> bool:
+    """Haalt deze RIO-aanroep een vo- of vavo-type op (#880)? Dan draagt de lading het etiket van de vo-context."""
+    return resource in SECTORFILTER and filters.get(SECTORFILTER[resource][0]) in SECTORFILTER_VO_CONTEXT[resource]
 
 
 @dataclass(frozen=True)
@@ -316,6 +418,7 @@ class CbsSectorselectie:
     dimensie: str
     codes: frozenset[str]
     deel: str
+    vo_context: bool  # de selectie bevat vo-codes: de lading is (deels) vo-context (#879)
 
     def rijen(self, rows: list[dict]) -> list[dict]:
         """Alleen de rijen met een toegelaten code: de feed is geen grens op zichzelf."""
@@ -341,48 +444,54 @@ def _als_term(eigen: str) -> str:
     return eigen
 
 
-def cbs_sectorselectie(dataset_id: str, params: dict) -> CbsSectorselectie | str | None:
+def cbs_sectorselectie(dataset_id: str, params: dict, *, vo_context: bool) -> CbsSectorselectie | str | None:
     """De params met de sectorselectie vooraan in $filter; None voor een andere tabel.
 
     Noemt het filter van het model zelf codes van de sectordimensie, dan is de selectie de
     doorsnede met de toegelaten codes. Een lege doorsnede, of de dimensie in een andere vorm
-    dan `eq`, geeft een melding in plaats van een aanroep (CH-03).
+    dan `eq`, geeft een melding in plaats van een aanroep (CH-03). `vo_context` is de poort (#879): alleen dan horen
+    de vo-codes bij de toegelaten codes, ook in de meldingen, zodat een herstelpoging ze verder niet leert kennen.
     """
     if dataset_id not in CBS_SECTORFILTER:
         return None
     filter_ = CBS_SECTORFILTER[dataset_id]
     dimensie = filter_.dimensie
+    toegelaten = filter_.toegelaten(vo_context)
     eigen = str(params.get("$filter") or "").strip()
     # `Dim eq 'code'` uit een bewaard recept, of `trim(Dim) eq 'code'` zoals de compiler schrijft (#531).
     genoemd = re.findall(rf"(?:\btrim\({dimensie}\)|\b{dimensie})\s+eq\s+'([^']*)'", eigen)
     if len(re.findall(rf"\b{dimensie}\b", eigen)) != len(genoemd):
         return (
             f"Filter in $filter op {dimensie} alleen met '{dimensie} eq <code>' en een code voor "
-            f"{filter_.deel}: {sorted(filter_.codes)}."
+            f"{filter_.deel_voor(vo_context)}: {sorted(toegelaten)}."
         )
-    codes = filter_.codes & {c.strip() for c in genoemd} if genoemd else filter_.codes
+    codes = toegelaten & {c.strip() for c in genoemd} if genoemd else toegelaten
     if not codes:
-        return filter_.geen_rijen(dataset_id)
+        return filter_.geen_rijen(dataset_id, vo_context)
     sector = " or ".join(f"{dimensie} eq '{c}'" for c in sorted(codes))
     nieuw = {**params, "$filter": f"({sector}) and {_als_term(eigen)}" if eigen else sector}
     if "$select" in nieuw and dimensie not in (k.strip() for k in str(nieuw["$select"]).split(",")):
         nieuw["$select"] = f"{nieuw['$select']},{dimensie}"
-    return CbsSectorselectie(nieuw, dimensie, codes, filter_.deel)
+    vo = bool(codes & filter_.vo_codes)
+    return CbsSectorselectie(nieuw, dimensie, codes, filter_.deel_voor(vo), vo)
 
 
-def cbs_sectordeel(dataset_id: str) -> str | None:
+def cbs_sectordeel(dataset_id: str, vo_context: bool = False) -> str | None:
     """Welk deel van een CBS-tabel uit CBS_SECTORFILTER de chat laadt; None voor een andere tabel.
 
     `cbs_sectorselectie` en de snippet laden zo'n tabel altijd zonder de rijen buiten het
-    profiel, dus de bron van die data is dat deel, niet de hele tabel (CH-45)."""
+    profiel, dus de bron van die data is dat deel, niet de hele tabel (CH-45). `vo_context` komt van de lading
+    (`KeyMeta.vo_context`, #879): zonder lading is het deel dat van een lading zonder vo-rijen."""
     filter_ = CBS_SECTORFILTER.get(dataset_id)
-    return f"alleen {filter_.deel}" if filter_ else None
+    return f"alleen {filter_.deel_voor(vo_context)}" if filter_ else None
 
 
-def bronetiket(dataset_id: str) -> str | None:
+def bronetiket(dataset_id: str, vo_context: bool = False) -> str | None:
     """Wat een bronregel achter de titel zet: het geladen deel (`alleen mbo`) of `vo-context voor vervolgonderwijs`;
-    anders None."""
-    return cbs_sectordeel(dataset_id) or (VO_CONTEXT_DEEL if is_vo_context(dataset_id) else None)
+    anders None. `vo_context` is die van de lading (#879, #880): een RIO-pagina met een vo-type draagt het etiket ook."""
+    return cbs_sectordeel(dataset_id, vo_context) or (
+        VO_CONTEXT_DEEL if vo_context or is_vo_context(dataset_id) else None
+    )
 
 
 def buiten_scope(bron: str, *, register: bool = False) -> dict:

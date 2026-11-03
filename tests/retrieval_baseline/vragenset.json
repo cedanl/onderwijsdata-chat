@@ -376,6 +376,18 @@
       "toelichting": "Vavo (#877): vavo en vervolgopleiding openen de zoekpoort. 85329NED: 'Vavo-studenten; onderwijssoort, geslacht, leeftijd', tags vavo en tweede-kans; scopeprofiel.VO_CONTEXT."
     },
     {
+      "id": "mbo-32",
+      "sector": "mbo",
+      "reeks": "ontwikkel",
+      "vraag": "Welke vavo-opleidingen bieden roc's in Utrecht aan?",
+      "zoekinput": "vavo opleidingsaanbod",
+      "geaccepteerd": ["aangeboden-opleidingen"],
+      "beantwoordbaar": true,
+      "verboden": [],
+      "kritiek": false,
+      "toelichting": "Vavo-aanbod van een roc (#880): vavo en roc openen het vo-deel (ho_markers.vo_deel_poort). aangeboden-opleidingen: 'Concreet opleidingsaanbod per instelling en locatie, met startdata en type'; het filter type kent AANGEBODENVAVOOPLEIDING (scopeprofiel.SECTORFILTER_VO_CONTEXT). 85329NED telt vavo-deelnemers, maar kent het aanbod niet."
+    },
+    {
       "id": "hbo-01",
       "sector": "hbo",
       "reeks": "ontwikkel",

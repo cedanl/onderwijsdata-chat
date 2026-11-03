@@ -436,7 +436,7 @@ def _sectorfilter(eigen: str) -> str:
     """Het $filter dat de sectorselectie van 85701NED om `eigen` bouwt."""
     from tools.scopeprofiel import CbsSectorselectie, cbs_sectorselectie
 
-    selectie = cbs_sectorselectie("85701NED", {"$filter": eigen})
+    selectie = cbs_sectorselectie("85701NED", {"$filter": eigen}, vo_context=False)
     assert isinstance(selectie, CbsSectorselectie)
     return selectie.params["$filter"]
 
@@ -1227,3 +1227,293 @@ def test_sectorfilters_bestaan_in_het_riodata_contract():
         assert res.get("lijst_endpoint", True), resource
         (filter_,) = [f for f in res["filters"] if f["naam"] == naam]
         assert waarden <= set(filter_["enum"]), resource
+
+
+# ── Het vo-deel van een bron over meer onderwijssoorten bij een doorstroomvraag (#879, #880) ──
+
+_VSV_DOORSTROOM = "Hoeveel vo-leerlingen worden voortijdig schoolverlater en hoeveel daarvan in het mbo?"
+_VSV_MBO = "Hoeveel mbo-studenten verlaten voortijdig de school?"
+_VO_DEEL = "vo-context voor vervolgonderwijs"
+# _VSV_RIJEN met een vavo-rij: het vo-deel van 85368NED is vmbo/havo/vwo en vavo, niet het totaal over vo en mbo.
+_VSV_MET_VAVO = [*_VSV_RIJEN, {"Onderwijssoort": "A025300", "Perioden": "2023SJ00", "VoortijdigSchoolverlaters_1": 700}]
+
+
+def _lading(key: str) -> tuple[bool, dict]:
+    """Van een lading `vo_context` en de argumenten van haar herlaadrecept; een test faalt hier als er geen is."""
+    from tools import store
+
+    known = store.meta(key)
+    assert known is not None and known.laad is not None
+    return known.vo_context, known.laad[1]
+
+
+def _laad_vsv(vraag: str | None, filters: dict | None = None) -> tuple[dict, str]:
+    """get_cbs_data op 85368NED in een beurt met `vraag` (None: buiten een beurt); het resultaat en het $filter."""
+    from contextlib import nullcontext
+
+    with (
+        beurtvraag(vraag) if vraag is not None else nullcontext(),
+        patch("tools.cbs.data", return_value=_VSV_MET_VAVO) as data,
+        patch("tools.cbs.definitions", return_value={}),
+    ):
+        result = json.loads(get_cbs_data("85368NED", filters))
+    return result, data.call_args.kwargs["$filter"]
+
+
+def test_een_doorstroomvraag_laadt_de_vo_rijen_met_een_bronregel_die_het_vo_context_noemt(catalogus):
+    """Acceptatie #879: de vo- en vavo-rijen komen mee, niet het totaal over vo en mbo samen, en elke bronregel
+    (antwoord, Bronnen, citatie, rapportbron, CSV-kop) zegt welk deel geladen is."""
+    from agent.figuurbron import figuurbron
+    from tools import store
+
+    result, aanroep = _laad_vsv(_VSV_DOORSTROOM)
+
+    assert aanroep.startswith("Onderwijssoort eq 'A025290' or ") and "A042781" in aanroep
+    assert "A043837" not in aanroep
+    assert sorted(store.get(result["data_key"])["Onderwijssoort"]) == ["A025290", "A025300", "A042781"]
+    deel = f"{_CBS_VSV['bron']}, alleen mbo en vo ({_VO_DEEL})"
+    grafiek = figuurbron(result["data_key"])
+    assert grafiek is not None
+    regels = [*_bronregels(result, "85368NED", "CBS", "get_cbs_data")[:3], grafiek["tekst"]]
+    assert all(deel in regel for regel in regels), regels
+    assert store.herkomst(result["data_key"])[0] == f"bron: CBS, dataset 85368NED, alleen mbo en vo ({_VO_DEEL})"
+    assert result["context"] == scopeprofiel.VO_CONTEXT_ETIKET  # vo-leerlingen zijn geen studenten
+    assert _lading(result["data_key"])[1]["vo_context"] is True
+
+
+@pytest.mark.parametrize("vraag", [_VSV_MBO, "Hoeveel hbo-studenten stoppen voortijdig?", None])
+def test_zonder_doorstroomvraag_laadt_een_mbo_en_vo_tabel_alleen_de_mbo_rijen(catalogus, vraag):
+    """De lektest (#879): een mbo-vraag, een ho-vraag zonder vo-niveau (die opent wel de zoekpoort) en een aanroep
+    buiten de chat (MCP) laden de mbo-rijen, met de bronregel van vóór #879."""
+    from tools import store
+
+    result, aanroep = _laad_vsv(vraag)
+
+    assert "A042781" not in aanroep and "A025300" not in aanroep
+    assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A025290"]
+    assert result["catalogus_titel"] == f"{_CBS_VSV['bron']}, alleen mbo" and "context" not in result
+    assert "vo_context" not in _lading(result["data_key"])[1]
+
+
+def test_een_eerdere_bronregel_verandert_niet_door_een_latere_beurt(catalogus):
+    """Acceptatie #879: het deel staat per lading in de store, niet per tabel. Dezelfde filters in een mbo-beurt
+    geven een eigen key; de vo-lading houdt haar rijen en haar bronregel."""
+    from agent.selectie import selectie_in_woorden
+    from tools import store
+
+    filters = {"$filter": "Perioden eq '2023SJ00'"}
+    eerst, _ = _laad_vsv(_VSV_DOORSTROOM, filters)
+    regel = selectie_in_woorden(eerst["data_key"]) or ""
+    later, _ = _laad_vsv(_VSV_MBO, filters)
+
+    assert later["data_key"] != eerst["data_key"]
+    assert selectie_in_woorden(eerst["data_key"]) == regel and _VO_DEEL in regel
+    assert _VO_DEEL not in (selectie_in_woorden(later["data_key"]) or "")
+    assert "A042781" in store.get(eerst["data_key"])["Onderwijssoort"].tolist()
+
+
+def test_een_recept_herlaadt_de_vo_lading_in_een_latere_beurt_zonder_doorstroom(catalogus):
+    """Het recept onthoudt de poort (#472): na een herstart, in een beurt met een mbo-vraag, komt dezelfde key terug
+    met dezelfde rijen en hetzelfde deel."""
+    from tools import herlaad, store
+
+    result, _ = _laad_vsv(_VSV_DOORSTROOM)
+    key = result["data_key"]
+    recept = herlaad.recept(key, {"name": "get_cbs_data", "arguments": {"dataset_id": "85368NED"}})
+    store.clear()
+    with (
+        beurtvraag(_VSV_MBO),
+        patch("tools.cbs.data", return_value=_VSV_MET_VAVO),
+        patch("tools.cbs.definitions", return_value={}),
+    ):
+        assert recept is not None and herlaad.herlaad(key, recept).gelukt
+
+    assert sorted(store.get(key)["Onderwijssoort"]) == ["A025290", "A025300", "A042781"]
+    assert _lading(key)[0] is True
+
+
+def test_het_model_opent_de_vo_rijen_niet_zelf(catalogus):
+    """Code beslist over de poort (#191): een argument `vo_context` van het model wordt geen aanroep."""
+    from tools import dispatch
+
+    with patch("tools.cbs.data") as data:
+        tekst, _ = dispatch("get_cbs_data", {"dataset_id": "85368NED", "vo_context": True})
+
+    data.assert_not_called()
+    assert "data_key" not in tekst
+
+
+@pytest.mark.parametrize(("vraag", "vo"), [(_VSV_DOORSTROOM, True), (_VSV_MBO, False)])
+def test_de_herstelmelding_noemt_de_vo_codes_alleen_bij_een_doorstroomvraag(catalogus, vraag, vo):
+    """Een po-code (geen rijen in het profiel) geeft een melding met de codes om mee te filteren: de vo-codes alleen
+    als de poort open is, zodat een herstelpoging de selectie niet verbreedt."""
+    with beurtvraag(vraag), patch("tools.cbs.data") as data:
+        result = get_cbs_data("85701NED", {"$filter": "Onderwijssoort eq 'A025280'"})
+
+    data.assert_not_called()
+    assert ("T001345" in result) is vo and ("vo-context" in result) is vo
+    assert "A025280" not in result.split("bevat er geen")[-1]
+
+
+def test_een_vo_code_van_het_model_versmalt_bij_een_doorstroomvraag_tot_het_vo(catalogus):
+    """85367NED kent alleen totalen: met de poort open is 'Vo' te kiezen, en dan is de lading alleen het vo."""
+    from tools import store
+
+    rijen = [*_VSV_RIJEN, {"Onderwijssoort": "A025300", "Perioden": "2023SJ00", "VoortijdigSchoolverlaters_1": 700}]
+    with (
+        beurtvraag(_VSV_DOORSTROOM),
+        patch("tools.cbs.data", return_value=rijen) as data,
+        patch("tools.cbs.definitions", return_value={}),
+    ):
+        result = json.loads(get_cbs_data("85367NED", {"$filter": "Onderwijssoort eq 'A042781'"}))
+
+    assert data.call_args.kwargs["$filter"].startswith("(Onderwijssoort eq 'A042781') and ")
+    assert store.get(result["data_key"])["Onderwijssoort"].tolist() == ["A042781"]
+
+
+def test_de_snippet_laadt_de_vo_rijen_zoals_de_lading():
+    """De snippet volgt het recept (`vo_context`), en de snippet van de stap volgt de lading, niet de modelargumenten."""
+    from tools.snippet import _cbs_laadregels
+
+    regels = _cbs_laadregels({"dataset_id": "85368NED", "filters": {}, "vo_context": True})
+
+    assert "A042781" in regels[-1] and "A043837" not in regels[-1]
+    assert regels[-1].endswith(f"# alleen mbo en vo ({_VO_DEEL})")
+
+
+def test_de_snippet_van_de_stap_laadt_wat_de_app_laadde(catalogus):
+    from tools import snippet
+
+    result, _ = _laad_vsv(_VSV_DOORSTROOM)
+    code = snippet.generate("get_cbs_data", {"dataset_id": "85368NED"}, json.dumps(result))
+
+    assert code is not None and "A042781" in code and f"# alleen mbo en vo ({_VO_DEEL})" in code
+
+
+def test_de_bronnen_van_het_rapport_volgen_de_lading(catalogus):
+    from agent.datasetcontext import build_recipe, sources_from_recipe
+
+    result, _ = _laad_vsv(_VSV_DOORSTROOM)
+    herkomst = [{"name": "get_cbs_data", "arguments": {"dataset_id": "85368NED"}}]
+    bronnen = sources_from_recipe(build_recipe([{"data_key": result["data_key"], "herkomst": herkomst}]))
+
+    assert bronnen == [f"CBS — {_CBS_VSV['bron']}, alleen mbo en vo ({_VO_DEEL}) (85368NED)"]
+
+
+def test_elke_gemengde_cbs_tabel_heeft_vo_codes_buiten_haar_profielcodes():
+    """De vo-codes zijn een tweede set naast de mbo/hbo/wo-codes (#879), nooit een totaal of po/(v)so-code
+    (live nagelopen op 03-11-2026 tegen de dimensie Onderwijssoort)."""
+    gemengd = {"85368NED", "85367NED", "85701NED", "85702NED"}
+    for tabel, filter_ in scopeprofiel.CBS_SECTORFILTER.items():
+        assert bool(filter_.vo_codes) is (tabel in gemengd), tabel
+        assert not filter_.vo_codes & filter_.codes, tabel
+        assert not filter_.vo_codes & {"A043837", "A025279", "A025280", "A025281", "A025282", "A049120", "A049121"}
+
+
+# RIO: de vo- en vavo-typen per register (#880). Een doorstroomvraag die RIO nodig heeft: welke vavo-opleiding een roc
+# aanbiedt, de tweedekansroute naar een vo-diploma en daarmee naar vervolgonderwijs. CBS telt vavo-deelnemers, maar
+# alleen RIO kent het aanbod.
+_VAVO_AANBOD = "Welke vavo-opleidingen bieden roc's in Utrecht aan?"
+_MBO_AANBOD = "Welke mbo-opleidingen biedt het ROC van Amsterdam aan?"
+_VAVO = {"type": "AANGEBODENVAVOOPLEIDING"}
+
+
+def _laad_rio(vraag: str | None, filters: dict, resource: str = "aangeboden-opleidingen"):
+    from contextlib import nullcontext
+
+    with (
+        beurtvraag(vraag) if vraag is not None else nullcontext(),
+        patch("tools.rio._filterfout", return_value=None),
+        patch("tools.rio.fetch", return_value=[{"eigennaam": "VAVO havo", "type": filters.get("type")}]) as fetch,
+    ):
+        return get_rio_data(resource, filters), fetch
+
+
+def test_een_doorstroomvraag_haalt_het_vavo_aanbod_op_met_het_etiket_van_de_vo_context(catalogus):
+    from agent.selectie import selectie_in_woorden
+    from tools import store
+
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, _VAVO)
+    result = json.loads(tekst)
+
+    fetch.assert_called_once()
+    assert fetch.call_args.kwargs["type"] == "AANGEBODENVAVOOPLEIDING"
+    assert result["catalogus_titel"] == f"{_RIO_SECTORFILTER['bron']}, {_VO_DEEL}"
+    assert result["context"] == scopeprofiel.VO_CONTEXT_ETIKET
+    assert _VO_DEEL in (selectie_in_woorden(result["data_key"]) or "")
+    assert store.herkomst(result["data_key"])[0] == f"bron: RIO, dataset aangeboden-opleidingen, {_VO_DEEL}"
+    assert _lading(result["data_key"])[1]["vo_context"] is True
+
+
+@pytest.mark.parametrize("vraag", [_MBO_AANBOD, "Welke hbo-opleidingen biedt de Hogeschool Utrecht aan?", None])
+def test_zonder_doorstroomvraag_blijft_een_vo_type_dicht(catalogus, vraag):
+    """Ook een directe aanroep (MCP, None) en een ho-vraag zonder vo-niveau openen de vo-records niet (#880)."""
+    tekst, fetch = _laad_rio(vraag, {"type": "AANGEBODENVOOPLEIDING"})
+
+    fetch.assert_not_called()
+    assert "AANGEBODENMBOOPLEIDING" in tekst and "AANGEBODENVOOPLEIDING" not in tekst
+
+
+def test_een_mbo_type_in_een_doorstroombeurt_houdt_zijn_bronregel(catalogus):
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, {"type": "AANGEBODENMBOOPLEIDING"})
+    result = json.loads(tekst)
+
+    fetch.assert_called_once()
+    assert result["catalogus_titel"] == _RIO_SECTORFILTER["bron"] and "context" not in result
+
+
+def test_de_melding_noemt_de_vo_typen_alleen_bij_een_doorstroomvraag(catalogus):
+    open_, _ = _laad_rio(_VAVO_AANBOD, {})
+    dicht, _ = _laad_rio(_MBO_AANBOD, {})
+
+    assert "AANGEBODENVAVOOPLEIDING" in open_ and _VO_DEEL in open_
+    assert "AANGEBODENVAVOOPLEIDING" not in dicht
+
+
+def test_een_register_zonder_typefilter_blijft_dicht_bij_een_doorstroomvraag(catalogus):
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, {"contactadrestype": "BEZOEKNL"}, "contactadressen")
+
+    fetch.assert_not_called()
+    assert json.loads(tekst)["buiten_scope"] is True
+
+
+def test_een_recept_herlaadt_het_vavo_aanbod_in_een_latere_beurt(catalogus):
+    from tools import herlaad, store
+
+    tekst, _ = _laad_rio(_VAVO_AANBOD, _VAVO)
+    key = json.loads(tekst)["data_key"]
+    recept = herlaad.recept(key, {"name": "get_rio_data", "arguments": {"resource": "aangeboden-opleidingen"}})
+    store.clear()
+    with (
+        beurtvraag(_MBO_AANBOD),
+        patch("tools.rio._filterfout", return_value=None),
+        patch("tools.rio.fetch", return_value=[{"eigennaam": "VAVO havo"}]),
+    ):
+        assert recept is not None and herlaad.herlaad(key, recept).gelukt
+
+    assert _lading(key)[0] is True
+
+
+def test_het_model_opent_een_vo_type_niet_zelf(catalogus):
+    from tools import dispatch
+
+    with patch("tools.rio.fetch") as fetch:
+        tekst, _ = dispatch(
+            "get_rio_data", {"resource": "aangeboden-opleidingen", "filters": _VAVO, "vo_context": True}
+        )
+
+    fetch.assert_not_called()
+    assert "data_key" not in tekst
+
+
+def test_de_vo_typen_bestaan_in_het_riodata_contract_naast_het_sectorfilter():
+    """De namen per register uit het contract (#880); geen mbo/ho-waarde dubbel, en geen po of (v)so."""
+    from riodata import filtercontract
+
+    assert set(scopeprofiel.SECTORFILTER_VO_CONTEXT) == set(scopeprofiel.SECTORFILTER)
+    for resource, vo_waarden in scopeprofiel.SECTORFILTER_VO_CONTEXT.items():
+        naam, waarden = scopeprofiel.SECTORFILTER[resource]
+        (filter_,) = [f for f in filtercontract()["resources"][resource]["filters"] if f["naam"] == naam]
+        assert vo_waarden <= set(filter_["enum"]), resource
+        assert not vo_waarden & waarden, resource
+        assert all(re.match(r"(?:AANGEBODEN)?(?:VO|VAVO)", w) for w in vo_waarden), resource  # VSO begint met VS

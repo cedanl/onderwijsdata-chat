@@ -38,7 +38,9 @@ def figuurbron(data_key) -> dict | None:
         return None
     # De periode van wat de grafiek toont: de selectie, niet de hele geladen dataset.
     getekend = store.meta(data_key) or known
-    delen = [f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset)} ({known.dataset})"]
+    delen = [
+        f"{known.bron.upper()}{SCHEIDING}{bron_titel(known.dataset, vo_context=known.vo_context)} ({known.dataset})"
+    ]
     if known.peilmoment:
         delen.append(known.peilmoment)
     if bestand := bestand_in_woorden(known):

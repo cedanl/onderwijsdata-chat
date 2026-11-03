@@ -34,7 +34,7 @@ _REGEL = (
 @pytest.fixture(autouse=True)
 def catalogus():
     with (
-        patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
+        patch("agent.selectie.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
         patch("agent.selectie.tabelbestanden", return_value=[]),
     ):
         yield

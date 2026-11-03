@@ -129,8 +129,9 @@ def _cbs_filters(args: dict) -> dict:
 
 def _cbs_laadregels(args: dict) -> list[str]:
     filters = _cbs_filters(args)
-    # Dezelfde sectorselectie als de app, in de aanroep en op de rijen (CH-03).
-    selectie = scopeprofiel.cbs_sectorselectie(args["dataset_id"], filters)
+    # Dezelfde sectorselectie als de app, in de aanroep en op de rijen (CH-03), met de vo-rijen als de lading ze had
+    # (`vo_context` in het recept, #879).
+    selectie = scopeprofiel.cbs_sectorselectie(args["dataset_id"], filters, vo_context=bool(args.get("vo_context")))
     if isinstance(selectie, scopeprofiel.CbsSectorselectie):
         filters = selectie.params
     extra = f", **{filters!r}" if filters else ""
@@ -722,6 +723,16 @@ def _bewerkingsregels(result: str | None) -> list[str]:
     return [f"# {r}" for r in regels]
 
 
+def _laadde_vo_rijen(result: str | None) -> bool:
+    """Laadde deze get_cbs_data-stap de vo-rijen van een tabel over meer onderwijssoorten (#879)?"""
+    try:
+        data = json.loads(result) if result else None
+    except ValueError:
+        return False
+    known = store.meta(data["data_key"]) if isinstance(data, dict) and isinstance(data.get("data_key"), str) else None
+    return bool(known and known.vo_context)
+
+
 def generate(tool_name: str, args: dict, result: str | None = None, recept_van: Receptbron | None = None) -> str | None:
     """Genereer de snippet; `recept_van` levert de keten van een afgeleide key (#472, #624)."""
     gen = _GENERATORS.get(tool_name)
@@ -730,6 +741,9 @@ def generate(tool_name: str, args: dict, result: str | None = None, recept_van: 
     if tool_name == TOOL_CREATE_CHOROPLETH_MAP and args.get("level", "auto") == "auto":
         # De app leidde het niveau af uit de data; het recept leest het uit haar melding (#630).
         args = {**args, "level": kaartlocaties.niveau_uit_melding(result) or "auto"}
+    if tool_name == TOOL_GET_CBS_DATA and _laadde_vo_rijen(result):
+        # De poort van de beurt, niet het model, liet de vo-rijen toe (#879): dat staat in de lading, niet in de args.
+        args = {**args, "vo_context": True}
     snippet = gen(args, recept_van=recept_van)
     if not snippet:
         return snippet

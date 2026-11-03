@@ -313,6 +313,17 @@ periode in de tabel voor, en past de code bij de opgegeven `sector` (`hbo` met `
 is tegenstrijdig). Alleen `unsupported` houdt de datacall tegen; de weigering noemt per controle de reden en
 wat wél in de tabel staat. `unknown` (bronuitval, een dimensie die het contract niet kent) laat door.
 
+Een tabel over meer onderwijssoorten (`scopeprofiel.CBS_SECTORFILTER`: de VSV-tabellen `85368NED`/`85367NED`, de
+woonregiotabellen `85701NED`/`85702NED`) laadt alleen haar mbo/hbo/wo-rijen, ook als het model iets anders vraagt.
+Haar vo- en vavo-rijen komen alleen mee als `ho_markers.vo_deel_poort` waar is (#879): de vraag van de gebruiker
+opent de vo-context én noemt zelf een vo-niveau of voortijdig schoolverlaters, zonder po of (v)so. Een hbo-vraag
+zonder vo-niveau opent de zoekpoort wel, maar laadt geen vo-rijen. Buiten de chat (MCP) blijven ze dicht. Code
+beslist dat, niet het model: `get_cbs_data` kent geen argument ervoor, de lading houdt het vast (`KeyMeta.vo_context`,
+een eigen `data_key` en `vo_context` in het herlaadrecept), en het resultaat draagt dan `context` met het etiket van
+de vo-context. De bronregel, de Bronnen, de bronregel onder een rapportgrafiek, de kop van een CSV-export en de
+snippet zeggen "…, alleen mbo en vo (vo-context voor vervolgonderwijs)"; een lading zonder vo-rijen houdt "…, alleen
+mbo", ook als een latere beurt dezelfde tabel met vo-rijen laadt.
+
 De parameter `filters` (ruwe OData, `{"$filter": …}`) bestaat nog voor bewaarde recepten
 en het herladen/verversen van oudere gesprekken, maar zit niet meer in de modelinterface.
 
@@ -337,6 +348,13 @@ Haalt records op uit het RIO-register.
 |-----------|------|-------------|
 | `resource` | string | Resource naam, bijv. `"onderwijslocaties"` |
 | `filters` | object | Filterparameters, bijv. `{"type": "AANGEBODENMBOOPLEIDING"}`; `organisatorischeEenheidcode` is de RIO-code van een aanbieder (zoals `114A897`), niet de BRIN-code |
+
+Een register over alle sectoren (`scopeprofiel.SECTORFILTER`) haalt de chat alleen op met `type` op een mbo/ho-waarde.
+Een vo- of vavo-type (`SECTORFILTER_VO_CONTEXT`, zoals `AANGEBODENVAVOOPLEIDING`) mag alleen als
+`ho_markers.vo_deel_poort` waar is, dezelfde poort als bij de gemengde CBS-tabellen (#880): "Welke vavo-opleidingen
+bieden roc's in Utrecht aan?" wel, een mbo-vraag of een aanroep buiten de chat niet. Zo'n pagina draagt `context` en de
+bronregel "…, vo-context voor vervolgonderwijs"; het herlaadrecept onthoudt dat (`vo_context`). Po- en (v)so-typen en
+de registers zonder typefilter blijven dicht.
 
 Zie [Databronnen → RIO](databronnen.md) voor beschikbare resources.
 

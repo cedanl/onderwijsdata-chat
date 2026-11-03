@@ -177,7 +177,7 @@ def cbs_bron(monkeypatch):
 
 
 def _bronfout(filters: dict) -> str:
-    uit = cbs._haal("85423NED", filters)
+    uit = cbs._haal("85423NED", filters, vo_context=False)
     assert isinstance(uit, str), uit
     return uit
 
@@ -188,7 +188,7 @@ def _json(status: int, body: dict | None = None) -> Antwoord:
 
 def test_cbs_eerst_503_dan_200_geeft_rijen_zonder_bronfout(cbs_bron):
     bron = cbs_bron(reeks(_json(503), _json(200, _RIJEN)))
-    opgehaald = cbs._haal("85423NED", {"$filter": "trim(Perioden) eq '2024JJ00'"})
+    opgehaald = cbs._haal("85423NED", {"$filter": "trim(Perioden) eq '2024JJ00'"}, vo_context=False)
     assert not isinstance(opgehaald, str), opgehaald
     assert opgehaald.rows == _RIJEN["value"]
     assert len(bron.verzoeken) == 2

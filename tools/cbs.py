@@ -15,7 +15,18 @@ from core import actualiteit
 from core.config import CBS_ROW_LIMIT
 from core.logging_util import foutkenmerk
 
-from . import canoniek, cbs_afronding, cbs_preflight, cbs_selectie, cbs_standaard, fouten, periode, scopeprofiel, store
+from . import (
+    canoniek,
+    cbs_afronding,
+    cbs_preflight,
+    cbs_selectie,
+    cbs_standaard,
+    fouten,
+    ho_markers,
+    periode,
+    scopeprofiel,
+    store,
+)
 from .bronretry import haal_op_met_retry
 from .catalog import archief, bron_titel, catalogus_laatste_update, cbs_bron_id, scope_blokkade
 from .columns import sample_values
@@ -329,7 +340,7 @@ def _page_size(top) -> int:
 _CBS_HERSTEL = " Controleer dataset-ID en filtercodes (get_cbs_dimension); CBS wil codes, geen labels."
 
 
-def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pagina: bool) -> str:
+def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pagina: bool, vo_context: bool) -> str:
     """Waarom er niets te laden is: de bron gaf niets, de pagina is vol, of de sectorselectie is leeg (CH-03)."""
     if not opgehaald:
         return (
@@ -341,10 +352,10 @@ def _geen_rijen(dataset_id: str, filters: dict | None, opgehaald: list, volle_pa
     if volle_pagina:
         return (
             f"De eerste {len(opgehaald)} rijen van dataset '{dataset_id}' bevatten geen rijen voor "
-            f"{sectorfilter.deel}. De selectie is onvolledig: de bron kan er verder nog hebben. "
+            f"{sectorfilter.deel_voor(vo_context)}. De selectie is onvolledig: de bron kan er verder nog hebben. "
             "Verfijn de selectie (pin meer dimensies of kies minder periodes)."
         )
-    return sectorfilter.geen_rijen(dataset_id)
+    return sectorfilter.geen_rijen(dataset_id, vo_context)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -352,6 +363,7 @@ class _Opgehaald:
     ruw: list  # wat de bron gaf
     rows: list  # de rijen binnen de scopegrens
     truncated: bool  # een volle pagina: de bron kan meer hebben (#5)
+    vo_context: bool  # de sectorselectie liet vo-codes toe: de lading is (deels) vo-context (#879)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -377,8 +389,9 @@ def _alternatief(dataset_id: str, selectie: dict, standaard, col_defs) -> _Alter
     return _Alternatief(*gecompileerd)
 
 
-def _haal(dataset_id: str, filters: dict | None) -> _Opgehaald | str:
-    """Eén aanroep naar de bron met de scopegrens ervoor en erna (CH-03); een tekst is de weigering of de bronfout."""
+def _haal(dataset_id: str, filters: dict | None, vo_context: bool) -> _Opgehaald | str:
+    """Eén aanroep naar de bron met de scopegrens ervoor en erna (CH-03); een tekst is de weigering of de bronfout.
+    `vo_context` laat bij een tabel over meer onderwijssoorten ook de vo-codes toe (#879)."""
     params = dict(filters or {})
     if "$top" not in params:
         params["$top"] = CBS_ROW_LIMIT
@@ -388,7 +401,7 @@ def _haal(dataset_id: str, filters: dict | None) -> _Opgehaald | str:
             return fout
         params["$select"] = _select_with_dimensions(params["$select"], _dimension_names(col_defs))
     # Bij een tabel over meer onderwijssoorten ligt de scopegrens vóór de aanroep, en nog eens op de rijen (CH-03).
-    sectorselectie = scopeprofiel.cbs_sectorselectie(dataset_id, params)
+    sectorselectie = scopeprofiel.cbs_sectorselectie(dataset_id, params, vo_context=vo_context)
     if isinstance(sectorselectie, str):
         return sectorselectie
     if sectorselectie:
@@ -399,7 +412,8 @@ def _haal(dataset_id: str, filters: dict | None) -> _Opgehaald | str:
         return fouten.bronfout("CBS", e, _CBS_HERSTEL)
     rows = sectorselectie.rijen(opgehaald) if sectorselectie else opgehaald
     # A full page means the source may hold more: $top (ours or the model's) cut it off (#5).
-    return _Opgehaald(opgehaald, rows, len(opgehaald) >= _page_size(params["$top"]))
+    vo = bool(sectorselectie and sectorselectie.vo_context)
+    return _Opgehaald(opgehaald, rows, len(opgehaald) >= _page_size(params["$top"]), vo)
 
 
 def _splits(rows: list, standaard) -> tuple[list, list]:
@@ -443,6 +457,16 @@ def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta
 
 
 def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
+    """De tool van het model: de poort van de beurt beslist of een tabel over meer onderwijssoorten haar vo-rijen
+    meelaadt (#879), niet het model. Zonder beurt (MCP, evals) blijven ze dicht."""
+    return laad_cbs_data(dataset_id, filters, selectie, vo_context=ho_markers.vo_deel_poort())
+
+
+def laad_cbs_data(
+    dataset_id: str, filters: dict | None = None, selectie: dict | None = None, *, vo_context: bool = False
+) -> str:
+    """get_cbs_data met de poort als argument: zo herlaadt een recept (#472) de lading zoals ze was, ook in een
+    latere beurt met een andere vraag."""
     dataset_id = cbs_bron_id(dataset_id)  # cbs:85423NED, 85423ned → 85423NED (#370)
     if blokkade := scope_blokkade(dataset_id):
         return blokkade
@@ -465,11 +489,11 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
         if standaard:
             alternatief = _alternatief(dataset_id, selectie, standaard, col_defs_vooraf)
 
-    opgehaald = _haal(dataset_id, alternatief.filters_beide if alternatief else filters)
+    opgehaald = _haal(dataset_id, alternatief.filters_beide if alternatief else filters, vo_context)
     if alternatief and (isinstance(opgehaald, str) or opgehaald.truncated):
         # Twee totalen verdubbelen de rijen en de bron kan de aanroep weigeren: dan telt de aanroep zoals voor #658.
         alternatief = None
-        opgehaald = _haal(dataset_id, filters)
+        opgehaald = _haal(dataset_id, filters, vo_context)
     if isinstance(opgehaald, str):
         return opgehaald
     truncated = opgehaald.truncated
@@ -478,14 +502,16 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
     if alternatief:
         rows, rows_alternatief = _splits(rows, standaard)
     if not rows:
-        return _geen_rijen(dataset_id, filters, opgehaald.ruw, truncated)
+        return _geen_rijen(dataset_id, filters, opgehaald.ruw, truncated, vo_context)
 
     loaded_defs = _load_definitions(dataset_id)
     col_defs = loaded_defs or {}
     df = _add_dimension_context(pd.DataFrame(rows[:CBS_ROW_LIMIT]), dataset_id, col_defs)
     # De key is de digest van de canonieke filters (#342): dezelfde selectie in een andere
     # spelling (spatiëring, $top op de default) krijgt dezelfde key.
-    filter_digest = canoniek.cbs_digest(filters)
+    # Een lading met vo-rijen (#879) is andere data onder dezelfde filters: een eigen key, en het recept onthoudt het.
+    vo = opgehaald.vo_context
+    filter_digest = canoniek.cbs_digest(filters, vo_context=vo)
     key = f"cbs:{dataset_id}:{filter_digest}" if filter_digest else f"cbs:{dataset_id}"
     kolom = next((col for col, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     schooljaren = periode.dekking(df, "cbs", kolom)
@@ -500,12 +526,14 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
         periodekolom=kolom,
         schooljaren=schooljaren,
         afronding=eenheid,
-        laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters}),
+        laad=("get_cbs_data", {"dataset_id": dataset_id, "filters": filters, **({"vo_context": True} if vo else {})}),
         kolomtitels=kolomtitels(col_defs, schooljaren),
         bijgewerkt_op=bijgewerkt_op,
+        vo_context=vo,
     )
     store.put(key, df, store_meta)
-    store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
+    if not vo:  # een key van vóór #342 is nooit een lading met vo-rijen
+        store.alias(canoniek.legacy_cbs_key(dataset_id, filters), key)
 
     dims = _dimension_names(col_defs)
     if dims:  # een mislukte DataProperties-call mag een eerdere registratie niet wissen
@@ -525,7 +553,9 @@ def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | 
 
     result = {
         "data_key": key,
-        "catalogus_titel": bron_titel(dataset_id),
+        "catalogus_titel": bron_titel(dataset_id, vo_context=vo),
+        # De vo-rijen zijn context, geen studenten (#879): het model telt ze niet bij mbo, hbo of wo op.
+        **({"context": scopeprofiel.VO_CONTEXT_ETIKET} if vo else {}),
         # Een tabel die CBS niet meer bijwerkt, zegt dat zelf (#865): het model kan het noemen of een opvolger zoeken.
         **(archief(dataset_id) or {}),
         **store.rijtelling(len(df), not truncated),

@@ -12,7 +12,7 @@ import pytest
 
 from tests.retrieval_baseline import harnas, rapport
 from tools import catalog, scopeprofiel
-from tools.ho_markers import opent_vo_context
+from tools.ho_markers import beurtvraag, opent_vo_context, vo_deel_poort
 
 _TOP_N = 50
 _VELDEN = ("zoekinput", "vraag")
@@ -33,8 +33,12 @@ _OPEN = [z for z in _ZOEKACTIES if opent_vo_context(z[0][z[1]])]
 
 
 def _doorstroomvraag(vraag: dict) -> bool:
-    """Een vraag met een vo-contextrecord als label: doorstroom naar vervolgonderwijs (#559, #877)."""
-    return bool(set(vraag["geaccepteerd"]) & set(scopeprofiel.VO_CONTEXT))
+    """Een vraag met een vo-contextrecord als label: doorstroom naar vervolgonderwijs (#559, #877). Of een RIO-register
+    met vo- en vavo-typen als label, bij een vraag die zijn vo-deel opent (#880)."""
+    if set(vraag["geaccepteerd"]) & set(scopeprofiel.VO_CONTEXT):
+        return True
+    with beurtvraag(vraag["vraag"]):
+        return bool(set(vraag["geaccepteerd"]) & set(scopeprofiel.SECTORFILTER_VO_CONTEXT)) and vo_deel_poort()
 
 
 def _treffers(vraag: dict, veld: str, bron: str) -> list[dict]:

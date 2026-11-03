@@ -40,13 +40,17 @@ def build_recipe(datasets: list[dict]) -> list[dict]:
     """Reload calls for the given datasets, one per load call.
 
     The recorded load call (its herkomst) is used as is, so CBS filters survive
-    a reload (#174). Without herkomst the key itself says how to reload.
+    a reload (#174). Without herkomst the key itself says how to reload. A load that took the vo part of a
+    source (#879, #880) says so: the gate of that turn opened it, not the model's arguments.
     """
     recipe: list[dict] = []
     for ds in datasets:
         herkomst = ds.get("herkomst") or []
         if herkomst and herkomst[0]["name"] in LAADTOOLS:
-            call = {"name": herkomst[0]["name"], "arguments": json.dumps(herkomst[0]["arguments"])}
+            args = dict(herkomst[0]["arguments"])
+            if (known := store.meta(ds["data_key"])) and known.vo_context:
+                args["vo_context"] = True
+            call = {"name": herkomst[0]["name"], "arguments": json.dumps(args)}
         else:
             call = _reload_call_from_key(ds["data_key"])
         if call and call not in recipe:
@@ -154,11 +158,11 @@ _SOURCE_PREFIXES = {
 }
 
 
-def _source_label(prefix: str, dataset: str, resource) -> str:
+def _source_label(prefix: str, dataset: str, resource, vo_context: bool = False) -> str:
     """ "CBS — Hoger onderwijs; ingeschrevenen, … (85423NED)": titel uit de catalogus, niet van het model."""
     if not dataset:
         return prefix
-    titel = bron_titel(dataset)
+    titel = bron_titel(dataset, vo_context=vo_context)
     label = f"{prefix} — {titel} ({dataset})" if titel != dataset else f"{prefix} — {dataset}"
     if prefix == "DUO" and resource is not None and (naam := resource_titel(dataset, resource)):
         label += f", {naam}"
@@ -182,7 +186,7 @@ def sources_from_recipe(recipe: list[dict]) -> list[str]:
         # Een arbeidsmarkttool laadt één vaste dataset (#577): het ID en de peildatum of versie komen uit de tool.
         dataset = args.get("dataset_id") or args.get("resource") or arbeidsmarkt.DATASET.get(call["name"], "")
         resource = args.get("resource") if args.get("dataset_id") else None
-        label = _source_label(prefix, dataset, resource)
+        label = _source_label(prefix, dataset, resource, args.get("vo_context") is True)
         if peilmoment := arbeidsmarkt.peilmoment(call["name"]):
             label += f", {peilmoment}"
         if label not in sources:

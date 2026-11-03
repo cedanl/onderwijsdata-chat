@@ -26,8 +26,8 @@ _URLS = {
 @pytest.fixture
 def catalogus():
     with (
-        patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
-        patch("agent.figuurbron.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
+        patch("agent.selectie.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
+        patch("agent.figuurbron.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
         patch("agent.figuurbron.documentatie_url", side_effect=lambda dataset, resource=None: _URLS.get(dataset)),
         patch("agent.selectie.tabelbestanden", return_value=[]),
     ):
