@@ -116,7 +116,7 @@ env:
         optional: true
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.test.sdp.surf.nl"
-  # Dashboards staan op test weer aan (vlag uit 47e7727f); playground en production houden ze uit.
+  # Dashboards staan op test en playground aan (vlag uit 47e7727f); production houdt ze uit.
   - name: ENABLE_DASHBOARDS
     value: "true"
   # Azure AI Foundry — optioneel naast Willma.

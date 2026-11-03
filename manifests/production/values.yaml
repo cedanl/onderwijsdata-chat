@@ -79,6 +79,6 @@ env:
     value: "INFO"
   - name: CORS_ORIGINS
     value: "https://onderwijsdata-chat.sdp.surf.nl"
-  # Dashboards staan ook op test en playground uit (vlag uit 47e7727f).
+  # Dashboards staan op production uit; op test en playground aan (vlag uit 47e7727f).
   - name: ENABLE_DASHBOARDS
     value: "false"

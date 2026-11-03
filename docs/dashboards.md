@@ -6,7 +6,7 @@ De app biedt voorgeconfigurde dashboards per onderwijsinstelling en een LLM-gest
 
 ## Voorgeconfigurde dashboards
 
-Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test staat hij aan, op playground en productie uit):
+Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test en playground staat hij aan, op productie uit):
 
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
