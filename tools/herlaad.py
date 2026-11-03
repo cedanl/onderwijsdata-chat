@@ -26,7 +26,7 @@ from .cbs import laad_cbs_data
 from .duo import get_duo_data
 from .maten import get_maat
 from .query import query_data
-from .rio import get_rio_data
+from .rio import laad_rio_data
 from .schemas import (
     TOOL_GET_CBS_DATA,
     TOOL_GET_DUO_DATA,
@@ -42,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 STAP_ANALYSE = "eigen berekening (run_analysis)"
 
-# De enige tools die een recept mag aanroepen, met de bron die een fout dan noemt. CBS zonder de poort van de beurt:
-# het recept zegt zelf of de lading de vo-rijen had (`vo_context`, #879).
+# De enige tools die een recept mag aanroepen, met de bron die een fout dan noemt. CBS en RIO zonder de poort van de
+# beurt: het recept zegt zelf of de lading het vo-deel had (`vo_context`, #879, #880).
 _LADERS: dict[str, tuple[Callable[..., str], str]] = {
     TOOL_GET_CBS_DATA: (laad_cbs_data, "CBS"),
     TOOL_GET_DUO_DATA: (get_duo_data, "DUO"),
-    TOOL_GET_RIO_DATA: (get_rio_data, "RIO"),
+    TOOL_GET_RIO_DATA: (laad_rio_data, "RIO"),
     # Een arbeidsmarktresultaat is een dataset met een laadaanroep (#577).
     TOOL_GET_UWV_VACATURES: (get_uwv_vacatures, "UWV"),
     TOOL_GET_ROA_BENCHMARK: (get_roa_benchmark, "ROA"),

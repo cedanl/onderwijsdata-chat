@@ -197,6 +197,19 @@ Twee missers, bewust niet afgesteld (#597): 85566NED komt ook nu niet in de top 
 winnen 85519NED en 85422NED) en bij "havo doorstroom vervolgonderwijs". Dat is hetzelfde gat in de termweging als bij
 #559; vervolg in #882. `adressen_vo` is gemeten en niet toegevoegd: bij hbo-15 (adres van een hogeschool, kritiek) kwam hij op rang 3.
 
+## Een doorstroomvraag die RIO nodig heeft (#880)
+
+De vo- en vavo-typen van de RIO-registers gaan pas open met een echte vraag die ze nodig heeft: mbo-32, "Welke
+vavo-opleidingen bieden roc's in Utrecht aan?" (ontwikkel, vastgelegd vóór de meting). Het vavo-aanbod van een roc staat
+alleen in RIO (`aangeboden-opleidingen` met `type` `AANGEBODENVAVOOPLEIDING`); CBS telt vavo-deelnemers. De vraag opent
+het vo-deel (`ho_markers.vo_deel_poort`: vavo en roc), en `test_vo_context_poort.py` telt haar daarom als
+doorstroomvraag, alleen omdat haar label zo'n register is en de vraag dat deel opent.
+
+Gemeten op 3 november 2026, catalogus `e4b886252be0`: rang 4 met `zoekinput` ("vavo opleidingsaanbod", boven
+`aangeboden-opleidingen` staan 85328NED, 85329NED en `mbo_opleidingsaanbod`), niet in de top 15 met `vraag`. Alleen
+mbo/ontwikkel verschuift: recall@5 0.89 → 0.90 (+0.01), MRR 0.79 → 0.76 (-0.03). `kritiek_falend` is ongewijzigd (hbo-09,
+hbo-10, wo-11, wo-25). Niet bijgesteld (#597).
+
 ## Draaien
 
 ```bash

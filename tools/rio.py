@@ -6,8 +6,8 @@ from riodata import fetch, filtercontract, valideer_filters
 
 from core.config import RIO_PAGE_SIZE
 
-from . import bronretry, fouten, scopeprofiel, store
-from .catalog import bron_id, catalogus_titel, scope_blokkade
+from . import bronretry, fouten, ho_markers, scopeprofiel, store
+from .catalog import bron_id, bron_titel, scope_blokkade
 from .columns import sample_values
 
 _SAMPLE_ROWS = 5
@@ -69,14 +69,23 @@ def _filterfout(resource: str, filters: dict) -> str | None:
 
 
 def get_rio_data(resource: str, filters: dict | None = None) -> str:
+    """De tool van het model: de poort van de beurt beslist of een vo- of vavo-type mag (#880), niet het model.
+    Zonder beurt (MCP, evals) blijven ze dicht."""
+    return laad_rio_data(resource, filters, vo_context=ho_markers.vo_deel_poort())
+
+
+def laad_rio_data(resource: str, filters: dict | None = None, *, vo_context: bool = False) -> str:
+    """get_rio_data met de poort als argument: zo herlaadt een recept (#472) de lading zoals ze was."""
     resource = bron_id(resource)  # rio:erkenningen is dezelfde resource als erkenningen (#356)
     # Eerst het filtercontract: dat noemt bij een tikfout de bedoelde resource.
     if fout := _filterfout(resource, filters or {}):
         return fout
     if blokkade := scope_blokkade(resource):
         return blokkade
-    if ontbreekt := scopeprofiel.sectorfilter_ontbreekt(resource, filters or {}):
+    if ontbreekt := scopeprofiel.sectorfilter_ontbreekt(resource, filters or {}, vo_context=vo_context):
         return ontbreekt
+    # Een vo- of vavo-type: de pagina is vo-context, in de bronregel en in het recept (#880).
+    vo = scopeprofiel.rio_vo_context(resource, filters or {})
     # Eén pagina van RIO_PAGE_SIZE-rijen: volledige paginatie blokkeert bij
     # upstream 4xx op een late pagina (#159). Een grotere pageSize uit filters
     # zou onderstaande slice toch weer afkappen.
@@ -121,14 +130,16 @@ def get_rio_data(resource: str, filters: dict | None = None) -> str:
             bron="rio",
             dataset=resource,
             volledig=not meer_beschikbaar,
-            laad=("get_rio_data", {"resource": resource, "filters": filters}),
+            laad=("get_rio_data", {"resource": resource, "filters": filters, **({"vo_context": True} if vo else {})}),
             peilmoment=peilmoment,
             geldig_op=geldig_op,
+            vo_context=vo,
         ),
     )
     result = {
         "data_key": key,
-        "catalogus_titel": catalogus_titel(resource),
+        "catalogus_titel": bron_titel(resource, vo_context=vo),
+        **({"context": scopeprofiel.VO_CONTEXT_ETIKET} if vo else {}),
         "opgehaalde_rijen": len(df),
         "meer_beschikbaar": meer_beschikbaar,
         "kolommen": schema,

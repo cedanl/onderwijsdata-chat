@@ -23,9 +23,10 @@ Een CBS-tabel die ook over andere onderwijssoorten gaat, krijgt de selectie op m
 van de code zelf (`CBS_SECTORFILTER`): in de aanroep en nog eens op de ontvangen rijen
 (`cbs_sectorselectie`).
 
-Bij een doorstroomvraag uit het vo (`ho_markers.vo_deel_poort`, #879) laat een CBS-tabel ook haar vo-deel toe: de
-vo-codes (`CbsSectorfilter.vo_codes`). De aanroeper geeft de poort mee; de lading houdt haar vast (`KeyMeta.vo_context`),
-en elke bronregel van die lading noemt het vo-deel als vo-context voor vervolgonderwijs (`bronetiket`).
+Bij een doorstroomvraag uit het vo (`ho_markers.vo_deel_poort`, #879, #880) laten beide ook hun vo-deel toe: de
+vo-codes van een CBS-tabel (`CbsSectorfilter.vo_codes`) en de vo- en vavo-typen van een RIO-register
+(`SECTORFILTER_VO_CONTEXT`). De aanroeper geeft de poort mee; de lading houdt haar vast (`KeyMeta.vo_context`), en
+elke bronregel van die lading noemt het vo-deel als vo-context voor vervolgonderwijs (`bronetiket`).
 """
 
 import re
@@ -92,6 +93,35 @@ SECTORFILTER: dict[str, tuple[str, frozenset[str]]] = {
         "type",
         frozenset({"HOONDERWIJSLICENTIE", "MBOONDERWIJSLICENTIE", "EXAMENLICENTIE"}),
     ),
+}
+# Per register de vo- en vavo-typen op hetzelfde filter (#880): alleen toegelaten als de poort open is
+# (`sectorfilter_ontbreekt(..., vo_context=True)`), en een pagina ervan draagt het etiket van de vo-context.
+# Uit het riodata-contract (filter `type`, gemeten 03-11-2026); test_scopeprofiel toetst de namen. Po en (v)so blijven
+# dicht, net als de registers zonder typefilter.
+SECTORFILTER_VO_CONTEXT: dict[str, frozenset[str]] = {
+    "aangeboden-opleidingen": frozenset({"AANGEBODENVOOPLEIDING", "AANGEBODENVAVOOPLEIDING"}),
+    "opleidingen": frozenset(
+        {
+            "VOOPLEIDING",
+            "VOOPLEIDINGSFASE",
+            "VOGROEP",
+            "VOVAK",
+            "VOSTAGE",
+            "VAVOOPLEIDING",
+            "VAVOOPLEIDINGSFASE",
+            "VAVOGROEP",
+        }
+    ),
+    "opleidingserkenningen": frozenset(
+        {
+            "VOOPLEIDINGSERKENNING",
+            "VOGROEPSERKENNING",
+            "VOVAKERKENNING",
+            "VAVOOPLEIDINGSERKENNING",
+            "VAVOGROEPSERKENNING",
+        }
+    ),
+    "onderwijslicenties": frozenset({"VOONDERWIJSLICENTIE", "VAVOONDERWIJSLICENTIE"}),
 }
 
 
@@ -357,17 +387,27 @@ def in_scope(entry: dict) -> bool:
     return bool(typen) and typen <= SECTOREN
 
 
-def sectorfilter_ontbreekt(resource: str, filters: dict) -> str | None:
-    """Waarom een RIO-aanroep de sector niet vastlegt; None als het filter goed staat."""
+def sectorfilter_ontbreekt(resource: str, filters: dict, *, vo_context: bool) -> str | None:
+    """Waarom een RIO-aanroep de sector niet vastlegt; None als het filter goed staat.
+
+    `vo_context` is de poort van de beurt (`ho_markers.vo_deel_poort`) of het recept van de lading: alleen dan mag het
+    filter ook een vo- of vavo-type zijn (#880)."""
     if resource not in SECTORFILTER:
         return None
     naam, waarden = SECTORFILTER[resource]
-    if filters.get(naam) in waarden:
+    vo_waarden = SECTORFILTER_VO_CONTEXT[resource] if vo_context else frozenset()
+    if filters.get(naam) in waarden | vo_waarden:
         return None
+    vo = f", of als vo-context voor vervolgonderwijs op een vo-waarde: {sorted(vo_waarden)}" if vo_waarden else ""
     return (
         f"RIO-register '{resource}' bevat alle onderwijssectoren; de chat haalt het alleen op met "
-        f"filter '{naam}' op een mbo/hbo/wo-waarde: {sorted(waarden)}."
+        f"filter '{naam}' op een mbo/hbo/wo-waarde: {sorted(waarden)}{vo}."
     )
+
+
+def rio_vo_context(resource: str, filters: dict) -> bool:
+    """Haalt deze RIO-aanroep een vo- of vavo-type op (#880)? Dan draagt de lading het etiket van de vo-context."""
+    return resource in SECTORFILTER and filters.get(SECTORFILTER[resource][0]) in SECTORFILTER_VO_CONTEXT[resource]
 
 
 @dataclass(frozen=True)
@@ -448,8 +488,10 @@ def cbs_sectordeel(dataset_id: str, vo_context: bool = False) -> str | None:
 
 def bronetiket(dataset_id: str, vo_context: bool = False) -> str | None:
     """Wat een bronregel achter de titel zet: het geladen deel (`alleen mbo`) of `vo-context voor vervolgonderwijs`;
-    anders None. `vo_context` is die van de lading (#879)."""
-    return cbs_sectordeel(dataset_id, vo_context) or (VO_CONTEXT_DEEL if is_vo_context(dataset_id) else None)
+    anders None. `vo_context` is die van de lading (#879, #880): een RIO-pagina met een vo-type draagt het etiket ook."""
+    return cbs_sectordeel(dataset_id, vo_context) or (
+        VO_CONTEXT_DEEL if vo_context or is_vo_context(dataset_id) else None
+    )
 
 
 def buiten_scope(bron: str, *, register: bool = False) -> dict:

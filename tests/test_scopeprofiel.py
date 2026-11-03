@@ -1408,3 +1408,112 @@ def test_elke_gemengde_cbs_tabel_heeft_vo_codes_buiten_haar_profielcodes():
         assert bool(filter_.vo_codes) is (tabel in gemengd), tabel
         assert not filter_.vo_codes & filter_.codes, tabel
         assert not filter_.vo_codes & {"A043837", "A025279", "A025280", "A025281", "A025282", "A049120", "A049121"}
+
+
+# RIO: de vo- en vavo-typen per register (#880). Een doorstroomvraag die RIO nodig heeft: welke vavo-opleiding een roc
+# aanbiedt, de tweedekansroute naar een vo-diploma en daarmee naar vervolgonderwijs. CBS telt vavo-deelnemers, maar
+# alleen RIO kent het aanbod.
+_VAVO_AANBOD = "Welke vavo-opleidingen bieden roc's in Utrecht aan?"
+_MBO_AANBOD = "Welke mbo-opleidingen biedt het ROC van Amsterdam aan?"
+_VAVO = {"type": "AANGEBODENVAVOOPLEIDING"}
+
+
+def _laad_rio(vraag: str | None, filters: dict, resource: str = "aangeboden-opleidingen"):
+    from contextlib import nullcontext
+
+    with (
+        beurtvraag(vraag) if vraag is not None else nullcontext(),
+        patch("tools.rio._filterfout", return_value=None),
+        patch("tools.rio.fetch", return_value=[{"eigennaam": "VAVO havo", "type": filters.get("type")}]) as fetch,
+    ):
+        return get_rio_data(resource, filters), fetch
+
+
+def test_een_doorstroomvraag_haalt_het_vavo_aanbod_op_met_het_etiket_van_de_vo_context(catalogus):
+    from agent.selectie import selectie_in_woorden
+    from tools import store
+
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, _VAVO)
+    result = json.loads(tekst)
+
+    fetch.assert_called_once()
+    assert fetch.call_args.kwargs["type"] == "AANGEBODENVAVOOPLEIDING"
+    assert result["catalogus_titel"] == f"{_RIO_SECTORFILTER['bron']}, {_VO_DEEL}"
+    assert result["context"] == scopeprofiel.VO_CONTEXT_ETIKET
+    assert _VO_DEEL in (selectie_in_woorden(result["data_key"]) or "")
+    assert store.herkomst(result["data_key"])[0] == f"bron: RIO, dataset aangeboden-opleidingen, {_VO_DEEL}"
+    assert _lading(result["data_key"])[1]["vo_context"] is True
+
+
+@pytest.mark.parametrize("vraag", [_MBO_AANBOD, "Welke hbo-opleidingen biedt de Hogeschool Utrecht aan?", None])
+def test_zonder_doorstroomvraag_blijft_een_vo_type_dicht(catalogus, vraag):
+    """Ook een directe aanroep (MCP, None) en een ho-vraag zonder vo-niveau openen de vo-records niet (#880)."""
+    tekst, fetch = _laad_rio(vraag, {"type": "AANGEBODENVOOPLEIDING"})
+
+    fetch.assert_not_called()
+    assert "AANGEBODENMBOOPLEIDING" in tekst and "AANGEBODENVOOPLEIDING" not in tekst
+
+
+def test_een_mbo_type_in_een_doorstroombeurt_houdt_zijn_bronregel(catalogus):
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, {"type": "AANGEBODENMBOOPLEIDING"})
+    result = json.loads(tekst)
+
+    fetch.assert_called_once()
+    assert result["catalogus_titel"] == _RIO_SECTORFILTER["bron"] and "context" not in result
+
+
+def test_de_melding_noemt_de_vo_typen_alleen_bij_een_doorstroomvraag(catalogus):
+    open_, _ = _laad_rio(_VAVO_AANBOD, {})
+    dicht, _ = _laad_rio(_MBO_AANBOD, {})
+
+    assert "AANGEBODENVAVOOPLEIDING" in open_ and _VO_DEEL in open_
+    assert "AANGEBODENVAVOOPLEIDING" not in dicht
+
+
+def test_een_register_zonder_typefilter_blijft_dicht_bij_een_doorstroomvraag(catalogus):
+    tekst, fetch = _laad_rio(_VAVO_AANBOD, {"contactadrestype": "BEZOEKNL"}, "contactadressen")
+
+    fetch.assert_not_called()
+    assert json.loads(tekst)["buiten_scope"] is True
+
+
+def test_een_recept_herlaadt_het_vavo_aanbod_in_een_latere_beurt(catalogus):
+    from tools import herlaad, store
+
+    tekst, _ = _laad_rio(_VAVO_AANBOD, _VAVO)
+    key = json.loads(tekst)["data_key"]
+    recept = herlaad.recept(key, {"name": "get_rio_data", "arguments": {"resource": "aangeboden-opleidingen"}})
+    store.clear()
+    with (
+        beurtvraag(_MBO_AANBOD),
+        patch("tools.rio._filterfout", return_value=None),
+        patch("tools.rio.fetch", return_value=[{"eigennaam": "VAVO havo"}]),
+    ):
+        assert recept is not None and herlaad.herlaad(key, recept).gelukt
+
+    assert _lading(key)[0] is True
+
+
+def test_het_model_opent_een_vo_type_niet_zelf(catalogus):
+    from tools import dispatch
+
+    with patch("tools.rio.fetch") as fetch:
+        tekst, _ = dispatch(
+            "get_rio_data", {"resource": "aangeboden-opleidingen", "filters": _VAVO, "vo_context": True}
+        )
+
+    fetch.assert_not_called()
+    assert "data_key" not in tekst
+
+
+def test_de_vo_typen_bestaan_in_het_riodata_contract_naast_het_sectorfilter():
+    """De namen per register uit het contract (#880); geen mbo/ho-waarde dubbel, en geen po of (v)so."""
+    from riodata import filtercontract
+
+    assert set(scopeprofiel.SECTORFILTER_VO_CONTEXT) == set(scopeprofiel.SECTORFILTER)
+    for resource, vo_waarden in scopeprofiel.SECTORFILTER_VO_CONTEXT.items():
+        naam, waarden = scopeprofiel.SECTORFILTER[resource]
+        (filter_,) = [f for f in filtercontract()["resources"][resource]["filters"] if f["naam"] == naam]
+        assert vo_waarden <= set(filter_["enum"]), resource
+        assert not vo_waarden & waarden, resource
+        assert all(re.match(r"(?:AANGEBODEN)?(?:VO|VAVO)", w) for w in vo_waarden), resource  # VSO begint met VS

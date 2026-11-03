@@ -193,20 +193,20 @@
   "gemeten_op": "2026-11-03",
   "metingen": {
     "mbo/ontwikkel": {
-      "n": 21,
-      "n_beantwoordbaar": 19,
-      "recall_at_5": 0.8947,
+      "n": 22,
+      "n_beantwoordbaar": 20,
+      "recall_at_5": 0.9,
       "recall_at_5_95": [
-        0.6861,
-        0.9706
+        0.699,
+        0.9721
       ],
-      "mrr": 0.7873,
+      "mrr": 0.7604,
       "mrr_95": [
-        0.6162,
-        0.9276
+        0.6062,
+        0.9042
       ],
-      "recall_at_5_vraag": 0.7368,
-      "mrr_vraag": 0.6509,
+      "recall_at_5_vraag": 0.7,
+      "mrr_vraag": 0.6183,
       "onbeantwoordbaar_geslaagd": [
         1,
         2
@@ -337,20 +337,20 @@
       ]
     },
     "totaal/ontwikkel": {
-      "n": 59,
-      "n_beantwoordbaar": 53,
-      "recall_at_5": 0.8491,
+      "n": 60,
+      "n_beantwoordbaar": 54,
+      "recall_at_5": 0.8519,
       "recall_at_5_95": [
-        0.7295,
-        0.9215
+        0.734,
+        0.923
       ],
-      "mrr": 0.7412,
+      "mrr": 0.7321,
       "mrr_95": [
-        0.6336,
-        0.8403
+        0.6261,
+        0.8347
       ],
-      "recall_at_5_vraag": 0.7358,
-      "mrr_vraag": 0.5932,
+      "recall_at_5_vraag": 0.7222,
+      "mrr_vraag": 0.5823,
       "onbeantwoordbaar_geslaagd": [
         1,
         6
