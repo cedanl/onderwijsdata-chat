@@ -4,7 +4,7 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 
 ## Project Context
 
-**EDUdata** is een AI-assistent voor open Nederlandse onderwijsdata (CBS, DUO, RIO). Gebruikers stellen vragen, de app haalt data op en genereert dashboards. Demo-fase: geen Entra ID, geen IP-restricties.
+**EDUdata** is een AI-assistent voor open Nederlandse onderwijsdata (CBS, DUO, RIO). Gebruikers stellen vragen, de app haalt data op, beantwoordt met bronnen en maakt op verzoek een rapport; daarnaast zijn er vaste dashboards (mijn instelling, arbeidsmarkt, landelijk). Demo-fase: geen Entra ID, geen IP-restricties.
 
 ## Tech Stack
 
