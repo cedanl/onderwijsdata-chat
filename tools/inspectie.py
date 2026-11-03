@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -195,6 +196,17 @@ def _cel(cel) -> str:
     return "\n".join("".join(p.itertext()) for p in cel.iter(_ODS_TEKST))
 
 
+def rijwaarden(rij: ElementTree.Element) -> list[str]:
+    """De celwaarden van één ODS-rij, met herhaalde cellen uitgeschreven en zonder lege staart."""
+    waarden: list[str] = []
+    for cel in rij:
+        if cel.tag in (_ODS_TABEL + "table-cell", _ODS_TABEL + "covered-table-cell"):
+            waarden += [_cel(cel)] * min(int(cel.get(_ODS_TABEL + "number-columns-repeated", "1")), _MAX_HERHALING)
+    while waarden and not waarden[-1]:
+        waarden.pop()
+    return waarden
+
+
 def lees_ods(inhoud: bytes) -> list[dict]:
     """De rijen van het eerste blad als dicts, met de eerste rij als kop."""
     try:
@@ -207,13 +219,7 @@ def lees_ods(inhoud: bytes) -> list[dict]:
         return []
     tabel: list[list[str]] = []
     for rij in blad.iter(_ODS_TABEL + "table-row"):
-        waarden: list[str] = []
-        for cel in rij:
-            if cel.tag in (_ODS_TABEL + "table-cell", _ODS_TABEL + "covered-table-cell"):
-                waarden += [_cel(cel)] * min(int(cel.get(_ODS_TABEL + "number-columns-repeated", "1")), _MAX_HERHALING)
-        while waarden and not waarden[-1]:
-            waarden.pop()
-        if waarden:
+        if waarden := rijwaarden(rij):
             tabel += [waarden] * min(int(rij.get(_ODS_TABEL + "number-rows-repeated", "1")), _MAX_HERHALING)
     if not tabel:
         return []
@@ -227,33 +233,48 @@ def _haal(client: httpx.Client, url: str) -> httpx.Response:
     return antwoord
 
 
-def _bg_url(client: httpx.Client) -> str:
-    """De URL van het nieuwste bg-bestand: nieuwste schooljaar met een document, nieuwste document, bg-bestand."""
+def bestand_url(client: httpx.Client, bestand: re.Pattern[str], naam: str) -> str:
+    """De URL van het nieuwste bestand van deze soort: nieuwste schooljaar met een document, nieuwste document, en
+    daarin het bestand. Elk document heeft het bg-bestand en het po-so-vo-bestand (#881)."""
     overzicht = _haal(client, OVERZICHT).text
     jaren = sorted({(int(jaar), pad) for pad, jaar in _JAARPAGINA.findall(overzicht)}, reverse=True)
     for _, pad in jaren[:2]:  # het nieuwe schooljaar kan nog zonder document zijn
         documenten = sorted({(d[1:], d[0]) for d in _DOCUMENT.findall(_haal(client, pad).text)}, reverse=True)
         for _, document in documenten:
-            if gevonden := _BG_ODS.search(_haal(client, document).text):
+            if gevonden := bestand.search(_haal(client, document).text):
                 return gevonden.group(1)
-    raise InspectieOnbereikbaar("geen bg-bestand gevonden via de schooljaarpagina's van de Inspectie")
+    raise InspectieOnbereikbaar(f"geen {naam}-bestand gevonden via de schooljaarpagina's van de Inspectie")
 
 
-def haal_peilbestand(client: httpx.Client | None = None) -> Peilbestand:
-    """Het nieuwste bg-bestand, gelezen; zonder `client` een eigen verbinding met timeout en herkenbare naam."""
+def _bg_url(client: httpx.Client) -> str:
+    return bestand_url(client, _BG_ODS, "bg")
+
+
+def haal_ods(vind_url: Callable[[httpx.Client], str], client: httpx.Client | None = None) -> tuple[str, list[dict]]:
+    """De URL en de rijen van het bestand dat `vind_url` aanwijst; zonder `client` een eigen verbinding met timeout
+    en herkenbare naam. Gedeeld met de vo-oordelen (`tools.inspectie_vo`, #881)."""
     eigen = client is None
     client = client or httpx.Client(headers=_HEADERS, timeout=_TIMEOUT_S, follow_redirects=True)
     try:
-        url = _bg_url(client)
-        rijen = lees_ods(_haal(client, url).content)
+        url = vind_url(client)
+        return url, lees_ods(_haal(client, url).content)
     except httpx.HTTPError as e:
         raise InspectieOnbereikbaar(f"de Inspectie antwoordde niet ({type(e).__name__})") from e
     finally:
         if eigen:
             client.close()
+
+
+def peildatum_van(rijen: list[dict]) -> str:
+    """De peildatum zoals de Inspectie hem schrijft (01-10-2026): de eerste gevulde in het bestand."""
+    return str(next((r["Peildatum"] for r in rijen if r.get("Peildatum")), ""))
+
+
+def haal_peilbestand(client: httpx.Client | None = None) -> Peilbestand:
+    """Het nieuwste bg-bestand, gelezen."""
+    url, rijen = haal_ods(_bg_url, client)
     meld_onbekend(rijen)
-    peildatum = str(next((r["Peildatum"] for r in rijen if r.get("Peildatum")), ""))
-    return Peilbestand(url, peildatum, rijen)
+    return Peilbestand(url, peildatum_van(rijen), rijen)
 
 
 def _is_mbo(rij: dict) -> bool:
