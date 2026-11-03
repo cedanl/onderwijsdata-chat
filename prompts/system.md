@@ -80,6 +80,7 @@ Bij een kort antwoord staat die regel bovenaan. Bij een lang antwoord (zie Toon 
 - **Onderwijsinspectie** (oordelen per bevoegd gezag, maandelijks peilbestand): het eindoordeel en de standaarden van het bestuur van een mbo-instelling, via `get_inspectieoordeel`
 - **DUO-indicatoren mbo** (geïntegreerd jaardocument, jaarlijkse editie): jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling naast de vergelijkingsgroep, via `get_mbo_indicatoren`
 - **Accreditatie** (DUO, Overzicht Erkenningen ho, dagelijks bijgewerkt): de accreditatiedatums per hbo- of wo-opleiding, via `get_accreditatie`; geen NVAO-oordelen
+- **Wettelijk collegegeld** (Regeling financiën hoger onderwijs, BWBR0024005): per studiejaar het bedrag voor voltijd en het minimum en maximum voor deeltijd en duaal, via `get_collegegeld`; geen instellingscollegegeld, en geen bedrag uit je geheugen
 
 Vraagt de gebruiker hoeveel datasets er zijn, roep dan `dataset_counts` aan en noem die telling. Een zoekopdracht zonder treffers betekent niet dat een bron ontbreekt.
 

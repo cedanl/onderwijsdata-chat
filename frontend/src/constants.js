@@ -23,6 +23,7 @@ export const SESSION_DATA_KEYS = [
   STORAGE_SAVED_CHAT, // which open conversation the server has (#635): goes with the conversation it describes
   STORAGE_TE_VERWIJDEREN, // ids of deletes the server has not confirmed (#801): logout sends them first, with its own token
   STORAGE_WORKBOOKS,
+  // The chat of the dashboard builder, gone since #765: a browser that used it still holds its messages and figures.
   STORAGE_DC_MESSAGES,
   STORAGE_DC_FIGURES,
 ]

@@ -92,7 +92,11 @@ def test_bij_een_laadfout_blijft_het_oude_register_met_een_logregel(duo, klok, c
     with caplog.at_level(logging.WARNING, logger="data.instellingen"):
         assert _namen() == ["Hogeschool Utrecht"]
     assert any("herladen mislukt voor p01hoinges/0" in r.getMessage() for r in caplog.records)
-    assert "DUO onbereikbaar" not in caplog.text.split("registry: herladen")[-1]  # geen fouttekst in de regel
+    # Geen fouttekst en geen traceback op WARNING, ook niet in de regel van het mislukte bestand (#819).
+    assert "DUO onbereikbaar" not in caplog.text
+    assert any(
+        "p01hoinges/0) niet beschikbaar: " in r.getMessage() and "fout_len=" in r.getMessage() for r in caplog.records
+    )
 
     # Niet bij elke aanroep opnieuw: pas na de herpoging, en dan met de nieuwe stand.
     klok(minutes=30)

@@ -47,7 +47,6 @@ def client(database, monkeypatch):
 
     monkeypatch.setattr(auth, "AUTH_ENABLED", True)
     monkeypatch.setattr(routes.chat, "AUTH_ENABLED", True)
-    monkeypatch.setattr(routes.chat, "DASHBOARDS_ENABLED", True)
     return TestClient(server.app)
 
 
@@ -135,16 +134,7 @@ def test_logout_laat_een_ander_token_van_dezelfde_gebruiker_staan(client):
     assert client.get("/api/conversations", headers=_bearer(ander)).status_code == 200
 
 
-# ── Criterium 2: dashboard-refresh en WebSocket ──────────────────────────────
-
-
-def test_dashboard_refresh_weigert_een_ingetrokken_token(client):
-    token = _token()
-    assert client.post("/api/dashboard/refresh", headers=_bearer(token), json={}).status_code != 401
-
-    client.post("/api/auth/logout", headers=_bearer(token))
-
-    assert client.post("/api/dashboard/refresh", headers=_bearer(token), json={}).status_code == 401
+# ── Criterium 2: WebSocket ───────────────────────────────────────────────────
 
 
 def test_websocket_met_geldig_token_wordt_geaccepteerd(client):
@@ -515,10 +505,9 @@ def test_geen_token_of_hash_in_logs(oidc_client, client, caplog):
         client.post("/api/auth/logout", headers=_bearer(token)),
         client.get("/api/conversations", headers=_bearer(token)),
         oidc_client.post("/api/auth/refresh", json={"token": token}),
-        client.post("/api/dashboard/refresh", headers=_bearer(token), json={}),
     ]
 
-    assert [r.status_code for r in antwoorden] == [204, 401, 401, 401]
+    assert [r.status_code for r in antwoorden] == [204, 401, 401]
     for geheim in (token, token_hash, ververst, hashlib.sha256(ververst.encode()).hexdigest()):
         assert geheim not in caplog.text
         assert all(geheim not in r.text for r in antwoorden)

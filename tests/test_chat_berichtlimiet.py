@@ -19,13 +19,11 @@ from routes.instellingen import TAG_STARTERS
 @pytest.fixture
 def limiet(monkeypatch):
     monkeypatch.setattr(chat, "_berichtlimiter", RateLimiter(max_attempts=2, window_seconds=600))
-    monkeypatch.setattr(chat, "DASHBOARDS_ENABLED", True)
 
     async def geen_model(*args, **kwargs):
         return None
 
     monkeypatch.setattr(chat, "_process_message", geen_model)
-    monkeypatch.setattr(chat, "_generate_dashboard", geen_model)
     monkeypatch.setattr(chat, "_generate_report", geen_model)
 
 
@@ -79,10 +77,10 @@ def test_gasten_tellen_per_verbinding_en_een_reset_helpt_niet(limiet):
     assert not _geweigerd(_run("message", {"content": "vraag"}, twee)[1])
 
 
-def test_verduidelijking_dashboard_en_rapport_tellen_mee(limiet):
+def test_verduidelijking_en_rapport_tellen_mee(limiet):
     session = chat._new_session(username="anna")
     assert not _geweigerd(_run("clarification_choice", {"choice": "Laatste schooljaar"}, session)[1])
-    assert not _geweigerd(_run("generate_dashboard", {}, session)[1])
+    assert not _geweigerd(_run("generate_report", {}, session)[1])
     assert _geweigerd(_run("generate_report", {}, session)[1])
 
 

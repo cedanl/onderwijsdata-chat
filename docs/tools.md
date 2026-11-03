@@ -438,6 +438,29 @@ De accreditatiedatums van één hbo- of wo-opleiding bij één instelling, uit D
 
 ---
 
+## get_collegegeld
+
+Het wettelijk collegegeld van één studiejaar, uit artikel 9 van de Regeling financiën hoger onderwijs (BWBR0024005;
+#729, `tools/collegegeld.py`).
+- **Route:** geen bronaanroep. De bedragen staan in een vaste tabel in de code, per studiejaar met de versie van de
+  regeling waarin ze zijn nagelezen en de dag van dat nalezen (zie [Databronnen](databronnen.md)). Het model kiest
+  alleen het studiejaar; zonder studiejaar is het het lopende (vanaf 1 september het nieuwe).
+- **Resultaat:** precies één bedragenpaar: `voltijd.bedrag_euro` (volledig wettelijk collegegeld) en
+  `deeltijd_en_duaal` met `minimum_euro` en `maximum_euro` (gedeeltelijk wettelijk collegegeld; de instelling kiest
+  het bedrag ertussen), elk met zijn betekenis en wetsartikel. Verder `geen_open_bron` en de bron.
+  - Een `noot` volgt bij een vastgestelde wijziging die nog niet geldt, en bij 2023/2024 (verlaagd collegegeld voor
+    eerstejaars, niet in de tabel).
+- **Geen bedrag:** voor een studiejaar dat niet in de tabel staat, en voor iets wat geen studiejaar is. Het
+  instellingscollegegeld is geen open data: de tool zegt dat in elk antwoord, ook als de vraag erover gaat.
+- **Bronregel:** "wetten.nl · Regeling financiën hoger onderwijs (BWBR0024005), artikel 9, versie van …, opgehaald
+  op …" onder het antwoord, met een link naar dat artikel in die versie.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `studiejaar` | integer, optioneel | Startjaar van het studiejaar, bijv. `2026` voor 2026/2027 |
+
+---
+
 ## get_uwv_vacatures
 
 Vacatures van UWV (Open Match) per provincie of gemeente en beroepencluster, als arbeidsmarkt-context bij een
@@ -598,9 +621,9 @@ De grafiek wordt direct in de chat weergegeven. In een rapport staat onder elke 
 CBS-periodestatus van de getekende rijen, en als link de StatLine-pagina (CBS, #638) of de documentatie-URL uit de
 catalogus (andere bronnen). De regel komt uit de
 `data_key` van de aanroep; een grafiek uit losse `data` heeft geen herleidbare bron en zegt dat. Rust een rapport
-of dashboard op een afgekapte bron (één pagina, niet de hele bron, #186), dan zet de code per laadkey één vaste regel
-met bron, catalogustitel en het aantal opgehaalde rijen vooraan in "Wat dit rapport niet beantwoordt" of achteraan
-in de bronnen van het dashboard (`agent/afkapping.py`, #578).
+op een afgekapte bron (één pagina, niet de hele bron, #186), dan zet de code per laadkey één vaste regel met bron,
+catalogustitel en het aantal opgehaalde rijen vooraan in "Wat dit rapport niet beantwoordt" (`agent/afkapping.py`,
+#578).
 
 ---
 
@@ -665,7 +688,7 @@ het invoerveld; de gebruiker past haar aan of verstuurt haar zelf.
 
 Geen vervolgvragen na een verduidelijkingsvraag, een weigering, een ingehouden, leeg, afgekapt of afgebroken
 antwoord, een deelantwoord (het stappenbudget was op), of een beurt zonder geladen dataset (zoals alleen UWV of ROA).
-Rapport en dashboard tonen geen vervolgvragen.
+Een rapport toont geen vervolgvragen.
 
 Elk gewoon antwoord geeft in het log de regel `VERVOLGVRAGEN  aangeboden=N  datasets=M`, ook als N nul is: zo is te
 tellen hoe vaak er knoppen komen, en hoe vaak een antwoord met data (M > 0) er geen kreeg. De vragen zelf staan niet

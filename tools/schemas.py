@@ -26,6 +26,7 @@ TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
 TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 TOOL_GET_ACCREDITATIE = "get_accreditatie"
+TOOL_GET_COLLEGEGELD = "get_collegegeld"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -365,6 +366,31 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": TOOL_GET_COLLEGEGELD,
+            "description": (
+                "Het wettelijk collegegeld van één studiejaar in het hoger onderwijs, uit artikel 9 van de Regeling "
+                "financiën hoger onderwijs (BWBR0024005): het bedrag voor voltijd en het minimum en maximum voor "
+                "deeltijd en duaal, met de wetsversie als bron. Gebruik dit bij elke vraag naar de hoogte van het "
+                "collegegeld, ook naar het instellingscollegegeld: de tool zegt dan dat daarvoor geen open bron is. "
+                "Neem de bedragen letterlijk over; noem nooit een collegegeldbedrag uit je geheugen en reken er geen "
+                "uit. Eén studiejaar per aanroep."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "studiejaar": {
+                        "type": "integer",
+                        "description": "Startjaar van het studiejaar: 2026 voor 2026/2027. Weglaten: het lopende "
+                        "studiejaar.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": TOOL_GET_RIO_INSTELLING,
             "description": (
                 "Overzicht van één onderwijsinstelling uit RIO: het bevoegd gezag (bestuur), de erkende "
@@ -497,8 +523,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": TOOL_COMPUTE_KPI,
             "description": (
-                "Bereken één KPI-waarde over data die al in de store staat. Gebruik dit voor ELK getal dat als KPI "
-                "in een dashboard komt, inclusief verschillen en percentages. Reken zelf nooit een trend uit: geef "
+                "Bereken één KPI-waarde over data die al in de store staat. Gebruik dit voor ELK verschil, percentage of "
+                "index over een reeks in een antwoord of rapport. Reken zelf nooit een trend uit: geef "
                 "de data_key en de maat op en neem de teruggegeven `value` en `trend` letterlijk over."
             ),
             "parameters": {

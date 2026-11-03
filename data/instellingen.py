@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from riodata import duo
 
 from core import actualiteit
+from core.logging_util import foutkenmerk
 from data import arbeidsmarktregio
 
 logger = logging.getLogger(__name__)
@@ -194,8 +195,9 @@ def _build_adres_lookup() -> dict[str, dict]:
     for resource in ("adressen_ho", "adressen_mbo"):  # HO eerst: een code in beide houdt het HO-adres
         try:
             df = duo.load(resource, 1)
-        except Exception:
-            logger.warning("adres-lookup: %s niet beschikbaar", resource, exc_info=True)
+        except Exception as e:
+            logger.warning("adres-lookup: %s niet beschikbaar: %s", resource, foutkenmerk(e))
+            logger.debug("adres-lookup: %s niet beschikbaar", resource, exc_info=True)
             continue
         for _, row in df.iterrows():
             code = str(row.get("INSTELLINGSCODE") or "").strip()
@@ -268,9 +270,10 @@ def _build_registry() -> tuple[list[dict], list[str]]:
                 "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
                 "domeinen": [],
             }
-    except Exception:
+    except Exception as e:
         mislukt.append("p01hoinges/0")
-        logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
+        logger.warning("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar: %s", foutkenmerk(e))
+        logger.debug("registry: HBO-instellingen (p01hoinges/0) niet beschikbaar", exc_info=True)
 
     try:
         df_wo = duo.load("p01hoinges", 1)
@@ -288,9 +291,10 @@ def _build_registry() -> tuple[list[dict], list[str]]:
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
                     "domeinen": [],
                 }
-    except Exception:
+    except Exception as e:
         mislukt.append("p01hoinges/1")
-        logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
+        logger.warning("registry: WO-instellingen (p01hoinges/1) niet beschikbaar: %s", foutkenmerk(e))
+        logger.debug("registry: WO-instellingen (p01hoinges/1) niet beschikbaar", exc_info=True)
 
     try:
         df_mbo = duo.load("mbo-studenten-per-instelling", 0)
@@ -308,9 +312,10 @@ def _build_registry() -> tuple[list[dict], list[str]]:
                     "arbeidsmarktregio": loc.get("arbeidsmarktregio"),
                     "domeinen": [],
                 }
-    except Exception:
+    except Exception as e:
         mislukt.append("mbo-studenten-per-instelling/0")
-        logger.warning("registry: MBO-instellingen niet beschikbaar", exc_info=True)
+        logger.warning("registry: MBO-instellingen niet beschikbaar: %s", foutkenmerk(e))
+        logger.debug("registry: MBO-instellingen niet beschikbaar", exc_info=True)
 
     _apply_sram_mappings(result)
     return sorted(result.values(), key=lambda x: x["naam"].lower()), mislukt

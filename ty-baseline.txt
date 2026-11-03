@@ -1,4 +1,3 @@
-agent/dashboard.py: error[unresolved-attribute] Attribute `items` is not defined on `None` in union `dict[Unknown, Unknown] | None`
 agent/grounding.py: error[invalid-parameter-default] Default value of type `tuple[()]` is not assignable to annotated parameter type `list[str]`
 agent/grounding.py: warning[invalid-argument-type] Argument to bound method `Decimal.scaleb` is incorrect: Expected `Decimal | int`, found `int | Literal["n", "N", "F"]`
 agent/loop.py: warning[invalid-argument-type] Argument to function `to_thread` is incorrect: Expected `dict[Unknown, Unknown]`, found `dict[Unknown, Unknown] | None`

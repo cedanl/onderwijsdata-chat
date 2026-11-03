@@ -37,9 +37,7 @@ def test_elke_actie_van_de_frontend_heeft_een_handler():
         "history",
         "message",
         "clarification_choice",
-        "generate_dashboard",
         "generate_report",
-        "refresh_dashboard",
     }
 
 

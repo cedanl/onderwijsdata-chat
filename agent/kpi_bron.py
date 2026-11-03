@@ -2,9 +2,8 @@
 
 Een KPI is een afgeleide waarde (verschil, som, gemiddelde) met een eigen bron:
 de jaren in `periode` en de selectie in `bron`. De periode-, scope- en
-bindingscontrole, de citaties (meetwaarden) en de dashboardvalidatie lezen KPI's
-alleen hier; de periode- en scopecontrole zoeken een KPI-waarde in de tekst met
-`noemt`, het dashboard vergelijkt een modelwaarde met `sleutel`.
+bindingscontrole en de citaties (meetwaarden) lezen KPI's alleen hier; de
+periode- en scopecontrole zoeken een KPI-waarde in de tekst met `noemt`.
 """
 
 import json
@@ -28,8 +27,6 @@ class Kpi:
     bron: dict | None  # data_key, kolom, metric, …; None zonder bron
     raw: int | float | None = None  # het getal zelf, zoals compute_kpi het berekende; None als het ontbreekt
     label: str | None = None  # het label dat het model meegaf
-    trend: str | None = None  # de trend die de tool berekende, bijv. +5%
-    richting: str | None = None  # trendDirection: up, down of None
 
 
 def kpi(data) -> Kpi | None:
@@ -69,14 +66,7 @@ def _kpi(data: dict) -> Kpi:
         bron,
         raw=raw if isinstance(raw, int | float) and not isinstance(raw, bool) else None,
         label=_tekst(data.get("label")),
-        trend=_tekst(data.get("trend")),
-        richting=_tekst(data.get("trendDirection")),
     )
-
-
-def sleutel(waarde) -> str:
-    """Vergelijkbare vorm van een getal: '30.083', '30 083' en '30083' zijn hetzelfde getal."""
-    return str(waarde).replace(".", "").replace(" ", "").replace("\u00a0", "").strip().lower()
 
 
 def _kaal(waarde: str) -> str:

@@ -7,7 +7,6 @@ import { createRoot } from 'react-dom/client'
 import { endSession, onSessionEnded, fetchUserInfo, refreshAuthToken, checkSession } from '../auth'
 import { fetchWorkbooks, downloadDataCsv, fetchSettingsConfig } from '../api'
 import { useChat } from '../hooks/useChat'
-import useDashboardChat from '../hooks/useDashboardChat'
 import App from '../App'
 import { STORAGE_TOKEN } from '../constants'
 
@@ -227,7 +226,6 @@ class FakeWebSocket {
 
 describe.each([
   ['useChat', () => useChat()],
-  ['useDashboardChat', () => useDashboardChat()],
 ])('%s socket refused', (_, useHook) => {
   let root
   let fetch

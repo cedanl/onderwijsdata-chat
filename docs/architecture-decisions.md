@@ -17,7 +17,7 @@ The server loads and computes; the model selects and phrases. Four layers:
 1. **data_key** — No data rows in context; the model gets a key, the schema and a short preview.
 2. **Compute in code** — `query_data` (aggregation) and `compute_kpi` (difference, percentage, index, largest drop/rise) return the numbers; the model copies them.
 3. **run_analysis guard** — An AST check rejects a script with a literal data structure of six or more numbers (retyped data) or one that reads no data.
-4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Dashboards use `_check_number_sourcing` in `agent/dashboard.py`, reports `agent/report_checks.py`. The report run has `compute_kpi` too, and checks every percentage the model wrote with the same rule as the chat (`unsourced_percentages` in `agent/grounding.py`, #872).
+4. **Answer checks** — Every chat answer is checked against the tool results: numbers (`agent/grounding.py`), selection, labels and binding (`agent/selectie.py`, `agent/labels.py`, `agent/binding.py`). A failure triggers one correction round; a remaining problem stays visible on the answer. Reports use `agent/report_checks.py`. The report run has `compute_kpi` too, and checks every percentage the model wrote with the same rule as the chat (`unsourced_percentages` in `agent/grounding.py`, #872).
 
 ### Rationale
 - **Auditable:** each number can be traced to the tool call that produced it.
@@ -29,7 +29,7 @@ More orchestration, and the checks reduce the risk; they do not eliminate it. Kn
 
 - Numbers under four digits and years are not checked; percentages are matched as value or fraction, in chat answers and in the model text of a report (not in the definitions a report quotes from the source). A percentage that matches some value in the data counts as sourced, whatever that value measures, and its sign is not checked.
 - Binding only works when a sentence names exactly one year and one institution.
-- Numbers from earlier assistant messages in the conversation count as sourced. Numbers the user gave do not (#211): they are a claim to test, not evidence (`agent/controles.py`, `agent/grounding.py`). The assistant turns come from the history the client stores and sends back, so they count as covered without the server having written them; whether the server should write its own turns is open in #784.
+- Numbers from earlier assistant messages in the conversation count as sourced. Numbers the user gave do not (#211): they are a claim to test, not evidence (`agent/controles.py`, `agent/grounding.py`). The assistant turns come from the history the client stores and sends back, so they count as covered without the server having written them. ADR-009 (#784) keeps the conversation with the client and has the server store a hash of every answer it checked, so that after reopening only its own turns can count; until that is built (#876), a reopened conversation's turns still count as covered.
 - `run_analysis` executes model-written Python in a separate process (AST check, resource limits, audit hook blocking network, writes and subprocesses; #62). That sandbox limits damage but is not a kernel-level security boundary (#443).
 - Each check covers one class of error; a new class of error passes until a check exists for it. When the set of check modules keeps growing, revisit this decision (see ADR-007 for when).
 
@@ -289,6 +289,166 @@ databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41)
     - er komen klachten over laadtijd of downloadgrootte op mobiel;
     - `npm run budget` faalt op `plotly-rapport` en de groei is niet terug te dringen;
     - een .docx- of andere export vraagt toch statische grafieken (#746).
+
+---
+
+## ADR-009: Het gesprek blijft van de client; de server bewaart per beurt wat rapport en controles nodig hebben
+
+**Date:** 2026-11-03 (besluit 2026-10-30)  
+**Status:** Decided, nog niet gebouwd (#875, #876)  
+**Issue:** #784 (raakt #472, #677, #760, #785)
+
+### Problem
+De server schrijft zelf geen chatbeurt weg; de browser bezit de gezaghebbende kopie van elk gesprek.
+
+- Na elk antwoord stuurt de frontend de hele `messages`-lijst met `PUT /api/conversations/{id}` (`routes/persistence.py`,
+  de body is een ongetypeerde `dict`). De server bewaart die als één JSON-blob in `conversations.messages`
+  (`persistence/db.py` `upsert_conversation`).
+- Bij heropenen en na elke herverbinding stuurt de frontend het open gesprek als `history`-frame over de WebSocket
+  (`ChatPage.jsx`, `sendHistory` in `useChat.js`). De server neemt die tekst over (`_handle_history` en
+  `_open_conversation` in `routes/chat.py`), niet de kopie in de database. Alleen de data-keys komen uit de database,
+  via de recepten (#472).
+- `_open_conversation` begint met een verse sessie: `turns`, `data_provenance` en `rekenbewijs` zijn leeg.
+
+De gevolgen uit #784:
+
+1. **Assistentbeurten uit de client tellen als bewijs.** `agent/run.py` bouwt `earlier` uit de geschiedenis, en de
+   getalcontrole (`maak_getalcontrole` in `agent/controles.py`) telt getallen daaruit als gedekt. Na heropenen komt
+   die geschiedenis van de client.
+2. **Feedback op een antwoord dat er misschien niet stond.** `core/answer_feedback.py` leest vraag, antwoord, controle
+   en stappen via `message_index` uit het opgeslagen gesprek, en dat gesprek schreef de client.
+3. **Twee tabbladen** overschreven elkaars beurten (#760).
+4. **Een antwoord dat klaarkomt terwijl de client weg is**, wordt nooit bewaard (privacyaudit 29-10, F2).
+5. **Een heropend gesprek is armer dan een levend.** Het rapport leest de lineage (`data_lineage` in
+   `agent/session_data.py`; zonder lineage staat "onbekend (niet vastgelegd in dit gesprek)" in de prompt,
+   `agent/report.py`), het rekenbewijs (`rekenbewijs`) en de kaarten (`_kaarten_in_gesprek`, uit `turns`). Na heropenen
+   zijn alle drie leeg, terwijl de knop "Genereer rapport" al aangaat zodra er recepten zijn (`historyDataKeys > 0`,
+   `reportEligibility.js`).
+
+### Options
+- **A. Zo laten**, maar alleen beurten met een handtekening of hash van de server als bewijs laten tellen, en
+  `message_index` vervangen door een bericht-ID.
+- **B. De server schrijft elke beurt zelf** (append-only, bij `message_end`); de client bewaart alleen UI-status
+  (titel, ingeklapt, deeltekst). Heropenen leest uit de database.
+- **C. Mengvorm:** de server bewaart per beurt alleen wat het rapport en de controles nodig hebben (lineage,
+  rekenbewijs, kaartcontext, een hash van de gecontroleerde tekst). De client blijft het gesprek PUT'en.
+
+### Decision
+- **C.** De client blijft de bron van de gesprekstekst: de PUT, de GET en het `history`-frame houden hun vorm. Naast de
+  blob komt per beurt één rij met wat de server zelf vastlegde (zie Datamodel).
+- **Twee tabbladen (#760) los van dit besluit, met een eigen controle op de PUT.** Gebouwd in !747: `upsert_conversation`
+  weigert met 409 een versie die al bewaarde vragen weglaat, en schrijft alleen op de versie die het las
+  (`... AND messages = ?`). De frontend bewaart haar versie dan onder een nieuw id (`afsplitsing` in
+  `conversationStore.js`). Dat blijft zo.
+- **Niet gekozen:** B, want die is pas nodig bij meerdere pods (zie Trade-off(s)), en A, want een hash zonder lineage en
+  rekenbewijs maakt een heropend gesprek niet rijker, en bericht-ID's raken elk pad dat berichten maakt of filtert.
+
+### Datamodel
+Nieuwe tabel `beurtbewijs`, in `_SCHEMA` van `persistence/db.py` (dezelfde DDL voor SQLite en PostgreSQL, #825):
+
+| Kolom | Type | Inhoud |
+|---|---|---|
+| `username` | TEXT NOT NULL | de eigenaar, zoals in `conversations` |
+| `conv_id` | TEXT NOT NULL | het gesprek-id van de PUT waarin de tekst stond |
+| `tekst_hash` | TEXT NOT NULL | sha256 (hex) van de UTF-8-tekst die `message_end` als `content` stuurde: de tekst na de controles, die de frontend ongewijzigd als `content` bewaart |
+| `lineage` | TEXT NOT NULL | JSON `{data_key: {name, arguments}}`: wat `record_data_key` sinds de vorige beurt van deze sessie aan `data_provenance` toevoegde |
+| `rekenbewijs` | TEXT NOT NULL | JSON-lijst van `{tool, argumenten, resultaat}`: wat `record_rekenbewijs` sinds de vorige beurt toevoegde |
+| `kaarten` | TEXT NOT NULL | JSON `{data_key: {...}}`: de kaarten die deze beurt tekende, alleen met de velden van `_KAARTREGEL_ARGUMENTEN` (geen titel en geen rijen, #211) |
+| `created_at` | TEXT NOT NULL | ISO-tijd van `message_end` |
+
+Primaire sleutel `(username, conv_id, tekst_hash)`. Die dekt ook beide leesvragen: per gesprek, en per gesprek en hash.
+
+- **Wat een beurt is:** wat `_process_message` aan `turns` toevoegt, dus een afgerond antwoord, ook een vast antwoord
+  uit code. Een gestopt, afgebroken of mislukt antwoord en een verduidelijkingskaart krijgen geen rij. Wat die aan
+  lineage of rekenbewijs opleverden, gaat mee in de rij van de volgende beurt ("sinds de vorige beurt"). Zo is een
+  heropend gesprek gelijk aan het levende gesprek na zijn laatste afgeronde beurt.
+- **Sleutel op de tekst, niet op een index:** berichten hebben geen ID en de index verschuift (`restorableMessages`
+  filtert bij heropenen, `useChat.js` haalt een geweigerde vraag weg). De hash koppelt een rij aan de tekst die de
+  client terugstuurt, waar die ook staat. Een tekst die de client veranderde, vindt geen rij; dan telt de beurt als niet
+  van de server (fail closed). Dezelfde tekst twee keer in één gesprek geeft één rij: de tweede beurt voegt haar items
+  toe, en voor de lineage wint de eerste maker, zoals in `data_provenance`.
+- **Waarom op de server en niet in de blob:** het rapport zet de lineage als `herkomst` in de datasetcontext die zijn
+  controles lezen, en het rekenbewijs is bewijs voor die controles (#397). Wat de client kan schrijven, hoort daar
+  niet in.
+- **Grootte:** het rekenbewijs bewaart het hele toolresultaat, zoals nu in de sessie. Bij het lezen geldt dezelfde grens
+  als live (`_MAX_REKENBEWIJS`, de laatste 30). Ter vergelijking: een PUT met twee kaarten en tien figuren is 0,40 MiB
+  (#785).
+
+### Koppeling aan de PUT, heropenen, rapport en feedback
+- **Schrijven, zoals de recepten (#472).** Bij `message_end` kent de server het gesprek-id niet; dat kiest de frontend.
+  De sessie zet de rij daarom klaar in het geheugen, per `(username, tekst_hash)` en begrensd zoals `_wachtend` in
+  `agent/recepten.py`. Na een geslaagde PUT (`routes/persistence.py`, naast `recepten.bewaar`) schrijft de server een
+  rij onder dat gesprek-id voor elk assistentbericht in de body waarvan de hash klaarstaat. Een klaarstaande rij blijft
+  na het schrijven staan tot de grens haar verdringt, zoals een recept. Een 409 schrijft niets; de afsplitsing die de
+  frontend daarna PUT, krijgt de rijen onder haar nieuwe id. Frame en body veranderen niet.
+- **Heropenen en herverbinden.** `_handle_history` leest de rijen van `(username, conv_id)` en de klaarstaande rijen met
+  een hash uit het frame. `_open_conversation` vult daarmee `data_provenance`, `rekenbewijs` en de kaarten van de
+  sessie, in de volgorde van de beurten. De hash gaat over de tekst zoals het frame haar brengt, vóór `_parse_history`
+  inkort of markeert; zo krijgen ook beurten die buiten de modelgeschiedenis vallen hun lineage terug. Het vraagnummer
+  per key (`data_vraag`, #733) wordt niet bewaard: het volgt uit de plaats van de beurt in het heropende gesprek, net als
+  `gebruikersvragen`. De gesprekstekst zelf blijft uit het frame komen, niet uit de database.
+- **Wat een rapport voortaan leest:** dezelfde sessievelden als live (`data_lineage`, `rekenbewijs`, `data_vraag`, de
+  kaarten). Alleen `_kaarten_in_gesprek` leest naast `turns` ook de kaarten uit de rijen. Een gesprek zonder rijen geeft
+  hetzelfde rapport als nu.
+- **Controles.** In een live sessie verandert niets: daar zette de server de berichten zelf in `session["messages"]`. Na
+  heropenen of herverbinden telt een assistentbericht alleen als bewijs in `earlier` als het een rij heeft. Wat er met
+  een bericht zonder rij gebeurt, is open vraag 1.
+- **Feedback.** De sleutel van `answer_feedback` blijft `(username, conversation_id, message_index)`. `antwoord_trace`
+  zoekt de rij van het bericht op die index op via de hash, en de trace krijgt de hash en of de tekst van de server kwam
+  (`server_beurt`). Zo is ook na een verschoven index na te gaan bij welk antwoord de melding hoort. Of feedback op een
+  tekst zonder rij geweigerd wordt, is open vraag 2.
+
+### Bewaren en verwijderen
+Dezelfde termijn als het gesprek. `docs/privacy.md` krijgt een rij voor `beurtbewijs`, in de tabel en in de tekst in de
+app.
+
+- **Gesprek verwijderen:** `ruim_gesprek_op` (`persistence/db.py`) verwijdert de rijen van het gesprek in dezelfde
+  transactie. De klaarstaande rijen met een hash uit dat gesprek gaan uit het geheugen, zoals bij `recepten.vergeet`.
+- **Opschonen** (CronJob, `persistence/opschonen.py`): de rijen gaan met hun gesprek mee via `ruim_gesprek_op`. Een rij
+  zonder gesprek gaat 90 dagen na `created_at`, zoals een recept zonder gesprek. `beurtbewijs` komt in `SOORTEN`.
+- **"Verwijder al mijn gegevens"** (`persistence/verwijderen.py`): één `DELETE ... WHERE username = ?` in `DELETES`, en
+  de klaarstaande rijen van de gebruiker gaan uit het geheugen, zoals bij `recepten.vergeet_gebruiker`.
+- **Export** (`persistence/export.py`): een soort `beurtbewijs` met `conv_id`, `tekst_hash`, `lineage`, `rekenbewijs`,
+  `kaarten` en `created_at`, in de volgorde van `DELETES` (`tests/test_mijn_gegevens_verwijderen.py` bewaakt dat).
+- **Log:** op INFO alleen aantallen en kenmerken, nooit lineage, argumenten of resultaten (#475).
+
+### Migratie
+- Alleen een nieuwe tabel (`CREATE TABLE IF NOT EXISTS` in `_SCHEMA`). `conversations`, de PUT, de GET en het
+  WebSocket-protocol blijven gelijk. Terugdraaien is de code terugzetten; de tabel mag blijven staan.
+- Geen backfill: van bestaande gesprekken heeft de server nooit lineage of rekenbewijs bewaard. Zij heropenen zoals nu
+  (lineage "onbekend", geen rekenbewijs), en elke nieuwe beurt krijgt wel een rij.
+- Een herstart vóór de PUT gooit de klaarstaande rijen weg, zoals de wachtende recepten. Die beurten tellen dan als niet
+  van de server.
+
+### Rationale
+- **Lost de gevolgen op die nu schuren:** gevolg 5 (een rapport op een heropend of herverbonden gesprek krijgt dezelfde
+  context als live) en gevolg 1 (na heropenen telt alleen een eigen beurt als bewijs). Voor gevolg 2 geeft de hash de
+  koppeling.
+- **Klein en omkeerbaar:** één tabel, geen migratie van gesprekken, geen nieuw protocol. De deelteksten na een
+  verbindingsbreuk (#635, #652) blijven van de client.
+- **Hetzelfde patroon als de recepten (#472):** klaarzetten in de sessie, schrijven bij de PUT, opruimen met het
+  gesprek.
+
+### Trade-off(s)
+- **Niet opgelost: gevolg 4.** Een antwoord dat klaarkomt terwijl de client weg is, staat niet op de server, en zonder
+  PUT komt er ook geen rij.
+- **Eén pod:** de PUT moet bij hetzelfde proces uitkomen als de WebSocket, zoals nu al voor de recepten (#677).
+- Twee kopieën: de tekst in de blob, het bewijs in de tabel. De hash is het enige verband.
+- **B wordt nodig** zodra een van deze zich voordoet:
+    - #677 kiest voor meer dan één pod: de PUT kan dan op een andere pod landen dan de WebSocket, en daar staan de rijen
+      (en de recepten) niet klaar;
+    - gevolg 4 moet dicht, bijvoorbeeld omdat de privacytekst belooft dat elk antwoord op de server staat;
+    - feedback of controles hebben een vast bericht-ID nodig dat de hash niet kan geven;
+    - de blob haalt de verzoeklimiet van 4 MiB (#785).
+
+### Open vragen
+1. Telt een assistentbericht zonder rij na heropenen nog als bewijs voor de getalcontrole? "Nee" sluit gevolg 1
+   helemaal, maar een vervolgvraag op een gesprek van vóór de migratie (of na een herstart vóór de PUT) krijgt dan vaker
+   een herschrijving of een weggelaten getal. "Ja" houdt voor die berichten het gedrag van nu.
+2. Feedback op een antwoord zonder rij: aannemen met `server_beurt: false` in de trace, of weigeren? En hoort de
+   controle-uitkomst (`controle`) in de rij, zodat de trace haar niet uit de blob leest?
+3. De instelling per beurt (`turns[].instelling`, #543) valt buiten de vier velden van het besluit. Na heropenen weet
+   `_beurtcontext` daardoor niet dat de instelling in het gesprek wisselde. Hoort die in de rij?
 
 ---
 

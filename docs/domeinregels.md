@@ -13,7 +13,7 @@ bron, en de tests lopen vanzelf over elke regel in het bestand.
 
 | Regelsoort | Wat de tools ermee doen | Waar je het ziet |
 |---|---|---|
-| `[sentinel]` | Maken de waarden leeg in elke DUO-tabel die de chat laadt en melden hoeveel cellen dat waren; een totaal over zo'n cel heet een ondergrens. | `get_duo_data`, `query_data`, het Telling-blok, dashboards en code-snippets |
+| `[sentinel]` | Maken de waarden leeg in elke DUO-tabel die de chat laadt en melden hoeveel cellen dat waren; een totaal over zo'n cel heet een ondergrens. | `get_duo_data`, `query_data`, het Telling-blok, de voetnoot onder een tabel met lege cellen (#811), dashboards en code-snippets |
 | `[opleidingsvorm]` | Geven de codes een definitie en een woord (VT → Voltijd), alleen bij de genoemde bestanden; de antwoordcontrole toetst "deeltijd (DU)" eraan. | kolomdefinitie in `get_duo_data`, grafieklabels, rapportdefinities |
 | `[[kolomcorrectie]]` | Vervangen de riodata-definitie van één kolom in de genoemde bestanden. | `get_duo_data`, `dataset_details`, `search_catalog` |
 | `[[herkomst_is_vestiging]]` | Zetten een melding `niet_geschikt_voor` op de genoemde bestanden en herschrijven voorbeeldvragen die naar woonplaats vragen. | `dataset_details`, `search_catalog` |

@@ -34,10 +34,11 @@ describe('lettergroottes op een telefoon (#613)', () => {
   })
 
   // #650: de meting op 390 px (licht en donker, touch) na #639 vond nog "Meer laden", de noot in het ⋯-menu, de
-  // homepage (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de nieuw-kaart en de voorbeeldkaarten.
+  // homepage (sectielabel, disclaimer, licentie, footerlinks) en op /dashboards de voorbeeldkaarten (de nieuw-kaart is weg
+  // met de dashboardbouwer, #765).
   it('brengt de restlagen van #650 op 12,5 px', () => {
     for (const laag of ['.history-more-btn', '.navbar-meer-noot', '.section-label', '.home-disclaimer', '.home-licentie',
-      '.sources-link', '.wb-new-card small', '.wb-builtin-badge', '.wb-builtin-instelling']) {
+      '.sources-link', '.wb-builtin-badge', '.wb-builtin-instelling']) {
       expect(blok, laag).toContain(laag)
     }
   })

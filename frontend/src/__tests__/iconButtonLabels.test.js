@@ -47,11 +47,11 @@ describe('icon buttons name their action', () => {
     expect(labels).toEqual(['Hernoem gesprek Studenten HU', 'Verwijder gesprek Studenten HU'])
   })
 
-  it('delete in the report gallery', async () => {
-    const wb = { id: 'wb-1', title: 'Mijn rapport', description: 'd', messages: [], figures: [], createdAt: '2026-01-01T00:00:00.000Z' }
+  it('delete of a saved dashboard (#765)', async () => {
+    const wb = { id: 'wb-1', title: 'Mijn dashboard', description: 'd', messages: [], figures: [], createdAt: '2026-01-01T00:00:00.000Z' }
     await renderIn(createElement(MemoryRouter, null, createElement(DashboardGallery, {
-      workbooks: [wb], instelling: 'HU', onDelete: vi.fn(), onSelect: vi.fn(), onNew: vi.fn(),
+      workbooks: [], opgeslagen: [wb], instelling: 'HU', onDelete: vi.fn(), onSelect: vi.fn(),
     })))
-    expect(container.querySelector('.wb-delete-btn').getAttribute('aria-label')).toBe('Verwijder rapport Mijn rapport')
+    expect(container.querySelector('.wb-delete-btn').getAttribute('aria-label')).toBe('Verwijder dashboard Mijn dashboard')
   })
 })

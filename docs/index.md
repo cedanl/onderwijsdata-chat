@@ -12,7 +12,7 @@ De assistent heeft directe toegang tot CBS, RIO en DUO, kan grafieken en choropl
 
 - **Vragen in gewone taal** — "Hoeveel studenten zijn er ingeschreven in de WO in 2023?" of "Vergelijk mbo-diplomering tussen regio's"
 - **Interactieve grafieken en kaarten** — de assistent maakt automatisch Plotly-visualisaties en choropleth-kaarten op basis van je vraag
-- **Dashboards** — laat de assistent een interactief dashboard genereren op basis van je data, bekijk en beheer ze in de dashboard-galerij
+- **Dashboards** — drie vaste dashboards per instelling (instroom, arbeidsmarkt, landelijk), waar de omgeving ze aanzet
 - **Reproduceerbare code** — bij elke tool-aanroep wordt een Python-snippet getoond waarmee je de analyse lokaal kunt herhalen
 - **Sandbox-analyse** — voer pandas/numpy-code uit op opgehaalde data via de ingebouwde `run_analysis`-tool
 - **Meerdere databronnen combineren** — CBS-statistieken, RIO-registers en DUO-datasets in één gesprek

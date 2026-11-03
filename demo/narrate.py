@@ -36,9 +36,7 @@ Daarna biedt de assistent slimme vervolgvragen aan — \
 klik om direct dieper in te zoomen op sectoren, regio of vergelijkingen.
 
 Via de dashboardpagina open je voorgebouwde overzichten. \
-Live KPI's en grafieken: totale instroom, eerstejaars en gediplomeerden per sector in één scherm. \
-Wil je een eigen dashboard? \
-Beschrijf in gewone taal wat je wilt zien — de assistent bouwt het automatisch op basis van de beschikbare data.
+Live KPI's en grafieken: totale instroom, eerstejaars en gediplomeerden per sector in één scherm.
 
 Tot slot de donkere modus. \
 Eén klik, en alle pagina's en grafieken passen zich aan. \

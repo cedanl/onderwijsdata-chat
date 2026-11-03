@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import recepten
-from agent.dashboard import herstel_data
+from agent.datasetcontext import herstel_data
 from agent.session_data import herstel_data_keys, record_data_key
 from routes import chat
 from tools import herlaad, store

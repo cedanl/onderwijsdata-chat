@@ -85,8 +85,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
-| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `ping`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`, `generate_dashboard`, `refresh_dashboard`. Een onbekende action of misvormd frame krijgt een `error`-event; de verbinding blijft open |
-| `POST` | `/api/dashboard/refresh` | Ververs een bestaand dashboard via recipe/figure_recipes |
+| `WebSocket` | `/api/chat` (token als subprotocol: `["bearer", <token>]`) | WebSocket-sessie voor chat. Ondersteunt actions: `message`, `stop`, `ping`, `reset`, `settings`, `history`, `clarification_choice`, `generate_report`. Een onbekende action of misvormd frame krijgt een `error`-event; de verbinding blijft open. `generate_dashboard` en `refresh_dashboard` zijn weg met de dashboardbouwer (#765), net als `POST /api/dashboard/refresh` |
 
 - `reset` ("Nieuw gesprek") laat de server het lopende gesprek vergeten, inclusief geladen data; de server bevestigt met `reset_done`.
 - `ping` is de hartslag van de frontend; de server antwoordt met `pong`.
@@ -103,7 +102,6 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `clarification` | Een verduidelijkingsvraag met opties; het antwoord gaat terug als action `clarification_choice` |
 | `starter_questions` | Voorbeeldvragen bij een onderwerp uit de startkaarten ("Verken …") |
 | `history_data` | Het aantal data keys dat bij een geopend gesprek terugkwam (zie `history`) |
-| `dashboard_generating`, `dashboard_ready` | Een dashboard wordt gebouwd, en het klare dashboard (`spec`) |
 | `report_generating`, `report_ready`, `report_error`, `report_cancelled` | Een rapport wordt gemaakt, is klaar, is geweigerd of mislukt (`report_error`, met `herstel: "rapport"` als opnieuw proberen past), of is geannuleerd |
 | `toast` | Een korte melding (`message`, `level`) |
 | `error` | Een fout in gewone woorden; `modelafhankelijk: false` als een ander model niets verandert |
@@ -112,7 +110,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `reset_done`, `pong` | Antwoord op `reset` en op `ping` |
 | `system_message` | Een melding over de serverconfiguratie, zoals een ontbrekende API-sleutel |
 
-**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig, verlopen of ingetrokken: bij het verbinden, en vóór elke actie die een run start (`message`, `clarification_choice`, `generate_dashboard`, `generate_report`, `refresh_dashboard`; #786), dan zonder run. De andere acties, ook `ping`, toetsen het token niet opnieuw; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
+**Sluitcodes van de verbinding:** `4001` token ontbreekt, is ongeldig, verlopen of ingetrokken: bij het verbinden, en vóór elke actie die een run start (`message`, `clarification_choice`, `generate_report`; #786), dan zonder run. De andere acties, ook `ping`, toetsen het token niet opnieuw; `4003` de `Origin` is niet toegestaan (`SECURITY.md`, S24); `1013` er zijn te veel verbindingen open (de server stuurt eerst een `error`-event met de reden). Andere codes zijn gewone sluitingen of netwerkverlies.
 
 ---
 
@@ -128,7 +126,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 | `GET` | `/api/dashboard/rendement` | Dashboard-rendementsgegevens voor een instelling (`instelling` param) |
 | `GET` | `/api/dashboard/arbeidsmarktmatch` | Dashboard-arbeidsmarktmatch voor een instelling (`instelling` param) |
 
-De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}`, net als `POST /api/dashboard/refresh` (#636).
+De vijf `GET /api/dashboard/*`-eindpunten vragen met authenticatie aan een geldig token in `Authorization: Bearer …` (anders 401); zonder authenticatie zijn ze er voor `gast`. Zonder `ENABLE_DASHBOARDS=true` geven ze 403 `{"error": "Dashboards zijn niet beschikbaar"}` (#636).
 
 ---
 

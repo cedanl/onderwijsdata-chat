@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { leesFiguur } from '../figuurJson'
 
-// #836: één helper voor het lezen van een figuur, voor PlotlyFigure, GeneratedDashboard en de dashboardkaart.
+// #836: één helper voor het lezen van een figuur, voor PlotlyFigure en de dashboardkaart.
 describe('leesFiguur', () => {
   it('parset een JSON-tekst', () => {
     expect(leesFiguur('{"data":[],"layout":{"title":"x"}}')).toEqual({ data: [], layout: { title: 'x' } })

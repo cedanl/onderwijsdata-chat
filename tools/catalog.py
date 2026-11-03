@@ -15,7 +15,7 @@ from riodata import catalog as _rio_catalog
 from riodata.client import zonder_lijstendpoint
 
 from core.config import TOOL_RESULT_MAX_CHARS
-from core.logging_util import tekst_kenmerk
+from core.logging_util import foutkenmerk, tekst_kenmerk
 
 from . import canoniek, cbs_meta, duo_bestandskeuze, duo_correcties, duo_meta, ho_markers, instelling, scopeprofiel
 from .definitie import met_voorbeeldstatus
@@ -870,16 +870,19 @@ def search_catalog(
     """Zoek in de catalogus; het antwoord is altijd de envelope van `_envelop` (#358, stap 2)."""
     try:
         return _zoek(query, source, top_n, geo_niveau)
-    except (OSError, ImportError, json.JSONDecodeError):
+    except (OSError, ImportError, json.JSONDecodeError) as e:
         # De catalogus komt uit de packages `onderwijsdata` en `riodata`; zonder leesbare data is er niets te zoeken.
-        logger.exception("search_catalog bron niet beschikbaar %s", tekst_kenmerk(query, "query_"))
+        # Op ERROR type en kenmerk, de traceback op DEBUG (#819).
+        logger.error("search_catalog bron niet beschikbaar %s: %s", tekst_kenmerk(query, "query_"), foutkenmerk(e))
+        logger.debug("search_catalog bron niet beschikbaar", exc_info=True)
         return _envelop(
             STATUS_SOURCE_UNAVAILABLE,
             melding="De catalogus kan nu niet worden gelezen.",
             vervolgstap="Probeer het niet opnieuw met andere trefwoorden. Zeg dat de catalogus nu niet bereikbaar is.",
         )
-    except Exception:
-        logger.exception("search_catalog fout %s", tekst_kenmerk(query, "query_"))
+    except Exception as e:
+        logger.error("search_catalog fout %s: %s", tekst_kenmerk(query, "query_"), foutkenmerk(e))
+        logger.debug("search_catalog fout", exc_info=True)
         return _envelop(
             STATUS_TOOL_ERROR,
             melding="De zoekfunctie gaf een onverwachte fout.",

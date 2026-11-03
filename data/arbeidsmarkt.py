@@ -26,6 +26,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from core.logging_util import foutkenmerk
+
 logger = logging.getLogger(__name__)
 
 SECTOR_CLUSTER_PATH = Path(__file__).parent / "sector_cluster_mapping.json"
@@ -53,8 +55,9 @@ def _lees_mapping(path: Path) -> dict:
     if path.exists():
         try:
             return json.loads(path.read_text())
-        except Exception:
-            logger.warning("sector_cluster_mapping.json onleesbaar", exc_info=True)
+        except Exception as e:
+            logger.warning("sector_cluster_mapping.json onleesbaar: %s", foutkenmerk(e))
+            logger.debug("sector_cluster_mapping.json onleesbaar", exc_info=True)
     else:
         logger.warning("sector_cluster_mapping.json niet gevonden — run scripts/refresh_sector_mapping.py")
     return {}

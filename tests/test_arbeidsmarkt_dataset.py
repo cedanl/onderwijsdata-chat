@@ -16,7 +16,7 @@ import pytest
 from agent import manifest
 from agent.bronvermelding import bronnen_van
 from agent.citaties import citaties
-from agent.dashboard import _build_recipe, _reload_call_from_key, _sources_from_recipe, build_dataset_context
+from agent.datasetcontext import _reload_call_from_key, build_dataset_context, build_recipe, sources_from_recipe
 from agent.figuurbron import figuurbron
 from agent.meetwaarden import meetwaarden
 from agent.session_data import record_data_key
@@ -71,7 +71,7 @@ def bronnen():
         patch.object(arbeidsmarkt, "_roa", return_value=_ROA),
         patch("tools.arbeidsmarkt.scope_blokkade", return_value=None),
         patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
-        patch("agent.dashboard.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
+        patch("agent.datasetcontext.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
         patch("agent.figuurbron.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
     ):
         yield
@@ -179,17 +179,17 @@ def test_het_rapport_ziet_de_vacaturetabel(bronnen):
     assert dataset["herkomst"] == [_UWV_CALL]
 
 
-def test_bronnenlijst_van_rapport_en_dashboard_noemt_uwv_en_roa_met_peilmoment(bronnen):
+def test_bronnenlijst_van_het_rapport_noemt_uwv_en_roa_met_peilmoment(bronnen):
     session: dict = {"username": None}
     record_data_key(
         session, get_uwv_vacatures("Utrecht"), {"name": "get_uwv_vacatures", "arguments": {"provincie": "Utrecht"}}
     )
     record_data_key(session, get_roa_benchmark(), {"name": "get_roa_benchmark", "arguments": {}})
 
-    recept = _build_recipe(build_dataset_context(session)["datasets"])
+    recept = build_recipe(build_dataset_context(session)["datasets"])
 
     assert [c["name"] for c in recept] == ["get_uwv_vacatures", "get_roa_benchmark"]
-    assert _sources_from_recipe(recept) == [
+    assert sources_from_recipe(recept) == [
         "UWV — UWV Open Match (uwv-open-match-data), peildatum 2023-05-16",
         "ROA — AIS tot 2030 (ais2030), versie v20251218",
     ]

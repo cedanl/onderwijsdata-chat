@@ -7,7 +7,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat } from '../hooks/useChat'
-import useDashboardChat from '../hooks/useDashboardChat'
 import { BACKOFF_DELAYS, HEARTBEAT_INTERVAL_MS, PONG_TIMEOUT_MS } from '../socketHealth'
 import { FakeWebSocket } from './fakeWebSocket'
 import { connectionStatus } from '../connectionStatus'
@@ -73,7 +72,6 @@ afterEach(() => {
 
 describe.each([
   ['useChat', useChat],
-  ['useDashboardChat', useDashboardChat],
 ])('%s: verbindingsverlies tijdens een lopende vraag', (_, useHook) => {
   it('toont bij het offline-event meteen de herstelmelding en sluit de beurt af', async () => {
     const ws = await mount(useHook)
@@ -238,7 +236,6 @@ describe.each([
 
 describe.each([
   ['useChat', useChat],
-  ['useDashboardChat', useDashboardChat],
 ])('%s: verbindingsstatus voor de footer (#532)', (_, useHook) => {
   it('is offline na het offline-event zonder lopende vraag, en ok zodra de nieuwe socket open is', async () => {
     await mount(useHook)
@@ -294,7 +291,6 @@ describe('useChat: rapport bij verbindingsverlies', () => {
 // #652: een echte beurt schrijft eerst een inleiding en roept dan een tool aan; bij de volgende modelronde schuift die
 // tekst naar de redenering (#393), die op een telefoon dan al dicht is. Viel de verbinding weg vóór het eerste woord
 // van die ronde, dan bleef er een antwoord zonder tekst over: de vraag, "Redenering" en "Verbinding verbroken".
-// De dashboardchat maakt per ronde een eigen bericht en kent geen tussentekst: daar blijft de inleiding gewoon staan.
 describe('useChat: deeltekst bij verbindingsverlies tussen twee modelrondes (#652)', () => {
   it('houdt de laatst geschreven tekst als deeltekst van het afgebroken antwoord', async () => {
     const ws = await mount(useChat)

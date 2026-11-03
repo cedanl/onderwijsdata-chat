@@ -1,4 +1,4 @@
-"""#759: Annuleer stopte een rapport niet zolang het model nog niets terugstuurde, en rapport en dashboard hadden geen
+"""#759: Annuleer stopte een rapport niet zolang het model nog niets terugstuurde, en het rapport had geen
 tijdsgrens aan de serverkant. Een hangende modelaanroep (tot request_timeout, 1200 s) hield de runplaats bezet, en elke
 nieuwe vraag kreeg "Er loopt nog een antwoord", ook nadat de frontend na 10 min zelf had opgegeven."""
 
@@ -7,8 +7,8 @@ import time
 
 import pytest
 
-from agent import dashboard, report
 from agent import loop as loop_module
+from agent import report
 from routes import chat
 
 
@@ -162,38 +162,3 @@ def test_een_time_out_binnen_het_rapport_is_niet_de_grens(monkeypatch):
     asyncio.run(chat._generate_report({"username": "u"}, emit, model=None))
 
     assert events[-1] == {"type": "report_error", "message": "Rapport kon niet worden gemaakt. Probeer het opnieuw."}
-
-
-def _dashboard_met_data(monkeypatch):
-    monkeypatch.setattr(dashboard, "build_dataset_context", lambda session: {"datasets": [{"data_key": "k"}]})
-    monkeypatch.setattr(dashboard, "_build_system_prompt", lambda context: "")
-
-
-def test_de_stop_actie_stopt_een_dashboardgeneratie(hangt, monkeypatch):
-    _dashboard_met_data(monkeypatch)
-    session = chat._new_session(username="u")
-    events, emit = _verzamel()
-
-    async def scenario():
-        taak = asyncio.create_task(chat._generate_dashboard(session, emit, model=None))
-        await asyncio.wait_for(hangt.gestart.wait(), timeout=2)
-        await chat.ACTIES["stop"]({"action": "stop"}, session, emit, taak)
-        await asyncio.wait_for(taak, timeout=2)
-
-    asyncio.run(scenario())
-
-    assert events == [{"type": "dashboard_generating"}, {"type": "error", "message": "Het dashboard is gestopt."}]
-    assert hangt.geannuleerd
-
-
-def test_een_dashboard_boven_de_tijdsgrens_eindigt_met_een_melding(hangt, monkeypatch):
-    _dashboard_met_data(monkeypatch)
-    monkeypatch.setattr(chat, "GENEREER_TIMEOUT_S", 0.05)
-    events, emit = _verzamel()
-
-    asyncio.run(
-        asyncio.wait_for(chat._generate_dashboard(chat._new_session(username="u"), emit, model=None), timeout=2)
-    )
-
-    assert events[-1]["type"] == "error"
-    assert events[-1]["message"].startswith("Het dashboard kwam niet binnen")

@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from agent import report
-from agent.dashboard import build_dataset_context
+from agent.datasetcontext import build_dataset_context
 from agent.loop import LoopResult, ToolCall
 from agent.probleem import harde
 from agent.report_checks import report_problems

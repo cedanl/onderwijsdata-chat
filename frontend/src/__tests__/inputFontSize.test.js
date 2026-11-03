@@ -74,7 +74,6 @@ const FIELDS = [
   ['.login-input'],
   ['.instelling-search'],
   ['.history-search'],
-  ['.dc-textarea'],
   ['.answer-feedback-form textarea'],
   ['.feedback-question textarea'],
   ['.model-picker select'],

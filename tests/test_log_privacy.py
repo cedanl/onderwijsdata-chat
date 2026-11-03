@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agent import dashboard, report
+from agent import report
 from agent.loop import LoopResult, ToolCall
 from agent.probleem import INGEHOUDEN, Probleem, hard
 from agent.stream import StreamResult
@@ -251,26 +251,4 @@ def test_rapport_met_waarschuwing_logt_controlenamen_en_geen_meldingen(monkeypat
 
     [regel] = [r.getMessage() for r in caplog.records if "RAPPORT MET WAARSCHUWING" in r.getMessage()]
     assert "verkeerde_dimensielabels" in regel
-    _zonder_marker(caplog)
-
-
-# --- agent/dashboard.py ---
-
-
-def test_geweigerde_kpi_logt_geen_label_of_waarde(caplog):
-    caplog.set_level(logging.INFO, logger="agent.dashboard")
-
-    assert dashboard._validate_kpis([{"label": MARKER, "value": "42"}], {}) == []
-
-    assert any("KPI geweigerd" in r.getMessage() for r in caplog.records)
-    _zonder_marker(caplog)
-
-
-def test_ongeldige_kpi_json_logt_geen_toolresultaat(caplog):
-    caplog.set_level(logging.INFO, logger="agent.dashboard")
-
-    dashboard._collect_kpi({}, f"geen json {MARKER}")
-
-    [regel] = [r.getMessage() for r in caplog.records]
-    assert "invalid JSON" in regel and re.search(r"len=\d+ hash=[0-9a-f]{8}", regel)
     _zonder_marker(caplog)

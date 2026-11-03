@@ -9,7 +9,7 @@ import { rapportWoord } from '../rapportWoord'
 // niet naast een titel van twee regels, dus staan ze — net als bij de chat (#596, ChatNavActies) — in een
 // ⋯-menu in de nav-slot. Desktop toont ze inline in de kopbalk (WorkbookViewer).
 // afdrukken: de knop "Opslaan als PDF" (#622), als menu-item; null voor een rapport dat het niet kan.
-export default function RapportNavActies({ workbook, instelling, save, feedbackEnabled, feedbackGiven, onFeedback, afdrukken = null }) {
+export default function RapportNavActies({ workbook, save, feedbackEnabled, feedbackGiven, onFeedback, afdrukken = null }) {
   const [open, setOpen] = useState(false)
   const knopRef = useRef(null)
   useEscape(open, () => { setOpen(false); knopRef.current?.focus() })
@@ -30,7 +30,7 @@ export default function RapportNavActies({ workbook, instelling, save, feedbackE
           <>
             <div className="navbar-menu-overlay" onClick={() => setOpen(false)} aria-hidden="true" />
             <div className="navbar-meer-menu" id="navbar-meer-rapport">
-              <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+              <WorkbookDownload workbook={workbook} save={save} />
               <WorkbookMarkdown workbook={workbook} save={save} />
               {afdrukken}
               {feedbackEnabled && (feedbackGiven ? (

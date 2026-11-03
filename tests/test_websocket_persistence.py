@@ -7,8 +7,6 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.usefixtures("dashboards_aan")
-
 SOCKET_HEALTH_JS = Path(__file__).resolve().parent.parent / "frontend" / "src" / "socketHealth.js"
 
 
@@ -83,8 +81,6 @@ def test_reset_session_clears_turns_but_keeps_settings():
         ("message", "_handle_message", ({"content": "Tweede vraag"},)),
         ("clarification_choice", "_handle_clarification", ({"choice": "2024"},)),
         ("generate_report", "_handle_generate_report", ({},)),
-        ("generate_dashboard", "_handle_generate_dashboard", ({},)),
-        ("refresh_dashboard", "_handle_refresh_dashboard", ({},)),
     ],
 )
 def test_a_request_during_a_run_is_answered_with_busy(action, handler, args):
