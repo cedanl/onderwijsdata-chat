@@ -135,7 +135,8 @@ def test_opleidingsvorm_buiten_de_ho_bestanden_blijft_staan():
         KeyMeta(bron="duo", dataset="ander"),
     )
     fig = _plot(data_key="duo:ander:0", chart_type="bar", x="OPLEIDINGSVORM", y="N", title="T")
-    assert list(fig.data[0].x) == ["DT", "VT"]
+    # De codes blijven staan; de staven staan aflopend op waarde (#894), dus de grootste (VT, 2) eerst.
+    assert list(fig.data[0].x) == ["VT", "DT"]
 
 
 def test_figuur_uit_run_analysis_krijgt_leesbare_titels_en_nederlandse_notatie(cbs_key):

@@ -56,3 +56,11 @@ def figuurbron(data_key) -> dict | None:
         # Bij DUO de pagina van het geladen bestand (#737): de bronregel noemt het bestand al.
         "url": documentatie_url(str(known.dataset), known.resource),
     }
+
+
+def figuurperiode(data_key) -> tuple[int, int] | None:
+    """De startjaren (eerste, laatste) van de rijen die de grafiek van `data_key` tekende; None als ze onbekend zijn.
+    De rapporttitel noemt deze periode (#893)."""
+    if not isinstance(data_key, str) or not (getekend := store.meta(data_key)) or not getekend.schooljaren:
+        return None
+    return min(getekend.schooljaren), max(getekend.schooljaren)

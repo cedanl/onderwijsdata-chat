@@ -220,16 +220,40 @@ _PERIODESTATUS_DEFINITIE = (
 )
 
 
+# CBS kapt de Title van een dimensiewaarde zelf af op circa 40 tekens, met "..." of "…" ("04 Recht, administratie, handel
+# en za…"). Eerste regel of zin van de Description is dan de volledige naam (#895).
+_AFGEKAPT = re.compile(r"^(?P<code>\d+\s+)?(?P<stem>.+?)\s*(?:\.\.\.|…)$")
+_EERSTE_ZIN = re.compile(r"^(.+?)(?:\.(?:\s|$)|\r?\n|$)", re.DOTALL)
+_MAX_VOLLEDIGE_NAAM = 90
+
+
+def volledige_titel(titel: str, omschrijving: str | None) -> str:
+    """De titel met zijn volledige naam als CBS hem afkapte en de omschrijving met die naam begint; anders ongewijzigd."""
+    if not (afgekapt := _AFGEKAPT.match(titel)) or not omschrijving:
+        return titel
+    if not (zin := _EERSTE_ZIN.match(omschrijving.strip())):
+        return titel
+    naam = " ".join(zin.group(1).split())
+    stem = afgekapt["stem"].casefold()
+    if len(naam) > _MAX_VOLLEDIGE_NAAM or len(naam) <= len(stem) or not naam.casefold().startswith(stem):
+        return titel
+    return f"{afgekapt['code'] or ''}{naam}"
+
+
 @lru_cache(maxsize=256)
 def _dimension_rows(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
     """Ruwe CBS-dimensierijen (Key, Title en waar de bron hem heeft Status).
 
     Eén bron voor labels, periodestatus en get_cbs_dimension. Een mislukte call
-    wordt niet gecachet: lru_cache bewaart geen exceptions.
+    wordt niet gecachet: lru_cache bewaart geen exceptions. Een door CBS afgekapte Title krijgt zijn volledige naam (#895).
     """
-    return tuple(
+    rijen = [
         {k: v.strip() if isinstance(v, str) else v for k, v in row.items()} for row in get(dataset_id, dimension_name)
-    )
+    ]
+    for rij in rijen:
+        if isinstance(rij.get("Title"), str):
+            rij["Title"] = volledige_titel(rij["Title"], rij.get("Description"))
+    return tuple(rijen)
 
 
 @lru_cache(maxsize=128)

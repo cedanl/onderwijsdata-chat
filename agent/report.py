@@ -25,7 +25,7 @@ from agent.aanspreekvorm import in_je_vorm
 from agent.afkapping import afkappingsregels
 from agent.antwoordtaal import taal
 from agent.datasetcontext import build_dataset_context, build_recipe, herstel_data, sources_from_recipe
-from agent.figuurbron import figuurbron
+from agent.figuurbron import figuurbron, figuurperiode
 from agent.getalnotatie import nl_notatie
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
@@ -35,7 +35,7 @@ from agent.report_afwijking import afwijkingen
 from agent.report_bronnen import gebruikte_datasets
 from agent.report_checks import report_problems
 from agent.report_definities import definities_uit_bron
-from agent.report_periode import bijgesneden, gevraagd_bereik
+from agent.report_periode import bijgesneden, gevraagd_bereik, titelperiode
 from agent.report_titel import rapporttitel, rapportvraag
 from agent.report_vergelijken import vergelijken
 from agent.selectie import stapkeys
@@ -323,6 +323,8 @@ async def generate(
     figures: list[str] = []
     # Per figuur de bronregel eronder, uit de key die de grafiek tekende (#569).
     figuurbronnen: list[dict | None] = []
+    # Per figuur de periode van haar rijen (startjaren), voor de rapporttitel (#893).
+    figuurperioden: list[tuple[int, int] | None] = []
     # De keys die de rapportrun las: haar bevragingen en de grafieken die in het rapport komen (#738).
     gelezen: list = []
     # De vraag van de gebruiker is een bewering om te toetsen, geen bewijs (#211): een getal erin dekt geen getal
@@ -336,11 +338,14 @@ async def generate(
             figures.append(pio.to_json(figure))
             data_key = (call.args or {}).get("data_key")
             figuurbronnen.append(figuurbron(data_key))
+            figuurperioden.append(figuurperiode(data_key))
             gelezen.append(data_key)
 
     def check(text: str, tool_results: list[str]) -> list[str]:
         # De controles oordelen over wat het model schreef, niet over het voorbehoud uit code (#578).
-        spec = _parse_spec_from_response(text, figures, context, author, figuurbronnen, met_voorbehoud=False)
+        spec = _parse_spec_from_response(
+            text, figures, context, author, figuurbronnen, met_voorbehoud=False, periode=figuurperioden
+        )
         return report_problems(spec, figures, [*tool_results, dataset_context, *(b["resultaat"] for b in bewijs)])
 
     result = await tool_loop(
@@ -388,7 +393,7 @@ async def generate(
         await emit({"type": "toast", "message": "Let op: " + " ".join(meldingen(problems)), "level": "warning"})
     # Bronnen, definities, voorbehoud en dataversie van wat het rapport gebruikte, niet van het hele gesprek (#738).
     gebruikt = {**context, "datasets": gebruikte_datasets(context["datasets"], gelezen, bewijs, result.text)}
-    spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen)
+    spec = _parse_spec_from_response(result.text, figures, gebruikt, author, figuurbronnen, periode=figuurperioden)
     keys = [ds["data_key"] for ds in gebruikt["datasets"] if ds.get("data_key")]
     spec.manifest = manifest.bouw(
         model or MODEL, keys, model_versie=getattr(result, "model_versie", None), username=session.get("username")
@@ -480,13 +485,14 @@ def _parse_spec_from_response(
     figuurbronnen: list[dict | None] | None = None,
     *,
     met_voorbehoud: bool = True,
+    periode: list[tuple[int, int] | None] | None = None,
 ) -> ReportSpec:
     """Parse the LLM response into a ReportSpec.
 
     `figuurbronnen` is per figuur de bronregel uit code (#569), in dezelfde volgorde als
     `figures_json`; een figuur zonder regel krijgt `bron: None`. `met_voorbehoud` zet per
     afgekapte laadkey het voorbehoud uit code vooraan in `beantwoordt_niet` (#578); de controle
-    in `generate` zet het uit.
+    in `generate` zet het uit. `periode` is per figuur de periode van haar rijen (startjaren): de titel noemt die (#893).
     """
     spec_data: dict = {}
     with contextlib.suppress(json.JSONDecodeError, ValueError):
@@ -503,7 +509,7 @@ def _parse_spec_from_response(
     else:
         onderzoeksvraag = (spec_data.get("onderzoeksvraag") or "").strip() or topic
     # De vraag van de gebruiker, niet een titel van het model: elke run gaf een andere (#416).
-    title = rapporttitel(topic, context.get("instelling"))
+    title = rapporttitel(topic, context.get("instelling"), titelperiode(periode or [], onderzoeksvraag))
 
     vis_meta = spec_data.get("visualisaties") or []
     visualisaties: list[dict] = []
