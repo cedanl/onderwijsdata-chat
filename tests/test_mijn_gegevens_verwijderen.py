@@ -1,6 +1,6 @@
 """Verwijder al mijn gegevens (#646, deel 2 van #485): alles onder het eigen account weg, niets van een ander.
 
-Twee accounts in CHAT_USERS, elk met rijen van alle zes soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
+Twee accounts in CHAT_USERS, elk met rijen van alle zeven soorten. Na `DELETE /api/mijn-gegevens` van Anna heeft zij
 nergens nog een rij, staan die van Bert en de losgekoppelde feedback (`verwijderd`, #476) er ongewijzigd, zijn al
 haar tokens ingetrokken (#786) en weet het geheugen niets meer van haar. Tokens worden direct gemaakt, niet via de login: de
 login-limiter telt over de hele testrun mee.
@@ -21,8 +21,16 @@ from tests.test_mijn_gegevens_export import _vul
 
 _URL = "/api/mijn-gegevens"
 _BEVESTIGD = {"bevestig": "verwijder"}
-_SOORTEN = ["conversations", "workbooks", "feedback", "algemene_feedback", "answer_feedback", "data_recipes"]
-_ZESMAAL_NUL = dict.fromkeys(_SOORTEN, 0)
+_SOORTEN = [
+    "conversations",
+    "workbooks",
+    "feedback",
+    "algemene_feedback",
+    "answer_feedback",
+    "data_recipes",
+    "beurtbewijs",
+]
+_ALLES_NUL = dict.fromkeys(_SOORTEN, 0)
 # Anna's rijen per soort na _vul_anna: elk aantal anders, zodat een verwisselde sleutel opvalt.
 _ANNA = {
     "conversations": 3,
@@ -31,6 +39,7 @@ _ANNA = {
     "algemene_feedback": 5,
     "answer_feedback": 6,
     "data_recipes": 1,
+    "beurtbewijs": 2,
 }
 # Bert's rijen na _vul.
 _BERT = {
@@ -40,6 +49,7 @@ _BERT = {
     "algemene_feedback": 1,
     "answer_feedback": 1,
     "data_recipes": 1,
+    "beurtbewijs": 1,
 }
 
 
@@ -87,6 +97,11 @@ def _vul_anna() -> None:
         db.add_algemene_feedback("anna", "probleem", f"extra-{i}", "/rapporten")
     for i in range(5):
         db.upsert_answer_feedback("anna", "anna-c2", 10 + i, "omhoog", "", {"vraag": f"extra-trace-{i}"})
+    db.save_beurtbewijs(
+        "anna",
+        "anna-c2",
+        {"hash-extra": {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": "2026-11-03T10:00:00+00:00"}},
+    )
 
 
 def _aantal(tabel: str, gebruiker: str) -> int:
@@ -141,7 +156,7 @@ def test_alles_van_de_gebruiker_weg_met_de_aantallen_per_soort(client):
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "verwijderd": _ANNA}
-    assert _aantallen("anna") == _ZESMAAL_NUL
+    assert _aantallen("anna") == _ALLES_NUL
     assert _rijen("bert") == bert_voor
     assert _aantallen("bert") == _BERT
     assert _rijen(db.VERWIJDERDE_GEBRUIKER) == losgekoppeld_voor
@@ -307,7 +322,7 @@ def test_een_naam_buiten_chat_users_wist_alleen_zijn_eigen_rijen(client):
 
     assert response.status_code == 200
     assert response.json()["verwijderd"]["conversations"] == 2
-    assert _aantallen("dirk@hu.nl") == _ZESMAAL_NUL
+    assert _aantallen("dirk@hu.nl") == _ALLES_NUL
     assert (_rijen("anna"), _rijen("bert")) == (anna_voor, bert_voor)
 
 
@@ -341,7 +356,7 @@ def test_log_en_antwoord_noemen_alleen_aantallen(client, caplog):
     assert len(regels) == 1
     assert regels[0] == (
         "verwijder mijn gegevens: conversations=3, workbooks=2, feedback=4, algemene_feedback=5, "
-        "answer_feedback=6, data_recipes=1"
+        "answer_feedback=6, data_recipes=1, beurtbewijs=2"
     )
     assert next(r for r in caplog.records if r.name == "routes.mijn_gegevens").levelno == logging.INFO
 
