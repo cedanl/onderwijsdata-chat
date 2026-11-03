@@ -16,7 +16,7 @@ RUN npm run build
 
 # Stage 2: Python-afhankelijkheden. Compiler en git (voor de git-afhankelijkheden riodata en onderwijsdata) staan
 # alleen hier; het runtime-image krijgt alleen de .venv (#681).
-FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8 AS python-builder
+FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS python-builder
 
 # uv gepind op versie en digest, zodat de build reproduceerbaar is; Renovate werkt hem bij.
 COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /usr/local/bin/uv
@@ -38,7 +38,7 @@ COPY pyproject.toml uv.lock ./
 RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --extra postgres
 
 # Stage 3: runtime, zonder compiler, git, pip-uv of uv (#681)
-FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
+FROM python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
 
 WORKDIR /app
 
