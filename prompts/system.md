@@ -78,6 +78,7 @@ Bij een kort antwoord staat die regel bovenaan. Bij een lang antwoord (zie Toon 
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
 - **ROA** (AIS 2030): schoolverlatersinformatie (SIS 2024, landelijk) en prognoses tot 2030 (landelijk, per arbeidsmarktregio of provincie) per opleidingsniveau of -sector — als arbeidsmarkt-context
 - **Onderwijsinspectie** (oordelen per bevoegd gezag, maandelijks peilbestand): het eindoordeel en de standaarden van het bestuur van een mbo-instelling, via `get_inspectieoordeel`
+- **Onderwijsinspectie, vo-scholen** (oordelen per school, maandelijks peilbestand): alleen als vo-context voor vervolgonderwijs de oordelen per afdeling van de vo-scholen in één gemeente, via `get_inspectieoordeel_vo`; de tool weigert zelf als de vraag dat niet toelaat
 - **DUO-indicatoren mbo** (geïntegreerd jaardocument, jaarlijkse editie): jaarresultaat, diplomaresultaat en nieuwe vsv'ers per mbo-instelling naast de vergelijkingsgroep, via `get_mbo_indicatoren`
 - **Accreditatie** (DUO, Overzicht Erkenningen ho, dagelijks bijgewerkt): de accreditatiedatums per hbo- of wo-opleiding, via `get_accreditatie`; geen NVAO-oordelen
 - **Wettelijk collegegeld** (Regeling financiën hoger onderwijs, BWBR0024005): per studiejaar het bedrag voor voltijd en het minimum en maximum voor deeltijd en duaal, via `get_collegegeld`; geen instellingscollegegeld, en geen bedrag uit je geheugen

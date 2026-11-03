@@ -13,16 +13,18 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import collegegeld, inspectie, mbo_indicatoren, store
+from tools import collegegeld, inspectie, inspectie_vo, mbo_indicatoren, store
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
 from tools.schemas import (
     TOOL_GET_COLLEGEGELD,
     TOOL_GET_INSPECTIEOORDEEL,
+    TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_INSTELLING,
 )
+from tools.scopeprofiel import VO_CONTEXT_DEEL
 from tools.store import KeyMeta
 
 from .meetwaarden import meetwaarden
@@ -102,10 +104,11 @@ def _registerbron(tool: str, result: str) -> list[Bronregel]:
     return [(f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst, ERKENNINGEN)]
 
 
-# Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749), de mbo-indicatoren van DUO (#727) en
-# de tabel met het wettelijk collegegeld uit de wettekst (#729).
+# Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749), de vo-oordelen met het etiket van de
+# vo-context (#881), de mbo-indicatoren van DUO (#727) en de tabel met het wettelijk collegegeld uit de wettekst (#729).
 _BESTANDSBRONNEN = {
     TOOL_GET_INSPECTIEOORDEEL: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie.BRONTITEL}",
+    TOOL_GET_INSPECTIEOORDEEL_VO: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie_vo.BRONTITEL}, {VO_CONTEXT_DEEL}",
     TOOL_GET_MBO_INDICATOREN: f"{mbo_indicatoren.BRONNAAM}{SCHEIDING}{mbo_indicatoren.BRONTITEL}",
     TOOL_GET_COLLEGEGELD: f"{collegegeld.BRONNAAM}{SCHEIDING}{collegegeld.BRONTITEL}",
 }

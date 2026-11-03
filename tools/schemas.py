@@ -24,6 +24,7 @@ TOOL_COMPUTE_KPI = "compute_kpi"
 TOOL_GET_UWV_VACATURES = "get_uwv_vacatures"
 TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
+TOOL_GET_INSPECTIEOORDEEL_VO = "get_inspectieoordeel_vo"
 TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 TOOL_GET_ACCREDITATIE = "get_accreditatie"
 TOOL_GET_COLLEGEGELD = "get_collegegeld"
@@ -306,6 +307,34 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["instelling"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_INSPECTIEOORDEEL_VO,
+            "description": (
+                "Alleen als vo-context voor vervolgonderwijs: de oordelen van de Onderwijsinspectie over de afdelingen "
+                "(vmbo, havo, vwo, pro) van de vo-scholen in één gemeente, met een telling per oordeel, de peildatum en "
+                "de bron. Alleen bij een vraag over doorstroom naar mbo, hbo of wo die zelf het vo noemt; anders "
+                "weigert de tool. Het oordeel geldt per afdeling op een vestiging, niet per school of bestuur. Niet "
+                f"voor één vo-school, en niet voor het mbo: daar is {TOOL_GET_INSPECTIEOORDEEL}."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "gemeente": {
+                        "type": "string",
+                        "description": "Naam van de gemeente, bijvoorbeeld Utrecht of Den Haag; geen plaats of regio.",
+                    },
+                    "onderwijssoorten": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["vmbo-b", "vmbo-k", "vmbo-gt", "havo", "vwo", "pro"]},
+                        "description": "Alleen deze afdelingen; weglaten geeft alle vo-afdelingen.",
+                    },
+                },
+                "required": ["gemeente"],
             },
         },
     },
