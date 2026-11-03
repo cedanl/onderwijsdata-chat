@@ -31,7 +31,6 @@ vi.mock('../workbooks', () => ({
   loadWorkbooksFromServer: () => new Promise(() => {}),
 }))
 vi.mock('../components/DashboardGallery', () => ({ default: () => null }))
-vi.mock('../components/DashboardCreator', () => ({ default: () => null }))
 vi.mock('../components/WorkbookViewer', () => ({ default: () => null }))
 vi.mock('../components/ScrollToBottom', () => ({ default: () => null }))
 vi.mock('../hooks/useChat', () => ({

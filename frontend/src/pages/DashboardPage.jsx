@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL, getWorkbooks, getWorkbookType } from '../workbooks'
+import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { DEFAULT_INSTELLING } from '../constants'
-import DashboardCreator from '../components/DashboardCreator'
 import WorkbookViewer from '../components/WorkbookViewer'
 import DashboardGallery from '../components/DashboardGallery'
 import ConfirmModal from '../components/ConfirmModal'
@@ -12,54 +10,25 @@ import { useDocumentTitle, pageTitle } from '../hooks/useDocumentTitle'
 
 const BUILTINS = [BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL]
 
+// Een link naar een dashboard uit de dashboardbouwer (#765): die is uit de app gehaald, het dashboard zelf niet.
+export const BOUWER_WEG =
+  'Dit dashboard is gemaakt met de dashboardbouwer. Die is uit de app gehaald, dus openen kan niet meer. ' +
+  'Het dashboard zelf is bewaard: het staat in de export van je gegevens, en hieronder kun je het verwijderen.'
+
+// De drie vaste dashboards. Een opgeslagen dashboard uit de dashboardbouwer opent niet meer, maar staat in de lijst
+// onder de vaste dashboards, zodat het nog los te verwijderen is (#765).
 export default function DashboardPage({ settings, feedbackEnabled = false }) {
   useDocumentTitle(pageTitle('Dashboards'))
   const [searchParams, setSearchParams] = useSearchParams()
-  const pendingId = searchParams.get('id')
-  const [showCreator, setShowCreator] = useState(false)
+  const id = searchParams.get('id')
+  const selected = BUILTINS.find(b => b.id === id) ?? null
 
-  const { workbooks, setWorkbooks, missingId, openFout, opening, selected, setSelected, pendingConfirm, setPendingConfirm, handleUpdate, handleDelete, verwijderFout } =
-    useWorkbookGallery({
-      type: 'dashboard',
-      pendingId,
-      clearPending: undefined,
-      deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
-    })
-
-  useEffect(() => {
-    if (!pendingId) return
-    setSelected(prev => {
-      if (prev?.id === pendingId) return prev
-      return BUILTINS.find(b => b.id === pendingId) ?? prev
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingId])
-
-  useEffect(() => {
-    if (!selected && pendingId && missingId === pendingId) {
-      setSearchParams({}, { replace: true })
-    }
-  }, [selected, pendingId, missingId, setSearchParams])
-
-  const handleSelect = (wb) => {
-    setSelected(wb)
-    setSearchParams({ id: wb.id }, { replace: true })
-  }
+  const { workbooks: opgeslagen, pendingConfirm, setPendingConfirm, handleDelete, verwijderFout } = useWorkbookGallery({
+    type: 'dashboard',
+    deleteMessage: 'Weet je zeker dat je dit dashboard wilt verwijderen?',
+  })
 
   const instelling = settings?.instelling?.trim() || DEFAULT_INSTELLING
-
-  const handleSaved = (newWb) => {
-    const stored = getWorkbooks()
-    const found = stored.find(w => w.id === newWb?.id)
-    setWorkbooks(stored)
-    setShowCreator(false)
-    if (found) {
-      setSelected(found)
-      setSearchParams({ id: found.id }, { replace: true })
-    }
-  }
-
-  const all = [...BUILTINS, ...workbooks.filter(w => getWorkbookType(w) === 'dashboard')]
 
   if (selected) {
     return (
@@ -67,38 +36,11 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
         workbook={selected}
         instelling={instelling}
         gekozenInstelling={settings?.instelling?.trim() || ''}
-        onBack={() => { setSelected(null); setSearchParams({}, { replace: true }) }}
-        onUpdate={handleUpdate}
+        onBack={() => setSearchParams({}, { replace: true })}
+        onUpdate={() => {}}
         backLabel="Dashboards"
         feedbackEnabled={feedbackEnabled}
       />
-    )
-  }
-
-  if (opening) {
-    return (
-      <div className="wb-gallery-page">
-        <div className="wb-gallery-loading" aria-busy="true" role="status">
-          <span className="spinner" aria-hidden="true" />
-          Dashboard wordt geopend…
-        </div>
-      </div>
-    )
-  }
-
-  if (showCreator) {
-    return (
-      <div className="wb-gallery-page">
-        <div className="wb-gallery-header">
-          <button type="button" className="wb-back-btn" onClick={() => setShowCreator(false)} style={{ border: 'none', background: 'none', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--gray-600)', fontWeight: 600, fontSize: '.88rem', cursor: 'pointer' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Dashboards
-          </button>
-        </div>
-        <DashboardCreator onSaved={handleSaved} instelling={instelling} />
-      </div>
     )
   }
 
@@ -111,14 +53,14 @@ export default function DashboardPage({ settings, feedbackEnabled = false }) {
           onCancel={() => setPendingConfirm(null)}
         />
       )}
-      {openFout && <div className="wb-gallery-notice" role="alert">{openFout}</div>}
+      {id && <div className="wb-gallery-notice" role="alert">{BOUWER_WEG}</div>}
       <VerwijderFout fout={verwijderFout} />
       <DashboardGallery
-        workbooks={all}
+        workbooks={BUILTINS}
+        opgeslagen={opgeslagen}
         instelling={instelling}
-        onSelect={handleSelect}
+        onSelect={wb => setSearchParams({ id: wb.id }, { replace: true })}
         onDelete={handleDelete}
-        onNew={() => setShowCreator(true)}
       />
     </>
   )

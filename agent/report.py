@@ -3,8 +3,8 @@
 Produces a compact, professional report from the loaded session data:
 the research question front and centre, chosen definitions (what the
 report does and does not answer), 1-2 visualisations with an explanation,
-and a conclusion. Unlike the dashboard, the report stays focused on the
-user's question instead of exploring the full potential of the data.
+and a conclusion. The report stays focused on the user's question instead
+of exploring the full potential of the data.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
@@ -23,13 +24,7 @@ from agent import manifest
 from agent.aanspreekvorm import in_je_vorm
 from agent.afkapping import afkappingsregels
 from agent.antwoordtaal import taal
-from agent.dashboard import (
-    _build_recipe,
-    _extract_json_object,
-    _sources_from_recipe,
-    build_dataset_context,
-    herstel_data,
-)
+from agent.datasetcontext import build_dataset_context, build_recipe, herstel_data, sources_from_recipe
 from agent.figuurbron import figuurbron
 from agent.getalnotatie import nl_notatie
 from agent.loop import ToolCall, tool_loop
@@ -432,6 +427,51 @@ def _log_tool_call(name: str, args: dict | None, result: str) -> None:
     logger.debug("RAPPORT TOOL %s args=%s", name, argumenten)
 
 
+def _extract_json_object(text: str) -> dict:
+    """Extract the last top-level JSON object from text, handling nested braces.
+
+    strict=False: models put a raw newline or tab inside a string value ("Invalid control
+    character", #166); the content is intact, so it is read instead of refused.
+    """
+    # Try fenced code block first (greedy — captures the whole JSON)
+    fence_match = re.search(r"```(?:json)?\s*(\{.+\})\s*```", text, re.DOTALL)
+    if fence_match:
+        return json.loads(fence_match.group(1), strict=False)
+
+    # Find the last { and scan for its matching }
+    candidates: list[str] = []
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        depth = 0
+        for j in range(i, len(text)):
+            if text[j] == "{":
+                depth += 1
+            elif text[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    candidates.append(text[i : j + 1])
+                    break
+
+    # Return the largest candidate that parses as JSON with a "title" key
+    for candidate in reversed(candidates):
+        try:
+            obj = json.loads(candidate, strict=False)
+            if isinstance(obj, dict) and "title" in obj:
+                return obj
+        except json.JSONDecodeError:
+            continue
+
+    # Fallback: try the largest candidate
+    for candidate in sorted(candidates, key=len, reverse=True):
+        try:
+            return json.loads(candidate, strict=False)
+        except json.JSONDecodeError:
+            continue
+
+    return {}
+
+
 def _parse_spec_from_response(
     response: str,
     figures_json: list[str],
@@ -452,10 +492,10 @@ def _parse_spec_from_response(
     with contextlib.suppress(json.JSONDecodeError, ValueError):
         spec_data = _extract_json_object(response)
 
-    recipe = _build_recipe(context.get("datasets", []))
+    recipe = build_recipe(context.get("datasets", []))
     topic = context.get("topic", "Rapport")
 
-    bronnen = _sources_from_recipe(recipe)
+    bronnen = sources_from_recipe(recipe)
 
     # Een bevestigde onderzoeksvraag (#750) staat vast; anders formuleert het model haar, met de vraag als terugval.
     if context.get("bevestigd"):
@@ -498,9 +538,7 @@ def _parse_spec_from_response(
     )
     # Na de rapporttekst: het voorbehoud is geen modeltekst en haalt geen definitie binnen.
     if met_voorbehoud:
-        beantwoordt_niet = _voorbehoud_vooraan(
-            afkappingsregels(context.get("datasets", []), "rapport"), beantwoordt_niet
-        )
+        beantwoordt_niet = _voorbehoud_vooraan(afkappingsregels(context.get("datasets", [])), beantwoordt_niet)
 
     return ReportSpec(
         title=title,

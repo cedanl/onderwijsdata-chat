@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // #498: logout, a fresh login, the SRAM landing and a session the server ended remove the
-// dashboard chat from this browser, so the next user of a shared device does not see it.
+// dashboard chat from this browser, so the next user of a shared device does not see it. The dashboard builder is
+// gone (#765), but a browser that used it still holds its chat: that goes too.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -16,18 +17,6 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const APP_TEST = { timeout: 20000 }
 
 const response = (status, body = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => body })
-
-class FakeWebSocket {
-  static OPEN = 1
-  static last = null
-  constructor() {
-    this.readyState = FakeWebSocket.OPEN
-    FakeWebSocket.last = this
-  }
-  send() {}
-  close() {}
-  emit(event) { this.onmessage({ data: JSON.stringify(event) }) }
-}
 
 let root
 let container
@@ -80,15 +69,13 @@ function seedDashboardChat() {
 const dcKeys = () =>
   Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter(key => key.startsWith('edudata_dc_'))
 
-// Logged in, with the dashboard chat open on /dashboards.
-async function openDashboardChat() {
+// Logged in on /dashboards, with the chat of the old dashboard builder still in this browser.
+async function openDashboards() {
   localStorage.setItem(STORAGE_TOKEN, 'tok')
   seedDashboardChat()
   serve()
   await render('/dashboards')
-  await waitFor(() => button('Nieuw dashboard'))
-  await click('Nieuw dashboard')
-  await waitFor(() => container.querySelector('.dc-textarea') && FakeWebSocket.last)
+  await waitFor(() => container.querySelector('.wb-gallery-title'))
   expect(dcKeys()).not.toEqual([])
 }
 
@@ -97,8 +84,6 @@ beforeAll(async () => { await import('../pages/DashboardPage') }, APP_TEST.timeo
 
 beforeEach(() => {
   localStorage.clear()
-  FakeWebSocket.last = null
-  vi.stubGlobal('WebSocket', FakeWebSocket)
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   window.matchMedia = q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })
   Element.prototype.scrollIntoView = () => {}
@@ -115,16 +100,10 @@ afterEach(async () => {
 })
 
 describe('App wipes the dashboard chat', APP_TEST, () => {
-  it('on logout while the dashboard chat is open, also when its socket delivers late', async () => {
-    await openDashboardChat()
-    const ws = FakeWebSocket.last
+  it('on logout', async () => {
+    await openDashboards()
 
     await click('Uitloggen')
-    await act(async () => {
-      ws.emit({ type: 'message_start' })
-      ws.emit({ type: 'message_end' })
-      ws.onclose({ code: 1000 })
-    })
 
     expect(container.querySelector('#login-username')).not.toBeNull()
     expect(dcKeys()).toEqual([])
@@ -156,8 +135,8 @@ describe('App wipes the dashboard chat', APP_TEST, () => {
 })
 
 describe('App wipes the dashboard chat when the server ends the session', APP_TEST, () => {
-  it('while the dashboard chat is open', async () => {
-    await openDashboardChat()
+  it('on /dashboards', async () => {
+    await openDashboards()
 
     await act(async () => { endSession() })
 

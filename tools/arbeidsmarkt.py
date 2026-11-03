@@ -8,7 +8,7 @@ in de code geschreven waarden ("~80%") als ROA-cijfers door.
 
 Een arbeidsmarktresultaat is een dataset (#577): de tabel achter het resultaat staat in de store
 onder een `data_key`, met de laadaanroep en de peildatum of versie in haar KeyMeta. Zo lopen
-rapport en dashboard (`build_dataset_context`), het recept na een herstart (#472), de bronnenlijst,
+het rapport (`build_dataset_context`), het recept na een herstart (#472), de bronnenlijst,
 de citaties, de snippet en de CSV-export vanzelf mee; tot #577 bestonden UWV en ROA voor het
 rapport niet en schreef het model dat er geen vacaturegegevens waren.
 """

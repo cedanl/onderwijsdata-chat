@@ -40,7 +40,7 @@ describe('a11y-restpunten (#517)', () => {
     const blok = css.match(/@media \(prefers-reduced-motion: reduce\)\s*{[\s\S]*?\n}/)?.[0]
     const regel = blok.match(/\n {2}\.spinner,[^{]*{[^}]*}/)?.[0]
     expect(regel).toBeDefined()
-    for (const kiezer of ['.spinner', '.ai-typing span', '.ws-dot', '.tool-step-dot:not(.done)']) {
+    for (const kiezer of ['.spinner', '.ai-typing span', '.ws-dot', '.reasoning-step-dot:not(.done)']) {
       expect(regel).toContain(kiezer)
     }
     expect(regel).toContain('animation-duration: 2.4s !important')

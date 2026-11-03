@@ -88,27 +88,6 @@ def test_mislukt_herladen_logt_het_type_en_niet_de_argumenten(caplog):
     assert any("ValueError fout_len=" in r for r in _regels(caplog, logging.WARNING))
 
 
-def test_replay_logt_een_mislukte_herlaadstap_zonder_fouttekst(caplog):
-    from agent.replay import replay_data_calls
-
-    caplog.set_level(logging.DEBUG)
-    with patch("agent.replay.dispatch", side_effect=ValueError(MARKER)):
-        [resultaat] = replay_data_calls([{"name": "get_cbs_data", "arguments": "{}"}])
-    assert resultaat["success"] is False and MARKER not in json.dumps(resultaat)
-    assert not [r for r in _regels(caplog, logging.WARNING) if MARKER in r]
-    assert any("Herladen van get_cbs_data mislukt: ValueError fout_len=" in r for r in _regels(caplog, logging.WARNING))
-    assert any(r.exc_info for r in caplog.records if r.levelno == logging.DEBUG)
-
-
-def test_dashboard_logt_de_bronmelding_en_de_kpi_fout_als_kenmerk(caplog):
-    from agent import dashboard
-
-    caplog.set_level(logging.DEBUG)
-    dashboard._collect_kpi({}, json.dumps({"fout": f"kolom {MARKER} ontbreekt"}))
-    assert not [r for r in _regels(caplog, logging.WARNING) if MARKER in r]
-    assert any("compute_kpi error: fout_len=" in r for r in _regels(caplog, logging.WARNING))
-
-
 def test_rate_limit_timeout_logt_het_type_en_niet_de_providertekst(caplog, monkeypatch):
     import asyncio
 

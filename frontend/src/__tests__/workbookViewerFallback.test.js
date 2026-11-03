@@ -5,7 +5,6 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 
-vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
 vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
@@ -203,12 +202,9 @@ describe('no notice where there is no report frame (#541)', () => {
     expect(fallback()).toBeNull()
   })
 
-  it.each([
-    ['a built-in dashboard', BUILTIN_ARBEIDSMARKT],
-    ['a generated dashboard', { id: 'db-1', title: 'Dashboard', dashboardSpec: { kpis: [] }, htmlContent: '<p>x</p>' }],
-  ])('renders no fallback region for %s', async (_, workbook) => {
+  it('renders no fallback region for a built-in dashboard', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    await render(workbook)
+    await render(BUILTIN_ARBEIDSMARKT)
     await act(async () => { vi.advanceTimersByTime(FRAME_TIMEOUT_MS) })
     expect(fallback()).toBeNull()
     expect(container.querySelector('.wb-viewer-fallback')).toBeNull()

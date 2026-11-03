@@ -98,11 +98,9 @@ def gouden(duo_fixtures, monkeypatch):
 
 @pytest.fixture
 def dashboards_aan(monkeypatch):
-    """De dashboardvlag staat standaard uit (#765); tests van de dashboardroutes en -acties zetten hem hiermee aan."""
-    import routes.chat
+    """De dashboardvlag staat standaard uit (#765); tests van de vaste dashboards zetten hem hiermee aan."""
     import routes.instellingen
 
-    monkeypatch.setattr(routes.chat, "DASHBOARDS_ENABLED", True)
     monkeypatch.setattr(routes.instellingen, "DASHBOARDS_ENABLED", True)
 
 

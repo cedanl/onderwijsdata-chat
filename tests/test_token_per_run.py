@@ -1,7 +1,7 @@
 """Een open chatverbinding volgt het intrekken en verlopen van het token (#786, besluit A).
 
 De server toetste het token alleen bij de handshake; de hartslag (#489) hield de verbinding daarna onbeperkt open.
-Nu toetst hij vóór elke run (vraag, verduidelijking, dashboard, rapport, verversen) het token van de handshake
+Nu toetst hij vóór elke run (vraag, verduidelijking, rapport) het token van de handshake
 opnieuw met `verify_token` en sluit hij bij een ongeldig token met 4001, zonder run. En "verwijder al mijn gegevens"
 trekt alle tokens van het account in, niet alleen het meegestuurde.
 """
@@ -47,9 +47,7 @@ def runs(tmp_path, monkeypatch):
         return run
 
     monkeypatch.setattr(chat, "_process_message", nep("vraag"))
-    monkeypatch.setattr(chat, "_generate_dashboard", nep("dashboard"))
     monkeypatch.setattr(chat, "_generate_report", nep("rapport"))
-    monkeypatch.setattr(chat, "_refresh_dashboard", nep("verversen"))
     monkeypatch.setattr(chat, "_berichtlimiter", RateLimiter(max_attempts=100, window_seconds=600))
     return gestart
 
@@ -62,7 +60,6 @@ def client(runs, monkeypatch):
 
     monkeypatch.setattr(auth, "AUTH_ENABLED", True)
     monkeypatch.setattr(chat, "AUTH_ENABLED", True)
-    monkeypatch.setattr(chat, "DASHBOARDS_ENABLED", True)
     return TestClient(server.app)
 
 
@@ -106,9 +103,7 @@ def _sluitcode(ws) -> int:
 FRAMES = {
     "message": {"action": "message", "content": "Hoeveel studenten?"},
     "clarification_choice": {"action": "clarification_choice", "choice": "hbo"},
-    "generate_dashboard": {"action": "generate_dashboard"},
     "generate_report": {"action": "generate_report"},
-    "refresh_dashboard": {"action": "refresh_dashboard"},
 }
 
 

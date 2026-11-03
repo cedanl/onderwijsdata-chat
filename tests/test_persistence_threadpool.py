@@ -130,26 +130,6 @@ def test_de_websocket_handshake_leest_de_denylist_buiten_de_loop(app, monkeypatc
     assert op_loop == [False]
 
 
-def test_dashboard_refresh_leest_de_denylist_buiten_de_loop(app, monkeypatch):
-    from fastapi.testclient import TestClient
-
-    from routes import chat
-
-    op_loop: list[bool] = []
-
-    def verify(token):
-        op_loop.append(_op_de_loop())
-        return None
-
-    monkeypatch.setattr(chat, "AUTH_ENABLED", True)
-    monkeypatch.setattr(chat, "DASHBOARDS_ENABLED", True)
-    monkeypatch.setattr(chat, "verify_token", verify)
-    antwoord = TestClient(app).post("/api/dashboard/refresh", json={}, headers={"Authorization": "Bearer x"})
-
-    assert antwoord.status_code == 401
-    assert op_loop == [False]
-
-
 @pytest.mark.asyncio
 async def test_de_snippet_na_een_tool_blokkeert_de_loop_niet(monkeypatch):
     from agent import loop as loop_module

@@ -51,7 +51,7 @@ export function getWorkbookType(wb) {
   return 'dashboard'
 }
 
-export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent, dashboardSpec, type }) {
+export function saveWorkbook({ title, description, messages, figures, instelling, htmlContent, type }) {
   const wb = {
     id: generateId(),
     title,
@@ -60,8 +60,7 @@ export function saveWorkbook({ title, description, messages, figures, instelling
     figures,
     instelling,
     htmlContent,
-    dashboardSpec,
-    type: type || (dashboardSpec ? 'dashboard' : htmlContent ? 'report' : 'dashboard'),
+    type: type || (htmlContent ? 'report' : 'dashboard'),
     createdAt: new Date().toISOString(),
   }
   try {

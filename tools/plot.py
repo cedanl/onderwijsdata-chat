@@ -367,8 +367,8 @@ def create_plot(
             # Dezelfde afronding als in de tekst, zodat grafiek en CSV hele personen tonen (#328).
             data = [{k: duo.json_waarde(v, afronden=True) for k, v in row.items()} for row in data]
     elif data:
-        # data staat niet meer in het tool-schema: alleen interne aanroepen
-        # (zoals de replay in agent/replay.py) komen hier nog langs.
+        # data staat niet meer in het tool-schema: sinds de replay van de dashboardbouwer weg is (#765),
+        # komen alleen tests hier nog langs.
         logger.info("create_plot zonder data_key aangeroepen, %d rijen", len(data))
     if not data:
         return "Geen data opgegeven. Geef de data_key van een query_data-resultaat mee.", None

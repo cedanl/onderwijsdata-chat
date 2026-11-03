@@ -105,7 +105,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
   const [initialChat] = useState(loadCurrentChat)
   // Uitloggen en sessie-einde wissen de opslag vóór deze pagina unmount. Een save of
   // fetch-resultaat dat React daarna nog uitvoert, mag het gesprek van de vorige
-  // gebruiker niet terugschrijven (#507, zelfde race als useDashboardChat bij #498).
+  // gebruiker niet terugschrijven (#507, zelfde race als de dashboardchat bij #498).
   const [tokenAtMount] = useState(getToken)
   const [conversationId, setConversationId] = useState(initialChat.id)
   const [restoredMessages, setRestoredMessages] = useState(initialChat.messages)
@@ -893,7 +893,7 @@ export default function ChatPage({ openRapport, settings = {}, sector = null, us
             )}
             {rapportNietBewaard && (
               <RapportNietBewaard workbook={rapportNietBewaard.workbook} status={rapportNietBewaard.status}
-                instelling={settings?.instelling} onOpnieuw={bewaarRapportOpnieuw} />
+                onOpnieuw={bewaarRapportOpnieuw} />
             )}
             {/* Outside the button's conditions: whatever the chat does, the wait and its way out stay until the report ends (#417). */}
             <ReportProgress busy={reportBusy} progress={reportProgress} onCancel={cancelReport} />

@@ -1,4 +1,4 @@
-"""One tool loop for chat, report and dashboard (#192).
+"""One tool loop for chat and report (#192).
 
 The model answers or calls tools; the tools run, their results go back into the
 conversation, and the model continues until it answers. What differs per caller

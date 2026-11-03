@@ -1,4 +1,4 @@
-import { workbookFilename } from '../dashboardHtml'
+import { workbookFilename } from '../workbookHtml'
 import { kanMarkdown, rapportUitHtml } from '../rapportUitHtml'
 import { rapportMarkdown } from '../rapportMarkdown'
 import { saveFile } from '../saveFile'
@@ -7,7 +7,7 @@ import { saveFile } from '../saveFile'
 // HTML-download en "Opslaan als PDF". Alleen voor een rapport; het HTML-document wordt pas bij de klik gelezen.
 export default function WorkbookMarkdown({ workbook, save = saveFile }) {
   const html = workbook.htmlContent
-  if (workbook.dashboardSpec || !kanMarkdown(html)) return null
+  if (!kanMarkdown(html)) return null
 
   function download() {
     const markdown = rapportMarkdown(rapportUitHtml(html))

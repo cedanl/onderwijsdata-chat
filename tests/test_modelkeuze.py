@@ -91,32 +91,21 @@ def _run_tot_einde(action: str, msg: dict, session: dict):
 def modellen(monkeypatch) -> list[tuple[str, str | None]]:
     """Wat elke run als model zou krijgen, als (soort, model); de agent zelf draait niet."""
     gezien: list[tuple[str, str | None]] = []
-    monkeypatch.setattr(chat, "DASHBOARDS_ENABLED", True)
 
     async def bericht(content, session, emit, model):
         gezien.append(("bericht", model))
 
-    async def dashboard(session, emit, model):
-        gezien.append(("dashboard", model))
-
     async def rapport(session, emit, model, **_):
         gezien.append(("rapport", model))
 
-    async def ververs(recipe, figure_recipes, spec, session, emit, model, mode):
-        gezien.append(("ververs", model))
-
     monkeypatch.setattr(chat, "_process_message", bericht)
-    monkeypatch.setattr(chat, "_generate_dashboard", dashboard)
     monkeypatch.setattr(chat, "_generate_report", rapport)
-    monkeypatch.setattr(chat, "_refresh_dashboard", ververs)
     return gezien
 
 
 ACTIES = [
     ("bericht", "message", {"content": "hoeveel studenten?"}),
-    ("dashboard", "generate_dashboard", {}),
     ("rapport", "generate_report", {}),
-    ("ververs", "refresh_dashboard", {"recipe": [], "figure_recipes": []}),
 ]
 
 
