@@ -314,6 +314,18 @@ def test_een_van_twee_termen_blijft_kandidaat():
     assert sorted(h["_cbs_id"] for h in hits) == ["a", "b"]
 
 
+def test_vo_schoolsoort_raakt_het_onderwijstype_van_een_vo_contextrecord():
+    """Het onderwijstype VO van een vo-contextrecord dekt vmbo, havo en vwo (#882); een tabel over vo en mbo niet,
+    want die laadt buiten een vo-vraag alleen haar mbo-deel (#879)."""
+    cbs = [
+        {"_cbs_id": "85566NED", "bron": "Vo en vso; doorstroom", "onderwijstype": ["VO"]},
+        {"_cbs_id": "85368NED", "bron": "Vsv; doorstroom", "onderwijstype": ["VO", "MBO"]},
+    ]
+    hits = _zoek_catalogus("havo doorstroom vervolgonderwijs", cbs=cbs, source="cbs")
+    assert [h["dataset_id"] for h in hits] == ["85566NED"]
+    assert "havo" in hits[0]["geraakt"]
+
+
 def test_onderwerpterm_die_geen_dataset_kent_telt_mee():
     # "leraren" en "tekort" kent geen dataset: dat is juist het teken dat de catalogus het onderwerp niet dekt.
     cbs = [{"_cbs_id": "mbo-studenten", "title": "mbo studenten"}]

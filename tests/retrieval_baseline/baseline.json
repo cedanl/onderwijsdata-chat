@@ -195,15 +195,15 @@
     "mbo/ontwikkel": {
       "n": 22,
       "n_beantwoordbaar": 20,
-      "recall_at_5": 0.9,
+      "recall_at_5": 0.95,
       "recall_at_5_95": [
-        0.699,
-        0.9721
+        0.7639,
+        0.9911
       ],
-      "mrr": 0.7604,
+      "mrr": 0.7729,
       "mrr_95": [
-        0.6062,
-        0.9042
+        0.6354,
+        0.9062
       ],
       "recall_at_5_vraag": 0.7,
       "mrr_vraag": 0.6183,
@@ -243,15 +243,15 @@
     "hbo/ontwikkel": {
       "n": 19,
       "n_beantwoordbaar": 17,
-      "recall_at_5": 0.8235,
+      "recall_at_5": 0.8824,
       "recall_at_5_95": [
-        0.5897,
-        0.9381
+        0.6566,
+        0.9671
       ],
-      "mrr": 0.6294,
+      "mrr": 0.6588,
       "mrr_95": [
-        0.4382,
-        0.8235
+        0.4793,
+        0.8382
       ],
       "recall_at_5_vraag": 0.7059,
       "mrr_vraag": 0.5515,
@@ -267,15 +267,15 @@
     "hbo/test": {
       "n": 11,
       "n_beantwoordbaar": 10,
-      "recall_at_5": 0.8,
+      "recall_at_5": 0.9,
       "recall_at_5_95": [
-        0.4902,
-        0.9433
+        0.5958,
+        0.9821
       ],
-      "mrr": 0.67,
+      "mrr": 0.72,
       "mrr_95": [
-        0.4,
-        0.9
+        0.49,
+        0.92
       ],
       "recall_at_5_vraag": 0.5,
       "mrr_vraag": 0.4601,
@@ -291,15 +291,15 @@
     "wo/ontwikkel": {
       "n": 19,
       "n_beantwoordbaar": 17,
-      "recall_at_5": 0.8235,
+      "recall_at_5": 0.8824,
       "recall_at_5_95": [
-        0.5897,
-        0.9381
+        0.6566,
+        0.9671
       ],
-      "mrr": 0.8015,
+      "mrr": 0.8162,
       "mrr_95": [
-        0.6103,
-        0.9485
+        0.6397,
+        0.9559
       ],
       "recall_at_5_vraag": 0.7647,
       "mrr_vraag": 0.5706,
@@ -339,15 +339,15 @@
     "totaal/ontwikkel": {
       "n": 60,
       "n_beantwoordbaar": 54,
-      "recall_at_5": 0.8519,
+      "recall_at_5": 0.9074,
       "recall_at_5_95": [
-        0.734,
-        0.923
+        0.8009,
+        0.9598
       ],
-      "mrr": 0.7321,
+      "mrr": 0.7506,
       "mrr_95": [
-        0.6261,
-        0.8347
+        0.6538,
+        0.8463
       ],
       "recall_at_5_vraag": 0.7222,
       "mrr_vraag": 0.5823,
@@ -363,15 +363,15 @@
     "totaal/test": {
       "n": 31,
       "n_beantwoordbaar": 28,
-      "recall_at_5": 0.8214,
+      "recall_at_5": 0.8571,
       "recall_at_5_95": [
-        0.6441,
-        0.9212
+        0.6851,
+        0.943
       ],
-      "mrr": 0.7185,
+      "mrr": 0.7363,
       "mrr_95": [
-        0.5631,
-        0.8631
+        0.5869,
+        0.8661
       ],
       "recall_at_5_vraag": 0.6429,
       "mrr_vraag": 0.5364,
