@@ -1,0 +1,164 @@
+{
+  "bron": {
+    "_archief": false,
+    "_cbs_id": "85489NED",
+    "_dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Herkomstland",
+      "Geboorteland (ouders)",
+      "Regiokenmerken",
+      "Perioden"
+    ],
+    "_geo_niveau": [
+      "landelijk",
+      "provincie",
+      "gemeente",
+      "landsdeel"
+    ],
+    "_laatste_update": "2026-03-02",
+    "_meetwaarden": [
+      "LeerlingenInSpeciaalBasisonderwijs_1"
+    ],
+    "_meetwaarden_details": {
+      "LeerlingenInSpeciaalBasisonderwijs_1": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "Aantal leerlingen in het basisonderwijs en het speciaal basisonderwijs zoals opgenomen in de Wet Primair Onderwijs.",
+        "title": "Leerlingen in (speciaal) basisonderwijs",
+        "unit": "aantal"
+      }
+    },
+    "_periode_waarden": [
+      "2011/'12",
+      "2025/'26"
+    ],
+    "_perioden_formaat": [
+      "SJ"
+    ],
+    "_thema": "Primair onderwijs",
+    "bron": "Leerlingen in (speciaal) basisonderwijs; herkomst, woonregio",
+    "categorie": "Primair Onderwijs",
+    "documentatie": {
+      "tekst": "CBS Open Data 85489NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85489NED"
+    },
+    "frequentie": "Jaarlijks",
+    "leverancier": "CBS",
+    "onderwijstype": [
+      "PO"
+    ],
+    "periode": "2011/'12 - 2025/'26",
+    "publieke_producten": [],
+    "repositories": [],
+    "samenvatting": "Aantal leerlingen in basisonderwijs en speciaal basisonderwijs uitgesplitst naar herkomstland, geboorteland ouders en woonregio. Relevant voor diversiteitsanalyses en kansenbeleid in het primair onderwijs.",
+    "sectie": "Studentgegevens & Onderwijs"
+  },
+  "verwacht": {
+    "aliases": [
+      "85489NED"
+    ],
+    "archief": {
+      "gearchiveerd": false,
+      "opvolger": {
+        "reden": "opvolger niet vastgelegd",
+        "status": "unknown"
+      }
+    },
+    "bron_url": "https://opendata.cbs.nl/ODataApi/OData/85489NED",
+    "capabilities": {
+      "data": true,
+      "definitions": true,
+      "dimension": true,
+      "properties": true,
+      "validate_selection": true
+    },
+    "dataset_id": "cbs:85489NED",
+    "dimensie_sleutels": {
+      "reden": "dimensiesleutels niet vastgelegd; alleen live te bepalen",
+      "status": "unknown"
+    },
+    "dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Herkomstland",
+      "Geboorteland (ouders)",
+      "Regiokenmerken",
+      "Perioden"
+    ],
+    "geografie": {
+      "niveaus": [
+        "landelijk",
+        "provincie",
+        "gemeente",
+        "landsdeel"
+      ],
+      "regionale_uitsplitsing": true,
+      "status": "supported"
+    },
+    "herkomst": {
+      "afgeleide_velden": {
+        "geografie": "afgeleid uit CBS-regiodimensie; zonder regiodimensie = Nederland-totaal",
+        "meetwaarden": "bron (DataProperties)",
+        "scopeprofiel": "afgeleid uit gecureerde onderwijstype"
+      },
+      "broncheck": null,
+      "catalogusbouw": null,
+      "gecontroleerd_op": null,
+      "inputhash": null,
+      "laatste_update": "2026-03-02",
+      "metadata_modified": null,
+      "verrijkingsversie": null
+    },
+    "instellingseenheden": {
+      "reden": "instellingseenheden niet vastgelegd",
+      "status": "unknown"
+    },
+    "meetwaarden": [
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "LeerlingenInSpeciaalBasisonderwijs_1",
+        "title": "Leerlingen in (speciaal) basisonderwijs",
+        "unit": "aantal"
+      }
+    ],
+    "methodiek": {
+      "reden": "TableInfos niet vastgelegd",
+      "status": "unknown"
+    },
+    "onderwijssectoren": [
+      "PO"
+    ],
+    "perioden": {
+      "codes": {
+        "reden": "periodecodes en hiaten niet vastgelegd",
+        "status": "unknown"
+      },
+      "eerste": "2011/'12",
+      "formaat": [
+        "SJ"
+      ],
+      "frequentie": "Jaarlijks",
+      "laatste": "2025/'26",
+      "status": "supported",
+      "tekst": "2011/'12 - 2025/'26"
+    },
+    "populatie": {
+      "reden": "populatie niet vastgelegd",
+      "status": "unknown"
+    },
+    "provider": "CBS",
+    "schema_version": 1,
+    "scopeprofiel": {
+      "hbo": "unsupported",
+      "mbo": "unsupported",
+      "wo": "unsupported"
+    },
+    "teldefinitie": {
+      "reden": "teldefinitie niet vastgelegd",
+      "status": "unknown"
+    },
+    "titel": "Leerlingen in (speciaal) basisonderwijs; herkomst, woonregio"
+  }
+}

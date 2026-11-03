@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "generator": {
+    "naam": "catalogus/bouw_artefact.py",
+    "package_versie": "0.2.2"
+  },
+  "catalogusrevisie": "076d42ee7c5ec9b8",
+  "bestanden": {
+    "cbs_datasets.json": {
+      "sha256": "47f014a838ec747ff4fdf63f01ceac3f6024623460b17e278da0e10cbae013e4",
+      "records": 268
+    },
+    "cbs_datasets_ai.json": {
+      "sha256": "3ffc12bb2a87b2c4e7a39395bcdbb40602058e7ae483bdb4e78ea7c2a624f598",
+      "records": 268
+    },
+    "cbs_datasets_enriched.json": {
+      "sha256": "dbd9c7ceafdd8307f3c7b65b5736b906171508ae20de4ba3cd3614719ef8c9b9",
+      "records": 268
+    },
+    "cbs_tableinfo.json": {
+      "sha256": "23c04ddd367ede7b1cdbef5709121c2cc879aa0ec9957a67cdde0d2dddb9e266",
+      "records": 268
+    }
+  },
+  "aantallen": {
+    "breed": 268,
+    "per_scopeprofiel": {
+      "mbo": 68,
+      "hbo": 36,
+      "wo": 42,
+      "review": 131
+    }
+  },
+  "datadekking": {
+    "gearchiveerd": 161,
+    "actueel": 107,
+    "met_tableinfo": 268,
+    "met_periodecodes": 241
+  },
+  "bronwijziging": {
+    "laatste_update_max": "2026-10-16",
+    "metadata_modified_max": "2026-10-21T02:00:00"
+  },
+  "laatste_succesvolle_controle": "2026-10-21",
+  "versheid": {
+    "oudste_controle": "2026-10-21",
+    "zonder_controle": 0,
+    "perioden_verouderd": 0,
+    "perioden_onbekend": 0,
+    "afleiding_onvolledig": 0,
+    "afleiding_verouderd": 0
+  },
+  "metadataherkomst": {
+    "bronmetadata": "CBS TableInfos/DataProperties/Perioden",
+    "afgeleid": "scopeprofiel, geografie (deterministisch)",
+    "ai_annotaties": "doel, samenvatting, voorbeeldvragen, tags (cbs_datasets_ai.json)"
+  },
+  "waarschuwingen": []
+}

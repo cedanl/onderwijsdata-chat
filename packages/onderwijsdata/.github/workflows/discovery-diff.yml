@@ -1,0 +1,47 @@
+name: Discovery-diff CBS-onderwijstabellen
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Draai discovery-diff
+        run: uv run python catalogus/discovery_diff.py --output data/03-output/cbs_discovery.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cbs-discovery
+          path: data/03-output/cbs_discovery.json
+
+      - name: Meld nieuwe tabellen ter review (geen automatische inname)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=$(python3 -c "import json;print(json.load(open('data/03-output/cbs_discovery.json'))['samenvatting']['nieuw_voor_review'])")
+          if [ "$N" -gt 0 ]; then
+            TITEL="Discovery: nieuwe CBS-tabellen ter review"
+            BESTAAT=$(gh issue list --state open --search "\"$TITEL\" in:title" --json number --jq 'length')
+            if [ "$BESTAAT" = "0" ]; then
+              python3 - <<'PY' > body.md
+          import json
+          r = json.load(open("data/03-output/cbs_discovery.json"))
+          s = r["samenvatting"]
+          print(f"{s['nieuw_voor_review']} nieuwe tabel(len) onder onderwijsthema's, nog niet in de catalogus "
+                f"(actief {s['nieuw_voor_review_actief']}, historisch {s['nieuw_voor_review_historisch']}).\n")
+          print("Scope: alleen mbo/hbo/wo. Beoordeel per tabel; niets is automatisch toegevoegd.\n")
+          for n in r["nieuw_voor_review"][:50]:
+              print(f"- `{n['dataset_id']}` {n['titel']} ({n['classificatie']}; {n['thema']})")
+          PY
+              gh issue create --title "$TITEL" --body-file body.md
+            fi
+          fi

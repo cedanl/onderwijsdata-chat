@@ -1,0 +1,542 @@
+{
+  "bron": {
+    "_archief": false,
+    "_cbs_id": "85422NED",
+    "_dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Vooropleiding",
+      "Opleidingsfase",
+      "Perioden"
+    ],
+    "_geo_niveau": [],
+    "_laatste_update": "2026-04-10",
+    "_meetwaarden": [
+      "Eerstejaarsstudenten_1"
+    ],
+    "_meetwaarden_details": {
+      "Eerstejaarsstudenten_1": {
+        "datatype": "Long",
+        "decimals": 0,
+        "description": "",
+        "title": "Eerstejaarsstudenten",
+        "unit": "aantal"
+      }
+    },
+    "_periode_waarden": [
+      "2011/'12",
+      "2025/'26"
+    ],
+    "_perioden_formaat": [
+      "SJ"
+    ],
+    "_thema": "Ho ingeschrevenen",
+    "_verrijking": {
+      "inputhash": "7872efe88134d01c",
+      "versie": 1
+    },
+    "bron": "Hoger onderwijs; eerstejaarsstudenten, vooropleiding en opleidingsfase",
+    "categorie": "Instroom",
+    "documentatie": {
+      "tekst": "CBS Open Data 85422NED",
+      "url": "https://opendata.cbs.nl/ODataApi/OData/85422NED"
+    },
+    "frequentie": "Jaarlijks",
+    "leverancier": "CBS",
+    "onderwijstype": [
+      "HBO",
+      "WO"
+    ],
+    "periode": "2011/'12 - 2025/'26",
+    "publieke_producten": [],
+    "repositories": [],
+    "samenvatting": "Eerstejaars in het HO uitgesplitst naar vooropleiding (MBO, HAVO, VWO) en opleidingsfase. Inzicht in doorstroom vanuit het voorgaande onderwijs naar HO.",
+    "sectie": "Studentgegevens & Onderwijs"
+  },
+  "tableinfo": {
+    "_cbs_id": "85422NED",
+    "additiviteit": {
+      "aanwijzingen": [
+        {
+          "passage": "Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal",
+          "soort": "afrondingseffect"
+        }
+      ],
+      "additief": null,
+      "afrondingseffect": true,
+      "extractie": {
+        "geverifieerd": false,
+        "methode": "regex"
+      },
+      "passages": [
+        "Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal"
+      ],
+      "status": "gevonden"
+    },
+    "afronding": {
+      "exact": false,
+      "extractie": {
+        "geverifieerd": false,
+        "methode": "regex"
+      },
+      "grondslag": 10,
+      "passages": [
+        "De aantallen in de tabel zijn afgerond op 10-tallen."
+      ],
+      "reikwijdte": "niet_per_meetwaarde_vastgesteld",
+      "status": "gevonden"
+    },
+    "bronbewijs": {
+      "bron": "TableInfos",
+      "short_description": "Deze tabel bevat het aantal eerstejaarsstudenten aan de door de overheid bekostigde instellingen voor het hoger onderwijs naar onderwijssoort, vooropleiding, opleidingsfase en studiejaar. Deze tabel bevat vanaf studiejaar 2015/'16 ook het aantal eerstejaarsstudenten aan enkele aangewezen instellingen: de theologische universiteiten en de Universiteit voor Humanistiek. Vanaf studiejaar 2016/'17 is ook de Transnationale Universiteit Limburg meegenomen.\n \nGegevens beschikbaar vanaf: studiejaar 2011/'12.\n\nStatus van de cijfers:\nDe cijfers over de studiejaren tot en met 2024/'25 zijn definitief en de cijfers over het studiejaar 2025/'26 zijn voorlopig.\n\nWijzigingen per 10 april 2026:\nDe definitieve cijfers over het studiejaar 2024/'25 zijn toegevoegd.\n\nWanneer komen de nieuwe cijfers?\nIn het eerste kwartaal van 2027 komen de voorlopige cijfers over het studiejaar 2026/'27 beschikbaar.",
+      "toelichting": "Deze tabel bevat het aantal eerstejaarsstudenten aan de door de overheid bekostigde instellingen voor het hoger onderwijs naar onderwijssoort, vooropleiding, opleidingsfase en studiejaar. Deze tabel bevat vanaf studiejaar 2015/'16 ook het aantal eerstejaarsstudenten aan enkele aangewezen instellingen: de theologische universiteiten en de Universiteit voor Humanistiek. Vanaf studiejaar 2016/'17 is ook de Transnationale Universiteit Limburg meegenomen.\n \nGegevens beschikbaar vanaf: studiejaar 2011/'12.\n\nStatus van de cijfers:\nDe cijfers over de studiejaren tot en met 2024/'25 zijn definitief en de cijfers over het studiejaar 2025/'26 zijn voorlopig.\n\nWijzigingen per 10 april 2026:\nDe definitieve cijfers over het studiejaar 2024/'25 zijn toegevoegd.\n\nWanneer komen de nieuwe cijfers?\nIn het eerste kwartaal van 2027 komen de voorlopige cijfers over het studiejaar 2026/'27 beschikbaar.",
+      "verklaring_symbolen": "niets (blanco): het cijfer kan op logische gronden niet voorkomen\n. : het cijfer is onbekend, onvoldoende betrouwbaar of geheim\n* : voorlopige cijfers\n** : nader voorlopige cijfers\n\nDe aantallen in de tabel zijn afgerond op 10-tallen. Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal"
+    },
+    "bronmeta": {
+      "gecontroleerd_op": "2026-10-05",
+      "metadata_modified": "2026-04-10T02:00:00",
+      "modified": "2026-04-10T02:00:00"
+    },
+    "definitiebreuken": {
+      "passages": [
+        "Deze tabel bevat vanaf studiejaar 2015/'16 ook het aantal eerstejaarsstudenten aan enkele aangewezen instellingen: de theologische universiteiten en de Universiteit voor Humanistiek.",
+        "Vanaf studiejaar 2016/'17 is ook de Transnationale Universiteit Limburg meegenomen."
+      ],
+      "status": "gevonden"
+    },
+    "definities": [
+      {
+        "tekst": "Bij het hoger onderwijs is een eerstejaarsstudent iemand die voor het eerst ingeschreven is in het hoger onderwijs, waarbij voor de bepaling van de eerste inschrijving in de tijd is teruggekeken tot 1986. Als peildatum voor de bepaling van het aantal eerstejaars is 1 oktober gekozen. Inschrijvingen na die datum worden pas in het daaropvolgende studiejaar als eerstejaars meegenomen. Bij meerdere inschrijvingen in een jaar telt alleen de hoofdinschrijving. Een ingeschrevene die de overstap maakt van het hbo naar het wo (of omgekeerd van het wo naar het hbo) is twee maal eerstejaarsstudent: één maal in het hbo en één maal in het wo. Deze persoon is echter maar één maal eerstejaarsstudent hoger onderwijs.",
+        "term": "Eerstejaarsstudenten"
+      },
+      {
+        "tekst": "Het hoger onderwijs (ho) bestaat uit wetenschappelijk onderwijs (wo) aan een door de overheid bekostigde universiteit of aangewezen instelling en hoger beroepsonderwijs (hbo) aan een door de overheid bekostigde hbo-instelling.",
+        "term": "Onderwijssoort"
+      },
+      {
+        "tekst": "Bij het eerste jaar in het hoger beroepsonderwijs gaat het meestal om scholieren met een havo-diploma of studenten met een diploma middelbaar beroepsonderwijs.",
+        "term": "Vooropleiding"
+      },
+      {
+        "tekst": "Het onderscheid tussen bacheloropleidingen (inclusief doctoraalopleidingen) en masteropleidingen (inclusief vervolgopleidingen).",
+        "term": "Opleidingsfase"
+      },
+      {
+        "tekst": "Een studiejaar loopt van 1 september tot en met 31 augustus van het volgende jaar.",
+        "term": "Studiejaar"
+      }
+    ],
+    "methoden": [
+      {
+        "titel": "Stelsel van Sociaal- statistische Bestanden (SSB",
+        "url": "https://www.cbs.nl/nl-nl/onze-diensten/methoden/onderzoeksomschrijvingen/korte-onderzoeksbeschrijvingen/stelsel-van-sociaal-statistische-bestanden--ssb--"
+      },
+      {
+        "titel": "Hoger onderwijs",
+        "url": "https://www.cbs.nl/nl-nl/onze-diensten/methoden/onderzoeksomschrijvingen/korte-onderzoeksbeschrijvingen/hoger-onderwijs"
+      }
+    ],
+    "perioden": {
+      "aantal": 15,
+      "codes": [
+        {
+          "code": "2011SJ00",
+          "status": "Definitief",
+          "titel": "2011/'12",
+          "toelichting": null
+        },
+        {
+          "code": "2012SJ00",
+          "status": "Definitief",
+          "titel": "2012/'13",
+          "toelichting": null
+        },
+        {
+          "code": "2013SJ00",
+          "status": "Definitief",
+          "titel": "2013/'14",
+          "toelichting": null
+        },
+        {
+          "code": "2014SJ00",
+          "status": "Definitief",
+          "titel": "2014/'15",
+          "toelichting": null
+        },
+        {
+          "code": "2015SJ00",
+          "status": "Definitief",
+          "titel": "2015/'16",
+          "toelichting": null
+        },
+        {
+          "code": "2016SJ00",
+          "status": "Definitief",
+          "titel": "2016/'17",
+          "toelichting": null
+        },
+        {
+          "code": "2017SJ00",
+          "status": "Definitief",
+          "titel": "2017/'18",
+          "toelichting": null
+        },
+        {
+          "code": "2018SJ00",
+          "status": "Definitief",
+          "titel": "2018/'19",
+          "toelichting": null
+        },
+        {
+          "code": "2019SJ00",
+          "status": "Definitief",
+          "titel": "2019/'20",
+          "toelichting": null
+        },
+        {
+          "code": "2020SJ00",
+          "status": "Definitief",
+          "titel": "2020/'21",
+          "toelichting": null
+        },
+        {
+          "code": "2021SJ00",
+          "status": "Definitief",
+          "titel": "2021/'22",
+          "toelichting": null
+        },
+        {
+          "code": "2022SJ00",
+          "status": "Definitief",
+          "titel": "2022/'23",
+          "toelichting": null
+        },
+        {
+          "code": "2023SJ00",
+          "status": "Definitief",
+          "titel": "2023/'24",
+          "toelichting": null
+        },
+        {
+          "code": "2024SJ00",
+          "status": "Definitief",
+          "titel": "2024/'25",
+          "toelichting": null
+        },
+        {
+          "code": "2025SJ00",
+          "status": "Voorlopig",
+          "titel": "2025/'26",
+          "toelichting": "Voorlopige cijfers"
+        }
+      ],
+      "gecontroleerd_op": "2026-10-05",
+      "hiaten": [],
+      "status": "ok"
+    },
+    "populatie": {
+      "passages": [
+        "Deze tabel bevat het aantal eerstejaarsstudenten aan de door de overheid bekostigde instellingen voor het hoger onderwijs naar onderwijssoort, vooropleiding, opleidingsfase en studiejaar."
+      ],
+      "status": "gevonden"
+    },
+    "publicatie": {
+      "status": "gevonden",
+      "status_tekst": "De cijfers over de studiejaren tot en met 2024/'25 zijn definitief en de cijfers over het studiejaar 2025/'26 zijn voorlopig.",
+      "volgende_publicatie": "In het eerste kwartaal van 2027 komen de voorlopige cijfers over het studiejaar 2026/'27 beschikbaar."
+    },
+    "relaties": [
+      {
+        "dataset_id": "cbs:85421NED",
+        "relatie": "bronlink",
+        "titel": "Hoger onderwijs; eerste- en ouderejaarsstudenten, studierichting, herkomst",
+        "url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85421NED"
+      },
+      {
+        "dataset_id": "cbs:85423NED",
+        "relatie": "bronlink",
+        "titel": "Hoger onderwijs; ingeschrevenen, onderwijssoort, opleidingsfase en -vorm",
+        "url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED"
+      }
+    ],
+    "schema_versie": 1,
+    "verificatie": "bron"
+  },
+  "verwacht": {
+    "aliases": [
+      "85422NED"
+    ],
+    "archief": {
+      "gearchiveerd": false,
+      "opvolger": {
+        "reden": "opvolger niet vastgelegd",
+        "status": "unknown"
+      }
+    },
+    "bron_url": "https://opendata.cbs.nl/ODataApi/OData/85422NED",
+    "capabilities": {
+      "data": true,
+      "definitions": true,
+      "dimension": true,
+      "properties": true,
+      "validate_selection": true
+    },
+    "dataset_id": "cbs:85422NED",
+    "dimensie_sleutels": {
+      "reden": "dimensiesleutels niet vastgelegd; alleen live te bepalen",
+      "status": "unknown"
+    },
+    "dimensies": [
+      "Geslacht",
+      "Onderwijssoort",
+      "Vooropleiding",
+      "Opleidingsfase",
+      "Perioden"
+    ],
+    "geografie": {
+      "dekking": "Nederland",
+      "niveaus": [
+        "landelijk"
+      ],
+      "regionale_uitsplitsing": false,
+      "status": "supported"
+    },
+    "herkomst": {
+      "afgeleide_velden": {
+        "geografie": "afgeleid uit CBS-regiodimensie; zonder regiodimensie = Nederland-totaal",
+        "meetwaarden": "bron (DataProperties)",
+        "scopeprofiel": "afgeleid uit gecureerde onderwijstype"
+      },
+      "broncheck": "2026-10-05",
+      "catalogusbouw": null,
+      "gecontroleerd_op": "2026-10-05",
+      "inputhash": "7872efe88134d01c",
+      "laatste_update": "2026-04-10",
+      "metadata_modified": "2026-04-10T02:00:00",
+      "verrijkingsversie": 1
+    },
+    "instellingseenheden": {
+      "reden": "instellingseenheden niet vastgelegd",
+      "status": "unknown"
+    },
+    "meetwaarden": [
+      {
+        "datatype": "Long",
+        "decimals": 0,
+        "key": "Eerstejaarsstudenten_1",
+        "title": "Eerstejaarsstudenten",
+        "unit": "aantal"
+      }
+    ],
+    "methodiek": {
+      "additiviteit": {
+        "aanwijzingen": [
+          {
+            "passage": "Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal",
+            "soort": "afrondingseffect"
+          }
+        ],
+        "additief": null,
+        "afrondingseffect": true,
+        "extractie": {
+          "geverifieerd": false,
+          "methode": "regex"
+        },
+        "passages": [
+          "Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal"
+        ],
+        "status": "gevonden"
+      },
+      "afronding": {
+        "exact": false,
+        "extractie": {
+          "geverifieerd": false,
+          "methode": "regex"
+        },
+        "grondslag": 10,
+        "passages": [
+          "De aantallen in de tabel zijn afgerond op 10-tallen."
+        ],
+        "reikwijdte": "niet_per_meetwaarde_vastgesteld",
+        "status": "gevonden"
+      },
+      "definitiebreuken": {
+        "passages": [
+          "Deze tabel bevat vanaf studiejaar 2015/'16 ook het aantal eerstejaarsstudenten aan enkele aangewezen instellingen: de theologische universiteiten en de Universiteit voor Humanistiek.",
+          "Vanaf studiejaar 2016/'17 is ook de Transnationale Universiteit Limburg meegenomen."
+        ],
+        "status": "gevonden"
+      },
+      "methoden": [
+        {
+          "titel": "Stelsel van Sociaal- statistische Bestanden (SSB",
+          "url": "https://www.cbs.nl/nl-nl/onze-diensten/methoden/onderzoeksomschrijvingen/korte-onderzoeksbeschrijvingen/stelsel-van-sociaal-statistische-bestanden--ssb--"
+        },
+        {
+          "titel": "Hoger onderwijs",
+          "url": "https://www.cbs.nl/nl-nl/onze-diensten/methoden/onderzoeksomschrijvingen/korte-onderzoeksbeschrijvingen/hoger-onderwijs"
+        }
+      ],
+      "publicatie": {
+        "status": "gevonden",
+        "status_tekst": "De cijfers over de studiejaren tot en met 2024/'25 zijn definitief en de cijfers over het studiejaar 2025/'26 zijn voorlopig.",
+        "volgende_publicatie": "In het eerste kwartaal van 2027 komen de voorlopige cijfers over het studiejaar 2026/'27 beschikbaar."
+      },
+      "relaties": [
+        {
+          "dataset_id": "cbs:85421NED",
+          "relatie": "bronlink",
+          "titel": "Hoger onderwijs; eerste- en ouderejaarsstudenten, studierichting, herkomst",
+          "url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85421NED"
+        },
+        {
+          "dataset_id": "cbs:85423NED",
+          "relatie": "bronlink",
+          "titel": "Hoger onderwijs; ingeschrevenen, onderwijssoort, opleidingsfase en -vorm",
+          "url": "https://opendata.cbs.nl/#/CBS/nl/dataset/85423NED"
+        }
+      ],
+      "status": "supported",
+      "verificatie": "bron",
+      "verklaring_symbolen": "niets (blanco): het cijfer kan op logische gronden niet voorkomen\n. : het cijfer is onbekend, onvoldoende betrouwbaar of geheim\n* : voorlopige cijfers\n** : nader voorlopige cijfers\n\nDe aantallen in de tabel zijn afgerond op 10-tallen. Hierdoor kan het voorkomen dat de som van de detailgegevens afwijkt van het totaal"
+    },
+    "onderwijssectoren": [
+      "HBO",
+      "WO"
+    ],
+    "perioden": {
+      "codes": {
+        "aantal": 15,
+        "codes": [
+          {
+            "code": "2011SJ00",
+            "status": "Definitief",
+            "titel": "2011/'12",
+            "toelichting": null
+          },
+          {
+            "code": "2012SJ00",
+            "status": "Definitief",
+            "titel": "2012/'13",
+            "toelichting": null
+          },
+          {
+            "code": "2013SJ00",
+            "status": "Definitief",
+            "titel": "2013/'14",
+            "toelichting": null
+          },
+          {
+            "code": "2014SJ00",
+            "status": "Definitief",
+            "titel": "2014/'15",
+            "toelichting": null
+          },
+          {
+            "code": "2015SJ00",
+            "status": "Definitief",
+            "titel": "2015/'16",
+            "toelichting": null
+          },
+          {
+            "code": "2016SJ00",
+            "status": "Definitief",
+            "titel": "2016/'17",
+            "toelichting": null
+          },
+          {
+            "code": "2017SJ00",
+            "status": "Definitief",
+            "titel": "2017/'18",
+            "toelichting": null
+          },
+          {
+            "code": "2018SJ00",
+            "status": "Definitief",
+            "titel": "2018/'19",
+            "toelichting": null
+          },
+          {
+            "code": "2019SJ00",
+            "status": "Definitief",
+            "titel": "2019/'20",
+            "toelichting": null
+          },
+          {
+            "code": "2020SJ00",
+            "status": "Definitief",
+            "titel": "2020/'21",
+            "toelichting": null
+          },
+          {
+            "code": "2021SJ00",
+            "status": "Definitief",
+            "titel": "2021/'22",
+            "toelichting": null
+          },
+          {
+            "code": "2022SJ00",
+            "status": "Definitief",
+            "titel": "2022/'23",
+            "toelichting": null
+          },
+          {
+            "code": "2023SJ00",
+            "status": "Definitief",
+            "titel": "2023/'24",
+            "toelichting": null
+          },
+          {
+            "code": "2024SJ00",
+            "status": "Definitief",
+            "titel": "2024/'25",
+            "toelichting": null
+          },
+          {
+            "code": "2025SJ00",
+            "status": "Voorlopig",
+            "titel": "2025/'26",
+            "toelichting": "Voorlopige cijfers"
+          }
+        ],
+        "controle": "ok",
+        "gecontroleerd_op": "2026-10-05",
+        "hiaten": [],
+        "status": "supported"
+      },
+      "eerste": "2011/'12",
+      "formaat": [
+        "SJ"
+      ],
+      "frequentie": "Jaarlijks",
+      "laatste": "2025/'26",
+      "status": "supported",
+      "tekst": "2011/'12 - 2025/'26"
+    },
+    "populatie": {
+      "bron": "TableInfos",
+      "passages": [
+        "Deze tabel bevat het aantal eerstejaarsstudenten aan de door de overheid bekostigde instellingen voor het hoger onderwijs naar onderwijssoort, vooropleiding, opleidingsfase en studiejaar."
+      ],
+      "status": "supported"
+    },
+    "provider": "CBS",
+    "schema_version": 1,
+    "scopeprofiel": {
+      "hbo": "supported",
+      "mbo": "unsupported",
+      "wo": "supported"
+    },
+    "teldefinitie": {
+      "bron": "TableInfos",
+      "definities": [
+        {
+          "tekst": "Bij het hoger onderwijs is een eerstejaarsstudent iemand die voor het eerst ingeschreven is in het hoger onderwijs, waarbij voor de bepaling van de eerste inschrijving in de tijd is teruggekeken tot 1986. Als peildatum voor de bepaling van het aantal eerstejaars is 1 oktober gekozen. Inschrijvingen na die datum worden pas in het daaropvolgende studiejaar als eerstejaars meegenomen. Bij meerdere inschrijvingen in een jaar telt alleen de hoofdinschrijving. Een ingeschrevene die de overstap maakt van het hbo naar het wo (of omgekeerd van het wo naar het hbo) is twee maal eerstejaarsstudent: één maal in het hbo en één maal in het wo. Deze persoon is echter maar één maal eerstejaarsstudent hoger onderwijs.",
+          "term": "Eerstejaarsstudenten"
+        }
+      ],
+      "status": "supported"
+    },
+    "titel": "Hoger onderwijs; eerstejaarsstudenten, vooropleiding en opleidingsfase"
+  }
+}

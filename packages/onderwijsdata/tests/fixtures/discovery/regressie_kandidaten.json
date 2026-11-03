@@ -1,0 +1,26 @@
+{
+  "toelichting": "Bekende mbo/hbo/wo-kandidaten die de discovery moet vinden en ter review moet aanbieden (review F7). Aanvullen met de 23-kandidatenlijst (cbs_ontbrekende_onderwijsdatasets.csv) zodra die per item is beoordeeld.",
+  "themas": [
+    {"ID": 109, "ParentID": null, "Title": "Caribisch Nederland"},
+    {"ID": 118, "ParentID": 109, "Title": "Onderwijs"},
+    {"ID": 354, "ParentID": null, "Title": "Onderwijs"},
+    {"ID": 361, "ParentID": 354, "Title": "Middelbaar beroepsonderwijs"},
+    {"ID": 362, "ParentID": 361, "Title": "Mbo studenten"},
+    {"ID": 351, "ParentID": null, "Title": "Vrije tijd en cultuur"},
+    {"ID": 352, "ParentID": 351, "Title": "Cultuur"},
+    {"ID": 353, "ParentID": 351, "Title": "Toerisme"},
+    {"ID": 455, "ParentID": null, "Title": "Arbeid en arbeidsmarkt"},
+    {"ID": 481, "ParentID": 455, "Title": "Onderwijs en arbeidsmarkt"},
+    {"ID": 482, "ParentID": 481, "Title": "MBO'ers naar arbeidsmarkt"}
+  ],
+  "kandidaten": [
+    {
+      "dataset_id": "84312NED",
+      "thema_id": 118,
+      "details": {"titel": "Caribisch NL; studenten mbo, niveau, sector, domein", "frequentie": "Jaarlijks",
+                  "periode": "2009/'10 - 2025/'26", "modified": "2025-01-01",
+                  "dimensies": ["Geslacht", "Niveau", "Sector", "Domein", "Perioden"]},
+      "verwachte_classificatie": "mbo"
+    }
+  ]
+}
