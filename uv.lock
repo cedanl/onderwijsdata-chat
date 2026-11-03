@@ -2551,7 +2551,7 @@ dependencies = [
 
 [[package]]
 name = "onderwijsdata-chat"
-version = "2.5.0"
+version = "2.5.3"
 source = { virtual = "." }
 dependencies = [
     { name = "authlib" },
