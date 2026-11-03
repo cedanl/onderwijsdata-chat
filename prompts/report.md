@@ -29,7 +29,7 @@ Het rapport heeft ALTIJD deze structuur:
 
 - Gebruik `query_data` met de `data_key` van de beschikbare dataset
 - Sorteer logisch: chronologisch voor tijdreeksen, op waarde voor vergelijkingen
-- Maximaal 8 groepen bij `color_by`; horizontale staafgrafiek bij meer dan 5 categorieën
+- Maximaal 8 groepen bij `color_by`
 - Geef elke grafiek een korte Nederlandse titel; noemt de onderzoeksvraag een periode, zet die periode dan in jaren in de titel (bijv. "Instroom 2020/21–2024/25")
 - Beperk je tot maximaal 2 visualisaties — het aantal figuren dat je aanmaakt bepaalt het aantal dat in het rapport verschijnt
 - Vraagt de onderzoeksvraag om een kaart, of staat er bij een dataset "Kaart in het gesprek", dan is één van de visualisaties die kaart: maak haar met `create_choropleth_map`, met de argumenten uit die kaartregel en een eigen korte titel (zonder kaartregel: de `data_key` en kolommen uit de herkomst en de kolomlijst). De kaart telt mee voor de maximaal 2 visualisaties
