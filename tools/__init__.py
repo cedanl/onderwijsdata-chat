@@ -6,6 +6,7 @@ from .analysis import run_analysis
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_telling, dataset_details, search_catalog
 from .cbs import get_cbs_data, get_cbs_dimension
+from .collegegeld import get_collegegeld
 from .duo import get_duo_data
 from .inspectie import get_inspectieoordeel
 from .kpi import compute_kpi
@@ -29,6 +30,7 @@ from .schemas import (
     TOOL_GET_ACCREDITATIE,
     TOOL_GET_CBS_DATA,
     TOOL_GET_CBS_DIMENSION,
+    TOOL_GET_COLLEGEGELD,
     TOOL_GET_DUO_DATA,
     TOOL_GET_INSPECTIEOORDEEL,
     TOOL_GET_MAAT,
@@ -67,6 +69,7 @@ LABELS = {
     TOOL_GET_INSPECTIEOORDEEL: "Inspectie-oordeel opgehaald",
     TOOL_GET_MBO_INDICATOREN: "Mbo-indicatoren opgehaald",
     TOOL_GET_ACCREDITATIE: "Accreditatie opgezocht",
+    TOOL_GET_COLLEGEGELD: "Collegegeld opgezocht",
 }
 
 _HANDLERS = {
@@ -91,6 +94,7 @@ _HANDLERS = {
     TOOL_GET_INSPECTIEOORDEEL: get_inspectieoordeel,
     TOOL_GET_MBO_INDICATOREN: get_mbo_indicatoren,
     TOOL_GET_ACCREDITATIE: get_accreditatie,
+    TOOL_GET_COLLEGEGELD: get_collegegeld,
 }
 
 

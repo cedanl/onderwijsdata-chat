@@ -13,11 +13,16 @@ import json
 import re
 from collections.abc import Callable
 
-from tools import inspectie, mbo_indicatoren, store
+from tools import collegegeld, inspectie, mbo_indicatoren, store
 from tools.arbeidsmarkt import DATASET
 from tools.catalog import documentatie_url
 from tools.rio_instelling import ERKENNINGEN
-from tools.schemas import TOOL_GET_INSPECTIEOORDEEL, TOOL_GET_MBO_INDICATOREN, TOOL_GET_RIO_INSTELLING
+from tools.schemas import (
+    TOOL_GET_COLLEGEGELD,
+    TOOL_GET_INSPECTIEOORDEEL,
+    TOOL_GET_MBO_INDICATOREN,
+    TOOL_GET_RIO_INSTELLING,
+)
 from tools.store import KeyMeta
 
 from .meetwaarden import meetwaarden
@@ -97,11 +102,15 @@ def _registerbron(tool: str, result: str) -> list[Bronregel]:
     return [(f"{tekst}, peildatum {parsed['peildatum']}" if parsed.get("peildatum") else tekst, ERKENNINGEN)]
 
 
-# Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749) en de mbo-indicatoren van DUO (#727).
+# Bronnen buiten de catalogus die een bestand lezen: het Inspectie-oordeel (#749), de mbo-indicatoren van DUO (#727) en
+# de tabel met het wettelijk collegegeld uit de wettekst (#729).
 _BESTANDSBRONNEN = {
     TOOL_GET_INSPECTIEOORDEEL: f"{inspectie.BRONNAAM}{SCHEIDING}{inspectie.BRONTITEL}",
     TOOL_GET_MBO_INDICATOREN: f"{mbo_indicatoren.BRONNAAM}{SCHEIDING}{mbo_indicatoren.BRONTITEL}",
+    TOOL_GET_COLLEGEGELD: f"{collegegeld.BRONNAAM}{SCHEIDING}{collegegeld.BRONTITEL}",
 }
+# Welke velden van `bron` in de bronregel komen, en met welk woord ervoor.
+_BRONVELDEN = {"editie": "editie", "peildatum": "peildatum", "versie": "versie van", "opgehaald": "opgehaald op"}
 
 
 def _bestand(tool: str, result: str) -> dict | None:
@@ -120,7 +129,7 @@ def _bestandsbron(tool: str, result: str) -> list[Bronregel]:
     if (bron := _bestand(tool, result)) is None:
         return []
     delen = [_BESTANDSBRONNEN[tool]]
-    delen += [f"{veld} {bron[veld]}" for veld in ("editie", "peildatum") if bron.get(veld)]
+    delen += [f"{woord} {bron[veld]}" for veld, woord in _BRONVELDEN.items() if bron.get(veld)]
     return [(", ".join(delen), None)]
 
 
@@ -159,7 +168,8 @@ def bronlinks_van(steps: list[tuple[str, str]]) -> dict[str, str]:
     links = {
         tekst: url for tekst, dataset in _bronregels(steps).items() if dataset and (url := documentatie_url(dataset))
     }
-    # Het Inspectie-oordeel en de mbo-indicatoren staan niet in de catalogus: hun link is het bestand zelf (#749, #727).
+    # Het Inspectie-oordeel, de mbo-indicatoren en het collegegeld staan niet in de catalogus: hun link is het bestand of
+    # de wettekst zelf (#749, #727, #729).
     for tool, result in steps:
         bron, regels = _bestand(tool, result), _bestandsbron(tool, result)
         if bron and regels and str(bron.get("url") or "").startswith("https://"):

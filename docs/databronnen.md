@@ -217,6 +217,42 @@ hbo- of wo-opleiding (#726, stap A).
 
 ---
 
+## Wettelijk collegegeld — Regeling financiën hoger onderwijs
+
+Het wettelijk collegegeld staat in artikel 9 van de Regeling financiën hoger onderwijs
+([BWBR0024005](https://wetten.overheid.nl/BWBR0024005)). De app haalt de wettekst (ruim 700 KB HTML) niet bij elke
+vraag op: de bedragen staan in een kleine vaste tabel in `tools/collegegeld.py`, per studiejaar met de wetsversie en
+de dag waarop ze zijn nagelezen. In de chat via `get_collegegeld`, één studiejaar per aanroep (#729).
+- **Voltijd en deeltijd:** per studiejaar het volledig wettelijk collegegeld (voltijd, artikel 7.45a, derde lid, WHW)
+  en het minimum- en maximumbedrag van het gedeeltelijk wettelijk collegegeld (deeltijd en duaal, vierde lid). Het
+  bedrag voor deeltijd of duaal kiest de instelling tussen die twee (artikel 7.45, tweede lid); dat bedrag staat niet
+  in de wettekst.
+- **Nagelezen op 03-11-2026:**
+
+  | Studiejaar | Voltijd | Deeltijd en duaal (min–max) | Versie van de regeling |
+  |---|---:|---:|---|
+  | 2023/2024 | € 2.314 | € 1.377 – € 2.314 | geldend van 01-09-2024 |
+  | 2024/2025 | € 2.530 | € 1.506 – € 2.530 | geldend van 01-09-2025 |
+  | 2025/2026 | € 2.601 | € 1.548 – € 2.601 | geldend van 18-09-2026 |
+  | 2026/2027 | € 2.694 | € 1.604 – € 2.694 | geldend van 18-09-2026 |
+  | 2027/2028 | € 2.771 | € 1.650 – € 2.771 | vastgestelde wijziging, geldend van 01-09-2027 |
+
+- **Verlaagd collegegeld:** tot en met 2023/2024 kon een eerstejaars verlaagd collegegeld betalen (vervallen per
+  01-09-2024). Dat bedrag staat niet in de tabel; bij 2023/2024 zegt een noot het.
+- **Geen open bron:** het instellingscollegegeld en andere bedragen die een instelling zelf vaststelt, zijn geen open
+  data. De tool zegt dat bij elk antwoord, en het model noemt er geen bedrag voor.
+- **Bijhouden:** jaarlijks rond 1 september (zie [Promoten naar playground](promoten.md#jaarlijks)). `bron:ping` wordt
+  rood zodra het lopende studiejaar niet in de tabel staat.
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | wetten.overheid.nl, de wettekst; geen API, de tabel staat in de repo |
+| Inhoud | Wettelijk collegegeld per studiejaar: voltijd, en minimum en maximum voor deeltijd en duaal |
+| Formaat | Vaste tabel in `tools/collegegeld.py`, met BWBR-ID, versiedatum en ophaaldatum |
+| Koppeling | Studiejaar (startjaar) |
+
+---
+
 ## Bronnen onder een antwoord
 
 Onder een antwoord met data staat het blok **Bronnen**: elke dataset die de beurt las, één keer, met titel, periode en dataset-ID. De lijst komt uit de stappen van de beurt, niet uit de tekst van het model.
@@ -233,6 +269,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | UWV | UWV Open Match op data.overheid.nl |
 | ROA | de dataset AIS 2030 (DOI) |
 | Onderwijsinspectie, DUO-indicatoren mbo | het gelezen bestand zelf (#749, #727) |
+| Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
 
 Een regel heeft bewust geen link:
 

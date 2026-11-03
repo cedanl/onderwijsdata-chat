@@ -149,7 +149,8 @@ Zet in zo'n schema geen `EVAL_BASE_URL`: dan draait ook `eval:bronwaarheid`, met
 jobs zijn ook met de hand te starten via "Run pipeline" op `main` met dezelfde variabele.
 
 *`bron:ping`* (`scripts/bronping.py --sweep`) doet eerst één echte aanroep per bron door de toollaag van de chat
-(CBS, DUO, RIO, Inspectie, de DUO-indicatoren en de kaart-GeoJSON). Faalt er één, dan is de job rood en komt de
+(CBS, DUO, RIO, Inspectie, de DUO-indicatoren en de kaart-GeoJSON), en vraagt het lopende studiejaar op in de
+tabel met het wettelijk collegegeld (#729; die ping leest geen bron, ze controleert dat de tabel bij is). Faalt er één, dan is de job rood en komt de
 melding van de mislukte pipeline binnen. Daarna volgt de sweep over elke dataset die de chat kan opvragen
 (`scripts/bronsweep.py`, #869), parallel en binnen een halve minuut (gemeten 02-11-2026: 13 s voor 226 controles):
 

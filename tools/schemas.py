@@ -26,6 +26,7 @@ TOOL_GET_ROA_BENCHMARK = "get_roa_benchmark"
 TOOL_GET_INSPECTIEOORDEEL = "get_inspectieoordeel"
 TOOL_GET_MBO_INDICATOREN = "get_mbo_indicatoren"
 TOOL_GET_ACCREDITATIE = "get_accreditatie"
+TOOL_GET_COLLEGEGELD = "get_collegegeld"
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -359,6 +360,31 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["instelling", "opleiding"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": TOOL_GET_COLLEGEGELD,
+            "description": (
+                "Het wettelijk collegegeld van één studiejaar in het hoger onderwijs, uit artikel 9 van de Regeling "
+                "financiën hoger onderwijs (BWBR0024005): het bedrag voor voltijd en het minimum en maximum voor "
+                "deeltijd en duaal, met de wetsversie als bron. Gebruik dit bij elke vraag naar de hoogte van het "
+                "collegegeld, ook naar het instellingscollegegeld: de tool zegt dan dat daarvoor geen open bron is. "
+                "Neem de bedragen letterlijk over; noem nooit een collegegeldbedrag uit je geheugen en reken er geen "
+                "uit. Eén studiejaar per aanroep."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "studiejaar": {
+                        "type": "integer",
+                        "description": "Startjaar van het studiejaar: 2026 voor 2026/2027. Weglaten: het lopende "
+                        "studiejaar.",
+                    },
+                },
+                "required": [],
             },
         },
     },
