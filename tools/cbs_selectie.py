@@ -21,7 +21,7 @@ tonen ze gestript, zodat de kale code zonder trim niets matcht (#531).
 from . import periode
 
 ALLES = "*"
-_SLEUTELS = ("dimensies", "periode", "onderwerpen", "sector")
+SLEUTELS = ("dimensies", "periode", "onderwerpen", "sector")
 # De sector waarvoor het model de tabel bevraagt; het contract houdt de codes ertegen (cbs_preflight, #370).
 SECTOREN = ("mbo", "hbo", "wo")
 # CBS noemt de tijddimensie vrijwel altijd Perioden; alleen als DataProperties uitvalt
@@ -41,6 +41,22 @@ def dimensienamen(col_defs: dict) -> tuple[list[str], str | None]:
     tijd = next((kolom for kolom, d in col_defs.items() if d.get("type") == "TimeDimension"), None)
     dims = [kolom for kolom, d in col_defs.items() if d.get("type", "").endswith("Dimension") and kolom != tijd]
     return dims, tijd
+
+
+def dimensiesleutel(col_defs: dict, naam: str) -> str | None:
+    """De API-naam van een dimensie, uit de sleutel of de leesbare titel (hoofdletters en spaties tellen niet).
+
+    dataset_details toont "Geboorteland (ouders)", de bron vraagt `GeboortelandOuders` (#892). Alleen een dimensie,
+    de tijddimensie incluis; een onderwerp of een onbekende naam geeft None.
+    """
+    gezocht = naam.strip().casefold()
+    dimensies = {kolom: d for kolom, d in col_defs.items() if d.get("type", "").endswith("Dimension")}
+    for kolom in dimensies:
+        if kolom.casefold() == gezocht:
+            return kolom
+    return next(
+        (kolom for kolom, d in dimensies.items() if str(d.get("title", "")).strip().casefold() == gezocht), None
+    )
 
 
 def _code(waarde) -> str:
@@ -133,7 +149,7 @@ def compileer(dataset_id: str, selectie, col_defs: dict | None) -> dict | str:
     """
     if not isinstance(selectie, dict):
         return f"De selectie voor {dataset_id} is geen object. {_UITLEG}"
-    if onbekend := sorted(set(selectie) - set(_SLEUTELS)):
+    if onbekend := sorted(set(selectie) - set(SLEUTELS)):
         return f"Onbekende sleutel(s) in de selectie: {', '.join(onbekend)}. {_UITLEG}"
     if (sector := selectie.get("sector")) is not None and sector not in SECTOREN:
         return f"'sector' is 'mbo', 'hbo' of 'wo', niet {sector!r}. {_UITLEG}"

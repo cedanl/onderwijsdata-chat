@@ -456,9 +456,16 @@ def _bewaar_alternatief(dataset_id, rows, alternatief, standaard, col_defs, meta
     }
 
 
-def get_cbs_data(dataset_id: str, filters: dict | None = None, selectie: dict | None = None) -> str:
+def get_cbs_data(
+    dataset_id: str, filters: dict | None = None, selectie: dict | None = None, sector: str | None = None
+) -> str:
     """De tool van het model: de poort van de beurt beslist of een tabel over meer onderwijssoorten haar vo-rijen
-    meelaadt (#879), niet het model. Zonder beurt (MCP, evals) blijven ze dicht."""
+    meelaadt (#879), niet het model. Zonder beurt (MCP, evals) blijven ze dicht.
+
+    `sector` hoort in de selectie; het model zet hem soms ernaast (#891). Dat nemen we over, zonder het schema
+    ruimer te maken: staat hij ook in `selectie`, dan wint die."""
+    if sector is not None and isinstance(selectie, dict) and selectie.get("sector") is None:
+        selectie = {**selectie, "sector": sector}
     return laad_cbs_data(dataset_id, filters, selectie, vo_context=ho_markers.vo_deel_poort())
 
 
@@ -597,6 +604,20 @@ def laad_cbs_data(
     return json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
+def _dimensierijen(dataset_id: str, dimension_name: str) -> tuple[dict, ...]:
+    """De rijen van een dimensie onder de naam die het model gaf; weigert de bron die, dan onder de API-naam.
+
+    dataset_details toont de leesbare titel ("Geboorteland (ouders)"), de bron vraagt de sleutel (#892).
+    """
+    try:
+        return _dimension_rows(dataset_id, dimension_name)
+    except Exception:
+        sleutel = cbs_selectie.dimensiesleutel(_load_definitions(dataset_id) or {}, dimension_name)
+        if sleutel is None or sleutel == dimension_name:
+            raise
+        return _dimension_rows(dataset_id, sleutel)
+
+
 def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
     """Code → titel; bij een dimensie met status (Perioden) code → {titel, status} (#180)."""
     dataset_id = cbs_bron_id(dataset_id)
@@ -604,7 +625,7 @@ def get_cbs_dimension(dataset_id: str, dimension_name: str) -> str:
         return blokkade
     _metadata.actueel()
     try:
-        rows = _dimension_rows(dataset_id, dimension_name)
+        rows = _dimensierijen(dataset_id, dimension_name)
     except Exception as e:
         return fouten.bronfout(
             "CBS",
