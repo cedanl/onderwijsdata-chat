@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from agent import beurtbewijs, recepten
+from agent import beurtbewijs, rapportselectie, recepten
 from agent import run as agent_run
 from agent.history import afgebroken_beurt, trim
 from agent.report import RapportGeannuleerd, RapportGeweigerd
@@ -166,7 +166,12 @@ def _over_de_tijdsgrens(wat: str) -> str:
 
 
 async def _generate_report(
-    session: dict, emit, model: str | None, author: str | None = None, onderzoeksvraag: str | None = None
+    session: dict,
+    emit,
+    model: str | None,
+    author: str | None = None,
+    onderzoeksvraag: str | None = None,
+    beurten: frozenset[int] | None = None,
 ) -> None:
     await emit({"type": "report_generating"})
     stop_event = asyncio.Event()
@@ -183,6 +188,7 @@ async def _generate_report(
                 stop_event=stop_event,
                 author=author or session.get("username"),
                 onderzoeksvraag=onderzoeksvraag,
+                beurten=beurten,
             )
         await emit({"type": "report_ready", "spec": spec.to_dict()})
     except TimeoutError as e:
@@ -460,13 +466,23 @@ async def _handle_generate_report(
     onderzoeksvraag = _invoer(msg, "onderzoeksvraag")
     if await _weiger_te_lang(onderzoeksvraag, emit):
         return current_task
+    # De beurten met data die de gebruiker in het rapport hield (#908): de client wordt niet vertrouwd, dus de selectie
+    # wordt tegen het gesprek gecontroleerd, vóór er een run of een berichtlimiet aan te pas komt.
+    try:
+        beurten = rapportselectie.kies(session, msg.get("beurten"))
+    except Gebruikersfout as e:
+        await emit({"type": "error", "message": str(e), "modelafhankelijk": False})
+        return current_task
     if not await _binnen_limiet(session, emit):
         return current_task
     model = _model(session)
     author = msg.get("author")
     return asyncio.create_task(
         _in_een_runplaats(
-            lambda: _generate_report(session, emit, model, author=author, onderzoeksvraag=onderzoeksvraag or None), emit
+            lambda: _generate_report(
+                session, emit, model, author=author, onderzoeksvraag=onderzoeksvraag or None, beurten=beurten
+            ),
+            emit,
         )
     )
 
