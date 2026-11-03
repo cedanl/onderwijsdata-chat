@@ -6,7 +6,8 @@ hun bron laden, zo laag mogelijk, zodat het rekenwerk van de tools zelf getest w
 
 - DUO: `riodata.duo.load` (zoals de fixture `duo_fixtures`, waar de rest vandaan komt: het instellingenregister);
 - CBS: `tools.cbs.definitions`, `tools.cbs.get` en `tools.cbs.data`, die laatste filtert als CBS (`tests/cbs_feed.py`);
-- de mbo-indicatoren en de Inspectie: een httpx-client die alleen het bevroren bestand op de bron-URL kent;
+- de mbo-indicatoren en de Inspectie (bg en po-so-vo): een httpx-client die alleen het bevroren bestand op de bron-URL
+  kent;
 - UWV en ROA: `data.arbeidsmarkt._uwv` en `_roa`.
 
 `blokkeer_netwerk` laat elke socketverbinding falen: een tool die toch naar buiten gaat, breekt de test.
@@ -112,6 +113,18 @@ def _inspectie(monkeypatch) -> None:
     monkeypatch.setattr(inspectie, "peilbestand", lambda: inspectie.haal_peilbestand(client({url: (inhoud, _ODS)})))
 
 
+def _inspectie_vo(monkeypatch) -> None:
+    from tools import inspectie_vo
+
+    url = bronnen()[g.INSPECTIE_VO]["url"]
+    inhoud = (g.MAP / g.INSPECTIE_VO).read_bytes()
+    # Zoals het bg-bestand: de pagina's niet bevroren, het po-so-vo-bestand wel. De vo-vestigingen komen via `_duo`.
+    monkeypatch.setattr(inspectie_vo, "_po_so_vo_url", lambda client: url)
+    monkeypatch.setattr(
+        inspectie_vo, "peilbestand", lambda: inspectie_vo.haal_peilbestand_vo(client({url: (inhoud, _ODS)}))
+    )
+
+
 def _arbeidsmarkt(monkeypatch) -> None:
     from data import arbeidsmarkt
 
@@ -123,6 +136,9 @@ def _arbeidsmarkt(monkeypatch) -> None:
 
 def wis_caches() -> None:
     import tools.cbs
+    from tools import inspectie_vo
+
+    inspectie_vo._vestigingen_van.cache_clear()
 
     tools.cbs._dimension_rows.cache_clear()
     tools.cbs._tabelbeschrijving.cache_clear()
@@ -135,5 +151,6 @@ def zet_klaar(monkeypatch) -> None:
     _cbs(monkeypatch)
     _mbo_indicatoren(monkeypatch)
     _inspectie(monkeypatch)
+    _inspectie_vo(monkeypatch)
     _arbeidsmarkt(monkeypatch)
     wis_caches()

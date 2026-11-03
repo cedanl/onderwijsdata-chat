@@ -9,6 +9,7 @@ from .cbs import get_cbs_data, get_cbs_dimension
 from .collegegeld import get_collegegeld
 from .duo import get_duo_data
 from .inspectie import get_inspectieoordeel
+from .inspectie_vo import get_inspectieoordeel_vo
 from .kpi import compute_kpi
 from .maten import get_maat
 from .mbo_indicatoren import get_mbo_indicatoren
@@ -33,6 +34,7 @@ from .schemas import (
     TOOL_GET_COLLEGEGELD,
     TOOL_GET_DUO_DATA,
     TOOL_GET_INSPECTIEOORDEEL,
+    TOOL_GET_INSPECTIEOORDEEL_VO,
     TOOL_GET_MAAT,
     TOOL_GET_MBO_INDICATOREN,
     TOOL_GET_RIO_DATA,
@@ -67,6 +69,7 @@ LABELS = {
     TOOL_GET_UWV_VACATURES: "UWV vacatures opgehaald",
     TOOL_GET_ROA_BENCHMARK: "ROA benchmark opgehaald",
     TOOL_GET_INSPECTIEOORDEEL: "Inspectie-oordeel opgehaald",
+    TOOL_GET_INSPECTIEOORDEEL_VO: "Inspectie-oordelen vo-scholen opgehaald (vo-context)",
     TOOL_GET_MBO_INDICATOREN: "Mbo-indicatoren opgehaald",
     TOOL_GET_ACCREDITATIE: "Accreditatie opgezocht",
     TOOL_GET_COLLEGEGELD: "Collegegeld opgezocht",
@@ -92,6 +95,7 @@ _HANDLERS = {
     TOOL_GET_UWV_VACATURES: get_uwv_vacatures,
     TOOL_GET_ROA_BENCHMARK: get_roa_benchmark,
     TOOL_GET_INSPECTIEOORDEEL: get_inspectieoordeel,
+    TOOL_GET_INSPECTIEOORDEEL_VO: get_inspectieoordeel_vo,
     TOOL_GET_MBO_INDICATOREN: get_mbo_indicatoren,
     TOOL_GET_ACCREDITATIE: get_accreditatie,
     TOOL_GET_COLLEGEGELD: get_collegegeld,

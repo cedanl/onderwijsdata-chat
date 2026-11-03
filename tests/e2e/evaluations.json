@@ -512,6 +512,16 @@
       }
     },
     {
+      "label": "inspectie-oordeel-vo-doorstroom",
+      "message": "Hoe beoordeelt de inspectie de havo/vwo-afdelingen van de scholen waar onze eerstejaars hbo vandaan komen in Utrecht?",
+      "description": "#881: een doorstroomvraag die het vo noemt opent get_inspectieoordeel_vo; oordeel per afdeling, met het etiket van de vo-context en zonder te beweren waar de studenten vandaan komen",
+      "expected": {
+        "must_contain_tools": ["get_inspectieoordeel_vo"],
+        "max_search_catalog": 1,
+        "must_mention": ["havo", "vwo", "Voldoende|Onvoldoende|geen eindoordeel", "afdeling", "peildatum|peil"]
+      }
+    },
+    {
       "label": "mbo-indicatoren-jr-dr",
       "message": "Hoe presteert ROC Midden Nederland op jaar- en diplomaresultaat?",
       "description": "#727: jaar- en diplomaresultaat per instelling naast de vergelijkingsgroep, afronding en verschil uit code (get_mbo_indicatoren); editie 2026, 2024/25: 70,1% en 70,6% tegen 71,8% en 72,4%",

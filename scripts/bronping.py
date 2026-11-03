@@ -38,12 +38,14 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import bronsweep
 from tests.ijkwaarden import harnas
-from tools import cbs, collegegeld, duo, fouten, inspectie, mbo_indicatoren, plot, rio_instelling
+from tools import cbs, collegegeld, duo, fouten, inspectie, inspectie_vo, mbo_indicatoren, plot, rio_instelling
 
 _MAX_DETAIL = 200
 _PROVINCIES = 12
 # Op 1 oktober 2026 noemden 164 besturen mbo; minder dan dit is een kapot of half bestand (#749).
 _MIN_MBO_BESTUREN = 100
+# Vo-afdelingen in het po-so-vo-bestand: op 01-11-2026 3634 (#881).
+_MIN_VO_AFDELINGEN = 3000
 # De editie 2026 heeft 54 mbo-instellingen; minder dan dit is een kapot of half bestand (#727).
 _MIN_MBO_INSTELLINGEN = 40
 _AERES = "30TX"  # de instellingscode achter de RIO-ijkwaarde rio-aeres-hogeschool
@@ -111,6 +113,21 @@ def _inspectie_bewijs(uitkomst: dict) -> str | None:
     )
 
 
+def _inspectie_vo() -> dict:
+    # Dezelfde weg als get_inspectieoordeel_vo: het po-so-vo-bestand uit hetzelfde document, gefilterd op vo (#881).
+    bestand = inspectie_vo.haal_peilbestand_vo()
+    return {"peildatum": bestand.peildatum, "vo_afdelingen": len(inspectie_vo.afdelingen_vo(bestand.rijen))}
+
+
+def _inspectie_vo_bewijs(uitkomst: dict) -> str | None:
+    n = uitkomst.get("vo_afdelingen", 0)
+    return (
+        None
+        if n >= _MIN_VO_AFDELINGEN
+        else f"{n} vo-afdelingen in het po-so-vo-bestand, minstens {_MIN_VO_AFDELINGEN} verwacht"
+    )
+
+
 def _mbo_indicatoren() -> dict:
     # Dezelfde weg als de chat: indicatorenpagina, nieuwste xlsx-editie, de koppen en regels van de tool (#727).
     gelezen = mbo_indicatoren.haal_editie()
@@ -147,6 +164,13 @@ PINGS: tuple[Ping, ...] = (
         "nieuwste Inspectie-peilbestand per bestuur, mbo (bg.ods)",
         _inspectie,
         _inspectie_bewijs,
+    ),
+    Ping(
+        "inspectie-po-so-vo",
+        "inspectie",
+        "nieuwste Inspectie-peilbestand per school, vo-afdelingen (po-so-vo.ods)",
+        _inspectie_vo,
+        _inspectie_vo_bewijs,
     ),
     Ping(
         "duo-indicatoren",

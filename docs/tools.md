@@ -405,6 +405,48 @@ Het oordeel van de Onderwijsinspectie over het bestuur (bevoegd gezag) van een m
 
 ---
 
+## get_inspectieoordeel_vo
+
+De oordelen van de Onderwijsinspectie over de afdelingen van de vo-scholen in één gemeente, als vo-context voor
+vervolgonderwijs (#881, `tools/inspectie_vo.py`). Los van `get_inspectieoordeel`, dat alleen over mbo-besturen gaat.
+- **Poort:** de tool geeft alleen data als de vraag van de gebruiker de vo-context opent én zelf een vo-niveau noemt,
+  zonder po of (v)so (`ho_markers.vo_deel_poort`, dezelfde poort als het vo-deel van CBS en RIO, #879/#880). Code
+  beslist dat, niet het model: zijn argumenten openen niets. Anders komt er een vaste weigering (`POORT_DICHT`) en
+  laadt de tool geen bestand. Buiten de chat (MCP, evals) is er geen vraag en blijft de poort dicht.
+  - Open: "Hoe beoordeelt de inspectie de havo/vwo-afdelingen van de scholen waar onze eerstejaars hbo vandaan komen
+    in Utrecht?", "Hoe beoordeelt de inspectie de vmbo-scholen waarvan de leerlingen doorstromen naar het mbo in
+    Utrecht?".
+  - Dicht: "Wat is het inspectieoordeel van ROC Midden Nederland?" (mbo), "Hoe beoordeelt de inspectie de opleidingen
+    van de Hogeschool Utrecht?" (ho zonder vo-niveau; de zoekpoort is daar wel open), "Hoe beoordeelt de inspectie de
+    havo-afdelingen in Utrecht?" (een losse vo-vraag), een vraag die po of (v)so noemt.
+  - Een vraag over één vo-school ("het Utrechts Stedelijk Gymnasium") krijgt vóór het model het vaste vo-antwoord
+    (`agent/vo_school.py`), en de tool weigert ook dan.
+- **Altijd in de toolset:** de tool staat er altijd in en weigert zelf, zoals `get_cbs_data` en `get_rio_data` de poort
+  zelf lezen. Zo zit de poort op één plek, voor elke ingang (chat, dispatch), en blijft de toollijst gelijk tussen beurten.
+- **Route:** de code leest het nieuwste po-so-vo-bestand uit hetzelfde document als het bg-bestand (dezelfde paginaweg,
+  `inspectie.haal_ods`), één keer per dag. Het bestand noemt geen plaats of schoolnaam: die komen uit DUO's adressen
+  van vestigingen in het vo (`adressen_vo`, vestigingscode = BRIN + vestigingsnummer), ook één keer per dag.
+- **Alleen vo:** alleen rijen met `Sector` VO en `Elementtype` ODS (een onderwijssoort), nooit een speciale school
+  (`TypeOVT` SPEC). Po- en so-rijen vallen weg, ook als hun vestigingscode bij DUO in de gemeente staat. Een onbekende
+  onderwijssoort komt als `INSPECTIE_VO_ONBEKEND` in het log.
+- **Resultaat:** per vestiging de naam, de plaats en per afdeling het oordeel met de vaststellingsdatum ("Voldoende
+  (09-06-2026)"), een telling per onderwijssoort en oordeel over alle vestigingen, de peildatum, `context` (het etiket
+  "vo-context voor vervolgonderwijs") en de bron (CC0 1.0). Geen standaarden: hun kolommen verschillen per
+  onderzoekskader.
+  - Meer dan 25 vestigingen (Amsterdam heeft er 84 met een vo-afdeling): de eerste 25 op naam, de telling telt alle, en
+    een `noot` zegt dat het afgekapt is.
+  - Een `noot` volgt bij het vo-onderdeel van een roc of aoc: het oordeel gaat over dat vo-deel, niet over het mbo.
+  - Een `noot` zegt altijd dat de bron niet zegt waar studenten vandaan komen.
+- **Bronregel:** "Onderwijsinspectie · Oordelen per school (po/so/vo), vo-context voor vervolgonderwijs, peildatum …",
+  met een link naar het bestand.
+
+| Parameter | Type | Beschrijving |
+|-----------|------|-------------|
+| `gemeente` | string | Naam van de gemeente, bijv. `"Utrecht"` of `"Den Haag"`; spelling als `'s-Gravenhage` telt niet |
+| `onderwijssoorten` | array | Optioneel: `vmbo-b`, `vmbo-k`, `vmbo-gt`, `havo`, `vwo`, `pro`; weglaten geeft alle |
+
+---
+
 ## get_mbo_indicatoren
 
 Jaarresultaat, diplomaresultaat en nieuwe vsv'ers van een mbo-instelling, elk met de waarde van de vergelijkingsgroep,

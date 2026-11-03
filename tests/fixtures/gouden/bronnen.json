@@ -17,6 +17,13 @@
   "rijen": 16,
   "url": "https://opendata.cbs.nl/ODataApi/odata/85569NED"
  },
+ "duo-adressen_vo_vestigingen.csv.gz": {
+  "bijgewerkt": "2026-11-02T15:14:58.149735",
+  "filter": "GEMEENTENAAM in ['UTRECHT']",
+  "opgehaald": "2026-11-03",
+  "rijen": 31,
+  "url": "https://onderwijsdata.duo.nl/dataset/c8e6ffdd-cc2b-44ee-880f-0ff03f72e868/resource/5187f8d5-ff9c-4284-8e06-4311f0354956/download/vestigingenvo.csv"
+ },
  "duo-mbo-studenten-per-instelling_0.csv.gz": {
   "bijgewerkt": "2026-02-02T09:51:41.957480",
   "filter": "INSTELLINGSCODE in ['00GT', '23JA', '24ZZ', '25LH', '25LP', '25PJ', '27GZ']",
@@ -57,6 +64,12 @@
   "opgehaald": "2026-11-02",
   "rijen": 4,
   "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2026/10/02/oordelen-1-oktober-2026/20261001-oordeel-en-standaard-bg.ods"
+ },
+ "inspectie-po-so-vo.ods": {
+  "filter": "vo: BRIN + Vestiging van de vo-vestigingen in gemeente UTRECHT (DUO adressen_vo); plus de eerste 3 po- en so-rijen",
+  "opgehaald": "2026-11-03",
+  "rijen": 64,
+  "url": "https://www.onderwijsinspectie.nl/site/binaries/site-content/collections/documents/2026/11/03/oordelen-1-november-2026/20261102-oordeel-en-standaard-po-so-vo.ods"
  },
  "mbo-indicatoren.xlsx": {
   "editie": 2026,

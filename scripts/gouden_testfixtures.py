@@ -1,6 +1,6 @@
 """Ververs de bevroren bronbestanden onder de gouden tests van de rekenende tools (#870).
 
-De rekenende tools (get_mbo_indicatoren, get_accreditatie, get_inspectieoordeel, de recepten van get_maat, de
+De rekenende tools (get_mbo_indicatoren, get_accreditatie, get_inspectieoordeel(_vo), de recepten van get_maat, de
 UWV/ROA-tools en compute_kpi) werden alleen op vorm getest: een verschoven kolom of een verkeerde noemer viel pas op in
 een handmatige eval. Dit script haalt hun bronnen één keer live op, houdt alleen de rijen over die de gouden tests
 gebruiken en schrijft ze naar `tests/fixtures/gouden/`, met per bestand de bron-URL en de ophaaldatum in
@@ -20,6 +20,7 @@ import io
 import json
 import sys
 import zipfile
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,10 @@ INSPECTIE_INSTELLINGEN = {
     "25PV": 40870,  # Scalda: onderzoekskader 2017 (BST2017), kwaliteitsgebieden en KA/FB-standaarden
     "23KG": 31121,  # Grafisch Lyceum Utrecht: kader 2021 in de versie van 2025 (BST21_V25), eindoordeel Onvoldoende
 }
+# get_inspectieoordeel_vo (#881): de gemeente van de testvraag, en zo veel po- en so-rijen die blijven staan om te tonen
+# dat de tool ze weglaat.
+INSPECTIE_VO_GEMEENTE = "UTRECHT"
+INSPECTIE_PO_SO_RIJEN = 3
 UWV_PROVINCIE = "Flevoland"  # de kleinste provincie in rijen, zodat het bestand klein blijft
 UWV_KOLOMMEN = ["PEILDATUM", "PROVINCIE", "GEMEENTE", "BEROEPENCLUSTER", "AANTAL"]
 ROA_KOLOMMEN = ["regionaam", "thema", "aggregatieniveau", "detailniveau", "onderwerp", "perc", "aantal", "typering",
@@ -52,12 +57,13 @@ ROA_KOLOMMEN = ["regionaam", "thema", "aggregatieniveau", "detailniveau", "onder
 # DUO: (dataset, resource) → (kolom met de instellingscode, de codes die blijven). Het register van de app leest zijn
 # mbo-instellingen uit mbo-studenten-per-instelling: dat bestand houdt de mbo-instellingen van de DUO-fixtures, anders
 # kent het register in de gouden tests alleen ROC Mondriaan.
-DUO: dict[tuple[str, int], tuple[str, set[str]]] = {
+DUO: dict[tuple[str, int | str], tuple[str, set[str]]] = {
     ("p01hoinges", 4): ("INSTELLINGSCODE_ACTUEEL", {UU}),
     ("p02ho1ejrs", 4): ("INSTELLINGSCODE_ACTUEEL", {UU}),
     ("p03hoinschr", 4): ("INSTELLINGSCODE_ACTUEEL", {UU}),
     ("mbo-studenten-per-instelling", 0): ("INSTELLINGSCODE", {MONDRIAAN, *duo_testfixtures.MBO}),
     ("overzicht-erkenningen-ho", 0): ("INSTELLINGSCODE", {UU}),
+    ("adressen_vo", "vestigingen"): ("GEMEENTENAAM", {INSPECTIE_VO_GEMEENTE}),  # get_inspectieoordeel_vo (#881)
 }
 
 # CBS: de landelijke recepten van get_maat, met de afbakeningen die de tests vragen.
@@ -70,11 +76,12 @@ CBS_AANROEPEN: dict[str, list[dict[str, Any]]] = {
 
 MBO_INDICATOREN = "mbo-indicatoren.xlsx"
 INSPECTIE = "inspectie-bg.ods"
+INSPECTIE_VO = "inspectie-po-so-vo.ods"
 UWV = "uwv-vacatures.csv.gz"
 ROA = "roa-ais2030.csv.gz"
 
 
-def duo_bestand(dataset_id: str, resource: int) -> str:
+def duo_bestand(dataset_id: str, resource: int | str) -> str:
     return f"duo-{dataset_id}_{resource}.csv.gz"
 
 
@@ -137,10 +144,11 @@ def _ods_met_rijen(inhoud: bytes, houden) -> tuple[bytes, int]:
     wortel = ElementTree.fromstring(bestanden["content.xml"])
     blad = next(wortel.iter(tabel + "table"))
     rijen = [r for r in blad if r.tag == tabel + "table-row"]
-    kop = [i._cel(c) for c in rijen[0]]
+    # Met herhaalde cellen uitgeschreven, zoals de tool leest: lege cellen midden in een rij zijn één herhaalde cel.
+    kop = i.rijwaarden(rijen[0])
     gehouden = 0
     for rij in rijen[1:]:
-        waarden = [i._cel(c) for c in rij]
+        waarden = i.rijwaarden(rij)
         if houden(dict(zip(kop, waarden, strict=False))):
             gehouden += 1
         else:
@@ -168,6 +176,36 @@ def _inspectie(bronnen: dict) -> None:
     klein, gehouden = _ods_met_rijen(inhoud, lambda rij: i.bestuursnummer(rij.get("Bestuursnummer")) in besturen)
     (MAP / INSPECTIE).write_bytes(klein)
     bronnen[INSPECTIE] = {"url": url, "filter": f"Bestuursnummer in {sorted(besturen)}", "rijen": gehouden}
+
+
+def _inspectie_vo(bronnen: dict) -> None:
+    """Het po-so-vo-bestand met de rijen van de vo-vestigingen in INSPECTIE_VO_GEMEENTE (volgens DUO) en een paar po- en
+    so-rijen erbij."""
+    import httpx
+    from riodata import duo
+
+    from tools import inspectie as i
+    from tools import inspectie_vo as v
+
+    vestigingen = duo.load(*v._VESTIGINGEN)
+    in_gemeente = vestigingen["GEMEENTENAAM"].astype(str).str.strip() == INSPECTIE_VO_GEMEENTE
+    codes = set(vestigingen.loc[in_gemeente, "VESTIGINGSCODE"].astype(str).str.strip())
+    with httpx.Client(headers=i._HEADERS, timeout=i._TIMEOUT_S, follow_redirects=True) as client:
+        url = v._po_so_vo_url(client)
+        inhoud = i._haal(client, url).content
+    po_so: Counter[str] = Counter()
+
+    def houden(rij: dict) -> bool:
+        if (sector := rij.get("Sector")) in ("PO", "SO"):
+            po_so[sector] += 1
+            return po_so[sector] <= INSPECTIE_PO_SO_RIJEN
+        return f"{rij.get('BRIN', '')}{rij.get('Vestiging', '')}" in codes
+
+    klein, gehouden = _ods_met_rijen(inhoud, houden)
+    (MAP / INSPECTIE_VO).write_bytes(klein)
+    filter_ = (f"vo: BRIN + Vestiging van de vo-vestigingen in gemeente {INSPECTIE_VO_GEMEENTE} (DUO adressen_vo); "
+               f"plus de eerste {INSPECTIE_PO_SO_RIJEN} po- en so-rijen")  # fmt: skip
+    bronnen[INSPECTIE_VO] = {"url": url, "filter": filter_, "rijen": gehouden}
 
 
 def _cbs(bronnen: dict) -> None:
@@ -249,6 +287,7 @@ def main() -> None:
     _duo(bronnen, tekst)
     _mbo_indicatoren(bronnen)
     _inspectie(bronnen)
+    _inspectie_vo(bronnen)
     _cbs(bronnen)
     _uwv(bronnen)
     _roa(bronnen)

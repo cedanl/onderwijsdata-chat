@@ -105,6 +105,7 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 - **Voorbeelden.** Wel: "Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havo-leerlingen heen na hun diploma?", "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?". Niet: "Hoeveel leerlingen zitten er op het vwo in Utrecht?" (een losse vo-vraag krijgt de vaste scope-uitleg) en "Hoeveel mbo-studenten per instelling?" (het mbo zonder vo-niveau).
 - **Altijd met label.** Elke zoektreffer en elke bronvermelding (de Bronnen, de bronregel onder een rapportgrafiek, de kop van een CSV-export) noemt ze "vo-context voor vervolgonderwijs": het gaat om leerlingen in het voortgezet onderwijs, vavo-deelnemers of schoolverlaters, niet om mbo- of ho-studenten.
 - **Het vo-deel van gemengde bronnen (#879, #880).** De VSV-tabellen `85368NED`/`85367NED` en de woonregiotabellen `85701NED`/`85702NED` laden hun vo- en vavo-rijen erbij, en de RIO-registers met een typefilter laten hun vo- en vavo-typen toe, maar alleen als de vraag de vo-context opent én zelf een vo-niveau of voortijdig schoolverlaters noemt, zonder po of (v)so (`ho_markers.vo_deel_poort`). Wel: "Hoeveel vo-leerlingen worden voortijdig schoolverlater en hoeveel daarvan in het mbo?", "Hoeveel havisten en vwo'ers in Utrecht stromen door naar het hbo?", "Welke vavo-opleidingen bieden roc's in Utrecht aan?". Niet: "Hoeveel mbo-studenten verlaten voortijdig de school?", en ook niet "Hoeveel hbo-studenten wonen er in Utrecht?": die opent de zoekpoort, maar zonder vo-niveau zouden vo-leerlingen tussen de studenten komen. De totalen over vo en mbo samen ("Totaal onderwijs") en de po- en (v)so-rijen blijven weg. De bronregel noemt het deel per lading: "…, alleen mbo en vo (vo-context voor vervolgonderwijs)" bij CBS, "…, vo-context voor vervolgonderwijs" bij een RIO-pagina met een vo-type; een eerdere lading houdt haar bronregel, ook als een latere beurt dezelfde tabel anders laadt.
+- **Inspectieoordelen van vo-scholen (#881).** Achter dezelfde poort (`vo_deel_poort`) geeft `get_inspectieoordeel_vo` de oordelen van de Inspectie per afdeling (vmbo, havo, vwo, pro) van de vo-scholen in één gemeente, met het etiket "vo-context voor vervolgonderwijs" in het resultaat, de bronregel en de Bronnen. Wel: "Hoe beoordeelt de inspectie de havo/vwo-afdelingen van de scholen waar onze eerstejaars hbo vandaan komen in Utrecht?". Niet: "Wat is het inspectieoordeel van ROC Midden Nederland?" (daarvoor is `get_inspectieoordeel`), "Hoe beoordeelt de inspectie de havo-afdelingen in Utrecht?" en een vraag over één vo-school, die het vaste vo-antwoord krijgt. Zie [Onderwijsinspectie — oordelen per vo-school](#onderwijsinspectie-oordelen-per-vo-school-vo-context).
 - **Verder geen po, so of vo.** Alle andere po-, so- en vo-bronnen blijven buiten het profiel, ook met een dataset-ID uit de vraag: de gearchiveerde CBS-reeksen (zoals `80040ned`-`80043ned`), de DUO-bestanden t/m 2019 (`01/02voins-v1`, `03/04_voex-v1`), `06_vomtgo`, `adressen_vo` en alles over po en (v)so. Ze komen pas mee als een echte vraag erom vraagt.
 
 **Grenzen.** De uitzondering is minder streng dan ze klinkt:
@@ -115,7 +116,7 @@ De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daaro
 - **Een vo-school blijft dicht.** Een vraag over één vo-school ("het Erasmus Gymnasium") krijgt het vaste vo-antwoord, ook met een doorstroomwoord: er is geen doorstroom per school in deze set.
 - **`85566NED` is slecht vindbaar.** Bij "doorstroom vmbo mbo" en "havo doorstroom vervolgonderwijs" staat hij niet in de top 15 (gemeten in #559 en #877); de andere bronnen worden wel gevonden. Niet bijgesteld zonder meting (#597); vervolg in #882.
 - **Een dataset-ID laadt zonder poort.** De poort zit alleen in het zoeken: met een van deze tien ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook zonder doorstroomvraag.
-- **Alle vo-rijen in de vo-tabellen.** De vo-tabellen krijgen geen sectorselectie: ze laden al hun rijen (bij `85566NED` ook vso, bij `85948NED` ook de mbo-kolommen). Inspectieoordelen voor vo-scholen zijn er niet (#881).
+- **Alle vo-rijen in de vo-tabellen.** De vo-tabellen krijgen geen sectorselectie: ze laden al hun rijen (bij `85566NED` ook vso, bij `85948NED` ook de mbo-kolommen).
 - **Het vo-deel van een gemengde bron alleen in de chat.** Buiten de chat (MCP, evals) is er geen gebruikersvraag; daar laden de gemengde CBS-tabellen alleen hun mbo/hbo/wo-rijen en weigeren de RIO-registers een vo-type, ook met een dataset-ID. Een herlaadrecept onthoudt wel of een lading het vo-deel had.
 - **Een vervolgvraag zonder vo-niveau laadt geen vo-rijen.** "En per gemeente?" na een doorstroomvraag noemt zelf geen vo: de poort kijkt naar de vraag van deze beurt (#597), net als de zoekpoort.
 - **RIO geeft geen aantallen.** Het vavo-aanbod van een roc komt uit één pagina van het register, zonder totaal; vavo-deelnemers tellen doet `85329NED`. De retrieval-baseline vindt `aangeboden-opleidingen` bij "vavo opleidingsaanbod" op rang 4, met de vraag zelf niet in de top 15 (mbo-32).
@@ -174,6 +175,50 @@ CC0 1.0). In de chat via `get_inspectieoordeel`, alleen voor mbo-instellingen (#
 | Inhoud | Eindoordeel en standaarden per bevoegd gezag |
 | Formaat | ODS, maandelijks peilbestand |
 | Koppeling | Bestuursnummer = DUO `BEVOEGD GEZAG NUMMER` (adressen_mbo) |
+
+---
+
+## Onderwijsinspectie — oordelen per vo-school (vo-context)
+
+In hetzelfde maandelijkse document staat het peilbestand per school en onderwijssoort voor po, so en vo
+(`…-oordeel-en-standaard-po-so-vo.ods`, CC0 1.0 volgens de documentpagina). In de chat via `get_inspectieoordeel_vo`,
+alleen als vo-context voor vervolgonderwijs (#881): bij een vraag die de vo-context opent en zelf het vo noemt (zie
+[Vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs)).
+- **Per afdeling:** bij vo is het object van toezicht de onderwijssoort op één vestiging (`Elementtype` ODS): het oordeel
+  geldt voor bijvoorbeeld de havo-afdeling van die vestiging, niet voor de school als geheel en niet voor het bestuur.
+- **Alleen vo:** de tool neemt alleen `Sector` VO met een onderwijssoort, en nooit een speciale school (`TypeOVT` SPEC).
+  Po- en so-rijen staan wel in het bestand, maar nooit in het resultaat.
+- **Vo-onderdeel van een roc:** 89 vo-afdelingen horen bij een roc (`TypeOVT` ROCV). Het antwoord zegt dan dat het
+  oordeel over het vo-deel gaat, niet over het mbo.
+- **Plaats en naam uit DUO:** het bestand noemt geen plaats en geen schoolnaam. De koppeling is BRIN + vestigingsnummer
+  = DUO `VESTIGINGSCODE` in de adressen van vestigingen in het vo (`adressen_vo`, 1632 vestigingen in 288 gemeenten).
+- **Aantallen op 1 november 2026:** 11.093 rijen, waarvan 6615 po, 669 so en 3809 vo. Daarvan zijn 3634
+  vo-afdelingen op 1438 vestigingen (978 vmbo-gt, 696 havo, 646 vwo, 570 vmbo-k, 556 vmbo-b, 188 pro).
+  - Oordelen: 2512 geen eindoordeel, 850 voldoende, 192 onvoldoende, 47 zeer zwak, 24 goed, 9 basistoezicht.
+  - 3620 afdelingen op 1433 vestigingen vinden hun vestiging bij DUO.
+
+**Bekende grenzen:**
+- **Geen eindoordeel is de regel.** Bij 69% van de afdelingen staat "Geen eindoordeel": nog niet onderzocht, gefuseerd,
+  of het laatste oordeel Voldoende of Goed is ouder dan vier jaar (toelichting, p. 5). Het antwoord noemt dat geen
+  onvoldoende.
+- **Niet waar studenten vandaan komen.** De bron kent de vo-scholen in een gemeente, niet de scholen waar de studenten
+  van een instelling vandaan komen. Het resultaat zegt dat.
+- **Geen standaarden.** De standaarden staan per onderzoekskader in andere kolommen (OP0-OP8, SK, VS, OR, SKA, ...), met
+  per kader een andere naam. De tool toont alleen het eindoordeel per afdeling.
+- **Per gemeente, ten hoogste 25 vestigingen.** Een grote gemeente (Amsterdam: 84 vestigingen met een vo-afdeling) wordt
+  afgekapt. De telling per oordeel telt wel alle vestigingen.
+- **Niet gekoppeld:** 14 afdelingen van een `TypeOVT` EDUV staan niet in DUO's vestigingen en hebben dus geen gemeente.
+  Eén afdeling heet "Overig EOA": die onderwijssoort kent de tool niet. Die komt in het log (`INSPECTIE_VO_ONBEKEND`).
+- **Alleen in de chat.** Buiten een beurt (MCP, evals) weigert de tool, want er is geen vraag van een gebruiker.
+- **Bereikbaarheid:** `bron:ping` meet het po-so-vo-bestand dagelijks (`inspectie-po-so-vo`, minstens 3000
+  vo-afdelingen).
+
+| Eigenschap | Details |
+|------------|---------|
+| Toegang | onderwijsinspectie.nl, open data (CC0 1.0) |
+| Inhoud | (Eind)oordeel per school en onderwijssoort, po, so en vo; de tool leest alleen vo |
+| Formaat | ODS, maandelijks peilbestand, in hetzelfde document als het bg-bestand |
+| Koppeling | BRIN + Vestiging = DUO `VESTIGINGSCODE` (adressen_vo, vestigingen) |
 
 ---
 
@@ -283,7 +328,7 @@ Elke regel is een link naar de bronpagina van die dataset (#621), die in een nie
 | RIO | het register in de RIO-API, ook bij een opzoeking per instelling (`erkenningen`) |
 | UWV | UWV Open Match op data.overheid.nl |
 | ROA | de dataset AIS 2030 (DOI) |
-| Onderwijsinspectie, DUO-indicatoren mbo | het gelezen bestand zelf (#749, #727) |
+| Onderwijsinspectie (bg en po-so-vo), DUO-indicatoren mbo | het gelezen bestand zelf (#749, #881, #727) |
 | Wettelijk collegegeld | artikel 9 in de versie van de regeling op wetten.overheid.nl (#729) |
 
 Een regel heeft bewust geen link:
