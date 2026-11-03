@@ -8,7 +8,7 @@ De assistent haalt data op uit drie open bronnen: **CBS, DUO en RIO**. De juiste
 
 ## CBS — Centraal Bureau voor de Statistiek
 
-**130 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo (waaronder `85368NED` en `85367NED`, naar leeftijd) laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat. `84312NED` geeft de mbo-studenten van Caribisch Nederland (Bonaire, Sint Eustatius en Saba); de tabel over po, vo en mbo samen (`84732NED`) laadt de chat niet. Vier vo-tabellen (`85566NED` doorstroom uit vo en vso, `85380NED` vo-leerlingen, `85381NED` en `85382NED` vo-gediplomeerden) zijn [vo-context voor ho](#vo-context-voor-ho): de zoekfunctie toont ze alleen bij een vraag die ho noemt, en elke bronvermelding zegt "…, vo-context voor ho". Ongeveer twee derde van de tabellen is gearchiveerd: CBS werkt ze niet meer bij. De zoekfunctie toont ze pas als er geen lopende tabel past, en de zoektreffer, het resultaat van `get_cbs_data` (`gearchiveerd`, `laatste_periode`), de Bronnen, de bronregel onder een rapportgrafiek en de kop van een CSV-export zeggen "…, gearchiveerd, laatste periode 2016/'17" (#865).
+**130 datasets** met statistische onderwijsdata over mbo, hbo en wo: aantallen studenten, diploma's, voortijdig schoolverlaters en meer, uitgesplitst naar diverse dimensies. Tabellen over po/vo, en tabellen over alle onderwijssoorten zonder sectorselectie, laadt de chat niet. Bij de VSV-tabellen over mbo én vo (waaronder `85368NED` en `85367NED`, naar leeftijd) laadt hij alleen de mbo-rijen; bij de woonregiotabellen over alle onderwijssoorten (`85701NED` studenten, `85702NED` gediplomeerden) alleen de rijen voor mbo, hbo en wo. Die regio is waar de student woont, niet waar de instelling staat. `84312NED` geeft de mbo-studenten van Caribisch Nederland (Bonaire, Sint Eustatius en Saba); de tabel over po, vo en mbo samen (`84732NED`) laadt de chat niet. Negen tabellen over het vo (doorstroom, vo-leerlingen en -gediplomeerden, vo-cohorten, vavo en de terugkeer van voortijdig schoolverlaters) zijn [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs): de zoekfunctie toont ze alleen bij een vraag over het ho of over doorstroom uit het vo, en elke bronvermelding zegt "…, vo-context voor vervolgonderwijs". Ongeveer twee derde van de tabellen is gearchiveerd: CBS werkt ze niet meer bij. De zoekfunctie toont ze pas als er geen lopende tabel past, en de zoektreffer, het resultaat van `get_cbs_data` (`gearchiveerd`, `laatste_periode`), de Bronnen, de bronregel onder een rapportgrafiek en de kop van een CSV-export zeggen "…, gearchiveerd, laatste periode 2016/'17" (#865).
 
 | Eigenschap | Details |
 |------------|---------|
@@ -55,7 +55,7 @@ Sinds v3 heet het typefilter op elk register `type` (v2: `erkenningtype`, `oplei
 
 ## DUO — Dienst Uitvoering Onderwijs
 
-**15 open datasets** gepubliceerd door DUO over mbo, hbo en wo, inclusief prognoses, diplomering, instroom en adressen. DUO publiceert ook po-, so- en vo-bestanden; die vallen buiten het profiel van de chat, behalve `voprognoses`: [vo-context voor ho](#vo-context-voor-ho), net als de vier vo-tabellen van CBS.
+**15 open datasets** gepubliceerd door DUO over mbo, hbo en wo, inclusief prognoses, diplomering, instroom en adressen. DUO publiceert ook po-, so- en vo-bestanden; die vallen buiten het profiel van de chat, behalve `voprognoses`: [vo-context voor vervolgonderwijs](#vo-context-voor-vervolgonderwijs), net als de negen vo-tabellen van CBS.
 
 | Eigenschap | Details |
 |------------|---------|
@@ -82,28 +82,37 @@ DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview),
 
 ---
 
-## Vo-context voor ho
+## Vo-context voor vervolgonderwijs
 
-De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daarop is één smalle uitzondering (epic #554): vier CBS-tabellen en één DUO-dataset over het vo geven een vraag over het hoger onderwijs context, zoals wie er vanuit het vo naar het ho kan instromen.
+De chat werkt voor mbo, hbo en wo; po, so en vo vallen buiten het profiel. Daarop is één uitzondering (epic #554, besluit A van #877): negen CBS-tabellen en één DUO-dataset over het vo geven context bij een vraag over vervolgonderwijs, zoals wie er vanuit het vo naar het mbo, hbo of wo doorstroomt of kan doorstromen.
 
 | Dataset | Wat | Periode |
 |---------|-----|---------|
 | `85566NED` (CBS) | Doorstroom en uitstroom uit vo en vso | 2015/'16 naar 2016/'17 t/m 2022/'23 naar 2023/'24 |
 | `85380NED` (CBS) | Vo-leerlingen per onderwijssoort, leerjaar en woonregio | 2021/'22-2025/'26 |
+| `85379NED` (CBS) | Vo-leerlingen per onderwijssoort in detail (vmbo-leerweg), leerjaar en herkomst | 2020/'21-2025/'26 |
 | `85381NED` (CBS) | Vo-gediplomeerden naar onderwijssoort en herkomst | 2011/'12-2024/'25 |
 | `85382NED` (CBS) | Vo-gediplomeerden naar woonregio | 2011/'12-2024/'25 |
+| `85534NED` (CBS) | Vo-cohorten: hoogst behaald diploma en onderwijspositie op een later peilmoment | startjaren 2008-2018 (even jaren) |
+| `85328NED` (CBS) | Vavo-gediplomeerden naar onderwijssoort | 2006/'07-2024/'25 |
+| `85329NED` (CBS) | Vavo-deelnemers naar onderwijssoort | 2006/'07-2025/'26 |
+| `85948NED` (CBS) | Terugkeer in het onderwijs van voortijdig schoolverlaters uit vo en mbo | 2007/'08-2021/'22 |
 | `voprognoses` (DUO) | Leerlingenprognose vo per instelling | 2024-2030 |
 
-- **Alleen bij een ho-vraag.** De zoekfunctie toont deze vijf alleen als de vraag van de gebruiker het hoger onderwijs noemt: hbo, wo, ho, hoger onderwijs, hogeschool of universiteit. Havo en vwo tellen niet: dat is vo (#597). Zonder zo'n woord blijven ze weg. Code beslist dat, op de vraag van de gebruiker (bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent), niet op de zoekterm die het model meegeeft. Buiten de chat (MCP) is er geen gebruikersvraag en beslist de zoekterm. Zie [`search_catalog`](tools.md#search_catalog).
-- **Altijd met label.** Elke zoektreffer en elke bronvermelding noemt ze "vo-context voor ho": het gaat om leerlingen in het voortgezet onderwijs, niet om studenten.
-- **Verder geen po, so of vo.** Alle andere po-, so- en vo-bronnen blijven buiten het profiel, ook met een dataset-ID uit de vraag.
+- **Alleen bij een vraag over vervolgonderwijs.** De zoekfunctie toont deze tien alleen als de vraag van de gebruiker het hoger onderwijs noemt (hbo, wo, ho, hoger onderwijs, hogeschool, universiteit), of een vo-niveau (vmbo, havo, vwo, vo, vavo, voortgezet onderwijs, middelbare school, havisten) samen met het mbo of een doorstroomwoord (doorstroom, stromen door, uitstroom, vervolgonderwijs, vervolgopleiding, na het examen, na hun diploma), of voortijdig schoolverlaters die terugkeren in het onderwijs. Code beslist dat (`ho_markers.opent_vo_context`), op de vraag van de gebruiker (bij een keuze op een verduidelijkingsvraag samen met de vraag die ze afbakent), niet op de zoekterm die het model meegeeft. Buiten de chat (MCP) is er geen gebruikersvraag en beslist de zoekterm. Zie [`search_catalog`](tools.md#search_catalog).
+- **Voorbeelden.** Wel: "Hoeveel vmbo-leerlingen stromen door naar het mbo?", "Waar gaan havo-leerlingen heen na hun diploma?", "Hoeveel voortijdig schoolverlaters keren terug in het onderwijs?". Niet: "Hoeveel leerlingen zitten er op het vwo in Utrecht?" (een losse vo-vraag krijgt de vaste scope-uitleg) en "Hoeveel mbo-studenten per instelling?" (het mbo zonder vo-niveau).
+- **Altijd met label.** Elke zoektreffer en elke bronvermelding (de Bronnen, de bronregel onder een rapportgrafiek, de kop van een CSV-export) noemt ze "vo-context voor vervolgonderwijs": het gaat om leerlingen in het voortgezet onderwijs, vavo-deelnemers of schoolverlaters, niet om mbo- of ho-studenten.
+- **Verder geen po, so of vo.** Alle andere po-, so- en vo-bronnen blijven buiten het profiel, ook met een dataset-ID uit de vraag: de gearchiveerde CBS-reeksen (zoals `80040ned`-`80043ned`), de DUO-bestanden t/m 2019 (`01/02voins-v1`, `03/04_voex-v1`), `06_vomtgo`, `adressen_vo` en alles over po en (v)so. Ze komen pas mee als een echte vraag erom vraagt.
 
 **Grenzen.** De uitzondering is minder streng dan ze klinkt:
 
-- **Een vervolgvraag zonder ho-woord blijft dicht.** "En voor het vwo?" na een hbo-vraag noemt zelf geen ho; de poort kijkt alleen naar de vraag van deze beurt (#597).
-- **`85566NED` is slecht vindbaar.** Bij geen enkele doorstroomvraag stond hij in de top 15 (gemeten in #559); de andere vier worden wel gevonden. Niet bijgesteld zonder een echte vraag die hem mist (#597): dan eerst een testprompt in de retrieval-baseline.
-- **Een dataset-ID laadt zonder ho-woord.** De poort zit alleen in het zoeken: met een van deze vijf ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook als niemand het hoger onderwijs noemt.
-- **Alle vo-rijen.** De vier CBS-tabellen krijgen geen sectorselectie zoals de VSV-tabellen: `85566NED`, `85380NED`, `85381NED` en `85382NED` laden al hun vo-rijen (bij `85566NED` ook vso). Alleen het label zegt dat het context is.
+- **Een vervolgvraag zonder eigen woord blijft dicht.** "En voor het vwo?" na een doorstroomvraag noemt zelf geen ho en geen doorstroom; de poort kijkt alleen naar de vraag van deze beurt (#597).
+- **Een ho-vraag opent alles.** Wie het ho noemt, krijgt de hele vo-context, ook als de vraag niet over doorstroom gaat. Daarom staat `adressen_vo` er niet in: bij "Wat is het adres van de Hogeschool Utrecht?" kwam hij op rang 3 (#877).
+- **Doorstroom binnen het vo telt niet**, als de vraag het doel noemt ("van het vmbo naar de havo"). Zonder doel ("Hoeveel vo-leerlingen stromen door?") gaat de poort wel open.
+- **Een vo-school blijft dicht.** Een vraag over één vo-school ("het Erasmus Gymnasium") krijgt het vaste vo-antwoord, ook met een doorstroomwoord: er is geen doorstroom per school in deze set.
+- **`85566NED` is slecht vindbaar.** Bij "doorstroom vmbo mbo" en "havo doorstroom vervolgonderwijs" staat hij niet in de top 15 (gemeten in #559 en #877); de andere bronnen worden wel gevonden. Niet bijgesteld zonder meting (#597); vervolg in #882.
+- **Een dataset-ID laadt zonder poort.** De poort zit alleen in het zoeken: met een van deze tien ID's (`dataset_details`, `get_cbs_data`, `get_duo_data`) laadt de chat de data ook zonder doorstroomvraag.
+- **Alle vo-rijen, en geen vo-rijen in de gemengde tabellen.** De vo-tabellen krijgen geen sectorselectie: ze laden al hun rijen (bij `85566NED` ook vso, bij `85948NED` ook de mbo-kolommen). De VSV-tabellen `85368NED`/`85367NED` en de woonregiotabellen `85701NED`/`85702NED` laden ook bij een doorstroomvraag alleen hun mbo/hbo/wo-rijen (vervolg in #879). Bij RIO blijven de vo- en vavo-typen dicht (#880), en inspectieoordelen voor vo-scholen zijn er niet (#881).
 
 ---
 

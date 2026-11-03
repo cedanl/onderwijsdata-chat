@@ -39,9 +39,9 @@ Elke vraag heeft:
   over unieke studenten, een bestand met alleen documentatie (een DUO-changelog), of een CBS-tabel
   over alle onderwijssoorten zonder sectorselectie. Een verboden ID buiten het profiel kan nu niet in
   de top 5 komen; zo'n vraag bewaakt de scopegrens (#355). Een vo-contextbestand uit
-  `scopeprofiel.HO_CONTEXT` is bij een ho-vraag niet meer verboden (#554): het geeft context voor de
-  ho-instroom, en de zoekpoort (#557) laat het alleen door bij een vraag die ho noemt. Bij een mbo-vraag
-  blijft het verboden.
+  `scopeprofiel.VO_CONTEXT` is bij een vraag over vervolgonderwijs niet meer verboden (#554, #877): het geeft
+  context voor de instroom, en de zoekpoort (#557) laat het alleen door bij een vraag die het ho of doorstroom
+  uit het vo noemt. Bij een mbo-vraag zonder doorstroom blijft het verboden.
 - `kritiek`: de vraag valt onder de release-eis hieronder. Een kritieke vraag heeft altijd `verboden`.
 - `toelichting`: het bewijs uit de catalogus voor de labels.
 
@@ -118,7 +118,7 @@ vragenset falen) en verantwoord de verschillen in de MR.
 
 ## ho-doorstroomvragen (#559)
 
-Epic #554 laat vijf vo-records (`scopeprofiel.HO_CONTEXT`: 85566NED, 85380NED, 85381NED, 85382NED,
+Epic #554 laat vijf vo-records (`scopeprofiel.VO_CONTEXT`, toen nog `HO_CONTEXT`: 85566NED, 85380NED, 85381NED, 85382NED,
 `voprognoses`) toe als context bij een ho-vraag, achter de zoekpoort `ho_markers.noemt_ho` (#557). Zeven
 vragen meten dat; hun labels komen alleen uit die vijf records, en elke `zoekinput` en `vraag` noemt ho.
 `test_retrieval_baseline.py` bewaakt dat. Let op: `havo` en `vwo` tellen als ho-marker (#556) en de
@@ -162,9 +162,40 @@ in de termweging van `_score`. Het is bewust niet afgesteld en is een vervolg; d
 
 De poort zelf bewaakt `test_vo_context_poort.py`: elke mbo-, hbo- en wo-vraag zoekt met `zoekinput` en met
 `vraag` (een mbo-vraag ook met `source` cbs en duo) in de top 50. Noemt de tekst geen ho, dan geeft geen
-treffer een HO_CONTEXT-ID of het veld `context`. Geen mbo-vraag noemt ho, zodat een marker die toets niet
-stil uitzet, en een controle toont dat een hbo- of wo-vraag mét marker wel een HO_CONTEXT-record vindt.
+treffer een VO_CONTEXT-ID of het veld `context`. Geen mbo-vraag noemt ho, zodat een marker die toets niet
+stil uitzet, en een controle toont dat een hbo- of wo-vraag mét marker wel een VO_CONTEXT-record vindt.
 Zonder de poort in `catalog._verzamel` falen de mbo-gevallen.
+
+## Doorstroomvragen vo → vervolgonderwijs (#877)
+
+Besluit A van #877 opent de vo-context ook bij doorstroom zonder ho-woord (`ho_markers.opent_vo_context`) en voegt
+vijf CBS-tabellen toe (85379NED, 85534NED, 85328NED, 85329NED, 85948NED). Acht nieuwe vragen meten dat, met de reeks
+vastgelegd vóór de meting, en bp-07 bewaakt dat een losse vo-vraag dicht blijft. Een mbo-vraag mag de poort alleen
+openen als haar label een vo-contextrecord is (`test_vo_context_poort.py`).
+
+Gemeten op 3 november 2026, catalogus `e4b886252be0` (rang in de top 15, met `zoekinput` en met `vraag`):
+
+| Vraag | Reeks | Richting | Geaccepteerd | Rang `zoekinput` | Rang `vraag` |
+|---|---|---|---|---|---|
+| mbo-27 | ontwikkel | vmbo → mbo | 85566NED | niet in de top 15 | niet in de top 15 |
+| mbo-28 | test | vmbo → mbo | 85379NED, 85380NED | 1 | niet in de top 15 |
+| mbo-29 | ontwikkel | vsv-terugkeer | 85948NED | 1 | 1 |
+| mbo-30 | test | vsv-terugkeer | 85948NED | 1 | 1 |
+| mbo-31 | ontwikkel | vavo | 85329NED | 1 | 2 |
+| hbo-29 | ontwikkel | havo → hbo | 85566NED, 85534NED | niet in de top 15 | 3 |
+| hbo-30 | test | vavo | 85328NED | 1 | 2 |
+| wo-29 | ontwikkel | vwo → wo | 85534NED | 1 | 3 |
+| bp-07 | ontwikkel | losse vo-vraag | (kritiek) | geen verboden ID in de top 5 | |
+
+De bestaande vragen houden hun rang met `zoekinput`; met `vraag` schoven hbo-18 (5 → 6) en wo-06 (12 → niet in de top
+15) omdat de vo-context erbij komt. `kritiek_falend` is ongewijzigd (hbo-09, hbo-10, wo-11, wo-25). De cellen
+(recall@5 en MRR, verschil met de baseline van 21 oktober) verschuiven alleen door de nieuwe vragen: mbo/ontwikkel
+0.89 (-0.04) en 0.79 (-0.02), hbo/ontwikkel 0.82 (-0.05) en 0.63 (-0.04), wo/ontwikkel 0.82 (+0.01) en 0.80 (+0.01);
+de testcellen bewegen +0.00 tot +0.06.
+
+Twee missers, bewust niet afgesteld (#597): 85566NED komt ook nu niet in de top 15 bij "doorstroom vmbo mbo" (daar
+winnen 85519NED en 85422NED) en bij "havo doorstroom vervolgonderwijs". Dat is hetzelfde gat in de termweging als bij
+#559; vervolg in #882. `adressen_vo` is gemeten en niet toegevoegd: bij hbo-15 (adres van een hogeschool, kritiek) kwam hij op rang 3.
 
 ## Draaien
 
