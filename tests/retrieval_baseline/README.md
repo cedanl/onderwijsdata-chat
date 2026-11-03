@@ -17,7 +17,7 @@ de modelroute-evals (#190, `tests/e2e`) en de weigervragen (#36). Overlap in que
 | `harnas.py` | draait `search_catalog` zonder netwerk en zonder instellingsregister |
 | `rapport.py` | de tabel per sector × reeks en de inhoud van `baseline.json` |
 | `test_meting.py`, `test_retrieval_baseline.py` | pytest: rekenwerk, vragenset, snapshot, release-eis, rapport |
-| `test_ho_context_poort.py` | pytest: geen vo-context (#554) bij een vraag zonder ho-marker |
+| `test_vo_context_poort.py` | pytest: geen vo-context (#554, #877) bij een vraag zonder ho-marker of doorstroom uit het vo |
 | `scripts/meet_retrieval.py` | het rapport op de commandoregel |
 
 ## Vragenset
@@ -160,7 +160,7 @@ in de termweging van `_score`. Het is bewust niet afgesteld en is een vervolg; d
 (`tests/test_catalog_gouden_set.py`) houdt de twee missers als strict xfail bij, en houdt 85422NED boven
 85566NED bij de vraag naar de vooropleiding van eerstejaars hbo en wo.
 
-De poort zelf bewaakt `test_ho_context_poort.py`: elke mbo-, hbo- en wo-vraag zoekt met `zoekinput` en met
+De poort zelf bewaakt `test_vo_context_poort.py`: elke mbo-, hbo- en wo-vraag zoekt met `zoekinput` en met
 `vraag` (een mbo-vraag ook met `source` cbs en duo) in de top 50. Noemt de tekst geen ho, dan geeft geen
 treffer een HO_CONTEXT-ID of het veld `context`. Geen mbo-vraag noemt ho, zodat een marker die toets niet
 stil uitzet, en een controle toont dat een hbo- of wo-vraag mét marker wel een HO_CONTEXT-record vindt.

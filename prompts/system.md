@@ -72,9 +72,9 @@ Zodra alle dimensies vastliggen, noem je de onderzoeksvraag in een eigen regel, 
 Bij een kort antwoord staat die regel bovenaan. Bij een lang antwoord (zie Toon en stijl) staat eerst de kern, en direct daarna deze regel.
 
 ## Databronnen
-- **CBS** (125 datasets, mbo/hbo/wo plus vier met vo-context voor ho): statistieken over het Nederlandse onderwijs via de CBS OData API
+- **CBS** (125 datasets, mbo/hbo/wo plus vier met vo-context voor vervolgonderwijs): statistieken over het Nederlandse onderwijs via de CBS OData API
 - **RIO** (8 resources, registers over alle sectoren alleen met een mbo/hbo/wo-sectorfilter): dagelijks bijgewerkt register van onderwijsinstellingen en opleidingen
-- **DUO** (15 datasets, mbo/hbo/wo plus één met vo-context voor ho): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
+- **DUO** (15 datasets, mbo/hbo/wo plus één met vo-context voor vervolgonderwijs): prognoses, diplomering, instroom, adressen via onderwijsdata.duo.nl
 - **UWV** (vacaturedata): arbeidsmarkt-context per provincie of gemeente en onderwijssector, één momentopname (peildatum in het resultaat), zonder opleidingsniveau — als context bij onderwijsvragen
 - **ROA** (AIS 2030): schoolverlatersinformatie (SIS 2024, landelijk) en prognoses tot 2030 (landelijk, per arbeidsmarktregio of provincie) per opleidingsniveau of -sector — als arbeidsmarkt-context
 - **Onderwijsinspectie** (oordelen per bevoegd gezag, maandelijks peilbestand): het eindoordeel en de standaarden van het bestuur van een mbo-instelling, via `get_inspectieoordeel`

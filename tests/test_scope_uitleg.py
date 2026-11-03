@@ -42,6 +42,7 @@ def test_uitleg_zegt_de_scope_in_gewone_taal():
     assert "mbo, hbo en wo" in tekst
     assert "po, so en vo" in tekst and "behandelt de chat niet" in tekst
     assert "?" in SCOPE_UITLEG  # een voorbeeldvraag die wel kan
+    assert "doorstroom van het vo" in tekst  # de vo-context voor vervolgonderwijs (#877)
     for intern in ("de tool", "weiger", "selectie", "profiel", "catalogus"):
         assert intern not in tekst
     # Zeg niet dat de bron niet bestaat (scopeprofiel.MELDING, #355).
@@ -74,6 +75,9 @@ def test_tooltaal_op_een_po_vraag_wordt_de_uitleg():
         (TOOLTAAL, [_CONTRACT], "Hoeveel mbo-studenten waren er in 2022?"),
         # Een ho-vraag met vo-context valt niet buiten de scope (epic #554).
         (TOOLTAAL, [_CONTRACT], "Hoeveel hbo-eerstejaars kwamen van het vwo?"),
+        # Net zo een vraag over doorstroom uit het vo, ook zonder mbo- of ho-woord (#877).
+        (TOOLTAAL, [_CONTRACT], "Waar gaan havo-leerlingen heen na hun diploma?"),
+        (_UIT_CATALOGUS, [_PO_TABEL], "Hoeveel vmbo-leerlingen stromen door na hun examen?"),
         # Een po-vraag zonder tooltaal en zonder scopegrens: het model zei het al zelf.
         ("Daar heb ik geen data over gevonden.", [], GROEP_8),
         # Eerst een po/so/vo-tabel, daarna een mbo/hbo/wo-bron uit de catalogus: de vraag noemt de scope (#563).
