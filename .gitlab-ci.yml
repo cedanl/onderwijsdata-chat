@@ -117,7 +117,9 @@ pytest:
   image:
     name: python:3.14-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966
   variables:
-    UV_CACHE_DIR: .uv-cache
+    # Absoluut: test_release van de pakketten draait `uv build` in packages/<naam>, en een relatief pad landt dan in
+    # die map; uv neemt de cache dan op in de sdist en die faalt ("Invalid tar file", #886).
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.uv-cache
     # helm voor tests/test_manifests.py: zonder helm sloegen de chart-tests in CI stil over (#768). Versie en checksum
     # horen bij elkaar, Renovate volgt ze niet: pas bij een update beide aan (de checksum staat naast de tarball op
     # get.helm.sh, als helm-<versie>-linux-amd64.tar.gz.sha256sum).
