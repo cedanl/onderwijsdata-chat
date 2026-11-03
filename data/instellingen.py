@@ -18,6 +18,19 @@ logger = logging.getLogger(__name__)
 # UWV and ROA), not from DUO's RPA-GEBIED NAAM: an older indeling ROA does not know (#454).
 _ADRES_CACHE: dict[str, dict] | None = None
 
+# Wat het adres van een instelling wel en niet zegt (#744). DUO kent één adres per BRIN, dat van de hoofdvestiging.
+# Zone.college (31JC, Lochem) staat dus niet onder Doetinchem, terwijl mbo_opleidingsaanbod (de plaats per
+# onderwijslocatie) er 22 opleidingen van noemt. De code koppelt dat bestand niet aan de BRIN-aantallen: het kent geen
+# BRIN (#728). Het model krijgt de twee zinnen mee waar het het adres leest: de kolomdefinitie en het profiel.
+HOOFDVESTIGING = (
+    "Het adres is dat van de hoofdvestiging: DUO kent één adres per instelling (BRIN), geen nevenlocaties. "
+    "Een instelling die alleen een nevenlocatie in de regio heeft, valt er niet onder."
+)
+LOCATIE_AANBOD = (
+    "De plaats per onderwijslocatie staat in het DUO-bestand mbo_opleidingsaanbod (kolom PLAATSNAAM, aanbieder in "
+    "NAAM). Studentaantallen bestaan alleen per instelling, niet per locatie."
+)
+
 # Handgemaakte referentielijsten: wanneer elk voor het laatst is bijgewerkt en
 # waarvandaan (#316). Pas de datum aan bij elke wijziging aan een lijst;
 # tests/test_referentielijsten.py bewaakt dit en de botsingen tussen de lijsten.

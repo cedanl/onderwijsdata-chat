@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from core.config import SEARCH_CATALOG_LIMIT
-from data.instellingen import instellingsprofiel
+from data.instellingen import HOOFDVESTIGING, LOCATIE_AANBOD, instellingsprofiel
 
 _PROMPT_DIR = Path(__file__).parent
 _GEEN_VOORKEUR = "Geen voorkeur"
@@ -22,6 +22,11 @@ def _instellingsgegevens(instelling: str) -> str | None:
         regel += (
             " Bij 'mijn regio': gebruik deze provincie of arbeidsmarktregio, wat de bron kent, en noem dat niveau"
             " in je antwoord."
+        )
+    if regio and profiel["sector"] == "mbo":
+        regel += (
+            f" {HOOFDVESTIGING} Vergelijk je mbo-instellingen in een regio, neem dan ook de instellingen met een"
+            f" onderwijslocatie in die regio mee. {LOCATIE_AANBOD}"
         )
     if profiel["sector"] in ("hbo", "wo"):
         regel += (
