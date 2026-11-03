@@ -487,6 +487,21 @@ async def _handle_generate_report(
     )
 
 
+async def _handle_report_checklist(
+    msg: dict, session: dict, emit, current_task: asyncio.Task | None
+) -> asyncio.Task | None:
+    """De beurten met data van het open gesprek, voor de checklist bij "Genereer rapport" (#908).
+
+    Alleen lezen, uit code: geen model, geen run, dus ook geen berichtlimiet. Het antwoord kan leeg zijn (geen data, of
+    een gesprek van vóór #875 zonder bewijs per beurt); de frontend toont dan alleen het veld met de onderzoeksvraag.
+    In het log staan alleen aantallen: een vraag van de gebruiker hoort daar op INFO niet.
+    """
+    items = rapportselectie.beurten_met_data(session)
+    logger.info("RAPPORT checklist  beurten=%d", len(items))
+    await emit({"type": "report_checklist", "items": items})
+    return current_task
+
+
 Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]
 
 # Per actie van de frontend een handler: (bericht, sessie, emit, lopende taak) -> lopende taak (#206).
@@ -499,6 +514,7 @@ ACTIES: dict[str, Handler] = {
     "message": _handle_message,
     "clarification_choice": _handle_clarification,
     "generate_report": _handle_generate_report,
+    "report_checklist": _handle_report_checklist,
 }
 
 

@@ -38,6 +38,7 @@ def test_elke_actie_van_de_frontend_heeft_een_handler():
         "message",
         "clarification_choice",
         "generate_report",
+        "report_checklist",
     }
 
 
