@@ -1045,6 +1045,9 @@ def test_een_directe_id_van_een_vo_contextbron_laadt_zonder_ho_marker(catalogus,
         "01voins-v1",  # DUO-bestand t/m 2019
         "03_voex-v1",
         "06_vomtgo",  # toegestaan vo per vestiging: geen doorstroom
+        # Adressen in het vo: in VO_CONTEXT zou elke ho-adresvraag ("Wat is het adres van de Hogeschool Utrecht?")
+        # de poort openen via noemt_ho en adressen_vo op rang 3 krijgen (retrieval-baseline hbo-15, kritiek; #877).
+        "adressen_vo",
         "leerling_so_en_vso-v1",  # (v)so blijft dicht
         "oordelen-v02",  # inspectieoordelen po/so/vo
     ],
