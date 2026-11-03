@@ -108,7 +108,7 @@ Een ongeldige of niet-positieve waarde voor `SESSION_TTL_HOURS` of `SESSION_MAX_
 
 | Variabele | Standaard | Beschrijving |
 |-----------|-----------|--------------|
-| `BEWAARTERMIJN_GESPREKKEN_DAGEN` | `90` | Dagen na de laatste activiteit waarna een gesprek (met zijn datarecepten) en feedback (`answer_feedback` met de `trace`, `feedback`, `algemene_feedback`) worden verwijderd. Feedback per antwoord blijft zolang het gesprek bestaat. |
+| `BEWAARTERMIJN_GESPREKKEN_DAGEN` | `90` | Dagen na de laatste activiteit waarna een gesprek (met zijn datarecepten en bewijsrijen) en feedback (`answer_feedback` met de `trace`, `feedback`, `algemene_feedback`) worden verwijderd. Feedback per antwoord blijft zolang het gesprek bestaat. |
 | `BEWAARTERMIJN_RAPPORTEN_DAGEN` | `365` | Dagen nadat een rapport of dashboard voor het laatst is opgeslagen of geopend waarna het wordt verwijderd. |
 
 De opschoning draait als `python -m persistence.opschonen` (met `--droog`: alleen tellen), op SDP als CronJob uit de Helm-chart (`opschonen.enabled`, aan op test en playground). Een termijn die geen geheel getal is of korter dan 7 dagen verwijdert niets (exitcode 2); een databasefout rolt alles terug (exitcode 1). De app zelf start altijd, ook met een ongeldige termijn. Zie `docs/privacy.md` (#485).

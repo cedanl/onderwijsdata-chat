@@ -11,6 +11,7 @@ import pytest
 
 from agent import report
 from agent.datasetcontext import build_dataset_context
+from agent.kaarten import kaarten_in_gesprek
 from agent.loop import LoopResult, ToolCall
 from agent.probleem import harde
 from agent.report_checks import report_problems
@@ -117,7 +118,7 @@ def test_zonder_kaart_in_het_gesprek_geen_kaartregel(sessie, monkeypatch):
 @pytest.mark.parametrize("argumenten", ["geen json", "[1, 2]", '{"data_key": 7}', None])
 def test_een_onleesbare_kaartaanroep_wordt_overgeslagen(sessie, argumenten):
     sessie["turns"][0]["tool_calls"] = [{"name": TOOL_CREATE_CHOROPLETH_MAP, "arguments": argumenten}]
-    assert report._kaarten_in_gesprek(sessie) == {}
+    assert kaarten_in_gesprek(sessie) == {}
 
 
 def test_een_getal_uit_de_kaarttitel_van_het_gesprek_is_geen_bewijs(sessie, monkeypatch):
@@ -154,14 +155,14 @@ def test_een_kaartaanroep_die_niets_tekende_komt_niet_in_de_prompt(sessie):
     mislukt = {**_KAART, "value_col": "BESTAAT_NIET"}
     sessie["turns"] = [_kaartbeurt(mislukt)]
     assert sessie["turns"][0]["figures"] == []
-    assert report._kaarten_in_gesprek(sessie) == {}
+    assert kaarten_in_gesprek(sessie) == {}
 
 
 def test_naast_een_mislukte_aanroep_telt_de_kaart_die_wel_tekende(sessie):
     gelukt = _kaartbeurt(_KAART)
     mislukt = _kaartbeurt({**_KAART, "value_col": "BESTAAT_NIET"})
     sessie["turns"] = [{**gelukt, "tool_calls": [*gelukt["tool_calls"], *mislukt["tool_calls"]]}]
-    assert report._kaarten_in_gesprek(sessie)[_KEY]["value_col"] == "AANTAL"
+    assert kaarten_in_gesprek(sessie)[_KEY]["value_col"] == "AANTAL"
 
 
 def test_de_kaart_van_de_rapportrun_komt_als_kaart_in_het_rapport(sessie, monkeypatch):

@@ -24,6 +24,7 @@ DELETES: dict[str, str] = {
     "algemene_feedback": "DELETE FROM algemene_feedback WHERE username = ?",
     "answer_feedback": "DELETE FROM answer_feedback WHERE username = ?",
     "data_recipes": "DELETE FROM data_recipes WHERE username = ?",
+    "beurtbewijs": "DELETE FROM beurtbewijs WHERE username = ?",
 }
 
 

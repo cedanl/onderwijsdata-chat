@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from agent import recepten
+from agent import beurtbewijs, recepten
 from tools import cbs, cbs_preflight, profiel, store
 
 
@@ -13,10 +13,12 @@ from tools import cbs, cbs_preflight, profiel, store
 def clear_store():
     store.clear()
     recepten.wis()
+    beurtbewijs.wis()
     profiel.vergeet()
     yield
     store.clear()
     recepten.wis()
+    beurtbewijs.wis()
     profiel.vergeet()
 
 

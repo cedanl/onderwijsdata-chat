@@ -27,6 +27,7 @@ from agent.antwoordtaal import taal
 from agent.datasetcontext import build_dataset_context, build_recipe, herstel_data, sources_from_recipe
 from agent.figuurbron import figuurbron, figuurperiode
 from agent.getalnotatie import nl_notatie
+from agent.kaarten import kaarten_in_gesprek, kaartregel_argumenten
 from agent.loop import ToolCall, tool_loop
 from agent.probleem import controlenamen, harde, meldingen
 from agent.publicatie import RAPPORT, log_publicatie
@@ -149,49 +150,10 @@ def _describe_herkomst(herkomst: list[dict]) -> str:
     return " → ".join(_describe_call(call) for call in herkomst)
 
 
-def _kaarten_in_gesprek(session: dict) -> dict[str, dict]:
-    """Per data_key de laatste kaart die het gesprek ervan tekende (#648).
-
-    De herkomst noemt alleen de aanroepen die de data maakten, niet de kaart erop; zonder deze regel weet het
-    rapport niet dat er een kaart was, of met welke kolommen. Een onleesbare aanroep slaat het over, en ook een
-    aanroep die geen kaart opleverde: de beurt bewaart wat het model vroeg, niet wat lukte.
-    """
-    kaarten: dict[str, dict] = {}
-    for turn in session.get("turns") or []:
-        getekend = _getekende_kaarten(turn)
-        for call in turn.get("tool_calls") or []:
-            if call.get("name") != TOOL_CREATE_CHOROPLETH_MAP:
-                continue
-            try:
-                args = json.loads(call.get("arguments") or "")
-            except (TypeError, ValueError):
-                continue
-            if not isinstance(args, dict) or not isinstance(args.get("data_key"), str):
-                continue
-            if (args.get("location_col"), args.get("value_col")) in getekend:
-                kaarten[args["data_key"]] = args
-    return kaarten
-
-
-def _getekende_kaarten(turn: dict) -> set[tuple]:
-    """(location_col, value_col) van elke kaart die deze beurt tekende, uit de layout.meta van haar figuren."""
-    getekend: set[tuple] = set()
-    for figuur in turn.get("figures") or []:
-        meta = getattr(getattr(figuur, "layout", None), "meta", None)
-        if isinstance(meta, dict) and meta.get("type") == "choropleth":
-            getekend.add((meta.get("location_col"), meta.get("value_col")))
-    return getekend
-
-
-# Wat de kaartregel van een gesprekskaart noemt. Niet de titel (tekst van het model) en niet `data` (rijen buiten
-# de store): het rapport zou ze herhalen, en via zijn toolresultaat telden ze dan toch als bewijs (#211).
-_KAARTREGEL_ARGUMENTEN = ("data_key", "location_col", "value_col", "level")
-
-
 def _describe_kaart(kaart: dict | None) -> str:
     if not kaart:
         return ""
-    argumenten = {k: kaart[k] for k in _KAARTREGEL_ARGUMENTEN if k in kaart}
+    argumenten = kaartregel_argumenten(kaart)
     return f"\n- Kaart in het gesprek: {_describe_call({'name': TOOL_CREATE_CHOROPLETH_MAP, 'arguments': argumenten})}"
 
 
@@ -312,7 +274,7 @@ async def generate(
     # prompt, niet in `context`, dat de controles als bewijs lezen (#211, #648, #733).
     prompt_context = {
         **context,
-        "kaarten": _kaarten_in_gesprek(session),
+        "kaarten": kaarten_in_gesprek(session),
         "vragen": gebruikersvragen(session),
         "vraag_per_key": dict(session.get("data_vraag") or {}),
     }

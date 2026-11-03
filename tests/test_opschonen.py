@@ -49,14 +49,23 @@ def _alles(pad) -> dict[str, list[tuple]]:
     return {soort: sorted(_sql(pad, f"SELECT * FROM {soort}"), key=repr) for soort in opschonen.SOORTEN}
 
 
-def _gesprek(pad, user: str, conv: str, dagen_geleden: float, recepten: tuple[str, ...] = ()) -> None:
+def _gesprek(
+    pad, user: str, conv: str, dagen_geleden: float, recepten: tuple[str, ...] = (), beurten: tuple[str, ...] = ()
+) -> None:
     db.upsert_conversation(user, conv, f"Gesprek {conv}", _epoch(dagen_geleden), [{"role": "user", "content": "x"}])
     db.save_recipes(user, conv, {k: {"laad": ["get_rio_data", {"resource": k}]} for k in recepten})
+    _bewijs(pad, user, conv, beurten, dagen_geleden)
     _sql(
         pad,
         "UPDATE data_recipes SET created_at = ? WHERE username = ? AND conv_id = ?",
         (_iso(dagen_geleden), user, conv),
     )
+
+
+def _bewijs(pad, user: str, conv: str, hashes: tuple[str, ...], dagen_geleden: float) -> None:
+    """Bewijsrijen van een gesprek (ADR-009), met de tijd van hun antwoord `dagen_geleden`."""
+    rij = {"lineage": {}, "rekenbewijs": [], "kaarten": {}, "created_at": _iso(dagen_geleden)}
+    db.save_beurtbewijs(user, conv, dict.fromkeys(hashes, rij))
 
 
 def _oordeel(pad, user: str, conv: str, index: int, dagen_geleden: float) -> None:
@@ -164,6 +173,37 @@ def test_wees_recepten_gaan_pas_na_de_termijn(pad):
     opschonen.schoon_op(_grenzen())
 
     assert _ids(pad, "SELECT data_key FROM data_recipes") == {"jong"}
+
+
+def test_bewijsrijen_gaan_met_hun_verlopen_gesprek_mee_ook_als_ze_jonger_zijn(pad):
+    _gesprek(pad, "anna", "oud", 120, beurten=("h1", "h2"))
+    _gesprek(pad, "anna", "nieuw", 5, beurten=("h3",))
+    _gesprek(pad, "bert", "oud", 10, beurten=("h4",))  # zelfde id, ander account: actief
+    _sql(pad, "UPDATE beurtbewijs SET created_at = ? WHERE tekst_hash = 'h1'", (_iso(1),))
+
+    aantallen = opschonen.schoon_op(_grenzen())
+
+    assert _ids(pad, "SELECT username, tekst_hash FROM beurtbewijs") == {("anna", "h3"), ("bert", "h4")}
+    assert aantallen["beurtbewijs"] == 2
+
+
+def test_wees_bewijsrijen_gaan_pas_na_de_termijn(pad):
+    """Een rij zonder gesprek: oud is een wees, jong hoort bij een gesprek dat nog wordt opgeslagen."""
+    _bewijs(pad, "anna", "nooit-opgeslagen-oud", ("oud",), 91)
+    _bewijs(pad, "anna", "wordt-nog-opgeslagen", ("jong",), 0)
+
+    opschonen.schoon_op(_grenzen())
+
+    assert _ids(pad, "SELECT tekst_hash FROM beurtbewijs") == {"jong"}
+
+
+def test_een_oude_bewijsrij_van_een_actief_gesprek_blijft(pad):
+    _gesprek(pad, "anna", "c1", 5, beurten=("h1",))
+    _sql(pad, "UPDATE beurtbewijs SET created_at = ?", (_iso(400),))
+
+    opschonen.schoon_op(_grenzen())
+
+    assert _ids(pad, "SELECT tekst_hash FROM beurtbewijs") == {"h1"}
 
 
 def test_oud_recept_van_een_actief_gesprek_blijft(pad):
@@ -304,11 +344,12 @@ def test_een_bestaand_werkboek_krijgt_bij_de_migratie_nu_als_laatst_gebruikt(tmp
 
 def _gevuld(pad) -> None:
     """Van elke soort verlopen en actieve rijen, bij twee accounts."""
-    _gesprek(pad, "anna", "oud", 100, recepten=("a1", "a2"))
-    _gesprek(pad, "anna", "nieuw", 3, recepten=("a3",))
-    _gesprek(pad, "bert", "oud", 300, recepten=("b1",))
+    _gesprek(pad, "anna", "oud", 100, recepten=("a1", "a2"), beurten=("h1", "h2"))
+    _gesprek(pad, "anna", "nieuw", 3, recepten=("a3",), beurten=("h3",))
+    _gesprek(pad, "bert", "oud", 300, recepten=("b1",), beurten=("h4",))
     db.save_recipes("bert", "wees", {"b2": {"laad": ["x", {}]}})
     _sql(pad, "UPDATE data_recipes SET created_at = ? WHERE data_key = 'b2'", (_iso(150),))
+    _bewijs(pad, "bert", "wees", ("h5",), 150)
     _oordeel(pad, "anna", "oud", 1, 99)
     _oordeel(pad, "anna", "oud", 3, 2)
     _oordeel(pad, "anna", "nieuw", 1, 150)
@@ -332,6 +373,7 @@ def test_droog_telt_wat_de_echte_run_verwijdert_en_verwijdert_zelf_niets(pad):
     assert verwijderd == {
         "conversations": 2,
         "data_recipes": 4,
+        "beurtbewijs": 4,
         "answer_feedback": 2,
         "feedback": 1,
         "algemene_feedback": 0,

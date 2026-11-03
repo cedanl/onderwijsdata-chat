@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from agent import recepten
+from agent import beurtbewijs, recepten
 from agent import run as agent_run
 from agent.history import afgebroken_beurt, trim
 from agent.report import RapportGeannuleerd, RapportGeweigerd
@@ -98,16 +98,21 @@ def _reset_session(session: dict) -> None:
     session.update(fresh)
 
 
-def _open_conversation(session: dict, messages: list, data_keys: list[str] | None = None) -> None:
+def _open_conversation(
+    session: dict, messages: list, data_keys: list[str] | None = None, bewijs: dict[str, dict] | None = None
+) -> None:
     """Continue a stored conversation: a fresh session that knows its text and its own data keys.
 
     Nothing of the previously open conversation may leak into it — not its turns,
     and not its loaded data, which a report would otherwise pick up. `data_keys` are the
-    keys this user saved a recipe for with this conversation (#472).
+    keys this user saved a recipe for with this conversation (#472). `bewijs` are the rows
+    of the answers in it (lineage, calculations, maps), so a report sees what the living
+    conversation saw (ADR-009, #875).
     """
     _reset_session(session)
     session["messages"] = _parse_history(messages)
     session["data_keys"] = list(data_keys or [])
+    beurtbewijs.zet_terug(session, bewijs or {})
 
 
 async def _process_message(content: str, session: dict, emit, model: str | None) -> None:
@@ -150,6 +155,8 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
             }
         )
         session["turns"] = turns
+        # Het bewijs van dit antwoord wacht tot de client het gesprek opslaat (ADR-009, #875).
+        beurtbewijs.zet_klaar(session, turns[-1], response_text)
     session["messages"] = messages
 
 
@@ -338,7 +345,8 @@ async def _handle_history(msg: dict, session: dict, emit, current_task: asyncio.
     await _stop_task_and_wait(session, current_task)
     conv_id = msg.get("conv_id")
     data_keys = await asyncio.to_thread(recepten.keys_van_gesprek, session["username"], conv_id)
-    _open_conversation(session, berichten, data_keys)
+    bewijs = await asyncio.to_thread(beurtbewijs.rijen_voor, session["username"], conv_id, berichten)
+    _open_conversation(session, berichten, data_keys, bewijs)
     if conv_id is not None:
         # Of een rapport op de data van dit gesprek kan, zonder eerst een vraag opnieuw te stellen (#472).
         await emit({"type": "history_data", "data_keys": len(data_keys)})

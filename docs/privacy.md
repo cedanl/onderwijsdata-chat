@@ -35,6 +35,7 @@ Per account, in `persistence/db.py` (SQLite lokaal, PostgreSQL op SDP):
 | Feedback per antwoord: duim, toelichting en een kopie van vraag, antwoord en stappen (`trace`) | `answer_feedback` | 90 dagen na het geven, maar niet zolang het gesprek nog bestaat; eerder als de gebruiker al zijn gegevens verwijdert. Bij het verwijderen van het gesprek losgekoppeld van account en gesprek (#476), daarna tot 90 dagen na het geven |
 | Algemene feedback via de link Feedback: tekst, soort en pagina (#600) | `algemene_feedback` | 90 dagen na het versturen; eerder als de gebruiker al zijn gegevens verwijdert |
 | Datarecepten: hoe een tabel is opgehaald | `data_recipes` | gaan weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een recept zonder gesprek na 90 dagen |
+| Bewijs per antwoord: welke bron en selectie de data van een antwoord had, de uitkomsten van berekeningen en de kolommen van kaarten, onder de hash van de antwoordtekst (ADR-009); niet de vraag of het antwoord zelf | `beurtbewijs` | gaat weg met het gesprek (ook bij de opschoning) of met al zijn gegevens; een rij zonder gesprek na 90 dagen |
 | Ingetrokken sessies, als hash | `revoked_tokens` | tot de sessie verloopt |
 | Na "verwijder al mijn gegevens": de accountnaam als hash, zodat geen enkele sessie van vóór dat moment nog geldt (#786) | `revoked_users` | tot elke sessie van vóór het verwijderen verlopen is (standaard 24 uur) |
 
@@ -88,12 +89,12 @@ is een open punt.
 - Een gesprek exporteren als Markdown en de tabel achter een antwoord downloaden als CSV (`/api/data/csv`).
 - Al je gegevens in één keer exporteren: in de instellingen met "Exporteer al mijn gegevens"
   (`/api/mijn-gegevens/export`, #645). Je krijgt één JSON-bestand met je gesprekken, rapporten en dashboards, feedback
-  en datarecepten. Niet erin: wat alleen in je browser staat, en feedback van een verwijderd gesprek, die niet meer aan
+  datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat, en feedback van een verwijderd gesprek, die niet meer aan
   je account hangt.
 - Al je gegevens in één keer verwijderen: in de instellingen met "Verwijder al mijn gegevens"
   (`DELETE /api/mijn-gegevens`, #646), nadat je het woord "verwijder" hebt getypt. Dat kan niet ongedaan worden
   gemaakt; exporteer eerst. Dan verdwijnen in één transactie alle rijen van je account uit de tabellen hierboven
-  (gesprekken, rapporten en dashboards, al je feedback, ook `answer_feedback` met de `trace`, en datarecepten), en
+  (gesprekken, rapporten en dashboards, al je feedback, ook `answer_feedback` met de `trace`, datarecepten en het bewijs per antwoord), en
   ook de kopie in deze browser; je wordt uitgelogd en al je sessies worden ingetrokken, ook die op een ander apparaat
   (#786): een open chat daar sluit bij de volgende vraag. Wat blijft: de serverlogs (zonder gesprekstekst, #475) en de
   back-ups van de beheerder, de hash van je accountnaam in `revoked_users` tot je laatste sessie verlopen is, de hash

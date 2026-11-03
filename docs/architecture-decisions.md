@@ -295,7 +295,7 @@ databundel kost één rapport daardoor tientallen seconden (mobiel ronde 8, N41)
 ## ADR-009: Het gesprek blijft van de client; de server bewaart per beurt wat rapport en controles nodig hebben
 
 **Date:** 2026-11-03 (besluit 2026-10-30)  
-**Status:** Decided, nog niet gebouwd (#875, #876)  
+**Status:** Decided; stap 1 gebouwd (#875: tabel, schrijven, herstellen, levenscyclus), stap 2 nog niet (#876)  
 **Issue:** #784 (raakt #472, #677, #760, #785)
 
 ### Problem
@@ -448,7 +448,8 @@ app.
 2. Feedback op een antwoord zonder rij: aannemen met `server_beurt: false` in de trace, of weigeren? En hoort de
    controle-uitkomst (`controle`) in de rij, zodat de trace haar niet uit de blob leest?
 3. De instelling per beurt (`turns[].instelling`, #543) valt buiten de vier velden van het besluit. Na heropenen weet
-   `_beurtcontext` daardoor niet dat de instelling in het gesprek wisselde. Hoort die in de rij?
+   `_beurtcontext` daardoor niet dat de instelling in het gesprek wisselde. Hoort die in de rij? (Zonder besluit niet
+   meegenomen in #875.)
 
 ---
 

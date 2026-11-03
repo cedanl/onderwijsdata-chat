@@ -15,7 +15,15 @@ from fastapi.testclient import TestClient
 
 from persistence import db, export
 
-_SOORTEN = ["conversations", "workbooks", "feedback", "algemene_feedback", "answer_feedback", "data_recipes"]
+_SOORTEN = [
+    "conversations",
+    "workbooks",
+    "feedback",
+    "algemene_feedback",
+    "answer_feedback",
+    "data_recipes",
+    "beurtbewijs",
+]
 _EXPORT = "/api/mijn-gegevens/export"
 
 
@@ -68,6 +76,18 @@ def _vul(gebruiker: str, uniek: str) -> None:
         gebruiker, f"{gebruiker}-c1", 1, "omlaag", f"toelichting-{uniek}", {"vraag": f"trace-{uniek}"}
     )
     db.save_recipes(gebruiker, f"{gebruiker}-c1", {f"key-{uniek}": {"laad": ["query_data", {"id": uniek}]}})
+    db.save_beurtbewijs(
+        gebruiker,
+        f"{gebruiker}-c1",
+        {
+            f"hash-{uniek}": {
+                "lineage": {f"key-{uniek}": {"name": "query_data", "arguments": {"id": uniek}}},
+                "rekenbewijs": [{"tool": "compute_kpi", "argumenten": {"id": uniek}, "resultaat": f"res-{uniek}"}],
+                "kaarten": {f"key-{uniek}": {"data_key": f"key-{uniek}", "location_col": "L", "value_col": "V"}},
+                "created_at": "2026-11-03T10:00:00+00:00",
+            }
+        },
+    )
 
 
 def _export(client: TestClient, gebruiker: str) -> tuple[dict, str]:
@@ -104,11 +124,11 @@ def test_bijlage_met_datum_json_en_nooit_in_een_cache(client):
     assert json.loads(response.text)["exported_at"].startswith(vandaag)
 
 
-def test_een_gebruiker_zonder_gegevens_krijgt_zes_lege_lijsten(client):
+def test_een_gebruiker_zonder_gegevens_krijgt_zeven_lege_lijsten(client):
     _vul("anna", "ANNA-UNIEK")
     data, _ = _export(client, "leeg")
     assert data["username"] == "leeg"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
 
 
 # ── Inhoud en isolatie ───────────────────────────────────────────────────────
@@ -125,6 +145,7 @@ def test_alleen_de_eigen_rijen_per_soort(client):
     assert [f["tekst"] for f in data["algemene_feedback"]] == ["algemeen-ANNA-UNIEK"]
     assert [(f["conversation_id"], f["message_index"]) for f in data["answer_feedback"]] == [("anna-c1", 1)]
     assert [(r["conv_id"], r["data_key"]) for r in data["data_recipes"]] == [("anna-c1", "key-ANNA-UNIEK")]
+    assert [(r["conv_id"], r["tekst_hash"]) for r in data["beurtbewijs"]] == [("anna-c1", "hash-ANNA-UNIEK")]
     assert "BERT" not in body
     assert "bert" not in body
 
@@ -150,6 +171,11 @@ def test_json_kolommen_zijn_ontleed(client):
     assert (oordeel["oordeel"], oordeel["toelichting"]) == ("omlaag", "toelichting-ANNA-UNIEK")
     assert oordeel["trace"] == {"vraag": "trace-ANNA-UNIEK"}
     assert data["data_recipes"][0]["recipe"] == {"laad": ["query_data", {"id": "ANNA-UNIEK"}]}
+    bewijs = data["beurtbewijs"][0]
+    assert bewijs["lineage"] == {"key-ANNA-UNIEK": {"name": "query_data", "arguments": {"id": "ANNA-UNIEK"}}}
+    assert bewijs["rekenbewijs"][0]["resultaat"] == "res-ANNA-UNIEK"
+    assert bewijs["kaarten"]["key-ANNA-UNIEK"]["value_col"] == "V"
+    assert bewijs["created_at"] == "2026-11-03T10:00:00+00:00"
 
 
 def test_de_enige_regelovergang_is_het_laatste_teken(client):
@@ -232,7 +258,7 @@ def test_de_stukken_vormen_samen_de_json(tmp_path, monkeypatch):
     assert len(stukken) > 1
     data = json.loads("".join(stukken))
     assert data["exported_at"] == "2026-10-20T09:30:00+00:00"
-    assert [data[soort] for soort in _SOORTEN] == [[]] * 6
+    assert [data[soort] for soort in _SOORTEN] == [[]] * 7
 
 
 def test_werkboeken_een_voor_een(client, monkeypatch):
@@ -274,7 +300,7 @@ def test_elke_query_filtert_op_de_gebruiker(monkeypatch):
 
     monkeypatch.setattr(export, "_rijen", vang)
     list(export.export_json_chunks("anna"))
-    assert len(queries) == 6
+    assert len(queries) == 7
     for sql, params in queries:
         assert re.search(r"WHERE username = \?", sql)
         assert "anna" in params

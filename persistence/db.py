@@ -441,6 +441,24 @@ _DATA_RECIPES_TABLE = """
 _DATA_RECIPES_INDEX = "CREATE INDEX IF NOT EXISTS idx_recipes_key ON data_recipes(username, data_key, created_at DESC)"
 
 
+# Wat de server zelf vastlegde bij een afgerond antwoord, zodat een heropend gesprek hetzelfde rapport geeft als het
+# levende (ADR-009, #875). De sleutel is de sha256 van de tekst die message_end als `content` stuurde: de tekst die de
+# client terugstuurt, vindt zo zijn rij, ook als de index verschoof. lineage, rekenbewijs en kaarten zijn JSON; de
+# kaarten alleen met de velden van de kaartregel (geen titel, geen rijen, #211).
+_BEURTBEWIJS_TABLE = """
+    CREATE TABLE IF NOT EXISTS beurtbewijs (
+        username    TEXT NOT NULL,
+        conv_id     TEXT NOT NULL,
+        tekst_hash  TEXT NOT NULL,
+        lineage     TEXT NOT NULL,
+        rekenbewijs TEXT NOT NULL,
+        kaarten     TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        PRIMARY KEY (username, conv_id, tekst_hash)
+    )
+"""
+
+
 # Bij uitloggen ingetrokken tokens (#479): alleen sha256(token), nooit het token, tot zijn exp.
 # Daarna faalt het token toch al op zijn vervaltijd en kan de rij weg.
 _REVOKED_TOKENS_TABLE = """
@@ -507,6 +525,7 @@ _SCHEMA = (
     _ALGEMENE_FEEDBACK_TABLE,
     _DATA_RECIPES_TABLE,
     _DATA_RECIPES_INDEX,
+    _BEURTBEWIJS_TABLE,
     _REVOKED_TOKENS_TABLE,
     _REVOKED_TOKENS_INDEX,
     _REVOKED_USERS_TABLE,
@@ -739,15 +758,19 @@ def delete_conversation(username: str, conv_id: str) -> None:
         conn.commit()
 
 
-def ruim_gesprek_op(conn: Any, username: str, conv_id: str) -> int:
-    """Wat bij een verwijderd gesprek hoort, in de transactie van `conn`: recepten weg, feedback losgekoppeld (#476).
+def ruim_gesprek_op(conn: Any, username: str, conv_id: str) -> dict[str, int]:
+    """Wat bij een verwijderd gesprek hoort, in de transactie van `conn`: recepten en bewijsrijen weg, feedback
+    losgekoppeld (#476, #875).
 
     Voor het verwijderen door de gebruiker en voor de opschoning na de bewaartermijn (persistence/opschonen.py).
-    Geeft het aantal verwijderde recepten.
+    Geeft per tabel het aantal verwijderde rijen.
     """
-    recepten = _execute(conn, "DELETE FROM data_recipes WHERE username = ? AND conv_id = ?", (username, conv_id))
+    verwijderd = {
+        tabel: _execute(conn, f"DELETE FROM {tabel} WHERE username = ? AND conv_id = ?", (username, conv_id)).rowcount
+        for tabel in ("data_recipes", "beurtbewijs")
+    }
     _ontkoppel_feedback(conn, username, conv_id)
-    return recepten.rowcount
+    return verwijderd
 
 
 def _ontkoppel_feedback(conn: Any, username: str, conv_id: str) -> None:
@@ -803,6 +826,64 @@ def recipes_for(username: str, conv_id: str) -> dict[str, dict]:
             (username, conv_id),
         ).fetchall()
     return {r["data_key"]: json.loads(r["recipe"]) for r in rows}
+
+
+def beurtbewijs_voor(username: str, conv_id: str) -> dict[str, dict]:
+    """De bewijsrijen van een eigen gesprek, per tekst-hash (ADR-009, #875); een onleesbare rij slaat ze over."""
+    with _connection() as conn:
+        rows = _execute(
+            conn,
+            "SELECT tekst_hash, lineage, rekenbewijs, kaarten, created_at FROM beurtbewijs "
+            "WHERE username = ? AND conv_id = ?",
+            (username, conv_id),
+        ).fetchall()
+    uit: dict[str, dict] = {}
+    for r in rows:
+        try:
+            uit[r["tekst_hash"]] = {
+                "lineage": json.loads(r["lineage"]),
+                "rekenbewijs": json.loads(r["rekenbewijs"]),
+                "kaarten": json.loads(r["kaarten"]),
+                "created_at": r["created_at"],
+            }
+        except ValueError:
+            continue
+    return uit
+
+
+def beurtbewijs_hashes(username: str, conv_id: str) -> list[str]:
+    """Alleen de tekst-hashes van de bewijsrijen van een eigen gesprek, zonder hun inhoud te lezen."""
+    with _connection() as conn:
+        rows = _execute(
+            conn,
+            "SELECT tekst_hash FROM beurtbewijs WHERE username = ? AND conv_id = ?",
+            (username, conv_id),
+        ).fetchall()
+    return [r["tekst_hash"] for r in rows]
+
+
+def save_beurtbewijs(username: str, conv_id: str, rijen: dict[str, dict]) -> None:
+    """Bewaar per tekst-hash zijn bewijsrij; een bestaande rij wordt bijgewerkt en houdt haar `created_at`."""
+    if not rijen:
+        return
+    with _connection() as conn:
+        for tekst_hash, rij in rijen.items():
+            _execute(
+                conn,
+                "INSERT INTO beurtbewijs (username, conv_id, tekst_hash, lineage, rekenbewijs, kaarten, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (username, conv_id, tekst_hash) DO UPDATE SET "
+                "lineage=excluded.lineage, rekenbewijs=excluded.rekenbewijs, kaarten=excluded.kaarten",
+                (
+                    username,
+                    conv_id,
+                    tekst_hash,
+                    json.dumps(rij["lineage"], ensure_ascii=False, default=str),
+                    json.dumps(rij["rekenbewijs"], ensure_ascii=False, default=str),
+                    json.dumps(rij["kaarten"], ensure_ascii=False, default=str),
+                    rij["created_at"],
+                ),
+            )
+        conn.commit()
 
 
 def recipe_for_key(username: str, key: str) -> dict | None:

@@ -89,7 +89,7 @@ Zie [Configuratie → SURF SRAM-login](configuratie/index.md#surf-sram-login-oid
 
 - `reset` ("Nieuw gesprek") laat de server het lopende gesprek vergeten, inclusief geladen data; de server bevestigt met `reset_done`.
 - `ping` is de hartslag van de frontend; de server antwoordt met `pong`.
-- `history` (`messages`, optioneel `conv_id`) opent een opgeslagen gesprek: ook dat start een schone sessie. Die kent de tekst van dat gesprek en, met `conv_id`, de data keys uit de recepten van dat gesprek (#472); de server meldt hoeveel met `history_data` (`data_keys`), zodat een rapport op die data kan zonder de vraag opnieuw te stellen.
+- `history` (`messages`, optioneel `conv_id`) opent een opgeslagen gesprek: ook dat start een schone sessie. Die kent de tekst van dat gesprek en, met `conv_id`, de data keys uit de recepten van dat gesprek (#472) en het bewijs van de antwoorden in het frame (herkomst van de data, rekenbewijs en kaarten, uit de tabel `beurtbewijs` en het geheugen, ADR-009); het formaat van het frame blijft gelijk. De server meldt hoeveel met `history_data` (`data_keys`), zodat een rapport op die data kan zonder de vraag opnieuw te stellen.
 - De WebSocket slaat zelf niets op. De frontend bewaart elk gesprek onder één ID via `PUT /api/conversations/{id}` (zie Persistentie).
 
 **Events van de server** (JSON, veld `type`):
@@ -138,7 +138,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 |---------|-----|--------------|
 | `GET` | `/api/conversations` | Conversaties van de ingelogde gebruiker, nieuwste eerst, per pagina: `limit` (1–50, standaard 15); volgende pagina met `before_ts` en `before_id` van de laatste uit de vorige. Per rij alleen `id`, `title` en `timestamp`; met `q` alleen de treffers op titel of tekst |
 | `GET` | `/api/conversations/{id}` | Eén conversatie met haar `messages`; 404 bij onbekend ID of een conversatie van een ander |
-| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`). De server kort `title` in tot 200 tekens en bewaart een titel met een BSN, e-mailadres of telefoonnummer als `Gesprek (persoonsgegevens weggelaten)`; een getal wordt tekst, een lijst, object of boolean wordt die generieke titel. 409 als `messages` niet begint met de vragen (`role: "user"`) die al bewaard zijn: een ander tabblad of apparaat schreef ertussen, en de bewaarde versie blijft staan; de frontend bewaart zijn versie dan als afsplitsing onder een nieuw ID (#760) |
+| `PUT` | `/api/conversations/{id}` | Maak of update een conversatie (`title`, `timestamp`, `messages`). De server kort `title` in tot 200 tekens en bewaart een titel met een BSN, e-mailadres of telefoonnummer als `Gesprek (persoonsgegevens weggelaten)`; een getal wordt tekst, een lijst, object of boolean wordt die generieke titel. 409 als `messages` niet begint met de vragen (`role: "user"`) die al bewaard zijn: een ander tabblad of apparaat schreef ertussen, en de bewaarde versie blijft staan; de frontend bewaart zijn versie dan als afsplitsing onder een nieuw ID (#760). Na een geslaagde `PUT` (dus niet na een 409) schrijft de server ook de bewijsrijen (`beurtbewijs`) van de antwoorden in `messages` waarvan de hash van hun `content` klaarstaat; een antwoord waarvan de client de tekst veranderde, krijgt er geen (ADR-009, #875) |
 | `PATCH` | `/api/conversations/{id}` | Wijzig alleen de titel (`{"title": …}`), met dezelfde inkorting en maskering als bij `PUT`; 404 bij onbekend ID, 422 bij lege titel |
 | `DELETE` | `/api/conversations/{id}` | Verwijder een conversatie |
 | `GET` | `/api/workbooks` | Lijst van alle workbooks van de ingelogde gebruiker |
@@ -151,7 +151,7 @@ Met authenticatie aan zijn deze endpoints per ingelogde gebruiker afgeschermd. Z
 | Methode | Pad | Beschrijving |
 |---------|-----|--------------|
 | `GET` | `/api/data/csv` | De tabel achter een antwoord als CSV-bijlage (`key` als query param, met BOM voor Excel). Alleen voor een `key` waar een eigen gesprek een recept van heeft; na een herstart haalt de server de tabel opnieuw op. Een vreemde of verdwenen `key` geeft dezelfde 404; een bronfout 502. De header `X-Data-Herladen` meldt dat de cijfers kunnen afwijken van het eerdere antwoord (#269, #472) |
-| `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback en datarecepten van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
+| `GET` | `/api/mijn-gegevens/export` | Alle gesprekken, werkboeken, feedback, datarecepten en het bewijs per antwoord (`beurtbewijs`) van de ingelogde gebruiker als JSON-bijlage, rij voor rij geschreven; `Cache-Control: no-store` (#645) |
 | `DELETE` | `/api/mijn-gegevens` | Verwijdert al het werk van de ingelogde gebruiker in één transactie en trekt alle tokens van het account in, ook die van een ander apparaat (#786). Body precies `{"bevestig": "verwijder"}`, anders 422; zonder authenticatie 404, want dan is er geen eigen account (#646) |
 | `GET` | `/api/answer-feedback` | De 👍/👎 op de antwoorden van een gesprek (`conversation_id`) |
 | `POST` | `/api/answer-feedback` | 👍/👎 op een antwoord (`conversation_id`, `message_index`, `oordeel` `up` of `down`, `toelichting`); de trace komt uit het eigen opgeslagen gesprek (#248) |
