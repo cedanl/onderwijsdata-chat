@@ -4,11 +4,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { gesprekFouten, rapportFouten, rapportVerslag, reekslabels, voorstel } from './rapportscore.js'
+import { gesprekFouten, kies, rapportFouten, rapportVerslag, reekslabels, voorstel } from './rapportscore.js'
 
 const SCENARIOS = JSON.parse(readFileSync(new URL('./rapportscenarios.json', import.meta.url), 'utf-8')).scenarios
 const BIJSTURING = SCENARIOS.find(s => s.label === 'rapport-bijsturing-wo')
 const LAATSTE = SCENARIOS.find(s => s.label === 'rapport-laatste-antwoord')
+const ZIJSPRONG = SCENARIOS.find(s => s.label === 'rapport-zijsprong-uit')
 
 const WO = 'Hoe ontwikkelt de instroom in de wo-bachelors B Computing Science, B Informatica en B Computer Science zich?'
 const WO_BRON = {
@@ -72,6 +73,41 @@ test('het laatste antwoord: de bron van de tweede vraag moet in een grafiek staa
   assert.deepEqual(rapportFouten(fout, LAATSTE.verwachting, uu), ['geen grafiek met bron /p02ho1ejrs/'])
 })
 
+// #908: bij Genereer rapport zet de gebruiker een zijsprong uit; het rapport noemt haar nergens.
+const CHECKLIST = [
+  { beurt: 1, vraag: ZIJSPRONG.berichten[0], bronnen: ['DUO — Eerstejaars (p02ho1ejrs)'] },
+  { beurt: 2, vraag: ZIJSPRONG.berichten[1], bronnen: ['DUO — Ingeschrevenen (p01hoinges)'] },
+]
+const UU = ZIJSPRONG.onderzoeksvraag
+const HU_BRON = { ...WO_BRON, dataset: 'p01hoinges', tekst: 'DUO · Ingeschrevenen (p01hoinges)', url: '' }
+
+test('de zijsprong uitzetten laat de andere beurt aan, op de vraag en niet op het nummer', () => {
+  assert.deepEqual(kies(CHECKLIST, ZIJSPRONG.uitzetten), { beurten: [1], fouten: [] })
+  assert.deepEqual(kies(CHECKLIST, []), { beurten: [1, 2], fouten: [] })
+})
+
+test('een patroon dat geen beurt raakt, of een keuze die niets overlaat, is een fout van de checklist', () => {
+  assert.deepEqual(kies(CHECKLIST, ['Hogeschool Rotterdam']).fouten, ['checklist: geen beurt met /Hogeschool Rotterdam/ om uit te zetten'])
+  assert.deepEqual(kies(CHECKLIST, ['Utrecht']), { beurten: [], fouten: ['checklist: alles staat uit'] })
+})
+
+test('een rapport zonder de uitgezette beurt slaagt', () => {
+  const goed = { spec: { onderzoeksvraag: UU, visualisaties: [grafiek(['Universiteit Utrecht'])], bronnen: ['DUO — Eerstejaars (p02ho1ejrs)'] } }
+  assert.deepEqual(rapportFouten(goed, ZIJSPRONG.verwachting, UU), [])
+})
+
+test('een uitgezette bron in de bronnen of de dataversie faalt, ook zonder grafiek ervan', () => {
+  const inBronnen = { spec: { onderzoeksvraag: UU, visualisaties: [grafiek(['Universiteit Utrecht'])], bronnen: ['DUO — Ingeschrevenen (p01hoinges)'] } }
+  assert.ok(rapportFouten(inBronnen, ZIJSPRONG.verwachting, UU).includes('rapport noemt /p01hoinges/ van een uitgezette beurt'))
+
+  const inManifest = { spec: { onderzoeksvraag: UU, visualisaties: [grafiek(['Universiteit Utrecht'])], manifest: { data_as_of: [{ dataset: 'p01hoinges' }] } } }
+  assert.ok(rapportFouten(inManifest, ZIJSPRONG.verwachting, UU).some(f => f.includes('uitgezette beurt')))
+
+  const grafiekHu = { spec: { onderzoeksvraag: UU, visualisaties: [grafiek(['Universiteit Utrecht']), grafiek(['Hogeschool Utrecht'], HU_BRON)] } }
+  const fouten = rapportFouten(grafiekHu, ZIJSPRONG.verwachting, UU)
+  assert.ok(fouten.some(f => f.includes('bron /p01hoinges/')), fouten.join('\n'))
+})
+
 test('geen rapport, een fout of een time-out is altijd niet geslaagd', () => {
   assert.deepEqual(rapportFouten({ timeout: true }, BIJSTURING.verwachting, WO), ['rapport: time-out'])
   assert.deepEqual(rapportFouten({ error: 'De cijfers klopten niet' }, BIJSTURING.verwachting, WO), ['rapport: De cijfers klopten niet'])
@@ -110,7 +146,7 @@ test('het verslag telt per scenario de geslaagde runs en bewaart de redenen', ()
 test('elk scenario is een gesprek met een verwachting die de controles kennen', () => {
   const bekend = new Set([
     'min_visualisaties', 'onderzoeksvraag_is_voorstel', 'onderzoeksvraag_noemt', 'onderzoeksvraag_niet',
-    'bron_wel', 'bron_niet', 'reeksen_niet',
+    'bron_wel', 'bron_niet', 'reeksen_niet', 'spec_niet',
   ])
   assert.ok(SCENARIOS.length >= 2)
   for (const s of SCENARIOS) {

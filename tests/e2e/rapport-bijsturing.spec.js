@@ -13,7 +13,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'url'
 import { haalToken } from './chatstream.js'
 import { RAPPORT_TIMEOUT_MS, VRAAG_TIMEOUT_MS, verbind } from './gesprek.js'
-import { gesprekFouten, rapportFouten, reekslabels, voorstel } from './rapportscore.js'
+import { gesprekFouten, kies, rapportFouten, reekslabels, voorstel } from './rapportscore.js'
 import { legVast } from './runlog.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -29,8 +29,12 @@ async function speel(token, scenario, model) {
       beurten.push({ vraag, antwoord: await gesprek.vraag(vraag) })
       if (gesprekFouten(beurten).length) return { beurten, fouten: gesprekFouten(beurten) }
     }
-    const voorgesteld = voorstel(beurten)
-    const uitkomst = await gesprek.rapport({ onderzoeksvraag: voorgesteld })
+    // Een scenario met `onderzoeksvraag` speelt een gebruiker die het veld zelf invult (de voorgestelde vraag hoort bij de
+    // uitgezette beurt); met `uitzetten` zet hij de beurten uit waarvan de vraag het patroon noemt (#908).
+    const voorgesteld = scenario.onderzoeksvraag ?? voorstel(beurten)
+    const keuze = scenario.uitzetten ? kies((await gesprek.checklist()).items ?? [], scenario.uitzetten) : null
+    if (keuze?.fouten.length) return { beurten, voorgesteld, fouten: keuze.fouten }
+    const uitkomst = await gesprek.rapport({ onderzoeksvraag: voorgesteld, ...(keuze && { beurten: keuze.beurten }) })
     return { beurten, voorgesteld, uitkomst, fouten: rapportFouten(uitkomst, scenario.verwachting, voorgesteld) }
   } finally {
     gesprek.sluit()

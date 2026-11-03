@@ -51,10 +51,29 @@ const patroon = p => new RegExp(p, 'i')
 const normaal = tekst => String(tekst || '').replace(/\s+/g, ' ').trim()
 
 /**
+ * Welke beurten aanblijven als de gebruiker bij "Genereer rapport" de beurten uitzet waarvan de vraag een patroon
+ * uit `uitzetten` noemt (#908). Op de vraag, niet op het nummer: een verduidelijking verschuift de nummers.
+ * Een patroon dat niets raakt of een keuze die niets overlaat, is een fout van de checklist.
+ */
+export function kies(items, uitzetten = []) {
+  const fouten = []
+  const uit = new Set()
+  for (const p of uitzetten) {
+    const geraakt = items.filter(i => patroon(p).test(i.vraag))
+    if (!geraakt.length) fouten.push(`checklist: geen beurt met /${p}/ om uit te zetten`)
+    for (const i of geraakt) uit.add(i.beurt)
+  }
+  const beurten = items.map(i => i.beurt).filter(b => !uit.has(b))
+  if (!beurten.length) fouten.push('checklist: alles staat uit')
+  return { beurten, fouten }
+}
+
+/**
  * De fouten van één rapport tegen de verwachting van een scenario; leeg is geslaagd.
  *
  * verwachting: min_visualisaties, onderzoeksvraag_is_voorstel, onderzoeksvraag_noemt / _niet,
- * bron_wel (een grafiek), bron_niet (geen grafiek) en reeksen_niet (geen label in een grafiek); patronen
+ * bron_wel (een grafiek), bron_niet (geen grafiek), reeksen_niet (geen label in een grafiek) en spec_niet (nergens
+ * in het rapport, ook niet in de bronnen of de dataversie: voor wat de gebruiker uitzette, #908); patronen
  * zijn regexen zonder hoofdlettergevoeligheid, zoals must_mention in evaluations.json.
  */
 export function rapportFouten(uitkomst, verwachting, voorgesteld) {
@@ -80,6 +99,11 @@ export function rapportFouten(uitkomst, verwachting, voorgesteld) {
   }
   for (const p of verwachting.bron_wel || []) {
     if (!visualisaties.some(v => patroon(p).test(bronregel(v)))) fouten.push(`geen grafiek met bron /${p}/`)
+  }
+  // Een uitgezette beurt komt nergens terug: niet in de bronnen, de definities, de dataversie of de tekst (#908).
+  const alles = JSON.stringify(spec)
+  for (const p of verwachting.spec_niet || []) {
+    if (patroon(p).test(alles)) fouten.push(`rapport noemt /${p}/ van een uitgezette beurt`)
   }
   visualisaties.forEach((vis, i) => {
     const naam = `grafiek ${i + 1} ("${vis.titel || ''}")`
