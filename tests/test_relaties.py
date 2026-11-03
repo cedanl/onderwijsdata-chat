@@ -137,6 +137,62 @@ def test_cbs_regios_wordt_aan_de_waarden_herkend_en_een_kalenderjaar_niet_als_sc
     assert json.loads(relatie("cbs:pv"))["sleutels"][0]["sleutel"] == "provincie"
 
 
+# Een echte CBS-regiotabel (85701NED, gemeten 3 nov 2026) mengt in één kolom Nederland (NL), landsdelen (LD),
+# provincies (PV), COROP-gebieden (CR) en gemeenten (GM): 446 van de 510 waarden waren gemeenten.
+_REGIOS_GEMENGD = ["NL01", "LD03", "PV30", "PV26", "CR35", "GM0855", "GM0034", "GM0344", "GM0363", "GM0599", "GM0014"]
+_CBS_GEMENGD = pd.DataFrame(
+    {
+        "Regiokenmerken": _REGIOS_GEMENGD,
+        "Perioden": ["2024SJ00"] * len(_REGIOS_GEMENGD),
+        "LeerlingenStudenten_1": range(len(_REGIOS_GEMENGD)),
+    }
+)
+
+
+def test_gemengde_cbs_regiokolom_is_de_gemeentesleutel_met_alleen_de_gemeenten():
+    _put("cbs:mix", _CBS_GEMENGD)
+    per = {s["kolom"]: s for s in json.loads(relatie("cbs:mix"))["sleutels"]}
+    regio = per["Regiokenmerken"]
+    assert regio["sleutel"] == "gemeente"
+    assert regio["uniek"] == 6  # Nederland, landsdeel, provincie en COROP zijn geen gemeente
+    assert regio["dekking"]["van"] == 6
+
+
+def test_koppeling_duo_cbs_vindt_de_gemeente_in_een_gemengde_regiokolom():
+    _put("duo:t", _DUO)
+    _put("cbs:mix", _CBS_GEMENGD)
+    uit = json.loads(relatie("duo:t", andere_key="cbs:mix"))
+    per = {(k["links"]["kolom"], k["rechts"]["kolom"]): k for k in uit["koppelingen"]}
+    gemeente = per[("GEMEENTENUMMER", "Regiokenmerken")]
+    assert gemeente["sleutel"] == "gemeente" and gemeente["type"] == "many_to_one"
+    assert gemeente["overlap"] == {"gedeeld": 2, "links_in_rechts_pct": 100.0, "rechts_in_links_pct": 33.3}
+    assert "melding_koppeling" not in uit
+
+
+@pytest.mark.parametrize(("aantal_gemeenten", "herkend"), [(5, True), (4, False)])
+def test_regiokolom_wordt_herkend_vanaf_de_helft_gemeentecodes(aantal_gemeenten, herkend):
+    anders = ["NL01", "LD01", "PV26", "PV27", "CR01", "CR02"][: 10 - aantal_gemeenten]
+    waarden = [f"GM{n:04d}" for n in range(1, aantal_gemeenten + 1)] + anders
+    _put("cbs:grens", pd.DataFrame({"Regiokenmerken": waarden}))
+    uit = json.loads(relatie("cbs:grens"))
+    assert bool(uit["sleutels"]) is herkend
+    if not herkend:
+        assert uit["sleutels"] == [] and uit["zonder_sleutel"] == ["Regiokenmerken"]
+
+
+def test_provincies_met_nederland_en_landsdelen_blijven_een_provinciesleutel():
+    codes = [f"PV{n}" for n in range(20, 32)]
+    _put("cbs:pv", pd.DataFrame({"Regiokenmerken": ["NL01", "LD01", *codes]}))
+    (sleutel,) = json.loads(relatie("cbs:pv"))["sleutels"]
+    assert (sleutel["sleutel"], sleutel["uniek"]) == ("provincie", 12)
+    assert sleutel["dekking"] == {"naslag": "CBS-provinciecodes", "bekend": 12, "van": 12}
+
+
+def test_een_codekolom_zonder_regiocodes_is_geen_regiosleutel():
+    _put("cbs:soort", pd.DataFrame({"Onderwijssoort": ["A025294", "A025297", "T001345", "A041867"]}))
+    assert json.loads(relatie("cbs:soort"))["sleutels"] == []
+
+
 def test_zonder_bekende_sleutel_een_melding_en_een_onbekende_key_een_fout():
     _put("x:t", pd.DataFrame({"A": [1], "B": ["q"]}))
     uit = json.loads(relatie("x:t"))

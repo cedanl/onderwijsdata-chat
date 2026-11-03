@@ -550,6 +550,18 @@
         "max_search_catalog": 1,
         "must_mention": ["Geneeskunde", "DUO|Overzicht Erkenningen", "indien|visitatie"]
       }
+    },
+    {
+      "label": "koppel-duo-cbs-gemeente",
+      "message": "Vergelijk voor 2024 per gemeente het aantal hbo-studenten dat er woont met het aantal dat er bij een hogeschool staat ingeschreven. In welke vijf gemeenten is het verschil het grootst?",
+      "description": "Koppeling DUO (vestigingsgemeente) met CBS 85701NED (woongemeente) op gemeente: het model laadt beide, vraagt relatie() naar de gedeelde sleutel (de CBS-regiokolom mengt NL, LD, PV, CR en GM) en koppelt in run_analysis. Op 3 nov 2026 gemeten: alle 43 DUO-gemeenten matchen en Amsterdam heeft het grootste verschil (DUO ca. 57.000, CBS ca. 24.000). Het antwoord noemt dat het verschil vestiging tegenover woonplaats is.",
+      "expected": {
+        "must_contain_tools": ["search_catalog", "relatie", "run_analysis"],
+        "tool_flow": ["search_catalog", "get_duo_data", "get_cbs_data", "relatie", "run_analysis"],
+        "tool_flow_description": "Zoek → laad DUO → laad CBS (gemeenten, hbo, 2024) → relatie → koppelen in run_analysis",
+        "max_search_catalog": 4,
+        "must_mention": ["Amsterdam", "vestig", "woon"]
+      }
     }
   ]
 }
