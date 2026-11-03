@@ -65,6 +65,9 @@ BESTANDEN: dict[tuple[str, int], tuple[str, set[str]] | None] = {
     ("instromende-mbo-studenten", 3): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 5): ("INSTELLINGSCODE", MBO_DASHBOARD),
     ("instromende-mbo-studenten", 7): ("INSTELLINGSCODE", MBO_DASHBOARD),
+    # Het opleidingsaanbod per onderwijslocatie (#744): alleen de locaties in Doetinchem en Lochem, de twee plaatsen van
+    # Graafschap College (24ZZ, Doetinchem) en Zone.college (31JC, Lochem, met 22 opleidingen in Doetinchem).
+    ("mbo_opleidingsaanbod", 0): ("PLAATSNAAM", {"Doetinchem", "Lochem"}),
 }
 
 

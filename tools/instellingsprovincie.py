@@ -13,7 +13,7 @@ Een code zonder adres krijgt geen provincie: leeg, niet geraden.
 
 import pandas as pd
 
-from data.instellingen import get_adres_lookup
+from data.instellingen import HOOFDVESTIGING, LOCATIE_AANBOD, get_adres_lookup
 
 KOLOM = "PROVINCIE INSTELLING"  # dezelfde naam als in DUO's eigen mbo-bestanden
 _CODEKOLOM = "INSTELLINGSCODE"
@@ -25,7 +25,10 @@ ADRESBESTAND = ("adressen_mbo", 1)
 DEFINITIE = (
     "Provincie van het adres van de instelling volgens DUO's adressenbestand (adressen_mbo): niet de "
     "woonprovincie van de student, en niet per vestiging. Waar DUO deze kolom niet in het bestand zet, "
-    "voegt de chat hem toe op INSTELLINGSCODE; een code zonder adres blijft leeg."
+    "voegt de chat hem toe op INSTELLINGSCODE; een code zonder adres blijft leeg. "
+    + HOOFDVESTIGING
+    + " "
+    + LOCATIE_AANBOD
 )
 
 

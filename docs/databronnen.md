@@ -75,6 +75,16 @@ Sinds v3 heet het typefilter op elk register `type` (v2: `erkenningtype`, `oplei
 | Instroom | Eerstejaars inschrijvingen |
 | Adressen | Vestigingsadressen instellingen |
 
+**Regio en nevenlocaties (mbo, #744):** adressen en studentaantallen bestaan bij DUO alleen per instelling (BRIN), met
+de plaats van de hoofdvestiging. Een regionaal roc dat alleen een nevenlocatie in de regio heeft, valt daar niet onder:
+Zone.college (31JC) heeft zijn hoofdvestiging in Lochem en `mbo_opleidingsaanbod` noemt 22 opleidingen in Doetinchem,
+waar het Graafschap College (24ZZ) staat. Zone.college is dus geen vestiging van het Graafschap College. Het aanbod kent
+de plaats per onderwijslocatie (`PLAATSNAAM`, aanbieder in `NAAM`), maar geen BRIN, en de aanbieders zijn onderdelen
+(`Graafschap College, Zorg, Welzijn & Sport`): de code koppelt het niet aan de studentaantallen (dat is het BRIN-register
+van #728). Het model krijgt dit mee in de definitie van `PROVINCIE INSTELLING`, in het instellingsprofiel en in de
+systeemprompt, en moet melden dat aantallen per instelling gelden en niet per locatie in de regio. Het dashboard
+"mijn instelling" kiest zijn peers nog op het adres van de hoofdvestiging.
+
 **Twee-stap patroon:**
 DUO-data wordt in twee stappen geladen: eerst `get_duo_data` (schema + preview), dan `query_data` (gefilterde rijen). Eenmaal geladen data wordt hergebruikt binnen een gesprek via de sessiecache.
 
