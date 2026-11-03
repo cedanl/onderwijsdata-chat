@@ -2,14 +2,407 @@
 
 Alle wijzigingen die voor gebruikers of beheerders van belang zijn. Formaat naar
 [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versienummers volgen de git-tags;
-de laatste tag is 2.5.0. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.5.0 beschrijven de
-GitHub-releases; wat sinds 1.8.6 is veranderd staat nog onder "Niet uitgebracht" en krijgt bij de volgende release een
+de laatste tag is 2.5.3. Tot en met 1.8.6 staat elke versie hieronder apart. De releases 2.0.1–2.5.0 beschrijven de
+GitHub-releases; 2.5.1 (een tag zonder release) en 2.5.2 (een herstelrelease) staan niet apart: wat erin zat, staat onder 2.5.3; wat sinds 1.8.6 is veranderd staat nog onder "Niet uitgebracht" en krijgt bij de volgende release een
 eigen kop (`docs/promoten.md`).
 
 ## Niet uitgebracht
 
 Nieuwe items komen niet hier, maar als fragment in `changelog.d/`: één bestand per MR (`CONTRIBUTING.md`). Bij een
 release zet `scripts/changelog.py` ze onder een eigen versiekop, samen met de items die hier nog staan.
+
+## 2.5.3 — 2026-11-03
+
+### Inspectie-oordeel toont de standaarden van het onderzoekskader 2021 (#874)
+- `get_inspectieoordeel` gaf bij de meeste mbo-besturen geen enkele standaard, ook als de Inspectie er drie had
+  vastgesteld: de tool las alleen de kolommen van het kader 2017. Nu leest ze per onderzoekskader de juiste kolommen.
+  Onder het kader 2021 zijn dat Visie, ambities en doelen; Uitvoering en kwaliteitscultuur; en Evaluatie,
+  verantwoording en dialoog. Op 1 oktober 2026 kregen 138 van de 164 mbo-besturen geen standaarden, nu nog 26: 25
+  besturen zonder kader (onderzoeken van voor 2021) en één zonder ingevulde standaarden.
+- De uitkomst noemt het onderzoekskader, omdat standaarden uit verschillende kaders niet te vergelijken zijn. Bij het
+  kader 2017 staan de oordelen per kwaliteitsgebied (financieel beheer, kwaliteitszorg en ambitie) apart van de
+  standaarden.
+- Een onbekend kader of een nieuwe kolom in het bestand van de Inspectie komt als `INSPECTIE_KADER_ONBEKEND` in het
+  log, en de tool zegt dan dat ze de standaarden niet toont.
+
+### Herkomst van de UWV-sectorindeling en een register dat bijblijft (#873)
+- Het instellingsregister (uit de DUO-bestanden) wordt na 24 uur opnieuw opgebouwd, zodat een nieuwe, gefuseerde of
+  hernoemde instelling niet pas na een herstart bekend is. Laadt een DUO-bestand dan niet, dan blijft het vorige
+  register staan, met een regel in het log, en volgt een uur later een nieuwe poging.
+- Het manifest van de UWV-sectorindeling zegt nu ook dat de prompt onbekend is en dat de validatie openstaat; het
+  refresh-script legt bij een volgende indeling model, prompt en een open validatie vast. Een steekproef van 30
+  clusters (`docs/sector-cluster-steekproef.csv`) wacht op handmatige beoordeling.
+- De 25 beroepenclusters die het taalmodel bij geen enkele sector zette, staan in `_niet_toegewezen`; een test
+  bewaakt dat elk cluster van de UWV-snapshot een plaats heeft.
+
+### Een percentage in een rapport komt uit de data of uit compute_kpi (#872)
+- De rapportrun kon een groeicijfer of verschil alleen uit de `query_data`-uitvoer overnemen; stond het daar niet,
+  dan rekende het model het zelf uit, en de rapportcontrole liet een percentage als "+8 %" ongetoetst door. Nu heeft
+  de rapportrun `compute_kpi`, en toetst de controle elk percentage dat het model schreef met dezelfde regel als in
+  de chat: als waarde of als fractie in de data, afgerond zoals in de tekst. Een ongedekt percentage krijgt één
+  herkansing en houdt daarna het rapport tegen, net als een ongedekt groot getal.
+- De definities uit de bron vallen buiten die toets: daar rekent het model niets.
+
+### Een lijn met aantallen begint op 0; een afgekapte as staat erbij (#871)
+- Een lijngrafiek begon standaard bij het kleinste getal, zodat het model per grafiek bepaalde hoe dramatisch een
+  trend oogde. Nu volgt de asbasis in code de eenheid van de getekende kolom: een telling (CBS 'aantal', 'absoluut',
+  'x 1 000') of een kolom zonder eenheid begint op 0; een percentage, index of bedrag niet, en dan staat "as begint
+  niet bij 0" onder de astitel. `y_vanaf_nul` blijft een keuze voor de gebruiker, in beide richtingen, en de
+  Python-snippet tekent dezelfde as.
+- Dezelfde regel in de vaste dashboards: de sector- en leerwegtrends beginnen op 0, de rendementslijn zegt het als
+  haar as niet bij 0 begint.
+
+### `bron:ping` controleert elke dataset, en de ijkwaarden hebben een eigen geplande job (#869)
+- Naast de zes pings loopt `bron:ping` nu elke CBS-tabel, elk DUO-bestand en elk RIO-register langs die de chat kan
+  opvragen: CBS-status en `Modified` tegen de catalogus, de kolommen van elk DUO-bestand tegen de schema-snapshot, en
+  één record per RIO-register. Een afwijking staat als waarschuwing in de log en in het artefact
+  `bronping-sweep.json`; de job wordt er niet rood van.
+- Nieuwe CI-job `ijkwaarden:ververs` draait `scripts/ijkwaarden.py` in een eigen schema (variabele
+  `IJKWAARDEN_VERVERS=1`) en zet bij een verschil een aanwijzing in de log. Het schema zelf maakt de beheerder aan
+  (`docs/operatie.md`).
+
+### DUO-bestanden in cp1252 laden en een gewijzigde kolom melden (#868)
+- Een DUO-bestand in cp1252 faalde met een leesfout; de chat probeert het nu opnieuw in cp1252 (`DUO_ENCODING` in het
+  log).
+- Wijken de kolommen van een geladen DUO-bestand af van het schema dat de chat kent (een hernoemde, verdwenen of
+  nieuwe kolom), dan staat dat als waarschuwing in het resultaat en als `DUO_SCHEMA_DRIFT` in het log. Een hernoemde
+  codekolom kon zo ongemerkt als getal worden gelezen, zonder voorloopnullen.
+
+### Een tijdelijke storing bij CBS, DUO of RIO wordt opnieuw geprobeerd (#867)
+- Een HTTP 5xx, een 429 of een verbroken verbinding was meteen een bronfout in het antwoord, terwijl dezelfde aanroep
+  een seconde later slaagde. De chat probeert zo'n ophaalactie nu hooguit twee keer opnieuw, met een korte, oplopende
+  wachttijd, en alleen zolang dat binnen 30 seconden na de eerste poging past. Elke herhaling staat als `BRON_RETRY`
+  in het log.
+- Een fout van de aanvraag zelf (400, 404) wordt niet herhaald. Een fout die blijft, ook de HTTP 500 die CBS geeft op
+  een filter met twee haakjesgroepen (#561), geeft dezelfde melding als voorheen.
+
+### Geen som meer over percentages; een gemiddelde is geen ondergrens (#866)
+- `query_data` en `compute_kpi` telden elke getallenkolom op, ook een percentage: een som over de %-kolom van een
+  CBS-tabel of over een DUO-kolom met PERCENTAGE of AANDEEL in de naam gaf een getal zonder betekenis. Nu weigeren
+  ze die som, en ook een som over een mutatie, saldo, verschil of groei, met uitleg hoe het wel kan: tellers en
+  noemers apart optellen, of een gemiddelde met de kanttekening dat het ongewogen is. De eenheid komt uit CBS, anders
+  uit de kolomnaam.
+- Een gemiddelde (of minimum, maximum, telling) over onderdrukte cellen heette ten onrechte een ondergrens. Nu zegt
+  de noot dat het gemiddelde zonder die cellen is berekend, en noemt het Telling-blok zo'n uitkomst geen ondergrens.
+
+### Een gearchiveerde CBS-tabel zegt dat CBS hem niet meer bijwerkt (#865)
+- Ongeveer twee derde van de CBS-tabellen in de chat is gearchiveerd. Zo'n tabel stond in de Bronnen, onder een
+  rapportgrafiek en in de kop van een CSV-export precies zo als een lopende tabel. Nu staat er achter de titel
+  "gearchiveerd, laatste periode …", met de laatste periode uit de catalogus.
+- `get_cbs_data` zet `gearchiveerd` en `laatste_periode` in het resultaat, zodat het model het kan noemen, en een
+  zoektreffer draagt hetzelfde etiket, zodat het model een lopende opvolger kan verkiezen. De volgorde in de zoekfunctie
+  (lopende tabellen eerst) blijft.
+
+### Een opgehaalde CBS-tabel geldt na 24 uur niet meer als actueel (#864)
+- Een tabel in de datastore die langer dan 24 uur geleden bij de bron is opgehaald, gaat eruit; een gesprek dat hem
+  nog gebruikt, haalt hem uit zijn recept opnieuw op, met wat de bron dan zegt. Ook de CBS-metadata (kolomdefinities,
+  dimensies met hun periodestatus, tabelbeschrijving) komt na 24 uur opnieuw van CBS. Tot nu toe bleef een revisie of
+  een nieuwe periode onzichtbaar tot de server herstartte.
+- `laatste_update` in een CBS-antwoord is de dag waarop CBS de tabel volgens CBS zelf het laatst bijwerkte, niet meer
+  de datum uit de catalogus van de package; antwoordt CBS niet, dan blijft het de catalogusdatum. Het antwoord noemt
+  ook de dag van ophalen.
+- De bronregel van een CBS-tabel onder een antwoord eindigt met "bijgewerkt door CBS op …, opgehaald op …".
+
+### Een dashboard-KPI telt geen totaalrij meer op bij de delen (#863)
+- `compute_kpi` rekende over elke data_key, ook over een CBS-selectie waarin een dimensie open stond: een som of
+  gemiddelde telde dan "Totaal mannen en vrouwen" of "Nederland" mee met de delen, en het dashboard toonde dat getal.
+  Nu doet de KPI dezelfde dimensiecontrole als `query_data`, met dezelfde foutmelding, zodat het model eerst filtert
+  of groepeert. Een reeks met meer dan één rij per periode (bijvoorbeeld per instelling) krijgt geen eerste, laatste
+  of verandering meer; een som of maximum over die rijen kan nog wel.
+
+### Een lege CBS-cel telt als onderdrukt, net als DUO -1 (#862)
+- CBS publiceert een onderdrukte of ontbrekende cel als `.`; die kwam als leeg binnen en viel stil weg, terwijl
+  alleen DUO-cellen met -1 een melding kregen. Nu legt de app bij het laden van een CBS-tabel haar lege cellen vast
+  en reizen ze mee met elke selectie: de tool-output telt ze per jaar, en het Telling-blok onder het antwoord en de
+  kop van de CSV-export noemen een totaal over zo'n selectie een ondergrens, in de woorden van CBS. Kolommen met een
+  teken (mutatie, saldo, groei) tellen niet mee, zoals bij DUO.
+
+### Het voorbeeldscript in de README draait (#848)
+- Het voorbeeld bij "Reproduceerbare analyses" filterde op kolommen die het DUO-bestand niet heeft. Het is nu het
+  script dat de app voor die vraag maakt; een test houdt het gelijk aan `tools/snippet.py` en draait het tegen een
+  bevroren kopie van het bestand.
+
+### `promotie.py promote` weigert release 2.0.0 (#844)
+- De tag `2.0.0` heeft geen chart; een pin erop laat Flux falen. `scripts/promotie.py promote --version 2.0.0` stopt
+  nu met een melding in plaats van de pin te schrijven. `docs/promoten.md` gebruikt `X.Y.Z` als voorbeeld, niet meer
+  `2.0.0`.
+
+### Privacy- en feedbackteksten noemen de ingestelde termijnen (#835)
+- De privacy-informatie en de feedbackdialogen noemden 90 en 365 dagen, 8 en 24 uur als vaste tekst, terwijl de
+  backend die termijnen uit `BEWAARTERMIJN_GESPREKKEN_DAGEN`, `BEWAARTERMIJN_RAPPORTEN_DAGEN`, `SESSION_TTL_HOURS` en
+  `SESSION_MAX_HOURS` leest. `/api/config` geeft ze nu mee en de teksten vullen ze in; met de standaardinstelling
+  verandert er niets aan wat er staat.
+- Weigert de opschoning een bewaartermijn (geen geheel getal of korter dan 7 dagen; dan verwijdert zij niets), dan
+  geeft `/api/config` geen getal en blijft de standaardtekst staan.
+
+### `scripts/db-init.sql` maakt alleen gebruiker en database, met het wachtwoord als variabele (#825)
+- Het script maakte ook de tabellen `conversations` en `workbooks`, in een verouderde vorm (zonder `laatst_gebruikt`
+  en zonder de feedback-, recept- en intrekkingstabellen), en had een vast wachtwoord `change_me_in_production`. Nu
+  maakt het alleen de gebruiker `onderwijsdata_chat`, de database en de rechten; de tabellen maakt de app bij de
+  start. Het wachtwoord komt mee als psql-variabele: `psql -U postgres -v wachtwoord='…' -f scripts/db-init.sql`.
+  Zonder die variabele maakt het script niets aan. Een tweede keer draaien slaat bestaande gebruiker en database
+  over.
+
+### Log-hardening, laatste restpunten van #502: ook de data-, login- en zoekfouten zonder traceback op INFO+ (#819)
+- De meldingen "… niet beschikbaar" van de arbeidsmarkt- en dashboarddata (`data/dashboard.py`), het
+  instellingsregister en de adreslijst, een onleesbare sectormapping, een mislukte OIDC-uitwisseling bij het
+  inloggen en een fout in `search_catalog` noemen op WARNING en ERROR alleen het type en een kenmerk
+  (`fout_len=… fout_hash=…`). De traceback, die de request-URL of de zoekvraag kan citeren, staat op DEBUG.
+- Een test houdt alle productiecode aan die regel: geen `exc_info` of `logger.exception` op INFO en hoger, en geen
+  uitzondering zelf in een logregel. De bewuste uitzonderingen staan in de test, met de reden.
+
+### GPT-OSS via Willma krijgt zijn echte contextgrootte (#818)
+- De vaste contextgrootte voor GPT-OSS 120B stond onder een andere model-ID dan de app gebruikt
+  (`openai/gpt-oss-120b` in plaats van `openai/openai/gpt-oss-120b`), met 4.096 tokens. Met Willma viel het model zo
+  stil terug op 4.096 tokens per antwoord, met een WARNING. Nu geldt de context uit de modelkaart (131.072 tokens),
+  dus `MAX_TOKENS` (standaard 40.960) wordt niet meer afgekapt. De omgevingen draaien nu op Azure AI; daar verandert
+  niets.
+
+### Het endpoint `/startup` is weg (#813)
+- Niets riep `/startup` aan: de chart gebruikt `/health` voor de startup- en liveness-probe en `/ready` voor readiness
+  (#675). Het pad gaf bovendien altijd 200, ook bij `startup_incomplete`. Een externe monitor die `/startup` aanroept,
+  krijgt nu een 404; gebruik `/ready` (dezelfde twee checks, met een 503 als er één faalt) of `/health`.
+
+### Besluit over Plotly in het rapport vastgelegd (#812)
+- ADR-008 in `docs/architecture-decisions.md`: ongeveer 1,1 MB gzip Plotly in het rapportframe en 3,4 MB voor een
+  download zijn de bewuste prijs voor een rapport dat offline werkt. Het budget van `npm run budget` voor
+  `plotly-rapport` blijft de rem; bij klachten op mobiel gaat het besluit weer open. De bundel zelf is niet gewijzigd.
+
+### Onder een tabel met "niet beschikbaar"-cellen staat wat die cellen zijn (#811)
+- Toonde een antwoord alleen een tabel op een DUO-selectie met onderdrukte cellen, zonder totaal in de tekst, dan
+  stond nergens waarom cellen "niet beschikbaar" waren: de Ondergrens-regel in het Telling-blok verschijnt alleen als
+  een getal in de tekst op zo'n selectie rust. Nu zet de app direct onder elke tabel met een lege cel een vaste
+  voetnoot uit code: "Niet beschikbaar: in het DUO-bestand staat hier -1 (onderdrukte cel: DUO publiceert kleine
+  aantallen niet, geen telwaarde)." Bij een lege CBS-cel staan er de woorden van CBS. Zonder onderdrukte cel in de
+  data van de beurt komt er geen noot.
+
+### Na een verbindingsbreuk zegt de regel eerst dat het antwoord is afgebroken (#810)
+- Kwam de verbinding terug na een breuk midden in een antwoord, dan stond er "Verbinding terug — probeer opnieuw".
+  Dat las als goed nieuws, terwijl het antwoord onvolledig is. Nu staat er "Antwoord afgebroken — de verbinding is
+  terug", met de knop "Probeer opnieuw". De regel is even lang als die zonder verbinding en verspringt op 390 px niet.
+
+### De CSV bij een grafiek of kaart noemt de inhoudshash of de DUO-md5, net als de tabel-CSV (#809)
+- De CSV-knop bij een grafiek zette bron, selecties en afronding boven de kop, maar niet de inhoudshash (CBS, RIO) of
+  de md5 van het DUO-bestand die de tabel-CSV wel had (#715, #717). Ook afkap en onderdrukte cellen ontbraken. Eén
+  functie (`tools/exportnoten.py`) geeft nu de herkomstregels voor de tabel-CSV, de grafiek en de kaart; de kaart had
+  er nog geen.
+
+### Een antwoord met grafiek schuift op een telefoon niet meer terwijl het stroomt (#808)
+- Kwam de grafiek binnen terwijl de tekst nog moest komen, dan gold het antwoord al als klaar: de knop "Download data
+  als CSV" stond in een bubbel zonder tekst. Die bubbel sprong omhoog toen de redenering bij de eerste regel inklapte,
+  en daarna schoof de knop bij elke gestreamde regel omlaag. Op 390 px was dat een CLS van 0,073–0,105 per antwoord
+  (staafgrafiek en kaart, licht en donker), nu 0,0007. Een grafiekbericht telt niet meer als volgende ronde
+  (`roundSettled`), dus de knop en de blokken komen pas als het antwoord af is, in één keer onder de tekst. Dezelfde
+  oorzaak als het etiket "Antwoord van …" in #661.
+
+### Na 👍 staat erbij wat er bewaard wordt (#807)
+- Ook een 👍 bewaart een kopie van vraag, antwoord en stappen voor het team, 90 dagen, ook na het verwijderen van het
+  gesprek. Dat stond alleen in de 👎-dialoog. Nu zegt de bevestiging na 👍 "Bedankt voor je feedback!" met dezelfde
+  bewaarzin, in de live region die er al was, zodat een schermlezer hem voorleest. Ze blijft 15 s staan (na 👎 4 s,
+  daar stond de zin al in de dialoog) en scrolt zo ver als nodig in beeld. Zonder klik staat er niets extra onder een
+  antwoord.
+
+### Een `/chat#vraag=…`-link vult de invoer ook als de app al open staat (#806)
+- Een link met een vraag (#709) werkte alleen als de app opnieuw laadde. Plakte je hem in een tabblad waarin de app al
+  draaide, dan veranderde alleen het fragment: de invoer bleef leeg en de vraag stond nog in de adresbalk. Nu leest de
+  app ook die wissel, langs hetzelfde pad als bij het opstarten (opschonen, uit de adresbalk, nieuw gesprek, vraag in
+  de invoer, onverstuurd, met focus).
+- Loopt er op dat moment een antwoord of rapport, dan breekt de link dat niet af: de vraag wacht tot de run klaar is.
+
+### Het landelijke aantal mbo-studenten komt elke keer uit dezelfde tabel (#805)
+- "Hoeveel mbo-studenten waren er in 2024/25?" gaf in één sessie 474.963 (DUO, het bestand per sectorkamer) en 475.460
+  (CBS 85354NED, ook 85353NED): beide juist, met een andere definitie, maar de bron koos het model. Nu is het de vaste
+  maat `mbo_studenten_landelijk`: CBS 85354NED, met de leerweg volgens de extranei-standaard (#653, #658) of bol/bbl.
+  Onder het antwoord staat de regel "Bron en definitie" met DUO "Mbo-studenten per instelling" als alternatief.
+- Een instelling bij een landelijke maat is nu een melding die naar de maat per instelling wijst. Bij
+  `deelnemers_ho_landelijk` werd ze stil genegeerd: een aanroep met een hogeschool gaf het landelijke getal terug.
+
+### Een verwijdering die bij het sluiten van de tab mislukt, gaat bij het volgende bezoek opnieuw (#801)
+- Sloot je binnen de bedenktijd de tab en mislukte de DELETE die meeging, dan stond het gesprek bij het volgende bezoek
+  zonder uitleg weer in de lijst. Nu staat het id van het gesprek (geen titel of inhoud) vanaf het verwijderen in een
+  wachtrij in de browser, tot de server de verwijdering bevestigt (een 404 telt mee). Bij het laden van de chat gaan
+  die verwijderingen eerst opnieuw en tonen de lijst ze niet; lukt het weer niet, dan komt het gesprek terug met de
+  melding en "Opnieuw proberen" (#778).
+- De wachtrij hoort bij het account (`SESSION_DATA_KEYS`): uitloggen stuurt haar eerst nog met het eigen token, en
+  uitloggen, een nieuwe login en het einde van de sessie wissen haar. Ongedaan maken of een nieuwe vraag in het gesprek
+  haalt het id eruit.
+
+### Een logregel per modelaanroep, om de time-out per aanroep op meting te kiezen (#800)
+- De time-out per modelaanroep (`LITELLM_REQUEST_TIMEOUT`, 1200 s) ligt boven elke grens per run, zodat een nieuwe
+  poging na een time-out er nooit in past. Een lagere waarde kan alleen op meting. Elke modelaanroep logt nu één
+  regel `MODELAANROEP` (INFO), zonder gebruikerstekst: model, uitkomst (`ok`, `gestopt` of het fouttype), de seconden
+  tot de provider antwoordde, tot de eerste chunk en tot het einde, en de uitvoertokens. De waarschuwing bij een
+  time-out noemt hoe lang de poging liep.
+- `LITELLM_REQUEST_TIMEOUT` staat nu in `docs/configuratie`. De waarde verandert pas na een week meten.
+
+### Een time-out van het model krijgt een nieuwe poging (#799)
+- Een time-out van de provider (`litellm.Timeout`) ging meteen als fout naar de gebruiker, zonder de melding "Model
+  antwoordt traag, nieuwe poging…" en zonder backoff: hij erft niet van de fouten die de herhaling ving. Nu krijgt hij
+  dezelfde herhaling als een verbroken verbinding. Hoe lang één modelaanroep mag duren, staat in #800.
+
+### Op 320 px scrolt geen pagina meer horizontaal (#798)
+- Onder 356 px liep de navigatiebalk op `/chat` buiten beeld: Zoeken stond rechts van het scherm en de hele pagina
+  schoof opzij (WCAG 1.4.10). Onder 360 px toont de balk nu alleen het logo; het woordmerk blijft voor de
+  schermlezer. Op `/dashboards` (en `/rapporten` met rapporten) was een kaart minstens 280 px breed en liep zo 8 px
+  buiten beeld; een kaart is nu nooit breder dan de galerij. Vanaf 390 px verandert er niets.
+
+### Changelog-items als fragment per MR, zodat MR's niet meer op CHANGELOG.md botsen (#797)
+- Een MR zet zijn changelog-item niet meer in `CHANGELOG.md`, maar in een eigen bestand
+  `changelog.d/<issuenummer>-<onderwerp>.md`, met het kopje en de bullets zoals voorheen. Elke merge zette open MR's
+  met een changelog-regel op conflict, en in de merge train viel de tweede MR met zo'n regel eruit.
+- Bij een release zet `scripts/changelog.py X.Y.Z` de fragmenten onder `## X.Y.Z — <datum>` (hoogste issuenummer
+  bovenaan), met daaronder de items die nog onder "Niet uitgebracht" staan, en verwijdert de fragmenten. `--droog`
+  toont de versiesectie zonder iets te schrijven (`docs/promoten.md`, stap 0).
+- Een test controleert in elke MR de naam en de vorm van de fragmenten (`tests/test_changelog.py`).
+
+### Een heropend lang gesprek houdt zijn eerste vraag, en de contextlimieten komen van de server (#789)
+- Een lang gesprek dat je heropent, verloor zijn eerste vraag: browser en server lieten bij het inkorten de oudste
+  berichten vallen, terwijl het live gesprek de eerste vraag vasthield. Die vraag is het onderwerp van rapport en
+  dashboard. Nu korten live, heropend en de browser op dezelfde manier in (`agent/history.py` `trim`, in de browser
+  `contextLimits.js` `trimHistory`): de eerste vraag blijft, daarna de jongste berichten.
+- `/api/config` publiceert `max_chat_turns` en `max_history`. De chat gebruikt die in plaats van eigen vaste getallen,
+  zoals al bij `max_message_chars`; de constanten in de frontend zijn alleen nog de terugval. Het aantal vragen per
+  gesprek is `MAX_HISTORY // 2` (een vraag en zijn antwoord), zodat een andere `MAX_HISTORY` ook de chat volgt.
+- De melding bij een (bijna) volle chat zegt "20 vragen" in plaats van "20 berichten": ze telde al vragen.
+- De tekstlimiet van algemene feedback staat in de frontend bij de andere limieten; een test houdt hem gelijk aan
+  die van de server.
+
+### Een open chatverbinding volgt het intrekken en verlopen van het token (#786)
+- De server toetste het token alleen bij het verbinden; de hartslag hield de verbinding daarna onbeperkt open. Een
+  tabblad dat open bleef, kon na uitloggen elders of na het verlopen van de sessie nog vragen, rapporten en dashboards
+  laten draaien. Nu toetst de server het token vóór elke vraag, verduidelijking, dashboard, rapport en verversen
+  opnieuw en sluit hij bij een ongeldig token de verbinding (code 4001), zonder run. Is het token intussen ververst,
+  dan verbindt de app opnieuw in plaats van uit te loggen.
+- "Verwijder al mijn gegevens" trekt nu alle tokens van het account in, ook die van een ander apparaat. Een open sessie
+  daar kan zo geen gesprek meer terugzetten. De server bewaart daarvoor tot de laatste sessie verloopt alleen een hash
+  van de accountnaam met het moment van verwijderen (`revoked_users`).
+
+### Besluit over de bron van waarheid voor gesprekken vastgelegd (#784)
+- ADR-009 in `docs/architecture-decisions.md`: de browser blijft het gesprek bewaren, en de server bewaart straks per
+  beurt de herkomst van de data, het rekenbewijs, de kaarten en een hash van het gecontroleerde antwoord. Een rapport op
+  een heropend gesprek krijgt dan dezelfde context als in het lopende gesprek. Nog niet gebouwd (#875, #876);
+  de app werkt nog zoals voor dit besluit.
+
+### Kleine a11y-restpunten in de gesprekslijst en de instellingen (#779)
+- Het veld voor een nieuwe gespreksnaam stond binnen de gespreksknop: ongeldige HTML, waarin browsers focus en toetsen
+  verschillend behandelen. Tijdens het hernoemen is de rij nu geen knop; het veld heeft een naam voor de schermlezer,
+  is op een aanraakscherm 44 px hoog (was 24 px) en na Enter of Escape gaat de focus terug naar het gesprek.
+- De themaknoppen (Systeem, Licht, Donker) zeggen met `aria-pressed` welke gekozen is, zoals de functieknoppen ernaast.
+- Zoeken in gesprekken toont hoogstens 50 treffers, nieuwste eerst. Bij een volle pagina staat er nu dat oudere
+  treffers kunnen ontbreken en dat een preciezere zoekterm helpt; eerder leek het alles.
+- De melding "Ingeladen gesprek" is op een telefoon 12,5 px (was 11,7 px), zoals de andere kleine lagen (#613/#663).
+
+### Een herkende SRAM-instelling is het standaardprofiel; de onboarding opent zonder profiel (#777)
+- De kop toonde de instelling uit je SRAM-account alsof hij actief was, maar de chat, de dashboards en de rapporten
+  gebruikten hem niet. Nu werken ze allemaal met hetzelfde profiel (`frontend/src/profiel.js`): de instelling die je
+  zelf koos, en zolang je niets koos de instelling die je SRAM-account opgeeft, als de app die kent. Een eigen keuze
+  wint altijd, ook een bewust leeggemaakte; vroeger won in de kop juist SRAM van je keuze.
+- Het welkomstvenster opent als er nog geen profiel is (geen instelling, gekozen of via SRAM, en geen functie), na
+  het wachtwoordformulier en na de terugkeer uit SRAM gelijk. Een SRAM-gebruiker met een herkende instelling ziet het
+  dus niet; een SRAM-gebruiker zonder herkende instelling nu wel, waar SRAM het vroeger nooit opende.
+- Uitloggen wist het profiel nog steeds (gedeeld apparaat, besluit 30-10); er komt geen opslag op de server.
+
+### Weggaan tijdens een antwoord of rapport: eerst een bevestiging, daarna een eerlijke markering (#772)
+- Naar een andere pagina gaan, een ander gesprek openen of een nieuw gesprek beginnen terwijl er een antwoord of rapport
+  loopt, vraagt eerst om bevestiging. "Blijven" laat de run doorlopen; "Toch weggaan" stopt hem netjes. Sluiten of
+  herladen van het tabblad vraagt het via de browser.
+- Een antwoord dat zo stopte, heet "Gestopt omdat je wegging" in plaats van "Verbinding verbroken — antwoord
+  onvolledig", met "Probeer opnieuw"; een rapport krijgt een eigen regel met "Opnieuw proberen". Ook via de terugknop
+  van de browser, die buiten de bevestiging om gaat.
+- Wie tijdens een run wegging, vindt bij terugkeer naar de chat hetzelfde gesprek terug.
+
+### De dashboardbouwer is weg (#765)
+- Besluit A van 30-10: de LLM-gestuurde dashboardbouwer gaat eruit. Weg zijn de bouwer op `/dashboards` ("Nieuw
+  dashboard", `DashboardCreator`, `useDashboardChat`), het gegenereerde dashboard (`GeneratedDashboard`,
+  `dashboardHtml.js`), de WebSocket-acties `generate_dashboard` en `refresh_dashboard`, `POST /api/dashboard/refresh`,
+  `agent/dashboard.py`, `prompts/dashboard.md`, en verversen en reproduceren (`agent/replay.py`,
+  `agent/figuurverschil.py`). Wat het rapport ervan gebruikte, staat nu in `agent/datasetcontext.py`.
+- De drie vaste dashboards (Mijn instelling, Arbeidsmarkt, Landelijk), `data/dashboard.py`, de vijf
+  `GET /api/dashboard/*` en `ENABLE_DASHBOARDS` blijven zoals ze waren: aan op test, uit op playground en productie.
+- Een opgeslagen dashboard uit de bouwer wordt niet weggegooid, maar opent niet meer. Op `/dashboards` staat het in een
+  lijst om los te verwijderen, en een oude link zegt dat het niet meer opent. Het zit nog in de export van je gegevens
+  en valt onder de gewone bewaartermijn.
+- Een oude frontend die `generate_dashboard` of `refresh_dashboard` stuurt, krijgt de melding voor een onbekende actie.
+
+### Twee tabbladen met hetzelfde gesprek overschrijven elkaars vragen niet meer (#760)
+- Stel je in twee tabbladen (of in de app en de browser) vragen in hetzelfde gesprek, dan gooide de laatste opslag
+  de vragen en antwoorden van het andere tabblad stil weg, op de server en op elk apparaat. Nu weigert de server een
+  opslag die al bewaarde vragen zou weghalen, en gaat het tabblad dat achterliep verder als apart gesprek met
+  "(afsplitsing)" achter de titel. Een melding zegt dat. Er gaat niets verloren.
+- Alleen de vragen tellen: een antwoord dat later volledig wordt, wordt gewoon bijgewerkt. Met één tabblad merk je
+  niets.
+
+### Code ook op desktop standaard ingeklapt (#747)
+- De kaart "Redenering (N stappen)" klapt nu ook op schermen breder dan 1024 px in zodra het antwoord begint, net als
+  op een telefoon. Daar bleef hij open, met alle code van de stappen uitgeklapt boven het antwoord. Tijdens het
+  wachten staat de kaart open en toont hij de voortgang; wie hem zelf open- of dichtdoet, houdt die stand.
+
+### Rapport als Markdown downloaden (#746)
+- Naast "Download als HTML" en "Opslaan als PDF" staat bij een rapport nu "Download als Markdown" (op een telefoon in
+  het ⋯-menu). Het .md-bestand bevat de tekst om in een eigen document aan te vullen, in de volgorde van het rapport:
+  titel, datum en auteursregel, afwijking van de vraag, onderzoeksvraag, reikwijdte, definities, per visualisatie
+  titel, noot, bron en toelichting, conclusie, bronnen en herkomst met de dataversie. Een lege sectie valt weg.
+- Grafieken gaan niet mee: per visualisatie staat dat er een grafiek stond, die in de HTML-download en de PDF zit.
+  Een .docx met grafieken als afbeelding komt pas als daar vraag naar blijft.
+- De tekst komt uit de bewaarde HTML van het rapport, dus ook een ouder rapport is als Markdown te downloaden.
+
+### Een rapport zegt waarom een cijfer kan afwijken van eigen cijfers (#736)
+- Vier gebruikers legden een rapport naast eigen cijfers of die van de Vereniging Hogescholen en konden het verschil
+  niet verklaren. Het definitieblok van een rapport heeft nu per dataset een item "Vergelijken met eigen cijfers":
+  de peildatum (1 oktober), of DUO personen of inschrijvingen telt, wat niet meetelt (dezelfde regel als bovenaan
+  het chatantwoord, #743), dat voltijd, deeltijd en duaal samen tellen, en bij CBS de afronding. Daarna één zin:
+  leg bij een verschil eerst peildatum, telwijze en dataversie naast elkaar.
+- Alles komt uit de metadata van de geladen data, niet van het model. Een zin over DUO staat er alleen als de
+  teldefinitie van DUO hem draagt; een test leest dat na in de catalogus.
+
+### Het wettelijk collegegeld per studiejaar, uit de wettekst (#729)
+- De chattool `get_collegegeld` geeft voor één studiejaar het wettelijk collegegeld: het bedrag voor voltijd en het
+  minimum en maximum voor deeltijd en duaal (de instelling kiest het bedrag ertussen). De bedragen staan in een kleine
+  vaste tabel in de code, nagelezen in artikel 9 van de Regeling financiën hoger onderwijs (BWBR0024005), voor
+  2023/2024 tot en met 2027/2028. Het model kiest alleen het studiejaar en noemt geen bedrag uit zijn geheugen.
+- Onder het antwoord staat "wetten.nl · Regeling financiën hoger onderwijs (BWBR0024005), artikel 9, versie van …,
+  opgehaald op …", met een link naar dat artikel in die versie.
+- Op een vraag naar het instellingscollegegeld zegt de app dat daarvoor geen open bron is, in plaats van een bedrag.
+- Rond 1 september wordt de tabel nagelezen tegen de wettekst (docs/promoten.md, "Jaarlijks"); `bron:ping` wordt rood
+  zodra het lopende studiejaar ontbreekt.
+
+### Jaarresultaat, diplomaresultaat en vsv per mbo-instelling, met vergelijkingsgroep (#727)
+- De chattool `get_mbo_indicatoren` geeft per mbo-instelling het jaarresultaat, het diplomaresultaat en het
+  percentage nieuwe vsv'ers over drie schooljaren, elk naast de waarde van de vergelijkingsgroep (alle roc's of alle
+  beroepscolleges). De bron is DUO's bestand met indicatoren per instelling (geïntegreerd jaardocument), alleen de
+  nieuwste editie, één keer per dag opgehaald. De code rondt af en berekent het verschil in procentpunt.
+  - Het laatste vsv-jaar heet voorlopig. Een lege cel of een 0 in het bestand wordt "geen cijfer", zonder getal.
+  - De cijfers gelden per BRIN: staat dezelfde naam ook onder een andere BRIN (Curio), dan zegt een noot dat ze niet
+    samen te nemen zijn.
+  - Hbo en wo krijgen een vaste melding; de sheet `Financieel` blijft bij #725.
+- De kolommen komen uit de koppen, niet uit vaste posities. Een onbekende kop, sheet, BRIN of vergelijkingsgroep, een
+  percentage buiten 0–1 of een groepswaarde die binnen een groep verschilt (verwisselde kolommen) geeft een
+  foutmelding zonder cijfers, net als een HTML-foutpagina met HTTP 200 (soft 404).
+- Onder het antwoord staat "DUO · Indicatoren per instelling (jaardocument mbo), editie …, peildatum …", met een link
+  naar het bestand. `bron:ping` haalt de editie ook op.
+- De prompt stuurt vsv per instelling naar deze tool en vsv landelijk naar CBS; de twee cijfers zijn niet vergelijkbaar.
+
+### Accreditatiedata per ho-opleiding uit DUO (#726, stap A)
+- De chattool `get_accreditatie` geeft voor één hbo- of wo-opleiding bij één instelling de datums die DUO over de
+  accreditatie registreert (Overzicht Erkenningen ho, CC-BY, dagelijks bijgewerkt): de besluitdatum van de NVAO, de
+  begindatum, de uiterste indiening voor de volgende beoordeling en, waar DUO ze vult, voorwaarden, verlenging (met de
+  WHW-grond), intrekking, afbouw en de vervaldatum van een nieuwe opleiding. Elke datum krijgt zijn betekenis uit code.
+- De uiterste indiening van het visitatierapport heet nooit einddatum of "geaccrediteerd tot"; ligt ze in het
+  verleden, dan zegt een noot dat de accreditatie daarmee niet verlopen is.
+- Er zit geen NVAO-oordeel in, en dat zegt de tool zelf. De Inspectietool, de systeemprompt en de docs verwijzen voor
+  hbo en wo nu naar `get_accreditatie`; de NVAO-oordelen wachten op toestemming van de NVAO (stap B).
+- De opleiding is te vinden op naam of CROHO-code (vijf cijfers met voorloopnullen). Passen er meer, dan noemt de
+  melding ze met niveau en code. Onder het antwoord staat de bronregel "DUO · Overzicht Erkenningen ho, versie van …".
+
+### Het chartpad van de pipeline staat alleen nog in `.gitlab-ci.yml` (#685)
+- Een projectvariabele `CHART_PATH` in de GitLab-instellingen ging voor de waarde in `.gitlab-ci.yml`, zodat wie
+  Maintainer is het pad kon wijzigen zonder review. `.gitlab-ci.yml` neemt nu de waarde over die de pipeline
+  feitelijk gebruikte (`charts/onderwijsdata-chat`); daarna gaat de projectvariabele weg. Er verandert niets aan
+  wat de pipeline doet.
+
+### `bron:ping` draait dagelijks in plaats van wekelijks (#678)
+- Een bron die verdwijnt of zijn contract wijzigt (zoals RIO v2 → v3, #627) kwam tot een week laat binnen. De
+  geplande pipeline draait nu elke dag rond 07:15 op `main`; het blijft één aanroep per bron, zonder LLM.
 
 ### Een gesprek openen tijdens een lopend antwoord haalt er niets van mee (#761)
 - Opende je een opgeslagen gesprek terwijl een antwoord nog liep, dan konden een grafiek of tekst van die run nog in het
