@@ -76,7 +76,8 @@ markers = ["live: roept het echte model en live bronnen aan; alleen met -m live"
 # 12515 statements, 718 gemist); de drempel gaat alleen omhoog, nooit omlaag om een MR groen te krijgen.
 [tool.coverage.run]
 source = ["."]
-# packages/*: de pakketten hebben eigen tests (#886); hun regels tellen niet mee in de dekking van de chat.
+# packages/*: de pakketten hebben eigen tests, die in CI vóór de chattests draaien met hun eigen dekking in het log (#886);
+# hun regels tellen niet mee in `fail_under` van de chat.
 omit = ["tests/*", "demo/*", "scripts/*", ".venv/*", "frontend/*", "packages/*"]
 
 [tool.coverage.report]
@@ -85,8 +86,9 @@ fail_under = 94
 
 [tool.ruff]
 line-length = 120
-# De bronpakketten kregen als losse repo's nooit ruff: 248 bevindingen en 93 bestanden die ruff anders zou opmaken.
-# Dat opruimen is een eigen stap (#886, pakkettests en grenstest in CI); tot dan blijft de poort van de chat op de chat.
+# Bewust uitgesloten (besluit bij #886): de pakketten kregen als losse repo's nooit ruff, en opnemen geeft 248 bevindingen
+# plus 93 bestanden die ruff anders zou opmaken, een opmaakcommit die de git blame van de pakketten overschrijft. Opruimen
+# kan per pakket in een eigen MR; haal het pakket dan hier en uit [tool.ty.src] weg (CONTRIBUTING.md).
 extend-exclude = ["packages"]
 
 [tool.ruff.lint]
@@ -103,8 +105,9 @@ ignore = [
 [tool.ty.rules]
 invalid-argument-type = "warn"
 
-# Zelfde reden als bij ruff: de pakketten hadden als losse repo's geen typecontrole (93 diagnostics), en hun
-# ty-schuld hoort niet in ty-baseline.txt van de chat. De chat blijft tegen de geïnstalleerde pakketten typechecken.
+# Bewust uitgesloten, zelfde besluit als bij ruff: de pakketten hadden als losse repo's geen typecontrole. Hun 93
+# diagnostics zouden ty-baseline.txt (nu 78) boven het plafond van het afbouwplan tillen (≤100 eind 2026, #391). De chat
+# blijft tegen de geïnstalleerde pakketten typechecken.
 [tool.ty.src]
 exclude = ["packages"]
 
