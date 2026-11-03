@@ -486,8 +486,6 @@ _NIVEAUS_INFO_PLUS = {"info", "warning", "error", "critical"}
 _BEWUST = {
     # Een ConfigError bevat alleen tekst uit config.py; zonder die tekst is een verkeerde configuratie niet te vinden.
     ("server.py", "", "Configuration validation failed: %s"),
-    # POST /api/dashboard/refresh gaat met de dashboardbouwer weg (#765); haal deze regel dan mee weg.
-    ("routes/chat.py", "refresh_dashboard_endpoint", "Dashboard refresh failed"),
 }
 
 
