@@ -78,6 +78,13 @@ export default function PrivacyInhoud() {
           herstart nog werkt. Gaan weg met het gesprek.
         </li>
         <li>
+          <strong>Bewijs per antwoord</strong>: bij elk antwoord op data bewaart de server waar de data vandaan kwam
+          (bron en selectie), de uitkomsten van berekeningen en de kolommen van kaarten, onder een hash van de
+          antwoordtekst. Zo geeft een rapport op een heropend gesprek hetzelfde resultaat als in het gesprek zelf. Je
+          vraag en het antwoord staan er niet in. Gaat weg met het gesprek, of na {gesprek} dagen als het gesprek er
+          niet meer is, of eerder als je al je gegevens verwijdert.
+        </li>
+        <li>
           <strong>Inloggen</strong>: met een gebruikersnaam en wachtwoord bewaart de server alleen je
           gebruikersnaam bij je gegevens. Met SURF SRAM is je e-mailadres je accountnaam, ook als auteur van een
           rapport; je naam, organisatie en instelling staan tijdens je sessie in het geheugen van de server (ten
@@ -127,14 +134,14 @@ export default function PrivacyInhoud() {
         <li>
           Al je gegevens in één keer exporteren: in de instellingen met &ldquo;Exporteer al mijn gegevens&rdquo;
           (<code>/api/mijn-gegevens/export</code>). Je krijgt één JSON-bestand met je gesprekken, rapporten en
-          dashboards, feedback en datarecepten. Niet erin: wat alleen in je browser staat, en feedback van een
+          dashboards, feedback, datarecepten en het bewijs per antwoord. Niet erin: wat alleen in je browser staat, en feedback van een
           verwijderd gesprek, die niet meer aan je account hangt.
         </li>
         <li>
           Al je gegevens in één keer verwijderen: in de instellingen met &ldquo;Verwijder al mijn gegevens&rdquo;,
           nadat je het woord &ldquo;verwijder&rdquo; hebt getypt. Dat kan niet ongedaan worden gemaakt; exporteer
           eerst. Dan verdwijnt alles wat de server onder je account bewaart (gesprekken, rapporten en dashboards, al
-          je feedback, ook de kopie bij de feedback per antwoord, en de datarecepten), en ook de kopie in deze
+          je feedback, ook de kopie bij de feedback per antwoord, de datarecepten en het bewijs per antwoord), en ook de kopie in deze
           browser; je wordt uitgelogd, ook op een ander apparaat. Wat blijft: de serverlogs (zonder gesprekstekst) en
           de back-ups van de beheerder, een hash van je accountnaam tot je laatste sessie verlopen is, een hash van
           een sessie waarmee je uitlogde tot zij verloopt, feedback die al eerder van een verwijderd gesprek is
