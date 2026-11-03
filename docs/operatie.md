@@ -95,7 +95,7 @@ Een fout in de chat toont een fout-ID; zoek dat ID in het log voor type en kenme
 | API-sleutel ontbreekt of ongeldig, model onbekend, API onbereikbaar | "Het model is nu niet beschikbaar" met fout-ID; geen verwijzing naar `.env` | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API (<wat te controleren>): <type en kenmerk>` op ERROR: sleutel in het secret, `MODEL`/`AVAILABLE_MODELS` of `*_API_BASE` |
 | Overige fout van model of API, time-out | "Fout bij het model of de API" met fout-ID | Opnieuw, en Opnieuw met een ander model | `Interne fout <ID> in model/API: <type en kenmerk>` op ERROR, de traceback op DEBUG |
 | Fout in onze eigen code | "Er ging intern iets mis" met fout-ID en het verzoek het ID door te geven | alleen Opnieuw (een ander model helpt niet) | `Interne fout <ID> in verwerking: <type en kenmerk>` op ERROR, de traceback op DEBUG |
-| Geen data om een rapport of dashboard van te maken | de tekst van de `Gebruikersfout`, letterlijk | Opnieuw | niets: de gebruiker lost dit zelf op met een vraag |
+| Geen data om een rapport van te maken | de tekst van de `Gebruikersfout`, letterlijk | Opnieuw | niets: de gebruiker lost dit zelf op met een vraag |
 | Verbinding weg tijdens een antwoord | "De verbinding viel weg voordat er een antwoord kwam. Stel je vraag opnieuw." | de vraag staat klaar om opnieuw te stellen | `VERBINDING`-regels met het verbindings-ID |
 
 De gebruiker ziet nooit een uitzonderingstekst, bestandspad of traceback: alleen een `Gebruikersfout` (tekst voor de

@@ -74,7 +74,8 @@ is een open punt.
 
 ## Wat je zelf kunt doen
 
-- Een gesprek verwijderen in de gesprekslijst; een rapport of dashboard verwijderen onder Rapporten. Een gesprek heeft
+- Een gesprek verwijderen in de gesprekslijst; een rapport verwijderen onder Rapporten, een dashboard uit de
+  verwijderde dashboardbouwer onder Dashboards (waar de omgeving die pagina aanzet, #765). Een gesprek heeft
   8 s bedenktijd ("Ongedaan maken", #493); pas daarna gaat de verwijdering naar de server. Log je binnen die tijd uit,
   dan gaat ze meteen, nog met je login, en wordt de login pas daarna ingetrokken (#778). Lukt de verwijdering op de
   server niet, dan staat het gesprek, rapport of dashboard weer in de lijst, met een melding en "Opnieuw proberen".

@@ -598,9 +598,9 @@ De grafiek wordt direct in de chat weergegeven. In een rapport staat onder elke 
 CBS-periodestatus van de getekende rijen, en als link de StatLine-pagina (CBS, #638) of de documentatie-URL uit de
 catalogus (andere bronnen). De regel komt uit de
 `data_key` van de aanroep; een grafiek uit losse `data` heeft geen herleidbare bron en zegt dat. Rust een rapport
-of dashboard op een afgekapte bron (één pagina, niet de hele bron, #186), dan zet de code per laadkey één vaste regel
-met bron, catalogustitel en het aantal opgehaalde rijen vooraan in "Wat dit rapport niet beantwoordt" of achteraan
-in de bronnen van het dashboard (`agent/afkapping.py`, #578).
+op een afgekapte bron (één pagina, niet de hele bron, #186), dan zet de code per laadkey één vaste regel met bron,
+catalogustitel en het aantal opgehaalde rijen vooraan in "Wat dit rapport niet beantwoordt" (`agent/afkapping.py`,
+#578).
 
 ---
 
@@ -665,7 +665,7 @@ het invoerveld; de gebruiker past haar aan of verstuurt haar zelf.
 
 Geen vervolgvragen na een verduidelijkingsvraag, een weigering, een ingehouden, leeg, afgekapt of afgebroken
 antwoord, een deelantwoord (het stappenbudget was op), of een beurt zonder geladen dataset (zoals alleen UWV of ROA).
-Rapport en dashboard tonen geen vervolgvragen.
+Een rapport toont geen vervolgvragen.
 
 Elk gewoon antwoord geeft in het log de regel `VERVOLGVRAGEN  aangeboden=N  datasets=M`, ook als N nul is: zo is te
 tellen hoe vaak er knoppen komen, en hoe vaak een antwoord met data (M > 0) er geen kreeg. De vragen zelf staan niet

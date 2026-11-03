@@ -1,10 +1,11 @@
 # Dashboards
 
-De app biedt voorgeconfigurde dashboards per onderwijsinstelling en een LLM-gestuurde dashboard-generator.
+De app heeft drie vaste dashboards per onderwijsinstelling (Mijn instelling, Arbeidsmarkt en Landelijk) op de pagina
+`/dashboards`. De LLM-gestuurde dashboardbouwer is verwijderd (#765); een analyse delen gaat met een rapport.
 
 ---
 
-## Voorgeconfigurde dashboards
+## Vaste dashboards
 
 Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `ENABLE_DASHBOARDS` op `true` staat (standaard uit in de code, #765; op test staat hij aan, op playground en productie uit):
 
@@ -17,32 +18,15 @@ Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `E
 | **Arbeidsmarktmatch** | `/api/dashboard/arbeidsmarktmatch` | UWV vacaturedata per sector, match scores |
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
+De data komt uit `data/dashboard.py`.
 
 ---
 
-## LLM-gestuurde generator
+## Opgeslagen dashboards uit de dashboardbouwer
 
-Gebruikers kunnen via de chat een dashboard laten genereren:
-
-1. **Genereer** — het LLM analyseert de vraag en maakt een dashboard-specificatie
-2. **Bekijk** — het dashboard wordt direct in de chat weergegeven
-3. **Sla op** — via de workbook-functionaliteit (vereist authenticatie)
-4. **Ververs** — data wordt opnieuw opgehaald via `/api/dashboard/refresh`
-
-Het gegenereerde dashboard bevat:
-
-- Interactieve Plotly-grafieken
-- Bronvermeldingen met link naar de originele data
-- Python-snippets voor reproduceerbaarheid
-
----
-
-## Workbooks
-
-Workbooks zijn opgeslagen dashboards die je kunt bewerken en delen. Ze bevatten:
-
-- Gekoppelde datasets en figuren
-- Dashboard-specificatie (recipe)
-- HTML-export voor delen
-
-Vereist authenticatie — zie [API Referentie → Persistentie](api.md#persistentie).
+Een dashboard dat iemand met de verwijderde dashboardbouwer opsloeg, blijft op de server staan: de app gooit geen
+gegevens weg omdat een functie verdwijnt. Het opent niet meer. Op `/dashboards` staat het onder de vaste dashboards in
+een lijst met titel en datum, om het los te verwijderen; een oude link (`/dashboards?id=…`) zegt dat het niet meer opent.
+Het zit in de export van "mijn gegevens", gaat mee met "al mijn gegevens verwijderen" en valt onder de gewone
+bewaartermijn van werkboeken (365 dagen, [Privacy](privacy.md)). Met `ENABLE_DASHBOARDS=false` (playground en productie)
+is de pagina er niet en zie je ze dus ook niet.
