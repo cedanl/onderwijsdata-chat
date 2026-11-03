@@ -17,6 +17,12 @@ from . import recepten
 _REKENTOOLS = frozenset({TOOL_COMPUTE_KPI, TOOL_RUN_ANALYSIS})
 _MAX_REKENBEWIJS = 30
 
+# Wat lineage en rekenbewijs sinds de vorige afgeronde beurt kregen: de inhoud van haar rij in `beurtbewijs`
+# (agent/beurtbewijs.py). Een gestopte, afgebroken of mislukte beurt en een verduidelijkingskaart maken geen rij, dus
+# wat zij opleverden blijft hier staan tot de volgende afgeronde beurt.
+_NIEUWE_LINEAGE = "_nieuwe_lineage"
+_NIEUW_REKENBEWIJS = "_nieuw_rekenbewijs"
+
 
 def _rekent(call: dict) -> bool:
     if call.get("name") in _REKENTOOLS:
@@ -45,7 +51,11 @@ def record_data_key(session: dict, tool_result: str, call: dict | None = None) -
             session.setdefault("data_vraag", {}).setdefault(key, nummer)
         if call is not None:
             # Keys are deterministic per selection: the first producer is the real one.
-            session.setdefault("data_provenance", {}).setdefault(key, call)
+            provenance = session.setdefault("data_provenance", {})
+            if key not in provenance:
+                # Wat sinds de vorige afgeronde beurt bijkwam gaat in de rij van de volgende (ADR-009, #875).
+                session.setdefault(_NIEUWE_LINEAGE, {})[key] = call
+            provenance.setdefault(key, call)
             # Dit antwoord rust op de data zoals ze nu is: voor deze gebruiker is ze niet herladen (#472, #788).
             recepten.live(session.get("username"), key)
             # Buiten het geheugen bewaard bij het opslaan van het gesprek: zo overleeft de key een herstart (#472).
@@ -155,9 +165,28 @@ def record_rekenbewijs(session: dict, tool_result: str, call: dict) -> None:
         return
     if not isinstance(parsed, dict) or "fout" in parsed:
         return
-    bewijs = session.setdefault("rekenbewijs", [])
-    bewijs.append({"tool": call["name"], "argumenten": call.get("arguments") or {}, "resultaat": tool_result})
-    del bewijs[:-_MAX_REKENBEWIJS]
+    nieuw = {"tool": call["name"], "argumenten": call.get("arguments") or {}, "resultaat": tool_result}
+    voeg_rekenbewijs_toe(session, [nieuw])
+    voeg_rekenbewijs_toe(session, [nieuw], sleutel=_NIEUW_REKENBEWIJS)
+
+
+def voeg_rekenbewijs_toe(session: dict, items: list[dict], sleutel: str = "rekenbewijs") -> None:
+    """Zet rekenuitkomsten achteraan in het bewijs van de sessie; hoogstens de laatste `_MAX_REKENBEWIJS` blijven."""
+    bewijs = session.setdefault(sleutel, [])
+    bewijs.extend(items)
+    bewijs[:] = begrens_rekenbewijs(bewijs)
+
+
+def begrens_rekenbewijs(items: list[dict]) -> list[dict]:
+    """De laatste `_MAX_REKENBEWIJS` rekenuitkomsten: zo veel kent de sessie, live en na heropenen."""
+    return items[-_MAX_REKENBEWIJS:]
+
+
+def neem_beurtbewijs(session: dict) -> tuple[dict[str, dict], list[dict]]:
+    """Lineage en rekenbewijs die bijkwamen sinds de vorige afgeronde beurt; daarna begint de telling opnieuw."""
+    lineage = session.pop(_NIEUWE_LINEAGE, None) or {}
+    rekenbewijs = session.pop(_NIEUW_REKENBEWIJS, None) or []
+    return lineage, rekenbewijs
 
 
 def rekenbewijs(session: dict) -> list[dict]:

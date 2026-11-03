@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, StringConstraints
 
-from agent import recepten
+from agent import beurtbewijs, recepten
 from core.auth import get_current_user
 from core.persoonsgegevens import veilige_gesprekstitel
 from persistence import db as persistence_db
@@ -70,6 +70,8 @@ def upsert_conversation(conv_id: str, body: dict, username: str = Depends(get_cu
         raise HTTPException(status_code=409, detail=GESPREK_ELDERS_GEWIJZIGD) from None
     # De recepten achter de tabellen van dit gesprek: zo overleven ze een herstart (#472).
     recepten.bewaar(username, conv_id, body["messages"])
+    # Het bewijs achter de antwoorden in dit gesprek: lineage, rekenbewijs en kaarten (ADR-009, #875). Na de 409 hierboven.
+    beurtbewijs.bewaar(username, conv_id, body["messages"])
     return {"ok": True}
 
 
@@ -87,6 +89,7 @@ def rename_conversation(
 @router.delete("/api/conversations/{conv_id}")
 def delete_conversation(conv_id: str, username: str = Depends(get_current_user)) -> dict:
     recepten.vergeet(username, persistence_db.recipes_for(username, conv_id))
+    beurtbewijs.vergeet(username, persistence_db.beurtbewijs_hashes(username, conv_id))
     persistence_db.delete_conversation(username, conv_id)
     return {"ok": True}
 
