@@ -48,12 +48,12 @@ ONVOLLEDIG = (
     "voor aantallen uit RIO: gebruik DUO of CBS."
 )
 
-# What a report or dashboard tells its reader about a source it holds one page of (#578). For the reader,
-# like exportnoten.ONVOLLEDIG_EXPORT; ONVOLLEDIG above instructs the model. `aantal` is AFGEKAPT_AANTAL or
-# empty when the row count is unknown; `waar` is "rapport" or "dashboard".
+# What a report tells its reader about a source it holds one page of (#578). For the reader, like
+# exportnoten.ONVOLLEDIG_EXPORT; ONVOLLEDIG above instructs the model. `aantal` is AFGEKAPT_AANTAL or
+# empty when the row count is unknown.
 AFGEKAPT = (
     "de app haalde één pagina van de bron op{aantal}, niet de hele bron; "
-    "rijen buiten die pagina ontbreken in dit {waar}."
+    "rijen buiten die pagina ontbreken in dit rapport."
 )
 AFGEKAPT_AANTAL = " ({rijen} rijen)"
 

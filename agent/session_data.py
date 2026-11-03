@@ -1,6 +1,6 @@
 """Which cached datasets belong to one conversation.
 
-The store is shared by every session, so reports and dashboards must ask the
+The store is shared by every session, so a report must ask the
 session which of its keys are theirs instead of listing the whole store.
 """
 

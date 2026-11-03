@@ -10,7 +10,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Dashboards pull in Plotly, which jsdom cannot load.
-vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
 vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
@@ -20,6 +19,7 @@ vi.mock('../api', async importOriginal => ({
 }))
 
 import WorkbookViewer from '../components/WorkbookViewer'
+import { BUILTIN_NATIONAAL } from '../workbooks'
 import { NavSlotContext } from '../navSlot'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -106,7 +106,7 @@ describe('geopend rapport op smal scherm (#604)', () => {
 })
 
 describe('geopend dashboard (#795)', () => {
-  const dashboard = { ...rapport, type: 'dashboard', htmlContent: undefined, dashboardSpec: {} }
+  const dashboard = BUILTIN_NATIONAAL
 
   it('noemt het dashboard in de knop op desktop', async () => {
     await renderMetSlot({ workbook: dashboard })

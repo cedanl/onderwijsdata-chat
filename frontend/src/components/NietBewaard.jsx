@@ -22,8 +22,8 @@ export function GesprekNietBewaard({ status, onOpnieuw }) {
 }
 
 // Het rapport bestaat alleen nog hier: zonder download is het weg als de pagina sluit.
-export function RapportNietBewaard({ workbook, status, instelling, onOpnieuw }) {
-  const { download, error } = useWorkbookDownload(workbook, instelling)
+export function RapportNietBewaard({ workbook, status, onOpnieuw }) {
+  const { download, error } = useWorkbookDownload(workbook)
   return (
     <p className="niet-bewaard" role="alert">
       {status === TE_GROOT ? 'Dit rapport is te groot om op de server te bewaren.' : 'Dit rapport is niet bewaard op de server.'}

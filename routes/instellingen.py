@@ -58,7 +58,7 @@ def tag_voorbeeldvragen(tags: tuple[str, ...], n: int = 4) -> list[str]:
 
 
 # Met login aan alleen voor een ingelogde gebruiker, zoals de andere /api-routes: de modellijst helpt anders bij
-# fingerprinting (#607). De loginpagina vraagt haar niet op; ChatPage en DashboardCreator pas na het inloggen.
+# fingerprinting (#607). De loginpagina vraagt haar niet op; ChatPage pas na het inloggen.
 @router.get("/api/settings/config")
 async def get_settings_config(username: str = Depends(get_current_user)) -> dict:
     available = get_available_models_for_user(username)
@@ -92,7 +92,7 @@ _INGELOGD = [Depends(get_current_user)]
 
 async def _laad_dashboard(loader: Callable[[str], dict], instelling: str) -> dict | JSONResponse:
     if not DASHBOARDS_ENABLED:
-        # Dezelfde 403 als POST /api/dashboard/refresh; de frontend leest `error`.
+        # De frontend leest `error`.
         return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, loader, instelling)

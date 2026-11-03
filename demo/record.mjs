@@ -389,10 +389,6 @@ async function sceneChat(page) {
   await delay(1000);
   await showAnnotation(page, 'Slimme vervolgvragen — klik om dieper in te zoomen', 'bottom-center', 2500);
   await delay(500);
-
-  // Show the "Maak dashboard" button
-  await showAnnotation(page, 'Eén klik: gesprek wordt een dashboard', 'bottom-left', 2000);
-  await delay(800);
 }
 
 // ─── SCENE 4: Dashboard ─────────────────────────────────────────────────────
@@ -402,7 +398,7 @@ async function sceneDashboard(page) {
   await page.click('text=Dashboard');
   await delay(1200);
 
-  await showAnnotation(page, 'Dashboard-galerij met voorgebouwde en eigen dashboards', 'top-center', 2500);
+  await showAnnotation(page, 'Dashboard-galerij met voorgebouwde dashboards', 'top-center', 2500);
   await delay(500);
 
   // Click built-in dashboard
@@ -427,20 +423,6 @@ async function sceneDashboard(page) {
 
   // Go back
   await page.click('.wb-back-btn');
-  await delay(800);
-
-  // Click "Nieuw dashboard" (first one, skip DEV-only test button)
-  const newBtn = page.locator('.wb-new-card').first();
-  await newBtn.click();
-  await delay(1000);
-
-  await showAnnotation(page, 'Beschrijf in woorden welk dashboard je wilt', 'top-center', 2500);
-  await delay(800);
-
-  // Type in the creator textarea
-  const dcInput = page.locator('.dc-textarea');
-  await dcInput.click();
-  await typeText(page, '.dc-textarea', 'Vergelijk de instroom per sector bij Hogeschool Utrecht', 35);
   await delay(800);
 }
 

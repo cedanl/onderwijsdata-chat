@@ -1,4 +1,4 @@
-"""Het voorbehoud bij een afgekapte bron in een rapport en een dashboard (#578): uit code, niet uit het model.
+"""Het voorbehoud bij een afgekapte bron in een rapport (#578): uit code, niet uit het model.
 
 De chat zegt het als de data één pagina van de bron is, niet de hele bron (#186): het model leest de
 waarschuwing in het toolresultaat. Een rapport op dezelfde data zweeg erover, want de datasetcontext gaf
@@ -7,19 +7,15 @@ er één vaste regel van, per laadkey: een selectie op een afgekapte pagina noem
 pagina, dus één regel voor beide. Een key zonder KeyMeta heeft geen bron om te noemen en krijgt geen regel.
 """
 
-from typing import Literal
-
 from tools import store
 from tools.getal import nl_getal
 from tools.store import KeyMeta
 
 from .selectie import bron_met_bestand, laadkey
 
-Waar = Literal["rapport", "dashboard"]
 
-
-def afkappingsregels(datasets: list[dict], waar: Waar) -> list[str]:
-    """Per afgekapte laadkey in de datasetcontext één regel voor de lezer; `waar` is "rapport" of "dashboard".
+def afkappingsregels(datasets: list[dict]) -> list[str]:
+    """Per afgekapte laadkey in de datasetcontext één regel voor de lezer van het rapport.
 
     Alleen een dataset waarvan de context `volledig: False` zegt en waarvan de store de herkomst kent.
     """
@@ -31,12 +27,12 @@ def afkappingsregels(datasets: list[dict], waar: Waar) -> list[str]:
         root = laadkey(key)
         if root not in regels:
             # Is de laadkey uit de store verdwenen, dan noemt de selectie, die de herkomst erfde, de bron.
-            regels[root] = _regel(store.meta(root) or eigen, store.get(root), waar)
+            regels[root] = _regel(store.meta(root) or eigen, store.get(root))
     return list(regels.values())
 
 
-def _regel(known: KeyMeta, pagina, waar: Waar) -> str:
+def _regel(known: KeyMeta, pagina) -> str:
     """De bron in woorden zoals de chat haar noemt (CH-45, #540), dan het voorbehoud uit de store."""
     bron = bron_met_bestand(known)
     aantal = store.AFGEKAPT_AANTAL.format(rijen=nl_getal(len(pagina))) if pagina is not None else ""
-    return f"{bron}: {store.AFGEKAPT.format(aantal=aantal, waar=waar)}"
+    return f"{bron}: {store.AFGEKAPT.format(aantal=aantal)}"

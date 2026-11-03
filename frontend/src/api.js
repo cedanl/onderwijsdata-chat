@@ -122,21 +122,6 @@ export async function fetchDashboardData(endpoint, instelling, { signal } = {}) 
   return apiFetch(`${endpoint}?${new URLSearchParams({ instelling })}`, { signal })
 }
 
-// mode: 'ververs' haalt de data opnieuw op bij de bron en meldt wat er veranderde;
-// 'reproduceer' rendert opnieuw uit de opgeslagen data, zonder netwerk (#346).
-export async function refreshDashboard(spec, settings = {}, mode = 'ververs') {
-  return apiFetch('/api/dashboard/refresh', {
-    method: 'POST',
-    body: JSON.stringify({
-      recipe: spec.recipe,
-      figure_recipes: spec.figure_recipes,
-      spec,
-      settings,
-      mode,
-    }),
-  })
-}
-
 export async function fetchFeedbackQuestions() {
   return apiFetch('/api/feedback/questions')
 }

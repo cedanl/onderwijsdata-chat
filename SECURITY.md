@@ -36,7 +36,7 @@ Een bevestigde bevinding komt daarna in dit log.
 | S14 | Token blijft na uitloggen geldig | Gemiddeld | ✅ Opgelost (denylist bij uitloggen, #479); restrisico — zie S14 |
 | S15 | `history`-actie omzeilt de invoerlimiet | Laag | ✅ Opgelost (#500) — tekencap op de hele historie |
 | S16 | Geen privacy-informatie bij opslag van gesprekken | Gemiddeld | ⚠️ Deels opgelost (#477, #507); open punten in #553 |
-| S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools |
+| S17 | Dashboard-refresh voert tool-aanroepen van de client uit | Gemiddeld | ✅ Opgelost (#505) — allowlist van load-tools; sinds #765 is het pad weg |
 | S18 | `/info` gaf zonder inloggen databasetype en omgeving prijs | Laag | ✅ Opgelost (#518) |
 | S19 | `LOG_LEVEL=DEBUG` zet gesprekstekst in het log | Laag | ℹ️ Gedocumenteerd (#516) — waarschuwing bij opstarten en in de docs |
 | S20 | `/version` zonder inloggen geeft versie en commit prijs | Laag | ℹ️ Geaccepteerd (#552) — blijft open voor de deploycontrole; restrisico hieronder |
@@ -55,7 +55,7 @@ Een bevestigde bevinding komt daarna in dit log.
 
 **Aangetroffen in:** quickscan A1  
 **Was:** `md.markdown(llm_output)` injecteerde raw `<script>` tags in geëxporteerde HTML-bestanden.  
-**Nu:** de server-side export (`export/`) bestaat niet meer. Rapporten en dashboards worden in de frontend opgebouwd door `buildReportHtml` (`frontend/src/reportHtml.js`) en `buildDashboardHtml` (`frontend/src/dashboardHtml.js`). Tekst uit het model gaat door `escapeHtml`; de figure-JSON in het inline script gaat door `scriptSafe` (#474); de dashboard-toelichting wordt met `react-markdown` gerenderd. Tests: `frontend/src/__tests__/reportHtml.test.js` en `frontend/src/__tests__/dashboardHtml.test.js`.  
+**Nu:** de server-side export (`export/`) bestaat niet meer. Rapporten worden in de frontend opgebouwd door `buildReportHtml` (`frontend/src/reportHtml.js`). Tekst uit het model gaat door `escapeHtml`; de figure-JSON in het inline script gaat door `scriptSafe` (#474). Test: `frontend/src/__tests__/reportHtml.test.js`. `buildDashboardHtml` is weg met de dashboardbouwer (#765).  
 **Opgeruimd (#506):** de ongebruikte dependency `nh3`, een overblijfsel van de server-side export, staat niet meer in `pyproject.toml` en `uv.lock`.
 
 ---
@@ -86,8 +86,8 @@ Een bevestigde bevinding komt daarna in dit log.
 
 ### S4 — Foutmeldingen lekken interne tekst ✅ Opgelost
 
-**Locatie:** `core/errors.py` (`friendly_error()`, `Gebruikersfout`), `routes/chat.py`, `agent/replay.py`  
-**Fix (#404, #503):** alleen een `Gebruikersfout` — een fout waarvan de tekst voor de gebruiker is geschreven, zoals "Geen datasets geladen" — bereikt de browser letterlijk. Elke andere fout krijgt een vaste melding met een kort fout-ID; `log_interne_fout()` logt onder dat ID het type en een kenmerk van de exceptie (`fout_len=… fout_hash=…`) op ERROR, de traceback staat alleen op DEBUG in het log (#502). Dat geldt voor alle paden: het chat-antwoord, dashboard en rapport (`_generate_dashboard()`/`_generate_report()` vangen `Gebruikersfout` apart, al het andere gaat generiek), dashboard-refresh (`replay_data_calls()` bewaart per mislukte call een vaste tekst, de details staan in het log) en model-/API-fouten zonder vaste tekst in `_FRIENDLY_ERRORS` (vaste melding met fout-ID, `modelafhankelijk` blijft gelden).
+**Locatie:** `core/errors.py` (`friendly_error()`, `Gebruikersfout`), `routes/chat.py`  
+**Fix (#404, #503):** alleen een `Gebruikersfout` — een fout waarvan de tekst voor de gebruiker is geschreven, zoals "Geen datasets geladen" — bereikt de browser letterlijk. Elke andere fout krijgt een vaste melding met een kort fout-ID; `log_interne_fout()` logt onder dat ID het type en een kenmerk van de exceptie (`fout_len=… fout_hash=…`) op ERROR, de traceback staat alleen op DEBUG in het log (#502). Dat geldt voor alle paden: het chat-antwoord, het rapport (`_generate_report()` vangt `Gebruikersfout` apart, al het andere gaat generiek) en model-/API-fouten zonder vaste tekst in `_FRIENDLY_ERRORS` (vaste melding met fout-ID, `modelafhankelijk` blijft gelden).
 
 ---
 
@@ -95,7 +95,7 @@ Een bevestigde bevinding komt daarna in dit log.
 
 **Login (beperkt):** `POST /api/auth/login` in `routes/auth.py` gebruikt `_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)`: maximaal 5 pogingen per minuut per gebruikersnaam + `request.client.host` (#504). Daarboven volgt `429` met een `Retry-After`-header, ook voor een poging met het juiste wachtwoord — de limiter verraadt niet welke poging goed was. `RateLimiter` (`core/rate_limit.py`) houdt de pogingen in het geheugen bij, per proces.  
 **Feedback:** `routes/feedback.py` heeft een eigen limiter (3 per 600 seconden).  
-**Chat (beperkt, #444):** de WebSocket `/api/chat` telt elk verzoek dat het model kost (vraag, verduidelijking, dashboard, rapport) met `RateLimiter(CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S)` (standaard 30 per 600 s) per gebruikersnaam, en zonder login per verbinding (een vast ID per WebSocket dat een reset overleeft). Daarboven krijgt de client een foutmelding met de wachttijd en start er geen taak; voorbeeldvragen tellen niet mee. Per proces, in het geheugen, net als de login-limiter. De dashboard-refresh (`/api/dashboard/refresh` en de WebSocket-actie) kost geen model en telt niet mee. De maximale berichtlengte staat los daarvan, zie S7.  
+**Chat (beperkt, #444):** de WebSocket `/api/chat` telt elk verzoek dat het model kost (vraag, verduidelijking, rapport) met `RateLimiter(CHAT_RATE_LIMIT, CHAT_RATE_WINDOW_S)` (standaard 30 per 600 s) per gebruikersnaam, en zonder login per verbinding (een vast ID per WebSocket dat een reset overleeft). Daarboven krijgt de client een foutmelding met de wachttijd en start er geen taak; voorbeeldvragen tellen niet mee. Per proces, in het geheugen, net als de login-limiter. De maximale berichtlengte staat los daarvan, zie S7.  
 **Blokkade voor iedereen opgelost (#504):** uvicorn draait zonder `--forwarded-allow-ips` en de manifests zetten `FORWARDED_ALLOW_IPS` niet, dus achter de ingress ziet de limiter waarschijnlijk voor iedereen hetzelfde adres. Met alleen het IP als sleutel deelden alle wachtwoordgebruikers dan één budget van 5 pogingen per pod, en kon iemand zonder inloggegevens wachtwoord-login voor iedereen blokkeren. De sleutel is nu gebruikersnaam + adres: een vol budget raakt alleen die ene combinatie.  
 **Restrisico:** de limiter ziet waarschijnlijk alleen het adres van de ingress. Daardoor kan iedereen die een gebruikersnaam kent die account blijvend buitensluiten door elke minuut 5 pogingen te doen, en kan één client met 5 pogingen per minuut per gebruikersnaam één wachtwoord over veel gebruikersnamen spuiten. Per echte client tellen vergt dat uvicorn `X-Forwarded-For` van de ingress vertrouwt (`FORWARDED_ALLOW_IPS` op het ingress-subnet; uvicorn leest die env var zelf). Het subnet is nog niet vastgesteld en welk adres de limiter in het cluster ziet is nog niet nagegaan.
 
@@ -165,7 +165,7 @@ Test: `tests/test_auth.py`, `tests/test_token_intrekking.py`. Intrekking bij uit
 - in dat proces resourcelimieten (CPU-tijd, geheugen, geen bestanden schrijven, geen nieuwe processen), alleen een handvol builtins, en een audit hook die onder meer netwerk, subprocessen, schrijven en lezen buiten de Python-installatie weigert.
 
 **Restrisico:** die lagen beperken de schade, maar zijn geen beveiligingsgrens. De AST-controle en de audit hook draaien in Python zelf; de pod draait als niet-root met `seccompProfile: RuntimeDefault` en zonder capabilities, maar die grens omsluit server en kindproces samen: tussen die twee staat geen eigen container, seccomp-profiel of aparte gebruiker (#443). Een ontsnapping, bijvoorbeeld via een fout in de interpreter of in pandas of numpy, draait als dezelfde gebruiker als de server. De geheugenlimiet van het kindproces (1 GiB) past in de pod-limieten (`manifests/<omgeving>/values.yaml`: 2 GiB op test en playground, 4 GiB op productie), zodat een zwaar script het kindproces stopt en niet de server.  
-**Waarom geaccepteerd, ernst Laag:** misbruik vraagt eerst een ontsnapping uit de sandbox; de audit achter #443 vond er geen, maar sluit er ook geen uit. Het risico is geaccepteerd en wordt gevolgd in #443 (sterkere isolatie zodra onvertrouwde gebruikers toegang krijgen). Dashboard-refresh kan `run_analysis` sinds #505 niet meer aanroepen (S17).
+**Waarom geaccepteerd, ernst Laag:** misbruik vraagt eerst een ontsnapping uit de sandbox; de audit achter #443 vond er geen, maar sluit er ook geen uit. Het risico is geaccepteerd en wordt gevolgd in #443 (sterkere isolatie zodra onvertrouwde gebruikers toegang krijgen). Dashboard-refresh kon `run_analysis` sinds #505 niet meer aanroepen en is sinds #765 weg (S17).
 
 ---
 
@@ -209,10 +209,10 @@ Gezien op 27-10-2026: de job was op `main` rood op deze drie (allow_failure, dus
 **Probleem:** het token is een ondertekende tekst met gebruikersnaam en verloopmoment. De backend kende geen intrekking: na uitloggen bleef een token geldig tot het verliep, en met OIDC was het via `POST /api/auth/refresh` zonder grens te verlengen (S10), ook een buitgemaakt token.  
 **Fix (#479):**
 - Uitloggen (`handleLogout` in `frontend/src/App.jsx` roept `POST /api/auth/logout` aan) zet `sha256(token)` tot de vervaltijd van het token op een denylist in de database. Die denylist is gedeeld door alle replica's. Verlopen rijen worden bij elke intrekking en bij het opstarten opgeruimd.
-- REST-routes, de WebSocket-connect (`/api/chat`), `POST /api/dashboard/refresh` en `POST /api/auth/refresh` weigeren een ingetrokken token.
+- REST-routes, de WebSocket-connect (`/api/chat`) en `POST /api/auth/refresh` weigeren een ingetrokken token.
 - De database bewaart alleen de hash, nooit het token. De logs bevatten geen van beide.
 - Een databasestoring bij de controle geeft 500, geen 401, zodat een storing niet als "sessie voorbij" geldt.
-- Een open WebSocket volgt het intrekken en verlopen (#786, besluit A): vóór elke actie die een run start (`message`, `clarification_choice`, `generate_dashboard`, `generate_report`, `refresh_dashboard`, `RUN_ACTIES` in `routes/chat.py`) toetst de server het token van de handshake opnieuw met `verify_token`, één DB-lookup in een thread, gedeeld door alle replica's. Geldt het niet meer, dan sluit hij met 4001 en start er geen run; de frontend beëindigt dan de sessie, of verbindt opnieuw als het token intussen ververst is (`useChat.js`). Een databasestoring bij die controle geeft een `error`-event zonder run, en de verbinding blijft.
+- Een open WebSocket volgt het intrekken en verlopen (#786, besluit A): vóór elke actie die een run start (`message`, `clarification_choice`, `generate_report`, `RUN_ACTIES` in `routes/chat.py`) toetst de server het token van de handshake opnieuw met `verify_token`, één DB-lookup in een thread, gedeeld door alle replica's. Geldt het niet meer, dan sluit hij met 4001 en start er geen run; de frontend beëindigt dan de sessie, of verbindt opnieuw als het token intussen ververst is (`useChat.js`). Een databasestoring bij die controle geeft een `error`-event zonder run, en de verbinding blijft.
 - "Verwijder al mijn gegevens" (`DELETE /api/mijn-gegevens`) trekt alle tokens van het account in, niet alleen het meegestuurde (#786). De server houdt geen lijst van uitgegeven tokens bij; daarom zet `revoke_all_tokens` in de tabel `revoked_users` `sha256(gebruikersnaam)` met het moment van intrekken. Elk token met een sessiestart op of vóór dat moment geldt niet meer, ook een ververst token (verversen houdt de sessiestart); een login daarna wel. De rij blijft tot elk van die tokens toch verlopen is (`SESSION_MAX_HOURS`, minstens 24 uur voor tokens van vóór #479). `verify_token` leest beide tabellen in één query.
 
 **Restrisico:**
@@ -249,7 +249,8 @@ Test: `tests/test_token_intrekking.py`.
 
 ### S17 — Dashboard-refresh voert tool-aanroepen van de client uit ✅ Opgelost
 
-**Locatie:** `routes/chat.py` (`POST /api/dashboard/refresh` en de WebSocket-actie `refresh_dashboard`), `agent/replay.py` (`replay_data_calls()`)  
+**Sinds #765:** het pad bestaat niet meer. `POST /api/dashboard/refresh`, de WebSocket-actie `refresh_dashboard` en `agent/replay.py` zijn weg met de dashboardbouwer; geen eindpunt voert nog een recept van de client uit. Hieronder de oorspronkelijke bevinding.  
+**Locatie (was):** `routes/chat.py` (`POST /api/dashboard/refresh` en de WebSocket-actie `refresh_dashboard`), `agent/replay.py` (`replay_data_calls()`)  
 **Probleem:** de client stuurt het recept van het dashboard mee: toolnamen en argumenten. `replay_data_calls()` gaf elke naam en elk argument direct aan `tools.dispatch()`. Een client die de API mag gebruiken, kon zo elke tool aanroepen, ook `run_analysis` met eigen code, zonder dat het model eraan te pas komt.  
 **Fix (#505):** `replay_data_calls()` herhaalt alleen tools uit `REPLAYABLE_TOOLS` — de drie load-tools (`get_duo_data`, `get_cbs_data`, `get_rio_data`) waaruit de server zelf recepten bouwt (`_build_recipe`). Elke andere toolnaam wordt geweigerd en gelogd; `run_analysis` is via refresh niet aan te roepen. De scopecontrole (#355) zit in de tools zelf en geldt daarmee ook voor dit pad.
 
@@ -325,7 +326,7 @@ Tests: `frontend/src/__tests__/rapportSandbox.test.js`, `rapportPdf.test.js`, `w
 
 **Nu (#636):**
 - De API-documentatie bestaat alleen waar ontwikkeld wordt: `Config.api_docs()` is waar voor `APP_ENV` `local`, `development` en `test` (#676; eerst hing het aan `POSTGRES_URI` én een `SESSION_SECRET` die geen omgeving zette). Op playground en productie geven `/api/docs` en `/api/openapi.json` 404, en `/redoc` bestaat niet (met de gebouwde frontend krijgt het pad, zoals elk onbekend pad, `index.html` van de SPA). Er wordt dan geen documentatiepagina en geen Swagger- of ReDoc-script geserveerd.
-- De vijf dashboard-eindpunten vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` dezelfde 403 als `POST /api/dashboard/refresh` (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
+- De vijf dashboard-eindpunten vragen met login aan een geldig token (anders 401), en geven met `ENABLE_DASHBOARDS=false` een 403 (`{"error": "Dashboards zijn niet beschikbaar"}`), zonder data te laden. Zonder login (lokaal) werken ze zoals voorheen voor `gast`. De frontend stuurt het token mee en beëindigt de sessie bij een 401, zoals bij de andere API-aanroepen.
 - `Permissions-Policy` op elk antwoord, zie S3.
 - Al gedekt, geen wijziging: het printbericht van een rapport telt alleen als het van de app komt (`event.source === parent`, `PRINT_JS` in `frontend/src/reportHtml.js`; #634, zie S22).
 

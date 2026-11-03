@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createElement, act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useChat } from '../hooks/useChat'
-import useDashboardChat from '../hooks/useDashboardChat'
 import { BACKOFF_DELAYS, MAX_RETRIES, STABIEL_MS, createRetry, opgevenBij } from '../socketHealth'
 import { connectionStatus, connectionStatusText } from '../connectionStatus'
 import ConnectionStatus from '../components/ConnectionStatus'
@@ -125,7 +124,6 @@ describe('de status als de app stopt met proberen (#783)', () => {
 
 describe.each([
   ['chat', useChat],
-  ['dashboardchat', useDashboardChat],
 ])('herverbinden in de %s (#783)', (_, useHook) => {
   it('1013: één poging, één foutmelding, dan wacht hij op de gebruiker', async () => {
     await mount(useHook)

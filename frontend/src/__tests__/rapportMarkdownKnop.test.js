@@ -6,7 +6,6 @@ import { createRoot } from 'react-dom/client'
 import { buildReportHtml } from '../reportHtml'
 import WorkbookMarkdown from '../components/WorkbookMarkdown'
 
-vi.mock('../components/GeneratedDashboard', () => ({ default: () => null }))
 vi.mock('../components/dashboards', () => ({
   InlineDashboardMijnInstelling: () => null, InlineDashboardArbeidsmarkt: () => null, InlineDashboardNationaal: () => null,
 }))
@@ -53,7 +52,7 @@ describe('de knop "Download als Markdown" (#746)', () => {
   })
 
   it('staat er niet bij een dashboard of bij HTML die geen rapport is', () => {
-    render(createElement(WorkbookMarkdown, { workbook: { id: 'd', title: 'D', dashboardSpec: { figures: [] }, htmlContent: rapport.htmlContent } }))
+    render(createElement(WorkbookMarkdown, { workbook: { id: '__builtin_nationaal__', title: 'Landelijk', builtin: true } }))
     expect(markdownKnop()).toBeUndefined()
     act(() => root.unmount())
     root = null

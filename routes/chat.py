@@ -5,28 +5,11 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from agent import recepten
 from agent import run as agent_run
-from agent.dashboard import DashboardSpec
-from agent.dashboard import generate as generate_dashboard_spec
-from agent.figuurverschil import figuur_verschillen
 from agent.history import afgebroken_beurt, trim
-from agent.replay import (
-    MODE_REPRODUCEER,
-    MODE_VERVERS,
-    Figuuruitkomst,
-    Reproductie,
-    anker_verschillen,
-    ankers_van_recipe,
-    geldige_modus,
-    recept_ids,
-    replay_dashboard_figures,
-    replay_data_calls,
-    reproduceer_figures,
-)
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
 from config import Config
@@ -34,7 +17,6 @@ from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_pro
 from core.config import (
     CHAT_RATE_LIMIT,
     CHAT_RATE_WINDOW_S,
-    DASHBOARDS_ENABLED,
     GENEREER_TIMEOUT_S,
     HISTORY_MAX_CHARS,
     MAX_CONCURRENT_RUNS,
@@ -45,7 +27,7 @@ from core.config import (
     RUN_QUEUE_TIMEOUT_S,
     toegestaan_model,
 )
-from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, error_event, friendly_error, log_interne_fout
+from core.errors import MODEL_ZONDER_SLEUTEL, Gebruikersfout, error_event, log_interne_fout
 from core.gelijktijdig import Druk, Runplaatsen, Verbindingen
 from core.herkomst import origin_toegestaan
 from core.logging_context import nieuwe_verbinding
@@ -151,7 +133,7 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     clarified = session.pop("_clarified", False)
     aborted = stop_event.is_set()
     if aborted:
-        # Stopknop of tijdsgrens: wat er al stond plus de markering, geen beurt voor rapport of dashboard.
+        # Stopknop of tijdsgrens: wat er al stond plus de markering, geen beurt voor het rapport.
         messages.append(afgebroken_beurt(response_text))
     elif not clarified:
         messages.append({"role": "assistant", "content": response_text})
@@ -171,36 +153,9 @@ async def _process_message(content: str, session: dict, emit, model: str | None)
     session["messages"] = messages
 
 
-# Wat de gebruiker leest als een rapport of dashboard de tijdsgrens haalt (#759); de minuten uit GENEREER_TIMEOUT_S.
+# Wat de gebruiker leest als een rapport de tijdsgrens haalt (#759); de minuten uit GENEREER_TIMEOUT_S.
 def _over_de_tijdsgrens(wat: str) -> str:
     return f"{wat} kwam niet binnen {GENEREER_TIMEOUT_S / 60:.0f} minuten af. Probeer het opnieuw, of kies een ander model."
-
-
-async def _generate_dashboard(session: dict, emit, model: str | None) -> None:
-    await emit({"type": "dashboard_generating"})
-    # Een eigen stopsignaal, zodat de stop-actie ook een dashboard bereikt (#759).
-    stop_event = asyncio.Event()
-    session["stop_event"] = stop_event
-    grens = asyncio.timeout(GENEREER_TIMEOUT_S)
-    try:
-        async with grens:
-            spec = await generate_dashboard_spec(session, emit, model=model, stop_event=stop_event)
-        if stop_event.is_set():
-            await emit({"type": "error", "message": "Het dashboard is gestopt."})
-            return
-        await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
-    except TimeoutError as e:
-        if not grens.expired():
-            await emit(error_event(e))
-            return
-        logger.warning("DASHBOARD TIMEOUT na %.0f s", GENEREER_TIMEOUT_S)
-        await emit({"type": "error", "message": _over_de_tijdsgrens("Het dashboard")})
-    except Gebruikersfout as e:
-        # Alleen tekst die voor de gebruiker is geschreven; elke andere fout
-        # krijgt via error_event een vaste melding met fout-ID (#503).
-        await emit({"type": "error", "message": str(e)})
-    except Exception as e:
-        await emit(error_event(e))
 
 
 async def _generate_report(
@@ -260,257 +215,13 @@ async def _generate_report(
         )
 
 
-class RefreshError(Exception):
-    pass
-
-
-async def _do_refresh(
-    recipe: list[dict], figure_recipes: list[dict], current_spec: dict, mode: str = MODE_VERVERS
-) -> tuple[DashboardSpec, str | None, list[str]]:
-    """De twee herhaalmodi van #346. Returns (updated_spec, info_message_or_None, veranderingen).
-
-    - ververs: opnieuw ophalen bij de bron; `veranderingen` benoemt wat er
-      verschilt met het bewaarde dashboard (waarden, bron-ankers).
-    - reproduceer: opnieuw renderen uit de data in de store, zonder netwerk.
-
-    Raises RefreshError if refresh fails entirely.
-    """
-    if not figure_recipes and not recipe:
-        raise RefreshError("Dit dashboard kan niet ververst worden.")
-
-    spec = DashboardSpec.from_dict(current_spec)
-
-    if mode == MODE_REPRODUCEER:
-        return await _reproduceer(spec, figure_recipes)
-    if figure_recipes:
-        return await _ververs_figuren(spec, recipe, figure_recipes)
-
-    results = await asyncio.to_thread(replay_data_calls, recipe)
-    if melding := _herlaad_mislukt(results):
-        raise RefreshError(melding)
-    return spec, "Data herladen. Grafieken bijwerken is niet mogelijk bij oudere dashboards.", []
-
-
-def _herlaad_mislukt(results: list[dict]) -> str | None:
-    """De weigering als een dataoproep niet herlaadde; None als alles herlaadde (#524).
-
-    Ververs meldt alleen "ververst" als de data echt opnieuw is opgehaald: één mislukte
-    call breekt het geheel af, anders mengen verse en oude figuren onder dat label. De
-    redenen per call staan in het log (replay_data_calls); de melding naar de browser
-    blijft vrij van paden en uitzonderingstekst (#503).
-    """
-    mislukt = sum(1 for r in results if not r["success"])
-    if not mislukt:
-        return None
-    return (
-        f"De data kon niet opnieuw opgehaald worden: {mislukt} van de {len(results)} dataset(s) niet geladen. "
-        "Het bewaarde dashboard is niet gewijzigd. Probeer het later opnieuw."
-    )
-
-
-# _refresh_dashboard kiest het toastniveau op het woord "niet" in de melding: elke
-# ververs-melding over een mislukte of niet vervangen grafiek bevat het (warning).
-_MAX_NAMEN = 3
-_PAST_NIET = "Het bewaarde dashboard past niet bij zijn recept (het aantal grafieken verschilt)."
-# Een ververs zonder datarecept haalt niets bij de bron op: de grafieken komen uit de data in het
-# geheugen, en dat hoort de melding te zeggen in plaats van "Data ververst" (#528).
-# "niets" draagt het woord "niet": de toast wordt een waarschuwing, geen succesmelding.
-_GEEN_BRON = (
-    "Bij de bron is niets opgehaald: dit dashboard heeft geen datarecept; "
-    "de grafieken zijn opnieuw getekend uit de data in het geheugen"
-)
-_GEHEUGEN = (
-    "Reproduceren kan niet: de data van dit dashboard staat niet meer in het geheugen van de "
-    "server. Ververs haalt haar opnieuw op bij de bron."
-)
-
-
-async def _ververs_figuren(
-    spec: DashboardSpec, recipe: list[dict], figure_recipes: list[dict]
-) -> tuple[DashboardSpec, str, list[str]]:
-    """Ververs per figuurrecept (#523): een mislukt recept houdt zijn bewaarde figuur en wordt apart gemeld.
-
-    De bewaarde figuren horen via hun index bij de recepten. Past dat niet (een ouder
-    dashboard), dan wordt niet per figuur vergeleken en alleen vervangen als elk recept slaagt.
-    """
-    verversing = await asyncio.to_thread(replay_dashboard_figures, recipe, figure_recipes)
-    if melding := _herlaad_mislukt(verversing.calls):
-        raise RefreshError(melding)
-    uitkomsten = verversing.uitkomsten
-    mislukt = [u for u in uitkomsten if u.figuur_json is None]
-    if len(mislukt) == len(uitkomsten):
-        return spec, "Grafieken konden niet bijgewerkt worden, bestaande data behouden.", []
-    passend = len(spec.figures_json) == len(uitkomsten)
-    if not passend and mislukt:
-        weigering = f"Er is niets vervangen, want niet elke grafiek kon bijgewerkt worden: {_opsomming(mislukt)}."
-        return spec, f"{_PAST_NIET} {weigering}", []
-
-    oude_ankers = dict(spec.ankers)
-    spec.ankers = await asyncio.to_thread(ankers_van_recipe, recipe, oude_ankers)
-    veranderingen = anker_verschillen(oude_ankers, spec.ankers)
-    if passend:
-        veranderingen += _figuurverschil(spec.figures_json, uitkomsten)
-        spec.figures_json = [u.figuur_json or oud for u, oud in zip(uitkomsten, spec.figures_json, strict=True)]
-    else:
-        spec.figures_json = [u.figuur_json for u in uitkomsten if u.figuur_json is not None]
-    return spec, _ververs_melding(veranderingen, mislukt, passend, bron_geraakt=bool(recipe)), veranderingen
-
-
-def _figuurverschil(bewaard: list[str], uitkomsten: list[Figuuruitkomst]) -> list[str]:
-    """Bewaard tegen vers, per recept-id; een mislukt recept blijft aan beide kanten weg."""
-    paren = [
-        (u.recept_id, oud, vers)
-        for u, oud in zip(uitkomsten, bewaard, strict=True)
-        if (vers := u.figuur_json) is not None
-    ]
-    return figuur_verschillen(
-        {rid: oud for rid, oud, _ in paren},
-        {rid: vers for rid, _, vers in paren},
-        [u.recept_id for u in uitkomsten],
-    )
-
-
-def _ververs_melding(
-    veranderingen: list[str], mislukt: list[Figuuruitkomst], passend: bool, bron_geraakt: bool = True
-) -> str:
-    """ "Data ververst" alleen als er bij de bron iets is opgehaald; zonder datarecept zegt de kop dat (#528)."""
-    kop = "Data ververst" if bron_geraakt else _GEEN_BRON
-    if not passend:
-        return (
-            f"{kop}. Het bewaarde dashboard paste niet bij zijn recept (het aantal grafieken verschilde): "
-            "de grafieken zijn vervangen zonder ze per stuk te vergelijken."
-        )
-    if veranderingen:
-        melding = f"{kop}: {len(veranderingen)} wijziging(en) ten opzichte van het bewaarde dashboard."
-    elif mislukt:
-        melding = f"{kop}; geen wijzigingen in de grafieken die bijgewerkt zijn."
-    else:
-        melding = f"{kop}; geen wijzigingen ten opzichte van het bewaarde dashboard."
-    return f"{melding} {_niet_bijgewerkt(mislukt)}" if mislukt else melding
-
-
-def _niet_bijgewerkt(mislukt: list[Figuuruitkomst]) -> str:
-    return f"{len(mislukt)} grafiek(en) niet bijgewerkt; de bewaarde versie blijft staan: {_opsomming(mislukt)}."
-
-
-def _opsomming(mislukt: list[Figuuruitkomst]) -> str:
-    """De mislukte grafieken met hun reden, hoogstens _MAX_NAMEN bij naam; de rest geteld."""
-    namen = ", ".join(f"{u.naam} ({u.reden})" for u in mislukt[:_MAX_NAMEN])
-    rest = len(mislukt) - _MAX_NAMEN
-    return f"{namen} en nog {rest} andere" if rest > 0 else namen
-
-
-def _reproduceer_weigering(repro: Reproductie) -> str:
-    """Ontbrekende data verwijst naar ververs; elke andere reden niet, want daar helpt ververs niet (#523)."""
-    if not repro.mislukt:
-        return _GEHEUGEN
-    mislukt = f"{len(repro.mislukt)} grafiek(en) niet te maken uit de opgeslagen data: {_opsomming(repro.mislukt)}."
-    return f"{_GEHEUGEN} Daarnaast {mislukt}" if repro.ontbrekend else f"Reproduceren kan niet. {mislukt}"
-
-
-async def _reproduceer(spec: DashboardSpec, figure_recipes: list[dict]) -> tuple[DashboardSpec, str, list[str]]:
-    """Reproduceer de figuren uit de opgeslagen data, zonder netwerk (#346)."""
-    if not figure_recipes:
-        raise RefreshError("Dit dashboard heeft geen reproduceerbaar recept; alleen verversen is mogelijk.")
-    repro = await asyncio.to_thread(reproduceer_figures, figure_recipes)
-    if repro.ontbrekend or repro.mislukt:
-        # Geen gedeeltelijke reproductie: het bewaarde dashboard blijft zoals het is.
-        raise RefreshError(_reproduceer_weigering(repro))
-    bewaard = spec.figures_json
-    passend = len(bewaard) == len(repro.figures_json)
-    afwijkingen = _reproductieverschil(bewaard, repro.figures_json, figure_recipes) if passend else []
-    # De spec gaat terug zoals altijd, maar de client bewaart een reproductie niet.
-    spec.figures_json = repro.figures_json
-    return spec, _reproduceer_melding(bewaard == repro.figures_json, passend, afwijkingen), afwijkingen
-
-
-def _reproductieverschil(bewaard: list[str], gereproduceerd: list[str], figure_recipes: list[dict]) -> list[str]:
-    """Bewaard tegen gereproduceerd, per recept-id; een reproductie slaagt alleen als elk recept slaagt."""
-    ids = recept_ids(figure_recipes)
-    return figuur_verschillen(dict(zip(ids, bewaard, strict=True)), dict(zip(ids, gereproduceerd, strict=True)), ids)
-
-
-def _reproduceer_melding(identiek: bool, passend: bool, afwijkingen: list[str]) -> str:
-    """De uitkomst van reproduceren; het bewaarde dashboard blijft altijd staan (#524)."""
-    if identiek:
-        return "Gereproduceerd uit de opgeslagen data; identiek aan het bewaarde dashboard."
-    if not passend:
-        return (
-            f"Gereproduceerd uit de opgeslagen data, maar niet per grafiek te vergelijken. {_PAST_NIET} "
-            "Het bewaarde dashboard is niet aangepast."
-        )
-    if afwijkingen:
-        return (
-            "De reproductie uit de opgeslagen data wijkt af van het bewaarde dashboard; "
-            "het bewaarde dashboard is niet aangepast."
-        )
-    return (
-        "De reproductie uit de opgeslagen data wijkt alleen in de opmaak af, niet in de waarden; "
-        "het bewaarde dashboard is niet aangepast."
-    )
-
-
-async def _refresh_dashboard(
-    recipe: list[dict],
-    figure_recipes: list[dict],
-    current_spec: dict,
-    session: dict,
-    emit,
-    model: str | None,
-    mode: str = MODE_VERVERS,
-) -> None:
-    await emit({"type": "dashboard_generating"})
-    try:
-        spec, info, veranderingen = await _do_refresh(recipe, figure_recipes, current_spec, mode)
-        if info:
-            level = "warning" if "niet" in info else "info"
-            await emit({"type": "toast", "message": info, "level": level})
-        for verandering in veranderingen[:3]:
-            await emit({"type": "toast", "message": verandering, "level": "info"})
-        await emit({"type": "dashboard_ready", "spec": spec.to_dict()})
-    except RefreshError as e:
-        await emit({"type": "error", "message": str(e)})
-    except Exception as e:
-        await emit(error_event(e))
-
-
-@router.post("/api/dashboard/refresh")
-async def refresh_dashboard_endpoint(request: Request):
-    if not DASHBOARDS_ENABLED:
-        return JSONResponse({"error": "Dashboards zijn niet beschikbaar"}, status_code=403)
-
-    if AUTH_ENABLED:
-        auth = request.headers.get("authorization", "")
-        token = auth.removeprefix("Bearer ").strip()
-        # De denylist staat in de database: in een thread, niet op de event loop (#763).
-        if not await asyncio.to_thread(verify_token, token):
-            return JSONResponse({"error": "Niet geautoriseerd"}, status_code=401)
-
-    body = await request.json()
-    recipe = body.get("recipe") or []
-    figure_recipes = body.get("figure_recipes") or []
-    current_spec = body.get("spec") or {}
-    mode = body.get("mode") or MODE_VERVERS
-    if not geldige_modus(mode):
-        return JSONResponse({"error": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."}, status_code=400)
-
-    try:
-        spec, info, veranderingen = await _do_refresh(recipe, figure_recipes, current_spec, mode)
-        return {"spec": spec.to_dict(), "mode": mode, "melding": info, "veranderingen": veranderingen}
-    except RefreshError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-    except Exception as e:
-        logger.exception("Dashboard refresh failed")
-        return JSONResponse({"error": friendly_error(e)}, status_code=500)
-
-
 def _parse_history(raw: list) -> list[dict]:
     """Convert frontend message objects to bare {role, content} dicts.
 
     Capped at MAX_HISTORY beurten en HISTORY_MAX_CHARS tekens in totaal (#500, S15):
     de historie komt van de client en ging zonder tekencap integraal naar het model.
     Het aantal kort agent/history.trim in, zoals in het live gesprek: de eerste vraag blijft,
-    want die is het onderwerp van rapport en dashboard (#789). Boven de tekencap vallen daarna
+    want die is het onderwerp van het rapport (#789). Boven de tekencap vallen daarna
     de oudste beurten af, zodat een bestaand lang gesprek blijft openen. De historie begint na
     het afvallen altijd met een gebruikersbeurt en bevat nooit een beurt zonder tekst.
 
@@ -730,21 +441,6 @@ async def _handle_clarification(
     return asyncio.create_task(_in_een_runplaats(lambda: _process_message(choice, session, emit, model), emit))
 
 
-async def _handle_generate_dashboard(
-    msg: dict, session: dict, emit, current_task: asyncio.Task | None
-) -> asyncio.Task | None:
-    if not DASHBOARDS_ENABLED:
-        await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
-        return current_task
-    if _task_busy(current_task):
-        await _reject_busy(emit)
-        return current_task
-    if not await _binnen_limiet(session, emit):
-        return current_task
-    model = _model(session)
-    return asyncio.create_task(_in_een_runplaats(lambda: _generate_dashboard(session, emit, model), emit))
-
-
 async def _handle_generate_report(
     msg: dict, session: dict, emit, current_task: asyncio.Task | None
 ) -> asyncio.Task | None:
@@ -767,30 +463,6 @@ async def _handle_generate_report(
     )
 
 
-async def _handle_refresh_dashboard(
-    msg: dict, session: dict, emit, current_task: asyncio.Task | None
-) -> asyncio.Task | None:
-    if not DASHBOARDS_ENABLED:
-        await emit({"type": "error", "message": "Dashboards zijn niet beschikbaar"})
-        return current_task
-    if _task_busy(current_task):
-        await _reject_busy(emit)
-        return current_task
-    recipe = msg.get("recipe") or []
-    figure_recipes = msg.get("figure_recipes") or []
-    current_spec = msg.get("spec") or {}
-    mode = msg.get("mode") or MODE_VERVERS
-    if not geldige_modus(mode):
-        await emit({"type": "error", "message": f"Onbekende modus; kies {MODE_VERVERS} of {MODE_REPRODUCEER}."})
-        return current_task
-    model = _model(session)
-    return asyncio.create_task(
-        _in_een_runplaats(
-            lambda: _refresh_dashboard(recipe, figure_recipes, current_spec, session, emit, model, mode), emit
-        )
-    )
-
-
 Handler = Callable[[dict, dict, Callable, asyncio.Task | None], Awaitable[asyncio.Task | None]]
 
 # Per actie van de frontend een handler: (bericht, sessie, emit, lopende taak) -> lopende taak (#206).
@@ -802,9 +474,7 @@ ACTIES: dict[str, Handler] = {
     "history": _handle_history,
     "message": _handle_message,
     "clarification_choice": _handle_clarification,
-    "generate_dashboard": _handle_generate_dashboard,
     "generate_report": _handle_generate_report,
-    "refresh_dashboard": _handle_refresh_dashboard,
 }
 
 
@@ -831,9 +501,7 @@ def _frame(raw: str) -> dict | None:
 
 
 # Acties die een run starten (model of tools): daarvoor geldt het token opnieuw, niet alleen bij het verbinden (#786).
-RUN_ACTIES = frozenset(
-    {"message", "clarification_choice", "generate_dashboard", "generate_report", "refresh_dashboard"}
-)
+RUN_ACTIES = frozenset({"message", "clarification_choice", "generate_report"})
 
 
 async def _token_geldt_nog(msg: dict, token: str | None) -> bool:

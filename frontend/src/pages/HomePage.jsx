@@ -30,7 +30,7 @@ export default function HomePage({ dashboardsEnabled = false, feedbackEnabled = 
               {dashboardsEnabled && (
                 <>
                   <span style={{ color: 'rgba(255,255,255,.5)', fontSize: '0.9rem', alignSelf: 'center' }}>of</span>
-                  <button type="button" className="btn-ghost" onClick={() => navigate('/dashboards')}>Maak een dashboard</button>
+                  <button type="button" className="btn-ghost" onClick={() => navigate('/dashboards')}>Bekijk de dashboards</button>
                 </>
               )}
             </div>

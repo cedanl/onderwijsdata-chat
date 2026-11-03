@@ -1,4 +1,4 @@
-"""Een rapport of dashboard op een afgekapte bron zegt dat, in één vaste regel uit code (#578)."""
+"""Een rapport op een afgekapte bron zegt dat, in één vaste regel uit code (#578)."""
 
 import asyncio
 import importlib
@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from agent import dashboard, report
+from agent import report
 from agent.afkapping import afkappingsregels
 from agent.report import RapportGeweigerd
 from agent.report_definities import definities_uit_bron
@@ -61,15 +61,15 @@ def _rapport(context_datasets: list[dict], **antwoord) -> report.ReportSpec:
 def test_de_regel_noemt_bron_titel_en_het_aantal_opgehaalde_rijen():
     _pagina()
 
-    assert afkappingsregels(_datasets(_KEY), "rapport") == [_REGEL]
+    assert afkappingsregels(_datasets(_KEY)) == [_REGEL]
 
 
 def test_de_tekst_komt_uit_de_store_niet_van_het_model():
     _pagina()
 
-    [regel] = afkappingsregels(_datasets(_KEY), "rapport")
+    [regel] = afkappingsregels(_datasets(_KEY))
 
-    tekst = store.AFGEKAPT.format(aantal=store.AFGEKAPT_AANTAL.format(rijen="5.000"), waar="rapport")
+    tekst = store.AFGEKAPT.format(aantal=store.AFGEKAPT_AANTAL.format(rijen="5.000"))
     assert regel == f"CBS · Hoger onderwijs; gediplomeerden: {tekst}"
 
 
@@ -78,15 +78,15 @@ def test_een_laadkey_en_een_selectie_erop_geven_een_regel_met_het_aantal_van_de_
     store.derive(_KEY, f"{_KEY}:abc", pd.DataFrame({"Totaal": [7]}))
     store.derive(_KEY, f"{_KEY}:def", pd.DataFrame({"Totaal": [7, 8]}))
 
-    assert afkappingsregels(_datasets(_KEY, f"{_KEY}:abc", f"{_KEY}:def"), "rapport") == [_REGEL]
-    assert afkappingsregels(_datasets(f"{_KEY}:abc"), "rapport") == [_REGEL]
+    assert afkappingsregels(_datasets(_KEY, f"{_KEY}:abc", f"{_KEY}:def")) == [_REGEL]
+    assert afkappingsregels(_datasets(f"{_KEY}:abc")) == [_REGEL]
 
 
 def test_twee_afgekapte_laadkeys_geven_twee_regels():
     _pagina()
     _pagina("cbs:85423NED", "85423NED", rijen=1000)
 
-    assert afkappingsregels(_datasets(_KEY, "cbs:85423NED"), "rapport") == [
+    assert afkappingsregels(_datasets(_KEY, "cbs:85423NED")) == [
         _REGEL,
         "CBS · Hoger onderwijs; ingeschrevenen: de app haalde één pagina van de bron op (1.000 rijen), "
         "niet de hele bron; rijen buiten die pagina ontbreken in dit rapport.",
@@ -100,7 +100,7 @@ def test_zonder_laadkey_in_de_store_geen_aantal():
         KeyMeta(bron="cbs", dataset="85425NED", volledig=False, afgeleid_van=_KEY),
     )
 
-    assert afkappingsregels(_datasets(f"{_KEY}:abc"), "rapport") == [
+    assert afkappingsregels(_datasets(f"{_KEY}:abc")) == [
         "CBS · Hoger onderwijs; gediplomeerden: de app haalde één pagina van de bron op, "
         "niet de hele bron; rijen buiten die pagina ontbreken in dit rapport."
     ]
@@ -116,7 +116,7 @@ def test_bij_meer_duo_bestanden_staat_het_bestand_erbij():
         patch("agent.selectie.tabelbestanden", return_value=[(1, "hbo"), (3, "wo")]),
         patch("agent.selectie.resource_titel", return_value="Ingeschrevenen wo"),
     ):
-        [regel] = afkappingsregels(_datasets("duo:p01hoinges:3"), "rapport")
+        [regel] = afkappingsregels(_datasets("duo:p01hoinges:3"))
 
     assert regel.startswith("DUO · Ingeschrevenen hoger onderwijs, bestand Ingeschrevenen wo: de app haalde")
     assert "(20 rijen)" in regel
@@ -137,7 +137,7 @@ def test_zonder_bekende_afkapping_geen_regel(dataset, store_volledig):
     _pagina(volledig=store_volledig)
     store.put("cbs:zonder-meta", pd.DataFrame({"Totaal": [7]}))
 
-    assert afkappingsregels([dataset], "rapport") == []
+    assert afkappingsregels([dataset]) == []
 
 
 # ── Rapport: vooraan in "Wat dit rapport niet beantwoordt" ──────────────────────────────
@@ -204,38 +204,12 @@ def test_de_regel_bepaalt_niet_welke_definities_erbij_komen():
     store.put(key, pd.DataFrame({"AANTAL": [5] * 20}), KeyMeta(bron="duo", dataset="p01hoinges", volledig=False))
     datasets = _datasets(key)
     with patch("agent.selectie.bron_titel", return_value="Ingeschrevenen per opleidingsvorm"):
-        [regel] = afkappingsregels(datasets, "rapport")
+        [regel] = afkappingsregels(datasets)
         spec = _rapport(datasets)
 
     assert spec.beantwoordt_niet == [regel]
     assert any(d["begrip"] == "Opleidingsvorm" for d in definities_uit_bron(datasets, regel))
     assert spec.definities == [*definities_uit_bron(datasets, ""), *vergelijken(datasets)]
-
-
-# ── Dashboard: na de bronnen ────────────────────────────────────────────────────────────
-
-
-def _dashboard(context_datasets: list[dict]) -> dashboard.DashboardSpec:
-    context = {"topic": "Gediplomeerden", "datasets": context_datasets}
-    return dashboard._parse_spec_from_response('{"title": "D"}', [], [], context, {})
-
-
-def test_het_dashboard_zet_de_regel_na_de_bronnen_uit_code():
-    _pagina()
-
-    spec = _dashboard(_datasets(_KEY, f"{_KEY}:abc"))
-
-    [bron, regel] = spec.sources
-    assert bron.startswith("CBS — ") and "85425NED" in bron
-    assert regel == _REGEL.replace("dit rapport", "dit dashboard")
-
-
-def test_een_volledig_dashboard_krijgt_geen_regel():
-    _pagina(volledig=True)
-
-    [bron] = _dashboard(_datasets(_KEY, volledig=True)).sources
-
-    assert bron.startswith("CBS — ")
 
 
 # ── De rapportrun: de regel gaat niet langs de controles (#207) ────────────────────────────

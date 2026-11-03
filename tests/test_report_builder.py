@@ -2,7 +2,7 @@ import json
 from datetime import date
 from unittest.mock import patch
 
-from agent.report import ReportSpec, _build_system_prompt, _nl_datum, _parse_spec_from_response
+from agent.report import ReportSpec, _build_system_prompt, _extract_json_object, _nl_datum, _parse_spec_from_response
 
 
 class TestNlDatum:
@@ -90,8 +90,8 @@ class TestParseSpecFromResponse:
         # opleidingen (85423NED)". Het ID klopte, de titel was verzonnen (#196).
         titels = {"p01hoinges": "Ingeschrevenen hoger onderwijs", "85423NED": "Hoger onderwijs; ingeschrevenen"}
         with (
-            patch("agent.dashboard.bron_titel", side_effect=lambda d: titels.get(d, d)),
-            patch("agent.dashboard.resource_titel", return_value="Ingeschrevenen hbo"),
+            patch("agent.datasetcontext.bron_titel", side_effect=lambda d: titels.get(d, d)),
+            patch("agent.datasetcontext.resource_titel", return_value="Ingeschrevenen hbo"),
         ):
             spec = _parse_spec_from_response(
                 '{"title": "T", "onderzoeksvraag": "V", "bronnen": ["CBS — Inschrijvingen; instellingen (85423NED)"]}',
@@ -106,8 +106,8 @@ class TestParseSpecFromResponse:
 
     def test_source_without_catalog_title_keeps_its_id(self):
         with (
-            patch("agent.dashboard.bron_titel", side_effect=lambda d: d),
-            patch("agent.dashboard.resource_titel", return_value=None),
+            patch("agent.datasetcontext.bron_titel", side_effect=lambda d: d),
+            patch("agent.datasetcontext.resource_titel", return_value=None),
         ):
             spec = _parse_spec_from_response(
                 '{"title": "T"}',
@@ -131,7 +131,7 @@ class TestParseSpecFromResponse:
         definitie = {"begrip": "Telling", "definitie": "Telt u mee als u ingeschreven staat?"}
         with (
             patch("agent.report.definities_uit_bron", return_value=[definitie]),
-            patch("agent.report._sources_from_recipe", return_value=["DUO — Wat u moet weten (p01hoinges)"]),
+            patch("agent.report.sources_from_recipe", return_value=["DUO — Wat u moet weten (p01hoinges)"]),
         ):
             spec = _parse_spec_from_response(
                 antwoord, figures_json=["fig"], context={"topic": "Hoeveel studenten heeft uw instelling?"}
@@ -204,3 +204,25 @@ class TestSystemPromptHerkomst:
     def test_dataset_without_herkomst_is_marked_as_such(self):
         context = {"datasets": [{"data_key": "cbs:85423NED", "row_count": 1, "columns": [], "herkomst": []}]}
         assert "Herkomst: onbekend" in _build_system_prompt(context)
+
+
+class TestExtractJsonObject:
+    def test_fenced_json(self):
+        text = '```json\n{"title": "Test", "kpis": [{"label": "X"}]}\n```'
+        result = _extract_json_object(text)
+        assert result["title"] == "Test"
+        assert len(result["kpis"]) == 1
+
+    def test_raw_json(self):
+        result = _extract_json_object('{"title": "Raw"}')
+        assert result["title"] == "Raw"
+
+    def test_no_json(self):
+        assert _extract_json_object("geen json") == {}
+
+    def test_raw_newline_in_a_string_value_is_read(self):
+        # #166: "Invalid control character" — the content is intact, only the escape is missing.
+        result = _extract_json_object('{"title": "T", "conclusie": "regel een\nregel twee"}')
+        assert result["conclusie"] == "regel een\nregel twee"
+        fenced = _extract_json_object('```json\n{"title": "T", "conclusie": "a\tb"}\n```')
+        assert fenced["conclusie"] == "a\tb"

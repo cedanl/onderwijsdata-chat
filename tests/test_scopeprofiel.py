@@ -503,7 +503,7 @@ def test_elke_bronregel_van_een_mbo_en_vo_tabel_noemt_alleen_mbo(catalogus):
     """Audit 17 (CH-45): bij een vo-vraag noemde het antwoord 85368NED als bron, terwijl de chat
     alleen de mbo-rijen laadt. Elke bronregel volgt de selectie die get_cbs_data maakt."""
     from agent.citaties import _bron
-    from agent.dashboard import _source_label
+    from agent.datasetcontext import _source_label
     from agent.selectie import selectie_in_woorden
     from tools import store
     from tools.catalog import bron_naam
@@ -1016,7 +1016,7 @@ def test_de_bronregel_van_een_andere_tabel_houdt_haar_deel(catalogus):
 
 def _bronregels(result: dict, dataset_id: str, bron: str, tool: str) -> list[str]:
     from agent.citaties import _bron
-    from agent.dashboard import _source_label
+    from agent.datasetcontext import _source_label
     from agent.selectie import selectie_in_woorden
     from tools import store
     from tools.catalog import bron_naam

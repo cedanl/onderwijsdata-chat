@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { refreshDashboard as refreshDashboardApi, fetchFeedbackGiven } from '../api'
+import { fetchFeedbackGiven } from '../api'
 import { useReportFrame } from '../hooks/useReportFrame'
 import { useMediaQuery, NARROW_SCREEN } from '../hooks/useMediaQuery'
 import { updateWorkbook, BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
 import { InlineDashboardMijnInstelling, InlineDashboardArbeidsmarkt, InlineDashboardNationaal } from './dashboards'
-import GeneratedDashboard from './GeneratedDashboard'
 import FeedbackModal from './FeedbackModal'
 import { rapportWoord } from '../rapportWoord'
 import WorkbookDownload from './WorkbookDownload'
@@ -22,9 +21,6 @@ const BUILTIN_COMPONENTS = {
 // save: the download target, for tests (as in WorkbookDownload). mode: the app's theme choice, which the report
 // frame follows (#568).
 export default function WorkbookViewer({ workbook, instelling, gekozenInstelling = '', onBack, onUpdate, backLabel = 'Dashboards', feedbackEnabled = false, save, mode }) {
-  const [refreshing, setRefreshing] = useState(false) // false of de lopende modus: 'ververs' | 'reproduceer'
-  const [refreshError, setRefreshError] = useState(null)
-  const [refreshResult, setRefreshResult] = useState(null) // { melding, veranderingen } van de laatste herhaling
   const [saveError, setSaveError] = useState(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -49,26 +45,6 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
     return () => clearTimeout(timer)
   }, [feedbackThanks])
 
-  const handleRefresh = useCallback(async (mode = 'ververs') => {
-    const spec = workbook?.dashboardSpec
-    if (refreshing || (!spec?.figure_recipes?.length && !spec?.recipe?.length)) return
-    setRefreshing(mode)
-    setRefreshError(null)
-    setRefreshResult(null)
-    try {
-      const { spec: freshSpec, melding, veranderingen } = await refreshDashboardApi(spec, { instelling }, mode)
-      setRefreshResult({ melding, veranderingen: veranderingen || [] })
-      if (mode === 'ververs') {
-        // Reproduceren verandert de data niet; alleen een verversing is het bewaren waard.
-        onUpdate(await updateWorkbook(workbook, { dashboardSpec: freshSpec }))
-      }
-    } catch (err) {
-      setRefreshError(err.message || 'Herhalen mislukt')
-    } finally {
-      setRefreshing(false)
-    }
-  }, [workbook, instelling, refreshing, onUpdate])
-
   const handleTitleEdit = useCallback(() => {
     if (workbook.builtin) return
     setTitleDraft(workbook.title)
@@ -91,8 +67,6 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
     })
   }, [workbook, titleDraft, onUpdate])
 
-  const spec = workbook.dashboardSpec
-  const canRefresh = spec && (spec.figure_recipes?.length || spec.recipe?.length)
   const BuiltinDash = BUILTIN_COMPONENTS[workbook.id]
   // Op een telefoon is er geen ruimte voor titel én knoppen naast elkaar (#604): de titel blijft op één
   // regel en Download en feedback verhuizen naar het ⋯-menu in de navbar, net als bij de chat (#596).
@@ -101,7 +75,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
   // A report renders in a sandboxed frame whose content is not in this DOM: until it has loaded the region is
   // busy, a report without content says so instead of showing a blank frame (#387, #533), and a frame that
   // shows nothing gets a notice with the download outside it (#541).
-  const isReport = !BuiltinDash && !spec
+  const isReport = !BuiltinDash
   const reportEmpty = isReport && !String(workbook.htmlContent ?? '').trim()
   const reportFrame = useReportFrame(isReport && !reportEmpty ? workbook.htmlContent : null, mode)
   // A print frame belongs to the report that was open (WorkbookPrint.jsx).
@@ -148,14 +122,14 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
         </h1>
         {smal ? (
           <RapportNavActies
-            workbook={workbook} instelling={instelling} save={save}
+            workbook={workbook} save={save}
             feedbackEnabled={feedbackEnabled} feedbackGiven={feedbackGiven}
             onFeedback={() => setShowFeedback(true)}
             afdrukken={<WorkbookPrint html={reportFrame.printDoc} className="navbar-menu-item" />}
           />
         ) : (
           <div className="wb-viewer-actions">
-            <WorkbookDownload workbook={workbook} instelling={instelling} save={save} />
+            <WorkbookDownload workbook={workbook} save={save} />
             <WorkbookMarkdown workbook={workbook} save={save} />
             <WorkbookPrint html={reportFrame.printDoc} />
             {feedbackEnabled && (
@@ -191,7 +165,7 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
         <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{saveError}</div>
       )}
       {reportFrame.srcDoc && (
-        <ReportFrameFallback probleem={reportFrame.probleem} workbook={workbook} instelling={instelling} save={save} />
+        <ReportFrameFallback probleem={reportFrame.probleem} workbook={workbook} save={save} />
       )}
       {/* Focusable so keyboard users can scroll the report (axe: scrollable-region-focusable). */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
@@ -199,29 +173,6 @@ export default function WorkbookViewer({ workbook, instelling, gekozenInstelling
         aria-busy={reportFrame.loading || undefined}>
         {(() => {
           if (BuiltinDash) return <BuiltinDash instelling={instelling} />
-          if (spec) return (
-            <>
-              <GeneratedDashboard
-                spec={spec}
-                instelling={instelling}
-                onRefresh={canRefresh ? handleRefresh : undefined}
-                refreshing={refreshing}
-              />
-              {refreshError && (
-                <div role="alert" style={{ padding: '8px 24px', color: '#DC2626', fontSize: '.85rem' }}>{refreshError}</div>
-              )}
-              {refreshResult && (
-                <div role="status" style={{ padding: '8px 24px', fontSize: '.85rem' }}>
-                  <div>{refreshResult.melding}</div>
-                  {refreshResult.veranderingen.length > 0 && (
-                    <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-                      {refreshResult.veranderingen.map((v) => <li key={v}>{v}</li>)}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </>
-          )
           if (reportEmpty) return <p className="wb-viewer-empty">Dit rapport heeft geen inhoud.</p>
           return (
             <>

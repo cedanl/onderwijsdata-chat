@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { buildReportHtml } from '../reportHtml.js'
-import { buildDashboardHtml } from '../dashboardHtml.js'
 import { PLOTLY_URL } from '../plotlyBron'
 import { metThema } from '../reportThema'
 import { runPage, runPageNaTekenen, luminance, contrast } from './helpers/pageRun'
@@ -180,14 +179,6 @@ describe('figure JSON in an inline script (#474)', () => {
     expect(seen.errors).toEqual([])
     expect(seen.plots).toHaveLength(1)
     expect(seen.plots[0][1]).toEqual([])
-    expect(seen.plots[0][2].title).toBe(TITLE)
-  })
-
-  it('renders a dashboard title with </script> as chart text, not as markup', () => {
-    const seen = runPage(buildDashboardHtml({ figures_json: [figureJson] }, { title: 'D' }))
-    expect(seen.images).toBe(0)
-    expect(seen.dialogs).toEqual([])
-    expect(seen.errors).toEqual([])
     expect(seen.plots[0][2].title).toBe(TITLE)
   })
 })

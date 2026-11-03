@@ -38,10 +38,10 @@ HISTORY_MAX_CHARS = max(1, int(os.getenv("HISTORY_MAX_CHARS", str(MAX_HISTORY * 
 # 20 s: na 45 s dacht de gebruiker al dat de app hing (UX-audit P3-5).
 RUN_SLOW_S = float(os.getenv("RUN_SLOW_S", "20"))
 RUN_TIMEOUT_S = float(os.getenv("RUN_TIMEOUT_S", "300"))
-# Tijdsgrens aan de serverkant voor een rapport of dashboard (#759), ruim onder de 10 minuten waarna de frontend zelf
-# stopt (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats tot 20 min per aanroep bezet.
+# Tijdsgrens aan de serverkant voor een rapport (#759), ruim onder de 10 minuten waarna de frontend zelf stopt
+# (REPORT_TIMEOUT_MS). Zonder grens hield een hangende modelaanroep de runplaats tot 20 min per aanroep bezet.
 GENEREER_TIMEOUT_S = float(os.getenv("GENEREER_TIMEOUT_S", "480"))
-# Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen, dashboards en rapporten per
+# Berichtlimiet op de chat (#444, SECURITY.md S5): zoveel vragen, verduidelijkingen en rapporten per
 # gebruiker (zonder login: per verbinding) per venster; daarboven een melding met de wachttijd. Een grens voor de
 # LLM-kosten, niet voor gewoon gebruik: dertig in tien minuten is een vraag per twintig seconden.
 CHAT_RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))
@@ -50,8 +50,8 @@ CHAT_RATE_WINDOW_S = int(os.getenv("CHAT_RATE_WINDOW_S", "600"))
 # een zaal veel vensters, en elke pagina met chat of dashboard is een eigen verbinding. Zonder login alleen het totaal.
 MAX_WS_PER_USER = int(os.getenv("MAX_WS_PER_USER", "10"))
 MAX_WS_TOTAL = int(os.getenv("MAX_WS_TOTAL", "100"))
-# Runs die het model aanroepen (vraag, verduidelijking, dashboard, rapport, verversen); daarboven wachten, na
-# RUN_QUEUE_TIMEOUT_S een melding dat het druk is.
+# Runs die het model aanroepen (vraag, verduidelijking, rapport); daarboven wachten, na RUN_QUEUE_TIMEOUT_S een
+# melding dat het druk is.
 MAX_CONCURRENT_RUNS = int(os.getenv("MAX_CONCURRENT_RUNS", "8"))
 RUN_QUEUE_TIMEOUT_S = float(os.getenv("RUN_QUEUE_TIMEOUT_S", "60"))
 # Gelijktijdige sandboxprocessen van run_analysis: elk laadt pandas en de data, dus het geheugen bepaalt dit.
@@ -69,9 +69,9 @@ SEARCH_CATALOG_LIMIT = 3
 # Wat het model van één toolresultaat ziet (agent/loop.py kapt daarboven af, #395). search_catalog blijft er
 # zelf onder door hele treffers weg te laten met een melding, zodat het model geldige JSON leest (#358).
 TOOL_RESULT_MAX_CHARS = int(os.getenv("TOOL_RESULT_MAX_CHARS", "12000"))
-# Dashboardfunctie (pagina en /api/dashboard/*); stond eerder los in twee routes (#234). Standaard uit:
-# de dashboardbouwer heeft een eigen chatclient die achterloopt op useChat (#765), dus alleen aan waar
-# de omgeving hem bewust aanzet (manifests/<omgeving>/values.yaml).
+# De drie vaste dashboards (pagina /dashboards en GET /api/dashboard/*, #234). De dashboardbouwer is weg (#765);
+# de vlag blijft standaard uit en staat alleen aan waar de omgeving hem bewust aanzet
+# (manifests/<omgeving>/values.yaml).
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"

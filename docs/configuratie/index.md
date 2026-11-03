@@ -33,7 +33,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `CHAT_RATE_WINDOW_S` | `600` | Het venster van `CHAT_RATE_LIMIT` in seconden |
 | `MAX_WS_PER_USER` | `10` | Open chatverbindingen per ingelogde gebruiker (elk venster met chat of dashboard is er een). Daarboven sluit de server de nieuwe verbinding met code 1013 en een melding. Ruim, omdat een gedeeld demo-account in een zaal veel vensters opent; zonder login telt alleen het totaal (#688) |
 | `MAX_WS_TOTAL` | `100` | Open chatverbindingen op de pod samen (#688) |
-| `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, dashboard, rapport, verversen). Een volgende wacht op een plaats (#688) |
+| `MAX_CONCURRENT_RUNS` | `8` | Runs die tegelijk het model aanroepen (vraag, verduidelijking, rapport). Een volgende wacht op een plaats (#688) |
 | `RUN_QUEUE_TIMEOUT_S` | `60` | Seconden dat een run op een plaats wacht; daarna de melding dat het druk is, en geen run |
 | `MAX_SANDBOX_RUNS` | `2` | Gelijktijdige kindprocessen van `run_analysis`; elk laadt pandas en de data, dus het geheugen van de pod bepaalt dit (#688) |
 | `SANDBOX_QUEUE_TIMEOUT_S` | `20` | Seconden dat een analyse op een vrij proces wacht; daarna krijgt het model de melding dat de analyseomgeving bezet is |
@@ -41,7 +41,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `HISTORY_MAX_CHARS` | `MAX_HISTORY × MAX_MESSAGE_CHARS` (160000) | Maximum aantal tekens van de hele aangeleverde gespreksgeschiedenis samen. Daarboven vallen de oudste beurten af, zodat lange gesprekken blijven openen; de historie begint daarna altijd met een gebruikersbeurt. Minimaal 1: een lagere waarde wordt 1 |
 | `RUN_SLOW_S` | `20` | Seconden tot de chat onder de voortgang zegt dat het even kan duren |
 | `RUN_TIMEOUT_S` | `300` | Seconden tot een vraag wordt gestopt |
-| `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport of dashboard aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
+| `GENEREER_TIMEOUT_S` | `480` | Seconden tot een rapport aan de serverkant wordt gestopt (onder de 10 min van de frontend, #759) |
 | `LITELLM_REQUEST_TIMEOUT` | `1200` | Seconden per modelaanroep (#431). Ligt boven `RUN_TIMEOUT_S`, dus een nieuwe poging na een time-out past nu niet in een run; de waarde volgt uit de meting van #800 (logregel `MODELAANROEP`) |
 | `CBS_ROW_LIMIT` | `5000` | Maximum rijen uit CBS-datasets |
 | `RIO_PAGE_SIZE` | `50` | Maximum records per RIO-aanroep |
@@ -50,7 +50,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `STORE_MAX_MB` | `512` | Bovengrens van de datastore in het geheugen (#13): daarboven gaan de langst niet gebruikte tabellen eruit; een gesprek haalt ze uit zijn recept terug. Een tabel die langer dan 24 uur geleden is opgehaald, gaat er ook uit (#864, `core/actualiteit.py`). Houd dit onder het geheugen van de pod |
 | `DATABASE_PATH` | `onderwijsdata.db` | Pad voor het SQLite-databasebestand (alleen gebruikt zonder `POSTGRES_URI`) |
 | `POSTGRES_URI` | *(niet ingesteld)* | PostgreSQL-URI (`postgresql://…`). Indien ingesteld slaat de app gesprekken en rapporten op in PostgreSQL in plaats van SQLite — zie [Professioneel hosten](../hosting.md#1-database-postgresql) |
-| `ENABLE_DASHBOARDS` | `false` | Zet op `true` om de dashboardfunctie (pagina en `/api/dashboard/*`) aan te zetten. Standaard uit, omdat de dashboardbouwer een eigen chatclient heeft die achterloopt op de chat (#765); `manifests/test/values.yaml` zet hem aan, playground en productie houden hem uit |
+| `ENABLE_DASHBOARDS` | `false` | Zet op `true` om de drie vaste dashboards (pagina `/dashboards` en `GET /api/dashboard/*`) aan te zetten. Standaard uit; de dashboardbouwer is verwijderd (#765). `manifests/test/values.yaml` zet hem aan, playground en productie houden hem uit |
 | `ENABLE_FEEDBACK` | `true` | Zet op `false` om de feedbackknop op rapporten en dashboards, de 👍/👎 per chatantwoord en de link Feedback (en `/api/feedback*`, `/api/answer-feedback`) uit te schakelen. De vragen staan in `core/feedback.py`; antwoorden komen in de tabel `feedback`. Oordelen per antwoord komen met de tool-trace in `answer_feedback`; `python -m scripts.antwoordfeedback` zet ze als markdown op een rij. Na het verwijderen van een gesprek blijven ze staan zonder gebruikersnaam en gesprek-id (#476). Ook de link Feedback (`/api/feedback/algemeen`, #600) hangt eraan: berichten komen in `algemene_feedback`, `python -m scripts.algemene_feedback` zet ze op een rij |
 | `APP_ENV` | `local` | De omgeving: `local`, `development`, `test`, `playground` of `production`; `manifests/<omgeving>/values.yaml` zet hem. Buiten `local` schrijft de app JSON-logs; op `playground` en `production` is er geen API-documentatie (`/api/docs`, `/redoc`, `/api/openapi.json`). Een andere waarde laat de app niet starten (#676) |
 | `ALLOW_ANONYMOUS` | *(niet ingesteld)* | Alleen `true` telt. Buiten `APP_ENV=local` start de app niet zonder login (`CHAT_USERS` of `OIDC_PROVIDER`); deze vlag staat een bewust openbare demo toe en geeft bij het opstarten een WARNING. Zonder login heet elke bezoeker `gast` en delen ze alle gesprekken en rapporten (#787) |

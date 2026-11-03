@@ -23,7 +23,7 @@ function render(element) {
   return { container, root }
 }
 
-// The parent owns the choice, as ChatPage and DashboardCreator do.
+// The parent owns the choice, as ChatPage does.
 function Controlled({ models, initial, onChange }) {
   const [value, setValue] = useState(initial)
   return createElement(ModelPicker, { models, value, onChange: id => { onChange(id); setValue(id) } })

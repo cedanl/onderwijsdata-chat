@@ -80,22 +80,28 @@ describe('RapportenPage verwijderknop', () => {
   })
 })
 
-describe('DashboardGallery verwijderknop', () => {
-  it('voorkomt navigatie en roept onDelete aan zonder onSelect', async () => {
+// #765: de dashboardbouwer is weg; een opgeslagen dashboard opent niet meer, maar is nog los te verwijderen.
+describe('DashboardGallery: opgeslagen dashboards', () => {
+  const vast = { id: '__builtin_nationaal__', title: 'Landelijk', description: 'd', builtin: true }
+  const opgeslagen = { ...wb, id: 'db-1', title: 'Mijn dashboard', type: 'dashboard', htmlContent: undefined }
+
+  it('roept onDelete aan zonder onSelect, en de vaste dashboards hebben geen verwijderknop', async () => {
     const onDelete = vi.fn()
     const onSelect = vi.fn()
     await renderIn(createElement(DashboardGallery, {
-      workbooks: [wb],
-      instelling: 'Hogeschool Utrecht',
-      onDelete,
-      onSelect,
-      onNew: vi.fn(),
+      workbooks: [vast], opgeslagen: [opgeslagen], instelling: 'Hogeschool Utrecht', onDelete, onSelect,
     }))
 
-    const event = await clickDeleteBtn()
-    expect(event.defaultPrevented).toBe(true)
-    expect(onDelete).toHaveBeenCalledWith('wb-1')
+    expect(container.querySelector('.wb-grid .wb-delete-btn')).toBeNull()
+    expect(container.querySelector('.wb-opgeslagen').textContent).toContain('Mijn dashboard')
+    await clickDeleteBtn()
+    expect(onDelete).toHaveBeenCalledWith('db-1')
     expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('toont geen lijst zonder opgeslagen dashboards', async () => {
+    await renderIn(createElement(DashboardGallery, { workbooks: [vast], instelling: 'HU', onDelete: vi.fn(), onSelect: vi.fn() }))
+    expect(container.querySelector('.wb-opgeslagen')).toBeNull()
   })
 })
 // #778: een DELETE die niet lukt, laat het rapport niet stil verdwijnen.
