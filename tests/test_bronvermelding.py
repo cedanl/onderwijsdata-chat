@@ -64,7 +64,7 @@ _ROA = json.dumps(
 
 @pytest.fixture(autouse=True)
 def _data(monkeypatch):
-    monkeypatch.setattr("agent.selectie.bron_titel", lambda dataset: _TITELS.get(dataset, dataset))
+    monkeypatch.setattr("agent.selectie.bron_titel", lambda dataset, **_: _TITELS.get(dataset, dataset))
     store.put(
         "duo:p01hoinges:0",
         pd.DataFrame({"STUDIEJAAR": [2019, 2023], "AANTAL": [26000, 26370]}),

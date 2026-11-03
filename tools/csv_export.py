@@ -139,7 +139,7 @@ def bestandsnaam(key: str) -> str:
     known = store.meta(key)
     if known is None:
         return "data.csv"
-    titel = catalog.bron_titel(known.dataset)
+    titel = catalog.bron_titel(known.dataset, vo_context=known.vo_context)
     # Kent de catalogus de dataset niet, dan is de titel het kale id: dat staat er niet twee keer in.
     titeldeel = _bestandsdeel(titel)[:_TITEL_MAX].rstrip("_") if titel != known.dataset else ""
     naam = "_".join(deel for deel in (titeldeel, _bestandsdeel(known.dataset)) if deel)

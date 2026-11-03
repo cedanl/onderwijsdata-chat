@@ -22,7 +22,7 @@ from core.logging_util import foutkenmerk
 from . import store
 from .arbeidsmarkt import get_roa_benchmark, get_uwv_vacatures
 from .catalog import catalogus_laatste_update
-from .cbs import get_cbs_data
+from .cbs import laad_cbs_data
 from .duo import get_duo_data
 from .maten import get_maat
 from .query import query_data
@@ -42,9 +42,10 @@ logger = logging.getLogger(__name__)
 
 STAP_ANALYSE = "eigen berekening (run_analysis)"
 
-# De enige tools die een recept mag aanroepen, met de bron die een fout dan noemt.
+# De enige tools die een recept mag aanroepen, met de bron die een fout dan noemt. CBS zonder de poort van de beurt:
+# het recept zegt zelf of de lading de vo-rijen had (`vo_context`, #879).
 _LADERS: dict[str, tuple[Callable[..., str], str]] = {
-    TOOL_GET_CBS_DATA: (get_cbs_data, "CBS"),
+    TOOL_GET_CBS_DATA: (laad_cbs_data, "CBS"),
     TOOL_GET_DUO_DATA: (get_duo_data, "DUO"),
     TOOL_GET_RIO_DATA: (get_rio_data, "RIO"),
     # Een arbeidsmarktresultaat is een dataset met een laadaanroep (#577).

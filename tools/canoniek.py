@@ -230,9 +230,10 @@ def selectie_digest(filters, columns, group_by, aggregate) -> str:
     return digest("query_data", {"filters": filters, "columns": columns, "group_by": group_by, "aggregate": aggregate})
 
 
-def cbs_digest(filters: dict | None) -> str | None:
-    """De digest van CBS-laadfilters; None als ze na normalisatie niets selecteren."""
-    canon = _odata_params(filters or {})
+def cbs_digest(filters: dict | None, *, vo_context: bool = False) -> str | None:
+    """De digest van CBS-laadfilters; None als ze na normalisatie niets selecteren. Een lading met het vo-deel
+    (#879) is andere data onder dezelfde filters: die krijgt een eigen digest."""
+    canon = {**_odata_params(filters or {}), **({"vo_context": True} if vo_context else {})}
     return digest_plan(canon) if canon else None
 
 

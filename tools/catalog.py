@@ -1235,24 +1235,26 @@ def archief(dataset_id: str) -> dict | None:
     return {"gearchiveerd": True, **({"laatste_periode": laatste} if laatste else {})}
 
 
-def bronetiketten(dataset_id: str) -> str | None:
+def bronetiketten(dataset_id: str, *, vo_context: bool = False) -> str | None:
     """Wat een bronregel achter de titel zet: het geladen deel of 'vo-context voor vervolgonderwijs'
-    (scopeprofiel.bronetiket) en bij een gearchiveerde CBS-tabel het archief met de laatste periode (#865); None als er niets bij hoort."""
+    (scopeprofiel.bronetiket) en bij een gearchiveerde CBS-tabel het archief met de laatste periode (#865); None als er niets bij hoort.
+    `vo_context` is die van de lading (`KeyMeta.vo_context`, #879, #880)."""
     kaal = bron_id(dataset_id)
     entry = _cbs_record(kaal)
-    etiketten = [e for e in (scopeprofiel.bronetiket(kaal), _archiefetiket(entry) if entry else None) if e]
+    etiketten = [e for e in (scopeprofiel.bronetiket(kaal, vo_context), _archiefetiket(entry) if entry else None) if e]
     return ", ".join(etiketten) or None
 
 
-def bron_titel(dataset_id: str) -> str:
+def bron_titel(dataset_id: str, *, vo_context: bool = False) -> str:
     """De titel in een bronregel: de catalogustitel met het deel dat de chat laadt (CH-45), 'vo-context voor
     vervolgonderwijs' (#557, #877) of het archief (#865). Elke spelling van het ID (`cbs:85566ned`) vindt dezelfde titel; net als
-    catalogus_titel het ID zelf als de catalogus de dataset niet kent."""
+    catalogus_titel het ID zelf als de catalogus de dataset niet kent. Een bronregel van een lading geeft haar
+    `vo_context` mee (#879, #880); zonder lading geldt de tabel zonder vo-deel."""
     kaal = bron_id(dataset_id)
     titel = catalogus_titel(kaal)
     if titel == kaal:
         return dataset_id
-    etiket = bronetiketten(kaal)
+    etiket = bronetiketten(kaal, vo_context=vo_context)
     return f"{titel}, {etiket}" if etiket else titel
 
 

@@ -21,6 +21,11 @@ De poort kijkt naar de vraag van de gebruiker, niet naar de zoekterm van het mod
 het model de poort door zelf "hbo" of "doorstroom" toe te voegen. `run()` zet die vraag per beurt
 (`beurtvraag`); buiten de chat (MCP, evals) is er geen en beslist de zoekterm.
 
+Een bron over meer onderwijssoorten laadt haar vo-deel alleen op een strengere toets, `vo_deel_poort` (#879, #880):
+de vo-context open én het vo zelf genoemd. Een hbo-vraag opent de vo-context ook, maar zonder vo-niveau zou een
+CBS-tabel per woonregio dan vo-leerlingen tussen de studenten zetten. Buiten een beurt blijft dat deel dicht: daar
+beslist het recept van de lading.
+
 `HO_MBO_CONTEXT` is een andere, bredere wegblijf-guard (met mbo, student, eerstejaars, roc) voor de vaste
 uitleg vóór het model (`agent.vo_school`, `agent.po_vraag`); `opent_vo_context` is de striktere toets voor
 het zoeken.
@@ -112,6 +117,16 @@ def beurtvraag(vraag: str) -> Generator[None, None, None]:
         yield
     finally:
         _beurtvraag.reset(token)
+
+
+def vo_deel_poort() -> bool:
+    """Laadt een bron over meer onderwijssoorten deze beurt ook haar vo-deel (#879, #880)? Alleen als de vraag van de
+    gebruiker de vo-context opent én zelf een vo-niveau of voortijdig schoolverlaters noemt, zonder po of (v)so.
+    Buiten een beurt (MCP, evals) niet: daar is geen vraag, en een herlaadrecept zegt het zelf."""
+    vraag = _beurtvraag.get()
+    if vraag is None or _PO_SO.search(vraag):
+        return False
+    return opent_vo_context(vraag) and bool(_VO_NIVEAU.search(vraag) or _VSV.search(vraag))
 
 
 def vo_context_poort(zoekterm: str) -> bool:

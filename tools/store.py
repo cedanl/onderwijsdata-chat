@@ -107,6 +107,9 @@ class KeyMeta:
     # De dag (jjjj-mm-dd) waarop de bron de tabel het laatst bijwerkte: bij CBS TableInfos.Modified, live gevraagd
     # bij het ophalen en anders uit de catalogus (#864). Herkomst, geen identiteit.
     bijgewerkt_op: str | None = field(default=None, compare=False)
+    # Bevat deze lading het vo-deel van een bron over meer onderwijssoorten, als vo-context voor vervolgonderwijs
+    # (#879, #880)? Per lading en niet per tabel: de poort van een latere beurt verandert de bronregel van deze niet.
+    vo_context: bool = False
 
 
 def _bytes(value) -> int:
@@ -246,7 +249,7 @@ def herkomst(key: str) -> list[str]:
     if known is None:
         return []
     bron = f"bron: {known.bron.upper()}, dataset {known.dataset}"
-    if etiket := bronetiketten(known.dataset):
+    if etiket := bronetiketten(known.dataset, vo_context=known.vo_context):
         bron += f", {etiket}"
     if known.resource is not None:
         bron += f", resource {known.resource}"

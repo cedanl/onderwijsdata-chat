@@ -70,9 +70,9 @@ def bronnen():
         patch.object(arbeidsmarkt, "_uwv", return_value=_UWV),
         patch.object(arbeidsmarkt, "_roa", return_value=_ROA),
         patch("tools.arbeidsmarkt.scope_blokkade", return_value=None),
-        patch("agent.selectie.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
-        patch("agent.datasetcontext.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
-        patch("agent.figuurbron.bron_titel", side_effect=lambda d: _TITELS.get(d, d)),
+        patch("agent.selectie.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
+        patch("agent.datasetcontext.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
+        patch("agent.figuurbron.bron_titel", side_effect=lambda d, **_: _TITELS.get(d, d)),
     ):
         yield
 
