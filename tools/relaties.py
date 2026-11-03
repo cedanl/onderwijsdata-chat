@@ -218,17 +218,27 @@ def _waarden(reeks: pd.Series, connector: Connector) -> list[str]:
     return [w for w in uit if w is not None]
 
 
+# Zoveel van de waarden moet minstens een regiocode van één soort zijn om de kolom als CBS-regiosleutel te lezen.
+_MIN_AANDEEL_REGIOCODES = 0.5
+
+
 def connector_van(kolom: str, reeks: pd.Series) -> Connector | None:
-    """De connector van een kolom: op naam, anders op de waarden (CBS RegioS met GM- of PV-codes)."""
+    """De connector van een kolom: op naam, anders op de waarden (CBS-regiokolom met GM- of PV-codes).
+
+    Een CBS-regiokolom mengt Nederland (NL), landsdelen (LD), provincies (PV), COROP-gebieden (CR) en gemeenten
+    (GM). De soort met de meeste codes bepaalt de sleutel, mits dat minstens de helft van de waarden is; de
+    andere regio's tellen dan niet mee in `_waarden`, dekking en overlap.
+    """
     if (c := _OP_NAAM.get(str(kolom).strip().upper())) is not None:
         return c
     tekst = reeks.dropna().astype(str).str.strip().str.upper()
     if tekst.empty:
         return None
-    for c in CONNECTOREN:
-        if c.waardepatroon is not None and tekst.str.fullmatch(c.waardepatroon.pattern).all():
-            return c
-    return None
+    aantallen = [
+        (int(tekst.str.fullmatch(c.waardepatroon.pattern).sum()), c) for c in CONNECTOREN if c.waardepatroon is not None
+    ]
+    aantal, beste = max(aantallen, key=lambda paar: paar[0])
+    return beste if aantal and aantal >= _MIN_AANDEEL_REGIOCODES * len(tekst) else None
 
 
 def _dekking(connector: Connector, waarden: list[str]) -> dict | None:

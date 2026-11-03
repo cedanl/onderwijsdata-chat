@@ -559,7 +559,9 @@ Relatielaag, stap 1 (#63): wat hangt aan wat tussen CBS, DUO en RIO, uit bestaan
 (`tools/relaties.py`). Sleutels die bronnen delen (connectoren): instellingscode (BRIN), instellingsnaam,
 gemeente, gemeentenaam, provincie, schooljaar, erkende opleiding, opleidingseenheid en aangeboden opleiding,
 elk met de kolomnamen waaronder hij voorkomt en een vaste vertaling van de waarden (`GM0344` ↔ `344`,
-`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). CBS `RegioS` wordt aan de waarden herkend.
+`PV26` ↔ `Utrecht`, `2021SJ00` ↔ `2021` ↔ `2021/2022`). Een CBS-regiokolom (`RegioS`, `Regiokenmerken`) wordt aan de waarden herkend: de kolom mengt Nederland, landsdelen,
+provincies, COROP-gebieden en gemeenten, en geldt als gemeente- of provinciesleutel zodra minstens de helft van de
+waarden een `GM`- of `PV`-code is. De overige regio's tellen niet mee in `uniek`, `dekking` en `overlap`.
 
 | Parameter | Type | Beschrijving |
 |-----------|------|-------------|
