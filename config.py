@@ -26,7 +26,8 @@ class Config:
     # Leeg = geen cross-origin toegang: de frontend praat via dezelfde origin (#421).
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
-    # Commit van het image, meegegeven als build-arg in CI (#231)
+    # Volledige commit van het image, meegegeven als build-arg in CI (#231). /version toont de korte vorm; de volledige
+    # is nodig voor de installatieregel van een snippet (core/pakketherkomst.py, #888).
     GIT_COMMIT: str | None = os.getenv("GIT_COMMIT")
 
     # Release waarop de omgeving draait: het chart zet hem uit de chartversie (de release-tag).

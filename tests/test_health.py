@@ -85,16 +85,32 @@ def test_version_noemt_de_meegebouwde_catalogusrevisies(client):
     catalogus = client.get("/version").json()["catalogus"]
     assert [p["pakket"] for p in catalogus] == ["onderwijsdata", "riodata"]
     assert all(p["versie"] for p in catalogus)
-    # Sinds #885 zijn de pakketten workspace-leden: geen vcs-commit in hun metadata. Ze komen uit dezelfde commit als de
-    # app (`commit` bovenaan /version). Wat /version per pakket noemt, regelt #888.
-    assert all(p["commit"] is None for p in catalogus)
     assert catalogus[0]["manifest"]["catalogusrevisie"] and catalogus[0]["manifest"]["aantal"] > 0
+
+
+def test_version_noemt_per_pakket_de_commit_waaruit_het_pakket_komt(client, monkeypatch):
+    # #888: de pakketten zijn workspace-leden (#885); hun versie leeft in de commit van de chat-repo waaruit het image
+    # is gebouwd. Volledig, zodat er een installatieregel van te maken is; `commit` bovenaan blijft de korte vorm.
+    from config import Config
+
+    commit = "7d3488aa0da386a087f6363b3f2ffa40049f604b"
+    monkeypatch.setattr(Config, "GIT_COMMIT", commit)
+    data = client.get("/version").json()
+    assert [p["commit"] for p in data["catalogus"]] == [commit, commit]
+    assert data["commit"] == "7d3488aa"
+
+
+def test_version_zonder_build_arg_noemt_geen_commit_per_pakket(client, monkeypatch):
+    from config import Config
+
+    monkeypatch.setattr(Config, "GIT_COMMIT", None)
+    assert [p["commit"] for p in client.get("/version").json()["catalogus"]] == [None, None]
 
 
 def test_catalogusversie_zonder_package_geeft_geen_fout():
     from core.catalogusversie import _pakket
 
-    assert _pakket("bestaat-niet-xyz") == {"pakket": "bestaat-niet-xyz", "versie": None, "commit": None}
+    assert _pakket("bestaat-niet-xyz", "7d3488aa") == {"pakket": "bestaat-niet-xyz", "versie": None, "commit": None}
 
 
 def test_version_noemt_de_dataversie_van_uwv_en_roa(client):

@@ -1,9 +1,10 @@
 """Welke catalogusdata een omgeving draait (#361).
 
 De CBS- en RIO/DUO-catalogus komen uit de packages `onderwijsdata` en `riodata`. Die waren git-dependencies, met
-de commit uit uv.lock; sinds #885 zijn het workspace-leden (packages/), die uit dezelfde commit komen als de app,
-dus `commit` is voor hen leeg. /version noemde alleen de app-commit (#231), zodat niet te zien was dat playground
-een catalogus-commit achter liep. Dit leest de gebouwde revisie uit de geïnstalleerde
+de commit uit uv.lock; sinds #885 zijn het workspace-leden (packages/), die uit dezelfde commit komen als de app.
+Hun metadata heeft geen vcs-commit meer, dus noemt /version per pakket de commit van de chat-repo waaruit het image is
+gebouwd (#888, `core/pakketherkomst.py`). /version noemde alleen de app-commit (#231), zodat niet te zien was dat
+playground een catalogus-commit achter liep. Dit leest de gebouwde revisie uit de geïnstalleerde
 package-metadata: geen netwerk, geen GitHub-HEAD.
 
 UWV en ROA zitten niet als eigen package in de catalogus; hun dataversie staat in de statische
@@ -11,21 +12,17 @@ catalogusrecords van riodata (CH-46). Ook dat zonder download: de app laadt die 
 eerste gebruik.
 """
 
-import json
 from functools import cache
-from importlib import metadata
 
-# Importnaam van de package -> repository, zoals in pyproject.toml.
+from core.pakketherkomst import pakketversie
+
+# Importnaam van de package, zoals in packages/<naam>/pyproject.toml.
 PAKKETTEN = ("onderwijsdata", "riodata")
 
 
-def _pakket(naam: str) -> dict:
-    try:
-        dist = metadata.distribution(naam)
-    except metadata.PackageNotFoundError:
-        return {"pakket": naam, "versie": None, "commit": None}
-    vcs = (json.loads(dist.read_text("direct_url.json") or "{}")).get("vcs_info") or {}
-    return {"pakket": naam, "versie": dist.version, "commit": vcs.get("commit_id")}
+def _pakket(naam: str, commit: str | None) -> dict:
+    versie = pakketversie(naam)
+    return {"pakket": naam, "versie": versie, "commit": commit if versie else None}
 
 
 def _cbs_manifest() -> dict | None:
@@ -51,8 +48,9 @@ def _cbs_manifest() -> dict | None:
 
 
 @cache
-def catalogusversie() -> list[dict]:
-    pakketten = [_pakket(naam) for naam in PAKKETTEN]
+def catalogusversie(commit: str | None = None) -> list[dict]:
+    """Per pakket de versie en `commit`: de chat-commit waaruit het pakket komt (None als de build hem niet kent)."""
+    pakketten = [_pakket(naam, commit) for naam in PAKKETTEN]
     for pakket in pakketten:
         if pakket["pakket"] == "onderwijsdata":
             pakket["manifest"] = _cbs_manifest()

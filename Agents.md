@@ -103,6 +103,10 @@ curl https://onderwijsdata-chat.playground.sdp.surf.nl/version
 ```
 
 Let op:
+- `/version` noemt `commit` kort (8 tekens) en per pakket onder `catalogus` de volledige commit waaruit `onderwijsdata` en
+  `riodata` komen (de chat-commit, want ze staan in `packages/`; #888). De docker-build krijgt daarvoor de volledige
+  `CI_COMMIT_SHA` als `GIT_COMMIT`. Snippets installeren de pakketten met `git+<GitHub-spiegel>@<die commit>#subdirectory=packages/<pakket>`;
+  alleen een commit op `main` bestaat op de spiegel, dus een snippet uit een MR-build is niet installeerbaar.
 - Playground nooit terug op een range zetten en nooit pinnen op `2.0.0` (die tag heeft geen chart).
 - Alle tags zijn protected in GitLab (`*`): een verkeerde tag is niet te verwijderen zonder de bescherming op te heffen. Controleer de naam vóór het pushen.
 - Release-notes beschrijven alles sinds de laatste GitHub-release; sla je een tag over (zoals 2.1.0), neem die wijzigingen dan mee.

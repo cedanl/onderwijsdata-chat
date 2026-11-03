@@ -71,7 +71,7 @@ COPY --from=frontend-builder /frontend/dist ./frontend/dist
 RUN useradd --create-home --uid 1000 appuser && \
     chown -R appuser:appuser /app
 
-# Commit voor /version (#231); CI geeft CI_COMMIT_SHORT_SHA mee via build_args.
+# Commit voor /version (#231) en de installatieregel van snippets (#888); CI geeft de volledige CI_COMMIT_SHA mee via build_args.
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
 
