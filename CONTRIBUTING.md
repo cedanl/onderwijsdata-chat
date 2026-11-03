@@ -12,6 +12,20 @@ cp .env.example .env          # MODEL en de bijbehorende API-key invullen
 make dev                      # backend en frontend samen
 ```
 
+De bronpakketten `onderwijsdata` (CBS) en `riodata` (RIO, DUO, UWV, ROA, Inspectie, SBB) staan in deze repo, onder
+`packages/`, als leden van een uv-workspace (#883, #885). Het zijn aparte pakketten met een eigen `pyproject.toml` en
+eigen tests, maar ze delen met de chat één `uv.lock` en één `.venv`: `uv sync` installeert ze *editable*, dus een
+wijziging in `packages/` is direct zichtbaar in de chat. Draai na een pull die `pyproject.toml`, `uv.lock` of
+`packages/` raakt opnieuw `uv sync`. Een `.venv` van vóór #885 heeft de pakketten nog als git-installatie.
+
+De tests van een pakket draai je in de map van dat pakket:
+
+```bash
+cd packages/riodata && ../../.venv/bin/python -m pytest -q
+```
+
+Ruff, ty en de dekking van de chat slaan `packages/` over; de pakkettests in CI volgen in #886.
+
 ## Testen en linten
 
 Draai dit vóór je een merge request opent; de pipeline doet hetzelfde en blokkeert op falen.

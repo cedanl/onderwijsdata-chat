@@ -166,6 +166,10 @@ cd frontend && npm install <pakket>@<versie> # frontend
 
 Daarna een gewone MR; een release volgt [Promoten naar playground](promoten.md).
 
+De bronpakketten `onderwijsdata` en `riodata` hebben geen pin meer om te bumpen: ze staan in `packages/` en een
+wijziging daar gaat mee in dezelfde MR als de chatwijziging (#885). Wijzigt een pakket zijn afhankelijkheden, draai dan
+`uv lock` en commit `uv.lock` mee.
+
 ### Backup PostgreSQL
 
 Back-ups regelt het platform (SDP). Met de kubeconfig van het team zijn ze niet te zien: `kubectl get backups` en

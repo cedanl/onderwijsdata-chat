@@ -11,6 +11,7 @@ Richtlijnen voor werk aan deze repository. **Zie `Agents.md` voor alle werkwijze
 - **Backend**: FastAPI, WebSocket per sessie, PostgreSQL persistentie (SQLite alleen als lokale terugval zonder `POSTGRES_URI`)
 - **Frontend**: React, WebSocket-connection
 - **Tools**: CBS (StatLine), DUO (onderwijs), RIO (register van instellingen en opleidingen); arbeidsmarkt via UWV en ROA
+- **Bronpakketten**: `packages/onderwijsdata` (CBS) en `packages/riodata` (RIO, DUO, UWV, ROA, Inspectie, SBB) als uv-workspace in deze repo (epic #883); één `uv.lock`, na een wijziging aan `packages/` of `pyproject.toml` opnieuw `uv sync`
 
 ## Werkwijze & richtlijnen
 
