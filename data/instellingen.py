@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 # HO uses adressen_ho (instellingenho.csv); MBO uses adressen_mbo (instellingenmbo.csv).
 # The arbeidsmarktregio comes from the address's gemeente (CBS indeling, the 35 regions of
 # UWV and ROA), not from DUO's RPA-GEBIED NAAM: an older indeling ROA does not know (#454).
+# Opgebouwd en ververst samen met het register hieronder (#901): de regiovergelijking legt die twee naast elkaar, en
+# een adresbestand dat niet laadde bleef anders tot de pod herstartte ontbreken.
 _ADRES_CACHE: dict[str, dict] | None = None
 
 # Wat het adres van een instelling wel en niet zegt (#744). DUO kent één adres per BRIN, dat van de hoofdvestiging.
@@ -195,20 +197,21 @@ _opbouw = threading.Lock()
 
 
 def get_adres_lookup() -> dict[str, dict]:
-    """Return {instellingscode: {provincie, arbeidsmarktregio}} — cached."""
-    global _ADRES_CACHE
-    if _ADRES_CACHE is None:
-        _ADRES_CACHE = _build_adres_lookup()
-    return _ADRES_CACHE
+    """{instellingscode: {provincie, arbeidsmarktregio, plaatsnaam, bevoegd_gezag}}, van dezelfde opbouw als het
+    register: na actualiteit.TTL opnieuw, en na een mislukt adresbestand na _HERPOGING (#901)."""
+    get_all()
+    return _ADRES_CACHE or {}
 
 
-def _build_adres_lookup() -> dict[str, dict]:
-    """Return {instellingscode: {provincie, arbeidsmarktregio, plaatsnaam}} from DUO address data."""
+def _build_adres_lookup() -> tuple[dict[str, dict], list[str]]:
+    """{instellingscode: adres} uit de DUO-adresbestanden, en de bestanden die niet laadden."""
     lookup: dict[str, dict] = {}
+    mislukt: list[str] = []
     for resource in ("adressen_ho", "adressen_mbo"):  # HO eerst: een code in beide houdt het HO-adres
         try:
             df = duo.load(resource, 1)
         except Exception as e:
+            mislukt.append(f"{resource}/1")
             logger.warning("adres-lookup: %s niet beschikbaar: %s", resource, foutkenmerk(e))
             logger.debug("adres-lookup: %s niet beschikbaar", resource, exc_info=True)
             continue
@@ -216,7 +219,7 @@ def _build_adres_lookup() -> dict[str, dict]:
             code = str(row.get("INSTELLINGSCODE") or "").strip()
             if code and code not in lookup:
                 lookup[code] = _adres(row)
-    return lookup
+    return lookup, mislukt
 
 
 def _adres(row) -> dict:
@@ -262,11 +265,10 @@ def _apply_sram_mappings(result: dict[str, dict]) -> dict[str, dict]:
     return result
 
 
-def _build_registry() -> tuple[list[dict], list[str]]:
-    """Het register, en de DUO-bestanden die niet laadden (leeg als het volledig is)."""
-    adres = _build_adres_lookup()
+def _build_registry() -> tuple[list[dict], dict[str, dict], list[str]]:
+    """Het register, de adressen, en de DUO-bestanden die niet laadden (leeg als alles volledig is)."""
+    adres, mislukt = _build_adres_lookup()
     result: dict[str, dict] = {}
-    mislukt: list[str] = []
 
     try:
         df_hbo = duo.load("p01hoinges", 0)
@@ -331,7 +333,7 @@ def _build_registry() -> tuple[list[dict], list[str]]:
         logger.debug("registry: MBO-instellingen niet beschikbaar", exc_info=True)
 
     _apply_sram_mappings(result)
-    return sorted(result.values(), key=lambda x: x["naam"].lower()), mislukt
+    return sorted(result.values(), key=lambda x: x["naam"].lower()), adres, mislukt
 
 
 def _herladen_nodig() -> bool:
@@ -344,8 +346,8 @@ def _herladen_nodig() -> bool:
 
 def _herlaad() -> None:
     """Bouw het register opnieuw op; laadt een bron niet, dan blijft een bestaand register staan (#873)."""
-    global _cache, _alias_lookup, _opgehaald_op, _geprobeerd_op
-    instellingen, mislukt = _build_registry()
+    global _cache, _alias_lookup, _ADRES_CACHE, _opgehaald_op, _geprobeerd_op
+    instellingen, adres, mislukt = _build_registry()
     _geprobeerd_op = actualiteit.nu()
     if _cache is not None and mislukt:
         logger.warning(
@@ -355,7 +357,7 @@ def _herlaad() -> None:
             _HERPOGING,
         )
         return
-    _cache, _alias_lookup = instellingen, None
+    _cache, _alias_lookup, _ADRES_CACHE = instellingen, None, adres
     _opgehaald_op = None if mislukt else _geprobeerd_op
 
 

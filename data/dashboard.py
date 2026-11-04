@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 from dataclasses import dataclass
 
@@ -11,6 +10,7 @@ _BOL_DEELTIJD = "BOL deeltijd"
 import pandas as pd
 from riodata import duo
 
+from core import actualiteit
 from core.logging_util import foutkenmerk
 from core.sentinels import mask_sentinels
 
@@ -462,29 +462,32 @@ def _duo_load(dataset_id: str, resource: int) -> pd.DataFrame:
     return mask_sentinels(duo.load(dataset_id, resource))[0]
 
 
-@functools.lru_cache(maxsize=1)
+@actualiteit.Lading
 def _load_mbo_studenten() -> pd.DataFrame:
     return _duo_load("mbo-studenten-per-instelling", 0)
 
 
-@functools.lru_cache(maxsize=1)
+@actualiteit.Lading
 def _load_mbo_gediplomeerden() -> pd.DataFrame:
     return _duo_load("gediplomeerde-mbo-studenten", 0)
 
 
-@functools.lru_cache(maxsize=1)
+# De resources van instromende-mbo-studenten met JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N) + AANTAL; 0 is de
+# momentopname per hoofdgroep. Vast, net als de fixtures (scripts/duo_testfixtures.py): ze opvragen kost een live
+# CKAN-aanroep per lading.
+_INSTROMENDE_MBO_HISTORISCH = (1, 3, 5, 7)
+
+
+@actualiteit.Lading
 def _load_instromende_mbo_historisch() -> pd.DataFrame:
-    """Odd partitions (1,3,5,7): JAAR + INSTELLINGSCODE + INSTROOM MBO (J/N flag) + AANTAL."""
-    dfs = []
-    for i in [1, 3, 5, 7]:
-        try:
-            dfs.append(_duo_load("instromende-mbo-studenten", i))
-        except Exception as e:
-            _niet_beschikbaar(e, "instromende-mbo: partitie %d niet beschikbaar", i)
-    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+    """Alle jaren samen, of een fout: een ontbrekende resource gaf eerder stil minder jaren, en dat bleef in de
+    cache tot de pod herstartte (#901)."""
+    return pd.concat(
+        [_duo_load("instromende-mbo-studenten", i) for i in _INSTROMENDE_MBO_HISTORISCH], ignore_index=True
+    )
 
 
-@functools.lru_cache(maxsize=1)
+@actualiteit.Lading
 def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     """Partition 0: INSTELLINGSNAAM + HOOFDGROEP NAAM + TOTAAL MBO (latest year snapshot)."""
     return _duo_load("instromende-mbo-studenten", 0)
@@ -504,7 +507,7 @@ def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
         return {}
 
 
-@functools.lru_cache(maxsize=1)
+@actualiteit.Lading
 def _load_ho_full() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     inges = pd.concat([_duo_load("p01hoinges", 0), _duo_load("p01hoinges", 1)], ignore_index=True)
     eerstejaars = pd.concat([_duo_load("p02ho1ejrs", 0), _duo_load("p02ho1ejrs", 1)], ignore_index=True)
@@ -569,7 +572,8 @@ def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict
         return {}
 
 
-@functools.cache
+# Zonder eigen cache: de ROA-tabel zelf staat in arbeidsmarkt._roa (met TTL), dit filtert er alleen uit. Met
+# functools.cache bleef de `{}` na één storing voorgoed staan (#901).
 def _roa_prognose(onderwijs_type: str) -> dict:
     """ROA arbeidsmarktprognoses tot 2030 per opleidingsniveau (typering), landelijk."""
     try:
@@ -581,7 +585,6 @@ def _roa_prognose(onderwijs_type: str) -> dict:
     return {n: ow for n, ow in uit.items() if ow}
 
 
-@functools.cache
 def _roa_schoolverlaters(onderwijs_type: str) -> dict:
     """ROA-schoolverlatersinformatie (SIS 2024) per opleidingsniveau, in hele procenten, landelijk."""
     try:

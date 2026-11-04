@@ -88,7 +88,7 @@ def test_hbo_en_wo_krijgen_de_mbo_regel_niet(duo_fixtures, instelling):
 
 
 def test_zonder_regio_geen_locatieregel(duo_fixtures, monkeypatch):
-    monkeypatch.setattr(instellingen, "_build_adres_lookup", lambda: {})
+    monkeypatch.setattr(instellingen, "_build_adres_lookup", lambda: ({}, []))
 
     blok = build_persona_block({"instelling": "ROC Midden Nederland"})
 

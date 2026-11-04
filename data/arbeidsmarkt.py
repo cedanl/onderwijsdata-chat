@@ -15,7 +15,6 @@ omgevingen uit staan.
 
 from __future__ import annotations
 
-import functools
 import json
 import logging
 import math
@@ -26,6 +25,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from core import actualiteit
 from core.logging_util import foutkenmerk
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,9 @@ class UwvStand:
     gemeente: str | None = None
 
 
-@functools.cache
+# UWV en ROA na actualiteit.TTL opnieuw van de bron, zoals de rest van de app (#901); tot dan één download, ook als
+# chat en dashboards tegelijk vragen. Met functools.cache bleef de eerste download tot de pod herstartte.
+@actualiteit.Lading
 def _uwv() -> pd.DataFrame:
     from riodata import uwv
 
@@ -217,7 +219,7 @@ def vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict[str,
     return {s: sector_vacatures(stand.clusters, s).totaal for s in sectoren} if stand else {}
 
 
-@functools.cache
+@actualiteit.Lading
 def _roa() -> pd.DataFrame:
     from riodata import roa
 
