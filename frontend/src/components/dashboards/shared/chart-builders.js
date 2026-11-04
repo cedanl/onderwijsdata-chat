@@ -4,6 +4,7 @@ import {
   Tooltip, Legend, Filler,
 } from 'chart.js'
 import { SECTOR_LABELS, buildIndexChartOpts } from './chart-opts'
+import { CHART_COLORS } from '../../../constants'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend, Filler)
 
@@ -23,8 +24,8 @@ export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSecto
   return {
     labels: sectors.map(s => SECTOR_LABELS[s] || s),
     datasets: [
-      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s]), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
-      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s]), backgroundColor: CHART_COLORS[0], borderWidth: 0, borderRadius: 4 },
+      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: CHART_COLORS[2], borderWidth: 0, borderRadius: 4 },
     ],
     weggelaten: alle.filter(s => !sectors.includes(s)).map(s => SECTOR_LABELS[s] || s),
   }

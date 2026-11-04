@@ -7,8 +7,17 @@ import { createRoot } from 'react-dom/client'
 import axe from 'axe-core'
 import App from '../App'
 import { STORAGE_TOKEN, STORAGE_USERINFO } from '../constants'
+import { BUILTIN_MIJN_INSTELLING, BUILTIN_ARBEIDSMARKT, BUILTIN_NATIONAAL } from '../workbooks'
+import DASHBOARDS from './fixtures/dashboards.json'
 
 vi.mock('react-plotly.js', () => ({ default: function PlotStub() { return null } }))
+// jsdom heeft geen canvas; react-chartjs-2 zoals het tekent: een canvas met role="img" en de overige props (#905).
+vi.mock('react-chartjs-2', async () => {
+  const { createElement: maak } = await import('react')
+  // eslint-disable-next-line no-unused-vars -- data en options gaan naar Chart.js, niet naar het canvas
+  const Canvas = ({ data, options, ...canvas }) => maak('canvas', { role: 'img', ...canvas })
+  return { Line: Canvas, Bar: Canvas }
+})
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -16,14 +25,29 @@ const APP_TEST = { timeout: 30000 }
 let root
 let container
 
+// Met de dashboards (#905) antwoordt de server op de config en de dashboarddata (echte antwoorden van 04-11, ingekort);
+// de rest gaat mis zoals zonder server.
+const DASHBOARD_ANTWOORDEN = {
+  '/api/config': { dashboards_enabled: true },
+  '/api/dashboard/regio': DASHBOARDS.regio,
+  '/api/dashboard/rendement': DASHBOARDS.rendement,
+  '/api/dashboard/nationaal': DASHBOARDS.nationaal,
+  '/api/dashboard/arbeidsmarktmatch': DASHBOARDS.arbeidsmarktmatch,
+}
+const metDashboards = async url => {
+  const antwoord = DASHBOARD_ANTWOORDEN[String(url).split('?')[0]]
+  if (!antwoord) throw new TypeError('Failed to fetch')
+  return new Response(JSON.stringify(antwoord), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
 // Zonder server: de app toont het loginscherm, of met een bewaarde sessie de app zelf (appZonderServer.test.js).
-async function render(pad, { ingelogd }) {
+async function render(pad, { ingelogd, server = async () => { throw new TypeError('Failed to fetch') } }) {
   if (ingelogd) {
     localStorage.setItem(STORAGE_TOKEN, 'tok-1')
     localStorage.setItem(STORAGE_USERINFO, '{"name":"Anna"}')
   }
   window.history.replaceState({}, '', pad)
-  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+  vi.stubGlobal('fetch', vi.fn(server))
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -88,6 +112,27 @@ describe('axe-poort (#687)', () => {
     ['/privacy', true],
   ])('%s (ingelogd: %s) heeft geen ernstige bevindingen', APP_TEST, async (pad, ingelogd) => {
     await render(pad, { ingelogd })
+    expect(await ernstigeBevindingen()).toEqual([])
+  })
+
+  // #905: de dashboards zelf, met data en zonder ze weg te mocken. Wacht tot het dashboard getekend is (de laadstatus
+  // is weg en er staat een grafiek of tabel).
+  it.each([
+    ['/dashboards', null],
+    ['/dashboards (mijn instelling)', BUILTIN_MIJN_INSTELLING.id],
+    ['/dashboards (arbeidsmarkt)', BUILTIN_ARBEIDSMARKT.id],
+    ['/dashboards (landelijk)', BUILTIN_NATIONAAL.id],
+  ])('%s heeft geen ernstige bevindingen', APP_TEST, async (_, id) => {
+    await render(id ? `/dashboards?id=${id}` : '/dashboards', { ingelogd: true, server: metDashboards })
+    if (id) {
+      for (let i = 0; i < 200 && !container.querySelector('.dashboard-content canvas, .dashboard-content table'); i++) {
+        await act(async () => { await new Promise(r => setTimeout(r, 20)) })
+      }
+      expect(container.querySelector('.db-skeleton-grid')).toBeNull()
+      expect(container.querySelectorAll('.dashboard-content canvas[role="img"][aria-label]').length).toBeGreaterThan(0)
+    } else {
+      expect(container.textContent).toContain('Mijn instelling')
+    }
     expect(await ernstigeBevindingen()).toEqual([])
   })
 })

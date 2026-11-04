@@ -1,15 +1,17 @@
-import { Bar } from 'react-chartjs-2'
-import { CHART_COLORS } from '../../../constants'
-import { fmt } from './hooks'
+import TabelScroll from '../../TabelScroll'
+import { COLOR_EIGEN } from '../../../constants'
+import { fmt, useDarkMode } from './hooks'
 import { SectionHeader, ChartCard } from './shell'
-import { darkColors, horizontalBarOpts } from './chart-opts'
+import { Grafiek } from './grafiek'
+import { darkColors, horizontalBarOpts, oordeelKleur, TIK_LIGGEND, categorieTicks } from './chart-opts'
 
 // ─── Arbeidsmarkt chart components ───────────────────────────────────────────
 
+// Uit het palet: 3:1 tegen de kaart in beide thema's (#905).
 const _ROA_INDICATORS = [
-  { key: 'werkloosheid', label: 'Werkloos', color: '#DC2626' },
+  { key: 'werkloosheid', label: 'Werkloos', color: '#EF4444' },
   { key: 'vast dienstverband', label: 'Vast dienstverband', color: '#0D9488' },
-  { key: 'buiten de vakrichting', label: 'Buiten vakrichting', color: '#F59E0B' },
+  { key: 'buiten de vakrichting', label: 'Buiten vakrichting', color: '#D97706' },
 ]
 
 export function RoaSection({ data, dark }) {
@@ -22,7 +24,7 @@ export function RoaSection({ data, dark }) {
     datasets: _ROA_INDICATORS.map(ind => ({
       label: ind.label,
       data: niveaus.map(n => roa[n]?.[ind.key] ?? null),
-      backgroundColor: ind.color + 'BB',
+      backgroundColor: ind.color,
       borderWidth: 0,
       borderRadius: 3,
     })),
@@ -35,10 +37,11 @@ export function RoaSection({ data, dark }) {
     indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: false,
+    interaction: TIK_LIGGEND,
     plugins: {
       legend: {
         display: true, position: 'top',
-        labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+        labels: { color: label, boxWidth: 14 },
         onClick: (e, legendItem, legend) => {
           const index = legendItem.datasetIndex
           const chart = legend.chart
@@ -55,7 +58,7 @@ export function RoaSection({ data, dark }) {
         grid: { color: grid },
         ticks: { color: tick, callback: v => `${v}%` },
       },
-      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 } } },
+      y: { grid: { display: false }, ticks: categorieTicks(tick) },
     },
   }
   const h = Math.max(160, niveaus.length * 72)
@@ -67,10 +70,8 @@ export function RoaSection({ data, dark }) {
         subtitle="Nationale gemiddelden per opleidingsniveau — niet specifiek voor deze instelling (ROA Schoolverlatersinformatie 2024)"
       />
       <ChartCard>
-        <div style={{ height: h }}>
-          <Bar data={chartData} options={opts} />
-        </div>
-        <div style={{ fontSize: '.73rem', color: 'var(--muted-text)', marginTop: 6, fontStyle: 'italic' }}>
+        <Grafiek soort="bar" data={chartData} options={opts} hoogte={h} titel="Landelijk referentiekader (ROA)" categorie="Niveau" />
+        <div className="db-noot">
           Landelijk gemiddelde — niet specifiek voor deze instelling of regio
         </div>
       </ChartCard>
@@ -78,14 +79,16 @@ export function RoaSection({ data, dark }) {
   )
 }
 
-const _TYPERING_COLORS = {
-  'goed': '#059669', 'zeer goed': '#047857',
-  'redelijk': '#D97706', 'matig': '#EA580C',
-  'slecht': '#DC2626', 'zeer slecht': '#991B1B',
-  'hoog': '#059669', 'zeer hoog': '#047857', 'erg hoog': '#047857',
-  'gemiddeld': '#D97706',
-  'laag': '#EA580C', 'zeer laag': '#DC2626', 'erg laag': '#DC2626',
-  'geen': '#94A3B8',
+// Het oordeel achter een typering; de kleur ervan haalt 4,5:1 als tekst in beide thema's (#905). De tekst zelf blijft
+// staan, dus de kleur is een extra, geen enige drager.
+const _TYPERING_OORDEEL = {
+  'goed': 'goed', 'zeer goed': 'goed',
+  'redelijk': 'gemiddeld', 'matig': 'matig',
+  'slecht': 'slecht', 'zeer slecht': 'slecht',
+  'hoog': 'goed', 'zeer hoog': 'goed', 'erg hoog': 'goed',
+  'gemiddeld': 'gemiddeld',
+  'laag': 'matig', 'zeer laag': 'slecht', 'erg laag': 'slecht',
+  'geen': 'neutraal',
 }
 
 const _PROGNOSE_LABELS = {
@@ -95,6 +98,7 @@ const _PROGNOSE_LABELS = {
 }
 
 export function PrognoseSection({ data }) {
+  const dark = useDarkMode()
   const prognose = data?.arbeidsmarkt_prognose
   if (!prognose || Object.keys(prognose).length === 0) return null
   const niveaus = Object.keys(prognose)
@@ -104,23 +108,25 @@ export function PrognoseSection({ data }) {
         title="Arbeidsmarktprognose tot 2030 (ROA)"
         subtitle="Nationale verwachtingen per opleidingsniveau — niet specifiek voor deze instelling of regio"
       />
-      <ChartCard cardStyle={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem' }}>
+      <ChartCard>
+        <TabelScroll label="Arbeidsmarktprognose tot 2030" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+            <caption className="sr-only">Arbeidsmarktprognose tot 2030 per opleidingsniveau (ROA)</caption>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
-                <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Niveau</th>
+                <th scope="col" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600 }}>Niveau</th>
                 {Object.values(_PROGNOSE_LABELS).map(label => (
-                  <th key={label} style={{ textAlign: 'center', padding: '6px 8px', fontWeight: 600 }}>{label}</th>
+                  <th key={label} scope="col" style={{ textAlign: 'center', padding: '6px 8px', fontWeight: 600 }}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {niveaus.map(niveau => (
                 <tr key={niveau} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                  <td style={{ padding: '6px 8px', fontWeight: 500 }}>{niveau}</td>
+                  <th scope="row" style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500 }}>{niveau}</th>
                   {Object.keys(_PROGNOSE_LABELS).map(key => {
                     const typering = prognose[niveau]?.[key]
-                    const color = _TYPERING_COLORS[typering?.toLowerCase()] || 'var(--gray-500)'
+                    const oordeel = _TYPERING_OORDEEL[typering?.toLowerCase()]
+                    const color = oordeel ? oordeelKleur(oordeel, dark) : 'var(--muted-text)'
                     return (
                       <td key={key} style={{ textAlign: 'center', padding: '6px 8px' }}>
                         {typering ? <span style={{ color, fontWeight: 600 }}>{typering}</span> : '—'}
@@ -130,8 +136,8 @@ export function PrognoseSection({ data }) {
                 </tr>
               ))}
             </tbody>
-          </table>
-          <div style={{ fontSize: '.73rem', color: 'var(--muted-text)', marginTop: 6, fontStyle: 'italic' }}>
+          </TabelScroll>
+          <div className="db-noot">
             Landelijk gemiddelde — niet specifiek voor deze instelling of regio (ROA AIS2030)
           </div>
         </ChartCard>
@@ -161,7 +167,7 @@ export function UwvSection({ data, provincie, dark }) {
           ? `Clusters passend bij opleidingssectoren — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`
           : `Openstaande vacatures per beroepscluster — UWV Open Match, ${vac.peildatum || 'mei 2023'} (momentopname)`}
       />
-      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: '.8rem', color: '#92400E', marginBottom: 12 }}>
+      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', fontSize: '12.5px', color: '#92400E', marginBottom: 12 }}>
         Momentopname mei 2023 — geen historische reeks beschikbaar. Gebruik als indicatie, niet als actueel cijfer.
       </div>
       <div className="kpi-grid" style={{ marginBottom: 12 }}>
@@ -180,21 +186,23 @@ export function UwvSection({ data, provincie, dark }) {
         title={`Beroepencluster${gefilterdOp.length > 0 ? ' passend bij opleidingssectoren' : ''}`}
         subtitle={`Provincie ${provincie}${gefilterdOp.length > 0 ? ` — sectoren: ${gefilterdOp.map(s => s.toLowerCase()).join(', ')}` : ''}`}
       >
-        <div style={{ height: clusterHeight }}>
-          <Bar
-            data={{
-              labels: Object.keys(vac.clusters),
-              datasets: [{
-                label: 'Vacatures',
-                data: Object.values(vac.clusters),
-                backgroundColor: CHART_COLORS.slice(0, Object.keys(vac.clusters).length).map(c => c + 'CC'),
-                borderWidth: 0,
-                borderRadius: 4,
-              }],
-            }}
-            options={horizontalBarOpts(dark)}
-          />
-        </div>
+        <Grafiek
+          soort="bar"
+          hoogte={clusterHeight}
+          categorie="Beroepencluster"
+          data={{
+            labels: Object.keys(vac.clusters),
+            datasets: [{
+              label: 'Vacatures',
+              data: Object.values(vac.clusters),
+              // Eén kleur: de clusters staan al op de as, een kleur per staaf zei niets (#905).
+              backgroundColor: COLOR_EIGEN,
+              borderWidth: 0,
+              borderRadius: 4,
+            }],
+          }}
+          options={horizontalBarOpts(dark)}
+        />
       </ChartCard>
     </>
   )

@@ -491,7 +491,12 @@ def _benchmark_label(ctx: RegioContext) -> str:
 
 
 def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
-    """Return Plotly Scattergeo figure JSON for instelling locations in the benchmark regio."""
+    """Return Plotly Scattergeo figure JSON for instelling locations in the benchmark regio.
+
+    De punten staan op benaderde stadscoördinaten (_CITY_COORDS). Wie in een plaats buiten die lijst zit, valt van de
+    kaart; layout.meta noemt die instellingen (zonder_locatie) en geeft de punten als rijen (data), zodat de app ze
+    kan melden en de kaart als tabel kan tonen als ze niet tekent (#906).
+    """
     try:
         import plotly.graph_objects as go
         import plotly.io as pio
@@ -500,19 +505,30 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
         registry = get_all_instellingen()
         code_to_naam = {inst["instellingscode"]: inst["naam"] for inst in registry if inst.get("instellingscode")}
 
+        def _plaats(code: str) -> str:
+            return (adres.get(code, {}).get("plaatsnaam") or "").upper()
+
         def _coords(code: str) -> tuple[float, float] | None:
-            city = (adres.get(code, {}).get("plaatsnaam") or "").upper()
-            return _CITY_COORDS.get(city)
+            return _CITY_COORDS.get(_plaats(code))
+
+        def _rij(code: str, naam: str, rol: str) -> dict[str, str]:
+            return {"Instelling": naam, "Plaats": _plaats(code).title(), "Rol": rol}
 
         fig = go.Figure()
+        rijen: list[dict[str, str]] = []
+        zonder_locatie: list[str] = []
 
         peer_lons, peer_lats, peer_texts = [], [], []
-        for code in ctx.peer_codes:
+        for code in sorted(ctx.peer_codes, key=lambda c: code_to_naam.get(c, c)):
+            naam = code_to_naam.get(code, code)
             c = _coords(code)
             if c:
                 peer_lats.append(c[0])
                 peer_lons.append(c[1])
-                peer_texts.append(code_to_naam.get(code, code))
+                peer_texts.append(naam)
+                rijen.append(_rij(code, naam, "concurrent"))
+            else:
+                zonder_locatie.append(naam)
 
         if peer_lons:
             fig.add_trace(
@@ -521,14 +537,18 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
                     lat=peer_lats,
                     text=peer_texts,
                     mode="markers",
-                    marker={"size": 10, "color": "#94A3B8", "line": {"width": 1, "color": "white"}},
+                    # 3:1 tegen het land in beide thema's (#905); #94A3B8 haalde 2,5:1.
+                    marker={"size": 10, "color": "#64748B", "line": {"width": 1, "color": "white"}},
                     hovertemplate="%{text}<extra></extra>",
                     name="Concurrenten",
                 )
             )
 
         own = _coords(ctx.self_code)
-        if own:
+        if not own:
+            zonder_locatie.insert(0, instelling_naam)
+        else:
+            rijen.insert(0, _rij(ctx.self_code, instelling_naam, "eigen instelling"))
             fig.add_trace(
                 go.Scattergeo(
                     lon=[own[1]],
@@ -558,6 +578,7 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
             lon_range = [3.0, 7.8]
 
         fig.update_layout(
+            meta={"data": rijen, "zonder_locatie": zonder_locatie},
             showlegend=True,
             legend={
                 "x": 0,

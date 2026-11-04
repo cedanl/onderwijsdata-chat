@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Bar, Line } from 'react-chartjs-2'
-import { SECTOR_LABELS, SECTOR_COLORS, darkColors, horizontalBarOpts, tellingAs } from './chart-opts'
+import { SECTOR_LABELS, darkColors, horizontalBarOpts, sectorKleuren, tellingAs } from './chart-opts'
 import { ChartCard } from './shell'
 import { OndergrensCategorieen } from './ondergrens'
+import { Grafiek } from './grafiek'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
@@ -12,14 +12,15 @@ export function buildSectorTrendData(sectorenTrend) {
   const allJaren = [...new Set(sectors.flatMap(s => Object.keys(sectorenTrend[s]).map(String)))]
     .sort((a, b) => a - b)
   if (allJaren.length < 2) return null
+  const kleuren = sectorKleuren(sectors)
   return {
     labels: allJaren,
-    datasets: sectors.map((sector, i) => ({
+    datasets: sectors.map(sector => ({
       label: SECTOR_LABELS[sector] || sector,
       // Een jaar zonder waarde blijft een gat, geen val naar 0 (#902).
       data: allJaren.map(j => sectorenTrend[sector][j] ?? sectorenTrend[sector][Number(j)] ?? null),
-      backgroundColor: SECTOR_COLORS[i % SECTOR_COLORS.length] + 'BB',
-      borderColor: SECTOR_COLORS[i % SECTOR_COLORS.length],
+      backgroundColor: kleuren.get(sector) + 'BB',
+      borderColor: kleuren.get(sector),
       borderWidth: 1,
       fill: true,
     })),
@@ -33,17 +34,17 @@ export function buildLeerwegenData(leerwegen) {
   if (!leerwegen || Object.keys(leerwegen).length < 2) return null
   const jaren = Object.keys(leerwegen).sort((a, b) => a - b)
   const tracks = LEERWEGEN_MBO
-  const colors = SECTOR_COLORS.slice(0, tracks.length)
+  const kleuren = sectorKleuren(tracks)
   // Guard: require at least one year with BBL/BOL data
   const hasBblBol = jaren.some(j => tracks.some(t => leerwegen[j]?.[t] > 0))
   if (!hasBblBol) return null
   return {
     labels: jaren,
-    datasets: tracks.map((track, i) => ({
+    datasets: tracks.map(track => ({
       label: track,
       data: jaren.map(j => leerwegen[j]?.[track] ?? null),
-      backgroundColor: colors[i] + 'CC',
-      borderColor: colors[i],
+      backgroundColor: kleuren.get(track) + 'CC',
+      borderColor: kleuren.get(track),
       borderWidth: 1,
       fill: true,
     })),
@@ -72,7 +73,7 @@ function _stackedAreaOpts(dark, proportional = false) {
     plugins: {
       legend: {
         display: true, position: 'top',
-        labels: { color: label, font: { size: 11 }, boxWidth: 14 },
+        labels: { color: label, boxWidth: 14 },
       },
       tooltip: {
         mode: 'index',
@@ -92,17 +93,14 @@ function _stackedAreaOpts(dark, proportional = false) {
   }
 }
 
-const _toggleBtnStyle = {
-  marginLeft: 'auto',
-  padding: '2px 10px',
-  fontSize: '.75rem',
-  fontWeight: 600,
-  borderRadius: 4,
-  border: '1px solid var(--gray-300, #D1D5DB)',
-  background: 'var(--gray-50, #F9FAFB)',
-  color: 'var(--gray-600, #4B5563)',
-  cursor: 'pointer',
-  flexShrink: 0,
+// Aantallen of aandelen (#905): een schakelknop met een vaste naam en aria-pressed, zodat een schermlezer zegt wat hij
+// doet en of hij aan staat; groot genoeg om te raken (.db-schakel).
+function AandeelKnop({ aan, onWissel }) {
+  return (
+    <button type="button" className="db-schakel" aria-pressed={aan} onClick={onWissel}>
+      Toon als %
+    </button>
+  )
 }
 
 export function SectorTrendChart({ data, dark }) {
@@ -113,11 +111,9 @@ export function SectorTrendChart({ data, dark }) {
     <ChartCard
       title="Inschrijvingen per sector over tijd"
       subtitle="Stacked — welke faculteiten groeien of krimpen?"
-      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<AandeelKnop aan={proportional} onWissel={() => setProportional(p => !p)} />}
     >
-      <div style={{ height: 260 }}>
-        <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
-      </div>
+      <Grafiek soort="line" data={displayData} options={_stackedAreaOpts(dark, proportional)} hoogte={260} />
     </ChartCard>
   )
 }
@@ -128,26 +124,28 @@ export function HoofdgroepenChart({ perHoofdgroep, onderdrukt, dark }) {
   if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
   const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
   const h = Math.max(160, entries.length * 36)
+  const kleuren = sectorKleuren(entries.map(([k]) => k))
   return (
     <ChartCard
       title="Ingeschrevenen per hoofdgroep"
       subtitle="Mbo-studenten ingeschreven op 1 oktober per DUO-hoofdgroep, laatste jaar (DUO instromende-mbo-studenten, TOTAAL MBO). Geen eerstejaars: nieuw of niet. Een ander DUO-bestand dan het totaal ingeschrevenen, dus de som wijkt daarvan af."
     >
-      <div style={{ height: h }}>
-        <Bar
-          data={{
-            labels: entries.map(([k]) => k),
-            datasets: [{
-              label: 'Ingeschrevenen',
-              data: entries.map(([, v]) => v),
-              backgroundColor: entries.map((_, i) => SECTOR_COLORS[i % SECTOR_COLORS.length] + 'CC'),
-              borderWidth: 0,
-              borderRadius: 4,
-            }],
-          }}
-          options={horizontalBarOpts(dark)}
-        />
-      </div>
+      <Grafiek
+        soort="bar"
+        hoogte={h}
+        categorie="Hoofdgroep"
+        data={{
+          labels: entries.map(([k]) => k),
+          datasets: [{
+            label: 'Ingeschrevenen',
+            data: entries.map(([, v]) => v),
+            backgroundColor: entries.map(([k]) => kleuren.get(k)),
+            borderWidth: 0,
+            borderRadius: 4,
+          }],
+        }}
+        options={horizontalBarOpts(dark)}
+      />
       <OndergrensCategorieen onderdrukt={onderdrukt} />
     </ChartCard>
   )
@@ -161,11 +159,9 @@ export function LeerwegenChart({ data, dark }) {
     <ChartCard
       title="Leerweg-verdeling over tijd"
       subtitle="Ingeschrevenen per leerweg per jaar: BBL, BOL voltijd, BOL deeltijd en Extraneus, samen het totaal ingeschrevenen"
-      actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
+      actions={<AandeelKnop aan={proportional} onWissel={() => setProportional(p => !p)} />}
     >
-      <div style={{ height: 260 }}>
-        <Line data={displayData} options={_stackedAreaOpts(dark, proportional)} />
-      </div>
+      <Grafiek soort="line" data={displayData} options={_stackedAreaOpts(dark, proportional)} hoogte={260} />
     </ChartCard>
   )
 }

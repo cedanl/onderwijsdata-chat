@@ -17,7 +17,7 @@ export function isOndergrens(onderdrukt, jaar) {
 
 export function TenMinste({ actief }) {
   if (!actief) return null
-  return <span className="kpi-ondergrens" style={{ fontSize: 'var(--font-klein)', fontWeight: 500, marginRight: 4 }}>ten minste</span>
+  return <span className="kpi-ondergrens" style={{ fontSize: '12.5px', fontWeight: 500, marginRight: 4 }}>ten minste</span>
 }
 
 function jarenMetLegeCellen(onderdrukt) {
@@ -34,7 +34,7 @@ export function OndergrensNoot({ reeksen }) {
     .filter(r => r.jaren.length > 0)
   if (!regels.length) return null
   return (
-    <p className="dashboard-noot" role="note" style={{ fontSize: 'var(--font-klein)', color: 'var(--muted-text)', margin: '4px 0 16px' }}>
+    <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '4px 0 16px' }}>
       {regels.map(r => `${r.label} in ${r.jaren.join(', ')}`).join('; ')}: ten minste ({ONDERDRUKT_UITLEG}).
     </p>
   )
@@ -45,7 +45,7 @@ export function OndergrensCategorieen({ onderdrukt }) {
   const namen = Object.entries(onderdrukt || {}).filter(([, n]) => n > 0).map(([naam]) => naam)
   if (!namen.length) return null
   return (
-    <p className="dashboard-noot" role="note" style={{ fontSize: 'var(--font-klein)', color: 'var(--muted-text)', margin: '8px 0 0' }}>
+    <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '8px 0 0' }}>
       Ten minste bij {namen.join(', ')} ({ONDERDRUKT_UITLEG}).
     </p>
   )
@@ -55,7 +55,7 @@ export function OndergrensCategorieen({ onderdrukt }) {
 export function WeggelatenNoot({ namen, reden }) {
   if (!namen?.length) return null
   return (
-    <p className="dashboard-noot" role="note" style={{ fontSize: 'var(--font-klein)', color: 'var(--muted-text)', margin: '8px 0 0' }}>
+    <p className="dashboard-noot" role="note" style={{ fontSize: '12.5px', color: 'var(--muted-text)', margin: '8px 0 0' }}>
       Niet getoond ({reden}): {namen.join(', ')}.
     </p>
   )

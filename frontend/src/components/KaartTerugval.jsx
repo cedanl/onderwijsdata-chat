@@ -1,9 +1,9 @@
 import FiguurTabel from './FiguurTabel'
 import { figuurTabel } from '../figuurTabel'
 
-// Wat de chat toont als een kaart niet getekend is (#632): een melding en de cijfers van de kaart als tabel.
-export default function KaartTerugval({ figure }) {
-  const tabel = figuurTabel(figure)
+// Wat de chat toont als een kaart niet getekend is (#632): een melding en de cijfers van de kaart als tabel. De
+// dashboardkaart geeft haar eigen tabel mee (#906).
+export default function KaartTerugval({ figure, tabel = figuurTabel(figure) }) {
   const titel = figure?.layout?.title?.text
   return (
     <>

@@ -162,7 +162,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
         <DemografieKpis {...c} nInstellingen={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
         <OndergrensNoot reeksen={noot('ingeschrevenen', 'Ingeschrevenen')} />
-        <PeersTable data={data} instelling={instelling} />
+        <PeersTable data={data} instelling={instelling} dark={c.dark} />
         <PeerLinesChart
           title="Ingeschrevenen per jaar"
           subtitle={start => (c.hasPeers ? `${vanaf(start)} — ${instelling} (dik) vs. concurrenten in de regio` : `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`)}

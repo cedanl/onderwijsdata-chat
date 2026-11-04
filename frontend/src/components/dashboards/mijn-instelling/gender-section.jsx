@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
-import { Line, Bar } from 'react-chartjs-2'
 import { COLOR_DIPLOM } from '../../../constants'
-import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
+import { SectionHeader, ChartCard, Grafiek, fmt, darkColors, horizontalBarOpts, benchmarkColor } from '../shared/index'
+
+// Man in de verdeelbalken: grijs met 3:1 tegen de kaart in beide thema's (#905); #94A3B8 haalde op wit 2,6:1.
+const KLEUR_MAN = '#64748B'
 
 // Het aandeel vrouw van vrouw en man samen; ontbreekt een van beide, dan is er geen aandeel, geen 0 (#902).
 export function pctVrouwFromGeslacht(g) {
@@ -47,7 +49,7 @@ function buildPeerGenderData(peersGeslacht, ownInstelling, ownPct, dark) {
     datasets: [{
       label: '% vrouw',
       data: rows.map(r => r.pct),
-      backgroundColor: rows.map(r => r.eigen ? COLOR_DIPLOM : (dark ? '#475569' : '#CBD5E1')),
+      backgroundColor: rows.map(r => r.eigen ? COLOR_DIPLOM : benchmarkColor(dark)),
       borderRadius: 4,
     }],
   }
@@ -65,7 +67,7 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
               <div style={{ width: `${pctVrouw}%`, background: 'var(--teal-600)' }} />
-              <div style={{ width: `${100 - pctVrouw}%`, background: '#94A3B8' }} />
+              <div style={{ width: `${100 - pctVrouw}%`, background: KLEUR_MAN }} />
             </div>
           </div>
         )}
@@ -142,11 +144,12 @@ export function GenderSection({ data, instelling, dark }) {
     },
   }
 
+  const balkOpts = horizontalBarOpts(dark, '% vrouw')
   const peerOpts = {
-    ...horizontalBarOpts(dark, '% vrouw'),
+    ...balkOpts,
     scales: {
-      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, font: { size: 11 }, callback: v => `${v}%` } },
-      y: { grid: { display: false }, ticks: { color: tick, font: { size: 11 }, padding: 4 } },
+      ...balkOpts.scales,
+      x: { min: 0, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => `${v}%` } },
     },
   }
 
@@ -157,15 +160,13 @@ export function GenderSection({ data, instelling, dark }) {
 
       {trendLineData && (
         <ChartCard title="% vrouw per jaar" subtitle="Aandeel vrouwelijke ingeschrevenen over tijd">
-          <div style={{ height: 220 }}><Line data={trendLineData} options={trendOpts} /></div>
+          <Grafiek soort="line" data={trendLineData} options={trendOpts} hoogte={220} />
         </ChartCard>
       )}
 
       {peerData && (
         <ChartCard title="% vrouw — benchmark peers" subtitle="Gesorteerd op aandeel vrouw (eigen instelling groen)">
-          <div style={{ height: Math.max(200, peerData.labels.length * 34 + 40) }}>
-            <Bar data={peerData} options={peerOpts} />
-          </div>
+          <Grafiek soort="bar" data={peerData} options={peerOpts} hoogte={Math.max(200, peerData.labels.length * 34 + 40)} categorie="Instelling" />
         </ChartCard>
       )}
 
@@ -180,21 +181,21 @@ export function GenderSection({ data, instelling, dark }) {
                 const pv = Math.round((g.VROUW / t) * 1000) / 10
                 return (
                   <div key={sector}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', color: 'var(--gray-500)', marginBottom: 3 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--muted-text)', marginBottom: 3 }}>
                       <span>{sector}</span>
                       <span>{pv}% vrouw — {fmt(t)} totaal</span>
                     </div>
                     <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 14 }}>
                       <div style={{ width: `${pv}%`, background: 'var(--teal-600)' }} />
-                      <div style={{ width: `${100 - pv}%`, background: '#94A3B8' }} />
+                      <div style={{ width: `${100 - pv}%`, background: KLEUR_MAN }} />
                     </div>
                   </div>
                 )
               })}
           </div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '.75rem', color: 'var(--gray-500)' }}>
-            <span><span style={{ color: 'var(--teal-600)' }}>●</span> Vrouw</span>
-            <span><span style={{ color: '#94A3B8' }}>●</span> Man</span>
+          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: '12.5px', color: 'var(--muted-text)' }}>
+            <span><span aria-hidden="true" style={{ color: 'var(--teal-600)' }}>●</span> Vrouw</span>
+            <span><span aria-hidden="true" style={{ color: KLEUR_MAN }}>●</span> Man</span>
           </div>
         </div>
       )}

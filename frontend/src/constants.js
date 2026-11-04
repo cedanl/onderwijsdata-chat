@@ -39,11 +39,14 @@ export const NOT_SESSION_DATA_KEYS = [
 ]
 
 // ─── Shared color palette ────────────────────────────────────────────────────
-export const CHART_COLORS = ['#2563EB', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#22C55E', '#EC4899', '#6366F1']
+// Het ene palet van de dashboards (#905). Middentonen: elke kleur haalt 3:1 (WCAG 1.4.11, niet-tekst) tegen de kaart in
+// beide thema's, wit (#FFFFFF) en het donkere --white (#1A1F2E), dus een reeks houdt in elk thema dezelfde kleur.
+// Niet voor tekst: daarvoor is 4,5:1 nodig (oordeelKleur in chart-opts.js). dashboardKleuren.test.js rekent het na.
+export const CHART_COLORS = ['#3B82F6', '#0D9488', '#D97706', '#EF4444', '#8B5CF6', '#16A34A', '#EC4899', '#0891B2', '#EA580C', '#65A30D']
 
 export const COLOR_EIGEN = CHART_COLORS[0]
 export const COLOR_DIPLOM = '#0D9488'
-export const COLOR_EERSTEJAARS = '#22C55E'
+export const COLOR_EERSTEJAARS = CHART_COLORS[5]
 
 // ─── Magic numbers ───────────────────────────────────────────────────────────
 export const MAX_CONVERSATIONS = 15

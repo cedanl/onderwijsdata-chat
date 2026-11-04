@@ -44,11 +44,11 @@ export function DemografieKpis({ lastInges, ingesDelta, ingesEntries, totaalRegi
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
               <div style={{ width: `${pctVrouw}%`, background: 'var(--teal-600)' }} />
-              <div style={{ width: `${100 - pctVrouw}%`, background: '#94A3B8' }} />
+              <div style={{ width: `${100 - pctVrouw}%`, background: '#64748B' }} />
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 5, fontSize: '.72rem', color: 'var(--gray-500)' }}>
-              <span><span style={{ color: 'var(--teal-600)' }}>●</span> {fmt(vrouw)} vrouw</span>
-              <span><span style={{ color: '#94A3B8' }}>●</span> {fmt(man)} man</span>
+            <div style={{ display: 'flex', gap: 10, marginTop: 5, fontSize: '12.5px', color: 'var(--muted-text)' }}>
+              <span><span aria-hidden="true" style={{ color: 'var(--teal-600)' }}>●</span> {fmt(vrouw)} vrouw</span>
+              <span><span aria-hidden="true" style={{ color: '#64748B' }}>●</span> {fmt(man)} man</span>
             </div>
           </div>
         </div>

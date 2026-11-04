@@ -9,6 +9,7 @@ vi.mock('../components/dashboards', () => ({
 }))
 
 import WorkbookViewer from '../components/WorkbookViewer'
+import { BUILTIN_NATIONAAL } from '../workbooks'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -37,6 +38,19 @@ describe('report viewer accessibility', () => {
     expect(region.getAttribute('role')).toBe('region')
     expect(region.getAttribute('aria-label')).toBe('Rapportinhoud')
     expect(region.tabIndex).toBe(0)
+  })
+
+  // #905: een dashboard is geen rapport; de regio heette ook daar "Rapportinhoud".
+  it('names the content region after a dashboard', async () => {
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    await act(async () => {
+      root.render(createElement(WorkbookViewer, {
+        workbook: BUILTIN_NATIONAAL, instelling: 'Hogeschool Utrecht', onBack: vi.fn(), onUpdate: vi.fn(),
+      }))
+    })
+    expect(container.querySelector('.wb-viewer-content').getAttribute('aria-label')).toBe('Dashboardinhoud')
   })
 })
 
