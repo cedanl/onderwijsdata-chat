@@ -330,10 +330,11 @@ def test_load_dashboard_mbo_via_alias():
 def test_load_dashboard_not_found_has_suggestions():
     from data.dashboard import load_dashboard
 
-    result = load_dashboard("Niet Bestaande Instelling XYZ")
+    # De dichtstbijzijnde namen, niet de eerste van het alfabet (#901); wat er niet op lijkt, krijgt er geen.
+    result = load_dashboard("Hogeschool Utrect")
     assert result["gevonden"] is False
-    assert "beschikbare_instellingen" in result
-    assert len(result["beschikbare_instellingen"]) > 0
+    assert result["beschikbare_instellingen"][0] == "Hogeschool Utrecht"
+    assert load_dashboard("Niet Bestaande Instelling XYZ")["beschikbare_instellingen"] == []
 
 
 # ─── API endpoint ────────────────────────────────────────────────────────────

@@ -73,6 +73,12 @@ TOOL_RESULT_MAX_CHARS = int(os.getenv("TOOL_RESULT_MAX_CHARS", "12000"))
 # de vlag blijft standaard uit en staat alleen aan waar de omgeving hem bewust aanzet
 # (manifests/<omgeving>/values.yaml).
 DASHBOARDS_ENABLED = os.getenv("ENABLE_DASHBOARDS", "false").lower() == "true"
+# Een dashboardlading (#901), zoals een run (#688, #759): hooguit MAX_DASHBOARD_LOADS tegelijk op de pod (een koude
+# lading haalt tot zes DUO-bestanden in het geheugen), de rest wacht DASHBOARD_QUEUE_TIMEOUT_S op een plaats. Na
+# DASHBOARD_TIMEOUT_S krijgt de gebruiker een melding met een nieuwe poging; de lading zelf loopt door en vult de cache.
+MAX_DASHBOARD_LOADS = int(os.getenv("MAX_DASHBOARD_LOADS", "4"))
+DASHBOARD_QUEUE_TIMEOUT_S = float(os.getenv("DASHBOARD_QUEUE_TIMEOUT_S", "30"))
+DASHBOARD_TIMEOUT_S = float(os.getenv("DASHBOARD_TIMEOUT_S", "90"))
 # Feedbackknop op rapporten en dashboards (#250); vragen staan in core/feedback.py.
 FEEDBACK_ENABLED = os.getenv("ENABLE_FEEDBACK", "true").lower() != "false"
 # Bewaartermijnen in dagen (#485, besluit 21-10-2026), voor de opschoning (persistence/opschonen.py):

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import contextvars
+import difflib
+import functools
 import logging
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 _INSTROOM_MBO = "INSTROOM MBO"
 _BOL_VOLTIJD = "BOL voltijd"
 _BOL_DEELTIJD = "BOL deeltijd"
 
+import httpx
 import pandas as pd
 from riodata import duo
 
@@ -21,17 +26,112 @@ from .instellingen import get_all as get_all_instellingen
 logger = logging.getLogger(__name__)
 
 
-def _niet_beschikbaar(e: Exception, bericht: str, *args) -> None:
+# ─── Wat er niet laadde (#901) ───────────────────────────────────────────────
+
+BRON_NIET_BESCHIKBAAR = "De DUO-data is nu niet beschikbaar. Probeer het over een paar minuten opnieuw."
+
+
+@dataclass(frozen=True)
+class _Onderdeel:
+    """Een onderdeel dat een dashboard kan missen: de naam zoals de gebruiker hem leest, en de bron erachter. Aan de
+    bron ziet de frontend welke gaten bij welk dashboard horen: /api/dashboard/regio dient er twee."""
+
+    naam: str
+    bron: str
+
+
+_ONDERDEEL_KAART = _Onderdeel("Kaart", "DUO")
+_ONDERDEEL_SECTORKAMERS = _Onderdeel("Sectorkamers", "DUO")
+_ONDERDEEL_EERSTEJAARS = _Onderdeel("Eerstejaars", "DUO")
+_ONDERDEEL_GEDIPLOMEERDEN = _Onderdeel("Gediplomeerden", "DUO")
+_ONDERDEEL_INSTROOM = _Onderdeel("Instroom per jaar", "DUO")
+_ONDERDEEL_RENDEMENT_REGIO = _Onderdeel("Rendement van de regio", "DUO")
+_ONDERDEEL_VACATURES = _Onderdeel("Vacatures (UWV)", "UWV")
+_ONDERDEEL_ROA_SCHOOLVERLATERS = _Onderdeel("Arbeidsmarktpositie schoolverlaters (ROA)", "ROA")
+_ONDERDEEL_ROA_PROGNOSE = _Onderdeel("Arbeidsmarktprognose (ROA)", "ROA")
+
+
+class BronNietBeschikbaar(Exception):
+    """De instelling is niet te vinden omdat een hoofdbron niet laadde: dat is geen "niet gevonden" (#901)."""
+
+    def __init__(self) -> None:
+        super().__init__(BRON_NIET_BESCHIKBAAR)
+
+
+@dataclass
+class _Gaten:
+    """Wat er tijdens één dashboardlading niet laadde: onderdeel → reden, en of een hoofdbron uitviel."""
+
+    onderdelen: dict[_Onderdeel, str] = field(default_factory=dict)
+    hoofdbron_mislukt: bool = False
+
+
+# Per lading, in de thread die laadt: de onderdelen hieronder melden hun gat zonder dat elke aanroep een lijst
+# doorgeeft. Buiten een dashboardlading (een test die een onderdeel los aanroept) is er geen verzameling.
+_gaten: contextvars.ContextVar[_Gaten | None] = contextvars.ContextVar("dashboard_gaten", default=None)
+
+
+def _reden(e: Exception) -> str:
+    """Waarom een onderdeel ontbreekt, in woorden voor de gebruiker; nooit de fouttekst zelf (#502)."""
+    if isinstance(e, (TimeoutError, httpx.TimeoutException)):
+        return "de bron antwoordde niet op tijd"
+    if isinstance(e, httpx.HTTPStatusError):
+        return f"de bron antwoordde met HTTP {e.response.status_code}"
+    if isinstance(e, (OSError, httpx.TransportError)):
+        return "de bron was niet bereikbaar"
+    return "de data van de bron kon niet worden verwerkt"
+
+
+def _niet_beschikbaar(e: Exception, bericht: str, *args, onderdeel: _Onderdeel | None = None) -> None:
     """Een onderdeel dat niet laadt: op WARNING het type en een kenmerk, de traceback op DEBUG (#819).
 
-    De fouttekst van httpx citeert de request-URL, een traceback de waarden in de aanroep (#502).
+    Met `onderdeel` komt het gat ook in de payload (`niet_beschikbaar`), zodat het dashboard het noemt in plaats van
+    het onderdeel stil weg te laten (#901). De fouttekst van httpx citeert de request-URL, een traceback de waarden
+    in de aanroep (#502): die gaan niet mee.
     """
     logger.warning(bericht + ": %s", *args, foutkenmerk(e))
     logger.debug(bericht, *args, exc_info=e)
+    gaten = _gaten.get()
+    if gaten is not None and onderdeel is not None:
+        gaten.onderdelen.setdefault(onderdeel, _reden(e))
+
+
+def _hoofdbron_niet_beschikbaar(e: Exception, bericht: str, *args) -> None:
+    """De lading die zegt of de instelling bestaat, mislukte: wordt ze nergens gevonden, dan is dat een storing."""
+    _niet_beschikbaar(e, bericht, *args)
+    gaten = _gaten.get()
+    if gaten is not None:
+        gaten.hoofdbron_mislukt = True
+
+
+def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
+    """Een dashboard-eindpunt: verzamelt wat er niet laadde en zet het in de payload (#901).
+
+    - Niet gevonden terwijl een hoofdbron uitviel: BronNietBeschikbaar, geen `gevonden: False` met "pas de naam aan".
+    - Gevonden met gaten: `niet_beschikbaar` = [{onderdeel, bron, reden}], in de volgorde waarin ze uitvielen.
+    """
+
+    @functools.wraps(laad)
+    def binnen(instelling: str) -> dict:
+        gaten = _Gaten()
+        token = _gaten.set(gaten)
+        try:
+            result = laad(instelling)
+        finally:
+            _gaten.reset(token)
+        if not result.get("gevonden") and gaten.hoofdbron_mislukt:
+            raise BronNietBeschikbaar
+        if gaten.onderdelen:
+            result["niet_beschikbaar"] = [
+                {"onderdeel": o.naam, "bron": o.bron, "reden": r} for o, r in gaten.onderdelen.items()
+            ]
+        return result
+
+    return binnen
 
 
 _MAX_VACATURE_CLUSTERS = 8
-_MAX_SUGGESTIONS = 20
+_MAX_SUGGESTIONS = 5  # zoveel toont het dashboard
 _MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
@@ -449,7 +549,7 @@ def _build_kaart_figure(ctx: RegioContext, instelling_naam: str) -> str | None:
         )
         return pio.to_json(fig)
     except Exception as e:
-        _niet_beschikbaar(e, "kaart-figure: kon Plotly-kaart niet bouwen")
+        _niet_beschikbaar(e, "kaart-figure: kon Plotly-kaart niet bouwen", onderdeel=_ONDERDEEL_KAART)
         return None
 
 
@@ -503,7 +603,7 @@ def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
         counts = rows.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().sort_values(ascending=False)
         return {str(k): int(v) for k, v in counts.items() if v > 0}
     except Exception as e:
-        _niet_beschikbaar(e, "mbo-sectorkamers: niet beschikbaar")
+        _niet_beschikbaar(e, "mbo-sectorkamers: niet beschikbaar", onderdeel=_ONDERDEEL_SECTORKAMERS)
         return {}
 
 
@@ -531,7 +631,9 @@ def _uwv_vacatures_provincie(provincie: str, sectoren: tuple[str, ...] = ()) -> 
     try:
         stand = arbeidsmarkt.uwv_stand(provincie)
     except Exception as e:
-        _niet_beschikbaar(e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie)
+        _niet_beschikbaar(
+            e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
+        )
         return {}
     if not stand:
         return {}
@@ -560,7 +662,9 @@ def _uwv_clusters_voor_sectoren(provincie: str, sectoren: tuple[str, ...]) -> di
     try:
         return arbeidsmarkt.clusters_voor_sectoren(provincie, sectoren)
     except Exception as e:
-        _niet_beschikbaar(e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie)
+        _niet_beschikbaar(
+            e, "uwv: vacatureclusters voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
+        )
         return {}
 
 
@@ -568,7 +672,9 @@ def _uwv_vacatures_per_sector(provincie: str, sectoren: tuple[str, ...]) -> dict
     try:
         return arbeidsmarkt.vacatures_per_sector(provincie, sectoren)
     except Exception as e:
-        _niet_beschikbaar(e, "uwv: vacatures per sector voor %s niet beschikbaar", provincie)
+        _niet_beschikbaar(
+            e, "uwv: vacatures per sector voor %s niet beschikbaar", provincie, onderdeel=_ONDERDEEL_VACATURES
+        )
         return {}
 
 
@@ -579,7 +685,7 @@ def _roa_prognose(onderwijs_type: str) -> dict:
     try:
         waarden = arbeidsmarkt.roa_prognose(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception as e:
-        _niet_beschikbaar(e, "roa: prognose %s niet beschikbaar", onderwijs_type)
+        _niet_beschikbaar(e, "roa: prognose %s niet beschikbaar", onderwijs_type, onderdeel=_ONDERDEEL_ROA_PROGNOSE)
         return {}
     uit = {n: {o: w["typering"] for o, w in ow.items() if "typering" in w} for n, ow in waarden.items()}
     return {n: ow for n, ow in uit.items() if ow}
@@ -590,7 +696,9 @@ def _roa_schoolverlaters(onderwijs_type: str) -> dict:
     try:
         waarden = arbeidsmarkt.roa_schoolverlaters(arbeidsmarkt.ROA_NIVEAUS[onderwijs_type])
     except Exception as e:
-        _niet_beschikbaar(e, "roa: schoolverlaters %s niet beschikbaar", onderwijs_type)
+        _niet_beschikbaar(
+            e, "roa: schoolverlaters %s niet beschikbaar", onderwijs_type, onderdeel=_ONDERDEEL_ROA_SCHOOLVERLATERS
+        )
         return {}
     uit = {n: {o: round(w["perc"]) for o, w in ow.items() if "perc" in w} for n, ow in waarden.items()}
     return {n: ow for n, ow in uit.items() if ow}
@@ -600,7 +708,7 @@ def _load_dashboard_regio_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
     except Exception as e:
-        _niet_beschikbaar(e, "regio-ho: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "regio-ho: data laden mislukt voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -734,7 +842,7 @@ def _mbo_load_gediplomeerden(inst_col: str, instelling: str) -> tuple[pd.DataFra
         df = _load_mbo_gediplomeerden()
         return df, _mbo_dipl_per_jaar(df, inst_col, instelling)
     except Exception as e:
-        _niet_beschikbaar(e, "regio-mbo: gediplomeerden niet beschikbaar")
+        _niet_beschikbaar(e, "regio-mbo: gediplomeerden niet beschikbaar", onderdeel=_ONDERDEEL_GEDIPLOMEERDEN)
         return None, {}
 
 
@@ -743,7 +851,7 @@ def _mbo_load_eerstejaars(self_code: str) -> tuple[pd.DataFrame | None, dict[int
         df = _load_instromende_mbo_historisch()
         return df, _mbo_eerstejaars_from_df(df, self_code)
     except Exception as e:
-        _niet_beschikbaar(e, "regio-mbo: eerstejaars niet beschikbaar")
+        _niet_beschikbaar(e, "regio-mbo: eerstejaars niet beschikbaar", onderdeel=_ONDERDEEL_EERSTEJAARS)
         return None, {}
 
 
@@ -751,7 +859,7 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _niet_beschikbaar(e, "regio-mbo: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "regio-mbo: data laden mislukt voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -816,12 +924,19 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     return result
 
 
-def _beschikbare_instellingen(df_ho: pd.DataFrame, df_mbo: pd.DataFrame) -> list[str]:
-    """De suggesties bij een onbekende instelling: ho- en mbo-namen samen, gesorteerd, hooguit _MAX_SUGGESTIONS."""
-    namen = set(df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna()) | set(df_mbo["INSTELLINGSNAAM"].dropna())
-    return sorted(namen)[:_MAX_SUGGESTIONS]
+def _beschikbare_instellingen(instelling: str, df_ho: pd.DataFrame, df_mbo: pd.DataFrame) -> list[str]:
+    """De suggesties bij een onbekende instelling: de ho- en mbo-namen die er het dichtst bij liggen, hooguit
+    _MAX_SUGGESTIONS, hoofdletterongevoelig. Met difflib, zoals de bronpakketten bij een onbekende waarde; eerder
+    waren het de eerste namen van het alfabet (#901)."""
+    namen = {
+        str(n).lower(): str(n)
+        for n in (*df_ho["INSTELLINGSNAAM_ACTUEEL"].dropna(), *df_mbo["INSTELLINGSNAAM"].dropna())
+    }
+    dichtst = difflib.get_close_matches(instelling.lower(), list(namen), n=_MAX_SUGGESTIONS, cutoff=0.5)
+    return [namen[n] for n in dichtst]
 
 
+@_dashboardlading
 def load_dashboard_regio(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
@@ -840,7 +955,7 @@ def load_dashboard_regio(instelling: str) -> dict:
 
     try:
         df_ho, _, _ = _load_ho_full()
-        result["beschikbare_instellingen"] = _beschikbare_instellingen(df_ho, _load_mbo_studenten())
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(instelling, df_ho, _load_mbo_studenten())
     except Exception as e:
         _niet_beschikbaar(e, "load_dashboard_regio: beschikbare instellingen niet laden")
 
@@ -869,7 +984,9 @@ def _ho_load_eerstejaars(instelling: str) -> dict[int, int] | None:
             return None
         return hu1.groupby("STUDIEJAAR")["AANTAL_EERSTEJAARS_INGESCHREVENEN"].sum().sort_index().to_dict()
     except Exception as e:
-        _niet_beschikbaar(e, "dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling)
+        _niet_beschikbaar(
+            e, "dashboard-ho: eerstejaars niet beschikbaar voor %s", instelling, onderdeel=_ONDERDEEL_EERSTEJAARS
+        )
         return None
 
 
@@ -881,7 +998,12 @@ def _ho_load_gediplomeerden(instelling: str) -> dict[int, int] | None:
             return None
         return hud.groupby("DIPLOMAJAAR")["AANTAL_GEDIPLOMEERDEN"].sum().sort_index().to_dict()
     except Exception as e:
-        _niet_beschikbaar(e, "dashboard-ho: gediplomeerden niet beschikbaar voor %s", instelling)
+        _niet_beschikbaar(
+            e,
+            "dashboard-ho: gediplomeerden niet beschikbaar voor %s",
+            instelling,
+            onderdeel=_ONDERDEEL_GEDIPLOMEERDEN,
+        )
         return None
 
 
@@ -892,7 +1014,7 @@ def load_dashboard_ho(instelling: str) -> dict | None:
         if hu.empty:
             return None
     except Exception as e:
-        _niet_beschikbaar(e, "dashboard-ho: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "dashboard-ho: data laden mislukt voor %s", instelling)
         return None
 
     result: dict = {}
@@ -925,7 +1047,7 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
     try:
         df = _load_mbo_studenten()
     except Exception as e:
-        _niet_beschikbaar(e, "dashboard-mbo: data laden mislukt voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "dashboard-mbo: data laden mislukt voor %s", instelling)
         return None
 
     rows = df[df["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
@@ -961,11 +1083,17 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
                 gediplomeerden[jaar] = gediplomeerden.get(jaar, 0) + int(dipl_rows[col].sum())
             result["gediplomeerden"] = dict(sorted(gediplomeerden.items()))
     except Exception as e:
-        _niet_beschikbaar(e, "dashboard-mbo: gediplomeerden niet beschikbaar voor %s", instelling)
+        _niet_beschikbaar(
+            e,
+            "dashboard-mbo: gediplomeerden niet beschikbaar voor %s",
+            instelling,
+            onderdeel=_ONDERDEEL_GEDIPLOMEERDEN,
+        )
 
     return result
 
 
+@_dashboardlading
 def load_dashboard(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
@@ -983,7 +1111,9 @@ def load_dashboard(instelling: str) -> dict:
         return result
 
     try:
-        result["beschikbare_instellingen"] = _beschikbare_instellingen(_load_ho(instelling), _load_mbo_studenten())
+        result["beschikbare_instellingen"] = _beschikbare_instellingen(
+            instelling, _load_ho(instelling), _load_mbo_studenten()
+        )
     except Exception as e:
         _niet_beschikbaar(e, "load_dashboard: beschikbare instellingen niet laden")
 
@@ -997,7 +1127,7 @@ def _nationaal_ho(instelling: str, result: dict) -> dict | None:
     try:
         df_inges, _, _ = _load_ho_full()
     except Exception as e:
-        _niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "nationaal-ho: ranking niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1046,7 +1176,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _niet_beschikbaar(e, "nationaal-mbo: ranking niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "nationaal-mbo: ranking niet beschikbaar voor %s", instelling)
         return None
 
     inst_col_mbo = "INSTELLINGSNAAM"
@@ -1084,6 +1214,7 @@ def _nationaal_mbo(instelling: str, result: dict) -> dict | None:
     return result
 
 
+@_dashboardlading
 def load_dashboard_nationaal(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
@@ -1139,6 +1270,7 @@ def _mbo_dipl_per_jaar(df_dipl: pd.DataFrame, filter_col: str, filter_val: str) 
     return result
 
 
+@_dashboardlading
 def load_dashboard_rendement(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
@@ -1192,7 +1324,7 @@ def _rendement_ho(instelling: str) -> dict | None:
     try:
         df_inges, df_ej, df_dipl = _load_ho_full()
     except Exception as e:
-        _niet_beschikbaar(e, "rendement-ho: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "rendement-ho: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1261,7 +1393,7 @@ def _mbo_peers_rendement(ctx, df_mbo, df_dipl_mbo, inst_col, code_col):
     try:
         df_instromende_all = _load_instromende_mbo_historisch()
     except Exception as e:
-        _niet_beschikbaar(e, "rendement-mbo: peer rendement niet beschikbaar")
+        _niet_beschikbaar(e, "rendement-mbo: peer rendement niet beschikbaar", onderdeel=_ONDERDEEL_RENDEMENT_REGIO)
         return {}, []
     peers_rendement: dict[str, dict[int, float]] = {}
     peer_rend_lists: list[dict[int, float]] = []
@@ -1285,7 +1417,7 @@ def _rendement_mbo(instelling: str) -> dict | None:
         df_mbo = _load_mbo_studenten()
         df_dipl_mbo = _load_mbo_gediplomeerden()
     except Exception as e:
-        _niet_beschikbaar(e, "rendement-mbo: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "rendement-mbo: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM"
@@ -1308,7 +1440,7 @@ def _rendement_mbo(instelling: str) -> dict | None:
             ]
             instroom_per_jaar = self_instr.groupby("JAAR")["AANTAL"].sum().apply(int).to_dict()
     except Exception as e:
-        _niet_beschikbaar(e, "rendement-mbo: instroom per jaar niet beschikbaar")
+        _niet_beschikbaar(e, "rendement-mbo: instroom per jaar niet beschikbaar", onderdeel=_ONDERDEEL_INSTROOM)
 
     dipl_per_jaar = _mbo_dipl_per_jaar(df_dipl_mbo, inst_col, instelling) if df_dipl_mbo is not None else {}
 
@@ -1332,7 +1464,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     try:
         df_inges, _, df_dipl = _load_ho_full()
     except Exception as e:
-        _niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-ho: niet beschikbaar voor %s", instelling)
         return None
 
     inst_col = "INSTELLINGSNAAM_ACTUEEL"
@@ -1365,7 +1497,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     try:
         df_mbo = _load_mbo_studenten()
     except Exception as e:
-        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling)
+        _hoofdbron_niet_beschikbaar(e, "arbeidsmarktmatch-mbo: niet beschikbaar voor %s", instelling)
         return None
 
     rows = df_mbo[df_mbo["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
@@ -1383,7 +1515,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
         if not snap.empty:
             gps = {str(k): int(v) for k, v in snap.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().items() if v > 0}
     except Exception as e:
-        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar")
+        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar", onderdeel=_ONDERDEEL_SECTORKAMERS)
 
     return {
         "type": "mbo",
@@ -1394,6 +1526,7 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     }
 
 
+@_dashboardlading
 def load_dashboard_arbeidsmarktmatch(instelling: str) -> dict:
     instelling = resolve_alias(instelling)
     result: dict = {"instelling": instelling, "gevonden": False}
