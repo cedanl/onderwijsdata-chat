@@ -12,6 +12,7 @@ from agent import run as agent_run
 from agent.history import afgebroken_beurt, trim
 from agent.report import RapportGeannuleerd, RapportGeweigerd
 from agent.report import generate as generate_report_spec
+from agent.timebox import harde_grens
 from config import Config
 from core.auth import AUTH_ENABLED, FALLBACK_USER, WS_SUBPROTOCOL, token_uit_protocol, verify_token
 from core.config import (
@@ -178,9 +179,8 @@ async def _generate_report(
     session["stop_event"] = stop_event
     # Aan de serverkant (#759): een hangende modelaanroep hield anders de runplaats bezet, en elke nieuwe vraag kreeg
     # "Er loopt nog een antwoord", ook nadat de frontend na 10 min zelf had opgegeven.
-    grens = asyncio.timeout(GENEREER_TIMEOUT_S)
     try:
-        async with grens:
+        async with harde_grens(GENEREER_TIMEOUT_S) as grens:
             spec = await generate_report_spec(
                 session,
                 emit,

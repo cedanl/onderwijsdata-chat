@@ -6,16 +6,41 @@ het even kan duren (#599); na `grens_s` stopt de run zoals bij de stopknop, via 
 stopsignaal. Een modelaanroep of tool die dat signaal niet ziet omdat hij vastzit,
 breekt `afbreken_s` later af. Het einde van zo'n run zegt in `message_end` dat de grens
 het deed, met de reden (#775): anders leek het op de stopknop.
+
+De harde afbraak zelf (`afbreken_s` hier, `GENEREER_TIMEOUT_S` voor het rapport) loopt via
+`harde_grens`: een modelaanroep die erdoor wordt afgebroken, ziet zo dat het de grens was en
+geen annulering van buitenaf (#800).
 """
 
 import asyncio
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from .stream import Emit
 
 # Een vastzittende aanroep krijgt na de grens nog even om netjes te stoppen.
 _UITLOOP_S = 30
+
+# De harde grens waarbinnen de huidige taak loopt; een contextvar, want de modelaanroep zit diep in de toolloop.
+_harde_grens: ContextVar[asyncio.Timeout | None] = ContextVar("harde_grens", default=None)
+
+
+@asynccontextmanager
+async def harde_grens(seconden: float):
+    """`asyncio.timeout(seconden)`, en daarbinnen weet `grens_verstreken` of een afbraak van deze grens komt (#800)."""
+    async with asyncio.timeout(seconden) as grens:
+        token = _harde_grens.set(grens)
+        try:
+            yield grens
+        finally:
+            _harde_grens.reset(token)
+
+
+def grens_verstreken() -> bool:
+    """Of de harde grens om de huidige taak verstreken is: een CancelledError is dan zijn afbraak."""
+    grens = _harde_grens.get()
+    return grens is not None and grens.expired()
 
 
 @dataclass
