@@ -133,9 +133,9 @@ pytest:
     paths:
       - .uv-cache
   before_script:
-    # curl voor helm hieronder. git hoeft niet meer: riodata en onderwijsdata zijn workspace-leden (packages/) en
-    # geen git-dependency meer (#885).
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+    # curl voor helm hieronder. git niet meer voor de pakketten (workspace-leden in packages/, #885), wel voor
+    # tests/test_pakketbot.py: die commit en pusht naar een lokale bare remote, zoals de bot-MR-jobs (#887).
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git && rm -rf /var/lib/apt/lists/*
     - pip install --no-cache-dir uv
     # Eén statische binary, gecontroleerd op checksum; geen pakketbron.
     - curl -fsSL --retry 3 -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"

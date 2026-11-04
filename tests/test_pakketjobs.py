@@ -56,6 +56,11 @@ def test_de_mr_jobs_hebben_git_en_lopen_nooit_tegelijk(ci):
         assert ci[naam]["extends"] == ".pakketbot-mr"
 
 
+def test_de_pytest_job_heeft_git_voor_de_tests_van_de_bot(ci):
+    """tests/test_pakketbot.py commit en pusht echt, naar een lokale bare remote; zonder git falen die tests."""
+    assert any("install" in regel and " git " in f"{regel} " for regel in ci["pytest"]["before_script"])
+
+
 def test_de_wekelijkse_laatste_update_doorloopt_de_hele_keten_voor_de_mr(ci):
     """Uit de pakketrepo (review F2): pas na afleiding, validatie, publicatie en tests komt er iets op main."""
     script = _script(ci["cbs:laatste-update"])
