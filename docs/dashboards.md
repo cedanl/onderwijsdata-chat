@@ -12,13 +12,48 @@ Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `E
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
 | **Instroom** | `/api/dashboard/instroom` | Ingeschrevenen per jaar, verdeling over sectoren, gediplomeerden; bij HO ook geslacht en eerstejaars |
-| **Regio** | `/api/dashboard/regio` | Regionale vergelijking, SBB sectorkamers |
+| **Regio** | `/api/dashboard/regio` | Regionale vergelijking; mbo: leerwegen en ingeschrevenen per hoofdgroep |
 | **Nationaal** | `/api/dashboard/nationaal` | Nationale onderwijsstatistieken, KPI's |
 | **Rendement** | `/api/dashboard/rendement` | Diplomering, doorstroom, uitval |
 | **Arbeidsmarktmatch** | `/api/dashboard/arbeidsmarktmatch` | UWV vacaturedata per sector, match scores |
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
 De data komt uit `data/dashboard.py`.
+
+### Wat de getallen tellen
+
+- **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit
+  `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen, in het regio- en het instroomdashboard
+  (#899).
+- **Mbo per hoofdgroep** (`ingeschrevenen_per_hoofdgroep`): `TOTAAL MBO` uit `instromende-mbo-studenten`, het laatste
+  jaar. Dat zijn ingeschrevenen, nieuw of niet, geen eerstejaars (domeinregel `mbo-instroom-totaal-mbo` in
+  `data/domeinregels.toml`). Het is een ander DUO-bestand dan dat van het totaal, dus de som wijkt daarvan af.
+- **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
+  laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
+  Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
+
+### Onderdrukte en ontbrekende cellen
+
+DUO zet kleine aantallen op -1; de dashboards laden DUO via `_duo_load`, dat zo'n cel leeg maakt (`core/sentinels.py`).
+Een som telt een lege cel niet mee en is dan een ondergrens. Elke reeks meldt in `onderdrukt` per jaar (of per sector)
+hoeveel lege cellen erin vallen, en het frontend zegt dan "ten minste" (#902). Een jaar of sector met alleen lege
+cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een lege cel meetelt, staat in
+`onderdrukt.eigen_positie` en heet in de UI indicatief; een sector zonder eigen waarde staat in `positie_weggelaten`.
+
+### Landelijk, groei en het regiogemiddelde
+
+- **Landelijk** (`/api/dashboard/nationaal`) is de som van het DUO-bestand per instelling (`p01hoinges`,
+  `mbo-studenten-per-instelling`). De chat geeft een landelijk aantal uit een vaste CBS-maat (`tools/maten.py`, #805:
+  85423NED en 85354NED), een andere telling. Het dashboard blijft bij de DUO-som, omdat het per instelling rangschikt
+  en aandelen per DUO-sector rekent, en zegt dat in het veld `landelijk` en op de pagina (#903). Per mbo-instelling
+  geven dashboard en `get_maat` hetzelfde aantal; per ho-instelling leest de chat het bestand met opleidingsvorm, dat
+  andere cellen onderdrukt, dus daar kan het een paar studenten schelen in een jaar met onderdrukte cellen
+  (`tests/test_dashboard_cijfers.py`).
+- **Groei** op Mijn instelling loopt voor elke instelling vanaf hetzelfde startjaar (het laatste van de eerste jaren
+  met data, over eigen instelling en peers) tot het laatste jaar, in grafiek, ranking en tabel; het startjaar staat in
+  de kop.
+- **Regiogemiddelde**: per jaar het gemiddelde over de peers met data in dat jaar; `benchmark.n_per_jaar` geeft hoeveel
+  dat er zijn, `n_instellingen` het aantal in het laatste jaar.
 
 ---
 

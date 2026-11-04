@@ -5,7 +5,7 @@ import {
   useDarkMode, DashboardShell, SectionHeader, RegioBadges,
   RoaSection, PrognoseSection, UwvSection,
   darkColors, horizontalBarOpts, SECTOR_LABELS, ChartCard,
-  DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData,
+  DashboardSources, BRONNEN_ARBEIDSMARKT, buildSupplyDemandData, WeggelatenNoot,
   NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
 
@@ -43,6 +43,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }
   )
 
   if (!chartData) return null
+  const { weggelaten, ...barData } = chartData
   const { label } = darkColors(dark)
   const baseOpts = horizontalBarOpts(dark)
   return (
@@ -50,8 +51,8 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }
       title="Gediplomeerden vs. vacatures per sector"
       subtitle="Gemiddeld aantal gediplomeerden (3 jaar) vs. gerelateerde vacatures (UWV). Een beroepencluster dat bij meer sectoren hoort, telt per sector naar rato mee."
     >
-      <div style={{ height: Math.max(200, chartData.labels.length * 50) }}>
-        <Bar data={chartData} options={{
+      <div style={{ height: Math.max(200, barData.labels.length * 50) }}>
+        <Bar data={barData} options={{
           ...baseOpts,
           plugins: {
             ...baseOpts.plugins,
@@ -68,6 +69,7 @@ function SupplyDemandChart({ gediplomeerdenPerSector, vacaturesPerSector, dark }
           },
         }} />
       </div>
+      <WeggelatenNoot namen={weggelaten} reden="geen gediplomeerden in de laatste drie jaar" />
     </ChartCard>
   )
 }

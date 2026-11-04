@@ -3,12 +3,11 @@ import { Line, Bar } from 'react-chartjs-2'
 import { COLOR_DIPLOM } from '../../../constants'
 import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts } from '../shared/index'
 
-function pctVrouwFromGeslacht(g) {
-  if (!g) return null
-  const v = g.VROUW ?? 0
-  const m = g.MAN ?? 0
-  const t = v + m
-  return t > 0 ? Math.round((v / t) * 1000) / 10 : null
+// Het aandeel vrouw van vrouw en man samen; ontbreekt een van beide, dan is er geen aandeel, geen 0 (#902).
+export function pctVrouwFromGeslacht(g) {
+  if (g?.VROUW == null || g?.MAN == null) return null
+  const t = g.VROUW + g.MAN
+  return t > 0 ? Math.round((g.VROUW / t) * 1000) / 10 : null
 }
 
 function buildTrendLineData(geslachtTrend) {
@@ -62,12 +61,14 @@ function GeslachtKpis({ pctVrouw, vrouw, man, fiveYearChange, lastJaar }) {
           <span className="kpi-label">% vrouw {lastJaar}</span>
         </div>
         <div className="kpi-value">{pctVrouw != null ? `${pctVrouw}%` : '—'}</div>
-        <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
-            <div style={{ width: `${pctVrouw ?? 0}%`, background: 'var(--teal-600)' }} />
-            <div style={{ width: `${100 - (pctVrouw ?? 0)}%`, background: '#94A3B8' }} />
+        {pctVrouw != null && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', borderRadius: 3, overflow: 'hidden', height: 10 }}>
+              <div style={{ width: `${pctVrouw}%`, background: 'var(--teal-600)' }} />
+              <div style={{ width: `${100 - pctVrouw}%`, background: '#94A3B8' }} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
       {fiveYearChange != null && (
         <div className="kpi-card">
@@ -104,8 +105,7 @@ export function GenderSection({ data, instelling, dark }) {
     const geslacht = data.geslacht ?? {}
     const vrouw = geslacht.VROUW ?? null
     const man = geslacht.MAN ?? null
-    const totaal = (vrouw ?? 0) + (man ?? 0)
-    const pctVrouw = totaal > 0 ? Math.round(((vrouw ?? 0) / totaal) * 1000) / 10 : null
+    const pctVrouw = pctVrouwFromGeslacht(geslacht)
 
     const geslachtTrend = data.geslacht_trend ?? null
     const trendLineData = buildTrendLineData(geslachtTrend)

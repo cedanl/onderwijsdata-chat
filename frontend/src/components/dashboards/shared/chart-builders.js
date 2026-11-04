@@ -11,16 +11,22 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 // Diplomas vs. vacancies per sector. The backend counts a UWV cluster shared by several sectors
 // pro rata (#455), so the vacancy series is its per-sector count, not a sum over clusters.
+// Aflopend op gediplomeerden en zonder sector met 0 of zonder waarde; die staan in `weggelaten`. Een sector zonder
+// vacaturetelling krijgt geen staaf, geen 0 (#902).
 export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSector) {
   if (!gediplomeerdenPerSector || !vacaturesPerSector) return null
-  const sectors = Object.keys(gediplomeerdenPerSector)
+  const alle = Object.keys(gediplomeerdenPerSector)
+  const sectors = alle
+    .filter(s => gediplomeerdenPerSector[s] > 0)
+    .sort((a, b) => gediplomeerdenPerSector[b] - gediplomeerdenPerSector[a])
   if (!sectors.length) return null
   return {
     labels: sectors.map(s => SECTOR_LABELS[s] || s),
     datasets: [
-      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s] || 0), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
-      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] || 0), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s]), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
     ],
+    weggelaten: alle.filter(s => !sectors.includes(s)).map(s => SECTOR_LABELS[s] || s),
   }
 }
 
@@ -35,17 +41,46 @@ export function yearOverYearDelta(entries) {
   return last && prev ? last[1] - prev[1] : null
 }
 
+// ─── Groei: één regel voor grafiek, ranking en tabel (#903) ──────────────────
+// De groei loopt van een gemeenschappelijk startjaar tot het eindjaar: het laatste van de eerste jaren met een waarde
+// over de eigen instelling en de vergeleken reeksen (met minstens twee jaren). Zo heeft elke instelling op een pagina
+// hetzelfde groeicijfer, met dezelfde basis; een reeks zonder waarde in het startjaar krijgt geen groei.
+
+const _waarde = (dict, jaar) => dict?.[jaar] ?? dict?.[String(jaar)] ?? null
+
+function _jarenMetWaarde(dict) {
+  return Object.keys(dict || {}).map(Number).filter(j => _waarde(dict, j) > 0).sort((a, b) => a - b)
+}
+
+export function groeiStartjaar(dicts) {
+  const eerste = dicts.map(_jarenMetWaarde).filter(j => j.length >= 2).map(j => j[0])
+  return eerste.length ? Math.max(...eerste) : null
+}
+
+export function groeiPct(dict, startjaar, eindjaar) {
+  if (startjaar == null || eindjaar == null) return null
+  const start = _waarde(dict, startjaar)
+  const eind = _waarde(dict, eindjaar)
+  if (!(start > 0) || eind == null) return null
+  return Math.round(((eind - start) / start) * 100)
+}
+
+// Elke waarde als % verandering t.o.v. het startjaar; een jaar zonder waarde blijft een gat.
+function _index(dict, labels, startjaar) {
+  const base = _waarde(dict, startjaar)
+  return labels.map(y => {
+    const v = _waarde(dict, y)
+    return v != null && base > 0 ? Math.round(((v / base) - 1) * 100) : null
+  })
+}
+
 export function buildPeerLinesData(ownDict, peersDict, ownLabel, ownColor, peerColor) {
   if (!ownDict) return null
   const allYears = new Set(Object.keys(ownDict).map(String))
   for (const d of Object.values(peersDict || {})) Object.keys(d).forEach(y => allYears.add(String(y)))
   const labels = [...allYears].sort((a, b) => Number(a) - Number(b))
-
-  const toIndex = (dict) => {
-    const raw = labels.map(y => dict[y] ?? dict[Number(y)] ?? null)
-    const base = raw.find(v => v != null && v > 0)
-    return raw.map(v => v != null && base > 0 ? Math.round(((v / base) - 1) * 100) : null)
-  }
+  const startjaar = groeiStartjaar([ownDict, ...Object.values(peersDict || {})])
+  const toIndex = dict => _index(dict, labels, startjaar)
 
   const datasets = []
   for (const [naam, data] of Object.entries(peersDict || {})) {
@@ -73,7 +108,7 @@ export function buildPeerLinesData(ownDict, peersDict, ownLabel, ownColor, peerC
     fill: false,
     pointHoverRadius: 6,
   })
-  return { labels, datasets }
+  return { labels, datasets, startjaar }
 }
 
 export function buildPeerLinesOpts(dark, ownLabel) {
@@ -95,15 +130,10 @@ export function buildPeerLinesOpts(dark, ownLabel) {
 
 export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel, ownColor, benchColor) {
   if (!ownDict) return null
-  const ownEntries = Object.entries(ownDict).sort((a, b) => a[0] - b[0])
-  const labels = ownEntries.map(([y]) => String(y))
-  const ownRaw = ownEntries.map(([, v]) => v)
-
-  const toIndex = (values, base) =>
-    values.map(v => v != null && base > 0 ? Math.round(((v / base) - 1) * 100) : null)
-
-  const ownBase = ownRaw.find(v => v != null && v > 0) ?? ownRaw[0]
-  const ownData = toIndex(ownRaw, ownBase)
+  const labels = Object.keys(ownDict).sort((a, b) => a - b).map(String)
+  // Eigen instelling en benchmark t.o.v. hetzelfde startjaar (#903); eerder nam elke reeks haar eigen eerste jaar.
+  const startjaar = groeiStartjaar(benchDict ? [ownDict, benchDict] : [ownDict])
+  const ownData = _index(ownDict, labels, startjaar)
 
   const datasets = [
     {
@@ -118,12 +148,9 @@ export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel,
     },
   ]
   if (benchDict) {
-    const benchMap = new Map(Object.entries(benchDict).map(([k, v]) => [String(k), v]))
-    const benchRaw = labels.map(y => benchMap.get(y) ?? null)
-    const benchBase = benchRaw.find(v => v != null)
     datasets.push({
       label: benchLabel,
-      data: toIndex(benchRaw, benchBase),
+      data: _index(benchDict, labels, startjaar),
       borderColor: benchColor,
       backgroundColor: 'transparent',
       borderDash: [5, 4],
@@ -133,5 +160,5 @@ export function buildBenchmarkLineData(ownDict, benchDict, ownLabel, benchLabel,
       fill: false,
     })
   }
-  return { labels, datasets }
+  return { labels, datasets, startjaar }
 }

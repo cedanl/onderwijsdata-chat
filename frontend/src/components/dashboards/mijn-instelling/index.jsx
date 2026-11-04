@@ -12,8 +12,9 @@ import {
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
-  PeersTable, SectorTrendChart, LeerwegenChart, SectorkamersChart,
+  PeersTable, SectorTrendChart, LeerwegenChart, HoofdgroepenChart,
   RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
+  sortedEntries, perJaar, isOndergrens, TenMinste, OndergrensNoot,
 } from '../shared/index'
 
 // Van /api/dashboard/regio toont dit dashboard de DUO-onderdelen; UWV en ROA staan op het arbeidsmarktdashboard.
@@ -21,17 +22,17 @@ const REGIO_BRONNEN = ['DUO']
 import { RendementSection } from './rendement-section'
 import { GenderSection } from './gender-section'
 
-function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix }) {
+function SamenvattingTile({ label, eigenWaarde, regioWaarde, regioLabel, sparkValues, color, icon, suffix, ondergrens, regioOndergrens }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-header">
         <span className="kpi-label">{label}</span>
         <div className="kpi-icon" style={{ background: `${color}18` }}>{icon}</div>
       </div>
-      <div className="kpi-value">{fmt(eigenWaarde)}{suffix}</div>
+      <div className="kpi-value"><TenMinste actief={ondergrens} />{fmt(eigenWaarde)}{suffix}</div>
       {regioWaarde != null && (
         <div className="kpi-trend" style={{ color: 'var(--gray-500)' }}>
-          {regioLabel}: {fmt(regioWaarde)}
+          {regioLabel}: {regioOndergrens ? 'ten minste ' : ''}{fmt(regioWaarde)}
         </div>
       )}
       {sparkValues && <Sparkline values={sparkValues} color={color} />}
@@ -75,9 +76,24 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
   const bmLabel = c.bmLabel || 'Regio'
   const bm = c.bm || {}
-  const bmInges = bm.ingeschrevenen ? Object.values(bm.ingeschrevenen).at(-1) : null
-  const bmEj = bm.eerstejaars ? Object.values(bm.eerstejaars).at(-1) : null
-  const bmDipl = bm.gediplomeerden ? Object.values(bm.gediplomeerden).at(-1) : null
+  // Onderdrukte cellen per reeks en jaar (#902): een getal daarover is "ten minste".
+  const od = data?.onderdrukt || {}
+  const bmOd = bm.onderdrukt || {}
+  const bmLaatste = sleutel => sortedEntries(bm[sleutel]).at(-1) ?? [null, null]
+  const [bmIngesJaar, bmInges] = bmLaatste('ingeschrevenen')
+  const [bmEjJaar, bmEj] = bmLaatste('eerstejaars')
+  const [bmDiplJaar, bmDipl] = bmLaatste('gediplomeerden')
+  // Het aantal peers achter het gemiddelde van dat jaar (#903): niet elke peer heeft elk jaar data.
+  const gemLabel = (sleutel, jaar) => {
+    const n = perJaar(bm.n_per_jaar?.[sleutel], jaar)
+    return `Gem. ${bmLabel.toLowerCase()}${n != null ? ` (${n} instellingen)` : ''}`
+  }
+  const vanaf = startjaar => (startjaar != null ? `% verandering t.o.v. ${startjaar}` : '% verandering')
+  const noot = (sleutel, label) => [
+    { label, onderdrukt: od[sleutel] },
+    { label: `${label} ${bmLabel.toLowerCase()}`, onderdrukt: bmOd[sleutel] },
+  ]
+  const sectorNoot = Object.entries(od.sectoren_trend || {}).map(([s, onderdrukt]) => ({ label: s, onderdrukt }))
 
   return (
     <DashboardShell instelling={instelling} loading={loading} data={data} error={error} onOpnieuw={opnieuw}>
@@ -95,10 +111,12 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               label={`Ingeschrevenen ${c.lastInges[0]}`}
               eigenWaarde={c.lastInges[1]}
               regioWaarde={bmInges ? Math.round(bmInges) : null}
-              regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
+              regioLabel={gemLabel('ingeschrevenen', bmIngesJaar)}
               sparkValues={c.ingesEntries.map(([, v]) => v)}
               color={COLOR_EIGEN}
               icon={iconPersons(COLOR_EIGEN)}
+              ondergrens={isOndergrens(od.ingeschrevenen, c.lastInges[0])}
+              regioOndergrens={isOndergrens(bmOd.ingeschrevenen, bmIngesJaar)}
             />
           )}
           {c.lastEj && (
@@ -106,10 +124,12 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               label={`Eerstejaars ${c.lastEj[0]}`}
               eigenWaarde={c.lastEj[1]}
               regioWaarde={bmEj ? Math.round(bmEj) : null}
-              regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
+              regioLabel={gemLabel('eerstejaars', bmEjJaar)}
               sparkValues={c.ejEntries.map(([, v]) => v)}
               color={COLOR_EERSTEJAARS}
               icon={iconChart(COLOR_EERSTEJAARS)}
+              ondergrens={isOndergrens(od.eerstejaars, c.lastEj[0])}
+              regioOndergrens={isOndergrens(bmOd.eerstejaars, bmEjJaar)}
             />
           )}
           {c.lastDipl && (
@@ -117,10 +137,12 @@ export function InlineDashboardMijnInstelling({ instelling }) {
               label={`Gediplomeerden ${c.lastDipl[0]}`}
               eigenWaarde={c.lastDipl[1]}
               regioWaarde={bmDipl ? Math.round(bmDipl) : null}
-              regioLabel={`Gem. ${bmLabel.toLowerCase()}`}
+              regioLabel={gemLabel('gediplomeerden', bmDiplJaar)}
               sparkValues={c.diplEntries.map(([, v]) => v)}
               color={COLOR_DIPLOM}
               icon={iconDiploma(COLOR_DIPLOM)}
+              ondergrens={isOndergrens(od.gediplomeerden, c.lastDipl[0])}
+              regioOndergrens={isOndergrens(bmOd.gediplomeerden, bmDiplJaar)}
             />
           )}
           {c.pctVrouw != null && (
@@ -138,16 +160,18 @@ export function InlineDashboardMijnInstelling({ instelling }) {
 
         {/* ── Instroom & demografie ── */}
         <SectionHeader title="Instroom & demografie" subtitle="Ingeschrevenen, eerstejaars en regionale vergelijking" />
-        <DemografieKpis {...c} nInstellingen={c.bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
+        <DemografieKpis {...c} nInstellingen={perJaar(bm.n_per_jaar?.ingeschrevenen, c.totaalRegioJaar) ?? bm.n_instellingen} laatsteJaar={data?.laatste_jaar} />
+        <OndergrensNoot reeksen={noot('ingeschrevenen', 'Ingeschrevenen')} />
         <PeersTable data={data} instelling={instelling} />
         <PeerLinesChart
           title="Ingeschrevenen per jaar"
-          subtitle={c.hasPeers ? `% verandering t.o.v. eerste jaar — ${instelling} (dik) vs. concurrenten in de regio` : `% verandering t.o.v. eerste jaar — eigen instelling vs. ${c.bmLabel.toLowerCase()}`}
+          subtitle={start => (c.hasPeers ? `${vanaf(start)} — ${instelling} (dik) vs. concurrenten in de regio` : `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`)}
           data={c.ingesLineData}
           opts={c.hasPeers ? c.peerOpts : c.indexOpts}
         />
         <InstroomKpis {...c} />
-        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={`% verandering t.o.v. eerste jaar — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.ejLineData} indexOpts={c.indexOpts} />
+        <OndergrensNoot reeksen={noot('eerstejaars', 'Eerstejaars')} />
+        <BenchmarkLineChart title="Eerstejaars instroom per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.ejLineData} indexOpts={c.indexOpts} />
         <MarktaandeelChart data={marktData} jaar={data?.laatste_jaar} dark={c.dark} />
         <MarktaandeelTrendChart data={marktTrendData} dark={c.dark} />
         <GroeiRankingChart data={groeiData} dark={c.dark} />
@@ -156,7 +180,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         {/* ── Diplomering & rendement ── */}
         <SectionHeader title="Diplomering" subtitle="Gediplomeerden per jaar, vergeleken met de regio" />
         <DiplomeringKpis {...c} rendement={c.rendement} />
-        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={`% verandering t.o.v. eerste jaar — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.diplLineData} indexOpts={c.indexOpts} />
+        <OndergrensNoot reeksen={noot('gediplomeerden', 'Gediplomeerden')} />
+        <BenchmarkLineChart title="Gediplomeerden per jaar" subtitle={start => `${vanaf(start)} — eigen instelling vs. ${c.bmLabel.toLowerCase()}`} data={c.diplLineData} indexOpts={c.indexOpts} />
         <RendementVergelijkingChart data={rendVergData} dark={c.dark} />
 
         <DeelLading titel="Diplomarendement" loading={rendement.loading} error={rendement.error} onOpnieuw={rendement.opnieuw} hoogte={320}>
@@ -167,7 +192,8 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Sectoren" subtitle="Verdeling en trend per onderdeel" />
         <SectorTrendChart data={sectorTrendData} dark={c.dark} />
         <LeerwegenChart data={leerwegenData} dark={c.dark} />
-        <SectorkamersChart sectorkamers={data?.sectorkamers} dark={c.dark} />
+        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} onderdrukt={od.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
+        <OndergrensNoot reeksen={sectorNoot} />
 
         {/* ── Gender & diversiteit ── */}
         <GenderSection data={data} instelling={instelling} dark={dark} />

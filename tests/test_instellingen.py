@@ -426,19 +426,19 @@ def test_regio_mbo_has_eerstejaars():
         assert "eerstejaars" in bm["peers"]
 
 
-def test_regio_mbo_has_sectorkamers():
+def test_regio_mbo_has_ingeschrevenen_per_hoofdgroep():
     from data.dashboard import load_dashboard_regio
 
     result = load_dashboard_regio("ROC Mondriaan")
     assert result["gevonden"] is True
     assert result["type"] == "mbo"
-    assert "sectorkamers" in result
-    sk = result["sectorkamers"]
+    # Heette "sectorkamers"; TOTAAL MBO telt ingeschrevenen per DUO-hoofdgroep (#899).
+    sk = result["ingeschrevenen_per_hoofdgroep"]
     assert isinstance(sk, dict)
     assert len(sk) > 0
     # Keys should be real sector names (not BBL/BOL)
     bbl_bol_keys = {"BBL", "BOL voltijd", "BOL deeltijd"}
-    assert not set(sk.keys()).issubset(bbl_bol_keys), "sectorkamers should have real sector names"
+    assert not set(sk.keys()).issubset(bbl_bol_keys), "hoofdgroepen should have real sector names"
     # Values should be positive integers
     assert all(isinstance(v, int) and v > 0 for v in sk.values())
     # Legacy sectoren (leerwegen) must still be present for backward compat
@@ -618,7 +618,8 @@ def test_dashboard_rendement_ho_rekent_de_cohorten_zoals_de_fixture():
     assert {j: c["instroom"] for j, c in cohorten.items()} == ej
     for jaar, cohort in cohorten.items():
         for t in (3, 4, 5):
-            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t, 0), (jaar, t)
+            # Een diplomajaar dat er (nog) niet is, is None, geen 0 (#902).
+            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t), (jaar, t)
 
     # Rendement na 3 jaar: gediplomeerden in jaar+3 gedeeld door de instroom, alleen als dat niet boven 1 komt.
     verwacht = {j: round(dipl[j + 3] / ej[j], 4) for j in ej if 0 < dipl.get(j + 3, 0) <= ej[j]}

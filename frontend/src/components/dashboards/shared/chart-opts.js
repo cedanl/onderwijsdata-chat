@@ -58,7 +58,7 @@ export function buildIndexChartOpts(dark) {
       y: {
         grid: { color: grid },
         ticks: { color: tick, callback: (v) => `${v}%` },
-        title: { display: true, text: '% verandering t.o.v. eerste jaar', color: tick, font: { size: 10 } },
+        title: { display: true, text: '% verandering t.o.v. het startjaar', color: tick, font: { size: 10 } },
       },
     },
   }

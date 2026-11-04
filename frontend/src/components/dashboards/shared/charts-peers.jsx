@@ -1,23 +1,27 @@
 import { Line } from 'react-chartjs-2'
 import { fmt } from './hooks'
 import { SectionHeader, ChartCard } from './shell'
+import { groeiStartjaar, groeiPct } from './chart-builders'
 
 // ─── Peer chart components ────────────────────────────────────────────────────
 
+// De ondertitel krijgt het startjaar van de groei uit de data (#903): `subtitle(startjaar)`.
 export function BenchmarkLineChart({ title, subtitle, data, indexOpts }) {
   if (!data) return null
+  const { startjaar, ...lineData } = data
   return (
-    <ChartCard title={title} subtitle={subtitle}>
-      <div style={{ height: 220 }}><Line data={data} options={indexOpts} /></div>
+    <ChartCard title={title} subtitle={subtitle(startjaar)}>
+      <div style={{ height: 220 }}><Line data={lineData} options={indexOpts} /></div>
     </ChartCard>
   )
 }
 
 export function PeerLinesChart({ title, subtitle, data, opts }) {
   if (!data) return null
+  const { startjaar, ...lineData } = data
   return (
-    <ChartCard title={title} subtitle={subtitle}>
-      <div style={{ height: 240 }}><Line data={data} options={opts} /></div>
+    <ChartCard title={title} subtitle={subtitle(startjaar)}>
+      <div style={{ height: 240 }}><Line data={lineData} options={opts} /></div>
     </ChartCard>
   )
 }
@@ -28,29 +32,17 @@ export function PeersTable({ data, instelling }) {
   const lastJaar = data.laatste_jaar
   const jaarStr = String(lastJaar)
 
-  // Compute commonStart = max of first-available years across own + all peers
-  const allDicts = [data.ingeschrevenen || {}, ...Object.values(peers)]
-  const firstYears = allDicts.map(dict => {
-    const yrs = Object.keys(dict).map(Number).filter(Boolean).sort((a, b) => a - b)
-    return yrs.length > 0 ? yrs[0] : null
-  }).filter(y => y != null)
-  const commonStart = firstYears.length > 0 ? Math.max(...firstYears) : null
-
-  function groeiPct(dict) {
-    if (commonStart == null) return null
-    const startVal = dict[commonStart] ?? dict[String(commonStart)]
-    const lastVal = dict[lastJaar] ?? dict[jaarStr]
-    if (!startVal || lastVal == null) return null
-    return Math.round((lastVal - startVal) / startVal * 100)
-  }
+  // De ene groeiregel van chart-builders (#903): hetzelfde startjaar als de lijnen en de groeiranking.
+  const commonStart = groeiStartjaar([data.ingeschrevenen || {}, ...Object.values(peers)])
+  const groei = dict => groeiPct(dict, commonStart, lastJaar)
 
   const rows = []
   const ownVal = data.ingeschrevenen?.[lastJaar] ?? data.ingeschrevenen?.[jaarStr]
-  if (ownVal) rows.push({ naam: instelling, val: ownVal, groei: groeiPct(data.ingeschrevenen || {}), eigen: true })
+  if (ownVal) rows.push({ naam: instelling, val: ownVal, groei: groei(data.ingeschrevenen || {}), eigen: true })
 
   for (const [naam, jaarData] of Object.entries(peers)) {
     const val = jaarData[lastJaar] ?? jaarData[jaarStr] ?? jaarData[Object.keys(jaarData).sort((a, b) => b - a)[0]]
-    if (val) rows.push({ naam, val, groei: groeiPct(jaarData), eigen: false })
+    if (val) rows.push({ naam, val, groei: groei(jaarData), eigen: false })
   }
 
   if (rows.length < 2) return null
