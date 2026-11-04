@@ -426,19 +426,19 @@ def test_regio_mbo_has_eerstejaars():
         assert "eerstejaars" in bm["peers"]
 
 
-def test_regio_mbo_has_sectorkamers():
+def test_regio_mbo_has_ingeschrevenen_per_hoofdgroep():
     from data.dashboard import load_dashboard_regio
 
     result = load_dashboard_regio("ROC Mondriaan")
     assert result["gevonden"] is True
     assert result["type"] == "mbo"
-    assert "sectorkamers" in result
-    sk = result["sectorkamers"]
+    # Heette "sectorkamers"; TOTAAL MBO telt ingeschrevenen per DUO-hoofdgroep (#899).
+    sk = result["ingeschrevenen_per_hoofdgroep"]
     assert isinstance(sk, dict)
     assert len(sk) > 0
     # Keys should be real sector names (not BBL/BOL)
     bbl_bol_keys = {"BBL", "BOL voltijd", "BOL deeltijd"}
-    assert not set(sk.keys()).issubset(bbl_bol_keys), "sectorkamers should have real sector names"
+    assert not set(sk.keys()).issubset(bbl_bol_keys), "hoofdgroepen should have real sector names"
     # Values should be positive integers
     assert all(isinstance(v, int) and v > 0 for v in sk.values())
     # Legacy sectoren (leerwegen) must still be present for backward compat

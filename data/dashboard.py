@@ -41,7 +41,7 @@ class _Onderdeel:
 
 
 _ONDERDEEL_KAART = _Onderdeel("Kaart", "DUO")
-_ONDERDEEL_SECTORKAMERS = _Onderdeel("Sectorkamers", "DUO")
+_ONDERDEEL_HOOFDGROEPEN = _Onderdeel("Ingeschrevenen per hoofdgroep", "DUO")
 _ONDERDEEL_EERSTEJAARS = _Onderdeel("Eerstejaars", "DUO")
 _ONDERDEEL_GEDIPLOMEERDEN = _Onderdeel("Gediplomeerden", "DUO")
 _ONDERDEEL_INSTROOM = _Onderdeel("Instroom per jaar", "DUO")
@@ -132,7 +132,15 @@ def _dashboardlading(laad: Callable[[str], dict]) -> Callable[[str], dict]:
 
 _MAX_VACATURE_CLUSTERS = 8
 _MAX_SUGGESTIONS = 5  # zoveel toont het dashboard
-_MBO_LEERWEG_COLS = ["BBL", "BOLDT", "BOLVT", "EX"]
+# De leerwegkolommen van mbo-studenten-per-instelling met hun naam in het dashboard. Samen zijn ze het totaal
+# ingeschrevenen; een verdeling die er één weglaat, telt niet op tot dat totaal (Extraneus, #899).
+_MBO_LEERWEGEN = {"BBL": "BBL", _BOL_VOLTIJD: "BOLVT", _BOL_DEELTIJD: "BOLDT", "Extraneus": "EX"}
+_MBO_LEERWEG_COLS = list(_MBO_LEERWEGEN.values())
+# TOTAAL MBO in instromende-mbo-studenten telt de ingeschrevenen, nieuw of niet: geen instroom en geen diploma's
+# (domeinregel mbo-instroom-totaal-mbo, #899).
+_MBO_INGESCHREVEN_KOLOM = "TOTAAL MBO"
+_HOOFDGROEP = "HOOFDGROEP NAAM"
+_SECTOR_GEMIDDELD_JAREN = 3  # de aanbodzijde van de arbeidsmarktmatch: gediplomeerden, gemiddeld over 3 jaar
 _MATCH_DREMPEL = 1.2  # verhouding vacatures/diploma's waarboven schaarste resp. overaanbod
 
 # Handgemaakte referentielijsten met datum en bron (#316); zie tests/test_referentielijsten.py.
@@ -593,18 +601,51 @@ def _load_instromende_mbo_snapshot() -> pd.DataFrame:
     return _duo_load("instromende-mbo-studenten", 0)
 
 
-def _mbo_sectorkamers(instelling: str) -> dict[str, int]:
-    """Return {hoofdgroep: aantal} from instromende snapshot."""
+def _mbo_leerwegen(rij: pd.Series) -> dict[str, int]:
+    """De ingeschrevenen van één jaar per leerweg, Extraneus inbegrepen: samen het totaal ingeschrevenen (#899)."""
+    return {naam: int(rij[kolom]) for naam, kolom in _MBO_LEERWEGEN.items()}
+
+
+def _mbo_sectoren(rij: pd.Series) -> dict[str, int]:
+    """De leerwegen van het laatste jaar als verdeling, aflopend, zonder lege leerweg. Eén regel voor regio- en
+    instellingsdashboard: eerder liet het regiodashboard Extraneus weg en telde het totaal hem wel mee (#899)."""
+    return {k: v for k, v in sorted(_mbo_leerwegen(rij).items(), key=lambda x: -x[1]) if v > 0}
+
+
+def _mbo_ingeschrevenen_per_hoofdgroep(instelling: str) -> dict[str, int]:
+    """{hoofdgroep: ingeschrevenen} in het laatste jaar van instromende-mbo-studenten, aflopend.
+
+    TOTAAL MBO telt wie in het mbo ingeschreven staat, nieuw of niet: geen eerstejaars en geen gediplomeerden
+    (domeinregel mbo-instroom-totaal-mbo, #899). Het is een ander DUO-bestand dan mbo-studenten-per-instelling: de
+    som per hoofdgroep wijkt af van het totaal ingeschrevenen daaruit.
+    """
     try:
         df = _load_instromende_mbo_snapshot()
         rows = df[df["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
         if rows.empty:
             return {}
-        counts = rows.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().sort_values(ascending=False)
+        counts = rows.groupby(_HOOFDGROEP)[_MBO_INGESCHREVEN_KOLOM].sum().sort_values(ascending=False)
         return {str(k): int(v) for k, v in counts.items() if v > 0}
     except Exception as e:
-        _niet_beschikbaar(e, "mbo-sectorkamers: niet beschikbaar", onderdeel=_ONDERDEEL_SECTORKAMERS)
+        _niet_beschikbaar(e, "mbo-hoofdgroepen: niet beschikbaar", onderdeel=_ONDERDEEL_HOOFDGROEPEN)
         return {}
+
+
+def _mbo_dipl_lang(df_dipl: pd.DataFrame) -> pd.DataFrame:
+    """Het brede bestand gediplomeerde-mbo-studenten (DIPMAN2021, DIPVROUW2021, …) als rijen met JAAR en AANTAL."""
+    dip_cols = [c for c in df_dipl.columns if c.startswith("DIP")]
+    sleutels = [c for c in df_dipl.columns if c not in dip_cols]
+    lang = df_dipl.melt(id_vars=sleutels, value_vars=dip_cols, var_name="_KOLOM", value_name="AANTAL")
+    lang["JAAR"] = lang["_KOLOM"].str[-4:].astype(int)
+    return lang.drop(columns="_KOLOM")
+
+
+def _gemiddeld_per_sector(df: pd.DataFrame, jaar_col: str, sector_col: str, waarde_col: str) -> dict[str, int]:
+    """Gediplomeerden per sector, gemiddeld over de laatste _SECTOR_GEMIDDELD_JAREN jaren; sectoren zonder weg."""
+    jaren = sorted(df[jaar_col].dropna().unique())[-_SECTOR_GEMIDDELD_JAREN:]
+    recent = df[df[jaar_col].isin(jaren)]
+    gem = recent.groupby([jaar_col, sector_col])[waarde_col].sum().groupby(sector_col).mean()
+    return {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64) is geen int
 
 
 @actualiteit.Lading
@@ -885,26 +926,12 @@ def _load_dashboard_regio_mbo(instelling: str) -> dict | None:
     laatste_jaar = int(totals.index.max())
     result["laatste_jaar"] = laatste_jaar
 
-    result["leerwegen"] = {
-        int(jaar): {
-            "BBL": int(row["BBL"]),
-            _BOL_VOLTIJD: int(row["BOLVT"]),
-            _BOL_DEELTIJD: int(row["BOLDT"]),
-        }
-        for jaar, row in per_jaar.sort_index().iterrows()
-    }
+    result["leerwegen"] = {int(jaar): _mbo_leerwegen(row) for jaar, row in per_jaar.sort_index().iterrows()}
+    result["sectoren"] = _mbo_sectoren(per_jaar.loc[laatste_jaar])
 
-    laatste = rows[rows["JAAR"] == laatste_jaar]
-    sectoren = {
-        "BBL": int(laatste["BBL"].sum()),
-        _BOL_DEELTIJD: int(laatste["BOLDT"].sum()),
-        _BOL_VOLTIJD: int(laatste["BOLVT"].sum()),
-    }
-    result["sectoren"] = {k: v for k, v in sorted(sectoren.items(), key=lambda x: -x[1]) if v > 0}
-
-    sectorkamers = _mbo_sectorkamers(instelling)
-    if sectorkamers:
-        result["sectorkamers"] = sectorkamers
+    per_hoofdgroep = _mbo_ingeschrevenen_per_hoofdgroep(instelling)
+    if per_hoofdgroep:
+        result["ingeschrevenen_per_hoofdgroep"] = per_hoofdgroep
 
     df_dipl_mbo, dipl = _mbo_load_gediplomeerden(inst_col, instelling)
     if dipl:
@@ -1063,24 +1090,11 @@ def load_dashboard_mbo(instelling: str) -> dict | None:
     laatste_jaar = int(totals.index.max())
     result["laatste_jaar"] = laatste_jaar
 
-    laatste = per_jaar.loc[laatste_jaar]
-    sectoren = {
-        "BBL": int(laatste["BBL"]),
-        _BOL_DEELTIJD: int(laatste["BOLDT"]),
-        _BOL_VOLTIJD: int(laatste["BOLVT"]),
-        "Extraneus": int(laatste["EX"]),
-    }
-    result["sectoren"] = {k: v for k, v in sorted(sectoren.items(), key=lambda x: -x[1]) if v > 0}
+    result["sectoren"] = _mbo_sectoren(per_jaar.loc[laatste_jaar])
 
     try:
-        df_dipl = _load_mbo_gediplomeerden()
-        dipl_rows = df_dipl[df_dipl["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
-        if not dipl_rows.empty:
-            year_cols = [c for c in dipl_rows.columns if c.startswith("DIP")]
-            gediplomeerden: dict[int, int] = {}
-            for col in year_cols:
-                jaar = int(col[-4:])
-                gediplomeerden[jaar] = gediplomeerden.get(jaar, 0) + int(dipl_rows[col].sum())
+        gediplomeerden = _mbo_dipl_per_jaar(_load_mbo_gediplomeerden(), "INSTELLINGSNAAM", instelling)
+        if gediplomeerden:
             result["gediplomeerden"] = dict(sorted(gediplomeerden.items()))
     except Exception as e:
         _niet_beschikbaar(
@@ -1479,10 +1493,7 @@ def _arbeidsmarktmatch_ho(instelling: str) -> dict | None:
     gps: dict[str, int] = {}
     hu_dipl = df_dipl[df_dipl[inst_col].str.lower() == instelling.lower()]
     if not hu_dipl.empty and "ONDERDEEL" in hu_dipl.columns:
-        jaren = sorted(hu_dipl["DIPLOMAJAAR"].unique())[-3:]
-        recent = hu_dipl[hu_dipl["DIPLOMAJAAR"].isin(jaren)]
-        gem = recent.groupby(["DIPLOMAJAAR", "ONDERDEEL"])["AANTAL_GEDIPLOMEERDEN"].sum().groupby("ONDERDEEL").mean()
-        gps = {str(k): int(round(v)) for k, v in gem.items() if v > 0}  # noqa: RUF046 — round(numpy.float64) returns numpy scalar, not Python int
+        gps = _gemiddeld_per_sector(hu_dipl, "DIPLOMAJAAR", "ONDERDEEL", "AANTAL_GEDIPLOMEERDEN")
 
     return {
         "type": "ho",
@@ -1508,14 +1519,20 @@ def _arbeidsmarktmatch_mbo(instelling: str) -> dict | None:
     self_code = str(rows["INSTELLINGSCODE"].iloc[0])
     provincie = ctx.provincie if ctx else _mode_str(rows["PROVINCIE INSTELLING"])
 
+    # De aanbodzijde: gediplomeerden per hoofdgroep, gemiddeld over 3 jaar zoals bij het ho. Eerder stond hier TOTAAL
+    # MBO uit instromende-mbo-studenten: ingeschrevenen, geen gediplomeerden (#899).
     gps: dict[str, int] = {}
     try:
-        df_snapshot = _load_instromende_mbo_snapshot()
-        snap = df_snapshot[df_snapshot["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
-        if not snap.empty:
-            gps = {str(k): int(v) for k, v in snap.groupby("HOOFDGROEP NAAM")["TOTAAL MBO"].sum().items() if v > 0}
+        df_dipl = _load_mbo_gediplomeerden()
+        dipl = df_dipl[df_dipl["INSTELLINGSNAAM"].str.lower() == instelling.lower()]
+        if not dipl.empty:
+            gps = _gemiddeld_per_sector(_mbo_dipl_lang(dipl), "JAAR", _HOOFDGROEP, "AANTAL")
     except Exception as e:
-        _niet_beschikbaar(e, "arbeidsmarktmatch-mbo: sectorkamers niet beschikbaar", onderdeel=_ONDERDEEL_SECTORKAMERS)
+        _niet_beschikbaar(
+            e,
+            "arbeidsmarktmatch-mbo: gediplomeerden per hoofdgroep niet beschikbaar",
+            onderdeel=_ONDERDEEL_GEDIPLOMEERDEN,
+        )
 
     return {
         "type": "mbo",

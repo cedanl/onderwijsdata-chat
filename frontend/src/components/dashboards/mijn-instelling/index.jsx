@@ -12,7 +12,7 @@ import {
   BenchmarkLineChart, PeerLinesChart,
   MarktaandeelChart, GroeiRankingChart,
   MarktaandeelTrendChart, InstroomRatioChart,
-  PeersTable, SectorTrendChart, LeerwegenChart, SectorkamersChart,
+  PeersTable, SectorTrendChart, LeerwegenChart, HoofdgroepenChart,
   RendementVergelijkingChart, NietGeladen, DeelLading, gatenVan,
 } from '../shared/index'
 
@@ -167,7 +167,7 @@ export function InlineDashboardMijnInstelling({ instelling }) {
         <SectionHeader title="Sectoren" subtitle="Verdeling en trend per onderdeel" />
         <SectorTrendChart data={sectorTrendData} dark={c.dark} />
         <LeerwegenChart data={leerwegenData} dark={c.dark} />
-        <SectorkamersChart sectorkamers={data?.sectorkamers} dark={c.dark} />
+        <HoofdgroepenChart perHoofdgroep={data?.ingeschrevenen_per_hoofdgroep} dark={c.dark} />
 
         {/* ── Gender & diversiteit ── */}
         <GenderSection data={data} instelling={instelling} dark={dark} />

@@ -24,11 +24,14 @@ export function buildSectorTrendData(sectorenTrend) {
   }
 }
 
+// De vier leerwegen van mbo-studenten-per-instelling: samen het totaal ingeschrevenen, Extraneus inbegrepen (#899).
+export const LEERWEGEN_MBO = ['BBL', 'BOL voltijd', 'BOL deeltijd', 'Extraneus']
+
 export function buildLeerwegenData(leerwegen) {
   if (!leerwegen || Object.keys(leerwegen).length < 2) return null
   const jaren = Object.keys(leerwegen).sort((a, b) => a - b)
-  const tracks = ['BBL', 'BOL voltijd', 'BOL deeltijd']
-  const colors = SECTOR_COLORS.slice(0, 3)
+  const tracks = LEERWEGEN_MBO
+  const colors = SECTOR_COLORS.slice(0, tracks.length)
   // Guard: require at least one year with BBL/BOL data
   const hasBblBol = jaren.some(j => tracks.some(t => (leerwegen[j]?.[t] ?? 0) > 0))
   if (!hasBblBol) return null
@@ -116,21 +119,23 @@ export function SectorTrendChart({ data, dark }) {
   )
 }
 
-export function SectorkamersChart({ sectorkamers, dark }) {
-  if (!sectorkamers || Object.keys(sectorkamers).length === 0) return null
-  const entries = Object.entries(sectorkamers).sort((a, b) => b[1] - a[1])
+// Ingeschrevenen per DUO-hoofdgroep: TOTAAL MBO telt wie ingeschreven staat, nieuw of niet; geen eerstejaars en geen
+// gediplomeerden (domeinregel mbo-instroom-totaal-mbo, #899). Het bestand is een ander dan dat van het totaal.
+export function HoofdgroepenChart({ perHoofdgroep, dark }) {
+  if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
+  const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
   const h = Math.max(160, entries.length * 36)
   return (
     <ChartCard
-      title="Studenten per SBB-sectorkamer"
-      subtitle="MBO eerstejaars per hoofdgroep (DUO instromende-mbo-studenten)"
+      title="Ingeschrevenen per hoofdgroep"
+      subtitle="Mbo-studenten ingeschreven op 1 oktober per DUO-hoofdgroep, laatste jaar (DUO instromende-mbo-studenten, TOTAAL MBO). Geen eerstejaars: nieuw of niet. Een ander DUO-bestand dan het totaal ingeschrevenen, dus de som wijkt daarvan af."
     >
       <div style={{ height: h }}>
         <Bar
           data={{
             labels: entries.map(([k]) => k),
             datasets: [{
-              label: 'Studenten',
+              label: 'Ingeschrevenen',
               data: entries.map(([, v]) => v),
               backgroundColor: entries.map((_, i) => SECTOR_COLORS[i % SECTOR_COLORS.length] + 'CC'),
               borderWidth: 0,
@@ -151,7 +156,7 @@ export function LeerwegenChart({ data, dark }) {
   return (
     <ChartCard
       title="Leerweg-verdeling over tijd"
-      subtitle="MBO leerweg-verdeling: BBL / BOL voltijd / BOL deeltijd per jaar"
+      subtitle="Ingeschrevenen per leerweg per jaar: BBL, BOL voltijd, BOL deeltijd en Extraneus, samen het totaal ingeschrevenen"
       actions={<button type="button" style={_toggleBtnStyle} onClick={() => setProportional(p => !p)}>{proportional ? 'Abs' : '%'}</button>}
     >
       <div style={{ height: 260 }}>

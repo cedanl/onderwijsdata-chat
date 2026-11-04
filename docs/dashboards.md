@@ -12,13 +12,25 @@ Vijf vaste dashboard-weergaven, beschikbaar via de API en het frontend zolang `E
 | Dashboard | Endpoint | Inhoud |
 |-----------|----------|--------|
 | **Instroom** | `/api/dashboard/instroom` | Ingeschrevenen per jaar, verdeling over sectoren, gediplomeerden; bij HO ook geslacht en eerstejaars |
-| **Regio** | `/api/dashboard/regio` | Regionale vergelijking, SBB sectorkamers |
+| **Regio** | `/api/dashboard/regio` | Regionale vergelijking; mbo: leerwegen en ingeschrevenen per hoofdgroep |
 | **Nationaal** | `/api/dashboard/nationaal` | Nationale onderwijsstatistieken, KPI's |
 | **Rendement** | `/api/dashboard/rendement` | Diplomering, doorstroom, uitval |
 | **Arbeidsmarktmatch** | `/api/dashboard/arbeidsmarktmatch` | UWV vacaturedata per sector, match scores |
 
 Elk dashboard ontvangt een `instelling` query-parameter en retourneert JSON met figuren, data en bronvermeldingen.
 De data komt uit `data/dashboard.py`.
+
+### Wat de getallen tellen
+
+- **Mbo per leerweg** (`sectoren`, `leerwegen`): BBL, BOL voltijd, BOL deeltijd en Extraneus uit
+  `mbo-studenten-per-instelling`. Samen zijn ze het totaal ingeschrevenen, in het regio- en het instroomdashboard
+  (#899).
+- **Mbo per hoofdgroep** (`ingeschrevenen_per_hoofdgroep`): `TOTAAL MBO` uit `instromende-mbo-studenten`, het laatste
+  jaar. Dat zijn ingeschrevenen, nieuw of niet, geen eerstejaars (domeinregel `mbo-instroom-totaal-mbo` in
+  `data/domeinregels.toml`). Het is een ander DUO-bestand dan dat van het totaal, dus de som wijkt daarvan af.
+- **Aanbod in de arbeidsmarktmatch** (`gediplomeerden_per_sector`): gediplomeerden per sector, gemiddeld over de
+  laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
+  Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
 
 ---
 
