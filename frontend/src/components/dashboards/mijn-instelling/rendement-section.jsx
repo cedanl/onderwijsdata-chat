@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../../constants'
-import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts, afgekapteAs } from '../shared/index'
+import { SectionHeader, ChartCard, fmt, darkColors, horizontalBarOpts, afgekapteAs, WeggelatenNoot } from '../shared/index'
 
 function LatestCohortKpi({ cohorten }) {
   const last = cohorten.at(-1)
@@ -131,15 +131,27 @@ function SectorRendementChart({ sectorRendement, dark }) {
   )
 }
 
+const _T = ['gediplomeerden_t3', 'gediplomeerden_t4', 'gediplomeerden_t5']
+
+// Een cohort met meer gediplomeerden dan instroom (WO: de diploma's van een jaar tellen bachelors én masters) of
+// zonder enig diplomajaar laat de tabel weg, en zegt welke (#902). Een ontbrekend diplomajaar is null: '—', geen 0.
+export function verdeelCohorten(cohorten) {
+  const rows = []
+  const teVeel = []
+  const zonderDiploma = []
+  for (const c of cohorten || []) {
+    const bekend = _T.map(t => c[t]).filter(v => v != null)
+    const binnenInstroom = bekend.some(v => v > 0 && v <= c.instroom)
+    if (!bekend.length) zonderDiploma.push(c.instroom_jaar)
+    else if (!binnenInstroom && bekend.some(v => v > c.instroom)) teVeel.push(c.instroom_jaar)
+    else rows.push(c)
+  }
+  return { rows, teVeel, zonderDiploma }
+}
+
 function CohortenTable({ cohorten, dark }) {
   if (!cohorten?.length) return null
-  // Hide rows where t3 exceeds instroom (WO: total annual diplomas include BSc+MSc,
-  // which inflates the count beyond the eerstejaars cohort being tracked).
-  const rows = cohorten.filter(c =>
-    (c.gediplomeerden_t3 > 0 && c.gediplomeerden_t3 <= c.instroom) ||
-    (c.gediplomeerden_t4 > 0 && c.gediplomeerden_t4 <= c.instroom) ||
-    (c.gediplomeerden_t5 > 0 && c.gediplomeerden_t5 <= c.instroom)
-  )
+  const { rows, teVeel, zonderDiploma } = verdeelCohorten(cohorten)
   if (!rows.length) return null
   const { tick } = darkColors(dark)
   return (
@@ -159,13 +171,13 @@ function CohortenTable({ cohorten, dark }) {
             <tr key={c.instroom_jaar} style={{ borderBottom: '1px solid var(--gray-100)' }}>
               <td style={{ padding: '5px 8px' }}>{c.instroom_jaar}</td>
               <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(c.instroom)}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{c.gediplomeerden_t3 || '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{c.gediplomeerden_t4 || '—'}</td>
-              <td style={{ textAlign: 'right', padding: '5px 8px' }}>{c.gediplomeerden_t5 || '—'}</td>
+              {_T.map(t => <td key={t} style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(c[t])}</td>)}
             </tr>
           ))}
         </tbody>
       </table>
+      <WeggelatenNoot namen={teVeel.map(String)} reden="meer gediplomeerden dan instroom, dus geen cohortmaat" />
+      <WeggelatenNoot namen={zonderDiploma.map(String)} reden="nog geen diplomajaar na 3, 4 of 5 jaar" />
     </ChartCard>
   )
 }

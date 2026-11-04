@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Bar, Line } from 'react-chartjs-2'
 import { SECTOR_LABELS, SECTOR_COLORS, darkColors, horizontalBarOpts, tellingAs } from './chart-opts'
 import { ChartCard } from './shell'
+import { OndergrensCategorieen } from './ondergrens'
 
 // ─── Sector trend & Leerweg trend ────────────────────────────────────────────
 
@@ -15,7 +16,8 @@ export function buildSectorTrendData(sectorenTrend) {
     labels: allJaren,
     datasets: sectors.map((sector, i) => ({
       label: SECTOR_LABELS[sector] || sector,
-      data: allJaren.map(j => sectorenTrend[sector][j] ?? sectorenTrend[sector][Number(j)] ?? 0),
+      // Een jaar zonder waarde blijft een gat, geen val naar 0 (#902).
+      data: allJaren.map(j => sectorenTrend[sector][j] ?? sectorenTrend[sector][Number(j)] ?? null),
       backgroundColor: SECTOR_COLORS[i % SECTOR_COLORS.length] + 'BB',
       borderColor: SECTOR_COLORS[i % SECTOR_COLORS.length],
       borderWidth: 1,
@@ -33,13 +35,13 @@ export function buildLeerwegenData(leerwegen) {
   const tracks = LEERWEGEN_MBO
   const colors = SECTOR_COLORS.slice(0, tracks.length)
   // Guard: require at least one year with BBL/BOL data
-  const hasBblBol = jaren.some(j => tracks.some(t => (leerwegen[j]?.[t] ?? 0) > 0))
+  const hasBblBol = jaren.some(j => tracks.some(t => leerwegen[j]?.[t] > 0))
   if (!hasBblBol) return null
   return {
     labels: jaren,
     datasets: tracks.map((track, i) => ({
       label: track,
-      data: jaren.map(j => leerwegen[j]?.[track] ?? 0),
+      data: jaren.map(j => leerwegen[j]?.[track] ?? null),
       backgroundColor: colors[i] + 'CC',
       borderColor: colors[i],
       borderWidth: 1,
@@ -48,15 +50,16 @@ export function buildLeerwegenData(leerwegen) {
   }
 }
 
+// Het aandeel per jaar over de reeksen met een waarde; een gat blijft een gat (#902).
 function _normalizeProportional(data) {
   const totals = data.labels.map((_, i) =>
-    data.datasets.reduce((sum, ds) => sum + (ds.data[i] ?? 0), 0)
+    data.datasets.reduce((sum, ds) => (ds.data[i] == null ? sum : sum + ds.data[i]), 0)
   )
   return {
     ...data,
     datasets: data.datasets.map(ds => ({
       ...ds,
-      data: ds.data.map((v, i) => totals[i] > 0 ? Math.round((v / totals[i]) * 1000) / 10 : 0),
+      data: ds.data.map((v, i) => (v != null && totals[i] > 0 ? Math.round((v / totals[i]) * 1000) / 10 : null)),
     })),
   }
 }
@@ -121,7 +124,7 @@ export function SectorTrendChart({ data, dark }) {
 
 // Ingeschrevenen per DUO-hoofdgroep: TOTAAL MBO telt wie ingeschreven staat, nieuw of niet; geen eerstejaars en geen
 // gediplomeerden (domeinregel mbo-instroom-totaal-mbo, #899). Het bestand is een ander dan dat van het totaal.
-export function HoofdgroepenChart({ perHoofdgroep, dark }) {
+export function HoofdgroepenChart({ perHoofdgroep, onderdrukt, dark }) {
   if (!perHoofdgroep || Object.keys(perHoofdgroep).length === 0) return null
   const entries = Object.entries(perHoofdgroep).sort((a, b) => b[1] - a[1])
   const h = Math.max(160, entries.length * 36)
@@ -145,6 +148,7 @@ export function HoofdgroepenChart({ perHoofdgroep, dark }) {
           options={horizontalBarOpts(dark)}
         />
       </div>
+      <OndergrensCategorieen onderdrukt={onderdrukt} />
     </ChartCard>
   )
 }

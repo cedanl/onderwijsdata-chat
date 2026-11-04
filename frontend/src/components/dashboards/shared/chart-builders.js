@@ -11,16 +11,22 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 // Diplomas vs. vacancies per sector. The backend counts a UWV cluster shared by several sectors
 // pro rata (#455), so the vacancy series is its per-sector count, not a sum over clusters.
+// Aflopend op gediplomeerden en zonder sector met 0 of zonder waarde; die staan in `weggelaten`. Een sector zonder
+// vacaturetelling krijgt geen staaf, geen 0 (#902).
 export function buildSupplyDemandData(gediplomeerdenPerSector, vacaturesPerSector) {
   if (!gediplomeerdenPerSector || !vacaturesPerSector) return null
-  const sectors = Object.keys(gediplomeerdenPerSector)
+  const alle = Object.keys(gediplomeerdenPerSector)
+  const sectors = alle
+    .filter(s => gediplomeerdenPerSector[s] > 0)
+    .sort((a, b) => gediplomeerdenPerSector[b] - gediplomeerdenPerSector[a])
   if (!sectors.length) return null
   return {
     labels: sectors.map(s => SECTOR_LABELS[s] || s),
     datasets: [
-      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s] || 0), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
-      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] || 0), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Gediplomeerden', data: sectors.map(s => gediplomeerdenPerSector[s]), backgroundColor: '#2563EBCC', borderWidth: 0, borderRadius: 4 },
+      { label: 'Vacatures (gerelateerd)', data: sectors.map(s => vacaturesPerSector[s] ?? null), backgroundColor: '#F59E0BCC', borderWidth: 0, borderRadius: 4 },
     ],
+    weggelaten: alle.filter(s => !sectors.includes(s)).map(s => SECTOR_LABELS[s] || s),
   }
 }
 

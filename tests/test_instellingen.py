@@ -618,7 +618,8 @@ def test_dashboard_rendement_ho_rekent_de_cohorten_zoals_de_fixture():
     assert {j: c["instroom"] for j, c in cohorten.items()} == ej
     for jaar, cohort in cohorten.items():
         for t in (3, 4, 5):
-            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t, 0), (jaar, t)
+            # Een diplomajaar dat er (nog) niet is, is None, geen 0 (#902).
+            assert cohort[f"gediplomeerden_t{t}"] == dipl.get(jaar + t), (jaar, t)
 
     # Rendement na 3 jaar: gediplomeerden in jaar+3 gedeeld door de instroom, alleen als dat niet boven 1 komt.
     verwacht = {j: round(dipl[j + 3] / ej[j], 4) for j in ej if 0 < dipl.get(j + 3, 0) <= ej[j]}

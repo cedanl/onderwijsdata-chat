@@ -4,8 +4,52 @@ import { CHART_COLORS } from '../../../constants'
 import {
   useNationaalDashboardData, useDarkMode, DashboardShell, SectionHeader, fmt,
   SECTOR_LABELS, darkColors, horizontalBarOpts, tellingAs, ChartCard,
-  DashboardSources, BRONNEN_NATIONAAL,
+  DashboardSources, BRONNEN_NATIONAAL, TenMinste, OndergrensNoot, WeggelatenNoot,
 } from '../shared/index'
+
+const sectorNaam = s => SECTOR_LABELS[s] || s
+
+// Het eigen aandeel per sector in het laatste jaar, aflopend. Een sector zonder eigen of landelijke waarde, of met 0
+// eigen ingeschrevenen, valt weg en staat in `weggelaten` (#902).
+export function buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk) {
+  if (!eigenSectoren || !sectorenLandelijk) return null
+  const sectors = Object.keys(eigenSectoren)
+  const jaren = sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(Number))
+  if (!jaren.length) return null
+  const latestYear = Math.max(...jaren)
+  const entries = []
+  const weggelaten = []
+  for (const s of sectors) {
+    const eigen = eigenSectoren[s]?.[latestYear]
+    const landelijk = sectorenLandelijk[s]?.[latestYear]
+    if (!(eigen > 0) || !(landelijk > 0)) {
+      weggelaten.push(sectorNaam(s))
+      continue
+    }
+    entries.push({ sector: s, pct: Math.round((eigen / landelijk) * 1000) / 10 })
+  }
+  entries.sort((a, b) => b.pct - a.pct)
+  if (!entries.length) return null
+  return {
+    jaar: latestYear,
+    weggelaten,
+    data: {
+      labels: entries.map(e => sectorNaam(e.sector)),
+      datasets: [{
+        label: 'Marktaandeel %',
+        data: entries.map(e => e.pct),
+        backgroundColor: entries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + 'CC'),
+        borderWidth: 0,
+        borderRadius: 4,
+      }],
+    },
+  }
+}
+
+// {sector: {jaar: n}} als reeksen voor de ondergrensnoot.
+function sectorReeksen(perSector) {
+  return Object.entries(perSector || {}).map(([s, onderdrukt]) => ({ label: sectorNaam(s), onderdrukt }))
+}
 
 function RankingTable({ alleInstellingen, instelling, dark }) {
   if (!alleInstellingen?.length) return null
@@ -32,7 +76,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
               }}>
                 <td style={{ padding: '5px 8px' }}>{i + 1}</td>
                 <td style={{ padding: '5px 8px' }}>{inst.naam}</td>
-                <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(inst.ingeschrevenen)}</td>
+                <td style={{ textAlign: 'right', padding: '5px 8px' }}><TenMinste actief={inst.onderdrukt > 0} />{fmt(inst.ingeschrevenen)}</td>
               </tr>
             )
           })}
@@ -42,7 +86,7 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
               <tr style={{ background: 'var(--blue-50)', fontWeight: 700 }}>
                 <td style={{ padding: '5px 8px' }}>{eigenIdx + 1}</td>
                 <td style={{ padding: '5px 8px' }}>{alleInstellingen[eigenIdx].naam}</td>
-                <td style={{ textAlign: 'right', padding: '5px 8px' }}>{fmt(alleInstellingen[eigenIdx].ingeschrevenen)}</td>
+                <td style={{ textAlign: 'right', padding: '5px 8px' }}><TenMinste actief={alleInstellingen[eigenIdx].onderdrukt > 0} />{fmt(alleInstellingen[eigenIdx].ingeschrevenen)}</td>
               </tr>
             </>
           )}
@@ -52,19 +96,23 @@ function RankingTable({ alleInstellingen, instelling, dark }) {
   )
 }
 
-function PositieKpis({ eigenPositie }) {
+// Een positie waarin een onderdrukte cel meetelt, kan verschuiven: die heet indicatief (#902).
+function PositieKpis({ eigenPositie, onzeker, weggelaten }) {
   if (!eigenPositie || Object.keys(eigenPositie).length === 0) return null
   const entries = Object.entries(eigenPositie).sort((a, b) => a[1] - b[1])
   return (
-    <div className="kpi-grid">
-      {entries.map(([sector, pos]) => (
-        <div key={sector} className="kpi-card">
-          <div className="kpi-label">{SECTOR_LABELS[sector] || sector}</div>
-          <div className="kpi-value">#{pos}</div>
-          <div className="kpi-sub">positie landelijk</div>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="kpi-grid">
+        {entries.map(([sector, pos]) => (
+          <div key={sector} className="kpi-card">
+            <div className="kpi-label">{sectorNaam(sector)}</div>
+            <div className="kpi-value">#{pos}</div>
+            <div className="kpi-sub">{onzeker?.[sector] > 0 ? 'positie landelijk, indicatief: onderdrukte cellen tellen niet mee' : 'positie landelijk'}</div>
+          </div>
+        ))}
+      </div>
+      <WeggelatenNoot namen={(weggelaten || []).map(sectorNaam)} reden="geen ingeschrevenen in het laatste jaar" />
+    </>
   )
 }
 
@@ -78,7 +126,7 @@ function SectorTrendChart({ eigenSectoren, dark }) {
       labels: allJaren,
       datasets: sectors.map((s, i) => ({
         label: SECTOR_LABELS[s] || s,
-        data: allJaren.map(j => eigenSectoren[s][j] ?? eigenSectoren[s][Number(j)] ?? 0),
+        data: allJaren.map(j => eigenSectoren[s][j] ?? eigenSectoren[s][Number(j)] ?? null),
         borderColor: CHART_COLORS[i % CHART_COLORS.length],
         backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '33',
         borderWidth: 2,
@@ -118,32 +166,11 @@ function SectorTrendChart({ eigenSectoren, dark }) {
 }
 
 function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
-  const chartData = useMemo(() => {
-    if (!eigenSectoren || !sectorenLandelijk) return null
-    const sectors = Object.keys(eigenSectoren)
-    const latestYear = Math.max(...sectors.flatMap(s => Object.keys(eigenSectoren[s]).map(Number)))
-    const entries = sectors
-      .map(s => {
-        const eigen = eigenSectoren[s]?.[latestYear] || 0
-        const landelijk = sectorenLandelijk[s]?.[latestYear] || 0
-        const pct = landelijk > 0 ? Math.round((eigen / landelijk) * 1000) / 10 : 0
-        return { sector: s, pct, eigen }
-      })
-      .filter(e => e.eigen > 0)
-      .sort((a, b) => b.pct - a.pct)
-    if (!entries.length) return null
-    return {
-      labels: entries.map(e => SECTOR_LABELS[e.sector] || e.sector),
-      datasets: [{
-        label: 'Marktaandeel %',
-        data: entries.map(e => e.pct),
-        backgroundColor: entries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + 'CC'),
-        borderWidth: 0,
-        borderRadius: 4,
-      }],
-    }
-  }, [eigenSectoren, sectorenLandelijk])
-
+  const uitkomst = useMemo(
+    () => buildMarktaandeelPerSector(eigenSectoren, sectorenLandelijk),
+    [eigenSectoren, sectorenLandelijk],
+  )
+  const chartData = uitkomst?.data
   if (!chartData) return null
   const baseOpts = horizontalBarOpts(dark, '%')
   return (
@@ -157,6 +184,7 @@ function MarktaandeelChart({ eigenSectoren, sectorenLandelijk, dark }) {
           },
         }} />
       </div>
+      <WeggelatenNoot namen={uitkomst.weggelaten} reden={`geen eigen of landelijke ingeschrevenen in ${uitkomst.jaar}`} />
     </ChartCard>
   )
 }
@@ -175,10 +203,14 @@ export function InlineDashboardNationaal({ instelling }) {
         </div>
 
         <SectionHeader title="Positie per sector" subtitle="Ranking binnen alle instellingen per sector/leerweg" />
-        <PositieKpis eigenPositie={data?.eigen_positie} />
+        <PositieKpis eigenPositie={data?.eigen_positie} onzeker={data?.onderdrukt?.eigen_positie} weggelaten={data?.positie_weggelaten} />
 
         <SectionHeader title="Marktaandeel" subtitle="Aandeel in landelijk totaal per sector" />
         <MarktaandeelChart eigenSectoren={data?.eigen_sectoren} sectorenLandelijk={data?.sectoren_landelijk} dark={dark} />
+        <OndergrensNoot reeksen={[
+          ...sectorReeksen(data?.onderdrukt?.sectoren_landelijk).map(r => ({ ...r, label: `Landelijk ${r.label}` })),
+          ...sectorReeksen(data?.onderdrukt?.eigen_sectoren).map(r => ({ ...r, label: `Eigen ${r.label}` })),
+        ]} />
 
         <SectionHeader title="Trend" subtitle="Ingeschrevenen per sector over tijd" />
         <SectorTrendChart eigenSectoren={data?.eigen_sectoren} dark={dark} />

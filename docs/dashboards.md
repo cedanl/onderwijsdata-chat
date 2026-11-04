@@ -32,6 +32,14 @@ De data komt uit `data/dashboard.py`.
   laatste drie diplomajaren: per ho-onderdeel uit `p04hogdipl`, per mbo-hoofdgroep uit `gediplomeerde-mbo-studenten`.
   Tot #899 stond voor het mbo `TOTAAL MBO` (ingeschrevenen) in dit veld.
 
+### Onderdrukte en ontbrekende cellen
+
+DUO zet kleine aantallen op -1; de dashboards laden DUO via `_duo_load`, dat zo'n cel leeg maakt (`core/sentinels.py`).
+Een som telt een lege cel niet mee en is dan een ondergrens. Elke reeks meldt in `onderdrukt` per jaar (of per sector)
+hoeveel lege cellen erin vallen, en het frontend zegt dan "ten minste" (#902). Een jaar of sector met alleen lege
+cellen krijgt geen waarde: een gat, geen 0. Een positie landelijk waarin een lege cel meetelt, staat in
+`onderdrukt.eigen_positie` en heet in de UI indicatief; een sector zonder eigen waarde staat in `positie_weggelaten`.
+
 ---
 
 ## Opgeslagen dashboards uit de dashboardbouwer

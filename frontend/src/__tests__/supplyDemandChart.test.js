@@ -18,10 +18,19 @@ describe('buildSupplyDemandData', () => {
     expect(vacatures.data).not.toEqual([2500, 2300])
   })
 
-  it('plots 0 for a sector without a vacancy count', () => {
+  // #902: een ontbrekende telling is geen 0; de staaf blijft weg.
+  it('draws no vacancy bar for a sector without a vacancy count', () => {
     const data = buildSupplyDemandData({ TECHNIEK: 50, ONDERWIJS: 10 }, { TECHNIEK: 1500 })
 
-    expect(data.datasets[1].data).toEqual([1500, 0])
+    expect(data.datasets[1].data).toEqual([1500, null])
+  })
+
+  it('sorts on diplomas and names the sectors without diplomas (#902)', () => {
+    const data = buildSupplyDemandData({ ONDERWIJS: 10, TECHNIEK: 50, ECONOMIE: 0, ZORG: null }, VACATURES_PER_SECTOR)
+
+    expect(data.labels).toEqual(['Techniek', 'Onderwijs'])
+    expect(data.datasets[0].data).toEqual([50, 10])
+    expect(data.weggelaten).toEqual(['Economie', 'ZORG'])
   })
 
   it('returns null without diplomas or vacancy counts', () => {
